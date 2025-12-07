@@ -1,0 +1,189 @@
+// SwarmForge gRPC Service Definitions
+// Copyright (c) 2022-2025 Silvère Martin-Michiellot
+// AI Assistant: Gemini (Google DeepMind)
+// MIT License
+
+syntax = "proto3";
+
+package org.swarmforge.protocol;
+
+option java_package = "org.swarmforge.protocol.grpc";
+option java_multiple_files = true;
+
+// ============================================
+// Common Types
+// ============================================
+
+message Vec3 {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+
+message Vec3i {
+    int32 x = 1;
+    int32 y = 2;
+    int32 z = 3;
+}
+
+// ============================================
+// Simulation Service
+// ============================================
+
+service SimulationService {
+    // Get current simulation state
+    rpc GetState (GetStateRequest) returns (SimulationState);
+    
+    // Stream real-time updates (bidirectional)
+    rpc StreamUpdates (stream ClientCommand) returns (stream SimulationUpdate);
+    
+    // Control simulation
+    rpc Control (ControlRequest) returns (ControlResponse);
+}
+
+message GetStateRequest {
+    bool include_individuals = 1;
+    bool include_cells = 2;
+}
+
+message SimulationState {
+    uint64 tick = 1;
+    int32 width = 2;
+    int32 height = 3;
+    int32 depth = 4;
+    repeated ColonyInfo colonies = 5;
+    int32 total_population = 6;
+    SimStatus status = 7;
+}
+
+enum SimStatus {
+    SIM_STOPPED = 0;
+    SIM_RUNNING = 1;
+    SIM_PAUSED = 2;
+}
+
+message ColonyInfo {
+    string id = 1;
+    string species = 2;
+    Vec3 nest_position = 3;
+    int32 population = 4;
+    float food_stored = 5;
+}
+
+// ============================================
+// Streaming
+// ============================================
+
+message ClientCommand {
+    oneof command {
+        SubscribeRequest subscribe = 1;
+        CameraUpdate camera = 2;
+        SpeedChange speed = 3;
+    }
+}
+
+message SubscribeRequest {
+    float view_radius = 1;
+    Vec3 camera_position = 2;
+}
+
+message CameraUpdate {
+    Vec3 position = 1;
+    float view_radius = 2;
+}
+
+message SpeedChange {
+    int32 ticks_per_second = 1;
+}
+
+message SimulationUpdate {
+    uint64 tick = 1;
+    repeated IndividualDelta individuals = 2;
+    repeated CellDelta cells = 3;
+    repeated string removed_ids = 4;
+}
+
+message IndividualDelta {
+    string id = 1;
+    Vec3 position = 2;
+    float heading = 3;
+    bool alive = 4;
+}
+
+message CellDelta {
+    uint64 morton_key = 1;
+    int32 material = 2;
+    repeated float pheromones = 3;
+}
+
+// ============================================
+// Control
+// ============================================
+
+message ControlRequest {
+    ControlAction action = 1;
+    int32 ticks_per_second = 2;
+}
+
+enum ControlAction {
+    CTRL_START = 0;
+    CTRL_PAUSE = 1;
+    CTRL_STOP = 2;
+    CTRL_SET_SPEED = 3;
+}
+
+message ControlResponse {
+    bool success = 1;
+    SimStatus status = 2;
+    string message = 3;
+}
+
+// ============================================
+// World Service (for editing)
+// ============================================
+
+service WorldService {
+    // Create a new world
+    rpc CreateWorld (CreateWorldRequest) returns (CreateWorldResponse);
+    
+    // Modify terrain
+    rpc ModifyTerrain (ModifyTerrainRequest) returns (ModifyTerrainResponse);
+    
+    // Add colony
+    rpc AddColony (AddColonyRequest) returns (AddColonyResponse);
+}
+
+message CreateWorldRequest {
+    int32 width = 1;
+    int32 height = 2;
+    int32 depth = 3;
+    float latitude = 4;
+    float longitude = 5;
+}
+
+message CreateWorldResponse {
+    bool success = 1;
+    string world_id = 2;
+}
+
+message ModifyTerrainRequest {
+    Vec3i position = 1;
+    int32 material = 2;
+    int32 radius = 3;  // For brush size
+}
+
+message ModifyTerrainResponse {
+    bool success = 1;
+    int32 cells_modified = 2;
+}
+
+message AddColonyRequest {
+    string species = 1;
+    Vec3 position = 2;
+    int32 initial_population = 3;
+}
+
+message AddColonyResponse {
+    bool success = 1;
+    string colony_id = 2;
+}

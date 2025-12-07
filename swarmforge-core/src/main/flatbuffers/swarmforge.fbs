@@ -1,0 +1,171 @@
+// SwarmForge FlatBuffers Schema
+// Copyright (c) 2022-2025 Silvère Martin-Michiellot
+// AI Assistant: Gemini (Google DeepMind)
+// MIT License
+
+namespace org.swarmforge.protocol;
+
+// ============================================
+// Core Data Types
+// ============================================
+
+struct Vec3 {
+    x: float;
+    y: float;
+    z: float;
+}
+
+struct Vec3i {
+    x: int;
+    y: int;
+    z: int;
+}
+
+enum Material : byte {
+    Air = 0,
+    Earth,
+    Sand,
+    Rock,
+    Water,
+    Organic,
+    NestWall,
+    Chamber
+}
+
+enum Caste : byte {
+    Queen = 0,
+    Male,
+    Worker,
+    Soldier,
+    Nurse,
+    Forager
+}
+
+enum CarriedItem : byte {
+    None = 0,
+    Food,
+    Water,
+    Earth,
+    Brood,
+    DeadAnt
+}
+
+// ============================================
+// Cell & World Updates
+// ============================================
+
+table Cell {
+    position: Vec3i (required);
+    material: Material = Air;
+    pheromones: [float];  // 8 pheromone types
+    temperature: float = 20.0;
+    humidity: float = 50.0;
+}
+
+table CellUpdate {
+    morton_key: ulong;
+    cell: Cell;
+}
+
+table WorldDelta {
+    tick: ulong;
+    cell_updates: [CellUpdate];
+}
+
+// ============================================
+// Individual & Colony
+// ============================================
+
+table Individual {
+    id: string (required);
+    colony_id: string (required);
+    caste: Caste = Worker;
+    position: Vec3 (required);
+    heading: float;
+    health: float = 100.0;
+    energy: float = 100.0;
+    alive: bool = true;
+    carried: CarriedItem = None;
+}
+
+table IndividualUpdate {
+    id: string (required);
+    position: Vec3;
+    heading: float;
+    health: float;
+    energy: float;
+    alive: bool;
+    carried: CarriedItem;
+}
+
+table Colony {
+    id: string (required);
+    species: string;
+    nest_position: Vec3;
+    population: int;
+    food_stored: float;
+    water_stored: float;
+}
+
+// ============================================
+// Simulation State
+// ============================================
+
+table SimulationState {
+    tick: ulong;
+    world_width: int;
+    world_height: int;
+    world_depth: int;
+    colonies: [Colony];
+    individuals: [Individual];
+}
+
+table SimulationDelta {
+    tick: ulong;
+    individual_updates: [IndividualUpdate];
+    world_delta: WorldDelta;
+    new_individuals: [Individual];
+    removed_individual_ids: [string];
+}
+
+// ============================================
+// Client Messages
+// ============================================
+
+enum ClientMessageType : byte {
+    Subscribe = 0,
+    Unsubscribe,
+    Pause,
+    Resume,
+    SetSpeed,
+    CameraUpdate
+}
+
+table ClientMessage {
+    type: ClientMessageType;
+    tick_rate: int;  // For SetSpeed
+    camera_position: Vec3;  // For CameraUpdate
+    view_radius: float;
+}
+
+// ============================================
+// Server Messages  
+// ============================================
+
+enum ServerMessageType : byte {
+    FullState = 0,
+    Delta,
+    Paused,
+    Resumed,
+    Error
+}
+
+table ServerMessage {
+    type: ServerMessageType;
+    full_state: SimulationState;
+    delta: SimulationDelta;
+    error_message: string;
+}
+
+// Root types for buffer building
+root_type ServerMessage;

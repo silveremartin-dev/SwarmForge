@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwarmForge Web Viewer</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="ui-container">
+        <div id="header">
+            <h1>SwarmForge Web</h1>
+            <div id="status">Disconnected</div>
+        </div>
+        <div id="controls">
+            <button id="btn-connect">Connect</button>
+            <button id="btn-camera">Reset Camera</button>
+        </div>
+    </div>
+    <div id="canvas-container"></div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>

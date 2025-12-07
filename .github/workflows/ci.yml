@@ -1,0 +1,36 @@
+# SwarmForge CI/CD Pipeline
+#
+# MIT License
+# Copyright (c) 2022-2025 Silvère Martin-Michiellot
+# AI Assistant: Gemini (Google DeepMind)
+
+name: SwarmForge CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+
+env:
+  JAVA_VERSION: "21"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: "temurin"
+          cache: maven
+      - name: Build
+        run: mvn -B clean compile
+      - name: Test
+        run: mvn -B test
+      - name: Package
+        run: mvn -B package -DskipTests

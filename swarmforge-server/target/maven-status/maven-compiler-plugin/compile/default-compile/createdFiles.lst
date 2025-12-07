@@ -1,0 +1,14 @@
+org\swarmforge\server\persistence\WorldRepository$WorldRecord.class
+org\swarmforge\server\persistence\CheckpointRepository$CheckpointSummary.class
+org\swarmforge\server\grpc\SimulationServiceImpl$ControlResponse.class
+org\swarmforge\server\grpc\SimulationServiceImpl$SimulationStateResponse.class
+org\swarmforge\server\persistence\DatabaseManager.class
+org\swarmforge\server\persistence\WorldRepository.class
+org\swarmforge\server\SwarmForgeServer.class
+org\swarmforge\server\grpc\SimulationServiceImpl$ClientSession.class
+org\swarmforge\server\grpc\SimulationServiceImpl.class
+module-info.class
+org\swarmforge\server\persistence\CheckpointRepository$CheckpointRecord.class
+org\swarmforge\server\SwarmForgeServer$ServerConfig.class
+org\swarmforge\server\persistence\CheckpointRepository.class
+org\swarmforge\server\persistence\RedisCache.class
