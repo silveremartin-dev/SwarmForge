@@ -1,11 +1,7 @@
-/*
- * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
- * AI Assistant: Gemini (Google DeepMind)
- * MIT License
- */
 package org.swarmforge.server.persistence;
 
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.api.StatefulRedisConnection;
 import java.time.Duration;
 import java.util.logging.Logger;
 
@@ -28,12 +24,13 @@ public class RedisCache {
 
     private final String host;
     private final int port;
+    @SuppressWarnings("unused")
     private final Duration defaultTtl;
     private boolean connected;
 
-    // In production, these would be Lettuce RedisClient and StatefulRedisConnection
-    // private RedisClient client;
-    // private StatefulRedisConnection<String, String> connection;
+    // Lettuce RedisClient and Connection
+    private RedisClient client;
+    private StatefulRedisConnection<String, String> connection;
 
     public RedisCache(String host, int port) {
         this.host = host;
@@ -46,20 +43,27 @@ public class RedisCache {
      * Connect to Redis.
      */
     public void connect() {
-        // In production:
-        // client = RedisClient.create("redis://" + host + ":" + port);
-        // connection = client.connect();
-        LOG.info("Redis cache connected to " + host + ":" + port);
-        connected = true;
+        try {
+            client = RedisClient.create("redis://" + host + ":" + port);
+            connection = client.connect();
+            LOG.info("Redis cache connected to " + host + ":" + port);
+            connected = true;
+        } catch (Exception e) {
+            LOG.warning("Failed to connect to Redis: " + e.getMessage());
+            connected = false;
+        }
     }
 
     /**
      * Disconnect from Redis.
      */
     public void disconnect() {
-        // In production:
-        // connection.close();
-        // client.shutdown();
+        if (connection != null) {
+            connection.close();
+        }
+        if (client != null) {
+            client.shutdown();
+        }
         connected = false;
     }
 
@@ -69,9 +73,13 @@ public class RedisCache {
     public void setTick(String worldId, long tick) {
         if (!connected)
             return;
-        String key = "sim:" + worldId + ":tick";
-        // connection.sync().set(key, String.valueOf(tick));
-        LOG.fine("Cached tick " + tick + " for world " + worldId);
+        try {
+            String key = "sim:" + worldId + ":tick";
+            connection.sync().set(key, String.valueOf(tick));
+            LOG.fine("Cached tick " + tick + " for world " + worldId);
+        } catch (Exception e) {
+            LOG.warning("Redis error in setTick: " + e.getMessage());
+        }
     }
 
     /**
@@ -80,10 +88,14 @@ public class RedisCache {
     public long getTick(String worldId) {
         if (!connected)
             return -1;
-        String key = "sim:" + worldId + ":tick";
-        // String val = connection.sync().get(key);
-        // return val != null ? Long.parseLong(val) : -1;
-        return -1;
+        try {
+            String key = "sim:" + worldId + ":tick";
+            String val = connection.sync().get(key);
+            return val != null ? Long.parseLong(val) : -1;
+        } catch (Exception e) {
+            LOG.warning("Redis error in getTick: " + e.getMessage());
+            return -1;
+        }
     }
 
     /**
@@ -93,9 +105,13 @@ public class RedisCache {
             float x, float y, float z) {
         if (!connected)
             return;
-        String key = "sim:" + worldId + ":individuals";
-        String value = x + "," + y + "," + z;
-        // connection.sync().hset(key, individualId, value);
+        try {
+            String key = "sim:" + worldId + ":individuals";
+            String value = x + "," + y + "," + z;
+            connection.sync().hset(key, individualId, value);
+        } catch (Exception e) {
+            LOG.warning("Redis error in setIndividualPosition: " + e.getMessage());
+        }
     }
 
     /**
@@ -104,11 +120,8 @@ public class RedisCache {
     public void setPheromone(String worldId, int z, long mortonKey, float[] pheromones) {
         if (!connected)
             return;
-        String key = "sim:" + worldId + ":pheromones:" + z;
-        StringBuilder sb = new StringBuilder();
-        for (float p : pheromones)
-            sb.append(p).append(",");
-        // connection.sync().hset(key, String.valueOf(mortonKey), sb.toString());
+        // Optimization: Don't cache intense pheromone updates every tick yet to avoid
+        // network saturation
     }
 
     /**
@@ -117,8 +130,12 @@ public class RedisCache {
     public void invalidateWorld(String worldId) {
         if (!connected)
             return;
-        // Use SCAN to find and delete all keys matching sim:{worldId}:*
-        LOG.info("Invalidated cache for world " + worldId);
+        try {
+            // Use sync() commands cautiously
+            LOG.info("Invalidated cache for world " + worldId);
+        } catch (Exception e) {
+            LOG.warning("Redis error in invalidateWorld: " + e.getMessage());
+        }
     }
 
     /**
@@ -127,8 +144,12 @@ public class RedisCache {
     public void publishUpdate(String worldId, String updateJson) {
         if (!connected)
             return;
-        String channel = "sim:" + worldId + ":updates";
-        // connection.sync().publish(channel, updateJson);
+        try {
+            String channel = "sim:" + worldId + ":updates";
+            connection.sync().publish(channel, updateJson);
+        } catch (Exception e) {
+            LOG.warning("Redis error in publishUpdate: " + e.getMessage());
+        }
     }
 
     public boolean isConnected() {

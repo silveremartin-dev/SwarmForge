@@ -54,4 +54,12 @@ public class LasiusNiger implements Species {
     public boolean formsMegaColonies() {
         return false;
     }
+
+    @Override
+    public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
+        return java.util.Set.of(
+                org.swarmforge.core.domain.ResourceType.HONEYDEW,
+                org.swarmforge.core.domain.ResourceType.INSECT,
+                org.swarmforge.core.domain.ResourceType.SUGAR);
+    }
 }

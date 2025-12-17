@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SwarmForge - Eusocial Insect Simulation
+  Compute Node - Distributed computing worker for simulation processing
+  
+  MIT License
+  Copyright (c) 2022-2025 Silvère Martin-Michiellot
+  AI Assistant: Gemini (Google DeepMind)
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.swarmforge</groupId>
+        <artifactId>swarmforge-parent</artifactId>
+        <version>2.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>swarmforge-compute</artifactId>
+    <name>SwarmForge Compute Node</name>
+    <description>Headless distributed compute node for simulation processing (CPU/GPU)</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.swarmforge</groupId>
+            <artifactId>swarmforge-core</artifactId>
+        </dependency>
+
+        <!-- gRPC for server registration -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>org.swarmforge.compute.ComputeNodeApp</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

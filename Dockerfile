@@ -2,16 +2,23 @@
 # Copyright (c) 2022-2025 Silvère Martin-Michiellot
 # AI Assistant: Gemini (Google DeepMind)
 
-FROM eclipse-temurin:21-jre-alpine
+# Stage 1: Build
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /app
+COPY . .
+RUN ./mvnw clean package -DskipTests -pl swarmforge-server -am
 
+# Stage 2: Run
+FROM eclipse-temurin:21-jre-alpine
 LABEL maintainer="Silvère Martin-Michiellot"
 LABEL description="SwarmForge Simulation Server"
 LABEL version="2.0.0"
 
 WORKDIR /app
 
-# Copy server JAR
-COPY swarmforge-server/target/swarmforge-server-*.jar server.jar
+# Copy server JAR from build stage
+# Note: Path depends on Maven build output naming
+COPY --from=build /app/swarmforge-server/target/swarmforge-server-*.jar server.jar
 
 # Expose gRPC port
 EXPOSE 50051

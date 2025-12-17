@@ -8,6 +8,7 @@ package org.swarmforge.core.world;
 
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.domain.TerrariumCell;
+
 import java.util.Random;
 
 /**
@@ -91,6 +92,130 @@ public class TerrainGenerator {
                                 60f + (surfaceZ - z) * 0.5f // Humidity gradient
                         );
                         terrarium.setCell(cell);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Generate terrain from real-world elevation data provided by OpenTopography.
+     * 
+     * @param terrarium Target terrarium
+     * @param provider  Elevation provider instance
+     * @param lat       Center latitude
+     * @param lon       Center longitude
+     * @param scale     Meters per voxel (e.g. 1.0 = 1m/voxel)
+     */
+    public void generateFromRealWorld(Terrarium terrarium, ElevationProvider provider,
+            double lat, double lon, float scale) {
+
+        // TerrainGenerator uses width/height for loop, and Z for depth/up?
+        // Original: width (x), height (y), depth (z). Wait.
+        // LOOP: for x < width, for y < height, for z < depth
+        // Surface Z is height.
+        // HEIGHT usually means vertical extent in 3D.
+        // Let's check original loop: "for x ... width, for y ... height .. float
+        // noise(x, y)"
+        // And z goes up to depth? "for z ... depth".
+        // It seems Y is 2nd horizontal dimension and Z is vertical?
+        // Sim coords: X, Y (horizontal), Z (vertical) ?
+        // Or X, Z (horizontal), Y (vertical)?
+        // Previous JME code: "cam.setLocation(..., h+20...)" implies h is vertical.
+        // Code: "int surfaceZ = groundLevel + noise..." -> Z is vertical.
+        // So Width = X, Height = Y (horizontal), Depth = Z (vertical).
+        // Confusing naming. "Terrarium.getHeight()" usually implicitly Y.
+
+        int w = terrarium.getWidth();
+        int h = terrarium.getHeight();
+
+        // Let's re-read generate():
+        // width = terrarium.getWidth(); height = terrarium.getHeight();
+        // for x < width, for y < height
+        // noise(x, y)
+        // for z < depth (terrarium.getDepth())
+        // surfaceZ = ...
+        // material(z > surfaceZ)...
+
+        // So: X, Y are horizontal. Z is vertical (Depth).
+        // Confirmed.
+
+        // Real world mapping:
+        // 1 degree lat approx 111km.
+        // 1 degree lon approx 111km * cos(lat).
+
+        double metersPerDegLat = 111132.0;
+        double metersPerDegLon = 111132.0 * Math.cos(Math.toRadians(lat));
+
+        double widthMeters = w * scale;
+        double lengthMeters = h * scale; // Y is horizontal length
+
+        double latSpan = lengthMeters / metersPerDegLat;
+        double lonSpan = widthMeters / metersPerDegLon;
+
+        double minLat = lat - latSpan / 2.0;
+        double maxLat = lat + latSpan / 2.0;
+        double minLon = lon - lonSpan / 2.0;
+        double maxLon = lon + lonSpan / 2.0;
+
+        float[][] elevations = provider.getElevationGrid(minLat, maxLat, minLon, maxLon, Math.max(w, h));
+
+        // Map grid to voxels
+        if (elevations.length == 0)
+            return;
+
+        int gridRows = elevations.length;
+        int gridCols = elevations[0].length;
+
+        // Find min elevation to normalize to 0 or groundLevel
+        float minElev = Float.MAX_VALUE;
+        for (float[] row : elevations)
+            for (float val : row)
+                if (!Float.isNaN(val))
+                    minElev = Math.min(minElev, val);
+
+        int depthLim = terrarium.getDepth(); // Z limit
+
+        for (int x = 0; x < w; x++) {
+            for (int y = 0; y < h; y++) {
+                // Sample from elevation grid (bilinear interpolation or nearest)
+                // Map x / w -> col
+                // Map y / h -> row
+
+                // Note: AAIGrid usually starts typically top-left? or bottom-left?
+                // Standard is Top-Left (North-West).
+                // Y in simulation increases?
+
+                int c = (int) ((x / (float) w) * (gridCols - 1));
+                int r = (int) ((y / (float) h) * (gridRows - 1));
+                // Clamp
+                c = Math.max(0, Math.min(c, gridCols - 1));
+                r = Math.max(0, Math.min(r, gridRows - 1));
+
+                float rawElev = elevations[r][c];
+                if (Float.isNaN(rawElev))
+                    rawElev = minElev;
+
+                int surfaceZ = (int) ((rawElev - minElev) / scale); // Scale elevation to voxels
+                surfaceZ = Math.min(surfaceZ, depthLim - 1);
+                surfaceZ = Math.max(0, surfaceZ);
+
+                for (int z = 0; z < depthLim; z++) {
+                    TerrariumCell.Material material;
+
+                    if (z > surfaceZ) {
+                        material = TerrariumCell.Material.AIR;
+                    } else if (z == surfaceZ) {
+                        material = TerrariumCell.Material.EARTH;
+                    } else {
+                        material = TerrariumCell.Material.ROCK;
+                    }
+
+                    if (material != TerrariumCell.Material.AIR) {
+                        terrarium.setCell(new TerrariumCell(
+                                x, y, z, material,
+                                new float[TerrariumCell.PHEROMONE_TYPES],
+                                15f, 50f));
                     }
                 }
             }

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: swarmforge
+description: A Helm chart for deploying the SwarmForge ecosystem
+type: application
+version: 0.1.0
+appVersion: "2.0.0"
+
+dependencies:
+  - name: postgresql
+    version: 12.5.1
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+  - name: redis
+    version: 17.11.3
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled

@@ -8,7 +8,7 @@ package org.swarmforge.core;
 
 import org.junit.jupiter.api.*;
 import org.swarmforge.core.domain.*;
-import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -20,7 +20,7 @@ class ColonyTest {
 
     @BeforeEach
     void setUp() {
-        colony = new Colony("Lasius niger", 50f, 50f, 25f);
+        colony = new Colony(new org.swarmforge.core.species.LasiusNiger(), 50f, 50f, 25f);
     }
 
     @Test

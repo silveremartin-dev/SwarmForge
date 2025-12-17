@@ -1,0 +1,76 @@
+# Default values for swarmforge.
+
+replicaCount: 1
+
+image:
+  repository: swarmforge/server
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: LoadBalancer
+  grpcPort: 8080
+  wsPort: 8081
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+# Environment Variables
+env:
+  dbHost: "swarmforge-postgresql"
+  dbPort: "5432"
+  dbName: "swarmforge"
+  redisHost: "swarmforge-redis-master"
+  redisPort: "6379"
+
+# Dependencies
+postgresql:
+  enabled: true
+  auth:
+    database: swarmforge
+    username: swarmforge
+    password: changeme
+    postgresPassword: adminpassword
+
+redis:
+  enabled: true
+  auth:
+    enabled: false

@@ -6,9 +6,8 @@
  */
 package org.swarmforge.core.simulation;
 
-import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
-import org.swarmforge.core.domain.Terrarium;
+
 import org.swarmforge.core.spatial.Morton3D;
 import java.util.Map;
 import java.util.List;

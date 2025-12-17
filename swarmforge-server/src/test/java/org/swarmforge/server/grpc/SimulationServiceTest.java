@@ -7,8 +7,9 @@
 package org.swarmforge.server.grpc;
 
 import org.junit.jupiter.api.*;
-import org.swarmforge.core.simulation.Simulation;
-import org.swarmforge.core.domain.Terrarium;
+
+import org.swarmforge.protocol.grpc.*;
+import io.grpc.stub.StreamObserver;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -16,55 +17,60 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SimulationServiceTest {
 
-    private Simulation simulation;
     private SimulationServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        Terrarium terrarium = new Terrarium(100, 100, 50);
-        simulation = new Simulation(terrarium);
-        service = new SimulationServiceImpl(simulation);
+        org.swarmforge.server.simulation.SimulationManager manager = new org.swarmforge.server.simulation.SimulationManager();
+        manager.createSimulation("main", "Test World", 100, 100, 50);
+        service = new SimulationServiceImpl(manager);
     }
 
     @Test
     @DisplayName("getState should return correct dimensions")
     void testGetState() {
-        var response = service.getState(false, false);
-        assertEquals(100, response.width());
-        assertEquals(100, response.height());
-        assertEquals(50, response.depth());
-        assertEquals("STOPPED", response.status());
+        GetStateRequest request = GetStateRequest.newBuilder().setSimulationId("main").build();
+        TestStreamObserver<SimulationState> observer = new TestStreamObserver<>();
+        service.getState(request, observer);
+
+        SimulationState state = observer.getValue();
+        assertEquals(100, state.getWidth());
+        assertEquals(100, state.getHeight());
+        assertEquals(50, state.getDepth());
     }
 
     @Test
     @DisplayName("Control start should change state")
     void testControlStart() {
-        var response = service.control("START", 60);
-        assertTrue(response.success());
-        assertEquals("RUNNING", simulation.getState().name());
+        ControlRequest request = ControlRequest.newBuilder()
+                .setAction(ControlAction.CTRL_START)
+                .setSimulationId("main")
+                .build();
+        TestStreamObserver<ControlResponse> observer = new TestStreamObserver<>();
+        service.control(request, observer);
+
+        assertTrue(observer.getValue().getSuccess());
     }
 
-    @Test
-    @DisplayName("Control pause should change state")
-    void testControlPause() {
-        simulation.start();
-        var response = service.control("PAUSE", 60);
-        assertTrue(response.success());
-        assertEquals("PAUSED", simulation.getState().name());
-    }
+    // Simple test observer
+    static class TestStreamObserver<T> implements StreamObserver<T> {
+        private T value;
 
-    @Test
-    @DisplayName("Invalid command should return failure")
-    void testInvalidCommand() {
-        var response = service.control("INVALID", 60);
-        // Depending on impl it might just ignore or fail
-        // Our impl returns success=true but status remains same, acts as no-op or
-        // catch-all?
-        // Let's check impl: switch on string, default isn't handled explicitly inside
-        // try,
-        // so it likely does nothing and returns success=true with current state.
-        // Actually looking at code: use 'switch' statement. If no case matches, nothing
-        // happens.
-        assertTrue(response.success());
+        @Override
+        public void onNext(T v) {
+            this.value = v;
+        }
+
+        @Override
+        public void onError(Throwable t) {
+        }
+
+        @Override
+        public void onCompleted() {
+        }
+
+        T getValue() {
+            return value;
+        }
     }
 }

@@ -1,83 +1,28 @@
-# SwarmForge Docker Compose
-# Copyright (c) 2022-2025 Silvère Martin-Michiellot
-# AI Assistant: Gemini (Google DeepMind)
-
 version: '3.8'
 
 services:
-  server:
+  swarmforge-server:
     build: .
-    container_name: swarmforge-server
     ports:
       - "50051:50051"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=swarmforge
       - DB_USER=swarmforge
       - DB_PASSWORD=swarmforge
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
     depends_on:
       - postgres
-      - redis
-    restart: unless-stopped
 
   postgres:
     image: postgres:16-alpine
-    container_name: swarmforge-db
     environment:
-      - POSTGRES_DB=swarmforge
       - POSTGRES_USER=swarmforge
       - POSTGRES_PASSWORD=swarmforge
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./swarmforge-server/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - POSTGRES_DB=swarmforge
     ports:
       - "5432:5432"
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    container_name: swarmforge-cache
-    ports:
-      - "6379:6379"
     volumes:
-      - redis_data:/data
-    restart: unless-stopped
-
-  envoy:
-    image: envoyproxy/envoy:v1.29-latest
-    container_name: swarmforge-envoy
-    volumes:
-      - ./envoy.yaml:/etc/envoy/envoy.yaml
-    ports:
-      - "8080:8080"
-      - "9901:9901"
-    depends_on:
-      - server
-    restart: unless-stopped
-
-  prometheus:
-    image: prom/prometheus
-    container_name: swarmforge-prometheus
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    restart: unless-stopped
-
-  grafana:
-    image: grafana/grafana
-    container_name: swarmforge-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    depends_on:
-      - prometheus
-    restart: unless-stopped
+      - pgdata:/var/lib/postgresql/data
 
 volumes:
-  postgres_data:
-  redis_data:
+  pgdata:

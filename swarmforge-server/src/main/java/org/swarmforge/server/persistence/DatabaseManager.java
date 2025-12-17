@@ -62,6 +62,17 @@ public class DatabaseManager {
     }
 
     /**
+     * Check if database is connected.
+     */
+    public boolean isConnected() {
+        try {
+            return connection != null && !connection.isClosed();
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    /**
      * Create repository instances.
      */
     public WorldRepository worldRepository() {
@@ -70,5 +81,9 @@ public class DatabaseManager {
 
     public CheckpointRepository checkpointRepository() {
         return new CheckpointRepository(connection);
+    }
+
+    public ColonyRepository colonyRepository() {
+        return new ColonyRepository(connection);
     }
 }

@@ -72,15 +72,6 @@ public class NestGenerator {
         return executeL(x, y, z, rules);
     }
 
-    private String getAxiom(NestType type) {
-        return switch (type) {
-            case SIMPLE -> "F[C]F[-FC][+FC]";
-            case MATURE -> "FC[--F[C]F[+FC][-FC]][++F[C]F[+FC][-FC]]vFvFC";
-            case MOUND -> "^F^F[C]vvF[-FC][+FC]vF[C]";
-            case TREE -> "F^F[C][+F^FC][-F^FC]";
-        };
-    }
-
     private String applyRules(String input, NestType type, int iterations) {
         String result = input;
         for (int i = 0; i < iterations; i++) {
@@ -229,5 +220,41 @@ public class NestGenerator {
     public NestGenerator maxDepth(int d) {
         this.maxDepth = d;
         return this;
+    }
+
+    // New config options
+    private int branchingFactor = 2;
+    private java.util.Map<String, Integer> chamberCounts = new java.util.HashMap<>();
+
+    public NestGenerator branchingFactor(int f) {
+        this.branchingFactor = Math.max(1, f);
+        return this;
+    }
+
+    public void setChamberCounts(java.util.Map<String, Integer> counts) {
+        if (counts != null) {
+            this.chamberCounts.putAll(counts);
+        }
+    }
+
+    // Override execute method to respect new params somewhat more accurately
+    // For now we stick to the L-System but we can tweak rules based on branching
+    // factor
+    private String getAxiom(NestType type) {
+        // Adjust complexity based on branching factor
+        if (branchingFactor > 3) {
+            return switch (type) {
+                case SIMPLE -> "F[C]F[-FC][+FC][^FC][vFC]";
+                case MATURE -> "FC[--F[C]F[+FC][-FC]][++F[C]F[+FC][-FC]][^F[C]][vF[C]]";
+                case MOUND -> "^F^F[C]vvF[-FC][+FC]vF[C][^FC]";
+                case TREE -> "F^F[C][+F^FC][-F^FC][+FvFC][-FvFC]";
+            };
+        }
+        return switch (type) {
+            case SIMPLE -> "F[C]F[-FC][+FC]";
+            case MATURE -> "FC[--F[C]F[+FC][-FC]][++F[C]F[+FC][-FC]]vFvFC";
+            case MOUND -> "^F^F[C]vvF[-FC][+FC]vF[C]";
+            case TREE -> "F^F[C][+F^FC][-F^FC]";
+        };
     }
 }

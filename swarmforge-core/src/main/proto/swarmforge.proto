@@ -9,7 +9,6 @@ package org.swarmforge.protocol;
 
 option java_package = "org.swarmforge.protocol.grpc";
 option java_multiple_files = true;
-
 // ============================================
 // Common Types
 // ============================================
@@ -27,6 +26,26 @@ message Vec3i {
 }
 
 // ============================================
+// Security Service
+// ============================================
+
+service AuthService {
+    // Authenticate and retrieve JWT token
+    rpc Login (LoginRequest) returns (LoginResponse);
+}
+
+message LoginRequest {
+    string username = 1;
+    string password = 2; // In real world, hash on client too? usually send over TLS.
+}
+
+message LoginResponse {
+    string token = 1;
+    int64 expires_at_epoch_seconds = 2;
+    repeated string roles = 3;
+}
+
+// ============================================
 // Simulation Service
 // ============================================
 
@@ -39,11 +58,30 @@ service SimulationService {
     
     // Control simulation
     rpc Control (ControlRequest) returns (ControlResponse);
+
+    // Persistence
+    rpc SaveWorld (SaveWorldRequest) returns (SaveWorldResponse);
+    rpc LoadWorld (LoadWorldRequest) returns (LoadWorldResponse);
+    
+    // Stats
+    rpc GetColonyStats (GetColonyStatsRequest) returns (GetColonyStatsResponse);
+    rpc GetColonyHistory (GetColonyHistoryRequest) returns (GetColonyHistoryResponse);
+    
+    // Server Management (for Client viewer)
+    rpc ListSimulations (ListSimulationsRequest) returns (ListSimulationsResponse);
+    rpc GetServerStatus (GetServerStatusRequest) returns (ServerStatusResponse);
+    
+    // Cluster
+    rpc AddColony (AddColonyRequest) returns (AddColonyResponse);
+    rpc ModifyTerrain (ModifyTerrainRequest) returns (ModifyTerrainResponse);
+    rpc RegisterNode (RegisterNodeRequest) returns (RegisterNodeResponse);
+    rpc SendHeartbeat (HeartbeatRequest) returns (HeartbeatResponse);
 }
 
 message GetStateRequest {
     bool include_individuals = 1;
     bool include_cells = 2;
+    string simulation_id = 3;
 }
 
 message SimulationState {
@@ -85,6 +123,7 @@ message ClientCommand {
 message SubscribeRequest {
     float view_radius = 1;
     Vec3 camera_position = 2;
+    string simulation_id = 3;
 }
 
 message CameraUpdate {
@@ -101,6 +140,40 @@ message SimulationUpdate {
     repeated IndividualDelta individuals = 2;
     repeated CellDelta cells = 3;
     repeated string removed_ids = 4;
+    repeated FoodSourceInfo food = 5;
+    Environment environment = 6;
+    repeated NestStructure nests = 7;
+}
+
+message Environment {
+    float light_level = 1;
+    string time_of_day = 2; // "DAY", "NIGHT", "DAWN", "DUSK"
+    float sun_angle = 3;
+    float temperature = 4;
+    float humidity = 5;
+    float rain_intensity = 6;
+    float wind_speed = 7;
+    string season = 8; // "SPRING", "SUMMER", "FALL", "WINTER"
+}
+
+message NestStructure {
+    string id = 1;
+    repeated ChamberInfo chambers = 2;
+    repeated TunnelInfo tunnels = 3;
+}
+
+message ChamberInfo {
+    string id = 1;
+    string type = 2; // "QUEEN", "NURSERY", etc.
+    Vec3 position = 3;
+    float capacity = 4;
+    float currentLoading = 5;
+}
+
+message TunnelInfo {
+    string start_chamber_id = 1;
+    string end_chamber_id = 2;
+    float length = 3;
 }
 
 message IndividualDelta {
@@ -108,12 +181,53 @@ message IndividualDelta {
     Vec3 position = 2;
     float heading = 3;
     bool alive = 4;
+    // State
+    float health = 5;
+    float energy = 6;
+    string job = 7;
+    
+    enum LifeStage {
+        EGG = 0;
+        LARVA = 1;
+        PUPA = 2;
+        ADULT = 3;
+    }
+    LifeStage life_stage = 8;
+    string current_action = 9; // e.g. "ATTACKING", "FORAGING"
 }
 
 message CellDelta {
     uint64 morton_key = 1;
     int32 material = 2;
     repeated float pheromones = 3;
+}
+
+message DiplomacyAction {
+    string target_colony_id = 1;
+    ActionType action = 2;
+    enum ActionType {
+        PROPOSE_ALLIANCE = 0;
+        ACCEPT_ALLIANCE = 1;
+        REJECT_ALLIANCE = 2;
+        BREAK_ALLIANCE = 3;
+        DECLARE_WAR = 4;
+        OFFER_TRIBUTE = 5;
+    }
+    string resource_type = 3; // e.g. "FOOD", "WATER"
+    float amount = 4;
+}
+
+message DiplomacyUpdate {
+    string source_colony_id = 1;
+    string target_colony_id = 2;
+    RelationshipStatus status = 3;
+}
+
+enum RelationshipStatus {
+    RELATION_NEUTRAL = 0;
+    RELATION_ALLY = 1;
+    RELATION_ENEMY = 2;
+    RELATION_TRADING = 3;
 }
 
 // ============================================
@@ -123,6 +237,7 @@ message CellDelta {
 message ControlRequest {
     ControlAction action = 1;
     int32 ticks_per_second = 2;
+    string simulation_id = 3;
 }
 
 enum ControlAction {
@@ -149,8 +264,82 @@ service WorldService {
     // Modify terrain
     rpc ModifyTerrain (ModifyTerrainRequest) returns (ModifyTerrainResponse);
     
-    // Add colony
+    // God Mode
+    rpc SpawnEntity (SpawnEntityRequest) returns (SpawnEntityResponse);
+    rpc TriggerEvent (TriggerEventRequest) returns (TriggerEventResponse);
+    
+    // Colony Management
     rpc AddColony (AddColonyRequest) returns (AddColonyResponse);
+}
+
+// ============================================
+// Matchmaking
+// ============================================
+
+service MatchmakingService {
+    // Stream updates while searching (Searching -> Found -> Connecting)
+    rpc FindMatch (MatchRequest) returns (stream MatchUpdate);
+    rpc CancelMatch (MatchRequest) returns (MatchResponse);
+}
+
+// ============================================
+// Leaderboards
+// ============================================
+
+service LeaderboardService {
+    rpc GetTopColonies(GetLeaderboardRequest) returns (GetLeaderboardResponse);
+}
+
+message GetLeaderboardRequest {
+    enum Category {
+        BIOMASS = 0;
+        AGE = 1;
+        WINS = 2;
+    }
+    Category category = 1;
+    int32 limit = 2; // e.g. Top 10
+}
+
+message GetLeaderboardResponse {
+    repeated LeaderboardEntry entries = 1;
+}
+
+message LeaderboardEntry {
+    int32 rank = 1;
+    string colony_name = 2;
+    string owner_name = 3;
+    float score = 4; // Use float to cover biomass (float) and age/wins (int as float)
+    string colony_id = 5;
+}
+
+message MatchRequest {
+    string player_id = 1;
+    string player_name = 2;
+    int32 colony_age = 3;
+    float colony_biomass = 4;
+}
+
+message MatchUpdate {
+    enum Status {
+        SEARCHING = 0;
+        FOUND = 1;
+        FAILED = 2;
+    }
+    Status status = 1;
+    string message = 2;
+    OpponentInfo opponent = 3;
+    string simulation_id = 4;
+}
+
+message MatchResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message OpponentInfo {
+    string name = 1;
+    int32 colony_age = 2;
+    // Add more stats as needed
 }
 
 message CreateWorldRequest {
@@ -170,6 +359,7 @@ message ModifyTerrainRequest {
     Vec3i position = 1;
     int32 material = 2;
     int32 radius = 3;  // For brush size
+    string simulation_id = 4;
 }
 
 message ModifyTerrainResponse {
@@ -181,9 +371,278 @@ message AddColonyRequest {
     string species = 1;
     Vec3 position = 2;
     int32 initial_population = 3;
+    string player_name = 4;
+    string simulation_id = 5;
 }
 
 message AddColonyResponse {
     bool success = 1;
     string colony_id = 2;
+    string message = 3;
+}
+
+message SpawnEntityRequest {
+    EntityType type = 1;
+    Vec3 position = 2;
+    float amount = 3;
+    string payload = 4; 
+}
+
+enum EntityType {
+    ENTITY_FOOD = 0;
+    ENTITY_PHEROMONE = 1; // Generic
+}
+
+message SpawnEntityResponse {
+    bool success = 1;
+    string entity_id = 2;
+    string message = 3;
+}
+
+message TriggerEventRequest {
+    EventType type = 1;
+    Vec3 position = 2;
+    float intensity = 3;
+}
+
+enum EventType {
+    EVENT_RAIN = 0;
+    EVENT_HEATWAVE = 1;
+}
+
+message TriggerEventResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+
+// ============================================
+// Persistence
+// ============================================
+
+message SaveWorldRequest {
+    string name = 1;
+    string simulation_id = 2;
+}
+
+message SaveWorldResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message LoadWorldRequest {
+    string world_id = 1;
+}
+
+message LoadWorldResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+// ============================================
+// Stats
+// ============================================
+
+message GetColonyStatsRequest {
+    string colony_id = 1; // Optional, empty for all
+    string simulation_id = 2;
+}
+
+message GetColonyStatsResponse {
+    repeated ColonyStats stats = 1;
+}
+
+message ColonyStats {
+    string id = 1;
+    string species = 2;
+    int32 population = 3;
+    float food_stored = 4;
+    int32 num_queens = 5;
+    int32 num_workers = 6;
+    int32 num_nurses = 7;
+    int32 num_soldiers = 8;
+}
+
+message GetColonyHistoryRequest {
+    string colony_id = 1;
+}
+
+message GetColonyHistoryResponse {
+    repeated HistoryDataPoint history = 1;
+}
+
+message HistoryDataPoint {
+    uint64 tick = 1;
+    int32 population = 2;
+    float food = 3;
+    float water = 4;
+    int32 deaths = 5;
+    int32 births = 6;
+}
+
+message FoodSourceInfo {
+    Vec3 position = 1;
+    float quantity = 2;
+    string type = 3;
+}
+
+// ============================================
+// Server Management (for Client viewer)
+// ============================================
+
+message ListSimulationsRequest {
+    // Empty - returns all running simulations
+}
+
+message ListSimulationsResponse {
+    repeated SimulationInfo simulations = 1;
+}
+
+message SimulationInfo {
+    string id = 1;
+    string name = 2;
+    uint64 tick = 3;
+    int32 population = 4;
+    SimStatus status = 5;
+    int32 connected_clients = 6;
+}
+
+message GetServerStatusRequest {
+    // Empty
+}
+
+message ServerStatusResponse {
+    bool grpc_running = 1;
+    bool database_connected = 2;
+    bool redis_connected = 3;
+    int32 running_simulations = 4;
+    int32 connected_clients = 5;
+    string version = 6;
+    int64 uptime_seconds = 7;
+}
+
+// ============================================
+// Compute Service (Distributed)
+// ============================================
+
+service ComputeService {
+    // Offload a simulation tick (or part of it) to a worker node
+    rpc ProcessTick (ProcessTickRequest) returns (ProcessTickResponse);
+    
+    // Offload pheromone diffusion (GPU or CPU)
+    rpc ProcessPheromones (PheromoneTaskRequest) returns (PheromoneTaskResponse);
+    
+    // Offload pathfinding calculation
+    rpc ProcessPathfinding (PathfindingRequest) returns (PathfindingResponse);
+}
+
+message ProcessTickRequest {
+    uint64 tick = 1;
+    // For now, full state is too heavy. Let's assume we send a list of individuals to process.
+    repeated IndividualState individuals = 2;
+    // Context needed for decision making (nearby entities, pheromones)
+    // Minimizing this is the hard part of distributed sim.
+    // MVP: Just process basic movement/metabolism that doesn't need context.
+}
+
+message IndividualState {
+    string id = 1;
+    Vec3 position = 2;
+    // Add other necessary fields for tick processing
+}
+
+message ProcessTickResponse {
+    repeated IndividualDelta updates = 1;
+}
+
+message PheromoneTaskRequest {
+    int32 width = 1;
+    int32 height = 2;
+    int32 depth = 3;
+    repeated float pheromones = 4; // Flattened array
+}
+
+message PheromoneTaskResponse {
+    bool success = 1;
+    repeated float new_pheromones = 2; // Flattened array
+}
+
+message PathfindingRequest {
+    Vec3i start = 1;
+    Vec3i goal = 2;
+    int32 terrain_width = 3;
+    int32 terrain_height = 4;
+    int32 terrain_depth = 5;
+    bytes terrain_walkable = 6; // Packed booleans (1 bit per cell) or bytes
+}
+
+message PathfindingResponse {
+    bool success = 1;
+    repeated Vec3i path = 2;
+}
+
+message RegisterNodeRequest {
+    string node_id = 1;
+    string address = 2;
+    int32 port = 3;
+    bool has_gpu = 4;
+}
+
+message RegisterNodeResponse {
+    bool success = 1;
+}
+
+message HeartbeatRequest {
+    string node_id = 1;
+    float cpu_load = 2;
+    float gpu_load = 3;
+    int32 tasks_completed = 4;
+}
+
+message HeartbeatResponse {
+    bool acknowledged = 1;
+}
+
+// ============================================
+// RL / AI Service (Distributed Learning)
+// ============================================
+
+service RLService {
+    // Inference: Get an action for a given state
+    rpc Predict(PredictRequest) returns (PredictResponse);
+    
+    // Training: Send experience tuple (S, A, R, S') for off-policy training
+    rpc Train(TrainRequest) returns (TrainResponse);
+}
+
+message PredictRequest {
+    string model_id = 1;      // e.g. "forager_v1"
+    string agent_id = 2;      // Unique agent ID
+    Observation state = 3;
+}
+
+message PredictResponse {
+    int32 action_index = 1;   // Index into the action space
+    float confidence = 2;     // optional
+}
+
+message TrainRequest {
+    string model_id = 1;
+    Observation state = 2;
+    int32 action = 3;
+    float reward = 4;
+    Observation next_state = 5;
+    bool done = 6;
+}
+
+message TrainResponse {
+    bool success = 1;
+    float current_loss = 2; // optional metric
+}
+
+message Observation {
+    // Flexibly flattened array of floats (e.g. food_sensor, wall_sensor, energy_level)
+    repeated float values = 1;
+    // Or we could have structured data if we standardize the input vector
+    // For now, float array is most compatible with Tensor input.
 }

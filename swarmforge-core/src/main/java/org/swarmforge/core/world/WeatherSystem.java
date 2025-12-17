@@ -6,7 +6,6 @@
  */
 package org.swarmforge.core.world;
 
-import java.time.LocalTime;
 import java.util.Random;
 
 /**
@@ -59,11 +58,25 @@ public class WeatherSystem {
         updateConditions();
     }
 
+    // Modifiers
+    private float temperatureOffset = 0f;
+    private float rainMultiplier = 1f;
+
+    public void setTemperatureOffset(float offset) {
+        this.temperatureOffset = offset;
+        updateConditions();
+    }
+
+    public void setRainMultiplier(float multiplier) {
+        this.rainMultiplier = multiplier;
+        updateConditions();
+    }
+
     private void updateConditions() {
         // Calculate base temperature from latitude and season
         float seasonalOffset = (float) Math.cos((dayOfYear - 172) * 2 * Math.PI / 365) * 15;
         float latitudeEffect = (float) (30 - Math.abs(latitude) * 0.5);
-        float baseTemp = latitudeEffect + seasonalOffset;
+        float baseTemp = latitudeEffect + seasonalOffset + temperatureOffset;
 
         // Daily temperature variation
         float dailyVariation = (float) Math.sin((timeOfDay - 6) * Math.PI / 12) * 8;
@@ -77,7 +90,8 @@ public class WeatherSystem {
         windDirection = random.nextFloat() * 360;
 
         // Rainfall chance based on humidity
-        rainfall = humidity > 80 && random.nextFloat() < 0.3f ? random.nextFloat() * 10 : 0;
+        float rainChance = (humidity > 80 ? 0.3f : 0f) * rainMultiplier;
+        rainfall = random.nextFloat() < rainChance ? random.nextFloat() * 10 : 0;
 
         // Daylight calculation
         float dayLength = calculateDayLength();
@@ -104,9 +118,12 @@ public class WeatherSystem {
     public float getTemperatureAtDepth(int depth) {
         // Underground temperature stabilizes around average annual temp
         float avgTemp = (float) (30 - Math.abs(latitude) * 0.5);
-        float surfaceTemp = temperature;
-        float blend = Math.min(1, depth / 20f);
-        return surfaceTemp * (1 - blend) + avgTemp * blend;
+        float surfaceInfluence = Math.max(0, 1 - depth / 20f);
+        return temperature * surfaceInfluence + avgTemp * (1 - surfaceInfluence);
+    }
+
+    public boolean isRaining() {
+        return rainfall > 0;
     }
 
     // Getters

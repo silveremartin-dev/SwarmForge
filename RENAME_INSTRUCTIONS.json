@@ -1,8 +1,0 @@
-[
-    {
-        "id": 1,
-        "description": "Rename project directory to SwarmForge",
-        "command": "Rename-Item -Path \"C:\\Silvere\\Encours\\Developpement\\JAnts\" -NewName \"SwarmForge\"",
-        "notes": "Ensure no files are open in this directory"
-    }
-]

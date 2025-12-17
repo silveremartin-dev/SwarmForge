@@ -8,7 +8,7 @@ package org.swarmforge.core.simulation;
 
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
-import org.swarmforge.core.gpu.GpuExecutor;
+
 import java.util.List;
 
 /**
@@ -22,9 +22,7 @@ import java.util.List;
  */
 public class CrowdSimulator {
 
-    private final GpuExecutor gpu;
-
-    // Structure of Arrays for GPU-friendly access
+    // Structure of Arrays (CPU)
     private float[] positionsX;
     private float[] positionsY;
     private float[] positionsZ;
@@ -36,8 +34,7 @@ public class CrowdSimulator {
     private int capacity;
     private int count;
 
-    public CrowdSimulator(GpuExecutor gpu, int initialCapacity) {
-        this.gpu = gpu;
+    public CrowdSimulator(int initialCapacity) {
         this.capacity = initialCapacity;
         allocateArrays(initialCapacity);
     }
@@ -77,51 +74,191 @@ public class CrowdSimulator {
     }
 
     /**
-     * Execute one simulation step using GPU-accelerated updates.
+     * Execute one simulation step using CPU updates with full Boids algorithm.
+     * Implements Reynolds rules: Separation, Alignment, Cohesion.
+     * 
+     * Algorithm credit: Craig Reynolds (1986) - "Flocks, Herds, and Schools"
      */
     public void step(float[] pheromones, int width, int height, int depth) {
         if (count == 0)
             return;
 
-        // Pack positions for GPU
-        float[] positions = packPositions();
-        float[] gradients = new float[count];
+        // Boids parameters
+        final float NEIGHBOR_RADIUS = 10.0f;
+        final float SEPARATION_RADIUS = 3.0f;
+        final float SEPARATION_WEIGHT = 1.5f;
+        final float ALIGNMENT_WEIGHT = 1.0f;
+        final float COHESION_WEIGHT = 1.0f;
+        final float PHEROMONE_WEIGHT = 0.8f;
+        final float WANDER_WEIGHT = 0.3f;
+        final float MAX_SPEED = 0.8f;
+        final float MAX_FORCE = 0.05f;
 
-        // Calculate pheromone gradients (where to go)
-        gpu.executeGradientCalc(
-                positions, pheromones, gradients,
-                width, height, depth,
-                0, // Follow food pheromone
-                count);
+        // Velocity arrays
+        float[] velocitiesX = new float[count];
+        float[] velocitiesY = new float[count];
 
-        // Update headings based on gradients
+        // Compute current velocities from heading and speed
         for (int i = 0; i < count; i++) {
-            if (!Float.isNaN(gradients[i])) {
-                // Blend current heading with gradient direction
-                float targetHeading = gradients[i];
-                float diff = targetHeading - headings[i];
-                // Normalize angle
-                while (diff > Math.PI)
-                    diff -= 2 * Math.PI;
-                while (diff < -Math.PI)
-                    diff += 2 * Math.PI;
-                headings[i] += diff * 0.1f; // Turn rate
-            }
+            velocitiesX[i] = (float) Math.cos(headings[i]) * speeds[i];
+            velocitiesY[i] = (float) Math.sin(headings[i]) * speeds[i];
         }
 
-        // Update positions
-        gpu.executePositionUpdate(positions, headings, speeds, count);
-
-        // Unpack positions
-        unpackPositions(positions);
-
-        // Update energy
+        // Calculate Boids forces for each individual
         for (int i = 0; i < count; i++) {
+            if (!alive[i])
+                continue;
+
+            float separationX = 0, separationY = 0;
+            float alignmentX = 0, alignmentY = 0;
+            float cohesionX = 0, cohesionY = 0;
+            int separationCount = 0;
+            int flockCount = 0;
+
+            // Check all neighbors (O(n²) - could optimize with spatial hash)
+            for (int j = 0; j < count; j++) {
+                if (i == j || !alive[j])
+                    continue;
+
+                float dx = positionsX[j] - positionsX[i];
+                float dy = positionsY[j] - positionsY[i];
+                float dist = (float) Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < NEIGHBOR_RADIUS && dist > 0.001f) {
+                    flockCount++;
+
+                    // Alignment: average velocity of neighbors
+                    alignmentX += velocitiesX[j];
+                    alignmentY += velocitiesY[j];
+
+                    // Cohesion: average position of neighbors
+                    cohesionX += positionsX[j];
+                    cohesionY += positionsY[j];
+
+                    // Separation: steer away from close neighbors
+                    if (dist < SEPARATION_RADIUS) {
+                        float factor = (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS;
+                        separationX -= (dx / dist) * factor;
+                        separationY -= (dy / dist) * factor;
+                        separationCount++;
+                    }
+                }
+            }
+
+            // Normalize forces
+            float forceX = 0, forceY = 0;
+
+            // Separation force
+            if (separationCount > 0) {
+                forceX += (separationX / separationCount) * SEPARATION_WEIGHT;
+                forceY += (separationY / separationCount) * SEPARATION_WEIGHT;
+            }
+
+            // Alignment force
+            if (flockCount > 0) {
+                alignmentX /= flockCount;
+                alignmentY /= flockCount;
+                // Steer towards average velocity
+                forceX += (alignmentX - velocitiesX[i]) * ALIGNMENT_WEIGHT;
+                forceY += (alignmentY - velocitiesY[i]) * ALIGNMENT_WEIGHT;
+            }
+
+            // Cohesion force
+            if (flockCount > 0) {
+                cohesionX = cohesionX / flockCount - positionsX[i];
+                cohesionY = cohesionY / flockCount - positionsY[i];
+                forceX += cohesionX * COHESION_WEIGHT * 0.01f;
+                forceY += cohesionY * COHESION_WEIGHT * 0.01f;
+            }
+
+            // Pheromone attraction (gradient following)
+            if (pheromones != null) {
+                int px = (int) positionsX[i];
+                int py = (int) positionsY[i];
+                int pz = (int) positionsZ[i];
+
+                // Sample gradient - only need directional samples
+                float left = getPheromone(pheromones, px - 1, py, pz, width, height, depth);
+                float right = getPheromone(pheromones, px + 1, py, pz, width, height, depth);
+                float up = getPheromone(pheromones, px, py - 1, pz, width, height, depth);
+                float down = getPheromone(pheromones, px, py + 1, pz, width, height, depth);
+
+                float gradX = right - left;
+                float gradY = down - up;
+                forceX += gradX * PHEROMONE_WEIGHT;
+                forceY += gradY * PHEROMONE_WEIGHT;
+            }
+
+            // Random wandering
+            forceX += (Math.random() - 0.5) * WANDER_WEIGHT;
+            forceY += (Math.random() - 0.5) * WANDER_WEIGHT;
+
+            // Limit force magnitude
+            float forceMag = (float) Math.sqrt(forceX * forceX + forceY * forceY);
+            if (forceMag > MAX_FORCE) {
+                forceX = (forceX / forceMag) * MAX_FORCE;
+                forceY = (forceY / forceMag) * MAX_FORCE;
+            }
+
+            // Apply force to velocity
+            velocitiesX[i] += forceX;
+            velocitiesY[i] += forceY;
+
+            // Limit speed
+            float speed = (float) Math.sqrt(velocitiesX[i] * velocitiesX[i] + velocitiesY[i] * velocitiesY[i]);
+            if (speed > MAX_SPEED) {
+                velocitiesX[i] = (velocitiesX[i] / speed) * MAX_SPEED;
+                velocitiesY[i] = (velocitiesY[i] / speed) * MAX_SPEED;
+            }
+            speeds[i] = Math.max(0.1f, speed);
+
+            // Update position
+            positionsX[i] += velocitiesX[i];
+            positionsY[i] += velocitiesY[i];
+
+            // Update heading from velocity
+            if (speed > 0.01f) {
+                headings[i] = (float) Math.atan2(velocitiesY[i], velocitiesX[i]);
+            }
+
+            // Bounds check (soft bounce)
+            if (positionsX[i] < 2) {
+                positionsX[i] = 2;
+                velocitiesX[i] = Math.abs(velocitiesX[i]) * 0.5f;
+            }
+            if (positionsX[i] >= width - 2) {
+                positionsX[i] = width - 3;
+                velocitiesX[i] = -Math.abs(velocitiesX[i]) * 0.5f;
+            }
+            if (positionsY[i] < 2) {
+                positionsY[i] = 2;
+                velocitiesY[i] = Math.abs(velocitiesY[i]) * 0.5f;
+            }
+            if (positionsY[i] >= height - 2) {
+                positionsY[i] = height - 3;
+                velocitiesY[i] = -Math.abs(velocitiesY[i]) * 0.5f;
+            }
+
+            // Update Energy
             energies[i] -= 0.01f;
             if (energies[i] <= 0) {
                 alive[i] = false;
             }
         }
+    }
+
+    /**
+     * Get pheromone value at position with bounds checking.
+     */
+    private float getPheromone(float[] pheromones, int x, int y, int z, int width, int height, int depth) {
+        if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= depth) {
+            return 0f;
+        }
+        int index = x + y * width + z * width * height;
+        if (index < 0 || index >= pheromones.length) {
+            return 0f;
+        }
+        return pheromones[index];
     }
 
     /**
@@ -136,24 +273,6 @@ public class CrowdSimulator {
             ind.setPosition(positionsX[i], positionsY[i], positionsZ[i]);
             ind.setHeading(headings[i]);
             ind.setEnergy(energies[i]);
-        }
-    }
-
-    private float[] packPositions() {
-        float[] packed = new float[count * 3];
-        for (int i = 0; i < count; i++) {
-            packed[i * 3] = positionsX[i];
-            packed[i * 3 + 1] = positionsY[i];
-            packed[i * 3 + 2] = positionsZ[i];
-        }
-        return packed;
-    }
-
-    private void unpackPositions(float[] packed) {
-        for (int i = 0; i < count; i++) {
-            positionsX[i] = packed[i * 3];
-            positionsY[i] = packed[i * 3 + 1];
-            positionsZ[i] = packed[i * 3 + 2];
         }
     }
 

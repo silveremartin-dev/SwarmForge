@@ -54,4 +54,10 @@ public class AttaCephalotes implements Species {
     public boolean formsMegaColonies() {
         return false;
     }
+
+    @Override
+    public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
+        // Atta only forage for Leaves to feed the fungus
+        return java.util.Set.of(org.swarmforge.core.domain.ResourceType.LEAF);
+    }
 }

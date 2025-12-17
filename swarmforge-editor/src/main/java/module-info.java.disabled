@@ -1,0 +1,21 @@
+/*
+ * SwarmForge Client Module
+ * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * AI Assistant: Gemini (Google DeepMind)
+ * MIT License
+ */
+module org.swarmforge.client {
+    requires java.base;
+    requires java.logging;
+    requires org.swarmforge.core;
+    requires javafx.controls;
+    requires javafx.fxml;
+    requires jme3.core;
+    requires jme3.desktop;
+    requires jme3.lwjgl3;
+
+    exports org.swarmforge.client;
+    exports org.swarmforge.client.view;
+
+    opens org.swarmforge.client to javafx.fxml;
+}

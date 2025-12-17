@@ -1,0 +1,138 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 20 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        { "expr": "swarmforge_total_population", "legendFormat": "Total" },
+        { "expr": "swarmforge_total_workers", "legendFormat": "Workers" },
+        { "expr": "swarmforge_total_soldiers", "legendFormat": "Soldiers" }
+      ],
+      "title": "Population",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "prometheus",
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "targets": [
+        { "expr": "swarmforge_predator_count", "legendFormat": "Active" },
+        { "expr": "rate(swarmforge_predator_kills_total[5m])", "legendFormat": "Kill Rate" }
+      ],
+      "title": "Predators",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "prometheus",
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "id": 3,
+      "targets": [
+        { "expr": "swarmforge_total_food", "legendFormat": "Food Stored" }
+      ],
+      "title": "Resources",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "prometheus",
+      "fieldConfig": {
+        "defaults": { "unit": "celsius" }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "id": 4,
+      "targets": [
+        { "expr": "swarmforge_weather_temperature", "legendFormat": "Temperature" }
+      ],
+      "title": "Temperature",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "prometheus",
+      "fieldConfig": {
+        "defaults": { "unit": "percent" }
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "id": 5,
+      "targets": [
+        { "expr": "swarmforge_weather_humidity", "legendFormat": "Humidity" }
+      ],
+      "title": "Humidity",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "prometheus",
+      "fieldConfig": {
+        "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [{"color": "green", "value": null}] } }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 16 },
+      "id": 6,
+      "targets": [
+        { "expr": "swarmforge_simulation_tick", "instant": true }
+      ],
+      "title": "Simulation Tick",
+      "type": "stat"
+    },
+    {
+      "datasource": "prometheus",
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 16 },
+      "id": 7,
+      "targets": [
+        { "expr": "swarmforge_total_queens", "instant": true }
+      ],
+      "title": "Queens",
+      "type": "stat"
+    },
+    {
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 16 },
+      "id": 8,
+      "targets": [
+        { "expr": "rate(swarmforge_births_total[1m])*60", "instant": true }
+      ],
+      "title": "Birth Rate (per min)",
+      "type": "stat"
+    },
+    {
+      "datasource": "prometheus",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 16 },
+      "id": 9,
+      "targets": [
+        { "expr": "rate(swarmforge_deaths_total[1m])*60", "instant": true }
+      ],
+      "title": "Death Rate (per min)",
+      "type": "stat"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "tags": ["swarmforge", "simulation"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "title": "SwarmForge Dashboard",
+  "uid": "swarmforge-main",
+  "version": 1
+}

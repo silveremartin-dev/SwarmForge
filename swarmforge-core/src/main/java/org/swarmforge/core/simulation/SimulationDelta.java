@@ -9,7 +9,6 @@ package org.swarmforge.core.simulation;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.TerrariumCell;
 import java.util.List;
-import java.util.ArrayList;
 
 /**
  * Represents a delta (incremental update) in simulation state.
