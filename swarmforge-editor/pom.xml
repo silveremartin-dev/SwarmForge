@@ -51,12 +51,23 @@
             <artifactId>grpc-stub</artifactId>
         </dependency>
 
-        <!-- TestFX for UI Testing -->
         <dependency>
             <groupId>org.testfx</groupId>
             <artifactId>testfx-core</artifactId>
             <version>4.0.18</version>
             <scope>test</scope>
+        </dependency>
+        
+        <!-- Icons (Ikonli Feather - Lucide equivalent) -->
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-javafx</artifactId>
+            <version>12.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.kordamp.ikonli</groupId>
+            <artifactId>ikonli-feather-pack</artifactId>
+            <version>12.3.1</version>
         </dependency>
         <dependency>
             <groupId>org.testfx</groupId>

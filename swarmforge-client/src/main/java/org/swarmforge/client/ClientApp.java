@@ -41,14 +41,15 @@ public class ClientApp extends Application {
         VBox root = new VBox(20);
         root.setPadding(new Insets(30));
         root.setAlignment(Pos.CENTER);
-        root.setStyle("-fx-background-color: linear-gradient(to bottom, #1a1a2e, #16213e);");
+        // root.setStyle("-fx-background-color: linear-gradient(to bottom, #1a1a2e, #16213e);"); // REMOVED
 
         // Title
         Label title = new Label("SwarmForge Viewer");
-        title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;");
+        title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;"); // Keep font size/bold
+        // title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;"); // REMOVED COLOR
 
         Label subtitle = new Label("Connect to a running simulation");
-        subtitle.setStyle("-fx-font-size: 14px; -fx-text-fill: #888;");
+        subtitle.setStyle("-fx-font-size: 14px;"); // Keep size
 
         // Server Connection Form
         GridPane form = new GridPane();
@@ -57,7 +58,7 @@ public class ClientApp extends Application {
         form.setAlignment(Pos.CENTER);
 
         Label lblHost = new Label("Server Host:");
-        lblHost.setStyle("-fx-text-fill: white;");
+        // lblHost.setStyle("-fx-text-fill: white;"); // REMOVED
         TextField txtHost = new TextField(serverHost);
         txtHost.setPromptText("localhost");
 

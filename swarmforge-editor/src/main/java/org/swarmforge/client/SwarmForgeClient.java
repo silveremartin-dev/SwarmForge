@@ -21,6 +21,7 @@ import org.swarmforge.client.ui.PheromoneOverlay;
 import org.swarmforge.client.ui.StatisticsDashboard;
 
 import java.util.logging.Logger;
+import java.net.URL;
 
 /**
  * SwarmForge "Simulation Studio" Client.
@@ -44,88 +45,232 @@ public class SwarmForgeClient extends Application {
         private StatisticsDashboard statisticsDashboard;
 
         @Override
-        public void start(Stage primaryStage) {
-                LOG.info("Starting SwarmForge Studio...");
+    public void start(Stage primaryStage) {
+        LOG.info("Starting SwarmForge Studio...");
+        
+        // title binding
+        primaryStage.titleProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("app.title"));
 
-                // Root Layout
-                BorderPane root = new BorderPane();
+        // Root Layout
+        BorderPane root = new BorderPane();
 
-                // 1. Menu Bar (Global)
-                MenuBar menuBar = createMenuBar();
-                root.setTop(menuBar);
+        // 1. Menu Bar (Global)
+        MenuBar menuBar = createMenuBar(primaryStage); // Pass stage for owner
+        root.setTop(menuBar);
 
-                // 2. Main Tab Pane
-                TabPane mainTabs = new TabPane();
-                mainTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        // 2. Main Tab Pane
+        TabPane mainTabs = new TabPane();
+        mainTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-                // --- TAB 1: SIMULATION MANAGER ---
-                Tab simTab = new Tab("Simulation Manager");
-                simTab.setContent(createSimulationManager());
+        // --- TAB 1: SIMULATION MANAGER ---
+        Tab simTab = new Tab();
+        simTab.textProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("menu.tools")); // Reuse or new key
+        simTab.setContent(createSimulationManager());
 
-                // --- TAB 2: WORLD EDITOR (3D View + Terrain Tools) ---
-                Tab worldTab = new Tab("World Editor");
-                worldTab.setContent(createWorldEditor());
+        // --- TAB 2: WORLD EDITOR (3D View + Terrain Tools) ---
+        Tab worldTab = new Tab("World Editor"); // TODO: Add key
+        worldTab.setContent(createWorldEditor());
 
-                // --- TAB 3: SPECIES EDITOR ---
-                Tab speciesTab = new Tab("Species Editor");
-                speciesTab.setContent(createSpeciesEditor());
+        // --- TAB 3: SPECIES EDITOR ---
+        Tab speciesTab = new Tab();
+        speciesTab.textProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("species.queen")); // Placeholder key, should be "Species Editor"
+        speciesTab.setContent(createSpeciesEditor());
 
-                // --- TAB 4: WEATHER EDITOR ---
-                Tab weatherTab = new Tab("Weather Editor");
-                weatherTab.setContent(new org.swarmforge.client.ui.WeatherEditorPane());
+        // --- Other Tabs (Weather, Nest, etc.) ---
+        // Keeping them simple for now to focus on Menu functionality
+        Tab weatherTab = new Tab("Weather"); 
+        weatherTab.setContent(new org.swarmforge.client.ui.WeatherEditorPane());
 
-                // --- TAB 5: NEST GENERATOR ---
-                Tab nestTab = new Tab("Nest Generator");
-                org.swarmforge.client.ui.NestGeneratorPane nestPane = new org.swarmforge.client.ui.NestGeneratorPane();
-                nestPane.setOnApply(config -> {
-                        if (this.lastGeneratedTerrarium == null) {
-                                new Alert(Alert.AlertType.WARNING,
-                                                "Please generate a world terrain first in 'World Editor' tab.").show();
-                                mainTabs.getSelectionModel().select(worldTab);
-                                return;
-                        }
-                        generateNest(config);
-                        mainTabs.getSelectionModel().select(worldTab);
-                });
-                nestTab.setContent(nestPane);
+        Tab nestTab = new Tab("Nest");
+        org.swarmforge.client.ui.NestGeneratorPane nestPane = new org.swarmforge.client.ui.NestGeneratorPane();
+        nestPane.setOnApply(config -> {
+             if (this.lastGeneratedTerrarium == null) {
+                  new Alert(Alert.AlertType.WARNING, "No world generated.").show();
+                  mainTabs.getSelectionModel().select(worldTab);
+                  return;
+             }
+             generateNest(config);
+             mainTabs.getSelectionModel().select(worldTab);
+        });
+        nestTab.setContent(nestPane);
 
-                // --- TAB 6: EVENT LOG ---
-                Tab eventTab = new Tab("Event Log");
-                eventTab.setContent(new org.swarmforge.client.ui.EventLogPane());
+        Tab eventTab = new Tab("Log");
+        eventTab.setContent(new org.swarmforge.client.ui.EventLogPane());
 
-                // --- TAB 7: GOD MODE (INTERVENTION) ---
-                Tab godTab = new Tab("⚡ God Mode");
-                godTab.setContent(new org.swarmforge.client.ui.InterventionPanel());
+        // God Mode
+        Tab godTab = new Tab("God Mode");
+        godTab.setContent(new org.swarmforge.client.ui.InterventionPanel());
 
-                mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, weatherTab, nestTab, eventTab, godTab);
-                mainTabs.getSelectionModel().select(worldTab); // Default to world view for 3D demo
+        mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, weatherTab, nestTab, eventTab, godTab);
+        mainTabs.getSelectionModel().select(worldTab);
 
-                root.setCenter(mainTabs);
+        root.setCenter(mainTabs);
 
-                // 3. Status Bar
-                HBox statusBar = createStatusBar();
-                root.setBottom(statusBar);
+        // 3. Status Bar
+        HBox statusBar = createStatusBar();
+        root.setBottom(statusBar);
 
-                // Scene Setup
-                Scene scene = new Scene(root, 1280, 800);
-                // Load dark theme if available (optional)
-                try {
-                        String css = getClass().getResource("/styles/dark-theme.css") != null
-                                        ? getClass().getResource("/styles/dark-theme.css").toExternalForm()
-                                        : null;
-                        if (css != null)
-                                scene.getStylesheets().add(css);
-                } catch (Exception e) {
-                        /* ignore */ }
-
-                primaryStage.setTitle("SwarmForge Studio");
-                primaryStage.setScene(scene);
-                primaryStage.setOnCloseRequest(e -> {
-                        Platform.exit();
-                        System.exit(0); // Ensure full kill including JME
-                });
-                primaryStage.show();
+        // Scene Setup - Remove hardcoded styles
+        Scene scene = new Scene(root, 1280, 800);
+        
+        // Load CSS if available (user wants valid theme usage)
+        URL cssUrl = getClass().getResource("/styles/dark-theme.css");
+        if(cssUrl != null) {
+            scene.getStylesheets().add(cssUrl.toExternalForm());
         }
+
+        primaryStage.setScene(scene);
+        primaryStage.setOnCloseRequest(e -> {
+            Platform.exit();
+            System.exit(0);
+        });
+        primaryStage.show();
+    }
+
+    private MenuBar createMenuBar(Stage owner) {
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+        MenuBar bar = new MenuBar();
+
+        // --- FILE ---
+        Menu file = new Menu();
+        file.textProperty().bind(i18n.createStringBinding("menu.file"));
+        
+        MenuItem mNew = new MenuItem();
+        mNew.textProperty().bind(i18n.createStringBinding("menu.file.new"));
+        mNew.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl+N"));
+        mNew.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.FILE_PLUS));
+        
+        MenuItem mOpen = new MenuItem();
+        mOpen.textProperty().bind(i18n.createStringBinding("menu.file.open"));
+        mOpen.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl+O"));
+        mOpen.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.FOLDER));
+
+        MenuItem mSave = new MenuItem();
+        mSave.textProperty().bind(i18n.createStringBinding("menu.file.save"));
+        mSave.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl+S"));
+        mSave.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SAVE));
+
+        MenuItem mSaveAs = new MenuItem();
+        mSaveAs.textProperty().bind(i18n.createStringBinding("menu.file.saveAs"));
+        mSaveAs.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl+Shift+S"));
+
+        Menu mExport = new Menu(); // Submenu
+        mExport.textProperty().bind(i18n.createStringBinding("menu.file.export"));
+        mExport.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.UPLOAD));
+
+        MenuItem mExit = new MenuItem();
+        mExit.textProperty().bind(i18n.createStringBinding("menu.file.exit"));
+        mExit.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl+Q"));
+        mExit.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.LOG_OUT));
+        mExit.setOnAction(e -> {
+            Platform.exit();
+            System.exit(0);
+        });
+
+        file.getItems().addAll(mNew, mOpen, new SeparatorMenuItem(), mSave, mSaveAs, new SeparatorMenuItem(), mExport, new SeparatorMenuItem(), mExit);
+
+        // --- VIEW ---
+        Menu view = new Menu();
+        view.textProperty().bind(i18n.createStringBinding("menu.view"));
+        
+        MenuItem mZoomIn = new MenuItem();
+        mZoomIn.textProperty().bind(i18n.createStringBinding("menu.view.zoomIn"));
+        mZoomIn.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl++"));
+        mZoomIn.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ZOOM_IN));
+        
+        MenuItem mZoomOut = new MenuItem();
+        mZoomOut.textProperty().bind(i18n.createStringBinding("menu.view.zoomOut"));
+        mZoomOut.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl+-"));
+        mZoomOut.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ZOOM_OUT));
+
+        MenuItem mFit = new MenuItem();
+        mFit.textProperty().bind(i18n.createStringBinding("menu.view.fit"));
+        mFit.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.MAXIMIZE));
+        
+        MenuItem mFull = new MenuItem();
+        mFull.textProperty().bind(i18n.createStringBinding("menu.view.fullscreen"));
+        mFull.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("F11"));
+        mFull.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.MONITOR));
+        mFull.setOnAction(e -> owner.setFullScreen(!owner.isFullScreen()));
+
+        view.getItems().addAll(mZoomIn, mZoomOut, mFit, new SeparatorMenuItem(), mFull);
+
+        // --- TOOLS ---
+        Menu tools = new Menu();
+        tools.textProperty().bind(i18n.createStringBinding("menu.tools"));
+
+        MenuItem mRun = new MenuItem();
+        mRun.textProperty().bind(i18n.createStringBinding("menu.tools.start"));
+        mRun.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("F5"));
+        mRun.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.PLAY));
+        mRun.setOnAction(e -> { if(networkClient != null) networkClient.control(org.swarmforge.protocol.grpc.ControlAction.CTRL_START); });
+
+        MenuItem mPause = new MenuItem();
+        mPause.textProperty().bind(i18n.createStringBinding("menu.tools.pause"));
+        mPause.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.PAUSE));
+        mPause.setOnAction(e -> { if(networkClient != null) networkClient.control(org.swarmforge.protocol.grpc.ControlAction.CTRL_PAUSE); });
+
+        MenuItem mStop = new MenuItem();
+        mStop.textProperty().bind(i18n.createStringBinding("menu.tools.stop"));
+        mStop.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SQUARE));
+         mStop.setOnAction(e -> { if(networkClient != null) networkClient.control(org.swarmforge.protocol.grpc.ControlAction.CTRL_STOP); });
+        
+        tools.getItems().addAll(mRun, mPause, mStop);
+
+        // --- PREFERENCES ---
+        Menu prefs = new Menu();
+        prefs.textProperty().bind(i18n.createStringBinding("menu.prefs"));
+
+        Menu mLang = new Menu();
+        mLang.textProperty().bind(i18n.createStringBinding("menu.prefs.language"));
+        mLang.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.GLOBE));
+        
+        // Language Options
+        ToggleGroup langGroup = new ToggleGroup();
+        addLangItem(mLang, langGroup, "English", java.util.Locale.ENGLISH);
+        addLangItem(mLang, langGroup, "Français", java.util.Locale.FRENCH);
+        addLangItem(mLang, langGroup, "Español", new java.util.Locale("es"));
+        addLangItem(mLang, langGroup, "Deutsch", new java.util.Locale("de"));
+        addLangItem(mLang, langGroup, "中文", new java.util.Locale("zh"));
+
+        MenuItem mDefaults = new MenuItem();
+        mDefaults.textProperty().bind(i18n.createStringBinding("menu.prefs.defaults"));
+        mDefaults.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ROTATE_CCW));
+
+        prefs.getItems().addAll(mLang, new SeparatorMenuItem(), mDefaults);
+
+        // --- HELP ---
+        Menu help = new Menu();
+        help.textProperty().bind(i18n.createStringBinding("menu.help"));
+        
+        MenuItem mAbout = new MenuItem();
+        mAbout.textProperty().bind(i18n.createStringBinding("menu.help.about"));
+        mAbout.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.INFO));
+        mAbout.setOnAction(e -> showAboutDialog());
+
+        help.getItems().add(mAbout);
+
+        bar.getMenus().addAll(file, view, tools, prefs, help);
+        return bar;
+    }
+
+    private void addLangItem(Menu menu, ToggleGroup group, String label, java.util.Locale locale) {
+        RadioMenuItem item = new RadioMenuItem(label);
+        item.setToggleGroup(group);
+        if (org.swarmforge.client.util.I18nManager.getInstance().getLocale().getLanguage().equals(locale.getLanguage())) {
+            item.setSelected(true);
+        }
+        item.setOnAction(e -> org.swarmforge.client.util.I18nManager.getInstance().setLocale(locale));
+        menu.getItems().add(item);
+    }
+
+    private void showAboutDialog() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("About SwarmForge");
+        alert.setHeaderText("SwarmForge v2.0.0");
+        alert.setContentText("Eusocial Insect Simulation Studio\n\nCopyright (c) 2025 Silvère Martin-Michiellot\nAssisted by Gemini AI");
+        alert.show();
+    }
 
         private Node createSimulationManager() {
                 BorderPane pane = new BorderPane();
@@ -138,7 +283,7 @@ public class SwarmForgeClient extends Application {
                 TextField portField = new TextField("50051");
                 Button btnConnect = new Button("Connect");
                 Label statusLabel = new Label("Disconnected");
-                statusLabel.setStyle("-fx-text-fill: red;");
+                // statusLabel.setStyle("-fx-text-fill: red;"); // Removed hardcoded style
 
                 connectBox.getChildren().addAll(new Label("Host:"), hostField, new Label("Port:"), portField,
                                 btnConnect,
