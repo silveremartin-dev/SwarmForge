@@ -1,20 +1,7 @@
-version: '3.8'
-
 services:
-  swarmforge-server:
-    build: .
-    ports:
-      - "50051:50051"
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=swarmforge
-      - DB_PASSWORD=swarmforge
-    depends_on:
-      - postgres
-
   postgres:
     image: postgres:16-alpine
+    container_name: swarmforge-postgres
     environment:
       - POSTGRES_USER=swarmforge
       - POSTGRES_PASSWORD=swarmforge
@@ -24,5 +11,14 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    container_name: swarmforge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
 volumes:
   pgdata:
+  redisdata:

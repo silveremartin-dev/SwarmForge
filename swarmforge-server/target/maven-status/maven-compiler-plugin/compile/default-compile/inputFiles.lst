@@ -3,13 +3,16 @@ C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\grpc\AuthServiceImpl.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\grpc\LeaderboardServiceImpl.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\grpc\MatchmakingServiceImpl.java
+C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\grpc\package-info.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\grpc\SimulationServiceImpl.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\metrics\MetricsExporter.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\metrics\MetricsServer.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\net\SwarmForgeWebSocketServer.java
+C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\package-info.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\persistence\CheckpointRepository.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\persistence\ColonyRepository.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\persistence\DatabaseManager.java
+C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\persistence\package-info.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\persistence\RedisCache.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\persistence\SimulationSerializer.java
 C:\Silvere\Encours\Developpement\SwarmForge\swarmforge-server\src\main\java\org\swarmforge\server\persistence\WorldRepository.java

@@ -45,6 +45,8 @@ public class I18nManager {
 
     private void loadBundle(Locale locale) {
         try {
+            // Clear cache to ensure fresh reload if locale changed
+            ResourceBundle.clearCache();
             // Custom Control to read properties as UTF-8
             this.bundle = ResourceBundle.getBundle("i18n.messages", locale, new UTF8Control());
         } catch (MissingResourceException e) {

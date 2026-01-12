@@ -45,7 +45,7 @@ public class ClientApp extends Application {
 
         // Title
         Label title = new Label("SwarmForge Viewer");
-        title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;"); // Keep font size/bold
+        title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
         // title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;"); // REMOVED COLOR
 
         Label subtitle = new Label("Connect to a running simulation");
@@ -63,7 +63,7 @@ public class ClientApp extends Application {
         txtHost.setPromptText("localhost");
 
         Label lblPort = new Label("Server Port:");
-        lblPort.setStyle("-fx-text-fill: white;");
+        lblPort.setId("lblPort");
         TextField txtPort = new TextField(String.valueOf(serverPort));
         txtPort.setPromptText("50051");
 
@@ -74,7 +74,7 @@ public class ClientApp extends Application {
 
         // God Mode Toggle
         CheckBox chkGodMode = new CheckBox("Enable God Mode (Interventions)");
-        chkGodMode.setStyle("-fx-text-fill: #ff6b6b;");
+        chkGodMode.setId("godModeToggle");
         chkGodMode.setSelected(false);
 
         // Simulation List (placeholder)
@@ -82,14 +82,14 @@ public class ClientApp extends Application {
         simList.getItems().addAll(
                 "⏳ Connect to see available simulations...");
         simList.setPrefHeight(150);
-        simList.setStyle("-fx-background-color: #0f0f23; -fx-text-fill: white;");
+        simList.setId("simulationList");
 
         // Buttons
         HBox buttons = new HBox(15);
         buttons.setAlignment(Pos.CENTER);
 
         Button btnRefresh = new Button("Refresh List");
-        btnRefresh.setStyle("-fx-background-color: #4a4a6a; -fx-text-fill: white;");
+        btnRefresh.setId("btnRefresh");
         btnRefresh.setOnAction(e -> {
             serverHost = txtHost.getText();
             serverPort = Integer.parseInt(txtPort.getText());
@@ -97,7 +97,7 @@ public class ClientApp extends Application {
         });
 
         Button btnConnect = new Button("Connect & View");
-        btnConnect.setStyle("-fx-background-color: #00d4ff; -fx-text-fill: black; -fx-font-weight: bold;");
+        btnConnect.setStyle("-fx-font-weight: bold;");
         btnConnect.setOnAction(e -> {
             serverHost = txtHost.getText();
             serverPort = Integer.parseInt(txtPort.getText());
@@ -114,14 +114,12 @@ public class ClientApp extends Application {
 
         // Status
         Label status = new Label("Ready");
-        status.setStyle("-fx-text-fill: #666;");
+        status.setId("statusLabel");
 
         root.getChildren().addAll(title, subtitle, new Separator(), form, chkGodMode,
-                new Label("Available Simulations:") {
                     {
-                        setStyle("-fx-text-fill: white;");
+                        setId("availableSimsLabel");
                     }
-                },
                 simList, buttons, status);
 
         Scene scene = new Scene(root, 500, 550);
@@ -170,17 +168,17 @@ public class ClientApp extends Application {
 
         // 3. Setup JavaFX Controller Window (God Mode)
         BorderPane viewerRoot = new BorderPane();
-        viewerRoot.setStyle("-fx-background-color: #1a1a2e;");
+        viewerRoot.setId("viewerRoot");
 
         // Info Panel instead of 3D placeholder
         VBox infoPanel = new VBox(10);
         infoPanel.setAlignment(Pos.CENTER);
         infoPanel.setPadding(new Insets(20));
         Label infoTitle = new Label("Controller Active");
-        infoTitle.setStyle("-fx-text-fill: #00d4ff; -fx-font-size: 24px;");
+        infoTitle.setStyle("-fx-font-size: 24px;");
         Label infoDesc = new Label(
                 "3D Simulation is running in a separate window.\nUse this window for God Mode controls.");
-        infoDesc.setStyle("-fx-text-fill: #888; -fx-text-alignment: center;");
+        infoDesc.setStyle("-fx-text-alignment: center;");
         infoPanel.getChildren().addAll(infoTitle, infoDesc);
 
         viewerRoot.setCenter(infoPanel);
@@ -249,11 +247,12 @@ public class ClientApp extends Application {
 
     private VBox createGodModePanel() {
         VBox panel = new VBox(10);
+        panel.setId("godModePanel");
         panel.setPadding(new Insets(10));
-        panel.setStyle("-fx-background-color: #2a2a4a; -fx-min-width: 250px;");
+        panel.setMinWidth(250);
 
         Label title = new Label("⚡ GOD MODE");
-        title.setStyle("-fx-text-fill: #ff6b6b; -fx-font-weight: bold; -fx-font-size: 16px;");
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
 
         // Intervention buttons
         Button btnAddFood = new Button("Add Food Source");
@@ -262,28 +261,22 @@ public class ClientApp extends Application {
         Button btnTriggerHeat = new Button("Heat Wave");
         Button btnKillSelected = new Button("Kill Selected");
 
-        btnKillSelected.setStyle("-fx-background-color: #ff4444; -fx-text-fill: white;");
+        btnKillSelected.setId("btnKillSelected");
 
         panel.getChildren().addAll(
                 title, new Separator(),
                 new Label("Spawn") {
-                    {
-                        setStyle("-fx-text-fill: #888;");
-                    }
+                        setId("spawnLabel");
                 },
                 btnAddFood, btnSpawnAnts,
                 new Separator(),
                 new Label("Events") {
-                    {
-                        setStyle("-fx-text-fill: #888;");
-                    }
+                        setId("eventsLabel");
                 },
                 btnTriggerRain, btnTriggerHeat,
                 new Separator(),
                 new Label("Destroy") {
-                    {
-                        setStyle("-fx-text-fill: #888;");
-                    }
+                        setId("destroyLabel");
                 },
                 btnKillSelected);
 

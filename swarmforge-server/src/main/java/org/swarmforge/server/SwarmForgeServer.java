@@ -96,7 +96,67 @@ public class SwarmForgeServer {
     public void start() throws Exception {
         LOG.info("Starting SwarmForge Server...");
 
+        // Check Infrastructure & Auto-Start
+        try {
+            boolean postgresRunning = isPortOpen("localhost", 5432);
+            boolean redisRunning = isPortOpen("localhost", 6379);
+
+            if (!postgresRunning || !redisRunning) {
+                LOG.warn("Infrastructure (Postgres/Redis) appears down. Attempting auto-start...");
+                ProcessBuilder pb = new ProcessBuilder("docker-compose", "up", "-d");
+                pb.inheritIO();
+                Process p = pb.start();
+                int exitCode = p.waitFor();
+                
+                if (exitCode == 0) {
+                    LOG.info("Auto-start command executed. Waiting for services to initialize...");
+                    for (int i = 0; i < 10; i++) {
+                         Thread.sleep(1000);
+                         if (isPortOpen("localhost", 5432) && isPortOpen("localhost", 6379)) {
+                             LOG.info("Services are now reachable.");
+                             break;
+                         }
+                         LOG.info("Waiting for ports...");
+                    }
+                } else {
+                    LOG.error("Failed to auto-start infrastructure (exit code " + exitCode + ")");
+                }
+            }
+        } catch (Exception e) {
+            LOG.warn("Auto-start check failed: " + e.getMessage());
+        }
+
         // Connect to databases
+        // Auto-Start Check
+        try {
+            boolean postgresRunning = isPortOpen("localhost", 5432);
+            boolean redisRunning = isPortOpen("localhost", 6379);
+
+            if (!postgresRunning || !redisRunning) {
+                LOG.warn("Infrastructure (Postgres/Redis) appears down. Attempting auto-start...");
+                ProcessBuilder pb = new ProcessBuilder("docker-compose", "up", "-d");
+                pb.inheritIO();
+                Process p = pb.start();
+                int exitCode = p.waitFor();
+                
+                if (exitCode == 0) {
+                    LOG.info("Auto-start command executed. Waiting for services to initialize...");
+                    for (int i = 0; i < 10; i++) {
+                         Thread.sleep(1000);
+                         if (isPortOpen("localhost", 5432) && isPortOpen("localhost", 6379)) {
+                             LOG.info("Services are now reachable.");
+                             break;
+                         }
+                         LOG.info("Waiting for ports...");
+                    }
+                } else {
+                    LOG.error("Failed to auto-start infrastructure (exit code " + exitCode + ")");
+                }
+            }
+        } catch (Exception e) {
+            LOG.warn("Auto-start check failed: " + e.getMessage());
+        }
+
         try {
             database.connect();
             LOG.info("Database connected successfully");
@@ -259,23 +319,23 @@ public class SwarmForgeServer {
         String reset = "\u001B[0m";
 
         System.out.println();
-        System.out.println("╔══════════════════════════════════════════════════════╗");
-        System.out.println("║          SWARMFORGE SERVER - STATUS                  ║");
-        System.out.println("╠══════════════════════════════════════════════════════╣");
-        System.out.println("║  gRPC Server    : \u001B[32m✓ RUNNING\u001B[0m  (port " + grpcPort + ")            ║");
-        System.out.println("║  PostgreSQL     : " + dbColor + dbStatus + reset + "                         ║");
-        System.out.println("║  Redis Cache    : " + redisColor + redisStatus + reset + "                         ║");
-        System.out.println("╠══════════════════════════════════════════════════════╣");
+        System.out.println("+------------------------------------------------------+");
+        System.out.println("|          SWARMFORGE SERVER - STATUS                  |");
+        System.out.println("+------------------------------------------------------+");
+        System.out.println("|  gRPC Server    : \u001B[32m✓ RUNNING\u001B[0m  (port " + grpcPort + ")            |");
+        System.out.println("|  PostgreSQL     : " + dbColor + dbStatus + reset + "                         |");
+        System.out.println("|  Redis Cache    : " + redisColor + redisStatus + reset + "                         |");
+        System.out.println("+------------------------------------------------------+");
         if (!database.isConnected()) {
-            System.out.println("║  \u001B[33m⚠ Persistence disabled - run 'start-docker' first\u001B[0m   ║");
+            System.out.println("|  \u001B[33m⚠ Persistence disabled - run 'start-docker' first\u001B[0m   |");
         }
         if (!cache.isConnected()) {
-            System.out.println("║  \u001B[33m⚠ Caching disabled - run 'start-docker' first\u001B[0m       ║");
+            System.out.println("|  \u001B[33m⚠ Caching disabled - run 'start-docker' first\u001B[0m       |");
         }
         if (database.isConnected() && cache.isConnected()) {
-            System.out.println("║  \u001B[32m✓ All services operational\u001B[0m                           ║");
+            System.out.println("|  \u001B[32m✓ All services operational\u001B[0m                           |");
         }
-        System.out.println("╚══════════════════════════════════════════════════════╝");
+        System.out.println("+------------------------------------------------------+");
         System.out.println();
     }
 
@@ -705,18 +765,18 @@ public class SwarmForgeServer {
 
     private static void printHelp() {
         System.out.println("""
-                ╔══════════════════════════════════════════════════════╗
-                ║           SWARMFORGE SERVER - HELP                   ║
-                ╠══════════════════════════════════════════════════════╣
-                ║  Usage: java -jar swarmforge-server.jar [OPTIONS]    ║
-                ╠══════════════════════════════════════════════════════╣
-                ║  Options:                                            ║
-                ║    --help, -h       Show this help message           ║
-                ║    --create-demo    Create and run demo world        ║
-                ║    --run <name>     Run named simulation from DB     ║
-                ║    --list           List available simulations       ║
-                ║    --no-db          Run without database (offline)   ║
-                ╚══════════════════════════════════════════════════════╝
+                +------------------------------------------------------+
+                |           SWARMFORGE SERVER - HELP                   |
+                +------------------------------------------------------+
+                |  Usage: java -jar swarmforge-server.jar [OPTIONS]    |
+                +------------------------------------------------------+
+                |  Options:                                            |
+                |    --help, -h       Show this help message           |
+                |    --create-demo    Create and run demo world        |
+                |    --run <name>     Run named simulation from DB     |
+                |    --list           List available simulations       |
+                |    --no-db          Run without database (offline)   |
+                +------------------------------------------------------+
                 """);
     }
 
@@ -756,5 +816,14 @@ public class SwarmForgeServer {
 
     public org.swarmforge.server.persistence.DatabaseManager getDatabaseManager() {
         return database;
+    }
+
+    private boolean isPortOpen(String host, int port) {
+        try (java.net.Socket socket = new java.net.Socket()) {
+            socket.connect(new java.net.InetSocketAddress(host, port), 1000);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

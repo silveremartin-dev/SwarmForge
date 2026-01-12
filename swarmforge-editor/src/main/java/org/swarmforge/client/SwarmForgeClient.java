@@ -46,7 +46,7 @@ public class SwarmForgeClient extends Application {
 
         @Override
     public void start(Stage primaryStage) {
-        LOG.info("Starting SwarmForge Studio...");
+        LOG.info("Starting SwarmForge Editor...");
         
         // title binding
         primaryStage.titleProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("app.title"));
@@ -175,12 +175,12 @@ public class SwarmForgeClient extends Application {
         
         MenuItem mZoomIn = new MenuItem();
         mZoomIn.textProperty().bind(i18n.createStringBinding("menu.view.zoomIn"));
-        mZoomIn.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl++"));
+        mZoomIn.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl+PLUS"));
         mZoomIn.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ZOOM_IN));
         
         MenuItem mZoomOut = new MenuItem();
         mZoomOut.textProperty().bind(i18n.createStringBinding("menu.view.zoomOut"));
-        mZoomOut.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl+-"));
+        mZoomOut.setAccelerator(javafx.scene.input.KeyCombination.keyCombination("Ctrl+MINUS"));
         mZoomOut.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ZOOM_OUT));
 
         MenuItem mFit = new MenuItem();
@@ -268,7 +268,7 @@ public class SwarmForgeClient extends Application {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About SwarmForge");
         alert.setHeaderText("SwarmForge v2.0.0");
-        alert.setContentText("Eusocial Insect Simulation Studio\n\nCopyright (c) 2025 Silvère Martin-Michiellot\nAssisted by Gemini AI");
+        alert.setContentText("Eusocial Insect Simulation Editor\n\nCopyright (c) 2025 Silvère Martin-Michiellot\nAssisted by Gemini AI");
         alert.show();
     }
 
@@ -472,7 +472,7 @@ public class SwarmForgeClient extends Application {
 
                 // 3D Viewport Container
                 StackPane viewport3D = new StackPane();
-                viewport3D.setStyle("-fx-background-color: black;");
+                viewport3D.setId("viewport3D");
 
                 // JME View
                 this.gameView = new GameViewPane(1024, 720);
@@ -499,7 +499,7 @@ public class SwarmForgeClient extends Application {
                 // Pheromone Overlay (Bottom-Left, collapsible)
                 this.pheromoneOverlay = new PheromoneOverlay(200, 150);
                 pheromoneOverlay.setMaxSize(200, 180);
-                pheromoneOverlay.setStyle("-fx-background-color: rgba(0,0,0,0.6); -fx-background-radius: 5;");
+                pheromoneOverlay.setId("pheromoneOverlay");
                 viewport3D.getChildren().add(pheromoneOverlay);
                 StackPane.setAlignment(pheromoneOverlay, Pos.BOTTOM_LEFT);
                 StackPane.setMargin(pheromoneOverlay, new Insets(10));
@@ -509,7 +509,7 @@ public class SwarmForgeClient extends Application {
                 tools.setPadding(new Insets(10));
                 tools.setMinWidth(250);
                 tools.setMaxWidth(300);
-                tools.setStyle("-fx-background-color: #f0f0f0;"); // Light bg for editor tools
+                tools.setId("editorTools");
 
                 tools.getChildren().add(new Label("Terrain Generator"));
                 tools.getChildren().add(new Separator());
