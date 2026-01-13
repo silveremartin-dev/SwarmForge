@@ -17,6 +17,7 @@ public class EcsAgentAdapter implements AgentView {
     public ComponentMapper<PositionComponent> mPos;
     public ComponentMapper<VelocityComponent> mVel;
     public ComponentMapper<InventoryComponent> mInv;
+    public ComponentMapper<MetabolismComponent> mMeta;
     
     // Configuration / Constants
     private final float homeX = 50f; // Mock
@@ -59,6 +60,29 @@ public class EcsAgentAdapter implements AgentView {
         float dx = getX() - homeX;
         float dz = getZ() - homeZ;
         return (dx*dx + dz*dz) < 4.0f; 
+    }
+
+    @Override
+    public float getEnergyLevel() {
+        if (mMeta != null && mMeta.has(entityId)) {
+            return mMeta.get(entityId).energy / 100f; // Normalized 0-1
+        }
+        return 1.0f;
+    }
+
+    @Override
+    public boolean isSoldier() {
+        return false; // Mock for now
+    }
+
+    @Override
+    public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
+        return java.util.Set.of(org.swarmforge.core.domain.ResourceType.SEED); // Mock
+    }
+
+    @Override
+    public String getAgentId() {
+        return String.valueOf(entityId);
     }
 
     @Override

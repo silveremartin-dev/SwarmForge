@@ -38,7 +38,7 @@ public class RLArchitecture implements ReasoningArchitecture {
     }
 
     @Override
-    public void initialize(Individual individual) {
+    public void initialize(AgentView agent) {
         // Reset transient state
         lastState = null;
         lastAction = null;
@@ -64,20 +64,11 @@ public class RLArchitecture implements ReasoningArchitecture {
         return convertAction(rlAction, agent);
     }
 
-    // Bridge for Legacy OOP
-    @Override
-    public Action decide(Individual individual, SimulationContext context) {
-        // Assume Individual implements AgentView
-        if (individual instanceof AgentView) {
-            return decide((AgentView) individual, context);
-        }
-        throw new UnsupportedOperationException("Individual must implement AgentView");
-    }
 
     @Override
-    public void update(Individual individual, Action executedAction, ActionResult result) {
+    public void update(AgentView agent, Action executedAction, ActionResult result) {
          if (lastState != null && lastAction != null) {
-            double reward = calculateReward(individual, executedAction, result);
+            double reward = calculateReward(agent, executedAction, result);
             this.currentReward = reward;
         }
     }
@@ -127,10 +118,6 @@ public class RLArchitecture implements ReasoningArchitecture {
         return reward;
     }
     
-    // Legacy overload for compatibility if needed, or remove if unused private
-    private double calculateReward(Individual ind, Action executedAction, ActionResult result) {
-        return calculateReward((AgentView) ind, executedAction, result);
-    }
 
     private Action convertAction(QTable.RLAction rlAction, AgentView ind) {
         // Needs rudimentary movement logic (forward relative to heading)

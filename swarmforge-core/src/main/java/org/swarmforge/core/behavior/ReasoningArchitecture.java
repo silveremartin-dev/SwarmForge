@@ -43,21 +43,21 @@ public interface ReasoningArchitecture extends java.io.Serializable {
     /**
      * Initialize the architecture for a specific individual.
      */
-    void initialize(Individual individual);
+    void initialize(AgentView agent);
 
     /**
      * Compute the next action for the individual.
      * 
-     * @param individual The ant making the decision
-     * @param context    Current simulation context (neighbors, pheromones, etc.)
+     * @param agent   The ant making the decision
+     * @param context Current simulation context (neighbors, pheromones, etc.)
      * @return The action to execute
      */
-    Action decide(Individual individual, SimulationContext context);
+    Action decide(AgentView agent, SimulationContext context);
 
     /**
      * Update internal state after action execution.
      */
-    void update(Individual individual, Action executedAction, ActionResult result);
+    void update(AgentView agent, Action executedAction, ActionResult result);
 
     /**
      * Reset the architecture state.

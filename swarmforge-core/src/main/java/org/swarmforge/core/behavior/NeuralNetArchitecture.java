@@ -79,15 +79,15 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
     }
 
     @Override
-    public void initialize(Individual individual) {
+    public void initialize(AgentView agent) {
         lastHidden = null;
         lastOutputs = null;
     }
 
     @Override
-    public Action decide(Individual individual, SimulationContext context) {
+    public Action decide(AgentView agent, SimulationContext context) {
         // Build input vector from sensors
-        float[] inputs = buildInputVector(individual, context);
+        float[] inputs = buildInputVector(agent, context);
 
         // Forward pass
         float[] hidden = new float[HIDDEN_SIZE];
@@ -114,27 +114,28 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
         return outputsToAction(outputs);
     }
 
-    private float[] buildInputVector(Individual individual, SimulationContext context) {
+    private float[] buildInputVector(AgentView agent, SimulationContext context) {
         float[] inputs = new float[INPUT_SIZE];
 
         // Normalized inputs
-        inputs[0] = individual.getEnergy();
-        inputs[1] = individual.isCarryingFood() ? 1.0f : 0.0f;
-        inputs[2] = individual.getAge() / 10000f; // Normalized age
+        inputs[0] = agent.getEnergyLevel();
+        inputs[1] = agent.isCarryingFood() ? 1.0f : 0.0f;
+        // inputs[2] = agent.getAge() / 10000f; // Age not in AgentView yet, use 0
+        inputs[2] = 0;
 
         if (context != null) {
-            inputs[3] = context.getFoodPheromone(individual.getX(), individual.getY(), individual.getZ());
-            inputs[4] = context.getHomePheromone(individual.getX(), individual.getY(), individual.getZ());
-            inputs[5] = context.hasEnemyNearby(individual) ? 1.0f : 0.0f;
-            inputs[6] = context.getFoodPheromoneGradientX(individual.getX(), individual.getY(), individual.getZ())
+            inputs[3] = context.getFoodPheromone(agent.getX(), agent.getY(), agent.getZ());
+            inputs[4] = context.getHomePheromone(agent.getX(), agent.getY(), agent.getZ());
+            inputs[5] = context.hasEnemyNearby(agent) ? 1.0f : 0.0f;
+            inputs[6] = context.getFoodPheromoneGradientX(agent.getX(), agent.getY(), agent.getZ())
                     + 0.5f;
-            inputs[7] = context.getFoodPheromoneGradientY(individual.getX(), individual.getY(), individual.getZ())
+            inputs[7] = context.getFoodPheromoneGradientY(agent.getX(), agent.getY(), agent.getZ())
                     + 0.5f;
         }
 
         // Distance from home (normalized)
-        float dx = individual.getHomeX() - individual.getX();
-        float dy = individual.getHomeY() - individual.getY();
+        float dx = agent.getHomeX() - agent.getX();
+        float dy = agent.getHomeY() - agent.getY();
         float distHome = (float) Math.sqrt(dx * dx + dy * dy);
         inputs[8] = Math.min(distHome / 100f, 1.0f);
 
@@ -144,7 +145,7 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
             inputs[10] = (dy / distHome + 1) / 2;
         }
 
-        inputs[11] = individual.getCaste().ordinal() / 5f; // Caste encoding
+        inputs[11] = agent.isSoldier() ? 1.0f : 0.0f;
 
         return inputs;
     }
@@ -181,7 +182,7 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
     }
 
     @Override
-    public void update(Individual individual, Action executedAction, ActionResult result) {
+    public void update(AgentView agent, Action executedAction, ActionResult result) {
         // Simple reinforcement: adjust weights based on reward
         if (lastHidden == null || lastOutputs == null)
             return;

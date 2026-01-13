@@ -10,6 +10,7 @@ public class AiComponent extends Component {
         SIMPLE_FORAGER, // The basic random walk + homing
         RL_AGENT,       // Reinforcement Learning
         FSM_WORKER,     // Classical FSM
+        FUZZY_LOGIC,    // Fuzzy Logic blend
         MANUAL          // Controlled by user/god mode
     }
     

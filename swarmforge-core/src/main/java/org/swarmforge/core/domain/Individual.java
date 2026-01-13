@@ -316,6 +316,29 @@ public class Individual implements java.io.Serializable, AgentView {
         return (Math.abs(x - homeX) < 2.0 && Math.abs(y - homeY) < 2.0);
     }
 
+    @Override
+    public float getEnergyLevel() {
+        return (float) (energy / maxEnergy);
+    }
+
+    @Override
+    public boolean isSoldier() {
+        return caste == Caste.SOLDIER;
+    }
+
+    @Override
+    public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
+        if (species != null) {
+            return species.getForagingTypes();
+        }
+        return java.util.Set.of(ResourceType.SEED);
+    }
+
+    @Override
+    public String getAgentId() {
+        return id.toString();
+    }
+
     public boolean isCarryingFood() {
         return carriedItem == CarriedItem.FOOD;
     }

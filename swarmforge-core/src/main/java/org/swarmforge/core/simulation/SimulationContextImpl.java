@@ -7,6 +7,7 @@
 package org.swarmforge.core.simulation;
 
 import org.swarmforge.core.domain.FoodSource;
+import org.swarmforge.core.behavior.AgentView;
 import org.swarmforge.core.domain.Individual;
 
 /**
@@ -58,12 +59,12 @@ public class SimulationContextImpl implements SimulationContext {
     }
 
     @Override
-    public boolean hasEnemyNearby(Individual individual) {
+    public boolean hasEnemyNearby(AgentView agent) {
         // Query spatial index for enemies within radius 5
-        var neighbors = simulation.getSpatialIndex().queryRadius(individual.getX(), individual.getY(),
-                individual.getZ(), 5.0f);
+        var neighbors = simulation.getSpatialIndex().queryRadius(agent.getX(), agent.getY(),
+                agent.getZ(), 5.0f);
         for (Individual neighbor : neighbors) {
-            if (!neighbor.getColonyId().equals(individual.getColonyId()) && neighbor.isAlive()) {
+            if (!neighbor.getColonyId().equals(agent.getColonyId()) && neighbor.isAlive()) {
                 return true;
             }
         }
@@ -71,16 +72,16 @@ public class SimulationContextImpl implements SimulationContext {
     }
 
     @Override
-    public Individual getNearestEnemy(Individual individual) {
-        var neighbors = simulation.getSpatialIndex().queryRadius(individual.getX(), individual.getY(),
-                individual.getZ(), 10.0f);
+    public Individual getNearestEnemy(AgentView agent) {
+        var neighbors = simulation.getSpatialIndex().queryRadius(agent.getX(), agent.getY(),
+                agent.getZ(), 10.0f);
         Individual nearest = null;
         float minDistSq = Float.MAX_VALUE;
 
         for (Individual neighbor : neighbors) {
-            if (!neighbor.getColonyId().equals(individual.getColonyId()) && neighbor.isAlive()) {
-                float dx = neighbor.getX() - individual.getX();
-                float dy = neighbor.getY() - individual.getY();
+            if (!neighbor.getColonyId().equals(agent.getColonyId()) && neighbor.isAlive()) {
+                float dx = neighbor.getX() - agent.getX();
+                float dy = neighbor.getY() - agent.getY();
                 float distSq = dx * dx + dy * dy;
                 if (distSq < minDistSq) {
                     minDistSq = distSq;
@@ -92,21 +93,21 @@ public class SimulationContextImpl implements SimulationContext {
     }
 
     @Override
-    public boolean hasFoodNearby(Individual individual) {
-        var food = simulation.getFoodIndex().queryRadius(individual.getX(), individual.getY(), individual.getZ(), 5.0f);
+    public boolean hasFoodNearby(AgentView agent) {
+        var food = simulation.getFoodIndex().queryRadius(agent.getX(), agent.getY(), agent.getZ(), 5.0f);
         return !food.isEmpty();
     }
 
     @Override
-    public float[] getNearestFoodPosition(Individual individual) {
-        var foods = simulation.getFoodIndex().queryRadius(individual.getX(), individual.getY(), individual.getZ(),
+    public float[] getNearestFoodPosition(AgentView agent) {
+        var foods = simulation.getFoodIndex().queryRadius(agent.getX(), agent.getY(), agent.getZ(),
                 10.0f);
         FoodSource nearest = null;
         float minDistSq = Float.MAX_VALUE;
 
         for (FoodSource f : foods) {
-            float dx = f.getX() - individual.getX();
-            float dy = f.getY() - individual.getY();
+            float dx = f.getX() - agent.getX();
+            float dy = f.getY() - agent.getY();
             float distSq = dx * dx + dy * dy;
             if (distSq < minDistSq) {
                 minDistSq = distSq;
@@ -121,16 +122,16 @@ public class SimulationContextImpl implements SimulationContext {
     }
 
     @Override
-    public boolean hasFoodNearby(Individual individual, java.util.Set<org.swarmforge.core.domain.ResourceType> types) {
-        var foods = simulation.getFoodIndex().queryRadius(individual.getX(), individual.getY(), individual.getZ(),
+    public boolean hasFoodNearby(AgentView agent, java.util.Set<org.swarmforge.core.domain.ResourceType> types) {
+        var foods = simulation.getFoodIndex().queryRadius(agent.getX(), agent.getY(), agent.getZ(),
                 5.0f);
         return foods.stream().anyMatch(f -> types.contains(f.getType()));
     }
 
     @Override
-    public float[] getNearestFoodPosition(Individual individual,
+    public float[] getNearestFoodPosition(AgentView agent,
             java.util.Set<org.swarmforge.core.domain.ResourceType> types) {
-        FoodSource nearest = getNearestFood(individual, types);
+        FoodSource nearest = getNearestFood(agent, types);
         if (nearest != null) {
             return new float[] { nearest.getX(), nearest.getY(), nearest.getZ() };
         }
@@ -138,17 +139,17 @@ public class SimulationContextImpl implements SimulationContext {
     }
 
     @Override
-    public FoodSource getNearestFood(Individual individual,
+    public FoodSource getNearestFood(AgentView agent,
             java.util.Set<org.swarmforge.core.domain.ResourceType> types) {
-        var foods = simulation.getFoodIndex().queryRadius(individual.getX(), individual.getY(), individual.getZ(),
+        var foods = simulation.getFoodIndex().queryRadius(agent.getX(), agent.getY(), agent.getZ(),
                 10.0f);
         FoodSource nearest = null;
         float minDistSq = Float.MAX_VALUE;
 
         for (FoodSource f : foods) {
             if (types.contains(f.getType())) {
-                float dx = f.getX() - individual.getX();
-                float dy = f.getY() - individual.getY();
+                float dx = f.getX() - agent.getX();
+                float dy = f.getY() - agent.getY();
                 float distSq = dx * dx + dy * dy;
                 if (distSq < minDistSq) {
                     minDistSq = distSq;

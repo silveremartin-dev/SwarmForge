@@ -6,6 +6,7 @@
  */
 package org.swarmforge.core.simulation;
 
+import org.swarmforge.core.behavior.AgentView;
 import org.swarmforge.core.domain.Individual;
 
 /**
@@ -45,37 +46,37 @@ public interface SimulationContext {
     /**
      * Check if there's an enemy nearby.
      */
-    boolean hasEnemyNearby(Individual individual);
+    boolean hasEnemyNearby(AgentView agent);
 
     /**
      * Get the nearest enemy individual.
      */
-    Individual getNearestEnemy(Individual individual);
+    Individual getNearestEnemy(AgentView agent);
 
     /**
      * Check if there's food nearby.
      */
-    boolean hasFoodNearby(Individual individual);
+    boolean hasFoodNearby(AgentView agent);
 
     /**
      * Get the nearest food source position.
      */
-    float[] getNearestFoodPosition(Individual individual);
+    float[] getNearestFoodPosition(AgentView agent);
 
     /**
      * Check if there's food of specific types nearby.
      */
-    boolean hasFoodNearby(Individual individual, java.util.Set<org.swarmforge.core.domain.ResourceType> types);
+    boolean hasFoodNearby(AgentView agent, java.util.Set<org.swarmforge.core.domain.ResourceType> types);
 
     /**
      * Get the nearest food source position of specific types.
      */
-    float[] getNearestFoodPosition(Individual individual, java.util.Set<org.swarmforge.core.domain.ResourceType> types);
+    float[] getNearestFoodPosition(AgentView agent, java.util.Set<org.swarmforge.core.domain.ResourceType> types);
 
     /**
      * Get the nearest FoodSource object (internal use).
      */
-    org.swarmforge.core.domain.FoodSource getNearestFood(Individual individual,
+    org.swarmforge.core.domain.FoodSource getNearestFood(AgentView agent,
             java.util.Set<org.swarmforge.core.domain.ResourceType> types);
 
     /**

@@ -16,7 +16,11 @@ public interface AgentView {
     float getHomeY();
     boolean isCarryingFood();
     boolean isAtNest();
+    float getEnergyLevel();
     UUID getColonyId();
+    boolean isSoldier();
+    java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes();
+    String getAgentId();
     
     // Actions output
     // (Note: In pure ECS, output is side-effect on components, but for this bridge we keep the structure)

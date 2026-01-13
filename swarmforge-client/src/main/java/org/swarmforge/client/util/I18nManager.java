@@ -30,9 +30,9 @@ public class I18nManager {
         supportedLocales = Arrays.asList(
             Locale.ENGLISH,
             Locale.FRENCH,
-            new Locale("es"),
-            new Locale("de"),
-            new Locale("zh")
+            Locale.forLanguageTag("es"),
+            Locale.forLanguageTag("de"),
+            Locale.forLanguageTag("zh")
         );
         locale = new SimpleObjectProperty<>(Locale.getDefault());
         locale.addListener((observable, oldValue, newValue) -> loadBundle(newValue));

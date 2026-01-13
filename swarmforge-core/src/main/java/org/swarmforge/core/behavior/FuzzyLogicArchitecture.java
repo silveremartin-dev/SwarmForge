@@ -6,7 +6,7 @@
  */
 package org.swarmforge.core.behavior;
 
-import org.swarmforge.core.domain.Individual;
+import org.swarmforge.core.behavior.AgentView;
 import org.swarmforge.core.simulation.SimulationContext;
 
 import java.util.HashMap;
@@ -38,55 +38,55 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
     }
 
     @Override
-    public void initialize(Individual individual) {
+    public void initialize(AgentView agent) {
         inputs.clear();
         actionWeights.clear();
     }
 
     @Override
-    public Action decide(Individual individual, SimulationContext context) {
+    public Action decide(AgentView agent, SimulationContext context) {
         // Fuzzify inputs
-        fuzzifyInputs(individual, context);
+        fuzzifyInputs(agent, context);
 
         // Apply fuzzy rules
         applyRules();
 
         // Defuzzify to get best action
-        return defuzzify(individual);
+        return defuzzify(agent);
     }
 
-    private void fuzzifyInputs(Individual individual, SimulationContext context) {
+    private void fuzzifyInputs(AgentView agent, SimulationContext context) {
         // Energy level (0-1)
-        float energy = individual.getEnergy();
+        float energy = agent.getEnergyLevel();
         inputs.put("energy_low", trapezoid(energy, 0, 0, 0.2f, 0.4f));
         inputs.put("energy_medium", trapezoid(energy, 0.3f, 0.4f, 0.6f, 0.7f));
         inputs.put("energy_high", trapezoid(energy, 0.6f, 0.8f, 1.0f, 1.0f));
 
         // Hunger (inverse of food carried)
-        float hunger = individual.isCarryingFood() ? 0 : 1;
+        float hunger = agent.isCarryingFood() ? 0 : 1;
         inputs.put("hungry", hunger);
         inputs.put("fed", 1 - hunger);
 
         // Pheromone signals
         if (context != null) {
-            float foodPhero = context.getFoodPheromone(individual.getX(), individual.getY(), individual.getZ());
+            float foodPhero = context.getFoodPheromone(agent.getX(), agent.getY(), agent.getZ());
             inputs.put("food_trail_none", trapezoid(foodPhero, 0, 0, 0.1f, 0.2f));
             inputs.put("food_trail_weak", trapezoid(foodPhero, 0.1f, 0.2f, 0.4f, 0.5f));
             inputs.put("food_trail_strong", trapezoid(foodPhero, 0.4f, 0.6f, 1.0f, 1.0f));
 
-            float homePhero = context.getHomePheromone(individual.getX(), individual.getY(), individual.getZ());
+            float homePhero = context.getHomePheromone(agent.getX(), agent.getY(), agent.getZ());
             inputs.put("near_home", trapezoid(homePhero, 0.5f, 0.7f, 1.0f, 1.0f));
             inputs.put("far_from_home", trapezoid(homePhero, 0, 0, 0.2f, 0.4f));
 
             // Danger
-            float danger = context.hasEnemyNearby(individual) ? 1.0f : 0.0f;
+            float danger = context.hasEnemyNearby(agent) ? 1.0f : 0.0f;
             inputs.put("danger_high", danger);
             inputs.put("danger_low", 1 - danger);
         }
 
         // Distance from home
-        float dx = individual.getHomeX() - individual.getX();
-        float dy = individual.getHomeY() - individual.getY();
+        float dx = agent.getHomeX() - agent.getX();
+        float dy = agent.getHomeY() - agent.getY();
         float distHome = (float) Math.sqrt(dx * dx + dy * dy);
         inputs.put("home_close", trapezoid(distHome, 0, 0, 5, 15));
         inputs.put("home_far", trapezoid(distHome, 10, 30, 100, 100));
@@ -120,7 +120,7 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
         addWeight(Action.ActionType.EXPLORE, 0.1f);
     }
 
-    private Action defuzzify(Individual individual) {
+    private Action defuzzify(AgentView agent) {
         // Find action with highest weight
         Action.ActionType bestAction = Action.ActionType.EXPLORE;
         float bestWeight = 0;
@@ -132,10 +132,10 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
             }
         }
 
-        return createAction(bestAction, individual, bestWeight);
+        return createAction(bestAction, agent, bestWeight);
     }
 
-    private Action createAction(Action.ActionType type, Individual ind, float intensity) {
+    private Action createAction(Action.ActionType type, AgentView agent, float intensity) {
         return switch (type) {
             case FORAGE -> Action.forage();
             case RETURN_HOME -> Action.returnHome();
@@ -150,7 +150,7 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
     }
 
     @Override
-    public void update(Individual individual, Action executedAction, ActionResult result) {
+    public void update(AgentView agent, Action executedAction, ActionResult result) {
         // Fuzzy logic is stateless per-tick
     }
 

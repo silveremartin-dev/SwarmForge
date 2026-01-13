@@ -42,6 +42,7 @@ public class AiSystem extends IteratingSystem {
             case SIMPLE_FORAGER -> runSimpleForager(entityId);
             case RL_AGENT -> runRlAgent(entityId);
             case FSM_WORKER -> runFsmworker(entityId);
+            case FUZZY_LOGIC -> runFuzzyLogic(entityId);
             case MANUAL -> { /* Do nothing, wait for external input */ }
         }
     }
@@ -85,6 +86,7 @@ public class AiSystem extends IteratingSystem {
         agentAdapter.mPos = mPos;
         agentAdapter.mVel = mVel;
         agentAdapter.mInv = mInv;
+        agentAdapter.mMeta = mMeta;
     }
 
     private void runRlAgent(int entityId) {
@@ -130,12 +132,56 @@ public class AiSystem extends IteratingSystem {
                 vel.dx = 0;
                 vel.dy = 0;
             }
-            // ... handle others
+            case RETURN_HOME -> {
+                // Simplified: head to origin
+                PositionComponent pos = mPos.get(entityId);
+                float dx = -pos.x;
+                float dz = -pos.z;
+                float dist = (float) Math.sqrt(dx*dx + dz*dz);
+                if (dist > 0) {
+                    vel.dx = (dx / dist) * vel.speed;
+                    vel.dz = (dz / dist) * vel.speed;
+                }
+            }
+            case DEPOSIT_FOOD -> {
+                InventoryComponent inv = mInv.get(entityId);
+                inv.carriedItem = InventoryComponent.ItemType.NONE;
+            }
+            case EXPLORE -> {
+                // Random walk
+                double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble() * Math.PI * 2;
+                vel.dx = (float) Math.cos(angle) * vel.speed;
+                vel.dz = (float) Math.sin(angle) * vel.speed;
+            }
+            case NURSE, DEPOSIT_PHEROMONE, FLEE, COMMUNICATE, FOLLOW_TRAIL, GROOM, ATTACK -> {
+                // Placeholder for more complex actions
+            }
         }
     }
 
     private void runFsmworker(int entityId) {
-        // Placeholder for FSM
-        runSimpleForager(entityId);
+        AiComponent ai = mAi.get(entityId);
+        if (ai.brainInstance == null) {
+            ai.brainInstance = new org.swarmforge.core.behavior.FSMArchitecture();
+            ((org.swarmforge.core.behavior.FSMArchitecture) ai.brainInstance).initialize(null);
+        }
+
+        org.swarmforge.core.behavior.FSMArchitecture brain = (org.swarmforge.core.behavior.FSMArchitecture) ai.brainInstance;
+        agentAdapter.setEntityId(entityId);
+        org.swarmforge.core.behavior.ReasoningArchitecture.Action action = brain.decide(agentAdapter, null);
+        applyAction(entityId, action);
+    }
+
+    private void runFuzzyLogic(int entityId) {
+        AiComponent ai = mAi.get(entityId);
+        if (ai.brainInstance == null) {
+            ai.brainInstance = new org.swarmforge.core.behavior.FuzzyLogicArchitecture();
+            ((org.swarmforge.core.behavior.FuzzyLogicArchitecture)ai.brainInstance).initialize(null);
+        }
+        
+        org.swarmforge.core.behavior.FuzzyLogicArchitecture brain = (org.swarmforge.core.behavior.FuzzyLogicArchitecture) ai.brainInstance;
+        agentAdapter.setEntityId(entityId);
+        org.swarmforge.core.behavior.ReasoningArchitecture.Action action = brain.decide(agentAdapter, null);
+        applyAction(entityId, action);
     }
 }

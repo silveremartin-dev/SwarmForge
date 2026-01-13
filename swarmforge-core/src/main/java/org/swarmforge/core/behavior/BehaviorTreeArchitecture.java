@@ -34,18 +34,18 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
 
         // 1. Survival Sequence
         Sequence survival = new Sequence();
-        survival.addChild(new Condition((ind, ctx) -> ind.getEnergy() < 0.2f));
+        survival.addChild(new Condition((agent, ctx) -> agent.getEnergyLevel() < 0.2f));
         survival.addChild(new Task(Action.ActionType.REST));
         rootSelector.addChild(survival);
 
         // 2. Defense Sequence
         Sequence defense = new Sequence();
-        defense.addChild(new Condition((ind, ctx) -> ctx != null && ctx.hasEnemyNearby(ind)));
+        defense.addChild(new Condition((agent, ctx) -> ctx != null && ctx.hasEnemyNearby(agent)));
         defense.addChild(new Selector() {
             {
                 addChild(new Sequence() {
                     {
-                        addChild(new Condition((ind, ctx) -> ind.getCaste() == Individual.Caste.SOLDIER));
+                        addChild(new Condition((agent, ctx) -> agent.isSoldier()));
                         addChild(new Task(Action.ActionType.ATTACK));
                     }
                 });
@@ -56,20 +56,20 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
 
         // 3. Foraging Sequence
         Sequence foraging = new Sequence();
-        foraging.addChild(new Condition((ind, ctx) -> !ind.isCarryingFood()));
+        foraging.addChild(new Condition((agent, ctx) -> !agent.isCarryingFood()));
         foraging.addChild(new Selector() {
             {
                 // Sub-selector: Found food? Follow trail? Random?
                 addChild(new Sequence() {
                     {
-                        addChild(new Condition((ind, ctx) -> ctx != null && ctx.hasFoodNearby(ind)));
+                        addChild(new Condition((agent, ctx) -> ctx != null && ctx.hasFoodNearby(agent)));
                         addChild(new Task(Action.ActionType.FORAGE)); // Pick up
                     }
                 });
                 addChild(new Sequence() {
                     {
-                        addChild(new Condition((ind, ctx) -> ctx != null
-                                && ctx.getFoodPheromone(ind.getX(), ind.getY(), ind.getZ()) > 0.1f));
+                        addChild(new Condition((agent, ctx) -> ctx != null
+                                && ctx.getFoodPheromone(agent.getX(), agent.getY(), agent.getZ()) > 0.1f));
                         addChild(new Task(Action.ActionType.FOLLOW_TRAIL));
                     }
                 });
@@ -80,12 +80,12 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
 
         // 4. Return Home Sequence
         Sequence returnHome = new Sequence();
-        returnHome.addChild(new Condition((ind, ctx) -> ind.isCarryingFood()));
+        returnHome.addChild(new Condition((agent, ctx) -> agent.isCarryingFood()));
         returnHome.addChild(new Selector() {
             {
                 addChild(new Sequence() {
                     {
-                        addChild(new Condition((ind, ctx) -> isAtNext(ind)));
+                        addChild(new Condition((agent, ctx) -> isNearHome(agent)));
                         addChild(new Task(Action.ActionType.DEPOSIT_FOOD));
                     }
                 });
@@ -100,9 +100,9 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
         this.root = rootSelector;
     }
 
-    private boolean isAtNext(Individual ind) {
-        return (ind.getHomeX() - ind.getX()) * (ind.getHomeX() - ind.getX()) +
-                (ind.getHomeY() - ind.getY()) * (ind.getHomeY() - ind.getY()) < 4.0;
+    private boolean isNearHome(AgentView agent) {
+        return (agent.getHomeX() - agent.getX()) * (agent.getHomeX() - agent.getX()) +
+                (agent.getHomeY() - agent.getY()) * (agent.getHomeY() - agent.getY()) < 4.0;
     }
 
     @Override
@@ -116,13 +116,13 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
     }
 
     @Override
-    public void initialize(Individual individual) {
+    public void initialize(AgentView agent) {
         // Stateless nodes for now
     }
 
     @Override
-    public Action decide(Individual individual, SimulationContext context) {
-        NodeStatus status = root.tick(individual, context);
+    public Action decide(AgentView agent, SimulationContext context) {
+        NodeStatus status = root.tick(agent, context);
         if (status instanceof NodeStatus.Running running) {
             return running.action;
         } else if (status instanceof NodeStatus.Success success) {
@@ -132,7 +132,7 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
     }
 
     @Override
-    public void update(Individual individual, Action executedAction, ActionResult result) {
+    public void update(AgentView agent, Action executedAction, ActionResult result) {
         // No state update needed for simple stateless tree
     }
 
@@ -149,7 +149,7 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
     // === Tree Nodes ===
 
     interface Node {
-        NodeStatus tick(Individual ind, SimulationContext ctx);
+        NodeStatus tick(AgentView agent, SimulationContext ctx);
     }
 
     interface NodeStatus {
@@ -171,15 +171,15 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
         }
 
         @Override
-        public NodeStatus tick(Individual ind, SimulationContext ctx) {
+        public NodeStatus tick(AgentView agent, SimulationContext ctx) {
             Action action = switch (type) {
                 case MOVE, EXPLORE -> randomMove();
-                case ATTACK -> Action.attack(ctx != null ? ctx.getNearestEnemy(ind) : null);
-                case FOLLOW_TRAIL -> followTrail(ind, ctx);
+                case ATTACK -> Action.attack(ctx != null ? ctx.getNearestEnemy(agent) : null);
+                case FOLLOW_TRAIL -> followTrail(agent, ctx);
                 case FORAGE -> Action.forage();
                 case RETURN_HOME -> Action.returnHome();
                 case DEPOSIT_FOOD -> new Action(Action.ActionType.DEPOSIT_FOOD, 0, 0, 0, 1f, null);
-                case FLEE -> flee(ind);
+                case FLEE -> flee(agent);
                 default -> Action.rest();
             };
             return new NodeStatus.Success(action);
@@ -190,14 +190,14 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
             return Action.move((float) Math.cos(angle), (float) Math.sin(angle), 0);
         }
 
-        private Action followTrail(Individual ind, SimulationContext ctx) {
+        private Action followTrail(AgentView agent, SimulationContext ctx) {
             if (ctx == null)
                 return randomMove();
-            return Action.followTrail(ctx.getFoodPheromoneGradientX(ind.getX(), ind.getY(), ind.getZ()),
-                    ctx.getFoodPheromoneGradientY(ind.getX(), ind.getY(), ind.getZ()), 0);
+            return Action.followTrail(ctx.getFoodPheromoneGradientX(agent.getX(), agent.getY(), agent.getZ()),
+                    ctx.getFoodPheromoneGradientY(agent.getX(), agent.getY(), agent.getZ()), 0);
         }
 
-        private Action flee(Individual ind) {
+        private Action flee(AgentView agent) {
             // Run away from home? No, usually flee TO home.
             // Actually flee typically means run away from danger, or run to safety (home).
             // Let's assume flee to home.
@@ -206,15 +206,15 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
     }
 
     static class Condition implements Node {
-        private final BiPredicate<Individual, SimulationContext> predicate;
+        private final java.util.function.BiPredicate<AgentView, SimulationContext> predicate;
 
-        public Condition(BiPredicate<Individual, SimulationContext> predicate) {
+        public Condition(java.util.function.BiPredicate<AgentView, SimulationContext> predicate) {
             this.predicate = predicate;
         }
 
         @Override
-        public NodeStatus tick(Individual ind, SimulationContext ctx) {
-            return predicate.test(ind, ctx) ? new NodeStatus.Success(null) : new NodeStatus.Failure();
+        public NodeStatus tick(AgentView agent, SimulationContext ctx) {
+            return predicate.test(agent, ctx) ? new NodeStatus.Success(null) : new NodeStatus.Failure();
         }
     }
 
@@ -226,9 +226,9 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
         }
 
         @Override
-        public NodeStatus tick(Individual ind, SimulationContext ctx) {
+        public NodeStatus tick(AgentView agent, SimulationContext ctx) {
             for (Node child : children) {
-                NodeStatus status = child.tick(ind, ctx);
+                NodeStatus status = child.tick(agent, ctx);
                 if (status instanceof NodeStatus.Failure)
                     return new NodeStatus.Failure();
                 if (status instanceof NodeStatus.Running)
@@ -255,9 +255,9 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
         }
 
         @Override
-        public NodeStatus tick(Individual ind, SimulationContext ctx) {
+        public NodeStatus tick(AgentView agent, SimulationContext ctx) {
             for (Node child : children) {
-                NodeStatus status = child.tick(ind, ctx);
+                NodeStatus status = child.tick(agent, ctx);
                 if (status instanceof NodeStatus.Success)
                     return status;
                 if (status instanceof NodeStatus.Running)

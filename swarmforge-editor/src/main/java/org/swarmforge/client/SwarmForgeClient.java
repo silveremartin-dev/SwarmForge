@@ -229,9 +229,9 @@ public class SwarmForgeClient extends Application {
         ToggleGroup langGroup = new ToggleGroup();
         addLangItem(mLang, langGroup, "English", java.util.Locale.ENGLISH);
         addLangItem(mLang, langGroup, "Français", java.util.Locale.FRENCH);
-        addLangItem(mLang, langGroup, "Español", new java.util.Locale("es"));
-        addLangItem(mLang, langGroup, "Deutsch", new java.util.Locale("de"));
-        addLangItem(mLang, langGroup, "中文", new java.util.Locale("zh"));
+        addLangItem(mLang, langGroup, "Español", java.util.Locale.forLanguageTag("es"));
+        addLangItem(mLang, langGroup, "Deutsch", java.util.Locale.forLanguageTag("de"));
+        addLangItem(mLang, langGroup, "中文", java.util.Locale.forLanguageTag("zh"));
 
         MenuItem mDefaults = new MenuItem();
         mDefaults.textProperty().bind(i18n.createStringBinding("menu.prefs.defaults"));

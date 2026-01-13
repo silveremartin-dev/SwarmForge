@@ -8,6 +8,7 @@ package org.swarmforge.core.behavior.rl;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import org.swarmforge.core.behavior.AgentView;
 import org.swarmforge.core.behavior.ReasoningArchitecture;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.simulation.SimulationContext;
@@ -66,20 +67,20 @@ public class RemoteRLArchitecture implements ReasoningArchitecture {
     }
 
     @Override
-    public void initialize(Individual individual) {
-        fallbackBrain.initialize(individual);
+    public void initialize(AgentView agent) {
+        fallbackBrain.initialize(agent);
     }
 
     @Override
-    public Action decide(Individual individual, SimulationContext context) {
+    public Action decide(AgentView agent, SimulationContext context) {
         try {
             // 1. Observe
-            Observation observation = observe(individual, context);
+            Observation observation = observe(agent, context);
 
             // 2. Predict (RPC)
             PredictRequest request = PredictRequest.newBuilder()
                     .setModelId(modelId)
-                    .setAgentId(individual.getId().toString())
+                    .setAgentId(agent.getAgentId())
                     .setState(observation)
                     .build();
 
@@ -89,31 +90,31 @@ public class RemoteRLArchitecture implements ReasoningArchitecture {
             int actionIndex = response.getActionIndex();
             // this.lastActionIndex = actionIndex; // Removed unused field
 
-            return decodeAction(actionIndex, individual);
+            return decodeAction(actionIndex, agent);
 
         } catch (Exception e) {
             // LOG.warning("Remote inference failed: " + e.getMessage() + ". Falling
             // back.");
             // Silent fallback to avoid log spam in high freq loop
-            return fallbackBrain.decide(individual, context);
+            return fallbackBrain.decide(agent, context);
         }
     }
 
     @Override
-    public void update(Individual individual, Action executedAction, ActionResult result) {
+    public void update(AgentView agent, Action executedAction, ActionResult result) {
         // Optional: Send training data (S, A, R, S') to server
         // This usually requires waiting for Next State (S') which happens in next tick.
         // For MVP we skip training loop here or implement async logic.
-        fallbackBrain.update(individual, executedAction, result);
+        fallbackBrain.update(agent, executedAction, result);
     }
 
-    private Observation observe(Individual ind, SimulationContext ctx) {
+    private Observation observe(AgentView agent, SimulationContext ctx) {
         // Flatten state
         Observation.Builder obs = Observation.newBuilder();
 
-        obs.addValues(ind.getEnergy() / 100f);
-        obs.addValues(ind.getHealth() / 100f);
-        obs.addValues(ind.isCarryingFood() ? 1f : 0f);
+        obs.addValues(agent.getEnergyLevel());
+        obs.addValues(1.0f); // Health fallback
+        obs.addValues(agent.isCarryingFood() ? 1f : 0f);
         // ... Add sensor data
 
         return obs.build();
@@ -131,7 +132,7 @@ public class RemoteRLArchitecture implements ReasoningArchitecture {
         return new RemoteRLArchitecture(this.modelId);
     }
 
-    private Action decodeAction(int index, Individual ind) {
+    private Action decodeAction(int index, AgentView agent) {
         // Map integer index back to core Action
         // Must match QTable.RLAction or Python side definition
         // 0=MOVE_FWD, 1=TURN_L, 2=TURN_R, 3=PICKUP, 4=DROP
