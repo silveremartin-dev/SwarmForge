@@ -32,6 +32,7 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
     private final Random random = new Random();
 
     // Last hidden activations (for learning)
+    private float[] lastInputs; // Stored inputs for backprop
     private float[] lastHidden;
     private float[] lastOutputs;
 
@@ -88,6 +89,7 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
     public Action decide(AgentView agent, SimulationContext context) {
         // Build input vector from sensors
         float[] inputs = buildInputVector(agent, context);
+        lastInputs = inputs;
 
         // Forward pass
         float[] hidden = new float[HIDDEN_SIZE];
@@ -183,17 +185,71 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
 
     @Override
     public void update(AgentView agent, Action executedAction, ActionResult result) {
-        // Simple reinforcement: adjust weights based on reward
+        // Full Backpropagation implementation
         if (lastHidden == null || lastOutputs == null)
             return;
 
         float reward = result.reward();
+        
+        // Target: Only the taken action should be nudged towards reward
+        // Since we don't know "optimal" action, we use reward as a signal to reinforce or discourage the TAKEN action.
+        // Simplified Policy Gradient idea: target = output + learning_rate * reward
+        // Here we just modify the error term.
 
-        // Simplified weight update (not full backprop)
+        // 1. Output Gradients
+        float[] outputGradients = new float[OUTPUT_SIZE];
+        for (int k = 0; k < OUTPUT_SIZE; k++) {
+            // Derivative of Sigmoid: o * (1 - o)
+            float derivative = lastOutputs[k] * (1 - lastOutputs[k]);
+            // Error signal: We want to increase activation if reward is positive, decrease if negative
+            // But only for the dominant action or all? 
+            // Better approach for online learning: Nudge dominant outputs towards reward * sign
+            
+            // Heuristic target: If reward > 0, target is 1. If reward < 0, target is 0.
+            // Error = (Target - Output)
+            // But we only have a scalar reward.
+            // Let's use the simple reinforcement heuristic: 
+            // gradient = reward * derivative
+            // This is effectively saying "Move in direction of reward"
+            outputGradients[k] = reward * derivative; 
+        }
+
+        // 2. Hidden Gradients
+        float[] hiddenGradients = new float[HIDDEN_SIZE];
+        for (int j = 0; j < HIDDEN_SIZE; j++) {
+            float sum = 0;
+            for (int k = 0; k < OUTPUT_SIZE; k++) {
+                sum += outputGradients[k] * weightsHiddenOutput[j][k];
+            }
+            // Derivative of ReLU: 1 if > 0, else 0
+            float derivative = lastHidden[j] > 0 ? 1 : 0;
+            hiddenGradients[j] = sum * derivative;
+        }
+
+        // 3. Update Weights Hidden -> Output
         for (int i = 0; i < HIDDEN_SIZE; i++) {
             for (int j = 0; j < OUTPUT_SIZE; j++) {
-                weightsHiddenOutput[i][j] += learningRate * reward * lastHidden[i] * lastOutputs[j];
+                // delta = learning_rate * gradient * input(lastHidden)
+                weightsHiddenOutput[i][j] += learningRate * outputGradients[j] * lastHidden[i];
             }
+        }
+        // Update Output Biases
+        for (int j = 0; j < OUTPUT_SIZE; j++) {
+            outputBias[j] += learningRate * outputGradients[j];
+        }
+
+        // 4. Update Weights Input -> Hidden
+        if (lastInputs != null) {
+            for (int i = 0; i < INPUT_SIZE; i++) {
+                for (int j = 0; j < HIDDEN_SIZE; j++) {
+                    weightsInputHidden[i][j] += learningRate * hiddenGradients[j] * lastInputs[i];
+                }
+            }
+        }
+        
+        // Update Hidden Biases
+        for (int j = 0; j < HIDDEN_SIZE; j++) {
+            hiddenBias[j] += learningRate * hiddenGradients[j];
         }
     }
 
