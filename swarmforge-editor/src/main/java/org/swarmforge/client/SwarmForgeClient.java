@@ -932,15 +932,7 @@ public class SwarmForgeClient extends Application {
                 });
         }
 
-        private MenuBar createMenuBar() {
-                MenuBar bar = new MenuBar();
-                Menu file = new Menu("File");
-                file.getItems().add(new MenuItem("Exit"));
-                Menu help = new Menu("Help");
-                help.getItems().add(new MenuItem("About"));
-                bar.getMenus().addAll(file, help);
-                return bar;
-        }
+
 
         private HBox createStatusBar() {
                 HBox bar = new HBox(10);

@@ -6,7 +6,7 @@
  */
 package org.swarmforge.core.behavior;
 
-import org.swarmforge.core.domain.Individual;
+
 import org.swarmforge.core.simulation.SimulationContext;
 
 import java.util.Random;

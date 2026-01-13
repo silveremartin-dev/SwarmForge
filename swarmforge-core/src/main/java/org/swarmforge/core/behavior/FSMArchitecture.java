@@ -6,6 +6,7 @@
  */
 package org.swarmforge.core.behavior;
 
+
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.simulation.SimulationContext;
 
@@ -35,7 +36,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
 
     private State currentState = State.IDLE;
     private final Map<State, StateHandler> stateHandlers = new HashMap<>();
-    private long stateEnteredTick = 0;
+
     private int stateTimeoutTicks = 200;
 
     @FunctionalInterface
@@ -71,7 +72,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
     @Override
     public void initialize(AgentView agent) {
         currentState = State.IDLE;
-        stateEnteredTick = 0;
+
     }
 
     @Override
@@ -93,7 +94,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
     @Override
     public void reset() {
         currentState = State.IDLE;
-        stateEnteredTick = 0;
+
     }
 
     @Override
@@ -106,7 +107,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
     public void transitionTo(State newState) {
         if (newState != currentState) {
             currentState = newState;
-            stateEnteredTick = context();
+
         }
     }
 

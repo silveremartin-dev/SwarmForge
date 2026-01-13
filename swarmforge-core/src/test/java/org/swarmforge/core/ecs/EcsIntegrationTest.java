@@ -25,6 +25,8 @@ public class EcsIntegrationTest {
                 .with(new AgingSystem())
                 // AI
                 .with(new AiSystem())
+                // Ecology
+                .with(new SoilSystem())
                 .build();
 
         World world = new World(config);
@@ -46,6 +48,10 @@ public class EcsIntegrationTest {
         world.edit(entityId)
              .create(AiComponent.class).type = AiComponent.AiType.SIMPLE_FORAGER; // Test Switch
              
+        // Create Soil Entity
+        int soilEntityId = world.create();
+        world.edit(soilEntityId).create(SoilComponent.class).moisture = 0.5f;
+
         world.process();
         
         // Assert initial state
@@ -64,5 +70,9 @@ public class EcsIntegrationTest {
         // Assert Metadata
         MetabolismComponent meta = world.getMapper(MetabolismComponent.class).get(entityId);
         assertTrue(meta.energy < 100f, "Entity should have consumed energy");
+
+        // Assert Soil dynamics
+        SoilComponent soil = world.getMapper(SoilComponent.class).get(soilEntityId);
+        assertTrue(soil.moisture < 0.5f, "Soil moisture should decrease via evaporation");
     }
 }

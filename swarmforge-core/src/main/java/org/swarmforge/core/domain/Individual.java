@@ -456,6 +456,14 @@ public class Individual implements java.io.Serializable, AgentView {
         this.maturationThreshold = maturationThreshold;
     }
 
+    public void setAttackDamage(float attackDamage) {
+        this.attackDamage = attackDamage;
+    }
+
+    public void setDefense(float defense) {
+        this.defense = defense;
+    }
+
     /**
      * Apply damage to this individual.
      * 

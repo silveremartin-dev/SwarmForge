@@ -6,12 +6,12 @@
  */
 package org.swarmforge.core.behavior;
 
-import org.swarmforge.core.domain.Individual;
+
 import org.swarmforge.core.simulation.SimulationContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiPredicate;
+
 
 /**
  * Behavior Tree implementation for ant behavior.

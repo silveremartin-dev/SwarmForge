@@ -10,7 +10,7 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.swarmforge.core.behavior.AgentView;
 import org.swarmforge.core.behavior.ReasoningArchitecture;
-import org.swarmforge.core.domain.Individual;
+
 import org.swarmforge.core.simulation.SimulationContext;
 import org.swarmforge.protocol.grpc.*;
 

@@ -42,10 +42,10 @@ class RLTest {
         ant.setCarriedItem(Individual.CarriedItem.FOOD);
         ant.setPosition(0, 0, 0);
 
-        RLState state = new RLState(true, RLState.PheromoneDirection.NONE, RLState.PheromoneDirection.NONE, true, true);
+
 
         // Train manually
-        RLState lastState = null;
+
         // Initial decide
         brain.decide(ant, null);
         

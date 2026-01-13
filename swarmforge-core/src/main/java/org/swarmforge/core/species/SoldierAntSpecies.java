@@ -18,7 +18,10 @@ public class SoldierAntSpecies implements Species {
         individual.setMaxEnergy(150.0f);
         individual.setEnergy(150.0f);
         // Soldiers are typically slower but stronger
-        // Behavioral logic could be set here if not using ECS defaults
+        individual.setMaxHealth(200.0f);
+        individual.setHealth(200.0f);
+        individual.setAttackDamage(20.0f);
+        individual.setDefense(5.0f);
     }
 
     @Override

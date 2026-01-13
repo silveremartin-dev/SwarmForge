@@ -8,7 +8,7 @@ package org.swarmforge.core.behavior.rl;
 
 import org.swarmforge.core.behavior.ReasoningArchitecture;
 import org.swarmforge.core.behavior.AgentView; // New Interface
-import org.swarmforge.core.domain.Individual;
+
 import org.swarmforge.core.simulation.SimulationContext;
 
 /**

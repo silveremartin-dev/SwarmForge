@@ -6,7 +6,7 @@
  */
 package org.swarmforge.core.behavior;
 
-import org.swarmforge.core.behavior.AgentView;
+
 import org.swarmforge.core.simulation.SimulationContext;
 
 import java.util.HashMap;
@@ -90,6 +90,10 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
         float distHome = (float) Math.sqrt(dx * dx + dy * dy);
         inputs.put("home_close", trapezoid(distHome, 0, 0, 5, 15));
         inputs.put("home_far", trapezoid(distHome, 10, 30, 100, 100));
+
+        // Role
+        inputs.put("is_soldier", agent.isSoldier() ? 1.0f : 0.0f);
+        inputs.put("is_worker", agent.isSoldier() ? 0.0f : 1.0f);
     }
 
     private void applyRules() {
@@ -103,15 +107,24 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
         addWeight(Action.ActionType.RETURN_HOME,
                 and(get("fed"), get("home_far")) * 0.8f);
 
+        // Rule: IF fed AND home_close THEN deposit_food
+        addWeight(Action.ActionType.DEPOSIT_FOOD,
+                and(get("fed"), get("home_close")) * 0.95f);
+
         // Rule: IF energy_low THEN rest
         addWeight(Action.ActionType.REST, get("energy_low") * 0.95f);
 
-        // Rule: IF danger_high AND NOT soldier THEN flee
-        addWeight(Action.ActionType.FLEE, get("danger_high") * 0.9f);
+        // Rule: IF danger_high AND is_worker THEN flee
+        addWeight(Action.ActionType.FLEE,
+                and(get("danger_high"), get("is_worker")) * 0.9f);
 
-        // Rule: IF food_trail_none AND energy_high THEN explore
+        // Rule: IF danger_high AND is_soldier THEN attack
+        addWeight(Action.ActionType.ATTACK,
+                and(get("danger_high"), get("is_soldier")) * 1.0f);
+
+        // Rule: IF food_trail_none AND energy_high AND is_worker THEN explore
         addWeight(Action.ActionType.EXPLORE,
-                and(get("food_trail_none"), get("energy_high")) * 0.5f);
+                and(get("food_trail_none"), and(get("energy_high"), get("is_worker"))) * 0.5f);
 
         // Rule: IF food_trail_weak THEN follow_trail
         addWeight(Action.ActionType.FOLLOW_TRAIL, get("food_trail_weak") * 0.6f);
@@ -139,7 +152,9 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
         return switch (type) {
             case FORAGE -> Action.forage();
             case RETURN_HOME -> Action.returnHome();
+            case DEPOSIT_FOOD -> new Action(Action.ActionType.DEPOSIT_FOOD, 0, 0, 0, 1f, null);
             case REST -> Action.rest();
+            case ATTACK -> Action.attack(null); // Target usually resolved by System/Context
             case FLEE, EXPLORE -> {
                 float angle = (float) (Math.random() * Math.PI * 2);
                 yield Action.move((float) Math.cos(angle) * intensity, (float) Math.sin(angle) * intensity, 0);

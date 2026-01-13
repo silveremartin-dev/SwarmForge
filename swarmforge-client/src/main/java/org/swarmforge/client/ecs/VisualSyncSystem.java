@@ -6,7 +6,7 @@ import com.artemis.systems.IteratingSystem;
 import org.swarmforge.client.view.SwarmViewerApp;
 import org.swarmforge.core.ecs.components.PositionComponent;
 import org.swarmforge.core.ecs.components.RenderComponent;
-import org.swarmforge.core.ecs.components.VelocityComponent;
+
 
 /**
  * System running on the Client ECS World.
