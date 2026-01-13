@@ -46,18 +46,46 @@ class RLTest {
 
         // Train manually
         RLState lastState = null;
-        for (int i = 0; i < 500; i++) {
-            brain.decide(ant, null); // populates internal state
-            // We need to access the state the brain just calculated.
-            // Since RLArchitecture might not expose it easily, we can infer it or we rely
-            // on the fact
-            // that 'decide' returns an action based on 'currentState'.
-            // Let's assume the state logic is consistent:
-            // With null context, isSafe might be default.
-            // We can check the QTable for ANY state that matches our Carrying+Home
-            // criteria.
-            brain.update(ant, Action.depositFood(), ActionResult.ok()); // Reward
+        // Initial decide
+        brain.decide(ant, null);
+        
+        // Force exploration to find the action
+        RLArchitecture.getQTable().setEpsilon(0.8);
+        
+        for (int i = 0; i < 1000; i++) {
+            // We can't easily see what decide() chose as lastAction without reflection or spying.
+            // But we know performLearningUpdate uses lastAction.
+            
+            // However, we need to pass the SAME action to update() so calculateReward works correctly.
+            // Since we can't retrieve the internal decision from 'brain', this test of the BLACK BOX is hard.
+            
+            // Workaround: We will use reflection to get lastAction to pass it to update()
+            // purely for the sake of the test environment which mocks the loop.
+            try {
+                java.lang.reflect.Field field = RLArchitecture.class.getDeclaredField("lastAction");
+                field.setAccessible(true);
+                Object lastActionObj = field.get(brain);
+                
+                if (lastActionObj != null) {
+                    String actionName = lastActionObj.toString();
+                    Action executedAction;
+                    
+                    if (actionName.equals("DROP_FOOD")) {
+                        executedAction = new Action(Action.ActionType.DEPOSIT_FOOD, 0,0,0,1,null);
+                        brain.update(ant, executedAction, ActionResult.ok());
+                    } else {
+                        // Penalty for others (living cost)
+                         executedAction = Action.rest(); // Dummy
+                         brain.update(ant, executedAction, ActionResult.ok());
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            
+            brain.decide(ant, null);
         }
+        RLArchitecture.getQTable().setEpsilon(0.0);
 
         // Retrieve state via reflection or constructed with same logic as correct
         // implementation

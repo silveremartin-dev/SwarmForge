@@ -116,10 +116,11 @@ public class ClientApp extends Application {
         Label status = new Label("Ready");
         status.setId("statusLabel");
 
+        Label availableSimsLabel = new Label("Available Simulations");
+        availableSimsLabel.setId("availableSimsLabel");
+
         root.getChildren().addAll(title, subtitle, new Separator(), form, chkGodMode,
-                    {
-                        setId("availableSimsLabel");
-                    }
+                availableSimsLabel,
                 simList, buttons, status);
 
         Scene scene = new Scene(root, 500, 550);
@@ -263,21 +264,24 @@ public class ClientApp extends Application {
 
         btnKillSelected.setId("btnKillSelected");
 
+        Label heightLabel = new Label("Spawn");
+        heightLabel.setId("spawnLabel");
+
+        Label eventsLabel = new Label("Events");
+        eventsLabel.setId("eventsLabel");
+
+        Label destroyLabel = new Label("Destroy");
+        destroyLabel.setId("destroyLabel");
+
         panel.getChildren().addAll(
                 title, new Separator(),
-                new Label("Spawn") {
-                        setId("spawnLabel");
-                },
+                heightLabel,
                 btnAddFood, btnSpawnAnts,
                 new Separator(),
-                new Label("Events") {
-                        setId("eventsLabel");
-                },
+                eventsLabel,
                 btnTriggerRain, btnTriggerHeat,
                 new Separator(),
-                new Label("Destroy") {
-                        setId("destroyLabel");
-                },
+                destroyLabel,
                 btnKillSelected);
 
         return panel;

@@ -7,11 +7,13 @@
 package org.swarmforge.core.behavior.rl;
 
 import org.swarmforge.core.behavior.ReasoningArchitecture;
+import org.swarmforge.core.behavior.AgentView; // New Interface
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.simulation.SimulationContext;
 
 /**
  * Reinforcement Learning Architecture using Q-Learning.
+ * Refactored to use AgentView for ECS compatibility.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
@@ -42,10 +44,11 @@ public class RLArchitecture implements ReasoningArchitecture {
         lastAction = null;
     }
 
-    @Override
-    public Action decide(Individual individual, SimulationContext context) {
+    // === ECS / AgentView Compatible Methods ===
+
+    public Action decide(AgentView agent, SimulationContext context) {
         // 1. Observe State
-        RLState currentState = observeState(individual, context);
+        RLState currentState = observeState(agent, context);
 
         // 0. Learn from previous action (S, A, R, S')
         performLearningUpdate(currentState);
@@ -58,29 +61,24 @@ public class RLArchitecture implements ReasoningArchitecture {
         this.lastAction = rlAction;
 
         // 4. Execute (Convert RLAction to Game Action)
-        return convertAction(rlAction, individual);
+        return convertAction(rlAction, agent);
+    }
+
+    // Bridge for Legacy OOP
+    @Override
+    public Action decide(Individual individual, SimulationContext context) {
+        // Assume Individual implements AgentView
+        if (individual instanceof AgentView) {
+            return decide((AgentView) individual, context);
+        }
+        throw new UnsupportedOperationException("Individual must implement AgentView");
     }
 
     @Override
     public void update(Individual individual, Action executedAction, ActionResult result) {
-        if (lastState != null && lastAction != null) {
-            // 1. Observe New State (after action)
-            // Note: We need context for this, but update doesn't provide it.
-            // We might need to assume the decide() call in the NEXT tick will handle the
-            // "next state" logic,
-            // OR we approximate the next state here if possible, but we don't have context.
-            // Standard RL loop: S, A, R, S'.
-            // Here update() gives us R (result). S' is observed in the NEXT decide().
-            // So we delay the update step?
-
-            // Actually, we can calculate the reward here based on the result.
+         if (lastState != null && lastAction != null) {
             double reward = calculateReward(individual, executedAction, result);
             this.currentReward = reward;
-
-            // We can't update Q-Table efficiently without S'.
-            // We will store the reward and apply the update at the BEGINNING of the next
-            // decide() call,
-            // where we have the fresh S'.
         }
     }
 
@@ -89,14 +87,18 @@ public class RLArchitecture implements ReasoningArchitecture {
             Q_TABLE.update(lastState, lastAction, currentReward, nextState);
         }
     }
+    
+    public static QTable getQTable() {
+        return Q_TABLE;
+    }
 
-    private RLState observeState(Individual ind, SimulationContext ctx) {
+    private RLState observeState(AgentView ind, SimulationContext ctx) {
         // Simple discrete state observation
         boolean hasFood = ind.isCarryingFood();
-        boolean isAtNest = (Math.abs(ind.getX() - ind.getHomeX()) < 2.0 && Math.abs(ind.getY() - ind.getHomeY()) < 2.0);
+        boolean isAtNest = ind.isAtNest(); // Use Interface method
         boolean isLoaded = ind.isCarryingFood();
 
-        // Pheromones (Simplified)
+        // Pheromones (Simplified) - Need position
         RLState.PheromoneDirection foodDir = RLState.PheromoneDirection.NONE;
 
         if (ctx != null) {
@@ -107,17 +109,13 @@ public class RLArchitecture implements ReasoningArchitecture {
                 foodDir = RLState.PheromoneDirection.LEFT;
         }
 
-        RLState.PheromoneDirection homeDir = RLState.PheromoneDirection.NONE; // Similar logic for home
+        RLState.PheromoneDirection homeDir = RLState.PheromoneDirection.NONE; // Similar logic
 
         return new RLState(hasFood, foodDir, homeDir, isAtNest, isLoaded);
     }
-
-    public static QTable getQTable() {
-        return Q_TABLE;
-    }
-
-    private double calculateReward(Individual ind, Action executedAction, ActionResult result) {
-        double reward = -0.1; // Living cost
+    
+    private double calculateReward(AgentView ind, Action executedAction, ActionResult result) {
+         double reward = -0.1; // Living cost
 
         if (executedAction.type() == Action.ActionType.DEPOSIT_FOOD && result.success()) {
             reward += 100.0;
@@ -128,8 +126,13 @@ public class RLArchitecture implements ReasoningArchitecture {
 
         return reward;
     }
+    
+    // Legacy overload for compatibility if needed, or remove if unused private
+    private double calculateReward(Individual ind, Action executedAction, ActionResult result) {
+        return calculateReward((AgentView) ind, executedAction, result);
+    }
 
-    private Action convertAction(QTable.RLAction rlAction, Individual ind) {
+    private Action convertAction(QTable.RLAction rlAction, AgentView ind) {
         // Needs rudimentary movement logic (forward relative to heading)
         float speed = 1.0f;
         float dx = 0, dy = 0;
@@ -141,9 +144,6 @@ public class RLArchitecture implements ReasoningArchitecture {
                 return Action.move(dx, dy, 0);
             }
             case TURN_LEFT -> {
-                // We emulate turning by moving with a slight angle change?
-                // No, Action.move updates heading if we give direction.
-                // We need to calculate new direction vector.
                 float newHeading = ind.getHeading() + 0.5f;
                 dx = (float) Math.cos(newHeading) * speed;
                 dy = (float) Math.sin(newHeading) * speed;

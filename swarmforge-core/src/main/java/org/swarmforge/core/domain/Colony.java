@@ -110,6 +110,7 @@ public class Colony implements java.io.Serializable {
         Individual ind = new Individual(this.id, Individual.Caste.QUEEN, nestX, nestY, nestZ);
         ind.setSpecies(this.species);
         ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+        addIndividual(ind);
         return ind;
     }
 
@@ -117,6 +118,7 @@ public class Colony implements java.io.Serializable {
         Individual ind = new Individual(this.id, Individual.Caste.WORKER, nestX, nestY, nestZ);
         ind.setSpecies(this.species);
         ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+        addIndividual(ind);
         return ind;
     }
 
@@ -124,6 +126,7 @@ public class Colony implements java.io.Serializable {
         Individual ind = new Individual(this.id, Individual.Caste.SOLDIER, nestX, nestY, nestZ);
         ind.setSpecies(this.species);
         ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+        addIndividual(ind);
         return ind;
     }
 
@@ -131,6 +134,7 @@ public class Colony implements java.io.Serializable {
         Individual ind = new Individual(this.id, Individual.Caste.MALE, nestX, nestY, nestZ);
         ind.setSpecies(this.species);
         ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+        addIndividual(ind);
         return ind;
     }
 

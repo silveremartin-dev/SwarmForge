@@ -11,6 +11,8 @@ import org.swarmforge.core.behavior.ReasoningArchitecture.Action;
 import org.swarmforge.core.behavior.ReasoningArchitecture.ActionResult;
 import org.swarmforge.core.genetics.Genome;
 
+import org.swarmforge.core.behavior.AgentView;
+
 /**
  * Represents an individual eusocial insect in the simulation.
  * Uses a sealed interface for type-safe caste representation.
@@ -18,7 +20,7 @@ import org.swarmforge.core.genetics.Genome;
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
-public class Individual implements java.io.Serializable {
+public class Individual implements java.io.Serializable, AgentView {
     private static final long serialVersionUID = 1L;
 
     private final UUID id;
@@ -307,6 +309,11 @@ public class Individual implements java.io.Serializable {
         this.homeX = homeX;
         this.homeY = homeY;
         this.homeZ = homeZ;
+    }
+    
+    @Override
+    public boolean isAtNest() {
+        return (Math.abs(x - homeX) < 2.0 && Math.abs(y - homeY) < 2.0);
     }
 
     public boolean isCarryingFood() {

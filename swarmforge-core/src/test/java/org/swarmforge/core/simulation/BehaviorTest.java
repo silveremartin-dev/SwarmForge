@@ -34,7 +34,7 @@ class BehaviorTest {
         species.setScientificName("Testus Behaviorus");
         colony = new Colony(species, 25f, 25f, 5f);
         simulation.addColony(colony);
-        simulation.start();
+        // simulation.start(); // Removed to avoid race condition with manual ticking
 
         // Ensure entrance is clear
         terrarium.setCell(org.swarmforge.core.domain.TerrariumCell.air(25, 25, 5));
@@ -56,14 +56,27 @@ class BehaviorTest {
         float startX = ant.getX();
         float startY = ant.getY();
 
+        // Manual check of brain decision
+        org.swarmforge.core.behavior.ReasoningArchitecture.Action action = ant.getBrain().decide(ant, null);
+        assertNotNull(action);
+        System.out.println("Brain decided: " + action.type());
+        if (action.type() == org.swarmforge.core.behavior.ReasoningArchitecture.Action.ActionType.MOVE) {
+             System.out.println("Move Vector: " + action.directionX() + ", " + action.directionY());
+             assertEquals(1.0f, action.intensity());
+        }
+
         // Run simulation for a few ticks
         for (int i = 0; i < 10; i++) {
             simulation.tick();
         }
-
-        // Verify movement occurred (FSM default behavior is to explore/move randomly)
-        // Note: It's possible but unlikely it moved exactly back to 0,0, checking for
-        // change
+        
+        System.out.println("End Pos: " + ant.getX() + "," + ant.getY());
+        
+        // If simulation loop fails, at least we checked the brain above.
+        // We can relax the integration test if the unit test (brain check) passes.
+        // But preventing regression in simulation loop is good.
+        // If x is still startX, then Simulation loop is broken for legacy brains.
+        
         assertFalse(ant.getX() == startX && ant.getY() == startY,
                 "Ant should have moved from initial position under FSM control");
     }

@@ -12,6 +12,7 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
+import com.jme3.scene.instancing.InstancedNode;
 import com.jme3.scene.shape.Box;
 import com.jme3.system.AppSettings;
 import com.jme3.light.DirectionalLight;
@@ -24,6 +25,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * JMonkeyEngine 3D Viewer for SwarmForge.
  * Runs in a separate window/thread from the JavaFX controller.
+ * 
+ * Optimized with Hardware Instancing for mass rendering.
  *
  * @author Gemini AI Assistant
  * @author Silvère Martin-Michiellot
@@ -31,11 +34,15 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class SwarmViewerApp extends SimpleApplication {
 
     private final ConcurrentLinkedQueue<Runnable> updateQueue = new ConcurrentLinkedQueue<>();
+    // Keep track of geometries to update their transforms
     private final Map<String, Geometry> entities = new ConcurrentHashMap<>();
-    private Node antNode;
+    
+    // InstancedNode for optimized rendering (Hardware Instancing)
+    private InstancedNode antNode;
 
     private Material antMaterial;
     private Material floorMaterial;
+    private Box antMesh; // Shared mesh
 
     public SwarmViewerApp() {
         // Configure settings
@@ -43,6 +50,7 @@ public class SwarmViewerApp extends SimpleApplication {
         settings.setTitle("SwarmForge 3D Viewport");
         settings.setResolution(1280, 720);
         settings.setVSync(true);
+        // Important: Enable Gamma Correction if needed, but not strictly for perf
         setSettings(settings);
     }
 
@@ -64,8 +72,11 @@ public class SwarmViewerApp extends SimpleApplication {
         cam.lookAt(new Vector3f(50, 0, 50), Vector3f.UNIT_Y);
 
         // 3. Setup Materials
+        // Use Lighting definition for proper shading if available, but Unshaded is faster for tests
         antMaterial = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         antMaterial.setColor("Color", ColorRGBA.Red);
+        // ENABLE INSTANCING
+        antMaterial.setBoolean("UseInstancing", true);
 
         floorMaterial = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         floorMaterial.setColor("Color", ColorRGBA.DarkGray);
@@ -77,17 +88,37 @@ public class SwarmViewerApp extends SimpleApplication {
         floor.setLocalTranslation(50, -0.1f, 50);
         rootNode.attachChild(floor);
 
-        // 5. Ant Container
-        antNode = new Node("Ants");
+        // 5. Ant Container (InstancedNode)
+        antNode = new InstancedNode("Ants");
         rootNode.attachChild(antNode);
+        
+        // Pre-create shared mesh
+        antMesh = new Box(0.4f, 0.2f, 0.6f);
     }
 
     @Override
     public void simpleUpdate(float tpf) {
         // Process updates from network thread
         Runnable task;
-        while ((task = updateQueue.poll()) != null) {
+        boolean needsInstanceUpdate = false;
+        
+        // Limit number of updates per frame to avoid choking if queue is huge
+        int updates = 0;
+        int maxUpdates = 10000; 
+
+        while (updates < maxUpdates && (task = updateQueue.poll()) != null) {
             task.run();
+            needsInstanceUpdate = true;
+            updates++;
+        }
+        
+        // If we added/moved stuff, we might need to refresh instances if using InstancedNode
+        // Note: For InstancedNode, simply moving the geometry children requires call to instance()
+        // if the structure changed. But for simple translation updates of children, 
+        // JME's InstancedNode might need a re-instance call to update buffers.
+        // This is the trade-off. For 100k moving items, re-uploading the buffer is necessary.
+        if (needsInstanceUpdate) {
+            antNode.instance();
         }
     }
 
@@ -99,9 +130,9 @@ public class SwarmViewerApp extends SimpleApplication {
             Geometry geom = entities.get(id);
             if (geom == null) {
                 // Create new ant
-                Box b = new Box(0.4f, 0.2f, 0.6f);
-                geom = new Geometry(id, b);
+                geom = new Geometry(id, antMesh);
                 geom.setMaterial(antMaterial);
+                // Attach to InstancedNode
                 antNode.attachChild(geom);
                 entities.put(id, geom);
             }
@@ -117,22 +148,17 @@ public class SwarmViewerApp extends SimpleApplication {
         updateQueue.offer(() -> {
             Geometry geom = entities.remove(id);
             if (geom != null) {
-                geom.removeFromParent();
+                geom.removeFromParent(); // Detach from InstancedNode
             }
         });
     }
 
     public void startViewer() {
-        // Start JME in a new thread context implicitly handled by start()
-        // But we want to call this from JavaFX thread without blocking it?
-        // JME start() blocks if appType is not distinct.
-        // Actually, start() spawns a thread.
         this.start();
     }
 
     @Override
     public void destroy() {
         super.destroy();
-        // Notify JavaFX controller if needed
     }
 }
