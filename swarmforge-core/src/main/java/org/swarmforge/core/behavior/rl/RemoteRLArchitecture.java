@@ -71,8 +71,18 @@ public class RemoteRLArchitecture implements ReasoningArchitecture {
         fallbackBrain.initialize(agent);
     }
 
+    private long lastDecisionTime = 0;
+    private Action currentAction = null;
+    private long actionDuration = 0;
+
     @Override
     public Action decide(AgentView agent, SimulationContext context) {
+        long now = System.currentTimeMillis();
+
+        if (currentAction != null && (now - lastDecisionTime) < actionDuration) {
+            return currentAction;
+        }
+
         try {
             // 1. Observe
             Observation observation = observe(agent, context);
@@ -90,7 +100,15 @@ public class RemoteRLArchitecture implements ReasoningArchitecture {
             int actionIndex = response.getActionIndex();
             // this.lastActionIndex = actionIndex; // Removed unused field
 
-            return decodeAction(actionIndex, agent);
+            Action newAction = decodeAction(actionIndex, agent);
+            
+            // Set cooldown based on action type (very simple heuristic for now)
+            // e.g. MOVE takes 500ms, FORAGE takes 2000ms
+            this.lastDecisionTime = now;
+            this.currentAction = newAction;
+            this.actionDuration = (long) (500 + Math.random() * 500); // Randomize slightly
+
+            return newAction;
 
         } catch (Exception e) {
             // LOG.warning("Remote inference failed: " + e.getMessage() + ". Falling
