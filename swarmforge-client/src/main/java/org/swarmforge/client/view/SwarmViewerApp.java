@@ -50,6 +50,7 @@ public class SwarmViewerApp extends SimpleApplication {
         settings.setTitle("SwarmForge 3D Viewport");
         settings.setResolution(1280, 720);
         settings.setVSync(true);
+        settings.setSamples(0); // Optimization for mass rendering
         // Important: Enable Gamma Correction if needed, but not strictly for perf
         setSettings(settings);
     }

@@ -7,6 +7,7 @@ import org.swarmforge.core.ecs.components.InventoryComponent;
 import org.swarmforge.core.ecs.components.PositionComponent;
 import org.swarmforge.core.ecs.components.VelocityComponent;
 import org.swarmforge.core.ecs.components.MetabolismComponent;
+import org.swarmforge.core.ecs.components.ColonyComponent;
 
 /**
  * Basic AI behavior system for foraging.
@@ -17,9 +18,10 @@ public class ForagingSystem extends IteratingSystem {
     ComponentMapper<VelocityComponent> mVel;
     ComponentMapper<InventoryComponent> mInv;
     ComponentMapper<MetabolismComponent> mMeta; // Only live ants forage
+    ComponentMapper<ColonyComponent> mColony;
 
     public ForagingSystem() {
-        super(Aspect.all(PositionComponent.class, VelocityComponent.class, InventoryComponent.class));
+        super(Aspect.all(PositionComponent.class, VelocityComponent.class, InventoryComponent.class, ColonyComponent.class));
     }
 
     @Override
@@ -50,7 +52,12 @@ public class ForagingSystem extends IteratingSystem {
             if (dist < 1.0f) {
                 // Arrived at nest -> Drop food
                 inv.carriedItem = InventoryComponent.ItemType.NONE;
-                // TODO: Add to Colony resource stock (requires global reference or Singleton)
+                // Add to Colony resource stock
+                java.util.UUID colonyId = mColony.get(entityId).colonyId;
+                org.swarmforge.core.domain.Colony colony = org.swarmforge.core.ecs.ColonyRegistry.getColony(colonyId);
+                if (colony != null) {
+                    colony.addResource(org.swarmforge.core.domain.ResourceType.SEED, 1.0f);
+                }
             } else {
                 // Move towards nest
                 vel.dx = (dx / dist) * vel.speed;

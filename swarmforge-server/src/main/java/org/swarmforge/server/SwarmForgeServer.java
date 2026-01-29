@@ -15,10 +15,10 @@ import org.swarmforge.server.persistence.DatabaseManager;
 import org.swarmforge.server.persistence.RedisCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
-import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
-import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
-import io.grpc.netty.shaded.io.netty.handler.ssl.util.SelfSignedCertificate;
+import io.grpc.netty.NettyServerBuilder;
+import io.grpc.netty.GrpcSslContexts;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.util.SelfSignedCertificate;
 
 /**
  * Main server application for SwarmForge.
@@ -177,7 +177,7 @@ public class SwarmForgeServer {
             // Generate self-signed certificate for development
             SelfSignedCertificate ssc = new SelfSignedCertificate();
             sslContext = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey())
-                    .sslProvider(io.grpc.netty.shaded.io.netty.handler.ssl.SslProvider.OPENSSL) // Use tcnative if
+                    .sslProvider(io.netty.handler.ssl.SslProvider.OPENSSL) // Use tcnative if
                                                                                                 // available
                     .build();
             LOG.info("TLS Enabled using self-signed certificate (SHA256: {})", ssc.certificate().getName());

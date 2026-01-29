@@ -15,11 +15,12 @@ public class AiSystem extends IteratingSystem {
     ComponentMapper<VelocityComponent> mVel;
     ComponentMapper<InventoryComponent> mInv;
     ComponentMapper<MetabolismComponent> mMeta;
+    ComponentMapper<ColonyComponent> mColony;
 
     // Sub-systems or Logic helpers could be injected here
 
     public AiSystem() {
-        super(Aspect.all(AiComponent.class, PositionComponent.class, VelocityComponent.class));
+        super(Aspect.all(AiComponent.class, PositionComponent.class, VelocityComponent.class, ColonyComponent.class));
     }
 
     @Override
@@ -87,6 +88,7 @@ public class AiSystem extends IteratingSystem {
         agentAdapter.mVel = mVel;
         agentAdapter.mInv = mInv;
         agentAdapter.mMeta = mMeta;
+        agentAdapter.mColony = mColony;
     }
 
     private void runRlAgent(int entityId) {
@@ -146,6 +148,11 @@ public class AiSystem extends IteratingSystem {
             case DEPOSIT_FOOD -> {
                 InventoryComponent inv = mInv.get(entityId);
                 inv.carriedItem = InventoryComponent.ItemType.NONE;
+                java.util.UUID colonyId = mColony.get(entityId).colonyId;
+                org.swarmforge.core.domain.Colony colony = org.swarmforge.core.ecs.ColonyRegistry.getColony(colonyId);
+                if (colony != null) {
+                    colony.addResource(org.swarmforge.core.domain.ResourceType.SEED, 1.0f);
+                }
             }
             case EXPLORE -> {
                 // Random walk

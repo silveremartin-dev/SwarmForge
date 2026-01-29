@@ -18,6 +18,7 @@ public class EcsIntegrationTest {
 
     @Test
     public void testFullEcsPipeline() {
+        java.util.UUID colonyId = java.util.UUID.randomUUID();
         WorldConfiguration config = new WorldConfigurationBuilder()
                 // Core
                 .with(new MovementSystem())
@@ -48,6 +49,20 @@ public class EcsIntegrationTest {
         world.edit(entityId)
              .create(AiComponent.class).type = AiComponent.AiType.SIMPLE_FORAGER; // Test Switch
              
+        world.edit(entityId)
+             .create(ColonyComponent.class).colonyId = colonyId;
+             
+        // Register in ColonyRegistry to avoid NPE in ForagingSystem
+        org.swarmforge.core.domain.Colony mockColony = new org.swarmforge.core.domain.Colony(new org.swarmforge.core.species.LasiusNiger(), 50, 0, 50);
+        // Force the ID to match
+        java.lang.reflect.Field idField;
+        try {
+            idField = org.swarmforge.core.domain.Colony.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(mockColony, colonyId);
+        } catch (Exception e) {}
+        org.swarmforge.core.ecs.ColonyRegistry.register(mockColony);
+
         // Create Soil Entity
         int soilEntityId = world.create();
         world.edit(soilEntityId).create(SoilComponent.class).moisture = 0.5f;

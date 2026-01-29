@@ -28,7 +28,7 @@ public class LeaderboardTest {
                                 .addService(new LeaderboardServiceImpl())
                                 .build()
                                 .start();
-                grpcCleanup.register(server);
+                grpcCleanup.register(java.util.Objects.requireNonNull(server));
 
                 // 2. Setup Client
                 ManagedChannel channel = grpcCleanup

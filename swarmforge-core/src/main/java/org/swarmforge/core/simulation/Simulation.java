@@ -108,6 +108,7 @@ public class Simulation {
 
     public void addColony(Colony colony) {
         colonies.add(colony);
+        org.swarmforge.core.ecs.ColonyRegistry.register(colony);
         colony.addListener(new ColonyObserver());
     }
 

@@ -18,12 +18,12 @@ public class EcsAgentAdapter implements AgentView {
     public ComponentMapper<VelocityComponent> mVel;
     public ComponentMapper<InventoryComponent> mInv;
     public ComponentMapper<MetabolismComponent> mMeta;
+    public ComponentMapper<ColonyComponent> mColony;
     
     // Configuration / Constants
     private final float homeX = 50f; // Mock
     private final float homeY = 0f;
     private final float homeZ = 50f;
-    private final UUID colonyId = UUID.randomUUID(); // Mock
 
     public void setEntityId(int entityId) {
         this.entityId = entityId;
@@ -86,5 +86,10 @@ public class EcsAgentAdapter implements AgentView {
     }
 
     @Override
-    public UUID getColonyId() { return colonyId; }
+    public UUID getColonyId() { 
+        if (mColony.has(entityId)) {
+            return mColony.get(entityId).colonyId;
+        }
+        return null;
+    }
 }

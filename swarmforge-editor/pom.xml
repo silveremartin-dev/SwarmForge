@@ -44,7 +44,7 @@
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty-shaded</artifactId>
+            <artifactId>grpc-netty</artifactId>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
@@ -118,7 +118,7 @@
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
-                        <phase>verify</phase>
+                        <phase>none</phase>
                         <goals>
                             <goal>copy-dependencies</goal>
                         </goals>
@@ -127,6 +127,7 @@
                             <overWriteReleases>false</overWriteReleases>
                             <overWriteSnapshots>false</overWriteSnapshots>
                             <overWriteIfNewer>true</overWriteIfNewer>
+                            <excludeGroupIds>org.swarmforge</excludeGroupIds>
                         </configuration>
                     </execution>
                 </executions>

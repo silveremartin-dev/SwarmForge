@@ -679,10 +679,6 @@ public class Individual implements java.io.Serializable, AgentView {
         return attackDamage;
     }
 
-    public void setAttackDamage(float attackDamage) {
-        this.attackDamage = attackDamage;
-    }
-
     public float getMaxHealth() {
         return maxHealth;
     }
