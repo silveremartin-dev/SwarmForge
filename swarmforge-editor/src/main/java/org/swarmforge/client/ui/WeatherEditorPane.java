@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -43,7 +43,7 @@ public class WeatherEditorPane extends BorderPane {
 
     public WeatherEditorPane() {
         setPadding(new Insets(15));
-        setStyle("-fx-background-color: #1a1a2e;");
+
 
         // Title
         Label title = new Label("🌦 Weather & Climate Editor");

@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -81,6 +81,17 @@ public class PluginManager {
                 }
             }
         }
+    }
+
+    /**
+     * Programmatically register an in-memory plugin instance.
+     */
+    public void registerPlugin(SwarmForgePlugin plugin) {
+        loadedPlugins.put(plugin.getId(), plugin);
+        if (context != null) {
+            plugin.onLoad(context);
+        }
+        LOG.info("Registered plugin: " + plugin.getName() + " v" + plugin.getVersion());
     }
 
     /**

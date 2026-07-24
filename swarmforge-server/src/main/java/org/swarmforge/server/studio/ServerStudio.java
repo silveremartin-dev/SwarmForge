@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -32,6 +32,13 @@ public class ServerStudio extends Application {
         primaryStage.setTitle("SwarmForge Studio - Server & Simulation Manager");
         primaryStage.setWidth(1280);
         primaryStage.setHeight(800);
+
+        try {
+            java.io.InputStream iconStream = getClass().getResourceAsStream("/icons/icon.png");
+            if (iconStream != null) {
+                primaryStage.getIcons().add(new javafx.scene.image.Image(iconStream));
+            }
+        } catch (Exception ignored) {}
 
         BorderPane root = new BorderPane();
         TabPane mainTabs = new TabPane();

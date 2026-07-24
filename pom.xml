@@ -3,7 +3,7 @@
   SwarmForge - Eusocial Insect Simulation
   
   MIT License
-  Copyright (c) 2022-2025 Silvère Martin-Michiellot
+  Copyright (c) 2022-2026 Silvère Martin-Michiellot
   AI Assistant: Gemini (Google DeepMind)
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -258,7 +258,14 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.11</version>
+                <version>0.8.13</version>
+                <configuration>
+                    <excludes>
+                        <exclude>sun/**</exclude>
+                        <exclude>com/sun/**</exclude>
+                        <exclude>jdk/internal/**</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>

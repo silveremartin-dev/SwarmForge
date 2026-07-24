@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -37,19 +37,43 @@ public class ClientApp extends Application {
     public void start(Stage primaryStage) {
         LOG.info("Starting SwarmForge Client...");
 
+        // Load Application Icon
+        try {
+            java.io.InputStream iconStream = getClass().getResourceAsStream("/icons/icon.png");
+            if (iconStream != null) {
+                primaryStage.getIcons().add(new javafx.scene.image.Image(iconStream));
+            }
+        } catch (Exception e) {
+            LOG.warning("Could not load application icon: " + e.getMessage());
+        }
+
         // Connection Dialog
         VBox root = new VBox(20);
         root.setPadding(new Insets(30));
         root.setAlignment(Pos.CENTER);
-        // root.setStyle("-fx-background-color: linear-gradient(to bottom, #1a1a2e, #16213e);"); // REMOVED
+
+        // Header with Icon
+        HBox titleBox = new HBox(12);
+        titleBox.setAlignment(Pos.CENTER);
+        
+        try {
+            java.io.InputStream headerIconStream = getClass().getResourceAsStream("/icons/icon.png");
+            if (headerIconStream != null) {
+                javafx.scene.image.ImageView logoView = new javafx.scene.image.ImageView(new javafx.scene.image.Image(headerIconStream));
+                logoView.setFitWidth(40);
+                logoView.setFitHeight(40);
+                logoView.setPreserveRatio(true);
+                titleBox.getChildren().add(logoView);
+            }
+        } catch (Exception ignored) {}
 
         // Title
         Label title = new Label("SwarmForge Viewer");
         title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
-        // title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;"); // REMOVED COLOR
+        titleBox.getChildren().add(title);
 
         Label subtitle = new Label("Connect to a running simulation");
-        subtitle.setStyle("-fx-font-size: 14px;"); // Keep size
+        subtitle.setStyle("-fx-font-size: 14px;");
 
         // Server Connection Form
         GridPane form = new GridPane();
@@ -58,7 +82,6 @@ public class ClientApp extends Application {
         form.setAlignment(Pos.CENTER);
 
         Label lblHost = new Label("Server Host:");
-        // lblHost.setStyle("-fx-text-fill: white;"); // REMOVED
         TextField txtHost = new TextField(serverHost);
         txtHost.setPromptText("localhost");
 
@@ -119,11 +142,11 @@ public class ClientApp extends Application {
         Label availableSimsLabel = new Label("Available Simulations");
         availableSimsLabel.setId("availableSimsLabel");
 
-        root.getChildren().addAll(title, subtitle, new Separator(), form, chkGodMode,
+        root.getChildren().addAll(titleBox, subtitle, new Separator(), form, chkGodMode,
                 availableSimsLabel,
                 simList, buttons, status);
 
-        Scene scene = new Scene(root, 500, 550);
+        Scene scene = new Scene(root, 500, 570);
         primaryStage.setTitle("SwarmForge Viewer");
         primaryStage.setScene(scene);
         primaryStage.setOnCloseRequest(e -> {

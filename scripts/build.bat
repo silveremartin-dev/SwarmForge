@@ -1,17 +1,21 @@
 @echo off
-echo ==========================================
-echo      SwarmForge Build Script (Windows)
-echo ==========================================
+REM SwarmForge Build Script (Windows)
+
+echo ========================================
+echo   SwarmForge - Build Script (Windows)
+echo ========================================
+echo.
+
+cd /d "%~dp0.."
 
 echo Building project with Maven...
-call mvn clean install -DskipTests
-
-if %ERRORLEVEL% NEQ 0 (
-    echo Build Failed!
+call mvn clean install -DskipTests %*
+if errorlevel 1 (
+    echo.
+    echo ERROR: Build Failed!
     pause
-    exit /b %ERRORLEVEL%
+    exit /b 1
 )
 
 echo.
 echo Build Successful!
-pause

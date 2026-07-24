@@ -1,4 +1,4 @@
-# SwarmForge - Eusocial Insect Simulation Platform
+﻿# SwarmForge - Eusocial Insect Simulation Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://openjdk.org/projects/jdk/21/)
@@ -108,7 +108,7 @@ SwarmForge supports distributed simulation across multiple compute nodes:
 
 ## 📜 License
 
-MIT License - Copyright (c) 2022-2025 Silvère Martin-Michiellot
+MIT License - Copyright (c) 2022-2026 Silvère Martin-Michiellot
 
 ## 👥 Authors
 

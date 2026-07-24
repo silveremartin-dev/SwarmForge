@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -53,7 +53,7 @@ public class MetricsServer {
         server.start();
         running = true;
 
-        System.out.println("📊 Metrics server started on http://localhost:" + port + "/metrics");
+        System.out.println("Metrics server started on http://localhost:" + port + "/metrics");
     }
 
     /**
@@ -63,7 +63,7 @@ public class MetricsServer {
         if (server != null && running) {
             server.stop(1);
             running = false;
-            System.out.println("📊 Metrics server stopped");
+            System.out.println("Metrics server stopped");
         }
     }
 

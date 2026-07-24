@@ -94,6 +94,16 @@
                 </configuration>
             </plugin>
 
+            <!-- Exec Plugin for running via exec:java -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>org.swarmforge.client.Launcher</mainClass>
+                </configuration>
+            </plugin>
+
             <!-- Jar Plugin to configure Manifest -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

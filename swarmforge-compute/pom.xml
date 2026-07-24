@@ -1,10 +1,10 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <!--
   SwarmForge - Eusocial Insect Simulation
   Compute Node - Distributed computing worker for simulation processing
   
   MIT License
-  Copyright (c) 2022-2025 Silvère Martin-Michiellot
+  Copyright (c) 2022-2026 Silvère Martin-Michiellot
   AI Assistant: Gemini (Google DeepMind)
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"

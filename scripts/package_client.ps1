@@ -3,19 +3,22 @@
 
 $VERSION = "2.0.0"
 $APP_NAME = "SwarmForgeClient"
-$MAIN_JAR = "swarmforge-client-javafx-2.0.0-SNAPSHOT.jar"
+$MAIN_JAR = "swarmforge-client-2.0.0-SNAPSHOT.jar"
 $INPUT_DIR = "target"
 $OUTPUT_DIR = "dist"
 
+$REPO_ROOT = Split-Path -Path $PSScriptRoot -Parent
+Set-Location $REPO_ROOT
+
 Write-Host "🚧 Building SwarmForge Client..."
-mvn clean package -pl swarmforge-client-javafx -am -DskipTests
+mvn clean package -pl swarmforge-client -am -DskipTests
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Build failed!"
     exit 1
 }
 
-$CLIENT_DIR = "swarmforge-client-javafx"
+$CLIENT_DIR = "swarmforge-client"
 Push-Location $CLIENT_DIR
 
 # Ensure output directory exists and is empty
@@ -25,11 +28,6 @@ if (Test-Path $OUTPUT_DIR) {
 New-Item -ItemType Directory -Force -Path $OUTPUT_DIR | Out-Null
 
 Write-Host "📦 Creating native package with jpackage..."
-
-# Note: Ideally we would use --module-path and --module, but current project structure is mixed modular/non-modular.
-# So we use --input (containing main jar + libs folder) and --main-jar.
-# Maven Copy Dependencies puts libs in target/libs.
-# jar plugin puts main jar in target.
 
 jpackage `
   --name $APP_NAME `

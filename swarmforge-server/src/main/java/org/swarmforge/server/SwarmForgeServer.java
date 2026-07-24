@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -46,9 +46,11 @@ public class SwarmForgeServer {
     private final org.swarmforge.server.rest.RestApiServer restApiServer;
     private org.swarmforge.server.net.SwarmForgeWebSocketServer webSocketServer;
     private final int grpcPort;
+    private final ServerConfig config;
     private io.grpc.Server grpcServer;
 
     public SwarmForgeServer(ServerConfig config) {
+        this.config = config;
         this.grpcPort = config.grpcPort();
 
         // Initialize Simulation Manager
@@ -94,67 +96,46 @@ public class SwarmForgeServer {
     // ... constructors ...
 
     public void start() throws Exception {
-        LOG.info("Starting SwarmForge Server...");
-
-        // Check Infrastructure & Auto-Start
         try {
-            boolean postgresRunning = isPortOpen("localhost", 5432);
-            boolean redisRunning = isPortOpen("localhost", 6379);
+            LOG.info("Starting SwarmForge Server...");
 
-            if (!postgresRunning || !redisRunning) {
-                LOG.warn("Infrastructure (Postgres/Redis) appears down. Attempting auto-start...");
-                ProcessBuilder pb = new ProcessBuilder("docker-compose", "up", "-d");
-                pb.inheritIO();
-                Process p = pb.start();
-                int exitCode = p.waitFor();
-                
-                if (exitCode == 0) {
-                    LOG.info("Auto-start command executed. Waiting for services to initialize...");
-                    for (int i = 0; i < 10; i++) {
-                         Thread.sleep(1000);
-                         if (isPortOpen("localhost", 5432) && isPortOpen("localhost", 6379)) {
-                             LOG.info("Services are now reachable.");
-                             break;
-                         }
-                         LOG.info("Waiting for ports...");
+        // Check Infrastructure & Auto-Start (only if database host is configured)
+        if (config.dbHost() != null && !config.dbHost().trim().isEmpty()) {
+            try {
+                boolean postgresRunning = isPortOpen("localhost", 5432);
+                boolean redisRunning = isPortOpen("localhost", 6379);
+
+                if (!postgresRunning || !redisRunning) {
+                    LOG.warn("Infrastructure (Postgres/Redis) appears down. Attempting auto-start...");
+                    Process p = null;
+                    try {
+                        p = new ProcessBuilder("docker-compose", "up", "-d").inheritIO().start();
+                    } catch (Exception e) {
+                        try {
+                            p = new ProcessBuilder("docker", "compose", "up", "-d").inheritIO().start();
+                        } catch (Exception ex) {
+                            LOG.warn("Could not invoke docker-compose or docker compose: " + ex.getMessage());
+                        }
                     }
-                } else {
-                    LOG.error("Failed to auto-start infrastructure (exit code " + exitCode + ")");
-                }
-            }
-        } catch (Exception e) {
-            LOG.warn("Auto-start check failed: " + e.getMessage());
-        }
-
-        // Connect to databases
-        // Auto-Start Check
-        try {
-            boolean postgresRunning = isPortOpen("localhost", 5432);
-            boolean redisRunning = isPortOpen("localhost", 6379);
-
-            if (!postgresRunning || !redisRunning) {
-                LOG.warn("Infrastructure (Postgres/Redis) appears down. Attempting auto-start...");
-                ProcessBuilder pb = new ProcessBuilder("docker-compose", "up", "-d");
-                pb.inheritIO();
-                Process p = pb.start();
-                int exitCode = p.waitFor();
-                
-                if (exitCode == 0) {
-                    LOG.info("Auto-start command executed. Waiting for services to initialize...");
-                    for (int i = 0; i < 10; i++) {
-                         Thread.sleep(1000);
-                         if (isPortOpen("localhost", 5432) && isPortOpen("localhost", 6379)) {
-                             LOG.info("Services are now reachable.");
-                             break;
-                         }
-                         LOG.info("Waiting for ports...");
+                    if (p != null) {
+                        int exitCode = p.waitFor();
+                        if (exitCode == 0) {
+                            LOG.info("Auto-start command executed. Waiting for services to initialize...");
+                            for (int i = 0; i < 10; i++) {
+                                Thread.sleep(500);
+                                if (isPortOpen("localhost", 5432) && isPortOpen("localhost", 6379)) {
+                                    LOG.info("Services are now reachable.");
+                                    break;
+                                }
+                            }
+                        } else {
+                            LOG.warn("Auto-start Docker infrastructure exited with code " + exitCode);
+                        }
                     }
-                } else {
-                    LOG.error("Failed to auto-start infrastructure (exit code " + exitCode + ")");
                 }
+            } catch (Exception e) {
+                LOG.warn("Auto-start check skipped or failed: " + e.getMessage());
             }
-        } catch (Exception e) {
-            LOG.warn("Auto-start check failed: " + e.getMessage());
         }
 
         try {
@@ -171,41 +152,42 @@ public class SwarmForgeServer {
             LOG.warn("Redis connection failed (caching disabled): {}", e.getMessage());
         }
 
-        // TLS Setup
+        // TLS Setup (only in online mode)
         SslContext sslContext = null;
-        try {
-            // Generate self-signed certificate for development
-            SelfSignedCertificate ssc = new SelfSignedCertificate();
-            sslContext = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey())
-                    .sslProvider(io.netty.handler.ssl.SslProvider.OPENSSL) // Use tcnative if
-                                                                                                // available
-                    .build();
-            LOG.info("TLS Enabled using self-signed certificate (SHA256: {})", ssc.certificate().getName());
-        } catch (Exception e) {
-            LOG.warn("Failed to initialize Native TLS (OpenSSL), falling back to JDK SSL or insecure: "
-                    + e.getMessage());
+        if (config.dbHost() != null && !config.dbHost().trim().isEmpty()) {
             try {
-                // Fallback to JDK provider if OpenSSL fails
                 SelfSignedCertificate ssc = new SelfSignedCertificate();
-                sslContext = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey()).build();
-                LOG.info("TLS Enabled using JDK SSL (Slower, but working)");
-            } catch (Exception e2) {
-                LOG.error("Could not initialize TLS at all: " + e2.getMessage());
-                throw new RuntimeException("TLS init failed", e2);
+                sslContext = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey())
+                        .sslProvider(io.netty.handler.ssl.SslProvider.OPENSSL)
+                        .build();
+                LOG.info("TLS Enabled using self-signed certificate");
+            } catch (Throwable e) {
+                LOG.warn("Failed to initialize Native TLS (OpenSSL), trying JDK SSL: " + e.getMessage());
+                try {
+                    SelfSignedCertificate ssc = new SelfSignedCertificate();
+                    sslContext = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey()).build();
+                    LOG.info("TLS Enabled using JDK SSL");
+                } catch (Throwable e2) {
+                    LOG.warn("Could not initialize TLS, running insecure: " + e2.getMessage());
+                    sslContext = null;
+                }
             }
+        } else {
+            LOG.info("Offline/Test Mode: gRPC Server running in plaintext mode");
         }
 
-        this.grpcServer = NettyServerBuilder.forPort(grpcPort)
-                .sslContext(sslContext)
-                .intercept(new org.swarmforge.server.security.JwtServerInterceptor()) // Register Interceptor
-                .addService(new org.swarmforge.server.grpc.AuthServiceImpl()) // Register Auth Service
+        NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(grpcPort);
+        if (sslContext != null) {
+            serverBuilder.sslContext(sslContext);
+        }
+
+        this.grpcServer = serverBuilder
+                .intercept(new org.swarmforge.server.security.JwtServerInterceptor())
+                .addService(new org.swarmforge.server.grpc.AuthServiceImpl())
                 .addService(simulationService)
                 .addService(matchmakingService)
                 .addService(leaderboardService)
                 .addService(new org.swarmforge.server.ai.MockRLService())
-                // 1-160).
-                // Line 145 in original code had `getSimulation()`.
-                // I need to be careful.
                 .build()
                 .start();
         LOG.info("gRPC Server (Secure) started on port " + grpcPort);
@@ -264,7 +246,10 @@ public class SwarmForgeServer {
         });
 
         printStatusBanner();
-
+        } catch (Throwable t) {
+            LOG.error("SERVER STARTUP FAILED CRITICALLY: ", t);
+            throw t;
+        }
     }
 
     // ... existing logic ...
@@ -312,9 +297,11 @@ public class SwarmForgeServer {
      * Print a clear status banner showing service states.
      */
     private void printStatusBanner() {
-        String dbStatus = database.isConnected() ? "✓ ONLINE" : "✗ OFFLINE";
+        String dbStatus = database.isConnected() 
+                ? (database.isH2Fallback() ? "[OK] H2 (MEM)" : "[OK] POSTGRES") 
+                : "[X] OFFLINE";
         String dbColor = database.isConnected() ? "\u001B[32m" : "\u001B[31m"; // Green/Red
-        String redisStatus = cache.isConnected() ? "✓ ONLINE" : "✗ OFFLINE";
+        String redisStatus = cache.isConnected() ? "[OK] ONLINE " : "[X] OFFLINE";
         String redisColor = cache.isConnected() ? "\u001B[32m" : "\u001B[31m";
         String reset = "\u001B[0m";
 
@@ -322,18 +309,18 @@ public class SwarmForgeServer {
         System.out.println("+------------------------------------------------------+");
         System.out.println("|          SWARMFORGE SERVER - STATUS                  |");
         System.out.println("+------------------------------------------------------+");
-        System.out.println("|  gRPC Server    : \u001B[32m✓ RUNNING\u001B[0m  (port " + grpcPort + ")            |");
-        System.out.println("|  PostgreSQL     : " + dbColor + dbStatus + reset + "                         |");
-        System.out.println("|  Redis Cache    : " + redisColor + redisStatus + reset + "                         |");
+        System.out.println("|  gRPC Server    : \u001B[32m[OK] RUNNING\u001B[0m  (port " + grpcPort + ")           |");
+        System.out.println("|  Database       : " + dbColor + dbStatus + reset + "                       |");
+        System.out.println("|  Redis Cache    : " + redisColor + redisStatus + reset + "                       |");
         System.out.println("+------------------------------------------------------+");
-        if (!database.isConnected()) {
-            System.out.println("|  \u001B[33m⚠ Persistence disabled - run 'start-docker' first\u001B[0m   |");
+        if (database.isH2Fallback()) {
+            System.out.println("|  \u001B[33m[!] Running in Standalone / H2 In-Memory Fallback\u001B[0m |");
         }
         if (!cache.isConnected()) {
-            System.out.println("|  \u001B[33m⚠ Caching disabled - run 'start-docker' first\u001B[0m       |");
+            System.out.println("|  \u001B[33m[!] Caching disabled - start Redis for caching\u001B[0m     |");
         }
-        if (database.isConnected() && cache.isConnected()) {
-            System.out.println("|  \u001B[32m✓ All services operational\u001B[0m                           |");
+        if (database.isConnected() && cache.isConnected() && !database.isH2Fallback()) {
+            System.out.println("|  \u001B[32m[OK] All production services operational\u001B[0m            |");
         }
         System.out.println("+------------------------------------------------------+");
         System.out.println();

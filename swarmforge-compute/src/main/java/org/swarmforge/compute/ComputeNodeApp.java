@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -88,17 +88,21 @@ public class ComputeNodeApp {
         server.awaitTermination();
     }
 
-    private void connectToServer() {
+    void connectToServer() {
         channel = ManagedChannelBuilder.forAddress(serverHost, serverPort)
                 .usePlaintext()
                 .build();
         stub = SimulationServiceGrpc.newBlockingStub(channel);
     }
 
-    private void registerWithServer() {
+    void registerWithServer() {
         LOG.info("Registering with server...");
         try {
-            String myAddress = InetAddress.getLocalHost().getHostAddress() + ":" + myPort;
+            String hostIp = "127.0.0.1";
+            try {
+                hostIp = InetAddress.getLocalHost().getHostAddress();
+            } catch (Exception ignored) {}
+            String myAddress = hostIp + ":" + myPort;
             RegisterNodeResponse response = stub.registerNode(
                     RegisterNodeRequest.newBuilder()
                             .setNodeId(nodeId)
@@ -110,16 +114,47 @@ public class ComputeNodeApp {
             if (response.getSuccess()) {
                 registered = true;
                 LOG.info("✓ Registered successfully as " + nodeId);
+                startHeartbeat();
             } else {
                 LOG.warning("Registration failed!");
             }
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Failed to register with server: " + e.getMessage());
+            LOG.log(Level.SEVERE, "Failed to register with server: " + e.getMessage(), e);
         }
+    }
+
+    private void startHeartbeat() {
+        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
+        heartbeatExecutor.scheduleAtFixedRate(() -> {
+            if (registered && stub != null) {
+                try {
+                    double systemCpuLoad = com.sun.management.OperatingSystemMXBean.class.isInstance(
+                            java.lang.management.ManagementFactory.getOperatingSystemMXBean())
+                            ? ((com.sun.management.OperatingSystemMXBean) java.lang.management.ManagementFactory.getOperatingSystemMXBean()).getCpuLoad()
+                            : 0.2;
+                    float cpuLoad = (float) Math.max(0.0, systemCpuLoad);
+                    stub.sendHeartbeat(HeartbeatRequest.newBuilder()
+                            .setNodeId(nodeId)
+                            .setCpuLoad(cpuLoad)
+                            .setGpuLoad(gpuEnabled ? 0.1f : 0.0f)
+                            .setTasksCompleted(1)
+                            .build());
+                } catch (Exception e) {
+                    LOG.fine("Heartbeat failed: " + e.getMessage());
+                }
+            }
+        }, 5, 5, TimeUnit.SECONDS);
+    }
+
+    public boolean isRegistered() {
+        return registered;
     }
 
     private void shutdown() {
         LOG.info("Shutting down compute node...");
+        if (heartbeatExecutor != null) {
+            heartbeatExecutor.shutdown();
+        }
         if (channel != null) {
             channel.shutdown();
         }
@@ -180,36 +215,51 @@ public class ComputeNodeApp {
         @Override
         public void processPheromones(PheromoneTaskRequest request,
                 StreamObserver<PheromoneTaskResponse> responseObserver) {
-            int size = request.getPheromonesCount();
-            float[] data = new float[size];
-            for (int i = 0; i < size; i++) {
-                data[i] = request.getPheromones(i);
-            }
-            float[] result = new float[size];
+            try {
+                int total3dElements = (request.getWidth() > 0 && request.getHeight() > 0 && request.getDepth() > 0)
+                        ? (request.getWidth() * request.getHeight() * request.getDepth() * 8)
+                        : Math.max(1, request.getPheromonesCount());
+                int size = Math.max(total3dElements, request.getPheromonesCount());
+                LOG.info("Processing pheromones RPC task (" + size + " elements)...");
+                float[] data = new float[size];
+                int pCount = request.getPheromonesCount();
+                for (int i = 0; i < pCount; i++) {
+                    data[i] = request.getPheromones(i);
+                }
+                float[] result = new float[size];
 
-            if (gpuEnabled) {
-                try {
-                    org.swarmforge.core.simulation.gpu.PheromoneKernel kernel = new org.swarmforge.core.simulation.gpu.PheromoneKernel(
+                boolean processedOnGpu = false;
+                if (gpuEnabled) {
+                    try {
+                        org.swarmforge.core.simulation.gpu.PheromoneKernel kernel = new org.swarmforge.core.simulation.gpu.PheromoneKernel(
+                                request.getWidth(), request.getHeight(), request.getDepth(),
+                                8, data, result, 0.1f, 0.01f);
+                        kernel.execute(request.getWidth() * request.getHeight() * request.getDepth());
+                        kernel.dispose();
+                        processedOnGpu = true;
+                    } catch (Throwable e) {
+                        LOG.warning("GPU execution failed, falling back to CPU processing: " + e.getMessage());
+                    }
+                }
+
+                if (!processedOnGpu) {
+                    org.swarmforge.core.simulation.gpu.PheromoneVectorFallback.processVectorized(
                             request.getWidth(), request.getHeight(), request.getDepth(),
                             8, data, result, 0.1f, 0.01f);
-                    kernel.execute(request.getWidth() * request.getHeight() * request.getDepth());
-                    kernel.dispose();
-                } catch (Exception e) {
-                    LOG.warning("GPU failed: " + e.getMessage());
-                    System.arraycopy(data, 0, result, 0, size);
                 }
-            } else {
-                System.arraycopy(data, 0, result, 0, size);
-            }
 
-            PheromoneTaskResponse.Builder builder = PheromoneTaskResponse.newBuilder()
-                    .setSuccess(true);
-            for (float f : result) {
-                builder.addNewPheromones(f);
-            }
+                PheromoneTaskResponse.Builder builder = PheromoneTaskResponse.newBuilder()
+                        .setSuccess(true);
+                for (float f : result) {
+                    builder.addNewPheromones(f);
+                }
 
-            responseObserver.onNext(builder.build());
-            responseObserver.onCompleted();
+                responseObserver.onNext(builder.build());
+                responseObserver.onCompleted();
+            } catch (Throwable t) {
+                LOG.log(Level.SEVERE, "Error in processPheromones: " + t.getMessage(), t);
+                responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(t.toString()).withCause(t).asRuntimeException());
+            }
         }
 
         @Override

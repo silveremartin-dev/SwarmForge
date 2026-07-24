@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -42,7 +42,6 @@ public class EventLogPane extends BorderPane {
 
     public EventLogPane() {
         setPadding(new Insets(10));
-        setStyle("-fx-background-color: #1a1a2e;");
 
         // Setup filtered list
         filteredEvents = new FilteredList<>(events, e -> true);
@@ -53,7 +52,7 @@ public class EventLogPane extends BorderPane {
         // Center: Event List
         eventListView = new ListView<>(filteredEvents);
         eventListView.setCellFactory(list -> new EventCell());
-        eventListView.setStyle("-fx-background-color: #0a0a1a;");
+
         setCenter(eventListView);
 
         // Bottom: Stats

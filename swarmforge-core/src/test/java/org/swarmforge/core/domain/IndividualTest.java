@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -87,7 +87,7 @@ class IndividualTest {
 
     @Test
     void testLifeStageProgression() {
-        Individual egg = new Individual(colonyId, Individual.Caste.WORKER, 0, 0, 0);
+        Individual egg = new Individual(colonyId, Individual.Caste.WORKER, 0f, 0f, 0f);
         egg.setLifeStage(Individual.LifeStage.EGG);
 
         assertEquals(Individual.LifeStage.EGG, egg.getLifeStage());

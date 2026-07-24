@@ -1,5 +1,5 @@
--- SwarmForge Database Schema
--- Copyright (c) 2022-2025 Silvère Martin-Michiellot
+﻿-- SwarmForge Database Schema
+-- Copyright (c) 2022-2026 Silvère Martin-Michiellot
 -- AI Assistant: Gemini (Google DeepMind)
 -- MIT License
 

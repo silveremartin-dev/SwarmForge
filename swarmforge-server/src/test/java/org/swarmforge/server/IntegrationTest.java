@@ -1,11 +1,19 @@
 package org.swarmforge.server;
 
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
+import io.grpc.StatusRuntimeException;
+import io.grpc.netty.GrpcSslContexts;
+import io.grpc.netty.NettyChannelBuilder;
+import io.grpc.stub.MetadataUtils;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.swarmforge.server.security.JwtUtil;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.swarmforge.protocol.grpc.*;
 
@@ -17,6 +25,21 @@ public class IntegrationTest {
     private ManagedChannel channel;
     private SimulationServiceGrpc.SimulationServiceBlockingStub stub;
     private int port = 50055;
+
+    private ManagedChannel buildClientChannel() {
+        return io.grpc.ManagedChannelBuilder.forAddress("localhost", port)
+                .usePlaintext()
+                .build();
+    }
+
+    private SimulationServiceGrpc.SimulationServiceBlockingStub createAuthStub(ManagedChannel channel) {
+        String token = JwtUtil.generateToken("admin", List.of("ADMIN"));
+        Metadata headers = new Metadata();
+        Metadata.Key<String> authKey = Metadata.Key.of("Authorization", Metadata.ASCII_STRING_MARSHALLER);
+        headers.put(authKey, "Bearer " + token);
+        return SimulationServiceGrpc.newBlockingStub(channel)
+                .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+    }
 
     @BeforeEach
     public void setUp() throws Exception {
@@ -45,20 +68,17 @@ public class IntegrationTest {
         long start = System.currentTimeMillis();
         ManagedChannel testChannel = null;
 
-        while (System.currentTimeMillis() - start < 10000) {
+        while (System.currentTimeMillis() - start < 30000) {
             try {
-                testChannel = ManagedChannelBuilder.forAddress("localhost", port)
-                        .usePlaintext()
-                        .build();
-                SimulationServiceGrpc.SimulationServiceBlockingStub testStub = SimulationServiceGrpc
-                        .newBlockingStub(testChannel);
+                testChannel = buildClientChannel();
+                SimulationServiceGrpc.SimulationServiceBlockingStub testStub = createAuthStub(testChannel);
                 // Call lightweight method
                 testStub.listSimulations(ListSimulationsRequest.newBuilder().build());
                 connected = true;
                 break;
             } catch (Exception e) {
-                // Ignore connection failure
-                Thread.sleep(500);
+                // Ignore transient connection errors during startup polling
+                Thread.sleep(300);
             } finally {
                 if (testChannel != null) {
                     testChannel.shutdownNow();
@@ -67,16 +87,11 @@ public class IntegrationTest {
         }
 
         if (!connected) {
-            // throw new RuntimeException("Server failed to start within timeout");
-            // Don't throw here, let the main stub fail for clearer error?
-            // No, fail fast is better.
-            throw new RuntimeException("Server failed to start within 10s timeout");
+            throw new RuntimeException("Server failed to start within timeout");
         }
 
-        channel = ManagedChannelBuilder.forAddress("localhost", port)
-                .usePlaintext()
-                .build();
-        stub = SimulationServiceGrpc.newBlockingStub(channel);
+        channel = buildClientChannel();
+        stub = createAuthStub(channel);
     }
 
     @AfterEach

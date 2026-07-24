@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -48,6 +48,16 @@ public class SwarmForgeClient extends Application {
     public void start(Stage primaryStage) {
         LOG.info("Starting SwarmForge Editor...");
         
+        // Window Icon
+        try {
+            java.io.InputStream iconStream = getClass().getResourceAsStream("/icons/icon.png");
+            if (iconStream != null) {
+                primaryStage.getIcons().add(new javafx.scene.image.Image(iconStream));
+            }
+        } catch (Exception e) {
+            LOG.warning("Could not load application icon: " + e.getMessage());
+        }
+
         // title binding
         primaryStage.titleProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("app.title"));
 
@@ -65,23 +75,27 @@ public class SwarmForgeClient extends Application {
         // --- TAB 1: SIMULATION MANAGER ---
         Tab simTab = new Tab();
         simTab.textProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("menu.tools")); // Reuse or new key
+        simTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SLIDERS));
         simTab.setContent(createSimulationManager());
 
         // --- TAB 2: WORLD EDITOR (3D View + Terrain Tools) ---
         Tab worldTab = new Tab("World Editor"); // TODO: Add key
+        worldTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.GLOBE));
         worldTab.setContent(createWorldEditor());
 
         // --- TAB 3: SPECIES EDITOR ---
         Tab speciesTab = new Tab();
-        speciesTab.textProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("species.queen")); // Placeholder key, should be "Species Editor"
+        speciesTab.textProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("species.queen")); // Placeholder key
+        speciesTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CPU));
         speciesTab.setContent(createSpeciesEditor());
 
         // --- Other Tabs (Weather, Nest, etc.) ---
-        // Keeping them simple for now to focus on Menu functionality
         Tab weatherTab = new Tab("Weather"); 
+        weatherTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SUN));
         weatherTab.setContent(new org.swarmforge.client.ui.WeatherEditorPane());
 
         Tab nestTab = new Tab("Nest");
+        nestTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.HOME));
         org.swarmforge.client.ui.NestGeneratorPane nestPane = new org.swarmforge.client.ui.NestGeneratorPane();
         nestPane.setOnApply(config -> {
              if (this.lastGeneratedTerrarium == null) {
@@ -95,10 +109,12 @@ public class SwarmForgeClient extends Application {
         nestTab.setContent(nestPane);
 
         Tab eventTab = new Tab("Log");
+        eventTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.FILE_TEXT));
         eventTab.setContent(new org.swarmforge.client.ui.EventLogPane());
 
         // God Mode
         Tab godTab = new Tab("God Mode");
+        godTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ZAP));
         godTab.setContent(new org.swarmforge.client.ui.InterventionPanel());
 
         mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, weatherTab, nestTab, eventTab, godTab);
@@ -268,7 +284,7 @@ public class SwarmForgeClient extends Application {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("About SwarmForge");
         alert.setHeaderText("SwarmForge v2.0.0");
-        alert.setContentText("Eusocial Insect Simulation Editor\n\nCopyright (c) 2025 Silvère Martin-Michiellot\nAssisted by Gemini AI");
+        alert.setContentText("Eusocial Insect Simulation Editor\n\nCopyright (c) 2026 Silvère Martin-Michiellot\nAssisted by Gemini AI");
         alert.show();
     }
 

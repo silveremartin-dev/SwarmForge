@@ -1,6 +1,6 @@
 /*
  * SwarmForge - Eusocial Insect Simulation
- * Copyright (c) 2022-2025 Silvère Martin-Michiellot
+ * Copyright (c) 2022-2026 Silvère Martin-Michiellot
  * AI Assistant: Gemini (Google DeepMind)
  * MIT License
  */
@@ -45,6 +45,16 @@ public class ServerGuiApp extends Application {
     @Override
     public void start(Stage primaryStage) {
         LOG.info("Starting SwarmForge Server GUI...");
+
+        // Load Window Icon
+        try {
+            java.io.InputStream iconStream = getClass().getResourceAsStream("/icons/icon.png");
+            if (iconStream != null) {
+                primaryStage.getIcons().add(new javafx.scene.image.Image(iconStream));
+            }
+        } catch (Exception e) {
+            LOG.warning("Could not load server icon: " + e.getMessage());
+        }
 
         // Root Layout with Tabs
         TabPane mainTabs = new TabPane();
