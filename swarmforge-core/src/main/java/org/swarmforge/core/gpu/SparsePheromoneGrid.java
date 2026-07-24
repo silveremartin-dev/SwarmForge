@@ -63,7 +63,12 @@ public class SparsePheromoneGrid {
     private final float[] diffusionRate;
     private final ConcurrentHashMap<Long, PheromoneEntry> grid;
     private volatile long currentTick = 0;
+    private volatile float evaporationMultiplier = 1.0f;
     private final int width, height, depth;
+
+    public void setEvaporationMultiplier(float multiplier) {
+        this.evaporationMultiplier = Math.max(0.1f, Math.min(5.0f, multiplier));
+    }
 
     // Terrain awareness
     private Terrarium terrarium;
@@ -174,7 +179,8 @@ public class SparsePheromoneGrid {
         long elapsed = currentTick - depositTick;
         if (elapsed <= 0)
             return original;
-        return (float) (original * Math.pow(0.5, (double) elapsed / halfLife[type]));
+        double effectiveHalfLife = halfLife[type] / evaporationMultiplier;
+        return (float) (original * Math.pow(0.5, (double) elapsed / effectiveHalfLife));
     }
 
     public void tick() {

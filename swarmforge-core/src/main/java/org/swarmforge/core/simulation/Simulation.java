@@ -56,6 +56,10 @@ public class Simulation {
     private final TerritoryManager territoryManager;
     private final org.swarmforge.core.simulation.diseases.DiseaseManager diseaseManager;
     private final PredatorManager predatorManager;
+    private final NuptialFlightSystem nuptialFlightSystem;
+    private final DiapauseSystem diapauseSystem;
+    private final SoilStructureSystem soilStructureSystem;
+    private final PheromoneClimateSystem pheromoneClimateSystem;
     private final java.util.Map<org.swarmforge.core.domain.Colony, org.swarmforge.core.structure.ConstructionManager> constructionManagers = new java.util.concurrent.ConcurrentHashMap<>();
 
     // Cluster
@@ -96,6 +100,11 @@ public class Simulation {
         this.predatorManager = new PredatorManager(this);
         this.territoryManager = new TerritoryManager(this);
         this.diseaseManager = new org.swarmforge.core.simulation.diseases.DiseaseManager(this);
+
+        this.nuptialFlightSystem = new NuptialFlightSystem(this);
+        this.diapauseSystem = new DiapauseSystem(this);
+        this.soilStructureSystem = new SoilStructureSystem(this);
+        this.pheromoneClimateSystem = new PheromoneClimateSystem(this);
 
         this.dayNightCycle = new org.swarmforge.core.world.DayNightCycle();
     }
@@ -436,6 +445,11 @@ public class Simulation {
         if (territoryManager != null) {
             territoryManager.tick();
         }
+
+        nuptialFlightSystem.tick();
+        diapauseSystem.tick();
+        soilStructureSystem.tick();
+        pheromoneClimateSystem.tick();
 
         // Advance weather (1 tick = 1 second, 3600 ticks = 1 hour)
         if (currentTick % 360 == 0) {

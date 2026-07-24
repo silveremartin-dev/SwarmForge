@@ -99,10 +99,51 @@ public interface Species {
         return java.util.Collections.emptyList();
     }
 
+    enum InsectOrder {
+        ANT("🐜 Formicidae (Fourmi)"),
+        BEE("🐝 Apidae (Abeille)"),
+        WASP("🐝 Vespidae (Guêpe/Frelon)"),
+        TERMITE("🪲 Isoptera (Termite)");
+
+        public final String label;
+        InsectOrder(String label) { this.label = label; }
+    }
+
+    /**
+     * @return The taxonomic order / eusocial clade of this species.
+     */
+    default InsectOrder getInsectOrder() {
+        return InsectOrder.ANT;
+    }
+
     /**
      * Configure an individual of this species (set stats, brain, etc).
      */
     default void configureIndividual(org.swarmforge.core.domain.Individual individual) {
         // Default: do nothing or basic setup
     }
+
+    default String getDescription() { return ""; }
+    default String getInsectType() { return "ANT"; }
+    default String getQueenCountMode() { return "MONOGYNE"; }
+    default int getQueenCount() { return 1; }
+    default boolean isHasKing() { return false; }
+    default int getKingLifespan() { return 15000; }
+    default float getQueenEggLayingRate() { return 15.0f; }
+    default String getNuptialFlightType() { return "AERIAL_SWARM"; }
+    default int getEggStageDuration() { return 300; }
+    default int getLarvaStageDuration() { return 600; }
+    default int getPupaStageDuration() { return 500; }
+    default String getLarvaDietRequirement() { return "HIGH_PROTEIN_MEAT"; }
+    default boolean isWorkersCanFly() { return false; }
+    default String getPrimaryDiet() { return "SUGARS_NECTAR"; }
+    default String getSecondaryDiet() { return "INSECTS_MEAT"; }
+    default float getDailyFoodConsumption() { return 0.5f; }
+    default float getWaterRequirement() { return 0.2f; }
+    default String getNestType() { return "UNDERGROUND_BURROW"; }
+    default float getOptimalTempCelsius() { return 24.0f; }
+    default float getMinTempCelsius() { return 10.0f; }
+    default float getMaxTempCelsius() { return 38.0f; }
+    default float getTerritoriality() { return 0.5f; }
+    default String getVenomType() { return "NONE"; }
 }

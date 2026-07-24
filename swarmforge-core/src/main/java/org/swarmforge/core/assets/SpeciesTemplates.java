@@ -31,7 +31,19 @@ public enum SpeciesTemplates {
 
     CAMPONOTUS("Camponotus", "Carpenter Ant",
             "Large ants, nests in wood, nocturnal foragers",
-            Camponotus.class);
+            Camponotus.class),
+
+    APIS_MELLIFERA("Apis mellifera", "Western Honey Bee",
+            "Eusocial aerial nectar forager, forms winter thermal clusters",
+            ApisMellifera.class),
+
+    VESPULA_GERMANICA("Vespula germanica", "European Yellowjacket Wasp",
+            "Predatory paper wasp, annual colony cycle, high aggression",
+            VespulaGermanica.class),
+
+    RETICULITERMES_FLAVIPES("Reticulitermes flavipes", "Eastern Subterranean Termite",
+            "Subterranean cellulose consumer, builds shelter tubes from soil cement",
+            ReticulitermesFlavipes.class);
 
     private final String scientificName;
     private final String commonName;

@@ -17,5 +17,6 @@ public enum ResourceType {
     FUNGUS,
     HONEYDEW,
     WASTE,
-    DIRT
+    DIRT,
+    WOOD
 }
