@@ -16,7 +16,13 @@ public record ServerConfig(
         String dbHost, int dbPort, String dbName, String dbUser, String dbPassword,
         String redisHost, int redisPort) {
 
-    public static ServerConfig defaults() {
+    /**
+     * Local / standalone mode (default for development).
+     * Attempts to connect to a local PostgreSQL instance.
+     * Falls back to H2 in-memory automatically if PostgreSQL is unavailable.
+     * Redis is optional — silently disabled if unreachable.
+     */
+    public static ServerConfig local() {
         return new ServerConfig(
                 50051,
                 256, 256, 128, 64,
@@ -25,16 +31,22 @@ public record ServerConfig(
                 "localhost", 6379);
     }
 
+    /** @deprecated use {@link #local()} instead */
+    public static ServerConfig defaults() {
+        return local();
+    }
+
     /**
-     * Offline mode - no database connections attempted.
+     * Fully offline mode — no database or Redis connections attempted.
+     * Use this only when neither PostgreSQL nor H2 is needed.
      */
     public static ServerConfig offline() {
         return new ServerConfig(
                 50051,
                 256, 256, 128, 64,
                 48.8566, 2.3522, System.currentTimeMillis(),
-                "", 0, "", "", "", // Empty DB config
-                "", 0); // Empty Redis config
+                "", 0, "", "", "",
+                "", 0);
     }
 
     public static ServerConfig fromEnvironment() {

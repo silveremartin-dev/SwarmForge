@@ -1,25 +1,41 @@
 @echo off
-REM SwarmForge Client (Viewer) Launcher (Windows)
-REM Automatically starts infrastructure (if needed) and launches Client.
+REM SwarmForge Client Launcher (Windows)
 
 echo ========================================
-echo   SwarmForge - Client (Viewer) Launcher
+echo   SwarmForge - Client Launcher
 echo ========================================
 echo.
 
 cd /d "%~dp0.."
 
-echo [1/2] Ensuring Infrastructure is UP...
-docker-compose up -d postgres redis 2>nul
-if errorlevel 1 (
-    echo WARNING: Docker infrastructure may not be running.
-)
+set DEBUG_OPT=
+set HEADLESS_OPT=
+set PASSED_ARGS=
 
-echo.
-echo [2/2] Launching SwarmForge Client...
-call mvn compile exec:java -pl swarmforge-client -q %*
+:parse_args
+if "%~1"=="" goto run_client
+if "%~1"=="--debug" (
+    echo [INFO] Debug mode active (JDWP agent on port 5007)
+    set "DEBUG_OPT=-Dexec.jvmArgs=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007"
+    shift
+    goto parse_args
+)
+if "%~1"=="--nogui" (
+    echo [INFO] Running client in No-GUI/Headless mode
+    set "HEADLESS_OPT=-Djava.awt.headless=true"
+    set "PASSED_ARGS=%PASSED_ARGS% --nogui"
+    shift
+    goto parse_args
+)
+set "PASSED_ARGS=%PASSED_ARGS% %~1"
+shift
+goto parse_args
+
+:run_client
+echo Launching SwarmForge Client...
+call mvn compile exec:java -pl swarmforge-client -q %DEBUG_OPT% %HEADLESS_OPT% -Dexec.args="%PASSED_ARGS%"
+
 if errorlevel 1 (
-    echo.
     echo ERROR: Failed to start SwarmForge Client.
     pause
     exit /b 1

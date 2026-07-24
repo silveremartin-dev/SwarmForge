@@ -1,6 +1,5 @@
 @echo off
 REM SwarmForge Editor (Studio) Launcher (Windows)
-REM Automatically starts infrastructure (if needed) and launches Editor.
 
 echo ========================================
 echo   SwarmForge - Editor (Studio) Launcher
@@ -9,17 +8,34 @@ echo.
 
 cd /d "%~dp0.."
 
-echo [1/2] Ensuring Infrastructure is UP...
-docker-compose up -d postgres redis 2>nul
-if errorlevel 1 (
-    echo WARNING: Docker infrastructure may not be running.
-)
+set DEBUG_OPT=
+set HEADLESS_OPT=
+set PASSED_ARGS=
 
-echo.
-echo [2/2] Launching SwarmForge Editor...
-call mvn compile exec:java -pl swarmforge-editor -q %*
+:parse_args
+if "%~1"=="" goto run_editor
+if "%~1"=="--debug" (
+    echo [INFO] Debug mode active (JDWP agent on port 5006)
+    set "DEBUG_OPT=-Dexec.jvmArgs=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006"
+    shift
+    goto parse_args
+)
+if "%~1"=="--nogui" (
+    echo [INFO] Running editor in No-GUI/Headless mode
+    set "HEADLESS_OPT=-Djava.awt.headless=true"
+    set "PASSED_ARGS=%PASSED_ARGS% --nogui"
+    shift
+    goto parse_args
+)
+set "PASSED_ARGS=%PASSED_ARGS% %~1"
+shift
+goto parse_args
+
+:run_editor
+echo Launching SwarmForge Editor...
+call mvn compile exec:java -pl swarmforge-editor -q %DEBUG_OPT% %HEADLESS_OPT% -Dexec.args="%PASSED_ARGS%"
+
 if errorlevel 1 (
-    echo.
     echo ERROR: Failed to start SwarmForge Editor.
     pause
     exit /b 1

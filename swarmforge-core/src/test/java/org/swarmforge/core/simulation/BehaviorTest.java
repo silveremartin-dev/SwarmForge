@@ -15,6 +15,8 @@ import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.species.CustomSpecies;
 import org.swarmforge.core.behavior.FSMArchitecture;
+import org.swarmforge.core.behavior.ReasoningArchitecture.Action;
+import org.swarmforge.core.behavior.ReasoningArchitecture.Action.ActionType;
 
 /**
  * Verification test for behavior integration.
@@ -60,7 +62,7 @@ class BehaviorTest {
         org.swarmforge.core.behavior.ReasoningArchitecture.Action action = ant.getBrain().decide(ant, null);
         assertNotNull(action);
         System.out.println("Brain decided: " + action.type());
-        if (action.type() == org.swarmforge.core.behavior.ReasoningArchitecture.Action.ActionType.MOVE) {
+        if (action.type() == ActionType.MOVE) {
              System.out.println("Move Vector: " + action.directionX() + ", " + action.directionY());
              assertEquals(1.0f, action.intensity());
         }

@@ -637,8 +637,9 @@ public class SwarmForgeServer {
     public static void main(String[] args) {
         // Parse command-line arguments
         boolean createDemo = false;
-        boolean noDb = false;
         boolean listSims = false;
+        boolean noGui = false;
+        String dbMode = "local"; // default: local H2 fallback
         String runSimulation = null;
 
         for (int i = 0; i < args.length; i++) {
@@ -647,9 +648,12 @@ public class SwarmForgeServer {
                     printHelp();
                     return;
                 }
-                case "--create-demo" -> createDemo = true;
-                case "--no-db" -> noDb = true;
-                case "--list" -> listSims = true;
+                case "--create-demo"         -> createDemo = true;
+                case "--list"               -> listSims = true;
+                case "--local", "--no-db"   -> dbMode = "local";
+                case "--postgres"           -> dbMode = "postgres";
+                case "--offline"            -> dbMode = "offline";
+                case "--nogui"              -> noGui = true;
                 case "--run" -> {
                     if (i + 1 < args.length) {
                         runSimulation = args[++i];
@@ -669,7 +673,14 @@ public class SwarmForgeServer {
         }
 
         try {
-            ServerConfig config = noDb ? ServerConfig.offline() : ServerConfig.fromEnvironment();
+            ServerConfig config = switch (dbMode) {
+                case "postgres" -> ServerConfig.fromEnvironment();
+                case "offline"  -> ServerConfig.offline();
+                default         -> ServerConfig.local(); // local = localhost PG → H2 fallback
+            };
+
+            LOG.info("Server mode: {} | GUI: {}", dbMode, noGui ? "disabled" : "enabled");
+
             SwarmForgeServer server = new SwarmForgeServer(config);
 
             if (listSims) {
@@ -757,12 +768,19 @@ public class SwarmForgeServer {
                 +------------------------------------------------------+
                 |  Usage: java -jar swarmforge-server.jar [OPTIONS]    |
                 +------------------------------------------------------+
-                |  Options:                                            |
-                |    --help, -h       Show this help message           |
-                |    --create-demo    Create and run demo world        |
-                |    --run <name>     Run named simulation from DB     |
-                |    --list           List available simulations       |
-                |    --no-db          Run without database (offline)   |
+                |  Database mode (choose one):                         |
+                |    --local     Local mode: H2 fallback if no PG      |
+                |                (DEFAULT — ideal for dev/monoposte)   |
+                |    --postgres  PostgreSQL + Redis (production)        |
+                |    --offline   No database at all                     |
+                |    --no-db     Alias for --local (legacy)             |
+                |                                                      |
+                |  Other options:                                      |
+                |    --nogui         Disable server GUI panel          |
+                |    --create-demo   Create and run demo world         |
+                |    --run <name>    Run named simulation from DB      |
+                |    --list          List available simulations        |
+                |    --help, -h      Show this help message            |
                 +------------------------------------------------------+
                 """);
     }
