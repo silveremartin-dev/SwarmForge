@@ -74,6 +74,11 @@ public class Predator {
             case BIRD -> 80f;
             case LIZARD -> 150f;
             case WASP -> 40f;
+            case SYRPHID_LARVA -> 25f;
+            case LADYBUG_LARVA -> 30f;
+            case KLEPTOPARASITE_THRIPS -> 15f;
+            case CATERPILLAR -> 45f;
+            case MYRMECOPHILE_BEETLE -> 35f;
         };
     }
 

@@ -18,5 +18,9 @@ public enum ResourceType {
     HONEYDEW,
     WASTE,
     DIRT,
-    WOOD
+    WOOD,
+    WOOD_CELLULOSE,
+    SAP,
+    AMBROSIA_FUNGUS,
+    HONEYDEW_PRODUCER
 }

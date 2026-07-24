@@ -86,7 +86,11 @@ public record TerrariumCell(
         BEESWAX, // Honeybee comb wax material
         STERCORAL_CEMENT, // Termite mound saliva-soil cement
         SILK_WEAVE, // Weaver ant larval silk
-        PROPOLIS // Bee/Bumblebee plant resin seal
+        PROPOLIS, // Bee/Bumblebee plant resin seal
+        DEAD_WOOD, // Excavatable wood stump/log for Camponotus, Termites, Ambrosia beetles
+        PLANT_GALL, // Plant gall cavity for Aphids & Thrips
+        BAMBOO_STEM, // Hollow/excavatable bamboo stem
+        FUNGUS_GARDEN // Cultivated fungus garden substrate for Atta & Ambrosia beetles
     }
 
     /**
@@ -182,7 +186,9 @@ public record TerrariumCell(
     public boolean isDiggable() {
         return material == Material.EARTH || material == Material.SAND ||
                 material == Material.MUD || material == Material.CLAY ||
-                material == Material.LEAF_LITTER;
+                material == Material.LEAF_LITTER || material == Material.DEAD_WOOD ||
+                material == Material.PLANT_GALL || material == Material.BAMBOO_STEM ||
+                material == Material.FUNGUS_GARDEN;
     }
 
     /**

@@ -84,7 +84,47 @@ public enum PredatorType {
             12f,
             15f,
             0f,
-            HuntingStyle.CHASE);
+            HuntingStyle.CHASE),
+
+    SYRPHID_LARVA(
+            "Larve de Syrphe (Prédateur de Pucerons)",
+            0.4f,
+            8f,
+            6f,
+            0f,
+            HuntingStyle.CHASE),
+
+    LADYBUG_LARVA(
+            "Larve de Coccinelle (Vorace)",
+            0.6f,
+            10f,
+            7f,
+            0f,
+            HuntingStyle.CHASE),
+
+    KLEPTOPARASITE_THRIPS(
+            "Thrips Kleptoparasite (Envahisseur de Galle)",
+            0.8f,
+            6f,
+            5f,
+            0f,
+            HuntingStyle.CHASE),
+
+    CATERPILLAR(
+            "Chenille (Proie pour Guêpes)",
+            0.2f,
+            2f,
+            4f,
+            0f,
+            HuntingStyle.AMBUSH),
+
+    MYRMECOPHILE_BEETLE(
+            "Staphylin Myrmécophile (Commensal/Parasite du Nid)",
+            0.5f,
+            4f,
+            5f,
+            0f,
+            HuntingStyle.AMBUSH);
 
     /**
      * Hunting style determines AI behavior.

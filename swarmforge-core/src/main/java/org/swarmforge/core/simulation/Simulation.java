@@ -60,6 +60,7 @@ public class Simulation {
     private final DiapauseSystem diapauseSystem;
     private final SoilStructureSystem soilStructureSystem;
     private final PheromoneClimateSystem pheromoneClimateSystem;
+    private final SymbiosisSystem symbiosisSystem;
     private final java.util.Map<org.swarmforge.core.domain.Colony, org.swarmforge.core.structure.ConstructionManager> constructionManagers = new java.util.concurrent.ConcurrentHashMap<>();
 
     // Cluster
@@ -105,6 +106,7 @@ public class Simulation {
         this.diapauseSystem = new DiapauseSystem(this);
         this.soilStructureSystem = new SoilStructureSystem(this);
         this.pheromoneClimateSystem = new PheromoneClimateSystem(this);
+        this.symbiosisSystem = new SymbiosisSystem(this);
 
         this.dayNightCycle = new org.swarmforge.core.world.DayNightCycle();
     }
@@ -450,6 +452,7 @@ public class Simulation {
         diapauseSystem.tick();
         soilStructureSystem.tick();
         pheromoneClimateSystem.tick();
+        symbiosisSystem.tick();
 
         // Advance weather (1 tick = 1 second, 3600 ticks = 1 hour)
         if (currentTick % 360 == 0) {
