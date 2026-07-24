@@ -70,17 +70,19 @@ public class SimulationControlPanel extends VBox {
         setPadding(new Insets(10));
         setStyle("-fx-background-color: #1e1e1e; -fx-border-color: #444; -fx-border-width: 1 0 0 0;");
 
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+
         // === Row 1: Playback Controls ===
         HBox playbackRow = new HBox(5);
         playbackRow.setAlignment(Pos.CENTER);
 
-        btnRewind = createButton("⏪", "Rewind 10 steps");
-        btnStepBack = createButton("⏮", "Step back");
-        btnPlay = createButton("▶", "Play");
-        btnPause = createButton("⏸", "Pause");
-        btnStop = createButton("⏹", "Stop");
-        btnStepForward = createButton("⏭", "Step forward");
-        btnFastForward = createButton("⏩", "Fast forward");
+        btnRewind = createButton("⏪", i18n.get("control.rewind_tt"));
+        btnStepBack = createButton("⏮", i18n.get("control.step_back_tt"));
+        btnPlay = createButton("▶", i18n.get("control.play_tt"));
+        btnPause = createButton("⏸", i18n.get("control.pause_tt"));
+        btnStop = createButton("⏹", i18n.get("control.stop_tt"));
+        btnStepForward = createButton("⏭", i18n.get("control.step_fw_tt"));
+        btnFastForward = createButton("⏩", i18n.get("control.ff_tt"));
 
         btnPlay.setOnAction(e -> {
             isPlaying = true;
@@ -129,7 +131,8 @@ public class SimulationControlPanel extends VBox {
         HBox speedRow = new HBox(10);
         speedRow.setAlignment(Pos.CENTER);
 
-        Label lblSpeedLabel = new Label("Speed:");
+        Label lblSpeedLabel = new Label();
+        lblSpeedLabel.textProperty().bind(i18n.createStringBinding("control.speed"));
         lblSpeedLabel.setStyle("-fx-text-fill: #aaa;");
 
         // Initialize lblSpeed BEFORE the slider listener that uses it
@@ -165,7 +168,7 @@ public class SimulationControlPanel extends VBox {
         HBox timelineRow = new HBox(10);
         timelineRow.setAlignment(Pos.CENTER);
 
-        lblTick = new Label("Tick: 0");
+        lblTick = new Label(i18n.get("control.tick", 0));
         lblTick.setStyle("-fx-text-fill: #aaa;");
         lblTick.setPrefWidth(100);
 
@@ -176,7 +179,7 @@ public class SimulationControlPanel extends VBox {
             if (timelineSlider.isValueChanging()) {
                 // User is dragging
                 long seekTick = newVal.longValue();
-                lblTick.setText("Tick: " + seekTick);
+                lblTick.setText(i18n.get("control.tick", seekTick));
             }
         });
         timelineSlider.setOnMouseReleased(e -> {

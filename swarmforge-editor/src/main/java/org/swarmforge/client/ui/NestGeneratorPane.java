@@ -19,30 +19,45 @@ import javafx.scene.text.Font;
 import java.io.File;
 import java.util.*;
 import java.util.function.Consumer;
+import org.swarmforge.client.util.I18nManager;
 
 public class NestGeneratorPane extends BorderPane {
 
-    // canvases
+    // Canvases
     private Canvas canvas3D, canvasSide, canvasTop;
     private GraphicsContext gc3D, gcSide, gcTop;
 
-    // camera
+    // 3D camera
     private double azimuth = 45, elevation = 35, zoom = 7.5;
+    private double pan3DX = 0, pan3DY = 0;
     private double lastMX, lastMY;
 
-    // controls
-    private ComboBox<String> nestTypeSelect;
+    // 2D Side view camera (Zoom & Pan)
+    private double sideZoom = 1.0;
+    private double sidePanX = 0, sidePanY = 0;
+    private double lastSideMX, lastSideMY;
+
+    // 2D Top view camera (Zoom & Pan)
+    private double topZoom = 1.0;
+    private double topPanX = 0, topPanY = 0;
+    private double lastTopMX, lastTopMY;
+
+    // Synchronization control
+    private CheckBox syncViewsCheckBox;
+
+    // Controls
+    private ComboBox<String> categorySelect;
     private ComboBox<String> archSelect;
     private ComboBox<String> matSelect;
     private Slider workerSizeSlider;
     private Slider depthSlider, tunnelWidthSlider, branchingSlider, chamberCountSlider;
     private final Map<String, Spinner<Integer>> chamberSpinners = new LinkedHashMap<>();
 
-    // presets
+    // Presets
     private ComboBox<String> presetsCombo;
     private final NestPresetManager presetMgr = new NestPresetManager();
 
-    // model
+    // Model
     private GeneratedNest nest;
     private Consumer<Map<String, Object>> onApplyCallback;
 
@@ -51,6 +66,11 @@ public class NestGeneratorPane extends BorderPane {
         setLeft(buildConfig());
         setCenter(buildViews());
         refreshPresetsCombo();
+        if (!presetsCombo.getItems().isEmpty()) {
+            presetsCombo.getSelectionModel().selectFirst();
+            String first = presetsCombo.getValue();
+            if (presetMgr.contains(first)) applyCfg(presetMgr.get(first));
+        }
         regen();
         repaint();
     }
@@ -58,33 +78,43 @@ public class NestGeneratorPane extends BorderPane {
     // ── Header ────────────────────────────────────────────────────────────────
 
     private VBox buildHeader() {
+        I18nManager i18n = I18nManager.getInstance();
         VBox v = new VBox(6);
         v.setPadding(new Insets(8, 10, 5, 10));
 
         HBox r = new HBox(8);
         r.setAlignment(Pos.CENTER_LEFT);
 
-        Label t = new Label("🐜 Universal Nest Generator");
+        Label t = new Label();
+        t.textProperty().bind(i18n.createStringBinding("nest.title"));
         t.setStyle("-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#00d4ff;");
 
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
 
-        Label lp = new Label("Preset:");
+        Label lp = new Label();
+        lp.textProperty().bind(i18n.createStringBinding("nest.preset.label"));
         presetsCombo = new ComboBox<>();
-        presetsCombo.setPrefWidth(175);
-        presetsCombo.setPromptText("Select…");
+        presetsCombo.setPrefWidth(210);
+        presetsCombo.promptTextProperty().bind(i18n.createStringBinding("nest.preset.prompt"));
         presetsCombo.setOnAction(e -> {
             String s = presetsCombo.getValue();
             if (s != null && presetMgr.contains(s)) applyCfg(presetMgr.get(s));
         });
 
-        Button bAdd = btn("💾 Add to Presets", "#17a2b8");
+        Button bAdd = btn("", "#17a2b8");
+        bAdd.textProperty().bind(i18n.createStringBinding("nest.preset.save"));
         bAdd.setOnAction(e -> doAddPreset());
 
-        Button bExp = new Button("📤 Export"); bExp.setOnAction(e -> doExport());
-        Button bImp = new Button("📂 Import"); bImp.setOnAction(e -> doImport());
+        Button bExp = new Button();
+        bExp.textProperty().bind(i18n.createStringBinding("nest.preset.export"));
+        bExp.setOnAction(e -> doExport());
 
-        Button bApply = btn("✓ Apply to World", "#28a745");
+        Button bImp = new Button();
+        bImp.textProperty().bind(i18n.createStringBinding("nest.preset.import"));
+        bImp.setOnAction(e -> doImport());
+
+        Button bApply = btn("", "#28a745");
+        bApply.textProperty().bind(i18n.createStringBinding("nest.preset.apply"));
         bApply.setOnAction(e -> applyToWorld());
 
         r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd,
@@ -103,29 +133,32 @@ public class NestGeneratorPane extends BorderPane {
     // ── Config panel ──────────────────────────────────────────────────────────
 
     private ScrollPane buildConfig() {
+        I18nManager i18n = I18nManager.getInstance();
         VBox cfg = new VBox(10);
         cfg.setPadding(new Insets(10));
         cfg.setPrefWidth(272);
 
-        // Nest Architecture (collapsible)
-        VBox arch = new VBox(7); arch.setPadding(new Insets(8));
+        // Nest Architecture & Species (non-collapsible block)
+        Label archTitle = new Label();
+        archTitle.textProperty().bind(i18n.createStringBinding("nest.arch.title"));
+        archTitle.setStyle("-fx-font-size:13;-fx-font-weight:bold;-fx-padding:2 0 2 0;");
 
-        Label tl = new Label("Preset Name:");
-        nestTypeSelect = new ComboBox<>();
-        nestTypeSelect.getItems().addAll("Young Ant Burrow (Lasius)","Mature Ant Burrow",
-            "Complex Supercolony","Leafcutter Fungus Farm (Atta)",
-            "Honeybee Wax Comb (Apis)", "Bumblebee Pot Cluster (Bombus)",
-            "Paper Wasp Nest (Vespula)", "Termite Cathedral Mound (Macrotermes)",
-            "Weaver Ant Leaf Nest (Oecophylla)", "Custom");
-        nestTypeSelect.getSelectionModel().selectFirst();
-        nestTypeSelect.setPrefWidth(218);
-        nestTypeSelect.setOnAction(e -> {
-            String v = nestTypeSelect.getValue();
-            if (presetMgr.contains(v)) applyCfg(presetMgr.get(v));
-            else { regen(); repaint(); }
-        });
+        Label cl = new Label();
+        cl.textProperty().bind(i18n.createStringBinding("nest.arch.category"));
+        categorySelect = new ComboBox<>();
+        categorySelect.getItems().addAll(
+            "🐜 Ants (Formicidae)",
+            "🐝 Honeybees (Apis)",
+            "🐝 Bumblebees (Bombus)",
+            "🐝 Wasps & Hornets (Vespidae)",
+            "🐜 Termites (Isoptera)"
+        );
+        categorySelect.getSelectionModel().selectFirst();
+        categorySelect.setPrefWidth(218);
+        categorySelect.setOnAction(e -> onCategoryChanged());
 
-        Label al = new Label("Architecture Type:");
+        Label al = new Label();
+        al.textProperty().bind(i18n.createStringBinding("nest.arch.type"));
         archSelect = new ComboBox<>();
         archSelect.getItems().addAll(
             "BURROW_UNDERGROUND", "SURFACE_MOUND", "WAX_COMB_HEXAGONAL",
@@ -134,7 +167,8 @@ public class NestGeneratorPane extends BorderPane {
         archSelect.setPrefWidth(218);
         archSelect.setOnAction(e -> { regen(); repaint(); });
 
-        Label ml = new Label("Nest Material:");
+        Label ml = new Label();
+        ml.textProperty().bind(i18n.createStringBinding("nest.arch.material"));
         matSelect = new ComboBox<>();
         matSelect.getItems().addAll("EARTH", "WOOD_PULP_PAPER", "BEESWAX",
             "STERCORAL_CEMENT", "SILK_WEAVE", "PROPOLIS");
@@ -148,19 +182,28 @@ public class NestGeneratorPane extends BorderPane {
         branchingSlider   = mkSlider(1,   5,  3);
         addLsn(workerSizeSlider, depthSlider, tunnelWidthSlider, branchingSlider);
 
-        arch.getChildren().addAll(tl, nestTypeSelect,
-            al, archSelect, ml, matSelect,
-            lbl("Worker Scale (mm):"),  sv(workerSizeSlider),
-            lbl("Max Depth / H (blk):"),sv(depthSlider),
-            lbl("Tunnel Width:"),       sv(tunnelWidthSlider),
-            lbl("Branching Factor:"),   sv(branchingSlider));
+        Label lblWorkerScale = new Label(); lblWorkerScale.textProperty().bind(i18n.createStringBinding("nest.arch.worker_scale"));
+        Label lblMaxDepth = new Label(); lblMaxDepth.textProperty().bind(i18n.createStringBinding("nest.arch.max_depth"));
+        Label lblTunnelWidth = new Label(); lblTunnelWidth.textProperty().bind(i18n.createStringBinding("nest.arch.tunnel_width"));
+        Label lblBranching = new Label(); lblBranching.textProperty().bind(i18n.createStringBinding("nest.arch.branching"));
 
-        TitledPane tp = new TitledPane("Nest Architecture & Species", arch);
-        tp.setExpanded(true);
+        VBox archBlock = new VBox(7,
+            archTitle, new Separator(),
+            cl, categorySelect,
+            al, archSelect,
+            ml, matSelect,
+            lblWorkerScale,  sv(workerSizeSlider),
+            lblMaxDepth, sv(depthSlider),
+            lblTunnelWidth,       sv(tunnelWidthSlider),
+            lblBranching,   sv(branchingSlider)
+        );
+        archBlock.setPadding(new Insets(8));
+        archBlock.setStyle("-fx-border-color:#444;-fx-border-width:1;-fx-border-radius:4;-fx-background-radius:4;-fx-background-color:#1e2230;");
 
         // Chamber Distribution (non-collapsible)
-        Label cdTitle = new Label("Chamber Distribution");
-        cdTitle.setStyle("-fx-font-size:13;-fx-font-weight:bold;-fx-padding:8 0 2 0;");
+        Label cdTitle = new Label();
+        cdTitle.textProperty().bind(i18n.createStringBinding("nest.chambers.title"));
+        cdTitle.setStyle("-fx-font-size:13;-fx-font-weight:bold;-fx-padding:2 0 2 0;");
 
         chamberCountSlider = mkSlider(3, 50, 15);
         addLsn(chamberCountSlider);
@@ -169,27 +212,62 @@ public class NestGeneratorPane extends BorderPane {
         grid.setHgap(8); grid.setVgap(7); grid.setPadding(new Insets(6));
 
         String[][] defs = {
-            {"👑 Queen Chamber","1"},{"🥚 Brood Chambers","3"},
-            {"🍖 Food Storage","4"},{"🚪 Entrances","2"},
-            {"🗑 Waste Dumps","1"},{"🍄 Fungus Gardens","0"}
+            {"nest.chambers.queen", "1", "👑 Queen Chamber"},
+            {"nest.chambers.brood", "3", "🥚 Brood Chambers"},
+            {"nest.chambers.food", "4", "🍖 Food Storage"},
+            {"nest.chambers.entrance", "2", "🚪 Entrances"},
+            {"nest.chambers.waste", "1", "🗑 Waste Dumps"},
+            {"nest.chambers.fungus", "0", "🍄 Fungus Gardens"}
         };
         int row = 0;
         for (String[] d : defs) {
             Spinner<Integer> s = new Spinner<>(0, 25, Integer.parseInt(d[1]));
             s.setPrefWidth(70); s.setEditable(true);
             s.valueProperty().addListener((o,a,b) -> { regen(); repaint(); });
-            chamberSpinners.put(d[0], s);
-            grid.add(new Label(d[0]), 0, row);
+            chamberSpinners.put(d[2], s);
+
+            Label chLbl = new Label();
+            chLbl.textProperty().bind(i18n.createStringBinding(d[0]));
+            grid.add(chLbl, 0, row);
             grid.add(s, 1, row++);
         }
 
-        VBox cd = new VBox(4, cdTitle, new Separator(),
-            lbl("Total Chambers:"), sv(chamberCountSlider), grid);
+        Label lblTotalChambers = new Label();
+        lblTotalChambers.textProperty().bind(i18n.createStringBinding("nest.chambers.total"));
 
-        cfg.getChildren().addAll(tp, cd);
+        VBox cdBlock = new VBox(5, cdTitle, new Separator(),
+            lblTotalChambers, sv(chamberCountSlider), grid);
+        cdBlock.setPadding(new Insets(8));
+        cdBlock.setStyle("-fx-border-color:#444;-fx-border-width:1;-fx-border-radius:4;-fx-background-radius:4;-fx-background-color:#1e2230;");
+
+        cfg.getChildren().addAll(archBlock, cdBlock);
         ScrollPane sc = new ScrollPane(cfg);
         sc.setFitToWidth(true); sc.setPrefWidth(290); sc.setMaxWidth(290);
         return sc;
+    }
+
+    private void onCategoryChanged() {
+        String cat = categorySelect.getValue();
+        if (cat == null) return;
+        if (cat.contains("Honeybees")) {
+            archSelect.setValue("WAX_COMB_HEXAGONAL");
+            matSelect.setValue("BEESWAX");
+        } else if (cat.contains("Bumblebees")) {
+            archSelect.setValue("WAX_POTS_CLUSTER");
+            matSelect.setValue("PROPOLIS");
+        } else if (cat.contains("Wasps")) {
+            archSelect.setValue("PAPER_PEDUNCULATE");
+            matSelect.setValue("WOOD_PULP_PAPER");
+        } else if (cat.contains("Termites")) {
+            archSelect.setValue("CATHEDRAL_MOUND");
+            matSelect.setValue("STERCORAL_CEMENT");
+        } else if (cat.contains("Ants")) {
+            if (!archSelect.getValue().equals("ARBOREAL_SILK_LEAF") && !archSelect.getValue().equals("SURFACE_MOUND")) {
+                archSelect.setValue("BURROW_UNDERGROUND");
+            }
+            matSelect.setValue("EARTH");
+        }
+        regen(); repaint();
     }
 
     private Label lbl(String s) { return new Label(s); }
@@ -219,8 +297,9 @@ public class NestGeneratorPane extends BorderPane {
 
     // ── View area ─────────────────────────────────────────────────────────────
 
-    private HBox buildViews() {
-        canvas3D = new Canvas(540, 510); gc3D = canvas3D.getGraphicsContext2D();
+    private VBox buildViews() {
+        I18nManager i18n = I18nManager.getInstance();
+        canvas3D   = new Canvas(540, 510); gc3D   = canvas3D.getGraphicsContext2D();
         canvasSide = new Canvas(215, 245); gcSide = canvasSide.getGraphicsContext2D();
         canvasTop  = new Canvas(215, 245); gcTop  = canvasTop.getGraphicsContext2D();
 
@@ -233,30 +312,184 @@ public class NestGeneratorPane extends BorderPane {
         StackPane hTop  = new StackPane(canvasTop);
         hTop.setStyle("-fx-border-color:#444;-fx-border-width:1;");
 
-        Label ls = new Label("⬛ Side View"); ls.setStyle("-fx-font-size:11;-fx-font-weight:bold;");
-        Label lt = new Label("⬜ Top View");  lt.setStyle("-fx-font-size:11;-fx-font-weight:bold;");
+        Label ls = new Label();
+        ls.textProperty().bind(i18n.createStringBinding("nest.view.side"));
+        ls.setStyle("-fx-font-size:11;-fx-font-weight:bold;");
+
+        Label lt = new Label();
+        lt.textProperty().bind(i18n.createStringBinding("nest.view.top"));
+        lt.setStyle("-fx-font-size:11;-fx-font-weight:bold;");
 
         VBox side = new VBox(5, ls, hSide, lt, hTop);
         side.setPadding(new Insets(0,4,0,8)); side.setAlignment(Pos.TOP_CENTER);
 
         HBox area = new HBox(6, h3d, side);
-        area.setPadding(new Insets(8));
-        return area;
+        area.setPadding(new Insets(8, 8, 4, 8));
+
+        // UI Legend & Control Bar under canvas area
+        HBox legendBar = buildLegendBar();
+
+        return new VBox(4, area, legendBar);
+    }
+
+    private HBox buildLegendBar() {
+        I18nManager i18n = I18nManager.getInstance();
+        HBox bar = new HBox(10);
+        bar.setPadding(new Insets(4, 10, 6, 10));
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setStyle("-fx-background-color:#141824;-fx-border-color:#333;-fx-border-width:1 0 0 0;");
+
+        syncViewsCheckBox = new CheckBox("🔗 Synchroniser les vues (Zoom & Panning)");
+        syncViewsCheckBox.setSelected(true);
+        syncViewsCheckBox.setStyle("-fx-text-fill:#00d4ff;-fx-font-weight:bold;-fx-font-size:11;");
+
+        Label title = new Label();
+        title.textProperty().bind(i18n.createStringBinding("nest.legend.title"));
+        title.setStyle("-fx-font-weight:bold;-fx-text-fill:#aaa;-fx-font-size:11;");
+
+        bar.getChildren().addAll(syncViewsCheckBox, new Separator(Orientation.VERTICAL), title);
+
+        String[][] items = {
+            {"nest.legend.entrance", "#32CD32"},
+            {"nest.legend.queen", "#FFD700"},
+            {"nest.legend.brood", "#00BFFF"},
+            {"nest.legend.storage", "#FFA500"},
+            {"nest.legend.fungus", "#9370DB"},
+            {"nest.legend.waste", "#CD5C5C"},
+            {"nest.legend.tunnel", "#708090"}
+        };
+
+        for (String[] it : items) {
+            HBox item = new HBox(4);
+            item.setAlignment(Pos.CENTER_LEFT);
+            Canvas dot = new Canvas(9, 9);
+            GraphicsContext g = dot.getGraphicsContext2D();
+            g.setFill(Color.web(it[1]));
+            g.fillOval(0, 0, 9, 9);
+            g.setStroke(Color.WHITE);
+            g.setLineWidth(0.5);
+            g.strokeOval(0, 0, 9, 9);
+
+            Label lbl = new Label();
+            lbl.textProperty().bind(i18n.createStringBinding(it[0]));
+            lbl.setStyle("-fx-text-fill:#ccc;-fx-font-size:10;");
+            item.getChildren().addAll(dot, lbl);
+            bar.getChildren().add(item);
+        }
+
+        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
+        Label hint = new Label();
+        hint.textProperty().bind(i18n.createStringBinding("nest.legend.hint"));
+        hint.setStyle("-fx-text-fill:#888;-fx-font-size:10;-fx-font-style:italic;");
+
+        bar.getChildren().addAll(sp, hint);
+        return bar;
     }
 
     private void setupMouse() {
+        // 3D Canvas Orbit & Zoom & Pan
         canvas3D.setOnMousePressed(e -> { lastMX = e.getX(); lastMY = e.getY(); });
         canvas3D.setOnMouseDragged(e -> {
-            azimuth   = (azimuth + (e.getX()-lastMX)*0.65) % 360;
-            if (azimuth < 0) azimuth += 360;
-            elevation = Math.max(5, Math.min(85, elevation - (e.getY()-lastMY)*0.35));
+            double dx = e.getX() - lastMX;
+            double dy = e.getY() - lastMY;
+            if (e.isSecondaryButtonDown() || e.isShiftDown()) {
+                // Pan 3D camera
+                pan3DX += dx;
+                pan3DY += dy;
+                if (isSync()) {
+                    sidePanX = pan3DX; sidePanY = pan3DY;
+                    topPanX = pan3DX; topPanY = pan3DY;
+                }
+            } else {
+                // Orbit 3D camera
+                azimuth = (azimuth + dx * 0.65) % 360;
+                if (azimuth < 0) azimuth += 360;
+                elevation = Math.max(5, Math.min(85, elevation - dy * 0.35));
+            }
             lastMX = e.getX(); lastMY = e.getY();
-            draw3D();
+            repaint();
         });
         canvas3D.setOnScroll(e -> {
-            zoom = Math.max(2.5, Math.min(22, zoom + e.getDeltaY()*0.025));
-            draw3D();
+            zoom = Math.max(2.5, Math.min(22.0, zoom + e.getDeltaY() * 0.025));
+            if (isSync()) {
+                sideZoom = Math.max(0.3, Math.min(6.0, zoom / 7.5));
+                topZoom = sideZoom;
+            }
+            repaint();
         });
+        canvas3D.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                resetAllCameras();
+            }
+        });
+
+        // 2D Side View Zoom & Pan
+        canvasSide.setOnMousePressed(e -> { lastSideMX = e.getX(); lastSideMY = e.getY(); });
+        canvasSide.setOnMouseDragged(e -> {
+            double dx = e.getX() - lastSideMX;
+            double dy = e.getY() - lastSideMY;
+            sidePanX += dx;
+            sidePanY += dy;
+            if (isSync()) {
+                topPanX = sidePanX; topPanY = sidePanY;
+                pan3DX = sidePanX; pan3DY = sidePanY;
+            }
+            lastSideMX = e.getX(); lastSideMY = e.getY();
+            repaint();
+        });
+        canvasSide.setOnScroll(e -> {
+            sideZoom = Math.max(0.3, Math.min(6.0, sideZoom + e.getDeltaY() * 0.003));
+            if (isSync()) {
+                topZoom = sideZoom;
+                zoom = Math.max(2.5, Math.min(22.0, sideZoom * 7.5));
+            }
+            repaint();
+        });
+        canvasSide.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                resetAllCameras();
+            }
+        });
+
+        // 2D Top View Zoom & Pan
+        canvasTop.setOnMousePressed(e -> { lastTopMX = e.getX(); lastTopMY = e.getY(); });
+        canvasTop.setOnMouseDragged(e -> {
+            double dx = e.getX() - lastTopMX;
+            double dy = e.getY() - lastTopMY;
+            topPanX += dx;
+            topPanY += dy;
+            if (isSync()) {
+                sidePanX = topPanX; sidePanY = topPanY;
+                pan3DX = topPanX; pan3DY = topPanY;
+            }
+            lastTopMX = e.getX(); lastTopMY = e.getY();
+            repaint();
+        });
+        canvasTop.setOnScroll(e -> {
+            topZoom = Math.max(0.3, Math.min(6.0, topZoom + e.getDeltaY() * 0.003));
+            if (isSync()) {
+                sideZoom = topZoom;
+                zoom = Math.max(2.5, Math.min(22.0, topZoom * 7.5));
+            }
+            repaint();
+        });
+        canvasTop.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                resetAllCameras();
+            }
+        });
+    }
+
+    private boolean isSync() {
+        return syncViewsCheckBox != null && syncViewsCheckBox.isSelected();
+    }
+
+    private void resetAllCameras() {
+        azimuth = 45; elevation = 35; zoom = 7.5;
+        pan3DX = 0; pan3DY = 0;
+        sideZoom = 1.0; sidePanX = 0; sidePanY = 0;
+        topZoom = 1.0; topPanX = 0; topPanY = 0;
+        repaint();
     }
 
     // ── Preset helpers ────────────────────────────────────────────────────────
@@ -268,8 +501,8 @@ public class NestGeneratorPane extends BorderPane {
     }
 
     private void doAddPreset() {
-        TextInputDialog d = new TextInputDialog(nestTypeSelect.getValue());
-        d.setTitle("Add to Presets"); d.setHeaderText("Nom du preset :"); d.setContentText("Nom :");
+        TextInputDialog d = new TextInputDialog(presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom Nest Preset");
+        d.setTitle("Save Preset"); d.setHeaderText("Nom du preset :"); d.setContentText("Nom :");
         d.showAndWait().ifPresent(name -> {
             if (name == null || name.isBlank()) return;
             presetMgr.save(name, getConfiguration());
@@ -280,19 +513,21 @@ public class NestGeneratorPane extends BorderPane {
     }
 
     private void applyCfg(Map<String, Object> c) {
-        if (c.containsKey("nestType"))     nestTypeSelect.setValue((String) c.get("nestType"));
-        if (c.containsKey("architecture")) archSelect.setValue((String) c.get("architecture"));
-        if (c.containsKey("material"))     matSelect.setValue((String) c.get("material"));
-        if (c.containsKey("workerSizeMm")) workerSizeSlider.setValue(num(c, "workerSizeMm"));
-        if (c.containsKey("depth"))        depthSlider.setValue(num(c,"depth"));
-        if (c.containsKey("chamberCount")) chamberCountSlider.setValue(num(c,"chamberCount"));
-        if (c.containsKey("tunnelWidth"))  tunnelWidthSlider.setValue(num(c,"tunnelWidth"));
-        if (c.containsKey("branching"))    branchingSlider.setValue(num(c,"branching"));
+        if (c.containsKey("taxonCategory")) categorySelect.setValue((String) c.get("taxonCategory"));
+        if (c.containsKey("architecture"))  archSelect.setValue((String) c.get("architecture"));
+        if (c.containsKey("material"))      matSelect.setValue((String) c.get("material"));
+        if (c.containsKey("workerSizeMm"))  workerSizeSlider.setValue(num(c, "workerSizeMm"));
+        if (c.containsKey("depth"))         depthSlider.setValue(num(c,"depth"));
+        if (c.containsKey("chamberCount"))  chamberCountSlider.setValue(num(c,"chamberCount"));
+        if (c.containsKey("tunnelWidth"))   tunnelWidthSlider.setValue(num(c,"tunnelWidth"));
+        if (c.containsKey("branching"))     branchingSlider.setValue(num(c,"branching"));
         if (c.containsKey("chamberDistribution")) {
             @SuppressWarnings("unchecked")
             Map<String,Object> dist = (Map<String,Object>) c.get("chamberDistribution");
             dist.forEach((k,v) -> setSp(k, ((Number)v).intValue()));
         }
+        regen();
+        repaint();
     }
 
     private double num(Map<String,Object> m, String k) { return ((Number)m.get(k)).doubleValue(); }
@@ -322,7 +557,7 @@ public class NestGeneratorPane extends BorderPane {
         try {
             @SuppressWarnings("unchecked")
             Map<String,Object> cfg = new com.fasterxml.jackson.databind.ObjectMapper().readValue(f, Map.class);
-            applyCfg(cfg); regen(); repaint();
+            applyCfg(cfg);
         } catch (Exception ex) { new Alert(Alert.AlertType.ERROR, ex.getMessage()).show(); }
     }
 
@@ -335,7 +570,8 @@ public class NestGeneratorPane extends BorderPane {
 
     public Map<String,Object> getConfiguration() {
         Map<String,Object> c = new LinkedHashMap<>();
-        c.put("nestType",     nestTypeSelect.getValue());
+        c.put("presetName",   presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom");
+        c.put("taxonCategory",categorySelect.getValue());
         c.put("architecture", archSelect.getValue());
         c.put("material",     matSelect.getValue());
         c.put("workerSizeMm", workerSizeSlider.getValue());
@@ -362,9 +598,9 @@ public class NestGeneratorPane extends BorderPane {
 
     // ── Drawing delegates ─────────────────────────────────────────────────────
 
-    private void draw3D()   { NestRenderer.draw3D(nest, gc3D, canvas3D.getWidth(), canvas3D.getHeight(), azimuth, elevation, zoom, getTunnelWidth()); }
-    private void drawSide() { NestRenderer.drawSide(nest, gcSide, canvasSide.getWidth(), canvasSide.getHeight(), getTunnelWidth()); }
-    private void drawTop()  { NestRenderer.drawTop(nest,  gcTop,  canvasTop.getWidth(),  canvasTop.getHeight(),  getTunnelWidth()); }
+    private void draw3D()   { NestRenderer.draw3D(nest, gc3D, canvas3D.getWidth(), canvas3D.getHeight(), azimuth, elevation, zoom, getTunnelWidth(), pan3DX, pan3DY); }
+    private void drawSide() { NestRenderer.drawSide(nest, gcSide, canvasSide.getWidth(), canvasSide.getHeight(), getTunnelWidth(), sideZoom, sidePanX, sidePanY); }
+    private void drawTop()  { NestRenderer.drawTop(nest,  gcTop,  canvasTop.getWidth(),  canvasTop.getHeight(),  getTunnelWidth(), topZoom, topPanX, topPanY); }
 
     // ── Inner model classes ───────────────────────────────────────────────────
 
@@ -396,3 +632,4 @@ public class NestGeneratorPane extends BorderPane {
         public double workerSizeMm = 5.0;
     }
 }
+

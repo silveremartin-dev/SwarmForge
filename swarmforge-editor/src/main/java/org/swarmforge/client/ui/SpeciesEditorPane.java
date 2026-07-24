@@ -89,11 +89,10 @@ public class SpeciesEditorPane extends VBox {
     public SpeciesEditorPane() {
         setSpacing(15);
         setPadding(new Insets(15));
-        setStyle("-fx-background-color: #1e1e24;");
 
         // Header Title
         Label headerLabel = new Label("Eusocial Species Designer");
-        headerLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: white;");
+        headerLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
         // 1. Top Action Toolbar (Presets & File Operations)
         HBox topToolbar = createTopToolbar();
@@ -119,10 +118,9 @@ public class SpeciesEditorPane extends VBox {
         HBox bar = new HBox(12);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(10));
-        bar.setStyle("-fx-background-color: #2b2b36; -fx-background-radius: 6;");
 
         Label lblPreset = new Label("Preset:");
-        lblPreset.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+        lblPreset.setStyle("-fx-font-weight: bold;");
 
         presetCombo = new ComboBox<>();
         presetCombo.getItems().addAll(presetManager.getPresetNames());
@@ -135,7 +133,7 @@ public class SpeciesEditorPane extends VBox {
         });
 
         Label lblName = new Label("Name:");
-        lblName.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+        lblName.setStyle("-fx-font-weight: bold;");
 
         presetNameField = new TextField();
         presetNameField.setPromptText("Configuration Preset Name");
@@ -171,8 +169,6 @@ public class SpeciesEditorPane extends VBox {
     private TabPane createTabPane() {
         TabPane tabPane = new TabPane();
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        // Requirement 1: Only black text for tab titles
-        tabPane.setStyle(".tab-label { -fx-text-fill: #000000 !important; -fx-font-weight: bold; }");
 
         Tab tabTaxonomy = new Tab("Taxonomy & Group", createTaxonomyPane());
         tabTaxonomy.setGraphic(new FontIcon(Feather.BOOK));
@@ -192,11 +188,10 @@ public class SpeciesEditorPane extends VBox {
         Tab tabNest = new Tab("Nest & Behavior", createNestPane());
         tabNest.setGraphic(new FontIcon(Feather.HOME));
 
-        // Set explicit black styling on tab title labels to guarantee requirement #1
         List<Tab> tabs = List.of(tabTaxonomy, tabQueens, tabStages, tabCastes, tabDiet, tabNest);
         for (Tab t : tabs) {
             Label tabLabel = new Label(t.getText());
-            tabLabel.setStyle("-fx-text-fill: #000000 !important; -fx-font-weight: bold; -fx-font-size: 13px;");
+            tabLabel.getStyleClass().add("tab-label");
             t.setText("");
             t.setGraphic(new HBox(5, t.getGraphic(), tabLabel));
         }
@@ -239,7 +234,6 @@ public class SpeciesEditorPane extends VBox {
         queenEggRateField = new TextField("25.0");
 
         hasKingCheckBox = new CheckBox("Présence d'un Roi Reproducteur (Termites)");
-        hasKingCheckBox.setStyle("-fx-text-fill: white;");
 
         kingLifespanField = new TextField("15000");
         nuptialFlightCombo = new ComboBox<>(FXCollections.observableArrayList("AERIAL_SWARM", "SWARM_DIVISION", "BUDDING", "IN_NEST"));
@@ -328,7 +322,6 @@ public class SpeciesEditorPane extends VBox {
         TextField casteHealthF = new TextField("120");
         TextField casteDmgF = new TextField("15");
         CheckBox casteFlyCheck = new CheckBox("Volant");
-        casteFlyCheck.setStyle("-fx-text-fill: white;");
 
         casteForm.addRow(0, createWhiteLabel("Nom Caste:"), casteNameF, createWhiteLabel("Longueur Corps (mm):"), casteBodyF, createWhiteLabel("Largeur Tête (mm):"), casteHeadF);
         casteForm.addRow(1, createWhiteLabel("Durée de vie:"), casteLifeF, createWhiteLabel("Santé de base:"), casteHealthF, createWhiteLabel("Dégâts Attaque:"), casteDmgF);
@@ -387,10 +380,8 @@ public class SpeciesEditorPane extends VBox {
         colonySizeField = new TextField("15000");
 
         megaColonyCheckBox = new CheckBox("Forme des Supercolonies (Agglomération de nids)");
-        megaColonyCheckBox.setStyle("-fx-text-fill: white;");
 
         flyCheckBox = new CheckBox("Ouvrières capables de voler (Abeilles / Guêpes)");
-        flyCheckBox.setStyle("-fx-text-fill: white;");
 
         grid.addRow(0, createWhiteLabel("Nourriture Principale:"), primaryDietCombo);
         grid.addRow(1, createWhiteLabel("Nourriture Secondaire:"), secondaryDietCombo);
@@ -615,7 +606,7 @@ public class SpeciesEditorPane extends VBox {
 
     private Label createWhiteLabel(String text) {
         Label l = new Label(text);
-        l.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+        l.setStyle("-fx-font-weight: bold;");
         return l;
     }
 

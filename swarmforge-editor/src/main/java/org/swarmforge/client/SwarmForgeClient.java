@@ -47,6 +47,7 @@ public class SwarmForgeClient extends Application {
         @Override
     public void start(Stage primaryStage) {
         LOG.info("Starting SwarmForge Editor...");
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         
         // Window Icon
         try {
@@ -73,26 +74,31 @@ public class SwarmForgeClient extends Application {
         mainTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         // --- TAB 1: SIMULATION MANAGER ---
-        Tab simTab = new Tab("Simulation");
+        Tab simTab = new Tab();
+        simTab.textProperty().bind(i18n.createStringBinding("tab.simulation"));
         simTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SLIDERS));
         simTab.setContent(createSimulationManager());
 
         // --- TAB 2: WORLD EDITOR (3D View + Terrain Tools) ---
-        Tab worldTab = new Tab("World Editor");
+        Tab worldTab = new Tab();
+        worldTab.textProperty().bind(i18n.createStringBinding("tab.world_editor"));
         worldTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.GLOBE));
         worldTab.setContent(createWorldEditor());
 
         // --- TAB 3: SPECIES EDITOR ---
-        Tab speciesTab = new Tab("Species Editor");
+        Tab speciesTab = new Tab();
+        speciesTab.textProperty().bind(i18n.createStringBinding("tab.species_editor"));
         speciesTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CPU));
         speciesTab.setContent(createSpeciesEditor());
 
         // --- Other Tabs (Weather, Nest, etc.) ---
-        Tab weatherTab = new Tab("Weather"); 
+        Tab weatherTab = new Tab();
+        weatherTab.textProperty().bind(i18n.createStringBinding("tab.weather"));
         weatherTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SUN));
         weatherTab.setContent(new org.swarmforge.client.ui.WeatherEditorPane());
 
-        Tab nestTab = new Tab("Nest");
+        Tab nestTab = new Tab();
+        nestTab.textProperty().bind(i18n.createStringBinding("tab.nest"));
         nestTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.HOME));
         org.swarmforge.client.ui.NestGeneratorPane nestPane = new org.swarmforge.client.ui.NestGeneratorPane();
         nestPane.setOnApply(config -> {
@@ -106,27 +112,22 @@ public class SwarmForgeClient extends Application {
         });
         nestTab.setContent(nestPane);
 
-        Tab eventTab = new Tab("Log");
+        Tab eventTab = new Tab();
+        eventTab.textProperty().bind(i18n.createStringBinding("tab.log"));
         eventTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.FILE_TEXT));
         eventTab.setContent(new org.swarmforge.client.ui.EventLogPane());
 
         // God Mode
-        Tab godTab = new Tab("God Mode");
+        Tab godTab = new Tab();
+        godTab.textProperty().bind(i18n.createStringBinding("tab.god_mode"));
         godTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ZAP));
         godTab.setContent(new org.swarmforge.client.ui.InterventionPanel());
 
         mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, weatherTab, nestTab, eventTab, godTab);
 
-        // Styling Requirement 1: Black title headers for tabs
+        // Style tab graphics
         for (Tab t : mainTabs.getTabs()) {
-            Label label = new Label(t.getText());
-            label.setStyle("-fx-text-fill: #000000 !important; -fx-font-weight: bold; -fx-font-size: 13px;");
-            t.setText("");
-            if (t.getGraphic() != null) {
-                t.setGraphic(new HBox(5, t.getGraphic(), label));
-            } else {
-                t.setGraphic(label);
-            }
+            t.getStyleClass().add("custom-tab");
         }
 
         mainTabs.getSelectionModel().select(worldTab);
@@ -137,14 +138,9 @@ public class SwarmForgeClient extends Application {
         HBox statusBar = createStatusBar();
         root.setBottom(statusBar);
 
-        // Scene Setup - Remove hardcoded styles
+        // Scene Setup & Theme Registration
         Scene scene = new Scene(root, 1280, 800);
-        
-        // Load CSS if available (user wants valid theme usage)
-        URL cssUrl = getClass().getResource("/styles/dark-theme.css");
-        if(cssUrl != null) {
-            scene.getStylesheets().add(cssUrl.toExternalForm());
-        }
+        org.swarmforge.client.util.ThemeManager.getInstance().registerScene(scene);
 
         primaryStage.setScene(scene);
         primaryStage.setOnCloseRequest(e -> {
@@ -220,7 +216,24 @@ public class SwarmForgeClient extends Application {
         mFull.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.MONITOR));
         mFull.setOnAction(e -> owner.setFullScreen(!owner.isFullScreen()));
 
-        view.getItems().addAll(mZoomIn, mZoomOut, mFit, new SeparatorMenuItem(), mFull);
+        Menu mTheme = new Menu();
+        mTheme.textProperty().bind(i18n.createStringBinding("menu.view.theme"));
+        mTheme.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.MOON));
+
+        ToggleGroup themeGroup = new ToggleGroup();
+        RadioMenuItem mDark = new RadioMenuItem("Dark Mode");
+        mDark.setToggleGroup(themeGroup);
+        mDark.setSelected(org.swarmforge.client.util.ThemeManager.getInstance().getCurrentTheme() == org.swarmforge.client.util.ThemeManager.Theme.DARK);
+        mDark.setOnAction(e -> org.swarmforge.client.util.ThemeManager.getInstance().setTheme(org.swarmforge.client.util.ThemeManager.Theme.DARK));
+
+        RadioMenuItem mLight = new RadioMenuItem("Light Mode");
+        mLight.setToggleGroup(themeGroup);
+        mLight.setSelected(org.swarmforge.client.util.ThemeManager.getInstance().getCurrentTheme() == org.swarmforge.client.util.ThemeManager.Theme.LIGHT);
+        mLight.setOnAction(e -> org.swarmforge.client.util.ThemeManager.getInstance().setTheme(org.swarmforge.client.util.ThemeManager.Theme.LIGHT));
+
+        mTheme.getItems().addAll(mDark, mLight);
+
+        view.getItems().addAll(mZoomIn, mZoomOut, mFit, new SeparatorMenuItem(), mTheme, new SeparatorMenuItem(), mFull);
 
         // --- TOOLS ---
         Menu tools = new Menu();
@@ -292,14 +305,16 @@ public class SwarmForgeClient extends Application {
     }
 
     private void showAboutDialog() {
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("About SwarmForge");
-        alert.setHeaderText("SwarmForge v2.0.0");
-        alert.setContentText("Eusocial Insect Simulation Editor\n\nCopyright (c) 2026 Silvère Martin-Michiellot\nAssisted by Gemini AI");
+        alert.setTitle(i18n.get("dialog.about.title"));
+        alert.setHeaderText(i18n.get("dialog.about.header"));
+        alert.setContentText(i18n.get("dialog.about.content"));
         alert.show();
     }
 
         private Node createSimulationManager() {
+                org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
                 BorderPane pane = new BorderPane();
                 pane.setPadding(new Insets(10));
 
@@ -308,11 +323,17 @@ public class SwarmForgeClient extends Application {
                 connectBox.setAlignment(Pos.CENTER_LEFT);
                 TextField hostField = new TextField("localhost");
                 TextField portField = new TextField("50051");
-                Button btnConnect = new Button("Connect");
-                Label statusLabel = new Label("Disconnected");
-                // statusLabel.setStyle("-fx-text-fill: red;"); // Removed hardcoded style
+                Button btnConnect = new Button();
+                btnConnect.textProperty().bind(i18n.createStringBinding("btn.connect"));
+                Label statusLabel = new Label();
+                statusLabel.textProperty().bind(i18n.createStringBinding("status.disconnected"));
 
-                connectBox.getChildren().addAll(new Label("Host:"), hostField, new Label("Port:"), portField,
+                Label hostLabel = new Label();
+                hostLabel.textProperty().bind(i18n.createStringBinding("label.host"));
+                Label portLabel = new Label();
+                portLabel.textProperty().bind(i18n.createStringBinding("label.port"));
+
+                connectBox.getChildren().addAll(hostLabel, hostField, portLabel, portField,
                                 btnConnect,
                                 statusLabel);
                 pane.setTop(connectBox);

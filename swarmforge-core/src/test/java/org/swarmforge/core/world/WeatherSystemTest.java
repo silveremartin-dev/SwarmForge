@@ -36,7 +36,8 @@ class WeatherSystemTest {
         assertTrue(weather.getTemperature() > -50 && weather.getTemperature() < 60);
         assertTrue(weather.getHumidity() >= 0 && weather.getHumidity() <= 100);
         assertTrue(weather.getWindSpeed() >= 0);
-        assertTrue(weather.getWindDirection() >= 0 && weather.getWindDirection() < 360);
+        assertNotNull(weather.getWindDirection());
+        assertTrue(weather.getWindDirectionAngle() >= 0 && weather.getWindDirectionAngle() <= 360);
     }
 
     @Test

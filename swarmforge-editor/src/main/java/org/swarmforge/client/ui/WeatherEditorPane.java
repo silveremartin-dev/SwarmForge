@@ -6,249 +6,1177 @@
  */
 package org.swarmforge.client.ui;
 
+import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
+import javafx.stage.FileChooser;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.function.Consumer;
+import org.swarmforge.client.util.I18nManager;
 
 /**
- * Weather and Climate Editor - Configure weather events, seasonal patterns, and
- * disasters.
- * Part of the Asset Editor module.
+ * Weather and Climate Editor - Realistic Geographic & Atmospheric Climate System.
+ * Features Real-World Location Search & Open-Meteo Geocoding, Vegetation Cover estimation,
+ * Latitude/Longitude/Altitude Solar Photoperiod, Barometric Pressure, Soil Thermal Inertia,
+ * Sandstorm/Duststorm flight impairment, Lightning & Convective Fire Disasters, and 12-Month Interactive Curves.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
 public class WeatherEditorPane extends BorderPane {
 
-    // Weather Events
-    private final Map<String, Slider> eventProbabilities = new HashMap<>();
+    private static final String[] MONTH_KEYS = {
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    };
 
-    // Seasonal Settings
-    private Slider temperatureMinSlider;
-    private Slider temperatureMaxSlider;
-    private Slider humiditySlider;
-    private Slider rainFrequencySlider;
+    private static final int[] MONTH_MID_DAYS = { 15, 45, 75, 105, 135, 165, 195, 225, 255, 285, 315, 345 };
 
-    // Disaster Settings
+    // Parameter Tabs
+    public enum ParameterType {
+        TEMPERATURE("🌡 Température (°C)", -40, 50, "°C", 10),
+        WIND("💨 Vent (km/h)", 0, 150, " km/h", 25),
+        RAIN("🌧 Précipitations (mm)", 0, 500, " mm", 100),
+        HUMIDITY("💧 Humidité Relative (%)", 0, 100, "%", 20),
+        OVERVIEW("📊 Vue d'Ensemble", 0, 100, "", 20);
+
+        public final String title;
+        public final double minVal;
+        public final double maxVal;
+        public final String unit;
+        public final double tickStep;
+
+        ParameterType(String title, double minVal, double maxVal, String unit, double tickStep) {
+            this.title = title;
+            this.minVal = minVal;
+            this.maxVal = maxVal;
+            this.unit = unit;
+            this.tickStep = tickStep;
+        }
+    }
+
+    // 12 Monthly Values Arrays
+    private final double[] tempMin = new double[12];
+    private final double[] tempAvg = new double[12];
+    private final double[] tempMax = new double[12];
+
+    private final double[] windMin = new double[12];
+    private final double[] windAvg = new double[12];
+    private final double[] windMax = new double[12];
+
+    private final double[] rainMin = new double[12];
+    private final double[] rainAvg = new double[12];
+    private final double[] rainMax = new double[12];
+
+    private final double[] humidityMin = new double[12];
+    private final double[] humidityAvg = new double[12];
+    private final double[] humidityMax = new double[12];
+
+    // Geographic & Physical Atmospheric Controls
+    private TextField citySearchField;
+    private Label geoStatusLabel;
+    private Label vegCoverLabel;
+    private Spinner<Double> latSpinner;
+    private Spinner<Double> lonSpinner;
+    private Spinner<Double> altSpinner;
+    private Spinner<Double> pressureSpinner;
+    private ComboBox<String> windDirCombo;
+    private Spinner<Double> soilInertiaSpinner;
+    private Spinner<Double> depthAttenSpinner;
+
+    // Daylight Hours Calculated per Month (Photoperiod)
+    private final double[] daylightHours = new double[12];
+    private Label[] daylightLabels = new Label[12];
+
+    // Presets Manager
+    private ComboBox<String> presetsCombo;
+    private final WeatherPresetManager presetMgr = new WeatherPresetManager();
+    private Consumer<Map<String, Object>> onApplyCallback;
+
+    // Active Curve View
+    private ParameterType activeParam = ParameterType.TEMPERATURE;
+    private Canvas curveCanvas;
+    private GraphicsContext gc;
+    private ToggleGroup paramToggleGroup;
+
+    // Drag / Hover Interaction state
+    private int draggedMonth = -1;
+    private int draggedCurve = -1; // 0 = Min, 1 = Avg, 2 = Max
+    private String hoverInfoText = "";
+
+    // Spinners Grid for numerical editing
+    private final Spinner<Double>[] minSpinners = new Spinner[12];
+    private final Spinner<Double>[] avgSpinners = new Spinner[12];
+    private final Spinner<Double>[] maxSpinners = new Spinner[12];
+    private boolean updatingSpinners = false;
+
+    // Physical Coherence Banner
+    private Label coherenceStatusBadge;
+    private VBox coherenceDetailsBox;
+
+    // Disaster Probabilities Settings
     private final Map<String, Slider> disasterProbabilities = new HashMap<>();
 
-    // Preview
-    private final VBox previewPane;
-
     public WeatherEditorPane() {
-        setPadding(new Insets(15));
+        setTop(buildHeader());
 
+        // Center: Scrollable main content
+        VBox mainContent = new VBox(15);
+        mainContent.setPadding(new Insets(10, 15, 15, 15));
 
-        // Title
-        Label title = new Label("🌦 Weather & Climate Editor");
-        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: black;");
-        setTop(new VBox(10, title, new Separator()));
+        // Section 1: Geographic & Real Weather Fetcher (City Search, Open-Meteo, Latitude, Longitude, Altitude, Daylight, Vegetation)
+        TitledPane geoSection = buildGeographicSection();
 
-        // Main content - Split into sections
-        VBox content = new VBox(20);
-        content.setPadding(new Insets(10, 0, 0, 0));
+        // Section 2: Atmosphere & Soil Microclimate (Pressure, Wind Direction, Soil Thermal Inertia)
+        TitledPane atmoSection = buildAtmosphereSoilSection();
 
-        // === Section 1: Climate Preset ===
-        TitledPane presetPane = createPresetsSection();
+        // Section 3: Monthly Interactive Curves Chart & Editor
+        VBox curvesSection = buildCurvesSection();
 
-        // === Section 2: Weather Events ===
-        TitledPane eventsPane = createEventsSection();
+        // Section 4: Physical Coherence Checks
+        TitledPane coherenceSection = buildCoherenceSection();
 
-        // === Section 3: Seasonal Settings ===
-        TitledPane seasonalPane = createSeasonalSection();
-
-        // === Section 4: Disasters ===
+        // Section 5: Natural Disasters (Fire, Lightning, Sandstorm flight impairment, Flood, Tornado, Freeze)
         TitledPane disasterPane = createDisastersSection();
 
-        content.getChildren().addAll(presetPane, eventsPane, seasonalPane, disasterPane);
+        mainContent.getChildren().addAll(geoSection, atmoSection, curvesSection, coherenceSection, disasterPane);
 
-        ScrollPane scrollPane = new ScrollPane(content);
+        ScrollPane scrollPane = new ScrollPane(mainContent);
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         setCenter(scrollPane);
 
-        // Preview Panel (right side)
-        previewPane = createPreviewPane();
-        setRight(previewPane);
-
-        // Bottom: Save/Load buttons
-        HBox buttons = createButtonBar();
-        setBottom(buttons);
+        // Load default preset
+        refreshPresetsCombo();
+        if (!presetsCombo.getItems().isEmpty()) {
+            presetsCombo.getSelectionModel().selectFirst();
+            String first = presetsCombo.getValue();
+            if (presetMgr.contains(first)) {
+                applyPresetConfig(presetMgr.get(first));
+            }
+        } else {
+            applyDefaultValues();
+        }
     }
 
-    private TitledPane createPresetsSection() {
-        VBox content = new VBox(10);
-        content.setPadding(new Insets(10));
+    // ── Header Bar ─────────────────────────────────────────────────────────────
 
-        Label desc = new Label("Quick presets for common climate zones:");
-        desc.setStyle("-fx-text-fill: black;");
+    private VBox buildHeader() {
+        I18nManager i18n = I18nManager.getInstance();
+        VBox v = new VBox(6);
+        v.setPadding(new Insets(8, 10, 5, 10));
 
-        HBox presets = new HBox(10);
-        String[] presetNames = { "Temperate", "Tropical", "Arid", "Mediterranean", "Arctic" };
-        for (String preset : presetNames) {
-            Button btn = new Button(preset);
-            btn.setStyle("-fx-text-fill: black;");
-            btn.setOnAction(e -> applyPreset(preset));
-            presets.getChildren().add(btn);
+        HBox r = new HBox(8);
+        r.setAlignment(Pos.CENTER_LEFT);
+
+        Label t = new Label();
+        t.textProperty().bind(i18n.createStringBinding("weather.title"));
+        t.setStyle("-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#00d4ff;");
+
+        Region sp = new Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+
+        Label lp = new Label();
+        lp.textProperty().bind(i18n.createStringBinding("weather.preset.label"));
+
+        presetsCombo = new ComboBox<>();
+        presetsCombo.setPrefWidth(210);
+        presetsCombo.promptTextProperty().bind(i18n.createStringBinding("weather.preset.prompt"));
+        presetsCombo.setOnAction(e -> {
+            String s = presetsCombo.getValue();
+            if (s != null && presetMgr.contains(s)) {
+                applyPresetConfig(presetMgr.get(s));
+            }
+        });
+
+        Button bAdd = btn("", "#17a2b8");
+        bAdd.textProperty().bind(i18n.createStringBinding("weather.preset.save"));
+        bAdd.setOnAction(e -> doSavePreset());
+
+        Button bExp = new Button();
+        bExp.textProperty().bind(i18n.createStringBinding("weather.preset.export"));
+        bExp.setOnAction(e -> doExport());
+
+        Button bImp = new Button();
+        bImp.textProperty().bind(i18n.createStringBinding("weather.preset.import"));
+        bImp.setOnAction(e -> doImport());
+
+        Button bApply = btn("", "#28a745");
+        bApply.textProperty().bind(i18n.createStringBinding("weather.preset.apply"));
+        bApply.setOnAction(e -> applyToWorld());
+
+        r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd,
+                new Separator(Orientation.VERTICAL), bExp, bImp,
+                new Separator(Orientation.VERTICAL), bApply);
+
+        v.getChildren().addAll(r, new Separator());
+        return v;
+    }
+
+    private Button btn(String text, String bg) {
+        Button b = new Button(text);
+        b.setStyle("-fx-background-color:" + bg + ";-fx-text-fill:white;-fx-font-weight:bold;");
+        return b;
+    }
+
+    private void refreshPresetsCombo() {
+        String cur = presetsCombo.getValue();
+        presetsCombo.getItems().setAll(presetMgr.names());
+        if (cur != null && presetsCombo.getItems().contains(cur)) {
+            presetsCombo.setValue(cur);
+        }
+    }
+
+    // ── Geographic & Real Weather Search Section ───────────────────────────────
+
+    private TitledPane buildGeographicSection() {
+        I18nManager i18n = I18nManager.getInstance();
+        VBox container = new VBox(10);
+        container.setPadding(new Insets(10));
+
+        // Row 1: Real-World Open-Meteo Geocoding Search Bar
+        HBox searchRow = new HBox(10);
+        searchRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblSearch = new Label();
+        lblSearch.textProperty().bind(i18n.createStringBinding("weather.geo.search_label"));
+        lblSearch.setStyle("-fx-font-weight:bold;");
+
+        citySearchField = new TextField("Paris");
+        citySearchField.promptTextProperty().bind(i18n.createStringBinding("weather.geo.search_prompt"));
+        citySearchField.setPrefWidth(220);
+        citySearchField.setOnAction(e -> fetchRealWeather(citySearchField.getText()));
+
+        Button btnFetch = btn("", "#00d4ff");
+        btnFetch.textProperty().bind(i18n.createStringBinding("weather.geo.search_btn"));
+        btnFetch.setOnAction(e -> fetchRealWeather(citySearchField.getText()));
+
+        geoStatusLabel = new Label("💡 Entrez une ville pour charger automatiquement le climat réel.");
+        geoStatusLabel.setStyle("-fx-text-fill:#aaa;-fx-font-size:11;");
+
+        searchRow.getChildren().addAll(lblSearch, citySearchField, btnFetch, geoStatusLabel);
+
+        // Row 2: Latitude, Longitude, Altitude & Vegetation Cover
+        GridPane grid = new GridPane();
+        grid.setHgap(15);
+        grid.setVgap(10);
+
+        Label lblLat = new Label("🌍 Latitude (°N/S) :");
+        lblLat.setStyle("-fx-font-weight:bold;");
+        latSpinner = new Spinner<>(-90.0, 90.0, 48.8, 0.5);
+        latSpinner.setEditable(true);
+        latSpinner.setPrefWidth(100);
+        latSpinner.valueProperty().addListener((o, a, b) -> {
+            updatePhotoperiod();
+            updateAltitudeLapseRate();
+            updateVegetationEstimate();
+            updateCoherenceStatus();
+        });
+
+        Label lblLon = new Label("🌐 Longitude (°E/W) :");
+        lblLon.setStyle("-fx-font-weight:bold;");
+        lonSpinner = new Spinner<>(-180.0, 180.0, 2.35, 0.5);
+        lonSpinner.setEditable(true);
+        lonSpinner.setPrefWidth(100);
+
+        Label lblAlt = new Label("⛰️ Altitude / Élévation (m) :");
+        lblAlt.setStyle("-fx-font-weight:bold;");
+        altSpinner = new Spinner<>(0.0, 4000.0, 100.0, 50.0);
+        altSpinner.setEditable(true);
+        altSpinner.setPrefWidth(110);
+        altSpinner.valueProperty().addListener((o, a, b) -> {
+            updateAltitudeLapseRate();
+            updateCoherenceStatus();
+        });
+
+        Label lblVegTitle = new Label();
+        lblVegTitle.textProperty().bind(i18n.createStringBinding("weather.geo.veg_label"));
+        lblVegTitle.setStyle("-fx-font-weight:bold;");
+
+        vegCoverLabel = new Label("🌳 Forêt Tempérée Décidue (Temperate Deciduous Forest)");
+        vegCoverLabel.setStyle("-fx-text-fill:#28a745;-fx-font-weight:bold;");
+
+        grid.add(lblLat, 0, 0);
+        grid.add(latSpinner, 1, 0);
+        grid.add(lblLon, 2, 0);
+        grid.add(lonSpinner, 3, 0);
+        grid.add(lblAlt, 4, 0);
+        grid.add(altSpinner, 5, 0);
+
+        grid.add(lblVegTitle, 0, 1);
+        grid.add(vegCoverLabel, 1, 1, 5, 1);
+
+        // Row 3: Photoperiod (Daylight Hours per Month) Preview Box
+        VBox photoBox = new VBox(6);
+        photoBox.setPadding(new Insets(8));
+        photoBox.setStyle("-fx-background-color:#1e2230;-fx-border-color:#333;-fx-border-width:1;-fx-border-radius:4;");
+
+        Label photoTitle = new Label("☀️ Photopériodisme Calculé (Heures d'ensoleillement théoriques / jour) :");
+        photoTitle.setStyle("-fx-font-size:11;-fx-font-weight:bold;-fx-text-fill:#00d4ff;");
+
+        HBox hoursBox = new HBox(8);
+        hoursBox.setAlignment(Pos.CENTER_LEFT);
+
+        for (int m = 0; m < 12; m++) {
+            VBox col = new VBox(2);
+            col.setAlignment(Pos.CENTER);
+            Label mLbl = new Label(MONTH_KEYS[m]);
+            mLbl.setStyle("-fx-font-size:9;-fx-text-fill:#aaa;");
+            daylightLabels[m] = new Label("12.0h");
+            daylightLabels[m].setStyle("-fx-font-size:10;-fx-font-weight:bold;-fx-text-fill:#ffc107;");
+            col.getChildren().addAll(mLbl, daylightLabels[m]);
+            hoursBox.getChildren().add(col);
         }
 
-        content.getChildren().addAll(desc, presets);
+        photoBox.getChildren().addAll(photoTitle, hoursBox);
 
-        TitledPane pane = new TitledPane("Climate Presets", content);
-        pane.setExpanded(true);
+        container.getChildren().addAll(searchRow, new Separator(), grid, photoBox);
+
+        TitledPane pane = new TitledPane();
+        pane.textProperty().bind(i18n.createStringBinding("weather.geo.title"));
+        pane.setContent(container);
         styleTitledPane(pane);
+        pane.setExpanded(true);
+
+        updatePhotoperiod();
         return pane;
     }
 
-    private TitledPane createEventsSection() {
+    private void fetchRealWeather(String cityQuery) {
+        if (cityQuery == null || cityQuery.isBlank()) return;
+        I18nManager i18n = I18nManager.getInstance();
+
+        geoStatusLabel.setText(i18n.get("weather.geo.status_fetching", cityQuery));
+        geoStatusLabel.setStyle("-fx-text-fill:#ffc107;-fx-font-size:11;");
+
+        new Thread(() -> {
+            try {
+                // 1. Open-Meteo Geocoding API
+                String geoUrlStr = "https://geocoding-api.open-meteo.com/v1/search?name="
+                        + java.net.URLEncoder.encode(cityQuery, StandardCharsets.UTF_8)
+                        + "&count=1&language=fr";
+
+                String geoJson = readHttpUrl(geoUrlStr);
+                com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(geoJson);
+
+                if (!root.has("results") || root.get("results").isEmpty()) {
+                    Platform.runLater(() -> {
+                        geoStatusLabel.setText(i18n.get("weather.geo.status_error", "Lieu introuvable"));
+                        geoStatusLabel.setStyle("-fx-text-fill:#ff4757;-fx-font-size:11;");
+                    });
+                    return;
+                }
+
+                com.fasterxml.jackson.databind.JsonNode loc = root.get("results").get(0);
+                String name = loc.get("name").asText();
+                double lat = loc.get("latitude").asDouble();
+                double lon = loc.get("longitude").asDouble();
+                double alt = loc.has("elevation") ? loc.get("elevation").asDouble() : 100.0;
+
+                // 2. Fetch Open-Meteo Archive Climate Normals (Monthly aggregate 2023)
+                String climateUrlStr = String.format(Locale.US,
+                        "https://archive-api.open-meteo.com/v1/archive?latitude=%.4f&longitude=%.4f&start_date=2023-01-01&end_date=2023-12-31&monthly=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,wind_speed_10m_max,relative_humidity_2m_mean",
+                        lat, lon);
+
+                String climateJson = readHttpUrl(climateUrlStr);
+                com.fasterxml.jackson.databind.JsonNode climateRoot = new com.fasterxml.jackson.databind.ObjectMapper().readTree(climateJson);
+
+                if (climateRoot.has("monthly")) {
+                    com.fasterxml.jackson.databind.JsonNode mNode = climateRoot.get("monthly");
+                    com.fasterxml.jackson.databind.JsonNode tMaxN = mNode.get("temperature_2m_max");
+                    com.fasterxml.jackson.databind.JsonNode tMinN = mNode.get("temperature_2m_min");
+                    com.fasterxml.jackson.databind.JsonNode tAvgN = mNode.get("temperature_2m_mean");
+                    com.fasterxml.jackson.databind.JsonNode rainN = mNode.get("precipitation_sum");
+                    com.fasterxml.jackson.databind.JsonNode windN = mNode.get("wind_speed_10m_max");
+                    com.fasterxml.jackson.databind.JsonNode humN = mNode.get("relative_humidity_2m_mean");
+
+                    for (int m = 0; m < 12; m++) {
+                        if (tMaxN != null && m < tMaxN.size()) tempMax[m] = tMaxN.get(m).asDouble();
+                        if (tMinN != null && m < tMinN.size()) tempMin[m] = tMinN.get(m).asDouble();
+                        if (tAvgN != null && m < tAvgN.size()) tempAvg[m] = tAvgN.get(m).asDouble();
+
+                        if (rainN != null && m < rainN.size()) {
+                            rainAvg[m] = rainN.get(m).asDouble();
+                            rainMin[m] = Math.max(0, rainAvg[m] * 0.5);
+                            rainMax[m] = rainAvg[m] * 1.5;
+                        }
+                        if (windN != null && m < windN.size()) {
+                            windAvg[m] = windN.get(m).asDouble();
+                            windMin[m] = Math.max(0, windAvg[m] * 0.5);
+                            windMax[m] = windAvg[m] * 1.8;
+                        }
+                        if (humN != null && m < humN.size()) {
+                            humidityAvg[m] = humN.get(m).asDouble();
+                            humidityMin[m] = Math.max(10, humidityAvg[m] - 15);
+                            humidityMax[m] = Math.min(100, humidityAvg[m] + 15);
+                        }
+                    }
+                }
+
+                Platform.runLater(() -> {
+                    latSpinner.getValueFactory().setValue(lat);
+                    lonSpinner.getValueFactory().setValue(lon);
+                    altSpinner.getValueFactory().setValue(alt);
+
+                    updatePhotoperiod();
+                    updateAltitudeLapseRate();
+                    updateVegetationEstimate();
+                    updateSpinnersForActiveParam();
+                    syncAndValidate();
+                    redrawCurves();
+
+                    geoStatusLabel.setText(i18n.get("weather.geo.status_success", name, String.format(Locale.US, "%.2f", lat), String.format(Locale.US, "%.2f", lon), (int) alt));
+                    geoStatusLabel.setStyle("-fx-text-fill:#28a745;-fx-font-weight:bold;-fx-font-size:11;");
+                });
+
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    geoStatusLabel.setText(i18n.get("weather.geo.status_error", ex.getMessage()));
+                    geoStatusLabel.setStyle("-fx-text-fill:#ff4757;-fx-font-size:11;");
+                });
+            }
+        }).start();
+    }
+
+    private String readHttpUrl(String urlStr) throws Exception {
+        URL url = new URL(urlStr);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setConnectTimeout(5000);
+        conn.setReadTimeout(5000);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            return sb.toString();
+        }
+    }
+
+    private void updateVegetationEstimate() {
+        if (vegCoverLabel == null || latSpinner == null) return;
+        double lat = latSpinner.getValue();
+        double annualTemp = getAvg(tempAvg);
+        double annualRain = getSum(rainAvg);
+
+        String vegType;
+        if (Math.abs(lat) > 65 || annualTemp < 0) {
+            vegType = "❄️ Toundra / Sol Permafrost (Tundra & Snow)";
+        } else if (annualRain < 200) {
+            vegType = "🏜️ Désert Aride / Minéral (Arid Sand & Rock Desert)";
+        } else if (annualRain < 450) {
+            vegType = "🌾 Steppe & Savane Sèche (Semi-arid Steppe)";
+        } else if (annualTemp > 20 && annualRain > 1800) {
+            vegType = "🌴 Forêt Tropicale Humide (Equatorial Rainforest)";
+        } else if (annualTemp > 16 && annualRain < 700) {
+            vegType = "🌿 Maquis Méditerranéen & Garrigue (Mediterranean Shrubland)";
+        } else if (annualTemp > 10) {
+            vegType = "🌳 Forêt Tempérée Décidue (Temperate Deciduous Forest)";
+        } else {
+            vegType = "🌲 Forêt Boréale (Taiga / Boreal Coniferous)";
+        }
+
+        vegCoverLabel.setText(vegType);
+    }
+
+    private void updatePhotoperiod() {
+        if (latSpinner == null) return;
+        double latRad = Math.toRadians(latSpinner.getValue());
+
+        for (int m = 0; m < 12; m++) {
+            int dayOfYear = MONTH_MID_DAYS[m];
+            double declinationRad = Math.toRadians(23.45 * Math.sin(Math.toRadians(360.0 / 365.0 * (dayOfYear - 81))));
+            double tanProduct = -Math.tan(latRad) * Math.tan(declinationRad);
+            double hours;
+            if (tanProduct >= 1.0) {
+                hours = 0.0;
+            } else if (tanProduct <= -1.0) {
+                hours = 24.0;
+            } else {
+                double hourAngle = Math.acos(tanProduct);
+                hours = Math.toDegrees(hourAngle) / 15.0 * 2.0;
+            }
+
+            daylightHours[m] = Math.round(hours * 10.0) / 10.0;
+            if (daylightLabels[m] != null) {
+                daylightLabels[m].setText(String.format("%.1fh", daylightHours[m]));
+            }
+        }
+    }
+
+    private void updateAltitudeLapseRate() {
+        if (altSpinner == null || pressureSpinner == null) return;
+        double alt = altSpinner.getValue();
+        double press = 1013.25 * Math.pow(1.0 - 2.25577e-5 * alt, 5.25588);
+        pressureSpinner.getValueFactory().setValue(Math.round(press * 10.0) / 10.0);
+    }
+
+    // ── Atmosphere & Soil Microclimate Card ────────────────────────────────────
+
+    private TitledPane buildAtmosphereSoilSection() {
         GridPane grid = new GridPane();
         grid.setHgap(15);
         grid.setVgap(10);
         grid.setPadding(new Insets(10));
 
-        String[][] events = {
-                { "☀️ Sunny", "60" },
-                { "🌧 Rain", "25" },
-                { "⛈ Storm", "5" },
-                { "🌫 Fog", "8" },
-                { "❄️ Snow", "2" },
-                { "💨 Wind", "15" }
-        };
+        // Barometric Pressure (hPa)
+        Label lblPress = new Label("🎚️ Pression Atmosphérique (hPa) :");
+        lblPress.setStyle("-fx-font-weight:bold;");
+        pressureSpinner = new Spinner<>(800.0, 1100.0, 1013.2, 1.0);
+        pressureSpinner.setEditable(true);
+        pressureSpinner.setPrefWidth(100);
 
-        int row = 0;
-        for (String[] event : events) {
-            Label label = new Label(event[0]);
-            label.setStyle("-fx-text-fill: black; -fx-min-width: 100;");
+        // Prevailing Wind Direction
+        Label lblWindDir = new Label("🧭 Direction du Vent Dominant :");
+        lblWindDir.setStyle("-fx-font-weight:bold;");
+        windDirCombo = new ComboBox<>();
+        windDirCombo.getItems().addAll("N", "NE", "E", "SE", "S", "SW", "W", "NW");
+        windDirCombo.setValue("SW");
+        windDirCombo.setPrefWidth(80);
 
-            Slider slider = new Slider(0, 100, Double.parseDouble(event[1]));
-            slider.setPrefWidth(200);
-            slider.setShowTickLabels(true);
-            slider.setShowTickMarks(true);
-            slider.setMajorTickUnit(25);
+        // Soil Thermal Inertia (days lag)
+        Label lblSoilInertia = new Label("🧱 Inertie Thermique du Sol (Jours de déphasage) :");
+        lblSoilInertia.setStyle("-fx-font-weight:bold;");
+        soilInertiaSpinner = new Spinner<>(0.5, 14.0, 3.0, 0.5);
+        soilInertiaSpinner.setEditable(true);
+        soilInertiaSpinner.setPrefWidth(90);
 
-            Label valueLabel = new Label(event[1] + "%");
-            valueLabel.setStyle("-fx-text-fill: black; -fx-min-width: 50;");
-            slider.valueProperty()
-                    .addListener((obs, old, val) -> valueLabel.setText(String.format("%.0f%%", val.doubleValue())));
+        // Underground Depth Attenuation Factor (0 to 1)
+        Label lblAtten = new Label("🕳️ Atténuation en Profondeur (0-1) :");
+        lblAtten.setStyle("-fx-font-weight:bold;");
+        depthAttenSpinner = new Spinner<>(0.0, 1.0, 0.85, 0.05);
+        depthAttenSpinner.setEditable(true);
+        depthAttenSpinner.setPrefWidth(90);
 
-            eventProbabilities.put(event[0], slider);
+        grid.add(lblPress, 0, 0);
+        grid.add(pressureSpinner, 1, 0);
+        grid.add(lblWindDir, 2, 0);
+        grid.add(windDirCombo, 3, 0);
+        grid.add(lblSoilInertia, 0, 1);
+        grid.add(soilInertiaSpinner, 1, 1);
+        grid.add(lblAtten, 2, 1);
+        grid.add(depthAttenSpinner, 3, 1);
 
-            grid.add(label, 0, row);
-            grid.add(slider, 1, row);
-            grid.add(valueLabel, 2, row);
-            row++;
+        TitledPane pane = new TitledPane("🌫️ Atmosphère, Vents & Microclimat Souterrain du Sol", grid);
+        styleTitledPane(pane);
+        pane.setExpanded(true);
+        return pane;
+    }
+
+    // ── Curves Section & Canvas Chart Editor ──────────────────────────────────
+
+    private VBox buildCurvesSection() {
+        I18nManager i18n = I18nManager.getInstance();
+        VBox container = new VBox(8);
+        container.setPadding(new Insets(10));
+        container.setStyle("-fx-background-color:#1e2230;-fx-border-color:#444;-fx-border-width:1;-fx-border-radius:6;-fx-background-radius:6;");
+
+        Label title = new Label();
+        title.textProperty().bind(i18n.createStringBinding("weather.curves.title"));
+        title.setStyle("-fx-font-size:14;-fx-font-weight:bold;-fx-text-fill:#00d4ff;");
+
+        // Parameter selector toolbar
+        HBox paramBar = new HBox(8);
+        paramBar.setAlignment(Pos.CENTER_LEFT);
+        paramToggleGroup = new ToggleGroup();
+
+        for (ParameterType type : ParameterType.values()) {
+            ToggleButton tb = new ToggleButton(type.title);
+            tb.setToggleGroup(paramToggleGroup);
+            tb.setUserData(type);
+            tb.setStyle("-fx-font-size:11;-fx-font-weight:bold;");
+            if (type == ParameterType.TEMPERATURE) tb.setSelected(true);
+            paramBar.getChildren().add(tb);
         }
 
-        TitledPane pane = new TitledPane("Weather Event Probabilities", grid);
-        styleTitledPane(pane);
-        return pane;
-    }
-
-    private TitledPane createSeasonalSection() {
-        GridPane grid = new GridPane();
-        grid.setHgap(15);
-        grid.setVgap(15);
-        grid.setPadding(new Insets(10));
-
-        // Temperature Range
-        Label tempLabel = new Label("🌡 Temperature Range (°C):");
-        tempLabel.setStyle("-fx-text-fill: black;");
-
-        temperatureMinSlider = new Slider(-20, 50, 5);
-        temperatureMinSlider.setPrefWidth(150);
-        temperatureMaxSlider = new Slider(-20, 50, 25);
-        temperatureMaxSlider.setPrefWidth(150);
-
-        Label tempRangeLabel = new Label("5°C - 25°C");
-        tempRangeLabel.setStyle("-fx-text-fill: black;");
-        temperatureMinSlider.valueProperty().addListener((obs, old, val) -> tempRangeLabel
-                .setText(String.format("%.0f°C - %.0f°C", val.doubleValue(), temperatureMaxSlider.getValue())));
-        temperatureMaxSlider.valueProperty().addListener((obs, old, val) -> tempRangeLabel
-                .setText(String.format("%.0f°C - %.0f°C", temperatureMinSlider.getValue(), val.doubleValue())));
-
-        HBox tempSliders = new HBox(10, new Label("Min:"), temperatureMinSlider, new Label("Max:"),
-                temperatureMaxSlider);
-        tempSliders.getChildren().forEach(n -> {
-            if (n instanceof Label)
-                ((Label) n).setStyle("-fx-text-fill: black;");
+        paramToggleGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                activeParam = (ParameterType) newVal.getUserData();
+                updateSpinnersForActiveParam();
+                redrawCurves();
+            }
         });
 
-        // Humidity
-        Label humLabel = new Label("💧 Average Humidity:");
-        humLabel.setStyle("-fx-text-fill: black;");
-        humiditySlider = new Slider(0, 100, 60);
-        humiditySlider.setPrefWidth(300);
-        Label humValue = new Label("60%");
-        humValue.setStyle("-fx-text-fill: black;");
-        humiditySlider.valueProperty()
-                .addListener((obs, old, val) -> humValue.setText(String.format("%.0f%%", val.doubleValue())));
+        // Canvas setup
+        curveCanvas = new Canvas(760, 260);
+        gc = curveCanvas.getGraphicsContext2D();
 
-        // Rain Frequency
-        Label rainLabel = new Label("🌧 Rain Frequency:");
-        rainLabel.setStyle("-fx-text-fill: black;");
-        rainFrequencySlider = new Slider(0, 365, 100);
-        rainFrequencySlider.setPrefWidth(300);
-        Label rainValue = new Label("~100 days/year");
-        rainValue.setStyle("-fx-text-fill: black;");
-        rainFrequencySlider.valueProperty()
-                .addListener((obs, old, val) -> rainValue.setText("~" + val.intValue() + " days/year"));
+        setupCanvasInteractions();
 
-        grid.add(tempLabel, 0, 0);
-        grid.add(tempSliders, 1, 0);
-        grid.add(tempRangeLabel, 2, 0);
-        grid.add(humLabel, 0, 1);
-        grid.add(humiditySlider, 1, 1);
-        grid.add(humValue, 2, 1);
-        grid.add(rainLabel, 0, 2);
-        grid.add(rainFrequencySlider, 1, 2);
-        grid.add(rainValue, 2, 2);
+        StackPane canvasHolder = new StackPane(curveCanvas);
+        canvasHolder.setStyle("-fx-background-color:#141824;-fx-border-color:#333;-fx-border-width:1;-fx-border-radius:4;");
 
-        TitledPane pane = new TitledPane("Seasonal Settings", grid);
+        // Legend bar
+        HBox legendBar = buildCurvesLegendBar();
+
+        // Monthly Spinner Table Grid
+        GridPane spinnerGrid = buildMonthlySpinnersGrid();
+
+        container.getChildren().addAll(title, paramBar, canvasHolder, legendBar, spinnerGrid);
+        return container;
+    }
+
+    private HBox buildCurvesLegendBar() {
+        I18nManager i18n = I18nManager.getInstance();
+        HBox bar = new HBox(12);
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setPadding(new Insets(4, 8, 4, 8));
+
+        Label minLbl = createDotLabel(i18n.get("weather.curves.min") + " (Cyan)", Color.web("#00d4ff"));
+        Label avgLbl = createDotLabel(i18n.get("weather.curves.avg") + " (Or)", Color.web("#ffc107"));
+        Label maxLbl = createDotLabel(i18n.get("weather.curves.max") + " (Rouge)", Color.web("#ff4757"));
+
+        Region sp = new Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+
+        Label hint = new Label("💡 Cliquez et glissez sur les points du graphique pour modifier les courbes");
+        hint.setStyle("-fx-text-fill:#888;-fx-font-size:10;-fx-font-style:italic;");
+
+        bar.getChildren().addAll(minLbl, avgLbl, maxLbl, sp, hint);
+        return bar;
+    }
+
+    private Label createDotLabel(String text, Color color) {
+        Label l = new Label("● " + text);
+        l.setStyle("-fx-text-fill: " + toHexString(color) + ";-fx-font-weight:bold;-fx-font-size:11;");
+        return l;
+    }
+
+    private String toHexString(Color c) {
+        return String.format("#%02X%02X%02X",
+                (int) (c.getRed() * 255),
+                (int) (c.getGreen() * 255),
+                (int) (c.getBlue() * 255));
+    }
+
+    private GridPane buildMonthlySpinnersGrid() {
+        GridPane grid = new GridPane();
+        grid.setHgap(4);
+        grid.setVgap(4);
+        grid.setPadding(new Insets(6, 0, 0, 0));
+
+        for (int m = 0; m < 12; m++) {
+            Label mLbl = new Label(MONTH_KEYS[m]);
+            mLbl.setAlignment(Pos.CENTER);
+            mLbl.setStyle("-fx-font-size:10;-fx-font-weight:bold;-fx-text-fill:#aaa;-fx-min-width:55;");
+            grid.add(mLbl, m, 0);
+
+            // Max Spinner (Top)
+            maxSpinners[m] = new Spinner<>(-100.0, 1000.0, 0.0, 1.0);
+            styleSpinner(maxSpinners[m], "#ff4757");
+
+            // Avg Spinner (Middle)
+            avgSpinners[m] = new Spinner<>(-100.0, 1000.0, 0.0, 1.0);
+            styleSpinner(avgSpinners[m], "#ffc107");
+
+            // Min Spinner (Bottom)
+            minSpinners[m] = new Spinner<>(-100.0, 1000.0, 0.0, 1.0);
+            styleSpinner(minSpinners[m], "#00d4ff");
+
+            final int monthIdx = m;
+            maxSpinners[m].valueProperty().addListener((o, a, b) -> {
+                if (updatingSpinners) return;
+                setParamVal(activeParam, 2, monthIdx, b);
+                syncAndValidate();
+            });
+            avgSpinners[m].valueProperty().addListener((o, a, b) -> {
+                if (updatingSpinners) return;
+                setParamVal(activeParam, 1, monthIdx, b);
+                syncAndValidate();
+            });
+            minSpinners[m].valueProperty().addListener((o, a, b) -> {
+                if (updatingSpinners) return;
+                setParamVal(activeParam, 0, monthIdx, b);
+                syncAndValidate();
+            });
+
+            grid.add(maxSpinners[m], m, 1);
+            grid.add(avgSpinners[m], m, 2);
+            grid.add(minSpinners[m], m, 3);
+        }
+
+        return grid;
+    }
+
+    private void styleSpinner(Spinner<Double> s, String textColor) {
+        s.setPrefWidth(58);
+        s.setEditable(true);
+        s.setStyle("-fx-font-size:9;-fx-text-fill:" + textColor + ";");
+    }
+
+    private void updateSpinnersForActiveParam() {
+        if (activeParam == ParameterType.OVERVIEW) return;
+        updatingSpinners = true;
+
+        double[] minArr = getArr(activeParam, 0);
+        double[] avgArr = getArr(activeParam, 1);
+        double[] maxArr = getArr(activeParam, 2);
+
+        for (int m = 0; m < 12; m++) {
+            minSpinners[m].getValueFactory().setValue(Math.round(minArr[m] * 10.0) / 10.0);
+            avgSpinners[m].getValueFactory().setValue(Math.round(avgArr[m] * 10.0) / 10.0);
+            maxSpinners[m].getValueFactory().setValue(Math.round(maxArr[m] * 10.0) / 10.0);
+        }
+
+        updatingSpinners = false;
+    }
+
+    // ── Canvas Rendering & Interaction ─────────────────────────────────────────
+
+    private void setupCanvasInteractions() {
+        curveCanvas.setOnMousePressed(e -> {
+            if (activeParam == ParameterType.OVERVIEW) return;
+            double mx = e.getX();
+            double my = e.getY();
+
+            double padL = 50, padR = 20, padT = 30, padB = 30;
+            double w = curveCanvas.getWidth() - padL - padR;
+            double h = curveCanvas.getHeight() - padT - padB;
+
+            double monthStep = w / 11.0;
+            int closestM = (int) Math.round((mx - padL) / monthStep);
+            closestM = Math.max(0, Math.min(11, closestM));
+
+            double xM = padL + closestM * monthStep;
+            if (Math.abs(mx - xM) > 25) return;
+
+            double[] minArr = getArr(activeParam, 0);
+            double[] avgArr = getArr(activeParam, 1);
+            double[] maxArr = getArr(activeParam, 2);
+
+            double yMin = valToY(minArr[closestM], activeParam, padT, h);
+            double yAvg = valToY(avgArr[closestM], activeParam, padT, h);
+            double yMax = valToY(maxArr[closestM], activeParam, padT, h);
+
+            double dMin = Math.abs(my - yMin);
+            double dAvg = Math.abs(my - yAvg);
+            double dMax = Math.abs(my - yMax);
+
+            if (dMin <= dAvg && dMin <= dMax && dMin < 20) {
+                draggedCurve = 0;
+                draggedMonth = closestM;
+            } else if (dAvg <= dMin && dAvg <= dMax && dAvg < 20) {
+                draggedCurve = 1;
+                draggedMonth = closestM;
+            } else if (dMax < 20) {
+                draggedCurve = 2;
+                draggedMonth = closestM;
+            }
+        });
+
+        curveCanvas.setOnMouseDragged(e -> {
+            if (draggedMonth < 0 || activeParam == ParameterType.OVERVIEW) return;
+
+            double padT = 30;
+            double h = curveCanvas.getHeight() - 30 - 30;
+            double newVal = yToVal(e.getY(), activeParam, padT, h);
+
+            setParamVal(activeParam, draggedCurve, draggedMonth, newVal);
+            syncAndValidate();
+            updateSpinnersForActiveParam();
+            redrawCurves();
+        });
+
+        curveCanvas.setOnMouseReleased(e -> {
+            draggedMonth = -1;
+            draggedCurve = -1;
+        });
+
+        curveCanvas.setOnMouseMoved(e -> {
+            if (activeParam == ParameterType.OVERVIEW) return;
+            double mx = e.getX();
+            double padL = 50, padR = 20;
+            double w = curveCanvas.getWidth() - padL - padR;
+            double monthStep = w / 11.0;
+
+            int m = (int) Math.round((mx - padL) / monthStep);
+            if (m >= 0 && m < 12 && Math.abs(mx - (padL + m * monthStep)) < 25) {
+                double[] minArr = getArr(activeParam, 0);
+                double[] avgArr = getArr(activeParam, 1);
+                double[] maxArr = getArr(activeParam, 2);
+                String precipType = getPrecipitationType(m);
+                hoverInfoText = String.format("%s (%s): Min=%.1f%s, Avg=%.1f%s, Max=%.1f%s",
+                        MONTH_KEYS[m], precipType, minArr[m], activeParam.unit, avgArr[m], activeParam.unit, maxArr[m], activeParam.unit);
+            } else {
+                hoverInfoText = "";
+            }
+            redrawCurves();
+        });
+
+        curveCanvas.setOnMouseExited(e -> {
+            hoverInfoText = "";
+            redrawCurves();
+        });
+    }
+
+    private String getPrecipitationType(int month) {
+        if (tempMax[month] < 0) return "❄️ Neige";
+        if (tempAvg[month] > 28 && rainAvg[month] > 150) return "🧊 Orages / Grêle";
+        if (rainAvg[month] > 5) return "🌧 Pluie";
+        return "☀️ Dégagé";
+    }
+
+    private void syncAndValidate() {
+        updateVegetationEstimate();
+        updateCoherenceStatus();
+    }
+
+    private void redrawCurves() {
+        double w = curveCanvas.getWidth();
+        double h = curveCanvas.getHeight();
+
+        gc.clearRect(0, 0, w, h);
+        gc.setFill(Color.web("#141824"));
+        gc.fillRect(0, 0, w, h);
+
+        if (activeParam == ParameterType.OVERVIEW) {
+            drawOverviewMode(w, h);
+            return;
+        }
+
+        double padL = 50, padR = 20, padT = 30, padB = 30;
+        double chartW = w - padL - padR;
+        double chartH = h - padT - padB;
+
+        // Y-Grid and ticks
+        gc.setStroke(Color.web("#2a2f42"));
+        gc.setLineWidth(1.0);
+        gc.setFont(javafx.scene.text.Font.font(10));
+        gc.setFill(Color.web("#888"));
+
+        double range = activeParam.maxVal - activeParam.minVal;
+        for (double v = activeParam.minVal; v <= activeParam.maxVal; v += activeParam.tickStep) {
+            double y = padT + chartH * (1.0 - (v - activeParam.minVal) / range);
+            gc.strokeLine(padL, y, padL + chartW, y);
+            gc.fillText(String.format("%.0f%s", v, activeParam.unit), 5, y + 4);
+        }
+
+        // X-Grid & Month Labels
+        double monthStep = chartW / 11.0;
+        for (int m = 0; m < 12; m++) {
+            double x = padL + m * monthStep;
+            gc.strokeLine(x, padT, x, padT + chartH);
+            gc.fillText(MONTH_KEYS[m], x - 10, h - 10);
+        }
+
+        double[] minArr = getArr(activeParam, 0);
+        double[] avgArr = getArr(activeParam, 1);
+        double[] maxArr = getArr(activeParam, 2);
+
+        // Filled translucent band between Min & Max
+        gc.setFill(Color.web("#00d4ff", 0.12));
+        gc.beginPath();
+        for (int m = 0; m < 12; m++) {
+            double x = padL + m * monthStep;
+            double yMax = valToY(maxArr[m], activeParam, padT, chartH);
+            if (m == 0) gc.moveTo(x, yMax);
+            else gc.lineTo(x, yMax);
+        }
+        for (int m = 11; m >= 0; m--) {
+            double x = padL + m * monthStep;
+            double yMin = valToY(minArr[m], activeParam, padT, chartH);
+            gc.lineTo(x, yMin);
+        }
+        gc.closePath();
+        gc.fill();
+
+        // Curves
+        drawSingleCurve(minArr, Color.web("#00d4ff"), padL, padT, monthStep, chartH);
+        drawSingleCurve(avgArr, Color.web("#ffc107"), padL, padT, monthStep, chartH);
+        drawSingleCurve(maxArr, Color.web("#ff4757"), padL, padT, monthStep, chartH);
+
+        // Interactive Points / Handles
+        for (int m = 0; m < 12; m++) {
+            double x = padL + m * monthStep;
+            drawHandle(x, valToY(minArr[m], activeParam, padT, chartH), Color.web("#00d4ff"), draggedMonth == m && draggedCurve == 0);
+            drawHandle(x, valToY(avgArr[m], activeParam, padT, chartH), Color.web("#ffc107"), draggedMonth == m && draggedCurve == 1);
+            drawHandle(x, valToY(maxArr[m], activeParam, padT, chartH), Color.web("#ff4757"), draggedMonth == m && draggedCurve == 2);
+        }
+
+        // Hover Info Text
+        if (!hoverInfoText.isEmpty()) {
+            gc.setFill(Color.web("#1e2230", 0.95));
+            gc.setStroke(Color.web("#00d4ff"));
+            gc.fillRect(padL + 10, padT + 5, 290, 24);
+            gc.strokeRect(padL + 10, padT + 5, 290, 24);
+
+            gc.setFill(Color.WHITE);
+            gc.setFont(javafx.scene.text.Font.font("System", 11));
+            gc.fillText(hoverInfoText, padL + 18, padT + 21);
+        }
+    }
+
+    private void drawOverviewMode(double w, double h) {
+        ParameterType[] params = { ParameterType.TEMPERATURE, ParameterType.WIND, ParameterType.RAIN, ParameterType.HUMIDITY };
+        double subW = (w - 30) / 2.0;
+        double subH = (h - 30) / 2.0;
+
+        for (int i = 0; i < 4; i++) {
+            double rx = 10 + (i % 2) * (subW + 10);
+            double ry = 10 + (i / 2) * (subH + 10);
+
+            gc.setFill(Color.web("#1e2230"));
+            gc.fillRect(rx, ry, subW, subH);
+            gc.setStroke(Color.web("#333"));
+            gc.strokeRect(rx, ry, subW, subH);
+
+            gc.setFill(Color.web("#00d4ff"));
+            gc.setFont(javafx.scene.text.Font.font(11));
+            gc.fillText(params[i].title, rx + 8, ry + 16);
+
+            double padL = rx + 30;
+            double padT = ry + 25;
+            double cW = subW - 40;
+            double cH = subH - 35;
+            double mStep = cW / 11.0;
+
+            double[] minArr = getArr(params[i], 0);
+            double[] avgArr = getArr(params[i], 1);
+            double[] maxArr = getArr(params[i], 2);
+
+            drawSingleCurve(minArr, Color.web("#00d4ff"), padL, padT, mStep, cH, params[i]);
+            drawSingleCurve(avgArr, Color.web("#ffc107"), padL, padT, mStep, cH, params[i]);
+            drawSingleCurve(maxArr, Color.web("#ff4757"), padL, padT, mStep, cH, params[i]);
+        }
+    }
+
+    private void drawSingleCurve(double[] arr, Color col, double padL, double padT, double mStep, double chartH) {
+        drawSingleCurve(arr, col, padL, padT, mStep, chartH, activeParam);
+    }
+
+    private void drawSingleCurve(double[] arr, Color col, double padL, double padT, double mStep, double chartH, ParameterType param) {
+        gc.setStroke(col);
+        gc.setLineWidth(2.0);
+        gc.beginPath();
+        for (int m = 0; m < 12; m++) {
+            double x = padL + m * mStep;
+            double y = valToY(arr[m], param, padT, chartH);
+            if (m == 0) gc.moveTo(x, y);
+            else gc.lineTo(x, y);
+        }
+        gc.stroke();
+    }
+
+    private void drawHandle(double x, double y, Color color, boolean isHovered) {
+        gc.setFill(isHovered ? Color.WHITE : color);
+        gc.fillOval(x - 4, y - 4, 8, 8);
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(1.0);
+        gc.strokeOval(x - 4, y - 4, 8, 8);
+    }
+
+    private double valToY(double val, ParameterType param, double padT, double chartH) {
+        double range = param.maxVal - param.minVal;
+        double clamped = Math.max(param.minVal, Math.min(param.maxVal, val));
+        return padT + chartH * (1.0 - (clamped - param.minVal) / range);
+    }
+
+    private double yToVal(double y, ParameterType param, double padT, double chartH) {
+        double range = param.maxVal - param.minVal;
+        double norm = 1.0 - (y - padT) / chartH;
+        norm = Math.max(0.0, Math.min(1.0, norm));
+        return param.minVal + norm * range;
+    }
+
+    private double[] getArr(ParameterType param, int curve) {
+        return switch (param) {
+            case TEMPERATURE -> curve == 0 ? tempMin : (curve == 1 ? tempAvg : tempMax);
+            case WIND -> curve == 0 ? windMin : (curve == 1 ? windAvg : windMax);
+            case RAIN -> curve == 0 ? rainMin : (curve == 1 ? rainAvg : rainMax);
+            case HUMIDITY -> curve == 0 ? humidityMin : (curve == 1 ? humidityAvg : humidityMax);
+            case OVERVIEW -> tempAvg;
+        };
+    }
+
+    private void setParamVal(ParameterType param, int curve, int month, double val) {
+        double[] arr = getArr(param, curve);
+        arr[month] = val;
+    }
+
+    // ── Physical Coherence Engine ─────────────────────────────────────────────
+
+    private TitledPane buildCoherenceSection() {
+        I18nManager i18n = I18nManager.getInstance();
+        VBox box = new VBox(8);
+        box.setPadding(new Insets(10));
+
+        HBox banner = new HBox(12);
+        banner.setAlignment(Pos.CENTER_LEFT);
+
+        coherenceStatusBadge = new Label();
+        coherenceStatusBadge.setStyle("-fx-font-weight:bold;-fx-font-size:12;");
+
+        Region sp = new Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+
+        Button bHarmonize = btn(i18n.get("weather.coherence.harmonize"), "#17a2b8");
+        bHarmonize.setOnAction(e -> doHarmonizeCoherence());
+
+        banner.getChildren().addAll(coherenceStatusBadge, sp, bHarmonize);
+
+        coherenceDetailsBox = new VBox(4);
+        coherenceDetailsBox.setPadding(new Insets(4, 0, 0, 0));
+
+        box.getChildren().addAll(banner, new Separator(), coherenceDetailsBox);
+
+        TitledPane pane = new TitledPane();
+        pane.textProperty().bind(i18n.createStringBinding("weather.coherence.title"));
+        pane.setContent(box);
+        pane.setExpanded(true);
         styleTitledPane(pane);
+
+        updateCoherenceStatus();
         return pane;
     }
 
+    private void updateCoherenceStatus() {
+        if (coherenceStatusBadge == null) return;
+        I18nManager i18n = I18nManager.getInstance();
+
+        List<String> errors = new ArrayList<>();
+        List<String> warnings = new ArrayList<>();
+
+        for (int m = 0; m < 12; m++) {
+            String mName = MONTH_KEYS[m];
+
+            checkOrder("Température", mName, tempMin[m], tempAvg[m], tempMax[m], errors);
+            checkOrder("Vent", mName, windMin[m], windAvg[m], windMax[m], errors);
+            checkOrder("Pluviométrie", mName, rainMin[m], rainAvg[m], rainMax[m], errors);
+            checkOrder("Humidité", mName, humidityMin[m], humidityAvg[m], humidityMax[m], errors);
+
+            if (rainAvg[m] > 120 && humidityAvg[m] < 35) {
+                warnings.add(String.format("⚠️ %s : Forte pluie (%.0f mm) mais air très sec (%.0f%% HR). Risque d'évaporation (Virga).",
+                        mName, rainAvg[m], humidityAvg[m]));
+            }
+
+            if (tempMax[m] < 0 && rainAvg[m] > 10) {
+                warnings.add(String.format("❄️ %s : Pluies sous 0°C (Max %.1f°C). Converti en précipitation neigeuse (Neige).",
+                        mName, tempMax[m]));
+            }
+
+            if (tempAvg[m] > 38 && humidityAvg[m] > 80) {
+                warnings.add(String.format("🔥 %s : Température extrême (%.1f°C) et forte humidité (%.0f%% HR). Indice de chaleur critique.",
+                        mName, tempAvg[m], humidityAvg[m]));
+            }
+
+            // Sandstorm warning (High wind + drought)
+            if (windAvg[m] > 40 && rainAvg[m] < 10 && humidityAvg[m] < 25) {
+                warnings.add(String.format("🏜️ %s : Vent fort (%.0f km/h) & sécheresse extrême. Tempête de sable/poussière (Vol d'insectes impossible).",
+                        mName, windAvg[m]));
+            }
+        }
+
+        coherenceDetailsBox.getChildren().clear();
+
+        if (!errors.isEmpty()) {
+            coherenceStatusBadge.setText(i18n.get("weather.coherence.error"));
+            coherenceStatusBadge.setStyle("-fx-text-fill:#ff4757;-fx-font-weight:bold;-fx-font-size:12;");
+            for (String err : errors) {
+                Label l = new Label("• " + err);
+                l.setStyle("-fx-text-fill:#ff4757;-fx-font-size:11;");
+                coherenceDetailsBox.getChildren().add(l);
+            }
+        } else if (!warnings.isEmpty()) {
+            coherenceStatusBadge.setText(i18n.get("weather.coherence.warn"));
+            coherenceStatusBadge.setStyle("-fx-text-fill:#ffc107;-fx-font-weight:bold;-fx-font-size:12;");
+            for (String warn : warnings) {
+                Label l = new Label("• " + warn);
+                l.setStyle("-fx-text-fill:#ffc107;-fx-font-size:11;");
+                coherenceDetailsBox.getChildren().add(l);
+            }
+        } else {
+            coherenceStatusBadge.setText(i18n.get("weather.coherence.ok"));
+            coherenceStatusBadge.setStyle("-fx-text-fill:#28a745;-fx-font-weight:bold;-fx-font-size:12;");
+        }
+    }
+
+    private void checkOrder(String name, String month, double min, double avg, double max, List<String> errors) {
+        if (min > avg) {
+            errors.add(String.format("%s (%s) : Min (%.1f) > Moyenne (%.1f)", name, month, min, avg));
+        }
+        if (avg > max) {
+            errors.add(String.format("%s (%s) : Moyenne (%.1f) > Max (%.1f)", name, month, avg, max));
+        }
+    }
+
+    private void doHarmonizeCoherence() {
+        for (int m = 0; m < 12; m++) {
+            harmonizeTriplet(tempMin, tempAvg, tempMax, m);
+            harmonizeTriplet(windMin, windAvg, windMax, m);
+            harmonizeTriplet(rainMin, rainAvg, rainMax, m);
+            harmonizeTriplet(humidityMin, humidityAvg, humidityMax, m);
+
+            if (rainAvg[m] > 100 && humidityAvg[m] < 40) {
+                humidityAvg[m] = 45;
+                humidityMax[m] = Math.max(humidityMax[m], 60);
+            }
+        }
+
+        updateSpinnersForActiveParam();
+        syncAndValidate();
+        redrawCurves();
+        new Alert(Alert.AlertType.INFORMATION, "Courbes réharmonisées avec succès selon les règles de cohérence physique !").show();
+    }
+
+    private void harmonizeTriplet(double[] min, double[] avg, double[] max, int m) {
+        if (min[m] > avg[m]) min[m] = avg[m] - 2.0;
+        if (max[m] < avg[m]) max[m] = avg[m] + 2.0;
+    }
+
+    // ── Natural Disasters Section ─────────────────────────────────────────────
+
     private TitledPane createDisastersSection() {
+        I18nManager i18n = I18nManager.getInstance();
         VBox content = new VBox(10);
         content.setPadding(new Insets(10));
 
-        Label warning = new Label("⚠ Disasters can significantly impact colony survival");
-        warning.setStyle("-fx-text-fill: black; -fx-font-style: italic;");
+        Label warning = new Label();
+        warning.textProperty().bind(i18n.createStringBinding("weather.disasters.warning"));
+        warning.setStyle("-fx-font-style: italic;");
 
         GridPane grid = new GridPane();
         grid.setHgap(15);
         grid.setVgap(10);
 
         String[][] disasters = {
-                { "🔥 Fire", "1" },
-                { "🌊 Flood", "2" },
-                { "🌪 Tornado", "0.5" },
-                { "🏜 Drought", "3" },
-                { "❄️ Freeze", "2" }
+                { "weather.disasters.fire", "1.0", "🔥 Fire & Lightning" },
+                { "weather.disasters.flood", "2.0", "🌊 Flash Flood" },
+                { "weather.disasters.sandstorm", "1.5", "🏜️ Sandstorm / Dust Storm" },
+                { "weather.disasters.lightning", "3.0", "⚡ Lightning Strikes" },
+                { "weather.disasters.tornado", "0.5", "🌪 Tornado" },
+                { "weather.disasters.drought", "3.0", "🏜 Drought" },
+                { "weather.disasters.freeze", "2.0", "❄️ Hard Freeze" }
         };
 
         int row = 0;
         for (String[] disaster : disasters) {
-            Label label = new Label(disaster[0]);
-            label.setStyle("-fx-text-fill: black; -fx-min-width: 120;");
+            Label label = new Label();
+            label.textProperty().bind(i18n.createStringBinding(disaster[0]));
+            label.setStyle("-fx-min-width: 140;");
 
             Slider slider = new Slider(0, 20, Double.parseDouble(disaster[1]));
             slider.setPrefWidth(200);
             slider.setShowTickLabels(true);
             slider.setMajorTickUnit(5);
 
-            Label valueLabel = new Label(disaster[1] + "% /year");
-            valueLabel.setStyle("-fx-text-fill: black; -fx-min-width: 80;");
-            slider.valueProperty().addListener(
-                    (obs, old, val) -> valueLabel.setText(String.format("%.1f%% /year", val.doubleValue())));
+            Label valueLabel = new Label(disaster[1] + "% /an");
+            valueLabel.setStyle("-fx-min-width: 80;");
+            slider.valueProperty().addListener((obs, old, val) ->
+                    valueLabel.setText(String.format("%.1f%% /an", val.doubleValue())));
 
-            disasterProbabilities.put(disaster[0], slider);
+            disasterProbabilities.put(disaster[2], slider);
 
             grid.add(label, 0, row);
             grid.add(slider, 1, row);
@@ -258,160 +1186,187 @@ public class WeatherEditorPane extends BorderPane {
 
         content.getChildren().addAll(warning, grid);
 
-        TitledPane pane = new TitledPane("Natural Disasters", content);
+        TitledPane pane = new TitledPane();
+        pane.textProperty().bind(i18n.createStringBinding("weather.disasters.title"));
+        pane.setContent(content);
         styleTitledPane(pane);
-        pane.setExpanded(false); // Collapsed by default
+        pane.setExpanded(false);
         return pane;
-    }
-
-    private VBox createPreviewPane() {
-        VBox pane = new VBox(10);
-        pane.setPadding(new Insets(15));
-        pane.setStyle("-fx-min-width: 200;");
-
-        Label title = new Label("Climate Preview");
-        title.setStyle("-fx-text-fill: black; -fx-font-weight: bold;");
-
-        // Simple visual bars for seasons
-        String[] seasons = { "Spring", "Summer", "Autumn", "Winter" };
-        Color[] seasonColors = { Color.LIGHTGREEN, Color.GOLD, Color.ORANGE, Color.LIGHTBLUE };
-
-        for (int i = 0; i < seasons.length; i++) {
-            HBox row = new HBox(10);
-            row.setAlignment(Pos.CENTER_LEFT);
-
-            Label label = new Label(seasons[i]);
-            label.setStyle("-fx-text-fill: black; -fx-min-width: 60;");
-
-            Rectangle bar = new Rectangle(80, 15, seasonColors[i]);
-            bar.setArcWidth(3);
-            bar.setArcHeight(3);
-
-            row.getChildren().addAll(label, bar);
-            pane.getChildren().add(row);
-        }
-
-        pane.getChildren().addAll(new Separator(), title);
-        return pane;
-    }
-
-    private HBox createButtonBar() {
-        HBox bar = new HBox(15);
-        bar.setPadding(new Insets(15, 0, 0, 0));
-        bar.setAlignment(Pos.CENTER);
-
-        Button btnNew = new Button("New Profile");
-        btnNew.setOnAction(e -> resetToDefaults());
-
-        Button btnSave = new Button("💾 Save Profile");
-        btnSave.setStyle("-fx-text-fill: black;");
-        btnSave.setOnAction(e -> saveProfile());
-
-        Button btnLoad = new Button("📂 Load Profile");
-        btnLoad.setOnAction(e -> loadProfile());
-
-        Button btnExport = new Button("📤 Export JSON");
-        btnExport.setOnAction(e -> exportJson());
-
-        bar.getChildren().addAll(btnNew, btnSave, btnLoad, btnExport);
-        return bar;
     }
 
     private void styleTitledPane(TitledPane pane) {
-        pane.setStyle("-fx-text-fill: black;");
         pane.setCollapsible(true);
     }
 
-    private void applyPreset(String preset) {
-        switch (preset) {
-            case "Temperate" -> {
-                temperatureMinSlider.setValue(5);
-                temperatureMaxSlider.setValue(25);
-                humiditySlider.setValue(65);
-                rainFrequencySlider.setValue(120);
-            }
-            case "Tropical" -> {
-                temperatureMinSlider.setValue(22);
-                temperatureMaxSlider.setValue(35);
-                humiditySlider.setValue(85);
-                rainFrequencySlider.setValue(200);
-            }
-            case "Arid" -> {
-                temperatureMinSlider.setValue(15);
-                temperatureMaxSlider.setValue(45);
-                humiditySlider.setValue(20);
-                rainFrequencySlider.setValue(20);
-            }
-            case "Mediterranean" -> {
-                temperatureMinSlider.setValue(10);
-                temperatureMaxSlider.setValue(30);
-                humiditySlider.setValue(55);
-                rainFrequencySlider.setValue(80);
-            }
-            case "Arctic" -> {
-                temperatureMinSlider.setValue(-30);
-                temperatureMaxSlider.setValue(10);
-                humiditySlider.setValue(70);
-                rainFrequencySlider.setValue(60);
+    // ── Preset & Data Binding Actions ─────────────────────────────────────────
+
+    private void applyPresetConfig(Map<String, Object> cfg) {
+        if (cfg == null) return;
+
+        if (cfg.containsKey("latitude") && latSpinner != null) latSpinner.getValueFactory().setValue(num(cfg, "latitude"));
+        if (cfg.containsKey("longitude") && lonSpinner != null) lonSpinner.getValueFactory().setValue(num(cfg, "longitude"));
+        if (cfg.containsKey("altitude") && altSpinner != null) altSpinner.getValueFactory().setValue(num(cfg, "altitude"));
+        if (cfg.containsKey("basePressure") && pressureSpinner != null) pressureSpinner.getValueFactory().setValue(num(cfg, "basePressure"));
+        if (cfg.containsKey("windDirection") && windDirCombo != null) windDirCombo.setValue((String) cfg.get("windDirection"));
+        if (cfg.containsKey("soilInertiaDays") && soilInertiaSpinner != null) soilInertiaSpinner.getValueFactory().setValue(num(cfg, "soilInertiaDays"));
+        if (cfg.containsKey("depthAttenuation") && depthAttenSpinner != null) depthAttenSpinner.getValueFactory().setValue(num(cfg, "depthAttenuation"));
+
+        copyList(cfg, "tempMin", tempMin);
+        copyList(cfg, "tempAvg", tempAvg);
+        copyList(cfg, "tempMax", tempMax);
+
+        copyList(cfg, "windMin", windMin);
+        copyList(cfg, "windAvg", windAvg);
+        copyList(cfg, "windMax", windMax);
+
+        copyList(cfg, "rainMin", rainMin);
+        copyList(cfg, "rainAvg", rainAvg);
+        copyList(cfg, "rainMax", rainMax);
+
+        copyList(cfg, "humidityMin", humidityMin);
+        copyList(cfg, "humidityAvg", humidityAvg);
+        copyList(cfg, "humidityMax", humidityMax);
+
+        updatePhotoperiod();
+        updateSpinnersForActiveParam();
+        syncAndValidate();
+        redrawCurves();
+    }
+
+    private double num(Map<String, Object> m, String k) {
+        return ((Number) m.get(k)).doubleValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void copyList(Map<String, Object> cfg, String key, double[] target) {
+        if (!cfg.containsKey(key)) return;
+        Object val = cfg.get(key);
+        if (val instanceof List) {
+            List<Number> list = (List<Number>) val;
+            for (int i = 0; i < Math.min(12, list.size()); i++) {
+                target[i] = list.get(i).doubleValue();
             }
         }
     }
 
-    private void resetToDefaults() {
-        applyPreset("Temperate");
-        eventProbabilities.values().forEach(s -> s.setValue(s.getMax() / 2));
-        disasterProbabilities.values().forEach(s -> s.setValue(2));
+    private void applyDefaultValues() {
+        Map<String, Object> def = presetMgr.get("Temperate");
+        if (def != null) applyPresetConfig(def);
     }
 
-    private void saveProfile() {
-        TextInputDialog dialog = new TextInputDialog("My Weather Profile");
-        dialog.setTitle("Save Weather Profile");
-        dialog.setHeaderText("Enter profile name:");
-        dialog.showAndWait().ifPresent(name -> {
-            // Not connected to DB yet
-            new Alert(Alert.AlertType.INFORMATION, "Profile '" + name + "' saved locally (DB pending)").show();
+    private void doSavePreset() {
+        TextInputDialog d = new TextInputDialog(presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom Climate Profile");
+        d.setTitle("Enregistrer Preset Climat");
+        d.setHeaderText("Nom du profil climatique :");
+        d.setContentText("Nom :");
+        d.showAndWait().ifPresent(name -> {
+            if (name == null || name.isBlank()) return;
+            presetMgr.save(name, getConfiguration());
+            refreshPresetsCombo();
+            presetsCombo.setValue(name);
+            new Alert(Alert.AlertType.INFORMATION, "Preset \"" + name + "\" sauvegardé.").show();
         });
     }
 
-    private void loadProfile() {
-        new Alert(Alert.AlertType.INFORMATION, "Cloud profiles not available yet.").show();
-    }
-
-    private void exportJson() {
-        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
-        fileChooser.setTitle("Export Weather Profile");
-        fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("JSON Files", "*.json"));
-        java.io.File file = fileChooser.showSaveDialog(getScene().getWindow());
-
-        if (file != null) {
-            try {
-                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                mapper.writerWithDefaultPrettyPrinter().writeValue(file, getConfiguration());
-                new Alert(Alert.AlertType.INFORMATION, "Export successful!").show();
-            } catch (Exception ex) {
-                new Alert(Alert.AlertType.ERROR, "Export failed: " + ex.getMessage()).show();
-            }
+    private void doExport() {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Exporter Profil Climat");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON", "*.json"));
+        fc.setInitialFileName("weather_climate.json");
+        File f = fc.showSaveDialog(getScene().getWindow());
+        if (f == null) return;
+        try {
+            new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(f, getConfiguration());
+            new Alert(Alert.AlertType.INFORMATION, "Profil exporté avec succès !").show();
+        } catch (Exception ex) {
+            new Alert(Alert.AlertType.ERROR, "Erreur d'exportation : " + ex.getMessage()).show();
         }
     }
 
-    /**
-     * Get current weather configuration as JSON-like map.
-     */
+    private void doImport() {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Importer Profil Climat");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON", "*.json"));
+        File f = fc.showOpenDialog(getScene().getWindow());
+        if (f == null) return;
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> cfg = new com.fasterxml.jackson.databind.ObjectMapper().readValue(f, Map.class);
+            applyPresetConfig(cfg);
+            new Alert(Alert.AlertType.INFORMATION, "Profil importé avec succès !").show();
+        } catch (Exception ex) {
+            new Alert(Alert.AlertType.ERROR, "Erreur d'importation : " + ex.getMessage()).show();
+        }
+    }
+
+    private void applyToWorld() {
+        if (onApplyCallback != null) {
+            onApplyCallback.accept(getConfiguration());
+            new Alert(Alert.AlertType.INFORMATION, "Profil climatique appliqué au monde de simulation.").show();
+        } else {
+            new Alert(Alert.AlertType.WARNING, "Aucun éditeur de monde connecté.").show();
+        }
+    }
+
+    public void setOnApply(Consumer<Map<String, Object>> cb) {
+        this.onApplyCallback = cb;
+    }
+
     public Map<String, Object> getConfiguration() {
-        Map<String, Object> config = new HashMap<>();
-        config.put("temperatureMin", temperatureMinSlider.getValue());
-        config.put("temperatureMax", temperatureMaxSlider.getValue());
-        config.put("humidity", humiditySlider.getValue());
-        config.put("rainFrequency", rainFrequencySlider.getValue());
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put("presetName", presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom");
 
-        Map<String, Double> events = new HashMap<>();
-        eventProbabilities.forEach((k, v) -> events.put(k, v.getValue()));
-        config.put("events", events);
+        config.put("latitude", latSpinner != null ? latSpinner.getValue() : 48.8);
+        config.put("longitude", lonSpinner != null ? lonSpinner.getValue() : 2.35);
+        config.put("altitude", altSpinner != null ? altSpinner.getValue() : 100.0);
+        config.put("basePressure", pressureSpinner != null ? pressureSpinner.getValue() : 1013.25);
+        config.put("windDirection", windDirCombo != null ? windDirCombo.getValue() : "SW");
+        config.put("soilInertiaDays", soilInertiaSpinner != null ? soilInertiaSpinner.getValue() : 3.0);
+        config.put("depthAttenuation", depthAttenSpinner != null ? depthAttenSpinner.getValue() : 0.85);
 
-        Map<String, Double> disasters = new HashMap<>();
+        config.put("vegetationCover", vegCoverLabel != null ? vegCoverLabel.getText() : "");
+        config.put("daylightHours", toList(daylightHours));
+
+        config.put("tempMin", toList(tempMin));
+        config.put("tempAvg", toList(tempAvg));
+        config.put("tempMax", toList(tempMax));
+
+        config.put("windMin", toList(windMin));
+        config.put("windAvg", toList(windAvg));
+        config.put("windMax", toList(windMax));
+
+        config.put("rainMin", toList(rainMin));
+        config.put("rainAvg", toList(rainAvg));
+        config.put("rainMax", toList(rainMax));
+
+        config.put("humidityMin", toList(humidityMin));
+        config.put("humidityAvg", toList(humidityAvg));
+        config.put("humidityMax", toList(humidityMax));
+
+        Map<String, Double> disasters = new LinkedHashMap<>();
         disasterProbabilities.forEach((k, v) -> disasters.put(k, v.getValue()));
         config.put("disasters", disasters);
 
         return config;
+    }
+
+    // ── Utility Helpers ───────────────────────────────────────────────────────
+
+    private List<Double> toList(double[] arr) {
+        List<Double> list = new ArrayList<>(arr.length);
+        for (double d : arr) list.add(d);
+        return list;
+    }
+
+    private double getAvg(double[] arr) {
+        double s = 0;
+        for (double d : arr) s += d;
+        return s / arr.length;
+    }
+
+    private double getSum(double[] arr) {
+        double s = 0;
+        for (double d : arr) s += d;
+        return s;
     }
 }

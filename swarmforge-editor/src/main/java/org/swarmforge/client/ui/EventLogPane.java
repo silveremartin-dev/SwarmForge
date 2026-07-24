@@ -69,17 +69,20 @@ public class EventLogPane extends BorderPane {
     }
 
     private VBox createToolbar() {
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         VBox toolbar = new VBox(10);
         toolbar.setPadding(new Insets(0, 0, 10, 0));
 
-        Label title = new Label("📋 Event Log");
+        Label title = new Label();
+        title.textProperty().bind(i18n.createStringBinding("log.title"));
         title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;");
 
         HBox filters = new HBox(10);
         filters.setAlignment(Pos.CENTER_LEFT);
 
         // Type filter
-        Label typeLabel = new Label("Type:");
+        Label typeLabel = new Label();
+        typeLabel.textProperty().bind(i18n.createStringBinding("log.filter.type"));
         typeLabel.setStyle("-fx-text-fill: white;");
         typeFilter = new ComboBox<>();
         typeFilter.getItems().add("All");
@@ -90,7 +93,8 @@ public class EventLogPane extends BorderPane {
         typeFilter.setOnAction(e -> updateFilter());
 
         // Severity filter
-        Label sevLabel = new Label("Severity:");
+        Label sevLabel = new Label();
+        sevLabel.textProperty().bind(i18n.createStringBinding("log.filter.severity"));
         sevLabel.setStyle("-fx-text-fill: white;");
         severityFilter = new ComboBox<>();
         severityFilter.getItems().addAll("All", "INFO", "WARNING", "CRITICAL");
@@ -98,12 +102,14 @@ public class EventLogPane extends BorderPane {
         severityFilter.setOnAction(e -> updateFilter());
 
         // Auto-scroll
-        autoScrollCheck = new CheckBox("Auto-scroll");
+        autoScrollCheck = new CheckBox();
+        autoScrollCheck.textProperty().bind(i18n.createStringBinding("log.filter.auto_scroll"));
         autoScrollCheck.setSelected(true);
         autoScrollCheck.setStyle("-fx-text-fill: white;");
 
         // Clear button
-        Button btnClear = new Button("🗑 Clear");
+        Button btnClear = new Button();
+        btnClear.textProperty().bind(i18n.createStringBinding("log.btn.clear"));
         btnClear.setOnAction(e -> {
             events.clear();
             EventBus.getInstance().clearHistory();
@@ -111,7 +117,8 @@ public class EventLogPane extends BorderPane {
         });
 
         // Export button
-        Button btnExport = new Button("📤 Export");
+        Button btnExport = new Button();
+        btnExport.textProperty().bind(i18n.createStringBinding("log.btn.export"));
         btnExport.setOnAction(e -> exportEvents());
 
         filters.getChildren().addAll(typeLabel, typeFilter, sevLabel, severityFilter, autoScrollCheck,
@@ -131,8 +138,9 @@ public class EventLogPane extends BorderPane {
         bar.setPadding(new Insets(10, 0, 0, 0));
         bar.setAlignment(Pos.CENTER_LEFT);
 
-        eventCountLabel = new Label("Events: 0");
+        eventCountLabel = new Label();
         eventCountLabel.setStyle("-fx-text-fill: #888;");
+        updateStats();
 
         bar.getChildren().add(eventCountLabel);
         return bar;
@@ -150,7 +158,8 @@ public class EventLogPane extends BorderPane {
     }
 
     private void updateStats() {
-        eventCountLabel.setText("Events: " + events.size() + " (showing " + filteredEvents.size() + ")");
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+        eventCountLabel.setText(i18n.get("log.stats.events", events.size(), filteredEvents.size()));
     }
 
     private void exportEvents() {

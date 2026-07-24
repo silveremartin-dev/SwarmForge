@@ -10,8 +10,11 @@ import ImmersiveControls from './components/ImmersiveControls'
 import PheromoneCloud from './components/PheromoneCloud'
 import WeatherRenderer from './components/WeatherRenderer'
 import UndergroundView from './components/UndergroundView'
+import Navbar from './components/Navbar'
+import WorldEditorPanel from './components/WorldEditorPanel'
+import ClimateStudioPanel from './components/ClimateStudioPanel'
 
-// Placeholder for ErrorBoundary, assuming it's defined elsewhere or will be added
+// Placeholder for ErrorBoundary
 const ErrorBoundary = ({ children }) => {
     return <>{children}</>
 }
@@ -20,6 +23,7 @@ export default function App() {
     const { connected, connect, disconnect } = useSimulationStore()
     const { environment } = useSimulationStore()
     const [showUnderground, setShowUnderground] = useState(true)
+    const [activeMode, setActiveMode] = useState('WORLD_EDITOR') // 'WORLD_EDITOR', 'CLIMATE_STUDIO', 'SIMULATION'
 
     useEffect(() => {
         connect()
@@ -31,27 +35,33 @@ export default function App() {
     const sunY = Math.sin((environment.sunAngle - 0.25) * Math.PI * 2) * 50
     const sunZ = 20
 
-    // Light Color Interpolation (Basic)
+    // Light Color Interpolation
     const isNight = environment.lightLevel < 0.3
     const skyColor = isNight ? '#111122' : '#88ccff'
     const groundColor = isNight ? '#050510' : '#444422'
     const sunIntensity = Math.max(0.1, environment.lightLevel * 1.5)
 
     return (
-        <div style={{ width: '100vw', height: '100vh', background: '#111' }}>
+        <div style={{ width: '100vw', height: '100vh', background: '#0b0f19', overflow: 'hidden', position: 'relative' }}>
+            {/* Top Navigation Bar */}
+            <Navbar activeMode={activeMode} setActiveMode={setActiveMode} />
+
             <ErrorBoundary>
-                <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 100, color: '#fff' }}>
-                    Status: <span style={{ color: connected ? '#4f4' : '#f44' }}>
-                        {connected ? 'Connected' : 'Disconnected'}
-                    </span>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        Time: {environment.timeOfDay} (Light: {environment.lightLevel.toFixed(2)})
+                {/* Status Indicator */}
+                <div style={{ position: 'absolute', top: 60, right: 20, zIndex: 100, color: '#fff', background: 'rgba(0,0,0,0.5)', padding: '8px 12px', borderRadius: 8, backdropFilter: 'blur(8px)', fontSize: 12 }}>
+                    <div>
+                        Status: <span style={{ color: connected ? '#4ade80' : '#f87171', fontWeight: 'bold' }}>
+                            {connected ? '● Connecté (Serveur)' : '○ Disconnecté (Hors ligne)'}
+                        </span>
                     </div>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        {environment.season} | {environment.temperature?.toFixed(1)}°C | Rain: {environment.rainIntensity?.toFixed(1)}mm
+                    <div style={{ opacity: 0.7, marginTop: 2 }}>
+                        Temps: {environment.timeOfDay} (Luminosité: {environment.lightLevel.toFixed(2)})
                     </div>
-                    <button onClick={() => setShowUnderground(!showUnderground)} style={{ marginTop: 5, fontSize: 10, padding: '2px 5px', background: '#333', color: '#fff', border: '1px solid #555' }}>
-                        {showUnderground ? 'Hide Nest' : 'Show Nest'}
+                    <div style={{ opacity: 0.7 }}>
+                        {environment.season} | {environment.temperature?.toFixed(1)}°C | Pluie: {environment.rainIntensity?.toFixed(1)}mm
+                    </div>
+                    <button onClick={() => setShowUnderground(!showUnderground)} style={{ marginTop: 6, fontSize: 10, padding: '3px 8px', background: '#334155', color: '#fff', border: '1px solid #475569', borderRadius: 4, cursor: 'pointer' }}>
+                        {showUnderground ? 'Masquer Nid Sous-terrain' : 'Afficher Nid Sous-terrain'}
                     </button>
                 </div>
 
@@ -104,13 +114,17 @@ export default function App() {
                     </XR>
                 </Canvas>
             </ErrorBoundary>
+
+            {/* Mode Specific Panels */}
+            {activeMode === 'WORLD_EDITOR' && <WorldEditorPanel />}
+            {activeMode === 'CLIMATE_STUDIO' && <ClimateStudioPanel />}
+            {activeMode === 'SIMULATION' && (
+                <>
+                    <ControlPanel />
+                    <InspectorPanel />
+                </>
+            )}
         </div>
     )
 }
 
-{/* Control Panel */ }
-            <ControlPanel />
-            <InspectorPanel />
-        </div >
-    )
-}

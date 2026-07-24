@@ -50,13 +50,16 @@ public class StatisticsDashboard extends VBox {
     private long dataPointIndex = 0;
 
     public StatisticsDashboard() {
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         setSpacing(10);
         setPadding(new Insets(10));
         setStyle("-fx-background-color: #2b2b2b;");
 
         // === Summary Panel ===
         GridPane summaryGrid = createSummaryPanel();
-        TitledPane summaryPane = new TitledPane("Colony Summary", summaryGrid);
+        TitledPane summaryPane = new TitledPane();
+        summaryPane.textProperty().bind(i18n.createStringBinding("stats.summary"));
+        summaryPane.setContent(summaryGrid);
         summaryPane.setCollapsible(false);
 
         // === Population Chart ===
@@ -73,7 +76,9 @@ public class StatisticsDashboard extends VBox {
         populationChart.getData().add(deathsSeries);
         populationChart.setPrefHeight(200);
 
-        TitledPane popPane = new TitledPane("Population", populationChart);
+        TitledPane popPane = new TitledPane();
+        popPane.textProperty().bind(i18n.createStringBinding("stats.pop_chart"));
+        popPane.setContent(populationChart);
         popPane.setCollapsible(true);
 
         // === Resource Chart ===
@@ -87,7 +92,9 @@ public class StatisticsDashboard extends VBox {
         resourceChart.getData().add(waterSeries);
         resourceChart.setPrefHeight(200);
 
-        TitledPane resPane = new TitledPane("Resources", resourceChart);
+        TitledPane resPane = new TitledPane();
+        resPane.textProperty().bind(i18n.createStringBinding("stats.res_chart"));
+        resPane.setContent(resourceChart);
         resPane.setCollapsible(true);
 
         // Add all to layout
@@ -97,33 +104,54 @@ public class StatisticsDashboard extends VBox {
     }
 
     private GridPane createSummaryPanel() {
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         GridPane grid = new GridPane();
         grid.setHgap(15);
         grid.setVgap(8);
         grid.setPadding(new Insets(10));
 
+        Label popLbl = new Label();
+        popLbl.textProperty().bind(i18n.createStringBinding("stats.population"));
+        Label tickRateLbl = new Label();
+        tickRateLbl.textProperty().bind(i18n.createStringBinding("stats.tick_rate"));
+
+        Label queensLbl = new Label();
+        queensLbl.textProperty().bind(i18n.createStringBinding("stats.queens"));
+        Label simTimeLbl = new Label();
+        simTimeLbl.textProperty().bind(i18n.createStringBinding("stats.sim_time"));
+
+        Label workersLbl = new Label();
+        workersLbl.textProperty().bind(i18n.createStringBinding("stats.workers"));
+        Label foodLbl = new Label();
+        foodLbl.textProperty().bind(i18n.createStringBinding("stats.food"));
+
+        Label soldiersLbl = new Label();
+        soldiersLbl.textProperty().bind(i18n.createStringBinding("stats.soldiers"));
+        Label waterLbl = new Label();
+        waterLbl.textProperty().bind(i18n.createStringBinding("stats.water"));
+
         // Row 0
-        grid.add(new Label("Population:"), 0, 0);
+        grid.add(popLbl, 0, 0);
         grid.add(lblPopulation, 1, 0);
-        grid.add(new Label("Tick Rate:"), 2, 0);
+        grid.add(tickRateLbl, 2, 0);
         grid.add(lblTickRate, 3, 0);
 
         // Row 1
-        grid.add(new Label("Queens:"), 0, 1);
+        grid.add(queensLbl, 0, 1);
         grid.add(lblQueens, 1, 1);
-        grid.add(new Label("Sim Time:"), 2, 1);
+        grid.add(simTimeLbl, 2, 1);
         grid.add(lblSimTime, 3, 1);
 
         // Row 2
-        grid.add(new Label("Workers:"), 0, 2);
+        grid.add(workersLbl, 0, 2);
         grid.add(lblWorkers, 1, 2);
-        grid.add(new Label("Food:"), 2, 2);
+        grid.add(foodLbl, 2, 2);
         grid.add(lblFood, 3, 2);
 
         // Row 3
-        grid.add(new Label("Soldiers:"), 0, 3);
+        grid.add(soldiersLbl, 0, 3);
         grid.add(lblSoldiers, 1, 3);
-        grid.add(new Label("Water:"), 2, 3);
+        grid.add(waterLbl, 2, 3);
         grid.add(lblWater, 3, 3);
 
         // Style labels
