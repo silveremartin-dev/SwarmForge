@@ -6,58 +6,65 @@
  */
 package org.swarmforge.core.species;
 
+import org.swarmforge.core.domain.CasteTemplate;
+import java.util.List;
+
 /**
  * Atta cephalotes - Leafcutter Ant
  * Complex fungus-farming species from South America.
+ * Refactored to extend CustomSpecies for full JSON & Species Editor parameter compatibility.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
-public class AttaCephalotes implements Species {
+public class AttaCephalotes extends CustomSpecies {
 
-    @Override
-    public String getScientificName() {
-        return "Atta cephalotes";
-    }
+    public AttaCephalotes() {
+        setPresetName("Fourmi Coupeuse de Feuilles (Atta cephalotes)");
+        setCommonName("Leafcutter Ant");
+        setScientificName("Atta cephalotes");
+        setInsectType("ANT");
+        setDescription("Récolte du feuillage pour cultiver un champignon symbiotique au sein d'immenses nids souterrains.");
+        setQueenCountMode("MONOGYNE");
+        setQueenCount(1);
+        setQueenLifespan(365 * 20);
+        setQueenEggLayingRate(100.0f);
+        setWorkerLifespan(365 * 2);
+        setWorkerSpeed(0.6f);
+        setViewDistance(4.0f);
+        setTypicalColonySize(500000);
+        setPrimaryDiet("FUNGUS");
+        setSecondaryDiet("SUGARS_NECTAR");
+        setNestType("UNDERGROUND_BURROW");
+        setVenomType("POWERFUL_MANDIBLES");
+        setAggression(0.5f);
 
-    @Override
-    public String getCommonName() {
-        return "Leafcutter Ant";
-    }
+        CasteTemplate queen = new CasteTemplate("Reine Géante", 1000f, 20f);
+        queen.setLifespan(365 * 20);
+        queen.setBodyLengthMm(30.0f);
+        queen.setHeadWidthMm(7.0f);
 
-    @Override
-    public int getWorkerLifespan() {
-        return 365 * 2;
-    }
+        CasteTemplate minima = new CasteTemplate("Ouvrière Minime (Nourrice)", 40f, 2f);
+        minima.setBodyLengthMm(2.0f);
+        minima.setHeadWidthMm(0.6f);
 
-    @Override
-    public int getQueenLifespan() {
-        return 365 * 20;
-    } // Up to 20 years
+        CasteTemplate media = new CasteTemplate("Ouvrière Média (Coupeuse)", 100f, 10f);
+        media.setCanCarry(true);
+        media.setBodyLengthMm(7.0f);
+        media.setHeadWidthMm(2.2f);
 
-    @Override
-    public float getWorkerSpeed() {
-        return 0.6f;
-    }
+        CasteTemplate major = new CasteTemplate("Soldat Majeur (Garde)", 300f, 45f);
+        major.setBaseDefense(8f);
+        major.setBodyLengthMm(16.0f);
+        major.setHeadWidthMm(6.0f);
 
-    @Override
-    public float getViewDistance() {
-        return 4.0f;
-    }
-
-    @Override
-    public int getTypicalColonySize() {
-        return 5000000;
-    } // Massive colonies
-
-    @Override
-    public boolean formsMegaColonies() {
-        return false;
+        setCasteTemplates(List.of(queen, minima, media, major));
     }
 
     @Override
     public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
-        // Atta only forage for Leaves to feed the fungus
-        return java.util.Set.of(org.swarmforge.core.domain.ResourceType.LEAF);
+        return java.util.Set.of(
+                org.swarmforge.core.domain.ResourceType.LEAF,
+                org.swarmforge.core.domain.ResourceType.FUNGUS);
     }
 }

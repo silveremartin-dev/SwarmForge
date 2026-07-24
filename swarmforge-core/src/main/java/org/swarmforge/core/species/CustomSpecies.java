@@ -408,5 +408,50 @@ public class CustomSpecies implements Species {
         }
         return maxMinDiameter;
     }
+
+    @Override
+    public InsectOrder getInsectOrder() {
+        if (insectType == null) return InsectOrder.ANT;
+        return switch (insectType.toUpperCase()) {
+            case "BEE" -> InsectOrder.BEE;
+            case "WASP" -> InsectOrder.WASP;
+            case "TERMITE" -> InsectOrder.TERMITE;
+            default -> InsectOrder.ANT;
+        };
+    }
+
+    @Override
+    public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
+        java.util.Set<org.swarmforge.core.domain.ResourceType> set = new java.util.HashSet<>();
+        addDietResourceType(set, primaryDiet);
+        addDietResourceType(set, secondaryDiet);
+        if (set.isEmpty()) {
+            set.add(org.swarmforge.core.domain.ResourceType.SEED);
+        }
+        return set;
+    }
+
+    private void addDietResourceType(java.util.Set<org.swarmforge.core.domain.ResourceType> set, String diet) {
+        if (diet == null || diet.equalsIgnoreCase("NONE")) return;
+        switch (diet.toUpperCase()) {
+            case "WOOD_CELLULOSE", "CELLULOSE", "WOOD" -> set.add(org.swarmforge.core.domain.ResourceType.WOOD);
+            case "FUNGUS" -> set.add(org.swarmforge.core.domain.ResourceType.FUNGUS);
+            case "SEEDS" -> set.add(org.swarmforge.core.domain.ResourceType.SEED);
+            case "SUGARS_NECTAR", "SUGAR_HONEY" -> {
+                set.add(org.swarmforge.core.domain.ResourceType.NECTAR);
+                set.add(org.swarmforge.core.domain.ResourceType.SUGAR);
+            }
+            case "HONEYDEW" -> set.add(org.swarmforge.core.domain.ResourceType.HONEYDEW);
+            case "INSECTS_MEAT", "HIGH_PROTEIN_MEAT" -> {
+                set.add(org.swarmforge.core.domain.ResourceType.PROTEIN);
+                set.add(org.swarmforge.core.domain.ResourceType.INSECT);
+            }
+            case "OMNIVORE" -> {
+                set.add(org.swarmforge.core.domain.ResourceType.SEED);
+                set.add(org.swarmforge.core.domain.ResourceType.SUGAR);
+                set.add(org.swarmforge.core.domain.ResourceType.PROTEIN);
+            }
+        }
+    }
 }
 

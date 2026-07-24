@@ -43,7 +43,19 @@ public enum SpeciesTemplates {
 
     RETICULITERMES_FLAVIPES("Reticulitermes flavipes", "Eastern Subterranean Termite",
             "Subterranean cellulose consumer, builds shelter tubes from soil cement",
-            ReticulitermesFlavipes.class);
+            ReticulitermesFlavipes.class),
+
+    PSEUDOREGMA_BAMBUCICOLA("Pseudoregma bambucicola", "Social Bamboo Aphid",
+            "Gall-dwelling aphid with sterile 1st-instar horned soldiers",
+            PseudoregmaBambucicola.class),
+
+    KLADOTHRIPS_HARTERI("Kladothrips harteri", "Acacia Gall Thrips",
+            "Australian gall-inducing thrips with wingless soldier caste",
+            KladothripsHarteri.class),
+
+    AUSTROPLATYPUS_INCOMPERTUS("Austroplatypus incompertus", "Ambrosia Wood Beetle",
+            "Eusocial wood-tunneling beetle with sterile female workers",
+            AustroplatypusIncompertus.class);
 
     private final String scientificName;
     private final String commonName;

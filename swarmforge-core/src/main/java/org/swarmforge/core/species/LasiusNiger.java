@@ -6,60 +6,54 @@
  */
 package org.swarmforge.core.species;
 
+import org.swarmforge.core.domain.CasteTemplate;
+import java.util.List;
+
 /**
  * Lasius niger - Black Garden Ant
  * Common European ant species, excellent for simulation.
+ * Refactored to extend CustomSpecies for full JSON & Species Editor parameter compatibility.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
-public class LasiusNiger implements Species {
+public class LasiusNiger extends CustomSpecies {
 
-    @Override
-    public String getScientificName() {
-        return "Lasius niger";
-    }
+    public LasiusNiger() {
+        setPresetName("Fourmi Noire des Jardins (Lasius niger)");
+        setCommonName("Black Garden Ant");
+        setScientificName("Lasius niger");
+        setInsectType("ANT");
+        setDescription("Espèce monogyne très répandue en Europe. Élevage de pucerons et récolte de miellat.");
+        setQueenCountMode("MONOGYNE");
+        setQueenCount(1);
+        setQueenLifespan(365 * 15);
+        setQueenEggLayingRate(25.0f);
+        setWorkerLifespan(365 * 3);
+        setWorkerSpeed(0.5f);
+        setViewDistance(3.0f);
+        setTypicalColonySize(15000);
+        setFormsMegaColonies(false);
+        setPrimaryDiet("HONEYDEW");
+        setSecondaryDiet("INSECTS_MEAT");
+        setNestType("UNDERGROUND_BURROW");
+        setVenomType("FORMIC_ACID");
+        setAggression(0.3f);
 
-    @Override
-    public String getCommonName() {
-        return "Black Garden Ant";
-    }
+        CasteTemplate queen = new CasteTemplate("Reine", 500f, 10f);
+        queen.setDescription("Reine fondatrice (9mm)");
+        queen.setLifespan(365 * 15);
+        queen.setBodyLengthMm(9.0f);
+        queen.setHeadWidthMm(2.4f);
 
-    @Override
-    public int getWorkerLifespan() {
-        return 365 * 3;
-    } // ~3 years
+        CasteTemplate worker = new CasteTemplate("Ouvrière", 80f, 4f);
+        worker.setDescription("Ouvrière généraliste (4mm)");
+        worker.setLifespan(365 * 3);
+        worker.setCanDig(true);
+        worker.setCanCarry(true);
+        worker.setBodyLengthMm(4.0f);
+        worker.setHeadWidthMm(1.0f);
 
-    @Override
-    public int getQueenLifespan() {
-        return 365 * 15;
-    } // ~15 years
-
-    @Override
-    public float getWorkerSpeed() {
-        return 0.5f;
-    }
-
-    @Override
-    public float getViewDistance() {
-        return 3.0f;
-    }
-
-    @Override
-    public int getTypicalColonySize() {
-        return 15000;
-    }
-
-    @Override
-    public boolean formsMegaColonies() {
-        return false;
-    }
-
-    @Override
-    public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
-        return java.util.Set.of(
-                org.swarmforge.core.domain.ResourceType.HONEYDEW,
-                org.swarmforge.core.domain.ResourceType.INSECT,
-                org.swarmforge.core.domain.ResourceType.SUGAR);
+        setCasteTemplates(List.of(queen, worker));
     }
 }

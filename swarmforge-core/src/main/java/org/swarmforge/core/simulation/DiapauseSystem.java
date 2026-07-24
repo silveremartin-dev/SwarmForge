@@ -60,6 +60,33 @@ public class DiapauseSystem {
                         applyTermiteSubterraneanRetreat(colony);
                     }
                 }
+                case APHID -> {
+                    if (ambientTemp < 10.0f) {
+                        simulation.queueEvent(new SimulationEvent(
+                                SimulationEvent.EventType.MILESTONE_REACHED,
+                                simulation.getTickCount(),
+                                "🌿 Aphid Colony " + colony.getSpeciesName() + " produced overwintering diapause eggs."
+                        ));
+                    }
+                }
+                case THRIPS -> {
+                    if (ambientTemp < 12.0f) {
+                        simulation.queueEvent(new SimulationEvent(
+                                SimulationEvent.EventType.MILESTONE_REACHED,
+                                simulation.getTickCount(),
+                                "🌾 Acacia Thrips " + colony.getSpeciesName() + " sealed gall entrance for winter dormancy."
+                        ));
+                    }
+                }
+                case BEETLE -> {
+                    if (deepNestTemp < 10.0f) {
+                        simulation.queueEvent(new SimulationEvent(
+                                SimulationEvent.EventType.MILESTONE_REACHED,
+                                simulation.getTickCount(),
+                                "🌲 Ambrosia Wood Beetles (" + colony.getSpeciesName() + ") entered deep heartwood dormancy."
+                        ));
+                    }
+                }
             }
         }
     }

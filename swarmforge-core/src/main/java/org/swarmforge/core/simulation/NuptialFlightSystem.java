@@ -61,6 +61,9 @@ public class NuptialFlightSystem {
             case BEE -> (temp >= 18.0f && temp <= 30.0f && wind <= 15.0f && isDay && weather.getWeatherState().flightSuitability > 0.8f);
             case WASP -> (temp >= 15.0f && temp <= 26.0f && wind <= 18.0f && isDay);
             case TERMITE -> (temp >= 22.0f && humidity >= 75.0f && wind <= 8.0f); // Often post-rain dusk/warm night
+            case APHID -> (temp >= 16.0f && temp <= 28.0f && wind <= 10.0f && isDay); // Winged alate dispersal
+            case THRIPS -> (temp >= 20.0f && temp <= 32.0f && wind <= 8.0f && isDay); // Gall colonization flight
+            case BEETLE -> (temp >= 18.0f && humidity >= 65.0f && wind <= 14.0f); // Wood dispersal flight
         };
     }
 
@@ -70,6 +73,9 @@ public class NuptialFlightSystem {
             case BEE -> "🐝 Honey Bee Swarm (Essaimage) departing from " + colony.getSpeciesName() + " hive!";
             case WASP -> "🐝 Fertile Wasp Gynes taking flight from " + colony.getSpeciesName() + " nest.";
             case TERMITE -> "🪲 Subterranean Termite Alates swarming from " + colony.getSpeciesName() + " mound.";
+            case APHID -> "🌿 Winged Aphid Alates dispersing to form new plant gall colonies (" + colony.getSpeciesName() + ").";
+            case THRIPS -> "🌾 Winged Thrips dispersing from Acacia gall (" + colony.getSpeciesName() + ").";
+            case BEETLE -> "🌲 Ambrosia Wood Beetles dispersing to excavate new tree galleries (" + colony.getSpeciesName() + ").";
         };
 
         simulation.queueEvent(new SimulationEvent(

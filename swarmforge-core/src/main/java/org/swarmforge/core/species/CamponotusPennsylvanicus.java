@@ -6,52 +6,50 @@
  */
 package org.swarmforge.core.species;
 
+import org.swarmforge.core.domain.CasteTemplate;
+import java.util.List;
+
 /**
  * Camponotus pennsylvanicus - Black Carpenter Ant
  * Large wood-nesting species from North America.
+ * Refactored to extend CustomSpecies for full JSON & Species Editor parameter compatibility.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
-public class CamponotusPennsylvanicus implements Species {
+public class CamponotusPennsylvanicus extends CustomSpecies {
 
-    @Override
-    public String getScientificName() {
-        return "Camponotus pennsylvanicus";
-    }
+    public CamponotusPennsylvanicus() {
+        setPresetName("Fourmi Charpentière Noire (Camponotus pennsylvanicus)");
+        setCommonName("Black Carpenter Ant");
+        setScientificName("Camponotus pennsylvanicus");
+        setInsectType("ANT");
+        setDescription("Espèce nord-américaine de grande taille nichant dans le bois mort.");
+        setQueenCountMode("MONOGYNE");
+        setQueenCount(1);
+        setQueenLifespan(365 * 25);
+        setWorkerLifespan(365 * 7);
+        setWorkerSpeed(0.4f);
+        setViewDistance(5.0f);
+        setTypicalColonySize(3000);
+        setFormsMegaColonies(false);
+        setPrimaryDiet("HONEYDEW");
+        setSecondaryDiet("INSECTS_MEAT");
+        setNestType("WOOD_TUNNELS");
+        setVenomType("POWERFUL_MANDIBLES");
 
-    @Override
-    public String getCommonName() {
-        return "Black Carpenter Ant";
-    }
+        CasteTemplate queen = new CasteTemplate("Reine", 750f, 15f);
+        queen.setLifespan(365 * 25);
+        queen.setBodyLengthMm(19.0f);
+        queen.setHeadWidthMm(4.8f);
 
-    @Override
-    public int getWorkerLifespan() {
-        return 365 * 7;
-    } // Long-lived
+        CasteTemplate worker = new CasteTemplate("Ouvrière Major", 190f, 18f);
+        worker.setLifespan(365 * 7);
+        worker.setCanDig(true);
+        worker.setCanCarry(true);
+        worker.setBodyLengthMm(13.0f);
+        worker.setHeadWidthMm(3.7f);
 
-    @Override
-    public int getQueenLifespan() {
-        return 365 * 25;
-    } // Very long
-
-    @Override
-    public float getWorkerSpeed() {
-        return 0.4f;
-    } // Slower, larger
-
-    @Override
-    public float getViewDistance() {
-        return 5.0f;
-    } // Good vision
-
-    @Override
-    public int getTypicalColonySize() {
-        return 3000;
-    }
-
-    @Override
-    public boolean formsMegaColonies() {
-        return false;
+        setCasteTemplates(List.of(queen, worker));
     }
 }

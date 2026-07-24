@@ -10,55 +10,27 @@ import org.swarmforge.core.behavior.rl.RLArchitecture;
 import org.swarmforge.core.domain.Individual;
 
 /**
- * An ant species that uses Reinforcement Learning (Q-Learning) for decision
- * making.
+ * An ant species that uses Reinforcement Learning (Q-Learning) for decision making.
+ * Refactored to extend CustomSpecies for full JSON & Species Editor parameter compatibility.
  */
-public class SmartAntSpecies implements Species {
+public class SmartAntSpecies extends CustomSpecies {
+
+    public SmartAntSpecies() {
+        setPresetName("Smart Ant (RL)");
+        setCommonName("Smart Ant");
+        setScientificName("Formica intelligens");
+        setInsectType("ANT");
+        setDescription("RL-driven intelligent ant species.");
+        setWorkerLifespan(5000);
+        setQueenLifespan(50000);
+        setWorkerSpeed(5.0f);
+        setViewDistance(15.0f);
+        setTypicalColonySize(1000);
+    }
 
     @Override
     public void configureIndividual(Individual individual) {
         individual.setReasoningArchitecture(new RLArchitecture());
-
-        // Stats are derived from Species, so we might not need to set them on
-        // Individual if Individual uses Species reference.
-        // However, if we want per-individual Override:
         individual.setMaxEnergy(100.0f);
-        // speed is typically derived from species * genome
-        // viewDistance likewise
-    }
-
-    @Override
-    public String getScientificName() {
-        return "Formica intelligens";
-    }
-
-    @Override
-    public String getCommonName() {
-        return "Smart Ant";
-    }
-
-    @Override
-    public int getWorkerLifespan() {
-        return 5000;
-    }
-
-    @Override
-    public int getQueenLifespan() {
-        return 50000;
-    }
-
-    @Override
-    public float getWorkerSpeed() {
-        return 5.0f;
-    }
-
-    @Override
-    public float getViewDistance() {
-        return 15.0f;
-    }
-
-    @Override
-    public int getTypicalColonySize() {
-        return 1000;
     }
 }

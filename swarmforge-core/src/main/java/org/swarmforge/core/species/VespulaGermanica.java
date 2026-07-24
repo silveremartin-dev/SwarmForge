@@ -6,64 +6,51 @@
  */
 package org.swarmforge.core.species;
 
+import org.swarmforge.core.domain.CasteTemplate;
+import java.util.List;
+
 /**
  * Vespula germanica - German Wasp / Yellowjacket
  * Predatory paper wasp, annual colony cycle, high aggression.
+ * Refactored to extend CustomSpecies for full JSON & Species Editor parameter compatibility.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
-public class VespulaGermanica implements Species {
+public class VespulaGermanica extends CustomSpecies {
 
-    @Override
-    public String getScientificName() {
-        return "Vespula germanica";
-    }
+    public VespulaGermanica() {
+        setPresetName("Guêpe Commune (Vespula germanica)");
+        setCommonName("European Yellowjacket Wasp");
+        setScientificName("Vespula germanica");
+        setInsectType("WASP");
+        setDescription("Chasseresse carnivore volante construisant des nids en papier d'origine ligneuse.");
+        setQueenCountMode("MONOGYNE");
+        setQueenCount(1);
+        setQueenLifespan(365);
+        setQueenEggLayingRate(40.0f);
+        setWorkerLifespan(30 * 24);
+        setWorkerSpeed(1.4f);
+        setViewDistance(6.0f);
+        setWorkersCanFly(true);
+        setTypicalColonySize(4000);
+        setPrimaryDiet("INSECTS_MEAT");
+        setSecondaryDiet("SUGARS_NECTAR");
+        setNestType("PAPER_NEST");
+        setVenomType("VENOMOUS_STING");
+        setAggression(0.85f);
 
-    @Override
-    public String getCommonName() {
-        return "European Yellowjacket Wasp";
-    }
+        CasteTemplate queen = new CasteTemplate("Fondatrice (Reine)", 450f, 20f);
+        queen.setCanFly(true);
+        queen.setBodyLengthMm(19.0f);
+        queen.setHeadWidthMm(4.5f);
 
-    @Override
-    public int getWorkerLifespan() {
-        return 30 * 24; // ~30 days
-    }
+        CasteTemplate worker = new CasteTemplate("Ouvrière Chasseresse", 100f, 22f);
+        worker.setLifespan(30 * 24);
+        worker.setCanFly(true);
+        worker.setBodyLengthMm(13.0f);
+        worker.setHeadWidthMm(3.2f);
 
-    @Override
-    public int getQueenLifespan() {
-        return 365; // ~1 year (annual colony cycle)
-    }
-
-    @Override
-    public float getWorkerSpeed() {
-        return 1.4f;
-    }
-
-    @Override
-    public float getViewDistance() {
-        return 6.0f;
-    }
-
-    @Override
-    public float getAggression() {
-        return 0.85f; // High aggression
-    }
-
-    @Override
-    public int getTypicalColonySize() {
-        return 4000;
-    }
-
-    @Override
-    public InsectOrder getInsectOrder() {
-        return InsectOrder.WASP;
-    }
-
-    @Override
-    public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
-        return java.util.Set.of(
-                org.swarmforge.core.domain.ResourceType.INSECT,
-                org.swarmforge.core.domain.ResourceType.SUGAR);
+        setCasteTemplates(List.of(queen, worker));
     }
 }

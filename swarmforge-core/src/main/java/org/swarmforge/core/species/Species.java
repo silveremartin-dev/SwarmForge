@@ -103,7 +103,10 @@ public interface Species {
         ANT("🐜 Formicidae (Fourmi)"),
         BEE("🐝 Apidae (Abeille)"),
         WASP("🐝 Vespidae (Guêpe/Frelon)"),
-        TERMITE("🪲 Isoptera (Termite)");
+        TERMITE("🪲 Isoptera (Termite)"),
+        APHID("🌿 Aphididae (Puceron à soldats)"),
+        THRIPS("🌾 Thysanoptera (Thrips gallicole)"),
+        BEETLE("🌲 Coleoptera (Scolyte du bois)");
 
         public final String label;
         InsectOrder(String label) { this.label = label; }
