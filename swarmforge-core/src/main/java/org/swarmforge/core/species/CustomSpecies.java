@@ -7,9 +7,14 @@
 package org.swarmforge.core.species;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.swarmforge.core.domain.CasteTemplate;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * A user-definable ant species that can be serialized/deserialized.
+ * A comprehensive, customizable species definition supporting realistic eusocial insects
+ * (ants, bees, wasps, termites, etc.).
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
@@ -17,10 +22,29 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CustomSpecies implements Species {
 
+    private String presetName = "Default Species";
     private String scientificName = "Formica genericus";
     private String commonName = "Generic Ant";
-    private int workerLifespan = 5000;
+    private String description = "Generic eusocial species for simulation.";
+    private String insectType = "ANT"; // ANT, BEE, WASP, TERMITE, OTHER
+
+    // --- Colony & Queens (Aspect CRITIQUE) ---
+    private String queenCountMode = "MONOGYNE"; // MONOGYNE, POLYGYNE, GAMERGATES
+    private int queenCount = 1;
     private int queenLifespan = 25000;
+    private boolean hasKing = false; // For termites
+    private int kingLifespan = 15000;
+    private float queenEggLayingRate = 15.0f; // eggs/day or tick unit
+    private String nuptialFlightType = "AERIAL_SWARM"; // AERIAL_SWARM, SWARM_DIVISION, BUDDING, IN_NEST
+
+    // --- Life Stages (Durations in ticks) ---
+    private int eggStageDuration = 300;
+    private int larvaStageDuration = 600;
+    private int pupaStageDuration = 500;
+    private String larvaDietRequirement = "HIGH_PROTEIN_MEAT"; // HIGH_PROTEIN_MEAT, SUGAR_HONEY, FUNGUS, CELLULOSE, OMNIVORE
+
+    // --- Worker Traits & Physical Characteristics ---
+    private int workerLifespan = 5000;
     private float workerSpeed = 0.5f;
     private float viewDistance = 5.0f;
     private int typicalColonySize = 1000;
@@ -28,9 +52,35 @@ public class CustomSpecies implements Species {
     private float aggression = 0.3f;
     private float metabolism = 1.0f;
     private float strength = 5.0f;
+    private boolean workersCanFly = false; // True for bees, wasps
+
+    // --- Diet & Metabolism ---
+    private String primaryDiet = "SUGARS_NECTAR"; // SUGARS_NECTAR, INSECTS_MEAT, SEEDS, FUNGUS, WOOD_CELLULOSE, HONEYDEW, OMNIVORE
+    private String secondaryDiet = "INSECTS_MEAT";
+    private float dailyFoodConsumption = 0.5f;
+    private float waterRequirement = 0.2f;
+
+    // --- Nest & Environment ---
+    private String nestType = "UNDERGROUND_BURROW"; // UNDERGROUND_BURROW, MOUND, WOOD_TUNNELS, PAPER_NEST, WAX_COMB, ARBOREAL_LEAF
+    private float optimalTempCelsius = 24.0f;
+    private float minTempCelsius = 10.0f;
+    private float maxTempCelsius = 38.0f;
+    private float territoriality = 0.5f;
+    private String venomType = "NONE"; // NONE, FORMIC_ACID, VENOMOUS_STING, CHEMICAL_SPRAY, POWERFUL_MANDIBLES
+
+    // --- Castes ---
+    private List<CasteTemplate> casteTemplates = new ArrayList<>();
 
     // Default constructor for Jackson
     public CustomSpecies() {
+    }
+
+    public String getPresetName() {
+        return presetName;
+    }
+
+    public void setPresetName(String presetName) {
+        this.presetName = presetName;
     }
 
     @Override
@@ -51,13 +101,36 @@ public class CustomSpecies implements Species {
         this.commonName = commonName;
     }
 
-    @Override
-    public int getWorkerLifespan() {
-        return workerLifespan;
+    public String getDescription() {
+        return description;
     }
 
-    public void setWorkerLifespan(int workerLifespan) {
-        this.workerLifespan = workerLifespan;
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getInsectType() {
+        return insectType;
+    }
+
+    public void setInsectType(String insectType) {
+        this.insectType = insectType;
+    }
+
+    public String getQueenCountMode() {
+        return queenCountMode;
+    }
+
+    public void setQueenCountMode(String queenCountMode) {
+        this.queenCountMode = queenCountMode;
+    }
+
+    public int getQueenCount() {
+        return queenCount;
+    }
+
+    public void setQueenCount(int queenCount) {
+        this.queenCount = queenCount;
     }
 
     @Override
@@ -67,6 +140,79 @@ public class CustomSpecies implements Species {
 
     public void setQueenLifespan(int queenLifespan) {
         this.queenLifespan = queenLifespan;
+    }
+
+    public boolean isHasKing() {
+        return hasKing;
+    }
+
+    public void setHasKing(boolean hasKing) {
+        this.hasKing = hasKing;
+    }
+
+    public int getKingLifespan() {
+        return kingLifespan;
+    }
+
+    public void setKingLifespan(int kingLifespan) {
+        this.kingLifespan = kingLifespan;
+    }
+
+    public float getQueenEggLayingRate() {
+        return queenEggLayingRate;
+    }
+
+    public void setQueenEggLayingRate(float queenEggLayingRate) {
+        this.queenEggLayingRate = queenEggLayingRate;
+    }
+
+    public String getNuptialFlightType() {
+        return nuptialFlightType;
+    }
+
+    public void setNuptialFlightType(String nuptialFlightType) {
+        this.nuptialFlightType = nuptialFlightType;
+    }
+
+    public int getEggStageDuration() {
+        return eggStageDuration;
+    }
+
+    public void setEggStageDuration(int eggStageDuration) {
+        this.eggStageDuration = eggStageDuration;
+    }
+
+    public int getLarvaStageDuration() {
+        return larvaStageDuration;
+    }
+
+    public void setLarvaStageDuration(int larvaStageDuration) {
+        this.larvaStageDuration = larvaStageDuration;
+    }
+
+    public int getPupaStageDuration() {
+        return pupaStageDuration;
+    }
+
+    public void setPupaStageDuration(int pupaStageDuration) {
+        this.pupaStageDuration = pupaStageDuration;
+    }
+
+    public String getLarvaDietRequirement() {
+        return larvaDietRequirement;
+    }
+
+    public void setLarvaDietRequirement(String larvaDietRequirement) {
+        this.larvaDietRequirement = larvaDietRequirement;
+    }
+
+    @Override
+    public int getWorkerLifespan() {
+        return workerLifespan;
+    }
+
+    public void setWorkerLifespan(int workerLifespan) {
+        this.workerLifespan = workerLifespan;
     }
 
     @Override
@@ -131,4 +277,136 @@ public class CustomSpecies implements Species {
     public void setStrength(float strength) {
         this.strength = strength;
     }
+
+    public boolean isWorkersCanFly() {
+        return workersCanFly;
+    }
+
+    public void setWorkersCanFly(boolean workersCanFly) {
+        this.workersCanFly = workersCanFly;
+    }
+
+    public String getPrimaryDiet() {
+        return primaryDiet;
+    }
+
+    public void setPrimaryDiet(String primaryDiet) {
+        this.primaryDiet = primaryDiet;
+    }
+
+    public String getSecondaryDiet() {
+        return secondaryDiet;
+    }
+
+    public void setSecondaryDiet(String secondaryDiet) {
+        this.secondaryDiet = secondaryDiet;
+    }
+
+    public float getDailyFoodConsumption() {
+        return dailyFoodConsumption;
+    }
+
+    public void setDailyFoodConsumption(float dailyFoodConsumption) {
+        this.dailyFoodConsumption = dailyFoodConsumption;
+    }
+
+    public float getWaterRequirement() {
+        return waterRequirement;
+    }
+
+    public void setWaterRequirement(float waterRequirement) {
+        this.waterRequirement = waterRequirement;
+    }
+
+    public String getNestType() {
+        return nestType;
+    }
+
+    public void setNestType(String nestType) {
+        this.nestType = nestType;
+    }
+
+    public float getOptimalTempCelsius() {
+        return optimalTempCelsius;
+    }
+
+    public void setOptimalTempCelsius(float optimalTempCelsius) {
+        this.optimalTempCelsius = optimalTempCelsius;
+    }
+
+    public float getMinTempCelsius() {
+        return minTempCelsius;
+    }
+
+    public void setMinTempCelsius(float minTempCelsius) {
+        this.minTempCelsius = minTempCelsius;
+    }
+
+    public float getMaxTempCelsius() {
+        return maxTempCelsius;
+    }
+
+    public void setMaxTempCelsius(float maxTempCelsius) {
+        this.maxTempCelsius = maxTempCelsius;
+    }
+
+    public float getTerritoriality() {
+        return territoriality;
+    }
+
+    public void setTerritoriality(float territoriality) {
+        this.territoriality = territoriality;
+    }
+
+    public String getVenomType() {
+        return venomType;
+    }
+
+    public void setVenomType(String venomType) {
+        this.venomType = venomType;
+    }
+
+    public List<CasteTemplate> getCasteTemplates() {
+        return casteTemplates;
+    }
+
+    public void setCasteTemplates(List<CasteTemplate> casteTemplates) {
+        this.casteTemplates = casteTemplates;
+    }
+
+    @Override
+    public List<CasteTemplate> getCastes() {
+        return casteTemplates;
+    }
+
+    /**
+     * Calculates the average body length (mm) across defined castes.
+     */
+    public float getAverageCasteBodyLengthMm() {
+        if (casteTemplates == null || casteTemplates.isEmpty()) {
+            return 5.0f;
+        }
+        float sum = 0.0f;
+        int count = 0;
+        for (CasteTemplate ct : casteTemplates) {
+            sum += ct.getBodyLengthMm();
+            count++;
+        }
+        return count > 0 ? sum / count : 5.0f;
+    }
+
+    /**
+     * Calculates the minimum tunnel diameter (mm) required for the largest caste of this species to pass.
+     */
+    public float getRequiredTunnelDiameterMm() {
+        if (casteTemplates == null || casteTemplates.isEmpty()) {
+            return 3.0f;
+        }
+        float maxMinDiameter = 1.0f;
+        for (CasteTemplate ct : casteTemplates) {
+            maxMinDiameter = Math.max(maxMinDiameter, ct.getMinTunnelDiameterMm());
+        }
+        return maxMinDiameter;
+    }
 }
+

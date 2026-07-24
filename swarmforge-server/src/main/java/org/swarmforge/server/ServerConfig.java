@@ -32,6 +32,7 @@ public record ServerConfig(
     }
 
     /** @deprecated use {@link #local()} instead */
+    @Deprecated
     public static ServerConfig defaults() {
         return local();
     }

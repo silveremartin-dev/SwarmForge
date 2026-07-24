@@ -36,6 +36,11 @@ public class CasteTemplate implements java.io.Serializable {
     private float proteinCost; // New Resource Management
     private float carbohydrateCost; // New Resource Management
 
+    // Physical Size & Morphology (Crucial for Tunnel & Chamber sizing)
+    private float bodyLengthMm = 5.0f; // mm
+    private float headWidthMm = 1.2f;   // mm
+    private float customMinTunnelDiameterMm = 0.0f; // 0.0 means auto-calculated from head/body size
+
     // Capabilities
     private boolean canFly;
     private boolean canDig;
@@ -159,11 +164,56 @@ public class CasteTemplate implements java.io.Serializable {
         this.canCarry = canCarry;
     }
 
+    public float getBodyLengthMm() {
+        return bodyLengthMm;
+    }
+
+    public void setBodyLengthMm(float bodyLengthMm) {
+        this.bodyLengthMm = bodyLengthMm;
+        if (attributes != null) {
+            attributes.put("size_mm", bodyLengthMm);
+        }
+    }
+
+    public float getHeadWidthMm() {
+        return headWidthMm;
+    }
+
+    public void setHeadWidthMm(float headWidthMm) {
+        this.headWidthMm = headWidthMm;
+    }
+
+    public float getCustomMinTunnelDiameterMm() {
+        return customMinTunnelDiameterMm;
+    }
+
+    public void setCustomMinTunnelDiameterMm(float customMinTunnelDiameterMm) {
+        this.customMinTunnelDiameterMm = customMinTunnelDiameterMm;
+    }
+
+    /**
+     * Calculates minimum tunnel diameter required for an individual of this caste to navigate.
+     */
+    public float getMinTunnelDiameterMm() {
+        if (customMinTunnelDiameterMm > 0.0f) {
+            return customMinTunnelDiameterMm;
+        }
+        // Biologically, tunnel width must exceed head width by ~30-50% for smooth two-way movement
+        float h = headWidthMm > 0.0f ? headWidthMm : (bodyLengthMm * 0.25f);
+        return Math.max(1.0f, h * 1.4f);
+    }
+
     public void setAttribute(String key, float value) {
         attributes.put(key, value);
+        if ("size_mm".equals(key)) {
+            this.bodyLengthMm = value;
+        }
     }
 
     public float getAttribute(String key, float defaultValue) {
+        if ("size_mm".equals(key) && bodyLengthMm > 0.0f) {
+            return bodyLengthMm;
+        }
         return attributes.getOrDefault(key, defaultValue);
     }
 }

@@ -73,19 +73,17 @@ public class SwarmForgeClient extends Application {
         mainTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         // --- TAB 1: SIMULATION MANAGER ---
-        Tab simTab = new Tab();
-        simTab.textProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("menu.tools")); // Reuse or new key
+        Tab simTab = new Tab("Simulation");
         simTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SLIDERS));
         simTab.setContent(createSimulationManager());
 
         // --- TAB 2: WORLD EDITOR (3D View + Terrain Tools) ---
-        Tab worldTab = new Tab("World Editor"); // TODO: Add key
+        Tab worldTab = new Tab("World Editor");
         worldTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.GLOBE));
         worldTab.setContent(createWorldEditor());
 
         // --- TAB 3: SPECIES EDITOR ---
-        Tab speciesTab = new Tab();
-        speciesTab.textProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("species.queen")); // Placeholder key
+        Tab speciesTab = new Tab("Species Editor");
         speciesTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CPU));
         speciesTab.setContent(createSpeciesEditor());
 
@@ -118,6 +116,19 @@ public class SwarmForgeClient extends Application {
         godTab.setContent(new org.swarmforge.client.ui.InterventionPanel());
 
         mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, weatherTab, nestTab, eventTab, godTab);
+
+        // Styling Requirement 1: Black title headers for tabs
+        for (Tab t : mainTabs.getTabs()) {
+            Label label = new Label(t.getText());
+            label.setStyle("-fx-text-fill: #000000 !important; -fx-font-weight: bold; -fx-font-size: 13px;");
+            t.setText("");
+            if (t.getGraphic() != null) {
+                t.setGraphic(new HBox(5, t.getGraphic(), label));
+            } else {
+                t.setGraphic(label);
+            }
+        }
+
         mainTabs.getSelectionModel().select(worldTab);
 
         root.setCenter(mainTabs);
@@ -790,99 +801,11 @@ public class SwarmForgeClient extends Application {
         }
 
         private Node createSpeciesEditor() {
-                VBox pane = new VBox(20);
-                pane.setPadding(new Insets(20));
-
-                Label header = new Label("Species Designer");
-                header.setStyle("-fx-font-size: 24px;");
-
-                // Data Model
-                // Used to be local, now using class field 'currentSpecies'
-                if (currentSpecies == null) {
-                        currentSpecies = new org.swarmforge.core.species.CustomSpecies();
-                }
-
-                // UI Form (Grid)
-                GridPane grid = new GridPane();
-                grid.setHgap(10);
-                grid.setVgap(10);
-                grid.setPadding(new Insets(20));
-
-                TextField nameField = new TextField(currentSpecies.getCommonName());
-                TextField scienceField = new TextField(currentSpecies.getScientificName());
-                TextField lifespanField = new TextField(String.valueOf(currentSpecies.getWorkerLifespan()));
-                TextField speedField = new TextField(String.valueOf(currentSpecies.getWorkerSpeed()));
-
-                grid.addRow(0, new Label("Common Name:"), nameField);
-                grid.addRow(1, new Label("Scientific Name:"), scienceField);
-                grid.addRow(2, new Label("Worker Lifespan (ticks):"), lifespanField);
-                grid.addRow(3, new Label("Worker Speed:"), speedField);
-
-                // Actions
-                HBox actions = new HBox(10);
-                Button btnSave = new Button("Save Species...");
-                Button btnLoad = new Button("Load Species...");
-
-                actions.getChildren().addAll(btnSave, btnLoad);
-
-                // Logic
-                btnSave.setOnAction(e -> {
-                        // Update model from UI
-                        currentSpecies.setCommonName(nameField.getText());
-                        currentSpecies.setScientificName(scienceField.getText());
-                        try {
-                                currentSpecies.setWorkerLifespan(Integer.parseInt(lifespanField.getText()));
-                                currentSpecies.setWorkerSpeed(Float.parseFloat(speedField.getText()));
-
-                                // Serialize
-                                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                                java.io.File file = new java.io.File("species_"
-                                                + currentSpecies.getCommonName().replace(" ", "_") + ".json");
-                                mapper.writerWithDefaultPrettyPrinter().writeValue(file, currentSpecies);
-
-                                new Alert(Alert.AlertType.INFORMATION, "Saved to " + file.getAbsolutePath()).show();
-                        } catch (Exception ex) {
-                                new Alert(Alert.AlertType.ERROR, "Error saving: " + ex.getMessage()).show();
-                                ex.printStackTrace();
-                        }
+                org.swarmforge.client.ui.SpeciesEditorPane pane = new org.swarmforge.client.ui.SpeciesEditorPane();
+                pane.setOnApply(species -> {
+                        this.currentSpecies = species;
+                        new Alert(Alert.AlertType.INFORMATION, "Espèce active mise à jour : " + species.getCommonName()).show();
                 });
-
-                btnLoad.setOnAction(e -> {
-                        try {
-                                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                                java.io.File file = new java.io.File(
-                                                "species_" + nameField.getText().replace(" ", "_") + ".json"); // Simple
-                                                                                                               // load
-                                                                                                               // by
-                                                                                                               // name
-                                                                                                               // for
-                                                                                                               // demo
-
-                                if (!file.exists()) {
-                                        // Fallback to file chooser in real app, here just mock or error
-                                        new Alert(Alert.AlertType.WARNING,
-                                                        "File not found: " + file.getName() + " (Try saving first)")
-                                                        .show();
-                                        return;
-                                }
-
-                                org.swarmforge.core.species.CustomSpecies loaded = mapper.readValue(file,
-                                                org.swarmforge.core.species.CustomSpecies.class);
-
-                                // Update UI
-                                nameField.setText(loaded.getCommonName());
-                                scienceField.setText(loaded.getScientificName());
-                                lifespanField.setText(String.valueOf(loaded.getWorkerLifespan()));
-                                speedField.setText(String.valueOf(loaded.getWorkerSpeed()));
-
-                                new Alert(Alert.AlertType.INFORMATION, "Loaded species!").show();
-
-                        } catch (Exception ex) {
-                                new Alert(Alert.AlertType.ERROR, "Error loading: " + ex.getMessage()).show();
-                        }
-                });
-
-                pane.getChildren().addAll(header, grid, new Separator(), actions);
                 return pane;
         }
 

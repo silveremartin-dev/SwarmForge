@@ -47,7 +47,7 @@ public class WeatherEditorPane extends BorderPane {
 
         // Title
         Label title = new Label("🌦 Weather & Climate Editor");
-        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;");
+        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: black;");
         setTop(new VBox(10, title, new Separator()));
 
         // Main content - Split into sections
@@ -87,13 +87,13 @@ public class WeatherEditorPane extends BorderPane {
         content.setPadding(new Insets(10));
 
         Label desc = new Label("Quick presets for common climate zones:");
-        desc.setStyle("-fx-text-fill: #888;");
+        desc.setStyle("-fx-text-fill: black;");
 
         HBox presets = new HBox(10);
         String[] presetNames = { "Temperate", "Tropical", "Arid", "Mediterranean", "Arctic" };
         for (String preset : presetNames) {
             Button btn = new Button(preset);
-            btn.setStyle("-fx-background-color: #2a2a4a; -fx-text-fill: white;");
+            btn.setStyle("-fx-text-fill: black;");
             btn.setOnAction(e -> applyPreset(preset));
             presets.getChildren().add(btn);
         }
@@ -124,7 +124,7 @@ public class WeatherEditorPane extends BorderPane {
         int row = 0;
         for (String[] event : events) {
             Label label = new Label(event[0]);
-            label.setStyle("-fx-text-fill: white; -fx-min-width: 100;");
+            label.setStyle("-fx-text-fill: black; -fx-min-width: 100;");
 
             Slider slider = new Slider(0, 100, Double.parseDouble(event[1]));
             slider.setPrefWidth(200);
@@ -133,7 +133,7 @@ public class WeatherEditorPane extends BorderPane {
             slider.setMajorTickUnit(25);
 
             Label valueLabel = new Label(event[1] + "%");
-            valueLabel.setStyle("-fx-text-fill: #00d4ff; -fx-min-width: 50;");
+            valueLabel.setStyle("-fx-text-fill: black; -fx-min-width: 50;");
             slider.valueProperty()
                     .addListener((obs, old, val) -> valueLabel.setText(String.format("%.0f%%", val.doubleValue())));
 
@@ -158,7 +158,7 @@ public class WeatherEditorPane extends BorderPane {
 
         // Temperature Range
         Label tempLabel = new Label("🌡 Temperature Range (°C):");
-        tempLabel.setStyle("-fx-text-fill: white;");
+        tempLabel.setStyle("-fx-text-fill: black;");
 
         temperatureMinSlider = new Slider(-20, 50, 5);
         temperatureMinSlider.setPrefWidth(150);
@@ -166,7 +166,7 @@ public class WeatherEditorPane extends BorderPane {
         temperatureMaxSlider.setPrefWidth(150);
 
         Label tempRangeLabel = new Label("5°C - 25°C");
-        tempRangeLabel.setStyle("-fx-text-fill: #00d4ff;");
+        tempRangeLabel.setStyle("-fx-text-fill: black;");
         temperatureMinSlider.valueProperty().addListener((obs, old, val) -> tempRangeLabel
                 .setText(String.format("%.0f°C - %.0f°C", val.doubleValue(), temperatureMaxSlider.getValue())));
         temperatureMaxSlider.valueProperty().addListener((obs, old, val) -> tempRangeLabel
@@ -176,26 +176,26 @@ public class WeatherEditorPane extends BorderPane {
                 temperatureMaxSlider);
         tempSliders.getChildren().forEach(n -> {
             if (n instanceof Label)
-                ((Label) n).setStyle("-fx-text-fill: #888;");
+                ((Label) n).setStyle("-fx-text-fill: black;");
         });
 
         // Humidity
         Label humLabel = new Label("💧 Average Humidity:");
-        humLabel.setStyle("-fx-text-fill: white;");
+        humLabel.setStyle("-fx-text-fill: black;");
         humiditySlider = new Slider(0, 100, 60);
         humiditySlider.setPrefWidth(300);
         Label humValue = new Label("60%");
-        humValue.setStyle("-fx-text-fill: #00d4ff;");
+        humValue.setStyle("-fx-text-fill: black;");
         humiditySlider.valueProperty()
                 .addListener((obs, old, val) -> humValue.setText(String.format("%.0f%%", val.doubleValue())));
 
         // Rain Frequency
         Label rainLabel = new Label("🌧 Rain Frequency:");
-        rainLabel.setStyle("-fx-text-fill: white;");
+        rainLabel.setStyle("-fx-text-fill: black;");
         rainFrequencySlider = new Slider(0, 365, 100);
         rainFrequencySlider.setPrefWidth(300);
         Label rainValue = new Label("~100 days/year");
-        rainValue.setStyle("-fx-text-fill: #00d4ff;");
+        rainValue.setStyle("-fx-text-fill: black;");
         rainFrequencySlider.valueProperty()
                 .addListener((obs, old, val) -> rainValue.setText("~" + val.intValue() + " days/year"));
 
@@ -219,7 +219,7 @@ public class WeatherEditorPane extends BorderPane {
         content.setPadding(new Insets(10));
 
         Label warning = new Label("⚠ Disasters can significantly impact colony survival");
-        warning.setStyle("-fx-text-fill: #ff6b6b; -fx-font-style: italic;");
+        warning.setStyle("-fx-text-fill: black; -fx-font-style: italic;");
 
         GridPane grid = new GridPane();
         grid.setHgap(15);
@@ -236,7 +236,7 @@ public class WeatherEditorPane extends BorderPane {
         int row = 0;
         for (String[] disaster : disasters) {
             Label label = new Label(disaster[0]);
-            label.setStyle("-fx-text-fill: white; -fx-min-width: 120;");
+            label.setStyle("-fx-text-fill: black; -fx-min-width: 120;");
 
             Slider slider = new Slider(0, 20, Double.parseDouble(disaster[1]));
             slider.setPrefWidth(200);
@@ -244,7 +244,7 @@ public class WeatherEditorPane extends BorderPane {
             slider.setMajorTickUnit(5);
 
             Label valueLabel = new Label(disaster[1] + "% /year");
-            valueLabel.setStyle("-fx-text-fill: #ff6b6b; -fx-min-width: 80;");
+            valueLabel.setStyle("-fx-text-fill: black; -fx-min-width: 80;");
             slider.valueProperty().addListener(
                     (obs, old, val) -> valueLabel.setText(String.format("%.1f%% /year", val.doubleValue())));
 
@@ -267,10 +267,10 @@ public class WeatherEditorPane extends BorderPane {
     private VBox createPreviewPane() {
         VBox pane = new VBox(10);
         pane.setPadding(new Insets(15));
-        pane.setStyle("-fx-background-color: #0f0f23; -fx-min-width: 200;");
+        pane.setStyle("-fx-min-width: 200;");
 
         Label title = new Label("Climate Preview");
-        title.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+        title.setStyle("-fx-text-fill: black; -fx-font-weight: bold;");
 
         // Simple visual bars for seasons
         String[] seasons = { "Spring", "Summer", "Autumn", "Winter" };
@@ -281,7 +281,7 @@ public class WeatherEditorPane extends BorderPane {
             row.setAlignment(Pos.CENTER_LEFT);
 
             Label label = new Label(seasons[i]);
-            label.setStyle("-fx-text-fill: white; -fx-min-width: 60;");
+            label.setStyle("-fx-text-fill: black; -fx-min-width: 60;");
 
             Rectangle bar = new Rectangle(80, 15, seasonColors[i]);
             bar.setArcWidth(3);
@@ -304,7 +304,7 @@ public class WeatherEditorPane extends BorderPane {
         btnNew.setOnAction(e -> resetToDefaults());
 
         Button btnSave = new Button("💾 Save Profile");
-        btnSave.setStyle("-fx-background-color: #28a745; -fx-text-fill: white;");
+        btnSave.setStyle("-fx-text-fill: black;");
         btnSave.setOnAction(e -> saveProfile());
 
         Button btnLoad = new Button("📂 Load Profile");
@@ -318,7 +318,7 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     private void styleTitledPane(TitledPane pane) {
-        pane.setStyle("-fx-text-fill: white;");
+        pane.setStyle("-fx-text-fill: black;");
         pane.setCollapsible(true);
     }
 

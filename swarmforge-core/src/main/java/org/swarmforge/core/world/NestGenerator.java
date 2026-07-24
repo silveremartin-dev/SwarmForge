@@ -34,7 +34,12 @@ public class NestGenerator {
         SIMPLE, // Small founding nest
         MATURE, // Full colony nest
         MOUND, // Surface mound construction
-        TREE // Arboreal nest
+        TREE, // Arboreal nest
+        WAX_COMB_HEXAGONAL, // Honeybee vertical hexagonal comb
+        WAX_POTS_CLUSTER,   // Bumblebee pot cluster
+        PAPER_PEDUNCULATE,  // Wasp/Hornet paper nest
+        CATHEDRAL_MOUND,    // Termite cathedral mound
+        ARBOREAL_SILK_LEAF  // Weaver ant stitched leaf nest
     }
 
     private final Random random;
@@ -248,6 +253,11 @@ public class NestGenerator {
                 case MATURE -> "FC[--F[C]F[+FC][-FC]][++F[C]F[+FC][-FC]][^F[C]][vF[C]]";
                 case MOUND -> "^F^F[C]vvF[-FC][+FC]vF[C][^FC]";
                 case TREE -> "F^F[C][+F^FC][-F^FC][+FvFC][-FvFC]";
+                case WAX_COMB_HEXAGONAL -> "FC[+C][-C][^C][vC]";
+                case WAX_POTS_CLUSTER -> "C[+C][-C][^C][vC]";
+                case PAPER_PEDUNCULATE -> "^F[C][+C][-C][vC]";
+                case CATHEDRAL_MOUND -> "^F^F^FC[+FC][-FC][^FC]";
+                case ARBOREAL_SILK_LEAF -> "^FC[+C][-C]";
             };
         }
         return switch (type) {
@@ -255,6 +265,11 @@ public class NestGenerator {
             case MATURE -> "FC[--F[C]F[+FC][-FC]][++F[C]F[+FC][-FC]]vFvFC";
             case MOUND -> "^F^F[C]vvF[-FC][+FC]vF[C]";
             case TREE -> "F^F[C][+F^FC][-F^FC]";
+            case WAX_COMB_HEXAGONAL -> "FC[+C][-C]";
+            case WAX_POTS_CLUSTER -> "C[+C][-C]";
+            case PAPER_PEDUNCULATE -> "^F[C][+C]";
+            case CATHEDRAL_MOUND -> "^F^FC[+FC]";
+            case ARBOREAL_SILK_LEAF -> "^FC[+C]";
         };
     }
 }

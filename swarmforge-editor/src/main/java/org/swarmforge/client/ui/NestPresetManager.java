@@ -12,7 +12,7 @@ import java.io.File;
 import java.util.*;
 
 /**
- * Manages NestGenerator presets: built-in defaults + user-saved configurations.
+ * Manages NestGenerator presets: built-in defaults (ants, bees, wasps, termites) + user-saved configurations.
  * Persists user presets to {@code nest_presets.json} in the working directory.
  */
 public class NestPresetManager {
@@ -48,21 +48,41 @@ public class NestPresetManager {
 
     private Map<String, Map<String, Object>> builtins() {
         Map<String, Map<String, Object>> m = new LinkedHashMap<>();
-        m.put("Young Colony",            make("Young Colony",          10, 15, 2, 2, 1, 2,  1, 1, 0,  0));
-        m.put("Mature Colony",           make("Mature Colony",         25, 20, 3, 3, 1, 5,  6, 3, 2,  0));
-        m.put("Complex Supercolony",     make("Complex Supercolony",   45, 50, 4, 5, 5,12, 15, 8, 5,  0));
-        m.put("Leafcutter Fungus Farm",  make("Leafcutter Fungus Farm",35, 30, 3, 4, 1, 4,  3, 4, 3, 10));
+
+        // Ant presets
+        m.put("Young Ant Burrow (Lasius)",          make("Young Ant Burrow (Lasius)",          "BURROW_UNDERGROUND", "EARTH",             4.0, 10, 15, 2, 2, 1, 2,  1, 1, 0,  0));
+        m.put("Mature Ant Burrow",                  make("Mature Ant Burrow",                  "BURROW_UNDERGROUND", "EARTH",             5.0, 25, 20, 3, 3, 1, 5,  6, 3, 2,  0));
+        m.put("Complex Supercolony",                make("Complex Supercolony",                "BURROW_UNDERGROUND", "EARTH",             4.5, 45, 50, 4, 5, 5,12, 15, 8, 5,  0));
+        m.put("Leafcutter Fungus Farm (Atta)",      make("Leafcutter Fungus Farm (Atta)",      "BURROW_UNDERGROUND", "EARTH",             7.0, 35, 30, 3, 4, 1, 4,  3, 4, 3, 10));
+
+        // Bee presets
+        m.put("Honeybee Wax Comb (Apis)",          make("Honeybee Wax Comb (Apis)",          "WAX_COMB_HEXAGONAL", "BEESWAX",          14.0,  5, 30, 2, 3, 1, 8, 12, 1, 0,  0));
+        m.put("Bumblebee Pot Cluster (Bombus)",     make("Bumblebee Pot Cluster (Bombus)",     "WAX_POTS_CLUSTER",   "PROPOLIS",         16.0,  8, 18, 2, 2, 1, 4,  6, 1, 1,  0));
+
+        // Wasp presets
+        m.put("Paper Wasp Nest (Vespula)",          make("Paper Wasp Nest (Vespula)",          "PAPER_PEDUNCULATE",  "WOOD_PULP_PAPER",  13.0,  6, 24, 2, 3, 1, 6,  4, 2, 1,  0));
+
+        // Termite presets
+        m.put("Termite Cathedral Mound (Macrotermes)", make("Termite Cathedral Mound (Macrotermes)", "CATHEDRAL_MOUND", "STERCORAL_CEMENT", 6.0, 30, 40, 3, 4, 1,10,  8, 4, 5,  0));
+
+        // Weaver ant presets
+        m.put("Weaver Ant Leaf Nest (Oecophylla)",  make("Weaver Ant Leaf Nest (Oecophylla)",  "ARBOREAL_SILK_LEAF", "SILK_WEAVE",        6.0,  4, 16, 2, 2, 1, 5,  4, 2, 1,  0));
+
         return m;
     }
 
-    private Map<String, Object> make(String type, int depth, int chambers, int tunnel, int branch,
+    private Map<String, Object> make(String type, String arch, String mat, double workerSizeMm,
+            int depth, int chambers, int tunnel, int branch,
             int queen, int brood, int food, int entrance, int waste, int fungus) {
         Map<String, Object> cfg = new LinkedHashMap<>();
-        cfg.put("nestType",     type);
-        cfg.put("depth",        depth);
-        cfg.put("chamberCount", chambers);
-        cfg.put("tunnelWidth",  tunnel);
-        cfg.put("branching",    branch);
+        cfg.put("nestType",         type);
+        cfg.put("architecture",     arch);
+        cfg.put("material",         mat);
+        cfg.put("workerSizeMm",     workerSizeMm);
+        cfg.put("depth",            depth);
+        cfg.put("chamberCount",     chambers);
+        cfg.put("tunnelWidth",      tunnel);
+        cfg.put("branching",        branch);
         Map<String, Integer> dist = new LinkedHashMap<>();
         dist.put("\uD83D\uDC51 Queen Chamber",   queen);
         dist.put("\uD83E\uDD5A Brood Chambers",  brood);

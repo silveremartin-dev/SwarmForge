@@ -81,7 +81,12 @@ public record TerrariumCell(
         MUD, // Wet earth
         CLAY, // Dense diggable material
         LEAF_LITTER, // Surface organic layer
-        ROOT // Plant root material
+        ROOT, // Plant root material
+        WOOD_PULP_PAPER, // Wasp/Hornet paper nest material
+        BEESWAX, // Honeybee comb wax material
+        STERCORAL_CEMENT, // Termite mound saliva-soil cement
+        SILK_WEAVE, // Weaver ant larval silk
+        PROPOLIS // Bee/Bumblebee plant resin seal
     }
 
     /**

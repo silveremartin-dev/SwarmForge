@@ -32,6 +32,9 @@ public class NestGeneratorPane extends BorderPane {
 
     // controls
     private ComboBox<String> nestTypeSelect;
+    private ComboBox<String> archSelect;
+    private ComboBox<String> matSelect;
+    private Slider workerSizeSlider;
     private Slider depthSlider, tunnelWidthSlider, branchingSlider, chamberCountSlider;
     private final Map<String, Spinner<Integer>> chamberSpinners = new LinkedHashMap<>();
 
@@ -61,7 +64,7 @@ public class NestGeneratorPane extends BorderPane {
         HBox r = new HBox(8);
         r.setAlignment(Pos.CENTER_LEFT);
 
-        Label t = new Label("🐜 Nest Generator");
+        Label t = new Label("🐜 Universal Nest Generator");
         t.setStyle("-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#00d4ff;");
 
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
@@ -107,10 +110,13 @@ public class NestGeneratorPane extends BorderPane {
         // Nest Architecture (collapsible)
         VBox arch = new VBox(7); arch.setPadding(new Insets(8));
 
-        Label tl = new Label("Preset:");
+        Label tl = new Label("Preset Name:");
         nestTypeSelect = new ComboBox<>();
-        nestTypeSelect.getItems().addAll("Young Colony","Mature Colony",
-            "Complex Supercolony","Leafcutter Fungus Farm","Custom");
+        nestTypeSelect.getItems().addAll("Young Ant Burrow (Lasius)","Mature Ant Burrow",
+            "Complex Supercolony","Leafcutter Fungus Farm (Atta)",
+            "Honeybee Wax Comb (Apis)", "Bumblebee Pot Cluster (Bombus)",
+            "Paper Wasp Nest (Vespula)", "Termite Cathedral Mound (Macrotermes)",
+            "Weaver Ant Leaf Nest (Oecophylla)", "Custom");
         nestTypeSelect.getSelectionModel().selectFirst();
         nestTypeSelect.setPrefWidth(218);
         nestTypeSelect.setOnAction(e -> {
@@ -119,17 +125,37 @@ public class NestGeneratorPane extends BorderPane {
             else { regen(); repaint(); }
         });
 
-        depthSlider       = mkSlider(5, 50, 20);
-        tunnelWidthSlider = mkSlider(1,  5,  2);
-        branchingSlider   = mkSlider(1,  5,  3);
-        addLsn(depthSlider, tunnelWidthSlider, branchingSlider);
+        Label al = new Label("Architecture Type:");
+        archSelect = new ComboBox<>();
+        archSelect.getItems().addAll(
+            "BURROW_UNDERGROUND", "SURFACE_MOUND", "WAX_COMB_HEXAGONAL",
+            "WAX_POTS_CLUSTER", "PAPER_PEDUNCULATE", "CATHEDRAL_MOUND", "ARBOREAL_SILK_LEAF");
+        archSelect.getSelectionModel().selectFirst();
+        archSelect.setPrefWidth(218);
+        archSelect.setOnAction(e -> { regen(); repaint(); });
+
+        Label ml = new Label("Nest Material:");
+        matSelect = new ComboBox<>();
+        matSelect.getItems().addAll("EARTH", "WOOD_PULP_PAPER", "BEESWAX",
+            "STERCORAL_CEMENT", "SILK_WEAVE", "PROPOLIS");
+        matSelect.getSelectionModel().selectFirst();
+        matSelect.setPrefWidth(218);
+        matSelect.setOnAction(e -> { regen(); repaint(); });
+
+        workerSizeSlider  = mkSlider(2.0, 30.0, 5.0);
+        depthSlider       = mkSlider(4,  60, 20);
+        tunnelWidthSlider = mkSlider(1,   5,  2);
+        branchingSlider   = mkSlider(1,   5,  3);
+        addLsn(workerSizeSlider, depthSlider, tunnelWidthSlider, branchingSlider);
 
         arch.getChildren().addAll(tl, nestTypeSelect,
-            lbl("Max Depth (blocks):"), sv(depthSlider),
+            al, archSelect, ml, matSelect,
+            lbl("Worker Scale (mm):"),  sv(workerSizeSlider),
+            lbl("Max Depth / H (blk):"),sv(depthSlider),
             lbl("Tunnel Width:"),       sv(tunnelWidthSlider),
             lbl("Branching Factor:"),   sv(branchingSlider));
 
-        TitledPane tp = new TitledPane("Nest Architecture", arch);
+        TitledPane tp = new TitledPane("Nest Architecture & Species", arch);
         tp.setExpanded(true);
 
         // Chamber Distribution (non-collapsible)
@@ -189,7 +215,7 @@ public class NestGeneratorPane extends BorderPane {
         return b;
     }
 
-    private String fmt(double d) { return String.format("%.0f", d); }
+    private String fmt(double d) { return String.format("%.1f", d); }
 
     // ── View area ─────────────────────────────────────────────────────────────
 
@@ -255,6 +281,9 @@ public class NestGeneratorPane extends BorderPane {
 
     private void applyCfg(Map<String, Object> c) {
         if (c.containsKey("nestType"))     nestTypeSelect.setValue((String) c.get("nestType"));
+        if (c.containsKey("architecture")) archSelect.setValue((String) c.get("architecture"));
+        if (c.containsKey("material"))     matSelect.setValue((String) c.get("material"));
+        if (c.containsKey("workerSizeMm")) workerSizeSlider.setValue(num(c, "workerSizeMm"));
         if (c.containsKey("depth"))        depthSlider.setValue(num(c,"depth"));
         if (c.containsKey("chamberCount")) chamberCountSlider.setValue(num(c,"chamberCount"));
         if (c.containsKey("tunnelWidth"))  tunnelWidthSlider.setValue(num(c,"tunnelWidth"));
@@ -307,6 +336,9 @@ public class NestGeneratorPane extends BorderPane {
     public Map<String,Object> getConfiguration() {
         Map<String,Object> c = new LinkedHashMap<>();
         c.put("nestType",     nestTypeSelect.getValue());
+        c.put("architecture", archSelect.getValue());
+        c.put("material",     matSelect.getValue());
+        c.put("workerSizeMm", workerSizeSlider.getValue());
         c.put("depth",        (int) depthSlider.getValue());
         c.put("chamberCount", (int) chamberCountSlider.getValue());
         c.put("tunnelWidth",  (int) tunnelWidthSlider.getValue());
@@ -319,11 +351,14 @@ public class NestGeneratorPane extends BorderPane {
 
     // ── Expose params for NestAlgorithm ──────────────────────────────────────
 
-    double getDepth()         { return depthSlider.getValue(); }
-    double getTunnelWidth()   { return tunnelWidthSlider.getValue(); }
-    double getBranching()     { return branchingSlider.getValue(); }
-    double getChamberCount()  { return chamberCountSlider.getValue(); }
-    int    sp(String k)       { return getSp(k); }
+    String getArchitecture() { return archSelect.getValue() != null ? archSelect.getValue() : "BURROW_UNDERGROUND"; }
+    String getMaterial()     { return matSelect.getValue() != null ? matSelect.getValue() : "EARTH"; }
+    double getWorkerSizeMm() { return workerSizeSlider.getValue(); }
+    double getDepth()        { return depthSlider.getValue(); }
+    double getTunnelWidth()  { return tunnelWidthSlider.getValue(); }
+    double getBranching()    { return branchingSlider.getValue(); }
+    double getChamberCount() { return chamberCountSlider.getValue(); }
+    int    sp(String k)      { return getSp(k); }
 
     // ── Drawing delegates ─────────────────────────────────────────────────────
 
@@ -334,10 +369,16 @@ public class NestGeneratorPane extends BorderPane {
     // ── Inner model classes ───────────────────────────────────────────────────
 
     public static class NestNode {
-        public double x, y, z, radius;
+        public double x, y, z, radius, rx, ry, rz; // Anatomical lenticular radii
         public String type; public Color color;
         public NestNode(double x, double y, double z, String type, double r, Color c) {
-            this.x=x; this.y=y; this.z=z; this.type=type; this.radius=r; this.color=c; }
+            this.x=x; this.y=y; this.z=z; this.type=type; this.radius=r; this.color=c;
+            this.rx = r; this.ry = r; this.rz = r * 0.55; // Lenticular dome ratio by default
+        }
+        public NestNode(double x, double y, double z, String type, double rx, double ry, double rz, Color c) {
+            this.x=x; this.y=y; this.z=z; this.type=type; this.radius=Math.max(rx, ry);
+            this.rx = rx; this.ry = ry; this.rz = rz; this.color=c;
+        }
     }
 
     public static class NestEdge {
@@ -350,5 +391,8 @@ public class NestGeneratorPane extends BorderPane {
         public List<NestNode> nodes = new ArrayList<>();
         public List<NestEdge> edges = new ArrayList<>();
         public double maxDepth;
+        public String architecture = "BURROW_UNDERGROUND";
+        public String material = "EARTH";
+        public double workerSizeMm = 5.0;
     }
 }
