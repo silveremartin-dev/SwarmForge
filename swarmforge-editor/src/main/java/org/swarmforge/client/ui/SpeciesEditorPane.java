@@ -141,19 +141,19 @@ public class SpeciesEditorPane extends VBox {
         presetNameField.setPrefWidth(220);
 
         Button btnAddPreset = new Button("Add to Presets", new FontIcon(Feather.PLUS_CIRCLE));
-        btnAddPreset.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnAddPreset.getStyleClass().add("btn-primary");
         btnAddPreset.setOnAction(e -> handleAddPreset());
 
         Button btnSaveDisk = new Button("Save to Disk...", new FontIcon(Feather.SAVE));
-        btnSaveDisk.setStyle("-fx-background-color: #1565c0; -fx-text-fill: white;");
+        btnSaveDisk.getStyleClass().add("btn-secondary");
         btnSaveDisk.setOnAction(e -> handleSaveDisk());
 
         Button btnLoadDisk = new Button("Load from Disk...", new FontIcon(Feather.FOLDER));
-        btnLoadDisk.setStyle("-fx-background-color: #424242; -fx-text-fill: white;");
+        btnLoadDisk.getStyleClass().add("btn-secondary");
         btnLoadDisk.setOnAction(e -> handleLoadDisk());
 
         Button btnApply = new Button("Apply to World", new FontIcon(Feather.CHECK));
-        btnApply.setStyle("-fx-background-color: #e65100; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnApply.getStyleClass().add("btn-primary");
         btnApply.setOnAction(e -> {
             CustomSpecies s = buildSpeciesFromUI();
             if (onApplyListener != null) {
@@ -278,22 +278,29 @@ public class SpeciesEditorPane extends VBox {
         VBox box = new VBox(12);
         box.setPadding(new Insets(15));
 
-        Label infoLabel = new Label("Définition des castes et gabarit (Longueur, Largeur Tête & Diamètre minimal des Tunnels pour le déplacement)");
-        infoLabel.setStyle("-fx-text-fill: #aaa; -fx-font-style: italic;");
+        Label infoLabel = new Label("Définition des castes et gabarit (Double-cliquez sur une cellule pour éditer en ligne)");
+        infoLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-style: italic;");
 
         casteTable = new TableView<>(casteRows);
+        casteTable.setEditable(true);
         casteTable.setPrefHeight(240);
 
         TableColumn<CasteRow, String> nameCol = new TableColumn<>("Caste");
         nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+        nameCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn());
+        nameCol.setOnEditCommit(e -> e.getRowValue().setName(e.getNewValue()));
         nameCol.setPrefWidth(130);
 
         TableColumn<CasteRow, Double> bodyCol = new TableColumn<>("Longueur (mm)");
         bodyCol.setCellValueFactory(new PropertyValueFactory<>("bodyLengthMm"));
+        bodyCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.DoubleStringConverter()));
+        bodyCol.setOnEditCommit(e -> e.getRowValue().setBodyLengthMm(e.getNewValue()));
         bodyCol.setPrefWidth(95);
 
         TableColumn<CasteRow, Double> headCol = new TableColumn<>("Tête (mm)");
         headCol.setCellValueFactory(new PropertyValueFactory<>("headWidthMm"));
+        headCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.DoubleStringConverter()));
+        headCol.setOnEditCommit(e -> e.getRowValue().setHeadWidthMm(e.getNewValue()));
         headCol.setPrefWidth(75);
 
         TableColumn<CasteRow, Double> tunnelCol = new TableColumn<>("Ø Tunnel Min (mm)");
@@ -302,14 +309,20 @@ public class SpeciesEditorPane extends VBox {
 
         TableColumn<CasteRow, Integer> lifeCol = new TableColumn<>("Vie (ticks)");
         lifeCol.setCellValueFactory(new PropertyValueFactory<>("lifespan"));
+        lifeCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.IntegerStringConverter()));
+        lifeCol.setOnEditCommit(e -> e.getRowValue().setLifespan(e.getNewValue()));
         lifeCol.setPrefWidth(85);
 
         TableColumn<CasteRow, Float> healthCol = new TableColumn<>("Santé");
         healthCol.setCellValueFactory(new PropertyValueFactory<>("health"));
+        healthCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.FloatStringConverter()));
+        healthCol.setOnEditCommit(e -> e.getRowValue().setHealth(e.getNewValue()));
         healthCol.setPrefWidth(65);
 
         TableColumn<CasteRow, Float> dmgCol = new TableColumn<>("Attaque");
         dmgCol.setCellValueFactory(new PropertyValueFactory<>("damage"));
+        dmgCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.FloatStringConverter()));
+        dmgCol.setOnEditCommit(e -> e.getRowValue().setDamage(e.getNewValue()));
         dmgCol.setPrefWidth(65);
 
         TableColumn<CasteRow, Boolean> flyCol = new TableColumn<>("Volant");
@@ -328,34 +341,57 @@ public class SpeciesEditorPane extends VBox {
         TextField casteDmgF = new TextField("15");
         CheckBox casteFlyCheck = new CheckBox("Volant");
 
+        casteTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal != null) {
+                casteNameF.setText(newVal.getName());
+                casteBodyF.setText(String.valueOf(newVal.getBodyLengthMm()));
+                casteHeadF.setText(String.valueOf(newVal.getHeadWidthMm()));
+                casteLifeF.setText(String.valueOf(newVal.getLifespan()));
+                casteHealthF.setText(String.valueOf(newVal.getHealth()));
+                casteDmgF.setText(String.valueOf(newVal.getDamage()));
+                casteFlyCheck.setSelected(newVal.isCanFly());
+            }
+        });
+
         casteForm.addRow(0, createWhiteLabel("Nom Caste:"), casteNameF, createWhiteLabel("Longueur Corps (mm):"), casteBodyF, createWhiteLabel("Largeur Tête (mm):"), casteHeadF);
         casteForm.addRow(1, createWhiteLabel("Durée de vie:"), casteLifeF, createWhiteLabel("Santé de base:"), casteHealthF, createWhiteLabel("Dégâts Attaque:"), casteDmgF);
         casteForm.addRow(2, createWhiteLabel("Capacité Vol:"), casteFlyCheck);
 
         HBox casteBtns = new HBox(10);
-        Button btnAddCaste = new Button("Ajouter Caste");
-        btnAddCaste.setStyle("-fx-background-color: #2e7d32; -fx-text-fill: white; -fx-font-weight: bold;");
+        Button btnAddCaste = new Button("Ajouter / Mettre à jour Caste");
+        btnAddCaste.getStyleClass().add("btn-primary");
         btnAddCaste.setOnAction(e -> {
             try {
                 double body = Double.parseDouble(casteBodyF.getText());
                 double head = Double.parseDouble(casteHeadF.getText());
-                CasteRow row = new CasteRow(
-                        casteNameF.getText(),
-                        body,
-                        head,
-                        Integer.parseInt(casteLifeF.getText()),
-                        Float.parseFloat(casteHealthF.getText()),
-                        Float.parseFloat(casteDmgF.getText()),
-                        casteFlyCheck.isSelected()
-                );
-                casteRows.add(row);
+                CasteRow sel = casteTable.getSelectionModel().getSelectedItem();
+                if (sel != null && sel.getName().equalsIgnoreCase(casteNameF.getText())) {
+                    sel.setBodyLengthMm(body);
+                    sel.setHeadWidthMm(head);
+                    sel.setLifespan(Integer.parseInt(casteLifeF.getText()));
+                    sel.setHealth(Float.parseFloat(casteHealthF.getText()));
+                    sel.setDamage(Float.parseFloat(casteDmgF.getText()));
+                    sel.setCanFly(casteFlyCheck.isSelected());
+                    casteTable.refresh();
+                } else {
+                    CasteRow row = new CasteRow(
+                            casteNameF.getText(),
+                            body,
+                            head,
+                            Integer.parseInt(casteLifeF.getText()),
+                            Float.parseFloat(casteHealthF.getText()),
+                            Float.parseFloat(casteDmgF.getText()),
+                            casteFlyCheck.isSelected()
+                    );
+                    casteRows.add(row);
+                }
             } catch (Exception ex) {
                 new Alert(Alert.AlertType.ERROR, "Format de nombre invalide.").show();
             }
         });
 
         Button btnDelCaste = new Button("Supprimer Sélection");
-        btnDelCaste.setStyle("-fx-background-color: #c62828; -fx-text-fill: white;");
+        btnDelCaste.getStyleClass().add("btn-danger");
         btnDelCaste.setOnAction(e -> {
             CasteRow sel = casteTable.getSelectionModel().getSelectedItem();
             if (sel != null) casteRows.remove(sel);
@@ -653,12 +689,26 @@ public class SpeciesEditorPane extends VBox {
         }
 
         public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+
         public double getBodyLengthMm() { return bodyLengthMm; }
+        public void setBodyLengthMm(double bodyLengthMm) { this.bodyLengthMm = bodyLengthMm; }
+
         public double getHeadWidthMm() { return headWidthMm; }
+        public void setHeadWidthMm(double headWidthMm) { this.headWidthMm = headWidthMm; }
+
         public double getMinTunnelMm() { return Math.max(1.0, Math.round(headWidthMm * 1.4 * 10.0) / 10.0); }
+
         public int getLifespan() { return lifespan; }
+        public void setLifespan(int lifespan) { this.lifespan = lifespan; }
+
         public float getHealth() { return health; }
+        public void setHealth(float health) { this.health = health; }
+
         public float getDamage() { return damage; }
+        public void setDamage(float damage) { this.damage = damage; }
+
         public boolean isCanFly() { return canFly; }
+        public void setCanFly(boolean canFly) { this.canFly = canFly; }
     }
 }

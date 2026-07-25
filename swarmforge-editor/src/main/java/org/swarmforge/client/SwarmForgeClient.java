@@ -89,6 +89,12 @@ public class SwarmForgeClient extends Application {
         speciesTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CPU));
         speciesTab.setContent(createSpeciesEditor());
 
+        // --- TAB 3b: ACCESSORY SPECIES EDITOR ---
+        Tab accessoryTab = new Tab();
+        accessoryTab.textProperty().bind(i18n.createStringBinding("tab.accessory"));
+        accessoryTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.FEATHER));
+        accessoryTab.setContent(new org.swarmforge.client.ui.AccessorySpeciesEditorPane());
+
         // --- TAB 4: WEATHER ---
         Tab weatherTab = new Tab();
         weatherTab.textProperty().bind(i18n.createStringBinding("tab.weather"));
@@ -117,7 +123,7 @@ public class SwarmForgeClient extends Application {
         settingsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SETTINGS));
         settingsTab.setContent(createSettingsPane());
 
-        mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, weatherTab, nestTab, settingsTab);
+        mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, accessoryTab, weatherTab, nestTab, settingsTab);
 
         // Style tab graphics
         for (Tab t : mainTabs.getTabs()) {
