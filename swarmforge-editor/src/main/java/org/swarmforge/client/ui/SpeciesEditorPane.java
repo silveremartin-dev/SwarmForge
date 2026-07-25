@@ -42,6 +42,7 @@ public class SpeciesEditorPane extends VBox {
     private TextField commonNameField;
     private TextField scientificNameField;
     private ComboBox<String> insectTypeCombo;
+    private ComboBox<org.swarmforge.core.species.SpeciesCategory> categoryCombo;
     private TextArea descriptionArea;
 
     // Social Structure & Queens
@@ -211,13 +212,17 @@ public class SpeciesEditorPane extends VBox {
         insectTypeCombo = new ComboBox<>(FXCollections.observableArrayList("ANT", "BEE", "WASP", "TERMITE", "OTHER"));
         insectTypeCombo.getSelectionModel().select("ANT");
 
+        categoryCombo = new ComboBox<>(FXCollections.observableArrayList(org.swarmforge.core.species.SpeciesCategory.values()));
+        categoryCombo.getSelectionModel().select(org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY);
+
         descriptionArea = new TextArea("Description de l'espèce...");
         descriptionArea.setPrefRowCount(4);
 
         grid.addRow(0, createWhiteLabel("Nom Commun:"), commonNameField);
         grid.addRow(1, createWhiteLabel("Nom Scientifique:"), scientificNameField);
         grid.addRow(2, createWhiteLabel("Groupe d'Insectes:"), insectTypeCombo);
-        grid.addRow(3, createWhiteLabel("Description:"), descriptionArea);
+        grid.addRow(3, createWhiteLabel("Rôle Écologique / Catégorie:"), categoryCombo);
+        grid.addRow(4, createWhiteLabel("Description:"), descriptionArea);
 
         return wrapScroll(grid);
     }
@@ -495,6 +500,7 @@ public class SpeciesEditorPane extends VBox {
         commonNameField.setText(s.getCommonName());
         scientificNameField.setText(s.getScientificName());
         insectTypeCombo.getSelectionModel().select(s.getInsectType());
+        categoryCombo.getSelectionModel().select(s.getCategory());
         descriptionArea.setText(s.getDescription());
 
         queenModeCombo.getSelectionModel().select(s.getQueenCountMode());
@@ -547,6 +553,7 @@ public class SpeciesEditorPane extends VBox {
         s.setCommonName(commonNameField.getText());
         s.setScientificName(scientificNameField.getText());
         s.setInsectType(insectTypeCombo.getValue());
+        s.setCategory(categoryCombo.getValue() != null ? categoryCombo.getValue() : org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY);
         s.setDescription(descriptionArea.getText());
 
         s.setQueenCountMode(queenModeCombo.getValue());

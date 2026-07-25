@@ -120,6 +120,13 @@ public interface Species {
     }
 
     /**
+     * @return Ecological role category of this species (Eusocial Primary vs. Accessory Fauna).
+     */
+    default SpeciesCategory getCategory() {
+        return SpeciesCategory.EUSOCIAL_PRIMARY;
+    }
+
+    /**
      * Configure an individual of this species (set stats, brain, etc).
      */
     default void configureIndividual(org.swarmforge.core.domain.Individual individual) {

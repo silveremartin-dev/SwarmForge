@@ -27,6 +27,7 @@ public class CustomSpecies implements Species {
     private String commonName = "Generic Ant";
     private String description = "Generic eusocial species for simulation.";
     private String insectType = "ANT"; // ANT, BEE, WASP, TERMITE, OTHER
+    private SpeciesCategory category = SpeciesCategory.EUSOCIAL_PRIMARY; // EUSOCIAL_PRIMARY, COMMENSAL, HONEYDEW_PRODUCER, PREY_ORGANISM, SOIL_FAUNA, PARASITE_PREDATOR
 
     // --- Colony & Queens (Aspect CRITIQUE) ---
     private String queenCountMode = "MONOGYNE"; // MONOGYNE, POLYGYNE, GAMERGATES
@@ -452,6 +453,15 @@ public class CustomSpecies implements Species {
                 set.add(org.swarmforge.core.domain.ResourceType.PROTEIN);
             }
         }
+    }
+
+    @Override
+    public SpeciesCategory getCategory() {
+        return category != null ? category : SpeciesCategory.EUSOCIAL_PRIMARY;
+    }
+
+    public void setCategory(SpeciesCategory category) {
+        this.category = category;
     }
 }
 

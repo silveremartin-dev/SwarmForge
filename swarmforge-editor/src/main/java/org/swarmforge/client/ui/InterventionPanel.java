@@ -194,11 +194,11 @@ public class InterventionPanel extends BorderPane {
         foodSlider.setShowTickLabels(true);
         foodSlider.setPrefWidth(200);
         Label foodValue = new Label("100");
-        foodValue.setStyle("-fx-text-fill: #00d4ff;");
+        foodValue.setStyle("-fx-text-fill: #e4e4e7;");
         foodSlider.valueProperty().addListener((o,a,b) -> foodValue.setText(String.format("%.0f", b.doubleValue())));
 
         Button btnFood = new Button("🍖 Spawn Food");
-        btnFood.setStyle("-fx-background-color: #17a2b8; -fx-text-fill: white;");
+        btnFood.setStyle("-fx-background-color: #3f3f46; -fx-text-fill: white;");
         btnFood.setOnAction(e -> {
             float x = Float.parseFloat(posXField.getText());
             float y = Float.parseFloat(posYField.getText());
@@ -303,7 +303,7 @@ public class InterventionPanel extends BorderPane {
         speedSlider.setShowTickLabels(true);
         speedSlider.setPrefWidth(200);
         Label speedValue = new Label("1.0x");
-        speedValue.setStyle("-fx-text-fill: #00d4ff;");
+        speedValue.setStyle("-fx-text-fill: #e4e4e7;");
         speedSlider.valueProperty().addListener((o,a,b) -> speedValue.setText(String.format("%.1fx", b.doubleValue())));
 
         // Pheromone decay
@@ -319,7 +319,7 @@ public class InterventionPanel extends BorderPane {
         foodRateSlider.setPrefWidth(200);
 
         Button btnApply = new Button("Apply Changes");
-        btnApply.setStyle("-fx-background-color: #00d4ff; -fx-text-fill: black;");
+        btnApply.setStyle("-fx-background-color: #3f3f46; -fx-text-fill: white;");
         btnApply.setOnAction(e -> log("Parameters updated"));
 
         grid.add(speedLabel, 0, 0);
@@ -346,7 +346,7 @@ public class InterventionPanel extends BorderPane {
         logArea = new TextArea();
         logArea.setEditable(false);
         logArea.setPrefHeight(100);
-        logArea.setStyle("-fx-control-inner-background: #0a0a1a; -fx-text-fill: #00ff00; -fx-font-family: monospace;");
+        logArea.setStyle("-fx-control-inner-background: #18181b; -fx-text-fill: #e4e4e7; -fx-font-family: monospace;");
 
         box.getChildren().addAll(logLabel, logArea);
         return box;

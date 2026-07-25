@@ -83,12 +83,14 @@ public enum SpeciesTemplates {
     }
 
     public Species createInstance() {
-        try {
-            return speciesClass.getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
-            // Fallback to Lasius niger
-            return new LasiusNiger();
-        }
+        return SpeciesRegistry.getInstance().get(scientificName)
+                .orElseGet(() -> {
+                    CustomSpecies custom = new CustomSpecies();
+                    custom.setScientificName(scientificName);
+                    custom.setCommonName(commonName);
+                    custom.setDescription(description);
+                    return custom;
+                });
     }
 
     @Override

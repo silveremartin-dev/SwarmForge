@@ -75,7 +75,7 @@ public class EventLogPane extends BorderPane {
 
         Label title = new Label();
         title.textProperty().bind(i18n.createStringBinding("log.title"));
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;");
+        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #e4e4e7;");
 
         HBox filters = new HBox(10);
         filters.setAlignment(Pos.CENTER_LEFT);
@@ -263,10 +263,10 @@ public class EventLogPane extends BorderPane {
                 case COLONY_FOUNDED, QUEEN_BORN, WORKER_BORN, SOLDIER_BORN -> "#28a745";
                 case COLONY_DESTROYED, QUEEN_DIED, WORKER_DIED, SOLDIER_DIED -> "#dc3545";
                 case RAID_STARTED, COMBAT_OCCURRED -> "#ff6b6b";
-                case FOOD_DISCOVERED, NEST_EXPANDED -> "#17a2b8";
+                case FOOD_DISCOVERED, NEST_EXPANDED -> "#a1a1aa";
                 case DISASTER_OCCURRED -> "#ffc107";
                 case WEATHER_CHANGED, SEASON_CHANGED -> "#6c757d";
-                default -> "#00d4ff";
+                default -> "#e4e4e7";
             };
         }
     }

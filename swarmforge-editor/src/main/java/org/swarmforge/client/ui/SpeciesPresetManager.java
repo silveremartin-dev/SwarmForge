@@ -44,6 +44,11 @@ public class SpeciesPresetManager {
                 System.err.println("[SpeciesPresetManager] Could not load " + PRESETS_FILE + ": " + e.getMessage());
             }
         }
+        
+        // Register all presets in core SpeciesRegistry
+        for (CustomSpecies species : presets.values()) {
+            org.swarmforge.core.species.SpeciesRegistry.getInstance().register(species);
+        }
     }
 
     private Map<String, CustomSpecies> createBuiltins() {

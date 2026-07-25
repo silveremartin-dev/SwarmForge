@@ -65,15 +65,13 @@ public class SwarmForgeClient extends Application {
         // Root Layout
         BorderPane root = new BorderPane();
 
-        // 1. Menu Bar (Global)
-        MenuBar menuBar = createMenuBar(primaryStage); // Pass stage for owner
-        root.setTop(menuBar);
+        // Menu bar removed per user request
 
         // 2. Main Tab Pane
         TabPane mainTabs = new TabPane();
         mainTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        // --- TAB 1: SIMULATION MANAGER ---
+        // --- TAB 1: SIMULATION MANAGER (Control, God Mode, Event Log) ---
         Tab simTab = new Tab();
         simTab.textProperty().bind(i18n.createStringBinding("tab.simulation"));
         simTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SLIDERS));
@@ -91,12 +89,13 @@ public class SwarmForgeClient extends Application {
         speciesTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CPU));
         speciesTab.setContent(createSpeciesEditor());
 
-        // --- Other Tabs (Weather, Nest, etc.) ---
+        // --- TAB 4: WEATHER ---
         Tab weatherTab = new Tab();
         weatherTab.textProperty().bind(i18n.createStringBinding("tab.weather"));
         weatherTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SUN));
         weatherTab.setContent(new org.swarmforge.client.ui.WeatherEditorPane());
 
+        // --- TAB 5: NEST GENERATOR ---
         Tab nestTab = new Tab();
         nestTab.textProperty().bind(i18n.createStringBinding("tab.nest"));
         nestTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.HOME));
@@ -112,18 +111,13 @@ public class SwarmForgeClient extends Application {
         });
         nestTab.setContent(nestPane);
 
-        Tab eventTab = new Tab();
-        eventTab.textProperty().bind(i18n.createStringBinding("tab.log"));
-        eventTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.FILE_TEXT));
-        eventTab.setContent(new org.swarmforge.client.ui.EventLogPane());
+        // --- TAB 6: SETTINGS (Thème et Langue) ---
+        Tab settingsTab = new Tab();
+        settingsTab.textProperty().bind(i18n.createStringBinding("tab.settings"));
+        settingsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SETTINGS));
+        settingsTab.setContent(createSettingsPane());
 
-        // God Mode
-        Tab godTab = new Tab();
-        godTab.textProperty().bind(i18n.createStringBinding("tab.god_mode"));
-        godTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ZAP));
-        godTab.setContent(new org.swarmforge.client.ui.InterventionPanel());
-
-        mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, weatherTab, nestTab, eventTab, godTab);
+        mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, weatherTab, nestTab, settingsTab);
 
         // Style tab graphics
         for (Tab t : mainTabs.getTabs()) {
@@ -342,7 +336,8 @@ public class SwarmForgeClient extends Application {
                 TabPane subTabs = new TabPane();
 
                 // --- Controls Tab ---
-                Tab controlsTab = new Tab("Controls");
+                Tab controlsTab = new Tab();
+                controlsTab.textProperty().bind(i18n.createStringBinding("sim.title"));
                 VBox controlsInner = new VBox(10);
                 controlsInner.setPadding(new Insets(10));
 
@@ -377,11 +372,24 @@ public class SwarmForgeClient extends Application {
 
                 controlsTab.setContent(controlsInner);
 
-                // --- God Mode Tab ---
-                Tab godTab = new Tab("God Mode");
-                godTab.setContent(createGodModePanel());
+                // --- Visual 3D View Sub-Tab ---
+                Tab visualTab = new Tab();
+                visualTab.textProperty().bind(i18n.createStringBinding("tab.visual_view"));
+                visualTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.EYE));
+                visualTab.setContent(createVisualSimulationViewport());
 
-                subTabs.getTabs().addAll(controlsTab, godTab);
+                // --- God Mode Sub-Tab ---
+                Tab godTab = new Tab();
+                godTab.textProperty().bind(i18n.createStringBinding("tab.god_mode"));
+                org.swarmforge.client.ui.InterventionPanel interventionPanel = new org.swarmforge.client.ui.InterventionPanel();
+                godTab.setContent(interventionPanel);
+
+                // --- Event Log Sub-Tab ---
+                Tab eventLogTab = new Tab();
+                eventLogTab.textProperty().bind(i18n.createStringBinding("tab.log"));
+                eventLogTab.setContent(new org.swarmforge.client.ui.EventLogPane());
+
+                subTabs.getTabs().addAll(controlsTab, visualTab, godTab, eventLogTab);
                 pane.setCenter(subTabs);
 
                 // Logic
@@ -514,10 +522,7 @@ public class SwarmForgeClient extends Application {
                 c.setPrefWidth(width);
         }
 
-        private Node createWorldEditor() {
-                // SplitPane: 3D View (Left/Center) | Tools (Right)
-                SplitPane split = new SplitPane();
-
+        private Node createVisualSimulationViewport() {
                 // 3D Viewport Container
                 StackPane viewport3D = new StackPane();
                 viewport3D.setId("viewport3D");
@@ -540,11 +545,11 @@ public class SwarmForgeClient extends Application {
                 StackPane.setMargin(minimapOverlay, new Insets(10));
                 minimapOverlay.setOnNavigate((x, y) -> {
                         if (gameView != null && gameView.getGameApp() != null) {
-                                gameView.getGameApp().panCameraTo(x, 0, y); // Navigate to clicked position
+                                gameView.getGameApp().panCameraTo(x, 0, y);
                         }
                 });
 
-                // Pheromone Overlay (Bottom-Left, collapsible)
+                // Pheromone Overlay (Bottom-Left)
                 this.pheromoneOverlay = new PheromoneOverlay(200, 150);
                 pheromoneOverlay.setMaxSize(200, 180);
                 pheromoneOverlay.setId("pheromoneOverlay");
@@ -552,273 +557,48 @@ public class SwarmForgeClient extends Application {
                 StackPane.setAlignment(pheromoneOverlay, Pos.BOTTOM_LEFT);
                 StackPane.setMargin(pheromoneOverlay, new Insets(10));
 
-                // Editor Tools (Right Panel)
-                VBox tools = new VBox(10);
-                tools.setPadding(new Insets(10));
-                tools.setMinWidth(250);
-                tools.setMaxWidth(300);
-                tools.setId("editorTools");
+                return viewport3D;
+        }
 
-                tools.getChildren().add(new Label("Terrain Generator"));
-                tools.getChildren().add(new Separator());
-
-                TextField seedField = new TextField("123456789");
-                tools.getChildren().add(new Label("Seed:"));
-                tools.getChildren().add(seedField);
-
-                TextField scaleField = new TextField("0.05");
-                tools.getChildren().add(new Label("Scale (0.01-0.1):"));
-                tools.getChildren().add(scaleField);
-
-                CheckBox cavesCheck = new CheckBox("Caves");
-                tools.getChildren().add(cavesCheck);
-                CheckBox waterCheck = new CheckBox("Water");
-                tools.getChildren().add(waterCheck);
-
-                Button genButton = new Button("Generate Preview");
-                genButton.setOnAction(e -> {
+        private Node createWorldEditor() {
+                // World Editor Pane with 3-View System (3D, Top-Down, Side) & 3D Sculpting Brushes
+                org.swarmforge.client.ui.WorldEditorPane worldEditorPane = new org.swarmforge.client.ui.WorldEditorPane();
+                worldEditorPane.setOnGenerate(config -> {
                         try {
-                                long seed = Long.parseLong(seedField.getText());
-                                float scale = Float.parseFloat(scaleField.getText());
+                                double sizeMeters = (double) config.getOrDefault("surfaceSizeMeters", 2.0);
+                                double resMm = (double) config.getOrDefault("resolutionMm", 0.5);
+                                double roughness = (double) config.getOrDefault("roughness", 0.45);
 
-                                org.swarmforge.core.domain.Terrarium terrarium = new org.swarmforge.core.domain.Terrarium(
-                                                64, 64, 32);
-                                org.swarmforge.core.world.TerrainGenerator gen = new org.swarmforge.core.world.TerrainGenerator(
-                                                seed);
+                                int gridW = (int) (sizeMeters * 32);
+                                int gridH = (int) (sizeMeters * 32);
+                                int gridDepth = 32;
 
-                                gen.generate(terrarium, 16, 10, scale);
-                                if (waterCheck.isSelected()) {
-                                        gen.addWater(terrarium, 14, 0.4f);
+                                org.swarmforge.core.domain.Terrarium terrarium = new org.swarmforge.core.domain.Terrarium(gridW, gridH, gridDepth);
+                                org.swarmforge.core.world.TerrainGenerator gen = new org.swarmforge.core.world.TerrainGenerator(System.currentTimeMillis());
+
+                                gen.generate(terrarium, gridDepth / 2, 10, (float) roughness * 0.1f);
+                                if (Boolean.TRUE.equals(config.get("hasRiver"))) {
+                                        gen.addWater(terrarium, gridDepth / 2 - 2, 0.4f);
                                 }
 
-                                // Store for simulation use
                                 this.lastGeneratedTerrarium = terrarium;
+                                if (gameView != null && gameView.getGameApp() != null) {
+                                        gameView.getGameApp().renderTerrarium(terrarium);
+                                }
 
-                                // Pass to JME
-                                gameView.getGameApp().renderTerrarium(terrarium);
-
-                                // Create local simulation for preview with this terrarium
                                 localSimulation = new org.swarmforge.core.simulation.Simulation(terrarium);
                                 localSimulation.setTicksPerSecond(20);
                                 startLocalSimulationUpdates();
 
-                        } catch (NumberFormatException ex) {
-                                new Alert(Alert.AlertType.ERROR, "Invalid number format").show();
-                        }
-                });
-                tools.getChildren().add(genButton);
+                                new Alert(Alert.AlertType.INFORMATION, "Monde généré avec succès ! (Taille: " + sizeMeters + "m, Voxel: " + resMm + "mm)").show();
 
-                tools.getChildren().add(new Separator());
-                tools.getChildren().add(new Label("Persistence"));
-
-                HBox persistence = new HBox(10);
-                Button btnSaveWorld = new Button("Save World");
-                Button btnLoadWorld = new Button("Load World");
-                persistence.getChildren().addAll(btnSaveWorld, btnLoadWorld);
-                tools.getChildren().add(persistence);
-
-                tools.getChildren().add(new Separator());
-                tools.getChildren().add(new Label("Interaction"));
-                ComboBox<String> toolSelect = new ComboBox<>();
-                toolSelect.getItems().addAll("View Mode", "Add Block", "Remove Block");
-                toolSelect.getSelectionModel().selectFirst();
-                toolSelect.setOnAction(e -> {
-                        if (gameView != null && gameView.getGameApp() != null) {
-                                gameView.getGameApp().setTool(toolSelect.getValue());
-                        }
-                });
-                tools.getChildren().add(toolSelect);
-
-                // Wire Listener
-                gameView.setTerrainListener((x, y, z, added) -> {
-                        // 1. Update Server if connected
-                        if (networkClient != null && networkClient.isConnected()) {
-                                networkClient.modifyTerrain(x, y, z, added ? 1 : 0); // 1 = Soil, 0 = Air
-                        }
-
-                        // 2. Update Local Model
-                        if (this.lastGeneratedTerrarium != null) {
-                                try {
-                                        if (!added) {
-                                                // Remove (set to AIR)
-                                                org.swarmforge.core.domain.TerrariumCell air = org.swarmforge.core.domain.TerrariumCell
-                                                                .air(x, y, z);
-                                                this.lastGeneratedTerrarium.setCell(air);
-                                        } else {
-                                                // Add Block (Dirt for now)
-                                                org.swarmforge.core.domain.TerrariumCell cell = new org.swarmforge.core.domain.TerrariumCell(
-                                                                x, y, z,
-                                                                org.swarmforge.core.domain.TerrariumCell.Material.EARTH,
-                                                                new float[org.swarmforge.core.domain.TerrariumCell.PHEROMONE_TYPES],
-                                                                20f, 50f);
-                                                this.lastGeneratedTerrarium.setCell(cell);
-                                                // Trigger re-render
-                                                Platform.runLater(() -> gameView.getGameApp()
-                                                                .renderTerrarium(this.lastGeneratedTerrarium));
-                                        }
-                                } catch (Exception ex) {
-                                        LOG.warning("Failed to modify terrain: " + ex.getMessage());
-                                }
-                        }
-                });
-
-                // === Simulation Controls ===
-                tools.getChildren().add(new Separator());
-                tools.getChildren().add(new Label("Simulation Controls"));
-
-                HBox simControlBox = new HBox(8);
-                simControlBox.setAlignment(Pos.CENTER_LEFT);
-                Button btnPlayPause = new Button("▶ Start");
-                btnPlayPause.setStyle("-fx-font-size: 14px;");
-                simControlBox.getChildren().add(btnPlayPause);
-                tools.getChildren().add(simControlBox);
-
-                // Speed presets
-                HBox speedBox = new HBox(5);
-                speedBox.setAlignment(Pos.CENTER_LEFT);
-                Label lblSpeed = new Label("Speed:");
-                ToggleGroup speedGroup = new ToggleGroup();
-                ToggleButton btn05x = new ToggleButton("0.5x");
-                ToggleButton btn1x = new ToggleButton("1x");
-                ToggleButton btn2x = new ToggleButton("2x");
-                ToggleButton btn4x = new ToggleButton("4x");
-                btn05x.setToggleGroup(speedGroup);
-                btn1x.setToggleGroup(speedGroup);
-                btn2x.setToggleGroup(speedGroup);
-                btn4x.setToggleGroup(speedGroup);
-                btn1x.setSelected(true);
-                speedBox.getChildren().addAll(lblSpeed, btn05x, btn1x, btn2x, btn4x);
-                tools.getChildren().add(speedBox);
-
-                // Speed control actions
-                btn05x.setOnAction(e -> {
-                        if (localSimulation != null)
-                                localSimulation.setTicksPerSecond(10);
-                });
-                btn1x.setOnAction(e -> {
-                        if (localSimulation != null)
-                                localSimulation.setTicksPerSecond(20);
-                });
-                btn2x.setOnAction(e -> {
-                        if (localSimulation != null)
-                                localSimulation.setTicksPerSecond(40);
-                });
-                btn4x.setOnAction(e -> {
-                        if (localSimulation != null)
-                                localSimulation.setTicksPerSecond(80);
-                });
-
-                // Play/Pause action
-                btnPlayPause.setOnAction(e -> {
-                        if (localSimulation == null)
-                                return;
-                        if (localSimulation.isRunning()) {
-                                localSimulation.pause();
-                                btnPlayPause.setText("▶ Resume");
-                        } else {
-                                localSimulation.start();
-                                btnPlayPause.setText("⏸ Pause");
-                        }
-                });
-
-                // Logic
-                btnSaveWorld.setOnAction(e -> {
-                        if (networkClient.isConnected()) {
-                                TextInputDialog dialog = new TextInputDialog("MyWorld");
-                                dialog.setTitle("Save World to DB");
-                                dialog.setHeaderText("Enter Name:");
-                                dialog.showAndWait().ifPresent(name -> {
-                                        try {
-                                                String msg = networkClient.saveWorld(name);
-                                                new Alert(Alert.AlertType.INFORMATION, "Saved to DB: " + msg).show();
-                                        } catch (Exception ex) {
-                                                new Alert(Alert.AlertType.ERROR, "DB Save Failed: " + ex.getMessage())
-                                                                .show();
-                                        }
-                                });
-                                return;
-                        }
-
-                        // Fallback to local
-                        if (lastGeneratedTerrarium == null) {
-                                new Alert(Alert.AlertType.WARNING, "No world generated to save.").show();
-                                return;
-                        }
-                        try {
-                                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                                java.io.File file = new java.io.File("world_save.json");
-                                mapper.writerWithDefaultPrettyPrinter().writeValue(file, lastGeneratedTerrarium);
-                                new Alert(Alert.AlertType.INFORMATION,
-                                                "World saved locally to " + file.getAbsolutePath())
-                                                .show();
                         } catch (Exception ex) {
-                                new Alert(Alert.AlertType.ERROR, "Local Save failed: " + ex.getMessage()).show();
+                                new Alert(Alert.AlertType.ERROR, "Échec de génération: " + ex.getMessage()).show();
                                 ex.printStackTrace();
                         }
                 });
 
-                btnLoadWorld.setOnAction(e -> {
-                        if (networkClient.isConnected()) {
-                                TextInputDialog dialog = new TextInputDialog("");
-                                dialog.setTitle("Load World from DB");
-                                dialog.setHeaderText("Enter World ID:");
-                                dialog.showAndWait().ifPresent(id -> {
-                                        try {
-                                                String msg = networkClient.loadWorld(id);
-                                                new Alert(Alert.AlertType.INFORMATION, "Loaded from DB: " + msg).show();
-                                                // Note: Does not download terrain to client yet!
-                                                new Alert(Alert.AlertType.WARNING,
-                                                                "Visuals will not update until implemented.").show();
-                                        } catch (Exception ex) {
-                                                new Alert(Alert.AlertType.ERROR, "DB Load Failed: " + ex.getMessage())
-                                                                .show();
-                                        }
-                                });
-                                return;
-                        }
-
-                        try {
-                                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                                java.io.File file = new java.io.File("world_save.json");
-                                if (!file.exists()) {
-                                        new Alert(Alert.AlertType.ERROR, "world_save.json not found").show();
-                                        return;
-                                }
-                                org.swarmforge.core.domain.Terrarium loaded = mapper.readValue(file,
-                                                org.swarmforge.core.domain.Terrarium.class);
-                                this.lastGeneratedTerrarium = loaded;
-                                gameView.getGameApp().renderTerrarium(loaded);
-                                new Alert(Alert.AlertType.INFORMATION, "World loaded locally!").show();
-                        } catch (Exception ex) {
-                                new Alert(Alert.AlertType.ERROR, "Local Load failed: " + ex.getMessage()).show();
-                                ex.printStackTrace();
-                        }
-                });
-
-                // === Right Panel TabPane ===
-                TabPane rightTabs = new TabPane();
-                rightTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-                rightTabs.setMinWidth(280);
-                rightTabs.setMaxWidth(350);
-
-                // Tools Tab
-                Tab toolsTab = new Tab("Tools");
-                ScrollPane toolsScroll = new ScrollPane(tools);
-                toolsScroll.setFitToWidth(true);
-                toolsTab.setContent(toolsScroll);
-
-                // Statistics Tab
-                Tab statsTab = new Tab("Statistics");
-                this.statisticsDashboard = new StatisticsDashboard();
-                ScrollPane statsScroll = new ScrollPane(statisticsDashboard);
-                statsScroll.setFitToWidth(true);
-                statsTab.setContent(statsScroll);
-
-                rightTabs.getTabs().addAll(toolsTab, statsTab);
-
-                split.getItems().addAll(viewport3D, rightTabs);
-                split.setDividerPositions(0.75);
-                return split;
+                return worldEditorPane;
         }
 
         private Node createSpeciesEditor() {
@@ -830,6 +610,76 @@ public class SwarmForgeClient extends Application {
                 return pane;
         }
 
+        private Node createSettingsPane() {
+                org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+                VBox main = new VBox(20);
+                main.setPadding(new Insets(25));
+                main.setMaxWidth(600);
+
+                Label title = new Label();
+                title.textProperty().bind(i18n.createStringBinding("settings.title"));
+                title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #e4e4e7;");
+
+                GridPane grid = new GridPane();
+                grid.setHgap(20);
+                grid.setVgap(15);
+                grid.setPadding(new Insets(15, 0, 0, 0));
+
+                // 1. Language Row
+                Label langLabel = new Label();
+                langLabel.textProperty().bind(i18n.createStringBinding("settings.language"));
+                langLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #e4e4e7;");
+
+                ComboBox<String> langCombo = new ComboBox<>();
+                langCombo.getItems().addAll("English", "Français", "Español", "Deutsch", "中文");
+
+                java.util.Locale currentLoc = i18n.getLocale();
+                String langStr = currentLoc.getLanguage();
+                if (langStr.equals("fr")) langCombo.setValue("Français");
+                else if (langStr.equals("es")) langCombo.setValue("Español");
+                else if (langStr.equals("de")) langCombo.setValue("Deutsch");
+                else if (langStr.equals("zh")) langCombo.setValue("中文");
+                else langCombo.setValue("English");
+
+                langCombo.setOnAction(e -> {
+                        String val = langCombo.getValue();
+                        if ("Français".equals(val)) i18n.setLocale(java.util.Locale.FRENCH);
+                        else if ("Español".equals(val)) i18n.setLocale(java.util.Locale.forLanguageTag("es"));
+                        else if ("Deutsch".equals(val)) i18n.setLocale(java.util.Locale.forLanguageTag("de"));
+                        else if ("中文".equals(val)) i18n.setLocale(java.util.Locale.forLanguageTag("zh"));
+                        else i18n.setLocale(java.util.Locale.ENGLISH);
+                });
+
+                // 2. Theme Row
+                Label themeLabel = new Label();
+                themeLabel.textProperty().bind(i18n.createStringBinding("settings.theme"));
+                themeLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #e4e4e7;");
+
+                ComboBox<String> themeCombo = new ComboBox<>();
+                themeCombo.getItems().addAll("Dark Theme", "Light Theme");
+                if (org.swarmforge.client.util.ThemeManager.getInstance().getCurrentTheme() == org.swarmforge.client.util.ThemeManager.Theme.DARK) {
+                        themeCombo.setValue("Dark Theme");
+                } else {
+                        themeCombo.setValue("Light Theme");
+                }
+
+                themeCombo.setOnAction(e -> {
+                        if ("Dark Theme".equals(themeCombo.getValue())) {
+                                org.swarmforge.client.util.ThemeManager.getInstance().setTheme(org.swarmforge.client.util.ThemeManager.Theme.DARK);
+                        } else {
+                                org.swarmforge.client.util.ThemeManager.getInstance().setTheme(org.swarmforge.client.util.ThemeManager.Theme.LIGHT);
+                        }
+                });
+
+                grid.add(langLabel, 0, 0);
+                grid.add(langCombo, 1, 0);
+                grid.add(themeLabel, 0, 1);
+                grid.add(themeCombo, 1, 1);
+
+                main.getChildren().addAll(title, new Separator(), grid);
+                return main;
+        }
+
         private VBox createMirrorOverlay() {
                 VBox box = new VBox(5);
                 box.setStyle("-fx-background-color: rgba(20, 20, 30, 0.6); -fx-padding: 10; -fx-background-radius: 5;");
@@ -837,7 +687,7 @@ public class SwarmForgeClient extends Application {
 
                 // "Mirror" effect items
                 Label title = new Label("LIVE STATUS");
-                title.setStyle("-fx-text-fill: cyan; -fx-font-weight: bold;");
+                title.setStyle("-fx-text-fill: #e4e4e7; -fx-font-weight: bold;");
 
                 box.getChildren().addAll(
                                 title,
@@ -897,8 +747,10 @@ public class SwarmForgeClient extends Application {
         private HBox createStatusBar() {
                 HBox bar = new HBox(10);
                 bar.setPadding(new Insets(5));
-                bar.setStyle("-fx-background-color: #ddd;");
-                bar.getChildren().add(new Label("Ready."));
+                bar.setStyle("-fx-background-color: #18181b; -fx-border-color: #27272a; -fx-border-width: 1px 0 0 0;");
+                Label status = new Label("Ready.");
+                status.setStyle("-fx-text-fill: #a1a1aa;");
+                bar.getChildren().add(status);
                 return bar;
         }
 

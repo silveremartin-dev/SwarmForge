@@ -148,10 +148,10 @@ export default function WorldEditorPanel() {
     return (
         <div style={styles.container}>
             <div style={styles.header}>
-                <span>🌍 Studio SwarmForge — Éditeur de Monde</span>
+                <span>🌍 Éditeur de Monde</span>
             </div>
             <div style={styles.subtitle}>
-                Génération de terrain, substrats, micro-hydrographie & couvert végétal à échelle sub-millimétrique.
+                Génération de terrain, substrats, micro-hydrographie, tri-vue synchronisée & sculpture 3D sub-millimétrique.
             </div>
 
             {/* Editor Sub-Tabs */}
@@ -162,6 +162,7 @@ export default function WorldEditorPanel() {
                 <button style={styles.tabBtn(activeTab === 'hydro')} onClick={() => setActiveTab('hydro')}>💧 Hydrographie</button>
                 <button style={styles.tabBtn(activeTab === 'struct')} onClick={() => setActiveTab('struct')}>🪵 Hauteur</button>
                 <button style={styles.tabBtn(activeTab === 'nest')} onClick={() => setActiveTab('nest')}>🏰 Nid Initial</button>
+                <button style={styles.tabBtn(activeTab === 'sculpt')} onClick={() => setActiveTab('sculpt')}>🖌️ Sculpture 3D</button>
             </div>
 
             {/* TAB 1: SCALE & PRECISION */}
@@ -455,6 +456,37 @@ export default function WorldEditorPanel() {
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* TAB 7: 3D SCULPTING BRUSHES & VOXEL PHYSICS */}
+            {activeTab === 'sculpt' && (
+                <div style={styles.section}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#38bdf8', marginBottom: 10 }}>🖌️ Sculpture 3D Manuelle & Voxels</div>
+                    <div style={{ marginBottom: 10 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>Pinceau d'Édition :</label>
+                        <select style={{ ...styles.input, marginTop: 4 }}>
+                            <option>⛰️ Élever / Sculpter le Sol</option>
+                            <option>⛏️ Creuser Galeries / Voxels</option>
+                            <option>🌊 Lisser le Relief</option>
+                            <option>🎨 Peindre Substrat (Terre, Sable, Argile, Pierre)</option>
+                        </select>
+                    </div>
+                    <div style={{ ...styles.label, marginTop: 10 }}>
+                        <span>Rayon du Pinceau (Voxels)</span>
+                        <span>4 vx</span>
+                    </div>
+                    <input type="range" min="1" max="15" defaultValue="4" style={styles.slider} />
+
+                    <div style={{ ...styles.label, marginTop: 10 }}>
+                        <span>Force d'Application</span>
+                        <span>50%</span>
+                    </div>
+                    <input type="range" min="10" max="100" defaultValue="50" style={styles.slider} />
+
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 10 }}>
+                        💡 Cliquez et glissez sur la tri-vue synchronisée (3D, Top-Down, Profil) pour déformer physiquement le terrain voxel par voxel.
+                    </div>
                 </div>
             )}
 

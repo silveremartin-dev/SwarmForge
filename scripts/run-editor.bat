@@ -33,7 +33,15 @@ goto parse_args
 
 :run_editor
 echo Launching SwarmForge Editor...
-call mvn compile exec:java -pl swarmforge-editor -q %DEBUG_OPT% %HEADLESS_OPT% -Dexec.args="%PASSED_ARGS%"
+REM Step 1: Compile swarmforge-core and swarmforge-editor together to avoid binary mismatch
+call mvn compile -pl swarmforge-editor -am -q
+if errorlevel 1 (
+    echo ERROR: Compilation failed.
+    pause
+    exit /b 1
+)
+REM Step 2: Run exec:java scoped only to swarmforge-editor (mainClass is configured there)
+call mvn exec:java -pl swarmforge-editor -q %DEBUG_OPT% %HEADLESS_OPT% -Dexec.args="%PASSED_ARGS%"
 
 if errorlevel 1 (
     echo ERROR: Failed to start SwarmForge Editor.
