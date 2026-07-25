@@ -47,6 +47,29 @@ public class CasteTemplate implements java.io.Serializable {
     private boolean canCarry;
     private Map<String, Float> attributes = new HashMap<>();
 
+    // Task Allocation Weights (Sum ~ 1.0)
+    private float taskForagingWeight = 0.30f;
+    private float taskDefenseWeight = 0.20f;
+    private float taskExcavationWeight = 0.20f;
+    private float taskNursingWeight = 0.15f;
+    private float taskQueenCareWeight = 0.10f;
+    private float taskSanitationWeight = 0.05f;
+
+    // Target Caste Population Ratio in Colony (0.0 to 1.0)
+    private float targetRatio = 0.25f;
+
+    // Decision Architecture & Cognitive Model
+    private String decisionArchitectureType = "BDI"; // BDI, NEURAL_NETWORK, FSM, BEHAVIOR_TREE, FUZZY_LOGIC
+    private int neuralHiddenLayers = 2;
+    private float[] neuralWeights = new float[]{0.5f, -0.2f, 0.8f, 0.1f, -0.5f, 0.3f};
+
+    // Advanced Venom Systems & Chemical Warfare
+    private String venomType = "NONE"; // NONE, FORMIC_ACID, SOLENOPSIN, NEUROTOXIN, CYTOTOXIN, TERPENE_RESIN, AUTOTHYSIS_BOMB, ACID_SPRAY, POWERFUL_MANDIBLES
+    private float venomToxicity = 10.0f;
+    private float venomRangeMm = 2.0f;
+    private float venomReserveCapacity = 100.0f;
+    private float acidPhLevel = 2.5f;
+
     public CasteTemplate() {
         // Default constructor for serialization
     }
@@ -202,6 +225,51 @@ public class CasteTemplate implements java.io.Serializable {
         float h = headWidthMm > 0.0f ? headWidthMm : (bodyLengthMm * 0.25f);
         return Math.max(1.0f, h * 1.4f);
     }
+
+    public float getTaskForagingWeight() { return taskForagingWeight; }
+    public void setTaskForagingWeight(float taskForagingWeight) { this.taskForagingWeight = taskForagingWeight; }
+
+    public float getTaskDefenseWeight() { return taskDefenseWeight; }
+    public void setTaskDefenseWeight(float taskDefenseWeight) { this.taskDefenseWeight = taskDefenseWeight; }
+
+    public float getTaskExcavationWeight() { return taskExcavationWeight; }
+    public void setTaskExcavationWeight(float taskExcavationWeight) { this.taskExcavationWeight = taskExcavationWeight; }
+
+    public float getTaskNursingWeight() { return taskNursingWeight; }
+    public void setTaskNursingWeight(float taskNursingWeight) { this.taskNursingWeight = taskNursingWeight; }
+
+    public float getTaskQueenCareWeight() { return taskQueenCareWeight; }
+    public void setTaskQueenCareWeight(float taskQueenCareWeight) { this.taskQueenCareWeight = taskQueenCareWeight; }
+
+    public float getTaskSanitationWeight() { return taskSanitationWeight; }
+    public void setTaskSanitationWeight(float taskSanitationWeight) { this.taskSanitationWeight = taskSanitationWeight; }
+
+    public float getTargetRatio() { return targetRatio; }
+    public void setTargetRatio(float targetRatio) { this.targetRatio = targetRatio; }
+
+    public String getDecisionArchitectureType() { return decisionArchitectureType; }
+    public void setDecisionArchitectureType(String decisionArchitectureType) { this.decisionArchitectureType = decisionArchitectureType; }
+
+    public int getNeuralHiddenLayers() { return neuralHiddenLayers; }
+    public void setNeuralHiddenLayers(int neuralHiddenLayers) { this.neuralHiddenLayers = neuralHiddenLayers; }
+
+    public float[] getNeuralWeights() { return neuralWeights; }
+    public void setNeuralWeights(float[] neuralWeights) { this.neuralWeights = neuralWeights; }
+
+    public String getVenomType() { return venomType; }
+    public void setVenomType(String venomType) { this.venomType = venomType; }
+
+    public float getVenomToxicity() { return venomToxicity; }
+    public void setVenomToxicity(float venomToxicity) { this.venomToxicity = venomToxicity; }
+
+    public float getVenomRangeMm() { return venomRangeMm; }
+    public void setVenomRangeMm(float venomRangeMm) { this.venomRangeMm = venomRangeMm; }
+
+    public float getVenomReserveCapacity() { return venomReserveCapacity; }
+    public void setVenomReserveCapacity(float venomReserveCapacity) { this.venomReserveCapacity = venomReserveCapacity; }
+
+    public float getAcidPhLevel() { return acidPhLevel; }
+    public void setAcidPhLevel(float acidPhLevel) { this.acidPhLevel = acidPhLevel; }
 
     public void setAttribute(String key, float value) {
         attributes.put(key, value);

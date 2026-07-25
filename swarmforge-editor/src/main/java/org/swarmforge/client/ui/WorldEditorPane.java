@@ -52,6 +52,11 @@ public class WorldEditorPane extends BorderPane {
     // View Synchronization CheckBox
     private CheckBox syncViewsCheckBox;
 
+    // Viewport Mode Switch & Action Tool Selection (Matching Mockup Interface)
+    private boolean gamifiedVoxelMode = true; // Mode Rendu Gamifié Voxel 3D vs Technique Grid
+    private String activeViewportTool = "BRUSH"; // BRUSH, PLACE, ERASE, SMOOTH, SELECT, VIEW, ORBIT, PAN, ZOOM
+    private Button btnRenderModeToggle;
+
     // Controls: 0. Terrain Source
     private CheckBox useWebServiceTerrainCheck;
     private ComboBox<String> webServiceProviderCombo;
@@ -666,7 +671,13 @@ public class WorldEditorPane extends BorderPane {
 
         setupMouseControls();
 
-        StackPane h3d = new StackPane(canvas3D);
+        HBox topToolbar = buildTopViewportToolbar();
+        VBox topToolbarContainer = new VBox(topToolbar);
+        topToolbarContainer.setPadding(new Insets(6, 6, 0, 6));
+        topToolbarContainer.setAlignment(Pos.TOP_CENTER);
+        topToolbarContainer.setPickOnBounds(false);
+
+        StackPane h3d = new StackPane(canvas3D, topToolbarContainer);
         h3d.setStyle("-fx-border-color: #555; -fx-border-width: 1; -fx-background-color: #0b0f19;");
         StackPane hSide = new StackPane(canvasSide);
         hSide.setStyle("-fx-border-color: #444; -fx-border-width: 1; -fx-background-color: #0f172a;");
@@ -891,7 +902,324 @@ public class WorldEditorPane extends BorderPane {
         drawTop();
     }
 
+    private HBox buildTopViewportToolbar() {
+        HBox bar = new HBox(6);
+        bar.setPadding(new Insets(6, 10, 6, 10));
+        bar.setAlignment(Pos.CENTER);
+        bar.setStyle("-fx-background-color: rgba(15, 23, 42, 0.88); -fx-background-radius: 8; -fx-border-color: rgba(255, 255, 255, 0.12); -fx-border-radius: 8;");
+
+        // Mode Toggle Button (Gamified Voxel vs Technical Engine)
+        btnRenderModeToggle = new Button("🎮 Mode: Voxel Gamifié");
+        btnRenderModeToggle.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand;");
+        btnRenderModeToggle.setOnAction(e -> {
+            gamifiedVoxelMode = !gamifiedVoxelMode;
+            btnRenderModeToggle.setText(gamifiedVoxelMode ? "🎮 Mode: Voxel Gamifié" : "🔲 Mode: Technique Grid");
+            btnRenderModeToggle.setStyle(gamifiedVoxelMode ?
+                "-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand;" :
+                "-fx-background-color: #334155; -fx-text-fill: #cbd5e1; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand;");
+            repaintAllViews();
+        });
+
+        Separator sep = new Separator(Orientation.VERTICAL);
+
+        String[][] tools = {
+            {"BRUSH", "🖌️ Brush"},
+            {"PLACE", "🏗️ Place"},
+            {"ERASE", "🧹 Erase"},
+            {"SMOOTH", "🌊 Smooth"},
+            {"SELECT", "🔲 Select"},
+            {"VIEW", "👁️ View"},
+            {"ORBIT", "🔄 Orbit"},
+            {"PAN", "✋ Pan"},
+            {"ZOOM", "🔍 Zoom"}
+        };
+
+        List<Button> toolBtns = new ArrayList<>();
+        for (String[] t : tools) {
+            Button btn = new Button(t[1]);
+            boolean isActive = t[0].equals(activeViewportTool);
+            btn.setStyle(isActive ?
+                "-fx-background-color: #38bdf8; -fx-text-fill: #090d16; -fx-font-weight: bold; -fx-font-size: 10px; -fx-cursor: hand;" :
+                "-fx-background-color: rgba(255, 255, 255, 0.06); -fx-text-fill: #e2e8f0; -fx-font-size: 10px; -fx-cursor: hand;");
+            btn.setOnAction(e -> {
+                activeViewportTool = t[0];
+                for (Button b : toolBtns) {
+                    boolean act = b.getText().toUpperCase().contains(activeViewportTool);
+                    b.setStyle(act ?
+                        "-fx-background-color: #38bdf8; -fx-text-fill: #090d16; -fx-font-weight: bold; -fx-font-size: 10px; -fx-cursor: hand;" :
+                        "-fx-background-color: rgba(255, 255, 255, 0.06); -fx-text-fill: #e2e8f0; -fx-font-size: 10px; -fx-cursor: hand;");
+                }
+                repaintAllViews();
+            });
+            toolBtns.add(btn);
+        }
+
+        bar.getChildren().add(btnRenderModeToggle);
+        bar.getChildren().add(sep);
+        bar.getChildren().addAll(toolBtns);
+
+        return bar;
+    }
+
     private void draw3D() {
+        if (gamifiedVoxelMode) {
+            draw3DGamified();
+        } else {
+            draw3DTechnical();
+        }
+    }
+
+    private void draw3DGamified() {
+        double w = canvas3D.getWidth();
+        double h = canvas3D.getHeight();
+
+        // 1. Dark Gradient Atmosphere Backdrop
+        gc3D.setFill(new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
+            new Stop(0, Color.web("#0a0f1d")),
+            new Stop(1, Color.web("#141e33"))));
+        gc3D.fillRect(0, 0, w, h);
+
+        double radAz = Math.toRadians(azimuth);
+        double radEl = Math.toRadians(elevation);
+
+        double cx = w / 2 + pan3DX;
+        double cy = h / 2 + pan3DY + 50;
+        double scale = zoom * 12.0;
+
+        // 2. Render Stylized Isometric 3D Voxel Cubes with Top/Left/Right Shading
+        int step = 2;
+        double blockW = scale * 0.16;
+        double blockH = scale * 0.10;
+
+        for (int x = 0; x < GRID_SIZE - step; x += step) {
+            for (int y = 0; y < GRID_SIZE - step; y += step) {
+                double z = heightGrid[x][y] * 45.0;
+                if (carvedVoxelGrid[x][y]) z -= 25.0;
+
+                double isoX = (x - GRID_SIZE / 2.0) * Math.cos(radAz) - (y - GRID_SIZE / 2.0) * Math.sin(radAz);
+                double isoY = (x - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (y - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - z * Math.cos(radEl);
+
+                double px = cx + isoX * (scale / 10.0);
+                double py = cy + isoY * (scale / 10.0);
+
+                Color topColor = getMaterialColor(soilLayers[x][y][0]);
+                if (soilLayers[x][y][0] == 0) topColor = Color.web("#22c55e"); // Grass / Humus
+                if (carvedVoxelGrid[x][y]) topColor = Color.web("#d97706"); // Gallery interior glow
+
+                // Top Face (Isometric Diamond Polygon)
+                double[] xPoints = { px, px + blockW / 2, px, px - blockW / 2 };
+                double[] yPoints = { py - blockH / 2, py, py + blockH / 2, py };
+
+                gc3D.setFill(topColor);
+                gc3D.fillPolygon(xPoints, yPoints, 4);
+
+                // Side Shading for Voxel Height Blocks
+                double fillH = Math.max(2, z * 0.35);
+                // Left Shadow Face
+                double[] xLeft = { px - blockW / 2, px, px, px - blockW / 2 };
+                double[] yLeft = { py, py + blockH / 2, py + blockH / 2 + fillH, py + fillH };
+                gc3D.setFill(topColor.darker().darker());
+                gc3D.fillPolygon(xLeft, yLeft, 4);
+
+                // Right Ambient Light Face
+                double[] xRight = { px, px + blockW / 2, px + blockW / 2, px };
+                double[] yRight = { py + blockH / 2, py, py + fillH, py + blockH / 2 + fillH };
+                gc3D.setFill(topColor.darker());
+                gc3D.fillPolygon(xRight, yRight, 4);
+
+                // Outline Grid Edges
+                gc3D.setStroke(Color.rgb(0, 0, 0, 0.15));
+                gc3D.setLineWidth(0.5);
+                gc3D.strokePolygon(xPoints, yPoints, 4);
+            }
+        }
+
+        // 3. Subterranean Strata Cutaway Front & Side Wall (Underground Ant Nest Cutaway View)
+        renderSubterraneanCutawayWall(cx, cy, scale, radAz, radEl);
+
+        // 4. Draw River Path
+        if (riverCheck != null && riverCheck.isSelected() && riverPath != null && riverPath.size() > 1) {
+            gc3D.setStroke(Color.web("#38bdf8"));
+            gc3D.setLineWidth(riverWidthSlider.getValue() / 15.0 * (zoom / 7.5));
+            gc3D.beginPath();
+            boolean first = true;
+            for (int[] pt : riverPath) {
+                int rx = pt[0], ry = pt[1];
+                double rz = heightGrid[rx][ry] * 45.0 + 3.0;
+                double isoX = (rx - GRID_SIZE / 2.0) * Math.cos(radAz) - (ry - GRID_SIZE / 2.0) * Math.sin(radAz);
+                double isoY = (rx - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (ry - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - rz * Math.cos(radEl);
+                double px = cx + isoX * (scale / 10.0);
+                double py = cy + isoY * (scale / 10.0);
+                if (first) { gc3D.moveTo(px, py); first = false; }
+                else gc3D.lineTo(px, py);
+            }
+            gc3D.stroke();
+        }
+
+        // 5. Draw 3D Voxel Trees, Fungi & Ant Agents
+        drawVoxelEcosystemElements(cx, cy, scale, radAz, radEl);
+
+        // 6. Draw Radar Inset Mini-Map (Bottom Right Overlay)
+        drawRadarMiniMap(w, h);
+
+        // 7. HUD Title Label
+        gc3D.setFill(Color.web("#38bdf8"));
+        gc3D.setFont(Font.font("SansSerif", 11));
+        gc3D.fillText("🎮 Vue Voxel 3D Gamifiée (Az: " + (int) azimuth + "°, El: " + (int) elevation + "°, Zoom: " + String.format("%.1f", zoom) + "x)", 15, 25);
+    }
+
+    private void renderSubterraneanCutawayWall(double cx, double cy, double scale, double radAz, double radEl) {
+        int edgeY = GRID_SIZE - 4;
+        for (int x = 0; x < GRID_SIZE - 4; x += 3) {
+            double zTop = heightGrid[x][edgeY] * 45.0;
+            double isoX = (x - GRID_SIZE / 2.0) * Math.cos(radAz) - (edgeY - GRID_SIZE / 2.0) * Math.sin(radAz);
+            double isoY = (x - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (edgeY - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - zTop * Math.cos(radEl);
+            double px = cx + isoX * (scale / 10.0);
+            double py = cy + isoY * (scale / 10.0);
+
+            double wallH = 65.0 * (scale / 70.0);
+            // Topsoil slice
+            gc3D.setFill(Color.web("#451a03"));
+            gc3D.fillRect(px - 3, py, 6, wallH * 0.15);
+            // Subsoil slice
+            gc3D.setFill(Color.web("#78350f"));
+            gc3D.fillRect(px - 3, py + wallH * 0.15, 6, wallH * 0.35);
+            // Clay slice
+            gc3D.setFill(Color.web("#b45309"));
+            gc3D.fillRect(px - 3, py + wallH * 0.50, 6, wallH * 0.25);
+            // Bedrock slice
+            gc3D.setFill(Color.web("#334155"));
+            gc3D.fillRect(px - 3, py + wallH * 0.75, 6, wallH * 0.25);
+
+            // Cavern Chamber / Gallery Openings
+            if (carvedVoxelGrid[x][edgeY] || (x % 18 == 0)) {
+                gc3D.setFill(Color.web("#1e1b4b"));
+                gc3D.fillOval(px - 7, py + wallH * 0.35, 14, 10);
+                gc3D.setStroke(Color.web("#f59e0b"));
+                gc3D.setLineWidth(1);
+                gc3D.strokeOval(px - 7, py + wallH * 0.35, 14, 10);
+
+                // Ant silhouettes inside cavern
+                gc3D.setFill(Color.web("#ef4444"));
+                gc3D.fillOval(px - 2, py + wallH * 0.35 + 2, 4, 3);
+            }
+        }
+    }
+
+    private void drawVoxelEcosystemElements(double cx, double cy, double scale, double radAz, double radEl) {
+        Random rand = new Random(88);
+        int treeCount = treeCountSlider != null ? (int) treeCountSlider.getValue() : 12;
+
+        for (int i = 0; i < treeCount; i++) {
+            int gx = 12 + (int)(rand.nextDouble() * (GRID_SIZE - 24));
+            int gy = 12 + (int)(rand.nextDouble() * (GRID_SIZE - 24));
+            double z = heightGrid[gx][gy] * 45.0;
+
+            double isoX = (gx - GRID_SIZE / 2.0) * Math.cos(radAz) - (gy - GRID_SIZE / 2.0) * Math.sin(radAz);
+            double isoY = (gx - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (gy - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - z * Math.cos(radEl);
+
+            double px = cx + isoX * (scale / 10.0);
+            double py = cy + isoY * (scale / 10.0);
+
+            // Voxel Tree Trunk
+            gc3D.setFill(Color.web("#78350f"));
+            gc3D.fillRect(px - 2, py - 22, 4, 22);
+
+            // Voxel Leaf Sphere / Canopy
+            gc3D.setFill(Color.web("#15803d"));
+            gc3D.fillOval(px - 12, py - 42, 24, 24);
+            gc3D.setFill(Color.web("#22c55e"));
+            gc3D.fillOval(px - 9, py - 40, 14, 14);
+
+            // Voxel Mushrooms nearby
+            if (i % 3 == 0) {
+                gc3D.setFill(Color.web("#ef4444"));
+                gc3D.fillOval(px + 8, py - 6, 7, 5);
+                gc3D.setFill(Color.web("#f8fafc"));
+                gc3D.fillRect(px + 10, py - 3, 3, 4);
+            }
+        }
+
+        // Ant Foraging Colony Agents walking on terrain
+        for (int a = 0; a < 8; a++) {
+            int ax = 30 + (a * 9) % (GRID_SIZE - 60);
+            int ay = 40 + (a * 13) % (GRID_SIZE - 60);
+            double az = heightGrid[ax][ay] * 45.0 + 1.0;
+
+            double isoX = (ax - GRID_SIZE / 2.0) * Math.cos(radAz) - (ay - GRID_SIZE / 2.0) * Math.sin(radAz);
+            double isoY = (ax - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (ay - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - az * Math.cos(radEl);
+
+            double px = cx + isoX * (scale / 10.0);
+            double py = cy + isoY * (scale / 10.0);
+
+            gc3D.setFill(Color.web("#ef4444"));
+            gc3D.fillOval(px - 2, py - 2, 5, 3);
+            gc3D.setFill(Color.web("#7f1d1d"));
+            gc3D.fillOval(px + 2, py - 2, 2, 2);
+        }
+    }
+
+    private void drawRadarMiniMap(double w, double h) {
+        double mw = 135, mh = 135;
+        double mx = w - mw - 12, my = h - mh - 12;
+
+        // Mini-map background card (Glassmorphism inset)
+        gc3D.setFill(Color.rgb(15, 23, 42, 0.88));
+        gc3D.fillRoundRect(mx, my, mw, mh, 10, 10);
+        gc3D.setStroke(Color.rgb(56, 189, 248, 0.6));
+        gc3D.setLineWidth(1.2);
+        gc3D.strokeRoundRect(mx, my, mw, mh, 10, 10);
+
+        // Header label
+        gc3D.setFill(Color.web("#38bdf8"));
+        gc3D.setFont(Font.font("SansSerif", 9));
+        gc3D.fillText("🗺️ Radar Mini-Map", mx + 8, my + 14);
+
+        // Mini heightmap thumbnail
+        double mapAreaX = mx + 8, mapAreaY = my + 20, mapAreaSize = 108;
+        double step = mapAreaSize / GRID_SIZE;
+
+        for (int x = 0; x < GRID_SIZE; x += 4) {
+            for (int y = 0; y < GRID_SIZE; y += 4) {
+                double val = heightGrid[x][y];
+                Color c = Color.hsb(110 + val * 60, 0.7, 0.4 + val * 0.5);
+                gc3D.setFill(c);
+                gc3D.fillRect(mapAreaX + x * step, mapAreaY + y * step, step * 4, step * 4);
+            }
+        }
+
+        // Render River path on mini-map
+        if (riverPath != null && riverPath.size() > 1) {
+            gc3D.setStroke(Color.web("#0284c7"));
+            gc3D.setLineWidth(1.5);
+            gc3D.beginPath();
+            boolean first = true;
+            for (int[] pt : riverPath) {
+                double px = mapAreaX + pt[0] * step;
+                double py = mapAreaY + pt[1] * step;
+                if (first) { gc3D.moveTo(px, py); first = false; }
+                else gc3D.lineTo(px, py);
+            }
+            gc3D.stroke();
+        }
+
+        // Nest origin marker
+        gc3D.setFill(Color.web("#ef4444"));
+        gc3D.fillOval(mapAreaX + mapAreaSize / 2 - 3, mapAreaY + mapAreaSize / 2 - 3, 6, 6);
+        gc3D.setStroke(Color.WHITE);
+        gc3D.setLineWidth(1);
+        gc3D.strokeOval(mapAreaX + mapAreaSize / 2 - 3, mapAreaY + mapAreaSize / 2 - 3, 6, 6);
+
+        // Camera Direction Pointer / Frustum Line
+        double radAz = Math.toRadians(azimuth);
+        double viewX = mapAreaX + mapAreaSize / 2 + Math.cos(radAz) * 18;
+        double viewY = mapAreaY + mapAreaSize / 2 + Math.sin(radAz) * 18;
+        gc3D.setStroke(Color.web("#facc15"));
+        gc3D.setLineWidth(1.5);
+        gc3D.strokeLine(mapAreaX + mapAreaSize / 2, mapAreaY + mapAreaSize / 2, viewX, viewY);
+    }
+
+    private void draw3DTechnical() {
         double w = canvas3D.getWidth();
         double h = canvas3D.getHeight();
 

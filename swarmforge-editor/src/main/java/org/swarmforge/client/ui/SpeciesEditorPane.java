@@ -419,6 +419,22 @@ public class SpeciesEditorPane extends VBox {
         TextField casteDmgF = new TextField("15");
         CheckBox casteFlyCheck = new CheckBox("Volant");
 
+        // Advanced Caste Parameters
+        TextField targetRatioF = new TextField("0.25");
+        ComboBox<String> decisionArchCombo = new ComboBox<>();
+        decisionArchCombo.getItems().addAll("BDI", "NEURAL_NETWORK", "FSM", "BEHAVIOR_TREE", "FUZZY_LOGIC");
+        decisionArchCombo.setValue("BDI");
+
+        TextField foragingWField = new TextField("0.30");
+        TextField defenseWField = new TextField("0.20");
+        TextField excavationWField = new TextField("0.20");
+        TextField nursingWField = new TextField("0.15");
+
+        ComboBox<String> casteVenomCombo = new ComboBox<>();
+        casteVenomCombo.getItems().addAll("NONE", "FORMIC_ACID", "SOLENOPSIN", "NEUROTOXIN", "CYTOTOXIN", "TERPENE_RESIN", "AUTOTHYSIS_BOMB", "ACID_SPRAY", "POWERFUL_MANDIBLES");
+        casteVenomCombo.setValue("NONE");
+        TextField casteVenomToxField = new TextField("10.0");
+
         casteTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 casteNameF.setText(newVal.getName());
@@ -428,12 +444,29 @@ public class SpeciesEditorPane extends VBox {
                 casteHealthF.setText(String.valueOf(newVal.getHealth()));
                 casteDmgF.setText(String.valueOf(newVal.getDamage()));
                 casteFlyCheck.setSelected(newVal.isCanFly());
+
+                targetRatioF.setText(String.valueOf(newVal.getTargetRatio()));
+                decisionArchCombo.setValue(newVal.getDecisionArch());
+                foragingWField.setText(String.valueOf(newVal.getForagingWeight()));
+                defenseWField.setText(String.valueOf(newVal.getDefenseWeight()));
+                excavationWField.setText(String.valueOf(newVal.getExcavationWeight()));
+                nursingWField.setText(String.valueOf(newVal.getNursingWeight()));
+                casteVenomCombo.setValue(newVal.getVenomType());
+                casteVenomToxField.setText(String.valueOf(newVal.getVenomToxicity()));
             }
         });
 
         casteForm.addRow(0, createWhiteLabel("Nom Caste:"), casteNameF, createWhiteLabel("Longueur Corps (mm):"), casteBodyF, createWhiteLabel("Largeur Tête (mm):"), casteHeadF);
         casteForm.addRow(1, createWhiteLabel("Durée de vie:"), casteLifeF, createWhiteLabel("Santé de base:"), casteHealthF, createWhiteLabel("Dégâts Attaque:"), casteDmgF);
-        casteForm.addRow(2, createWhiteLabel("Capacité Vol:"), casteFlyCheck);
+        casteForm.addRow(2, createTooltipLabel("Ratio Cible (%):", "Pourcentage cible de cette caste dans la colonie"), targetRatioF,
+                createTooltipLabel("Modèle Décision:", "Architecture cognitive (BDI, Réseau de Neurones, FSM, Arbre de Comportement, Logique Floue)"), decisionArchCombo,
+                createWhiteLabel("Capacité Vol:"), casteFlyCheck);
+        casteForm.addRow(3, createTooltipLabel("Poids Récolte:", "Poids d'allocation pour le forage"), foragingWField,
+                createTooltipLabel("Poids Défense:", "Poids d'allocation pour la défense/garde"), defenseWField,
+                createTooltipLabel("Poids Excavation:", "Poids d'allocation pour l'excavation"), excavationWField);
+        casteForm.addRow(4, createTooltipLabel("Poids Soins:", "Poids d'allocation pour le couvain"), nursingWField,
+                createTooltipLabel("Arme Venin:", "Type de venin ou projection chimique spécifique à la caste"), casteVenomCombo,
+                createTooltipLabel("Toxicité Venin:", "Dégâts ou effet toxique par action de venin"), casteVenomToxField);
 
         HBox casteBtns = new HBox(10);
         Button btnAddCaste = new Button("Ajouter / Mettre à jour Caste");
@@ -450,6 +483,14 @@ public class SpeciesEditorPane extends VBox {
                     sel.setHealth(Float.parseFloat(casteHealthF.getText()));
                     sel.setDamage(Float.parseFloat(casteDmgF.getText()));
                     sel.setCanFly(casteFlyCheck.isSelected());
+                    sel.setTargetRatio(Float.parseFloat(targetRatioF.getText()));
+                    sel.setDecisionArch(decisionArchCombo.getValue());
+                    sel.setForagingWeight(Float.parseFloat(foragingWField.getText()));
+                    sel.setDefenseWeight(Float.parseFloat(defenseWField.getText()));
+                    sel.setExcavationWeight(Float.parseFloat(excavationWField.getText()));
+                    sel.setNursingWeight(Float.parseFloat(nursingWField.getText()));
+                    sel.setVenomType(casteVenomCombo.getValue());
+                    sel.setVenomToxicity(Float.parseFloat(casteVenomToxField.getText()));
                     casteTable.refresh();
                 } else {
                     CasteRow row = new CasteRow(
@@ -461,6 +502,14 @@ public class SpeciesEditorPane extends VBox {
                             Float.parseFloat(casteDmgF.getText()),
                             casteFlyCheck.isSelected()
                     );
+                    row.setTargetRatio(Float.parseFloat(targetRatioF.getText()));
+                    row.setDecisionArch(decisionArchCombo.getValue());
+                    row.setForagingWeight(Float.parseFloat(foragingWField.getText()));
+                    row.setDefenseWeight(Float.parseFloat(defenseWField.getText()));
+                    row.setExcavationWeight(Float.parseFloat(excavationWField.getText()));
+                    row.setNursingWeight(Float.parseFloat(nursingWField.getText()));
+                    row.setVenomType(casteVenomCombo.getValue());
+                    row.setVenomToxicity(Float.parseFloat(casteVenomToxField.getText()));
                     casteRows.add(row);
                 }
             } catch (Exception ex) {
@@ -798,7 +847,19 @@ public class SpeciesEditorPane extends VBox {
             for (CasteTemplate ct : s.getCasteTemplates()) {
                 double body = ct.getBodyLengthMm() > 0 ? ct.getBodyLengthMm() : ct.getAttribute("size_mm", 5.0f);
                 double head = ct.getHeadWidthMm() > 0 ? ct.getHeadWidthMm() : (body * 0.25);
-                casteRows.add(new CasteRow(ct.getName(), body, head, ct.getLifespan(), ct.getBaseHealth(), ct.getBaseDamage(), ct.isCanFly()));
+                CasteRow row = new CasteRow(ct.getName(), body, head, ct.getLifespan(), ct.getBaseHealth(), ct.getBaseDamage(), ct.isCanFly());
+                row.setForagingWeight(ct.getTaskForagingWeight());
+                row.setDefenseWeight(ct.getTaskDefenseWeight());
+                row.setExcavationWeight(ct.getTaskExcavationWeight());
+                row.setNursingWeight(ct.getTaskNursingWeight());
+                row.setQueenCareWeight(ct.getTaskQueenCareWeight());
+                row.setSanitationWeight(ct.getTaskSanitationWeight());
+                row.setTargetRatio(ct.getTargetRatio());
+                row.setDecisionArch(ct.getDecisionArchitectureType() != null ? ct.getDecisionArchitectureType() : "BDI");
+                row.setVenomType(ct.getVenomType() != null ? ct.getVenomType() : "NONE");
+                row.setVenomToxicity(ct.getVenomToxicity());
+                row.setVenomRangeMm(ct.getVenomRangeMm());
+                casteRows.add(row);
             }
         }
     }
@@ -876,6 +937,17 @@ public class SpeciesEditorPane extends VBox {
             ct.setCanFly(r.isCanFly());
             ct.setBodyLengthMm((float) r.getBodyLengthMm());
             ct.setHeadWidthMm((float) r.getHeadWidthMm());
+            ct.setTaskForagingWeight(r.getForagingWeight());
+            ct.setTaskDefenseWeight(r.getDefenseWeight());
+            ct.setTaskExcavationWeight(r.getExcavationWeight());
+            ct.setTaskNursingWeight(r.getNursingWeight());
+            ct.setTaskQueenCareWeight(r.getQueenCareWeight());
+            ct.setTaskSanitationWeight(r.getSanitationWeight());
+            ct.setTargetRatio(r.getTargetRatio());
+            ct.setDecisionArchitectureType(r.getDecisionArch());
+            ct.setVenomType(r.getVenomType());
+            ct.setVenomToxicity(r.getVenomToxicity());
+            ct.setVenomRangeMm(r.getVenomRangeMm());
             templates.add(ct);
         }
         s.setCasteTemplates(templates);
@@ -949,6 +1021,23 @@ public class SpeciesEditorPane extends VBox {
         private float damage;
         private boolean canFly;
 
+        // Task Weights & Caste Ratios
+        private float foragingWeight = 0.30f;
+        private float defenseWeight = 0.20f;
+        private float excavationWeight = 0.20f;
+        private float nursingWeight = 0.15f;
+        private float queenCareWeight = 0.10f;
+        private float sanitationWeight = 0.05f;
+        private float targetRatio = 0.25f;
+
+        // Cognitive Model Architecture
+        private String decisionArch = "BDI"; // BDI, NEURAL_NETWORK, FSM, BEHAVIOR_TREE, FUZZY_LOGIC
+
+        // Venom Systems
+        private String venomType = "NONE";
+        private float venomToxicity = 10.0f;
+        private float venomRangeMm = 2.0f;
+
         public CasteRow(String name, double bodyLengthMm, double headWidthMm, int lifespan, float health, float damage, boolean canFly) {
             this.name = name;
             this.bodyLengthMm = bodyLengthMm;
@@ -981,5 +1070,38 @@ public class SpeciesEditorPane extends VBox {
 
         public boolean isCanFly() { return canFly; }
         public void setCanFly(boolean canFly) { this.canFly = canFly; }
+
+        public float getForagingWeight() { return foragingWeight; }
+        public void setForagingWeight(float foragingWeight) { this.foragingWeight = foragingWeight; }
+
+        public float getDefenseWeight() { return defenseWeight; }
+        public void setDefenseWeight(float defenseWeight) { this.defenseWeight = defenseWeight; }
+
+        public float getExcavationWeight() { return excavationWeight; }
+        public void setExcavationWeight(float excavationWeight) { this.excavationWeight = excavationWeight; }
+
+        public float getNursingWeight() { return nursingWeight; }
+        public void setNursingWeight(float nursingWeight) { this.nursingWeight = nursingWeight; }
+
+        public float getQueenCareWeight() { return queenCareWeight; }
+        public void setQueenCareWeight(float queenCareWeight) { this.queenCareWeight = queenCareWeight; }
+
+        public float getSanitationWeight() { return sanitationWeight; }
+        public void setSanitationWeight(float sanitationWeight) { this.sanitationWeight = sanitationWeight; }
+
+        public float getTargetRatio() { return targetRatio; }
+        public void setTargetRatio(float targetRatio) { this.targetRatio = targetRatio; }
+
+        public String getDecisionArch() { return decisionArch; }
+        public void setDecisionArch(String decisionArch) { this.decisionArch = decisionArch; }
+
+        public String getVenomType() { return venomType; }
+        public void setVenomType(String venomType) { this.venomType = venomType; }
+
+        public float getVenomToxicity() { return venomToxicity; }
+        public void setVenomToxicity(float venomToxicity) { this.venomToxicity = venomToxicity; }
+
+        public float getVenomRangeMm() { return venomRangeMm; }
+        public void setVenomRangeMm(float venomRangeMm) { this.venomRangeMm = venomRangeMm; }
     }
 }

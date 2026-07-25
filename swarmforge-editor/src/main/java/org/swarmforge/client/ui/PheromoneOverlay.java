@@ -17,10 +17,11 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import org.swarmforge.core.simulation.HeatmapEngine;
 
 /**
- * 2D overlay visualization for pheromone trails.
- * Can be used as an overlay on top of the 3D view or standalone.
+ * 2D overlay visualization for pheromone trails, tunnel occupancy, chamber specialization,
+ * and soil stability heatmaps.
  *
  * @author Gemini AI Assistant
  * @author Silvère Martin-Michiellot
@@ -30,20 +31,26 @@ public class PheromoneOverlay extends VBox {
     private final Canvas canvas;
     private final GraphicsContext gc;
 
-    // Pheromone type colors
-    private static final Color[] PHEROMONE_COLORS = {
-            Color.rgb(76, 175, 80, 0.7), // FOOD - Green
-            Color.rgb(33, 150, 243, 0.7), // HOME - Blue
-            Color.rgb(244, 67, 54, 0.7), // ALARM - Red
-            Color.rgb(255, 193, 7, 0.7), // TRAIL - Yellow
-            Color.rgb(156, 39, 176, 0.7), // QUEEN - Purple
-            Color.rgb(255, 152, 0, 0.7), // BROOD - Orange
-            Color.rgb(96, 125, 139, 0.7), // DEATH - Gray
-            Color.rgb(0, 150, 136, 0.7) // TERRITORY - Teal
+    // Pheromone & Heatmap colors
+    private static final Color[] OVERLAY_COLORS = {
+            Color.rgb(76, 175, 80, 0.8),   // FOOD - Green
+            Color.rgb(33, 150, 243, 0.8),  // HOME - Blue
+            Color.rgb(244, 67, 54, 0.8),   // ALARM - Red
+            Color.rgb(255, 193, 7, 0.8),   // TRAIL - Yellow
+            Color.rgb(156, 39, 176, 0.8),  // QUEEN - Purple
+            Color.rgb(255, 152, 0, 0.8),   // BROOD - Orange
+            Color.rgb(96, 125, 139, 0.8),  // DEATH - Gray
+            Color.rgb(0, 150, 136, 0.8),   // TERRITORY - Teal
+            Color.rgb(233, 30, 99, 0.8),   // TUNNEL OCCUPANCY - Crimson Hot
+            Color.rgb(255, 215, 0, 0.8),   // CHAMBER SPECIALIZATION - Gold
+            Color.rgb(139, 195, 74, 0.8),  // SOIL STABILITY - Lime
+            Color.rgb(3, 169, 244, 0.8)    // SOIL MOISTURE - Cyan
     };
 
-    private static final String[] PHEROMONE_NAMES = {
-            "Food", "Home", "Alarm", "Trail", "Queen", "Brood", "Death", "Territory"
+    private static final String[] OVERLAY_NAMES = {
+            "Food Pheromone", "Home Pheromone", "Alarm Pheromone", "Trail Pheromone",
+            "Queen Pheromone", "Brood Pheromone", "Death Pheromone", "Territory Pheromone",
+            "Tunnel Occupancy & Traffic", "Chamber Specialization", "Soil Stability (Mohr-Coulomb)", "Soil Moisture"
     };
 
     private int selectedType = 0; // FOOD by default
@@ -74,14 +81,14 @@ public class PheromoneOverlay extends VBox {
     private HBox createControls() {
         HBox box = new HBox(10);
         box.setPadding(new Insets(5));
-        box.setStyle("-fx-background-color: #333;");
+        box.setStyle("-fx-background-color: #1e293b; -fx-border-radius: 4px;");
 
-        // Pheromone type selector
-        Label lblType = new Label("Type:");
-        lblType.setStyle("-fx-text-fill: white;");
+        // Overlay type selector
+        Label lblType = new Label("Mode Heatmap:");
+        lblType.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
 
         ComboBox<String> typeCombo = new ComboBox<>();
-        typeCombo.getItems().addAll(PHEROMONE_NAMES);
+        typeCombo.getItems().addAll(OVERLAY_NAMES);
         typeCombo.getSelectionModel().select(0);
         typeCombo.setOnAction(e -> {
             selectedType = typeCombo.getSelectionModel().getSelectedIndex();
@@ -89,29 +96,29 @@ public class PheromoneOverlay extends VBox {
         });
 
         // Opacity slider
-        Label lblOpacity = new Label("Opacity:");
+        Label lblOpacity = new Label("Opacité:");
         lblOpacity.setStyle("-fx-text-fill: white;");
 
         Slider opacitySlider = new Slider(0.1, 1.0, 0.7);
-        opacitySlider.setPrefWidth(100);
+        opacitySlider.setPrefWidth(90);
         opacitySlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             opacity = newVal.floatValue();
             redraw();
         });
 
         // Threshold slider
-        Label lblThreshold = new Label("Threshold:");
+        Label lblThreshold = new Label("Seuil:");
         lblThreshold.setStyle("-fx-text-fill: white;");
 
         Slider thresholdSlider = new Slider(0, 0.5, 0.01);
-        thresholdSlider.setPrefWidth(100);
+        thresholdSlider.setPrefWidth(90);
         thresholdSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             threshold = newVal.floatValue();
             redraw();
         });
 
         // Grid toggle
-        CheckBox gridCheck = new CheckBox("Grid");
+        CheckBox gridCheck = new CheckBox("Grille");
         gridCheck.setStyle("-fx-text-fill: white;");
         gridCheck.setOnAction(e -> {
             showGrid = gridCheck.isSelected();
@@ -128,9 +135,9 @@ public class PheromoneOverlay extends VBox {
     }
 
     /**
-     * Update pheromone data for display.
+     * Update pheromone / heatmap data for display.
      * 
-     * @param data   2D array of pheromone values (0-1 normalized)
+     * @param data   2D array of normalized values (0-1)
      * @param width  Grid width
      * @param height Grid height
      */
@@ -142,10 +149,10 @@ public class PheromoneOverlay extends VBox {
     }
 
     /**
-     * Redraw the overlay.
+     * Redraw the overlay with high visual fidelity.
      */
     public void redraw() {
-        gc.setFill(Color.rgb(20, 20, 20, 0.8));
+        gc.setFill(Color.rgb(15, 23, 42, 0.9));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         if (currentData == null || dataWidth == 0 || dataHeight == 0) {
@@ -155,20 +162,26 @@ public class PheromoneOverlay extends VBox {
         double cellWidth = canvas.getWidth() / dataWidth;
         double cellHeight = canvas.getHeight() / dataHeight;
 
-        Color baseColor = PHEROMONE_COLORS[selectedType];
+        Color baseColor = OVERLAY_COLORS[selectedType % OVERLAY_COLORS.length];
 
         for (int x = 0; x < dataWidth; x++) {
             for (int y = 0; y < dataHeight; y++) {
                 float value = currentData[x][y];
 
                 if (value > threshold) {
-                    // Scale value to visible intensity
-                    double intensity = Math.min(1.0, value * 2);
-                    Color cellColor = Color.color(
-                            baseColor.getRed(),
-                            baseColor.getGreen(),
-                            baseColor.getBlue(),
-                            intensity * opacity);
+                    Color cellColor;
+                    if (selectedType == 9) { // Chamber Specialization (Categorical Palette)
+                        cellColor = getChamberColor(value, opacity);
+                    } else if (selectedType == 8) { // Tunnel Occupancy (Hot Thermal Palette)
+                        cellColor = Color.hsb(Math.max(0, 240 - value * 240), 0.9, 0.9, opacity);
+                    } else {
+                        double intensity = Math.min(1.0, value * 1.5);
+                        cellColor = Color.color(
+                                baseColor.getRed(),
+                                baseColor.getGreen(),
+                                baseColor.getBlue(),
+                                intensity * opacity);
+                    }
 
                     gc.setFill(cellColor);
                     gc.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
@@ -178,7 +191,7 @@ public class PheromoneOverlay extends VBox {
 
         // Draw grid if enabled
         if (showGrid) {
-            gc.setStroke(Color.rgb(100, 100, 100, 0.3));
+            gc.setStroke(Color.rgb(148, 163, 184, 0.25));
             gc.setLineWidth(0.5);
 
             for (int x = 0; x <= dataWidth; x++) {
@@ -193,40 +206,43 @@ public class PheromoneOverlay extends VBox {
         drawLegend();
     }
 
-    private void drawLegend() {
-        gc.setFill(Color.rgb(50, 50, 50, 0.9));
-        gc.fillRect(10, 10, 120, 25);
+    private Color getChamberColor(float code, float alpha) {
+        if (code >= 0.85f) return Color.rgb(234, 179, 8, alpha);   // Queen Chamber (Gold)
+        if (code >= 0.65f) return Color.rgb(249, 115, 22, alpha);  // Brood Nursery (Orange)
+        if (code >= 0.45f) return Color.rgb(34, 197, 94, alpha);   // Food Storage (Green)
+        if (code >= 0.35f) return Color.rgb(16, 185, 129, alpha);  // Fungus Garden (Emerald)
+        if (code >= 0.15f) return Color.rgb(99, 102, 241, alpha);  // Waste/Cemetery (Indigo)
+        return Color.rgb(6, 182, 212, alpha);                       // Entrance (Cyan)
+    }
 
-        gc.setFill(PHEROMONE_COLORS[selectedType]);
-        gc.fillRect(15, 15, 15, 15);
+    private void drawLegend() {
+        gc.setFill(Color.rgb(30, 41, 59, 0.95));
+        gc.fillRect(10, 10, 220, 30);
+
+        gc.setFill(OVERLAY_COLORS[selectedType % OVERLAY_COLORS.length]);
+        gc.fillRect(15, 17, 16, 16);
 
         gc.setFill(Color.WHITE);
-        gc.fillText(PHEROMONE_NAMES[selectedType] + " Pheromone", 35, 27);
+        gc.fillText(OVERLAY_NAMES[selectedType], 38, 29);
     }
 
     /**
      * Clear the overlay.
      */
     public void clear() {
-        gc.setFill(Color.rgb(20, 20, 20));
+        gc.setFill(Color.rgb(15, 23, 42));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         gc.setFill(Color.GRAY);
-        gc.fillText("No pheromone data", canvas.getWidth() / 2 - 50, canvas.getHeight() / 2);
+        gc.fillText("Aucune donnée de heatmap disponible", canvas.getWidth() / 2 - 90, canvas.getHeight() / 2);
     }
 
-    /**
-     * Get canvas for embedding.
-     */
     public Canvas getCanvas() {
         return canvas;
     }
 
-    /**
-     * Set the selected pheromone type to display.
-     */
     public void setSelectedType(int type) {
-        if (type >= 0 && type < PHEROMONE_COLORS.length) {
+        if (type >= 0 && type < OVERLAY_NAMES.length) {
             this.selectedType = type;
             redraw();
         }
