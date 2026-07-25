@@ -44,12 +44,14 @@ public class WeatherSystem {
     private final double[] rainAvg = new double[]{ 55, 45, 50, 55, 65, 55, 50, 55, 65, 75, 65, 60 };
     private final double[] humidityAvg = new double[]{ 78, 74, 68, 62, 63, 64, 65, 68, 73, 79, 82, 81 };
 
-    // Dynamic Atmospheric Real-Time State
-    private float currentTemp = 15.0f; // °C
-    private float currentHumidity = 65.0f; // %
-    private float currentWindSpeed = 15.0f; // km/h
+    // Dynamic Atmospheric Real-Time State (SI Units)
+    private float currentTemp = 15.0f; // °C (SI metric)
+    private float currentHumidity = 65.0f; // % RH
+    private float currentWindSpeed = 15.0f; // km/h (SI: convert to m/s = windSpeed / 3.6)
     private float currentRainfall = 0.0f; // mm/h
-    private float currentPressure = 1013.25f; // hPa
+    private float currentSnowfall = 0.0f; // mm/h
+    private float currentPressure = 1013.25f; // hPa (SI: 101325 Pa)
+    private float magneticField = 48.0f; // µT (Microtesla SI geomagnetic field)
     private float pressureTrend = 0.0f; // dP/dt
     private boolean isDaytime = true;
 
@@ -152,25 +154,50 @@ public class WeatherSystem {
         pressureTrend = (targetPressure - currentPressure);
         currentPressure = targetPressure;
 
+        // Earth's Geomagnetic Field (µT - Microtesla SI units derived from latitude & altitude)
+        double latRad = Math.toRadians(latitude);
+        magneticField = (float) (31.0 * Math.sqrt(1.0 + 3.0 * Math.sin(latRad) * Math.sin(latRad)) * Math.exp(-altitude / 100000.0));
+
         // Markov Chain Discrete Weather State Transition
         WeatherMarkovChain.WeatherState state = markovChain.update(
                 deltaHours, currentTemp, currentHumidity, currentWindSpeed, (float) baseRainAvg, pressureTrend, latitude
         );
 
-        // 4. Rainfall and Humidity derived from Markov State & Curves
+        // 4. Rainfall, Snowfall, and Humidity derived from Markov State & Curves
+        currentSnowfall = 0.0f;
         switch (state) {
             case LIGHT_RAIN -> currentRainfall = (float) Math.max(1.0, baseRainAvg / 40.0) * rainMultiplier;
             case HEAVY_RAIN -> currentRainfall = (float) Math.max(8.0, baseRainAvg / 15.0) * rainMultiplier;
             case THUNDERSTORM -> currentRainfall = (float) Math.max(25.0, baseRainAvg / 5.0) * rainMultiplier;
-            case SNOW -> currentRainfall = (float) Math.max(2.0, baseRainAvg / 30.0) * rainMultiplier;
-            default -> currentRainfall = 0.0f;
+            case HAIL -> {
+                currentRainfall = (float) Math.max(15.0, baseRainAvg / 10.0) * rainMultiplier;
+                currentSnowfall = (float) Math.max(5.0, baseRainAvg / 20.0) * rainMultiplier;
+            }
+            case SNOW -> {
+                currentRainfall = 0.0f;
+                currentSnowfall = (float) Math.max(2.0, baseRainAvg / 30.0) * rainMultiplier;
+            }
+            case BLIZZARD -> {
+                currentRainfall = 0.0f;
+                currentSnowfall = (float) Math.max(15.0, baseRainAvg / 10.0) * rainMultiplier;
+            }
+            case TEMPEST -> {
+                currentRainfall = (float) Math.max(30.0, baseRainAvg / 4.0) * rainMultiplier;
+                currentSnowfall = currentTemp <= 0 ? 10.0f : 0.0f;
+            }
+            default -> {
+                currentRainfall = 0.0f;
+                currentSnowfall = 0.0f;
+            }
         }
 
-        currentWindSpeed = (float) Math.max(0, baseWindAvg + perlinWindNoise + (state == WeatherMarkovChain.WeatherState.THUNDERSTORM ? 25 : 0));
-        currentHumidity = (float) Math.max(10, Math.min(100, baseHumAvg + (currentRainfall > 0 ? 20 : -diurnalTemp * 0.8)));
+        currentWindSpeed = (float) Math.max(0, baseWindAvg + perlinWindNoise +
+                (state == WeatherMarkovChain.WeatherState.THUNDERSTORM ? 25 :
+                 state == WeatherMarkovChain.WeatherState.TEMPEST || state == WeatherMarkovChain.WeatherState.BLIZZARD ? 45 : 0));
+        currentHumidity = (float) Math.max(10, Math.min(100, baseHumAvg + ((currentRainfall > 0 || currentSnowfall > 0) ? 20 : -diurnalTemp * 0.8)));
 
         // 5. Hydric Coupling & Subterranean Moisture updates
-        hydricCoupling.updateMoisture(currentRainfall, currentTemp, currentWindSpeed, deltaHours);
+        hydricCoupling.updateMoisture(currentRainfall + currentSnowfall, currentTemp, currentWindSpeed, deltaHours);
 
         // 6. Daylight hours check
         float dayLength = calculateDayLength();
@@ -234,11 +261,15 @@ public class WeatherSystem {
         return hydricCoupling.getMoistureAtDepth(depthCell);
     }
 
-    // ── Getters & Setters ─────────────────────────────────────────────────────
+    // ── Getters & Setters (SI Units & Climate Event Controls) ─────────────────
 
     public float getTemperature() { return currentTemp; }
+    /** SI Kelvin temperature */
+    public float getTemperatureKelvin() { return currentTemp + 273.15f; }
     public float getHumidity() { return currentHumidity; }
     public float getWindSpeed() { return currentWindSpeed; }
+    /** SI Meters per second wind speed */
+    public float getWindSpeedMs() { return currentWindSpeed / 3.6f; }
     public String getWindDirection() { return windDirection; }
     public float getWindDirectionAngle() {
         return switch (windDirection) {
@@ -254,10 +285,29 @@ public class WeatherSystem {
         };
     }
     public float getRainfall() { return currentRainfall; }
+    public float getSnowfall() { return currentSnowfall; }
     public float getPressure() { return currentPressure; }
+    /** SI Pascal pressure */
+    public float getPressurePa() { return currentPressure * 100.0f; }
+    /** SI Microtesla geomagnetic field */
+    public float getMagneticField() { return magneticField; }
+
     public WeatherMarkovChain.WeatherState getWeatherState() { return markovChain.getCurrentState(); }
+
+    /**
+     * Manually trigger a climate event (tempest, hail, cloudy, blizzard, thunderstorm, etc.).
+     */
+    public void triggerClimateEvent(WeatherMarkovChain.WeatherState state) {
+        if (state != null) {
+            markovChain.setCurrentState(state);
+            updateAtmosphere(0f);
+        }
+    }
+
     public boolean isDaytime() { return isDaytime; }
-    public boolean isRaining() { return currentRainfall > 0; }
+    public float getSunAngle() { return timeOfDayHours / 24.0f; }
+    public float getLightLevel() { return isDaytime ? 1.0f : 0.15f; }
+    public boolean isRaining() { return currentRainfall > 0 || currentSnowfall > 0; }
     public int getDayOfYear() { return dayOfYear; }
     public float getTimeOfDay() { return timeOfDayHours; }
     public double getLatitude() { return latitude; }

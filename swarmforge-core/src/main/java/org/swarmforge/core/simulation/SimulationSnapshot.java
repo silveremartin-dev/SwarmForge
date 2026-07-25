@@ -9,6 +9,9 @@ package org.swarmforge.core.simulation;
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +25,7 @@ import java.util.List;
  */
 public class SimulationSnapshot implements Serializable {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SimulationSnapshot.class);
     private static final long serialVersionUID = 1L;
 
     private final long tick;
@@ -207,7 +211,7 @@ public class SimulationSnapshot implements Serializable {
                     }
                 }
             } catch (IOException e) {
-                System.err.println("Failed to restore pheromones: " + e.getMessage());
+                LOG.error("Failed to restore pheromones: ", e);
             }
         }
 

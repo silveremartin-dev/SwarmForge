@@ -243,6 +243,72 @@ public class Colony implements java.io.Serializable {
     }
 
     /**
+     * Get average age of individuals in a specific caste.
+     */
+    public float getAverageAgeByCaste(Individual.Caste caste) {
+        List<Individual> casteInds = individuals.stream()
+                .filter(i -> i.isAlive() && i.getCaste() == caste)
+                .toList();
+        if (casteInds.isEmpty()) return 0f;
+        double sum = casteInds.stream().mapToDouble(Individual::getAge).sum();
+        return (float) (sum / casteInds.size());
+    }
+
+    /**
+     * Get count of individuals in a specific life stage.
+     */
+    public int getBroodCountByStage(Individual.LifeStage stage) {
+        return (int) individuals.stream()
+                .filter(i -> i.isAlive() && i.getLifeStage() == stage)
+                .count();
+    }
+
+    /**
+     * Records a detailed demographic and economic snapshot for history graphs.
+     */
+    public void recordDetailedSnapshot(long currentTick, float nestTemp, float nestCo2, float nestO2) {
+        java.util.Map<Individual.Caste, Integer> casteMap = new java.util.HashMap<>();
+        java.util.Map<Individual.Caste, Float> ageMap = new java.util.HashMap<>();
+        for (Individual.Caste c : Individual.Caste.values()) {
+            int count = countByCaste(c);
+            casteMap.put(c, count);
+            if (count > 0) {
+                ageMap.put(c, getAverageAgeByCaste(c));
+            } else {
+                ageMap.put(c, 0f);
+            }
+        }
+
+        java.util.Map<Individual.LifeStage, Integer> broodMap = new java.util.HashMap<>();
+        for (Individual.LifeStage s : Individual.LifeStage.values()) {
+            broodMap.put(s, getBroodCountByStage(s));
+        }
+
+        int chamberCount = (nest != null && nest.getChambers() != null) ? nest.getChambers().size() : 0;
+
+        ColonyStatistics.DetailedDataPoint point = new ColonyStatistics.DetailedDataPoint(
+                currentTick,
+                age,
+                getPopulation(),
+                casteMap,
+                ageMap,
+                broodMap,
+                getFoodStored(),
+                proteinStored,
+                carbohydrateStored,
+                waterStored,
+                nestTemp,
+                nestCo2,
+                nestO2,
+                chamberCount,
+                totalBorn,
+                totalDied
+        );
+
+        statistics.recordDetailed(point);
+    }
+
+    /**
      * Get all living individuals.
      */
     public List<Individual> getLivingIndividuals() {

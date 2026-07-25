@@ -18,6 +18,10 @@ public class PluginContext {
     private final Simulation simulation;
     private final PluginManager manager;
 
+    private final java.util.Map<String, org.swarmforge.core.species.Species> speciesRegistry = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<String, Class<? extends org.swarmforge.core.behavior.ReasoningArchitecture>> behaviorRegistry = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.Map<String, NestArchitecture> nestRegistry = new java.util.concurrent.ConcurrentHashMap<>();
+
     public PluginContext(Simulation simulation, PluginManager manager) {
         this.simulation = simulation;
         this.manager = manager;
@@ -42,7 +46,8 @@ public class PluginContext {
      * Register a custom species.
      */
     public void registerSpecies(org.swarmforge.core.species.Species species) {
-        // Species registry would go here
+        speciesRegistry.put(species.getScientificName(), species);
+        log("PluginRegistry", "Registered species: " + species.getScientificName());
     }
 
     /**
@@ -50,6 +55,23 @@ public class PluginContext {
      */
     public void registerBehavior(String name,
             Class<? extends org.swarmforge.core.behavior.ReasoningArchitecture> behaviorClass) {
-        // Behavior registry would go here
+        behaviorRegistry.put(name, behaviorClass);
+        log("PluginRegistry", "Registered behavior: " + name);
+    }
+
+    /**
+     * Register a custom nest architecture for a plugin species.
+     */
+    public void registerNestArchitecture(NestArchitecture nestArchitecture) {
+        nestRegistry.put(nestArchitecture.getId(), nestArchitecture);
+        log("PluginRegistry", "Registered nest architecture: " + nestArchitecture.getName() + " [" + nestArchitecture.getId() + "]");
+    }
+
+    public java.util.Map<String, org.swarmforge.core.species.Species> getSpeciesRegistry() {
+        return java.util.Collections.unmodifiableMap(speciesRegistry);
+    }
+
+    public java.util.Map<String, NestArchitecture> getNestRegistry() {
+        return java.util.Collections.unmodifiableMap(nestRegistry);
     }
 }

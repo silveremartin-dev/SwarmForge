@@ -43,10 +43,12 @@ public class AuthServiceImpl extends AuthServiceGrpc.AuthServiceImplBase {
     }
 
     private boolean isValidUser(String username, String password) {
-        // Validation Logic (Mock)
-        if ("admin".equals(username) && "admin123".equals(password))
+        String adminPass = System.getenv().getOrDefault("SWARMFORGE_ADMIN_PASSWORD", "admin123");
+        String userPass = System.getenv().getOrDefault("SWARMFORGE_USER_PASSWORD", "user123");
+
+        if ("admin".equals(username) && adminPass.equals(password))
             return true;
-        if ("user".equals(username) && "user123".equals(password))
+        if ("user".equals(username) && userPass.equals(password))
             return true;
         return false;
     }

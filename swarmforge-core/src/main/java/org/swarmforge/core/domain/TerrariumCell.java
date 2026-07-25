@@ -14,16 +14,18 @@ import java.io.Serializable;
  * properties.
  *
  * <p>
- * Environmental properties:
+ * Environmental properties (SI Units):
  * </p>
  * <ul>
- * <li>Temperature (°C) - affects metabolism and movement speed</li>
+ * <li>Cell Size: &le; 1.0 mm³ (SI base unit resolution)</li>
+ * <li>Temperature (°C / K) - affects metabolism and movement speed</li>
  * <li>Humidity (%) - affects water needs and comfort</li>
  * <li>CO2 level (ppm) - indicator of colony activity</li>
  * <li>O2 level (%) - indicator of ventilation</li>
- * <li>Light level (0-1) - affects circadian behavior</li>
- * <li>Wind (x,y components) - affects pheromone diffusion</li>
- * <li>Pressure (relative) - for altitude simulation</li>
+ * <li>N2O level (ppm) - Nitrous oxide concentration from soil microbial activity</li>
+ * <li>Light level (lux / 0-1) - affects circadian behavior</li>
+ * <li>Wind (m/s x,y components) - affects pheromone diffusion</li>
+ * <li>Pressure (hPa / Pa) - for altitude simulation</li>
  * </ul>
  *
  * @author Gemini AI Assistant
@@ -39,10 +41,17 @@ public record TerrariumCell(
         float humidity,
         float co2,
         float o2,
+        float n2o,
         float light,
         float windX,
         float windY,
         float pressure) implements Serializable {
+
+    /** Base cell physical spatial resolution in millimeters (SI standard: <= 1.0 mm) */
+    public static final float CELL_SIZE_MM = 1.0f;
+
+    /** Base cell volume in cubic millimeters (SI standard: <= 1.0 mm³) */
+    public static final float CELL_VOLUME_MM3 = 1.0f;
 
     /** Number of pheromone types supported */
     public static final int PHEROMONE_TYPES = 8;
@@ -53,7 +62,10 @@ public record TerrariumCell(
     /** Default atmospheric O2 (%) */
     public static final float DEFAULT_O2 = 21f;
 
-    /** Default surface pressure */
+    /** Default atmospheric N2O (ppm) */
+    public static final float DEFAULT_N2O = 0.33f;
+
+    /** Default surface pressure (hPa / relative 1.0 atm) */
     public static final float DEFAULT_PRESSURE = 1.0f;
 
     /**
@@ -62,7 +74,17 @@ public record TerrariumCell(
     public TerrariumCell(int x, int y, int z, Material material, float[] pheromones,
             float temperature, float humidity) {
         this(x, y, z, material, pheromones, temperature, humidity,
-                DEFAULT_CO2, DEFAULT_O2, 0f, 0f, 0f, DEFAULT_PRESSURE);
+                DEFAULT_CO2, DEFAULT_O2, DEFAULT_N2O, 0f, 0f, 0f, DEFAULT_PRESSURE);
+    }
+
+    /**
+     * Compact constructor for compatibility (13 parameters without n2o).
+     */
+    public TerrariumCell(int x, int y, int z, Material material, float[] pheromones,
+            float temperature, float humidity, float co2, float o2, float light,
+            float windX, float windY, float pressure) {
+        this(x, y, z, material, pheromones, temperature, humidity,
+                co2, o2, DEFAULT_N2O, light, windX, windY, pressure);
     }
 
     /**
@@ -78,6 +100,7 @@ public record TerrariumCell(
         NEST_WALL, // Colony structure
         CHAMBER, // Nest chamber interior
         ICE, // Frozen water
+        SNOW, // Crystallized snow accumulation
         MUD, // Wet earth
         CLAY, // Dense diggable material
         LEAF_LITTER, // Surface organic layer
@@ -90,7 +113,9 @@ public record TerrariumCell(
         DEAD_WOOD, // Excavatable wood stump/log for Camponotus, Termites, Ambrosia beetles
         PLANT_GALL, // Plant gall cavity for Aphids & Thrips
         BAMBOO_STEM, // Hollow/excavatable bamboo stem
-        FUNGUS_GARDEN // Cultivated fungus garden substrate for Atta & Ambrosia beetles
+        FUNGUS_GARDEN, // Cultivated fungus garden substrate for Atta & Ambrosia beetles
+        DEAD_ANIMAL, // Dead insect, prey carcass, decay substrate
+        DEAD_PLANT // Dead plant tissue, fallen log, decaying organic biomass
     }
 
     /**
@@ -160,7 +185,23 @@ public record TerrariumCell(
      */
     public static TerrariumCell organic(int x, int y, int z) {
         return new TerrariumCell(x, y, z, Material.ORGANIC, new float[PHEROMONE_TYPES],
-                20f, 60f, DEFAULT_CO2 * 1.3f, DEFAULT_O2 * 0.95f, 0.3f, 0f, 0f, DEFAULT_PRESSURE);
+                20f, 60f, DEFAULT_CO2 * 1.3f, DEFAULT_O2 * 0.95f, DEFAULT_N2O, 0.3f, 0f, 0f, DEFAULT_PRESSURE);
+    }
+
+    /**
+     * Create snow cell.
+     */
+    public static TerrariumCell snow(int x, int y, int z) {
+        return new TerrariumCell(x, y, z, Material.SNOW, new float[PHEROMONE_TYPES],
+                -2f, 90f, DEFAULT_CO2, DEFAULT_O2, DEFAULT_N2O, 0.8f, 0f, 0f, DEFAULT_PRESSURE);
+    }
+
+    /**
+     * Create ice cell.
+     */
+    public static TerrariumCell ice(int x, int y, int z) {
+        return new TerrariumCell(x, y, z, Material.ICE, new float[PHEROMONE_TYPES],
+                -5f, 100f, DEFAULT_CO2, DEFAULT_O2, DEFAULT_N2O, 0.9f, 0f, 0f, DEFAULT_PRESSURE);
     }
 
     // === Accessors ===

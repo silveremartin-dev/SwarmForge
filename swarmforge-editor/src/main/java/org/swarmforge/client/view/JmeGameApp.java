@@ -58,9 +58,26 @@ public class JmeGameApp extends SimpleApplication {
     private String currentTool = "View Mode";
     private TerrainModificationListener terrainListener;
     private PheromoneVisualizer pheromoneVisualizer;
+    private WeatherVisualizer weatherVisualizer;
+    private DirectionalLight sunLight;
 
     public interface TerrainModificationListener {
         void onBlockChanged(int x, int y, int z, boolean added);
+    }
+
+    public interface ObjectSelectionListener {
+        void onVoxelSelected(int x, int y, int z, String material, float moisture, float temp, float compaction);
+        void onAntSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job);
+    }
+
+    private ObjectSelectionListener selectionListener;
+
+    public void setSelectionListener(ObjectSelectionListener listener) {
+        this.selectionListener = listener;
+    }
+
+    public void followAnt(String antId) {
+        this.followedAntId = antId;
     }
 
     public void setTerrainListener(TerrainModificationListener listener) {
@@ -110,6 +127,7 @@ public class JmeGameApp extends SimpleApplication {
             sun.setDirection(new Vector3f(-0.5f, -0.5f, -0.5f).normalizeLocal());
             sun.setColor(ColorRGBA.White);
             rootNode.addLight(sun);
+            this.sunLight = sun;
 
             com.jme3.light.AmbientLight al = new com.jme3.light.AmbientLight();
             al.setColor(ColorRGBA.White.mult(0.3f));
@@ -217,12 +235,9 @@ public class JmeGameApp extends SimpleApplication {
                             if (terrainListener != null) {
                                 terrainListener.onBlockChanged(x, y, z, false);
                             }
-                            // Optimistic visual update (or wait for re-render?)
-                            // For instant feedback, remove checking
                             enqueueTask(() -> geom.removeFromParent());
 
                         } else if (currentTool.equals("Add Block")) {
-                            // ... existing logic ...
                             Vector3f normal = closes.getContactNormal();
                             int ax = x + (int) Math.signum(normal.x);
                             int ay = y + (int) Math.signum(normal.y);
@@ -231,11 +246,36 @@ public class JmeGameApp extends SimpleApplication {
                             if (terrainListener != null) {
                                 terrainListener.onBlockChanged(ax, ay, az, true);
                             }
+                        } else {
+                            // Inspection mode
+                            if (selectionListener != null) {
+                                String matName = "Humus / Sol Organique";
+                                float moisture = 45.0f;
+                                float temp = 18.5f;
+                                float compaction = 65.0f;
+                                if (simulation != null && simulation.getTerrarium() != null) {
+                                    org.swarmforge.core.domain.TerrariumCell cell = simulation.getTerrarium().getCell(x, y, z);
+                                    if (cell != null) {
+                                        matName = cell.material().name();
+                                        moisture = cell.humidity() * 100.0f;
+                                        temp = cell.temperature();
+                                    }
+                                }
+                                final String fMat = matName;
+                                final float fM = moisture, fT = temp, fC = compaction;
+                                Platform.runLater(() -> selectionListener.onVoxelSelected(x, y, z, fMat, fM, fT, fC));
+                            }
                         }
                     } else if (geom.getUserData("ID") != null) {
                         // It's an ANT!
                         followedAntId = (String) geom.getUserData("ID");
+                        String stage = geom.getUserData("LifeStage") != null ? (String) geom.getUserData("LifeStage") : "ADULT";
                         System.out.println("Following Ant: " + followedAntId);
+                        if (selectionListener != null) {
+                            final String id = followedAntId;
+                            final String fStage = stage;
+                            Platform.runLater(() -> selectionListener.onAntSelected(id, "Ouvrière (Worker)", fStage, 95.0f, 88.0f, 12.0f, 450.0f, "Forager"));
+                        }
                     }
                 }
             }
@@ -347,7 +387,7 @@ public class JmeGameApp extends SimpleApplication {
         // Update Simulation Visuals
         if (simulation != null) {
             updateAntVisuals(tpf);
-            updateEnvironmentVisuals();
+            updateEnvironmentVisuals(tpf);
 
             if (pheromoneVisualizer != null && simulation.getPheromoneGrid() != null) {
                 pheromoneVisualizer.update(simulation.getPheromoneGrid());
@@ -582,15 +622,24 @@ public class JmeGameApp extends SimpleApplication {
         taskQueue.add(task);
     }
 
-    private void updateEnvironmentVisuals() {
+    private void updateEnvironmentVisuals(float tpf) {
         if (tunnelVisualizer == null) {
             tunnelVisualizer = new TunnelVisualizer(assetManager);
             rootNode.attachChild(tunnelVisualizer.getRootNode());
         }
+        if (weatherVisualizer == null) {
+            weatherVisualizer = new WeatherVisualizer(assetManager, sunLight);
+            rootNode.attachChild(weatherVisualizer.getRootNode());
+        }
 
-        if (simulation != null && !simulation.getColonies().isEmpty()) {
-            org.swarmforge.core.domain.Colony colony = simulation.getColonies().get(0);
-            tunnelVisualizer.update(colony.getTunnelNetwork());
+        if (simulation != null) {
+            if (!simulation.getColonies().isEmpty()) {
+                org.swarmforge.core.domain.Colony colony = simulation.getColonies().get(0);
+                tunnelVisualizer.update(colony.getTunnelNetwork());
+            }
+            if (simulation.getWeather() != null) {
+                weatherVisualizer.update(simulation.getWeather(), tpf);
+            }
         }
     }
 }

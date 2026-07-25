@@ -146,6 +146,24 @@ public enum Biome {
                     new MaterialWeight(TerrariumCell.Material.ORGANIC, 0.1f)
             },
             0.2f// Sparse vegetation
+    ),
+
+    /**
+     * Alpine snow and glacier biome.
+     * Sub-zero temperatures, snow cover, ice layers.
+     */
+    ALPINE_SNOW(
+            "Alpine Snow Cap",
+            -30f, 0f, // Temp range
+            60f, 95f, // Humidity range
+            75f, // High latitude / altitude
+            new MaterialWeight[] {
+                    new MaterialWeight(TerrariumCell.Material.SNOW, 0.5f),
+                    new MaterialWeight(TerrariumCell.Material.ICE, 0.3f),
+                    new MaterialWeight(TerrariumCell.Material.ROCK, 0.15f),
+                    new MaterialWeight(TerrariumCell.Material.EARTH, 0.05f)
+            },
+            0.05f // Extreme sparse vegetation
     );
 
     /**
@@ -245,6 +263,8 @@ public enum Biome {
     public static Biome forLatitude(double latitude) {
         double absLat = Math.abs(latitude);
 
+        if (absLat > 75)
+            return ALPINE_SNOW;
         if (absLat > 60)
             return TUNDRA;
         if (absLat < 10)

@@ -61,10 +61,11 @@ public class InterventionPanel extends BorderPane {
         TitledPane spawnPane = createSpawnSection();
         TitledPane killPane = createKillSection();
         TitledPane resourcePane = createResourceSection();
+        TitledPane speedPane = createCasteGenerationSpeedSection();
         TitledPane disasterPane = createDisasterSection();
         TitledPane paramPane = createParameterSection();
 
-        accordion.getPanes().addAll(spawnPane, killPane, resourcePane, disasterPane, paramPane);
+        accordion.getPanes().addAll(spawnPane, killPane, resourcePane, speedPane, disasterPane, paramPane);
         accordion.setExpandedPane(spawnPane);
 
         VBox content = new VBox(15, accordion);
@@ -192,7 +193,7 @@ public class InterventionPanel extends BorderPane {
         foodLabel.setStyle("-fx-text-fill: white;");
         Slider foodSlider = new Slider(10, 1000, 100);
         foodSlider.setShowTickLabels(true);
-        foodSlider.setPrefWidth(200);
+        foodSlider.setPrefWidth(180);
         Label foodValue = new Label("100");
         foodValue.setStyle("-fx-text-fill: #e4e4e7;");
         foodSlider.valueProperty().addListener((o,a,b) -> foodValue.setText(String.format("%.0f", b.doubleValue())));
@@ -205,6 +206,18 @@ public class InterventionPanel extends BorderPane {
             float z = Float.parseFloat(posZField.getText());
             log("Spawned " + (int)foodSlider.getValue() + " food at (" + x + "," + y + "," + z + ")");
             if (callback != null) callback.spawnFood(x, y, z, (float)foodSlider.getValue());
+        });
+
+        // Food Pile (God Mode)
+        Button btnFoodPile = new Button("⛰️ Spawn Food Pile (God Mode)");
+        btnFoodPile.setStyle("-fx-background-color: #eab308; -fx-text-fill: black; -fx-font-weight: bold;");
+        btnFoodPile.setOnAction(e -> {
+            float x = Float.parseFloat(posXField.getText());
+            float y = Float.parseFloat(posYField.getText());
+            float z = Float.parseFloat(posZField.getText());
+            float amount = (float) foodSlider.getValue() * 5.0f;
+            log("⚡ God Mode: Spawned Massive Food Pile (" + amount + " units) at (" + x + "," + y + "," + z + ")");
+            if (callback != null) callback.spawnFood(x, y, z, amount);
         });
 
         // Water spawning
@@ -221,10 +234,62 @@ public class InterventionPanel extends BorderPane {
         grid.add(foodValue, 2, 0);
         grid.add(btnFood, 1, 1);
         grid.add(btnWater, 2, 1);
-        grid.add(new Separator(), 0, 2, 3, 1);
-        grid.add(btnRemoveFood, 1, 3);
+        grid.add(btnFoodPile, 0, 2, 3, 1);
+        grid.add(new Separator(), 0, 3, 3, 1);
+        grid.add(btnRemoveFood, 1, 4);
 
-        TitledPane pane = new TitledPane("Resources", grid);
+        TitledPane pane = new TitledPane("Resources & God Mode Piles", grid);
+        styleTitledPane(pane);
+        return pane;
+    }
+
+    private TitledPane createCasteGenerationSpeedSection() {
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(15));
+
+        // Worker generation speed
+        Label lblWorkerSpeed = new Label("Génération Ouvrières (Workers):");
+        lblWorkerSpeed.setStyle("-fx-text-fill: white;");
+        Slider workerSpeedSlider = new Slider(0.1, 5.0, 1.0);
+        workerSpeedSlider.setShowTickLabels(true);
+        Label lblWorkerVal = new Label("1.0x");
+        lblWorkerVal.setStyle("-fx-text-fill: #38bdf8;");
+        workerSpeedSlider.valueProperty().addListener((o, a, b) -> {
+            lblWorkerVal.setText(String.format("%.1fx", b.doubleValue()));
+            log("Vitesse ponte/génération Ouvrières fixée à " + String.format("%.1fx", b.doubleValue()));
+        });
+
+        // Soldier generation speed
+        Label lblSoldierSpeed = new Label("Génération Soldats (Soldiers):");
+        lblSoldierSpeed.setStyle("-fx-text-fill: white;");
+        Slider soldierSpeedSlider = new Slider(0.1, 5.0, 1.0);
+        soldierSpeedSlider.setShowTickLabels(true);
+        Label lblSoldierVal = new Label("1.0x");
+        lblSoldierVal.setStyle("-fx-text-fill: #ef4444;");
+        soldierSpeedSlider.valueProperty().addListener((o, a, b) -> {
+            lblSoldierVal.setText(String.format("%.1fx", b.doubleValue()));
+            log("Vitesse ponte/génération Soldats fixée à " + String.format("%.1fx", b.doubleValue()));
+        });
+
+        // Predator generation speed
+        Label lblPredatorSpeed = new Label("Génération Prédateurs (Predators):");
+        lblPredatorSpeed.setStyle("-fx-text-fill: white;");
+        Slider predatorSpeedSlider = new Slider(0.1, 5.0, 1.0);
+        predatorSpeedSlider.setShowTickLabels(true);
+        Label lblPredatorVal = new Label("1.0x");
+        lblPredatorVal.setStyle("-fx-text-fill: #a855f7;");
+        predatorSpeedSlider.valueProperty().addListener((o, a, b) -> {
+            lblPredatorVal.setText(String.format("%.1fx", b.doubleValue()));
+            log("Taux d'apparition Prédateurs fixé à " + String.format("%.1fx", b.doubleValue()));
+        });
+
+        grid.add(lblWorkerSpeed, 0, 0); grid.add(workerSpeedSlider, 1, 0); grid.add(lblWorkerVal, 2, 0);
+        grid.add(lblSoldierSpeed, 0, 1); grid.add(soldierSpeedSlider, 1, 1); grid.add(lblSoldierVal, 2, 1);
+        grid.add(lblPredatorSpeed, 0, 2); grid.add(predatorSpeedSlider, 1, 2); grid.add(lblPredatorVal, 2, 2);
+
+        TitledPane pane = new TitledPane("⚙️ Vitesses de Génération (Castes & Prédateurs)", grid);
         styleTitledPane(pane);
         return pane;
     }

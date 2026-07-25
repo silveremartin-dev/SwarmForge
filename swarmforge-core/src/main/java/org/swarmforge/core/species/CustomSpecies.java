@@ -77,6 +77,29 @@ public class CustomSpecies implements Species {
     private float territoriality = 0.5f;
     private String venomType = "NONE"; // NONE, FORMIC_ACID, VENOMOUS_STING, CHEMICAL_SPRAY, POWERFUL_MANDIBLES
 
+    // --- Sensory Systems (Thermic, Gas, Visual, Magnetoreception, Vibration, Hygro, Electro, Polarized Light) ---
+    private boolean hasMagnetoreception = false;
+    private float magnetoreceptionSensitivity = 5.0f; // µT
+    private float thermoreceptionSensitivity = 0.5f; // °C gradient
+    private float gasSensitivityCo2Ppm = 400.0f; // ppm
+    private float visualAcuity = 1.0f;
+    private float minLightLevelThreshold = 0.05f;
+    private boolean hasSubstrateVibrationSensing = true;
+    private float vibrationSensitivityDb = 10.0f;
+    private boolean hasHygroreception = true;
+    private float hygroreceptionSensitivityPercent = 2.0f;
+    private boolean hasElectrosensing = false;
+    private float electroceptionSensitivityVolts = 50.0f;
+    private boolean hasPolarizedLightNavigation = false;
+
+    // --- Biomechanical & Motor Systems ---
+    private float wingbeatFrequencyHz = 200.0f;
+    private boolean hasHoveringCapability = false;
+    private float maxCarryingPayloadRatio = 5.0f;
+    private float mandibularBitingForceMPa = 15.0f;
+    private boolean hasAutothysis = false;
+    private boolean hasSubstrateAdhesionArolia = true;
+
     // --- Castes ---
     private List<CasteTemplate> casteTemplates = new ArrayList<>();
 
@@ -495,5 +518,101 @@ public class CustomSpecies implements Species {
 
     public float getGroomingDefenseEfficacy() { return groomingDefenseEfficacy; }
     public void setGroomingDefenseEfficacy(float groomingDefenseEfficacy) { this.groomingDefenseEfficacy = groomingDefenseEfficacy; }
+
+    @Override
+    public boolean hasMagnetoreception() { return hasMagnetoreception; }
+    public void setHasMagnetoreception(boolean hasMagnetoreception) { this.hasMagnetoreception = hasMagnetoreception; }
+
+    @Override
+    public float getMagnetoreceptionSensitivity() { return magnetoreceptionSensitivity; }
+    public void setMagnetoreceptionSensitivity(float magnetoreceptionSensitivity) { this.magnetoreceptionSensitivity = magnetoreceptionSensitivity; }
+
+    @Override
+    public float getThermoreceptionSensitivity() { return thermoreceptionSensitivity; }
+    public void setThermoreceptionSensitivity(float thermoreceptionSensitivity) { this.thermoreceptionSensitivity = thermoreceptionSensitivity; }
+
+    @Override
+    public float getGasSensitivityCo2Ppm() { return gasSensitivityCo2Ppm; }
+    public void setGasSensitivityCo2Ppm(float gasSensitivityCo2Ppm) { this.gasSensitivityCo2Ppm = gasSensitivityCo2Ppm; }
+
+    @Override
+    public float getVisualAcuity() { return visualAcuity; }
+    public void setVisualAcuity(float visualAcuity) { this.visualAcuity = visualAcuity; }
+
+    @Override
+    public float getMinLightLevelThreshold() { return minLightLevelThreshold; }
+    public void setMinLightLevelThreshold(float minLightLevelThreshold) { this.minLightLevelThreshold = minLightLevelThreshold; }
+
+    @Override
+    public boolean hasSubstrateVibrationSensing() { return hasSubstrateVibrationSensing; }
+    public void setHasSubstrateVibrationSensing(boolean hasSubstrateVibrationSensing) { this.hasSubstrateVibrationSensing = hasSubstrateVibrationSensing; }
+
+    @Override
+    public float getVibrationSensitivityDb() { return vibrationSensitivityDb; }
+    public void setVibrationSensitivityDb(float vibrationSensitivityDb) { this.vibrationSensitivityDb = vibrationSensitivityDb; }
+
+    @Override
+    public boolean hasHygroreception() { return hasHygroreception; }
+    public void setHasHygroreception(boolean hasHygroreception) { this.hasHygroreception = hasHygroreception; }
+
+    @Override
+    public float getHygroreceptionSensitivityPercent() { return hygroreceptionSensitivityPercent; }
+    public void setHygroreceptionSensitivityPercent(float hygroreceptionSensitivityPercent) { this.hygroreceptionSensitivityPercent = hygroreceptionSensitivityPercent; }
+
+    @Override
+    public boolean hasElectrosensing() { return hasElectrosensing; }
+    public void setHasElectrosensing(boolean hasElectrosensing) { this.hasElectrosensing = hasElectrosensing; }
+
+    @Override
+    public float getElectroceptionSensitivityVolts() { return electroceptionSensitivityVolts; }
+    public void setElectroceptionSensitivityVolts(float electroceptionSensitivityVolts) { this.electroceptionSensitivityVolts = electroceptionSensitivityVolts; }
+
+    @Override
+    public boolean hasPolarizedLightNavigation() { return hasPolarizedLightNavigation; }
+    public void setHasPolarizedLightNavigation(boolean hasPolarizedLightNavigation) { this.hasPolarizedLightNavigation = hasPolarizedLightNavigation; }
+
+    @Override
+    public float getWingbeatFrequencyHz() { return wingbeatFrequencyHz; }
+    public void setWingbeatFrequencyHz(float wingbeatFrequencyHz) { this.wingbeatFrequencyHz = wingbeatFrequencyHz; }
+
+    @Override
+    public boolean hasHoveringCapability() { return hasHoveringCapability; }
+    public void setHasHoveringCapability(boolean hasHoveringCapability) { this.hasHoveringCapability = hasHoveringCapability; }
+
+    @Override
+    public float getMaxCarryingPayloadRatio() { return maxCarryingPayloadRatio; }
+    public void setMaxCarryingPayloadRatio(float maxCarryingPayloadRatio) { this.maxCarryingPayloadRatio = maxCarryingPayloadRatio; }
+
+    @Override
+    public float getMandibularBitingForceMPa() { return mandibularBitingForceMPa; }
+    public void setMandibularBitingForceMPa(float mandibularBitingForceMPa) { this.mandibularBitingForceMPa = mandibularBitingForceMPa; }
+
+    @Override
+    public boolean hasAutothysis() { return hasAutothysis; }
+    public void setHasAutothysis(boolean hasAutothysis) { this.hasAutothysis = hasAutothysis; }
+
+    @Override
+    public boolean hasSubstrateAdhesionArolia() { return hasSubstrateAdhesionArolia; }
+    public void setHasSubstrateAdhesionArolia(boolean hasSubstrateAdhesionArolia) { this.hasSubstrateAdhesionArolia = hasSubstrateAdhesionArolia; }
+
+    // --- Dynamic Plugin Extensibility Attributes ---
+    private java.util.Map<String, Object> customAttributes = new java.util.HashMap<>();
+
+    @Override
+    public java.util.Map<String, Object> getCustomAttributes() { return customAttributes; }
+    public void setCustomAttributes(java.util.Map<String, Object> customAttributes) {
+        this.customAttributes = customAttributes != null ? customAttributes : new java.util.HashMap<>();
+    }
+
+    public void setCustomAttribute(String key, Object value) {
+        if (this.customAttributes == null) this.customAttributes = new java.util.HashMap<>();
+        this.customAttributes.put(key, value);
+    }
+
+    @Override
+    public Object getCustomAttribute(String key, Object defaultValue) {
+        if (customAttributes == null) return defaultValue;
+        return customAttributes.getOrDefault(key, defaultValue);
+    }
 }
 

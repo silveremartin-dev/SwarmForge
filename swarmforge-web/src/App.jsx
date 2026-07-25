@@ -14,6 +14,8 @@ import Navbar from './components/Navbar'
 import WorldEditorPanel from './components/WorldEditorPanel'
 import ClimateStudioPanel from './components/ClimateStudioPanel'
 
+import WeatherControlWidget from './components/WeatherControlWidget'
+
 // Placeholder for ErrorBoundary
 const ErrorBoundary = ({ children }) => {
     return <>{children}</>
@@ -122,6 +124,7 @@ export default function App() {
                 <>
                     <ControlPanel />
                     <InspectorPanel />
+                    <WeatherControlWidget />
                 </>
             )}
         </div>

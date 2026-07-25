@@ -70,7 +70,7 @@ public class SpeciesPresetManager {
         lasius.setTypicalColonySize(15000);
         lasius.setPrimaryDiet("HONEYDEW");
         lasius.setSecondaryDiet("INSECTS_MEAT");
-        lasius.setNestType("UNDERGROUND_BURROW");
+        lasius.setNestType("MATURE");
         lasius.setVenomType("FORMIC_ACID");
         lasius.setAggression(0.3f);
 
@@ -148,7 +148,7 @@ public class SpeciesPresetManager {
         atta.setTypicalColonySize(500000);
         atta.setPrimaryDiet("FUNGUS");
         atta.setSecondaryDiet("SUGARS_NECTAR");
-        atta.setNestType("UNDERGROUND_BURROW");
+        atta.setNestType("SUBTERRANEAN_FUNGI_VAULT");
         atta.setVenomType("POWERFUL_MANDIBLES");
         atta.setAggression(0.5f);
 
@@ -192,7 +192,7 @@ public class SpeciesPresetManager {
         apis.setTypicalColonySize(50000);
         apis.setPrimaryDiet("SUGARS_NECTAR");
         apis.setSecondaryDiet("SEEDS");
-        apis.setNestType("WAX_COMB");
+        apis.setNestType("WAX_COMB_HEXAGONAL");
         apis.setVenomType("VENOMOUS_STING");
         apis.setAggression(0.2f);
 
@@ -235,7 +235,7 @@ public class SpeciesPresetManager {
         vespula.setTypicalColonySize(8000);
         vespula.setPrimaryDiet("INSECTS_MEAT");
         vespula.setSecondaryDiet("SUGARS_NECTAR");
-        vespula.setNestType("PAPER_NEST");
+        vespula.setNestType("PAPER_PEDUNCULATE");
         vespula.setVenomType("VENOMOUS_STING");
         vespula.setAggression(0.85f);
 
@@ -270,7 +270,7 @@ public class SpeciesPresetManager {
         termite.setWorkerSpeed(0.4f);
         termite.setTypicalColonySize(100000);
         termite.setPrimaryDiet("WOOD_CELLULOSE");
-        termite.setNestType("WOOD_TUNNELS");
+        termite.setNestType("CATHEDRAL_MOUND");
         termite.setVenomType("POWERFUL_MANDIBLES");
         termite.setAggression(0.4f);
 

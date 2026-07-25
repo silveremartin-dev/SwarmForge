@@ -37,11 +37,18 @@ public class SoilStructureSystem {
 
         WeatherSystem weather = simulation.getWeather();
         float rainfall = weather.getRainfall();
+        float snowfall = weather.getSnowfall();
+        float temp = weather.getTemperature();
         float surfaceMoisture = weather.getSoilHumidityAtDepth(0);
 
         Terrarium terrarium = simulation.getTerrarium();
         if (terrarium != null) {
             applyVoxelPhysicsStep(terrarium, surfaceMoisture);
+
+            // Dynamic Snow/Ice Ground Covering Simulation
+            if (snowfall > 0 || (temp <= 0 && rainfall > 0)) {
+                applySnowIceAccumulation(terrarium, temp);
+            }
         }
 
         if (rainfall > 20.0f || surfaceMoisture > 92.0f) {
@@ -55,6 +62,35 @@ public class SoilStructureSystem {
                             simulation.getTickCount(),
                             "🌊 Soil Saturation (" + String.format("%.1f", surfaceMoisture) + "%) causing gallery flooding & voxel deformation in " + colony.getSpeciesName()
                     ));
+                }
+            }
+        }
+    }
+
+    /**
+     * Accumulates snow or ice layer over open top surface cells during snowfall or freezing precipitation.
+     */
+    private void applySnowIceAccumulation(Terrarium terrarium, float temp) {
+        int w = terrarium.getWidth();
+        int h = terrarium.getHeight();
+        int d = terrarium.getDepth();
+
+        // Sample top surface voxels for snowfall accumulation
+        for (int i = 0; i < 30; i++) {
+            int x = (int) (Math.random() * w);
+            int y = (int) (Math.random() * h);
+
+            // Find top solid ground voxel
+            for (int z = d - 2; z >= 0; z--) {
+                TerrariumCell cell = terrarium.getCell(x, y, z);
+                if (cell.material() != TerrariumCell.Material.AIR) {
+                    TerrariumCell above = terrarium.getCell(x, y, z + 1);
+                    if (above.material() == TerrariumCell.Material.AIR) {
+                        TerrariumCell.Material coverMaterial = (temp <= -2.0f) ? TerrariumCell.Material.ICE : TerrariumCell.Material.SNOW;
+                        terrarium.setCell(new TerrariumCell(x, y, z + 1, coverMaterial, new float[TerrariumCell.PHEROMONE_TYPES],
+                                temp, 95.0f, TerrariumCell.DEFAULT_CO2, TerrariumCell.DEFAULT_O2, TerrariumCell.DEFAULT_N2O, 0.8f, 0f, 0f, TerrariumCell.DEFAULT_PRESSURE));
+                    }
+                    break;
                 }
             }
         }

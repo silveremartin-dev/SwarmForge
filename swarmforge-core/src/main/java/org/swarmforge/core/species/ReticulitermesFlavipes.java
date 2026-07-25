@@ -41,6 +41,14 @@ public class ReticulitermesFlavipes extends CustomSpecies {
         setVenomType("POWERFUL_MANDIBLES");
         setAggression(0.4f);
 
+        // Sensory Profile (Magnetoreception for mound/gallery orientation, thermal & gas sensing)
+        setHasMagnetoreception(true);
+        setMagnetoreceptionSensitivity(2.5f); // High sensitivity to geomagnetic field
+        setThermoreceptionSensitivity(0.2f); // High thermal gradient sensitivity for subterranean chambers
+        setGasSensitivityCo2Ppm(350.0f); // High sensitivity to CO2 accumulation
+        setVisualAcuity(0.2f); // Reduced vision in subterranean workers
+        setMinLightLevelThreshold(0.01f);
+
         CasteTemplate termiteQueen = new CasteTemplate("Reine Physogastre", 600f, 2f);
         termiteQueen.setBodyLengthMm(22.0f);
         termiteQueen.setHeadWidthMm(3.0f);

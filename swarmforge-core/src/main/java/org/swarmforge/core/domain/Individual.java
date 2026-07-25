@@ -70,6 +70,17 @@ public class Individual implements java.io.Serializable, AgentView {
     private float attackDamage = 5f;
     private float defense = 0f;
 
+    // Cuticular Hydrocarbon (CHC) Gestalt Odor Profile
+    private float[] chcProfile = org.swarmforge.core.simulation.CuticularHydrocarbonSystem.generateColonyProfile();
+
+    public float[] getChcProfile() {
+        return chcProfile;
+    }
+
+    public void setChcProfile(float[] profile) {
+        this.chcProfile = profile;
+    }
+
     // Disease Status - Handled by DiseaseManager externally
 
     /**
@@ -230,19 +241,33 @@ public class Individual implements java.io.Serializable, AgentView {
         hunger += 0.05f * metabolism;
         thirst += 0.03f * metabolism;
 
+        // 1. Starvation & Dehydration Mortality (Hunger = 100 or Energy = 0)
         if (energy <= 0 || hunger >= 100 || thirst >= 100) {
-            alive = false; // Starved/Dehydrated
+            die(); // Mortality from starvation / exhaustion
+            return;
         }
 
+        // 2. Biological Aging Mortality Across Castes
+        float maxLifespan = 7500f; // Default worker lifespan
         if (species != null) {
-            if (caste == Caste.WORKER && age > species.getWorkerLifespan()) {
-                alive = false; // Old age
-            } else if (caste == Caste.QUEEN && age > species.getQueenLifespan()) {
-                alive = false;
-            }
+            maxLifespan = switch (caste) {
+                case QUEEN -> species.getQueenLifespan();
+                case SOLDIER -> species.getWorkerLifespan() * 1.5f;
+                case MALE -> species.getWorkerLifespan() * 0.4f;
+                case WORKER, FORAGER, NURSE -> species.getWorkerLifespan();
+            };
+        } else {
+            maxLifespan = switch (caste) {
+                case QUEEN -> 50000f;
+                case SOLDIER -> 10000f;
+                case MALE -> 3000f;
+                case WORKER, FORAGER, NURSE -> 7500f;
+            };
         }
 
-        // Disease logic moved to external DiseaseManager handling
+        if (age >= maxLifespan) {
+            die(); // Mortality from old age
+        }
     }
 
     public UUID getId() {
@@ -686,4 +711,50 @@ public class Individual implements java.io.Serializable, AgentView {
     public void setMaxHealth(float maxHealth) {
         this.maxHealth = maxHealth;
     }
+
+    // === Environmental Sensory Perception (World & Weather Sampling) ===
+
+    /**
+     * Samples the local voxel terrarium and atmospheric weather using the species' sensory parameters.
+     */
+    public SensorySample sampleSensoryEnvironment(Terrarium terrarium, org.swarmforge.core.world.WeatherSystem weather) {
+        int ix = (int) Math.floor(x);
+        int iy = (int) Math.floor(y);
+        int iz = (int) Math.floor(z);
+
+        TerrariumCell currentCell = terrarium != null ? terrarium.getCell(ix, iy, iz) : null;
+
+        float feltTemp = currentCell != null ? currentCell.temperature() : 20.0f;
+        float feltHumidity = currentCell != null ? currentCell.humidity() : 0.5f;
+        float feltCo2Ppm = currentCell != null ? currentCell.co2() : 400.0f;
+        float feltLightLux = currentCell != null ? currentCell.light() * 1000.0f : 500.0f;
+
+        // Magnetoreception
+        float geomagIntensity = (weather != null && species != null && species.hasMagnetoreception())
+                ? weather.getMagneticField() : 0.0f;
+
+        // Substrate Vibration
+        float vibrationDb = (species != null && species.hasSubstrateVibrationSensing()) ? 12.0f : 0.0f;
+
+        // Electroception
+        float electricFieldVolts = (weather != null && species != null && species.hasElectrosensing())
+                ? (weather.getWeatherState() == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.THUNDERSTORM ? 300.0f : 20.0f) : 0.0f;
+
+        // Polarized UV Compass Angle
+        float solarAzimuthRad = (weather != null && species != null && species.hasPolarizedLightNavigation())
+                ? (float) Math.toRadians(weather.getSunAngle() * 15.0f) : heading;
+
+        return new SensorySample(feltTemp, feltHumidity, feltCo2Ppm, feltLightLux, geomagIntensity, vibrationDb, electricFieldVolts, solarAzimuthRad);
+    }
+
+    public record SensorySample(
+        float temperatureCelsius,
+        float humidityRelative,
+        float co2Ppm,
+        float lightLux,
+        float geomagIntensityMicrotesla,
+        float vibrationDb,
+        float electricFieldVoltsPerMeter,
+        float solarAzimuthRad
+    ) {}
 }

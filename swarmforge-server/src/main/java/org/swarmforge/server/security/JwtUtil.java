@@ -10,10 +10,17 @@ import java.util.List;
 
 public class JwtUtil {
 
-    // In production, this should be loaded from environment/secrets
-    // Using a strong key for HS256
-    private static final Key SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private static final Key SECRET_KEY;
     private static final long EXPIRATION_TIME = 86400000; // 24 hours
+
+    static {
+        String envSecret = System.getenv("SWARMFORGE_JWT_SECRET");
+        if (envSecret != null && envSecret.length() >= 32) {
+            SECRET_KEY = Keys.hmacShaKeyFor(envSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } else {
+            SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+        }
+    }
 
     public static String generateToken(String username, List<String> roles) {
         return Jwts.builder()

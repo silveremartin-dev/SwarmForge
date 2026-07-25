@@ -34,8 +34,25 @@ export const useSimulationStore = create((set, get) => ({
         humidity: 50,
         rainIntensity: 0,
         windSpeed: 0,
-        season: 'SPRING',
+        weatherState: 'CLEAR', // 'CLEAR', 'CLOUDY', 'THUNDERSTORM', 'SNOW', 'BLIZZARD', 'TEMPEST', 'HAIL', 'FOG'
     },
+
+    // Display Toggles for Simulation Mode (Soleil, Éclairs, Nuages, Pluie, Brouillard, Vent)
+    weatherToggles: {
+        showSun: true,
+        showLightning: true,
+        showClouds: true,
+        showPrecipitation: true,
+        showFog: true,
+        showWindDust: true,
+        lightningTrigger: 0,
+    },
+    setWeatherToggle: (key, value) => set(state => ({
+        weatherToggles: { ...state.weatherToggles, [key]: value }
+    })),
+    triggerLightning: () => set(state => ({
+        weatherToggles: { ...state.weatherToggles, lightningTrigger: state.weatherToggles.lightningTrigger + 1 }
+    })),
 
     // Selection
     selectedEntity: null,

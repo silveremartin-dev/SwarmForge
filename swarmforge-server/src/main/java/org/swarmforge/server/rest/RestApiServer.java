@@ -61,11 +61,17 @@ public class RestApiServer {
         }
     }
 
+    private void handleCors(HttpExchange exchange) {
+        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
+
     private void sendJson(HttpExchange exchange, Object obj) throws IOException {
         String json = MAPPER.writeValueAsString(obj);
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+        handleCors(exchange);
         exchange.getResponseHeaders().add("Content-Type", "application/json");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
         exchange.sendResponseHeaders(200, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
@@ -76,6 +82,7 @@ public class RestApiServer {
         Map<String, Object> error = Map.of("error", message, "code", code);
         String json = MAPPER.writeValueAsString(error);
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+        handleCors(exchange);
         exchange.getResponseHeaders().add("Content-Type", "application/json");
         exchange.sendResponseHeaders(code, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
@@ -136,6 +143,12 @@ public class RestApiServer {
     class ControlHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                handleCors(exchange);
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
             if (!"POST".equals(exchange.getRequestMethod())) {
                 sendError(exchange, 405, "Method not allowed");
                 return;

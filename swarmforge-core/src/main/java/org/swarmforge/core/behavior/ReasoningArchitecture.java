@@ -27,7 +27,8 @@ public interface ReasoningArchitecture extends java.io.Serializable {
         NEURAL_NETWORK,
         BEHAVIOR_TREE,
         BLACKBOARD,
-        HYBRID
+        HYBRID,
+        BDI
     }
 
     /**

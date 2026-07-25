@@ -7,9 +7,11 @@
 package org.swarmforge.client.ui;
 
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Separator;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
@@ -37,15 +39,20 @@ public class SimulationControlPanel extends VBox {
 
     private final Slider speedSlider;
     private final Slider timelineSlider;
+    private final javafx.scene.control.ComboBox<String> stepSizeCombo;
 
     private final Label lblSpeed;
     private final Label lblTick;
     private final Label lblTime;
+    private final Label lblDateTime;
 
     private boolean isPlaying = false;
     private float currentSpeed = 1.0f;
     private long currentTick = 0;
     private long maxTick = 0;
+    private float simulationStepSeconds = 0.016f; // Default 1/60s step
+    private java.time.LocalDateTime startDateTime = java.time.LocalDateTime.of(2026, 3, 20, 8, 0, 0);
+    private java.time.LocalDateTime currentDateTime = startDateTime;
 
     // Callbacks
     private Consumer<Void> onPlay;
@@ -54,6 +61,7 @@ public class SimulationControlPanel extends VBox {
     private Consumer<Float> onSpeedChange;
     private Consumer<Long> onSeek;
     private Consumer<Integer> onRewind;
+    private Consumer<Float> onStepChange;
 
     /** Get current tick for external state queries. */
     public long getCurrentTick() {
@@ -72,7 +80,34 @@ public class SimulationControlPanel extends VBox {
 
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
 
-        // === Row 1: Playback Controls ===
+        // === Row 1: Date/Time Display & Real-Time Status ===
+        HBox dateTimeRow = new HBox(15);
+        dateTimeRow.setAlignment(Pos.CENTER);
+
+        lblDateTime = new Label("📅 Date & Heure : 2026-03-20 08:00:00");
+        lblDateTime.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
+
+        Label lblStepTitle = new Label("Pas (dt):");
+        lblStepTitle.setStyle("-fx-text-fill: #aaa;");
+
+        stepSizeCombo = new javafx.scene.control.ComboBox<>();
+        stepSizeCombo.getItems().addAll("16.6ms (60 FPS)", "50ms (20 FPS)", "100ms (10 FPS)", "1.0s (1 FPS)", "5.0s (Fast)");
+        stepSizeCombo.getSelectionModel().selectFirst();
+        stepSizeCombo.setOnAction(e -> {
+            int idx = stepSizeCombo.getSelectionModel().getSelectedIndex();
+            switch (idx) {
+                case 0 -> simulationStepSeconds = 0.0166f;
+                case 1 -> simulationStepSeconds = 0.05f;
+                case 2 -> simulationStepSeconds = 0.1f;
+                case 3 -> simulationStepSeconds = 1.0f;
+                case 4 -> simulationStepSeconds = 5.0f;
+            }
+            if (onStepChange != null) onStepChange.accept(simulationStepSeconds);
+        });
+
+        dateTimeRow.getChildren().addAll(lblDateTime, new Separator(Orientation.VERTICAL), lblStepTitle, stepSizeCombo);
+
+        // === Row 2: Playback Controls ===
         HBox playbackRow = new HBox(5);
         playbackRow.setAlignment(Pos.CENTER);
 
@@ -121,13 +156,13 @@ public class SimulationControlPanel extends VBox {
         });
 
         btnStepForward.setOnAction(e -> {
-            // Single step forward - would need simulation support
+            // Single step forward
         });
 
         playbackRow.getChildren().addAll(
                 btnRewind, btnStepBack, btnPlay, btnPause, btnStop, btnStepForward, btnFastForward);
 
-        // === Row 2: Speed Control ===
+        // === Row 3: Speed Control ===
         HBox speedRow = new HBox(10);
         speedRow.setAlignment(Pos.CENTER);
 
@@ -164,13 +199,13 @@ public class SimulationControlPanel extends VBox {
         speedRow.getChildren().addAll(
                 lblSpeedLabel, speedSlider, lblSpeed, btnNormal, btnDouble, btnQuad);
 
-        // === Row 3: Timeline ===
+        // === Row 4: Timeline & Elapsed Time ===
         HBox timelineRow = new HBox(10);
         timelineRow.setAlignment(Pos.CENTER);
 
         lblTick = new Label(i18n.get("control.tick", 0));
         lblTick.setStyle("-fx-text-fill: #aaa;");
-        lblTick.setPrefWidth(100);
+        lblTick.setPrefWidth(120);
 
         timelineSlider = new Slider(0, 10000, 0);
         timelineSlider.setPrefWidth(400);
@@ -195,7 +230,7 @@ public class SimulationControlPanel extends VBox {
         timelineRow.getChildren().addAll(lblTick, timelineSlider, lblTime);
 
         // Add all rows
-        getChildren().addAll(playbackRow, speedRow, timelineRow);
+        getChildren().addAll(dateTimeRow, playbackRow, speedRow, timelineRow);
 
         updateButtonStates();
     }
@@ -226,14 +261,19 @@ public class SimulationControlPanel extends VBox {
     }
 
     /**
-     * Update the current tick display.
+     * Update the current tick and real-time clock display.
      */
     public void updateTick(long tick, long maxTick) {
         this.currentTick = tick;
         this.maxTick = maxTick;
 
-        lblTick.setText("Tick: " + tick);
-        lblTime.setText(formatTime(tick));
+        // Calculate real time progression
+        long totalSecondsElapsed = (long) (tick * simulationStepSeconds);
+        currentDateTime = startDateTime.plusSeconds(totalSecondsElapsed);
+
+        lblDateTime.setText("📅 Date & Heure : " + currentDateTime.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        lblTick.setText(String.format("Tick: %d (dt: %.3fs)", tick, simulationStepSeconds));
+        lblTime.setText(formatTime(totalSecondsElapsed));
 
         if (!timelineSlider.isValueChanging()) {
             timelineSlider.setMax(Math.max(maxTick, tick + 100));
@@ -241,8 +281,7 @@ public class SimulationControlPanel extends VBox {
         }
     }
 
-    private String formatTime(long ticks) {
-        long seconds = ticks / 60;
+    private String formatTime(long seconds) {
         long minutes = seconds / 60;
         long hours = minutes / 60;
         return String.format("%d:%02d:%02d", hours, minutes % 60, seconds % 60);
@@ -279,6 +318,10 @@ public class SimulationControlPanel extends VBox {
 
     public void setOnRewind(Consumer<Integer> callback) {
         this.onRewind = callback;
+    }
+
+    public void setOnStepChange(Consumer<Float> callback) {
+        this.onStepChange = callback;
     }
 
     /**

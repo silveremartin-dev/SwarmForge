@@ -11,6 +11,9 @@ import java.util.concurrent.*;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Central event bus for simulation events.
  * Supports synchronous and asynchronous event dispatch, filtering, and replay.
@@ -20,6 +23,7 @@ import java.util.function.Predicate;
  */
 public class EventBus {
 
+    private static final Logger LOG = LoggerFactory.getLogger(EventBus.class);
     private static final EventBus INSTANCE = new EventBus();
 
     // Listeners by event type
@@ -111,7 +115,7 @@ public class EventBus {
                 try {
                     listener.accept(event);
                 } catch (Exception e) {
-                    System.err.println("Event listener error: " + e.getMessage());
+                    LOG.error("Event listener error: ", e);
                 }
             }
         }
@@ -121,7 +125,7 @@ public class EventBus {
             try {
                 listener.accept(event);
             } catch (Exception e) {
-                System.err.println("Global event listener error: " + e.getMessage());
+                LOG.error("Global event listener error: ", e);
             }
         }
 

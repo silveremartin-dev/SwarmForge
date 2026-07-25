@@ -27,6 +27,11 @@ public class WeatherMarkovChain {
         HEAVY_RAIN("⛈ Pluie Forte", 0.10f),
         THUNDERSTORM("⚡ Orage Convectif", 0.05f),
         SANDSTORM("🏜️ Tempête de Sable", 0.0f),
+        HAIL("🧊 Grêle", 0.02f),
+        BLIZZARD("❄️ Blizzard / Tempête de Neige", 0.0f),
+        TEMPEST("🌪️ Tempête / Tempest", 0.0f),
+        HEATWAVE("🔥 Canicule", 0.20f),
+        DROUGHT("🌵 Sécheresse", 0.70f),
         SNOW("❄️ Neige", 0.30f);
 
         public final String label;

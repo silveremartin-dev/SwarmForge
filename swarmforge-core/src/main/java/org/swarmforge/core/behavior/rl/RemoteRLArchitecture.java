@@ -12,6 +12,8 @@ import org.swarmforge.core.behavior.AgentView;
 import org.swarmforge.core.behavior.ReasoningArchitecture;
 
 import org.swarmforge.core.simulation.SimulationContext;
+import static org.swarmforge.core.behavior.ReasoningArchitecture.Action;
+import static org.swarmforge.core.behavior.ReasoningArchitecture.ActionResult;
 import org.swarmforge.protocol.grpc.*;
 
 import java.util.logging.Logger;

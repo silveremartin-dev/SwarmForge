@@ -7,11 +7,15 @@ org.swarmforge.core.diplomacy
 org.swarmforge.core.domain
 org.swarmforge.core.ecology
 org.swarmforge.core.ecology.ai
+org.swarmforge.core.ecs
+org.swarmforge.core.ecs.components
+org.swarmforge.core.ecs.systems
 org.swarmforge.core.event
 org.swarmforge.core.evolution
 org.swarmforge.core.genetics
 org.swarmforge.core.gpu
 org.swarmforge.core.plugin
+org.swarmforge.core.scenario
 org.swarmforge.core.simulation
 org.swarmforge.core.simulation.behaviors
 org.swarmforge.core.simulation.disasters

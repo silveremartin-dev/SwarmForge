@@ -466,10 +466,9 @@ export default function WorldEditorPanel() {
                     <div style={{ marginBottom: 10 }}>
                         <label style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>Pinceau d'Édition :</label>
                         <select style={{ ...styles.input, marginTop: 4 }}>
-                            <option>⛰️ Élever / Sculpter le Sol</option>
-                            <option>⛏️ Creuser Galeries / Voxels</option>
-                            <option>🌊 Lisser le Relief</option>
-                            <option>🎨 Peindre Substrat (Terre, Sable, Argile, Pierre)</option>
+                            <option>⛰️ Élever Terrain (RAISE)</option>
+                            <option>⛏️ Creuser / Abaisser Terrain (LOWER)</option>
+                            <option>🌊 Lisser Relief (SMOOTH)</option>
                         </select>
                     </div>
                     <div style={{ ...styles.label, marginTop: 10 }}>
@@ -485,7 +484,7 @@ export default function WorldEditorPanel() {
                     <input type="range" min="10" max="100" defaultValue="50" style={styles.slider} />
 
                     <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 10 }}>
-                        💡 Cliquez et glissez sur la tri-vue synchronisée (3D, Top-Down, Profil) pour déformer physiquement le terrain voxel par voxel.
+                        💡 Le mode peinture gère uniquement l'élévation. Une stabilisation automatique des pentes empêche la création de pixels flottants.
                     </div>
                 </div>
             )}

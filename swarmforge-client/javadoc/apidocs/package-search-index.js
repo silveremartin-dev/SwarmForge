@@ -1,1 +1,1 @@
-packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html","k":"18"},{"l":"org.swarmforge.client"},{"l":"org.swarmforge.client.view"}];updateSearchResults();
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html","k":"18"},{"l":"org.swarmforge.client"},{"l":"org.swarmforge.client.ecs"},{"l":"org.swarmforge.client.util"},{"l":"org.swarmforge.client.view"}];updateSearchResults();

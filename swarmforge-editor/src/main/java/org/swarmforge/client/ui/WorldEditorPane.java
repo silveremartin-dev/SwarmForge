@@ -52,6 +52,12 @@ public class WorldEditorPane extends BorderPane {
     // View Synchronization CheckBox
     private CheckBox syncViewsCheckBox;
 
+    // Controls: 0. Terrain Source
+    private CheckBox useWebServiceTerrainCheck;
+    private ComboBox<String> webServiceProviderCombo;
+    private TextField latField;
+    private TextField lonField;
+
     // Controls: 1. Scale & Resolution
     private Slider surfaceSizeSlider; // Mètres (1.0 - 10.0m)
     private Slider resolutionSlider; // Sub-millimétrique (0.1 - 1.0mm)
@@ -100,9 +106,9 @@ public class WorldEditorPane extends BorderPane {
     private Slider brushRadiusSlider;
     private Slider brushStrengthSlider;
 
-    // Local Voxel & Terrain Grid for Real-Time Sculpting (64x64)
-    private static final int GRID_SIZE = 64;
-    private static final int SOIL_DEPTH = 16; // Nombre de couches de sol en profondeur
+    // Local Voxel & Terrain Grid for Real-Time Sculpting (128x128x32 - 524 288 voxels macro)
+    private static final int GRID_SIZE = 128;
+    private static final int SOIL_DEPTH = 32; // 32 couches de sol en profondeur
     private double[][] heightGrid = new double[GRID_SIZE][GRID_SIZE];
     // Sol 3D : [x][y][profondeur] — 0=surface, SOIL_DEPTH-1=fond
     // Materiaux: 0=Humus/Terre, 1=Sable, 2=Argile, 3=Pierre, 4=Organique
@@ -359,6 +365,9 @@ public class WorldEditorPane extends BorderPane {
 
         Accordion accordion = new Accordion();
 
+        // 0. TERRAIN SOURCE SELECTOR
+        TitledPane paneSource = new TitledPane("🌐 Source du Terrain (Procédural vs Service Web)", buildTerrainSourceBlock());
+
         // 1. SCALE & RESOLUTION
         TitledPane paneScale = new TitledPane("📐 Échelle & Voxel Sub-millimétrique", buildScaleBlock());
 
@@ -383,8 +392,8 @@ public class WorldEditorPane extends BorderPane {
         // 8. SOL 3D : STRATIFICATION & VIDES
         TitledPane paneSoil3D = new TitledPane("🗻 Sol 3D : Stratification, Humidité & Vides", buildSoil3DBlock());
 
-        accordion.getPanes().addAll(paneScale, paneSoil, paneSoil3D, paneFlora, paneHydro, paneStruct, paneNest, paneSculpt);
-        accordion.setExpandedPane(paneSoil); // Open soil block by default
+        accordion.getPanes().addAll(paneSource, paneScale, paneSoil, paneSoil3D, paneFlora, paneHydro, paneStruct, paneNest, paneSculpt);
+        accordion.setExpandedPane(paneSource); // Open source block by default
 
         cfg.getChildren().add(accordion);
 
@@ -392,6 +401,46 @@ public class WorldEditorPane extends BorderPane {
         sc.setFitToWidth(true);
         sc.setPrefWidth(340);
         return sc;
+    }
+
+    private VBox buildTerrainSourceBlock() {
+        useWebServiceTerrainCheck = new CheckBox("Importer depuis un service web (GeoData)");
+        useWebServiceTerrainCheck.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+
+        webServiceProviderCombo = new ComboBox<>();
+        webServiceProviderCombo.getItems().addAll(
+            "Google Earth / Maps Elevation API",
+            "OpenTopography SRTM DEM (Global 30m)",
+            "EU-DEM v1.1 Vegetation & Relief",
+            "USGS 3DEP High Res Elevation"
+        );
+        webServiceProviderCombo.getSelectionModel().selectFirst();
+        webServiceProviderCombo.setPrefWidth(260);
+
+        latField = new TextField("45.1885");
+        latField.setPrefWidth(120);
+        lonField = new TextField("5.7245");
+        lonField.setPrefWidth(120);
+
+        HBox geoBox = new HBox(8, new Label("Lat:") {{ setStyle("-fx-text-fill: #aaa;"); }}, latField, 
+                                 new Label("Lon:") {{ setStyle("-fx-text-fill: #aaa;"); }}, lonField);
+        geoBox.setAlignment(Pos.CENTER_LEFT);
+
+        VBox webOptions = new VBox(6,
+            new Label("Service Web GeoData:"), webServiceProviderCombo,
+            new Label("Coordonnées Géographiques:"), geoBox,
+            new Label("💡 Télécharge l'élévation et la couverture végétale réelle aux coordonnées données.") {{
+                setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+            }}
+        );
+        webOptions.setDisable(true);
+
+        useWebServiceTerrainCheck.selectedProperty().addListener((obs, oldV, newV) -> {
+            webOptions.setDisable(!newV);
+            regenerateAndRepaint();
+        });
+
+        return new VBox(10, useWebServiceTerrainCheck, webOptions);
     }
 
     private VBox buildScaleBlock() {
@@ -766,53 +815,55 @@ public class WorldEditorPane extends BorderPane {
 
     private void handleSculptClick(double mx, double my, String viewType) {
         if (enableSculptingCheck == null || !enableSculptingCheck.isSelected()) return;
-
-        int gx = (int) (Math.max(0, Math.min(1.0, mx / 600.0)) * (GRID_SIZE - 1));
-        int gy = (int) (Math.max(0, Math.min(1.0, my / 600.0)) * (GRID_SIZE - 1));
-
+        double cw = "3D".equals(viewType) ? canvas3D.getWidth() : ("SIDE".equals(viewType) ? canvasSide.getWidth() : canvasTop.getWidth());
+        double ch = "3D".equals(viewType) ? canvas3D.getHeight() : ("SIDE".equals(viewType) ? canvasSide.getHeight() : canvasTop.getHeight());
+        int gx = (int)(Math.max(0, Math.min(1.0, mx/cw)) * (GRID_SIZE-1));
+        int gy = (int)(Math.max(0, Math.min(1.0, my/ch)) * (GRID_SIZE-1));
         int radius = (int) brushRadiusSlider.getValue();
-        double strength = brushStrengthSlider.getValue() / 100.0 * 0.1;
+        double strength = brushStrengthSlider.getValue() / 100.0 * 0.08;
         String mode = brushModeSelect.getValue();
-        byte subMat = (byte) brushSubstrateSelect.getSelectionModel().getSelectedIndex();
-
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dy = -radius; dy <= radius; dy++) {
-                if (dx * dx + dy * dy <= radius * radius) {
-                    int cx = Math.max(0, Math.min(GRID_SIZE - 1, gx + dx));
-                    int cy = Math.max(0, Math.min(GRID_SIZE - 1, gy + dy));
-
+                if (dx*dx + dy*dy <= radius*radius) {
+                    int cx = Math.max(0, Math.min(GRID_SIZE-1, gx+dx));
+                    int cy2 = Math.max(0, Math.min(GRID_SIZE-1, gy+dy));
+                    double falloff = 1.0 - Math.sqrt(dx*dx+dy*dy)/(double)(radius+1);
                     if (mode != null && mode.contains("RAISE")) {
-                        heightGrid[cx][cy] = Math.min(1.0, heightGrid[cx][cy] + strength);
-                    } else if (mode != null && mode.contains("DIG")) {
-                        carvedVoxelGrid[cx][cy] = true; // Dig out voxel gallery
+                        heightGrid[cx][cy2] = Math.min(1.0, heightGrid[cx][cy2] + strength*falloff);
+                    } else if (mode != null && mode.contains("LOWER")) {
+                        heightGrid[cx][cy2] = Math.max(0.01, heightGrid[cx][cy2] - strength*falloff);
                     } else if (mode != null && mode.contains("SMOOTH")) {
-                        heightGrid[cx][cy] = (heightGrid[cx][cy] + 0.5) / 2.0;
-                    } else if (mode != null && mode.contains("PAINT")) {
-                        soilLayers[cx][cy][0] = subMat;
+                        heightGrid[cx][cy2] = lrp(heightGrid[cx][cy2], 0.5, strength*2*falloff);
                     }
                 }
             }
         }
-        applyRealTimeVoxelPhysics();
+        smoothSlopeStabilization();
+        repaintAllViews();
     }
 
-    /**
-     * Real-time physical deformation step (sand slipping under gravity, clay maintaining arches).
-     */
-    private void applyRealTimeVoxelPhysics() {
-        double sandAngleSlope = 0.08; // Sand slips if slope exceeds threshold
-        for (int x = 1; x < GRID_SIZE - 1; x++) {
-            for (int y = 1; y < GRID_SIZE - 1; y++) {
-                if (soilLayers[x][y][0] == 1) { // Sand
-                    double diff = heightGrid[x][y] - heightGrid[x + 1][y];
-                    if (diff > sandAngleSlope) {
-                        heightGrid[x][y] -= diff * 0.2;
-                        heightGrid[x + 1][y] += diff * 0.2;
-                    }
-                }
+    /** Anti-pixel-flottant : ramene les cellules trop hautes par rapport a leurs voisins. */
+    private void smoothSlopeStabilization() {
+        double maxDelta = 0.18;
+        for (int x = 1; x < GRID_SIZE-1; x++)
+            for (int y = 1; y < GRID_SIZE-1; y++) {
+                double minN = Math.min(Math.min(heightGrid[x-1][y], heightGrid[x+1][y]),
+                                       Math.min(heightGrid[x][y-1], heightGrid[x][y+1]));
+                if (heightGrid[x][y] - minN > maxDelta) heightGrid[x][y] = minN + maxDelta;
             }
-        }
     }
+
+    /** Physique sable en temps reel. */
+    private void applyRealTimeVoxelPhysics() {
+        double sandSlope = 0.08;
+        for (int x = 1; x < GRID_SIZE-1; x++)
+            for (int y = 1; y < GRID_SIZE-1; y++)
+                if (soilLayers[x][y][0] == 1) {
+                    double diff = heightGrid[x][y] - heightGrid[x+1][y];
+                    if (diff > sandSlope) { heightGrid[x][y] -= diff*0.2; heightGrid[x+1][y] += diff*0.2; }
+                }
+    }
+
 
     private boolean isSync() {
         return syncViewsCheckBox != null && syncViewsCheckBox.isSelected();
@@ -877,27 +928,46 @@ public class WorldEditorPane extends BorderPane {
             }
         }
 
-        // Draw River if enabled
-        if (riverCheck != null && riverCheck.isSelected()) {
+        // Draw River along riverPath (suivi réel de la pente)
+        if (riverCheck != null && riverCheck.isSelected() && riverPath != null && riverPath.size() > 1) {
             gc3D.setStroke(Color.web("#0284c7"));
-            gc3D.setLineWidth(riverWidthSlider.getValue() / 15.0);
+            gc3D.setLineWidth(riverWidthSlider.getValue() / 18.0 * (zoom / 7.5));
             gc3D.beginPath();
-            gc3D.moveTo(cx - 150, cy + 30);
-            gc3D.bezierCurveTo(cx - 40, cy - 20, cx + 40, cy + 80, cx + 150, cy + 20);
+            boolean first = true;
+            for (int[] pt : riverPath) {
+                int rx = pt[0], ry = pt[1];
+                double rz = heightGrid[rx][ry] * 40.0 + 2.0; // légèrement au-dessus du sol
+                double isoX = (rx - GRID_SIZE / 2.0) * Math.cos(radAz) - (ry - GRID_SIZE / 2.0) * Math.sin(radAz);
+                double isoY = (rx - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (ry - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - rz * Math.cos(radEl);
+                double px = cx + isoX * (scale / 10.0);
+                double py = cy + isoY * (scale / 10.0);
+                if (first) { gc3D.moveTo(px, py); first = false; }
+                else gc3D.lineTo(px, py);
+            }
             gc3D.stroke();
         }
 
-        // Draw Trees in 3D Viewport
+        // Draw Trees in 3D Viewport (ancrés au relief du sol)
         if (treeCountSlider != null) {
             int count = (int) treeCountSlider.getValue();
             Random rand = new Random(77);
             for (int i = 0; i < count; i++) {
-                double rx = cx + (rand.nextDouble() - 0.5) * 220;
-                double ry = cy + (rand.nextDouble() - 0.5) * 180;
+                int gx = 10 + (int)(rand.nextDouble() * (GRID_SIZE - 20));
+                int gy = 10 + (int)(rand.nextDouble() * (GRID_SIZE - 20));
+                double z = heightGrid[gx][gy] * 40.0;
+
+                double isoX = (gx - GRID_SIZE / 2.0) * Math.cos(radAz) - (gy - GRID_SIZE / 2.0) * Math.sin(radAz);
+                double isoY = (gx - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (gy - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - z * Math.cos(radEl);
+
+                double px = cx + isoX * (scale / 10.0);
+                double py = cy + isoY * (scale / 10.0);
+
+                // Tronc ancré au sol
                 gc3D.setFill(Color.web("#78350f"));
-                gc3D.fillRect(rx, ry - 30, 10, 30);
+                gc3D.fillRect(px - 3, py - 25, 6, 25);
+                // Houppier
                 gc3D.setFill(Color.web("#166534"));
-                gc3D.fillOval(rx - 15, ry - 55, 40, 35);
+                gc3D.fillOval(px - 14, py - 45, 28, 26);
             }
         }
 
@@ -917,26 +987,42 @@ public class WorldEditorPane extends BorderPane {
         double cx = sidePanX;
         double cy = sidePanY;
 
-        // Ground & Substrats Cut
-        gcSide.setFill(Color.web("#3d2817"));
-        gcSide.fillRect(10 + cx, 80 + cy, (w - 20) * sZoom, (h - 90) * sZoom);
+        double blockW = ((w - 20) / GRID_SIZE) * sZoom;
+        double blockH = ((h - 100) / SOIL_DEPTH) * sZoom;
+        int midY = GRID_SIZE / 2; // Coupe transversale au milieu
 
-        // Water Table Depth
+        // Dessin stratigraphique couche par couche
+        for (int x = 0; x < GRID_SIZE; x++) {
+            double surfaceH = heightGrid[x][midY] * 30.0 * sZoom;
+            for (int d = 0; d < SOIL_DEPTH; d++) {
+                double px = 10 + x * blockW + cx;
+                double py = 80 - surfaceH + d * blockH + cy;
+
+                if (voidGrid[x][midY][d]) {
+                    // Vides / cavernes
+                    gcSide.setFill(Color.web("#0f172a"));
+                } else {
+                    gcSide.setFill(getMaterialColor(soilLayers[x][midY][d]));
+                }
+                gcSide.fillRect(px, py, Math.max(1, blockW), Math.max(1, blockH));
+            }
+        }
+
+        // Nappe Phréatique
         double wtDepth = waterTableDepthSlider != null ? waterTableDepthSlider.getValue() : 15;
+        double wtY = 80 + (wtDepth / 50.0) * (h - 100) * sZoom + cy;
         gcSide.setFill(Color.web("#0284c7"));
-        gcSide.setGlobalAlpha(0.6);
-        gcSide.fillRect(10 + cx, 80 + wtDepth * 2.5 + cy, (w - 20) * sZoom, (h - 90 - wtDepth * 2.5) * sZoom);
+        gcSide.setGlobalAlpha(0.45);
+        gcSide.fillRect(10 + cx, wtY, (w - 20) * sZoom, (h - 20 - wtY));
         gcSide.setGlobalAlpha(1.0);
 
-        // Carved Galleries Cross-section
+        // Galeries excavées
         gcSide.setFill(Color.web("#d97706"));
-        for (int x = 0; x < GRID_SIZE; x += 4) {
-            for (int y = 0; y < GRID_SIZE; y += 4) {
-                if (carvedVoxelGrid[x][y]) {
-                    double px = 15 + (x / (double) GRID_SIZE) * (w - 30) * sZoom + cx;
-                    double py = 95 + (y / (double) GRID_SIZE) * 80 * sZoom + cy;
-                    gcSide.fillOval(px, py, 6 * sZoom, 6 * sZoom);
-                }
+        for (int x = 0; x < GRID_SIZE; x += 2) {
+            if (carvedVoxelGrid[x][midY]) {
+                double px = 10 + x * blockW + cx;
+                double py = 85 + cy;
+                gcSide.fillOval(px, py, 6 * sZoom, 6 * sZoom);
             }
         }
 
@@ -945,7 +1031,7 @@ public class WorldEditorPane extends BorderPane {
         gcSide.strokeRect(10, 10, w - 20, h - 20);
 
         gcSide.setFill(Color.WHITE);
-        gcSide.fillText("Profil Nappe & Galeries (" + String.format("%.0f", wtDepth) + "cm)", 20, 30);
+        gcSide.fillText("Profil Stratigraphique & Vides (Nappe: " + String.format("%.0f", wtDepth) + "cm)", 20, 30);
     }
 
     private void drawTop() {
@@ -959,27 +1045,56 @@ public class WorldEditorPane extends BorderPane {
         double cx = topPanX;
         double cy = topPanY;
 
-        // Soil Surface Map
         double cellW = ((w - 30) / GRID_SIZE) * tZoom;
         double cellH = ((h - 30) / GRID_SIZE) * tZoom;
 
+        // Sol en Surface
         for (int x = 0; x < GRID_SIZE; x += 2) {
             for (int y = 0; y < GRID_SIZE; y += 2) {
                 Color col = getMaterialColor(soilLayers[x][y][0]);
                 if (carvedVoxelGrid[x][y]) col = Color.web("#d97706");
                 gcTop.setFill(col);
                 gcTop.fillRect(15 + x * cellW + cx, 15 + y * cellH + cy, cellW * 2, cellH * 2);
+
+                // Overlay d'humidité si activé
+                if (showHumidityCheck != null && showHumidityCheck.isSelected()) {
+                    gcTop.setFill(Color.web("#0284c7"));
+                    gcTop.setGlobalAlpha(humidityGrid[x][y] * 0.6);
+                    gcTop.fillRect(15 + x * cellW + cx, 15 + y * cellH + cy, cellW * 2, cellH * 2);
+                    gcTop.setGlobalAlpha(1.0);
+                }
             }
         }
 
-        // River Top View
-        if (riverCheck != null && riverCheck.isSelected()) {
+        // Trace de la rivière sur la vue du dessus
+        if (riverCheck != null && riverCheck.isSelected() && riverPath != null && riverPath.size() > 1) {
             gcTop.setStroke(Color.web("#0284c7"));
-            gcTop.setLineWidth((riverWidthSlider.getValue() / 30.0) * tZoom);
+            gcTop.setLineWidth((riverWidthSlider.getValue() / 35.0) * tZoom);
             gcTop.beginPath();
-            gcTop.moveTo(15 + cx, h * 0.3 + cy);
-            gcTop.bezierCurveTo(w * 0.4 + cx, h * 0.2 + cy, w * 0.5 + cx, h * 0.8 + cy, w - 15 + cx, h * 0.7 + cy);
+            boolean first = true;
+            for (int[] pt : riverPath) {
+                double px = 15 + pt[0] * cellW + cx;
+                double py = 15 + pt[1] * cellH + cy;
+                if (first) { gcTop.moveTo(px, py); first = false; }
+                else gcTop.lineTo(px, py);
+            }
             gcTop.stroke();
+        }
+
+        // Dessin des arbres en vue Top-Down (ancrés aux cellules)
+        if (treeCountSlider != null) {
+            int count = (int) treeCountSlider.getValue();
+            Random rand = new Random(77);
+            for (int i = 0; i < count; i++) {
+                int gx = 10 + (int)(rand.nextDouble() * (GRID_SIZE - 20));
+                int gy = 10 + (int)(rand.nextDouble() * (GRID_SIZE - 20));
+                double px = 15 + gx * cellW + cx;
+                double py = 15 + gy * cellH + cy;
+                gcTop.setFill(Color.web("#166534"));
+                gcTop.fillOval(px - 6, py - 6, 12, 12);
+                gcTop.setFill(Color.web("#15803d"));
+                gcTop.fillOval(px - 3, py - 3, 6, 6);
+            }
         }
 
         gcTop.setStroke(Color.web("#38bdf8"));
@@ -1059,6 +1174,10 @@ public class WorldEditorPane extends BorderPane {
         cfg.put("resolutionMm", resolutionSlider.getValue());
         cfg.put("roughness", roughnessSlider.getValue());
         cfg.put("compaction", compactionSlider.getValue());
+        cfg.put("stratification", stratificationSlider != null ? stratificationSlider.getValue() : 0.7);
+        cfg.put("mixingRate", mixingRateSlider != null ? mixingRateSlider.getValue() : 0.3);
+        cfg.put("baseHumidity", baseHumiditySlider != null ? baseHumiditySlider.getValue() : 0.35);
+        cfg.put("voidDensity", voidDensitySlider != null ? voidDensitySlider.getValue() : 0.08);
         cfg.put("soilComposition", Map.of(
                 "earth", earthSpinner.getValue(),
                 "sand", sandSpinner.getValue(),
