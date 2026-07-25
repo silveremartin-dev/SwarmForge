@@ -255,22 +255,69 @@ public class SpeciesEditorPane extends VBox {
         return wrapScroll(grid);
     }
 
-    // --- Tab 3: Development Stages ---
+    // --- Tab 3: Development Stages & Caste Transition Matrix ---
     private ScrollPane createStagesPane() {
-        GridPane grid = createGrid();
+        VBox box = new VBox(15);
+        box.setPadding(new Insets(15));
 
+        VBox cardDurations = new VBox(10);
+        cardDurations.getStyleClass().add("card-pane");
+        Label titleDurations = new Label("⏱ Durées de Métamorphose par Stade");
+        titleDurations.getStyleClass().add("card-title");
+
+        GridPane gridDurations = createGrid();
         eggDurationField = new TextField("300");
         larvaDurationField = new TextField("600");
         larvaDietCombo = new ComboBox<>(FXCollections.observableArrayList("HIGH_PROTEIN_MEAT", "SUGAR_HONEY", "FUNGUS", "CELLULOSE", "SEEDS", "OMNIVORE"));
         larvaDietCombo.getSelectionModel().select("HIGH_PROTEIN_MEAT");
         pupaDurationField = new TextField("500");
 
-        grid.addRow(0, createWhiteLabel("Durée du stade Œuf (ticks):"), eggDurationField);
-        grid.addRow(1, createWhiteLabel("Durée du stade Larve (ticks):"), larvaDurationField);
-        grid.addRow(2, createWhiteLabel("Régime alimentaire des Larves:"), larvaDietCombo);
-        grid.addRow(3, createWhiteLabel("Durée du stade Nymphe/Cocon (ticks):"), pupaDurationField);
+        gridDurations.addRow(0, createWhiteLabel("Durée du stade Œuf (ticks):"), eggDurationField);
+        gridDurations.addRow(1, createWhiteLabel("Durée du stade Larve (ticks):"), larvaDurationField);
+        gridDurations.addRow(2, createWhiteLabel("Régime alimentaire des Larves:"), larvaDietCombo);
+        gridDurations.addRow(3, createWhiteLabel("Durée du stade Nymphe/Cocon (ticks):"), pupaDurationField);
+        cardDurations.getChildren().addAll(titleDurations, gridDurations);
 
-        return wrapScroll(grid);
+        VBox cardMatrix = new VBox(10);
+        cardMatrix.getStyleClass().add("card-pane");
+        Label titleMatrix = new Label("📊 Matrice de Détermination des Castes (Nutrition & Phéromones)");
+        titleMatrix.getStyleClass().add("card-title");
+
+        GridPane gridMatrix = createGrid();
+        TextField proteinMinorF = new TextField("0.35");
+        TextField proteinMajorF = new TextField("0.70");
+        TextField proteinSoldierF = new TextField("0.85");
+        TextField proteinQueenF = new TextField("0.95");
+        Slider pheroInhibSlider = new Slider(0.0, 1.0, 0.8);
+        pheroInhibSlider.setShowTickLabels(true); pheroInhibSlider.setShowTickMarks(true);
+        CheckBox haplodiploidyCheck = new CheckBox("Arrhénotokie / Haplodiploïdie (Œuf non-fécondé = Mâle)");
+        haplodiploidyCheck.setSelected(true);
+
+        gridMatrix.addRow(0, createWhiteLabel("Seuil Protéique Ouvrière Minor (%):"), proteinMinorF);
+        gridMatrix.addRow(1, createWhiteLabel("Seuil Protéique Ouvrière Major (%):"), proteinMajorF);
+        gridMatrix.addRow(2, createWhiteLabel("Seuil Protéique Soldat (%):"), proteinSoldierF);
+        gridMatrix.addRow(3, createWhiteLabel("Seuil Protéique Nourriture Royale (%):"), proteinQueenF);
+        gridMatrix.addRow(4, createWhiteLabel("Inhibition Phéromonale Reine:"), pheroInhibSlider);
+        gridMatrix.addRow(5, createWhiteLabel("Détermination des Mâles:"), haplodiploidyCheck);
+        cardMatrix.getChildren().addAll(titleMatrix, gridMatrix);
+
+        VBox cardImmunity = new VBox(10);
+        cardImmunity.getStyleClass().add("card-pane");
+        Label titleImmunity = new Label("🦠 Immunité & Défense Sanitaire (Allogrooming & Hygiène)");
+        titleImmunity.getStyleClass().add("card-title");
+
+        GridPane gridImmunity = createGrid();
+        Slider pathResistanceSlider = new Slider(0.0, 1.0, 0.5);
+        pathResistanceSlider.setShowTickLabels(true); pathResistanceSlider.setShowTickMarks(true);
+        Slider groomingSlider = new Slider(0.0, 1.0, 0.7);
+        groomingSlider.setShowTickLabels(true); groomingSlider.setShowTickMarks(true);
+
+        gridImmunity.addRow(0, createWhiteLabel("Résistance Immunitaire Pathogènes:"), pathResistanceSlider);
+        gridImmunity.addRow(1, createWhiteLabel("Efficacité Toilette Sociale (Grooming):"), groomingSlider);
+        cardImmunity.getChildren().addAll(titleImmunity, gridImmunity);
+
+        box.getChildren().addAll(cardDurations, cardMatrix, cardImmunity);
+        return wrapScroll(box);
     }
 
     // --- Tab 4: Castes & Morphology ---

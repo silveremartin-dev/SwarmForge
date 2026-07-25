@@ -59,11 +59,16 @@ public class AccessorySpeciesEditorPane extends VBox {
         // Toolbar
         HBox topToolbar = createToolbar();
 
-        // Content Split: Left (Taxonomy & Thermal), Right (Seasonal Matrix)
-        HBox contentBox = new HBox(20);
-        contentBox.getChildren().addAll(createTaxonomyCard(), createSeasonalCard());
-        HBox.setHgrow(contentBox.getChildren().get(0), Priority.ALWAYS);
-        HBox.setHgrow(contentBox.getChildren().get(1), Priority.ALWAYS);
+        // Content Split: Left (Taxonomy & Thermal), Middle (Seasonal Matrix), Right (Predators & Pathogens)
+        HBox contentBox = new HBox(15);
+        VBox colLeft = createTaxonomyCard();
+        VBox colMid = createSeasonalCard();
+        VBox colRight = createPredatorPathogenCard();
+
+        contentBox.getChildren().addAll(colLeft, colMid, colRight);
+        HBox.setHgrow(colLeft, Priority.ALWAYS);
+        HBox.setHgrow(colMid, Priority.ALWAYS);
+        HBox.setHgrow(colRight, Priority.ALWAYS);
 
         getChildren().addAll(headerLabel, topToolbar, new Separator(), contentBox);
     }
@@ -79,8 +84,10 @@ public class AccessorySpeciesEditorPane extends VBox {
                 "swarmforge-accessory-gramineae",
                 "swarmforge-accessory-cinara-aphid",
                 "swarmforge-accessory-tenebrio-larva",
-                "swarmforge-accessory-polytrichum-moss",
-                "swarmforge-accessory-cirsium-flower"
+                "swarmforge-accessory-myrmeleon-antlion",
+                "swarmforge-accessory-cordyceps-fungus",
+                "swarmforge-accessory-varroa-mite",
+                "swarmforge-accessory-polytrichum-moss"
         ));
         accessoryPresetCombo.getSelectionModel().selectFirst();
         accessoryPresetCombo.setPrefWidth(240);
@@ -111,6 +118,8 @@ public class AccessorySpeciesEditorPane extends VBox {
                 "FLORA (Plantes & Graines)",
                 "APHID_MUTUALIST (Pucerons & Miellat)",
                 "PREY_INSECT (Insectes Proies)",
+                "PREDATOR (Prédateurs: Spiders, Ant-lions, Birds)",
+                "PATHOGEN_PARASITE (Pathogènes: Cordyceps, Microsporidies, Acariens)",
                 "FUNGI (Champignons Symbiotiques)",
                 "DETRITIVORE (Collemboles & Cloportes)"
         ));
@@ -153,7 +162,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         VBox card = new VBox(12);
         card.getStyleClass().add("card-pane");
 
-        Label title = new Label("Profil de Saisonnalité (Multiplicateurs d'Activité / Abondance)");
+        Label title = new Label("Profil de Saisonnalité (Activité)");
         title.getStyleClass().add("card-title");
 
         springSlider = createSlider(0.8);
@@ -168,10 +177,57 @@ public class AccessorySpeciesEditorPane extends VBox {
                 new Label("❄️ Hiver (Décembre - Février):"), winterSlider
         );
 
-        Label hint = new Label("💡 Ces coefficients pondèrent la reproduction, la germination et la présence des ressources selon la saison courante du climat.");
+        Label hint = new Label("💡 Ces coefficients pondèrent la reproduction, la germination et la présence des ressources selon la saison.");
         hint.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
         card.getChildren().addAll(title, slidersBox, new Separator(), hint);
+        return card;
+    }
+
+    private VBox createPredatorPathogenCard() {
+        VBox card = new VBox(10);
+        card.getStyleClass().add("card-pane");
+
+        Label title = new Label("🦅 Prédateurs & 🦠 Pathogènes / Maladies");
+        title.getStyleClass().add("card-title");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(10);
+
+        ComboBox<String> targetCasteCombo = new ComboBox<>(FXCollections.observableArrayList("Ouvrières", "Nymphes / Couvain", "Sexués / Reines", "Toutes Castes"));
+        targetCasteCombo.getSelectionModel().selectFirst();
+
+        ComboBox<String> huntModeCombo = new ComboBox<>(FXCollections.observableArrayList(
+                "Piège / Entonnoir (Fourmilion)",
+                "Embrouille / Affût (Araignée)",
+                "Attaque Directe (Oiseau / Tamandua)",
+                "Parasitoïde (Ponte interne / Guêpe)"
+        ));
+        huntModeCombo.getSelectionModel().selectFirst();
+
+        TextField killRateField = new TextField("3.5");
+
+        ComboBox<String> pathogenVectorCombo = new ComboBox<>(FXCollections.observableArrayList(
+                "Spores Aériennes (Cordyceps)",
+                "Contact Sol & Galerie",
+                "Toilette / Allogrooming",
+                "Nourriture Contaminée"
+        ));
+        pathogenVectorCombo.getSelectionModel().selectFirst();
+
+        TextField transmissionR0Field = new TextField("2.4");
+        TextField incubationDaysField = new TextField("4.0");
+        TextField mortalityRateField = new TextField("15.0");
+
+        grid.addRow(0, createLabel("Caste Cible Prédatée:"), targetCasteCombo);
+        grid.addRow(1, createLabel("Mode de Chasse / Attaque:"), huntModeCombo);
+        grid.addRow(2, createLabel("Taux de Capture (victimes/j):"), killRateField);
+        grid.addRow(3, createLabel("Vecteur Pathogène / Maladie:"), pathogenVectorCombo);
+        grid.addRow(4, createLabel("Taux Transmission R0:"), transmissionR0Field);
+        grid.addRow(5, createLabel("Incubation (jours):"), incubationDaysField);
+        grid.addRow(6, createLabel("Mortalité (%/jour):"), mortalityRateField);
+
+        card.getChildren().addAll(title, grid);
         return card;
     }
 

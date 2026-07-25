@@ -18,6 +18,7 @@ import javafx.scene.paint.Color;
 import java.io.File;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 
 /**
  * World Editor Pane for SwarmForge Studio.
@@ -100,10 +101,23 @@ public class WorldEditorPane extends BorderPane {
     private Slider brushStrengthSlider;
 
     // Local Voxel & Terrain Grid for Real-Time Sculpting (64x64)
-    private final int GRID_SIZE = 64;
+    private static final int GRID_SIZE = 64;
+    private static final int SOIL_DEPTH = 16; // Nombre de couches de sol en profondeur
     private double[][] heightGrid = new double[GRID_SIZE][GRID_SIZE];
-    private byte[][] materialGrid = new byte[GRID_SIZE][GRID_SIZE]; // 0: Earth, 1: Sand, 2: Clay, 3: Stone, 4: Organic
-    private boolean[][] carvedVoxelGrid = new boolean[GRID_SIZE][GRID_SIZE]; // Real-time excavated voxels
+    // Sol 3D : [x][y][profondeur] — 0=surface, SOIL_DEPTH-1=fond
+    // Materiaux: 0=Humus/Terre, 1=Sable, 2=Argile, 3=Pierre, 4=Organique
+    private byte[][][] soilLayers  = new byte[GRID_SIZE][GRID_SIZE][SOIL_DEPTH];
+    private float[][]  humidityGrid = new float[GRID_SIZE][GRID_SIZE];  // 0.0-1.0
+    private boolean[][][] voidGrid  = new boolean[GRID_SIZE][GRID_SIZE][SOIL_DEPTH]; // cavernes
+    private boolean[][] carvedVoxelGrid = new boolean[GRID_SIZE][GRID_SIZE];
+    private List<int[]> riverPath = new ArrayList<>(); // chemin calculé sur heightmap
+
+    // Nouveaux sliders de génération du substrat
+    private Slider stratificationSlider; // 0=mélangé, 1=strates parfaites
+    private Slider mixingRateSlider;     // taux de bruit sur les frontières
+    private Slider baseHumiditySlider;   // humidité de base
+    private Slider voidDensitySlider;    // densité des cavernes
+    private CheckBox showHumidityCheck;  // overlay humidité (vue Top)
 
     // Callbacks
     private Consumer<Map<String, Object>> onGenerateCallback;
@@ -122,17 +136,191 @@ public class WorldEditorPane extends BorderPane {
             for (int y = 0; y < GRID_SIZE; y++) {
                 double nx = (double) x / GRID_SIZE;
                 double ny = (double) y / GRID_SIZE;
-                heightGrid[x][y] = 0.4 + 0.25 * Math.sin(nx * Math.PI * 2) * Math.cos(ny * Math.PI * 2) + rand.nextDouble() * 0.05;
-                materialGrid[x][y] = (byte) (rand.nextDouble() < 0.6 ? 0 : (rand.nextDouble() < 0.8 ? 2 : 1));
+                heightGrid[x][y] = 0.4 + 0.25 * Math.sin(nx * Math.PI * 2) * Math.cos(ny * Math.PI * 2)
+                        + 0.08 * valueNoise3D(nx * 4, ny * 4, 0)
+                        + rand.nextDouble() * 0.04;
+                heightGrid[x][y] = Math.max(0.05, Math.min(0.95, heightGrid[x][y]));
                 carvedVoxelGrid[x][y] = false;
+            }
+        }
+        generateSoilLayers(0.7, 0.3);
+        generateHumidity(0.35);
+        generateVoids(0.08);
+        riverPath = computeRiverPath();
+    }
+
+    /** Génère les couches de sol 3D selon la stratification et le taux de mélange. */
+    private void generateSoilLayers(double stratification, double mixing) {
+        for (int x = 0; x < GRID_SIZE; x++) {
+            for (int y = 0; y < GRID_SIZE; y++) {
+                // Composition de surface depuis les spinners
+                int[] surfacePct = getSurfaceComposition();
+                for (int d = 0; d < SOIL_DEPTH; d++) {
+                    double depthRatio = (double) d / (SOIL_DEPTH - 1); // 0=surface, 1=fond
+                    // Strate idéale (stratigraphie parfaite)
+                    byte idealMat;
+                    if (depthRatio < 0.15) idealMat = 0;       // Humus
+                    else if (depthRatio < 0.45) idealMat = 2;  // Argile
+                    else if (depthRatio < 0.75) idealMat = 3;  // Pierre
+                    else idealMat = 3;                          // Bedrock
+
+                    // Bruit de mélange
+                    double noise = valueNoise3D(x * 0.25, y * 0.25, d * 0.6 + 10);
+                    double rand01 = valueNoise3D(x * 0.8, y * 0.8, d * 1.5 + 50);
+
+                    byte mat;
+                    if (d == 0) {
+                        // Surface : ponderer par la composition saisie
+                        mat = pickSurfaceMaterial(surfacePct, rand01);
+                    } else {
+                        double blend = stratification + (noise - 0.5) * mixing * 2.0;
+                        if (blend > 0.5) {
+                            mat = idealMat;
+                        } else {
+                            // Matériau aléatoire pondéré par composition
+                            mat = pickSurfaceMaterial(surfacePct, rand01);
+                        }
+                    }
+                    soilLayers[x][y][d] = mat;
+                }
             }
         }
     }
 
+    private int[] getSurfaceComposition() {
+        int e = earthSpinner  != null ? earthSpinner.getValue()   : 50;
+        int s = sandSpinner   != null ? sandSpinner.getValue()    : 20;
+        int c = claySpinner   != null ? claySpinner.getValue()    : 20;
+        int st= stoneSpinner  != null ? stoneSpinner.getValue()   : 10;
+        // Normalise
+        int total = Math.max(1, e + s + c + st);
+        return new int[]{e * 100 / total, s * 100 / total, c * 100 / total, st * 100 / total};
+    }
+
+    private byte pickSurfaceMaterial(int[] pct, double rand01) {
+        double r = rand01 * 100;
+        if (r < pct[0]) return 0; // Humus
+        r -= pct[0];
+        if (r < pct[1]) return 1; // Sable
+        r -= pct[1];
+        if (r < pct[2]) return 2; // Argile
+        return 3; // Pierre
+    }
+
+    /** Génère la grille d'humidité de surface. */
+    private void generateHumidity(double baseHumidity) {
+        double wtDepth = waterTableDepthSlider != null ? waterTableDepthSlider.getValue() : 15;
+        double wtFactor = 1.0 - Math.min(1.0, wtDepth / 50.0); // plus la nappe est haute, plus c'est humide
+        for (int x = 0; x < GRID_SIZE; x++) {
+            for (int y = 0; y < GRID_SIZE; y++) {
+                double noise = valueNoise3D(x * 0.2, y * 0.2, 99);
+                humidityGrid[x][y] = (float) Math.max(0, Math.min(1,
+                        baseHumidity + wtFactor * 0.3 + (noise - 0.5) * 0.25));
+            }
+        }
+    }
+
+    /** Génère les vides souterrains (cavernes) via bruit 3D seuillé. */
+    private void generateVoids(double density) {
+        for (int x = 0; x < GRID_SIZE; x++) {
+            for (int y = 0; y < GRID_SIZE; y++) {
+                for (int d = 0; d < SOIL_DEPTH; d++) {
+                    voidGrid[x][y][d] = false;
+                    if (d < 2) continue; // Pas de vide en surface
+                    double noise = valueNoise3D(x * 0.3, y * 0.3, d * 0.8);
+                    // Le seuil diminue avec la profondeur (plus de vides en profondeur)
+                    double threshold = 1.0 - density * (0.5 + 0.5 * d / SOIL_DEPTH);
+                    voidGrid[x][y][d] = (noise > threshold);
+                    // Stabilité : si vide sous sable, le sable s'effondre
+                    if (voidGrid[x][y][d] && soilLayers[x][y][d] == 1) {
+                        voidGrid[x][y][d] = false; // Sable instable = pas de vide
+                    }
+                }
+            }
+        }
+    }
+
+    /** Calcule le chemin de la rivière par descente de gradient sur le heightmap. */
+    private List<int[]> computeRiverPath() {
+        List<int[]> path = new ArrayList<>();
+        if (riverCheck == null || !riverCheck.isSelected()) return path;
+        // Point de départ : bord supérieur, cellule la plus haute
+        int startX = GRID_SIZE / 2;
+        double maxH = -1;
+        for (int x = 4; x < GRID_SIZE - 4; x++) {
+            if (heightGrid[x][4] > maxH) { maxH = heightGrid[x][4]; startX = x; }
+        }
+        int cx = startX, cy = 4;
+        Set<String> visited = new HashSet<>();
+        int[][] dirs = {{0,1},{1,0},{-1,0},{0,-1},{1,1},{-1,1},{1,-1},{-1,-1}};
+        for (int step = 0; step < GRID_SIZE * 3; step++) {
+            if (cx < 0 || cx >= GRID_SIZE || cy < 0 || cy >= GRID_SIZE) break;
+            path.add(new int[]{cx, cy});
+            visited.add(cx + "," + cy);
+            if (cy >= GRID_SIZE - 4) break;
+            int bx = cx, by = cy;
+            double bH = heightGrid[cx][cy] + 1.0; // +1 pour forcer la descente
+            for (int[] d : dirs) {
+                int nx = cx + d[0], ny = cy + d[1];
+                if (nx < 1 || nx >= GRID_SIZE-1 || ny < 1 || ny >= GRID_SIZE-1) continue;
+                if (visited.contains(nx + "," + ny)) continue;
+                if (heightGrid[nx][ny] < bH) { bH = heightGrid[nx][ny]; bx = nx; by = ny; }
+            }
+            if (bx == cx && by == cy) break; // dépression
+            cx = bx; cy = by;
+        }
+        return path;
+    }
+
+    /** Appliquer érosion procédurale : lissage des pentes abruptes selon l'angle de repos. */
+    private void applyProceduralErosion() {
+        double[] angleOfRepose = {0.20, 0.08, 0.25, 0.35, 0.22}; // par matériau
+        for (int iter = 0; iter < 3; iter++) {
+            for (int x = 1; x < GRID_SIZE - 1; x++) {
+                for (int y = 1; y < GRID_SIZE - 1; y++) {
+                    byte mat = soilLayers[x][y][0];
+                    double maxSlope = mat < angleOfRepose.length ? angleOfRepose[mat] : 0.2;
+                    double h = heightGrid[x][y];
+                    double[] nb = {heightGrid[x-1][y], heightGrid[x+1][y],
+                                   heightGrid[x][y-1], heightGrid[x][y+1]};
+                    double minN = Arrays.stream(nb).min().getAsDouble();
+                    if (h - minN > maxSlope) heightGrid[x][y] = minN + maxSlope;
+                }
+            }
+        }
+    }
+
+    /** Recalcule toutes les données puis redessine. */
+    private void regenerateAndRepaint() {
+        double strat = stratificationSlider != null ? stratificationSlider.getValue() : 0.7;
+        double mix   = mixingRateSlider    != null ? mixingRateSlider.getValue()    : 0.3;
+        double hum   = baseHumiditySlider  != null ? baseHumiditySlider.getValue()  : 0.35;
+        double voids = voidDensitySlider   != null ? voidDensitySlider.getValue()   : 0.08;
+        generateSoilLayers(strat, mix);
+        generateHumidity(hum);
+        generateVoids(voids);
+        riverPath = computeRiverPath();
+        repaintAllViews();
+    }
+
+    // ── Bruit de valeur 3D (hash-based smooth noise) ──────────────────────────
+    private double valueNoise3D(double x, double y, double z) {
+        int ix=(int)Math.floor(x), iy=(int)Math.floor(y), iz=(int)Math.floor(z);
+        double fx=x-ix, fy=y-iy, fz=z-iz;
+        fx=fx*fx*(3-2*fx); fy=fy*fy*(3-2*fy); fz=fz*fz*(3-2*fz);
+        double c000=h3(ix,iy,iz),   c100=h3(ix+1,iy,iz),   c010=h3(ix,iy+1,iz),   c110=h3(ix+1,iy+1,iz);
+        double c001=h3(ix,iy,iz+1), c101=h3(ix+1,iy,iz+1), c011=h3(ix,iy+1,iz+1), c111=h3(ix+1,iy+1,iz+1);
+        return lrp(bilerp(c000,c100,c010,c110,fx,fy), bilerp(c001,c101,c011,c111,fx,fy), fz);
+    }
+    private double h3(int x,int y,int z){int n=x*1301+y*14057+z*199999;n^=(n>>>8);n*=0x45d9f3b;n^=(n>>>8);return((n&0x7fffffff)/(double)0x7fffffff);}
+    private double lrp(double a,double b,double t){return a+t*(b-a);}
+    private double bilerp(double c00,double c10,double c01,double c11,double u,double v){return lrp(lrp(c00,c10,u),lrp(c01,c11,u),v);}
+
+
     private VBox buildHeader() {
         VBox v = new VBox(6);
         v.setPadding(new Insets(8, 12, 6, 12));
-        v.setStyle("-fx-background-color: #141824; -fx-border-color: #333; -fx-border-width: 0 0 1 0;");
+        v.setStyle("-fx-background-color: #18181b; -fx-border-color: #27272a; -fx-border-width: 0 0 1 0;");
 
         HBox r = new HBox(10);
         r.setAlignment(Pos.CENTER_LEFT);
@@ -147,15 +335,15 @@ public class WorldEditorPane extends BorderPane {
         HBox.setHgrow(sp, Priority.ALWAYS);
 
         Button bExport = new Button("💾 Sauvegarder Preset (JSON)");
-        bExport.setStyle("-fx-background-color: #334155; -fx-text-fill: white;");
+        bExport.getStyleClass().add("btn-secondary");
         bExport.setOnAction(e -> doExport());
 
         Button bImport = new Button("📂 Charger Preset (JSON)");
-        bImport.setStyle("-fx-background-color: #334155; -fx-text-fill: white;");
+        bImport.getStyleClass().add("btn-secondary");
         bImport.setOnAction(e -> doImport());
 
         Button bGenerate = new Button("✨ Générer & Appliquer au Monde");
-        bGenerate.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        bGenerate.getStyleClass().add("btn-primary");
         bGenerate.setOnAction(e -> triggerGenerate());
 
         r.getChildren().addAll(title, sp, bExport, bImport, new Separator(Orientation.VERTICAL), bGenerate);
@@ -167,7 +355,7 @@ public class WorldEditorPane extends BorderPane {
         VBox cfg = new VBox(12);
         cfg.setPadding(new Insets(10));
         cfg.setPrefWidth(320);
-        cfg.setStyle("-fx-background-color: #0f172a;");
+        cfg.setStyle("-fx-background-color: #121214;");
 
         Accordion accordion = new Accordion();
 
@@ -190,9 +378,12 @@ public class WorldEditorPane extends BorderPane {
         TitledPane paneNest = new TitledPane("🏰 Nid Initial & Mode de Fondation", buildNestBlock());
 
         // 7. 3D SCULPTING BRUSHES
-        TitledPane paneSculpt = new TitledPane("🖌️ Sculpture 3D Manuelle & Voxels", buildSculptBlock());
+        TitledPane paneSculpt = new TitledPane("🖌️ Sculpture 3D (Élévation uniquement)", buildSculptBlock());
 
-        accordion.getPanes().addAll(paneScale, paneSoil, paneFlora, paneHydro, paneStruct, paneNest, paneSculpt);
+        // 8. SOL 3D : STRATIFICATION & VIDES
+        TitledPane paneSoil3D = new TitledPane("🗻 Sol 3D : Stratification, Humidité & Vides", buildSoil3DBlock());
+
+        accordion.getPanes().addAll(paneScale, paneSoil, paneSoil3D, paneFlora, paneHydro, paneStruct, paneNest, paneSculpt);
         accordion.setExpandedPane(paneSoil); // Open soil block by default
 
         cfg.getChildren().add(accordion);
@@ -221,13 +412,31 @@ public class WorldEditorPane extends BorderPane {
     private VBox buildSoilBlock() {
         roughnessSlider = mkSlider(0.0, 1.0, 0.45);
         compactionSlider = mkSlider(10.0, 100.0, 65.0);
-        addLsn(roughnessSlider, compactionSlider);
+        // roughness déclenche une régénération complète (affecte le heightmap)
+        roughnessSlider.valueProperty().addListener((o, a, b) -> {
+            // Appliquer la rugosité en perturbant le heightmap
+            double r = roughnessSlider.getValue();
+            Random rand = new Random(42);
+            for (int x = 0; x < GRID_SIZE; x++)
+                for (int y = 0; y < GRID_SIZE; y++) {
+                    double nx = (double)x/GRID_SIZE, ny = (double)y/GRID_SIZE;
+                    heightGrid[x][y] = 0.4 + r * 0.5 * Math.sin(nx*Math.PI*2)*Math.cos(ny*Math.PI*2)
+                            + r * 0.15 * valueNoise3D(nx*4, ny*4, 0) + rand.nextDouble()*0.04*r;
+                    heightGrid[x][y] = Math.max(0.05, Math.min(0.95, heightGrid[x][y]));
+                }
+            riverPath = computeRiverPath();
+            repaintAllViews();
+        });
+        compactionSlider.valueProperty().addListener((o, a, b) -> repaintAllViews());
 
         earthSpinner = mkSpinner(0, 100, 50);
         sandSpinner = mkSpinner(0, 100, 20);
         claySpinner = mkSpinner(0, 100, 20);
         stoneSpinner = mkSpinner(0, 100, 10);
         organicSpinner = mkSpinner(0, 100, 0);
+        // Les spinners de composition déclenchent une regénération des couches
+        for (Spinner<Integer> sp : new Spinner[]{earthSpinner, sandSpinner, claySpinner, stoneSpinner, organicSpinner})
+            sp.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
 
         GridPane grid = new GridPane();
         grid.setHgap(8); grid.setVgap(6);
@@ -241,8 +450,37 @@ public class WorldEditorPane extends BorderPane {
                 new Label("Rugosité du Relief (Bruit Perlin):"), sv(roughnessSlider, ""),
                 new Label("Indice de Compaction du Sol:"), sv(compactionSlider, "%"),
                 new Separator(),
-                new Label("Composition du Substrat (%) :"),
+                new Label("🏜️ Composition du Substrat Surface (%) :"),
                 grid
+        );
+    }
+
+    /** Nouveau panneau : Stratification, Humidité, Vides souterrains. */
+    private VBox buildSoil3DBlock() {
+        stratificationSlider = mkSlider(0.0, 1.0, 0.7);
+        mixingRateSlider     = mkSlider(0.0, 1.0, 0.3);
+        baseHumiditySlider   = mkSlider(0.0, 1.0, 0.35);
+        voidDensitySlider    = mkSlider(0.0, 0.5, 0.08);
+        showHumidityCheck    = new CheckBox("💧 Afficher overlay humidité (vue dessus)");
+        showHumidityCheck.setSelected(false);
+
+        // Tous ces sliders déclenchent une régénération complète
+        for (Slider s : new Slider[]{stratificationSlider, mixingRateSlider, baseHumiditySlider, voidDensitySlider})
+            s.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
+        showHumidityCheck.setOnAction(e -> repaintAllViews());
+
+        Label hint = new Label("💡 Stratification = 1 : couches nettes (humus → argile → pierre).\nStratification = 0 : mélange aléatoire.\nDensité vides = chance de cavernes en profondeur.");
+        hint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+
+        return new VBox(8,
+                new Label("🗻 Degré de Stratification:"), sv(stratificationSlider, ""),
+                new Label("🌀 Taux de Mélange des Couches:"), sv(mixingRateSlider, ""),
+                new Separator(),
+                new Label("💧 Humidité de Base:"), sv(baseHumiditySlider, ""),
+                new Separator(),
+                new Label("🚫 Densité de Vides/Cavernes:"), sv(voidDensitySlider, ""),
+                showHumidityCheck,
+                hint
         );
     }
 
@@ -251,14 +489,17 @@ public class WorldEditorPane extends BorderPane {
         nonEdibleDensitySlider = mkSlider(0, 100, 60);
         addLsn(edibleDensitySlider, nonEdibleDensitySlider);
 
-        aphidPlantCheck = new CheckBox("🟢 Cirsium / Vicia (Hôtes pucerons / miellat)"); aphidPlantCheck.setSelected(true);
-        nectarFlowersCheck = new CheckBox("🌸 Fleurs à Nectar"); nectarFlowersCheck.setSelected(true);
-        seedGrassCheck = new CheckBox("🌾 Graminées (Graines pour Messor)"); seedGrassCheck.setSelected(true);
-        fungusFoliageCheck = new CheckBox("🍃 Feuillage à Champignons (Atta)"); fungusFoliageCheck.setSelected(false);
+        aphidPlantCheck    = new CheckBox("🟢 Cirsium / Vicia (Hôtes pucerons / miellat)"); aphidPlantCheck.setSelected(true);
+        nectarFlowersCheck = new CheckBox("🌸 Fleurs à Nectar");                            nectarFlowersCheck.setSelected(true);
+        seedGrassCheck     = new CheckBox("🌾 Graminées (Graines pour Messor)");              seedGrassCheck.setSelected(true);
+        fungusFoliageCheck = new CheckBox("🍃 Feuillage à Champignons (Atta)");               fungusFoliageCheck.setSelected(false);
+        mossCheck          = new CheckBox("🟢 Mousse Polytrichum (Rétention humidité)");      mossCheck.setSelected(true);
+        pineLitterCheck    = new CheckBox("🍂 Litière d'Aiguilles de Pin");                    pineLitterCheck.setSelected(true);
+        fernObstacleCheck  = new CheckBox("🌿 Fougères (Obstacles physiques)");               fernObstacleCheck.setSelected(true);
 
-        mossCheck = new CheckBox("🟢 Mousse Polytrichum (Rétention humidité)"); mossCheck.setSelected(true);
-        pineLitterCheck = new CheckBox("🍂 Litière d'Aiguilles de Pin"); pineLitterCheck.setSelected(true);
-        fernObstacleCheck = new CheckBox("🌿 Fougères (Obstacles physiques)"); fernObstacleCheck.setSelected(true);
+        // Connexion des listeners manquants
+        addBoolLsn(aphidPlantCheck, nectarFlowersCheck, seedGrassCheck, fungusFoliageCheck,
+                   mossCheck, pineLitterCheck, fernObstacleCheck);
 
         return new VBox(6,
                 new Label("🍎 Espèces Comestibles (Ressources) :"),
@@ -316,6 +557,9 @@ public class WorldEditorPane extends BorderPane {
         prebuiltNestRadio = new RadioButton("🏛️ Nid Pré-construit (Utiliser Algorithme de Nid)");
         prebuiltNestRadio.setToggleGroup(nestModeGroup);
 
+        // Connexion des listeners manquants
+        nestModeGroup.selectedToggleProperty().addListener((o, a, b) -> repaintAllViews());
+
         Label nestHint = new Label("💡 En mode Reine Seule, le sol est laissé intact pour permettre l'excavation dynamique par la reine fondatrice.");
         nestHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
@@ -330,32 +574,34 @@ public class WorldEditorPane extends BorderPane {
         enableSculptingCheck = new CheckBox("🖌️ Activer Mode Sculpture Directe (Glisser-souris)");
         enableSculptingCheck.setSelected(false);
         enableSculptingCheck.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        enableSculptingCheck.setOnAction(e -> repaintAllViews());
 
+        // Mode peinture restreint à l'élévation uniquement
         brushModeSelect = new ComboBox<>();
         brushModeSelect.getItems().addAll(
                 "⛰️ RAISE_ELEVATION (Élever Terrain)",
-                "⛏️ DIG_CARVE (Creuser Galeries Voxels)",
-                "🌊 SMOOTH (Lisser Relief)",
-                "🎨 PAINT_SUBSTRATE (Peindre Matériau)"
+                "⛏️ LOWER_ELEVATION (Creuser Terrain)",
+                "🌊 SMOOTH (Lisser Relief)"
         );
         brushModeSelect.getSelectionModel().selectFirst();
         brushModeSelect.setPrefWidth(240);
+        brushModeSelect.valueProperty().addListener((o, a, b) -> repaintAllViews());
 
+        // brushSubstrateSelect gardé pour compatibilité mais non affiché (plus de peinture matériau)
         brushSubstrateSelect = new ComboBox<>();
         brushSubstrateSelect.getItems().addAll("Terre / Humus", "Sable", "Argile", "Pierre", "Litière Organique");
         brushSubstrateSelect.getSelectionModel().selectFirst();
-        brushSubstrateSelect.setPrefWidth(240);
 
         brushRadiusSlider = mkSlider(1, 15, 4);
         brushStrengthSlider = mkSlider(10, 100, 50);
+        addLsn(brushRadiusSlider, brushStrengthSlider);
 
-        Label sculptHint = new Label("💡 Cliquez et glissez sur les vues 3D, Top-Down ou Profil pour éditer le monde voxel par voxel.");
+        Label sculptHint = new Label("💡 Le mode peinture ne gère que l'élévation.\nUne stabilisation de pente est appliquée automatiquement pour éviter les pixels flottants.");
         sculptHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
         return new VBox(8,
                 enableSculptingCheck,
                 new Label("Mode du Pinceau :"), brushModeSelect,
-                new Label("Matériau à Appliquer :"), brushSubstrateSelect,
                 new Label("Rayon du Pinceau (Voxels):"), sv(brushRadiusSlider, "vx"),
                 new Label("Force du Pinceau:"), sv(brushStrengthSlider, "%"),
                 sculptHint
@@ -542,7 +788,7 @@ public class WorldEditorPane extends BorderPane {
                     } else if (mode != null && mode.contains("SMOOTH")) {
                         heightGrid[cx][cy] = (heightGrid[cx][cy] + 0.5) / 2.0;
                     } else if (mode != null && mode.contains("PAINT")) {
-                        materialGrid[cx][cy] = subMat;
+                        soilLayers[cx][cy][0] = subMat;
                     }
                 }
             }
@@ -557,7 +803,7 @@ public class WorldEditorPane extends BorderPane {
         double sandAngleSlope = 0.08; // Sand slips if slope exceeds threshold
         for (int x = 1; x < GRID_SIZE - 1; x++) {
             for (int y = 1; y < GRID_SIZE - 1; y++) {
-                if (materialGrid[x][y] == 1) { // Sand
+                if (soilLayers[x][y][0] == 1) { // Sand
                     double diff = heightGrid[x][y] - heightGrid[x + 1][y];
                     if (diff > sandAngleSlope) {
                         heightGrid[x][y] -= diff * 0.2;
@@ -578,6 +824,12 @@ public class WorldEditorPane extends BorderPane {
         sideZoom = 1.0; sidePanX = 0; sidePanY = 0;
         topZoom = 1.0; topPanX = 0; topPanY = 0;
         repaintAllViews();
+    }
+
+    private void addBoolLsn(CheckBox... boxes) {
+        for (CheckBox cb : boxes) {
+            if (cb != null) cb.selectedProperty().addListener((o, a, b) -> repaintAllViews());
+        }
     }
 
     // ── Drawing Methods for 3D, Top-Down, and Side Views ───────────────────────
@@ -617,7 +869,7 @@ public class WorldEditorPane extends BorderPane {
                 double px = cx + isoX * (scale / 10.0);
                 double py = cy + isoY * (scale / 10.0);
 
-                Color col = getMaterialColor(materialGrid[x][y]);
+                Color col = getMaterialColor(soilLayers[x][y][0]);
                 if (carvedVoxelGrid[x][y]) col = Color.web("#d97706"); // Gallery color
 
                 gc3D.setFill(col);
@@ -713,7 +965,7 @@ public class WorldEditorPane extends BorderPane {
 
         for (int x = 0; x < GRID_SIZE; x += 2) {
             for (int y = 0; y < GRID_SIZE; y += 2) {
-                Color col = getMaterialColor(materialGrid[x][y]);
+                Color col = getMaterialColor(soilLayers[x][y][0]);
                 if (carvedVoxelGrid[x][y]) col = Color.web("#d97706");
                 gcTop.setFill(col);
                 gcTop.fillRect(15 + x * cellW + cx, 15 + y * cellH + cy, cellW * 2, cellH * 2);

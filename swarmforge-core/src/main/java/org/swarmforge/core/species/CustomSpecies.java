@@ -38,11 +38,19 @@ public class CustomSpecies implements Species {
     private float queenEggLayingRate = 15.0f; // eggs/day or tick unit
     private String nuptialFlightType = "AERIAL_SWARM"; // AERIAL_SWARM, SWARM_DIVISION, BUDDING, IN_NEST
 
-    // --- Life Stages (Durations in ticks) ---
+    // --- Life Stages & Caste Transition Matrix Parameters ---
     private int eggStageDuration = 300;
     private int larvaStageDuration = 600;
     private int pupaStageDuration = 500;
     private String larvaDietRequirement = "HIGH_PROTEIN_MEAT"; // HIGH_PROTEIN_MEAT, SUGAR_HONEY, FUNGUS, CELLULOSE, OMNIVORE
+    private float proteinThresholdMinor = 0.35f;
+    private float proteinThresholdMajor = 0.70f;
+    private float proteinThresholdSoldier = 0.85f;
+    private float proteinThresholdQueen = 0.95f;
+    private float queenPheromoneInhibitionFactor = 0.80f;
+    private boolean haplodiploidyEnabled = true;
+    private float pathogenResistance = 0.50f;
+    private float groomingDefenseEfficacy = 0.70f;
 
     // --- Worker Traits & Physical Characteristics ---
     private int workerLifespan = 5000;
@@ -463,5 +471,29 @@ public class CustomSpecies implements Species {
     public void setCategory(SpeciesCategory category) {
         this.category = category;
     }
+
+    public float getProteinThresholdMinor() { return proteinThresholdMinor; }
+    public void setProteinThresholdMinor(float proteinThresholdMinor) { this.proteinThresholdMinor = proteinThresholdMinor; }
+
+    public float getProteinThresholdMajor() { return proteinThresholdMajor; }
+    public void setProteinThresholdMajor(float proteinThresholdMajor) { this.proteinThresholdMajor = proteinThresholdMajor; }
+
+    public float getProteinThresholdSoldier() { return proteinThresholdSoldier; }
+    public void setProteinThresholdSoldier(float proteinThresholdSoldier) { this.proteinThresholdSoldier = proteinThresholdSoldier; }
+
+    public float getProteinThresholdQueen() { return proteinThresholdQueen; }
+    public void setProteinThresholdQueen(float proteinThresholdQueen) { this.proteinThresholdQueen = proteinThresholdQueen; }
+
+    public float getQueenPheromoneInhibitionFactor() { return queenPheromoneInhibitionFactor; }
+    public void setQueenPheromoneInhibitionFactor(float queenPheromoneInhibitionFactor) { this.queenPheromoneInhibitionFactor = queenPheromoneInhibitionFactor; }
+
+    public boolean isHaplodiploidyEnabled() { return haplodiploidyEnabled; }
+    public void setHaplodiploidyEnabled(boolean haplodiploidyEnabled) { this.haplodiploidyEnabled = haplodiploidyEnabled; }
+
+    public float getPathogenResistance() { return pathogenResistance; }
+    public void setPathogenResistance(float pathogenResistance) { this.pathogenResistance = pathogenResistance; }
+
+    public float getGroomingDefenseEfficacy() { return groomingDefenseEfficacy; }
+    public void setGroomingDefenseEfficacy(float groomingDefenseEfficacy) { this.groomingDefenseEfficacy = groomingDefenseEfficacy; }
 }
 
