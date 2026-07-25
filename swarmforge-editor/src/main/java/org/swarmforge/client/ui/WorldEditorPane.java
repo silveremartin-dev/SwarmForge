@@ -208,13 +208,14 @@ public class WorldEditorPane extends BorderPane {
         resolutionSlider = mkSlider(0.1, 1.0, 0.5);
         addLsn(surfaceSizeSlider, resolutionSlider);
 
-        VBox box = new VBox(8,
+        Label scaleHint = new Label("💡 Permet de simuler précisément le diamètre des galeries (3-8 mm) et le corps des fourmis (2-15 mm).");
+        scaleHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+
+        return new VBox(8,
                 new Label("Taille de Surface (Mètres):"), sv(surfaceSizeSlider, "m"),
                 new Label("Résolution Grille / Voxel:"), sv(resolutionSlider, "mm"),
-                new Label("💡 Permet de simuler précisément le diamètre des galeries (3-8 mm) et le corps des fourmis (2-15 mm).")
+                scaleHint
         );
-        box.getChildren().get(4).setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
-        return box;
     }
 
     private VBox buildSoilBlock() {
@@ -295,14 +296,15 @@ public class WorldEditorPane extends BorderPane {
         rockCrevicesSlider = mkSlider(0, 5, 3);
         addLsn(treeCountSlider, hollowLogsSlider, rockCrevicesSlider);
 
-        VBox box = new VBox(8,
+        Label structHint = new Label("💡 Permet l'hébergement de nids arboricoles (Crematogaster, Oecophylla) ou de nids de guêpes/abeilles sociales.");
+        structHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+
+        return new VBox(8,
                 new Label("Nombre d'Arbres / Troncs:"), sv(treeCountSlider, ""),
                 new Label("Souches de Bois Creuses (Camponotus / Nids):"), sv(hollowLogsSlider, ""),
                 new Label("Fissures / Rentrées Rocheuses:"), sv(rockCrevicesSlider, ""),
-                new Label("💡 Permet l'hébergement de nids arboricoles (Crematogaster, Oecophylla) ou de nids de guêpes/abeilles sociales.")
+                structHint
         );
-        box.getChildren().get(6).setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
-        return box;
     }
 
     private VBox buildNestBlock() {
@@ -314,13 +316,14 @@ public class WorldEditorPane extends BorderPane {
         prebuiltNestRadio = new RadioButton("🏛️ Nid Pré-construit (Utiliser Algorithme de Nid)");
         prebuiltNestRadio.setToggleGroup(nestModeGroup);
 
-        VBox box = new VBox(10,
+        Label nestHint = new Label("💡 En mode Reine Seule, le sol est laissé intact pour permettre l'excavation dynamique par la reine fondatrice.");
+        nestHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+
+        return new VBox(10,
                 foundingQueenRadio,
                 prebuiltNestRadio,
-                new Label("💡 En mode Reine Seule, le sol est laissé intact pour permettre l'excavation dynamique par la reine fondatrice.")
+                nestHint
         );
-        box.getChildren().get(2).setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
-        return box;
     }
 
     private VBox buildSculptBlock() {
@@ -346,16 +349,17 @@ public class WorldEditorPane extends BorderPane {
         brushRadiusSlider = mkSlider(1, 15, 4);
         brushStrengthSlider = mkSlider(10, 100, 50);
 
-        VBox box = new VBox(8,
+        Label sculptHint = new Label("💡 Cliquez et glissez sur les vues 3D, Top-Down ou Profil pour éditer le monde voxel par voxel.");
+        sculptHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+
+        return new VBox(8,
                 enableSculptingCheck,
                 new Label("Mode du Pinceau :"), brushModeSelect,
                 new Label("Matériau à Appliquer :"), brushSubstrateSelect,
                 new Label("Rayon du Pinceau (Voxels):"), sv(brushRadiusSlider, "vx"),
                 new Label("Force du Pinceau:"), sv(brushStrengthSlider, "%"),
-                new Label("💡 Cliquez et glissez sur les vues 3D, Top-Down ou Profil pour éditer le monde voxel par voxel.")
+                sculptHint
         );
-        box.getChildren().get(10).setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
-        return box;
     }
 
     // ── Tri-View Area (3D, Top-Down, Side View) ────────────────────────────────
