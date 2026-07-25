@@ -11,8 +11,6 @@
 **/dist/
 **/build/
 .vscode/
-**/javadoc/
-/javadoc/
 
 # Secrets and Credentials
 .env
