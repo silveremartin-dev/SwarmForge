@@ -910,69 +910,9 @@ public class SpeciesEditorPane extends VBox {
     }
 
     private void showGlossaryDialog() {
-        Dialog<Void> dialog = new Dialog<>();
-        dialog.setTitle("📖 Glossaire & Guide de Conception des Espèces Eusociales");
-        dialog.setHeaderText("Guide Détaillé des Paramètres Biologiques et Architectures de Nids");
-
-        TabPane tabPane = new TabPane();
-        tabPane.setPrefSize(680, 480);
-
-        // Tab 1: Nids & Architectures
-        VBox vNest = new VBox(10); vNest.setPadding(new Insets(15));
-        vNest.getChildren().add(new Label("🏠 Architectures de Nids Supportées Nativement :"));
-        String[][] nestDocs = {
-            {"WAX_COMB_HEXAGONAL", "Rayons verticaux de cire à cellules hexagonales 3D parallèles (Abeilles domestiques Apis mellifera)."},
-            {"WAX_POTS_CLUSTER", "Grappes de pots sphériques en cire et propolis pour nectar et couvain (Bourdons Bombus)."},
-            {"PAPER_PEDUNCULATE", "Nid suspendu en papier mâché rattaché par un pédoncule, enveloppe protectrice (Guêpes & Frelons)."},
-            {"CATHEDRAL_MOUND", "Tourelles en ciment salivaire avec puits de ventilation convective et loges royales (Termites)."},
-            {"ARBOREAL_SILK_LEAF", "Capsule de feuilles vivantes cousues par de la soie larvaire dans la canopée (Fourmis tisserandes Oecophylla)."},
-            {"SUBTERRANEAN_FUNGI_VAULT", "Cavernes souterraines profondes hébergeant des jardins à champignons cultivés (Fourmis Atta/Acromyrmex)."},
-            {"CARTON_NEST", "Nid en bois mâché cartonné accroché aux troncs et branches (Fourmis Crematogaster/Azteca)."},
-            {"BAMBOO_STEM_NEST", "Nid tubulaire aménagé dans des tiges creuses ou entre-nœuds de bambou (Fourmis Pseudomyrmex)."},
-            {"BIVOUAC_LIVING_NEST", "Nid temporaire vivant formé par les corps entrelacés des ouvrières (Fourmis légionnaires Eciton)."},
-            {"MOUND", "Dôme parabolique d'aiguilles de pin capteur de chaleur solaire (Fourmis rousses Formica rufa)."},
-            {"TREE / DEAD_WOOD", "Galeries excavées dans le bois mort ou le cœur des arbres (Fourmis charpentières Camponotus)."},
-            {"MATURE / SIMPLE", "Réseau de galeries souterraines élémentaires ou matures avec chambres d'œufs et de stockage."}
-        };
-        for (String[] doc : nestDocs) {
-            Label titleLbl = new Label("• " + doc[0] + " :");
-            titleLbl.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
-            Label descLbl = new Label(doc[1]);
-            descLbl.setWrapText(true);
-            vNest.getChildren().add(new HBox(5, titleLbl, descLbl));
-        }
-
-        // Tab 2: Reines & Socialité
-        VBox vSocial = new VBox(10); vSocial.setPadding(new Insets(15));
-        vSocial.getChildren().addAll(
-            createGlossaryEntry("Mode de Reine", "MONOGYNE (1 reine unique), POLYGYNE (plusieurs reines réparties), GAMERGATES (ouvrières fécondes reproductrices)."),
-            createGlossaryEntry("Roi Reproducteur", "Caractéristique clé des termites chez qui le mâle (roi) vit en permanence aux côtés de la reine."),
-            createGlossaryEntry("Essaimage / Vol Nuptial", "AERIAL_SWARM (nuée aérienne), SWARM_DIVISION (division d'essaim abeilles), BUDDING (bouturage de nid), IN_NEST (accouplement interne)."),
-            createGlossaryEntry("Inhibition Phéromonale", "Phéromone émise par la reine pour bloquer la différenciation de nouvelles reines au sein du couvain.")
-        );
-
-        // Tab 3: Capteurs & Biomécanique
-        VBox vSensors = new VBox(10); vSensors.setPadding(new Insets(15));
-        vSensors.getChildren().addAll(
-            createGlossaryEntry("Magnétoréception (µT)", "Perception du champ magnétique terrestre permettant aux termites d'orienter leurs galeries sans lumière."),
-            createGlossaryEntry("Hygroréception (%)", "Détection du gradient d'humidité du sol pour placer le couvain aux zones optimales d'incubation."),
-            createGlossaryEntry("Gaz CO₂ (ppm)", "Seuil de dioxyde de carbone déclenchant la percée de puits d'aération contre l'asphyxie (hypercapnie)."),
-            createGlossaryEntry("Organe Subgénual (dB)", "Perception des micro-vibrations du substrat pour les signaux d'alarme par tambourinage."),
-            createGlossaryEntry("Lumière Polarisée UV", "Boussole céleste UV utilisée par les abeilles et fourmis des déserts (Cataglyphis) pour s'orienter par rapport au soleil."),
-            createGlossaryEntry("Force Mandibulaire (MPa)", "Pression de morsure des mandibules pour trancher le bois mort, le papier ou les feuilles."),
-            createGlossaryEntry("Autothysis", "Mise à feu suicidaire d'organes sécréteurs libérant une glu défensive toxique (Colobopsis explodens)."),
-            createGlossaryEntry("Adhésion Ventouses Arolia", "Coussinets tarsaux adhésifs permettant de grimper sur le verre ou marcher au plafond.")
-        );
-
-        Tab tab1 = new Tab("Architectures de Nids", new ScrollPane(vNest));
-        Tab tab2 = new Tab("Reines & Structure Sociale", new ScrollPane(vSocial));
-        Tab tab3 = new Tab("Sensors & Biomécanique", new ScrollPane(vSensors));
-
-        tabPane.getTabs().addAll(tab1, tab2, tab3);
-        dialog.getDialogPane().setContent(tabPane);
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-        dialog.showAndWait();
+        org.swarmforge.client.ui.GlossaryDialog.show();
     }
+
 
     private HBox createGlossaryEntry(String term, String definition) {
         Label t = new Label("• " + term + " : ");

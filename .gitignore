@@ -12,4 +12,17 @@
 **/build/
 .vscode/
 **/javadoc/
+/javadoc/
 
+# Secrets and Credentials
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.secret
+*.keystore
+*.p12
+*.jks
+credentials.json
+secrets.json
