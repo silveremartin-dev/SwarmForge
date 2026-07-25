@@ -99,66 +99,75 @@ public class JmeGameApp extends SimpleApplication {
 
     @Override
     public void simpleInitApp() {
-        // Disable JME built-in stats display (we have our own LIVE STATUS overlay)
-        setDisplayFps(false);
-        setDisplayStatView(false);
+        try {
+            // Disable JME built-in stats display (we have our own LIVE STATUS overlay)
+            setDisplayFps(false);
+            setDisplayStatView(false);
 
-        // Scene is empty until terrain is generated via renderTerrarium()
+            // Scene is empty until terrain is generated via renderTerrarium()
 
-        DirectionalLight sun = new DirectionalLight();
-        sun.setDirection(new Vector3f(-0.5f, -0.5f, -0.5f).normalizeLocal());
-        sun.setColor(ColorRGBA.White);
-        rootNode.addLight(sun);
+            DirectionalLight sun = new DirectionalLight();
+            sun.setDirection(new Vector3f(-0.5f, -0.5f, -0.5f).normalizeLocal());
+            sun.setColor(ColorRGBA.White);
+            rootNode.addLight(sun);
 
-        com.jme3.light.AmbientLight al = new com.jme3.light.AmbientLight();
-        al.setColor(ColorRGBA.White.mult(0.3f));
-        rootNode.addLight(al);
+            com.jme3.light.AmbientLight al = new com.jme3.light.AmbientLight();
+            al.setColor(ColorRGBA.White.mult(0.3f));
+            rootNode.addLight(al);
 
-        // Shadows
-        com.jme3.shadow.DirectionalLightShadowRenderer dlsr = new com.jme3.shadow.DirectionalLightShadowRenderer(
-                assetManager, 1024, 3);
-        dlsr.setLight(sun);
-        viewPort.addProcessor(dlsr);
+            // Shadows
+            com.jme3.shadow.DirectionalLightShadowRenderer dlsr = new com.jme3.shadow.DirectionalLightShadowRenderer(
+                    assetManager, 1024, 3);
+            dlsr.setLight(sun);
+            viewPort.addProcessor(dlsr);
 
-        // Disable standard flyCam to use custom mouse control
-        flyCam.setEnabled(false);
-        flyCam.setDragToRotate(true);
-        cam.setLocation(new Vector3f(0, 10, 10));
-        cam.lookAt(Vector3f.ZERO, Vector3f.UNIT_Y);
-        viewPort.setBackgroundColor(ColorRGBA.DarkGray);
+            // Disable standard flyCam to use custom mouse control
+            if (flyCam != null) {
+                flyCam.setEnabled(false);
+                flyCam.setDragToRotate(true);
+            }
+            cam.setLocation(new Vector3f(0, 10, 10));
+            cam.lookAt(Vector3f.ZERO, Vector3f.UNIT_Y);
+            viewPort.setBackgroundColor(ColorRGBA.DarkGray);
 
-        // Initialize simple buffer
-        pixelBuffer = BufferUtils.createByteBuffer(width * height * 4);
-        pixelData = new byte[width * height * 4];
+            // Initialize simple buffer
+            pixelBuffer = BufferUtils.createByteBuffer(width * height * 4);
+            pixelData = new byte[width * height * 4];
 
-        // Input Mappings
-        inputManager.addMapping("Click",
-                new com.jme3.input.controls.MouseButtonTrigger(com.jme3.input.MouseInput.BUTTON_LEFT));
-        inputManager.addListener(actionListener, "Click");
+            // Input Mappings
+            if (inputManager != null) {
+                inputManager.addMapping("Click",
+                        new com.jme3.input.controls.MouseButtonTrigger(com.jme3.input.MouseInput.BUTTON_LEFT));
+                inputManager.addListener(actionListener, "Click");
 
-        // Camera keyboard mappings
-        inputManager.addMapping("Pan_Left", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_A));
-        inputManager.addMapping("Pan_Right", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_D));
-        inputManager.addMapping("Pan_Forward", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_W));
-        inputManager.addMapping("Pan_Back", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_S));
-        inputManager.addMapping("Rotate_Left", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_Q));
-        inputManager.addMapping("Rotate_Right", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_E));
-        inputManager.addMapping("Zoom_In", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_R));
-        inputManager.addMapping("Zoom_Out", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_F));
-        inputManager.addMapping("Center_Colony", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_C));
-        inputManager.addMapping("Zoom_Wheel",
-                new com.jme3.input.controls.MouseAxisTrigger(com.jme3.input.MouseInput.AXIS_WHEEL, false));
-        inputManager.addMapping("Zoom_Wheel_Neg",
-                new com.jme3.input.controls.MouseAxisTrigger(com.jme3.input.MouseInput.AXIS_WHEEL, true));
+                // Camera keyboard mappings
+                inputManager.addMapping("Pan_Left", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_A));
+                inputManager.addMapping("Pan_Right", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_D));
+                inputManager.addMapping("Pan_Forward", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_W));
+                inputManager.addMapping("Pan_Back", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_S));
+                inputManager.addMapping("Rotate_Left", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_Q));
+                inputManager.addMapping("Rotate_Right", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_E));
+                inputManager.addMapping("Zoom_In", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_R));
+                inputManager.addMapping("Zoom_Out", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_F));
+                inputManager.addMapping("Center_Colony", new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_C));
+                inputManager.addMapping("Zoom_Wheel",
+                        new com.jme3.input.controls.MouseAxisTrigger(com.jme3.input.MouseInput.AXIS_WHEEL, false));
+                inputManager.addMapping("Zoom_Wheel_Neg",
+                        new com.jme3.input.controls.MouseAxisTrigger(com.jme3.input.MouseInput.AXIS_WHEEL, true));
 
-        inputManager.addListener(cameraAnalogListener, "Pan_Left", "Pan_Right", "Pan_Forward", "Pan_Back",
-                "Rotate_Left", "Rotate_Right", "Zoom_In", "Zoom_Out", "Zoom_Wheel", "Zoom_Wheel_Neg");
-        inputManager.addListener(cameraActionListener, "Center_Colony");
+                inputManager.addListener(cameraAnalogListener, "Pan_Left", "Pan_Right", "Pan_Forward", "Pan_Back",
+                        "Rotate_Left", "Rotate_Right", "Zoom_In", "Zoom_Out", "Zoom_Wheel", "Zoom_Wheel_Neg");
+                inputManager.addListener(cameraActionListener, "Center_Colony");
 
-        // Recording
-        inputManager.addMapping("Toggle_Record",
-                new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_F9));
-        inputManager.addListener(recordListener, "Toggle_Record");
+                // Recording
+                inputManager.addMapping("Toggle_Record",
+                        new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_F9));
+                inputManager.addListener(recordListener, "Toggle_Record");
+            }
+        } catch (Throwable t) {
+            System.err.println("[JME] Error during simpleInitApp: " + t.getMessage());
+            t.printStackTrace();
+        }
     }
 
     private final com.jme3.input.controls.ActionListener recordListener = (name, isPressed, tpf) -> {
