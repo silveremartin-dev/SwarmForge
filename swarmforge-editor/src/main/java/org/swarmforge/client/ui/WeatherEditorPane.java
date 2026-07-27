@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Consumer;
 import org.swarmforge.client.util.I18nManager;
+import org.swarmforge.client.util.NotificationOverlay;
 
 /**
  * Weather and Climate Editor - Realistic Geographic & Atmospheric Climate System.
@@ -376,6 +377,7 @@ public class WeatherEditorPane extends BorderPane {
                     Platform.runLater(() -> {
                         geoStatusLabel.setText(i18n.get("weather.geo.status_error", "Lieu introuvable"));
                         geoStatusLabel.setStyle("-fx-text-fill:#ff4757;-fx-font-size:11;");
+                        NotificationOverlay.show(this, "Lieu \"" + cityQuery + "\" introuvable.", NotificationOverlay.NotificationType.WARNING);
                     });
                     return;
                 }
@@ -386,43 +388,65 @@ public class WeatherEditorPane extends BorderPane {
                 double lon = loc.get("longitude").asDouble();
                 double alt = loc.has("elevation") ? loc.get("elevation").asDouble() : 100.0;
 
-                // 2. Fetch Open-Meteo Archive Climate Normals (Monthly aggregate 2023)
+                // 2. Fetch Open-Meteo Archive Climate Data (Daily parameters aggregated over 2023)
                 String climateUrlStr = String.format(Locale.US,
-                        "https://archive-api.open-meteo.com/v1/archive?latitude=%.4f&longitude=%.4f&start_date=2023-01-01&end_date=2023-12-31&monthly=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,wind_speed_10m_max,relative_humidity_2m_mean",
+                        "https://archive-api.open-meteo.com/v1/archive?latitude=%.4f&longitude=%.4f&start_date=2023-01-01&end_date=2023-12-31&daily=temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,wind_speed_10m_max",
                         lat, lon);
 
                 String climateJson = readHttpUrl(climateUrlStr);
                 com.fasterxml.jackson.databind.JsonNode climateRoot = new com.fasterxml.jackson.databind.ObjectMapper().readTree(climateJson);
 
-                if (climateRoot.has("monthly")) {
-                    com.fasterxml.jackson.databind.JsonNode mNode = climateRoot.get("monthly");
-                    com.fasterxml.jackson.databind.JsonNode tMaxN = mNode.get("temperature_2m_max");
-                    com.fasterxml.jackson.databind.JsonNode tMinN = mNode.get("temperature_2m_min");
-                    com.fasterxml.jackson.databind.JsonNode tAvgN = mNode.get("temperature_2m_mean");
-                    com.fasterxml.jackson.databind.JsonNode rainN = mNode.get("precipitation_sum");
-                    com.fasterxml.jackson.databind.JsonNode windN = mNode.get("wind_speed_10m_max");
-                    com.fasterxml.jackson.databind.JsonNode humN = mNode.get("relative_humidity_2m_mean");
+                if (climateRoot.has("daily")) {
+                    com.fasterxml.jackson.databind.JsonNode dNode = climateRoot.get("daily");
+                    com.fasterxml.jackson.databind.JsonNode timeN = dNode.get("time");
+                    com.fasterxml.jackson.databind.JsonNode tMaxN = dNode.get("temperature_2m_max");
+                    com.fasterxml.jackson.databind.JsonNode tMinN = dNode.get("temperature_2m_min");
+                    com.fasterxml.jackson.databind.JsonNode tAvgN = dNode.get("temperature_2m_mean");
+                    com.fasterxml.jackson.databind.JsonNode rainN = dNode.get("precipitation_sum");
+                    com.fasterxml.jackson.databind.JsonNode windN = dNode.get("wind_speed_10m_max");
+
+                    double[] monthlyTMaxSum = new double[12];
+                    double[] monthlyTMinSum = new double[12];
+                    double[] monthlyTAvgSum = new double[12];
+                    double[] monthlyRainSum = new double[12];
+                    double[] monthlyWindSum = new double[12];
+                    int[] monthlyDaysCount = new int[12];
+
+                    if (timeN != null && timeN.isArray()) {
+                        for (int i = 0; i < timeN.size(); i++) {
+                            String dateStr = timeN.get(i).asText();
+                            if (dateStr.length() >= 7) {
+                                int monthIndex = Integer.parseInt(dateStr.substring(5, 7)) - 1;
+                                if (monthIndex >= 0 && monthIndex < 12) {
+                                    monthlyDaysCount[monthIndex]++;
+                                    if (tMaxN != null && i < tMaxN.size() && !tMaxN.get(i).isNull()) monthlyTMaxSum[monthIndex] += tMaxN.get(i).asDouble();
+                                    if (tMinN != null && i < tMinN.size() && !tMinN.get(i).isNull()) monthlyTMinSum[monthIndex] += tMinN.get(i).asDouble();
+                                    if (tAvgN != null && i < tAvgN.size() && !tAvgN.get(i).isNull()) monthlyTAvgSum[monthIndex] += tAvgN.get(i).asDouble();
+                                    if (rainN != null && i < rainN.size() && !rainN.get(i).isNull()) monthlyRainSum[monthIndex] += rainN.get(i).asDouble();
+                                    if (windN != null && i < windN.size() && !windN.get(i).isNull()) monthlyWindSum[monthIndex] += windN.get(i).asDouble();
+                                }
+                            }
+                        }
+                    }
 
                     for (int m = 0; m < 12; m++) {
-                        if (tMaxN != null && m < tMaxN.size()) tempMax[m] = tMaxN.get(m).asDouble();
-                        if (tMinN != null && m < tMinN.size()) tempMin[m] = tMinN.get(m).asDouble();
-                        if (tAvgN != null && m < tAvgN.size()) tempAvg[m] = tAvgN.get(m).asDouble();
+                        int count = Math.max(1, monthlyDaysCount[m]);
+                        tempMax[m] = monthlyTMaxSum[m] / count;
+                        tempMin[m] = monthlyTMinSum[m] / count;
+                        tempAvg[m] = monthlyTAvgSum[m] / count;
 
-                        if (rainN != null && m < rainN.size()) {
-                            rainAvg[m] = rainN.get(m).asDouble();
-                            rainMin[m] = Math.max(0, rainAvg[m] * 0.5);
-                            rainMax[m] = rainAvg[m] * 1.5;
-                        }
-                        if (windN != null && m < windN.size()) {
-                            windAvg[m] = windN.get(m).asDouble();
-                            windMin[m] = Math.max(0, windAvg[m] * 0.5);
-                            windMax[m] = windAvg[m] * 1.8;
-                        }
-                        if (humN != null && m < humN.size()) {
-                            humidityAvg[m] = humN.get(m).asDouble();
-                            humidityMin[m] = Math.max(10, humidityAvg[m] - 15);
-                            humidityMax[m] = Math.min(100, humidityAvg[m] + 15);
-                        }
+                        rainAvg[m] = monthlyRainSum[m];
+                        rainMin[m] = Math.max(0, rainAvg[m] * 0.4);
+                        rainMax[m] = rainAvg[m] * 1.6;
+
+                        windAvg[m] = monthlyWindSum[m] / count;
+                        windMin[m] = Math.max(0, windAvg[m] * 0.4);
+                        windMax[m] = windAvg[m] * 1.8;
+
+                        double approxHum = Math.min(95, Math.max(25, 60.0 + (rainAvg[m] > 50 ? 15 : -10) - (tempAvg[m] > 25 ? 15 : 0)));
+                        humidityAvg[m] = approxHum;
+                        humidityMin[m] = Math.max(10, approxHum - 15);
+                        humidityMax[m] = Math.min(100, approxHum + 15);
                     }
                 }
 
@@ -440,12 +464,15 @@ public class WeatherEditorPane extends BorderPane {
 
                     geoStatusLabel.setText(i18n.get("weather.geo.status_success", name, String.format(Locale.US, "%.2f", lat), String.format(Locale.US, "%.2f", lon), (int) alt));
                     geoStatusLabel.setStyle("-fx-text-fill:#28a745;-fx-font-weight:bold;-fx-font-size:11;");
+
+                    NotificationOverlay.show(this, "Climat réel de " + name + " (" + String.format(Locale.US, "%.2f°N, %.2f°E", lat, lon) + ") chargé avec succès !", NotificationOverlay.NotificationType.SUCCESS);
                 });
 
             } catch (Exception ex) {
                 Platform.runLater(() -> {
                     geoStatusLabel.setText(i18n.get("weather.geo.status_error", ex.getMessage()));
                     geoStatusLabel.setStyle("-fx-text-fill:#ff4757;-fx-font-size:11;");
+                    NotificationOverlay.show(this, "Erreur météo: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
                 });
             }
         }).start();
@@ -455,12 +482,20 @@ public class WeatherEditorPane extends BorderPane {
         URL url = new URL(urlStr);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
-        conn.setConnectTimeout(5000);
-        conn.setReadTimeout(5000);
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+        conn.setConnectTimeout(6000);
+        conn.setReadTimeout(6000);
+        int status = conn.getResponseCode();
+        java.io.InputStream stream = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
+        if (stream == null) {
+            throw new java.io.IOException("Erreur HTTP " + status + " pour " + urlStr);
+        }
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) sb.append(line);
+            if (status >= 400) {
+                throw new java.io.IOException("Open-Meteo API (" + status + "): " + sb.toString());
+            }
             return sb.toString();
         }
     }
@@ -530,32 +565,35 @@ public class WeatherEditorPane extends BorderPane {
         grid.setHgap(15);
         grid.setVgap(10);
         grid.setPadding(new Insets(10));
+        ColumnConstraints c1 = new ColumnConstraints();
+        c1.setMinWidth(240);
+        c1.setPrefWidth(260);
+        c1.setHgrow(Priority.NEVER);
+        ColumnConstraints c2 = new ColumnConstraints();
+        c2.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(c1, c2);
 
         // Barometric Pressure (hPa)
-        Label lblPress = new Label("🎚️ Pression Atmosphérique (hPa) :");
-        lblPress.setStyle("-fx-font-weight:bold;");
+        Label lblPress = createTooltipLabel("🎚️ Pression Atmosphérique (hPa) :", "Pression barométrique de base calculée selon le modèle OACI de l'atmosphère standard en hectopascals (hPa).");
         pressureSpinner = new Spinner<>(800.0, 1100.0, 1013.2, 1.0);
         pressureSpinner.setEditable(true);
         pressureSpinner.setPrefWidth(100);
 
         // Prevailing Wind Direction
-        Label lblWindDir = new Label("🧭 Direction du Vent Dominant :");
-        lblWindDir.setStyle("-fx-font-weight:bold;");
+        Label lblWindDir = createTooltipLabel("🧭 Direction du Vent Dominant :", "Direction dominante des masses d'air agissant sur la dispersion des plumes phéromonales et l'envol des sexués.");
         windDirCombo = new ComboBox<>();
         windDirCombo.getItems().addAll("N", "NE", "E", "SE", "S", "SW", "W", "NW");
         windDirCombo.setValue("SW");
         windDirCombo.setPrefWidth(80);
 
         // Soil Thermal Inertia (days lag)
-        Label lblSoilInertia = new Label("🧱 Inertie Thermique du Sol (Jours de déphasage) :");
-        lblSoilInertia.setStyle("-fx-font-weight:bold;");
+        Label lblSoilInertia = createTooltipLabel("🧱 Inertie Thermique du Sol (Jours) :", "Déphasage thermique en jours de retard entre la température moyenne de l'air et la température du sol.");
         soilInertiaSpinner = new Spinner<>(0.5, 14.0, 3.0, 0.5);
         soilInertiaSpinner.setEditable(true);
         soilInertiaSpinner.setPrefWidth(90);
 
         // Underground Depth Attenuation Factor (0 to 1)
-        Label lblAtten = new Label("🕳️ Atténuation en Profondeur (0-1) :");
-        lblAtten.setStyle("-fx-font-weight:bold;");
+        Label lblAtten = createTooltipLabel("🕳️ Atténuation en Profondeur (0-1) :", "Facteur d'atténuation de l'amplitude thermique quotidienne/annuelle dans les galeries souterraines du nid.");
         depthAttenSpinner = new Spinner<>(0.0, 1.0, 0.85, 0.05);
         depthAttenSpinner.setEditable(true);
         depthAttenSpinner.setPrefWidth(90);
@@ -573,6 +611,18 @@ public class WeatherEditorPane extends BorderPane {
         styleTitledPane(pane);
         pane.setExpanded(true);
         return pane;
+    }
+
+    private Label createTooltipLabel(String text, String tooltipText) {
+        Label l = new Label(text);
+        l.setStyle("-fx-font-weight: bold;");
+        if (tooltipText != null && !tooltipText.isEmpty()) {
+            Tooltip tt = new Tooltip(tooltipText);
+            tt.setStyle("-fx-font-size: 12px; -fx-max-width: 380px; -fx-wrap-text: true;");
+            l.setTooltip(tt);
+            l.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-underline: true; -fx-cursor: hand;");
+        }
+        return l;
     }
 
     // ── Curves Section & Canvas Chart Editor ──────────────────────────────────
@@ -1127,7 +1177,7 @@ public class WeatherEditorPane extends BorderPane {
         updateSpinnersForActiveParam();
         syncAndValidate();
         redrawCurves();
-        new Alert(Alert.AlertType.INFORMATION, "Courbes réharmonisées avec succès selon les règles de cohérence physique !").show();
+        NotificationOverlay.show(this, "Courbes réharmonisées avec succès selon les règles de cohérence physique !", NotificationOverlay.NotificationType.SUCCESS);
     }
 
     private void harmonizeTriplet(double[] min, double[] avg, double[] max, int m) {
@@ -1264,7 +1314,7 @@ public class WeatherEditorPane extends BorderPane {
             presetMgr.save(name, getConfiguration());
             refreshPresetsCombo();
             presetsCombo.setValue(name);
-            new Alert(Alert.AlertType.INFORMATION, "Preset \"" + name + "\" sauvegardé.").show();
+            NotificationOverlay.show(this, "Preset \"" + name + "\" sauvegardé avec succès.", NotificationOverlay.NotificationType.SUCCESS);
         });
     }
 
@@ -1277,9 +1327,9 @@ public class WeatherEditorPane extends BorderPane {
         if (f == null) return;
         try {
             new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(f, getConfiguration());
-            new Alert(Alert.AlertType.INFORMATION, "Profil exporté avec succès !").show();
+            NotificationOverlay.show(this, "Profil exporté avec succès !", NotificationOverlay.NotificationType.SUCCESS);
         } catch (Exception ex) {
-            new Alert(Alert.AlertType.ERROR, "Erreur d'exportation : " + ex.getMessage()).show();
+            NotificationOverlay.show(this, "Erreur d'exportation : " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
         }
     }
 
@@ -1293,18 +1343,18 @@ public class WeatherEditorPane extends BorderPane {
             @SuppressWarnings("unchecked")
             Map<String, Object> cfg = new com.fasterxml.jackson.databind.ObjectMapper().readValue(f, Map.class);
             applyPresetConfig(cfg);
-            new Alert(Alert.AlertType.INFORMATION, "Profil importé avec succès !").show();
+            NotificationOverlay.show(this, "Profil importé avec succès !", NotificationOverlay.NotificationType.SUCCESS);
         } catch (Exception ex) {
-            new Alert(Alert.AlertType.ERROR, "Erreur d'importation : " + ex.getMessage()).show();
+            NotificationOverlay.show(this, "Erreur d'importation : " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
         }
     }
 
     private void applyToWorld() {
         if (onApplyCallback != null) {
             onApplyCallback.accept(getConfiguration());
-            new Alert(Alert.AlertType.INFORMATION, "Profil climatique appliqué au monde de simulation.").show();
+            NotificationOverlay.show(this, "Profil climatique appliqué au monde de simulation.", NotificationOverlay.NotificationType.SUCCESS);
         } else {
-            new Alert(Alert.AlertType.WARNING, "Aucun éditeur de monde connecté.").show();
+            NotificationOverlay.show(this, "Aucun éditeur de monde connecté.", NotificationOverlay.NotificationType.WARNING);
         }
     }
 
