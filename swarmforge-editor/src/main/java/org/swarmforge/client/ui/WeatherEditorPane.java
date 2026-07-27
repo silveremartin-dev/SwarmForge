@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.NotificationOverlay;
+import org.swarmforge.client.util.ThemeManager;
 
 /**
  * Weather and Climate Editor - Realistic Geographic & Atmospheric Climate System.
@@ -1085,7 +1086,8 @@ public class WeatherEditorPane extends BorderPane {
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
-        Button bHarmonize = btn(i18n.get("weather.coherence.harmonize"), "#17a2b8");
+        Button bHarmonize = new Button(i18n.get("weather.coherence.harmonize"));
+        bHarmonize.setStyle("-fx-background-color: #17a2b8; -fx-text-fill: white; -fx-font-weight: bold;");
         bHarmonize.setOnAction(e -> doHarmonizeCoherence());
 
         banner.getChildren().addAll(coherenceStatusBadge, sp, bHarmonize);

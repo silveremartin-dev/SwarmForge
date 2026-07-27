@@ -113,7 +113,9 @@ public class SpeciesEditorPane extends VBox {
     private CheckBox hasAutothysisCheckBox;
     private CheckBox hasAroliaAdhesionCheckBox;
 
+    private VBox warningBannerBox;
     private Consumer<CustomSpecies> onApplyListener;
+    private Consumer<CustomSpecies> onGenerateNestForSpeciesListener;
 
     public SpeciesEditorPane() {
         setSpacing(15);
@@ -126,10 +128,18 @@ public class SpeciesEditorPane extends VBox {
         // 1. Top Action Toolbar (Presets & File Operations)
         HBox topToolbar = createTopToolbar();
 
+        // Warning Banner for parameter inconsistencies
+        warningBannerBox = new VBox(8);
+        warningBannerBox.setStyle("-fx-background-color: rgba(234, 179, 8, 0.15); -fx-border-color: #eab308; -fx-border-width: 1px; -fx-border-radius: 6px; -fx-background-radius: 6px; -fx-padding: 10px;");
+        warningBannerBox.setVisible(false);
+        warningBannerBox.setManaged(false);
+
         // 2. TabPane for Parameter Sections
         TabPane tabPane = createTabPane();
 
-        getChildren().addAll(headerLabel, topToolbar, new Separator(), tabPane);
+        getChildren().addAll(headerLabel, topToolbar, warningBannerBox, new Separator(), tabPane);
+
+        casteRows.addListener((javafx.collections.ListChangeListener<CasteRow>) c -> validateParameters());
 
         // Load default preset if available
         if (!presetManager.getPresetNames().isEmpty()) {
@@ -141,6 +151,10 @@ public class SpeciesEditorPane extends VBox {
 
     public void setOnApply(Consumer<CustomSpecies> listener) {
         this.onApplyListener = listener;
+    }
+
+    public void setOnGenerateNestForSpecies(Consumer<CustomSpecies> listener) {
+        this.onGenerateNestForSpeciesListener = listener;
     }
 
     private HBox createTopToolbar() {
@@ -248,6 +262,10 @@ public class SpeciesEditorPane extends VBox {
 
         categoryCombo = new ComboBox<>(FXCollections.observableArrayList(org.swarmforge.core.species.SpeciesCategory.values()));
         categoryCombo.getSelectionModel().select(org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY);
+        categoryCombo.setOnAction(e -> validateParameters());
+
+        Label categoryHintLabel = new Label("ℹ️ Cet éditeur gère les espèces eusociales (Fourmis, Abeilles, Guêpes, Termites). Les proies, prédateurs et commensaux sont gérés dans l'onglet dédié 'Proies & Prédateurs'.");
+        categoryHintLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
         descriptionArea = new TextArea("Description de l'espèce...");
         descriptionArea.setPrefRowCount(4);
@@ -256,7 +274,8 @@ public class SpeciesEditorPane extends VBox {
         grid.addRow(1, createTooltipLabel("Nom Scientifique (Binomial):", "Nomenclature binomiale latine officielle (ex: Lasius niger, Formica rufa, Atta cephalotes)."), scientificNameField);
         grid.addRow(2, createTooltipLabel("Ordre Taxonomique / Famille:", "Grand groupe taxonomique d'insectes eusociaux (Fourmi, Abeille, Guêpe, Termite)."), insectTypeCombo);
         grid.addRow(3, createTooltipLabel("Rôle Écologique / Catégorie:", "Statut trophique et rôle fonctionnel dans l'écosystème de simulation."), categoryCombo);
-        grid.addRow(4, createTooltipLabel("Description & Notes Écologiques:", "Résumé descriptif de la biologie, de l'habitat et du comportement de l'espèce."), descriptionArea);
+        grid.addRow(4, new Label(""), categoryHintLabel);
+        grid.addRow(5, createTooltipLabel("Description & Notes Écologiques:", "Résumé descriptif de la biologie, de l'habitat et du comportement de l'espèce."), descriptionArea);
 
         return wrapScroll(grid);
     }
@@ -267,12 +286,26 @@ public class SpeciesEditorPane extends VBox {
 
         queenModeCombo = new ComboBox<>(FXCollections.observableArrayList("MONOGYNE", "POLYGYNE", "GAMERGATES"));
         queenModeCombo.getSelectionModel().select("MONOGYNE");
+        queenModeCombo.setOnAction(e -> {
+            if ("MONOGYNE".equals(queenModeCombo.getValue())) {
+                queenCountSpinner.getValueFactory().setValue(1);
+            }
+            validateParameters();
+        });
 
         queenCountSpinner = new Spinner<>(1, 500, 1);
+        queenCountSpinner.valueProperty().addListener((obs, oldV, newV) -> {
+            if ("MONOGYNE".equals(queenModeCombo.getValue()) && newV > 1) {
+                queenCountSpinner.getValueFactory().setValue(1);
+            }
+            validateParameters();
+        });
+
         queenLifespanField = new TextField("25000");
         queenEggRateField = new TextField("25.0");
 
         hasKingCheckBox = new CheckBox("Présence d'un Roi Reproducteur (Termites)");
+        hasKingCheckBox.setOnAction(e -> validateParameters());
 
         kingLifespanField = new TextField("15000");
         nuptialFlightCombo = new ComboBox<>(FXCollections.observableArrayList("AERIAL_SWARM", "SWARM_DIVISION", "BUDDING", "IN_NEST"));
@@ -650,6 +683,21 @@ public class SpeciesEditorPane extends VBox {
         venomCombo = new ComboBox<>(FXCollections.observableArrayList("NONE", "FORMIC_ACID", "VENOMOUS_STING", "CHEMICAL_SPRAY", "POWERFUL_MANDIBLES"));
         venomCombo.getSelectionModel().select("FORMIC_ACID");
 
+        optTempField.textProperty().addListener((obs, o, n) -> validateParameters());
+        minTempField.textProperty().addListener((obs, o, n) -> validateParameters());
+        maxTempField.textProperty().addListener((obs, o, n) -> validateParameters());
+
+        Button btnGenerateSpeciesNest = new Button("📐 Générer & Prévisualiser le Nid pour cette Espèce", new FontIcon(Feather.HOME));
+        btnGenerateSpeciesNest.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;");
+        btnGenerateSpeciesNest.setOnAction(e -> {
+            CustomSpecies s = buildSpeciesFromUI();
+            if (onGenerateNestForSpeciesListener != null) {
+                onGenerateNestForSpeciesListener.accept(s);
+            } else {
+                new Alert(Alert.AlertType.INFORMATION, "Espèce active configurée pour la génération de nid : " + s.getCommonName()).show();
+            }
+        });
+
         grid.addRow(0, createTooltipLabel("Type de Nid Spécifique (NestType):", "Sélectionne l'architecture géométrique préférentielle construite par cette espèce (ex: cire hexagonale, cathédrale, dôme, soie)."), nestTypeCombo);
         grid.addRow(1, createTooltipLabel("Température Optimale (°C):", "Température interne idéale du nid pour l'incubation du couvain."), optTempField);
         grid.addRow(2, createTooltipLabel("Température Minima (°C):", "Seuil de température au-dessous duquel les individus tombent en léthargie/engourdissement."), minTempField);
@@ -657,8 +705,105 @@ public class SpeciesEditorPane extends VBox {
         grid.addRow(4, createTooltipLabel("Niveau d'Agressivité:", "Propension comportementale à engager le combat contre d'autres colonies."), aggressionSlider);
         grid.addRow(5, createTooltipLabel("Territorialité:", "Intensité de patrouille et défense exclusive de la zone d'influence autour du nid."), territorialitySlider);
         grid.addRow(6, createTooltipLabel("Arme / Type de Venin:", "Système défensif ou toxine éjectée (acide formique, venin à aiguillon, mandibules)."), venomCombo);
+        grid.addRow(7, createTooltipLabel("Génération de Nid Synchronisée:", "Ouvre le Générateur de Nids et pré-configure l'architecture, le matériau et la distribution des chambres pour cette espèce."), btnGenerateSpeciesNest);
 
         return wrapScroll(grid);
+    }
+
+    /**
+     * Real-time parameter consistency validator.
+     * Detects mismatches (e.g. Monogyne with multiple queens, missing King caste for termites, thermal range anomalies).
+     */
+    public List<String> validateParameters() {
+        List<String> warnings = new ArrayList<>();
+        if (warningBannerBox == null) return warnings;
+
+        // 1. Monogyne vs Queen count
+        String qMode = queenModeCombo != null ? queenModeCombo.getValue() : "MONOGYNE";
+        int qCount = queenCountSpinner != null ? queenCountSpinner.getValue() : 1;
+        if ("MONOGYNE".equals(qMode) && qCount > 1) {
+            warnings.add("Structure Gynique Monogyne : une seule reine reproductrice est autorisée par colonie (valeur actuelle : " + qCount + ").");
+        }
+
+        // 2. Has King vs King Caste in caste table
+        boolean hasKing = hasKingCheckBox != null && hasKingCheckBox.isSelected();
+        if (hasKing) {
+            boolean hasKingCaste = casteRows.stream().anyMatch(r -> 
+                r.getName().equalsIgnoreCase("Roi") || 
+                r.getName().equalsIgnoreCase("King") || 
+                r.getName().toLowerCase().contains("roi") ||
+                r.getName().toLowerCase().contains("king")
+            );
+            if (!hasKingCaste) {
+                warnings.add("Roi Reproducteur activé (Isoptera), mais aucune caste 'Roi' n'est définie dans le tableau des castes.");
+            }
+        }
+
+        // 3. Category non-eusocial warning
+        org.swarmforge.core.species.SpeciesCategory cat = categoryCombo != null ? categoryCombo.getValue() : null;
+        if (cat != null && cat != org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY) {
+            warnings.add("Catégorie " + cat.label + " sélectionnée. Remarque : les proies, prédateurs et commensaux doivent être configurés dans l'onglet dédié 'Proies & Prédateurs'.");
+        }
+
+        // 4. Temperature consistency
+        try {
+            float optT = parseFloat(optTempField.getText(), 24.0f);
+            float minT = parseFloat(minTempField.getText(), 10.0f);
+            float maxT = parseFloat(maxTempField.getText(), 38.0f);
+            if (minT >= maxT) {
+                warnings.add("Plage thermique invalide : la température minimale (" + minT + "°C) doit être inférieure à la maximale (" + maxT + "°C).");
+            } else if (optT < minT || optT > maxT) {
+                warnings.add("Température optimale (" + optT + "°C) hors des limites [Min: " + minT + "°C, Max: " + maxT + "°C].");
+            }
+        } catch (Exception ignored) {}
+
+        // Update warning banner
+        warningBannerBox.getChildren().clear();
+        if (warnings.isEmpty()) {
+            warningBannerBox.setVisible(false);
+            warningBannerBox.setManaged(false);
+        } else {
+            warningBannerBox.setVisible(true);
+            warningBannerBox.setManaged(true);
+
+            Label titleLabel = new Label("⚠️ Avertissements de cohérence des paramètres :");
+            titleLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #f59e0b; -fx-font-size: 13px;");
+            warningBannerBox.getChildren().add(titleLabel);
+
+            for (String w : warnings) {
+                HBox row = new HBox(10);
+                row.setAlignment(Pos.CENTER_LEFT);
+
+                Label wLbl = new Label("• " + w);
+                wLbl.setStyle("-fx-text-fill: #fbbf24; -fx-font-size: 12px;");
+                wLbl.setWrapText(true);
+
+                if (w.contains("caste 'Roi'")) {
+                    Button btnAddKing = new Button("➕ Ajouter la caste 'Roi' (Isoptera)", new FontIcon(Feather.PLUS_CIRCLE));
+                    btnAddKing.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+                    btnAddKing.setOnAction(e -> {
+                        CasteRow roiRow = new CasteRow("Roi Reproducteur", 8.0, 2.2, 15000, 150, 5, false);
+                        casteRows.add(roiRow);
+                        validateParameters();
+                    });
+                    row.getChildren().addAll(wLbl, btnAddKing);
+                } else if (w.contains("Monogyne")) {
+                    Button btnFixMonogyne = new Button("🔧 Ajuster à 1 reine", new FontIcon(Feather.CHECK));
+                    btnFixMonogyne.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+                    btnFixMonogyne.setOnAction(e -> {
+                        queenCountSpinner.getValueFactory().setValue(1);
+                        validateParameters();
+                    });
+                    row.getChildren().addAll(wLbl, btnFixMonogyne);
+                } else {
+                    row.getChildren().add(wLbl);
+                }
+
+                warningBannerBox.getChildren().add(row);
+            }
+        }
+
+        return warnings;
     }
 
     // --- Tab 7: Sensory Systems & Motor Biomechanics ---
@@ -911,6 +1056,7 @@ public class SpeciesEditorPane extends VBox {
                 casteRows.add(row);
             }
         }
+        validateParameters();
     }
 
     private CustomSpecies buildSpeciesFromUI() {

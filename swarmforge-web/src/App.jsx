@@ -13,7 +13,7 @@ import UndergroundView from './components/UndergroundView'
 import Navbar from './components/Navbar'
 import WorldEditorPanel from './components/WorldEditorPanel'
 import ClimateStudioPanel from './components/ClimateStudioPanel'
-
+import ViewportToolbar from './components/ViewportToolbar'
 import WeatherControlWidget from './components/WeatherControlWidget'
 
 // Placeholder for ErrorBoundary
@@ -25,7 +25,7 @@ export default function App() {
     const { connected, connect, disconnect } = useSimulationStore()
     const { environment } = useSimulationStore()
     const [showUnderground, setShowUnderground] = useState(true)
-    const [activeMode, setActiveMode] = useState('WORLD_EDITOR') // 'WORLD_EDITOR', 'CLIMATE_STUDIO', 'SIMULATION'
+    const [activeMode, setActiveMode] = useState('SIMULATION') // Default to 'SIMULATION' mode for quick access to Simulation Manager
 
     useEffect(() => {
         connect()
@@ -50,25 +50,25 @@ export default function App() {
 
             <ErrorBoundary>
                 {/* Status Indicator */}
-                <div style={{ position: 'absolute', top: 60, right: 20, zIndex: 100, color: '#fff', background: 'rgba(0,0,0,0.5)', padding: '8px 12px', borderRadius: 8, backdropFilter: 'blur(8px)', fontSize: 12 }}>
+                <div style={{ position: 'absolute', top: 60, left: 20, zIndex: 100, color: '#fff', background: 'rgba(15, 23, 42, 0.85)', padding: '8px 12px', borderRadius: 8, backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 11 }}>
                     <div>
                         Status: <span style={{ color: connected ? '#4ade80' : '#f87171', fontWeight: 'bold' }}>
-                            {connected ? '● Connecté (Serveur)' : '○ Disconnecté (Hors ligne)'}
+                            {connected ? '● Connecté (Serveur)' : '○ Mode Local (Hors ligne)'}
                         </span>
                     </div>
-                    <div style={{ opacity: 0.7, marginTop: 2 }}>
-                        Temps: {environment.timeOfDay} (Luminosité: {environment.lightLevel.toFixed(2)})
+                    <div style={{ opacity: 0.8, marginTop: 2 }}>
+                        Temps: {environment.timeOfDay} | Lum: {environment.lightLevel.toFixed(2)}
                     </div>
-                    <div style={{ opacity: 0.7 }}>
+                    <div style={{ opacity: 0.8 }}>
                         {environment.season} | {environment.temperature?.toFixed(1)}°C | Pluie: {environment.rainIntensity?.toFixed(1)}mm
                     </div>
-                    <button onClick={() => setShowUnderground(!showUnderground)} style={{ marginTop: 6, fontSize: 10, padding: '3px 8px', background: '#334155', color: '#fff', border: '1px solid #475569', borderRadius: 4, cursor: 'pointer' }}>
+                    <button onClick={() => setShowUnderground(!showUnderground)} style={{ marginTop: 6, fontSize: 10, padding: '3px 8px', background: '#1e293b', color: '#38bdf8', border: '1px solid #334155', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
                         {showUnderground ? 'Masquer Nid Sous-terrain' : 'Afficher Nid Sous-terrain'}
                     </button>
                 </div>
 
                 <VRButton />
-                <Canvas shadows camera={{ position: [20, 20, 20], fov: 50 }}>
+                <Canvas shadows camera={{ position: [20, 20, 20], fov: 50 }} gl={{ preserveDrawingBuffer: true }}>
                     <XR>
                         <Controllers />
                         <Hands />
@@ -115,6 +115,9 @@ export default function App() {
                         <Stats />
                     </XR>
                 </Canvas>
+
+                {/* 3D Visual View Media Capture Toolbar (Photo HD & Video Recorder with MP4 export) */}
+                <ViewportToolbar />
             </ErrorBoundary>
 
             {/* Mode Specific Panels */}
@@ -130,4 +133,3 @@ export default function App() {
         </div>
     )
 }
-

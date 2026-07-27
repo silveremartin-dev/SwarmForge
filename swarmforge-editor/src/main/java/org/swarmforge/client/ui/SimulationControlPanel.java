@@ -80,6 +80,118 @@ public class SimulationControlPanel extends VBox {
 
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
 
+        // === Row 0: Presets Selection (Positioned ABOVE Simulation Controls as requested) ===
+        VBox presetBox = new VBox(6);
+        presetBox.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-padding: 8; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 6;");
+
+        Label lblPresetHeader = new Label("🔖 Presets du Scénario & des Onglets (Avant ou en cours de simulation)");
+        lblPresetHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+        HBox metaRow = new HBox(8);
+        metaRow.setAlignment(Pos.CENTER_LEFT);
+        Label lblMeta = new Label("★ Scénario (Méta-Preset) :");
+        lblMeta.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
+        javafx.scene.control.ComboBox<String> comboMeta = new javafx.scene.control.ComboBox<>();
+        comboMeta.getItems().addAll(
+            "Mon Terrarium N°1 (Complet)",
+            "Vol de Lévy vs Marche Brownienne",
+            "Polyéthisme & Spécialisation BDI",
+            "Savane Granivore - Messor barbarus",
+            "Conflit Territorial - Linepithema humile"
+        );
+        comboMeta.getSelectionModel().selectFirst();
+        comboMeta.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(comboMeta, Priority.ALWAYS);
+
+        metaRow.getChildren().addAll(lblMeta, comboMeta);
+
+        // Grid for individual presets (Monde, Espèces, Nid, Proies/Prédateurs, Météo/Climat)
+        javafx.scene.layout.GridPane gridPresets = new javafx.scene.layout.GridPane();
+        gridPresets.setHgap(8);
+        gridPresets.setVgap(4);
+
+        javafx.scene.control.ComboBox<String> comboWorld = new javafx.scene.control.ComboBox<>();
+        comboWorld.getItems().addAll("Terrarium Tempéré (Mon Terrarium N°1)", "Forêt Tropicale Humide", "Désert Aride & Grottes");
+        comboWorld.getSelectionModel().selectFirst();
+
+        javafx.scene.control.ComboBox<String> comboSpecies = new javafx.scene.control.ComboBox<>();
+        comboSpecies.getItems().addAll("Formica fusca (Récolteuse)", "Messor barbarus (Moissonneuse)", "Linepithema humile (Invasive)");
+        comboSpecies.getSelectionModel().selectFirst();
+
+        javafx.scene.control.ComboBox<String> comboNest = new javafx.scene.control.ComboBox<>();
+        comboNest.getItems().addAll("Dôme de Brindilles & Galeries", "Greniers Sub-Superficielles Messor", "Loge de Souche Creuse");
+        comboNest.getSelectionModel().selectFirst();
+
+        javafx.scene.control.ComboBox<String> comboPreyPred = new javafx.scene.control.ComboBox<>();
+        comboPreyPred.getItems().addAll("Pucerons & Fourmilion", "Incursion Guêpe Solitaire & Araignée", "Ressources Abondantes");
+        comboPreyPred.getSelectionModel().selectFirst();
+
+        javafx.scene.control.ComboBox<String> comboWeather = new javafx.scene.control.ComboBox<>();
+        comboWeather.getItems().addAll("Printemps Doux (22°C)", "Été Caniculaire (34°C)", "Automne Humide (14°C)");
+        comboWeather.getSelectionModel().selectFirst();
+
+        // Master Seed Row (Deterministic Replay Integrity)
+        HBox seedRow = new HBox(8);
+        seedRow.setAlignment(Pos.CENTER_LEFT);
+        Label lblSeed = new Label("🎲 Graine Aléatoire (Seed Replay) :");
+        lblSeed.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
+        javafx.scene.control.TextField txtSeed = new javafx.scene.control.TextField("12345");
+        txtSeed.setPrefWidth(90);
+        txtSeed.setStyle("-fx-background-color: #0f172a; -fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-border-color: #334155;");
+
+        Button btnRandSeed = new Button("🎲 Nouveau Seed");
+        btnRandSeed.setStyle("-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 10px;");
+        btnRandSeed.setOnAction(e -> txtSeed.setText(String.valueOf((long)(Math.random() * 900000 + 100000))));
+
+        seedRow.getChildren().addAll(lblSeed, txtSeed, btnRandSeed);
+
+        // Apply Button (Applies all presets & seed to active simulation)
+        Button btnApplyPresets = new Button("⚡ APPLIQUER À LA SIMULATION");
+        btnApplyPresets.setMaxWidth(Double.MAX_VALUE);
+        btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 12; -fx-background-radius: 5;");
+        btnApplyPresets.setOnAction(e -> {
+            if (isPlaying) {
+                isPlaying = false;
+                updateButtonStates();
+                if (onPause != null) onPause.accept(null);
+            }
+            new javafx.scene.control.Alert(
+                javafx.scene.control.Alert.AlertType.INFORMATION,
+                "Presets et Master Seed (#" + txtSeed.getText() + ") appliqués à la simulation ! Le monde et les entités ont été reconfigurés."
+            ).show();
+        });
+
+        // Preset change listener that pauses simulation if running
+        Runnable interruptIfRunning = () -> {
+            if (isPlaying) {
+                isPlaying = false;
+                updateButtonStates();
+                if (onPause != null) onPause.accept(null);
+            }
+            btnApplyPresets.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 12; -fx-background-radius: 5;");
+        };
+
+        comboMeta.setOnAction(e -> interruptIfRunning.run());
+        comboWorld.setOnAction(e -> interruptIfRunning.run());
+        comboSpecies.setOnAction(e -> interruptIfRunning.run());
+        comboNest.setOnAction(e -> interruptIfRunning.run());
+        comboPreyPred.setOnAction(e -> interruptIfRunning.run());
+        comboWeather.setOnAction(e -> interruptIfRunning.run());
+
+        Label l1 = new Label("🌍 Monde :"); l1.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+        Label l2 = new Label("🐜 Espèce(s) :"); l2.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+        Label l3 = new Label("🏰 Nid :"); l3.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+        Label l4 = new Label("🦗 Proies/Prédateurs :"); l4.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+        Label l5 = new Label("⛅ Météo/Climat :"); l5.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+
+        gridPresets.add(l1, 0, 0); gridPresets.add(comboWorld, 1, 0);
+        gridPresets.add(l2, 2, 0); gridPresets.add(comboSpecies, 3, 0);
+        gridPresets.add(l3, 0, 1); gridPresets.add(comboNest, 1, 1);
+        gridPresets.add(l4, 2, 1); gridPresets.add(comboPreyPred, 3, 1);
+        gridPresets.add(l5, 0, 2); gridPresets.add(comboWeather, 1, 2);
+
+        presetBox.getChildren().addAll(lblPresetHeader, metaRow, gridPresets, seedRow, btnApplyPresets);n().addAll(lblPresetHeader, metaRow, gridPresets);
+
         // === Row 1: Date/Time Display & Real-Time Status ===
         HBox dateTimeRow = new HBox(15);
         dateTimeRow.setAlignment(Pos.CENTER);
@@ -229,8 +341,8 @@ public class SimulationControlPanel extends VBox {
 
         timelineRow.getChildren().addAll(lblTick, timelineSlider, lblTime);
 
-        // Add all rows
-        getChildren().addAll(dateTimeRow, playbackRow, speedRow, timelineRow);
+        // Add all rows (presetBox sits ABOVE playback controls as requested)
+        getChildren().addAll(presetBox, dateTimeRow, playbackRow, speedRow, timelineRow);
 
         updateButtonStates();
     }

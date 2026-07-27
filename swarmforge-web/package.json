@@ -15,7 +15,8 @@
         "@react-three/drei": "^9.88.0",
         "three": "^0.159.0",
         "zustand": "^4.4.0",
-        "@react-three/xr": "^5.7.1"
+        "@react-three/xr": "^5.7.1",
+        "lucide-react": "^0.300.0"
     },
     "devDependencies": {
         "@vitejs/plugin-react": "^4.2.0",

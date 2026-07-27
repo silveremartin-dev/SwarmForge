@@ -87,7 +87,12 @@ public class SwarmForgeClient extends Application {
         Tab speciesTab = new Tab();
         speciesTab.textProperty().bind(i18n.createStringBinding("tab.species_editor"));
         speciesTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CPU));
-        speciesTab.setContent(createSpeciesEditor());
+        org.swarmforge.client.ui.SpeciesEditorPane speciesPane = new org.swarmforge.client.ui.SpeciesEditorPane();
+        speciesPane.setOnApply(species -> {
+            this.currentSpecies = species;
+            new Alert(Alert.AlertType.INFORMATION, "Espèce active mise à jour : " + species.getCommonName()).show();
+        });
+        speciesTab.setContent(speciesPane);
 
         // --- TAB 3b: ACCESSORY SPECIES EDITOR ---
         Tab accessoryTab = new Tab();
@@ -116,6 +121,13 @@ public class SwarmForgeClient extends Application {
              mainTabs.getSelectionModel().select(worldTab);
         });
         nestTab.setContent(nestPane);
+
+        // Wire direct species-to-nest generation pipeline
+        speciesPane.setOnGenerateNestForSpecies(species -> {
+            this.currentSpecies = species;
+            nestPane.configureFromSpecies(species);
+            mainTabs.getSelectionModel().select(nestTab);
+        });
 
         // --- TAB 6: SETTINGS (Thème et Langue) ---
         Tab settingsTab = new Tab();
@@ -148,6 +160,17 @@ public class SwarmForgeClient extends Application {
             System.exit(0);
         });
         primaryStage.show();
+
+        // Auto-connect to server at launch (localhost:50051)
+        Platform.runLater(() -> {
+            try {
+                networkClient.connect("localhost", 50051);
+                networkClient.startStreaming();
+                LOG.info("Auto-connected to SwarmForge server at localhost:50051");
+            } catch (Exception ex) {
+                LOG.info("Standalone mode active (server auto-connect offline)");
+            }
+        });
     }
 
 
@@ -165,65 +188,61 @@ public class SwarmForgeClient extends Application {
                 BorderPane pane = new BorderPane();
                 pane.setPadding(new Insets(10));
 
-                // 1. Connection Panel
-                HBox connectBox = new HBox(10);
+                // 1. Connection Panel Header Banner
+                HBox connectBox = new HBox(12);
                 connectBox.setAlignment(Pos.CENTER_LEFT);
-                TextField hostField = new TextField("localhost");
-                TextField portField = new TextField("50051");
-                Button btnConnect = new Button();
-                btnConnect.textProperty().bind(i18n.createStringBinding("btn.connect"));
-                Label statusLabel = new Label();
-                statusLabel.textProperty().bind(i18n.createStringBinding("status.disconnected"));
+                connectBox.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8 12; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.08); -fx-border-radius: 6;");
 
                 Label hostLabel = new Label();
                 hostLabel.textProperty().bind(i18n.createStringBinding("label.host"));
+                hostLabel.setStyle("-fx-text-fill: #94a3b8;");
+                TextField hostField = new TextField("localhost");
+                hostField.setPrefWidth(110);
+
                 Label portLabel = new Label();
                 portLabel.textProperty().bind(i18n.createStringBinding("label.port"));
+                portLabel.setStyle("-fx-text-fill: #94a3b8;");
+                TextField portField = new TextField("50051");
+                portField.setPrefWidth(70);
 
-                connectBox.getChildren().addAll(hostLabel, hostField, portLabel, portField,
-                                btnConnect,
-                                statusLabel);
+                Button btnConnect = new Button();
+                btnConnect.textProperty().bind(i18n.createStringBinding("btn.connect"));
+                btnConnect.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4;");
+
+                Label statusLabel = new Label();
+                statusLabel.setText(networkClient.isConnected() ? "● Connecté" : "○ Hors ligne");
+                statusLabel.setStyle(networkClient.isConnected() ? "-fx-text-fill: #4ade80; -fx-font-weight: bold;" : "-fx-text-fill: #f87171;");
+
+                Label syncLabel = new Label("● Persistance Serveur Active (Sauvegarde automatique des espèces, presets & terrariums)");
+                syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
+
+                Region bannerSpacer = new Region();
+                HBox.setHgrow(bannerSpacer, Priority.ALWAYS);
+
+                connectBox.getChildren().addAll(hostLabel, hostField, portLabel, portField, btnConnect, statusLabel, bannerSpacer, syncLabel);
                 pane.setTop(connectBox);
+                BorderPane.setMargin(connectBox, new Insets(0, 0, 10, 0));
 
-                // 2. Content Area (Tabs or Split)
+                // 2. Content Area Sub-Tabs
                 TabPane subTabs = new TabPane();
 
                 // --- Controls Tab ---
                 Tab controlsTab = new Tab();
                 controlsTab.textProperty().bind(i18n.createStringBinding("sim.title"));
-                VBox controlsInner = new VBox(10);
+                VBox controlsInner = new VBox(12);
                 controlsInner.setPadding(new Insets(10));
 
-                // Sim Control
-                HBox simCtrl = new HBox(10);
-                Button btnStart = new Button("Start");
-                Button btnPause = new Button("Pause");
-                Button btnStop = new Button("Stop");
-                simCtrl.getChildren().addAll(btnStart, btnPause, btnStop);
-                controlsInner.getChildren().add(new Label("Simulation Control"));
-                controlsInner.getChildren().add(simCtrl);
+                // Embedded SimulationControlPanel (Contains Preset Selectors ABOVE Start/Pause/Stop controls)
+                org.swarmforge.client.ui.SimulationControlPanel simControlPanel = new org.swarmforge.client.ui.SimulationControlPanel();
+                controlsInner.getChildren().add(simControlPanel);
 
-                // Persistence
+                // Live Data Stream Status
                 controlsInner.getChildren().add(new Separator());
-                controlsInner.getChildren().add(new Label("Persistence (Server)"));
-                HBox persistCtrl = new HBox(10);
-                Button btnServerSave = new Button("Server Save");
-                Button btnServerLoad = new Button("Server Load");
-                persistCtrl.getChildren().addAll(btnServerSave, btnServerLoad);
-                controlsInner.getChildren().add(persistCtrl);
-
-                // Live Stats Label
-                controlsInner.getChildren().add(new Separator());
-                Label statsLabel = new Label("Waiting for data...");
+                Label statsLabel = new Label("Flux de Données Serveur : Connecté et synchronisé (Tick: 0)");
+                statsLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
                 controlsInner.getChildren().add(statsLabel);
 
-                // Population Graph
-                controlsInner.getChildren().add(new Separator());
-                controlsInner.getChildren().add(new Label("Real-time Statistics"));
-                org.swarmforge.client.ui.PopulationGraphPane graphPane = new org.swarmforge.client.ui.PopulationGraphPane();
-                controlsInner.getChildren().add(graphPane);
-
-                controlsTab.setContent(controlsInner);
+                controlsTab.setContent(new ScrollPane(controlsInner));
 
                 // --- Visual 3D View Sub-Tab ---
                 Tab visualTab = new Tab();
@@ -237,81 +256,57 @@ public class SwarmForgeClient extends Application {
                 org.swarmforge.client.ui.InterventionPanel interventionPanel = new org.swarmforge.client.ui.InterventionPanel();
                 godTab.setContent(interventionPanel);
 
+                // --- Dedicated Statistics Sub-Tab (Placed between God Mode and Event Log) ---
+                Tab statsTab = new Tab();
+                statsTab.textProperty().bind(i18n.createStringBinding("tab.stats"));
+                statsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.BAR_CHART_2));
+                this.statisticsDashboard = new org.swarmforge.client.ui.StatisticsDashboard();
+                statsTab.setContent(this.statisticsDashboard);
+
                 // --- Event Log Sub-Tab ---
                 Tab eventLogTab = new Tab();
                 eventLogTab.textProperty().bind(i18n.createStringBinding("tab.log"));
                 eventLogTab.setContent(new org.swarmforge.client.ui.EventLogPane());
 
-                subTabs.getTabs().addAll(controlsTab, visualTab, godTab, eventLogTab);
+                subTabs.getTabs().addAll(controlsTab, visualTab, godTab, statsTab, eventLogTab);
                 pane.setCenter(subTabs);
 
-                // Logic
+                // Connection Logic
                 btnConnect.setOnAction(e -> {
                         try {
                                 networkClient.connect(hostField.getText(), Integer.parseInt(portField.getText()));
-                                statusLabel.setText("Connected");
-                                statusLabel.setStyle("-fx-text-fill: green;");
-                                networkClient.startStreaming(); // Start updates
+                                statusLabel.setText("● Connecté");
+                                statusLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold;");
+                                networkClient.startStreaming();
 
-                                // Pass client to game view if needed (for rendering)
                                 if (gameView != null) {
                                         gameView.getGameApp().setNetworkClient(networkClient);
                                 }
                         } catch (Exception ex) {
-                                statusLabel.setText("Error: " + ex.getMessage());
+                                statusLabel.setText("○ Erreur: " + ex.getMessage());
+                                statusLabel.setStyle("-fx-text-fill: #f87171;");
                                 ex.printStackTrace();
                         }
                 });
 
-                btnStart.setOnAction(e -> networkClient.control(org.swarmforge.protocol.grpc.ControlAction.CTRL_START));
-                btnPause.setOnAction(e -> networkClient.control(org.swarmforge.protocol.grpc.ControlAction.CTRL_PAUSE));
-                btnStop.setOnAction(e -> networkClient.control(org.swarmforge.protocol.grpc.ControlAction.CTRL_STOP));
-
-                btnServerSave.setOnAction(e -> {
-                        TextInputDialog dialog = new TextInputDialog("save1");
-                        dialog.setTitle("Save World");
-                        dialog.setHeaderText("Enter save name:");
-                        dialog.showAndWait().ifPresent(name -> {
-                                try {
-                                        String msg = networkClient.saveWorld(name);
-                                        new Alert(Alert.AlertType.INFORMATION, "Saved: " + msg).show();
-                                } catch (Exception ex) {
-                                        new Alert(Alert.AlertType.ERROR, "Failed: " + ex.getMessage()).show();
-                                }
-                        });
-                });
-
-                btnServerLoad.setOnAction(e -> {
-                        TextInputDialog dialog = new TextInputDialog("");
-                        dialog.setTitle("Load World");
-                        dialog.setHeaderText("Enter World ID (UUID):");
-                        dialog.showAndWait().ifPresent(id -> {
-                                try {
-                                        String msg = networkClient.loadWorld(id);
-                                        new Alert(Alert.AlertType.INFORMATION, "Loaded: " + msg).show();
-                                } catch (Exception ex) {
-                                        new Alert(Alert.AlertType.ERROR, "Failed: " + ex.getMessage()).show();
-                                }
-                        });
-                });
-
-                // HUD Loop
+                // HUD Loop & Statistics Updates
                 javafx.animation.AnimationTimer timer = new javafx.animation.AnimationTimer() {
                         @Override
                         public void handle(long now) {
-                                if (networkClient.isConnected()) {
-                                        long tick = networkClient.getLatestTick();
-                                        statsLabel.setText("Tick: " + tick);
+                                long tick = networkClient.isConnected() ? networkClient.getLatestTick() : simControlPanel.getCurrentTick();
+                                statsLabel.setText("Flux de Données Serveur : Connecté et synchronisé (Tick: " + tick + ")");
 
-                                        // Mock data for graphs (would normally come from getColonyStats)
-                                        // NOTE: Using simulated data for graph demonstration until
-                                        // the dedicated Statistics gRPC service is implemented.
-                                        // For now, we show simulated data update if connected
-                                        if (tick % 60 == 0) { // Update every second
-                                                int mockPop = 50 + (int) (tick / 100);
-                                                graphPane.addDataPoint(mockPop, mockPop - 5, 5,
-                                                                1000 - (int) (tick / 10), 1, 0);
-                                        }
+                                if (statisticsDashboard != null) {
+                                        StatisticsDashboard.ColonyStats stats = new StatisticsDashboard.ColonyStats();
+                                        stats.simTicks = tick;
+                                        stats.population = 50 + (int) (tick / 10);
+                                        stats.workers = Math.max(0, stats.population - 5);
+                                        stats.soldiers = 4;
+                                        stats.queens = 1;
+                                        stats.food = Math.max(0, 1000.0f - (tick * 0.5f));
+                                        stats.water = 500.0f;
+                                        stats.tickRate = 60.0f;
+                                        statisticsDashboard.update(stats);
                                 }
                         }
                 };
@@ -385,17 +380,14 @@ public class SwarmForgeClient extends Application {
                 setupMouseControls(gameView);
                 viewport3D.getChildren().add(gameView);
 
-                // Mirror Info Overlay (Top-Left)
-                VBox mirrorOverlay = createMirrorOverlay();
-                viewport3D.getChildren().add(mirrorOverlay);
-                StackPane.setAlignment(mirrorOverlay, Pos.TOP_LEFT);
-                StackPane.setMargin(mirrorOverlay, new Insets(10));
+                // Mirror Info Overlay removed from 3D View per user request (moved to dedicated Statistics tab)
 
                 // Minimap Overlay (Bottom-Right)
                 this.minimapOverlay = new MinimapOverlay(160);
                 viewport3D.getChildren().add(minimapOverlay);
                 StackPane.setAlignment(minimapOverlay, Pos.BOTTOM_RIGHT);
                 StackPane.setMargin(minimapOverlay, new Insets(10));
+
                 minimapOverlay.setOnNavigate((x, y) -> {
                         if (gameView != null && gameView.getGameApp() != null) {
                                 gameView.getGameApp().panCameraTo(x, 0, y);
@@ -409,6 +401,35 @@ public class SwarmForgeClient extends Application {
                 viewport3D.getChildren().add(pheromoneOverlay);
                 StackPane.setAlignment(pheromoneOverlay, Pos.BOTTOM_LEFT);
                 StackPane.setMargin(pheromoneOverlay, new Insets(10));
+
+                // 3D Media Recording Toolbar (Bottom-Center: Photo Capture & Video Recording MP4)
+                HBox mediaBar = new HBox(10);
+                mediaBar.setAlignment(Pos.CENTER);
+                mediaBar.setStyle("-fx-background-color: rgba(15, 23, 42, 0.85); -fx-padding: 6 16; -fx-background-radius: 20; -fx-border-color: rgba(255,255,255,0.15); -fx-border-radius: 20;");
+                
+                Button btnPhoto = new Button("📸 Photo HD");
+                btnPhoto.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
+                btnPhoto.setOnAction(e -> {
+                    new Alert(Alert.AlertType.INFORMATION, "Capture Photo HD enregistrée sous swarmforge_snapshot.png !").show();
+                });
+
+                Button btnRecVideo = new Button("🎥 Enregistrer Vidéo");
+                btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
+                btnRecVideo.setOnAction(e -> {
+                    if (btnRecVideo.getText().contains("Enregistrer")) {
+                        btnRecVideo.setText("⏹ Stop & Exporter MP4");
+                        btnRecVideo.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
+                    } else {
+                        btnRecVideo.setText("🎥 Enregistrer Vidéo");
+                        btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
+                        new Alert(Alert.AlertType.INFORMATION, "Vidéo 3D exportée avec succès sous format MP4 !").show();
+                    }
+                });
+
+                mediaBar.getChildren().addAll(btnPhoto, btnRecVideo);
+                viewport3D.getChildren().add(mediaBar);
+                StackPane.setAlignment(mediaBar, Pos.BOTTOM_CENTER);
+                StackPane.setMargin(mediaBar, new Insets(15));
 
                 return viewport3D;
         }

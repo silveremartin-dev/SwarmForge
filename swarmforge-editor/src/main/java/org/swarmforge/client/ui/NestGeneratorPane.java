@@ -46,6 +46,10 @@ public class NestGeneratorPane extends BorderPane {
     private CheckBox syncViewsCheckBox;
 
     // Controls
+    private ComboBox<String> speciesModelCombo;
+    private Label speciesStatusLabel;
+    private org.swarmforge.core.species.CustomSpecies activeCustomSpecies;
+
     private ComboBox<String> categorySelect;
     private ComboBox<String> archSelect;
     private ComboBox<String> matSelect;
@@ -137,6 +141,35 @@ public class NestGeneratorPane extends BorderPane {
         VBox cfg = new VBox(10);
         cfg.setPadding(new Insets(10));
         cfg.setPrefWidth(272);
+
+        // Species Link Selector (Connection with Species Management)
+        Label speciesTitle = new Label("🔗 Modèle d'Espèce de Référence");
+        speciesTitle.setStyle("-fx-font-size:13;-fx-font-weight:bold;-fx-padding:2 0 2 0;-fx-text-fill:#38bdf8;");
+
+        speciesModelCombo = new ComboBox<>();
+        speciesModelCombo.getItems().addAll(
+            "🐜 Fourmi Noire (Lasius niger)",
+            "🐜 Fourmi de Feu (Solenopsis invicta)",
+            "🐜 Fourmi Coupeuse de Feuilles (Atta sexdens)",
+            "🐝 Abeille à Miel (Apis mellifera)",
+            "🐝 Guêpe Commune (Vespula vulgaris)",
+            "🐜 Termite Souterrain (Reticulitermes flavipes)",
+            "🐜 Fourmi Moissonneuse (Pogonomyrmex barbatus)",
+            "✨ Espèce Personnalisée Active"
+        );
+        speciesModelCombo.setPrefWidth(218);
+        speciesModelCombo.getSelectionModel().selectFirst();
+        speciesModelCombo.setOnAction(e -> onSpeciesModelSelected());
+
+        speciesStatusLabel = new Label("Nid synchronisé avec le modèle d'espèce.");
+        speciesStatusLabel.setStyle("-fx-font-size:10;-fx-text-fill:#94a3b8;-fx-wrap-text:true;");
+
+        VBox speciesBlock = new VBox(6,
+            speciesTitle, new Separator(),
+            speciesModelCombo, speciesStatusLabel
+        );
+        speciesBlock.setPadding(new Insets(8));
+        speciesBlock.setStyle("-fx-border-color:#38bdf8;-fx-border-width:1;-fx-border-radius:4;-fx-background-radius:4;-fx-background-color:#1e293b;");
 
         // Nest Architecture & Species (non-collapsible block)
         Label archTitle = new Label();
@@ -240,7 +273,7 @@ public class NestGeneratorPane extends BorderPane {
         cdBlock.setPadding(new Insets(8));
         cdBlock.setStyle("-fx-border-color:#444;-fx-border-width:1;-fx-border-radius:4;-fx-background-radius:4;-fx-background-color:#1e2230;");
 
-        cfg.getChildren().addAll(archBlock, cdBlock);
+        cfg.getChildren().addAll(speciesBlock, archBlock, cdBlock);
         ScrollPane sc = new ScrollPane(cfg);
         sc.setFitToWidth(true); sc.setPrefWidth(290); sc.setMaxWidth(290);
         return sc;
@@ -528,6 +561,112 @@ public class NestGeneratorPane extends BorderPane {
         }
         regen();
         repaint();
+    }
+
+    public void configureFromSpecies(org.swarmforge.core.species.CustomSpecies species) {
+        if (species == null) return;
+        this.activeCustomSpecies = species;
+
+        // 1. Insect Category & Material & Architecture mapping
+        String orderStr = species.getInsectType() != null ? species.getInsectType() : "ANT";
+        String nestTypeStr = species.getNestType() != null ? species.getNestType() : "MATURE";
+
+        if ("TERMITE".equalsIgnoreCase(orderStr)) {
+            categorySelect.setValue("🐜 Termites (Isoptera)");
+            archSelect.setValue("CATHEDRAL_MOUND");
+            matSelect.setValue("STERCORAL_CEMENT");
+        } else if ("BEE".equalsIgnoreCase(orderStr)) {
+            if (species.getCommonName().toLowerCase().contains("bourdon") || species.getScientificName().toLowerCase().contains("bombus")) {
+                categorySelect.setValue("🐝 Bumblebees (Bombus)");
+                archSelect.setValue("WAX_POTS_CLUSTER");
+                matSelect.setValue("PROPOLIS");
+            } else {
+                categorySelect.setValue("🐝 Honeybees (Apis)");
+                archSelect.setValue("WAX_COMB_HEXAGONAL");
+                matSelect.setValue("BEESWAX");
+            }
+        } else if ("WASP".equalsIgnoreCase(orderStr)) {
+            categorySelect.setValue("🐝 Wasps & Hornets (Vespidae)");
+            archSelect.setValue("PAPER_PEDUNCULATE");
+            matSelect.setValue("WOOD_PULP_PAPER");
+        } else {
+            // ANT
+            categorySelect.setValue("🐜 Ants (Formicidae)");
+            if ("ARBOREAL_SILK_LEAF".equalsIgnoreCase(nestTypeStr) || species.getCommonName().toLowerCase().contains("tisserande")) {
+                archSelect.setValue("ARBOREAL_SILK_LEAF");
+                matSelect.setValue("SILK_WEAVE");
+            } else if ("MOUND".equalsIgnoreCase(nestTypeStr) || species.getCommonName().toLowerCase().contains("fire") || species.getCommonName().toLowerCase().contains("feu")) {
+                archSelect.setValue("SURFACE_MOUND");
+                matSelect.setValue("EARTH");
+            } else {
+                archSelect.setValue("BURROW_UNDERGROUND");
+                matSelect.setValue("EARTH");
+            }
+        }
+
+        // 2. Body length & Tunnel diameter
+        float avgBodyMm = species.getAverageCasteBodyLengthMm();
+        workerSizeSlider.setValue(Math.max(2.0, Math.min(30.0, avgBodyMm)));
+
+        float reqTunnelMm = species.getRequiredTunnelDiameterMm();
+        tunnelWidthSlider.setValue(Math.max(1.0, Math.min(5.0, Math.round(reqTunnelMm / 1.5))));
+
+        // 3. Colony size & Depth
+        int popSize = species.getTypicalColonySize();
+        double depth = Math.max(8, Math.min(60, Math.log10(popSize + 10) * 10));
+        depthSlider.setValue(depth);
+
+        // 4. Chamber distribution according to species biology
+        int queenCount = species.getQueenCount();
+        setSp("👑 Queen Chamber", Math.max(1, Math.min(25, queenCount)));
+
+        boolean isFungusGrower = "FUNGUS".equalsIgnoreCase(species.getPrimaryDiet()) || 
+                                 "FUNGUS".equalsIgnoreCase(species.getSecondaryDiet()) ||
+                                 species.getCommonName().toLowerCase().contains("champignonniste") ||
+                                 species.getCommonName().toLowerCase().contains("atta");
+        setSp("🍄 Fungus Gardens", isFungusGrower ? 6 : 0);
+
+        int broodCount = Math.max(2, Math.min(20, (int) Math.sqrt(popSize / 200.0)));
+        setSp("🥚 Brood Chambers", broodCount);
+
+        int foodCount = Math.max(2, Math.min(20, (int) Math.sqrt(popSize / 300.0)));
+        setSp("🍖 Food Storage", foodCount);
+
+        int totalChambers = 1 + queenCount + broodCount + foodCount + (isFungusGrower ? 6 : 0) + 2 + 1;
+        chamberCountSlider.setValue(Math.max(5, Math.min(50, totalChambers)));
+
+        if (speciesStatusLabel != null) {
+            speciesStatusLabel.setText("Nid synchronisé avec : " + species.getCommonName());
+        }
+        if (speciesModelCombo != null && !speciesModelCombo.getSelectionModel().getSelectedItem().contains(species.getCommonName())) {
+            speciesModelCombo.getSelectionModel().select("✨ Espèce Personnalisée Active");
+        }
+
+        regen();
+        repaint();
+    }
+
+    private void onSpeciesModelSelected() {
+        String sel = speciesModelCombo.getValue();
+        if (sel == null) return;
+
+        if (sel.contains("Espèce Personnalisée Active")) {
+            if (activeCustomSpecies != null) {
+                configureFromSpecies(activeCustomSpecies);
+            } else {
+                speciesStatusLabel.setText("Aucune espèce personnalisée active en mémoire.");
+            }
+            return;
+        }
+
+        org.swarmforge.client.ui.SpeciesPresetManager presetManager = new org.swarmforge.client.ui.SpeciesPresetManager();
+        for (String presetName : presetManager.getPresetNames()) {
+            String cleanSel = sel.replaceAll("^[🐜🐝✨]\\s*", "").trim();
+            if (cleanSel.toLowerCase().contains(presetName.toLowerCase()) || presetName.toLowerCase().contains(cleanSel.toLowerCase())) {
+                configureFromSpecies(presetManager.getPreset(presetName));
+                return;
+            }
+        }
     }
 
     private double num(Map<String,Object> m, String k) { return ((Number)m.get(k)).doubleValue(); }
