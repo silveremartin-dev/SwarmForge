@@ -395,47 +395,52 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private VBox buildTerrainSourceBlock() {
-        useWebServiceTerrainCheck = new CheckBox("Importer depuis un service web SIG (Données Réelles)");
+        useWebServiceTerrainCheck = new CheckBox("🌐 Importer Données Géographiques Réelles (SIG)");
         useWebServiceTerrainCheck.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
 
-        webServiceProviderCombo = new ComboBox<>();
-        webServiceProviderCombo.getItems().addAll(
-            "🌐 SIG Multi-Couches : Élévation DEM (SRTM) + Biome Copernicus",
-            "⛰️ OpenTopography SRTM DEM (Relief Global 30m)",
-            "🌳 EU-DEM v1.1 Vegetation & Relief (Europe 10m)",
-            "⛰️ USGS 3DEP High Res Elevation (North America 10m)",
-            "🗺️ Google Earth / Maps Elevation API (Relief Brut)"
-        );
-        webServiceProviderCombo.getSelectionModel().selectFirst();
-        webServiceProviderCombo.setPrefWidth(280);
-
         latField = new TextField("45.1885");
-        latField.setPrefWidth(100);
+        latField.setPrefWidth(90);
         lonField = new TextField("5.7245");
-        lonField.setPrefWidth(100);
+        lonField.setPrefWidth(90);
 
-        HBox geoBox = new HBox(8, new Label("Lat:") {{ setStyle("-fx-text-fill: #aaa;"); }}, latField, 
-                                 new Label("Lon:") {{ setStyle("-fx-text-fill: #aaa;"); }}, lonField);
+        Button btnFetchGeoData = new Button("🔄 Synchroniser Données GPS");
+        btnFetchGeoData.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+        btnFetchGeoData.setOnAction(e -> {
+            regenerateAndRepaint();
+            new Alert(Alert.AlertType.INFORMATION, "Données SIG synchronisées pour Lat: " + latField.getText() + "°, Lon: " + lonField.getText() + "° ! Topographie et biomes mis à jour.").show();
+        });
+
+        HBox geoBox = new HBox(6, 
+            new Label("Lat:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, latField, 
+            new Label("Lon:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, lonField,
+            btnFetchGeoData
+        );
         geoBox.setAlignment(Pos.CENTER_LEFT);
 
+        Label statusLbl = new Label("ℹ️ Mode Procédural Actif. Cochez ci-dessus pour basculer en mode Données Réelles.");
+        statusLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+
         VBox webOptions = new VBox(6,
-            new Label("Source de Données SIG / GeoData:"), webServiceProviderCombo,
             new Label("Coordonnées Géographiques (GPS) :"), geoBox,
-            new Label("💡 Fonctionnement Multi-Couches :\n" +
-                      "1. Élévation (DEM) : Extrait la topographie et pente réelle (x,y,z).\n" +
-                      "2. Couverture Végétale (Copernicus/ESA) : Génère la végétation locale (fleurs à nectar, graminées, litière).\n" +
-                      "3. Micro-Habitats & Commensaux : Détermine automatiquement les insectes commensaux (pucerons, collemboles, prédateurs) adaptés aux coordonnées GPS.") {{
-                setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+            new Label("💡 En mode SIG Réel, l'élévation du terrain (DEM), la composition du sol, la végétation et les commensaux (pucerons, collemboles) sont automatiquement calculés à partir du biome réel aux coordonnées GPS.") {{
+                setStyle("-fx-font-size: 10px; -fx-text-fill: #38bdf8; -fx-wrap-text: true;");
             }}
         );
         webOptions.setDisable(true);
 
         useWebServiceTerrainCheck.selectedProperty().addListener((obs, oldV, newV) -> {
             webOptions.setDisable(!newV);
+            if (newV) {
+                statusLbl.setText("🟢 Mode SIG Réel Actif (Lat: " + latField.getText() + "°, Lon: " + lonField.getText() + "°). Le relief et les micro-habitats sont pilotés par les données GPS.");
+                statusLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #4ade80; -fx-wrap-text: true;");
+            } else {
+                statusLbl.setText("ℹ️ Mode Procédural & Sculpture Manuelle Actif. Vous contrôlez directement la rugosité et les espèces.");
+                statusLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+            }
             regenerateAndRepaint();
         });
 
-        return new VBox(10, useWebServiceTerrainCheck, webOptions);
+        return new VBox(10, useWebServiceTerrainCheck, webOptions, statusLbl);
     }
 
     private VBox buildScaleBlock() {
