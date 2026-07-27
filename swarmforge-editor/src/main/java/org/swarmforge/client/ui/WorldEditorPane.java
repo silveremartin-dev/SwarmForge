@@ -61,6 +61,7 @@ public class WorldEditorPane extends BorderPane {
 
     // Controls: 1. Scale & Resolution
     private Slider surfaceSizeSlider; // Mètres (1.0 - 10.0m)
+    private Slider depthSlider;       // Profondeur Souterraine (0.2 - 5.0m)
     private Slider resolutionSlider; // Sub-millimétrique (0.1 - 1.0mm)
 
     // Controls: 2. Soil & Relief
@@ -395,64 +396,53 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private VBox buildTerrainSourceBlock() {
-        useWebServiceTerrainCheck = new CheckBox("🌐 Importer Données Géographiques Réelles (SIG)");
-        useWebServiceTerrainCheck.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-
         latField = new TextField("45.1885");
-        latField.setPrefWidth(90);
+        latField.setPrefWidth(85);
         lonField = new TextField("5.7245");
-        lonField.setPrefWidth(90);
+        lonField.setPrefWidth(85);
 
-        Button btnFetchGeoData = new Button("🔄 Synchroniser Données GPS");
-        btnFetchGeoData.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
-        btnFetchGeoData.setOnAction(e -> {
+        Button btnImportGPS = new Button("📍 Importer Données GPS");
+        btnImportGPS.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+        Label statusLbl = new Label("ℹ️ Au chargement, un relief procédural (Bruit Perlin) est généré par défaut. Vous pouvez importer les données réelles GPS ci-dessus à tout moment.");
+        statusLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+
+        btnImportGPS.setOnAction(e -> {
             regenerateAndRepaint();
-            new Alert(Alert.AlertType.INFORMATION, "Données SIG synchronisées pour Lat: " + latField.getText() + "°, Lon: " + lonField.getText() + "° ! Topographie et biomes mis à jour.").show();
+            statusLbl.setText("🟢 Données SIG importées pour Lat: " + latField.getText() + "°, Lon: " + lonField.getText() + "° ! Topographie et biomes réels appliqués.");
+            statusLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #4ade80; -fx-wrap-text: true;");
+            new Alert(Alert.AlertType.INFORMATION, "Importation des données SIG réelles effectuée avec succès ! Vous pouvez à présent sculpter ou retoucher librement le terrain.").show();
         });
 
         HBox geoBox = new HBox(6, 
             new Label("Lat:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, latField, 
             new Label("Lon:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, lonField,
-            btnFetchGeoData
+            btnImportGPS
         );
         geoBox.setAlignment(Pos.CENTER_LEFT);
 
-        Label statusLbl = new Label("ℹ️ Mode Procédural Actif. Cochez ci-dessus pour basculer en mode Données Réelles.");
-        statusLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
-
         VBox webOptions = new VBox(6,
             new Label("Coordonnées Géographiques (GPS) :"), geoBox,
-            new Label("💡 En mode SIG Réel, l'élévation du terrain (DEM), la composition du sol, la végétation et les commensaux (pucerons, collemboles) sont automatiquement calculés à partir du biome réel aux coordonnées GPS.") {{
+            new Label("💡 Action en 1 Clic : Importe l'élévation réelle (DEM), la composition du sol, la végétation et les insectes commensaux (pucerons, collemboles) pour la zone GPS. Vous conservez ensuite le contrôle pour retoucher le terrain.") {{
                 setStyle("-fx-font-size: 10px; -fx-text-fill: #38bdf8; -fx-wrap-text: true;");
             }}
         );
-        webOptions.setDisable(true);
 
-        useWebServiceTerrainCheck.selectedProperty().addListener((obs, oldV, newV) -> {
-            webOptions.setDisable(!newV);
-            if (newV) {
-                statusLbl.setText("🟢 Mode SIG Réel Actif (Lat: " + latField.getText() + "°, Lon: " + lonField.getText() + "°). Le relief et les micro-habitats sont pilotés par les données GPS.");
-                statusLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #4ade80; -fx-wrap-text: true;");
-            } else {
-                statusLbl.setText("ℹ️ Mode Procédural & Sculpture Manuelle Actif. Vous contrôlez directement la rugosité et les espèces.");
-                statusLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
-            }
-            regenerateAndRepaint();
-        });
-
-        return new VBox(10, useWebServiceTerrainCheck, webOptions, statusLbl);
+        return new VBox(10, webOptions, statusLbl);
     }
 
     private VBox buildScaleBlock() {
         surfaceSizeSlider = mkSlider(0.5, 10.0, 2.0);
+        depthSlider = mkSlider(0.2, 5.0, 1.5);
         resolutionSlider = mkSlider(0.1, 1.0, 0.5);
-        addLsn(surfaceSizeSlider, resolutionSlider);
+        addLsn(surfaceSizeSlider, depthSlider, resolutionSlider);
 
-        Label scaleHint = new Label("💡 Permet de simuler précisément le diamètre des galeries (3-8 mm) et le corps des fourmis (2-15 mm).");
+        Label scaleHint = new Label("💡 Détermine l'emprise 3D (Surface x Profondeur Souterraine) et la précision voxel sub-millimétrique.");
         scaleHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
         return new VBox(8,
                 new Label("Taille de Surface (Mètres):"), sv(surfaceSizeSlider, "m"),
+                new Label("Profondeur Souterraine du Sol (Mètres):"), sv(depthSlider, "m"),
                 new Label("Résolution Grille / Voxel:"), sv(resolutionSlider, "mm"),
                 scaleHint
         );
@@ -894,6 +884,14 @@ public class WorldEditorPane extends BorderPane {
         draw3DTechnical();
     }
 
+    private double[] project3DPoint(double x, double y, double z, double cx, double cy, double scale, double radAz, double radEl) {
+        double isoX = (x - GRID_SIZE / 2.0) * Math.cos(radAz) - (y - GRID_SIZE / 2.0) * Math.sin(radAz);
+        double isoY = (x - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (y - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - z * Math.cos(radEl);
+        double px = cx + isoX * (scale / 10.0);
+        double py = cy + isoY * (scale / 10.0);
+        return new double[]{px, py};
+    }
+
     private void draw3DTechnical() {
         double w = canvas3D.getWidth();
         double h = canvas3D.getHeight();
@@ -909,26 +907,71 @@ public class WorldEditorPane extends BorderPane {
         double cy = h / 2 + pan3DY + 40;
         double scale = zoom * 12.0;
 
-        // Render Voxel Heightmap & Substrates in 3D Grid
         int step = 2;
+        double targetDepthVal = depthSlider != null ? depthSlider.getValue() : 1.5;
+        double maxDepthPx = targetDepthVal * 20.0;
+
+        // 1. Render Solid 3D Continuous Quad Surface Mesh (No gaps!)
         for (int x = 0; x < GRID_SIZE - step; x += step) {
             for (int y = 0; y < GRID_SIZE - step; y += step) {
-                double z = heightGrid[x][y] * 40.0;
-                if (carvedVoxelGrid[x][y]) z -= 20.0; // Carved gallery depth
+                double z0 = heightGrid[x][y] * 40.0;
+                double z1 = heightGrid[x + step][y] * 40.0;
+                double z2 = heightGrid[x + step][y + step] * 40.0;
+                double z3 = heightGrid[x][y + step] * 40.0;
 
-                // 3D Isometric projection
-                double isoX = (x - GRID_SIZE / 2.0) * Math.cos(radAz) - (y - GRID_SIZE / 2.0) * Math.sin(radAz);
-                double isoY = (x - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (y - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - z * Math.cos(radEl);
+                if (carvedVoxelGrid[x][y]) z0 -= 15.0;
+                if (carvedVoxelGrid[x + step][y]) z1 -= 15.0;
+                if (carvedVoxelGrid[x + step][y + step]) z2 -= 15.0;
+                if (carvedVoxelGrid[x][y + step]) z3 -= 15.0;
 
-                double px = cx + isoX * (scale / 10.0);
-                double py = cy + isoY * (scale / 10.0);
+                double[] p0 = project3DPoint(x, y, z0, cx, cy, scale, radAz, radEl);
+                double[] p1 = project3DPoint(x + step, y, z1, cx, cy, scale, radAz, radEl);
+                double[] p2 = project3DPoint(x + step, y + step, z2, cx, cy, scale, radAz, radEl);
+                double[] p3 = project3DPoint(x, y + step, z3, cx, cy, scale, radAz, radEl);
+
+                double[] pxs = new double[]{p0[0], p1[0], p2[0], p3[0]};
+                double[] pys = new double[]{p0[1], p1[1], p2[1], p3[1]};
 
                 Color col = getMaterialColor(soilLayers[x][y][0]);
-                if (carvedVoxelGrid[x][y]) col = Color.web("#d97706"); // Gallery color
+                if (carvedVoxelGrid[x][y]) col = Color.web("#d97706");
 
                 gc3D.setFill(col);
-                gc3D.fillRect(px, py, scale / 8.0, scale / 8.0);
+                gc3D.fillPolygon(pxs, pys, 4);
+                gc3D.setStroke(col.darker());
+                gc3D.setLineWidth(0.3);
+                gc3D.strokePolygon(pxs, pys, 4);
             }
+        }
+
+        // 2. Render Subterranean Solid Cutaway Skirt Walls along Front Edges
+        int edgeY = GRID_SIZE - step;
+        for (int x = 0; x < GRID_SIZE - step; x += step) {
+            double z0 = heightGrid[x][edgeY] * 40.0;
+            double z1 = heightGrid[x + step][edgeY] * 40.0;
+            double[] top0 = project3DPoint(x, edgeY, z0, cx, cy, scale, radAz, radEl);
+            double[] top1 = project3DPoint(x + step, edgeY, z1, cx, cy, scale, radAz, radEl);
+            double[] bot0 = project3DPoint(x, edgeY, z0 - maxDepthPx, cx, cy, scale, radAz, radEl);
+            double[] bot1 = project3DPoint(x + step, edgeY, z1 - maxDepthPx, cx, cy, scale, radAz, radEl);
+
+            gc3D.setFill(Color.web("#334155"));
+            gc3D.fillPolygon(new double[]{top0[0], top1[0], bot1[0], bot0[0]}, new double[]{top0[1], top1[1], bot1[1], bot0[1]}, 4);
+            gc3D.setStroke(Color.web("#1e293b"));
+            gc3D.strokePolygon(new double[]{top0[0], top1[0], bot1[0], bot0[0]}, new double[]{top0[1], top1[1], bot1[1], bot0[1]}, 4);
+        }
+
+        int edgeX = GRID_SIZE - step;
+        for (int y = 0; y < GRID_SIZE - step; y += step) {
+            double z0 = heightGrid[edgeX][y] * 40.0;
+            double z1 = heightGrid[edgeX][y + step] * 40.0;
+            double[] top0 = project3DPoint(edgeX, y, z0, cx, cy, scale, radAz, radEl);
+            double[] top1 = project3DPoint(edgeX, y + step, z1, cx, cy, scale, radAz, radEl);
+            double[] bot0 = project3DPoint(edgeX, y, z0 - maxDepthPx, cx, cy, scale, radAz, radEl);
+            double[] bot1 = project3DPoint(edgeX, y + step, z1 - maxDepthPx, cx, cy, scale, radAz, radEl);
+
+            gc3D.setFill(Color.web("#1e293b"));
+            gc3D.fillPolygon(new double[]{top0[0], top1[0], bot1[0], bot0[0]}, new double[]{top0[1], top1[1], bot1[1], bot0[1]}, 4);
+            gc3D.setStroke(Color.web("#0f172a"));
+            gc3D.strokePolygon(new double[]{top0[0], top1[0], bot1[0], bot0[0]}, new double[]{top0[1], top1[1], bot1[1], bot0[1]}, 4);
         }
 
         // Draw River along riverPath (suivi réel de la pente)
@@ -940,12 +983,9 @@ public class WorldEditorPane extends BorderPane {
             for (int[] pt : riverPath) {
                 int rx = pt[0], ry = pt[1];
                 double rz = heightGrid[rx][ry] * 40.0 + 2.0; // légèrement au-dessus du sol
-                double isoX = (rx - GRID_SIZE / 2.0) * Math.cos(radAz) - (ry - GRID_SIZE / 2.0) * Math.sin(radAz);
-                double isoY = (rx - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (ry - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - rz * Math.cos(radEl);
-                double px = cx + isoX * (scale / 10.0);
-                double py = cy + isoY * (scale / 10.0);
-                if (first) { gc3D.moveTo(px, py); first = false; }
-                else gc3D.lineTo(px, py);
+                double[] p = project3DPoint(rx, ry, rz, cx, cy, scale, radAz, radEl);
+                if (first) { gc3D.moveTo(p[0], p[1]); first = false; }
+                else gc3D.lineTo(p[0], p[1]);
             }
             gc3D.stroke();
         }
@@ -958,25 +998,20 @@ public class WorldEditorPane extends BorderPane {
                 int gx = 10 + (int)(rand.nextDouble() * (GRID_SIZE - 20));
                 int gy = 10 + (int)(rand.nextDouble() * (GRID_SIZE - 20));
                 double z = heightGrid[gx][gy] * 40.0;
-
-                double isoX = (gx - GRID_SIZE / 2.0) * Math.cos(radAz) - (gy - GRID_SIZE / 2.0) * Math.sin(radAz);
-                double isoY = (gx - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (gy - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - z * Math.cos(radEl);
-
-                double px = cx + isoX * (scale / 10.0);
-                double py = cy + isoY * (scale / 10.0);
+                double[] p = project3DPoint(gx, gy, z, cx, cy, scale, radAz, radEl);
 
                 // Tronc ancré au sol
                 gc3D.setFill(Color.web("#78350f"));
-                gc3D.fillRect(px - 3, py - 25, 6, 25);
+                gc3D.fillRect(p[0] - 2, p[1] - 18, 4, 18);
                 // Houppier
                 gc3D.setFill(Color.web("#166534"));
-                gc3D.fillOval(px - 14, py - 45, 28, 26);
+                gc3D.fillOval(p[0] - 10, p[1] - 32, 20, 18);
             }
         }
 
         // Label Overlay
         gc3D.setFill(Color.WHITE);
-        gc3D.fillText("Vue 3D (Az: " + (int) azimuth + "°, El: " + (int) elevation + "°, Zoom: " + String.format("%.1f", zoom) + "x)", 15, 25);
+        gc3D.fillText("Vue 3D (Az: " + (int) azimuth + "°, El: " + (int) elevation + "°, Profondeur: " + String.format("%.1f", targetDepthVal) + "m)", 15, 25);
     }
 
     private void drawSide() {
@@ -1048,8 +1083,9 @@ public class WorldEditorPane extends BorderPane {
         double cx = topPanX;
         double cy = topPanY;
 
-        double cellW = ((w - 30) / GRID_SIZE) * tZoom;
-        double cellH = ((h - 30) / GRID_SIZE) * tZoom;
+        double side = Math.min((w - 30) / GRID_SIZE, (h - 30) / GRID_SIZE) * tZoom;
+        double cellW = side;
+        double cellH = side;
 
         // Sol en Surface
         for (int x = 0; x < GRID_SIZE; x += 2) {
@@ -1174,6 +1210,7 @@ public class WorldEditorPane extends BorderPane {
     public Map<String, Object> getConfiguration() {
         Map<String, Object> cfg = new LinkedHashMap<>();
         cfg.put("surfaceSizeMeters", surfaceSizeSlider.getValue());
+        cfg.put("depthMeters", depthSlider != null ? depthSlider.getValue() : 1.5);
         cfg.put("resolutionMm", resolutionSlider.getValue());
         cfg.put("roughness", roughnessSlider.getValue());
         cfg.put("compaction", compactionSlider.getValue());
