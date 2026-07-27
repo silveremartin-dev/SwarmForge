@@ -19,6 +19,38 @@
     -fx-fill: #e4e4e7;
 }
 
+/* Tooltip Styling - Standard dark background with light text */
+.tooltip {
+    -fx-background-color: #27272a;
+    -fx-text-fill: #f4f4f5;
+    -fx-border-color: #3f3f46;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-font-size: 12px;
+    -fx-padding: 6px 10px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 8, 0, 0, 2);
+}
+
+.tooltip > .text {
+    -fx-fill: #f4f4f5;
+}
+
+/* Toast Overlay Banner */
+.toast-banner {
+    -fx-background-color: #27272a;
+    -fx-border-width: 0 0 0 4px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 4);
+}
+
+.toast-label {
+    -fx-text-fill: #f4f4f5;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
 /* Main TabPane & Tab Headers */
 .tab-pane {
     -fx-background-color: #18181b;
@@ -277,19 +309,27 @@
 
 /* Custom Standardized Card Pane & Title Utility Classes */
 .card-pane {
-    -fx-background-color: #18181b;
-    -fx-border-color: #27272a;
+    -fx-background-color: #27272a;
+    -fx-border-color: #3f3f46;
     -fx-border-width: 1px;
-    -fx-background-radius: 8px;
-    -fx-border-radius: 8px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
     -fx-padding: 12px;
 }
 
 .card-title {
     -fx-font-size: 13px;
     -fx-font-weight: bold;
-    -fx-text-fill: #38bdf8;
+    -fx-text-fill: #f4f4f5;
     -fx-padding: 0 0 6px 0;
+}
+
+.chart-holder {
+    -fx-background-color: #18181b;
+    -fx-border-color: #3f3f46;
+    -fx-border-width: 1px;
+    -fx-background-radius: 4px;
+    -fx-border-radius: 4px;
 }
 
 /* Standardized Button Classes */
@@ -337,4 +377,3 @@
 .btn-danger:hover {
     -fx-background-color: #991b1b;
 }
-

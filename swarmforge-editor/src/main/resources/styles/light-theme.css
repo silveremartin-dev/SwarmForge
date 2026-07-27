@@ -19,6 +19,38 @@
     -fx-fill: #0f172a;
 }
 
+/* Tooltip Styling - Crisp white background with dark text */
+.tooltip {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #0f172a;
+    -fx-border-color: #cbd5e1;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-font-size: 12px;
+    -fx-padding: 6px 10px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 8, 0, 0, 2);
+}
+
+.tooltip > .text {
+    -fx-fill: #0f172a;
+}
+
+/* Toast Overlay Banner */
+.toast-banner {
+    -fx-background-color: #ffffff;
+    -fx-border-width: 0 0 0 4px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 4);
+}
+
+.toast-label {
+    -fx-text-fill: #0f172a;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
 /* Main TabPane & Tab Headers */
 .tab-pane {
     -fx-background-color: #f8fafc;
@@ -272,4 +304,75 @@
 .separator *.line {
     -fx-border-color: #cbd5e1;
     -fx-border-width: 1px;
+}
+
+/* Custom Standardized Card Pane & Title Classes */
+.card-pane {
+    -fx-background-color: #f1f5f9;
+    -fx-border-color: #cbd5e1;
+    -fx-border-width: 1px;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-padding: 12px;
+}
+
+.card-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0f172a;
+    -fx-padding: 0 0 6px 0;
+}
+
+.chart-holder {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cbd5e1;
+    -fx-border-width: 1px;
+    -fx-background-radius: 4px;
+    -fx-border-radius: 4px;
+}
+
+/* Standardized Button Classes */
+.btn-primary {
+    -fx-background-color: #0284c7;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-border-color: #0369a1;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-padding: 6px 14px;
+    -fx-cursor: hand;
+}
+
+.btn-primary:hover {
+    -fx-background-color: #0369a1;
+    -fx-border-color: #075985;
+}
+
+.btn-secondary {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #0f172a;
+    -fx-border-color: #cbd5e1;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-padding: 6px 14px;
+    -fx-cursor: hand;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #f1f5f9;
+    -fx-border-color: #94a3b8;
+}
+
+.btn-danger {
+    -fx-background-color: #ef4444;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #dc2626;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-padding: 6px 14px;
+    -fx-cursor: hand;
+}
+
+.btn-danger:hover {
+    -fx-background-color: #dc2626;
 }

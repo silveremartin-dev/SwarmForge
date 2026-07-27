@@ -12,7 +12,6 @@ import javafx.animation.SequentialTransition;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -23,7 +22,7 @@ import org.kordamp.ikonli.javafx.FontIcon;
 
 /**
  * Non-blocking, smooth overlay notification toast banner utility for SwarmForge UI.
- * Replaces disruptive modal alert dialogs for non-critical user feedback.
+ * Fully compatible with Light and Dark CSS themes.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
@@ -55,22 +54,15 @@ public class NotificationOverlay {
             HBox toast = new HBox(10);
             toast.setAlignment(Pos.CENTER_LEFT);
             toast.setPadding(new Insets(10, 16, 10, 16));
-            toast.setStyle(String.format(
-                "-fx-background-color: #1e293b; " +
-                "-fx-border-color: %s; " +
-                "-fx-border-width: 0 0 0 4px; " +
-                "-fx-background-radius: 6px; " +
-                "-fx-border-radius: 6px; " +
-                "-fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 4);",
-                type.color
-            ));
+            toast.getStyleClass().add("toast-banner");
+            toast.setStyle("-fx-border-color: " + type.color + ";");
 
             FontIcon icon = new FontIcon(type.icon);
             icon.setIconSize(18);
             icon.setStyle("-fx-icon-color: " + type.color + ";");
 
             Label label = new Label(message);
-            label.setStyle("-fx-text-fill: #f8fafc; -fx-font-weight: bold; -fx-font-size: 13px;");
+            label.getStyleClass().add("toast-label");
             label.setWrapText(true);
 
             toast.getChildren().addAll(icon, label);

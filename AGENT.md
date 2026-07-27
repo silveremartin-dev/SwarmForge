@@ -76,6 +76,10 @@ Whenever creating or modifying any UI components across editors, clients, panels
    - Every single UI button executing a deletion or destructive action (caste, species, preset, nest, simulation, resource, etc.) MUST display an explicit JavaFX confirmation dialog (`Alert.AlertType.CONFIRMATION`) requiring user validation before processing the removal.
 8. **Integrated Searchable Help & Documentation**:
    - Complex editor panes must consolidate reference material, glossaries, and pedagogical documentation directly into a dedicated, searchable UI tab rather than relying on external popup dialogs.
+9. **Minimal CSS Overrides & Seamless Light/Dark Theme Parity**:
+   - Do NOT use hardcoded inline background colors or text colors (e.g. `-fx-background-color: #18181b`, `#1e2230`, `-fx-text-fill: #38bdf8`, `#00d4ff`) inside Java UI code (`setStyle`).
+   - UI components, card panes (`card-pane`), card titles (`card-title`), chart holders (`chart-holder`), tooltips (`.tooltip`), and notification overlays (`NotificationOverlay` / `.toast-banner` / `.toast-label`) MUST rely on standard CSS classes in `dark-theme.css` and `light-theme.css`.
+   - Light Theme MUST render standard light backgrounds (`#f8fafc` / `#ffffff`) with dark text (`#0f172a`) without dark blue boxes or unreadable overlays; Dark Theme MUST render standard dark anthracite with light text.
 
 ---
 

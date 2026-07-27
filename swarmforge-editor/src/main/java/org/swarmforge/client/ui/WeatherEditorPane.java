@@ -185,7 +185,8 @@ public class WeatherEditorPane extends BorderPane {
 
         Label t = new Label();
         t.textProperty().bind(i18n.createStringBinding("weather.title"));
-        t.setStyle("-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#00d4ff;");
+        t.getStyleClass().add("card-title");
+        t.setStyle("-fx-font-size: 18px;");
 
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
@@ -203,7 +204,8 @@ public class WeatherEditorPane extends BorderPane {
             }
         });
 
-        Button bAdd = btn("", "#17a2b8");
+        Button bAdd = new Button();
+        bAdd.getStyleClass().add("btn-secondary");
         bAdd.textProperty().bind(i18n.createStringBinding("weather.preset.save"));
         bAdd.setOnAction(e -> doSavePreset());
 
@@ -215,7 +217,8 @@ public class WeatherEditorPane extends BorderPane {
         bImp.textProperty().bind(i18n.createStringBinding("weather.preset.import"));
         bImp.setOnAction(e -> doImport());
 
-        Button bApply = btn("", "#28a745");
+        Button bApply = new Button();
+        bApply.getStyleClass().add("btn-primary");
         bApply.textProperty().bind(i18n.createStringBinding("weather.preset.apply"));
         bApply.setOnAction(e -> applyToWorld());
 
@@ -227,11 +230,6 @@ public class WeatherEditorPane extends BorderPane {
         return v;
     }
 
-    private Button btn(String text, String bg) {
-        Button b = new Button(text);
-        b.setStyle("-fx-background-color:" + bg + ";-fx-text-fill:white;-fx-font-weight:bold;");
-        return b;
-    }
 
     private void refreshPresetsCombo() {
         String cur = presetsCombo.getValue();
@@ -261,7 +259,8 @@ public class WeatherEditorPane extends BorderPane {
         citySearchField.setPrefWidth(220);
         citySearchField.setOnAction(e -> fetchRealWeather(citySearchField.getText()));
 
-        Button btnFetch = btn("", "#00d4ff");
+        Button btnFetch = new Button();
+        btnFetch.getStyleClass().add("btn-primary");
         btnFetch.textProperty().bind(i18n.createStringBinding("weather.geo.search_btn"));
         btnFetch.setOnAction(e -> fetchRealWeather(citySearchField.getText()));
 
@@ -323,10 +322,11 @@ public class WeatherEditorPane extends BorderPane {
         // Row 3: Photoperiod (Daylight Hours per Month) Preview Box
         VBox photoBox = new VBox(6);
         photoBox.setPadding(new Insets(8));
-        photoBox.setStyle("-fx-background-color:#1e2230;-fx-border-color:#333;-fx-border-width:1;-fx-border-radius:4;");
+        photoBox.getStyleClass().add("card-pane");
 
         Label photoTitle = new Label("☀️ Photopériodisme Calculé (Heures d'ensoleillement théoriques / jour) :");
-        photoTitle.setStyle("-fx-font-size:11;-fx-font-weight:bold;-fx-text-fill:#00d4ff;");
+        photoTitle.getStyleClass().add("card-title");
+        photoTitle.setStyle("-fx-font-size: 11px;");
 
         HBox hoursBox = new HBox(8);
         hoursBox.setAlignment(Pos.CENTER_LEFT);
@@ -618,9 +618,10 @@ public class WeatherEditorPane extends BorderPane {
         l.setStyle("-fx-font-weight: bold;");
         if (tooltipText != null && !tooltipText.isEmpty()) {
             Tooltip tt = new Tooltip(tooltipText);
-            tt.setStyle("-fx-font-size: 12px; -fx-max-width: 380px; -fx-wrap-text: true;");
+            tt.setMaxWidth(380);
+            tt.setWrapText(true);
             l.setTooltip(tt);
-            l.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-underline: true; -fx-cursor: hand;");
+            l.setStyle("-fx-font-weight: bold; -fx-underline: true; -fx-cursor: hand;");
         }
         return l;
     }
@@ -631,11 +632,12 @@ public class WeatherEditorPane extends BorderPane {
         I18nManager i18n = I18nManager.getInstance();
         VBox container = new VBox(8);
         container.setPadding(new Insets(10));
-        container.setStyle("-fx-background-color:#1e2230;-fx-border-color:#444;-fx-border-width:1;-fx-border-radius:6;-fx-background-radius:6;");
+        container.getStyleClass().add("card-pane");
 
         Label title = new Label();
         title.textProperty().bind(i18n.createStringBinding("weather.curves.title"));
-        title.setStyle("-fx-font-size:14;-fx-font-weight:bold;-fx-text-fill:#00d4ff;");
+        title.getStyleClass().add("card-title");
+        title.setStyle("-fx-font-size: 14px;");
 
         // Parameter selector toolbar
         HBox paramBar = new HBox(8);
@@ -666,7 +668,7 @@ public class WeatherEditorPane extends BorderPane {
         setupCanvasInteractions();
 
         StackPane canvasHolder = new StackPane(curveCanvas);
-        canvasHolder.setStyle("-fx-background-color:#141824;-fx-border-color:#333;-fx-border-width:1;-fx-border-radius:4;");
+        canvasHolder.getStyleClass().add("chart-holder");
 
         // Legend bar
         HBox legendBar = buildCurvesLegendBar();
@@ -887,8 +889,15 @@ public class WeatherEditorPane extends BorderPane {
         double w = curveCanvas.getWidth();
         double h = curveCanvas.getHeight();
 
+        boolean isDark = ThemeManager.getInstance().getCurrentTheme() == ThemeManager.Theme.DARK;
+        Color bgCol = isDark ? Color.web("#18181b") : Color.web("#ffffff");
+        Color gridCol = isDark ? Color.web("#3f3f46") : Color.web("#e2e8f0");
+        Color textCol = isDark ? Color.web("#a1a1aa") : Color.web("#475569");
+        Color tooltipBg = isDark ? Color.web("#27272a", 0.95) : Color.web("#ffffff", 0.95);
+        Color tooltipText = isDark ? Color.web("#f4f4f5") : Color.web("#0f172a");
+
         gc.clearRect(0, 0, w, h);
-        gc.setFill(Color.web("#141824"));
+        gc.setFill(bgCol);
         gc.fillRect(0, 0, w, h);
 
         if (activeParam == ParameterType.OVERVIEW) {
@@ -901,10 +910,10 @@ public class WeatherEditorPane extends BorderPane {
         double chartH = h - padT - padB;
 
         // Y-Grid and ticks
-        gc.setStroke(Color.web("#2a2f42"));
+        gc.setStroke(gridCol);
         gc.setLineWidth(1.0);
         gc.setFont(javafx.scene.text.Font.font(10));
-        gc.setFill(Color.web("#888"));
+        gc.setFill(textCol);
 
         double range = activeParam.maxVal - activeParam.minVal;
         for (double v = activeParam.minVal; v <= activeParam.maxVal; v += activeParam.tickStep) {
@@ -926,7 +935,7 @@ public class WeatherEditorPane extends BorderPane {
         double[] maxArr = getArr(activeParam, 2);
 
         // Filled translucent band between Min & Max
-        gc.setFill(Color.web("#00d4ff", 0.12));
+        gc.setFill(Color.web("#0284c7", 0.12));
         gc.beginPath();
         for (int m = 0; m < 12; m++) {
             double x = padL + m * monthStep;
@@ -943,26 +952,26 @@ public class WeatherEditorPane extends BorderPane {
         gc.fill();
 
         // Curves
-        drawSingleCurve(minArr, Color.web("#00d4ff"), padL, padT, monthStep, chartH);
-        drawSingleCurve(avgArr, Color.web("#ffc107"), padL, padT, monthStep, chartH);
-        drawSingleCurve(maxArr, Color.web("#ff4757"), padL, padT, monthStep, chartH);
+        drawSingleCurve(minArr, Color.web("#0284c7"), padL, padT, monthStep, chartH);
+        drawSingleCurve(avgArr, Color.web("#eab308"), padL, padT, monthStep, chartH);
+        drawSingleCurve(maxArr, Color.web("#ef4444"), padL, padT, monthStep, chartH);
 
         // Interactive Points / Handles
         for (int m = 0; m < 12; m++) {
             double x = padL + m * monthStep;
-            drawHandle(x, valToY(minArr[m], activeParam, padT, chartH), Color.web("#00d4ff"), draggedMonth == m && draggedCurve == 0);
-            drawHandle(x, valToY(avgArr[m], activeParam, padT, chartH), Color.web("#ffc107"), draggedMonth == m && draggedCurve == 1);
-            drawHandle(x, valToY(maxArr[m], activeParam, padT, chartH), Color.web("#ff4757"), draggedMonth == m && draggedCurve == 2);
+            drawHandle(x, valToY(minArr[m], activeParam, padT, chartH), Color.web("#0284c7"), draggedMonth == m && draggedCurve == 0);
+            drawHandle(x, valToY(avgArr[m], activeParam, padT, chartH), Color.web("#eab308"), draggedMonth == m && draggedCurve == 1);
+            drawHandle(x, valToY(maxArr[m], activeParam, padT, chartH), Color.web("#ef4444"), draggedMonth == m && draggedCurve == 2);
         }
 
         // Hover Info Text
         if (!hoverInfoText.isEmpty()) {
-            gc.setFill(Color.web("#1e2230", 0.95));
-            gc.setStroke(Color.web("#00d4ff"));
+            gc.setFill(tooltipBg);
+            gc.setStroke(Color.web("#0284c7"));
             gc.fillRect(padL + 10, padT + 5, 290, 24);
             gc.strokeRect(padL + 10, padT + 5, 290, 24);
 
-            gc.setFill(Color.WHITE);
+            gc.setFill(tooltipText);
             gc.setFont(javafx.scene.text.Font.font("System", 11));
             gc.fillText(hoverInfoText, padL + 18, padT + 21);
         }
@@ -973,16 +982,21 @@ public class WeatherEditorPane extends BorderPane {
         double subW = (w - 30) / 2.0;
         double subH = (h - 30) / 2.0;
 
+        boolean isDark = ThemeManager.getInstance().getCurrentTheme() == ThemeManager.Theme.DARK;
+        Color subBg = isDark ? Color.web("#27272a") : Color.web("#f1f5f9");
+        Color subBorder = isDark ? Color.web("#3f3f46") : Color.web("#cbd5e1");
+        Color titleCol = isDark ? Color.web("#f4f4f5") : Color.web("#0f172a");
+
         for (int i = 0; i < 4; i++) {
             double rx = 10 + (i % 2) * (subW + 10);
             double ry = 10 + (i / 2) * (subH + 10);
 
-            gc.setFill(Color.web("#1e2230"));
+            gc.setFill(subBg);
             gc.fillRect(rx, ry, subW, subH);
-            gc.setStroke(Color.web("#333"));
+            gc.setStroke(subBorder);
             gc.strokeRect(rx, ry, subW, subH);
 
-            gc.setFill(Color.web("#00d4ff"));
+            gc.setFill(titleCol);
             gc.setFont(javafx.scene.text.Font.font(11));
             gc.fillText(params[i].title, rx + 8, ry + 16);
 
@@ -996,9 +1010,9 @@ public class WeatherEditorPane extends BorderPane {
             double[] avgArr = getArr(params[i], 1);
             double[] maxArr = getArr(params[i], 2);
 
-            drawSingleCurve(minArr, Color.web("#00d4ff"), padL, padT, mStep, cH, params[i]);
-            drawSingleCurve(avgArr, Color.web("#ffc107"), padL, padT, mStep, cH, params[i]);
-            drawSingleCurve(maxArr, Color.web("#ff4757"), padL, padT, mStep, cH, params[i]);
+            drawSingleCurve(minArr, Color.web("#0284c7"), padL, padT, mStep, cH, params[i]);
+            drawSingleCurve(avgArr, Color.web("#eab308"), padL, padT, mStep, cH, params[i]);
+            drawSingleCurve(maxArr, Color.web("#ef4444"), padL, padT, mStep, cH, params[i]);
         }
     }
 
