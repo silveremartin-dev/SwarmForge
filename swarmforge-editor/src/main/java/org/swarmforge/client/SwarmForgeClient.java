@@ -402,11 +402,23 @@ public class SwarmForgeClient extends Application {
                 StackPane.setAlignment(pheromoneOverlay, Pos.BOTTOM_LEFT);
                 StackPane.setMargin(pheromoneOverlay, new Insets(10));
 
-                // 3D Media Recording Toolbar (Bottom-Center: Photo Capture & Video Recording MP4)
+                // 3D Media Recording & Render Mode Toolbar (Photo, Video MP4 & Mode Gamified Voxel)
                 HBox mediaBar = new HBox(10);
                 mediaBar.setAlignment(Pos.CENTER);
                 mediaBar.setStyle("-fx-background-color: rgba(15, 23, 42, 0.85); -fx-padding: 6 16; -fx-background-radius: 20; -fx-border-color: rgba(255,255,255,0.15); -fx-border-radius: 20;");
-                
+
+                Button btnGamifiedToggle = new Button("🎮 Mode Voxel Gamifié");
+                btnGamifiedToggle.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
+                btnGamifiedToggle.setOnAction(e -> {
+                    if (btnGamifiedToggle.getText().contains("Gamifié")) {
+                        btnGamifiedToggle.setText("🔲 Rendu 3D Classique");
+                        btnGamifiedToggle.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
+                    } else {
+                        btnGamifiedToggle.setText("🎮 Mode Voxel Gamifié");
+                        btnGamifiedToggle.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
+                    }
+                });
+
                 Button btnPhoto = new Button("📸 Photo HD");
                 btnPhoto.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
                 btnPhoto.setOnAction(e -> {
@@ -426,7 +438,7 @@ public class SwarmForgeClient extends Application {
                     }
                 });
 
-                mediaBar.getChildren().addAll(btnPhoto, btnRecVideo);
+                mediaBar.getChildren().addAll(btnGamifiedToggle, btnPhoto, btnRecVideo);
                 viewport3D.getChildren().add(mediaBar);
                 StackPane.setAlignment(mediaBar, Pos.BOTTOM_CENTER);
                 StackPane.setMargin(mediaBar, new Insets(15));

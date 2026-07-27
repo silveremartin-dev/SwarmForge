@@ -178,19 +178,31 @@ public class SimulationControlPanel extends VBox {
         comboPreyPred.setOnAction(e -> interruptIfRunning.run());
         comboWeather.setOnAction(e -> interruptIfRunning.run());
 
+        javafx.scene.control.ComboBox<String> comboNestPlacement = new javafx.scene.control.ComboBox<>();
+        comboNestPlacement.getItems().addAll(
+            "📍 Positionnement optimal (Centre carte hors d'eau)",
+            "👑 Fondation Reine Seule Claustrale (Sol Vierge)",
+            "🎲 Positionnement aléatoire autour du centre (Hors eau)",
+            "🏛️ Nids multiples répartis (Cohabitation)"
+        );
+        comboNestPlacement.getSelectionModel().selectFirst();
+        comboNestPlacement.setOnAction(e -> interruptIfRunning.run());
+
         Label l1 = new Label("🌍 Monde :"); l1.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
         Label l2 = new Label("🐜 Espèce(s) :"); l2.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
-        Label l3 = new Label("🏰 Nid :"); l3.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
-        Label l4 = new Label("🦗 Proies/Prédateurs :"); l4.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
-        Label l5 = new Label("⛅ Météo/Climat :"); l5.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+        Label l3 = new Label("🏰 Nid Type :"); l3.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+        Label l4 = new Label("📍 Placement Nid :"); l4.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+        Label l5 = new Label("🦗 Proies/Prédateurs :"); l5.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+        Label l6 = new Label("⛅ Météo/Climat :"); l6.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
 
         gridPresets.add(l1, 0, 0); gridPresets.add(comboWorld, 1, 0);
         gridPresets.add(l2, 2, 0); gridPresets.add(comboSpecies, 3, 0);
         gridPresets.add(l3, 0, 1); gridPresets.add(comboNest, 1, 1);
-        gridPresets.add(l4, 2, 1); gridPresets.add(comboPreyPred, 3, 1);
-        gridPresets.add(l5, 0, 2); gridPresets.add(comboWeather, 1, 2);
+        gridPresets.add(l4, 2, 1); gridPresets.add(comboNestPlacement, 3, 1);
+        gridPresets.add(l5, 0, 2); gridPresets.add(comboPreyPred, 1, 2);
+        gridPresets.add(l6, 2, 2); gridPresets.add(comboWeather, 3, 2);
 
-        presetBox.getChildren().addAll(lblPresetHeader, metaRow, gridPresets, seedRow, btnApplyPresets);n().addAll(lblPresetHeader, metaRow, gridPresets);
+        presetBox.getChildren().addAll(lblPresetHeader, metaRow, gridPresets, seedRow, btnApplyPresets);
 
         // === Row 1: Date/Time Display & Real-Time Status ===
         HBox dateTimeRow = new HBox(15);
