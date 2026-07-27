@@ -362,31 +362,28 @@ public class WorldEditorPane extends BorderPane {
 
         Accordion accordion = new Accordion();
 
-        // 0. TERRAIN SOURCE SELECTOR
-        TitledPane paneSource = new TitledPane("🌐 Source du Terrain (Procédural vs Service Web)", buildTerrainSourceBlock());
+        // 0. TERRAIN SOURCE SELECTOR (SIG / GeoData)
+        TitledPane paneSource = new TitledPane("🌐 Données Géographiques & Services Web SIG", buildTerrainSourceBlock());
 
         // 1. SCALE & RESOLUTION
         TitledPane paneScale = new TitledPane("📐 Échelle & Voxel Sub-millimétrique", buildScaleBlock());
 
-        // 2. SOIL & RELIEF
-        TitledPane paneSoil = new TitledPane("⛰️ Relief & Substrats de Sol", buildSoilBlock());
+        // 2. RELIEF & TOPOGRAPHY (Rugosité, Bruit Perlin & Sculpture 3D)
+        TitledPane paneRelief = new TitledPane("⛰️ Relief, Topographie & Sculpture 3D", buildReliefBlock());
 
-        // 3. FLORA ECOSYSTEM
-        TitledPane paneFlora = new TitledPane("🌿 Écosystème & Couvert Végétal", buildFloraBlock());
+        // 3. SOIL & STRATA (Substrats, Stratification & Vides 3D)
+        TitledPane paneSoil = new TitledPane("🗻 Sol, Substrats & Stratification 3D", buildSoilBlock());
 
         // 4. HYDROLOGY
         TitledPane paneHydro = new TitledPane("💧 Hydrographie & Sources d'Eau", buildHydroBlock());
 
-        // 5. VERTICAL STRUCTURES
-        TitledPane paneStruct = new TitledPane("🪵 Structures en Hauteur & Hôtes", buildStructBlock());
+        // 5. FLORA ECOSYSTEM
+        TitledPane paneFlora = new TitledPane("🌿 Écosystème & Biome Végétal", buildFloraBlock());
 
-        // 6. 3D SCULPTING BRUSHES
-        TitledPane paneSculpt = new TitledPane("🖌️ Sculpture 3D (Élévation uniquement)", buildSculptBlock());
+        // 6. VERTICAL STRUCTURES
+        TitledPane paneStruct = new TitledPane("🪵 Structures Hôtes & Hauteur", buildStructBlock());
 
-        // 7. SOL 3D : STRATIFICATION & VIDES
-        TitledPane paneSoil3D = new TitledPane("🗻 Sol 3D : Stratification, Humidité & Vides", buildSoil3DBlock());
-
-        accordion.getPanes().addAll(paneSource, paneScale, paneSoil, paneSoil3D, paneFlora, paneHydro, paneStruct, paneSculpt);
+        accordion.getPanes().addAll(paneSource, paneScale, paneRelief, paneSoil, paneHydro, paneFlora, paneStruct);
         accordion.setExpandedPane(paneSource); // Open source block by default
 
         cfg.getChildren().add(accordion);
@@ -398,32 +395,36 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private VBox buildTerrainSourceBlock() {
-        useWebServiceTerrainCheck = new CheckBox("Importer depuis un service web (GeoData)");
+        useWebServiceTerrainCheck = new CheckBox("Importer depuis un service web SIG (Données Réelles)");
         useWebServiceTerrainCheck.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
 
         webServiceProviderCombo = new ComboBox<>();
         webServiceProviderCombo.getItems().addAll(
-            "Google Earth / Maps Elevation API",
-            "OpenTopography SRTM DEM (Global 30m)",
-            "EU-DEM v1.1 Vegetation & Relief",
-            "USGS 3DEP High Res Elevation"
+            "🌐 SIG Multi-Couches : Élévation DEM (SRTM) + Biome Copernicus",
+            "⛰️ OpenTopography SRTM DEM (Relief Global 30m)",
+            "🌳 EU-DEM v1.1 Vegetation & Relief (Europe 10m)",
+            "⛰️ USGS 3DEP High Res Elevation (North America 10m)",
+            "🗺️ Google Earth / Maps Elevation API (Relief Brut)"
         );
         webServiceProviderCombo.getSelectionModel().selectFirst();
-        webServiceProviderCombo.setPrefWidth(260);
+        webServiceProviderCombo.setPrefWidth(280);
 
         latField = new TextField("45.1885");
-        latField.setPrefWidth(120);
+        latField.setPrefWidth(100);
         lonField = new TextField("5.7245");
-        lonField.setPrefWidth(120);
+        lonField.setPrefWidth(100);
 
         HBox geoBox = new HBox(8, new Label("Lat:") {{ setStyle("-fx-text-fill: #aaa;"); }}, latField, 
                                  new Label("Lon:") {{ setStyle("-fx-text-fill: #aaa;"); }}, lonField);
         geoBox.setAlignment(Pos.CENTER_LEFT);
 
         VBox webOptions = new VBox(6,
-            new Label("Service Web GeoData:"), webServiceProviderCombo,
-            new Label("Coordonnées Géographiques:"), geoBox,
-            new Label("💡 Télécharge l'élévation et la couverture végétale réelle aux coordonnées données.") {{
+            new Label("Source de Données SIG / GeoData:"), webServiceProviderCombo,
+            new Label("Coordonnées Géographiques (GPS) :"), geoBox,
+            new Label("💡 Fonctionnement Multi-Couches :\n" +
+                      "1. Élévation (DEM) : Extrait la topographie et pente réelle (x,y,z).\n" +
+                      "2. Couverture Végétale (Copernicus/ESA) : Génère la végétation locale (fleurs à nectar, graminées, litière).\n" +
+                      "3. Micro-Habitats & Commensaux : Détermine automatiquement les insectes commensaux (pucerons, collemboles, prédateurs) adaptés aux coordonnées GPS.") {{
                 setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
             }}
         );
@@ -452,12 +453,11 @@ public class WorldEditorPane extends BorderPane {
         );
     }
 
-    private VBox buildSoilBlock() {
+    private VBox buildReliefBlock() {
         roughnessSlider = mkSlider(0.0, 1.0, 0.45);
         compactionSlider = mkSlider(10.0, 100.0, 65.0);
-        // roughness déclenche une régénération complète (affecte le heightmap)
+
         roughnessSlider.valueProperty().addListener((o, a, b) -> {
-            // Appliquer la rugosité en perturbant le heightmap
             double r = roughnessSlider.getValue();
             Random rand = new Random(42);
             for (int x = 0; x < GRID_SIZE; x++)
@@ -472,12 +472,23 @@ public class WorldEditorPane extends BorderPane {
         });
         compactionSlider.valueProperty().addListener((o, a, b) -> repaintAllViews());
 
+        VBox sculptSubBlock = buildSculptBlock();
+
+        return new VBox(8,
+                new Label("⛰️ Rugosité du Relief (Bruit Perlin) :"), sv(roughnessSlider, ""),
+                new Label("🔨 Indice de Compaction du Sol :"), sv(compactionSlider, "%"),
+                new Separator(),
+                sculptSubBlock
+        );
+    }
+
+    private VBox buildSoilBlock() {
         earthSpinner = mkSpinner(0, 100, 50);
         sandSpinner = mkSpinner(0, 100, 20);
         claySpinner = mkSpinner(0, 100, 20);
         stoneSpinner = mkSpinner(0, 100, 10);
         organicSpinner = mkSpinner(0, 100, 0);
-        // Les spinners de composition déclenchent une regénération des couches
+
         for (Spinner<Integer> sp : new Spinner[]{earthSpinner, sandSpinner, claySpinner, stoneSpinner, organicSpinner})
             sp.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
 
@@ -489,17 +500,6 @@ public class WorldEditorPane extends BorderPane {
         grid.add(new Label("Pierre / Gravier %:"), 0, 3); grid.add(stoneSpinner, 1, 3);
         grid.add(new Label("Litière Organique %:"), 0, 4); grid.add(organicSpinner, 1, 4);
 
-        return new VBox(8,
-                new Label("Rugosité du Relief (Bruit Perlin):"), sv(roughnessSlider, ""),
-                new Label("Indice de Compaction du Sol:"), sv(compactionSlider, "%"),
-                new Separator(),
-                new Label("🏜️ Composition du Substrat Surface (%) :"),
-                grid
-        );
-    }
-
-    /** Nouveau panneau : Stratification, Humidité, Vides souterrains. */
-    private VBox buildSoil3DBlock() {
         stratificationSlider = mkSlider(0.0, 1.0, 0.7);
         mixingRateSlider     = mkSlider(0.0, 1.0, 0.3);
         baseHumiditySlider   = mkSlider(0.0, 1.0, 0.35);
@@ -507,21 +507,22 @@ public class WorldEditorPane extends BorderPane {
         showHumidityCheck    = new CheckBox("💧 Afficher overlay humidité (vue dessus)");
         showHumidityCheck.setSelected(false);
 
-        // Tous ces sliders déclenchent une régénération complète
         for (Slider s : new Slider[]{stratificationSlider, mixingRateSlider, baseHumiditySlider, voidDensitySlider})
             s.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
         showHumidityCheck.setOnAction(e -> repaintAllViews());
 
-        Label hint = new Label("💡 Stratification = 1 : couches nettes (humus → argile → pierre).\nStratification = 0 : mélange aléatoire.\nDensité vides = chance de cavernes en profondeur.");
+        Label hint = new Label("💡 Stratification = 1 : couches nettes (humus → argile → pierre).\nDensité vides = cavernes & galeries naturelles.");
         hint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
         return new VBox(8,
-                new Label("🗻 Degré de Stratification:"), sv(stratificationSlider, ""),
-                new Label("🌀 Taux de Mélange des Couches:"), sv(mixingRateSlider, ""),
+                new Label("🏜️ Composition du Substrat Surface (%) :"),
+                grid,
                 new Separator(),
-                new Label("💧 Humidité de Base:"), sv(baseHumiditySlider, ""),
-                new Separator(),
-                new Label("🚫 Densité de Vides/Cavernes:"), sv(voidDensitySlider, ""),
+                new Label("🗻 Stratification & Structure Souterraine 3D :"),
+                new Label("Degré de Stratification :"), sv(stratificationSlider, ""),
+                new Label("Taux de Mélange des Couches :"), sv(mixingRateSlider, ""),
+                new Label("Humidité de Base du Sol :"), sv(baseHumiditySlider, ""),
+                new Label("Densité de Vides/Cavernes :"), sv(voidDensitySlider, ""),
                 showHumidityCheck,
                 hint
         );
