@@ -10,6 +10,7 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
@@ -602,29 +603,26 @@ public class WeatherEditorPane extends BorderPane {
         grid.getColumnConstraints().addAll(c1, c2);
 
         // Barometric Pressure (hPa)
-        Label lblPress = createTooltipLabel("🎚️ Pression Atmosphérique (hPa) :", "Pression barométrique de base calculée selon le modèle OACI de l'atmosphère standard en hectopascals (hPa).");
         pressureSpinner = new Spinner<>(800.0, 1100.0, 1013.2, 1.0);
         pressureSpinner.setEditable(true);
         pressureSpinner.setPrefWidth(100);
+        Label lblPress = createTooltipLabel("🎚️ Pression Atmosphérique (hPa) :", "Pression barométrique de base calculée selon le modèle OACI de l'atmosphère standard en hectopascals (hPa).", pressureSpinner, "Pression Atmosphérique");
 
-        // Prevailing Wind Direction
-        Label lblWindDir = createTooltipLabel("🧭 Direction du Vent Dominant :", "Direction dominante des masses d'air agissant sur la dispersion des plumes phéromonales et l'envol des sexués.");
         windDirCombo = new ComboBox<>();
         windDirCombo.getItems().addAll("N", "NE", "E", "SE", "S", "SW", "W", "NW");
         windDirCombo.setValue("SW");
         windDirCombo.setPrefWidth(80);
+        Label lblWindDir = createTooltipLabel("🧭 Direction du Vent Dominant :", "Direction dominante des masses d'air agissant sur la dispersion des plumes phéromonales et l'envol des sexués.", windDirCombo);
 
-        // Soil Thermal Inertia (days lag)
-        Label lblSoilInertia = createTooltipLabel("🧱 Inertie Thermique du Sol (Jours) :", "Déphasage thermique en jours de retard entre la température moyenne de l'air et la température du sol.");
         soilInertiaSpinner = new Spinner<>(0.5, 14.0, 3.0, 0.5);
         soilInertiaSpinner.setEditable(true);
         soilInertiaSpinner.setPrefWidth(90);
+        Label lblSoilInertia = createTooltipLabel("🧱 Inertie Thermique du Sol (Jours) :", "Déphasage thermique en jours de retard entre la température moyenne de l'air et la température du sol.", soilInertiaSpinner, "Sol & Microclimat");
 
-        // Underground Depth Attenuation Factor (0 to 1)
-        Label lblAtten = createTooltipLabel("🕳️ Atténuation en Profondeur (0-1) :", "Facteur d'atténuation de l'amplitude thermique quotidienne/annuelle dans les galeries souterraines du nid.");
         depthAttenSpinner = new Spinner<>(0.0, 1.0, 0.85, 0.05);
         depthAttenSpinner.setEditable(true);
         depthAttenSpinner.setPrefWidth(90);
+        Label lblAtten = createTooltipLabel("🕳️ Atténuation en Profondeur (0-1) :", "Facteur d'atténuation de l'amplitude thermique quotidienne/annuelle dans les galeries souterraines du nid.", depthAttenSpinner);
 
         grid.add(lblPress, 0, 0);
         grid.add(pressureSpinner, 1, 0);
@@ -642,6 +640,18 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     private Label createTooltipLabel(String text, String tooltipText) {
+        return createTooltipLabel(text, tooltipText, (javafx.scene.Node) null, null);
+    }
+
+    private Label createTooltipLabel(String text, String tooltipText, javafx.scene.Node targetControl) {
+        return createTooltipLabel(text, tooltipText, targetControl, null);
+    }
+
+    private Label createTooltipLabel(String text, String tooltipText, String glossaryTerm) {
+        return createTooltipLabel(text, tooltipText, null, glossaryTerm);
+    }
+
+    private Label createTooltipLabel(String text, String tooltipText, javafx.scene.Node targetControl, String glossaryTerm) {
         Label l = new Label(text);
         l.setStyle("-fx-font-weight: bold;");
         if (tooltipText != null && !tooltipText.isEmpty()) {
@@ -649,7 +659,19 @@ public class WeatherEditorPane extends BorderPane {
             tt.setMaxWidth(380);
             tt.setWrapText(true);
             l.setTooltip(tt);
-            l.setStyle("-fx-font-weight: bold; -fx-underline: true; -fx-cursor: hand;");
+            if (targetControl != null) {
+                if (targetControl instanceof Control) {
+                    ((Control) targetControl).setTooltip(tt);
+                } else {
+                    Tooltip.install(targetControl, tt);
+                }
+            }
+        }
+        if (glossaryTerm != null && !glossaryTerm.isEmpty()) {
+            l.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-underline: true; -fx-cursor: hand;");
+            l.setOnMouseClicked(e -> GlossaryDialog.show(glossaryTerm));
+        } else {
+            l.setStyle("-fx-font-weight: bold;");
         }
         return l;
     }

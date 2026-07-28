@@ -93,6 +93,7 @@ public class JmeGameApp extends SimpleApplication {
         settings.setHeight(height);
         settings.setFrameRate(60);
         settings.setRenderer(AppSettings.LWJGL_OPENGL33); // Use modern OpenGL
+        settings.setAudioRenderer(null); // Disable audio renderer to avoid OpenAL device initialization blockages
         setSettings(settings);
         setShowSettings(false);
         setPauseOnLostFocus(false);
@@ -641,5 +642,12 @@ public class JmeGameApp extends SimpleApplication {
                 weatherVisualizer.update(simulation.getWeather(), tpf);
             }
         }
+    }
+
+    public double getCameraDepth() {
+        if (cam != null) {
+            return Math.max(0.0, -cam.getLocation().y);
+        }
+        return 0.0;
     }
 }

@@ -46,6 +46,9 @@ public class SimulationControlPanel extends VBox {
     private final Label lblTime;
     private final Label lblDateTime;
 
+    private final javafx.scene.control.ComboBox<String> comboWorld = new javafx.scene.control.ComboBox<>();
+    private final javafx.scene.control.ComboBox<String> comboWeather = new javafx.scene.control.ComboBox<>();
+
     private boolean isPlaying = false;
     private float currentSpeed = 1.0f;
     private long currentTick = 0;
@@ -76,13 +79,13 @@ public class SimulationControlPanel extends VBox {
     public SimulationControlPanel() {
         setSpacing(8);
         setPadding(new Insets(10));
-        setStyle("-fx-background-color: #1e1e1e; -fx-border-color: #444; -fx-border-width: 1 0 0 0;");
+        setStyle("-fx-border-color: #3f3f46; -fx-border-width: 1 0 0 0;");
 
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
 
         // === Row 0: Presets Selection (Positioned ABOVE Simulation Controls as requested) ===
         VBox presetBox = new VBox(6);
-        presetBox.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-padding: 8; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 6;");
+        presetBox.getStyleClass().add("card-pane");
 
         Label lblPresetHeader = new Label("🔖 Presets du Scénario & des Onglets (Avant ou en cours de simulation)");
         lblPresetHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
@@ -110,8 +113,7 @@ public class SimulationControlPanel extends VBox {
         gridPresets.setHgap(8);
         gridPresets.setVgap(4);
 
-        javafx.scene.control.ComboBox<String> comboWorld = new javafx.scene.control.ComboBox<>();
-        comboWorld.getItems().addAll("Terrarium Tempéré (Mon Terrarium N°1)", "Forêt Tropicale Humide", "Désert Aride & Grottes");
+        comboWorld.getItems().setAll("Terrarium Tempéré (Mon Terrarium N°1)", "Forêt Tropicale Humide", "Désert Aride & Grottes");
         comboWorld.getSelectionModel().selectFirst();
 
         javafx.scene.control.ComboBox<String> comboSpecies = new javafx.scene.control.ComboBox<>();
@@ -126,8 +128,7 @@ public class SimulationControlPanel extends VBox {
         comboPreyPred.getItems().addAll("Pucerons & Fourmilion", "Incursion Guêpe Solitaire & Araignée", "Ressources Abondantes");
         comboPreyPred.getSelectionModel().selectFirst();
 
-        javafx.scene.control.ComboBox<String> comboWeather = new javafx.scene.control.ComboBox<>();
-        comboWeather.getItems().addAll("Printemps Doux (22°C)", "Été Caniculaire (34°C)", "Automne Humide (14°C)");
+        comboWeather.getItems().setAll("Printemps Doux (22°C)", "Été Caniculaire (34°C)", "Automne Humide (14°C)");
         comboWeather.getSelectionModel().selectFirst();
 
         // Master Seed Row (Deterministic Replay Integrity)
@@ -454,5 +455,17 @@ public class SimulationControlPanel extends VBox {
     public void setPlaying(boolean playing) {
         this.isPlaying = playing;
         updateButtonStates();
+    }
+
+    public boolean isPlaying() {
+        return isPlaying;
+    }
+
+    public String getSelectedWorld() {
+        return comboWorld.getValue() != null ? comboWorld.getValue() : "Terrarium Tempéré";
+    }
+
+    public String getSelectedWeather() {
+        return comboWeather.getValue() != null ? comboWeather.getValue() : "Printemps Doux";
     }
 }

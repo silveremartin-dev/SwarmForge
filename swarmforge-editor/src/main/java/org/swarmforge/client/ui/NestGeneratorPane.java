@@ -48,14 +48,17 @@ public class NestGeneratorPane extends BorderPane {
 
     // Controls
     private ComboBox<String> speciesModelCombo;
+    private ComboBox<String> nestStageCombo;
     private Label speciesStatusLabel;
     private org.swarmforge.core.species.CustomSpecies activeCustomSpecies;
+    private boolean isUpdatingSpeciesCombo = false;
 
     private ComboBox<String> categorySelect;
     private ComboBox<String> archSelect;
     private ComboBox<String> matSelect;
     private Slider workerSizeSlider;
-    private Slider depthSlider, tunnelWidthSlider, branchingSlider, chamberCountSlider;
+    private Slider depthSlider, tunnelWidthSlider, branchingSlider;
+    private Label lblTotalChambersValue;
     private final Map<String, Spinner<Integer>> chamberSpinners = new LinkedHashMap<>();
 
     // Presets
@@ -92,13 +95,13 @@ public class NestGeneratorPane extends BorderPane {
 
         Label t = new Label();
         t.textProperty().bind(i18n.createStringBinding("nest.title"));
-        t.setStyle("-fx-font-size:18;-fx-font-weight:bold;-fx-text-fill:#00d4ff;");
+        t.setStyle("-fx-font-size:18;-fx-font-weight:bold;");
 
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
 
         Label lp = new Label();
         lp.textProperty().bind(i18n.createStringBinding("preset.label"));
-        lp.setStyle("-fx-font-weight: bold; -fx-text-fill: #e4e4e7;");
+        lp.setStyle("-fx-font-weight: bold;");
 
         presetsCombo = new ComboBox<>();
         presetsCombo.setPrefWidth(210);
@@ -168,6 +171,34 @@ public class NestGeneratorPane extends BorderPane {
 
     // ── Config panel ──────────────────────────────────────────────────────────
 
+    private void populateSpeciesModelCombo() {
+        if (speciesModelCombo == null) return;
+        isUpdatingSpeciesCombo = true;
+        try {
+            String curSel = speciesModelCombo.getValue();
+            speciesModelCombo.getItems().clear();
+            org.swarmforge.client.ui.SpeciesPresetManager mgr = new org.swarmforge.client.ui.SpeciesPresetManager();
+            for (String pName : mgr.getPresetNames()) {
+                org.swarmforge.core.species.CustomSpecies sp = mgr.getPreset(pName);
+                String icon = "🐜";
+                if (sp != null && sp.getInsectType() != null) {
+                    String t = sp.getInsectType().toUpperCase();
+                    if (t.contains("BEE") || t.contains("WASP")) icon = "🐝";
+                    else if (t.contains("TERMITE")) icon = "🐜";
+                }
+                speciesModelCombo.getItems().add(icon + " " + pName);
+            }
+            speciesModelCombo.getItems().add("✨ Espèce Personnalisée Active");
+            if (curSel != null && speciesModelCombo.getItems().contains(curSel)) {
+                speciesModelCombo.setValue(curSel);
+            } else if (!speciesModelCombo.getItems().isEmpty()) {
+                speciesModelCombo.getSelectionModel().selectFirst();
+            }
+        } finally {
+            isUpdatingSpeciesCombo = false;
+        }
+    }
+
     private ScrollPane buildConfig() {
         I18nManager i18n = I18nManager.getInstance();
         VBox cfg = new VBox(10);
@@ -179,29 +210,43 @@ public class NestGeneratorPane extends BorderPane {
         speciesTitle.setStyle("-fx-font-size:13;-fx-font-weight:bold;-fx-padding:2 0 2 0;-fx-text-fill:#38bdf8;");
 
         speciesModelCombo = new ComboBox<>();
-        speciesModelCombo.getItems().addAll(
-            "🐜 Fourmi Noire (Lasius niger)",
-            "🐜 Fourmi de Feu (Solenopsis invicta)",
-            "🐜 Fourmi Coupeuse de Feuilles (Atta sexdens)",
-            "🐝 Abeille à Miel (Apis mellifera)",
-            "🐝 Guêpe Commune (Vespula vulgaris)",
-            "🐜 Termite Souterrain (Reticulitermes flavipes)",
-            "🐜 Fourmi Moissonneuse (Pogonomyrmex barbatus)",
-            "✨ Espèce Personnalisée Active"
-        );
+        populateSpeciesModelCombo();
         speciesModelCombo.setPrefWidth(218);
-        speciesModelCombo.getSelectionModel().selectFirst();
-        speciesModelCombo.setOnAction(e -> onSpeciesModelSelected());
+        speciesModelCombo.setOnAction(e -> {
+            if (!isUpdatingSpeciesCombo) {
+                onSpeciesModelSelected();
+            }
+        });
+
+        Label stageTitle = new Label();
+        stageTitle.textProperty().bind(i18n.createStringBinding("nest.species.age"));
+        stageTitle.setStyle("-fx-font-size:11;-fx-font-weight:bold;-fx-text-fill:#94a3b8;-fx-padding:2 0 0 0;");
+
+        nestStageCombo = new ComboBox<>();
+        nestStageCombo.getItems().addAll(
+            i18n.get("nest.species.age.foundation"),
+            i18n.get("nest.species.age.established"),
+            i18n.get("nest.species.age.mature"),
+            i18n.get("nest.species.age.giant")
+        );
+        nestStageCombo.setPrefWidth(218);
+        nestStageCombo.getSelectionModel().select(2); // Mature by default
+        nestStageCombo.setOnAction(e -> {
+            if (!isUpdatingSpeciesCombo) {
+                onNestStageChanged();
+            }
+        });
 
         speciesStatusLabel = new Label("Nid synchronisé avec le modèle d'espèce.");
         speciesStatusLabel.setStyle("-fx-font-size:10;-fx-text-fill:#94a3b8;-fx-wrap-text:true;");
 
         VBox speciesBlock = new VBox(6,
             speciesTitle, new Separator(),
-            speciesModelCombo, speciesStatusLabel
+            speciesModelCombo,
+            stageTitle, nestStageCombo,
+            speciesStatusLabel
         );
-        speciesBlock.setPadding(new Insets(8));
-        speciesBlock.setStyle("-fx-border-color:#38bdf8;-fx-border-width:1;-fx-border-radius:4;-fx-background-radius:4;-fx-background-color:#1e293b;");
+        speciesBlock.getStyleClass().add("card-pane");
 
         // Nest Architecture & Species (non-collapsible block)
         Label archTitle = new Label();
@@ -220,7 +265,10 @@ public class NestGeneratorPane extends BorderPane {
         );
         categorySelect.getSelectionModel().selectFirst();
         categorySelect.setPrefWidth(218);
-        categorySelect.setOnAction(e -> onCategoryChanged());
+        categorySelect.setOnAction(e -> {
+            onCategoryChanged();
+            onManualParameterChanged();
+        });
 
         Label al = new Label();
         al.textProperty().bind(i18n.createStringBinding("nest.arch.type"));
@@ -230,7 +278,11 @@ public class NestGeneratorPane extends BorderPane {
             "WAX_POTS_CLUSTER", "PAPER_PEDUNCULATE", "CATHEDRAL_MOUND", "ARBOREAL_SILK_LEAF");
         archSelect.getSelectionModel().selectFirst();
         archSelect.setPrefWidth(218);
-        archSelect.setOnAction(e -> { regen(); repaint(); });
+        archSelect.setOnAction(e -> {
+            onManualParameterChanged();
+            regen();
+            repaint();
+        });
 
         Label ml = new Label();
         ml.textProperty().bind(i18n.createStringBinding("nest.arch.material"));
@@ -239,7 +291,11 @@ public class NestGeneratorPane extends BorderPane {
             "STERCORAL_CEMENT", "SILK_WEAVE", "PROPOLIS");
         matSelect.getSelectionModel().selectFirst();
         matSelect.setPrefWidth(218);
-        matSelect.setOnAction(e -> { regen(); repaint(); });
+        matSelect.setOnAction(e -> {
+            onManualParameterChanged();
+            regen();
+            repaint();
+        });
 
         workerSizeSlider  = mkSlider(2.0, 30.0, 5.0);
         depthSlider       = mkSlider(4,  60, 20);
@@ -262,16 +318,23 @@ public class NestGeneratorPane extends BorderPane {
             lblTunnelWidth,       sv(tunnelWidthSlider),
             lblBranching,   sv(branchingSlider)
         );
-        archBlock.setPadding(new Insets(8));
-        archBlock.setStyle("-fx-border-color:#444;-fx-border-width:1;-fx-border-radius:4;-fx-background-radius:4;-fx-background-color:#1e2230;");
+        archBlock.getStyleClass().add("card-pane");
 
         // Chamber Distribution (non-collapsible)
         Label cdTitle = new Label();
         cdTitle.textProperty().bind(i18n.createStringBinding("nest.chambers.title"));
         cdTitle.setStyle("-fx-font-size:13;-fx-font-weight:bold;-fx-padding:2 0 2 0;");
 
-        chamberCountSlider = mkSlider(3, 50, 15);
-        addLsn(chamberCountSlider);
+        Label lblTotalChambersTitle = new Label();
+        lblTotalChambersTitle.textProperty().bind(i18n.createStringBinding("nest.chambers.total"));
+        lblTotalChambersTitle.setStyle("-fx-font-weight:bold;");
+
+        lblTotalChambersValue = new Label("11");
+        lblTotalChambersValue.setStyle("-fx-font-size:14;-fx-font-weight:bold;");
+
+        HBox totalChambersBox = new HBox(8, lblTotalChambersTitle, lblTotalChambersValue);
+        totalChambersBox.setAlignment(Pos.CENTER_LEFT);
+        totalChambersBox.setStyle("-fx-padding:2 0 4 0;");
 
         GridPane grid = new GridPane();
         grid.setHgap(8); grid.setVgap(7); grid.setPadding(new Insets(6));
@@ -288,7 +351,12 @@ public class NestGeneratorPane extends BorderPane {
         for (String[] d : defs) {
             Spinner<Integer> s = new Spinner<>(0, 25, Integer.parseInt(d[1]));
             s.setPrefWidth(70); s.setEditable(true);
-            s.valueProperty().addListener((o,a,b) -> { regen(); repaint(); });
+            s.valueProperty().addListener((o,a,b) -> {
+                updateTotalChambers();
+                onManualParameterChanged();
+                regen();
+                repaint();
+            });
             chamberSpinners.put(d[2], s);
 
             Label chLbl = new Label();
@@ -297,13 +365,11 @@ public class NestGeneratorPane extends BorderPane {
             grid.add(s, 1, row++);
         }
 
-        Label lblTotalChambers = new Label();
-        lblTotalChambers.textProperty().bind(i18n.createStringBinding("nest.chambers.total"));
+        updateTotalChambers();
 
         VBox cdBlock = new VBox(5, cdTitle, new Separator(),
-            lblTotalChambers, sv(chamberCountSlider), grid);
-        cdBlock.setPadding(new Insets(8));
-        cdBlock.setStyle("-fx-border-color:#444;-fx-border-width:1;-fx-border-radius:4;-fx-background-radius:4;-fx-background-color:#1e2230;");
+            totalChambersBox, grid);
+        cdBlock.getStyleClass().add("card-pane");
 
         cfg.getChildren().addAll(speciesBlock, archBlock, cdBlock);
         ScrollPane sc = new ScrollPane(cfg);
@@ -402,7 +468,7 @@ public class NestGeneratorPane extends BorderPane {
         HBox bar = new HBox(10);
         bar.setPadding(new Insets(4, 10, 6, 10));
         bar.setAlignment(Pos.CENTER_LEFT);
-        bar.setStyle("-fx-background-color:#141824;-fx-border-color:#333;-fx-border-width:1 0 0 0;");
+        bar.setStyle("-fx-border-color:#3f3f46;-fx-border-width:1 0 0 0;");
 
         syncViewsCheckBox = new CheckBox("🔗 Synchroniser les vues (Zoom & Panning)");
         syncViewsCheckBox.setSelected(true);
@@ -577,19 +643,52 @@ public class NestGeneratorPane extends BorderPane {
         });
     }
 
+    private void updateTotalChambers() {
+        int total = chamberSpinners.values().stream().mapToInt(Spinner::getValue).sum();
+        if (lblTotalChambersValue != null) {
+            lblTotalChambersValue.setText(String.valueOf(total));
+        }
+    }
+
+    private void onManualParameterChanged() {
+        if (isUpdatingSpeciesCombo) return;
+        isUpdatingSpeciesCombo = true;
+        try {
+            if (speciesModelCombo != null) {
+                speciesModelCombo.setValue("✨ Espèce Personnalisée Active");
+            }
+            if (speciesStatusLabel != null) {
+                speciesStatusLabel.setText("Paramètres du nid modifiés (Nid sur mesure).");
+            }
+        } finally {
+            isUpdatingSpeciesCombo = false;
+        }
+    }
+
     private void applyCfg(Map<String, Object> c) {
-        if (c.containsKey("taxonCategory")) categorySelect.setValue((String) c.get("taxonCategory"));
-        if (c.containsKey("architecture"))  archSelect.setValue((String) c.get("architecture"));
-        if (c.containsKey("material"))      matSelect.setValue((String) c.get("material"));
-        if (c.containsKey("workerSizeMm"))  workerSizeSlider.setValue(num(c, "workerSizeMm"));
-        if (c.containsKey("depth"))         depthSlider.setValue(num(c,"depth"));
-        if (c.containsKey("chamberCount"))  chamberCountSlider.setValue(num(c,"chamberCount"));
-        if (c.containsKey("tunnelWidth"))   tunnelWidthSlider.setValue(num(c,"tunnelWidth"));
-        if (c.containsKey("branching"))     branchingSlider.setValue(num(c,"branching"));
-        if (c.containsKey("chamberDistribution")) {
-            @SuppressWarnings("unchecked")
-            Map<String,Object> dist = (Map<String,Object>) c.get("chamberDistribution");
-            dist.forEach((k,v) -> setSp(k, ((Number)v).intValue()));
+        isUpdatingSpeciesCombo = true;
+        try {
+            if (c.containsKey("taxonCategory")) categorySelect.setValue((String) c.get("taxonCategory"));
+            if (c.containsKey("architecture"))  archSelect.setValue((String) c.get("architecture"));
+            if (c.containsKey("material"))      matSelect.setValue((String) c.get("material"));
+            if (c.containsKey("workerSizeMm"))  workerSizeSlider.setValue(num(c, "workerSizeMm"));
+            if (c.containsKey("depth"))         depthSlider.setValue(num(c,"depth"));
+            if (c.containsKey("tunnelWidth"))   tunnelWidthSlider.setValue(num(c,"tunnelWidth"));
+            if (c.containsKey("branching"))     branchingSlider.setValue(num(c,"branching"));
+            if (c.containsKey("nestStageIndex") && nestStageCombo != null) {
+                int stg = ((Number) c.get("nestStageIndex")).intValue();
+                if (stg >= 0 && stg < nestStageCombo.getItems().size()) {
+                    nestStageCombo.getSelectionModel().select(stg);
+                }
+            }
+            if (c.containsKey("chamberDistribution")) {
+                @SuppressWarnings("unchecked")
+                Map<String,Object> dist = (Map<String,Object>) c.get("chamberDistribution");
+                dist.forEach((k,v) -> setSp(k, ((Number)v).intValue()));
+            }
+            updateTotalChambers();
+        } finally {
+            isUpdatingSpeciesCombo = false;
         }
         regen();
         repaint();
@@ -599,79 +698,147 @@ public class NestGeneratorPane extends BorderPane {
         if (species == null) return;
         this.activeCustomSpecies = species;
 
-        // 1. Insect Category & Material & Architecture mapping
-        String orderStr = species.getInsectType() != null ? species.getInsectType() : "ANT";
-        String nestTypeStr = species.getNestType() != null ? species.getNestType() : "MATURE";
+        isUpdatingSpeciesCombo = true;
+        try {
+            // 1. Insect Category & Material & Architecture mapping
+            String orderStr = species.getInsectType() != null ? species.getInsectType() : "ANT";
+            String nestTypeStr = species.getNestType() != null ? species.getNestType() : "MATURE";
 
-        if ("TERMITE".equalsIgnoreCase(orderStr)) {
-            categorySelect.setValue("🐜 Termites (Isoptera)");
-            archSelect.setValue("CATHEDRAL_MOUND");
-            matSelect.setValue("STERCORAL_CEMENT");
-        } else if ("BEE".equalsIgnoreCase(orderStr)) {
-            if (species.getCommonName().toLowerCase().contains("bourdon") || species.getScientificName().toLowerCase().contains("bombus")) {
-                categorySelect.setValue("🐝 Bumblebees (Bombus)");
-                archSelect.setValue("WAX_POTS_CLUSTER");
-                matSelect.setValue("PROPOLIS");
+            if ("TERMITE".equalsIgnoreCase(orderStr)) {
+                categorySelect.setValue("🐜 Termites (Isoptera)");
+                archSelect.setValue("CATHEDRAL_MOUND");
+                matSelect.setValue("STERCORAL_CEMENT");
+            } else if ("BEE".equalsIgnoreCase(orderStr)) {
+                if (species.getCommonName().toLowerCase().contains("bourdon") || (species.getScientificName() != null && species.getScientificName().toLowerCase().contains("bombus"))) {
+                    categorySelect.setValue("🐝 Bumblebees (Bombus)");
+                    archSelect.setValue("WAX_POTS_CLUSTER");
+                    matSelect.setValue("PROPOLIS");
+                } else {
+                    categorySelect.setValue("🐝 Honeybees (Apis)");
+                    archSelect.setValue("WAX_COMB_HEXAGONAL");
+                    matSelect.setValue("BEESWAX");
+                }
+            } else if ("WASP".equalsIgnoreCase(orderStr)) {
+                categorySelect.setValue("🐝 Wasps & Hornets (Vespidae)");
+                archSelect.setValue("PAPER_PEDUNCULATE");
+                matSelect.setValue("WOOD_PULP_PAPER");
             } else {
-                categorySelect.setValue("🐝 Honeybees (Apis)");
-                archSelect.setValue("WAX_COMB_HEXAGONAL");
-                matSelect.setValue("BEESWAX");
+                // ANT
+                categorySelect.setValue("🐜 Ants (Formicidae)");
+                if ("ARBOREAL_SILK_LEAF".equalsIgnoreCase(nestTypeStr) || (species.getCommonName() != null && species.getCommonName().toLowerCase().contains("tisserande"))) {
+                    archSelect.setValue("ARBOREAL_SILK_LEAF");
+                    matSelect.setValue("SILK_WEAVE");
+                } else if ("MOUND".equalsIgnoreCase(nestTypeStr) || (species.getCommonName() != null && (species.getCommonName().toLowerCase().contains("fire") || species.getCommonName().toLowerCase().contains("feu")))) {
+                    archSelect.setValue("SURFACE_MOUND");
+                    matSelect.setValue("EARTH");
+                } else {
+                    archSelect.setValue("BURROW_UNDERGROUND");
+                    matSelect.setValue("EARTH");
+                }
             }
-        } else if ("WASP".equalsIgnoreCase(orderStr)) {
-            categorySelect.setValue("🐝 Wasps & Hornets (Vespidae)");
-            archSelect.setValue("PAPER_PEDUNCULATE");
-            matSelect.setValue("WOOD_PULP_PAPER");
-        } else {
-            // ANT
-            categorySelect.setValue("🐜 Ants (Formicidae)");
-            if ("ARBOREAL_SILK_LEAF".equalsIgnoreCase(nestTypeStr) || species.getCommonName().toLowerCase().contains("tisserande")) {
-                archSelect.setValue("ARBOREAL_SILK_LEAF");
-                matSelect.setValue("SILK_WEAVE");
-            } else if ("MOUND".equalsIgnoreCase(nestTypeStr) || species.getCommonName().toLowerCase().contains("fire") || species.getCommonName().toLowerCase().contains("feu")) {
-                archSelect.setValue("SURFACE_MOUND");
-                matSelect.setValue("EARTH");
-            } else {
-                archSelect.setValue("BURROW_UNDERGROUND");
-                matSelect.setValue("EARTH");
+
+            // 2. Body length & Tunnel diameter
+            float avgBodyMm = species.getAverageCasteBodyLengthMm();
+            workerSizeSlider.setValue(Math.max(2.0, Math.min(30.0, avgBodyMm)));
+
+            float reqTunnelMm = species.getRequiredTunnelDiameterMm();
+            tunnelWidthSlider.setValue(Math.max(1.0, Math.min(5.0, Math.round(reqTunnelMm / 1.5))));
+
+            // 3. Nest Development Stage Multipliers (Fondation, Établi, Mature, Vieux Nid)
+            int stageIndex = nestStageCombo != null ? nestStageCombo.getSelectionModel().getSelectedIndex() : 2;
+            if (stageIndex < 0) stageIndex = 2; // Default MATURE
+
+            double popMultiplier = 1.0;
+            double depthMultiplier = 1.0;
+            int branchingVal = 3;
+
+            switch (stageIndex) {
+                case 0: // FOUNDATION
+                    popMultiplier = 0.05;
+                    depthMultiplier = 0.45;
+                    branchingVal = 1;
+                    break;
+                case 1: // ESTABLISHED
+                    popMultiplier = 0.25;
+                    depthMultiplier = 0.75;
+                    branchingVal = 2;
+                    break;
+                case 2: // MATURE
+                default:
+                    popMultiplier = 1.0;
+                    depthMultiplier = 1.0;
+                    branchingVal = 3;
+                    break;
+                case 3: // GIANT
+                    popMultiplier = 2.5;
+                    depthMultiplier = 1.35;
+                    branchingVal = 4;
+                    break;
             }
-        }
 
-        // 2. Body length & Tunnel diameter
-        float avgBodyMm = species.getAverageCasteBodyLengthMm();
-        workerSizeSlider.setValue(Math.max(2.0, Math.min(30.0, avgBodyMm)));
+            branchingSlider.setValue(branchingVal);
 
-        float reqTunnelMm = species.getRequiredTunnelDiameterMm();
-        tunnelWidthSlider.setValue(Math.max(1.0, Math.min(5.0, Math.round(reqTunnelMm / 1.5))));
+            int popSize = Math.max(10, (int) (species.getTypicalColonySize() * popMultiplier));
+            double depth = Math.max(4, Math.min(60, Math.log10(popSize + 10) * 10 * depthMultiplier));
+            depthSlider.setValue(depth);
 
-        // 3. Colony size & Depth
-        int popSize = species.getTypicalColonySize();
-        double depth = Math.max(8, Math.min(60, Math.log10(popSize + 10) * 10));
-        depthSlider.setValue(depth);
+            // 4. Chamber distribution according to species biology and nest stage
+            int queenCount = species.getQueenCount();
+            setSp("👑 Queen Chamber", Math.max(1, Math.min(25, stageIndex == 0 ? 1 : queenCount)));
 
-        // 4. Chamber distribution according to species biology
-        int queenCount = species.getQueenCount();
-        setSp("👑 Queen Chamber", Math.max(1, Math.min(25, queenCount)));
+            boolean isFungusGrower = "FUNGUS".equalsIgnoreCase(species.getPrimaryDiet()) || 
+                                     "FUNGUS".equalsIgnoreCase(species.getSecondaryDiet()) ||
+                                     (species.getCommonName() != null && (species.getCommonName().toLowerCase().contains("champignonniste") ||
+                                     species.getCommonName().toLowerCase().contains("atta")));
 
-        boolean isFungusGrower = "FUNGUS".equalsIgnoreCase(species.getPrimaryDiet()) || 
-                                 "FUNGUS".equalsIgnoreCase(species.getSecondaryDiet()) ||
-                                 species.getCommonName().toLowerCase().contains("champignonniste") ||
-                                 species.getCommonName().toLowerCase().contains("atta");
-        setSp("🍄 Fungus Gardens", isFungusGrower ? 6 : 0);
+            int fungusCount = 0;
+            if (isFungusGrower) {
+                if (stageIndex == 0) fungusCount = 1;
+                else if (stageIndex == 1) fungusCount = 3;
+                else if (stageIndex == 2) fungusCount = 6;
+                else fungusCount = 12;
+            }
+            setSp("🍄 Fungus Gardens", fungusCount);
 
-        int broodCount = Math.max(2, Math.min(20, (int) Math.sqrt(popSize / 200.0)));
-        setSp("🥚 Brood Chambers", broodCount);
+            int broodCount = Math.max(1, (int) (Math.sqrt(popSize / 200.0) * (stageIndex == 0 ? 0.5 : stageIndex == 3 ? 1.8 : 1.0)));
+            if (stageIndex == 0) broodCount = 1;
+            setSp("🥚 Brood Chambers", Math.max(1, Math.min(25, broodCount)));
 
-        int foodCount = Math.max(2, Math.min(20, (int) Math.sqrt(popSize / 300.0)));
-        setSp("🍖 Food Storage", foodCount);
+            int foodCount = Math.max(1, (int) (Math.sqrt(popSize / 300.0) * (stageIndex == 0 ? 0.5 : stageIndex == 3 ? 1.8 : 1.0)));
+            if (stageIndex == 0) foodCount = 1;
+            setSp("🍖 Food Storage", Math.max(1, Math.min(25, foodCount)));
 
-        int totalChambers = 1 + queenCount + broodCount + foodCount + (isFungusGrower ? 6 : 0) + 2 + 1;
-        chamberCountSlider.setValue(Math.max(5, Math.min(50, totalChambers)));
+            int entranceCount = stageIndex == 0 ? 1 : stageIndex == 1 ? 2 : stageIndex == 2 ? 2 : 4;
+            setSp("🚪 Entrances", entranceCount);
 
-        if (speciesStatusLabel != null) {
-            speciesStatusLabel.setText("Nid synchronisé avec : " + species.getCommonName());
-        }
-        if (speciesModelCombo != null && !speciesModelCombo.getSelectionModel().getSelectedItem().contains(species.getCommonName())) {
-            speciesModelCombo.getSelectionModel().select("✨ Espèce Personnalisée Active");
+            int wasteCount = stageIndex == 0 ? 1 : stageIndex == 1 ? 1 : stageIndex == 2 ? 2 : 4;
+            setSp("🗑 Waste Dumps", wasteCount);
+
+            updateTotalChambers();
+
+            if (speciesStatusLabel != null) {
+                speciesStatusLabel.setText("Nid synchronisé (" + species.getCommonName() + ")");
+            }
+            if (speciesModelCombo != null) {
+                String matchedItem = null;
+                for (String item : speciesModelCombo.getItems()) {
+                    String cleanItem = item.replaceAll("^[🐜🐝✨]\\s*", "").trim();
+                    if (cleanItem.equalsIgnoreCase(species.getPresetName()) ||
+                        cleanItem.equalsIgnoreCase(species.getCommonName()) ||
+                        (species.getCommonName() != null && cleanItem.toLowerCase().contains(species.getCommonName().toLowerCase())) ||
+                        (species.getPresetName() != null && cleanItem.toLowerCase().contains(species.getPresetName().toLowerCase()))) {
+                        matchedItem = item;
+                        break;
+                    }
+                }
+                if (matchedItem != null) {
+                    speciesModelCombo.setValue(matchedItem);
+                } else {
+                    speciesModelCombo.setValue("✨ Espèce Personnalisée Active");
+                }
+            }
+        } finally {
+            isUpdatingSpeciesCombo = false;
         }
 
         regen();
@@ -685,18 +852,29 @@ public class NestGeneratorPane extends BorderPane {
         if (sel.contains("Espèce Personnalisée Active")) {
             if (activeCustomSpecies != null) {
                 configureFromSpecies(activeCustomSpecies);
-            } else {
-                speciesStatusLabel.setText("Aucune espèce personnalisée active en mémoire.");
+            } else if (speciesStatusLabel != null) {
+                speciesStatusLabel.setText("Nid sur mesure (Paramètres personnalisés).");
             }
             return;
         }
 
         org.swarmforge.client.ui.SpeciesPresetManager presetManager = new org.swarmforge.client.ui.SpeciesPresetManager();
+        String cleanSel = sel.replaceAll("^[🐜🐝✨]\\s*", "").trim();
         for (String presetName : presetManager.getPresetNames()) {
-            String cleanSel = sel.replaceAll("^[🐜🐝✨]\\s*", "").trim();
-            if (cleanSel.toLowerCase().contains(presetName.toLowerCase()) || presetName.toLowerCase().contains(cleanSel.toLowerCase())) {
+            if (cleanSel.equalsIgnoreCase(presetName) || cleanSel.toLowerCase().contains(presetName.toLowerCase()) || presetName.toLowerCase().contains(cleanSel.toLowerCase())) {
                 configureFromSpecies(presetManager.getPreset(presetName));
                 return;
+            }
+        }
+    }
+
+    private void onNestStageChanged() {
+        if (activeCustomSpecies != null) {
+            configureFromSpecies(activeCustomSpecies);
+        } else {
+            String sel = speciesModelCombo.getValue();
+            if (sel != null && !sel.contains("Espèce Personnalisée Active")) {
+                onSpeciesModelSelected();
             }
         }
     }
@@ -747,9 +925,10 @@ public class NestGeneratorPane extends BorderPane {
         c.put("material",     matSelect.getValue());
         c.put("workerSizeMm", workerSizeSlider.getValue());
         c.put("depth",        (int) depthSlider.getValue());
-        c.put("chamberCount", (int) chamberCountSlider.getValue());
+        c.put("chamberCount", (int) getChamberCount());
         c.put("tunnelWidth",  (int) tunnelWidthSlider.getValue());
         c.put("branching",    (int) branchingSlider.getValue());
+        c.put("nestStageIndex", nestStageCombo != null ? nestStageCombo.getSelectionModel().getSelectedIndex() : 2);
         Map<String,Integer> dist = new LinkedHashMap<>();
         chamberSpinners.forEach((k,v) -> dist.put(k, v.getValue()));
         c.put("chamberDistribution", dist);
@@ -764,7 +943,7 @@ public class NestGeneratorPane extends BorderPane {
     double getDepth()        { return depthSlider.getValue(); }
     double getTunnelWidth()  { return tunnelWidthSlider.getValue(); }
     double getBranching()    { return branchingSlider.getValue(); }
-    double getChamberCount() { return chamberCountSlider.getValue(); }
+    double getChamberCount() { return chamberSpinners.values().stream().mapToInt(Spinner::getValue).sum(); }
     int    sp(String k)      { return getSp(k); }
 
     // ── Drawing delegates ─────────────────────────────────────────────────────

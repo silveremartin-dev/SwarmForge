@@ -85,7 +85,10 @@ public class WorldEditorPane extends BorderPane {
     private Spinner<Integer> stoneSpinner;
     private Spinner<Integer> organicSpinner;
 
-    // Controls: 3. Flora Ecosystem
+    // Controls: 3. Flora & Surface Cover Ecosystem
+    private TextField floraSeedField;
+    private Slider leafLitterSlider;
+    private Slider twigDebrisSlider;
     private Slider edibleDensitySlider;
     private Slider nonEdibleDensitySlider;
     private CheckBox aphidPlantCheck;
@@ -95,6 +98,19 @@ public class WorldEditorPane extends BorderPane {
     private CheckBox mossCheck;
     private CheckBox pineLitterCheck;
     private CheckBox fernObstacleCheck;
+
+    // Generated Procedural Surface Flora & Litter Instances (Determined by floraSeed)
+    private static class SurfaceFloraItem {
+        int gx, gy;
+        int type; // 0=Grass, 1=AphidPlant, 2=NectarFlower, 3=Moss, 4=PineLitter, 5=TwigDebris, 6=Pebble
+        double scale;
+        double rotation;
+
+        SurfaceFloraItem(int gx, int gy, int type, double scale, double rotation) {
+            this.gx = gx; this.gy = gy; this.type = type; this.scale = scale; this.rotation = rotation;
+        }
+    }
+    private List<SurfaceFloraItem> surfaceFloraItems = new ArrayList<>();
 
     // Controls: 4. Hydrology
     private CheckBox riverCheck;
@@ -316,7 +332,56 @@ public class WorldEditorPane extends BorderPane {
         generateHumidity(hum);
         generateVoids(voids);
         riverPath = computeRiverPath();
+        generateSurfaceFlora();
         repaintAllViews();
+    }
+
+    /** Génère déterministement le couvert végétal et les débris de surface selon floraSeed. */
+    private void generateSurfaceFlora() {
+        surfaceFloraItems.clear();
+        long seed = 774829L;
+        if (floraSeedField != null) {
+            try {
+                seed = Long.parseLong(floraSeedField.getText().trim());
+            } catch (Exception ignored) { }
+        }
+
+        Random rand = new Random(seed);
+
+        double ediblePct = edibleDensitySlider != null ? edibleDensitySlider.getValue() / 100.0 : 0.4;
+        double nonEdiblePct = nonEdibleDensitySlider != null ? nonEdibleDensitySlider.getValue() / 100.0 : 0.6;
+        double litterPct = leafLitterSlider != null ? leafLitterSlider.getValue() / 100.0 : 0.5;
+        double debrisPct = twigDebrisSlider != null ? twigDebrisSlider.getValue() / 100.0 : 0.4;
+
+        int step = 3;
+        for (int x = 4; x < GRID_SIZE - 4; x += step) {
+            for (int y = 4; y < GRID_SIZE - 4; y += step) {
+                double r = rand.nextDouble();
+                // 1. Herbacées & Fleurs (Ressources Comestibles)
+                if (r < ediblePct * 0.35) {
+                    if (seedGrassCheck != null && seedGrassCheck.isSelected() && rand.nextDouble() < 0.5) {
+                        surfaceFloraItems.add(new SurfaceFloraItem(x, y, 0, 0.7 + rand.nextDouble() * 0.5, rand.nextDouble() * 360));
+                    } else if (aphidPlantCheck != null && aphidPlantCheck.isSelected() && rand.nextDouble() < 0.35) {
+                        surfaceFloraItems.add(new SurfaceFloraItem(x, y, 1, 0.8 + rand.nextDouble() * 0.4, rand.nextDouble() * 360));
+                    } else if (nectarFlowersCheck != null && nectarFlowersCheck.isSelected() && rand.nextDouble() < 0.35) {
+                        surfaceFloraItems.add(new SurfaceFloraItem(x, y, 2, 0.6 + rand.nextDouble() * 0.5, rand.nextDouble() * 360));
+                    }
+                }
+                // 2. Mousse Polytrichum (Zone humide)
+                if (mossCheck != null && mossCheck.isSelected() && humidityGrid[x][y] > 0.35 && rand.nextDouble() < nonEdiblePct * 0.45) {
+                    surfaceFloraItems.add(new SurfaceFloraItem(x, y, 3, 0.6 + rand.nextDouble() * 0.8, rand.nextDouble() * 360));
+                }
+                // 3. Litière de Pin / Feuilles mortes
+                if (pineLitterCheck != null && pineLitterCheck.isSelected() && rand.nextDouble() < litterPct * 0.4) {
+                    surfaceFloraItems.add(new SurfaceFloraItem(x, y, 4, 0.5 + rand.nextDouble() * 0.7, rand.nextDouble() * 360));
+                }
+                // 4. Brindilles & Graviers micro-abris
+                if (rand.nextDouble() < debrisPct * 0.3) {
+                    int debrisType = rand.nextBoolean() ? 5 : 6;
+                    surfaceFloraItems.add(new SurfaceFloraItem(x, y, debrisType, 0.5 + rand.nextDouble() * 0.6, rand.nextDouble() * 360));
+                }
+            }
+        }
     }
 
     // ── Bruit de valeur 3D (hash-based smooth noise) ──────────────────────────
@@ -634,23 +699,37 @@ public class WorldEditorPane extends BorderPane {
         grid.add(new Label("Pierre / Gravier %:"), 0, 3); grid.add(stoneSpinner, 1, 3);
         grid.add(new Label("Litière Organique %:"), 0, 4); grid.add(organicSpinner, 1, 4);
 
+        showEarthCheck = new CheckBox("🟤 Afficher Humus / Terre"); showEarthCheck.setSelected(true);
+        showSandCheck = new CheckBox("🟡 Afficher Sable"); showSandCheck.setSelected(true);
+        showClayCheck = new CheckBox("🔴 Afficher Argile"); showClayCheck.setSelected(true);
+        showStoneCheck = new CheckBox("⚪ Afficher Pierre / Gravier"); showStoneCheck.setSelected(true);
+        showNestEntranceCheck = new CheckBox("🐜 Afficher Dôme & Entrée Principale du Nid"); showNestEntranceCheck.setSelected(true);
+        showNestEntranceCheck.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold;");
+
+        addBoolLsn(showEarthCheck, showSandCheck, showClayCheck, showStoneCheck, showNestEntranceCheck);
+
+        VBox toggleLayersBox = new VBox(4,
+            new Label("👁️ Visibilité des Couches de Sol & Entrée du Nid :") {{ setStyle("-fx-font-weight: bold; -fx-text-fill: #e4e4e7;"); }},
+            showEarthCheck, showSandCheck, showClayCheck, showStoneCheck, showNestEntranceCheck
+        );
+
         stratificationSlider = mkSlider(0.0, 1.0, 0.7);
         mixingRateSlider     = mkSlider(0.0, 1.0, 0.3);
         baseHumiditySlider   = mkSlider(0.0, 1.0, 0.35);
-        voidDensitySlider    = mkSlider(0.0, 0.5, 0.08);
-        showHumidityCheck    = new CheckBox("💧 Afficher overlay humidité (vue dessus)");
+        voidDensitySlider    = mkSlider(0.0, 0.3, 0.08);
+        showHumidityCheck    = new CheckBox("💧 Afficher Overlay Humidité (Vue Top-Down)");
         showHumidityCheck.setSelected(false);
+        addLsn(stratificationSlider, mixingRateSlider, baseHumiditySlider, voidDensitySlider);
+        addBoolLsn(showHumidityCheck);
 
-        for (Slider s : new Slider[]{stratificationSlider, mixingRateSlider, baseHumiditySlider, voidDensitySlider})
-            s.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
-        showHumidityCheck.setOnAction(e -> repaintAllViews());
-
-        Label hint = new Label("💡 Stratification = 1 : couches nettes (humus → argile → pierre).\nDensité vides = cavernes & galeries naturelles.");
-        hint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+        Label soilHint = new Label("💡 Détermine la répartition des couches géologiques et l'humidité souterraine.");
+        soilHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
         return new VBox(8,
                 new Label("🏜️ Composition du Substrat Surface (%) :"),
                 grid,
+                new Separator(),
+                toggleLayersBox,
                 new Separator(),
                 new Label("🗻 Stratification & Structure Souterraine 3D :"),
                 new Label("Degré de Stratification :"), sv(stratificationSlider, ""),
@@ -658,35 +737,62 @@ public class WorldEditorPane extends BorderPane {
                 new Label("Humidité de Base du Sol :"), sv(baseHumiditySlider, ""),
                 new Label("Densité de Vides/Cavernes :"), sv(voidDensitySlider, ""),
                 showHumidityCheck,
-                hint
+                soilHint
         );
     }
 
     private VBox buildFloraBlock() {
+        floraSeedField = new TextField("774829");
+        floraSeedField.setPrefWidth(95);
+        floraSeedField.setOnAction(e -> regenerateAndRepaint());
+
+        Button btnRandomizeFloraSeed = new Button("🎲 Régénérer");
+        btnRandomizeFloraSeed.setStyle("-fx-background-color: #7c3aed; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+        btnRandomizeFloraSeed.setOnAction(e -> {
+            long newSeed = new Random().nextLong(100000, 9999999);
+            floraSeedField.setText(String.valueOf(newSeed));
+            regenerateAndRepaint();
+        });
+
+        HBox seedBox = new HBox(6,
+            new Label("Graine Flore (Seed) :") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }},
+            floraSeedField, btnRandomizeFloraSeed
+        );
+        seedBox.setAlignment(Pos.CENTER_LEFT);
+
         edibleDensitySlider = mkSlider(0, 100, 40);
         nonEdibleDensitySlider = mkSlider(0, 100, 60);
-        addLsn(edibleDensitySlider, nonEdibleDensitySlider);
+        leafLitterSlider = mkSlider(0, 100, 50);
+        twigDebrisSlider = mkSlider(0, 100, 40);
+        addLsn(edibleDensitySlider, nonEdibleDensitySlider, leafLitterSlider, twigDebrisSlider);
 
-        aphidPlantCheck    = new CheckBox("🟢 Cirsium / Vicia (Hôtes pucerons / miellat)"); aphidPlantCheck.setSelected(true);
-        nectarFlowersCheck = new CheckBox("🌸 Fleurs à Nectar");                            nectarFlowersCheck.setSelected(true);
-        seedGrassCheck     = new CheckBox("🌾 Graminées (Graines pour Messor)");              seedGrassCheck.setSelected(true);
-        fungusFoliageCheck = new CheckBox("🍃 Feuillage à Champignons (Atta)");               fungusFoliageCheck.setSelected(false);
-        mossCheck          = new CheckBox("🟢 Mousse Polytrichum (Rétention humidité)");      mossCheck.setSelected(true);
-        pineLitterCheck    = new CheckBox("🍂 Litière d'Aiguilles de Pin");                    pineLitterCheck.setSelected(true);
-        fernObstacleCheck  = new CheckBox("🌿 Fougères (Obstacles physiques)");               fernObstacleCheck.setSelected(true);
+        aphidPlantCheck    = new CheckBox("🟢 Cirsium / Vicia (Hôtes pucerons)"); aphidPlantCheck.setSelected(true);
+        nectarFlowersCheck = new CheckBox("🌸 Fleurs à Nectar");                   nectarFlowersCheck.setSelected(true);
+        seedGrassCheck     = new CheckBox("🌾 Graminées (Graines Messor)");         seedGrassCheck.setSelected(true);
+        fungusFoliageCheck = new CheckBox("🍃 Feuillage Champignons (Atta)");      fungusFoliageCheck.setSelected(false);
+        mossCheck          = new CheckBox("🟢 Mousse Polytrichum");                mossCheck.setSelected(true);
+        pineLitterCheck    = new CheckBox("🍂 Litière Aiguilles de Pin");          pineLitterCheck.setSelected(true);
+        fernObstacleCheck  = new CheckBox("🌿 Fougères (Obstacles)");              fernObstacleCheck.setSelected(true);
 
-        // Connexion des listeners manquants
         addBoolLsn(aphidPlantCheck, nectarFlowersCheck, seedGrassCheck, fungusFoliageCheck,
                    mossCheck, pineLitterCheck, fernObstacleCheck);
 
+        Label floraHint = new Label("💡 Graine Procédurale : Garantit une régénération déterministe identique au chargement sans alourdir le preset.");
+        floraHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+
         return new VBox(6,
+                seedBox,
+                new Separator(),
                 new Label("🍎 Espèces Comestibles (Ressources) :"),
-                new Label("Densité :"), sv(edibleDensitySlider, "%"),
+                new Label("Densité Comestibles :"), sv(edibleDensitySlider, "%"),
                 aphidPlantCheck, nectarFlowersCheck, seedGrassCheck, fungusFoliageCheck,
                 new Separator(),
-                new Label("🌲 Espèces Non-Comestibles (Structure & Abri) :"),
-                new Label("Densité :"), sv(nonEdibleDensitySlider, "%"),
-                mossCheck, pineLitterCheck, fernObstacleCheck
+                new Label("🍂 Couvert & Débris de Surface :"),
+                new Label("Litière Organique / Feuilles :"), sv(leafLitterSlider, "%"),
+                new Label("Brindilles & Micro-Débris :"), sv(twigDebrisSlider, "%"),
+                new Label("Densité Non-Comestibles :"), sv(nonEdibleDensitySlider, "%"),
+                mossCheck, pineLitterCheck, fernObstacleCheck,
+                floraHint
         );
     }
 
@@ -710,9 +816,9 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private VBox buildStructBlock() {
-        treeCountSlider = mkSlider(0, 5, 2);
-        hollowLogsSlider = mkSlider(0, 4, 1);
-        rockCrevicesSlider = mkSlider(0, 5, 3);
+        treeCountSlider = mkSlider(0, 15, 6);
+        hollowLogsSlider = mkSlider(0, 8, 3);
+        rockCrevicesSlider = mkSlider(0, 8, 3);
         addLsn(treeCountSlider, hollowLogsSlider, rockCrevicesSlider);
 
         Label structHint = new Label("💡 Permet l'hébergement de nids arboricoles (Crematogaster, Oecophylla) ou de nids de guêpes/abeilles sociales.");
@@ -1102,13 +1208,16 @@ public class WorldEditorPane extends BorderPane {
                 double[] pxs = new double[]{p0[0], p1[0], p2[0], p3[0]};
                 double[] pys = new double[]{p0[1], p1[1], p2[1], p3[1]};
 
-                Color col = getMaterialColor(soilLayers[x][y][0]);
+                byte mat = soilLayers[x][y][0];
+                boolean visibleMat = isMaterialVisible(mat);
+
+                Color col = visibleMat ? getMaterialColor(mat) : Color.web("#1e293b", 0.35);
                 if (carvedVoxelGrid[x][y]) col = Color.web("#d97706");
 
                 gc3D.setFill(col);
                 gc3D.fillPolygon(pxs, pys, 4);
                 gc3D.setStroke(col.darker());
-                gc3D.setLineWidth(0.3);
+                gc3D.setLineWidth(visibleMat ? 0.3 : 0.1);
                 gc3D.strokePolygon(pxs, pys, 4);
             }
         }
@@ -1152,7 +1261,7 @@ public class WorldEditorPane extends BorderPane {
             boolean first = true;
             for (int[] pt : riverPath) {
                 int rx = pt[0], ry = pt[1];
-                double rz = heightGrid[rx][ry] * 40.0 + 2.0; // légèrement au-dessus du sol
+                double rz = heightGrid[rx][ry] * 40.0 + 2.0;
                 double[] p = project3DPoint(rx, ry, rz, cx, cy, scale, radAz, radEl);
                 if (first) { gc3D.moveTo(p[0], p[1]); first = false; }
                 else gc3D.lineTo(p[0], p[1]);
@@ -1160,7 +1269,99 @@ public class WorldEditorPane extends BorderPane {
             gc3D.stroke();
         }
 
-        // Draw Trees in 3D Viewport (ancrés au relief du sol)
+        // Draw Colony Nest Entrance Mound (Dôme de la fourmilière) in 3D
+        if (showNestEntranceCheck != null && showNestEntranceCheck.isSelected()) {
+            int nx = 64, ny = 64;
+            double nz = heightGrid[nx][ny] * 40.0;
+            double[] np = project3DPoint(nx, ny, nz + 8.0, cx, cy, scale, radAz, radEl);
+            double[] baseP = project3DPoint(nx, ny, nz, cx, cy, scale, radAz, radEl);
+
+            // Base du dôme de la fourmilière
+            gc3D.setFill(Color.web("#b45309"));
+            gc3D.fillOval(baseP[0] - 18, baseP[1] - 10, 36, 20);
+            gc3D.setStroke(Color.web("#d97706"));
+            gc3D.strokeOval(baseP[0] - 18, baseP[1] - 10, 36, 20);
+
+            // Dôme surélevé
+            gc3D.setFill(Color.web("#d97706"));
+            gc3D.fillOval(np[0] - 12, np[1] - 12, 24, 16);
+
+            // Entrée principale du nid
+            gc3D.setFill(Color.web("#0f172a"));
+            gc3D.fillOval(np[0] - 4, np[1] - 4, 8, 6);
+        }
+
+        // Draw Hollow Log Stumps (Souches de bois creuses) in 3D
+        if (hollowLogsSlider != null) {
+            int stumpCount = (int) hollowLogsSlider.getValue();
+            Random sRand = new Random(99);
+            for (int i = 0; i < stumpCount; i++) {
+                int sx = 15 + (int)(sRand.nextDouble() * (GRID_SIZE - 30));
+                int sy = 15 + (int)(sRand.nextDouble() * (GRID_SIZE - 30));
+                double sz = heightGrid[sx][sy] * 40.0;
+                double[] sp = project3DPoint(sx, sy, sz, cx, cy, scale, radAz, radEl);
+
+                // Souche cylindrique
+                gc3D.setFill(Color.web("#78350f"));
+                gc3D.fillRect(sp[0] - 5, sp[1] - 12, 10, 12);
+                // Dessus creux
+                gc3D.setFill(Color.web("#451a03"));
+                gc3D.fillOval(sp[0] - 5, sp[1] - 15, 10, 6);
+                // Mousse à la base
+                gc3D.setFill(Color.web("#15803d"));
+                gc3D.fillOval(sp[0] - 7, sp[1] - 3, 14, 5);
+            }
+        }
+
+        // Draw Procedural Surface Flora & Litter Cover Items in 3D
+        for (SurfaceFloraItem item : surfaceFloraItems) {
+            double z = heightGrid[item.gx][item.gy] * 40.0;
+            double[] p = project3DPoint(item.gx, item.gy, z, cx, cy, scale, radAz, radEl);
+            double sc = item.scale * (zoom / 7.5);
+
+            switch (item.type) {
+                case 0: // Graminées (Graines Messor)
+                    gc3D.setStroke(Color.web("#4ade80"));
+                    gc3D.setLineWidth(1.2);
+                    gc3D.strokeLine(p[0], p[1], p[0] - 3 * sc, p[1] - 8 * sc);
+                    gc3D.strokeLine(p[0], p[1], p[0] + 3 * sc, p[1] - 9 * sc);
+                    break;
+                case 1: // Plante hôte Cirsium / Pucerons
+                    gc3D.setStroke(Color.web("#166534"));
+                    gc3D.setLineWidth(1.5);
+                    gc3D.strokeLine(p[0], p[1], p[0], p[1] - 12 * sc);
+                    gc3D.setFill(Color.web("#a3e635")); // Pucerons
+                    gc3D.fillOval(p[0] - 2 * sc, p[1] - 10 * sc, 4 * sc, 4 * sc);
+                    break;
+                case 2: // Fleur à Nectar
+                    gc3D.setStroke(Color.web("#15803d"));
+                    gc3D.setLineWidth(1.2);
+                    gc3D.strokeLine(p[0], p[1], p[0], p[1] - 10 * sc);
+                    gc3D.setFill(Color.web("#f43f5e")); // Fleur rose
+                    gc3D.fillOval(p[0] - 3 * sc, p[1] - 13 * sc, 6 * sc, 6 * sc);
+                    break;
+                case 3: // Tapis de Mousse Polytrichum
+                    gc3D.setFill(Color.web("#15803d", 0.75));
+                    gc3D.fillOval(p[0] - 6 * sc, p[1] - 4 * sc, 12 * sc, 8 * sc);
+                    break;
+                case 4: // Litière d'Aiguilles de Pin / Feuilles mortes
+                    gc3D.setStroke(Color.web("#78350f"));
+                    gc3D.setLineWidth(1.0);
+                    gc3D.strokeLine(p[0] - 4 * sc, p[1], p[0] + 4 * sc, p[1] - 2 * sc);
+                    break;
+                case 5: // Brindille / Rameau
+                    gc3D.setStroke(Color.web("#451a03"));
+                    gc3D.setLineWidth(1.4);
+                    gc3D.strokeLine(p[0] - 5 * sc, p[1], p[0] + 5 * sc, p[1] - 3 * sc);
+                    break;
+                case 6: // Gravier micro-abri
+                    gc3D.setFill(Color.web("#94a3b8"));
+                    gc3D.fillOval(p[0] - 2 * sc, p[1] - 2 * sc, 4 * sc, 4 * sc);
+                    break;
+            }
+        }
+
+        // Draw Majestic Trees in 3D Viewport (échelles & houppiers réalistes)
         if (treeCountSlider != null) {
             int count = (int) treeCountSlider.getValue();
             Random rand = new Random(77);
@@ -1170,12 +1371,19 @@ public class WorldEditorPane extends BorderPane {
                 double z = heightGrid[gx][gy] * 40.0;
                 double[] p = project3DPoint(gx, gy, z, cx, cy, scale, radAz, radEl);
 
-                // Tronc ancré au sol
+                // Tronc majestueux ancré au sol
                 gc3D.setFill(Color.web("#78350f"));
-                gc3D.fillRect(p[0] - 2, p[1] - 18, 4, 18);
-                // Houppier
+                gc3D.fillRect(p[0] - 4, p[1] - 48, 8, 48);
+                gc3D.setFill(Color.web("#451a03"));
+                gc3D.fillRect(p[0] - 4, p[1] - 48, 3, 48); // Ombrage écorce
+
+                // Houppier multi-couches
+                gc3D.setFill(Color.web("#14532d"));
+                gc3D.fillOval(p[0] - 22, p[1] - 82, 44, 40);
                 gc3D.setFill(Color.web("#166534"));
-                gc3D.fillOval(p[0] - 10, p[1] - 32, 20, 18);
+                gc3D.fillOval(p[0] - 18, p[1] - 88, 36, 34);
+                gc3D.setFill(Color.web("#15803d"));
+                gc3D.fillOval(p[0] - 14, p[1] - 92, 28, 26);
             }
         }
 
@@ -1183,6 +1391,14 @@ public class WorldEditorPane extends BorderPane {
         if (lblViewportMode != null) {
             lblViewportMode.setText(String.format("🔲 Vue Technique 3D (Az: %d°, El: %d°, Profondeur: %.1fm)", (int) azimuth, (int) elevation, targetDepthVal));
         }
+    }
+
+    private boolean isMaterialVisible(byte mat) {
+        if (mat == 0 && showEarthCheck != null && !showEarthCheck.isSelected()) return false;
+        if (mat == 1 && showSandCheck != null && !showSandCheck.isSelected()) return false;
+        if (mat == 2 && showClayCheck != null && !showClayCheck.isSelected()) return false;
+        if (mat == 3 && showStoneCheck != null && !showStoneCheck.isSelected()) return false;
+        return true;
     }
 
     private void drawSide() {
@@ -1213,11 +1429,12 @@ public class WorldEditorPane extends BorderPane {
                 double px = 10 + x * blockW + cx;
                 double py = 80 - surfaceH + d * blockH + cy;
 
-                if (voidGrid[x][midY][d]) {
-                    // Vides / cavernes
+                byte mat = soilLayers[x][midY][d];
+                if (voidGrid[x][midY][d] || !isMaterialVisible(mat)) {
+                    // Vides / cavernes ou couche masquée
                     gcSide.setFill(Color.web("#0f172a"));
                 } else {
-                    gcSide.setFill(getMaterialColor(soilLayers[x][midY][d]));
+                    gcSide.setFill(getMaterialColor(mat));
                 }
                 gcSide.fillRect(px, py, Math.max(1, blockW), Math.max(1, blockH));
             }
@@ -1230,6 +1447,37 @@ public class WorldEditorPane extends BorderPane {
             gcSide.setStroke(Color.web("#334155"));
             gcSide.setLineWidth(1.0);
             gcSide.strokeLine(px, pyBase, px + Math.max(1, blockW), pyBase);
+        }
+
+        // Draw Nest Entrance Shaft & Mound in 2D Side View
+        if (showNestEntranceCheck != null && showNestEntranceCheck.isSelected()) {
+            int nx = 64;
+            double surfaceH = heightGrid[nx][midY] * 30.0 * sZoom;
+            double px = 10 + nx * blockW + cx;
+            double pySurface = 80 - surfaceH + cy;
+
+            // Dôme de terre exhumée en surface
+            gcSide.setFill(Color.web("#d97706"));
+            gcSide.fillOval(px - 14 * sZoom, pySurface - 12 * sZoom, 28 * sZoom, 14 * sZoom);
+
+            // Puits d'entrée vertical descendant dans le nid
+            gcSide.setFill(Color.web("#451a03"));
+            gcSide.fillRect(px - 3 * sZoom, pySurface - 4 * sZoom, 6 * sZoom, 60 * sZoom);
+        }
+
+        // Draw Hollow Log Stumps in Side View
+        if (hollowLogsSlider != null) {
+            int stumpCount = (int) hollowLogsSlider.getValue();
+            Random sRand = new Random(99);
+            for (int i = 0; i < stumpCount; i++) {
+                int sx = 15 + (int)(sRand.nextDouble() * (GRID_SIZE - 30));
+                double surfaceH = heightGrid[sx][midY] * 30.0 * sZoom;
+                double px = 10 + sx * blockW + cx;
+                double pySurface = 80 - surfaceH + cy;
+
+                gcSide.setFill(Color.web("#78350f"));
+                gcSide.fillRect(px - 4 * sZoom, pySurface - 10 * sZoom, 8 * sZoom, 10 * sZoom);
+            }
         }
 
         // Nappe Phréatique
@@ -1283,7 +1531,10 @@ public class WorldEditorPane extends BorderPane {
         // Sol en Surface
         for (int x = 0; x < GRID_SIZE; x += 2) {
             for (int y = 0; y < GRID_SIZE; y += 2) {
-                Color col = getMaterialColor(soilLayers[x][y][0]);
+                byte mat = soilLayers[x][y][0];
+                boolean visibleMat = isMaterialVisible(mat);
+
+                Color col = visibleMat ? getMaterialColor(mat) : Color.web("#0f172a");
                 if (carvedVoxelGrid[x][y]) col = Color.web("#d97706");
                 gcTop.setFill(col);
                 gcTop.fillRect(15 + x * cellW + cx, 15 + y * cellH + cy, cellW * 2, cellH * 2);
@@ -1313,7 +1564,82 @@ public class WorldEditorPane extends BorderPane {
             gcTop.stroke();
         }
 
-        // Dessin des arbres en vue Top-Down (ancrés aux cellules)
+        // Draw Colony Nest Entrance Mound in Top View
+        if (showNestEntranceCheck != null && showNestEntranceCheck.isSelected()) {
+            double px = 15 + 64 * cellW + cx;
+            double py = 15 + 64 * cellH + cy;
+
+            // Dôme extérieur de la fourmilière
+            gcTop.setFill(Color.web("#b45309"));
+            gcTop.fillOval(px - 14 * tZoom, py - 14 * tZoom, 28 * tZoom, 28 * tZoom);
+            gcTop.setFill(Color.web("#d97706"));
+            gcTop.fillOval(px - 10 * tZoom, py - 10 * tZoom, 20 * tZoom, 20 * tZoom);
+
+            // Trou d'entrée principal
+            gcTop.setFill(Color.web("#451a03"));
+            gcTop.fillOval(px - 4 * tZoom, py - 4 * tZoom, 8 * tZoom, 8 * tZoom);
+        }
+
+        // Draw Hollow Log Stumps in Top View
+        if (hollowLogsSlider != null) {
+            int stumpCount = (int) hollowLogsSlider.getValue();
+            Random sRand = new Random(99);
+            for (int i = 0; i < stumpCount; i++) {
+                int sx = 15 + (int)(sRand.nextDouble() * (GRID_SIZE - 30));
+                int sy = 15 + (int)(sRand.nextDouble() * (GRID_SIZE - 30));
+                double px = 15 + sx * cellW + cx;
+                double py = 15 + sy * cellH + cy;
+
+                gcTop.setFill(Color.web("#78350f"));
+                gcTop.fillRect(px - 5 * tZoom, py - 5 * tZoom, 10 * tZoom, 10 * tZoom);
+                gcTop.setFill(Color.web("#451a03"));
+                gcTop.fillOval(px - 3 * tZoom, py - 3 * tZoom, 6 * tZoom, 6 * tZoom);
+            }
+        }
+
+        // Draw Procedural Surface Flora & Litter Cover Items in Top View
+        for (SurfaceFloraItem item : surfaceFloraItems) {
+            double px = 15 + item.gx * cellW + cx;
+            double py = 15 + item.gy * cellH + cy;
+            double sz = item.scale * tZoom * 3.5;
+
+            switch (item.type) {
+                case 0: // Graminées
+                    gcTop.setFill(Color.web("#4ade80"));
+                    gcTop.fillOval(px - sz, py - sz, sz * 2, sz * 2);
+                    break;
+                case 1: // Hôte pucerons
+                    gcTop.setFill(Color.web("#166534"));
+                    gcTop.fillOval(px - sz, py - sz, sz * 2, sz * 2);
+                    gcTop.setFill(Color.web("#a3e635"));
+                    gcTop.fillOval(px - sz * 0.5, py - sz * 0.5, sz, sz);
+                    break;
+                case 2: // Fleur à nectar
+                    gcTop.setFill(Color.web("#f43f5e"));
+                    gcTop.fillOval(px - sz, py - sz, sz * 2, sz * 2);
+                    break;
+                case 3: // Tapis de mousse
+                    gcTop.setFill(Color.web("#15803d", 0.75));
+                    gcTop.fillOval(px - sz * 1.5, py - sz, sz * 3, sz * 2);
+                    break;
+                case 4: // Litière de pin / feuilles
+                    gcTop.setStroke(Color.web("#78350f"));
+                    gcTop.setLineWidth(1.0 * tZoom);
+                    gcTop.strokeLine(px - sz, py, px + sz, py - sz * 0.5);
+                    break;
+                case 5: // Brindille / Rameau
+                    gcTop.setStroke(Color.web("#451a03"));
+                    gcTop.setLineWidth(1.4 * tZoom);
+                    gcTop.strokeLine(px - sz, py - sz, px + sz, py + sz);
+                    break;
+                case 6: // Gravier micro-abri
+                    gcTop.setFill(Color.web("#94a3b8"));
+                    gcTop.fillOval(px - sz * 0.6, py - sz * 0.6, sz * 1.2, sz * 1.2);
+                    break;
+            }
+        }
+
+        // Dessin des arbres majesteux en vue Top-Down (ancrés aux cellules)
         if (treeCountSlider != null) {
             int count = (int) treeCountSlider.getValue();
             Random rand = new Random(77);
@@ -1322,10 +1648,14 @@ public class WorldEditorPane extends BorderPane {
                 int gy = 10 + (int)(rand.nextDouble() * (GRID_SIZE - 20));
                 double px = 15 + gx * cellW + cx;
                 double py = 15 + gy * cellH + cy;
+
+                // Grand houppier feuillu avec dégradé vert
+                gcTop.setFill(Color.web("#14532d"));
+                gcTop.fillOval(px - 18 * tZoom, py - 18 * tZoom, 36 * tZoom, 36 * tZoom);
                 gcTop.setFill(Color.web("#166534"));
-                gcTop.fillOval(px - 6, py - 6, 12, 12);
+                gcTop.fillOval(px - 13 * tZoom, py - 13 * tZoom, 26 * tZoom, 26 * tZoom);
                 gcTop.setFill(Color.web("#15803d"));
-                gcTop.fillOval(px - 3, py - 3, 6, 6);
+                gcTop.fillOval(px - 7 * tZoom, py - 7 * tZoom, 14 * tZoom, 14 * tZoom);
             }
         }
 

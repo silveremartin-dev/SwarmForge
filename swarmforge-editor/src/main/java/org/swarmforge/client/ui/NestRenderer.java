@@ -113,7 +113,6 @@ public final class NestRenderer {
         gc.setFont(Font.font("SansSerif",11));
         gc.fillText(String.format("3D View (Zoom x%.1f) | Drag: Orbit | Scroll: Zoom", zoom), 8, h-8);
         legendHeader(gc, nest, 8, 18);
-        drawColorKeyLegend(gc, w - 175, 12);
     }
 
     // ── 2D side view ─────────────────────────────────────────────────────────
@@ -129,19 +128,19 @@ public final class NestRenderer {
         gc.clearRect(0,0,w,h);
         gc.setFill(Color.rgb(18,18,30)); gc.fillRect(0,0,w,h);
 
-        double skyH = 28 * zoom;
+        double skyH = 28 * zoom + panY;
+        double groundY = Math.max(10, skyH) + 7 * zoom;
         gc.setFill(Color.rgb(30,42,58)); gc.fillRect(0,0,w,Math.max(10, skyH));
         gc.setFill(Color.rgb(55,85,40)); gc.fillRect(0,Math.max(10, skyH),w,7*zoom);
-        gc.setFill(Color.rgb(52,36,22)); gc.fillRect(0,Math.max(10, skyH)+7*zoom,w,h);
+        gc.setFill(Color.rgb(52,36,22)); gc.fillRect(0,groundY,w,h);
 
         gc.setStroke(Color.rgb(70,48,30,0.35)); gc.setLineWidth(1);
-        for (double y=60*zoom; y<h; y+=35*zoom) gc.strokeLine(0,y,w,y);
+        for (double y=groundY + 25*zoom; y<h; y+=35*zoom) gc.strokeLine(0,y,w,y);
 
         double maxD = nest.maxDepth;
         double sY = ((h-55)/Math.max(1,maxD)) * zoom;
         double sX = 8.5 * zoom;
         double cx = w/2 + panX;
-        double groundY = 35*zoom + panY;
 
         Color edgeColor = getMaterialColor(nest.material);
         gc.setStroke(edgeColor); gc.setLineWidth(tunnelW * 2.1 * zoom);

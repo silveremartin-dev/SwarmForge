@@ -7,6 +7,7 @@
 package org.swarmforge.client.ui;
 
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import org.swarmforge.client.util.I18nManager;
@@ -21,14 +22,22 @@ import org.swarmforge.client.util.I18nManager;
 public class GlossaryDialog {
 
     public static void show() {
+        show(null);
+    }
+
+    public static void show(String searchTerm) {
         I18nManager i18n = I18nManager.getInstance();
 
         Dialog<Void> dialog = new Dialog<>();
-        dialog.setTitle(i18n.get("glossary.dialog.title"));
-        dialog.setHeaderText(i18n.get("glossary.dialog.header"));
+        dialog.setTitle(i18n.get("glossary.dialog.title", "Glossaire & Guide Pédagogique"));
+        dialog.setHeaderText(i18n.get("glossary.dialog.header", "Glossaire des concepts scientifiques, écologiques et éthologiques"));
+
+        TextField searchField = new TextField(searchTerm != null ? searchTerm : "");
+        searchField.setPromptText("Rechercher une notion...");
+        searchField.setPrefWidth(300);
 
         TabPane tabPane = new TabPane();
-        tabPane.setPrefSize(750, 520);
+        tabPane.setPrefSize(780, 520);
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
         // Tab 1: Nest Architectures
@@ -86,7 +95,28 @@ public class GlossaryDialog {
         Tab tabSensors = new Tab(i18n.get("glossary.tab.biomechanics"), new ScrollPane(vSensors));
 
         tabPane.getTabs().addAll(tabNest, tabSocial, tabEnv, tabReasoning, tabSensors);
-        dialog.getDialogPane().setContent(tabPane);
+
+        if (searchTerm != null && !searchTerm.isBlank()) {
+            String lowerTerm = searchTerm.toLowerCase();
+            if (lowerTerm.contains("nest") || lowerTerm.contains("nid") || lowerTerm.contains("wax") || lowerTerm.contains("cire")) {
+                tabPane.getSelectionModel().select(tabNest);
+            } else if (lowerTerm.contains("queen") || lowerTerm.contains("reine") || lowerTerm.contains("social") || lowerTerm.contains("king") || lowerTerm.contains("roi") || lowerTerm.contains("nuptial") || lowerTerm.contains("gynique") || lowerTerm.contains("haplo")) {
+                tabPane.getSelectionModel().select(tabSocial);
+            } else if (lowerTerm.contains("env") || lowerTerm.contains("temp") || lowerTerm.contains("press") || lowerTerm.contains("sol") || lowerTerm.contains("micro")) {
+                tabPane.getSelectionModel().select(tabEnv);
+            } else if (lowerTerm.contains("fsm") || lowerTerm.contains("bdi") || lowerTerm.contains("décision") || lowerTerm.contains("reason")) {
+                tabPane.getSelectionModel().select(tabReasoning);
+            } else if (lowerTerm.contains("subgenual") || lowerTerm.contains("vibration") || lowerTerm.contains("uv") || lowerTerm.contains("autothys") || lowerTerm.contains("arolia") || lowerTerm.contains("mandib")) {
+                tabPane.getSelectionModel().select(tabSensors);
+            }
+        }
+
+        VBox contentBox = new VBox(10);
+        HBox searchRow = new HBox(10, new Label("🔍 Rechercher dans le Glossaire :"), searchField);
+        searchRow.setAlignment(Pos.CENTER_LEFT);
+        contentBox.getChildren().addAll(searchRow, tabPane);
+
+        dialog.getDialogPane().setContent(contentBox);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
         dialog.showAndWait();
     }

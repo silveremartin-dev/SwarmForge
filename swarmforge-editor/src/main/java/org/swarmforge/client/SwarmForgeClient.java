@@ -43,6 +43,7 @@ public class SwarmForgeClient extends Application {
         private MinimapOverlay minimapOverlay;
         private PheromoneOverlay pheromoneOverlay;
         private StatisticsDashboard statisticsDashboard;
+        private org.swarmforge.client.ui.SimulationControlPanel simControlPanel;
 
         @Override
     public void start(Stage primaryStage) {
@@ -239,12 +240,12 @@ public class SwarmForgeClient extends Application {
                 controlsInner.setPadding(new Insets(10));
 
                 // Embedded SimulationControlPanel (Contains Preset Selectors ABOVE Start/Pause/Stop controls)
-                org.swarmforge.client.ui.SimulationControlPanel simControlPanel = new org.swarmforge.client.ui.SimulationControlPanel();
-                controlsInner.getChildren().add(simControlPanel);
+                this.simControlPanel = new org.swarmforge.client.ui.SimulationControlPanel();
+                controlsInner.getChildren().add(this.simControlPanel);
 
                 // Live Data Stream Status
                 controlsInner.getChildren().add(new Separator());
-                Label statsLabel = new Label("Flux de Données Serveur : Connecté et synchronisé (Tick: 0)");
+                Label statsLabel = new Label("Flux de Données Serveur : Mode Standalone (Local) (Tick: 0)");
                 statsLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
                 controlsInner.getChildren().add(statsLabel);
 
@@ -295,29 +296,44 @@ public class SwarmForgeClient extends Application {
                         }
                 });
 
-                // HUD Loop & Statistics Updates
+                // HUD Loop, Audio Sync & Statistics Updates (ONLY ticks stats when simulation is active!)
                 javafx.animation.AnimationTimer timer = new javafx.animation.AnimationTimer() {
                         @Override
                         public void handle(long now) {
-                                long tick = networkClient.isConnected() ? networkClient.getLatestTick() : simControlPanel.getCurrentTick();
-                                statsLabel.setText("Flux de Données Serveur : Connecté et synchronisé (Tick: " + tick + ")");
+                                boolean isConnected = networkClient != null && networkClient.isConnected();
+                                boolean isPlaying = simControlPanel != null && simControlPanel.isPlaying();
+                                boolean isSimRunning = isConnected || isPlaying;
 
+                                long tick = isConnected ? networkClient.getLatestTick() : (simControlPanel != null ? simControlPanel.getCurrentTick() : 0);
+                                statsLabel.setText("Flux de Données Serveur : " + (isConnected ? "Connecté et synchronisé" : "Mode Standalone (Local)") + " (Tick: " + tick + ")");
+
+                                // Sync procedural audio synthesizer
+                                if (simControlPanel != null) {
+                                    org.swarmforge.client.audio.SimulationAudioManager.getInstance().updateState(
+                                        simControlPanel.getSelectedWorld(),
+                                        simControlPanel.getSelectedWeather(),
+                                        gameView != null && gameView.getGameApp() != null ? gameView.getGameApp().getCameraDepth() : 0.0,
+                                        isSimRunning
+                                    );
+                                }
+
+                                // Update statistics ONLY when simulation is actually running
                                 if (statisticsDashboard != null) {
-                                        StatisticsDashboard.ColonyStats stats = new StatisticsDashboard.ColonyStats();
-                                        stats.simTicks = tick;
-                                        stats.population = 50 + (int) (tick / 10);
-                                        stats.workers = Math.max(0, stats.population - 5);
-                                        stats.soldiers = 4;
-                                        stats.queens = 1;
-                                        stats.food = Math.max(0, 1000.0f - (tick * 0.5f));
-                                        stats.water = 500.0f;
-                                        stats.tickRate = 60.0f;
-                                        statisticsDashboard.update(stats);
+                                        if (isSimRunning) {
+                                                StatisticsDashboard.ColonyStats stats = new StatisticsDashboard.ColonyStats();
+                                                stats.simTicks = tick;
+                                                stats.population = 50 + (int) (tick / 10);
+                                                stats.workers = Math.max(0, stats.population - 5);
+                                                stats.soldiers = 4;
+                                                stats.queens = 1;
+                                                stats.food = Math.max(0, 1000.0f - (tick * 0.5f));
+                                                stats.water = 500.0f;
+                                                stats.tickRate = isPlaying ? 60.0f : 0.0f;
+                                                statisticsDashboard.update(stats);
+                                        }
                                 }
                         }
                 };
-                timer.start();
-
                 return pane;
         }
 
@@ -377,16 +393,16 @@ public class SwarmForgeClient extends Application {
         }
 
         private Node createVisualSimulationViewport() {
-                // 3D Viewport Container
+                BorderPane rootPane = new BorderPane();
+
+                // Center Viewport: 3D Canvas + Overlays
                 StackPane viewport3D = new StackPane();
                 viewport3D.setId("viewport3D");
 
-                // JME View
+                // JME 3D View
                 this.gameView = new GameViewPane(1024, 720);
                 setupMouseControls(gameView);
                 viewport3D.getChildren().add(gameView);
-
-                // Mirror Info Overlay removed from 3D View per user request (moved to dedicated Statistics tab)
 
                 // Minimap Overlay (Bottom-Right)
                 this.minimapOverlay = new MinimapOverlay(160);
@@ -408,48 +424,148 @@ public class SwarmForgeClient extends Application {
                 StackPane.setAlignment(pheromoneOverlay, Pos.BOTTOM_LEFT);
                 StackPane.setMargin(pheromoneOverlay, new Insets(10));
 
-                // 3D Media Recording & Render Mode Toolbar (Photo, Video MP4 & Mode Gamified Voxel)
-                HBox mediaBar = new HBox(10);
-                mediaBar.setAlignment(Pos.CENTER);
-                mediaBar.setStyle("-fx-background-color: rgba(15, 23, 42, 0.85); -fx-padding: 6 16; -fx-background-radius: 20; -fx-border-color: rgba(255,255,255,0.15); -fx-border-radius: 20;");
+                rootPane.setCenter(viewport3D);
+
+                // Right Side Controls Sidebar (Glassmorphic Toolbar for Render Modes, Audio Mixer & Video Recording)
+                VBox sideControls = new VBox(10);
+                sideControls.setPrefWidth(260);
+                sideControls.getStyleClass().add("card-pane");
+
+                // 1. Controls Header
+                Label lblSideTitle = new Label("🎛️ Rendu 3D & Contrôles");
+                lblSideTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
+
+                // 2. Playback / Play-Pause Button
+                Button btnPlayPause = new Button("▶ Lancer Simulation");
+                btnPlayPause.setMaxWidth(Double.MAX_VALUE);
+                btnPlayPause.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 7 12; -fx-background-radius: 6;");
+                btnPlayPause.setOnAction(e -> {
+                        if (simControlPanel != null) {
+                                boolean playing = simControlPanel.isPlaying();
+                                simControlPanel.setPlaying(!playing);
+                                if (!playing) {
+                                        btnPlayPause.setText("⏸ Pause Simulation");
+                                        btnPlayPause.setStyle("-fx-background-color: #eab308; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 7 12; -fx-background-radius: 6;");
+                                } else {
+                                        btnPlayPause.setText("▶ Lancer Simulation");
+                                        btnPlayPause.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 7 12; -fx-background-radius: 6;");
+                                }
+                        }
+                });
+
+                // 3. Media & Recording Section
+                VBox mediaSection = new VBox(6);
+                mediaSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
+                Label lblMedia = new Label("📸 Captures & Vidéo MP4 :");
+                lblMedia.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+                Button btnPhoto = new Button("📸 Capture Photo HD");
+                btnPhoto.setMaxWidth(Double.MAX_VALUE);
+                btnPhoto.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                btnPhoto.setOnAction(e -> new Alert(Alert.AlertType.INFORMATION, "Capture Photo HD enregistrée sous swarmforge_snapshot.png !").show());
+
+                Button btnRecVideo = new Button("🎥 Enregistrer Vidéo MP4");
+                btnRecVideo.setMaxWidth(Double.MAX_VALUE);
+                btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                btnRecVideo.setOnAction(e -> {
+                        if (btnRecVideo.getText().contains("Enregistrer")) {
+                                btnRecVideo.setText("⏹ Stop & Exporter MP4");
+                                btnRecVideo.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                        } else {
+                                btnRecVideo.setText("🎥 Enregistrer Vidéo MP4");
+                                btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                                new Alert(Alert.AlertType.INFORMATION, "Vidéo 3D exportée avec succès au format MP4 !").show();
+                        }
+                });
+
+                mediaSection.getChildren().addAll(lblMedia, btnPhoto, btnRecVideo);
+
+                // 4. Render Mode Section (Gamified Voxel & Overlays)
+                VBox renderSection = new VBox(6);
+                renderSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
+                Label lblRenderMode = new Label("🎮 Style Voxel & Overlays :");
+                lblRenderMode.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
 
                 Button btnGamifiedToggle = new Button("🎮 Mode Voxel Gamifié");
-                btnGamifiedToggle.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
+                btnGamifiedToggle.setMaxWidth(Double.MAX_VALUE);
+                btnGamifiedToggle.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
                 btnGamifiedToggle.setOnAction(e -> {
-                    if (btnGamifiedToggle.getText().contains("Gamifié")) {
-                        btnGamifiedToggle.setText("🔲 Rendu 3D Classique");
-                        btnGamifiedToggle.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
-                    } else {
-                        btnGamifiedToggle.setText("🎮 Mode Voxel Gamifié");
-                        btnGamifiedToggle.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
-                    }
+                        if (btnGamifiedToggle.getText().contains("Gamifié")) {
+                                btnGamifiedToggle.setText("🔲 Rendu 3D Classique");
+                                btnGamifiedToggle.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                        } else {
+                                btnGamifiedToggle.setText("🎮 Mode Voxel Gamifié");
+                                btnGamifiedToggle.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                        }
                 });
 
-                Button btnPhoto = new Button("📸 Photo HD");
-                btnPhoto.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
-                btnPhoto.setOnAction(e -> {
-                    new Alert(Alert.AlertType.INFORMATION, "Capture Photo HD enregistrée sous swarmforge_snapshot.png !").show();
+                CheckBox chkMinimap = new CheckBox("🗺️ Afficher Minimap");
+                chkMinimap.setSelected(true);
+                chkMinimap.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkMinimap.selectedProperty().addListener((o, a, b) -> minimapOverlay.setVisible(b));
+
+                CheckBox chkPheromones = new CheckBox("🧪 Overlay Pheromones");
+                chkPheromones.setSelected(true);
+                chkPheromones.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkPheromones.selectedProperty().addListener((o, a, b) -> pheromoneOverlay.setVisible(b));
+
+                renderSection.getChildren().addAll(lblRenderMode, btnGamifiedToggle, chkMinimap, chkPheromones);
+
+                // 5. Audio Synthesizer Mixer Section
+                VBox audioSection = new VBox(6);
+                audioSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
+                Label lblAudio = new Label("🔊 Mixeur Sonore Simulation :");
+                lblAudio.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+                org.swarmforge.client.audio.SimulationAudioManager audioMgr = org.swarmforge.client.audio.SimulationAudioManager.getInstance();
+
+                Slider masterVolSlider = new Slider(0.0, 1.0, audioMgr.getMasterVolume());
+                masterVolSlider.valueProperty().addListener((o, oldV, newV) -> audioMgr.setMasterVolume(newV.doubleValue()));
+                HBox volBox = new HBox(6, new Label("Volume :") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;"); }}, masterVolSlider);
+
+                CheckBox chkAmbientSound = new CheckBox("🌲 Ambiance Biome (Oiseaux/Vent)");
+                chkAmbientSound.setSelected(audioMgr.isAmbientEnabled());
+                chkAmbientSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkAmbientSound.selectedProperty().addListener((o, a, b) -> audioMgr.setAmbientEnabled(b));
+
+                CheckBox chkWeatherSound = new CheckBox("⛈️ Sons Météo (Pluie/Orage)");
+                chkWeatherSound.setSelected(audioMgr.isWeatherEnabled());
+                chkWeatherSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkWeatherSound.selectedProperty().addListener((o, a, b) -> audioMgr.setWeatherEnabled(b));
+
+                CheckBox chkInsectSound = new CheckBox("🐜 Activité Insectes & Nid (Creusement)");
+                chkInsectSound.setSelected(audioMgr.isInsectEnabled());
+                chkInsectSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkInsectSound.selectedProperty().addListener((o, a, b) -> audioMgr.setInsectEnabled(b));
+
+                audioSection.getChildren().addAll(lblAudio, volBox, chkAmbientSound, chkWeatherSound, chkInsectSound);
+
+                // 6. Camera Position Shortcuts
+                VBox cameraSection = new VBox(6);
+                cameraSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
+                Label lblCam = new Label("📷 Navigation Caméra 3D :");
+                lblCam.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+                Button btnFocusNest = new Button("🎯 Cadrer sur le Nid (C)");
+                btnFocusNest.setMaxWidth(Double.MAX_VALUE);
+                btnFocusNest.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+                btnFocusNest.setOnAction(e -> {
+                        if (gameView != null && gameView.getGameApp() != null) {
+                                gameView.getGameApp().panCameraTo(0, 0, 0);
+                        }
                 });
 
-                Button btnRecVideo = new Button("🎥 Enregistrer Vidéo");
-                btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
-                btnRecVideo.setOnAction(e -> {
-                    if (btnRecVideo.getText().contains("Enregistrer")) {
-                        btnRecVideo.setText("⏹ Stop & Exporter MP4");
-                        btnRecVideo.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
-                    } else {
-                        btnRecVideo.setText("🎥 Enregistrer Vidéo");
-                        btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 15;");
-                        new Alert(Alert.AlertType.INFORMATION, "Vidéo 3D exportée avec succès sous format MP4 !").show();
-                    }
-                });
+                Button btnTopView = new Button("🔝 Vue du Dessus (Top-Down)");
+                btnTopView.setMaxWidth(Double.MAX_VALUE);
+                btnTopView.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
 
-                mediaBar.getChildren().addAll(btnGamifiedToggle, btnPhoto, btnRecVideo);
-                viewport3D.getChildren().add(mediaBar);
-                StackPane.setAlignment(mediaBar, Pos.BOTTOM_CENTER);
-                StackPane.setMargin(mediaBar, new Insets(15));
+                cameraSection.getChildren().addAll(lblCam, btnFocusNest, btnTopView);
 
-                return viewport3D;
+                sideControls.getChildren().addAll(lblSideTitle, btnPlayPause, new Separator(), mediaSection, renderSection, audioSection, cameraSection);
+
+                rootPane.setRight(sideControls);
+
+                return rootPane;
         }
 
         private Node createWorldEditor() {
