@@ -9,6 +9,7 @@ package org.swarmforge.client.ui;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -20,6 +21,7 @@ import org.swarmforge.core.domain.CasteTemplate;
 import org.swarmforge.core.species.CustomSpecies;
 
 import org.swarmforge.client.util.I18nManager;
+import org.swarmforge.client.util.NotificationOverlay;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -228,10 +230,7 @@ public class SpeciesEditorPane extends VBox {
         Tab tabSensors = new Tab("Capteurs & Perception", createSensorsPane());
         tabSensors.setGraphic(new FontIcon(Feather.EYE));
 
-        tabGlossary = new Tab("Glossaire & Référence Technique", createGlossaryPane());
-        tabGlossary.setGraphic(new FontIcon(Feather.HELP_CIRCLE));
-
-        List<Tab> tabs = List.of(tabTaxonomy, tabQueens, tabStages, tabCastes, tabDiet, tabNest, tabSensors, tabGlossary);
+        List<Tab> tabs = List.of(tabTaxonomy, tabQueens, tabStages, tabCastes, tabDiet, tabNest, tabSensors);
         for (Tab t : tabs) {
             Label tabLabel = new Label(t.getText());
             tabLabel.getStyleClass().add("tab-label");

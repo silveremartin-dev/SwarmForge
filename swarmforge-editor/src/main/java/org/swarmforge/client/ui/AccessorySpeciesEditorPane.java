@@ -8,6 +8,7 @@ package org.swarmforge.client.ui;
 
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
@@ -38,9 +39,10 @@ public class AccessorySpeciesEditorPane extends VBox {
     private Label headerLabel;
     private Label lblPreset;
     private ComboBox<String> accessoryPresetCombo;
-    private Button btnLoad;
     private Button btnSave;
     private Button btnDelete;
+    private Button btnExport;
+    private Button btnImport;
 
     // Tabs
     private TabPane tabPane;
@@ -85,7 +87,7 @@ public class AccessorySpeciesEditorPane extends VBox {
     private TextField incubationDaysField;
     private TextField mortalityRateField;
 
-    // Integrated Help Controls
+    // Integrated Documentation Help
     private TextField helpSearchField;
     private VBox helpEntriesBox;
     private final List<HBox> helpEntriesList = new ArrayList<>();
@@ -110,9 +112,8 @@ public class AccessorySpeciesEditorPane extends VBox {
         tabTaxonomy = new Tab(i18n.get("accessory.tab.taxonomy"), new ScrollPane(createTaxonomyCard()));
         tabSeasonal = new Tab(i18n.get("accessory.tab.seasonal"), new ScrollPane(createSeasonalCard()));
         tabPredators = new Tab(i18n.get("accessory.tab.predators"), new ScrollPane(createPredatorPathogenCard()));
-        tabHelp = new Tab(i18n.get("accessory.tab.help"), createHelpTabContent());
 
-        tabPane.getTabs().addAll(tabTaxonomy, tabSeasonal, tabPredators, tabHelp);
+        tabPane.getTabs().addAll(tabTaxonomy, tabSeasonal, tabPredators);
 
         // Dynamic Locale Listener for UI Updating
         i18n.localeProperty().addListener((obs, oldL, newL) -> refreshI18nLabels());
@@ -124,7 +125,8 @@ public class AccessorySpeciesEditorPane extends VBox {
         HBox bar = new HBox(12);
         bar.setAlignment(Pos.CENTER_LEFT);
 
-        lblPreset = createLabelKey("accessory.preset.label", "accessory.preset.tooltip");
+        lblPreset = new Label();
+        lblPreset.textProperty().bind(i18n.createStringBinding("preset.label"));
         lblPreset.setStyle("-fx-font-weight: bold;");
 
         accessoryPresetCombo = new ComboBox<>(FXCollections.observableArrayList(
@@ -136,22 +138,32 @@ public class AccessorySpeciesEditorPane extends VBox {
                 "swarmforge-accessory-varroa-mite",
                 "swarmforge-accessory-polytrichum-moss"
         ));
+        accessoryPresetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
         accessoryPresetCombo.getSelectionModel().selectFirst();
         accessoryPresetCombo.setPrefWidth(240);
 
-        btnLoad = new Button(i18n.get("accessory.preset.load"), new FontIcon(Feather.FOLDER));
-        btnLoad.getStyleClass().add("btn-secondary");
+        btnSave = new Button();
+        btnSave.textProperty().bind(i18n.createStringBinding("preset.save"));
+        btnSave.getStyleClass().add("btn-secondary");
+        btnSave.setOnAction(e -> handleAddPreset());
 
-        btnSave = new Button(i18n.get("accessory.preset.save"), new FontIcon(Feather.SAVE));
-        btnSave.getStyleClass().add("btn-primary");
-        btnSave.setOnAction(e -> handleSave());
-
-        btnDelete = new Button(i18n.get("accessory.preset.delete"), new FontIcon(Feather.TRASH_2));
+        btnDelete = new Button();
+        btnDelete.textProperty().bind(i18n.createStringBinding("preset.delete"));
         btnDelete.getStyleClass().add("btn-danger");
         btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
         btnDelete.setOnAction(e -> handleDeletePreset());
 
-        bar.getChildren().addAll(lblPreset, accessoryPresetCombo, btnLoad, btnSave, btnDelete);
+        btnExport = new Button();
+        btnExport.textProperty().bind(i18n.createStringBinding("preset.export"));
+        btnExport.getStyleClass().add("btn-secondary");
+        btnExport.setOnAction(e -> handleSave());
+
+        btnImport = new Button();
+        btnImport.textProperty().bind(i18n.createStringBinding("preset.import"));
+        btnImport.getStyleClass().add("btn-secondary");
+        btnImport.setOnAction(e -> handleLoad());
+
+        bar.getChildren().addAll(lblPreset, accessoryPresetCombo, btnSave, btnDelete, new Separator(Orientation.VERTICAL), btnExport, btnImport);
         return bar;
     }
 
@@ -497,11 +509,32 @@ public class AccessorySpeciesEditorPane extends VBox {
         return l;
     }
 
+    private void handleAddPreset() {
+        String name = accessoryNameField != null ? accessoryNameField.getText().trim() : "";
+        if (name.isEmpty()) name = "swarmforge-accessory-custom";
+        if (!accessoryPresetCombo.getItems().contains(name)) {
+            accessoryPresetCombo.getItems().add(name);
+        }
+        accessoryPresetCombo.getSelectionModel().select(name);
+        NotificationOverlay.show(this, "Preset espèce accessoire enregistré : " + name, NotificationOverlay.NotificationType.SUCCESS);
+    }
+
+    private void handleLoad() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Charger une espèce accessoire");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
+
+        File f = chooser.showOpenDialog(getScene().getWindow());
+        if (f != null) {
+            NotificationOverlay.show(this, "Espèce accessoire chargée depuis " + f.getName(), NotificationOverlay.NotificationType.INFO);
+        }
+    }
+
     private void handleSave() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Sauvegarder l'espèce accessoire");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
-        chooser.setInitialFileName("swarmforge-accessory-" + accessoryNameField.getText().toLowerCase().replaceAll("[^a-z0-9]+", "-") + ".json");
+        chooser.setInitialFileName("swarmforge-accessory-" + (accessoryNameField != null ? accessoryNameField.getText().toLowerCase().replaceAll("[^a-z0-9]+", "-") : "custom") + ".json");
 
         File f = chooser.showSaveDialog(getScene().getWindow());
         if (f != null) {
@@ -511,9 +544,9 @@ public class AccessorySpeciesEditorPane extends VBox {
 
     private void handleDeletePreset() {
         Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
-        confirmAlert.setTitle(i18n.get("accessory.delete.confirm_title"));
-        confirmAlert.setHeaderText(i18n.get("accessory.delete.confirm_header"));
-        confirmAlert.setContentText(i18n.get("accessory.delete.confirm_msg"));
+        confirmAlert.setTitle(i18n.get("preset.delete.title"));
+        confirmAlert.setHeaderText("Supprimer l'Espèce Accessoire");
+        confirmAlert.setContentText(String.format(i18n.get("preset.delete.confirm"), accessoryPresetCombo.getValue()));
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -524,16 +557,13 @@ public class AccessorySpeciesEditorPane extends VBox {
                         accessoryPresetCombo.getSelectionModel().selectFirst();
                     }
                 }
+                NotificationOverlay.show(this, "Preset espèce accessoire supprimé.", NotificationOverlay.NotificationType.INFO);
             }
         });
     }
 
     private void refreshI18nLabels() {
         headerLabel.setText(i18n.get("accessory.title"));
-        lblPreset.setText(i18n.get("accessory.preset.label"));
-        btnLoad.setText(i18n.get("accessory.preset.load"));
-        btnSave.setText(i18n.get("accessory.preset.save"));
-        btnDelete.setText(i18n.get("accessory.preset.delete"));
 
         tabTaxonomy.setText(i18n.get("accessory.tab.taxonomy"));
         tabSeasonal.setText(i18n.get("accessory.tab.seasonal"));

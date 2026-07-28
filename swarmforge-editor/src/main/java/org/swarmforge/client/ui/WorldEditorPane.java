@@ -59,10 +59,17 @@ public class WorldEditorPane extends BorderPane {
     private Label lblViewportMode;
 
     // Controls: 0. Terrain Source
-    private CheckBox useWebServiceTerrainCheck;
-    private ComboBox<String> webServiceProviderCombo;
+    private TextField citySearchField;
+    private Label geoStatusLabel;
     private TextField latField;
     private TextField lonField;
+
+    // Controls: Layer & Nest Visibility Toggles
+    private CheckBox showEarthCheck;
+    private CheckBox showSandCheck;
+    private CheckBox showClayCheck;
+    private CheckBox showStoneCheck;
+    private CheckBox showNestEntranceCheck;
 
     // Controls: 1. Scale & Resolution
     private Slider surfaceSizeSlider; // Mètres (1.0 - 10.0m)
@@ -461,39 +468,106 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private VBox buildTerrainSourceBlock() {
-        latField = new TextField("45.1885");
-        latField.setPrefWidth(85);
-        lonField = new TextField("5.7245");
-        lonField.setPrefWidth(85);
+        citySearchField = new TextField("Paris");
+        citySearchField.setPromptText("Ex: Paris, Tokyo, Manaus...");
+        citySearchField.setPrefWidth(125);
+        citySearchField.setOnAction(e -> fetchCityCoordinates(citySearchField.getText()));
 
-        Button btnImportGPS = new Button("📍 Importer Données GPS");
-        btnImportGPS.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+        Button btnSearchCity = new Button("🔍 Ville");
+        btnSearchCity.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+        btnSearchCity.setOnAction(e -> fetchCityCoordinates(citySearchField.getText()));
 
-        Label statusLbl = new Label("ℹ️ Au chargement, un relief procédural (Bruit Perlin) est généré par défaut. Vous pouvez importer les données réelles GPS ci-dessus à tout moment.");
-        statusLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+        latField = new TextField("48.8566");
+        latField.setPrefWidth(70);
+        lonField = new TextField("2.3522");
+        lonField.setPrefWidth(70);
+
+        Button btnImportGPS = new Button("📍 Charger Données SIG");
+        btnImportGPS.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+
+        geoStatusLabel = new Label("ℹ️ Recherche par Nom de Ville et/ou Coordonnées GPS réelles.");
+        geoStatusLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
         btnImportGPS.setOnAction(e -> {
             regenerateAndRepaint();
-            statusLbl.setText("🟢 Données SIG importées pour Lat: " + latField.getText() + "°, Lon: " + lonField.getText() + "° ! Topographie et biomes réels appliqués.");
-            statusLbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #4ade80; -fx-wrap-text: true;");
-            new Alert(Alert.AlertType.INFORMATION, "Importation des données SIG réelles effectuée avec succès ! Vous pouvez à présent sculpter ou retoucher librement le terrain.").show();
+            geoStatusLabel.setText("🟢 Données SIG réelles appliquées pour Lat: " + latField.getText() + "°, Lon: " + lonField.getText() + "° !");
+            geoStatusLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #4ade80; -fx-wrap-text: true;");
+            new Alert(Alert.AlertType.INFORMATION, "Importation des données SIG réelles (DEM + Sol + Végétation) effectuée avec succès !").show();
         });
 
-        HBox geoBox = new HBox(6, 
+        HBox cityRow = new HBox(5, new Label("Ville:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, citySearchField, btnSearchCity);
+        cityRow.setAlignment(Pos.CENTER_LEFT);
+
+        HBox gpsRow = new HBox(5, 
             new Label("Lat:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, latField, 
             new Label("Lon:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, lonField,
             btnImportGPS
         );
-        geoBox.setAlignment(Pos.CENTER_LEFT);
+        gpsRow.setAlignment(Pos.CENTER_LEFT);
 
-        VBox webOptions = new VBox(6,
-            new Label("Coordonnées Géographiques (GPS) :"), geoBox,
-            new Label("💡 Action en 1 Clic : Importe l'élévation réelle (DEM), la composition du sol, la végétation et les insectes commensaux (pucerons, collemboles) pour la zone GPS. Vous conservez ensuite le contrôle pour retoucher le terrain.") {{
+        VBox webOptions = new VBox(8,
+            new Label("1. Recherche par Ville / Localité :"), cityRow,
+            new Label("2. Coordonnées Géographiques (GPS) :"), gpsRow,
+            new Label("💡 Permet de spécifier une Ville ET/OU des Coordonnées GPS précises. Extrait le modèle d'élévation réelles, le sol et la flore locale.") {{
                 setStyle("-fx-font-size: 10px; -fx-text-fill: #38bdf8; -fx-wrap-text: true;");
             }}
         );
 
-        return new VBox(10, webOptions, statusLbl);
+        return new VBox(10, webOptions, geoStatusLabel);
+    }
+
+    private void fetchCityCoordinates(String cityQuery) {
+        if (cityQuery == null || cityQuery.isBlank()) return;
+        geoStatusLabel.setText("⏳ Recherche des coordonnées pour \"" + cityQuery + "\"...");
+        geoStatusLabel.setStyle("-fx-text-fill: #f59e0b; -fx-font-size: 10px;");
+
+        new Thread(() -> {
+            try {
+                String geoUrlStr = "https://geocoding-api.open-meteo.com/v1/search?name="
+                        + java.net.URLEncoder.encode(cityQuery, java.nio.charset.StandardCharsets.UTF_8)
+                        + "&count=1&language=fr";
+
+                java.net.URL url = new java.net.URL(geoUrlStr);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+
+                if (conn.getResponseCode() == 200) {
+                    try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8))) {
+                        StringBuilder sb = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) sb.append(line);
+
+                        com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(sb.toString());
+                        if (root.has("results") && !root.get("results").isEmpty()) {
+                            com.fasterxml.jackson.databind.JsonNode loc = root.get("results").get(0);
+                            String name = loc.get("name").asText();
+                            double lat = loc.get("latitude").asDouble();
+                            double lon = loc.get("longitude").asDouble();
+
+                            javafx.application.Platform.runLater(() -> {
+                                latField.setText(String.format(java.util.Locale.US, "%.4f", lat));
+                                lonField.setText(String.format(java.util.Locale.US, "%.4f", lon));
+                                geoStatusLabel.setText("🟢 " + name + " (Lat: " + String.format(java.util.Locale.US, "%.4f", lat) + "°, Lon: " + String.format(java.util.Locale.US, "%.4f", lon) + "°)");
+                                geoStatusLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-size: 10px;");
+                                regenerateAndRepaint();
+                            });
+                            return;
+                        }
+                    }
+                }
+                javafx.application.Platform.runLater(() -> {
+                    geoStatusLabel.setText("⚠️ Ville \"" + cityQuery + "\" introuvable.");
+                    geoStatusLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 10px;");
+                });
+            } catch (Exception ex) {
+                javafx.application.Platform.runLater(() -> {
+                    geoStatusLabel.setText("⚠️ Erreur de géocodage : " + ex.getMessage());
+                    geoStatusLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 10px;");
+                });
+            }
+        }).start();
     }
 
     private VBox buildScaleBlock() {

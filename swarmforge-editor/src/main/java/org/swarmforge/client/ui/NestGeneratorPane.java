@@ -20,6 +20,7 @@ import java.io.File;
 import java.util.*;
 import java.util.function.Consumer;
 import org.swarmforge.client.util.I18nManager;
+import org.swarmforge.client.util.NotificationOverlay;
 
 public class NestGeneratorPane extends BorderPane {
 

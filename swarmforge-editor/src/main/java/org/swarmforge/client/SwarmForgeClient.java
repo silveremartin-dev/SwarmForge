@@ -793,17 +793,15 @@ public class SwarmForgeClient extends Application {
                 Label title = new Label("📖 Glossaire & Référence Technique Universelle");
                 title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0284c7;");
 
-                Label subtitle = new Label("Référence complète des paramètres de simulation, métriques biologiques, substrats géologiques et architectures de nids.");
+                Label subtitle = new Label("Référence complète centralisant tous les paramètres de simulation, métriques biologiques, capteurs, substrats géologiques, architectures de nids et espèces associées.");
                 subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-wrap-text: true;");
 
                 TextField searchField = new TextField();
-                searchField.setPromptText("🔍 Rechercher un paramètre, une espèce, une architecture ou un concept (ex: Perlin, SRTM, Cordyceps, BDI, Diapause)...");
+                searchField.setPromptText("🔍 Rechercher un paramètre, une espèce, une architecture ou un concept (ex: Perlin, SRTM, Cordyceps, BDI, Diapause, Subgenual)...");
                 searchField.setStyle("-fx-font-size: 13px;");
 
                 TabPane tabPane = new TabPane();
                 tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-
-                org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
 
                 // Section 1: Architectures de Nids
                 VBox vNest = new VBox(10); vNest.setPadding(new Insets(15));
@@ -835,20 +833,70 @@ public class SwarmForgeClient extends Application {
 
                 // Section 4: Moteurs de Raisonnement & Cognition
                 VBox vReasoning = new VBox(10); vReasoning.setPadding(new Insets(15));
-                addGlossaryRow(vReasoning, "Automate à États Finis (FSM)", "Comportement réactif déterministe passant d'un état à un autre selon des déclencheurs stricts.", "https://fr.wikipedia.org/wiki/Automate_%C3%A0 me_d%27%C3%A9tats_finis");
+                addGlossaryRow(vReasoning, "Automate à États Finis (FSM)", "Comportement réactif déterministe passant d'un état à un autre selon des déclencheurs stricts.", "https://fr.wikipedia.org/wiki/Automate_%C3%A0_%C3%A9tats_finis");
                 addGlossaryRow(vReasoning, "BDI (Beliefs-Desires-Intentions)", "Modélisation cognitive complète : croyances sur l'environnement, désirs prioritaires et intentions d'action.", "https://fr.wikipedia.org/wiki/Mod%C3%A8le_BDI");
                 addGlossaryRow(vReasoning, "Logique Floue (Fuzzy Logic)", "Prise de décision continue basée sur des degrés de vérité (ex: Légèrement affamé, Très effrayé).", "https://fr.wikipedia.org/wiki/Logique_floue");
+                addGlossaryRow(vReasoning, "Réseaux de Neurones Spikant (SNN)", "Moteur de comportement neuromorphique basé sur l'intégration de potentiels d'action.", "https://fr.wikipedia.org/wiki/R%C3%A9seau_de_neurones_artificiels");
+
+                // Section 5: Capteurs & Biomécanique
+                VBox vSensors = new VBox(10); vSensors.setPadding(new Insets(15));
+                addGlossaryRow(vSensors, "Organe Subgénual (Perception Vibrations)", "Capteur mécano-récepteur hautement sensible situé sur les tibias détectant les vibrations du sol et tambourinages d'alerte.", "https://fr.wikipedia.org/wiki/Organe_subg%C3%A9nual");
+                addGlossaryRow(vSensors, "Boussole Lumière Polarisée UV", "Navigation céleste vectorielle utilisant la polarisation de la lumière UV du ciel (Cataglyphis / Abeilles).", "https://fr.wikipedia.org/wiki/Cataglyphis");
+                addGlossaryRow(vSensors, "Force Mandibulaire & Cisaillement (MPa)", "Force de morsure et pression mécanique maximale mesurée en MégaPascals.", "https://fr.wikipedia.org/wiki/Mandibule_(arthropode)");
+                addGlossaryRow(vSensors, "Autothysis (Explosion Suicidaire)", "Rupture abdominale défensive libérant des sécrétions toxiques engluantes (Colobopsis explodens).", "https://fr.wikipedia.org/wiki/Colobopsis_explodens");
+                addGlossaryRow(vSensors, "Ventouses Tarsales (Arolia)", "Structures d'adhésion cuticulaires assurant la marche sur parois verticales et plafonds lisses.", "https://fr.wikipedia.org/wiki/Tarse_(anatomie)");
+
+                // Section 6: Espèces Associées, Proies & Pathogènes
+                VBox vAccessory = new VBox(10); vAccessory.setPadding(new Insets(15));
+                addGlossaryRow(vAccessory, "Flore & Ressources Végétales (FLORA)", "Plantes, graines et nectaires extrafloraux fournissant de la biomasse et du sucre.", "https://fr.wikipedia.org/wiki/Nectaire");
+                addGlossaryRow(vAccessory, "Pucerons Symbiotiques & Miellat (APHID_MUTUALIST)", "Élevage de pucerons et récolte du miellat sucré échangé contre une protection contre les prédateurs.", "https://fr.wikipedia.org/wiki/Miellat");
+                addGlossaryRow(vAccessory, "Insectes Proies (PREY_INSECT)", "Chenilles, grillons et mouches apportant les protéines indispensables au développement des larves.", "https://fr.wikipedia.org/wiki/Insecte");
+                addGlossaryRow(vAccessory, "Prédateurs Spécialisés (PREDATOR)", "Araignées, fourmilions et oiseaux exerçant une pression de prédation sur les patrouilleuses.", "https://fr.wikipedia.org/wiki/Fourmilion");
+                addGlossaryRow(vAccessory, "Pathogènes & Parasites (PATHOGEN_PARASITE)", "Champignons entomopathogènes (Cordyceps), microsporidies et acariens (Varroa) affectant la santé.", "https://fr.wikipedia.org/wiki/Ophiocordyceps_unilateralis");
+                addGlossaryRow(vAccessory, "Hivernation & Diapause Automatique", "Mise en léthargie métabolique sous 10°C ou lors du raccourcissement automnal de la photopériode.", "https://fr.wikipedia.org/wiki/Diapause");
+                addGlossaryRow(vAccessory, "Taux de Transmission Pathogène (R0)", "Nombre moyen d'infections secondaires générées par un individu infecté dans la colonie.", "https://fr.wikipedia.org/wiki/Nombre_reproductif_de_base");
 
                 Tab tNest = new Tab("Architectures de Nids", new ScrollPane(vNest));
                 Tab tSocial = new Tab("Structure Sociale & Reines", new ScrollPane(vSocial));
                 Tab tEnv = new Tab("Sol & Géologie SIG", new ScrollPane(vEnv));
                 Tab tReasoning = new Tab("Moteurs Cognitifs & Raisonnement", new ScrollPane(vReasoning));
+                Tab tSensors = new Tab("Capteurs & Biomécanique", new ScrollPane(vSensors));
+                Tab tAccessory = new Tab("Espèces Associées, Proies & Pathogènes", new ScrollPane(vAccessory));
 
-                tabPane.getTabs().addAll(tNest, tSocial, tEnv, tReasoning);
+                tabPane.getTabs().addAll(tNest, tSocial, tEnv, tReasoning, tSensors, tAccessory);
                 VBox.setVgrow(tabPane, Priority.ALWAYS);
+
+                // Add live search filter listener
+                searchField.textProperty().addListener((obs, oldV, newV) -> {
+                        String query = newV == null ? "" : newV.toLowerCase().trim();
+                        filterVBoxRows(vNest, query);
+                        filterVBoxRows(vSocial, query);
+                        filterVBoxRows(vEnv, query);
+                        filterVBoxRows(vReasoning, query);
+                        filterVBoxRows(vSensors, query);
+                        filterVBoxRows(vAccessory, query);
+                });
 
                 box.getChildren().addAll(title, subtitle, searchField, tabPane);
                 return box;
+        }
+
+        private void filterVBoxRows(VBox box, String query) {
+                for (Node child : box.getChildren()) {
+                        if (child instanceof HBox row) {
+                                boolean visible = query.isEmpty();
+                                if (!visible) {
+                                        for (Node n : row.getChildren()) {
+                                                if (n instanceof Label l && l.getText().toLowerCase().contains(query)) {
+                                                        visible = true;
+                                                        break;
+                                                }
+                                        }
+                                }
+                                row.setVisible(visible);
+                                row.setManaged(visible);
+                        }
+                }
         }
 
         private void addGlossaryRow(VBox box, String title, String description, String wikiUrl) {
