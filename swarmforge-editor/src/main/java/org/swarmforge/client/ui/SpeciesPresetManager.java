@@ -352,6 +352,15 @@ public class SpeciesPresetManager {
         persist();
     }
 
+    public boolean delete(String name) {
+        if (presets.containsKey(name)) {
+            presets.remove(name);
+            persist();
+            return true;
+        }
+        return false;
+    }
+
     public void persist() {
         try {
             ObjectMapper mapper = new ObjectMapper();

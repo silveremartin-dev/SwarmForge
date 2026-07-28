@@ -436,16 +436,17 @@ public class AccessorySpeciesEditorPane extends VBox {
 
     private void addHelpEntry(String title, String description) {
         Label tLabel = new Label("• " + title + " : ");
-        tLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-min-width: 220px;");
+        tLabel.getStyleClass().add("help-entry-title");
+        tLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #0284c7; -fx-min-width: 220px;");
         tLabel.setWrapText(true);
 
         Label dLabel = new Label(description);
+        dLabel.getStyleClass().add("help-entry-desc");
         dLabel.setWrapText(true);
-        dLabel.setStyle("-fx-text-fill: #e4e4e7;");
 
         HBox row = new HBox(6, tLabel, dLabel);
+        row.getStyleClass().add("help-entry-row");
         row.setPadding(new Insets(8));
-        row.setStyle("-fx-background-color: #18181b; -fx-background-radius: 4px; -fx-border-color: #27272a; -fx-border-radius: 4px;");
         HBox.setHgrow(dLabel, Priority.ALWAYS);
 
         helpEntriesList.add(row);

@@ -376,3 +376,33 @@
 .btn-danger:hover {
     -fx-background-color: #dc2626;
 }
+
+/* Light Theme High-Contrast Overrides */
+.help-entry-row {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cbd5e1;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+}
+
+.help-entry-title {
+    -fx-text-fill: #0284c7;
+    -fx-font-weight: bold;
+}
+
+.help-entry-desc {
+    -fx-text-fill: #1e293b;
+}
+
+.status-banner-ok {
+    -fx-background-color: #f0fdf4;
+    -fx-border-color: #bbf7d0;
+    -fx-text-fill: #166534;
+}
+
+.status-banner-info {
+    -fx-background-color: #f0f9ff;
+    -fx-border-color: #bae6fd;
+    -fx-text-fill: #075985;
+}
+

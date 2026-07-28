@@ -121,6 +121,15 @@ public class NestPresetManager {
         persist();
     }
 
+    public boolean delete(String name) {
+        if (presets.containsKey(name)) {
+            presets.remove(name);
+            persist();
+            return true;
+        }
+        return false;
+    }
+
     private void persist() {
         try {
             ObjectMapper m = new ObjectMapper();

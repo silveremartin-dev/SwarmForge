@@ -135,7 +135,13 @@ public class SwarmForgeClient extends Application {
         settingsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SETTINGS));
         settingsTab.setContent(createSettingsPane());
 
-        mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, accessoryTab, weatherTab, nestTab, settingsTab);
+        // --- TAB 7: GLOSSARY & TECHNICAL REFERENCE (Placed after Settings/Parameters per user specification) ---
+        Tab glossaryTab = new Tab();
+        glossaryTab.textProperty().bind(i18n.createStringBinding("tab.glossary"));
+        glossaryTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.BOOK_OPEN));
+        glossaryTab.setContent(createGlossaryPaneView());
+
+        mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, accessoryTab, weatherTab, nestTab, settingsTab, glossaryTab);
 
         // Style tab graphics
         for (Tab t : mainTabs.getTabs()) {
@@ -778,6 +784,97 @@ public class SwarmForgeClient extends Application {
                         new Alert(Alert.AlertType.ERROR, "Generation failed: " + e.getMessage()).show();
                         e.printStackTrace();
                 }
+        }
+
+        private Node createGlossaryPaneView() {
+                VBox box = new VBox(15);
+                box.setPadding(new Insets(15));
+
+                Label title = new Label("📖 Glossaire & Référence Technique Universelle");
+                title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0284c7;");
+
+                Label subtitle = new Label("Référence complète des paramètres de simulation, métriques biologiques, substrats géologiques et architectures de nids.");
+                subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-wrap-text: true;");
+
+                TextField searchField = new TextField();
+                searchField.setPromptText("🔍 Rechercher un paramètre, une espèce, une architecture ou un concept (ex: Perlin, SRTM, Cordyceps, BDI, Diapause)...");
+                searchField.setStyle("-fx-font-size: 13px;");
+
+                TabPane tabPane = new TabPane();
+                tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+
+                org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+
+                // Section 1: Architectures de Nids
+                VBox vNest = new VBox(10); vNest.setPadding(new Insets(15));
+                addGlossaryRow(vNest, "Rayons d'Abeille Hexagonaux (WAX_COMB_HEXAGONAL)", "Rayons verticaux de cire à cellules hexagonales 3D parallèles (Abeilles domestiques Apis mellifera).", "https://fr.wikipedia.org/wiki/Rayon_de_cire");
+                addGlossaryRow(vNest, "Pots de Cire & Propolis (WAX_POTS_CLUSTER)", "Grappes de pots sphériques en cire et propolis pour nectar et couvain (Bourdons Bombus).", "https://fr.wikipedia.org/wiki/Propolis");
+                addGlossaryRow(vNest, "Nid Suspendu en Papier (PAPER_PEDUNCULATE)", "Nid suspendu en papier mâché rattaché par un pédoncule, enveloppe protectrice (Guêpes & Frelons).", "https://fr.wikipedia.org/wiki/Gu%C3%AApe");
+                addGlossaryRow(vNest, "Termitière Cathédrale (CATHEDRAL_MOUND)", "Tourelles en ciment salivaire avec puits de ventilation convective et loges royales (Termites).", "https://fr.wikipedia.org/wiki/Termiti%C3%A8re");
+                addGlossaryRow(vNest, "Nid de Soie Arboricole (ARBOREAL_SILK_LEAF)", "Capsule de feuilles vivantes cousues par de la soie larvaire dans la canopée (Fourmis tisserandes Oecophylla).", "https://fr.wikipedia.org/wiki/Oecophylla");
+                addGlossaryRow(vNest, "Jardins à Champignons (SUBTERRANEAN_FUNGI_VAULT)", "Cavernes souterraines profondes hébergeant des jardins à champignons cultivés (Fourmis Atta/Acromyrmex).", "https://fr.wikipedia.org/wiki/Atta_(genre)");
+                addGlossaryRow(vNest, "Nid Ligneux Cartonné (CARTON_NEST)", "Nid en bois mâché cartonné accroché aux troncs et branches (Fourmis Crematogaster/Azteca).", "https://fr.wikipedia.org/wiki/Crematogaster");
+                addGlossaryRow(vNest, "Bivouac Vivant (BIVOUAC_LIVING_NEST)", "Nid temporaire vivant formé par les corps entrelacés des ouvrières (Fourmis légionnaires Eciton).", "https://fr.wikipedia.org/wiki/Fourmi_l%C3%A9gionnaire");
+                addGlossaryRow(vNest, "Dôme d'Aiguilles (MOUND)", "Dôme parabolique d'aiguilles de pin capteur de chaleur solaire (Fourmis rousses Formica rufa).", "https://fr.wikipedia.org/wiki/Formica_rufa");
+                addGlossaryRow(vNest, "Excavation de Bois Mort (TREE / DEAD_WOOD)", "Galeries excavées dans le bois mort ou le cœur des arbres (Fourmis charpentières Camponotus).", "https://fr.wikipedia.org/wiki/Camponotus");
+
+                // Section 2: Structure Sociale & Reines
+                VBox vSocial = new VBox(10); vSocial.setPadding(new Insets(15));
+                addGlossaryRow(vSocial, "Structure Gynique (Monogyne / Polygyne)", "MONOGYNE (1 reine unique par colonie), POLYGYNE (plusieurs reines réparties), GAMERGATES (ouvrières fécondes reproductrices).", "https://fr.wikipedia.org/wiki/Eusocialit%C3%A9");
+                addGlossaryRow(vSocial, "Roi Reproducteur (Isoptera)", "Caractéristique clé des termites chez qui le mâle (roi) vit en permanence aux côtés de la reine.", "https://fr.wikipedia.org/wiki/Termite");
+                addGlossaryRow(vSocial, "Vol Nuptial & Essaimage", "AERIAL_SWARM (nuée aérienne), SWARM_DIVISION (division d'essaim abeilles), BUDDING (bouturage de nid), IN_NEST (accouplement interne).", "https://fr.wikipedia.org/wiki/Vol_nuptial");
+                addGlossaryRow(vSocial, "Inhibition Phéromonale Royale", "Phéromone émise par la reine pour bloquer la différenciation de nouvelles reines au sein du couvain.", "https://fr.wikipedia.org/wiki/Ph%C3%A9romone");
+
+                // Section 3: Sol & Géologie SIG
+                VBox vEnv = new VBox(10); vEnv.setPadding(new Insets(15));
+                addGlossaryRow(vEnv, "Dimensions Surfaciques (mètres)", "Échelle horizontale du terrarium simulé en mètres réels.", "https://fr.wikipedia.org/wiki/Mod%C3%A8le_num%C3%A9rique_de_terrain");
+                addGlossaryRow(vEnv, "Profondeur Souterraine (depthMeters)", "Épaisseur verticale du sol simulé (0.2m à 5.0m). Limite la profondeur maximale d'excavation et les nappes phréatiques.", "https://fr.wikipedia.org/wiki/Stratigraphie");
+                addGlossaryRow(vEnv, "Résolution Voxel (mm)", "Précision millimétrique du maillage voxel 3D du sol (ex: 5mm/voxel).", "https://fr.wikipedia.org/wiki/Voxel");
+                addGlossaryRow(vEnv, "Importation SIG GPS (DEM & Copernicus)", "Importation directe en 1 clic de données d'altitude réelles (Copernicus DEM / NASA SRTM 30m) basées sur coordonnées GPS.", "https://fr.wikipedia.org/wiki/Shuttle_Radar_Topography_Mission");
+                addGlossaryRow(vEnv, "Humidité du Sol & Nappe Phréatique (%)", "Teneur en eau du substrat nécessaire pour éviter la dessiccation des larves et maintenir le couvain.", "https://fr.wikipedia.org/wiki/Nappe_phr%C3%A9atique");
+
+                // Section 4: Moteurs de Raisonnement & Cognition
+                VBox vReasoning = new VBox(10); vReasoning.setPadding(new Insets(15));
+                addGlossaryRow(vReasoning, "Automate à États Finis (FSM)", "Comportement réactif déterministe passant d'un état à un autre selon des déclencheurs stricts.", "https://fr.wikipedia.org/wiki/Automate_%C3%A0 me_d%27%C3%A9tats_finis");
+                addGlossaryRow(vReasoning, "BDI (Beliefs-Desires-Intentions)", "Modélisation cognitive complète : croyances sur l'environnement, désirs prioritaires et intentions d'action.", "https://fr.wikipedia.org/wiki/Mod%C3%A8le_BDI");
+                addGlossaryRow(vReasoning, "Logique Floue (Fuzzy Logic)", "Prise de décision continue basée sur des degrés de vérité (ex: Légèrement affamé, Très effrayé).", "https://fr.wikipedia.org/wiki/Logique_floue");
+
+                Tab tNest = new Tab("Architectures de Nids", new ScrollPane(vNest));
+                Tab tSocial = new Tab("Structure Sociale & Reines", new ScrollPane(vSocial));
+                Tab tEnv = new Tab("Sol & Géologie SIG", new ScrollPane(vEnv));
+                Tab tReasoning = new Tab("Moteurs Cognitifs & Raisonnement", new ScrollPane(vReasoning));
+
+                tabPane.getTabs().addAll(tNest, tSocial, tEnv, tReasoning);
+                VBox.setVgrow(tabPane, Priority.ALWAYS);
+
+                box.getChildren().addAll(title, subtitle, searchField, tabPane);
+                return box;
+        }
+
+        private void addGlossaryRow(VBox box, String title, String description, String wikiUrl) {
+                Label t = new Label("• " + title + " : ");
+                t.getStyleClass().add("help-entry-title");
+                t.setStyle("-fx-font-weight: bold; -fx-text-fill: #0284c7; -fx-min-width: 240px;");
+
+                Label d = new Label(description);
+                d.getStyleClass().add("help-entry-desc");
+                d.setWrapText(true);
+
+                Hyperlink wikiLink = new Hyperlink("🌐 Wikipédia");
+                wikiLink.setStyle("-fx-font-size: 11px; -fx-text-fill: #0284c7;");
+                wikiLink.setOnAction(e -> {
+                        try {
+                                java.awt.Desktop.getDesktop().browse(new java.net.URI(wikiUrl));
+                        } catch (Exception ex) {
+                                new Alert(Alert.AlertType.INFORMATION, "Lien Wikipédia : " + wikiUrl).show();
+                        }
+                });
+
+                HBox row = new HBox(8, t, d, wikiLink);
+                row.getStyleClass().add("card-pane");
+                row.setPadding(new Insets(8));
+                HBox.setHgrow(d, Priority.ALWAYS);
+                box.getChildren().add(row);
         }
 
         public static void main(String[] args) {

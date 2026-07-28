@@ -96,36 +96,67 @@ public class NestGeneratorPane extends BorderPane {
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
 
         Label lp = new Label();
-        lp.textProperty().bind(i18n.createStringBinding("nest.preset.label"));
+        lp.textProperty().bind(i18n.createStringBinding("preset.label"));
+        lp.setStyle("-fx-font-weight: bold; -fx-text-fill: #e4e4e7;");
+
         presetsCombo = new ComboBox<>();
         presetsCombo.setPrefWidth(210);
-        presetsCombo.promptTextProperty().bind(i18n.createStringBinding("nest.preset.prompt"));
+        presetsCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
+        refreshPresetsCombo();
         presetsCombo.setOnAction(e -> {
             String s = presetsCombo.getValue();
             if (s != null && presetMgr.contains(s)) applyCfg(presetMgr.get(s));
         });
 
-        Button bAdd = btn("", "#17a2b8");
-        bAdd.textProperty().bind(i18n.createStringBinding("nest.preset.save"));
+        Button bAdd = new Button();
+        bAdd.textProperty().bind(i18n.createStringBinding("preset.save"));
+        bAdd.getStyleClass().add("btn-secondary");
         bAdd.setOnAction(e -> doAddPreset());
 
+        Button bDel = new Button();
+        bDel.textProperty().bind(i18n.createStringBinding("preset.delete"));
+        bDel.getStyleClass().add("btn-danger");
+        bDel.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
+        bDel.setOnAction(e -> doDeletePreset());
+
         Button bExp = new Button();
-        bExp.textProperty().bind(i18n.createStringBinding("nest.preset.export"));
+        bExp.textProperty().bind(i18n.createStringBinding("preset.export"));
+        bExp.getStyleClass().add("btn-secondary");
         bExp.setOnAction(e -> doExport());
 
         Button bImp = new Button();
-        bImp.textProperty().bind(i18n.createStringBinding("nest.preset.import"));
+        bImp.textProperty().bind(i18n.createStringBinding("preset.import"));
+        bImp.getStyleClass().add("btn-secondary");
         bImp.setOnAction(e -> doImport());
 
-        Button bApply = btn("", "#28a745");
-        bApply.textProperty().bind(i18n.createStringBinding("nest.preset.apply"));
-        bApply.setOnAction(e -> applyToWorld());
-
-        r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd,
-            new Separator(Orientation.VERTICAL), bExp, bImp,
-            new Separator(Orientation.VERTICAL), bApply);
+        r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd, bDel,
+            new Separator(Orientation.VERTICAL), bExp, bImp);
         v.getChildren().addAll(r, new Separator());
         return v;
+    }
+
+    private void doDeletePreset() {
+        String sel = presetsCombo.getValue();
+        if (sel == null || sel.isEmpty()) return;
+
+        I18nManager i18n = I18nManager.getInstance();
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle(i18n.get("preset.delete.title"));
+        confirmAlert.setHeaderText("Supprimer le Preset Nid");
+        confirmAlert.setContentText(String.format(i18n.get("preset.delete.confirm"), sel));
+
+        confirmAlert.showAndWait().ifPresent(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                presetMgr.delete(sel);
+                refreshPresetsCombo();
+                if (!presetsCombo.getItems().isEmpty()) {
+                    presetsCombo.getSelectionModel().selectFirst();
+                } else {
+                    presetsCombo.getSelectionModel().clearSelection();
+                }
+                NotificationOverlay.show(this, "Preset nid supprimé.", NotificationOverlay.NotificationType.INFO);
+            }
+        });
     }
 
     private Button btn(String text, String bg) {

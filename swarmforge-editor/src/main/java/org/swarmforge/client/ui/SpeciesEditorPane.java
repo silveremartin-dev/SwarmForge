@@ -41,7 +41,6 @@ public class SpeciesEditorPane extends VBox {
     private Tab tabGlossary;
 
     private ComboBox<String> presetCombo;
-    private TextField presetNameField;
 
     // General & Taxonomy
     private TextField commonNameField;
@@ -122,7 +121,7 @@ public class SpeciesEditorPane extends VBox {
         setPadding(new Insets(15));
 
         // Header Title
-        Label headerLabel = new Label("Eusocial Species Designer");
+        Label headerLabel = new Label("Concepteur d'Espèces Eusociales");
         headerLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
         // 1. Top Action Toolbar (Presets & File Operations)
@@ -162,11 +161,15 @@ public class SpeciesEditorPane extends VBox {
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setPadding(new Insets(10));
 
-        Label lblPreset = new Label("Preset:");
+        I18nManager i18n = I18nManager.getInstance();
+
+        Label lblPreset = new Label();
+        lblPreset.textProperty().bind(i18n.createStringBinding("preset.label"));
         lblPreset.setStyle("-fx-font-weight: bold;");
 
         presetCombo = new ComboBox<>();
-        presetCombo.getItems().addAll(presetManager.getPresetNames());
+        presetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
+        presetCombo.getItems().setAll(presetManager.getPresetNames());
         presetCombo.setPrefWidth(240);
         presetCombo.setOnAction(e -> {
             String sel = presetCombo.getValue();
@@ -175,37 +178,28 @@ public class SpeciesEditorPane extends VBox {
             }
         });
 
-        Label lblName = new Label("Name:");
-        lblName.setStyle("-fx-font-weight: bold;");
+        Button btnSave = new Button();
+        btnSave.textProperty().bind(i18n.createStringBinding("preset.save"));
+        btnSave.getStyleClass().add("btn-secondary");
+        btnSave.setOnAction(e -> handleAddPreset());
 
-        presetNameField = new TextField();
-        presetNameField.setPromptText("Configuration Preset Name");
-        presetNameField.setPrefWidth(220);
+        Button btnDelete = new Button();
+        btnDelete.textProperty().bind(i18n.createStringBinding("preset.delete"));
+        btnDelete.getStyleClass().add("btn-danger");
+        btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnDelete.setOnAction(e -> handleDeletePreset());
 
-        Button btnAddPreset = new Button("Add to Presets", new FontIcon(Feather.PLUS_CIRCLE));
-        btnAddPreset.getStyleClass().add("btn-primary");
-        btnAddPreset.setOnAction(e -> handleAddPreset());
+        Button btnExport = new Button();
+        btnExport.textProperty().bind(i18n.createStringBinding("preset.export"));
+        btnExport.getStyleClass().add("btn-secondary");
+        btnExport.setOnAction(e -> handleSaveDisk());
 
-        Button btnSaveDisk = new Button("Save to Disk...", new FontIcon(Feather.SAVE));
-        btnSaveDisk.getStyleClass().add("btn-secondary");
-        btnSaveDisk.setOnAction(e -> handleSaveDisk());
+        Button btnImport = new Button();
+        btnImport.textProperty().bind(i18n.createStringBinding("preset.import"));
+        btnImport.getStyleClass().add("btn-secondary");
+        btnImport.setOnAction(e -> handleLoadDisk());
 
-        Button btnLoadDisk = new Button("Load from Disk...", new FontIcon(Feather.FOLDER));
-        btnLoadDisk.getStyleClass().add("btn-secondary");
-        btnLoadDisk.setOnAction(e -> handleLoadDisk());
-
-        Button btnApply = new Button("Apply to World", new FontIcon(Feather.CHECK));
-        btnApply.getStyleClass().add("btn-primary");
-        btnApply.setOnAction(e -> {
-            CustomSpecies s = buildSpeciesFromUI();
-            if (onApplyListener != null) {
-                onApplyListener.accept(s);
-            } else {
-                new Alert(Alert.AlertType.INFORMATION, "Species '" + s.getCommonName() + "' active!").show();
-            }
-        });
-
-        bar.getChildren().addAll(lblPreset, presetCombo, lblName, presetNameField, btnAddPreset, btnSaveDisk, btnLoadDisk, btnApply);
+        bar.getChildren().addAll(lblPreset, presetCombo, btnSave, btnDelete, new Separator(Orientation.VERTICAL), btnExport, btnImport);
         return bar;
     }
 
@@ -213,28 +207,28 @@ public class SpeciesEditorPane extends VBox {
         mainTabPane = new TabPane();
         mainTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        Tab tabTaxonomy = new Tab("Taxonomy & Group", createTaxonomyPane());
+        Tab tabTaxonomy = new Tab("Taxonomie & Groupes", createTaxonomyPane());
         tabTaxonomy.setGraphic(new FontIcon(Feather.BOOK));
 
-        Tab tabQueens = new Tab("Colony & Queens", createQueensPane());
+        Tab tabQueens = new Tab("Colonie & Reines", createQueensPane());
         tabQueens.setGraphic(new FontIcon(Feather.AWARD));
 
-        Tab tabStages = new Tab("Life Stages", createStagesPane());
+        Tab tabStages = new Tab("Stades de Vie", createStagesPane());
         tabStages.setGraphic(new FontIcon(Feather.CLOCK));
 
-        Tab tabCastes = new Tab("Castes & Morphology", createCastesPane());
+        Tab tabCastes = new Tab("Castes & Morphologie", createCastesPane());
         tabCastes.setGraphic(new FontIcon(Feather.USERS));
 
-        Tab tabDiet = new Tab("Diet & Metabolism", createDietPane());
+        Tab tabDiet = new Tab("Régime & Métabolisme", createDietPane());
         tabDiet.setGraphic(new FontIcon(Feather.FEATHER));
 
-        Tab tabNest = new Tab("Nest & Behavior", createNestPane());
+        Tab tabNest = new Tab("Nid & Comportement", createNestPane());
         tabNest.setGraphic(new FontIcon(Feather.HOME));
 
-        Tab tabSensors = new Tab("Sensors & Perception", createSensorsPane());
+        Tab tabSensors = new Tab("Capteurs & Perception", createSensorsPane());
         tabSensors.setGraphic(new FontIcon(Feather.EYE));
 
-        tabGlossary = new Tab("Glossaire & Aide", createGlossaryPane());
+        tabGlossary = new Tab("Glossaire & Référence Technique", createGlossaryPane());
         tabGlossary.setGraphic(new FontIcon(Feather.HELP_CIRCLE));
 
         List<Tab> tabs = List.of(tabTaxonomy, tabQueens, tabStages, tabCastes, tabDiet, tabNest, tabSensors, tabGlossary);
@@ -264,8 +258,29 @@ public class SpeciesEditorPane extends VBox {
         categoryCombo.getSelectionModel().select(org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY);
         categoryCombo.setOnAction(e -> validateParameters());
 
-        Label categoryHintLabel = new Label("ℹ️ Cet éditeur gère les espèces eusociales (Fourmis, Abeilles, Guêpes, Termites). Les proies, prédateurs et commensaux sont gérés dans l'onglet dédié 'Proies & Prédateurs'.");
-        categoryHintLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+        Label categoryHintLabel = new Label("ℹ️ Cet éditeur gère les espèces eusociales (Fourmis, Abeilles, Guêpes, Termites). Les proies, prédateurs et commensaux sont gérés dans l'onglet dédié 'Espèces Associées & Commensaux'.");
+        categoryHintLabel.getStyleClass().add("help-entry-desc");
+        categoryHintLabel.setStyle("-fx-font-size: 11px; -fx-wrap-text: true;");
+
+        // Taxon links HBox
+        HBox taxonLinks = new HBox(10);
+        taxonLinks.setAlignment(Pos.CENTER_LEFT);
+        Label lblLinksTitle = new Label("Fiches Taxonomiques :");
+        lblLinksTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
+
+        Hyperlink linkFormicidae = new Hyperlink("🐜 Formicidae (Fourmis)");
+        linkFormicidae.setOnAction(e -> openWiki("https://fr.wikipedia.org/wiki/Formicidae"));
+
+        Hyperlink linkApidae = new Hyperlink("🐝 Apidae (Abeilles)");
+        linkApidae.setOnAction(e -> openWiki("https://fr.wikipedia.org/wiki/Apidae"));
+
+        Hyperlink linkVespidae = new Hyperlink("🐝 Vespidae (Guêpes)");
+        linkVespidae.setOnAction(e -> openWiki("https://fr.wikipedia.org/wiki/Vespidae"));
+
+        Hyperlink linkTermitoidae = new Hyperlink("🐜 Termitoidae (Termites)");
+        linkTermitoidae.setOnAction(e -> openWiki("https://fr.wikipedia.org/wiki/Termite"));
+
+        taxonLinks.getChildren().addAll(lblLinksTitle, linkFormicidae, linkApidae, linkVespidae, linkTermitoidae);
 
         descriptionArea = new TextArea("Description de l'espèce...");
         descriptionArea.setPrefRowCount(4);
@@ -273,11 +288,20 @@ public class SpeciesEditorPane extends VBox {
         grid.addRow(0, createTooltipLabel("Nom Commun (fr/en):", "Nom vernaculaire de l'espèce dans le langage courant."), commonNameField);
         grid.addRow(1, createTooltipLabel("Nom Scientifique (Binomial):", "Nomenclature binomiale latine officielle (ex: Lasius niger, Formica rufa, Atta cephalotes)."), scientificNameField);
         grid.addRow(2, createTooltipLabel("Ordre Taxonomique / Famille:", "Grand groupe taxonomique d'insectes eusociaux (Fourmi, Abeille, Guêpe, Termite)."), insectTypeCombo);
-        grid.addRow(3, createTooltipLabel("Rôle Écologique / Catégorie:", "Statut trophique et rôle fonctionnel dans l'écosystème de simulation."), categoryCombo);
-        grid.addRow(4, new Label(""), categoryHintLabel);
-        grid.addRow(5, createTooltipLabel("Description & Notes Écologiques:", "Résumé descriptif de la biologie, de l'habitat et du comportement de l'espèce."), descriptionArea);
+        grid.addRow(3, new Label(""), taxonLinks);
+        grid.addRow(4, createTooltipLabel("Rôle Écologique / Catégorie:", "Statut trophique et rôle fonctionnel dans l'écosystème de simulation."), categoryCombo);
+        grid.addRow(5, new Label(""), categoryHintLabel);
+        grid.addRow(6, createTooltipLabel("Description & Notes Écologiques:", "Résumé descriptif de la biologie, de l'habitat et du comportement de l'espèce."), descriptionArea);
 
         return wrapScroll(grid);
+    }
+
+    private void openWiki(String url) {
+        try {
+            java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+        } catch (Exception ex) {
+            org.swarmforge.client.ui.GlossaryDialog.show();
+        }
     }
 
     // --- Tab 2: Colony & Queens (Aspect CRITIQUE) ---
@@ -915,9 +939,9 @@ public class SpeciesEditorPane extends VBox {
     // --- Helper Methods ---
 
     private void handleAddPreset() {
-        String name = presetNameField.getText().trim();
+        String name = commonNameField != null ? commonNameField.getText().trim() : "";
         if (name.isEmpty()) {
-            new Alert(Alert.AlertType.WARNING, "Veuillez spécifier un nom pour le preset.").show();
+            new Alert(Alert.AlertType.WARNING, "Veuillez spécifier un nom commun dans l'onglet Taxonomie.").show();
             return;
         }
 
@@ -932,6 +956,30 @@ public class SpeciesEditorPane extends VBox {
         presetCombo.getSelectionModel().select(name);
 
         new Alert(Alert.AlertType.INFORMATION, "Preset '" + name + "' ajouté et sauvegardé.").show();
+    }
+
+    private void handleDeletePreset() {
+        String selected = presetCombo.getValue();
+        if (selected == null || selected.isEmpty()) return;
+
+        I18nManager i18n = I18nManager.getInstance();
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle(i18n.get("preset.delete.title"));
+        confirmAlert.setHeaderText("Supprimer l'Espèce");
+        confirmAlert.setContentText(String.format(i18n.get("preset.delete.confirm"), selected));
+
+        confirmAlert.showAndWait().ifPresent(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                presetManager.delete(selected);
+                presetCombo.getItems().setAll(presetManager.getPresetNames());
+                if (!presetCombo.getItems().isEmpty()) {
+                    presetCombo.getSelectionModel().selectFirst();
+                } else {
+                    presetCombo.getSelectionModel().clearSelection();
+                }
+                NotificationOverlay.show(this, "Preset espèce supprimé.", NotificationOverlay.NotificationType.INFO);
+            }
+        });
     }
 
     private void handleSaveDisk() {
@@ -971,8 +1019,6 @@ public class SpeciesEditorPane extends VBox {
 
     private void loadPresetToUI(CustomSpecies s) {
         if (s == null) return;
-
-        presetNameField.setText(s.getPresetName() != null ? s.getPresetName() : s.getCommonName());
 
         commonNameField.setText(s.getCommonName());
         scientificNameField.setText(s.getScientificName());
@@ -1061,7 +1107,7 @@ public class SpeciesEditorPane extends VBox {
 
     private CustomSpecies buildSpeciesFromUI() {
         CustomSpecies s = new CustomSpecies();
-        s.setPresetName(presetNameField.getText().trim().isEmpty() ? commonNameField.getText() : presetNameField.getText().trim());
+        s.setPresetName(commonNameField != null ? commonNameField.getText().trim() : "");
 
         s.setCommonName(commonNameField.getText());
         s.setScientificName(scientificNameField.getText());

@@ -50,8 +50,13 @@ public class WorldEditorPane extends BorderPane {
     private double topPanX = 0, topPanY = 0;
     private double lastTopMX, lastTopMY;
 
-    // View Synchronization CheckBox
+    // Preset Manager & ComboBox
+    private final WorldPresetManager presetManager = new WorldPresetManager();
+    private ComboBox<String> presetsCombo;
+
+    // View Synchronization CheckBox & Viewport Mode Label
     private CheckBox syncViewsCheckBox;
+    private Label lblViewportMode;
 
     // Controls: 0. Terrain Source
     private CheckBox useWebServiceTerrainCheck;
@@ -329,30 +334,90 @@ public class WorldEditorPane extends BorderPane {
         HBox r = new HBox(10);
         r.setAlignment(Pos.CENTER_LEFT);
 
-        Label title = new Label("🌍 Éditeur de Monde");
+        Label title = new Label("Éditeur de Monde");
         title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
-
-        Label subtitle = new Label("Génération de relief, sol, ouvert végétal, hydrographie, sculpture 3D & déformation voxel (0.1-1.0mm)");
-        subtitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
 
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
-        Button bExport = new Button("💾 Sauvegarder Preset (JSON)");
+        Label lblPreset = new Label("Preset :");
+        lblPreset.setStyle("-fx-font-weight: bold; -fx-text-fill: #e4e4e7;");
+
+        presetsCombo = new ComboBox<>();
+        presetsCombo.setPromptText("Sélectionner un preset...");
+        presetsCombo.getItems().setAll(presetManager.names());
+        presetsCombo.setPrefWidth(220);
+        presetsCombo.setOnAction(e -> {
+            String selected = presetsCombo.getValue();
+            if (selected != null && presetManager.contains(selected)) {
+                loadConfiguration(presetManager.get(selected));
+            }
+        });
+
+        Button bSave = new Button("Sauvegarder");
+        bSave.getStyleClass().add("btn-secondary");
+        bSave.setOnAction(e -> handleSavePreset());
+
+        Button bDelete = new Button("Supprimer");
+        bDelete.getStyleClass().add("btn-danger");
+        bDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
+        bDelete.setOnAction(e -> handleDeletePreset());
+
+        Button bExport = new Button("Exporter...");
         bExport.getStyleClass().add("btn-secondary");
         bExport.setOnAction(e -> doExport());
 
-        Button bImport = new Button("📂 Charger Preset (JSON)");
+        Button bImport = new Button("Importer...");
         bImport.getStyleClass().add("btn-secondary");
         bImport.setOnAction(e -> doImport());
 
-        Button bGenerate = new Button("✨ Générer & Appliquer au Monde");
-        bGenerate.getStyleClass().add("btn-primary");
-        bGenerate.setOnAction(e -> triggerGenerate());
+        r.getChildren().addAll(title, sp, lblPreset, presetsCombo, bSave, bDelete, new Separator(Orientation.VERTICAL), bExport, bImport);
 
-        r.getChildren().addAll(title, sp, bExport, bImport, new Separator(Orientation.VERTICAL), bGenerate);
+        Label subtitle = new Label("Génération de relief, sol, ouvert végétal, hydrographie, sculpture 3D & déformation voxel (0.1-1.0mm)");
+        subtitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+
         v.getChildren().addAll(r, subtitle);
         return v;
+    }
+
+    private void handleSavePreset() {
+        String defaultName = presetsCombo.getValue() != null ? presetsCombo.getValue() : "Nouveau Preset Monde";
+        TextInputDialog dialog = new TextInputDialog(defaultName);
+        dialog.setTitle("Enregistrer le Preset Monde");
+        dialog.setHeaderText("Saisissez un nom pour ce preset de monde :");
+        dialog.setContentText("Nom :");
+        dialog.showAndWait().ifPresent(name -> {
+            if (!name.trim().isEmpty()) {
+                String cleanName = name.trim();
+                presetManager.save(cleanName, getConfiguration());
+                presetsCombo.getItems().setAll(presetManager.names());
+                presetsCombo.getSelectionModel().select(cleanName);
+                new Alert(Alert.AlertType.INFORMATION, "Preset monde enregistré : " + cleanName).show();
+            }
+        });
+    }
+
+    private void handleDeletePreset() {
+        String selected = presetsCombo.getValue();
+        if (selected == null || selected.isEmpty()) return;
+
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Supprimer le Preset");
+        confirmAlert.setHeaderText("Supprimer le Preset Monde");
+        confirmAlert.setContentText("Voulez-vous vraiment supprimer le preset '" + selected + "' ?");
+
+        confirmAlert.showAndWait().ifPresent(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                presetManager.delete(selected);
+                presetsCombo.getItems().setAll(presetManager.names());
+                if (!presetsCombo.getItems().isEmpty()) {
+                    presetsCombo.getSelectionModel().selectFirst();
+                } else {
+                    presetsCombo.getSelectionModel().clearSelection();
+                }
+                new Alert(Alert.AlertType.INFORMATION, "Preset monde supprimé.").show();
+            }
+        });
     }
 
     private ScrollPane buildConfig() {
@@ -873,10 +938,10 @@ public class WorldEditorPane extends BorderPane {
         bar.setAlignment(Pos.CENTER);
         bar.setStyle("-fx-background-color: rgba(15, 23, 42, 0.88); -fx-background-radius: 8; -fx-border-color: rgba(255, 255, 255, 0.12); -fx-border-radius: 8;");
 
-        Label lblMode = new Label("🔲 Vue Technique 3D Grille — Contrôles caméra & sculpture directs à la souris");
-        lblMode.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lblViewportMode = new Label("🔲 Vue Technique 3D Grille — Contrôles caméra & sculpture directs à la souris");
+        lblViewportMode.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
 
-        bar.getChildren().add(lblMode);
+        bar.getChildren().add(lblViewportMode);
         return bar;
     }
 
@@ -911,7 +976,38 @@ public class WorldEditorPane extends BorderPane {
         double targetDepthVal = depthSlider != null ? depthSlider.getValue() : 1.5;
         double maxDepthPx = targetDepthVal * 20.0;
 
-        // 1. Render Solid 3D Continuous Quad Surface Mesh (No gaps!)
+        // 1. Render Back Subterranean Solid Cutaway Skirt Walls (y = 0 and x = 0)
+        // Back-Left Wall (y = 0)
+        for (int x = 0; x < GRID_SIZE - step; x += step) {
+            double z0 = heightGrid[x][0] * 40.0;
+            double z1 = heightGrid[x + step][0] * 40.0;
+            double[] top0 = project3DPoint(x, 0, z0, cx, cy, scale, radAz, radEl);
+            double[] top1 = project3DPoint(x + step, 0, z1, cx, cy, scale, radAz, radEl);
+            double[] bot0 = project3DPoint(x, 0, z0 - maxDepthPx, cx, cy, scale, radAz, radEl);
+            double[] bot1 = project3DPoint(x + step, 0, z1 - maxDepthPx, cx, cy, scale, radAz, radEl);
+
+            gc3D.setFill(Color.web("#1e293b"));
+            gc3D.fillPolygon(new double[]{top0[0], top1[0], bot1[0], bot0[0]}, new double[]{top0[1], top1[1], bot1[1], bot0[1]}, 4);
+            gc3D.setStroke(Color.web("#0f172a"));
+            gc3D.strokePolygon(new double[]{top0[0], top1[0], bot1[0], bot0[0]}, new double[]{top0[1], top1[1], bot1[1], bot0[1]}, 4);
+        }
+
+        // Back-Right Wall (x = 0)
+        for (int y = 0; y < GRID_SIZE - step; y += step) {
+            double z0 = heightGrid[0][y] * 40.0;
+            double z1 = heightGrid[0][y + step] * 40.0;
+            double[] top0 = project3DPoint(0, y, z0, cx, cy, scale, radAz, radEl);
+            double[] top1 = project3DPoint(0, y + step, z1, cx, cy, scale, radAz, radEl);
+            double[] bot0 = project3DPoint(0, y, z0 - maxDepthPx, cx, cy, scale, radAz, radEl);
+            double[] bot1 = project3DPoint(0, y + step, z1 - maxDepthPx, cx, cy, scale, radAz, radEl);
+
+            gc3D.setFill(Color.web("#1e293b"));
+            gc3D.fillPolygon(new double[]{top0[0], top1[0], bot1[0], bot0[0]}, new double[]{top0[1], top1[1], bot1[1], bot0[1]}, 4);
+            gc3D.setStroke(Color.web("#0f172a"));
+            gc3D.strokePolygon(new double[]{top0[0], top1[0], bot1[0], bot0[0]}, new double[]{top0[1], top1[1], bot1[1], bot0[1]}, 4);
+        }
+
+        // 2. Render Solid 3D Continuous Quad Surface Mesh (No gaps!)
         for (int x = 0; x < GRID_SIZE - step; x += step) {
             for (int y = 0; y < GRID_SIZE - step; y += step) {
                 double z0 = heightGrid[x][y] * 40.0;
@@ -943,7 +1039,7 @@ public class WorldEditorPane extends BorderPane {
             }
         }
 
-        // 2. Render Subterranean Solid Cutaway Skirt Walls along Front Edges
+        // 3. Render Front Subterranean Solid Cutaway Skirt Walls along Front Edges
         int edgeY = GRID_SIZE - step;
         for (int x = 0; x < GRID_SIZE - step; x += step) {
             double z0 = heightGrid[x][edgeY] * 40.0;
@@ -1009,17 +1105,24 @@ public class WorldEditorPane extends BorderPane {
             }
         }
 
-        // Label Overlay
-        gc3D.setFill(Color.WHITE);
-        gc3D.fillText("Vue 3D (Az: " + (int) azimuth + "°, El: " + (int) elevation + "°, Profondeur: " + String.format("%.1f", targetDepthVal) + "m)", 15, 25);
+        // Label Overlay updated on top toolbar box
+        if (lblViewportMode != null) {
+            lblViewportMode.setText(String.format("🔲 Vue Technique 3D (Az: %d°, El: %d°, Profondeur: %.1fm)", (int) azimuth, (int) elevation, targetDepthVal));
+        }
     }
 
     private void drawSide() {
         double w = canvasSide.getWidth();
         double h = canvasSide.getHeight();
 
+        gcSide.save();
         gcSide.setFill(Color.web("#0f172a"));
         gcSide.fillRect(0, 0, w, h);
+
+        // Clip strictly to viewport region
+        gcSide.beginPath();
+        gcSide.rect(10, 10, w - 20, h - 20);
+        gcSide.clip();
 
         double sZoom = sideZoom;
         double cx = sidePanX;
@@ -1044,6 +1147,15 @@ public class WorldEditorPane extends BorderPane {
                 }
                 gcSide.fillRect(px, py, Math.max(1, blockW), Math.max(1, blockH));
             }
+
+            // Socle Rocheux (Bedrock) : limite nette en bas du profil stratigraphique
+            double px = 10 + x * blockW + cx;
+            double pyBase = 80 - surfaceH + SOIL_DEPTH * blockH + cy;
+            gcSide.setFill(Color.web("#020617"));
+            gcSide.fillRect(px, pyBase, Math.max(1, blockW), h);
+            gcSide.setStroke(Color.web("#334155"));
+            gcSide.setLineWidth(1.0);
+            gcSide.strokeLine(px, pyBase, px + Math.max(1, blockW), pyBase);
         }
 
         // Nappe Phréatique
@@ -1051,7 +1163,7 @@ public class WorldEditorPane extends BorderPane {
         double wtY = 80 + (wtDepth / 50.0) * (h - 100) * sZoom + cy;
         gcSide.setFill(Color.web("#0284c7"));
         gcSide.setGlobalAlpha(0.45);
-        gcSide.fillRect(10 + cx, wtY, (w - 20) * sZoom, (h - 20 - wtY));
+        gcSide.fillRect(10 + cx, wtY, (w - 20) * sZoom, Math.max(0, (80 + SOIL_DEPTH * blockH + cy) - wtY));
         gcSide.setGlobalAlpha(1.0);
 
         // Galeries excavées
@@ -1063,6 +1175,8 @@ public class WorldEditorPane extends BorderPane {
                 gcSide.fillOval(px, py, 6 * sZoom, 6 * sZoom);
             }
         }
+
+        gcSide.restore(); // Restore clipping context
 
         gcSide.setStroke(Color.web("#38bdf8"));
         gcSide.setLineWidth(1.0);
@@ -1076,8 +1190,13 @@ public class WorldEditorPane extends BorderPane {
         double w = canvasTop.getWidth();
         double h = canvasTop.getHeight();
 
+        gcTop.save();
         gcTop.setFill(Color.web("#0f172a"));
         gcTop.fillRect(0, 0, w, h);
+
+        gcTop.beginPath();
+        gcTop.rect(10, 10, w - 20, h - 20);
+        gcTop.clip();
 
         double tZoom = topZoom;
         double cx = topPanX;
@@ -1135,6 +1254,8 @@ public class WorldEditorPane extends BorderPane {
                 gcTop.fillOval(px - 3, py - 3, 6, 6);
             }
         }
+
+        gcTop.restore();
 
         gcTop.setStroke(Color.web("#38bdf8"));
         gcTop.setLineWidth(1.0);
@@ -1259,13 +1380,28 @@ public class WorldEditorPane extends BorderPane {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> cfg = new com.fasterxml.jackson.databind.ObjectMapper().readValue(f, Map.class);
-            if (cfg.containsKey("surfaceSizeMeters")) surfaceSizeSlider.setValue(((Number) cfg.get("surfaceSizeMeters")).doubleValue());
-            if (cfg.containsKey("resolutionMm")) resolutionSlider.setValue(((Number) cfg.get("resolutionMm")).doubleValue());
-            if (cfg.containsKey("roughness")) roughnessSlider.setValue(((Number) cfg.get("roughness")).doubleValue());
-            repaintAllViews();
+            loadConfiguration(cfg);
             new Alert(Alert.AlertType.INFORMATION, "Preset de monde chargé.").show();
         } catch (Exception ex) {
             new Alert(Alert.AlertType.ERROR, "Erreur d'importation: " + ex.getMessage()).show();
         }
+    }
+
+    public void loadConfiguration(Map<String, Object> cfg) {
+        if (cfg == null) return;
+        if (cfg.containsKey("surfaceSizeMeters")) surfaceSizeSlider.setValue(((Number) cfg.get("surfaceSizeMeters")).doubleValue());
+        if (cfg.containsKey("depthMeters") && depthSlider != null) depthSlider.setValue(((Number) cfg.get("depthMeters")).doubleValue());
+        if (cfg.containsKey("depth") && depthSlider != null) depthSlider.setValue(((Number) cfg.get("depth")).doubleValue());
+        if (cfg.containsKey("resolutionMm")) resolutionSlider.setValue(((Number) cfg.get("resolutionMm")).doubleValue());
+        if (cfg.containsKey("resolution")) resolutionSlider.setValue(((Number) cfg.get("resolution")).doubleValue());
+        if (cfg.containsKey("roughness")) roughnessSlider.setValue(((Number) cfg.get("roughness")).doubleValue());
+        if (cfg.containsKey("compaction")) compactionSlider.setValue(((Number) cfg.get("compaction")).doubleValue());
+        if (cfg.containsKey("stratification") && stratificationSlider != null) stratificationSlider.setValue(((Number) cfg.get("stratification")).doubleValue());
+        if (cfg.containsKey("mixingRate") && mixingRateSlider != null) mixingRateSlider.setValue(((Number) cfg.get("mixingRate")).doubleValue());
+        if (cfg.containsKey("baseHumidity") && baseHumiditySlider != null) baseHumiditySlider.setValue(((Number) cfg.get("baseHumidity")).doubleValue());
+        if (cfg.containsKey("voidDensity") && voidDensitySlider != null) voidDensitySlider.setValue(((Number) cfg.get("voidDensity")).doubleValue());
+        if (cfg.containsKey("latitude") && latField != null) latField.setText(String.valueOf(cfg.get("latitude")));
+        if (cfg.containsKey("longitude") && lonField != null) lonField.setText(String.valueOf(cfg.get("longitude")));
+        repaintAllViews();
     }
 }
