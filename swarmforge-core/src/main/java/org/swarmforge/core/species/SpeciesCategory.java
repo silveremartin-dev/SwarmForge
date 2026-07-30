@@ -14,8 +14,17 @@ package org.swarmforge.core.species;
  * @author Gemini AI Assistant
  */
 public enum SpeciesCategory {
-    /** Primary colony-forming eusocial insects (Ants, Bees, Wasps, Termites). */
-    EUSOCIAL_PRIMARY("🐜 Eusocial Primary (Colony Builder)"),
+    /** Primary colony-forming eusocial insects (Monogyne / Standard Colony Builder). */
+    EUSOCIAL_PRIMARY("🐜 Eusociale Principale (Fondatrice de Colonie)"),
+
+    /** Polygyne supercolony forming species (Formica lugubris, Linepithema humile). */
+    EUSOCIAL_POLYGYNE("👑 Eusociale Polygyne (Supercolonie / Multi-Nids)"),
+
+    /** Social parasites or temporary host-nest invading queens (Lasius fuliginosus, Bothriomyrmex). */
+    PARASITIC_QUEEN("🐝 Parasite Sociale / Reine Incitative"),
+
+    /** Subsocial or incipient eusocial insects with primitive worker castes (Halictidae, Polistes). */
+    SUBSOCIAL_INCIPIENT("🐜 Subsociale / Prémices Eusociales"),
 
     /** Commensal species living inside or around host nests (myrmecophiles, beetles). */
     COMMENSAL("🪲 Commensal / Nest Guest"),

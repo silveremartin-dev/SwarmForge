@@ -183,6 +183,24 @@ public class ScenarioEditorPane extends BorderPane {
 
         biomeCombo = new ComboBox<>();
         biomeCombo.getItems().addAll("TEMPERATE_FOREST", "ARID_SAVANNA", "TROPICAL_RAINFOREST", "MEDITERRANEAN_SCRUB", "SUBTERRANEAN_CAVE");
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(biomeCombo,
+            val -> switch (val) {
+                case "TEMPERATE_FOREST" -> "🌳 Forêt Tempérée";
+                case "ARID_SAVANNA" -> "🌾 Savane Aride";
+                case "TROPICAL_RAINFOREST" -> "🌴 Forêt Tropicale Humide";
+                case "MEDITERRANEAN_SCRUB" -> "🌿 Maquis & Garrigue";
+                case "SUBTERRANEAN_CAVE" -> "🕳️ Grotte / Milieu Souterrain";
+                default -> val;
+            },
+            val -> switch (val) {
+                case "TEMPERATE_FOREST" -> "Climat tempéré avec sous-bois ombragé, litière de feuilles et 4 saisons.";
+                case "ARID_SAVANNA" -> "Végétation herbacée avec pluies saisonnières et fortes chaleurs diurnes.";
+                case "TROPICAL_RAINFOREST" -> "Richesse végétale maximale, forte humidité et température constante.";
+                case "MEDITERRANEAN_SCRUB" -> "Substrat caillouteux, maquis aride et ensoleillement intense.";
+                case "SUBTERRANEAN_CAVE" -> "Obscurité totale, humidité élevée et température très stable.";
+                default -> "";
+            }
+        );
         biomeCombo.getSelectionModel().selectFirst();
 
         soilDensitySlider = new Slider(0.1, 1.0, 0.6);
@@ -225,6 +243,10 @@ public class ScenarioEditorPane extends BorderPane {
             soldierEngineCombo.getItems().add(type);
             queenEngineCombo.getItems().add(type);
         }
+
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(workerEngineCombo, ScenarioEditorPane::getArchTitle, ScenarioEditorPane::getArchDesc);
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(soldierEngineCombo, ScenarioEditorPane::getArchTitle, ScenarioEditorPane::getArchDesc);
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(queenEngineCombo, ScenarioEditorPane::getArchTitle, ScenarioEditorPane::getArchDesc);
 
         workerEngineCombo.getSelectionModel().select(ArchitectureType.BEHAVIOR_TREE);
         soldierEngineCombo.getSelectionModel().select(ArchitectureType.FUZZY_LOGIC);
@@ -384,6 +406,34 @@ public class ScenarioEditorPane extends BorderPane {
         if (onLaunchCallback != null && currentScenario != null) {
             onLaunchCallback.accept(currentScenario);
         }
+    }
+
+    public static String getArchTitle(ArchitectureType arch) {
+        if (arch == null) return "";
+        return switch (arch) {
+            case BEHAVIOR_TREE -> "🌳 Behavior Tree (Arbre de Comportements)";
+            case NEURAL_NETWORK -> "⚡ Neural Network (Réseau de Neurones)";
+            case FINITE_STATE_MACHINE -> "🔄 FSM (Automate à États Finis)";
+            case FUZZY_LOGIC -> "🌫️ Fuzzy Logic (Logique Floue)";
+            case BDI -> "🧠 BDI (Belief-Desire-Intention)";
+            case BLACKBOARD -> "📋 Blackboard (Tableau Blanc Partagé)";
+            case HYBRID -> "🔀 Hybrid Architecture (Hybride)";
+            default -> arch.name();
+        };
+    }
+
+    public static String getArchDesc(ArchitectureType arch) {
+        if (arch == null) return "";
+        return switch (arch) {
+            case BEHAVIOR_TREE -> "Arbre hiérarchique réactif permettant d'enchaîner priorités, séquences et conditions pour chaque agent.";
+            case NEURAL_NETWORK -> "Contrôle continu par réseau de neurones entraîné ou pré-configuré.";
+            case FINITE_STATE_MACHINE -> "Transitions déterministes entre états discrets (Exploration, Récolte, Attaque, Repos).";
+            case FUZZY_LOGIC -> "Prise de décision pondérée sous incertitude ou imprécision environnementale.";
+            case BDI -> "Modèle cognitivement riche gérant Croyances, Désirs et Intentions sur du long terme.";
+            case BLACKBOARD -> "Espace mémoire partagé où les sous-systèmes cognitifs publient et consomment des données.";
+            case HYBRID -> "Combinaison adaptative de plusieurs moteurs de raisonnement (FSM + Fuzzy + BDI).";
+            default -> "";
+        };
     }
 
     public void setOnLaunchCallback(Consumer<Scenario> callback) {

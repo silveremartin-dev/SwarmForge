@@ -76,6 +76,12 @@ public class SimulationControlPanel extends VBox {
         return maxTick;
     }
 
+    private final VBox playbackAndSpeedPanel = new VBox(8);
+
+    public VBox getPlaybackAndSpeedPanel() {
+        return playbackAndSpeedPanel;
+    }
+
     public SimulationControlPanel() {
         setSpacing(8);
         setPadding(new Insets(10));
@@ -206,18 +212,21 @@ public class SimulationControlPanel extends VBox {
         presetBox.getChildren().addAll(lblPresetHeader, metaRow, gridPresets, seedRow, btnApplyPresets);
 
         // === Row 1: Date/Time Display & Real-Time Status ===
-        HBox dateTimeRow = new HBox(15);
+        HBox dateTimeRow = new HBox(8);
         dateTimeRow.setAlignment(Pos.CENTER);
 
         lblDateTime = new Label("📅 Date & Heure : 2026-03-20 08:00:00");
-        lblDateTime.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
+        lblDateTime.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
 
-        Label lblStepTitle = new Label("Pas (dt):");
-        lblStepTitle.setStyle("-fx-text-fill: #aaa;");
+        Label lblStepTitle = new Label("Pas de Simulation :");
+        lblStepTitle.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
 
         stepSizeCombo = new javafx.scene.control.ComboBox<>();
-        stepSizeCombo.getItems().addAll("16.6ms (60 FPS)", "50ms (20 FPS)", "100ms (10 FPS)", "1.0s (1 FPS)", "5.0s (Fast)");
+        stepSizeCombo.getItems().addAll("16.6 ms (60 Hz)", "50 ms (20 Hz)", "100 ms (10 Hz)", "1.0 s", "5.0 s");
         stepSizeCombo.getSelectionModel().selectFirst();
+        stepSizeCombo.setStyle("-fx-font-size: 10px;");
+        Tooltip stepTt = new Tooltip("Durée du pas de simulation (Intervalle de temps physique/biologique calculé par itération/tick).");
+        Tooltip.install(stepSizeCombo, stepTt);
         stepSizeCombo.setOnAction(e -> {
             int idx = stepSizeCombo.getSelectionModel().getSelectedIndex();
             switch (idx) {
@@ -232,8 +241,8 @@ public class SimulationControlPanel extends VBox {
 
         dateTimeRow.getChildren().addAll(lblDateTime, new Separator(Orientation.VERTICAL), lblStepTitle, stepSizeCombo);
 
-        // === Row 2: Playback Controls ===
-        HBox playbackRow = new HBox(5);
+        // === Row 2: Playback Controls (Rewind, StepBack, Play, Pause, Stop, StepForward, FastForward) ===
+        HBox playbackRow = new HBox(4);
         playbackRow.setAlignment(Pos.CENTER);
 
         btnRewind = createButton("⏪", i18n.get("control.rewind_tt"));
@@ -271,7 +280,6 @@ public class SimulationControlPanel extends VBox {
         });
 
         btnFastForward.setOnAction(e -> {
-            // Increase speed temporarily
             setSpeed(Math.min(10f, currentSpeed + 1f));
         });
 
@@ -281,30 +289,32 @@ public class SimulationControlPanel extends VBox {
         });
 
         btnStepForward.setOnAction(e -> {
-            // Single step forward
+            if (!isPlaying) {
+                currentTick++;
+                updateTick(currentTick, Math.max(maxTick, currentTick));
+                if (onSeek != null) onSeek.accept(currentTick);
+            }
         });
 
         playbackRow.getChildren().addAll(
                 btnRewind, btnStepBack, btnPlay, btnPause, btnStop, btnStepForward, btnFastForward);
 
-        // === Row 3: Speed Control ===
-        HBox speedRow = new HBox(10);
+        // === Row 3: Speed Control & Multipliers ===
+        HBox speedRow = new HBox(6);
         speedRow.setAlignment(Pos.CENTER);
 
         Label lblSpeedLabel = new Label();
         lblSpeedLabel.textProperty().bind(i18n.createStringBinding("control.speed"));
-        lblSpeedLabel.setStyle("-fx-text-fill: #aaa;");
+        lblSpeedLabel.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
 
-        // Initialize lblSpeed BEFORE the slider listener that uses it
         lblSpeed = new Label("1.0x");
-        lblSpeed.setStyle("-fx-text-fill: #4fc3f7; -fx-font-weight: bold;");
-        lblSpeed.setPrefWidth(50);
+        lblSpeed.setStyle("-fx-text-fill: #4fc3f7; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lblSpeed.setPrefWidth(35);
 
         speedSlider = new Slider(0.1, 10.0, 1.0);
-        speedSlider.setShowTickLabels(true);
-        speedSlider.setShowTickMarks(true);
-        speedSlider.setMajorTickUnit(2.0);
-        speedSlider.setPrefWidth(200);
+        speedSlider.setShowTickLabels(false);
+        speedSlider.setShowTickMarks(false);
+        speedSlider.setPrefWidth(80);
         speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             currentSpeed = newVal.floatValue();
             lblSpeed.setText(String.format("%.1fx", currentSpeed));
@@ -324,13 +334,22 @@ public class SimulationControlPanel extends VBox {
         speedRow.getChildren().addAll(
                 lblSpeedLabel, speedSlider, lblSpeed, btnNormal, btnDouble, btnQuad);
 
-        // === Row 4: Timeline & Elapsed Time ===
+        // Populate playbackAndSpeedPanel (to be mounted on Visual View tab above "Lancer Simulation")
+        playbackAndSpeedPanel.setPadding(new Insets(8));
+        playbackAndSpeedPanel.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.08); -fx-border-radius: 6;");
+
+        Label lblPlaybackHeader = new Label("⏱️ Contrôles Temps, Vitesse & Lecture");
+        lblPlaybackHeader.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+        playbackAndSpeedPanel.getChildren().addAll(lblPlaybackHeader, dateTimeRow, playbackRow, speedRow);
+
+        // === Row 4: Timeline & Elapsed Time (Tick count stays in SimulationControlPanel) ===
         HBox timelineRow = new HBox(10);
         timelineRow.setAlignment(Pos.CENTER);
 
         lblTick = new Label(i18n.get("control.tick", 0));
-        lblTick.setStyle("-fx-text-fill: #aaa;");
-        lblTick.setPrefWidth(120);
+        lblTick.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
+        lblTick.setPrefWidth(160);
 
         timelineSlider = new Slider(0, 10000, 0);
         timelineSlider.setPrefWidth(400);
@@ -354,8 +373,8 @@ public class SimulationControlPanel extends VBox {
 
         timelineRow.getChildren().addAll(lblTick, timelineSlider, lblTime);
 
-        // Add all rows (presetBox sits ABOVE playback controls as requested)
-        getChildren().addAll(presetBox, dateTimeRow, playbackRow, speedRow, timelineRow);
+        // Add presetBox and timelineRow (holding tick count) to main SimulationControlPanel layout
+        getChildren().addAll(presetBox, timelineRow);
 
         updateButtonStates();
     }

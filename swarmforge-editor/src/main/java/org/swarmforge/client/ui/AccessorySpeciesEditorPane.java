@@ -192,23 +192,63 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         accessoryNameField = new TextField("Graminées à Graines (Messor)");
         categoryCombo = new ComboBox<>(FXCollections.observableArrayList(
-                "FLORA (Plantes & Graines)",
-                "APHID_MUTUALIST (Pucerons & Miellat)",
-                "PREY_INSECT (Insectes Proies)",
-                "PREDATOR (Prédateurs: Araignées, Fourmilions, Oiseaux)",
-                "PATHOGEN_PARASITE (Pathogènes: Cordyceps, Microsporidies, Acariens)",
-                "FUNGI (Champignons Symbiotiques)",
-                "DETRITIVORE (Collemboles & Cloportes)"
+                "FLORA",
+                "APHID_MUTUALIST",
+                "PREY_INSECT",
+                "PREDATOR",
+                "PATHOGEN_PARASITE",
+                "FUNGI",
+                "DETRITIVORE"
         ));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(categoryCombo,
+            val -> switch (val) {
+                case "FLORA" -> "🌿 FLORA (Plantes & Graines)";
+                case "APHID_MUTUALIST" -> "🐄 APHID_MUTUALIST (Pucerons & Miellat)";
+                case "PREY_INSECT" -> "🐛 PREY_INSECT (Insectes Proies)";
+                case "PREDATOR" -> "🕷️ PREDATOR (Araignées, Fourmilions, Oiseaux)";
+                case "PATHOGEN_PARASITE" -> "🦠 PATHOGEN_PARASITE (Cordyceps, Acariens)";
+                case "FUNGI" -> "🍄 FUNGI (Champignons Symbiotiques)";
+                case "DETRITIVORE" -> "🍂 DETRITIVORE (Collemboles & Cloportes)";
+                default -> val;
+            },
+            val -> switch (val) {
+                case "FLORA" -> "Végétation, plantes nectarifères et graminées fournissant des graines et du nectar à la colonie.";
+                case "APHID_MUTUALIST" -> "Pucerons et cochenilles exploités en trophobiose pour la récolte de miellat sucré.";
+                case "PREY_INSECT" -> "Proies Arthropodes (chenilles, grillons, mouches) chassées pour l'apport en protéines.";
+                case "PREDATOR" -> "Prédateurs naturels régulant la population de la colonie (araignées, fourmilions, reptiles).";
+                case "PATHOGEN_PARASITE" -> "Parasites et champignons entomopathogènes provoquant des épidémies et altérant la santé de la colonie.";
+                case "FUNGI" -> "Basidiomycètes ou ascomycètes cultivés par les insectes attines ou termites champignonnistes.";
+                case "DETRITIVORE" -> "Organismes détritivores nettoyant les dépotoirs de la colonie et recyclant la matière organique.";
+                default -> "";
+            }
+        );
         categoryCombo.getSelectionModel().selectFirst();
 
         biomeCombo = new ComboBox<>(FXCollections.observableArrayList(
-                "TEMPERATE_DECIDUOUS (4 Saisons Distinctes)",
-                "MEDITERRANEAN (Été Sec / Hiver Doux)",
-                "TROPICAL_RAINFOREST (Saison Humide / Sèche)",
-                "ARID_DESERT (Pluies Épisodiques)",
-                "TAIGA_BOREAL (Saison Végétative Courte)"
+                "TEMPERATE_DECIDUOUS",
+                "MEDITERRANEAN",
+                "TROPICAL_RAINFOREST",
+                "ARID_DESERT",
+                "TAIGA_BOREAL"
         ));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(biomeCombo,
+            val -> switch (val) {
+                case "TEMPERATE_DECIDUOUS" -> "🌳 Forêt Tempérée Décidue (4 Saisons)";
+                case "MEDITERRANEAN" -> "🌿 Maquis Méditerranéen (Été Sec / Hiver Doux)";
+                case "TROPICAL_RAINFOREST" -> "🌴 Forêt Tropicale Humide";
+                case "ARID_DESERT" -> "🏜️ Désert Aride (Pluies Épisodiques)";
+                case "TAIGA_BOREAL" -> "🌲 Taïga Boréale (Saison Végétative Courte)";
+                default -> val;
+            },
+            val -> switch (val) {
+                case "TEMPERATE_DECIDUOUS" -> "Climat tempéré avec 4 saisons bien marquées, diapause hivernale et floraison printanière.";
+                case "MEDITERRANEAN" -> "Étés chauds et arides, hivers doux et pluvieux favorisant les espèces granivores et thermophiles.";
+                case "TROPICAL_RAINFOREST" -> "Température et hygrométrie élevées constantes avec biodiversité et compétition intenses.";
+                case "ARID_DESERT" -> "Conditions extrêmes de chaleur et de sécheresse avec activité nocturne ou crépusculaire.";
+                case "TAIGA_BOREAL" -> "Hivers longs et glacials, saison végétative très courte nécessitant une forte accumulation de réserves.";
+                default -> "";
+            }
+        );
         biomeCombo.getSelectionModel().selectFirst();
 
         latitudeField = new TextField("45.0");

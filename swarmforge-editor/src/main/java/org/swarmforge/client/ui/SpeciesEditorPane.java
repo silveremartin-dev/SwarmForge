@@ -251,9 +251,34 @@ public class SpeciesEditorPane extends VBox {
         scientificNameField = new TextField("Lasius niger");
 
         insectTypeCombo = new ComboBox<>(FXCollections.observableArrayList("ANT", "BEE", "WASP", "TERMITE", "OTHER"));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(insectTypeCombo,
+            val -> switch (val) {
+                case "ANT" -> "🐜 Formicidae (Fourmis)";
+                case "BEE" -> "🐝 Apidae (Abeilles)";
+                case "WASP" -> "🐝 Vespidae (Guêpes)";
+                case "TERMITE" -> "🐜 Termitoidae (Termites)";
+                default -> "🪲 Autre Taxon Eusocial";
+            },
+            val -> switch (val) {
+                case "ANT" -> "Insectes eusociaux formant de vastes colonies avec spécialisation poussée des castes et architecture sous-terraine.";
+                case "BEE" -> "Insectes hyménoptères eusociaux produisant du miel, pratiquant la danse des abeilles et logeant en rayons de cire.";
+                case "WASP" -> "Hyménoptères eusociaux ou solitaires prédateurs bâtissant des nids en papier/carton mâché à partir de fibres de bois.";
+                case "TERMITE" -> "Isoptères eusociaux consommant de la cellulose, organisés en castes aveugles sous la conduite d'un couple royal (Reine + Roi).";
+                default -> "Autres arthropodes subsociaux ou eusociaux (ex: Thrips, Pucerons galligènes, Crevettes eusociales).";
+            }
+        );
         insectTypeCombo.getSelectionModel().select("ANT");
 
-        categoryCombo = new ComboBox<>(FXCollections.observableArrayList(org.swarmforge.core.species.SpeciesCategory.values()));
+        categoryCombo = new ComboBox<>(FXCollections.observableArrayList(
+                org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY,
+                org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_POLYGYNE,
+                org.swarmforge.core.species.SpeciesCategory.PARASITIC_QUEEN,
+                org.swarmforge.core.species.SpeciesCategory.SUBSOCIAL_INCIPIENT
+        ));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(categoryCombo,
+            cat -> cat != null ? cat.label : "",
+            cat -> cat != null ? cat.label : ""
+        );
         categoryCombo.getSelectionModel().select(org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY);
         categoryCombo.setOnAction(e -> validateParameters());
 
@@ -308,6 +333,20 @@ public class SpeciesEditorPane extends VBox {
         GridPane grid = createGrid();
 
         queenModeCombo = new ComboBox<>(FXCollections.observableArrayList("MONOGYNE", "POLYGYNE", "GAMERGATES"));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(queenModeCombo,
+            val -> switch (val) {
+                case "MONOGYNE" -> "👑 Monogyne (Une seule Reine)";
+                case "POLYGYNE" -> "👑👑 Polygyne (Multiples Reines)";
+                case "GAMERGATES" -> "🐜 Gamergates (Ouvrières Reproductrices)";
+                default -> val;
+            },
+            val -> switch (val) {
+                case "MONOGYNE" -> "La colonie ne tolère stricte qu'une unique reine féconde. La mort de la reine entraîne le déclin terminal de la colonie.";
+                case "POLYGYNE" -> "Plusieurs reines fécondes cohabitent pacifiquement dans le même nid, assurant une ponte massive et une pérennité accrue.";
+                case "GAMERGATES" -> "Absence de caste reine morphologique distincte : des ouvrières spécialisées (gamergates) s'accouplent et assurent la ponte.";
+                default -> "";
+            }
+        );
         queenModeCombo.getSelectionModel().select("MONOGYNE");
         queenModeCombo.setOnAction(e -> {
             if ("MONOGYNE".equals(queenModeCombo.getValue())) {
@@ -332,6 +371,22 @@ public class SpeciesEditorPane extends VBox {
 
         kingLifespanField = new TextField("15000");
         nuptialFlightCombo = new ComboBox<>(FXCollections.observableArrayList("AERIAL_SWARM", "SWARM_DIVISION", "BUDDING", "IN_NEST"));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(nuptialFlightCombo,
+            val -> switch (val) {
+                case "AERIAL_SWARM" -> "🌤️ Vol Nuptial Aérien";
+                case "SWARM_DIVISION" -> "🐝 Essaimage par Division";
+                case "BUDDING" -> "🌱 Bouturage de Nid (Sociotomie)";
+                case "IN_NEST" -> "🕳️ Accouplement Intranidale";
+                default -> val;
+            },
+            val -> switch (val) {
+                case "AERIAL_SWARM" -> "Synchronisation synchrone de princesses et de mâles s'envolant massivement dans les airs lors de conditions météo chaudes et humides.";
+                case "SWARM_DIVISION" -> "La reine mère quitte le nid d'origine accompagnée d'une cohorte d'ouvrières pour fonder une nouvelle colonie à proximité.";
+                case "BUDDING" -> "Séparation progressive d'un groupe d'ouvrières avec une ou plusieurs reines fertiles vers un nid satellite adjacent.";
+                case "IN_NEST" -> "Accouplement des ailés à l'intérieur même du nid d'origine sans vol aérien risqué (fréquent chez les espèces parasites).";
+                default -> "";
+            }
+        );
         nuptialFlightCombo.getSelectionModel().select("AERIAL_SWARM");
 
         grid.addRow(0, createTooltipLabel("Structure Gynique (Mode Reine):", "Mode d'organisation des reines reproductrices : Monogyne (1 reine), Polygyne (plusieurs reines), ou Gamergates (ouvrières pondeuses).", queenModeCombo, "Monogyne"), queenModeCombo);
@@ -359,6 +414,26 @@ public class SpeciesEditorPane extends VBox {
         eggDurationField = new TextField("300");
         larvaDurationField = new TextField("600");
         larvaDietCombo = new ComboBox<>(FXCollections.observableArrayList("HIGH_PROTEIN_MEAT", "SUGAR_HONEY", "FUNGUS", "CELLULOSE", "SEEDS", "OMNIVORE"));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(larvaDietCombo,
+            val -> switch (val) {
+                case "HIGH_PROTEIN_MEAT" -> "🥩 Protéines & Chasse d'Insectes";
+                case "SUGAR_HONEY" -> "🍯 Nectar, Miellat & Sucres";
+                case "FUNGUS" -> "🍄 Meule de Champignon Symbiotique";
+                case "CELLULOSE" -> "🪵 Cellulose & Bois Mâché";
+                case "SEEDS" -> "🌾 Graines Granivores (Pain de Fourmi)";
+                case "OMNIVORE" -> "🥗 Régime Opportuniste Omnivore";
+                default -> val;
+            },
+            val -> switch (val) {
+                case "HIGH_PROTEIN_MEAT" -> "Régime hautement protéique à base d'insectes proies broyés, indispensable au développement rapide du couvain et des soldats.";
+                case "SUGAR_HONEY" -> "Régime liquide riche en glucides (nectar floral, miellat de pucerons, jus de fruits) apportant l'énergie métabolique.";
+                case "FUNGUS" -> "Nourriture mycélienne cultivée par la colonie dans des chambres souterraines à partir de substrat végétal mâché (Atta).";
+                case "CELLULOSE" -> "Digestats de bois et de fibres végétales dégradés par des protozoaires et bactéries symbiotiques intestinales (Termites).";
+                case "SEEDS" -> "Graines récoltées, décortiquées et broyées avec la salive enzymatique pour former le 'pain de fourmi' (Messor).";
+                case "OMNIVORE" -> "Alimentation variée combinant miellat, cadavres d'arthropodes, graines et liquides sucrés.";
+                default -> "";
+            }
+        );
         larvaDietCombo.getSelectionModel().select("HIGH_PROTEIN_MEAT");
         pupaDurationField = new TextField("500");
 
@@ -563,6 +638,7 @@ public class SpeciesEditorPane extends VBox {
         TextField targetRatioF = new TextField("0.25");
         ComboBox<String> decisionArchCombo = new ComboBox<>();
         decisionArchCombo.getItems().addAll("BDI", "NEURAL_NETWORK", "FSM", "BEHAVIOR_TREE", "FUZZY_LOGIC");
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(decisionArchCombo, SpeciesEditorPane::getDecisionArchTitle, SpeciesEditorPane::getDecisionArchDescription);
         decisionArchCombo.setValue("BDI");
 
         TextField foragingWField = new TextField("0.30");
@@ -572,6 +648,7 @@ public class SpeciesEditorPane extends VBox {
 
         ComboBox<String> casteVenomCombo = new ComboBox<>();
         casteVenomCombo.getItems().addAll("NONE", "FORMIC_ACID", "SOLENOPSIN", "NEUROTOXIN", "CYTOTOXIN", "TERPENE_RESIN", "AUTOTHYSIS_BOMB", "ACID_SPRAY", "POWERFUL_MANDIBLES");
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(casteVenomCombo, SpeciesEditorPane::getVenomTitle, SpeciesEditorPane::getVenomDescription);
         casteVenomCombo.setValue("NONE");
         TextField casteVenomToxField = new TextField("10.0");
 
@@ -688,9 +765,11 @@ public class SpeciesEditorPane extends VBox {
         GridPane grid = createGrid();
 
         primaryDietCombo = new ComboBox<>(FXCollections.observableArrayList("SUGARS_NECTAR", "INSECTS_MEAT", "SEEDS", "FUNGUS", "WOOD_CELLULOSE", "HONEYDEW", "OMNIVORE"));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(primaryDietCombo, SpeciesEditorPane::getDietTitle, SpeciesEditorPane::getDietDescription);
         primaryDietCombo.getSelectionModel().select("HONEYDEW");
 
         secondaryDietCombo = new ComboBox<>(FXCollections.observableArrayList("NONE", "INSECTS_MEAT", "SUGARS_NECTAR", "SEEDS"));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(secondaryDietCombo, SpeciesEditorPane::getDietTitle, SpeciesEditorPane::getDietDescription);
         secondaryDietCombo.getSelectionModel().select("INSECTS_MEAT");
 
         foodConsumptionField = new TextField("0.5");
@@ -737,6 +816,7 @@ public class SpeciesEditorPane extends VBox {
             "MATURE",
             "SIMPLE"
         ));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(nestTypeCombo, SpeciesEditorPane::getNestTypeTitle, SpeciesEditorPane::getNestTypeDescription);
         nestTypeCombo.getSelectionModel().select("MATURE");
 
         optTempField = new TextField("24.0");
@@ -752,6 +832,7 @@ public class SpeciesEditorPane extends VBox {
         territorialitySlider.setShowTickMarks(true);
 
         venomCombo = new ComboBox<>(FXCollections.observableArrayList("NONE", "FORMIC_ACID", "VENOMOUS_STING", "CHEMICAL_SPRAY", "POWERFUL_MANDIBLES"));
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(venomCombo, SpeciesEditorPane::getVenomTitle, SpeciesEditorPane::getVenomDescription);
         venomCombo.getSelectionModel().select("FORMIC_ACID");
 
         optTempField.textProperty().addListener((obs, o, n) -> validateParameters());
@@ -1487,5 +1568,133 @@ public class SpeciesEditorPane extends VBox {
 
         public float getVenomRangeMm() { return venomRangeMm; }
         public void setVenomRangeMm(float venomRangeMm) { this.venomRangeMm = venomRangeMm; }
+    }
+
+    public static String getDietTitle(String diet) {
+        if (diet == null) return "";
+        return switch (diet) {
+            case "SUGARS_NECTAR" -> "🍯 Nectar & Liquides Sucrés";
+            case "INSECTS_MEAT" -> "🥩 Proies Protéiques / Insectes";
+            case "SEEDS" -> "🌾 Graines (Granivorie / Pain de Fourmi)";
+            case "FUNGUS" -> "🍄 Champignons Symbiotiques";
+            case "WOOD_CELLULOSE" -> "🪵 Cellulose & Fibres de Bois";
+            case "HONEYDEW" -> "💧 Miellat d'Homoptères (Pucerons)";
+            case "OMNIVORE" -> "🥗 Omnivore Polyphage";
+            case "NONE" -> "🚫 Aucun Régime Secondaire";
+            default -> diet;
+        };
+    }
+
+    public static String getDietDescription(String diet) {
+        if (diet == null) return "";
+        return switch (diet) {
+            case "SUGARS_NECTAR" -> "Apport en glucides simples fournissant l'énergie métabolique directe pour l'activité quotidienne des adultes.";
+            case "INSECTS_MEAT" -> "Protéines animales indispensables au développement des larves en croissance et à la ponte de la reine.";
+            case "SEEDS" -> "Stockage et broyage de graines végétales riches en amidon pour la constitution de réserves sur-saisonnières.";
+            case "FUNGUS" -> "Culture de champignons basidiomycètes sur compost de matière végétale mâchée dans des chambres dédiées.";
+            case "WOOD_CELLULOSE" -> "Digestion de fibres de bois grâce aux protozoaires et bactéries symbiotiques digestives (Termites).";
+            case "HONEYDEW" -> "Exploitation de pucerons et cochenilles en trophobiose pour la récolte régulière d'excrétions sucrées.";
+            case "OMNIVORE" -> "Alimentation opportuniste s'adaptant à toutes les ressources trophiques disponibles sans spécialisation.";
+            case "NONE" -> "Aucune source trophique complémentaire ou secondaire nécessaire.";
+            default -> "";
+        };
+    }
+
+    public static String getNestTypeTitle(String type) {
+        if (type == null) return "";
+        return switch (type) {
+            case "WAX_COMB_HEXAGONAL" -> "🐝 Rayons de Cire Hexagonaux";
+            case "WAX_POTS_CLUSTER" -> "🍯 Grappes de Pots de Cire";
+            case "PAPER_PEDUNCULATE" -> "🐝 Nid en Papier Mâché Suspendu";
+            case "CATHEDRAL_MOUND" -> "🏰 Termitière Cathédrale";
+            case "ARBOREAL_SILK_LEAF" -> "🍃 Nid Arboricole en Feuilles Tissées";
+            case "SUBTERRANEAN_FUNGI_VAULT" -> "🍄 Nid Souterrain à Champignonnières";
+            case "CARTON_NEST" -> "📦 Nid Arboricole en Carton Mâché";
+            case "BAMBOO_STEM_NEST" -> "🎋 Nid Cavitaire dans Tiges & Trous";
+            case "BIVOUAC_LIVING_NEST" -> "🐜 Bivouac Vivant Structuré";
+            case "MOUND" -> "🏔️ Dôme de Terre / Aiguilles";
+            case "TREE" -> "🪵 Troncs Creux & Bois Mort";
+            case "MATURE" -> "🏛️ Nid Établi / Structuré";
+            case "SIMPLE" -> "🕳️ Galeries Souterraines Simples";
+            default -> type;
+        };
+    }
+
+    public static String getNestTypeDescription(String type) {
+        if (type == null) return "";
+        return switch (type) {
+            case "WAX_COMB_HEXAGONAL" -> "Structure alvéolée suspendue bâtie en cire sécrétée par les glandes abdominales des ouvrières (Abeilles).";
+            case "WAX_POTS_CLUSTER" -> "Alvéoles sphériques et pots de stockage de miel et de pollen organisés en grappes irrégulières (Bourdons).";
+            case "PAPER_PEDUNCULATE" -> "Alvéoles ouvertes en papier cartonné fabriqué à partir de fibres de bois mâchées et salivées (Vespides).";
+            case "CATHEDRAL_MOUND" -> "Edifice imposant en terre maçonnée doté de cheminées d'aération régulant la température et le CO2 (Termites).";
+            case "ARBOREAL_SILK_LEAF" -> "Feuilles vivantes cousues entre elles au moyen de fils de soie sécrétés par les larves tenues par les ouvrières (Oecophylla).";
+            case "SUBTERRANEAN_FUNGI_VAULT" -> "Vaste réseau de cavités souterraines abritant des meules de champignon symbiotique (Fourmis coupe-feuille).";
+            case "CARTON_NEST" -> "Structure sphérique arboricole ou cavitaire en carton mâché à base de sciure et de salive sucrée (Lasius fuliginosus).";
+            case "BAMBOO_STEM_NEST" -> "Nid opportuniste aménagé dans des cavités préexistantes (tiges creuses de bambou, galles, bois foré).";
+            case "BIVOUAC_LIVING_NEST" -> "Nid temporaire constitué exclusivement des corps entrelacés de milliers d'ouvrières (Fourmis Légionnaires).";
+            case "MOUND" -> "Monticule souterrain surmonté d'un dôme isolant de terre et d'aiguilles de pin accumulées (Formica rufa).";
+            case "TREE" -> "Galeries forées directement dans le bois mort ou l'écorce des troncs d'arbres en décomposition (Camponotus).";
+            case "MATURE" -> "Nid souterrain très développé avec multiples réseaux de chambres à couvain, reines et greniers.";
+            case "SIMPLE" -> "Nid souterrain rudimentaire composé de quelques galeries sous des pierres ou touffes d'herbe.";
+            default -> "";
+        };
+    }
+
+    public static String getVenomTitle(String v) {
+        if (v == null) return "";
+        return switch (v) {
+            case "NONE" -> "🚫 Sans Venin (Attaque Physique)";
+            case "FORMIC_ACID" -> "🧪 Acide Formique (Projection)";
+            case "VENOMOUS_STING" -> "🗡️ Aiguillon Venimeux (Dard)";
+            case "CHEMICAL_SPRAY" -> "💨 Spray Chimique Répulsif";
+            case "POWERFUL_MANDIBLES" -> "✂️ Mandibles Puissantes (Cisaille)";
+            case "SOLENOPSIN" -> "🔥 Solénopsine (Alcaloïde Brûlant)";
+            case "NEUROTOXIN" -> "🧠 Neurotoxine Paralysante";
+            case "CYTOTOXIN" -> "🧫 Cytotoxine Nécrotique";
+            case "TERPENE_RESIN" -> "🌲 Résine Terpénique Collante";
+            case "AUTOTHYSIS_BOMB" -> "💥 Autothyse (Explosion Suicidaire)";
+            default -> v;
+        };
+    }
+
+    public static String getVenomDescription(String v) {
+        if (v == null) return "";
+        return switch (v) {
+            case "NONE" -> "Pas de venin chimique. Combat exclusivement par morsures de mandibles et lutte mécanique.";
+            case "FORMIC_ACID" -> "Projection à distance ou application d'acide formique concentré provoquant des brûlures chimiques corrosives.";
+            case "VENOMOUS_STING" -> "Injection directe de venin protéique au moyen d'un dard abdominal rétractile provoquant douleur intense et paralysie.";
+            case "CHEMICAL_SPRAY" -> "Pulvérisation d'un spray répulsif ou asphyxiant provoquant la désorientation des assaillants.";
+            case "POWERFUL_MANDIBLES" -> "Mandibles hypertrophiées capables d'exercer une pression mécanique létale ou de décapiter les proies.";
+            case "SOLENOPSIN" -> "Alcaloïde toxique nécrotique provoquant une douleur de brûlure vive et une pustule locale (Solenopsis invicta).";
+            case "NEUROTOXIN" -> "Substance ciblant le système nerveux central des arthropodes pour bloquer la transmission neuromusculaire.";
+            case "CYTOTOXIN" -> "Toxine nécrotique détruisant les membranes cellulaires de l'adversaire lors de la piqûre.";
+            case "TERPENE_RESIN" -> "Liquide visqueux terpénique expulsé sous pression par la tête des soldats nasutes pour engluer l'ennemi.";
+            case "AUTOTHYSIS_BOMB" -> "Contraction musculaire extrême provoquant la rupture de la paroi abdominale et l'explosion d'une colle toxique.";
+            default -> "";
+        };
+    }
+
+    public static String getDecisionArchTitle(String arch) {
+        if (arch == null) return "";
+        return switch (arch) {
+            case "BDI" -> "🧠 Modèle BDI (Belief-Desire-Intention)";
+            case "NEURAL_NETWORK" -> "⚡ Réseau de Neurones Artificiels";
+            case "FSM" -> "🔄 Automate à États Finis (FSM)";
+            case "BEHAVIOR_TREE" -> "🌳 Arbre de Comportements";
+            case "FUZZY_LOGIC" -> "🌫️ Logique Floue (Fuzzy Logic)";
+            default -> arch;
+        };
+    }
+
+    public static String getDecisionArchDescription(String arch) {
+        if (arch == null) return "";
+        return switch (arch) {
+            case "BDI" -> "Architecture cognitive avancée gérant des Croyances, Désirs et Intentions pour des stratégies à long terme.";
+            case "NEURAL_NETWORK" -> "Réseau de neurones récurrent ou feed-forward transformant les entrées sensorielles en décisions motrices.";
+            case "FSM" -> "Machine à états déterministe basculant instantanément entre Récolte, Défense, Soins du couvain et Repos.";
+            case "BEHAVIOR_TREE" -> "Arbre hiérarchique de sélecteurs et de séquences très lisible et modulaire.";
+            case "FUZZY_LOGIC" -> "Évaluation de conditions floues (ex: 'Faim élevée' AND 'Danger moyen') pour nuancer les comportements.";
+            default -> "";
+        };
     }
 }

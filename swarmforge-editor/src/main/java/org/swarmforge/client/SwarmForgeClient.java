@@ -245,8 +245,9 @@ public class SwarmForgeClient extends Application {
 
                 // Live Data Stream Status
                 controlsInner.getChildren().add(new Separator());
-                Label statsLabel = new Label("Flux de Données Serveur : Mode Standalone (Local) (Tick: 0)");
+                Label statsLabel = new Label("🌐 Moteur de Simulation : Mode Local Autonome (Standalone) | Avancement : Pas n° 0");
                 statsLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+                Tooltip.install(statsLabel, new Tooltip("Statut du moteur de calcul de la simulation (Local autonomes ou Serveur gRPC synchrone)."));
                 controlsInner.getChildren().add(statsLabel);
 
                 controlsTab.setContent(new ScrollPane(controlsInner));
@@ -305,7 +306,8 @@ public class SwarmForgeClient extends Application {
                                 boolean isSimRunning = isConnected || isPlaying;
 
                                 long tick = isConnected ? networkClient.getLatestTick() : (simControlPanel != null ? simControlPanel.getCurrentTick() : 0);
-                                statsLabel.setText("Flux de Données Serveur : " + (isConnected ? "Connecté et synchronisé" : "Mode Standalone (Local)") + " (Tick: " + tick + ")");
+                                String modeStr = isConnected ? "Serveur Dédié (Connecté & Synchronisé)" : "Mode Local Autonome (Standalone)";
+                                statsLabel.setText("🌐 Moteur de Simulation : " + modeStr + " | Avancement : Pas n° " + tick);
 
                                 // Sync procedural audio synthesizer
                                 if (simControlPanel != null) {
@@ -435,21 +437,38 @@ public class SwarmForgeClient extends Application {
                 Label lblSideTitle = new Label("🎛️ Rendu 3D & Contrôles");
                 lblSideTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
 
-                // 2. Playback / Play-Pause Button
+                // 2. Moved Controls from Simulation Manager: Date & Time, VCR Playback (Rewind/FastForward), Speed & Multipliers
+                Node playbackAndSpeedNode = (this.simControlPanel != null) ? this.simControlPanel.getPlaybackAndSpeedPanel() : new VBox();
+
+                // 3. Playback / Play-Pause Button
                 Button btnPlayPause = new Button("▶ Lancer Simulation");
                 btnPlayPause.setMaxWidth(Double.MAX_VALUE);
                 btnPlayPause.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 7 12; -fx-background-radius: 6;");
-                btnPlayPause.setOnAction(e -> {
+
+                Runnable syncPlayPauseBtn = () -> {
                         if (simControlPanel != null) {
                                 boolean playing = simControlPanel.isPlaying();
-                                simControlPanel.setPlaying(!playing);
-                                if (!playing) {
+                                if (playing) {
                                         btnPlayPause.setText("⏸ Pause Simulation");
                                         btnPlayPause.setStyle("-fx-background-color: #eab308; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 7 12; -fx-background-radius: 6;");
                                 } else {
                                         btnPlayPause.setText("▶ Lancer Simulation");
                                         btnPlayPause.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 7 12; -fx-background-radius: 6;");
                                 }
+                        }
+                };
+
+                if (simControlPanel != null) {
+                        simControlPanel.setOnPlay(v -> syncPlayPauseBtn.run());
+                        simControlPanel.setOnPause(v -> syncPlayPauseBtn.run());
+                        simControlPanel.setOnStop(v -> syncPlayPauseBtn.run());
+                }
+
+                btnPlayPause.setOnAction(e -> {
+                        if (simControlPanel != null) {
+                                boolean playing = simControlPanel.isPlaying();
+                                simControlPanel.setPlaying(!playing);
+                                syncPlayPauseBtn.run();
                         }
                 });
 
@@ -561,7 +580,7 @@ public class SwarmForgeClient extends Application {
 
                 cameraSection.getChildren().addAll(lblCam, btnFocusNest, btnTopView);
 
-                sideControls.getChildren().addAll(lblSideTitle, btnPlayPause, new Separator(), mediaSection, renderSection, audioSection, cameraSection);
+                sideControls.getChildren().addAll(lblSideTitle, playbackAndSpeedNode, btnPlayPause, new Separator(), mediaSection, renderSection, audioSection, cameraSection);
 
                 rootPane.setRight(sideControls);
 
@@ -626,7 +645,7 @@ public class SwarmForgeClient extends Application {
 
                 Label title = new Label();
                 title.textProperty().bind(i18n.createStringBinding("settings.title"));
-                title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #e4e4e7;");
+                title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
                 GridPane grid = new GridPane();
                 grid.setHgap(20);
@@ -636,10 +655,12 @@ public class SwarmForgeClient extends Application {
                 // 1. Language Row
                 Label langLabel = new Label();
                 langLabel.textProperty().bind(i18n.createStringBinding("settings.language"));
-                langLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #e4e4e7;");
+                langLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+                langLabel.setTooltip(new Tooltip("Sélectionnez la langue d'affichage de l'interface utilisateur."));
 
                 ComboBox<String> langCombo = new ComboBox<>();
                 langCombo.getItems().addAll("English", "Français", "Español", "Deutsch", "中文");
+                langCombo.setTooltip(new Tooltip("Langues supportées : Français, English, Español, Deutsch, 中文"));
 
                 java.util.Locale currentLoc = i18n.getLocale();
                 String langStr = currentLoc.getLanguage();
@@ -661,10 +682,12 @@ public class SwarmForgeClient extends Application {
                 // 2. Theme Row
                 Label themeLabel = new Label();
                 themeLabel.textProperty().bind(i18n.createStringBinding("settings.theme"));
-                themeLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #e4e4e7;");
+                themeLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+                themeLabel.setTooltip(new Tooltip("Basculer dynamiquement entre le thème Sombre (Dark) et le thème Clair (Light)."));
 
                 ComboBox<String> themeCombo = new ComboBox<>();
                 themeCombo.getItems().addAll("Dark Theme", "Light Theme");
+                themeCombo.setTooltip(new Tooltip("Thèmes graphiques pour l'ensemble de l'interface SwarmForge."));
                 if (org.swarmforge.client.util.ThemeManager.getInstance().getCurrentTheme() == org.swarmforge.client.util.ThemeManager.Theme.DARK) {
                         themeCombo.setValue("Dark Theme");
                 } else {

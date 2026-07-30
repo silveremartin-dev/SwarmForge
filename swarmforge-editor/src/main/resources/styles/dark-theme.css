@@ -332,6 +332,32 @@
     -fx-border-radius: 4px;
 }
 
+/* LineChart Dark Theme Styling */
+.chart {
+    -fx-padding: 8px;
+}
+.chart-plot-background {
+    -fx-background-color: #18181b;
+}
+.chart-title {
+    -fx-text-fill: #f4f4f5;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+.chart-legend {
+    -fx-background-color: #27272a;
+    -fx-border-color: #3f3f46;
+}
+.chart-legend-item {
+    -fx-text-fill: #f4f4f5;
+}
+.axis-label {
+    -fx-text-fill: #a1a1aa;
+}
+.axis {
+    -fx-tick-label-fill: #a1a1aa;
+}
+
 /* Standardized Button Classes */
 .btn-primary {
     -fx-background-color: #0284c7;

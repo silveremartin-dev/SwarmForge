@@ -18,57 +18,75 @@ import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Real-time statistics dashboard for colony monitoring and data analysis.
- * Displays population graphs, resource levels, health indicators,
- * interactive metric toggles, and CSV/Excel data export capabilities.
+ * Real-Time Dynamic Colony & Eco-Engine Statistics Dashboard.
+ * Formatted cleanly for both Dark and Light themes with dynamic metric selection.
  *
- * @author Gemini AI Assistant
  * @author Silvère Martin-Michiellot
+ * @author Gemini AI Assistant
  */
 public class StatisticsDashboard extends VBox {
 
-    private static final int MAX_DATA_POINTS = 600; // ~10 minutes of history
+    private static final int MAX_DATA_POINTS = 600;
 
-    // Data History for Export
-    private final List<ColonyStats> historyList = new ArrayList<>();
+    public static class ColonyStats {
+        public long simTicks;
+        public int population;
+        public int queens;
+        public int workers;
+        public int soldiers;
+        public double food;
+        public double water;
+        public double tickRate;
+        public int births;
+        public int deaths;
 
-    // Charts
-    private final LineChart<Number, Number> populationChart;
-    private final LineChart<Number, Number> resourceChart;
+        public ColonyStats() {
+        }
 
-    // Population chart series
+        public ColonyStats(long simTicks, int population, int queens, int workers, int soldiers,
+                           double food, double water, double tickRate, int births, int deaths) {
+            this.simTicks = simTicks;
+            this.population = population;
+            this.queens = queens;
+            this.workers = workers;
+            this.soldiers = soldiers;
+            this.food = food;
+            this.water = water;
+            this.tickRate = tickRate;
+            this.births = births;
+            this.deaths = deaths;
+        }
+    }
+
     private final XYChart.Series<Number, Number> totalPopSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> queensSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> workersSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> soldiersSeries = new XYChart.Series<>();
 
-    // Resource & event chart series
     private final XYChart.Series<Number, Number> foodSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> waterSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> birthsSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> deathsSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> tpsSeries = new XYChart.Series<>();
 
-    // Checkboxes for toggling metrics
-    private final CheckBox chkTotalPop = new CheckBox("Population Totale");
-    private final CheckBox chkQueens = new CheckBox("Reines");
-    private final CheckBox chkWorkers = new CheckBox("Ouvrières");
-    private final CheckBox chkSoldiers = new CheckBox("Soldats");
-    private final CheckBox chkFood = new CheckBox("Nourriture");
-    private final CheckBox chkWater = new CheckBox("Eau");
-    private final CheckBox chkBirths = new CheckBox("Naissances");
-    private final CheckBox chkDeaths = new CheckBox("Décès");
-    private final CheckBox chkTps = new CheckBox("Taux Ticks (TPS)");
+    private final CheckBox chkTotalPop = new CheckBox();
+    private final CheckBox chkWorkers = new CheckBox();
+    private final CheckBox chkSoldiers = new CheckBox();
+    private final CheckBox chkQueens = new CheckBox();
+    private final CheckBox chkFood = new CheckBox();
+    private final CheckBox chkWater = new CheckBox();
+    private final CheckBox chkBirths = new CheckBox();
+    private final CheckBox chkDeaths = new CheckBox();
+    private final CheckBox chkTps = new CheckBox();
 
-    // Stats summary labels
+    private final List<ColonyStats> historyList = new ArrayList<>();
+
     private final Label lblPopulation = new Label("0");
     private final Label lblQueens = new Label("0");
     private final Label lblWorkers = new Label("0");
@@ -82,26 +100,28 @@ public class StatisticsDashboard extends VBox {
 
     public StatisticsDashboard() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        setSpacing(12);
+        setSpacing(14);
         setPadding(new Insets(14));
-        setStyle("-fx-background-color: #181825;");
 
-        // === Header Controls (Title & Export Button) ===
+        // === Header Controls ===
         HBox headerBar = new HBox(15);
         headerBar.setAlignment(Pos.CENTER_LEFT);
-        
+
         Label titleLabel = new Label("📊 " + i18n.get("stats.dashboard_title", "Tableau de Bord Statistiques"));
-        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
-        
+        titleLabel.getStyleClass().add("card-title");
+        titleLabel.setStyle("-fx-font-size: 16px;");
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button btnExport = new Button("📤 " + i18n.get("stats.export_btn", "Exporter Statistiques (CSV / Excel)"));
-        btnExport.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-padding: 6 14;");
+        btnExport.getStyleClass().add("btn-primary");
+        btnExport.setTooltip(new Tooltip("Exporter l'historique complet des métriques enregistrées au format CSV."));
         btnExport.setOnAction(e -> exportToCSV());
 
         Button btnClear = new Button("🗑 " + i18n.get("log.btn.clear", "Réinitialiser"));
-        btnClear.setStyle("-fx-background-color: #334155; -fx-text-fill: #94a3b8; -fx-background-radius: 6; -fx-padding: 6 12;");
+        btnClear.getStyleClass().add("btn-secondary");
+        btnClear.setTooltip(new Tooltip("Effacer les données actuelles des graphiques et réinitialiser l'historique."));
         btnClear.setOnAction(e -> clear());
 
         headerBar.getChildren().addAll(titleLabel, spacer, btnClear, btnExport);
@@ -113,27 +133,45 @@ public class StatisticsDashboard extends VBox {
         summaryPane.setContent(summaryGrid);
         summaryPane.setCollapsible(false);
 
-        // === Interactive Metric Selection Panel ("Séries à afficher") ===
+        // === Interactive Metric Selection Panel ===
         VBox selectorBox = new VBox(8);
-        selectorBox.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.08); -fx-border-radius: 6;");
-        Label lblSelect = new Label("🎯 " + i18n.get("stats.series_select", "Sélection des statistiques à afficher sur les graphiques :"));
-        lblSelect.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 12px;");
+        selectorBox.getStyleClass().add("card-pane");
 
-        FlowPane checkFlow = new FlowPane(12, 8);
+        Label lblSelect = new Label("🎯 " + i18n.get("stats.series_select", "Sélection des statistiques à afficher sur les graphiques :"));
+        lblSelect.getStyleClass().add("card-title");
+
+        chkTotalPop.textProperty().bind(i18n.createStringBinding("stats.population_total"));
+        chkWorkers.textProperty().bind(i18n.createStringBinding("stats.workers"));
+        chkSoldiers.textProperty().bind(i18n.createStringBinding("stats.soldiers"));
+        chkQueens.textProperty().bind(i18n.createStringBinding("stats.queens"));
+        chkFood.textProperty().bind(i18n.createStringBinding("stats.food"));
+        chkWater.textProperty().bind(i18n.createStringBinding("stats.water"));
+        chkBirths.textProperty().bind(i18n.createStringBinding("stats.births"));
+        chkDeaths.textProperty().bind(i18n.createStringBinding("stats.deaths"));
+        chkTps.textProperty().bind(i18n.createStringBinding("stats.tps"));
+
+        chkTotalPop.setTooltip(new Tooltip("Afficher la courbe de la population totale de la colonie."));
+        chkWorkers.setTooltip(new Tooltip("Afficher le nombre d'ouvrières en activité."));
+        chkSoldiers.setTooltip(new Tooltip("Afficher le nombre de soldats défensifs."));
+        chkQueens.setTooltip(new Tooltip("Afficher le nombre de reines reproductrices."));
+        chkFood.setTooltip(new Tooltip("Afficher la réserve accumulée de nourriture."));
+        chkWater.setTooltip(new Tooltip("Afficher le niveau de réserve d'eau."));
+        chkBirths.setTooltip(new Tooltip("Afficher le cumul ou le taux de naissances."));
+        chkDeaths.setTooltip(new Tooltip("Afficher le taux de mortalité."));
+        chkTps.setTooltip(new Tooltip("Afficher la vitesse de calcul du moteur (TPS)."));
+
+        FlowPane checkFlow = new FlowPane(14, 8);
         checkFlow.getChildren().addAll(chkTotalPop, chkWorkers, chkSoldiers, chkQueens, chkFood, chkWater, chkBirths, chkDeaths, chkTps);
 
-        // Styling checkboxes
-        String checkStyle = "-fx-text-fill: #e2e8f0; -fx-font-size: 11px;";
         for (Node n : checkFlow.getChildren()) {
             if (n instanceof CheckBox cb) {
-                cb.setStyle(checkStyle);
                 cb.setSelected(true);
             }
         }
 
         selectorBox.getChildren().addAll(lblSelect, checkFlow);
 
-        // === Setup Chart Series Names ===
+        // Setup Chart Series Names
         totalPopSeries.setName(i18n.get("stats.population_total", "Population Totale"));
         queensSeries.setName(i18n.get("stats.queens", "Reines"));
         workersSeries.setName(i18n.get("stats.workers", "Ouvrières"));
@@ -143,56 +181,32 @@ public class StatisticsDashboard extends VBox {
         waterSeries.setName(i18n.get("stats.water", "Eau"));
         birthsSeries.setName(i18n.get("stats.births", "Naissances"));
         deathsSeries.setName(i18n.get("stats.deaths", "Décès"));
-        tpsSeries.setName(i18n.get("stats.tps", "TPS"));
+        tpsSeries.setName(i18n.get("stats.tps", "Vitesse (TPS)"));
 
-        // === Create Charts ===
-        populationChart = createChart(i18n.get("stats.pop_chart", "Évolution des Populations"), "Ticks", "Individus");
-        resourceChart = createChart(i18n.get("stats.res_chart", "Ressources & Performance"), "Ticks", "Valeur / Quantité");
+        LineChart<Number, Number> popChart = createChart(i18n.get("stats.pop_chart", "Évolution des Populations"));
+        popChart.getData().addAll(totalPopSeries, queensSeries, workersSeries, soldiersSeries);
 
-        // Attach toggle listeners to update visible series dynamically
-        setupToggleListeners();
+        LineChart<Number, Number> resChart = createChart(i18n.get("stats.res_chart", "Ressources & Performances Système"));
+        resChart.getData().addAll(foodSeries, waterSeries, birthsSeries, deathsSeries, tpsSeries);
 
-        VBox chartsBox = new VBox(12);
-        chartsBox.getChildren().addAll(populationChart, resourceChart);
-        VBox.setVgrow(populationChart, Priority.ALWAYS);
-        VBox.setVgrow(resourceChart, Priority.ALWAYS);
+        // Bind visibility
+        chkTotalPop.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(popChart, totalPopSeries, newV));
+        chkQueens.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(popChart, queensSeries, newV));
+        chkWorkers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(popChart, workersSeries, newV));
+        chkSoldiers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(popChart, soldiersSeries, newV));
 
-        // Scrollable container if height is small
-        ScrollPane scrollPane = new ScrollPane();
-        VBox scrollContent = new VBox(12);
-        scrollContent.setPadding(new Insets(4));
-        scrollContent.getChildren().addAll(headerBar, summaryPane, selectorBox, chartsBox);
-        scrollPane.setContent(scrollContent);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        chkFood.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(resChart, foodSeries, newV));
+        chkWater.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(resChart, waterSeries, newV));
+        chkBirths.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(resChart, birthsSeries, newV));
+        chkDeaths.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(resChart, deathsSeries, newV));
+        chkTps.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(resChart, tpsSeries, newV));
 
-        getChildren().add(scrollPane);
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
-    }
+        VBox chartsBox = new VBox(12, popChart, resChart);
+        ScrollPane scrollCharts = new ScrollPane(chartsBox);
+        scrollCharts.setFitToWidth(true);
+        VBox.setVgrow(scrollCharts, Priority.ALWAYS);
 
-    private void setupToggleListeners() {
-        chkTotalPop.selectedProperty().addListener((obs, o, n) -> toggleSeries(populationChart, totalPopSeries, n));
-        chkWorkers.selectedProperty().addListener((obs, o, n) -> toggleSeries(populationChart, workersSeries, n));
-        chkSoldiers.selectedProperty().addListener((obs, o, n) -> toggleSeries(populationChart, soldiersSeries, n));
-        chkQueens.selectedProperty().addListener((obs, o, n) -> toggleSeries(populationChart, queensSeries, n));
-
-        chkFood.selectedProperty().addListener((obs, o, n) -> toggleSeries(resourceChart, foodSeries, n));
-        chkWater.selectedProperty().addListener((obs, o, n) -> toggleSeries(resourceChart, waterSeries, n));
-        chkBirths.selectedProperty().addListener((obs, o, n) -> toggleSeries(resourceChart, birthsSeries, n));
-        chkDeaths.selectedProperty().addListener((obs, o, n) -> toggleSeries(resourceChart, deathsSeries, n));
-        chkTps.selectedProperty().addListener((obs, o, n) -> toggleSeries(resourceChart, tpsSeries, n));
-
-        // Initial setup
-        toggleSeries(populationChart, totalPopSeries, chkTotalPop.isSelected());
-        toggleSeries(populationChart, workersSeries, chkWorkers.isSelected());
-        toggleSeries(populationChart, soldiersSeries, chkSoldiers.isSelected());
-        toggleSeries(populationChart, queensSeries, chkQueens.isSelected());
-
-        toggleSeries(resourceChart, foodSeries, chkFood.isSelected());
-        toggleSeries(resourceChart, waterSeries, chkWater.isSelected());
-        toggleSeries(resourceChart, birthsSeries, chkBirths.isSelected());
-        toggleSeries(resourceChart, deathsSeries, chkDeaths.isSelected());
-        toggleSeries(resourceChart, tpsSeries, chkTps.isSelected());
+        getChildren().addAll(headerBar, summaryPane, selectorBox, scrollCharts);
     }
 
     private void toggleSeries(LineChart<Number, Number> chart, XYChart.Series<Number, Number> series, boolean show) {
@@ -210,72 +224,56 @@ public class StatisticsDashboard extends VBox {
         GridPane grid = new GridPane();
         grid.setHgap(20);
         grid.setVgap(10);
-        grid.setPadding(new Insets(12));
+        grid.setPadding(new Insets(10));
 
-        Label popLbl = new Label(i18n.get("stats.population"));
-        Label tickRateLbl = new Label(i18n.get("stats.tick_rate"));
-        Label queensLbl = new Label(i18n.get("stats.queens"));
-        Label simTimeLbl = new Label(i18n.get("stats.sim_time"));
-        Label workersLbl = new Label(i18n.get("stats.workers"));
-        Label foodLbl = new Label(i18n.get("stats.food"));
-        Label soldiersLbl = new Label(i18n.get("stats.soldiers"));
-        Label waterLbl = new Label(i18n.get("stats.water"));
+        grid.add(createKpiCard(i18n.get("stats.population", "Population :"), lblPopulation), 0, 0);
+        grid.add(createKpiCard(i18n.get("stats.queens", "Reines :"), lblQueens), 1, 0);
+        grid.add(createKpiCard(i18n.get("stats.workers", "Ouvrières :"), lblWorkers), 2, 0);
+        grid.add(createKpiCard(i18n.get("stats.soldiers", "Soldats :"), lblSoldiers), 3, 0);
 
-        grid.add(popLbl, 0, 0); grid.add(lblPopulation, 1, 0);
-        grid.add(tickRateLbl, 2, 0); grid.add(lblTickRate, 3, 0);
-
-        grid.add(queensLbl, 0, 1); grid.add(lblQueens, 1, 1);
-        grid.add(simTimeLbl, 2, 1); grid.add(lblSimTime, 3, 1);
-
-        grid.add(workersLbl, 0, 2); grid.add(lblWorkers, 1, 2);
-        grid.add(foodLbl, 2, 2); grid.add(lblFood, 3, 2);
-
-        grid.add(soldiersLbl, 0, 3); grid.add(lblSoldiers, 1, 3);
-        grid.add(waterLbl, 2, 3); grid.add(lblWater, 3, 3);
-
-        String labelStyle = "-fx-text-fill: #94a3b8; -fx-font-size: 12px;";
-        popLbl.setStyle(labelStyle); tickRateLbl.setStyle(labelStyle);
-        queensLbl.setStyle(labelStyle); simTimeLbl.setStyle(labelStyle);
-        workersLbl.setStyle(labelStyle); foodLbl.setStyle(labelStyle);
-        soldiersLbl.setStyle(labelStyle); waterLbl.setStyle(labelStyle);
-
-        String valueStyle = "-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #38bdf8;";
-        lblPopulation.setStyle(valueStyle);
-        lblQueens.setStyle(valueStyle);
-        lblWorkers.setStyle(valueStyle);
-        lblSoldiers.setStyle(valueStyle);
-        lblFood.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #4ade80;");
-        lblWater.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #60a5fa;");
-        lblTickRate.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #f59e0b;");
-        lblSimTime.setStyle(valueStyle);
+        grid.add(createKpiCard(i18n.get("stats.food", "Nourriture :"), lblFood), 0, 1);
+        grid.add(createKpiCard(i18n.get("stats.water", "Eau :"), lblWater), 1, 1);
+        grid.add(createKpiCard(i18n.get("stats.tick_rate", "Vitesse :"), lblTickRate), 2, 1);
+        grid.add(createKpiCard(i18n.get("stats.sim_time", "Temps Simulé :"), lblSimTime), 3, 1);
 
         return grid;
     }
 
-    private LineChart<Number, Number> createChart(String title, String xLabel, String yLabel) {
+    private HBox createKpiCard(String labelText, Label valueLabel) {
+        HBox box = new HBox(6);
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.getStyleClass().add("card-pane");
+        box.setPadding(new Insets(6, 12, 6, 12));
+
+        Label lbl = new Label(labelText);
+        lbl.setStyle("-fx-font-size: 12px;");
+
+        valueLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+
+        box.getChildren().addAll(lbl, valueLabel);
+        Tooltip.install(box, new Tooltip(labelText + " Valeur en temps réel"));
+        return box;
+    }
+
+    private LineChart<Number, Number> createChart(String title) {
         NumberAxis xAxis = new NumberAxis();
-        xAxis.setLabel(xLabel);
-        xAxis.setAutoRanging(true);
+        xAxis.setLabel("Samples (Ticks)");
         xAxis.setForceZeroInRange(false);
 
         NumberAxis yAxis = new NumberAxis();
-        yAxis.setLabel(yLabel);
-        yAxis.setAutoRanging(true);
+        yAxis.setLabel("Valeur");
 
         LineChart<Number, Number> chart = new LineChart<>(xAxis, yAxis);
         chart.setTitle(title);
         chart.setCreateSymbols(false);
         chart.setAnimated(false);
         chart.setLegendVisible(true);
-        chart.setPrefHeight(220);
-        chart.setStyle("-fx-background-color: #1e1e2e; -fx-plot-background-color: #0f172a;");
+        chart.setPrefHeight(240);
+        chart.getStyleClass().add("chart-holder");
 
         return chart;
     }
 
-    /**
-     * Update dashboard with new stats sample.
-     */
     public void update(ColonyStats stats) {
         if (stats == null) return;
         historyList.add(stats);
@@ -292,140 +290,85 @@ public class StatisticsDashboard extends VBox {
 
             dataPointIndex++;
 
-            // Population chart data
             totalPopSeries.getData().add(new XYChart.Data<>(dataPointIndex, stats.population));
             queensSeries.getData().add(new XYChart.Data<>(dataPointIndex, stats.queens));
             workersSeries.getData().add(new XYChart.Data<>(dataPointIndex, stats.workers));
             soldiersSeries.getData().add(new XYChart.Data<>(dataPointIndex, stats.soldiers));
 
-            // Resource & performance chart data
             foodSeries.getData().add(new XYChart.Data<>(dataPointIndex, stats.food));
             waterSeries.getData().add(new XYChart.Data<>(dataPointIndex, stats.water));
             birthsSeries.getData().add(new XYChart.Data<>(dataPointIndex, stats.births));
             deathsSeries.getData().add(new XYChart.Data<>(dataPointIndex, stats.deaths));
             tpsSeries.getData().add(new XYChart.Data<>(dataPointIndex, stats.tickRate));
 
-            // Cap data window for chart performance
-            if (totalPopSeries.getData().size() > MAX_DATA_POINTS) {
-                totalPopSeries.getData().remove(0);
-                queensSeries.getData().remove(0);
-                workersSeries.getData().remove(0);
-                soldiersSeries.getData().remove(0);
-                foodSeries.getData().remove(0);
-                waterSeries.getData().remove(0);
-                birthsSeries.getData().remove(0);
-                deathsSeries.getData().remove(0);
-                tpsSeries.getData().remove(0);
-            }
+            trimSeries(totalPopSeries);
+            trimSeries(queensSeries);
+            trimSeries(workersSeries);
+            trimSeries(soldiersSeries);
+            trimSeries(foodSeries);
+            trimSeries(waterSeries);
+            trimSeries(birthsSeries);
+            trimSeries(deathsSeries);
+            trimSeries(tpsSeries);
         });
     }
 
-    /**
-     * Export all recorded history to CSV format (Excel compatible).
-     */
-    public void exportToCSV() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Exporter Statistiques de Simulation (CSV / Excel)");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers CSV (*.csv)", "*.csv"));
-        chooser.setInitialFileName("swarmforge_simulation_stats.csv");
-
-        File file = chooser.showSaveDialog(getScene() != null ? getScene().getWindow() : null);
-        if (file == null) return;
-
-        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
-            // Write UTF-8 BOM so Excel opens it with French accents and UTF-8 encoding correctly
-            pw.write('\uFEFF');
-
-            // Header line (Excel uses semicolon or comma depending on locale, semicolon is safest in FR)
-            pw.println("Tick;Temps_Sim;Population_Totale;Reines;Ouvrieres;Soldats;Nourriture;Eau;TPS;Naissances;Deces");
-
-            for (ColonyStats s : historyList) {
-                pw.printf("%d;%s;%d;%d;%d;%d;%.2f;%.2f;%.2f;%d;%d%n",
-                        s.simTicks,
-                        formatTime(s.simTicks),
-                        s.population,
-                        s.queens,
-                        s.workers,
-                        s.soldiers,
-                        s.food,
-                        s.water,
-                        s.tickRate,
-                        s.births,
-                        s.deaths);
-            }
-
-            Alert okAlert = new Alert(Alert.AlertType.INFORMATION);
-            okAlert.setTitle("Export Réussi");
-            okAlert.setHeaderText("Statistiques Exportées");
-            okAlert.setContentText("Les données de simulation (" + historyList.size() + " points) ont été sauvegardées dans :\n" + file.getAbsolutePath());
-            okAlert.showAndWait();
-
-        } catch (Exception ex) {
-            Alert errAlert = new Alert(Alert.AlertType.ERROR);
-            errAlert.setTitle("Erreur d'Exportation");
-            errAlert.setHeaderText("Échec de l'exportation CSV");
-            errAlert.setContentText("Impossible d'écrire le fichier : " + ex.getMessage());
-            errAlert.showAndWait();
+    private void trimSeries(XYChart.Series<Number, Number> series) {
+        if (series.getData().size() > MAX_DATA_POINTS) {
+            series.getData().remove(0);
         }
-    }
-
-    private String formatTime(long ticks) {
-        long seconds = ticks / 60;
-        long minutes = seconds / 60;
-        long hours = minutes / 60;
-        return String.format("%d:%02d:%02d", hours, minutes % 60, seconds % 60);
     }
 
     public void clear() {
         historyList.clear();
-        Platform.runLater(() -> {
-            totalPopSeries.getData().clear();
-            queensSeries.getData().clear();
-            workersSeries.getData().clear();
-            soldiersSeries.getData().clear();
-            foodSeries.getData().clear();
-            waterSeries.getData().clear();
-            birthsSeries.getData().clear();
-            deathsSeries.getData().clear();
-            tpsSeries.getData().clear();
-            dataPointIndex = 0;
-            lblPopulation.setText("0");
-            lblQueens.setText("0");
-            lblWorkers.setText("0");
-            lblSoldiers.setText("0");
-            lblFood.setText("0.0");
-            lblWater.setText("0.0");
-            lblTickRate.setText("0 tps");
-            lblSimTime.setText("0:00:00");
-        });
+        dataPointIndex = 0;
+        totalPopSeries.getData().clear();
+        queensSeries.getData().clear();
+        workersSeries.getData().clear();
+        soldiersSeries.getData().clear();
+        foodSeries.getData().clear();
+        waterSeries.getData().clear();
+        birthsSeries.getData().clear();
+        deathsSeries.getData().clear();
+        tpsSeries.getData().clear();
+
+        lblPopulation.setText("0");
+        lblQueens.setText("0");
+        lblWorkers.setText("0");
+        lblSoldiers.setText("0");
+        lblFood.setText("0.0");
+        lblWater.setText("0.0");
+        lblTickRate.setText("0 tps");
+        lblSimTime.setText("0:00:00");
     }
 
-    public static class ColonyStats {
-        public int population;
-        public int queens;
-        public int workers;
-        public int soldiers;
-        public int nurses;
-        public float food;
-        public float water;
-        public float tickRate;
-        public long simTicks;
-        public int births;
-        public int deaths;
+    private void exportToCSV() {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Exporter les données statistiques (CSV)");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers CSV (*.csv)", "*.csv"));
+        fileChooser.setInitialFileName("swarmforge_stats_" + System.currentTimeMillis() + ".csv");
 
-        public ColonyStats() {}
-
-        public ColonyStats(int population, int queens, int workers, int soldiers,
-                           float food, float water, float tickRate, long simTicks) {
-            this.population = population;
-            this.queens = queens;
-            this.workers = workers;
-            this.soldiers = soldiers;
-            this.food = food;
-            this.water = water;
-            this.tickRate = tickRate;
-            this.simTicks = simTicks;
+        File file = fileChooser.showSaveDialog(getScene().getWindow());
+        if (file != null) {
+            try (PrintWriter writer = new PrintWriter(file, StandardCharsets.UTF_8)) {
+                writer.println("SimTicks;Population;Queens;Workers;Soldiers;Food;Water;TickRate;Births;Deaths");
+                for (ColonyStats s : historyList) {
+                    writer.printf("%d;%d;%d;%d;%d;%.2f;%.2f;%.2f;%d;%d%n",
+                            s.simTicks, s.population, s.queens, s.workers, s.soldiers,
+                            s.food, s.water, s.tickRate, s.births, s.deaths);
+                }
+                new Alert(Alert.AlertType.INFORMATION, "Exportation CSV réussie !\n" + file.getAbsolutePath()).show();
+            } catch (Exception ex) {
+                new Alert(Alert.AlertType.ERROR, "Erreur lors de l'exportation CSV : " + ex.getMessage()).show();
+            }
         }
     }
-}
 
+    private String formatTime(long ticks) {
+        long totalSeconds = ticks / 20;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
+}

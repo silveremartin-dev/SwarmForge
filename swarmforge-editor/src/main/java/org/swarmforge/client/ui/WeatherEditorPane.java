@@ -610,6 +610,30 @@ public class WeatherEditorPane extends BorderPane {
 
         windDirCombo = new ComboBox<>();
         windDirCombo.getItems().addAll("N", "NE", "E", "SE", "S", "SW", "W", "NW");
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(windDirCombo,
+            val -> switch (val) {
+                case "N" -> "⬆️ Nord (N)";
+                case "NE" -> "↗️ Nord-Est (NE)";
+                case "E" -> "➡️ Est (E)";
+                case "SE" -> "↘️ Sud-Est (SE)";
+                case "S" -> "⬇️ Sud (S)";
+                case "SW" -> "↙️ Sud-Ouest (SW)";
+                case "W" -> "⬅️ Ouest (W)";
+                case "NW" -> "↖️ Nord-Ouest (NW)";
+                default -> val;
+            },
+            val -> switch (val) {
+                case "N" -> "Vent venant du Nord (0°). Air généralement froid et sec.";
+                case "NE" -> "Vent venant du Nord-Est (45°). Flux continental froid/frais.";
+                case "E" -> "Vent venant de l'Est (90°). Vent d'Est sec.";
+                case "SE" -> "Vent venant du Sud-Est (135°). Vent chaud et continental.";
+                case "S" -> "Vent venant du Sud (180°). Masse d'air chaude et tropicale.";
+                case "SW" -> "Vent venant du Sud-Ouest (225°). Flux océanique doux et humide.";
+                case "W" -> "Vent venant de l'Ouest (270°). Vent d'Ouest maritime instable.";
+                case "NW" -> "Vent venant du Nord-Ouest (315°). Air maritime frais et pluvieux.";
+                default -> "";
+            }
+        );
         windDirCombo.setValue("SW");
         windDirCombo.setPrefWidth(80);
         Label lblWindDir = createTooltipLabel("🧭 Direction du Vent Dominant :", "Direction dominante des masses d'air agissant sur la dispersion des plumes phéromonales et l'envol des sexués.", windDirCombo);

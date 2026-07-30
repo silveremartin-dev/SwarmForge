@@ -122,8 +122,6 @@ public class JmeGameApp extends SimpleApplication {
             setDisplayFps(false);
             setDisplayStatView(false);
 
-            // Scene is empty until terrain is generated via renderTerrarium()
-
             DirectionalLight sun = new DirectionalLight();
             sun.setDirection(new Vector3f(-0.5f, -0.5f, -0.5f).normalizeLocal());
             sun.setColor(ColorRGBA.White);
@@ -145,9 +143,23 @@ public class JmeGameApp extends SimpleApplication {
                 flyCam.setEnabled(false);
                 flyCam.setDragToRotate(true);
             }
-            cam.setLocation(new Vector3f(0, 10, 10));
-            cam.lookAt(Vector3f.ZERO, Vector3f.UNIT_Y);
-            viewPort.setBackgroundColor(ColorRGBA.DarkGray);
+            cam.setLocation(new Vector3f(32, 45, 65));
+            cam.lookAt(new Vector3f(32, 10, 32), Vector3f.UNIT_Y);
+            viewPort.setBackgroundColor(new ColorRGBA(0.06f, 0.09f, 0.16f, 1.0f));
+
+            // Generate default 3D Terrarium scene immediately so the viewport is populated on launch
+            org.swarmforge.core.domain.Terrarium initTerrarium = new org.swarmforge.core.domain.Terrarium(64, 32, 64);
+            for (int x = 0; x < 64; x++) {
+                for (int z = 0; z < 64; z++) {
+                    int surfaceY = 8 + (int) (Math.sin(x * 0.12) * 2 + Math.cos(z * 0.12) * 2);
+                    for (int y = 0; y <= surfaceY; y++) {
+                        org.swarmforge.core.domain.TerrariumCell.Material mat = (y == surfaceY) ?
+                                org.swarmforge.core.domain.TerrariumCell.Material.EARTH : org.swarmforge.core.domain.TerrariumCell.Material.ROCK;
+                        initTerrarium.setCell(new org.swarmforge.core.domain.TerrariumCell(x, y, z, mat, new float[8], 20f, 50f));
+                    }
+                }
+            }
+            renderTerrarium(initTerrarium);
 
             // Initialize simple buffer
             pixelBuffer = BufferUtils.createByteBuffer(width * height * 4);
