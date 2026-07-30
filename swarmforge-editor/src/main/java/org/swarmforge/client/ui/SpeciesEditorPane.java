@@ -171,6 +171,7 @@ public class SpeciesEditorPane extends VBox {
 
         presetCombo = new ComboBox<>();
         presetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
+        presetCombo.setTooltip(new Tooltip("Sélectionnez une espèce d'insecte eusocial pré-configurée (Lasius, Atta, Apis, Bombus, Vespula, Macrotermes, etc.)."));
         presetCombo.getItems().setAll(presetManager.getPresetNames());
         presetCombo.setPrefWidth(240);
         presetCombo.setOnAction(e -> {
@@ -183,25 +184,34 @@ public class SpeciesEditorPane extends VBox {
         Button btnSave = new Button();
         btnSave.textProperty().bind(i18n.createStringBinding("preset.save"));
         btnSave.getStyleClass().add("btn-secondary");
+        btnSave.setTooltip(new Tooltip("Enregistrer la configuration actuelle de l'espèce comme nouveau preset."));
         btnSave.setOnAction(e -> handleAddPreset());
 
         Button btnDelete = new Button();
         btnDelete.textProperty().bind(i18n.createStringBinding("preset.delete"));
         btnDelete.getStyleClass().add("btn-danger");
         btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnDelete.setTooltip(new Tooltip("Supprimer le preset d'espèce sélectionné."));
         btnDelete.setOnAction(e -> handleDeletePreset());
 
         Button btnExport = new Button();
         btnExport.textProperty().bind(i18n.createStringBinding("preset.export"));
         btnExport.getStyleClass().add("btn-secondary");
+        btnExport.setTooltip(new Tooltip("Exporter les paramètres de l'espèce au format JSON."));
         btnExport.setOnAction(e -> handleSaveDisk());
 
         Button btnImport = new Button();
         btnImport.textProperty().bind(i18n.createStringBinding("preset.import"));
         btnImport.getStyleClass().add("btn-secondary");
+        btnImport.setTooltip(new Tooltip("Importer un fichier JSON de configuration d'espèce."));
         btnImport.setOnAction(e -> handleLoadDisk());
 
-        bar.getChildren().addAll(lblPreset, presetCombo, btnSave, btnDelete, new Separator(Orientation.VERTICAL), btnExport, btnImport);
+        Button bHelp = new Button("📖 Aide & Glossaire");
+        bHelp.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        bHelp.setTooltip(new Tooltip("Ouvrir le glossaire pédagogique des structures sociales, reines et comportements."));
+        bHelp.setOnAction(e -> GlossaryDialog.show("social"));
+
+        bar.getChildren().addAll(lblPreset, presetCombo, btnSave, btnDelete, bHelp, new Separator(Orientation.VERTICAL), btnExport, btnImport);
         return bar;
     }
 

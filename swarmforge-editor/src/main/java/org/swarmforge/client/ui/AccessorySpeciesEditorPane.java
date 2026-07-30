@@ -139,31 +139,41 @@ public class AccessorySpeciesEditorPane extends VBox {
                 "swarmforge-accessory-polytrichum-moss"
         ));
         accessoryPresetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
+        accessoryPresetCombo.setTooltip(new Tooltip("Sélectionnez une espèce accessoire pré-configurée (Plantes, Pucerons, Proies, Prédateurs, Pathogènes)."));
         accessoryPresetCombo.getSelectionModel().selectFirst();
         accessoryPresetCombo.setPrefWidth(240);
 
         btnSave = new Button();
         btnSave.textProperty().bind(i18n.createStringBinding("preset.save"));
         btnSave.getStyleClass().add("btn-secondary");
+        btnSave.setTooltip(new Tooltip("Enregistrer la configuration de l'espèce accessoire."));
         btnSave.setOnAction(e -> handleAddPreset());
 
         btnDelete = new Button();
         btnDelete.textProperty().bind(i18n.createStringBinding("preset.delete"));
         btnDelete.getStyleClass().add("btn-danger");
         btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnDelete.setTooltip(new Tooltip("Supprimer l'espèce accessoire sélectionnée."));
         btnDelete.setOnAction(e -> handleDeletePreset());
 
         btnExport = new Button();
         btnExport.textProperty().bind(i18n.createStringBinding("preset.export"));
         btnExport.getStyleClass().add("btn-secondary");
+        btnExport.setTooltip(new Tooltip("Exporter l'espèce accessoire au format JSON."));
         btnExport.setOnAction(e -> handleSave());
 
         btnImport = new Button();
         btnImport.textProperty().bind(i18n.createStringBinding("preset.import"));
         btnImport.getStyleClass().add("btn-secondary");
+        btnImport.setTooltip(new Tooltip("Importer un fichier JSON d'espèce accessoire."));
         btnImport.setOnAction(e -> handleLoad());
 
-        bar.getChildren().addAll(lblPreset, accessoryPresetCombo, btnSave, btnDelete, new Separator(Orientation.VERTICAL), btnExport, btnImport);
+        Button bHelp = new Button("📖 Aide & Glossaire");
+        bHelp.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        bHelp.setTooltip(new Tooltip("Ouvrir le glossaire pédagogique de l'environnement, des plantes et prédateurs."));
+        bHelp.setOnAction(e -> GlossaryDialog.show("env"));
+
+        bar.getChildren().addAll(lblPreset, accessoryPresetCombo, btnSave, btnDelete, bHelp, new Separator(Orientation.VERTICAL), btnExport, btnImport);
         return bar;
     }
 

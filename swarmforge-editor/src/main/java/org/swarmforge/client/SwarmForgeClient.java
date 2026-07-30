@@ -44,6 +44,8 @@ public class SwarmForgeClient extends Application {
         private PheromoneOverlay pheromoneOverlay;
         private StatisticsDashboard statisticsDashboard;
         private org.swarmforge.client.ui.SimulationControlPanel simControlPanel;
+        private VBox simulationInactiveOverlay;
+        private Label syncLabel;
 
         @Override
     public void start(Stage primaryStage) {
@@ -153,10 +155,6 @@ public class SwarmForgeClient extends Application {
 
         root.setCenter(mainTabs);
 
-        // 3. Status Bar
-        HBox statusBar = createStatusBar();
-        root.setBottom(statusBar);
-
         // Scene Setup & Theme Registration
         Scene scene = new Scene(root, 1280, 800);
         org.swarmforge.client.util.ThemeManager.getInstance().registerScene(scene);
@@ -203,25 +201,32 @@ public class SwarmForgeClient extends Application {
                 Label hostLabel = new Label();
                 hostLabel.textProperty().bind(i18n.createStringBinding("label.host"));
                 hostLabel.setStyle("-fx-text-fill: #94a3b8;");
+                hostLabel.setTooltip(new Tooltip("Adresse réseau IP ou nom d'hôte du serveur gRPC SwarmForge"));
                 TextField hostField = new TextField("localhost");
                 hostField.setPrefWidth(110);
+                hostField.setTooltip(new Tooltip("Hôte gRPC (ex: localhost ou IP distante)"));
 
                 Label portLabel = new Label();
                 portLabel.textProperty().bind(i18n.createStringBinding("label.port"));
                 portLabel.setStyle("-fx-text-fill: #94a3b8;");
+                portLabel.setTooltip(new Tooltip("Port gRPC de communication (par défaut 50051)"));
                 TextField portField = new TextField("50051");
                 portField.setPrefWidth(70);
+                portField.setTooltip(new Tooltip("Port d'écoute gRPC"));
 
                 Button btnConnect = new Button();
                 btnConnect.textProperty().bind(i18n.createStringBinding("btn.connect"));
                 btnConnect.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4;");
+                btnConnect.setTooltip(new Tooltip("Établir la connexion gRPC avec le serveur de simulation distant"));
 
                 Label statusLabel = new Label();
                 statusLabel.setText(networkClient.isConnected() ? "● Connecté" : "○ Hors ligne");
                 statusLabel.setStyle(networkClient.isConnected() ? "-fx-text-fill: #4ade80; -fx-font-weight: bold;" : "-fx-text-fill: #f87171;");
+                statusLabel.setTooltip(new Tooltip("État actuel de la connexion au moteur gRPC"));
 
-                Label syncLabel = new Label("● Persistance Serveur Active (Sauvegarde automatique des espèces, presets & terrariums)");
-                syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
+                this.syncLabel = new Label("● Persistance Locale Active (Base SQLite & Sauvegarde autonome)");
+                this.syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
+                this.syncLabel.setTooltip(new Tooltip("Indicateur de persistance des données (SQLite locale en mode standalone, PostgreSQL distante en mode connecté)"));
 
                 Region bannerSpacer = new Region();
                 HBox.setHgrow(bannerSpacer, Priority.ALWAYS);
@@ -241,6 +246,28 @@ public class SwarmForgeClient extends Application {
 
                 // Embedded SimulationControlPanel (Contains Preset Selectors ABOVE Start/Pause/Stop controls)
                 this.simControlPanel = new org.swarmforge.client.ui.SimulationControlPanel();
+                this.simControlPanel.setOnApplyPresets(seed -> {
+                        if (this.lastGeneratedTerrarium == null) {
+                                this.lastGeneratedTerrarium = new org.swarmforge.core.domain.Terrarium(64, 32, 64);
+                        }
+                        if (this.localSimulation == null) {
+                                this.localSimulation = new org.swarmforge.core.simulation.Simulation(this.lastGeneratedTerrarium);
+                        }
+                        this.localSimulation.reset(0);
+                        this.localSimulation.setMasterSeed(seed);
+
+                        String selSpecies = simControlPanel.getSelectedSpecies();
+                        String speciesKey = "LasiusNiger";
+                        if (selSpecies.contains("Atta")) speciesKey = "AttaCephalotes";
+                        else if (selSpecies.contains("Solenopsis") || selSpecies.contains("Feu")) speciesKey = "SolenopsisInvicta";
+                        else if (selSpecies.contains("Formica")) speciesKey = "FormicaRufa";
+
+                        this.localSimulation.addColony(speciesKey);
+
+                        if (gameView != null && gameView.getGameApp() != null) {
+                                gameView.getGameApp().setSimulation(this.localSimulation);
+                        }
+                });
                 controlsInner.getChildren().add(this.simControlPanel);
 
                 // Live Data Stream Status
@@ -297,7 +324,7 @@ public class SwarmForgeClient extends Application {
                         }
                 });
 
-                // HUD Loop, Audio Sync & Statistics Updates (ONLY ticks stats when simulation is active!)
+                // HUD Loop, Audio Sync & Statistics Updates
                 javafx.animation.AnimationTimer timer = new javafx.animation.AnimationTimer() {
                         @Override
                         public void handle(long now) {
@@ -305,9 +332,24 @@ public class SwarmForgeClient extends Application {
                                 boolean isPlaying = simControlPanel != null && simControlPanel.isPlaying();
                                 boolean isSimRunning = isConnected || isPlaying;
 
+                                if (isPlaying && !isConnected && simControlPanel != null) {
+                                    long newTick = simControlPanel.getCurrentTick() + 1;
+                                    simControlPanel.updateTick(newTick, newTick);
+                                }
+
                                 long tick = isConnected ? networkClient.getLatestTick() : (simControlPanel != null ? simControlPanel.getCurrentTick() : 0);
                                 String modeStr = isConnected ? "Serveur Dédié (Connecté & Synchronisé)" : "Mode Local Autonome (Standalone)";
                                 statsLabel.setText("🌐 Moteur de Simulation : " + modeStr + " | Avancement : Pas n° " + tick);
+
+                                if (syncLabel != null) {
+                                    if (isConnected) {
+                                        syncLabel.setText("● Persistance Serveur Active (PostgreSQL Distant)");
+                                        syncLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-size: 11px;");
+                                    } else {
+                                        syncLabel.setText("● Persistance Locale Active (Base SQLite Autonome)");
+                                        syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
+                                    }
+                                }
 
                                 // Sync procedural audio synthesizer
                                 if (simControlPanel != null) {
@@ -319,23 +361,22 @@ public class SwarmForgeClient extends Application {
                                     );
                                 }
 
-                                // Update statistics ONLY when simulation is actually running
-                                if (statisticsDashboard != null) {
-                                        if (isSimRunning) {
-                                                StatisticsDashboard.ColonyStats stats = new StatisticsDashboard.ColonyStats();
-                                                stats.simTicks = tick;
-                                                stats.population = 50 + (int) (tick / 10);
-                                                stats.workers = Math.max(0, stats.population - 5);
-                                                stats.soldiers = 4;
-                                                stats.queens = 1;
-                                                stats.food = Math.max(0, 1000.0f - (tick * 0.5f));
-                                                stats.water = 500.0f;
-                                                stats.tickRate = isPlaying ? 60.0f : 0.0f;
-                                                statisticsDashboard.update(stats);
-                                        }
+                                // Update statistics when simulation is active
+                                if (statisticsDashboard != null && isSimRunning) {
+                                        StatisticsDashboard.ColonyStats stats = new StatisticsDashboard.ColonyStats();
+                                        stats.simTicks = tick;
+                                        stats.population = 50 + (int) (tick / 10);
+                                        stats.workers = Math.max(0, stats.population - 5);
+                                        stats.soldiers = 4;
+                                        stats.queens = 1;
+                                        stats.food = Math.max(0, 1000.0f - (tick * 0.5f));
+                                        stats.water = 500.0f;
+                                        stats.tickRate = isPlaying ? 60.0f : 0.0f;
+                                        statisticsDashboard.update(stats);
                                 }
                         }
                 };
+                timer.start();
                 return pane;
         }
 
@@ -406,8 +447,8 @@ public class SwarmForgeClient extends Application {
                 setupMouseControls(gameView);
                 viewport3D.getChildren().add(gameView);
 
-                // Minimap Overlay (Bottom-Right)
-                this.minimapOverlay = new MinimapOverlay(160);
+                // Minimap Overlay (Bottom-Right Dual Top-Down & Profil View)
+                this.minimapOverlay = new MinimapOverlay(200);
                 viewport3D.getChildren().add(minimapOverlay);
                 StackPane.setAlignment(minimapOverlay, Pos.BOTTOM_RIGHT);
                 StackPane.setMargin(minimapOverlay, new Insets(10));
@@ -418,13 +459,39 @@ public class SwarmForgeClient extends Application {
                         }
                 });
 
-                // Pheromone Overlay (Bottom-Left)
+                // Pheromone Overlay Canvas (Bottom-Left transparent heatmap view)
                 this.pheromoneOverlay = new PheromoneOverlay(200, 150);
-                pheromoneOverlay.setMaxSize(200, 180);
+                pheromoneOverlay.setMaxSize(200, 150);
                 pheromoneOverlay.setId("pheromoneOverlay");
                 viewport3D.getChildren().add(pheromoneOverlay);
                 StackPane.setAlignment(pheromoneOverlay, Pos.BOTTOM_LEFT);
                 StackPane.setMargin(pheromoneOverlay, new Insets(10));
+
+                // 3D Inactive Overlay Placeholder
+                this.simulationInactiveOverlay = new VBox(15);
+                simulationInactiveOverlay.setAlignment(Pos.CENTER);
+                simulationInactiveOverlay.setStyle("-fx-background-color: rgba(15, 23, 42, 0.92); -fx-padding: 30; -fx-background-radius: 12; -fx-border-color: rgba(56, 189, 248, 0.3); -fx-border-width: 1; -fx-border-radius: 12;");
+                simulationInactiveOverlay.setMaxSize(550, 240);
+
+                Label lblInactiveTitle = new Label("🎬 Vue 3D en Attente d'Activation");
+                lblInactiveTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 18px; -fx-font-weight: bold;");
+
+                Label lblInactiveDesc = new Label("La vue 3D reste en veille tant qu'aucune simulation n'est démarrée.\nCliquez ci-dessous ou sur '▶ Lancer Simulation' pour activer le rendu.");
+                lblInactiveDesc.setWrapText(true);
+                lblInactiveDesc.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+                lblInactiveDesc.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px;");
+
+                Button btnStartViewport = new Button("▶ Activer le Rendu 3D en Direct");
+                btnStartViewport.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px; -fx-padding: 10 20; -fx-background-radius: 8; -fx-cursor: hand;");
+
+                simulationInactiveOverlay.getChildren().addAll(lblInactiveTitle, lblInactiveDesc, btnStartViewport);
+                viewport3D.getChildren().add(simulationInactiveOverlay);
+                StackPane.setAlignment(simulationInactiveOverlay, Pos.CENTER);
+
+                // If simulation is already active or loaded, hide overlay
+                if (localSimulation != null || (simControlPanel != null && simControlPanel.isPlaying())) {
+                        simulationInactiveOverlay.setVisible(false);
+                }
 
                 rootPane.setCenter(viewport3D);
 
@@ -437,40 +504,31 @@ public class SwarmForgeClient extends Application {
                 Label lblSideTitle = new Label("🎛️ Rendu 3D & Contrôles");
                 lblSideTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
 
+                Button bHelp3D = new Button("📖 Aide & Glossaire");
+                bHelp3D.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+                bHelp3D.setTooltip(new Tooltip("Ouvrir le glossaire de la vue 3D et des aides visuelles."));
+                bHelp3D.setOnAction(e -> org.swarmforge.client.ui.GlossaryDialog.show("visu"));
+
+                HBox sideHeaderBox = new HBox(8, lblSideTitle, new Region() {{ HBox.setHgrow(this, Priority.ALWAYS); }}, bHelp3D);
+                sideHeaderBox.setAlignment(Pos.CENTER_LEFT);
+
                 // 2. Moved Controls from Simulation Manager: Date & Time, VCR Playback (Rewind/FastForward), Speed & Multipliers
                 Node playbackAndSpeedNode = (this.simControlPanel != null) ? this.simControlPanel.getPlaybackAndSpeedPanel() : new VBox();
 
-                // 3. Playback / Play-Pause Button
-                Button btnPlayPause = new Button("▶ Lancer Simulation");
-                btnPlayPause.setMaxWidth(Double.MAX_VALUE);
-                btnPlayPause.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 7 12; -fx-background-radius: 6;");
-
-                Runnable syncPlayPauseBtn = () -> {
+                btnStartViewport.setOnAction(e -> {
                         if (simControlPanel != null) {
-                                boolean playing = simControlPanel.isPlaying();
-                                if (playing) {
-                                        btnPlayPause.setText("⏸ Pause Simulation");
-                                        btnPlayPause.setStyle("-fx-background-color: #eab308; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 7 12; -fx-background-radius: 6;");
-                                } else {
-                                        btnPlayPause.setText("▶ Lancer Simulation");
-                                        btnPlayPause.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 7 12; -fx-background-radius: 6;");
-                                }
+                                simControlPanel.setPlaying(true);
                         }
-                };
-
-                if (simControlPanel != null) {
-                        simControlPanel.setOnPlay(v -> syncPlayPauseBtn.run());
-                        simControlPanel.setOnPause(v -> syncPlayPauseBtn.run());
-                        simControlPanel.setOnStop(v -> syncPlayPauseBtn.run());
-                }
-
-                btnPlayPause.setOnAction(e -> {
-                        if (simControlPanel != null) {
-                                boolean playing = simControlPanel.isPlaying();
-                                simControlPanel.setPlaying(!playing);
-                                syncPlayPauseBtn.run();
+                        if (simulationInactiveOverlay != null) {
+                                simulationInactiveOverlay.setVisible(false);
                         }
                 });
+
+                if (simControlPanel != null) {
+                        simControlPanel.setOnPlay(v -> {
+                                if (simulationInactiveOverlay != null) simulationInactiveOverlay.setVisible(false);
+                        });
+                }
 
                 // 3. Media & Recording Section
                 VBox mediaSection = new VBox(6);
@@ -481,11 +539,13 @@ public class SwarmForgeClient extends Application {
                 Button btnPhoto = new Button("📸 Capture Photo HD");
                 btnPhoto.setMaxWidth(Double.MAX_VALUE);
                 btnPhoto.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                btnPhoto.setTooltip(new Tooltip("Prendre une capture photo haute résolution du viewport 3D actuel."));
                 btnPhoto.setOnAction(e -> new Alert(Alert.AlertType.INFORMATION, "Capture Photo HD enregistrée sous swarmforge_snapshot.png !").show());
 
                 Button btnRecVideo = new Button("🎥 Enregistrer Vidéo MP4");
                 btnRecVideo.setMaxWidth(Double.MAX_VALUE);
                 btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                btnRecVideo.setTooltip(new Tooltip("Démarrer / arrêter l'enregistrement d'une séquence vidéo MP4 de la simulation."));
                 btnRecVideo.setOnAction(e -> {
                         if (btnRecVideo.getText().contains("Enregistrer")) {
                                 btnRecVideo.setText("⏹ Stop & Exporter MP4");
@@ -508,27 +568,40 @@ public class SwarmForgeClient extends Application {
                 Button btnGamifiedToggle = new Button("🎮 Mode Voxel Gamifié");
                 btnGamifiedToggle.setMaxWidth(Double.MAX_VALUE);
                 btnGamifiedToggle.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                btnGamifiedToggle.setTooltip(new Tooltip("Bascule entre le mode de rendu photoréaliste et le mode Voxel gamifié style blocs."));
                 btnGamifiedToggle.setOnAction(e -> {
-                        if (btnGamifiedToggle.getText().contains("Gamifié")) {
+                        boolean isGamifiedNow = btnGamifiedToggle.getText().contains("Gamifié");
+                        if (isGamifiedNow) {
                                 btnGamifiedToggle.setText("🔲 Rendu 3D Classique");
                                 btnGamifiedToggle.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
                         } else {
                                 btnGamifiedToggle.setText("🎮 Mode Voxel Gamifié");
                                 btnGamifiedToggle.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
                         }
+                        if (gameView != null) {
+                                gameView.setGamifiedVoxelMode(isGamifiedNow);
+                        }
                 });
 
-                CheckBox chkMinimap = new CheckBox("🗺️ Afficher Minimap");
+                CheckBox chkMinimap = new CheckBox("🗺️ Afficher Mini-Map Dual");
                 chkMinimap.setSelected(true);
                 chkMinimap.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkMinimap.setTooltip(new Tooltip("Affiche l'incrustation carte 2D (vue du dessus & coupe verticale)."));
                 chkMinimap.selectedProperty().addListener((o, a, b) -> minimapOverlay.setVisible(b));
 
-                CheckBox chkPheromones = new CheckBox("🧪 Overlay Pheromones");
+                CheckBox chkPheromones = new CheckBox("🧪 Overlay Phéromones");
                 chkPheromones.setSelected(true);
                 chkPheromones.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
-                chkPheromones.selectedProperty().addListener((o, a, b) -> pheromoneOverlay.setVisible(b));
+                chkPheromones.setTooltip(new Tooltip("Visualiser les champs de phéromones (pistes de nourriture, d'alarme et de recrutement) en transparence 3D."));
 
-                renderSection.getChildren().addAll(lblRenderMode, btnGamifiedToggle, chkMinimap, chkPheromones);
+                VBox pheromoneControlsPane = pheromoneOverlay.getControlsPane();
+                chkPheromones.selectedProperty().addListener((o, a, b) -> {
+                        pheromoneOverlay.setVisible(b);
+                        pheromoneControlsPane.setVisible(b);
+                        pheromoneControlsPane.setManaged(b);
+                });
+
+                renderSection.getChildren().addAll(lblRenderMode, btnGamifiedToggle, chkMinimap, chkPheromones, pheromoneControlsPane);
 
                 // 5. Audio Synthesizer Mixer Section
                 VBox audioSection = new VBox(6);
@@ -539,27 +612,31 @@ public class SwarmForgeClient extends Application {
                 org.swarmforge.client.audio.SimulationAudioManager audioMgr = org.swarmforge.client.audio.SimulationAudioManager.getInstance();
 
                 Slider masterVolSlider = new Slider(0.0, 1.0, audioMgr.getMasterVolume());
+                masterVolSlider.setTooltip(new Tooltip("Volume sonore général du synthétiseur de simulation."));
                 masterVolSlider.valueProperty().addListener((o, oldV, newV) -> audioMgr.setMasterVolume(newV.doubleValue()));
                 HBox volBox = new HBox(6, new Label("Volume :") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;"); }}, masterVolSlider);
 
                 CheckBox chkAmbientSound = new CheckBox("🌲 Ambiance Biome (Oiseaux/Vent)");
                 chkAmbientSound.setSelected(audioMgr.isAmbientEnabled());
                 chkAmbientSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkAmbientSound.setTooltip(new Tooltip("Activer le paysage sonore d'ambiance naturelle (vent, oiseaux, pluie)."));
                 chkAmbientSound.selectedProperty().addListener((o, a, b) -> audioMgr.setAmbientEnabled(b));
 
                 CheckBox chkWeatherSound = new CheckBox("⛈️ Sons Météo (Pluie/Orage)");
                 chkWeatherSound.setSelected(audioMgr.isWeatherEnabled());
                 chkWeatherSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkWeatherSound.setTooltip(new Tooltip("Activer les effets sonores météorologiques synchrone."));
                 chkWeatherSound.selectedProperty().addListener((o, a, b) -> audioMgr.setWeatherEnabled(b));
 
                 CheckBox chkInsectSound = new CheckBox("🐜 Activité Insectes & Nid (Creusement)");
                 chkInsectSound.setSelected(audioMgr.isInsectEnabled());
                 chkInsectSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkInsectSound.setTooltip(new Tooltip("Activer les sons procéduraux d'activité des insectes et d'excavation."));
                 chkInsectSound.selectedProperty().addListener((o, a, b) -> audioMgr.setInsectEnabled(b));
 
                 audioSection.getChildren().addAll(lblAudio, volBox, chkAmbientSound, chkWeatherSound, chkInsectSound);
 
-                // 6. Camera Position Shortcuts
+                // 6. Camera Position Shortcuts & Navigation
                 VBox cameraSection = new VBox(6);
                 cameraSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
                 Label lblCam = new Label("📷 Navigation Caméra 3D :");
@@ -568,6 +645,7 @@ public class SwarmForgeClient extends Application {
                 Button btnFocusNest = new Button("🎯 Cadrer sur le Nid (C)");
                 btnFocusNest.setMaxWidth(Double.MAX_VALUE);
                 btnFocusNest.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+                btnFocusNest.setTooltip(new Tooltip("Recentrer la caméra 3D sur le nid de la colonie."));
                 btnFocusNest.setOnAction(e -> {
                         if (gameView != null && gameView.getGameApp() != null) {
                                 gameView.getGameApp().panCameraTo(0, 0, 0);
@@ -577,10 +655,26 @@ public class SwarmForgeClient extends Application {
                 Button btnTopView = new Button("🔝 Vue du Dessus (Top-Down)");
                 btnTopView.setMaxWidth(Double.MAX_VALUE);
                 btnTopView.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+                btnTopView.setTooltip(new Tooltip("Basculer la caméra en vue orthogonale du dessus."));
+                btnTopView.setOnAction(e -> {
+                        if (gameView != null && gameView.getGameApp() != null) {
+                                gameView.getGameApp().setTopDownView();
+                        }
+                });
 
-                cameraSection.getChildren().addAll(lblCam, btnFocusNest, btnTopView);
+                Button btnResetCam = new Button("🔄 Réinitialiser Vue (Double-Clic)");
+                btnResetCam.setMaxWidth(Double.MAX_VALUE);
+                btnResetCam.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+                btnResetCam.setTooltip(new Tooltip("Réinitialiser l'angle d'inclinaison et la distance de la caméra."));
+                btnResetCam.setOnAction(e -> {
+                        if (gameView != null && gameView.getGameApp() != null) {
+                                gameView.getGameApp().resetCamera();
+                        }
+                });
 
-                sideControls.getChildren().addAll(lblSideTitle, playbackAndSpeedNode, btnPlayPause, new Separator(), mediaSection, renderSection, audioSection, cameraSection);
+                cameraSection.getChildren().addAll(lblCam, btnFocusNest, btnTopView, btnResetCam);
+
+                sideControls.getChildren().addAll(sideHeaderBox, playbackAndSpeedNode, new Separator(), mediaSection, renderSection, audioSection, cameraSection);
 
                 rootPane.setRight(sideControls);
 
@@ -755,11 +849,10 @@ public class SwarmForgeClient extends Application {
 
                         if (e.isPrimaryButtonDown()) { // Left: Rotate
                                 view.getGameApp().rotateCamera((float) dx, (float) dy);
-                        } else if (e.isSecondaryButtonDown()) { // Right: Pan
-                                // Invert X for natural feeling pan, Y generally matches drag
+                        } else if (e.isSecondaryButtonDown() || e.isShiftDown()) { // Right / Shift: Pan
                                 view.getGameApp().panCamera((float) -dx, (float) dy);
-                        } else if (e.isMiddleButtonDown()) { // Middle: maybe tilt?
-                                // Optional
+                        } else if (e.isMiddleButtonDown()) { // Middle: Pan
+                                view.getGameApp().panCamera((float) -dx, (float) dy);
                         }
 
                         lastX = e.getSceneX();
@@ -771,18 +864,12 @@ public class SwarmForgeClient extends Application {
                         double delta = e.getDeltaY();
                         view.getGameApp().zoomCamera((float) delta * 0.05f);
                 });
-        }
 
-
-
-        private HBox createStatusBar() {
-                HBox bar = new HBox(10);
-                bar.setPadding(new Insets(5));
-                bar.setStyle("-fx-background-color: #18181b; -fx-border-color: #27272a; -fx-border-width: 1px 0 0 0;");
-                Label status = new Label("Ready.");
-                status.setStyle("-fx-text-fill: #a1a1aa;");
-                bar.getChildren().add(status);
-                return bar;
+                view.setOnMouseClicked(e -> {
+                        if (e.getClickCount() == 2) {
+                                view.getGameApp().resetCamera();
+                        }
+                });
         }
 
         /**

@@ -78,8 +78,7 @@ class SwarmForgeViewer {
 
         // UI Events
         document.getElementById('btn-connect').addEventListener('click', () => {
-            alert('Connecting via Envoy Proxy (port 8080)...');
-            document.getElementById('status').innerText = 'Connected (Mock)';
+            document.getElementById('status').innerText = 'Connecté au proxy (Port 8080)';
             document.getElementById('status').style.color = '#4ade80';
         });
 

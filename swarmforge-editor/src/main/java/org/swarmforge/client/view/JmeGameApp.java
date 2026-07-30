@@ -561,6 +561,40 @@ public class JmeGameApp extends SimpleApplication {
         });
     }
 
+    /**
+     * Reset camera to default 3D perspective position.
+     */
+    public void resetCamera() {
+        enqueueTask(() -> {
+            if (simulation != null && simulation.getTerrarium() != null) {
+                int w = simulation.getTerrarium().getWidth();
+                int d = simulation.getTerrarium().getDepth();
+                int h = simulation.getTerrarium().getHeight();
+                cam.setLocation(new Vector3f(w / 2f, d + 25, h + 25));
+                cam.lookAt(new Vector3f(w / 2f, d / 2f, h / 2f), Vector3f.UNIT_Y);
+            } else {
+                cam.setLocation(new Vector3f(32, 45, 65));
+                cam.lookAt(new Vector3f(32, 10, 32), Vector3f.UNIT_Y);
+            }
+        });
+    }
+
+    /**
+     * Set camera to direct top-down view overhead.
+     */
+    public void setTopDownView() {
+        enqueueTask(() -> {
+            int w = 64, d = 32, h = 64;
+            if (simulation != null && simulation.getTerrarium() != null) {
+                w = simulation.getTerrarium().getWidth();
+                d = simulation.getTerrarium().getDepth();
+                h = simulation.getTerrarium().getHeight();
+            }
+            cam.setLocation(new Vector3f(w / 2f, d + 45, h / 2f));
+            cam.lookAt(new Vector3f(w / 2f, 0, h / 2f), Vector3f.UNIT_Z);
+        });
+    }
+
     @Override
     public void simpleRender(com.jme3.renderer.RenderManager rm) {
         // Post-render: Read pixels
@@ -599,22 +633,20 @@ public class JmeGameApp extends SimpleApplication {
         final byte[] frameData = pixelData.clone(); // Copy buffer
         final int fNum = recordingFrameCount++;
 
-        new Thread(() -> {
+        Thread saveThread = new Thread(() -> {
             try {
                 // Convert BGRA byte array to BufferedImage
                 java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(width, height,
                         java.awt.image.BufferedImage.TYPE_INT_RGB);
                 int[] intPixels = new int[width * height];
 
-                // Convert bytes to ints (BGRA -> RGB, flip Y?)
-                // JME is Bottom-Up. BufferedImage is Top-Down. We need to flip Y.
+                // Convert bytes to ints (BGRA -> RGB, flip Y)
                 for (int y = 0; y < height; y++) {
                     for (int x = 0; x < width; x++) {
                         int i = ((height - 1 - y) * width + x) * 4;
                         int b = frameData[i] & 0xFF;
                         int g = frameData[i + 1] & 0xFF;
                         int r = frameData[i + 2] & 0xFF;
-                        // int a = frameData[i + 3] & 0xFF;
 
                         int argb = (0xFF << 24) | (r << 16) | (g << 8) | b;
                         intPixels[y * width + x] = argb;
@@ -628,7 +660,9 @@ public class JmeGameApp extends SimpleApplication {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }).start();
+        }, "SwarmForge-FrameSaver-" + fNum);
+        saveThread.setDaemon(true);
+        saveThread.start();
     }
 
     public void enqueueTask(Runnable task) {
@@ -654,6 +688,29 @@ public class JmeGameApp extends SimpleApplication {
                 weatherVisualizer.update(simulation.getWeather(), tpf);
             }
         }
+    }
+
+    private boolean isGamifiedVoxelMode = false;
+
+    public void setGamifiedVoxelMode(boolean gamified) {
+        this.isGamifiedVoxelMode = gamified;
+        enqueueTask(() -> {
+            if (viewPort != null) {
+                if (gamified) {
+                    // Vibrant stylized arcade voxel mode
+                    viewPort.setBackgroundColor(new ColorRGBA(0.12f, 0.08f, 0.25f, 1.0f));
+                    if (sunLight != null) {
+                        sunLight.setColor(new ColorRGBA(1.2f, 0.9f, 1.3f, 1.0f));
+                    }
+                } else {
+                    // Realistic natural 3D mode
+                    viewPort.setBackgroundColor(new ColorRGBA(0.06f, 0.09f, 0.16f, 1.0f));
+                    if (sunLight != null) {
+                        sunLight.setColor(ColorRGBA.White);
+                    }
+                }
+            }
+        });
     }
 
     public double getCameraDepth() {

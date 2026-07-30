@@ -78,6 +78,19 @@ public class SparsePheromoneGrid {
     private static class PheromoneEntry {
         final float[] concentrations = new float[PHEROMONE_TYPES];
         final long[] lastUpdatedTick = new long[PHEROMONE_TYPES];
+
+        synchronized void update(int type, float newConc, long tick) {
+            concentrations[type] = newConc;
+            lastUpdatedTick[type] = tick;
+        }
+
+        synchronized float getConcentration(int type) {
+            return concentrations[type];
+        }
+
+        synchronized long getLastUpdatedTick(int type) {
+            return lastUpdatedTick[type];
+        }
     }
 
     public SparsePheromoneGrid(int width, int height, int depth) {
@@ -141,9 +154,8 @@ public class SparsePheromoneGrid {
         grid.compute(key, (k, entry) -> {
             if (entry == null)
                 entry = new PheromoneEntry();
-            float decayed = computeDecay(entry.concentrations[type], entry.lastUpdatedTick[type], type);
-            entry.concentrations[type] = Math.min(1.0f, decayed + amount);
-            entry.lastUpdatedTick[type] = currentTick;
+            float decayed = computeDecay(entry.getConcentration(type), entry.getLastUpdatedTick(type), type);
+            entry.update(type, Math.min(1.0f, decayed + amount), currentTick);
             return entry;
         });
     }
@@ -155,7 +167,7 @@ public class SparsePheromoneGrid {
         PheromoneEntry entry = grid.get(key);
         if (entry == null)
             return 0f;
-        return computeDecay(entry.concentrations[type], entry.lastUpdatedTick[type], type);
+        return computeDecay(entry.getConcentration(type), entry.getLastUpdatedTick(type), type);
     }
 
     public float[] readAll(int x, int y, int z) {
@@ -168,7 +180,7 @@ public class SparsePheromoneGrid {
 
         float[] result = new float[PHEROMONE_TYPES];
         for (int t = 0; t < PHEROMONE_TYPES; t++) {
-            result[t] = computeDecay(entry.concentrations[t], entry.lastUpdatedTick[t], t);
+            result[t] = computeDecay(entry.getConcentration(t), entry.getLastUpdatedTick(t), t);
         }
         return result;
     }
@@ -295,6 +307,10 @@ public class SparsePheromoneGrid {
 
     public int getActiveEntryCount() {
         return grid.size();
+    }
+
+    public void clear() {
+        grid.clear();
     }
 
     public long getCurrentTick() {

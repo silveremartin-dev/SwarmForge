@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useSimulationStore } from '../store/simulationStore'
+import { showToast } from '../store/toastStore'
 
 export default function WorldEditorPanel() {
     const [activeTab, setActiveTab] = useState('terrain')
@@ -39,7 +40,7 @@ export default function WorldEditorPanel() {
     })
 
     const applyWorldToSimulation = () => {
-        alert("Configuration du Monde appliquée au simulateur avec succès ! (Résolution sub-millimétrique: " + scale.resolutionMm + "mm)")
+        showToast("🌍 Configuration du Monde appliquée au simulateur avec succès ! (" + scale.resolutionMm + "mm)", "success")
     }
 
     const styles = {

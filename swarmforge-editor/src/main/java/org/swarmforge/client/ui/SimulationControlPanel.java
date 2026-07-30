@@ -38,16 +38,26 @@ public class SimulationControlPanel extends VBox {
     private final Button btnStepForward;
 
     private final Slider speedSlider;
-    private final Slider timelineSlider;
+    private Slider timelineSlider;
     private final javafx.scene.control.ComboBox<String> stepSizeCombo;
 
     private final Label lblSpeed;
-    private final Label lblTick;
-    private final Label lblTime;
+    private Label lblTick;
+    private Label lblTime;
     private final Label lblDateTime;
 
+    private final javafx.scene.control.ComboBox<String> comboMeta = new javafx.scene.control.ComboBox<>();
     private final javafx.scene.control.ComboBox<String> comboWorld = new javafx.scene.control.ComboBox<>();
+    private final javafx.scene.control.ComboBox<String> comboSpecies = new javafx.scene.control.ComboBox<>();
+    private final javafx.scene.control.ComboBox<String> comboNest = new javafx.scene.control.ComboBox<>();
+    private final javafx.scene.control.ComboBox<String> comboPreyPred = new javafx.scene.control.ComboBox<>();
     private final javafx.scene.control.ComboBox<String> comboWeather = new javafx.scene.control.ComboBox<>();
+    private final javafx.scene.control.TextField txtSeed = new javafx.scene.control.TextField("12345");
+
+    private final SpeciesPresetManager speciesPresetManager = new SpeciesPresetManager();
+    private final WorldPresetManager worldPresetManager = new WorldPresetManager();
+    private final WeatherPresetManager weatherPresetManager = new WeatherPresetManager();
+    private final NestPresetManager nestPresetManager = new NestPresetManager();
 
     private boolean isPlaying = false;
     private float currentSpeed = 1.0f;
@@ -89,82 +99,115 @@ public class SimulationControlPanel extends VBox {
 
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
 
-        // === Row 0: Presets Selection (Positioned ABOVE Simulation Controls as requested) ===
+        // === Row 0: Presets Selection (Positioned ABOVE Simulation Controls) ===
         VBox presetBox = new VBox(6);
         presetBox.getStyleClass().add("card-pane");
 
-        Label lblPresetHeader = new Label("🔖 Presets du Scénario & des Onglets (Avant ou en cours de simulation)");
+        HBox headerRow = new HBox(8);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblPresetHeader = new Label("🔖 Presets du Scénario & Écosystème (Synchronisés avec les Éditeurs)");
         lblPresetHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lblPresetHeader.setTooltip(new Tooltip("Configuration globale du scénario scientifique et chargement dynamique des presets d'espèces, mondes, nids et météo."));
+
+        Region spHeader = new Region();
+        HBox.setHgrow(spHeader, Priority.ALWAYS);
+
+        Button bHelp = new Button("📖 Aide & Glossaire");
+        bHelp.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+        bHelp.setTooltip(new Tooltip("Ouvrir le glossaire pédagogique de la simulation et des comportements d'essaim."));
+        bHelp.setOnAction(e -> GlossaryDialog.show("sim"));
+
+        headerRow.getChildren().addAll(lblPresetHeader, spHeader, bHelp);
 
         HBox metaRow = new HBox(8);
         metaRow.setAlignment(Pos.CENTER_LEFT);
         Label lblMeta = new Label("★ Scénario (Méta-Preset) :");
         lblMeta.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
-        javafx.scene.control.ComboBox<String> comboMeta = new javafx.scene.control.ComboBox<>();
+        
         comboMeta.getItems().addAll(
-            "Mon Terrarium N°1 (Complet)",
-            "Vol de Lévy vs Marche Brownienne",
-            "Polyéthisme & Spécialisation BDI",
-            "Savane Granivore - Messor barbarus",
-            "Conflit Territorial - Linepithema humile"
+            "🌿 Écosystème Amazonien (Atta sexdens & Champignon)",
+            "🏜 Steppe Aride Granivore (Messor barbatus & Graminées)",
+            "⚔️ Guerre Territoriale (Solenopsis invicta vs Lasius niger)",
+            "🐝 Rucher Arboricole (Apis mellifera & Butinage)",
+            "🏛️ Cathédrale de Termites (Reticulitermes & Macrotermes)"
         );
         comboMeta.getSelectionModel().selectFirst();
         comboMeta.setMaxWidth(Double.MAX_VALUE);
+        comboMeta.setTooltip(new Tooltip("Scénarios pré-configurés cohérents assemblant espèce, nid, biotope et météo adaptés."));
         HBox.setHgrow(comboMeta, Priority.ALWAYS);
 
         metaRow.getChildren().addAll(lblMeta, comboMeta);
 
-        // Grid for individual presets (Monde, Espèces, Nid, Proies/Prédateurs, Météo/Climat)
+        // Populate individual combo boxes from their respective Preset Managers!
+        comboWorld.getItems().setAll(worldPresetManager.names());
+        if (!comboWorld.getItems().isEmpty()) comboWorld.getSelectionModel().selectFirst();
+        comboWorld.setTooltip(new Tooltip("Type de biotope/terrain chargé depuis WorldPresetManager."));
+
+        comboSpecies.getItems().setAll(speciesPresetManager.getPresetNames());
+        if (!comboSpecies.getItems().isEmpty()) comboSpecies.getSelectionModel().selectFirst();
+        comboSpecies.setTooltip(new Tooltip("Espèce principale issue de SpeciesPresetManager (contient toutes les castes et paramètres biologiques)."));
+
+        comboNest.getItems().setAll(nestPresetManager.names());
+        if (!comboNest.getItems().isEmpty()) comboNest.getSelectionModel().selectFirst();
+        comboNest.setTooltip(new Tooltip("Architecture de nid issue de NestPresetManager."));
+
+        comboPreyPred.getItems().addAll(
+            "Pucerons & Fourmilion",
+            "Incursion Guêpe Solitaire & Araignée",
+            "Termites & Guêpe Chasseresse",
+            "Ressources Abondantes (Sans prédateurs)"
+        );
+        comboPreyPred.getSelectionModel().selectFirst();
+        comboPreyPred.setTooltip(new Tooltip("Faune auxiliaire et interactions proies/prédateurs."));
+
+        comboWeather.getItems().setAll(weatherPresetManager.names());
+        if (!comboWeather.getItems().isEmpty()) comboWeather.getSelectionModel().selectFirst();
+        comboWeather.setTooltip(new Tooltip("Profil climatique issu de WeatherPresetManager."));
+
+        // Setup listener for Meta-Presets to auto-select coherent options
+        comboMeta.setOnAction(e -> applyMetaPreset(comboMeta.getValue()));
+
+        // Grid for individual presets
         javafx.scene.layout.GridPane gridPresets = new javafx.scene.layout.GridPane();
         gridPresets.setHgap(8);
         gridPresets.setVgap(4);
-
-        comboWorld.getItems().setAll("Terrarium Tempéré (Mon Terrarium N°1)", "Forêt Tropicale Humide", "Désert Aride & Grottes");
-        comboWorld.getSelectionModel().selectFirst();
-
-        javafx.scene.control.ComboBox<String> comboSpecies = new javafx.scene.control.ComboBox<>();
-        comboSpecies.getItems().addAll("Formica fusca (Récolteuse)", "Messor barbarus (Moissonneuse)", "Linepithema humile (Invasive)");
-        comboSpecies.getSelectionModel().selectFirst();
-
-        javafx.scene.control.ComboBox<String> comboNest = new javafx.scene.control.ComboBox<>();
-        comboNest.getItems().addAll("Dôme de Brindilles & Galeries", "Greniers Sub-Superficielles Messor", "Loge de Souche Creuse");
-        comboNest.getSelectionModel().selectFirst();
-
-        javafx.scene.control.ComboBox<String> comboPreyPred = new javafx.scene.control.ComboBox<>();
-        comboPreyPred.getItems().addAll("Pucerons & Fourmilion", "Incursion Guêpe Solitaire & Araignée", "Ressources Abondantes");
-        comboPreyPred.getSelectionModel().selectFirst();
-
-        comboWeather.getItems().setAll("Printemps Doux (22°C)", "Été Caniculaire (34°C)", "Automne Humide (14°C)");
-        comboWeather.getSelectionModel().selectFirst();
 
         // Master Seed Row (Deterministic Replay Integrity)
         HBox seedRow = new HBox(8);
         seedRow.setAlignment(Pos.CENTER_LEFT);
         Label lblSeed = new Label("🎲 Graine Aléatoire (Seed Replay) :");
         lblSeed.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
-        javafx.scene.control.TextField txtSeed = new javafx.scene.control.TextField("12345");
         txtSeed.setPrefWidth(90);
         txtSeed.setStyle("-fx-background-color: #0f172a; -fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-border-color: #334155;");
+        txtSeed.setTooltip(new Tooltip("Graine pseudo-aléatoire garantissant la réplicabilité exacte de la simulation."));
 
         Button btnRandSeed = new Button("🎲 Nouveau Seed");
         btnRandSeed.setStyle("-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 10px;");
+        btnRandSeed.setTooltip(new Tooltip("Génère une nouvelle graine aléatoire."));
         btnRandSeed.setOnAction(e -> txtSeed.setText(String.valueOf((long)(Math.random() * 900000 + 100000))));
 
         seedRow.getChildren().addAll(lblSeed, txtSeed, btnRandSeed);
 
-        // Apply Button (Applies all presets & seed to active simulation)
+        // Apply Button
         Button btnApplyPresets = new Button("⚡ APPLIQUER À LA SIMULATION");
         btnApplyPresets.setMaxWidth(Double.MAX_VALUE);
         btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 12; -fx-background-radius: 5;");
+        btnApplyPresets.setTooltip(new Tooltip("Réinitialise la simulation en appliquant l'ensemble des presets et la graine déterministe."));
         btnApplyPresets.setOnAction(e -> {
             if (isPlaying) {
                 isPlaying = false;
                 updateButtonStates();
                 if (onPause != null) onPause.accept(null);
             }
+            long seed = getMasterSeed();
+            if (onApplyPresets != null) {
+                onApplyPresets.accept(seed);
+            }
+            btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 12; -fx-background-radius: 5;");
             new javafx.scene.control.Alert(
                 javafx.scene.control.Alert.AlertType.INFORMATION,
-                "Presets et Master Seed (#" + txtSeed.getText() + ") appliqués à la simulation ! Le monde et les entités ont été reconfigurés."
+                "Presets et Master Seed (#" + seed + ") appliqués ! Le monde, les colonies et le biotope ont été reconfigurés et réinitialisés avec succès."
             ).show();
         });
 
@@ -178,7 +221,6 @@ public class SimulationControlPanel extends VBox {
             btnApplyPresets.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 12; -fx-background-radius: 5;");
         };
 
-        comboMeta.setOnAction(e -> interruptIfRunning.run());
         comboWorld.setOnAction(e -> interruptIfRunning.run());
         comboSpecies.setOnAction(e -> interruptIfRunning.run());
         comboNest.setOnAction(e -> interruptIfRunning.run());
@@ -190,9 +232,10 @@ public class SimulationControlPanel extends VBox {
             "📍 Positionnement optimal (Centre carte hors d'eau)",
             "👑 Fondation Reine Seule Claustrale (Sol Vierge)",
             "🎲 Positionnement aléatoire autour du centre (Hors eau)",
-            "🏛️ Nids multiples répartis (Cohabitation)"
+            "🏛️ Nids multiples répartis (Cohabitation / Guerre)"
         );
         comboNestPlacement.getSelectionModel().selectFirst();
+        comboNestPlacement.setTooltip(new Tooltip("Strategie d'implantation initiale du nid dans le relief 3D."));
         comboNestPlacement.setOnAction(e -> interruptIfRunning.run());
 
         Label l1 = new Label("🌍 Monde :"); l1.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
@@ -209,7 +252,7 @@ public class SimulationControlPanel extends VBox {
         gridPresets.add(l5, 0, 2); gridPresets.add(comboPreyPred, 1, 2);
         gridPresets.add(l6, 2, 2); gridPresets.add(comboWeather, 3, 2);
 
-        presetBox.getChildren().addAll(lblPresetHeader, metaRow, gridPresets, seedRow, btnApplyPresets);
+        presetBox.getChildren().addAll(headerRow, metaRow, gridPresets, seedRow, btnApplyPresets);
 
         // === Row 1: Date/Time Display & Real-Time Status ===
         HBox dateTimeRow = new HBox(8);
@@ -217,6 +260,7 @@ public class SimulationControlPanel extends VBox {
 
         lblDateTime = new Label("📅 Date & Heure : 2026-03-20 08:00:00");
         lblDateTime.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lblDateTime.setTooltip(new Tooltip("Temps biologique simulé calculé à partir du nombre de ticks et de la durée du pas dt."));
 
         Label lblStepTitle = new Label("Pas de Simulation :");
         lblStepTitle.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
@@ -225,7 +269,7 @@ public class SimulationControlPanel extends VBox {
         stepSizeCombo.getItems().addAll("16.6 ms (60 Hz)", "50 ms (20 Hz)", "100 ms (10 Hz)", "1.0 s", "5.0 s");
         stepSizeCombo.getSelectionModel().selectFirst();
         stepSizeCombo.setStyle("-fx-font-size: 10px;");
-        Tooltip stepTt = new Tooltip("Durée du pas de simulation (Intervalle de temps physique/biologique calculé par itération/tick).");
+        Tooltip stepTt = new Tooltip("Durée du pas de simulation dt (Intervalle de temps physique/biologique calculé par itération/tick).");
         Tooltip.install(stepSizeCombo, stepTt);
         stepSizeCombo.setOnAction(e -> {
             int idx = stepSizeCombo.getSelectionModel().getSelectedIndex();
@@ -343,38 +387,8 @@ public class SimulationControlPanel extends VBox {
 
         playbackAndSpeedPanel.getChildren().addAll(lblPlaybackHeader, dateTimeRow, playbackRow, speedRow);
 
-        // === Row 4: Timeline & Elapsed Time (Tick count stays in SimulationControlPanel) ===
-        HBox timelineRow = new HBox(10);
-        timelineRow.setAlignment(Pos.CENTER);
-
-        lblTick = new Label(i18n.get("control.tick", 0));
-        lblTick.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
-        lblTick.setPrefWidth(160);
-
-        timelineSlider = new Slider(0, 10000, 0);
-        timelineSlider.setPrefWidth(400);
-        HBox.setHgrow(timelineSlider, Priority.ALWAYS);
-        timelineSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
-            if (timelineSlider.isValueChanging()) {
-                // User is dragging
-                long seekTick = newVal.longValue();
-                lblTick.setText(i18n.get("control.tick", seekTick));
-            }
-        });
-        timelineSlider.setOnMouseReleased(e -> {
-            long seekTick = (long) timelineSlider.getValue();
-            if (onSeek != null)
-                onSeek.accept(seekTick);
-        });
-
-        lblTime = new Label("0:00:00");
-        lblTime.setStyle("-fx-text-fill: #4fc3f7; -fx-font-weight: bold;");
-        lblTime.setPrefWidth(80);
-
-        timelineRow.getChildren().addAll(lblTick, timelineSlider, lblTime);
-
-        // Add presetBox and timelineRow (holding tick count) to main SimulationControlPanel layout
-        getChildren().addAll(presetBox, timelineRow);
+        // Main layout of SimulationControlPanel contains the Preset and Scenario configuration card
+        getChildren().addAll(presetBox);
 
         updateButtonStates();
     }
@@ -416,10 +430,10 @@ public class SimulationControlPanel extends VBox {
         currentDateTime = startDateTime.plusSeconds(totalSecondsElapsed);
 
         lblDateTime.setText("📅 Date & Heure : " + currentDateTime.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        lblTick.setText(String.format("Tick: %d (dt: %.3fs)", tick, simulationStepSeconds));
-        lblTime.setText(formatTime(totalSecondsElapsed));
+        if (lblTick != null) lblTick.setText(String.format("Tick: %d (dt: %.3fs)", tick, simulationStepSeconds));
+        if (lblTime != null) lblTime.setText(formatTime(totalSecondsElapsed));
 
-        if (!timelineSlider.isValueChanging()) {
+        if (timelineSlider != null && !timelineSlider.isValueChanging()) {
             timelineSlider.setMax(Math.max(maxTick, tick + 100));
             timelineSlider.setValue(tick);
         }
@@ -481,10 +495,71 @@ public class SimulationControlPanel extends VBox {
     }
 
     public String getSelectedWorld() {
-        return comboWorld.getValue() != null ? comboWorld.getValue() : "Terrarium Tempéré";
+        return comboWorld.getValue() != null ? comboWorld.getValue() : "Tempéré Standard (Temperate Forest)";
     }
 
     public String getSelectedWeather() {
-        return comboWeather.getValue() != null ? comboWeather.getValue() : "Printemps Doux";
+        return comboWeather.getValue() != null ? comboWeather.getValue() : "Temperate";
+    }
+
+    public String getSelectedSpecies() {
+        return comboSpecies.getValue() != null ? comboSpecies.getValue() : "Fourmi Noire des Jardins (Lasius niger)";
+    }
+
+    private void applyMetaPreset(String metaName) {
+        if (metaName == null) return;
+        if (metaName.contains("Amazonien") || metaName.contains("Atta")) {
+            selectComboIfPresent(comboSpecies, "Fourmi Coupeuse de Feuilles (Atta sexdens)");
+            selectComboIfPresent(comboWorld, "Forêt Tropicale (Tropical Rainforest)");
+            selectComboIfPresent(comboWeather, "Tropical");
+            selectComboIfPresent(comboNest, "Leafcutter Fungus Farm (Atta)");
+            selectComboIfPresent(comboPreyPred, "Ressources Abondantes (Sans prédateurs)");
+        } else if (metaName.contains("Granivore") || metaName.contains("Messor")) {
+            selectComboIfPresent(comboSpecies, "Fourmi Moissonneuse (Pogonomyrmex barbatus)");
+            selectComboIfPresent(comboWorld, "Désert Aride (Arid Desert)");
+            selectComboIfPresent(comboWeather, "Arid");
+            selectComboIfPresent(comboNest, "Mature Ant Burrow");
+            selectComboIfPresent(comboPreyPred, "Pucerons & Fourmilion");
+        } else if (metaName.contains("Guerre") || metaName.contains("Territoriale")) {
+            selectComboIfPresent(comboSpecies, "Fourmi de Feu (Solenopsis invicta)");
+            selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
+            selectComboIfPresent(comboWeather, "Temperate");
+            selectComboIfPresent(comboNest, "Complex Supercolony");
+            selectComboIfPresent(comboPreyPred, "Incursion Guêpe Solitaire & Araignée");
+        } else if (metaName.contains("Rucher") || metaName.contains("Apis")) {
+            selectComboIfPresent(comboSpecies, "Abeille à Miel (Apis mellifera)");
+            selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
+            selectComboIfPresent(comboWeather, "Temperate");
+            selectComboIfPresent(comboNest, "Honeybee Wax Comb (Apis)");
+            selectComboIfPresent(comboPreyPred, "Ressources Abondantes (Sans prédateurs)");
+        } else if (metaName.contains("Termites")) {
+            selectComboIfPresent(comboSpecies, "Termite Souterrain (Reticulitermes flavipes)");
+            selectComboIfPresent(comboWorld, "Forêt Tropicale (Tropical Rainforest)");
+            selectComboIfPresent(comboWeather, "Tropical");
+            selectComboIfPresent(comboNest, "Termite Cathedral Mound (Macrotermes)");
+            selectComboIfPresent(comboPreyPred, "Termites & Guêpe Chasseresse");
+        }
+    }
+
+    private Consumer<Long> onApplyPresets;
+
+    public void setOnApplyPresets(Consumer<Long> callback) {
+        this.onApplyPresets = callback;
+    }
+
+    public long getMasterSeed() {
+        try {
+            return Long.parseLong(txtSeed.getText().trim());
+        } catch (Exception e) {
+            return 1337L;
+        }
+    }
+
+    private void selectComboIfPresent(javafx.scene.control.ComboBox<String> combo, String val) {
+        if (combo.getItems().contains(val)) {
+            combo.getSelectionModel().select(val);
+        } else if (!combo.getItems().isEmpty()) {
+            combo.getSelectionModel().selectFirst();
+        }
     }
 }

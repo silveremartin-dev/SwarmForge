@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Play, Save, FolderOpen, Plus, Zap, Award, Layers, Thermometer, Cpu, Globe } from 'lucide-react';
+import { showToast } from '../store/toastStore';
 
 const PRESET_SCENARIOS = [
   {
@@ -98,8 +99,9 @@ export default function ScenarioEditorPanel({ onLaunchScenario }) {
       try {
         const parsed = JSON.parse(evt.target.result);
         setScenarioData(parsed);
+        showToast('Scénario JSON importé avec succès', 'success');
       } catch (err) {
-        alert('Fichier de scénario invalide JSON');
+        showToast('Fichier de scénario invalide JSON', 'error');
       }
     };
     reader.readAsText(file);

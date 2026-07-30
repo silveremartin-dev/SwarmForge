@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Camera, Video, Square, Download, Play, Pause } from 'lucide-react'
+import { showToast } from '../store/toastStore'
 
 export default function ViewportToolbar({ canvasRef }) {
     const [recording, setRecording] = useState(false)
@@ -20,7 +21,7 @@ export default function ViewportToolbar({ canvasRef }) {
     const takePhotoSnapshot = () => {
         const canvas = document.querySelector('canvas')
         if (!canvas) {
-            alert('Canvas 3D non disponible pour la capture d\'écran.')
+            showToast('Canvas 3D non disponible pour la capture d\'écran.', 'error')
             return
         }
 
@@ -31,9 +32,10 @@ export default function ViewportToolbar({ canvasRef }) {
             link.download = `swarmforge_snapshot_${timestamp}.png`
             link.href = dataUrl
             link.click()
+            showToast('📸 Capture photo HD 3D enregistrée avec succès !', 'success')
         } catch (e) {
             console.error('Snapshot failed:', e)
-            alert('Erreur lors de la capture d\'image: ' + e.message)
+            showToast('Erreur lors de la capture d\'image: ' + e.message, 'error')
         }
     }
 
@@ -41,7 +43,7 @@ export default function ViewportToolbar({ canvasRef }) {
     const startVideoRecording = () => {
         const canvas = document.querySelector('canvas')
         if (!canvas) {
-            alert('Canvas 3D non introuvable.')
+            showToast('Canvas 3D introuvable.', 'error')
             return
         }
 
@@ -74,9 +76,11 @@ export default function ViewportToolbar({ canvasRef }) {
             timerIntervalRef.current = setInterval(() => {
                 setRecordTime(t => t + 1)
             }, 1000)
+
+            showToast('🎥 Enregistrement vidéo 3D démarré', 'info')
         } catch (err) {
             console.error('Video recording failed:', err)
-            alert('Erreur lors du démarrage du registre vidéo: ' + err.message)
+            showToast('Erreur lors du démarrage de l\'enregistrement: ' + err.message, 'error')
         }
     }
 
@@ -89,10 +93,12 @@ export default function ViewportToolbar({ canvasRef }) {
             timerIntervalRef.current = setInterval(() => {
                 setRecordTime(t => t + 1)
             }, 1000)
+            showToast('▶ Enregistrement vidéo repris', 'info')
         } else {
             mediaRecorderRef.current.pause()
             setRecordingPaused(true)
             clearInterval(timerIntervalRef.current)
+            showToast('⏸ Enregistrement vidéo suspendu', 'info')
         }
     }
 
@@ -105,7 +111,6 @@ export default function ViewportToolbar({ canvasRef }) {
 
         setTimeout(() => {
             if (recordedChunks.length === 0) {
-                // If chunks state isn't immediately updated, request from recorder
                 return
             }
             exportBlob(recordedChunks)
@@ -126,6 +131,7 @@ export default function ViewportToolbar({ canvasRef }) {
             document.body.removeChild(a)
             window.URL.revokeObjectURL(url)
         }, 100)
+        showToast('🎬 Vidéo 3D exportée avec succès au format MP4 !', 'success')
     }
 
     useEffect(() => {

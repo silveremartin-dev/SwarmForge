@@ -40,6 +40,9 @@ public class Simulation {
     private final AtomicLong tickCount;
     private final AtomicReference<State> state;
 
+    private long masterSeed = 1337L;
+    private java.util.Random random = new java.util.Random(1337L);
+
     private int ticksPerSecond = 60;
     private long tickDurationNanos;
     private int diffusionInterval = 5;
@@ -562,6 +565,19 @@ public class Simulation {
         return territoryManager;
     }
 
+    public void setMasterSeed(long seed) {
+        this.masterSeed = seed;
+        this.random = new java.util.Random(seed);
+    }
+
+    public long getMasterSeed() {
+        return masterSeed;
+    }
+
+    public java.util.Random getRandom() {
+        return random;
+    }
+
     /**
      * Reset the simulation state.
      */
@@ -571,8 +587,10 @@ public class Simulation {
         this.foodSources.clear();
         this.spatialIndex.clear();
         this.foodIndex.clear();
-        // Pheromone grid reset omitted for now, will decay or need
-        // PheromoneGrid.clear()
+        this.random = new java.util.Random(this.masterSeed);
+        if (this.pheromoneGrid != null) {
+            this.pheromoneGrid.clear();
+        }
     }
 
     // === Speed Control ===

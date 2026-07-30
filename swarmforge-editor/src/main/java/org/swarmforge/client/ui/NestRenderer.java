@@ -227,6 +227,8 @@ public final class NestRenderer {
             case "STERCORAL_CEMENT"-> Color.rgb(160, 110, 70);
             case "SILK_WEAVE"      -> Color.rgb(200, 220, 180);
             case "PROPOLIS"        -> Color.rgb(150, 90, 40);
+            case "CARTON_PULP"     -> Color.rgb(110, 75, 45);
+            case "LIVING_INSECT_BODIES" -> Color.rgb(180, 50, 40);
             default                -> Color.rgb(130, 90, 55);
         };
     }

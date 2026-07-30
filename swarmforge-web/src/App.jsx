@@ -15,6 +15,7 @@ import WorldEditorPanel from './components/WorldEditorPanel'
 import ClimateStudioPanel from './components/ClimateStudioPanel'
 import ViewportToolbar from './components/ViewportToolbar'
 import WeatherControlWidget from './components/WeatherControlWidget'
+import ToastContainer from './components/ToastContainer'
 
 // Placeholder for ErrorBoundary
 const ErrorBoundary = ({ children }) => {
@@ -48,23 +49,21 @@ export default function App() {
             {/* Top Navigation Bar */}
             <Navbar activeMode={activeMode} setActiveMode={setActiveMode} />
 
+            {/* Global Non-Intrusive Toast Notification System */}
+            <ToastContainer />
+
             <ErrorBoundary>
-                {/* Status Indicator */}
-                <div style={{ position: 'absolute', top: 60, left: 20, zIndex: 100, color: '#fff', background: 'rgba(15, 23, 42, 0.85)', padding: '8px 12px', borderRadius: 8, backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 11 }}>
-                    <div>
-                        Status: <span style={{ color: connected ? '#4ade80' : '#f87171', fontWeight: 'bold' }}>
-                            {connected ? '● Connecté (Serveur)' : '○ Mode Local (Hors ligne)'}
+                {/* Status Indicator (Cleaned without useless button) */}
+                <div style={{ position: 'absolute', top: 60, left: 20, zIndex: 100, color: '#fff', background: 'rgba(15, 23, 42, 0.85)', padding: '8px 14px', borderRadius: 8, backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 11 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>Statut:</span>
+                        <span style={{ color: connected ? '#4ade80' : '#38bdf8', fontWeight: 'bold' }}>
+                            {connected ? '● Connecté (Serveur)' : '● Mode Local'}
                         </span>
                     </div>
-                    <div style={{ opacity: 0.8, marginTop: 2 }}>
-                        Temps: {environment.timeOfDay} | Lum: {environment.lightLevel.toFixed(2)}
+                    <div style={{ opacity: 0.85, marginTop: 3 }}>
+                        Temps: {environment.timeOfDay} | Lum: {environment.lightLevel.toFixed(2)} | {environment.season} ({environment.temperature?.toFixed(1)}°C)
                     </div>
-                    <div style={{ opacity: 0.8 }}>
-                        {environment.season} | {environment.temperature?.toFixed(1)}°C | Pluie: {environment.rainIntensity?.toFixed(1)}mm
-                    </div>
-                    <button onClick={() => setShowUnderground(!showUnderground)} style={{ marginTop: 6, fontSize: 10, padding: '3px 8px', background: '#1e293b', color: '#38bdf8', border: '1px solid #334155', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
-                        {showUnderground ? 'Masquer Nid Sous-terrain' : 'Afficher Nid Sous-terrain'}
-                    </button>
                 </div>
 
                 <VRButton />

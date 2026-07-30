@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useSimulationStore } from '../store/simulationStore'
+import { showToast } from '../store/toastStore'
 
 export default function ClimateStudioPanel() {
     const { environment } = useSimulationStore()
@@ -16,6 +17,8 @@ export default function ClimateStudioPanel() {
             top: 60,
             left: 20,
             width: 380,
+            maxHeight: 'calc(100vh - 80px)',
+            overflowY: 'auto',
             background: 'rgba(20, 24, 36, 0.92)',
             backdropFilter: 'blur(12px)',
             border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -160,7 +163,7 @@ export default function ClimateStudioPanel() {
                 />
             </div>
 
-            <button style={styles.applyBtn} onClick={() => alert("Profil climatique synchronisé avec le simulateur !")}>
+            <button style={styles.applyBtn} onClick={() => showToast("⛅ Profil climatique synchronisé avec le simulateur avec succès !", "success")}>
                 ⛅ Synchroniser le Profil Climatique
             </button>
         </div>

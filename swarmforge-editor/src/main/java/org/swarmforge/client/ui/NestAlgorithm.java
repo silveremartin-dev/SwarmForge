@@ -49,13 +49,17 @@ public final class NestAlgorithm {
         Random rnd = new Random((long)(maxDepth*31 + entrances*7 + queenCnt*3 + broodCnt*17 + arch.hashCode()));
 
         switch (arch) {
-            case "WAX_COMB_HEXAGONAL" -> generateHexagonalComb(nest, chamberTarget, queenCnt, broodCnt, foodCnt, anatomicalScale, rnd);
-            case "WAX_POTS_CLUSTER"   -> generatePotCluster(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "PAPER_PEDUNCULATE"  -> generatePaperNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "CATHEDRAL_MOUND"   -> generateCathedralMound(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd);
-            case "ARBOREAL_SILK_LEAF" -> generateArborealLeafNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "SURFACE_MOUND"      -> generateMoundBurrow(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd, true);
-            default                   -> generateMoundBurrow(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd, false);
+            case "WAX_COMB_HEXAGONAL"      -> generateHexagonalComb(nest, chamberTarget, queenCnt, broodCnt, foodCnt, anatomicalScale, rnd);
+            case "WAX_POTS_CLUSTER"        -> generatePotCluster(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "PAPER_PEDUNCULATE"       -> generatePaperNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "CATHEDRAL_MOUND"        -> generateCathedralMound(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd);
+            case "ARBOREAL_SILK_LEAF"      -> generateArborealLeafNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "SUBTERRANEAN_FUNGI_VAULT" -> generateFungiVault(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd);
+            case "CARTON_NEST"             -> generateCartonNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "BAMBOO_STEM_NEST"        -> generateStemGallNest(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "BIVOUAC_LIVING_NEST"     -> generateBivouacNest(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "SURFACE_MOUND"           -> generateMoundBurrow(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd, true);
+            default                        -> generateMoundBurrow(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd, false);
         }
 
         return nest;
@@ -134,6 +138,8 @@ public final class NestAlgorithm {
 
     // ── 2. Honeybee Hexagonal Comb ─────────────────────────────────────────────
 
+    // ── 2. Honeybee Hexagonal Comb ─────────────────────────────────────────────
+
     private static void generateHexagonalComb(NestGeneratorPane.GeneratedNest nest, int chambers,
             int queenCnt, int broodCnt, int foodCnt, double scale, Random rnd) {
         double cellSize = 2.8 * scale;
@@ -141,6 +147,7 @@ public final class NestAlgorithm {
         int rows = Math.max(3, chambers / cols);
 
         NestGeneratorPane.NestNode topEntrance = node(nest, 0, 0, 0, "ENTRANCE", 2.5 * scale, Color.LIMEGREEN);
+        NestGeneratorPane.NestNode[][] grid = new NestGeneratorPane.NestNode[rows][cols];
 
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
@@ -154,7 +161,24 @@ public final class NestAlgorithm {
                 else if (r == rows - 1 && c == cols / 2 && queenCnt > 0) { type = "QUEEN"; color = Color.GOLD; }
 
                 NestGeneratorPane.NestNode cell = nodeLenticular(nest, x, y, z, type, cellSize, cellSize, cellSize * 0.8, color);
-                if (r == 0 && c == cols / 2) edge(nest, topEntrance, cell, rnd);
+                grid[r][c] = cell;
+
+                // Connect top row cells to top entrance
+                if (r == 0) {
+                    edge(nest, topEntrance, cell, rnd);
+                }
+                // Connect to left adjacent cell
+                if (c > 0 && grid[r][c - 1] != null) {
+                    edge(nest, grid[r][c - 1], cell, rnd);
+                }
+                // Connect to upper adjacent cell
+                if (r > 0 && grid[r - 1][c] != null) {
+                    edge(nest, grid[r - 1][c], cell, rnd);
+                }
+                // Connect diagonal neighbor for tight hexagonal comb lattice
+                if (r > 0 && c > 0 && grid[r - 1][c - 1] != null) {
+                    edge(nest, grid[r - 1][c - 1], cell, rnd);
+                }
             }
         }
     }
@@ -170,6 +194,7 @@ public final class NestAlgorithm {
             edge(nest, centerBrood, queenCell, rnd);
         }
 
+        NestGeneratorPane.NestNode prevPot = centerBrood;
         for (int i = 0; i < count; i++) {
             double ang = i * (Math.PI * 2 / Math.max(1, count)) + rnd.nextDouble() * 0.3;
             double dist = (5.0 + (i % 3) * 2.0) * scale;
@@ -180,6 +205,10 @@ public final class NestAlgorithm {
 
             NestGeneratorPane.NestNode pot = node(nest, dist * Math.cos(ang), dist * Math.sin(ang), z, type, 3.2 * scale, col);
             edge(nest, centerBrood, pot, rnd);
+            if (i > 0) {
+                edge(nest, prevPot, pot, rnd); // Interconnect pot cluster
+            }
+            prevPot = pot;
         }
     }
 
@@ -187,7 +216,10 @@ public final class NestAlgorithm {
 
     private static void generatePaperNest(NestGeneratorPane.GeneratedNest nest, double maxDepth,
             int count, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, double scale, Random rnd) {
+        // Support Peduncle Anchor attached to aerial ceiling/branch (z = -6 to 0)
+        NestGeneratorPane.NestNode supportBranch = node(nest, -8 * scale, 0, -5 * scale, "JUNCTION", 1.8 * scale, Color.SIENNA);
         NestGeneratorPane.NestNode peduncle = node(nest, 0, 0, 0, "ENTRANCE", 1.8 * scale, Color.LIMEGREEN);
+        edge(nest, supportBranch, peduncle, rnd);
 
         int tiers = Math.max(2, (int)(maxDepth / 5.0));
         NestGeneratorPane.NestNode prevTier = peduncle;
@@ -199,6 +231,7 @@ public final class NestAlgorithm {
             edge(nest, prevTier, tierCenter, rnd);
             prevTier = tierCenter;
 
+            List<NestGeneratorPane.NestNode> tierCells = new ArrayList<>();
             for (int i = 0; i < cellsInTier; i++) {
                 double ang = i * (Math.PI * 2 / cellsInTier);
                 double rad = (3.0 + (i % 2) * 2.5) * scale;
@@ -208,6 +241,10 @@ public final class NestAlgorithm {
 
                 NestGeneratorPane.NestNode cell = node(nest, rad * Math.cos(ang), rad * Math.sin(ang), z, type, 2.2 * scale, col);
                 edge(nest, tierCenter, cell, rnd);
+                tierCells.add(cell);
+                if (i > 0) {
+                    edge(nest, tierCells.get(i - 1), cell, rnd);
+                }
             }
         }
     }
@@ -217,29 +254,39 @@ public final class NestAlgorithm {
     private static void generateCathedralMound(NestGeneratorPane.GeneratedNest nest, double maxDepth,
             int count, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, int fungusCnt, int branching, double scale, Random rnd) {
 
-        // Tower above ground
-        for (int h = -15; h <= 0; h += 3) {
-            double r = (15 + h) * 0.4 * scale;
-            node(nest, 0, 0, h, "JUNCTION", Math.max(1.0, r), Color.CHOCOLATE);
-        }
-
         // Entrance at base of mound
         NestGeneratorPane.NestNode baseEnt = node(nest, 0, 0, 0, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN);
 
+        // Tower spire above ground (z <= 0) continuously connected
+        NestGeneratorPane.NestNode prevTowerNode = baseEnt;
+        for (int h = -3; h >= -18; h -= 3) {
+            double r = (18 + h) * 0.35 * scale;
+            NestGeneratorPane.NestNode tn = node(nest, (rnd.nextDouble() - 0.5) * 1.5, (rnd.nextDouble() - 0.5) * 1.5, h, "JUNCTION", Math.max(1.0, r), Color.CHOCOLATE);
+            edge(nest, prevTowerNode, tn, rnd);
+            prevTowerNode = tn;
+        }
+
         // Subterranean royal cell at center depth
-        NestGeneratorPane.NestNode royalCell = nodeLenticular(nest, 0, 0, maxDepth * 0.7, "QUEEN", 6.0 * scale, 6.0 * scale, 2.5 * scale, Color.GOLD);
+        NestGeneratorPane.NestNode royalCell = nodeLenticular(nest, 0, 0, maxDepth * 0.65, "QUEEN", 6.0 * scale, 6.0 * scale, 2.5 * scale, Color.GOLD);
         edge(nest, baseEnt, royalCell, rnd);
 
-        // Surrounding nursery and fungus chambers
+        // Interconnected subterranean nursery, fungus, and storage chambers
+        List<NestGeneratorPane.NestNode> chambersList = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            double ang = i * (Math.PI * 2 / Math.max(1, count));
-            double dist = (6.0 + rnd.nextDouble() * 8.0) * scale;
-            double z = 5.0 + rnd.nextDouble() * (maxDepth - 10);
+            double ang = i * (Math.PI * 2 / Math.max(1, count)) + (rnd.nextDouble() - 0.5) * 0.3;
+            double dist = (5.0 + (i % 3) * 3.5) * scale;
+            double z = 3.0 + (i / (double) Math.max(1, count)) * (maxDepth * 0.75);
             String type = (i % 4 == 0) ? "FUNGUS" : (i % 3 == 0) ? "FOOD" : (i % 5 == 0) ? "WASTE" : "BROOD";
             Color col = (type.equals("FUNGUS")) ? Color.MEDIUMPURPLE : (type.equals("FOOD")) ? Color.ORANGE : (type.equals("WASTE")) ? Color.INDIANRED : Color.DEEPSKYBLUE;
 
             NestGeneratorPane.NestNode ch = node(nest, dist * Math.cos(ang), dist * Math.sin(ang), z, type, 3.0 * scale, col);
             edge(nest, royalCell, ch, rnd);
+            chambersList.add(ch);
+
+            // Connect to previous adjacent chamber to form ring/mesh ventilation network
+            if (i > 0) {
+                edge(nest, chambersList.get(i - 1), ch, rnd);
+            }
         }
     }
 
@@ -248,12 +295,16 @@ public final class NestAlgorithm {
     private static void generateArborealLeafNest(NestGeneratorPane.GeneratedNest nest, double maxDepth,
             int count, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, double scale, Random rnd) {
 
+        // Host Tree Canopy Support Branch (z = -8 to 0)
+        NestGeneratorPane.NestNode mainCanopyBranch = node(nest, -10 * scale, 0, -8 * scale, "JUNCTION", 2.0 * scale, Color.FORESTGREEN);
         NestGeneratorPane.NestNode branchAnchor = node(nest, 0, 0, 0, "ENTRANCE", 2.0 * scale, Color.LIMEGREEN);
+        edge(nest, mainCanopyBranch, branchAnchor, rnd);
 
+        List<NestGeneratorPane.NestNode> leafNodes = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             double ang = i * (Math.PI * 2 / Math.max(1, count)) + rnd.nextDouble() * 0.5;
             double rad = (4.0 + rnd.nextDouble() * 6.0) * scale;
-            double z = (2.0 + rnd.nextDouble() * 8.0) * scale;
+            double z = (-4.0 + rnd.nextDouble() * 10.0) * scale;
 
             String type = "BROOD"; Color col = Color.DEEPSKYBLUE;
             if (i == 0 && queenCnt > 0) { type = "QUEEN"; col = Color.GOLD; }
@@ -262,6 +313,149 @@ public final class NestAlgorithm {
 
             NestGeneratorPane.NestNode leafCh = nodeLenticular(nest, rad * Math.cos(ang), rad * Math.sin(ang), z, type, 3.8 * scale, 3.8 * scale, 2.0 * scale, col);
             edge(nest, branchAnchor, leafCh, rnd);
+            leafNodes.add(leafCh);
+            if (i > 0) {
+                edge(nest, leafNodes.get(i - 1), leafCh, rnd);
+            }
+        }
+    }
+
+    // ── 7. Leafcutter Subterranean Fungi Vault (Atta) ───────────────────────────
+
+    private static void generateFungiVault(NestGeneratorPane.GeneratedNest nest, double maxDepth,
+            int count, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, int fungusCnt, int branching, double scale, Random rnd) {
+
+        // Multiple excavated surface craters
+        List<NestGeneratorPane.NestNode> craters = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            double ang = i * (Math.PI * 2 / 3.0) + rnd.nextDouble() * 0.4;
+            craters.add(node(nest, (5.0 + i * 2.0) * Math.cos(ang) * scale, (5.0 + i * 2.0) * Math.sin(ang) * scale, 0.0, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN));
+        }
+
+        NestGeneratorPane.NestNode centralHub = node(nest, 0, 0, 3.0 * scale, "JUNCTION", 1.5 * scale, Color.SLATEGRAY);
+        for (NestGeneratorPane.NestNode c : craters) edge(nest, c, centralHub, rnd);
+
+        // Deep central trunk line
+        NestGeneratorPane.NestNode mainShaft = node(nest, 0, 0, maxDepth * 0.4, "JUNCTION", 1.8 * scale, Color.SLATEGRAY);
+        edge(nest, centralHub, mainShaft, rnd);
+
+        // Subterranean Fungal Vaults (huge lenticular caverns for Atta gardens)
+        int actualFungus = Math.max(1, fungusCnt > 0 ? fungusCnt : count / 2);
+        List<NestGeneratorPane.NestNode> gardenNodes = new ArrayList<>();
+        for (int i = 0; i < actualFungus; i++) {
+            double ang = i * (Math.PI * 2 / Math.max(1, actualFungus));
+            double dist = (8.0 + (i % 2) * 5.0) * scale;
+            double z = maxDepth * 0.35 + (i * 3.5 * scale);
+
+            NestGeneratorPane.NestNode vault = nodeLenticular(nest, dist * Math.cos(ang), dist * Math.sin(ang), z,
+                    "FUNGUS", 5.5 * scale, 5.5 * scale, 3.0 * scale, Color.MEDIUMPURPLE);
+            edge(nest, mainShaft, vault, rnd);
+            gardenNodes.add(vault);
+        }
+
+        // Royal Chamber attached to central vault
+        if (queenCnt > 0 && !gardenNodes.isEmpty()) {
+            NestGeneratorPane.NestNode royalVault = nodeLenticular(nest, 0, 0, maxDepth * 0.5, "QUEEN", 5.0 * scale, 5.0 * scale, 2.8 * scale, Color.GOLD);
+            edge(nest, gardenNodes.get(0), royalVault, rnd);
+        }
+
+        // Deep Waste Pits situated strictly BELOW fungus gardens (Atta refuse isolation)
+        int actualWaste = Math.max(1, wasteCnt);
+        NestGeneratorPane.NestNode wasteShaft = node(nest, 0, 0, maxDepth * 0.8, "JUNCTION", 1.5 * scale, Color.DARKRED);
+        edge(nest, mainShaft, wasteShaft, rnd);
+        for (int i = 0; i < actualWaste; i++) {
+            double ang = i * (Math.PI * 2 / Math.max(1, actualWaste));
+            double dist = (6.0 + i * 3.0) * scale;
+            double z = maxDepth * 0.85 + (i * 2.0 * scale);
+
+            NestGeneratorPane.NestNode wastePit = nodeLenticular(nest, dist * Math.cos(ang), dist * Math.sin(ang), z,
+                    "WASTE", 4.0 * scale, 4.0 * scale, 2.5 * scale, Color.INDIANRED);
+            edge(nest, wasteShaft, wastePit, rnd);
+        }
+    }
+
+    // ── 8. Wood Pulp / Carton Nest (Crematogaster / Lasius fuliginosus) ────────
+
+    private static void generateCartonNest(NestGeneratorPane.GeneratedNest nest, double maxDepth,
+            int count, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, double scale, Random rnd) {
+
+        // Host Tree Trunk Support Anchor (z = -10 to 0)
+        NestGeneratorPane.NestNode trunkAnchor = node(nest, 0, 0, -10.0 * scale, "JUNCTION", 2.5 * scale, Color.SIENNA);
+        NestGeneratorPane.NestNode nestCenter = node(nest, 0, 0, 0, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN);
+        edge(nest, trunkAnchor, nestCenter, rnd);
+
+        // Concentric spherical carton layers
+        NestGeneratorPane.NestNode royalCarton = nodeLenticular(nest, 0, 0, 2.0 * scale, "QUEEN", 4.0 * scale, 4.0 * scale, 3.0 * scale, Color.GOLD);
+        edge(nest, nestCenter, royalCarton, rnd);
+
+        NestGeneratorPane.NestNode prevNode = royalCarton;
+        for (int i = 0; i < count; i++) {
+            double ang = i * (Math.PI * 2 / Math.max(1, count));
+            double rad = (4.0 + (i % 3) * 3.0) * scale;
+            double z = (-3.0 + (i % 4) * 2.5) * scale;
+
+            String type = (i % 3 == 0) ? "FOOD" : "BROOD";
+            Color col = (i % 3 == 0) ? Color.ORANGE : Color.DEEPSKYBLUE;
+            if (i == count - 1 && wasteCnt > 0) { type = "WASTE"; col = Color.INDIANRED; }
+
+            NestGeneratorPane.NestNode cell = nodeLenticular(nest, rad * Math.cos(ang), rad * Math.sin(ang), z, type, 3.2 * scale, 3.2 * scale, 2.2 * scale, col);
+            edge(nest, prevNode, cell, rnd);
+            prevNode = cell;
+        }
+    }
+
+    // ── 9. Bamboo / Plant Stem Gall Nest (Colobopsis / Temnothorax) ────────────
+
+    private static void generateStemGallNest(NestGeneratorPane.GeneratedNest nest,
+            int count, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, double scale, Random rnd) {
+
+        // Narrow entrance plug at stem tip (phragmotic soldier head plug)
+        NestGeneratorPane.NestNode entrancePlug = node(nest, -12.0 * scale, 0, 0, "ENTRANCE", 1.5 * scale, Color.LIMEGREEN);
+
+        // Linear tubular stem chambers along X axis
+        NestGeneratorPane.NestNode prevChamber = entrancePlug;
+        for (int i = 0; i < count; i++) {
+            double x = (-9.0 + i * 4.5) * scale;
+            String type = (i == 0 && queenCnt > 0) ? "QUEEN" : (i % 2 == 0) ? "BROOD" : "FOOD";
+            Color col = (type.equals("QUEEN")) ? Color.GOLD : (type.equals("FOOD")) ? Color.ORANGE : Color.DEEPSKYBLUE;
+            if (i == count - 1 && wasteCnt > 0) { type = "WASTE"; col = Color.INDIANRED; }
+
+            NestGeneratorPane.NestNode stemCell = nodeLenticular(nest, x, 0, 0, type, 4.0 * scale, 1.4 * scale, 1.2 * scale, col);
+            edge(nest, prevChamber, stemCell, rnd);
+            prevChamber = stemCell;
+        }
+    }
+
+    // ── 10. Living Worker Bivouac Nest (Eciton Army Ants) ──────────────────────
+
+    private static void generateBivouacNest(NestGeneratorPane.GeneratedNest nest,
+            int count, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, double scale, Random rnd) {
+
+        // Canopy / Overhang Bivouac Anchor
+        NestGeneratorPane.NestNode logAnchor = node(nest, 0, 0, -8.0 * scale, "JUNCTION", 2.2 * scale, Color.SIENNA);
+        NestGeneratorPane.NestNode bivouacHead = node(nest, 0, 0, -4.0 * scale, "ENTRANCE", 2.5 * scale, Color.LIMEGREEN);
+        edge(nest, logAnchor, bivouacHead, rnd);
+
+        // Central protected queen & brood core
+        NestGeneratorPane.NestNode protectedCore = node(nest, 0, 0, 0, "QUEEN", 5.0 * scale, Color.GOLD);
+        edge(nest, bivouacHead, protectedCore, rnd);
+
+        // Catenary hanging cluster of worker body nodes
+        NestGeneratorPane.NestNode prevBody = protectedCore;
+        for (int i = 0; i < count; i++) {
+            double ang = i * (Math.PI * 2 / Math.max(1, count));
+            double rad = (3.5 + (i % 2) * 2.5) * scale;
+            double z = (-2.0 + (i / 2.0) * 2.0) * scale;
+
+            String type = (i % 2 == 0) ? "BROOD" : "FOOD";
+            Color col = (i % 2 == 0) ? Color.DEEPSKYBLUE : Color.ORANGE;
+
+            NestGeneratorPane.NestNode bodyCluster = node(nest, rad * Math.cos(ang), rad * Math.sin(ang), z, type, 3.5 * scale, col);
+            edge(nest, protectedCore, bodyCluster, rnd);
+            if (i > 0) {
+                edge(nest, prevBody, bodyCluster, rnd);
+            }
+            prevBody = bodyCluster;
         }
     }
 

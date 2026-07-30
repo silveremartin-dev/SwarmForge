@@ -60,7 +60,9 @@ public class GlossaryDialog {
             {"glossary.nest.wood.title", "glossary.nest.wood.desc"},
             {"glossary.nest.subterranean.title", "glossary.nest.subterranean.desc"},
             {"glossary.nest.subterranean_lime.title", "glossary.nest.subterranean_lime.desc"},
-            {"glossary.nest.arboreal_carton.title", "glossary.nest.arboreal_carton.desc"}
+            {"glossary.nest.arboreal_carton.title", "glossary.nest.arboreal_carton.desc"},
+            {"glossary.nest.materials.title", "glossary.nest.materials.desc"},
+            {"glossary.nest.stages.title", "glossary.nest.stages.desc"}
         });
 
         // Tab 2: Queens & Sociality
@@ -107,13 +109,24 @@ public class GlossaryDialog {
             {"glossary.biomech.antennal_olfaction.title", "glossary.biomech.antennal_olfaction.desc"}
         });
 
-        Tab tabNest = new Tab(i18n.get("glossary.tab.nest"), new ScrollPane(vNest));
-        Tab tabSocial = new Tab(i18n.get("glossary.tab.social"), new ScrollPane(vSocial));
-        Tab tabEnv = new Tab(i18n.get("glossary.tab.environment"), new ScrollPane(vEnv));
-        Tab tabReasoning = new Tab(i18n.get("glossary.tab.reasoning"), new ScrollPane(vReasoning));
-        Tab tabSensors = new Tab(i18n.get("glossary.tab.biomechanics"), new ScrollPane(vSensors));
+        // Tab 6: Engine, Seed & Real-Time Controls
+        VBox vEngineControls = createSortedTabBox(i18n, new String[][]{
+            {"Mode Divin (God Mode)", "Module d'interventions en temps réel permettant d'injecter des catastrophes (inondation, pluie d'acide, prédateurs), de modifier les réserves de ressources et de forcer la naissance ou l'élimination d'individus."},
+            {"Multiplicateur de Pas (Pas dt)", "Intervalle temporel physique et biologique calculé à chaque itération (16.6ms, 50ms, 1s). Permet de passer du temps réel au temps biologique accéléré."},
+            {"Multi-Colonies & Castes Dynamiques", "Gestion simultanée de plusieurs colonies concurrentes ou symbiotiques, avec suivi graphique distinct par caste (reines, ouvrières, soldats, mâles)."},
+            {"Seed Déterministe (Master Seed)", "Graine de nombre pseudo-aléatoire garantissant la réplicabilité exacte à 100% des expériences pédagogiques et simulations éthologiques."},
+            {"Mixeur Audio Synthétique", "Générateur sonore procedural réagissant en temps réel aux événements de l'écosystème (pluie, vent, stridulations d'insectes, grondements)."},
+            {"Temporalité Réelle (Secondes / Heures)", "Conversion systématique des ticks moteur en unités de temps réelles (secondes, minutes, heures) sur l'ensemble des tableaux de bord et exports CSV."}
+        });
 
-        tabPane.getTabs().addAll(tabNest, tabSocial, tabEnv, tabReasoning, tabSensors);
+        Tab tabNest = new Tab(i18n.get("glossary.tab.nest", "Architectures de Nid"), new ScrollPane(vNest));
+        Tab tabSocial = new Tab(i18n.get("glossary.tab.social", "Socialité & Reines"), new ScrollPane(vSocial));
+        Tab tabEnv = new Tab(i18n.get("glossary.tab.environment", "Environnement"), new ScrollPane(vEnv));
+        Tab tabReasoning = new Tab(i18n.get("glossary.tab.reasoning", "Moteurs de Décision"), new ScrollPane(vReasoning));
+        Tab tabSensors = new Tab(i18n.get("glossary.tab.biomechanics", "Capteurs & Biomécanique"), new ScrollPane(vSensors));
+        Tab tabEngine = new Tab("Moteur & Contrôles Temps", new ScrollPane(vEngineControls));
+
+        tabPane.getTabs().addAll(tabNest, tabSocial, tabEnv, tabReasoning, tabSensors, tabEngine);
 
         if (searchTerm != null && !searchTerm.isBlank()) {
             String lowerTerm = searchTerm.toLowerCase();
@@ -127,6 +140,8 @@ public class GlossaryDialog {
                 tabPane.getSelectionModel().select(tabReasoning);
             } else if (lowerTerm.contains("subgenual") || lowerTerm.contains("vibration") || lowerTerm.contains("uv") || lowerTerm.contains("autothys") || lowerTerm.contains("arolia") || lowerTerm.contains("mandib") || lowerTerm.contains("olfac")) {
                 tabPane.getSelectionModel().select(tabSensors);
+            } else if (lowerTerm.contains("seed") || lowerTerm.contains("moteur") || lowerTerm.contains("divin") || lowerTerm.contains("temp") || lowerTerm.contains("audio") || lowerTerm.contains("coloni")) {
+                tabPane.getSelectionModel().select(tabEngine);
             }
         }
 

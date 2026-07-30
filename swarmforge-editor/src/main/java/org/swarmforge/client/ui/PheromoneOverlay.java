@@ -60,75 +60,93 @@ public class PheromoneOverlay extends VBox {
 
     private float[][] currentData;
     private int dataWidth, dataHeight;
+    private VBox controlsPane;
 
     public PheromoneOverlay(int width, int height) {
-        setSpacing(5);
-        setPadding(new Insets(5));
-
-        // Control bar
-        HBox controls = createControls();
+        setSpacing(0);
+        setPadding(new Insets(0));
 
         // Canvas
         canvas = new Canvas(width, height);
         gc = canvas.getGraphicsContext2D();
 
-        getChildren().addAll(controls, canvas);
+        // Control Panel VBox (for placement in right panel)
+        controlsPane = createControlsPane();
+
+        getChildren().add(canvas);
         VBox.setVgrow(canvas, Priority.ALWAYS);
 
         clear();
     }
 
-    private HBox createControls() {
-        HBox box = new HBox(10);
-        box.setPadding(new Insets(5));
-        box.setStyle("-fx-background-color: #1e293b; -fx-border-radius: 4px;");
+    public VBox getControlsPane() {
+        return controlsPane;
+    }
+
+    public VBox createControlsPane() {
+        VBox box = new VBox(6);
+        box.setPadding(new Insets(8));
+        box.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
+
+        Label lblHeader = new Label("🧪 Overlay Phéromones & Heatmaps :");
+        lblHeader.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
 
         // Overlay type selector
-        Label lblType = new Label("Mode Heatmap:");
-        lblType.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+        Label lblType = new Label("Mode Heatmap :");
+        lblType.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px; -fx-font-weight: bold;");
 
         ComboBox<String> typeCombo = new ComboBox<>();
         typeCombo.getItems().addAll(OVERLAY_NAMES);
         typeCombo.getSelectionModel().select(0);
+        typeCombo.setMaxWidth(Double.MAX_VALUE);
+        typeCombo.setStyle("-fx-font-size: 10px;");
         typeCombo.setOnAction(e -> {
             selectedType = typeCombo.getSelectionModel().getSelectedIndex();
             redraw();
         });
 
         // Opacity slider
-        Label lblOpacity = new Label("Opacité:");
-        lblOpacity.setStyle("-fx-text-fill: white;");
+        Label lblOpacityVal = new Label(String.format("Opacité : %d%%", (int)(opacity * 100)));
+        lblOpacityVal.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px; -fx-min-width: 70;");
 
-        Slider opacitySlider = new Slider(0.1, 1.0, 0.7);
-        opacitySlider.setPrefWidth(90);
+        Slider opacitySlider = new Slider(0.1, 1.0, opacity);
+        opacitySlider.setPrefWidth(120);
         opacitySlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             opacity = newVal.floatValue();
+            lblOpacityVal.setText(String.format("Opacité : %d%%", (int)(opacity * 100)));
             redraw();
         });
+
+        HBox opacityBox = new HBox(6, new Label("Opacité :") {{ setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;"); }}, opacitySlider, lblOpacityVal);
 
         // Threshold slider
-        Label lblThreshold = new Label("Seuil:");
-        lblThreshold.setStyle("-fx-text-fill: white;");
+        Label lblThresholdVal = new Label(String.format("Seuil : %.2f", threshold));
+        lblThresholdVal.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px; -fx-min-width: 70;");
 
-        Slider thresholdSlider = new Slider(0, 0.5, 0.01);
-        thresholdSlider.setPrefWidth(90);
+        Slider thresholdSlider = new Slider(0.0, 0.5, threshold);
+        thresholdSlider.setPrefWidth(120);
         thresholdSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             threshold = newVal.floatValue();
+            lblThresholdVal.setText(String.format("Seuil : %.2f", threshold));
             redraw();
         });
 
+        HBox thresholdBox = new HBox(6, new Label("Seuil :") {{ setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;"); }}, thresholdSlider, lblThresholdVal);
+
         // Grid toggle
-        CheckBox gridCheck = new CheckBox("Grille");
-        gridCheck.setStyle("-fx-text-fill: white;");
+        CheckBox gridCheck = new CheckBox("Grille Météo / Voxels");
+        gridCheck.setSelected(showGrid);
+        gridCheck.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
         gridCheck.setOnAction(e -> {
             showGrid = gridCheck.isSelected();
             redraw();
         });
 
         box.getChildren().addAll(
+                lblHeader,
                 lblType, typeCombo,
-                lblOpacity, opacitySlider,
-                lblThreshold, thresholdSlider,
+                opacityBox,
+                thresholdBox,
                 gridCheck);
 
         return box;

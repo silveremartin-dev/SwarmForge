@@ -52,8 +52,12 @@ public class NestPresetManager {
         // Ant presets
         m.put("Young Ant Burrow (Lasius)",          make("Young Ant Burrow (Lasius)",          "🐜 Ants (Formicidae)",             "BURROW_UNDERGROUND", "EARTH",             4.0, 10, 15, 2, 2, 1, 2,  1, 1, 0,  0));
         m.put("Mature Ant Burrow",                  make("Mature Ant Burrow",                  "🐜 Ants (Formicidae)",             "BURROW_UNDERGROUND", "EARTH",             5.0, 25, 20, 3, 3, 1, 5,  6, 3, 2,  0));
+        m.put("Surface Dome Mound (Formica)",       make("Surface Dome Mound (Formica)",       "🐜 Ants (Formicidae)",             "SURFACE_MOUND",      "EARTH",             5.5, 20, 25, 3, 3, 1, 6,  8, 2, 2,  0));
         m.put("Complex Supercolony",                make("Complex Supercolony",                "🐜 Ants (Formicidae)",             "BURROW_UNDERGROUND", "EARTH",             4.5, 45, 50, 4, 5, 5,12, 15, 8, 5,  0));
-        m.put("Leafcutter Fungus Farm (Atta)",      make("Leafcutter Fungus Farm (Atta)",      "🐜 Ants (Formicidae)",             "BURROW_UNDERGROUND", "EARTH",             7.0, 35, 30, 3, 4, 1, 4,  3, 4, 3, 10));
+        m.put("Leafcutter Fungus Vault (Atta)",     make("Leafcutter Fungus Vault (Atta)",     "🐜 Ants (Formicidae)",             "SUBTERRANEAN_FUNGI_VAULT", "EARTH",      7.0, 45, 35, 3, 4, 1, 4,  3, 3, 4, 12));
+        m.put("Arboreal Carton Nest (Crematogaster)", make("Arboreal Carton Nest (Crematogaster)", "🐜 Ants (Formicidae)",         "CARTON_NEST",        "CARTON_PULP",       3.5, 15, 20, 2, 3, 1, 5,  6, 2, 2,  0));
+        m.put("Stem & Gall Nest (Temnothorax)",     make("Stem & Gall Nest (Temnothorax)",     "🐜 Ants (Formicidae)",             "BAMBOO_STEM_NEST",   "WOOD_PULP_PAPER",   2.5,  8,  8, 1, 1, 1, 3,  2, 1, 1,  0));
+        m.put("Army Ant Bivouac (Eciton)",          make("Army Ant Bivouac (Eciton)",          "🐜 Ants (Formicidae)",             "BIVOUAC_LIVING_NEST","LIVING_INSECT_BODIES", 8.0, 15, 25, 3, 3, 1, 8,  8, 2, 2,  0));
 
         // Bee presets
         m.put("Honeybee Wax Comb (Apis)",           make("Honeybee Wax Comb (Apis)",           "🐝 Honeybees (Apis)",              "WAX_COMB_HEXAGONAL", "BEESWAX",          14.0, 15, 30, 2, 3, 1, 8, 12, 1, 0,  0));

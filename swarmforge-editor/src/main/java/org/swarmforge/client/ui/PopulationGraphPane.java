@@ -6,144 +6,178 @@
  */
 package org.swarmforge.client.ui;
 
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
+import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
- * Real-time population graphs for simulation statistics.
+ * Real-time dynamic multi-colony and multi-caste population graphs for simulation statistics.
+ * Tracks population evolution in real temporal units (seconds) across all castes and colonies.
  *
+ * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
 public class PopulationGraphPane extends VBox {
 
-    private static final int MAX_DATA_POINTS = 300; // 5 minutes at 1/sec
+    private static final int MAX_DATA_POINTS = 600; // Up to 10 minutes at 1 update/sec
 
     private final LineChart<Number, Number> populationChart;
     private final LineChart<Number, Number> resourcesChart;
 
-    private final XYChart.Series<Number, Number> totalPopSeries;
-    private final XYChart.Series<Number, Number> workersSeries;
-    private final XYChart.Series<Number, Number> queensSeries;
+    // Dynamic series map: Key = "ColonyName - CasteName" or "ColonyName (Total)"
+    private final Map<String, XYChart.Series<Number, Number>> dynamicSeriesMap = new HashMap<>();
 
-    private final XYChart.Series<Number, Number> foodSeries;
-    private final XYChart.Series<Number, Number> birthsSeries;
-    private final XYChart.Series<Number, Number> deathsSeries;
+    private final XYChart.Series<Number, Number> foodSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> birthsSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> deathsSeries = new XYChart.Series<>();
 
     private long lastUpdate = 0;
-    private int dataPointIndex = 0;
 
     public PopulationGraphPane() {
         setSpacing(10);
-        setStyle("-fx-padding: 10; -fx-background-color: #1a1a2e;");
+        setPadding(new Insets(10));
+        setStyle("-fx-background-color: #1a1a2e; -fx-padding: 12;");
+
+        // Header Title
+        HBox header = new HBox(8);
+        header.setAlignment(Pos.CENTER_LEFT);
+        Label titleLabel = new Label("📈 Évolution Temporelle des Populations & Ressources");
+        titleLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        titleLabel.setTooltip(new Tooltip("Graphique d'analyse temporelle des effectifs par caste et par colonie en secondes réelles."));
+        header.getChildren().add(titleLabel);
 
         // Population Chart
         NumberAxis xAxis1 = new NumberAxis();
-        xAxis1.setLabel("Time (s)");
-        xAxis1.setAutoRanging(false);
-        xAxis1.setLowerBound(0);
-        xAxis1.setUpperBound(MAX_DATA_POINTS);
+        xAxis1.setLabel("Temps Réel Écoulé (secondes)");
+        xAxis1.setAutoRanging(true);
 
         NumberAxis yAxis1 = new NumberAxis();
-        yAxis1.setLabel("Population");
+        yAxis1.setLabel("Effectif (Individus)");
 
         populationChart = new LineChart<>(xAxis1, yAxis1);
-        populationChart.setTitle("Colony Population");
+        populationChart.setTitle("Démographie des Colonies par Caste");
         populationChart.setCreateSymbols(false);
         populationChart.setAnimated(false);
-        populationChart.setPrefHeight(200);
-
-        totalPopSeries = new XYChart.Series<>();
-        totalPopSeries.setName("Total");
-        workersSeries = new XYChart.Series<>();
-        workersSeries.setName("Workers");
-        queensSeries = new XYChart.Series<>();
-        queensSeries.setName("Queens");
-
-        populationChart.getData().addAll(java.util.Arrays.asList(totalPopSeries, workersSeries, queensSeries));
+        populationChart.setPrefHeight(240);
+        Tooltip.install(populationChart, new Tooltip("Évolution dynamique des effectifs par caste pour toutes les colonies résidant dans la simulation."));
 
         // Resources Chart
         NumberAxis xAxis2 = new NumberAxis();
-        xAxis2.setLabel("Time (s)");
-        xAxis2.setAutoRanging(false);
-        xAxis2.setLowerBound(0);
-        xAxis2.setUpperBound(MAX_DATA_POINTS);
+        xAxis2.setLabel("Temps Réel Écoulé (secondes)");
+        xAxis2.setAutoRanging(true);
 
         NumberAxis yAxis2 = new NumberAxis();
-        yAxis2.setLabel("Count");
+        yAxis2.setLabel("Quantité / Événements");
 
         resourcesChart = new LineChart<>(xAxis2, yAxis2);
-        resourcesChart.setTitle("Resources & Events");
+        resourcesChart.setTitle("Ressources de Surface & Événements Démographiques");
         resourcesChart.setCreateSymbols(false);
         resourcesChart.setAnimated(false);
-        resourcesChart.setPrefHeight(200);
+        resourcesChart.setPrefHeight(220);
+        Tooltip.install(resourcesChart, new Tooltip("Suivi temporel des réserves de nourriture libres, cumuls de naissances et de décès."));
 
-        foodSeries = new XYChart.Series<>();
-        foodSeries.setName("Food");
-        birthsSeries = new XYChart.Series<>();
-        birthsSeries.setName("Births");
-        deathsSeries = new XYChart.Series<>();
-        deathsSeries.setName("Deaths");
+        foodSeries.setName("Nourriture Libre");
+        birthsSeries.setName("Cumul Naissances");
+        deathsSeries.setName("Cumul Décès");
 
         resourcesChart.getData().addAll(java.util.Arrays.asList(foodSeries, birthsSeries, deathsSeries));
 
-        getChildren().addAll(populationChart, resourcesChart);
-
-        // Apply dark theme styling
+        getChildren().addAll(header, populationChart, resourcesChart);
         applyDarkTheme();
     }
 
     /**
-     * Update charts with new data point.
+     * Legacy update helper for single colony / default caste breakdown.
      */
-    public void addDataPoint(int totalPop, int workers, int queens,
-            int food, int births, int deaths) {
-        // Limit update rate to 1/second
+    public void addDataPoint(int totalPop, int workers, int queens, int food, int births, int deaths) {
+        addDataPoint(totalPop, workers, queens, 0, food, births, deaths);
+    }
+
+    /**
+     * Legacy update helper including soldiers.
+     */
+    public void addDataPoint(int totalPop, int workers, int queens, int soldiers, int food, int births, int deaths) {
+        Map<String, Map<String, Integer>> map = new HashMap<>();
+        Map<String, Integer> castes = new HashMap<>();
+        castes.put("Reines", queens);
+        castes.put("Ouvrières", workers);
+        if (soldiers > 0) castes.put("Soldats", soldiers);
+        castes.put("Total Colonie", totalPop);
+        map.put("Colonie #1", castes);
+
+        long timeSec = (long) (System.currentTimeMillis() / 1000);
+        addDataPointMultiColony(timeSec, map, food, births, deaths);
+    }
+
+    /**
+     * Dynamic multi-colony and multi-caste update method.
+     * Takes real simulation time in seconds.
+     */
+    public void addDataPointMultiColony(double timeSeconds, Map<String, Map<String, Integer>> colonyCasteMap, double food, int births, int deaths) {
         long now = System.currentTimeMillis();
-        if (now - lastUpdate < 1000)
-            return;
+        if (now - lastUpdate < 800) return; // Rate limit to ~1 Hz
         lastUpdate = now;
 
-        // Add data points
-        totalPopSeries.getData().add(new XYChart.Data<>(dataPointIndex, totalPop));
-        workersSeries.getData().add(new XYChart.Data<>(dataPointIndex, workers));
-        queensSeries.getData().add(new XYChart.Data<>(dataPointIndex, queens));
+        if (colonyCasteMap != null) {
+            for (Map.Entry<String, Map<String, Integer>> colEntry : colonyCasteMap.entrySet()) {
+                String colonyName = colEntry.getKey();
+                for (Map.Entry<String, Integer> casteEntry : colEntry.getValue().entrySet()) {
+                    String casteName = casteEntry.getKey();
+                    int count = casteEntry.getValue();
+                    String seriesKey = colonyCasteMap.size() > 1 ? colonyName + " - " + casteName : casteName;
 
-        foodSeries.getData().add(new XYChart.Data<>(dataPointIndex, food));
-        birthsSeries.getData().add(new XYChart.Data<>(dataPointIndex, births));
-        deathsSeries.getData().add(new XYChart.Data<>(dataPointIndex, deaths));
+                    XYChart.Series<Number, Number> series = dynamicSeriesMap.computeIfAbsent(seriesKey, k -> {
+                        XYChart.Series<Number, Number> s = new XYChart.Series<>();
+                        s.setName(k);
+                        populationChart.getData().add(s);
+                        return s;
+                    });
 
-        dataPointIndex++;
+                    series.getData().add(new XYChart.Data<>(timeSeconds, count));
+                    if (series.getData().size() > MAX_DATA_POINTS) {
+                        series.getData().remove(0);
+                    }
+                }
+            }
+        }
 
-        // Remove old data to keep chart responsive
-        if (totalPopSeries.getData().size() > MAX_DATA_POINTS) {
-            totalPopSeries.getData().remove(0);
-            workersSeries.getData().remove(0);
-            queensSeries.getData().remove(0);
-            foodSeries.getData().remove(0);
-            birthsSeries.getData().remove(0);
-            deathsSeries.getData().remove(0);
+        foodSeries.getData().add(new XYChart.Data<>(timeSeconds, food));
+        birthsSeries.getData().add(new XYChart.Data<>(timeSeconds, births));
+        deathsSeries.getData().add(new XYChart.Data<>(timeSeconds, deaths));
 
-            // Shift x-axis
-            ((NumberAxis) populationChart.getXAxis()).setLowerBound(dataPointIndex - MAX_DATA_POINTS);
-            ((NumberAxis) populationChart.getXAxis()).setUpperBound(dataPointIndex);
-            ((NumberAxis) resourcesChart.getXAxis()).setLowerBound(dataPointIndex - MAX_DATA_POINTS);
-            ((NumberAxis) resourcesChart.getXAxis()).setUpperBound(dataPointIndex);
+        trimSeries(foodSeries);
+        trimSeries(birthsSeries);
+        trimSeries(deathsSeries);
+    }
+
+    private void trimSeries(XYChart.Series<Number, Number> series) {
+        if (series.getData().size() > MAX_DATA_POINTS) {
+            series.getData().remove(0);
         }
     }
 
     /**
-     * Clear all data (e.g., when loading new simulation).
+     * Clear all graph data series and reset.
      */
     public void clearData() {
-        totalPopSeries.getData().clear();
-        workersSeries.getData().clear();
-        queensSeries.getData().clear();
+        for (XYChart.Series<Number, Number> s : dynamicSeriesMap.values()) {
+            s.getData().clear();
+        }
+        populationChart.getData().clear();
+        dynamicSeriesMap.clear();
+
         foodSeries.getData().clear();
         birthsSeries.getData().clear();
         deathsSeries.getData().clear();
-        dataPointIndex = 0;
     }
 
     private void applyDarkTheme() {
@@ -156,3 +190,4 @@ public class PopulationGraphPane extends VBox {
         resourcesChart.setStyle(chartStyle);
     }
 }
+

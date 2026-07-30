@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useSimulationStore } from '../store/simulationStore'
 import { usePresetStore } from '../store/presetStore'
+import { showToast } from '../store/toastStore'
 import PopulationGraph from './PopulationGraph'
 import { Globe, Bug, Home, ShieldAlert, Sun, Bookmark, Save, FolderOpen, Plus, Play, Pause, Dices, CheckCircle, RefreshCw } from 'lucide-react'
 
@@ -56,6 +57,7 @@ export default function ControlPanel() {
     const handleScenarioChange = (e) => {
         const scenarioId = e.target.value
         selectScenarioMeta(scenarioId)
+        showToast("Scénario sélectionné", "info")
     }
 
     // APPLY ACTION: Applies changes to active simulation and interrupts if running
@@ -67,6 +69,7 @@ export default function ControlPanel() {
         if (resetSimulation) {
             resetSimulation(session)
         }
+        showToast("⚡ Presets & Graine Aléatoire (Seed) appliqués à la simulation avec succès !", "success")
     }
 
     const handleSaveScenario = () => {
@@ -74,6 +77,7 @@ export default function ControlPanel() {
         saveScenarioMeta(newScenarioName.trim())
         setNewScenarioName('')
         setShowSaveModal(false)
+        showToast("💾 Nouveau méta-preset enregistré avec succès !", "success")
     }
 
     const handleExport = () => {
@@ -84,6 +88,7 @@ export default function ControlPanel() {
         a.href = url
         a.download = `swarmforge_presets_seed_${masterSeed}_${new Date().toISOString().slice(0, 10)}.json`
         a.click()
+        showToast("📥 Presets & Seed exportés en JSON", "success")
     }
 
     const handleImport = (e) => {
@@ -93,9 +98,9 @@ export default function ControlPanel() {
         reader.onload = (evt) => {
             const success = importPresetsJSON(evt.target.result)
             if (success) {
-                alert('Presets & Graine Aléatoire (Seed) JSON importés avec succès !')
+                showToast("Presets & Graine Aléatoire (Seed) JSON importés avec succès !", "success")
             } else {
-                alert('Format de fichier JSON invalide.')
+                showToast("Format de fichier JSON invalide.", "error")
             }
         }
         reader.readAsText(file)

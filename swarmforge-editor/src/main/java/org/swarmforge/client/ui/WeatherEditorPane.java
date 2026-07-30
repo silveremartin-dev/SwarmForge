@@ -200,6 +200,7 @@ public class WeatherEditorPane extends BorderPane {
         presetsCombo = new ComboBox<>();
         presetsCombo.setPrefWidth(210);
         presetsCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
+        presetsCombo.setTooltip(new Tooltip("Sélectionnez un profil climatique pré-configuré (Méditerranéen, Tropical, Aride, Tempéré, Boréal, etc.)."));
         presetsCombo.setOnAction(e -> {
             String s = presetsCombo.getValue();
             if (s != null && presetMgr.contains(s)) {
@@ -210,25 +211,34 @@ public class WeatherEditorPane extends BorderPane {
         Button bAdd = new Button();
         bAdd.getStyleClass().add("btn-secondary");
         bAdd.textProperty().bind(i18n.createStringBinding("preset.save"));
+        bAdd.setTooltip(new Tooltip("Enregistrer la configuration climatique actuelle comme nouveau preset."));
         bAdd.setOnAction(e -> doSavePreset());
 
         Button bDel = new Button();
         bDel.getStyleClass().add("btn-danger");
         bDel.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
         bDel.textProperty().bind(i18n.createStringBinding("preset.delete"));
+        bDel.setTooltip(new Tooltip("Supprimer le profil climatique sélectionné."));
         bDel.setOnAction(e -> doDeletePreset());
 
         Button bExp = new Button();
         bExp.getStyleClass().add("btn-secondary");
         bExp.textProperty().bind(i18n.createStringBinding("preset.export"));
+        bExp.setTooltip(new Tooltip("Exporter le profil climatique au format JSON."));
         bExp.setOnAction(e -> doExport());
 
         Button bImp = new Button();
         bImp.getStyleClass().add("btn-secondary");
         bImp.textProperty().bind(i18n.createStringBinding("preset.import"));
+        bImp.setTooltip(new Tooltip("Importer un fichier JSON de configuration climatique."));
         bImp.setOnAction(e -> doImport());
 
-        r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd, bDel,
+        Button bHelp = new Button("📖 Aide & Glossaire");
+        bHelp.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        bHelp.setTooltip(new Tooltip("Ouvrir le glossaire pédagogique du climat, des saisons et microclimats."));
+        bHelp.setOnAction(e -> GlossaryDialog.show("env"));
+
+        r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd, bDel, bHelp,
                 new Separator(Orientation.VERTICAL), bExp, bImp);
 
         v.getChildren().addAll(r, new Separator());

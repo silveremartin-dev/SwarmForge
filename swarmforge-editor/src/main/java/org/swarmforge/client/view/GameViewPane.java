@@ -33,14 +33,22 @@ public class GameViewPane extends Pane {
         gameApp = new JmeGameApp(width, height);
         gameApp.setTargetImage(writableImage);
 
-        // Start JME in separate thread
-        new Thread(() -> {
+        // Start JME in separate daemon thread
+        Thread jmeThread = new Thread(() -> {
             gameApp.start(JmeContext.Type.OffscreenSurface);
-        }, "JME-Main").start();
+        }, "JME-Main");
+        jmeThread.setDaemon(true);
+        jmeThread.start();
     }
 
     public JmeGameApp getGameApp() {
         return gameApp;
+    }
+
+    public void setGamifiedVoxelMode(boolean gamified) {
+        if (gameApp != null) {
+            gameApp.setGamifiedVoxelMode(gamified);
+        }
     }
 
     public void stop() {

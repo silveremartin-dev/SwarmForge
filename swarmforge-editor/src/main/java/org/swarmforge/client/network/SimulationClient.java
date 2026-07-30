@@ -117,11 +117,13 @@ public class SimulationClient {
             @Override
             public void onError(Throwable t) {
                 LOG.warning("Stream error: " + t.getMessage());
+                connected = false;
             }
 
             @Override
             public void onCompleted() {
                 LOG.info("Stream completed");
+                connected = false;
             }
         };
 

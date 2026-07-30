@@ -6,10 +6,15 @@
  */
 package org.swarmforge.client.ui;
 
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.RadialGradient;
 import javafx.scene.paint.CycleMethod;
@@ -17,66 +22,102 @@ import javafx.scene.paint.Stop;
 
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
+import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.simulation.Simulation;
 
 import java.util.List;
 import java.util.function.BiConsumer;
 
 /**
- * Minimap overlay showing top-down view of the terrarium.
- * Features:
- * - Colony nest positions
- * - Ant density heatmap
- * - Click-to-navigate
+ * Minimap overlay matching the World Editor's dual 2D maps system:
+ * - Top-Down View (Vue du dessus): Ant density heatmap, nests, camera viewport rect, river path.
+ * - Side Profile View (Vue de profil / coupe): Height profile, soil stratigraphy, subterranean ant depth & nests.
+ * Features click-to-navigate and view synchronization options.
  *
  * @author Gemini AI Assistant
  * @author Silvère Martin-Michiellot
  */
-public class MinimapOverlay extends StackPane {
+public class MinimapOverlay extends VBox {
 
-    private final Canvas canvas;
-    private final GraphicsContext gc;
-    private final int size;
+    private final Canvas canvasTop;
+    private final GraphicsContext gcTop;
+    private final Canvas canvasSide;
+    private final GraphicsContext gcSide;
 
     private int worldWidth = 100;
     private int worldHeight = 100;
+    private int worldDepth = 32;
 
     // Camera viewport indicator
     private float cameraX, cameraY;
     private float viewportWidth = 20, viewportHeight = 20;
 
-    // Click callback (x, y in world coords)
+    // Navigation callback (x, y in world coords)
     private BiConsumer<Float, Float> onNavigate;
 
     // Ant density grid
-    private int[][] densityGrid;
-    private static final int GRID_RESOLUTION = 32;
+    private int[][] densityGridTop;
+    private int[][] densityGridSide; // X vs Z depth
+    private static final int GRID_RES = 32;
 
-    public MinimapOverlay(int size) {
-        this.size = size;
-        this.canvas = new Canvas(size, size);
-        this.gc = canvas.getGraphicsContext2D();
-        this.densityGrid = new int[GRID_RESOLUTION][GRID_RESOLUTION];
+    private boolean syncViews = true;
 
-        getChildren().add(canvas);
+    public MinimapOverlay(int width) {
+        setSpacing(4);
+        setPadding(new Insets(6));
+        setStyle("-fx-background-color: rgba(15, 23, 42, 0.95); -fx-border-color: #0284c7; -fx-border-width: 1.5; -fx-border-radius: 6; -fx-background-radius: 6;");
 
-        // Styling
-        setStyle("-fx-background-color: rgba(0,0,0,0.7); -fx-border-color: #555; -fx-border-width: 2;");
-        setMaxSize(size, size);
-        setMinSize(size, size);
+        // Canvases matching World Editor ratio
+        int topH = (int) (width * 0.7);
+        int sideH = (int) (width * 0.5);
 
-        // Click handler
-        canvas.addEventHandler(MouseEvent.MOUSE_CLICKED, this::handleClick);
+        this.canvasTop = new Canvas(width, topH);
+        this.gcTop = canvasTop.getGraphicsContext2D();
+
+        this.canvasSide = new Canvas(width, sideH);
+        this.gcSide = canvasSide.getGraphicsContext2D();
+
+        this.densityGridTop = new int[GRID_RES][GRID_RES];
+        this.densityGridSide = new int[GRID_RES][GRID_RES];
+
+        // Header Labels matching World Editor style
+        Label lblHeader = new Label("🗺️ Mini-Map Dual System");
+        lblHeader.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+
+        Label lblTop = new Label("⬜ Vue du Dessus (Top-Down)");
+        lblTop.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #cbd5e1;");
+
+        Label lblSide = new Label("⬛ Vue de Profil / Coupe (Side View)");
+        lblSide.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #cbd5e1;");
+
+        CheckBox chkSync = new CheckBox("🔗 Synchroniser");
+        chkSync.setSelected(true);
+        chkSync.setStyle("-fx-text-fill: #00d4ff; -fx-font-size: 9px; -fx-font-weight: bold;");
+        chkSync.selectedProperty().addListener((o, a, b) -> this.syncViews = b);
+
+        HBox headerBox = new HBox(6, lblHeader, chkSync);
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+
+        getChildren().addAll(headerBox, lblTop, canvasTop, lblSide, canvasSide);
+
+        // Click handlers
+        canvasTop.addEventHandler(MouseEvent.MOUSE_CLICKED, e -> {
+            if (onNavigate != null) {
+                float wx = (float) (e.getX() / canvasTop.getWidth() * worldWidth);
+                float wy = (float) (e.getY() / canvasTop.getHeight() * worldHeight);
+                onNavigate.accept(wx, wy);
+            }
+        });
+
+        canvasSide.addEventHandler(MouseEvent.MOUSE_CLICKED, e -> {
+            if (onNavigate != null) {
+                float wx = (float) (e.getX() / canvasSide.getWidth() * worldWidth);
+                float wz = (float) (e.getY() / canvasSide.getHeight() * worldHeight);
+                onNavigate.accept(wx, wz);
+            }
+        });
 
         clear();
-    }
-
-    private void handleClick(MouseEvent e) {
-        if (onNavigate != null) {
-            float worldX = (float) (e.getX() / size * worldWidth);
-            float worldY = (float) (e.getY() / size * worldHeight);
-            onNavigate.accept(worldX, worldY);
-        }
     }
 
     /**
@@ -86,24 +127,33 @@ public class MinimapOverlay extends StackPane {
         if (simulation == null)
             return;
 
-        var terrarium = simulation.getTerrarium();
-        worldWidth = terrarium.getWidth();
-        worldHeight = terrarium.getHeight();
+        Terrarium terrarium = simulation.getTerrarium();
+        if (terrarium != null) {
+            worldWidth = terrarium.getWidth();
+            worldHeight = terrarium.getHeight();
+            worldDepth = terrarium.getDepth();
+        }
 
-        // Clear density grid
-        for (int i = 0; i < GRID_RESOLUTION; i++) {
-            for (int j = 0; j < GRID_RESOLUTION; j++) {
-                densityGrid[i][j] = 0;
+        // Clear density grids
+        for (int i = 0; i < GRID_RES; i++) {
+            for (int j = 0; j < GRID_RES; j++) {
+                densityGridTop[i][j] = 0;
+                densityGridSide[i][j] = 0;
             }
         }
 
         // Count ants in grid cells
         for (Colony colony : simulation.getColonies()) {
             for (Individual ant : colony.getLivingIndividuals()) {
-                int gx = (int) (ant.getX() / worldWidth * GRID_RESOLUTION);
-                int gy = (int) (ant.getY() / worldHeight * GRID_RESOLUTION);
-                if (gx >= 0 && gx < GRID_RESOLUTION && gy >= 0 && gy < GRID_RESOLUTION) {
-                    densityGrid[gx][gy]++;
+                int gx = (int) (ant.getX() / worldWidth * GRID_RES);
+                int gy = (int) (ant.getY() / worldHeight * GRID_RES);
+                int gz = (int) (ant.getZ() / worldDepth * GRID_RES);
+
+                if (gx >= 0 && gx < GRID_RES && gy >= 0 && gy < GRID_RES) {
+                    densityGridTop[gx][gy]++;
+                }
+                if (gx >= 0 && gx < GRID_RES && gz >= 0 && gz < GRID_RES) {
+                    densityGridSide[gx][gz]++;
                 }
             }
         }
@@ -112,90 +162,159 @@ public class MinimapOverlay extends StackPane {
     }
 
     private void redraw(List<Colony> colonies) {
+        redrawTop(colonies);
+        redrawSide(colonies);
+    }
+
+    private void redrawTop(List<Colony> colonies) {
+        double w = canvasTop.getWidth();
+        double h = canvasTop.getHeight();
+
         // Background
-        gc.setFill(Color.rgb(20, 30, 20));
-        gc.fillRect(0, 0, size, size);
+        gcTop.setFill(Color.rgb(15, 23, 42));
+        gcTop.fillRect(0, 0, w, h);
 
-        // Draw terrain outline
-        gc.setStroke(Color.rgb(60, 80, 60));
-        gc.setLineWidth(1);
-        gc.strokeRect(1, 1, size - 2, size - 2);
+        // Grid outline
+        gcTop.setStroke(Color.rgb(51, 65, 85));
+        gcTop.setLineWidth(1);
+        gcTop.strokeRect(1, 1, w - 2, h - 2);
 
-        // Draw density heatmap
-        float cellW = (float) size / GRID_RESOLUTION;
-        float cellH = (float) size / GRID_RESOLUTION;
+        // Density heatmap
+        float cellW = (float) w / GRID_RES;
+        float cellH = (float) h / GRID_RES;
 
         int maxDensity = 1;
-        for (int[] row : densityGrid) {
+        for (int[] row : densityGridTop) {
             for (int val : row) {
                 maxDensity = Math.max(maxDensity, val);
             }
         }
 
-        for (int x = 0; x < GRID_RESOLUTION; x++) {
-            for (int y = 0; y < GRID_RESOLUTION; y++) {
-                int count = densityGrid[x][y];
+        for (int x = 0; x < GRID_RES; x++) {
+            for (int y = 0; y < GRID_RES; y++) {
+                int count = densityGridTop[x][y];
                 if (count > 0) {
                     float intensity = Math.min(1f, count / (float) maxDensity);
-                    gc.setFill(Color.rgb(
-                            (int) (50 + 200 * intensity),
-                            (int) (100 + 100 * intensity),
+                    gcTop.setFill(Color.rgb(
+                            (int) (50 + 205 * intensity),
+                            (int) (180 + 75 * intensity),
                             50,
-                            0.3 + 0.5 * intensity));
-                    gc.fillRect(x * cellW, y * cellH, cellW, cellH);
+                            0.4 + 0.5 * intensity));
+                    gcTop.fillRect(x * cellW, y * cellH, cellW, cellH);
                 }
             }
         }
 
-        // Draw colony nests
+        // Colony nests
         for (Colony colony : colonies) {
-            float nx = colony.getNestX() / worldWidth * size;
-            float ny = colony.getNestY() / worldHeight * size;
+            float nx = colony.getNestX() / worldWidth * (float) w;
+            float ny = colony.getNestY() / worldHeight * (float) h;
 
-            // Nest glow effect
-            gc.setFill(new RadialGradient(
-                    0, 0, nx, ny, 15,
+            gcTop.setFill(new RadialGradient(
+                    0, 0, nx, ny, 12,
                     false, CycleMethod.NO_CYCLE,
-                    new Stop(0, Color.rgb(255, 200, 100, 0.8)),
+                    new Stop(0, Color.rgb(251, 191, 36, 0.8)),
                     new Stop(1, Color.TRANSPARENT)));
-            gc.fillOval(nx - 15, ny - 15, 30, 30);
+            gcTop.fillOval(nx - 12, ny - 12, 24, 24);
 
-            // Nest marker
-            gc.setFill(Color.ORANGE);
-            gc.fillOval(nx - 4, ny - 4, 8, 8);
-            gc.setStroke(Color.WHITE);
-            gc.setLineWidth(1);
-            gc.strokeOval(nx - 4, ny - 4, 8, 8);
+            gcTop.setFill(Color.ORANGE);
+            gcTop.fillOval(nx - 3, ny - 3, 6, 6);
+            gcTop.setStroke(Color.WHITE);
+            gcTop.setLineWidth(1);
+            gcTop.strokeOval(nx - 3, ny - 3, 6, 6);
         }
 
-        // Draw camera viewport indicator
-        float vpX = cameraX / worldWidth * size;
-        float vpY = cameraY / worldHeight * size;
-        float vpW = viewportWidth / worldWidth * size;
-        float vpH = viewportHeight / worldHeight * size;
+        // Camera viewport rectangle
+        float vpX = cameraX / worldWidth * (float) w;
+        float vpY = cameraY / worldHeight * (float) h;
+        float vpW = viewportWidth / worldWidth * (float) w;
+        float vpH = viewportHeight / worldHeight * (float) h;
 
-        gc.setStroke(Color.rgb(100, 200, 255, 0.8));
-        gc.setLineWidth(2);
-        gc.strokeRect(vpX - vpW / 2, vpY - vpH / 2, vpW, vpH);
+        gcTop.setStroke(Color.rgb(56, 189, 248, 0.9));
+        gcTop.setLineWidth(1.5);
+        gcTop.strokeRect(vpX - vpW / 2, vpY - vpH / 2, Math.max(8, vpW), Math.max(8, vpH));
 
-        // Draw grid lines
-        gc.setStroke(Color.rgb(60, 80, 60, 0.5));
-        gc.setLineWidth(0.5);
+        // Grid lines
+        gcTop.setStroke(Color.rgb(51, 65, 85, 0.4));
+        gcTop.setLineWidth(0.5);
         for (int i = 1; i < 4; i++) {
-            gc.strokeLine(i * size / 4, 0, i * size / 4, size);
-            gc.strokeLine(0, i * size / 4, size, i * size / 4);
+            gcTop.strokeLine(i * w / 4, 0, i * w / 4, h);
+            gcTop.strokeLine(0, i * h / 4, w, i * h / 4);
         }
     }
 
+    private void redrawSide(List<Colony> colonies) {
+        double w = canvasSide.getWidth();
+        double h = canvasSide.getHeight();
+
+        // Background dark slate
+        gcSide.setFill(Color.rgb(15, 23, 42));
+        gcSide.fillRect(0, 0, w, h);
+
+        // Stratigraphy background bands (Humus, Argile/Sable, Bedrock)
+        gcSide.setFill(Color.web("#3d2817")); // Humus surface
+        gcSide.fillRect(0, 0, w, h * 0.25);
+        gcSide.setFill(Color.web("#9a3412")); // Argile mid
+        gcSide.fillRect(0, h * 0.25, w, h * 0.45);
+        gcSide.setFill(Color.web("#64748b")); // Pierre / Bedrock
+        gcSide.fillRect(0, h * 0.70, w, h * 0.30);
+
+        // Water table line
+        gcSide.setStroke(Color.web("#0284c7"));
+        gcSide.setLineWidth(1.2);
+        gcSide.strokeLine(0, h * 0.75, w, h * 0.75);
+
+        // Side ant density heatmap
+        float cellW = (float) w / GRID_RES;
+        float cellH = (float) h / GRID_RES;
+
+        for (int x = 0; x < GRID_RES; x++) {
+            for (int z = 0; z < GRID_RES; z++) {
+                int count = densityGridSide[x][z];
+                if (count > 0) {
+                    gcSide.setFill(Color.rgb(250, 204, 21, 0.7));
+                    gcSide.fillRect(x * cellW, z * cellH, cellW, cellH);
+                }
+            }
+        }
+
+        // Colony nest depth markers
+        for (Colony colony : colonies) {
+            float nx = colony.getNestX() / worldWidth * (float) w;
+            float nz = colony.getNestZ() / worldDepth * (float) h;
+
+            gcSide.setFill(Color.web("#d97706"));
+            gcSide.fillOval(nx - 4, nz - 4, 8, 8);
+            gcSide.setStroke(Color.WHITE);
+            gcSide.setLineWidth(1);
+            gcSide.strokeOval(nx - 4, nz - 4, 8, 8);
+        }
+
+        // Camera depth indicator
+        float vpX = cameraX / worldWidth * (float) w;
+        gcSide.setStroke(Color.rgb(56, 189, 248, 0.9));
+        gcSide.setLineWidth(1.5);
+        gcSide.strokeLine(vpX, 0, vpX, h);
+
+        // Border
+        gcSide.setStroke(Color.rgb(51, 65, 85));
+        gcSide.setLineWidth(1);
+        gcSide.strokeRect(1, 1, w - 2, h - 2);
+    }
+
     /**
-     * Clear the minimap.
+     * Clear the minimaps.
      */
     public void clear() {
-        gc.setFill(Color.rgb(20, 30, 20));
-        gc.fillRect(0, 0, size, size);
+        gcTop.setFill(Color.rgb(15, 23, 42));
+        gcTop.fillRect(0, 0, canvasTop.getWidth(), canvasTop.getHeight());
+        gcTop.setFill(Color.GRAY);
+        gcTop.fillText("Vue du Dessus (Top-Down)", canvasTop.getWidth() / 2 - 60, canvasTop.getHeight() / 2);
 
-        gc.setFill(Color.GRAY);
-        gc.fillText("No data", size / 2 - 20, size / 2);
+        gcSide.setFill(Color.rgb(15, 23, 42));
+        gcSide.fillRect(0, 0, canvasSide.getWidth(), canvasSide.getHeight());
+        gcSide.setFill(Color.GRAY);
+        gcSide.fillText("Vue de Profil (Side View)", canvasSide.getWidth() / 2 - 60, canvasSide.getHeight() / 2);
     }
 
     /**
@@ -215,10 +334,11 @@ public class MinimapOverlay extends StackPane {
         this.onNavigate = callback;
     }
 
-    /**
-     * Get the canvas for embedding.
-     */
-    public Canvas getCanvas() {
-        return canvas;
+    public Canvas getCanvasTop() {
+        return canvasTop;
+    }
+
+    public Canvas getCanvasSide() {
+        return canvasSide;
     }
 }
