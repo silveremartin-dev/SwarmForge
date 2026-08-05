@@ -184,29 +184,18 @@ public class SimulationSnapshot implements Serializable {
         if (pheromoneData != null && pheromoneData.length > 0) {
             try {
                 ByteArrayInputStream bais = new ByteArrayInputStream(pheromoneData);
-                ObjectInputStream ois = new ObjectInputStream(bais);
-                int count = ois.readInt();
+                DataInputStream dis = new DataInputStream(bais);
+                int version = dis.readInt();
+                int count = dis.readInt();
                 org.swarmforge.core.gpu.SparsePheromoneGrid grid = simulation.getPheromoneGrid();
 
                 if (grid != null) {
-                    // We assume grid is cleared by simulation.reset()
-                    // But reset() implementation we saw omitted clearing grid:
-                    // "// Pheromone grid reset omitted for now"
-                    // We should probably explicitly clear it here or rely on putEntry overwriting?
-                    // putEntry adds new entries. Old ones might persist?
-                    // To be safe, we should probably access "clear" on grid if available or
-                    // iterate.
-                    // But SparsePheromoneGrid doesn't have a public clear().
-                    // Let's assume Simulation.reset() will be updated or we just overwrite.
-                    // Actually, if we don't clear, we merge old and new. That might be bad.
-
-                    // Ideally: grid.clear()
-
                     for (int i = 0; i < count; i++) {
-                        long key = ois.readLong();
+                        long key = dis.readLong();
                         float[] vals = new float[org.swarmforge.core.gpu.SparsePheromoneGrid.PHEROMONE_TYPES];
-                        for (int t = 0; t < vals.length; t++)
-                            vals[t] = ois.readFloat();
+                        for (int t = 0; t < vals.length; t++) {
+                            vals[t] = dis.readFloat();
+                        }
                         grid.putEntry(key, vals);
                     }
                 }

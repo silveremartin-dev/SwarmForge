@@ -119,21 +119,21 @@ public class InterventionPanel extends BorderPane {
         antCountSpinner.setPrefWidth(100);
         antCountSpinner.setTooltip(new Tooltip("Nombre d'individus à injecter instantanément dans la colonie (1 à 1000)."));
 
-        // Position with explicit Metric Units [0 .. Terrarium Bounds]
+        // Position with explicit Metric Units [0 .. Terrarium Bounds (dynamique selon Éditeur de Monde, ex: 2.0m x 2.0m)]
         Label posLabel = new Label("Coordonnées (m) :");
         posLabel.setStyle("-fx-text-fill: white;");
         HBox posBox = new HBox(5);
-        posXField = new TextField("128.0");
+        posXField = new TextField("1.0");
         posXField.setPrefWidth(60);
-        posXField.setTooltip(new Tooltip("Position X en mètres [0.0 m ... Largeur du Terrarium]."));
+        posXField.setTooltip(new Tooltip("Position X en mètres [0.0 m ... Largeur définie dans l'Éditeur de Monde (ex: 2.0m)]."));
 
-        posYField = new TextField("128.0");
+        posYField = new TextField("1.0");
         posYField.setPrefWidth(60);
-        posYField.setTooltip(new Tooltip("Position Y en mètres [0.0 m ... Profondeur du Terrarium]."));
+        posYField.setTooltip(new Tooltip("Position Y en mètres [0.0 m ... Profondeur définie dans l'Éditeur de Monde (ex: 2.0m)]."));
 
-        posZField = new TextField("32.0");
+        posZField = new TextField("0.1");
         posZField.setPrefWidth(60);
-        posZField.setTooltip(new Tooltip("Altitude/Profondeur Z en mètres [0.0 m = Sol, >0 = Air/Feuillage]."));
+        posZField.setTooltip(new Tooltip("Altitude/Profondeur Z en mètres [0.0 m = Sol, 0.1m = Surface, >0.5m = Air]."));
 
         Label lblMetersUnit = new Label("m");
         lblMetersUnit.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");

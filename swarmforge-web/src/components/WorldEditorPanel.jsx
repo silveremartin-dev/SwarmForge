@@ -40,7 +40,11 @@ export default function WorldEditorPanel() {
     })
 
     const applyWorldToSimulation = () => {
-        showToast("🌍 Configuration du Monde appliquée au simulateur avec succès ! (" + scale.resolutionMm + "mm)", "success")
+        useSimulationStore.getState().updateEnvironment({
+            terrariumWidth: scale.sizeX,
+            terrariumDepth: scale.sizeY,
+        })
+        showToast(`🌍 Terrain (${scale.sizeX}m × ${scale.sizeY}m, res: ${scale.resolutionMm}mm) appliqué au simulateur !`, "success")
     }
 
     const styles = {

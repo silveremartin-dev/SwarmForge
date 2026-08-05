@@ -59,6 +59,7 @@ public class Individual implements java.io.Serializable, AgentView {
     // Personality & Genetics
     private Personality personality;
     private Genome genome;
+    private org.swarmforge.core.genetics.HaplodiploidGenome haplodiploidGenome;
     private org.swarmforge.core.species.Species species;
 
     // Memory optimization: Removed per-instance Random
@@ -620,6 +621,14 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public void setGenome(Genome g) {
         this.genome = g;
+    }
+
+    public org.swarmforge.core.genetics.HaplodiploidGenome getHaplodiploidGenome() {
+        return haplodiploidGenome;
+    }
+
+    public void setHaplodiploidGenome(org.swarmforge.core.genetics.HaplodiploidGenome g) {
+        this.haplodiploidGenome = g;
     }
 
     /**

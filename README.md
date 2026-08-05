@@ -43,6 +43,25 @@ Real-time 3D simulation with live agent inspection, bioluminescent pheromone tra
 
 ---
 
+## 📊 Simulation Performance & Scaling (100 to 1,000,000 Agents)
+
+SwarmForge includes a dedicated benchmark suite (`swarmforge-benchmarks`) measuring exact tick latency and Ticks Per Second (TPS) with **all physical, atmospheric, spatial, and cognitive subsystems active**:
+
+| Colony Size (Agents) | TPS (Ticks / sec) | Latency (ms/tick) | Target Cadence & Performance Tier |
+| :--- | :--- | :--- | :--- |
+| **100** | **312.69 TPS** | **3.20 ms** | Ultra High-Speed |
+| **1,000** | **401.93 TPS** | **2.49 ms** | Maximum Throughput |
+| **5,000** | **126.01 TPS** | **7.94 ms** | Real-Time Capable (>60 TPS Target) |
+| **10,000** | **66.02 TPS** | **15.15 ms** | Real-Time Capable (>60 TPS Target) |
+| **25,000** | **25.02 TPS** | **39.97 ms** | Interactive Speed (~25 TPS) |
+| **100,000** | **7.30 TPS** | **137.07 ms** | Large Macro Simulation |
+| **500,000** | **1.98 TPS** | **504.89 ms** | Supercolony Scale |
+| **1,000,000** | **0.95 TPS** | **1052.63 ms** | Megacolony Scale |
+
+> 📖 See [docs/BENCHMARKS.md](docs/BENCHMARKS.md) for full latency percentiles (min, p95, max) and hardware profiling setup.
+
+---
+
 ## 🏗️ Project Structure
 
 ```

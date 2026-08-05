@@ -471,20 +471,17 @@ public class SwarmForgeClient extends Application {
                 this.simulationInactiveOverlay = new VBox(15);
                 simulationInactiveOverlay.setAlignment(Pos.CENTER);
                 simulationInactiveOverlay.setStyle("-fx-background-color: rgba(15, 23, 42, 0.92); -fx-padding: 30; -fx-background-radius: 12; -fx-border-color: rgba(56, 189, 248, 0.3); -fx-border-width: 1; -fx-border-radius: 12;");
-                simulationInactiveOverlay.setMaxSize(550, 240);
+                simulationInactiveOverlay.setMaxSize(550, 200);
 
-                Label lblInactiveTitle = new Label("🎬 Vue 3D en Attente d'Activation");
+                Label lblInactiveTitle = new Label("🎬 Vue 3D en Attente de la Simulation");
                 lblInactiveTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 18px; -fx-font-weight: bold;");
 
-                Label lblInactiveDesc = new Label("La vue 3D reste en veille tant qu'aucune simulation n'est démarrée.\nCliquez ci-dessous ou sur '▶ Lancer Simulation' pour activer le rendu.");
+                Label lblInactiveDesc = new Label("La vue 3D s'active automatiquement lorsqu'une simulation est lancée.\nVeuillez configurer / peupler un monde puis cliquer sur '▶ Lancer la simulation' dans le Gestionnaire de Simulation.");
                 lblInactiveDesc.setWrapText(true);
                 lblInactiveDesc.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
                 lblInactiveDesc.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px;");
 
-                Button btnStartViewport = new Button("▶ Activer le Rendu 3D en Direct");
-                btnStartViewport.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 13px; -fx-padding: 10 20; -fx-background-radius: 8; -fx-cursor: hand;");
-
-                simulationInactiveOverlay.getChildren().addAll(lblInactiveTitle, lblInactiveDesc, btnStartViewport);
+                simulationInactiveOverlay.getChildren().addAll(lblInactiveTitle, lblInactiveDesc);
                 viewport3D.getChildren().add(simulationInactiveOverlay);
                 StackPane.setAlignment(simulationInactiveOverlay, Pos.CENTER);
 
@@ -498,6 +495,7 @@ public class SwarmForgeClient extends Application {
                 // Right Side Controls Sidebar (Glassmorphic Toolbar for Render Modes, Audio Mixer & Video Recording)
                 VBox sideControls = new VBox(10);
                 sideControls.setPrefWidth(260);
+                sideControls.setPadding(new Insets(10));
                 sideControls.getStyleClass().add("card-pane");
 
                 // 1. Controls Header
@@ -514,15 +512,6 @@ public class SwarmForgeClient extends Application {
 
                 // 2. Moved Controls from Simulation Manager: Date & Time, VCR Playback (Rewind/FastForward), Speed & Multipliers
                 Node playbackAndSpeedNode = (this.simControlPanel != null) ? this.simControlPanel.getPlaybackAndSpeedPanel() : new VBox();
-
-                btnStartViewport.setOnAction(e -> {
-                        if (simControlPanel != null) {
-                                simControlPanel.setPlaying(true);
-                        }
-                        if (simulationInactiveOverlay != null) {
-                                simulationInactiveOverlay.setVisible(false);
-                        }
-                });
 
                 if (simControlPanel != null) {
                         simControlPanel.setOnPlay(v -> {
@@ -676,7 +665,13 @@ public class SwarmForgeClient extends Application {
 
                 sideControls.getChildren().addAll(sideHeaderBox, playbackAndSpeedNode, new Separator(), mediaSection, renderSection, audioSection, cameraSection);
 
-                rootPane.setRight(sideControls);
+                ScrollPane sideScroll = new ScrollPane(sideControls);
+                sideScroll.setFitToWidth(true);
+                sideScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+                sideScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+                sideScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+
+                rootPane.setRight(sideScroll);
 
                 return rootPane;
         }

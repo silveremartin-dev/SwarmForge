@@ -241,13 +241,6 @@ public class SpeciesEditorPane extends VBox {
         tabSensors.setGraphic(new FontIcon(Feather.EYE));
 
         List<Tab> tabs = List.of(tabTaxonomy, tabQueens, tabStages, tabCastes, tabDiet, tabNest, tabSensors);
-        for (Tab t : tabs) {
-            Label tabLabel = new Label(t.getText());
-            tabLabel.getStyleClass().add("tab-label");
-            t.setText("");
-            t.setGraphic(new HBox(5, t.getGraphic(), tabLabel));
-        }
-
         mainTabPane.getTabs().addAll(tabs);
         VBox.setVgrow(mainTabPane, Priority.ALWAYS);
         return mainTabPane;

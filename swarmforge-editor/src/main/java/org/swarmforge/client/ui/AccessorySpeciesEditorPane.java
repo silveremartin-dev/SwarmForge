@@ -95,11 +95,10 @@ public class AccessorySpeciesEditorPane extends VBox {
     public AccessorySpeciesEditorPane() {
         setSpacing(12);
         setPadding(new Insets(15));
-        getStyleClass().add("card-pane");
 
         // Header Title
         headerLabel = new Label(i18n.get("accessory.title"));
-        headerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        headerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
 
         // Toolbar
         HBox topToolbar = createToolbar();
@@ -184,7 +183,7 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         Label title = new Label(i18n.get("accessory.card.taxonomy.title"));
         title.getStyleClass().add("card-title");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
 
         GridPane grid = new GridPane();
         grid.setHgap(12);
@@ -298,7 +297,7 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         Label title = new Label(i18n.get("accessory.card.seasonal.title"));
         title.getStyleClass().add("card-title");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
 
         hemisphereCombo = new ComboBox<>(FXCollections.observableArrayList(
                 "Hémisphère Nord (Printemps = Mars-Mai, Hiver = Déc-Fév)",
@@ -329,7 +328,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         );
 
         seasonHintLabel = new Label(i18n.get("accessory.season.hint"));
-        seasonHintLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
+        seasonHintLabel.setStyle("-fx-font-size: 11px; -fx-wrap-text: true;");
 
         card.getChildren().addAll(title, slidersBox, new Separator(), seasonHintLabel);
         return card;
@@ -365,7 +364,7 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         Label title = new Label(i18n.get("accessory.card.predators.title"));
         title.getStyleClass().add("card-title");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
 
         GridPane grid = new GridPane();
         grid.setHgap(12);
@@ -423,7 +422,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         mainBox.setPadding(new Insets(15));
 
         Label helpTitle = new Label(i18n.get("accessory.help.title"));
-        helpTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        helpTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
 
         helpSearchField = new TextField();
         helpSearchField.setPromptText(i18n.get("accessory.help.search_prompt"));
@@ -499,7 +498,7 @@ public class AccessorySpeciesEditorPane extends VBox {
     private void addHelpEntry(String title, String description) {
         Label tLabel = new Label("• " + title + " : ");
         tLabel.getStyleClass().add("help-entry-title");
-        tLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #0284c7; -fx-min-width: 220px;");
+        tLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: -fx-accent; -fx-min-width: 220px;");
         tLabel.setWrapText(true);
 
         Label dLabel = new Label(description);
@@ -545,7 +544,7 @@ public class AccessorySpeciesEditorPane extends VBox {
 
     private Label createLabelKey(String keyText, String keyTooltip) {
         Label l = new Label(i18n.get(keyText));
-        l.setStyle("-fx-font-weight: bold; -fx-text-fill: #e4e4e7;");
+        l.setStyle("-fx-font-weight: bold;");
         l.setWrapText(true);
         l.setMinHeight(Region.USE_PREF_SIZE);
         l.setMinWidth(Region.USE_PREF_SIZE);

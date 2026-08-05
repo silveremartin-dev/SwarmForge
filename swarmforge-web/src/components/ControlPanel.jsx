@@ -15,7 +15,11 @@ export default function ControlPanel() {
         pause,
         setSpeed,
         resetSimulation,
+        simulationParams,
+        setSimulationParam,
     } = useSimulationStore()
+
+    const [paramCategoryTab, setParamCategoryTab] = useState('pheromones')
 
     const {
         worldPresets,
@@ -449,6 +453,143 @@ export default function ControlPanel() {
                     {hasPendingChanges ? <RefreshCw size={15} className="animate-spin" /> : <CheckCircle size={15} />}
                     <span>{hasPendingChanges ? '⚡ Appliquer les Presets & Seed' : '✓ Presets Appliqués'}</span>
                 </button>
+            </div>
+
+            {/* SECTION 2: CATEGORIZED SIMULATION PARAMETERS WITH EXPLICIT SCALES & UNITS */}
+            <div style={styles.selectGroup}>
+                <div style={styles.sectionHeader}>
+                    <span>🧪 Paramètres & Échelles de Simulation</span>
+                </div>
+
+                {/* Parameter Sub-Category Tabs */}
+                <div style={{ display: 'flex', gap: 2, background: 'rgba(0,0,0,0.3)', padding: 3, borderRadius: 6, marginBottom: 8 }}>
+                    {[
+                        { id: 'pheromones', label: '🧪 Phéromones' },
+                        { id: 'resources', label: '🍎 Ressources' },
+                        { id: 'species', label: '👥 Espèces' },
+                        { id: 'economics', label: '💼 Économie' },
+                        { id: 'glossary', label: '📖 Glossaire' },
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setParamCategoryTab(tab.id)}
+                            style={{
+                                flex: 1,
+                                padding: '4px 2px',
+                                fontSize: 9,
+                                fontWeight: 700,
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                background: paramCategoryTab === tab.id ? '#0284c7' : 'transparent',
+                                color: paramCategoryTab === tab.id ? '#fff' : '#94a3b8',
+                                transition: 'all 0.15s ease',
+                            }}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Render Parameters for Selected Category */}
+                {paramCategoryTab !== 'glossary' && simulationParams && simulationParams[paramCategoryTab] && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {Object.entries(simulationParams[paramCategoryTab]).map(([key, param]) => (
+                            <div key={key} style={{ background: 'rgba(255,255,255,0.02)', padding: 6, borderRadius: 6, border: '1px solid rgba(255,255,255,0.04)' }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: '#cbd5e1', display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                                    <span>{param.label}</span>
+                                    <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+                                        {param.value} {param.unit}
+                                    </span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min={param.min}
+                                    max={param.max}
+                                    step={param.min < 1 ? 0.01 : 1}
+                                    value={param.value}
+                                    onChange={(e) => setSimulationParam(paramCategoryTab, key, e.target.value)}
+                                    style={styles.slider}
+                                />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#64748b', marginTop: 2 }}>
+                                    <span>Min: {param.min} {param.unit}</span>
+                                    <span>Max: {param.max} {param.unit}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* CONSOLIDATED SCIENTIFIC GLOSSARY (INLINE, ALPHABETICALLY SORTED A-Z) */}
+                {paramCategoryTab === 'glossary' && (
+                    <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 4 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', borderBottom: '1px solid rgba(56, 189, 248, 0.2)', paddingBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>📖 Glossaire Scientifique Unifié</span>
+                            <span style={{ fontSize: 9, color: '#a78bfa', background: 'rgba(167, 139, 250, 0.15)', padding: '2px 6px', borderRadius: 4 }}>Ordre Alphabétique (A - Z)</span>
+                        </div>
+
+                        {/* A-Z Sorted List of Scientific & Simulation Terms */}
+                        {[
+                            {
+                                term: "🏛️ Bio-Architecture & Terrarium (m, mm)",
+                                color: "#38bdf8",
+                                definition: "Géométrie des galeries sous-terraines et découpe des 3 couches géologiques du terrarium (couche arable, substrat d'argile, roche mère, nappe phréatique à -3.1m)."
+                            },
+                            {
+                                term: "📐 Correspondance Métrique SI (s, m, mW)",
+                                color: "#38bdf8",
+                                definition: "1 Tick de simulation = 0.1s de temps réel. 1 Mètre linéaire = 1000 millimètres sous-millimétriques de résolution spatiale du terrain."
+                            },
+                            {
+                                term: "👥 Démographie & Castes (œufs/jour, jours)",
+                                color: "#fbbf24",
+                                definition: "Taux de ponte réel de la reine fondatrice (œufs/jour) et espérance de vie naturelle des castes d'ouvrières et de soldats (en jours)."
+                            },
+                            {
+                                term: "🧠 Moteur BDI (Beliefs-Desires-Intentions)",
+                                color: "#a855f7",
+                                definition: "Modèle d'agent cognitif autonome basé sur l'articulation dynamique des croyances sur l'environnement, des désirs de la colonie et des intentions de travail."
+                            },
+                            {
+                                term: "💼 Métabolisme & Puissance (mW)",
+                                color: "#f87171",
+                                definition: "Puissance métabolique de repos consommée par individu (en milliwatts) pondérée par le rendement de récolte énergétique (%)."
+                            },
+                            {
+                                term: "🧪 Phéromones & Diffusion (%/s, m)",
+                                color: "#c084fc",
+                                definition: "Décroissance temporelle (% par seconde) et rayon d'évaporation spatiale (mètres) des signaux d'attraction ou d'alarme de la colonie."
+                            },
+                            {
+                                term: "🐜 Polyéthisme & Spécialisation",
+                                color: "#fbbf24",
+                                definition: "Division du travail au sein de la supercolonie selon l'âge (polyéthisme d'âge) ou la morphologie/caste (polyéthisme morphologique)."
+                            },
+                            {
+                                term: "🍎 Ressources & Trophobiose (g/min, mg/h)",
+                                color: "#4ade80",
+                                definition: "Débit massique de création de nourriture (sucres, graines) et taux de sécrétion de miellat par les insectes trophobiontes (pucerons)."
+                            },
+                            {
+                                term: "🌀 Stigmergie & Auto-Organisation",
+                                color: "#38bdf8",
+                                definition: "Mécanisme d'auto-organisation où les traces laissées dans l'environnement (dépôts phéromonaux, tunnels) guident et stimulent les actions ultérieures."
+                            },
+                            {
+                                term: "📈 Vol de Lévy & Marche Brownienne",
+                                color: "#f59e0b",
+                                definition: "Modèles stochastiques de recherche de nourriture combinant petits pas exploratoires locaux et grands sauts d'exploration à longue distance."
+                            }
+                        ].map((item, idx) => (
+                            <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', padding: 6, borderRadius: 6, fontSize: 10 }}>
+                                <span style={{ color: item.color, fontWeight: 700 }}>{item.term} :</span>
+                                <div style={{ color: '#94a3b8', marginTop: 2, lineHeight: 1.35 }}>
+                                    {item.definition}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* SECTION 2: SIMULATION EXECUTION CONTROLS (START / PAUSE / STOP) */}

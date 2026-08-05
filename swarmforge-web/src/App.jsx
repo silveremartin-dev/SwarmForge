@@ -17,6 +17,8 @@ import ViewportToolbar from './components/ViewportToolbar'
 import WeatherControlWidget from './components/WeatherControlWidget'
 import ToastContainer from './components/ToastContainer'
 
+import GodModePanel from './components/GodModePanel'
+
 // Placeholder for ErrorBoundary
 const ErrorBoundary = ({ children }) => {
     return <>{children}</>
@@ -65,6 +67,16 @@ export default function App() {
                         Temps: {environment.timeOfDay} | Lum: {environment.lightLevel.toFixed(2)} | {environment.season} ({environment.temperature?.toFixed(1)}°C)
                     </div>
                 </div>
+
+                {!running && tick === 0 && (
+                    <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 120, background: 'rgba(15, 23, 42, 0.92)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 12, padding: '24px 32px', textAlign: 'center', color: '#fff', boxShadow: '0 20px 40px rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)', maxWidth: 480 }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 800, color: '#38bdf8', marginBottom: 8, marginTop: 0 }}>🎬 Vue 3D en Attente de Simulation</h3>
+                        <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, margin: 0 }}>
+                            La vue 3D s'active automatiquement dès le démarrage de la simulation.<br/>
+                            Veuillez configurer / peupler un monde puis cliquer sur <strong style={{ color: '#10b981' }}>"▶ LANCER SIMULATION"</strong> dans le Gestionnaire de Simulation.
+                        </p>
+                    </div>
+                )}
 
                 <VRButton />
                 <Canvas shadows camera={{ position: [20, 20, 20], fov: 50 }} gl={{ preserveDrawingBuffer: true }}>
@@ -127,6 +139,9 @@ export default function App() {
                     <ControlPanel />
                     <InspectorPanel />
                     <WeatherControlWidget />
+                    <div style={{ position: 'absolute', top: 125, left: 20, width: 330, zIndex: 90, maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+                        <GodModePanel />
+                    </div>
                 </>
             )}
         </div>

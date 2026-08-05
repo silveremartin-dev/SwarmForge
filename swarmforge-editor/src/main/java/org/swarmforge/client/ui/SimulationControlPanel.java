@@ -396,8 +396,8 @@ public class SimulationControlPanel extends VBox {
 
     private Button createButton(String text, String tooltip) {
         Button btn = new Button(text);
-        btn.setStyle("-fx-font-size: 16; -fx-background-color: #333; -fx-text-fill: white; " +
-                "-fx-background-radius: 5; -fx-min-width: 40; -fx-min-height: 35;");
+        btn.setStyle("-fx-font-size: 14px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #333; -fx-text-fill: white; " +
+                "-fx-background-radius: 5; -fx-min-width: 48px; -fx-min-height: 35px; -fx-padding: 4px 8px;");
         btn.setTooltip(new Tooltip(tooltip));
         btn.setOnMouseEntered(e -> btn.setStyle(btn.getStyle().replace("#333", "#555")));
         btn.setOnMouseExited(e -> btn.setStyle(btn.getStyle().replace("#555", "#333")));

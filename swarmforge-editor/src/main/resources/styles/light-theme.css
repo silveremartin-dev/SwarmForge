@@ -78,7 +78,8 @@
 }
 
 .tab-pane .tab-header-area .tab:hover {
-    -fx-background-color: #cbd5e1;
+    -fx-background-color: #bae6fd;
+    -fx-border-color: #0284c7;
 }
 
 .tab-pane .tab-header-area .tab:selected {
@@ -87,14 +88,14 @@
     -fx-border-width: 3px 1px 0px 1px;
 }
 
-.tab-pane .tab-label {
-    -fx-text-fill: #64748b;
+.tab-pane .tab-label, .tab-pane .tab .label {
+    -fx-text-fill: #334155;
     -fx-font-weight: bold;
     -fx-font-size: 13px;
 }
 
-.tab-pane .tab:selected .tab-label {
-    -fx-text-fill: #0f172a;
+.tab-pane .tab:selected .tab-label, .tab-pane .tab:selected .label {
+    -fx-text-fill: #0284c7;
     -fx-font-weight: bold;
 }
 
@@ -111,11 +112,24 @@
 .tab-pane .tab-pane .tab-header-area .tab {
     -fx-background-color: #f1f5f9;
     -fx-border-color: #cbd5e1;
+    -fx-border-width: 1px 1px 0px 1px;
+}
+
+.tab-pane .tab-pane .tab-header-area .tab:hover {
+    -fx-background-color: #e0f2fe;
+    -fx-border-color: #0284c7;
 }
 
 .tab-pane .tab-pane .tab-header-area .tab:selected {
     -fx-background-color: #ffffff;
     -fx-border-color: #0284c7 #cbd5e1 #ffffff #cbd5e1;
+    -fx-border-width: 3px 1px 0px 1px;
+}
+
+.tab-pane .tab-pane .tab-header-area .tab:selected .tab-label,
+.tab-pane .tab-pane .tab-header-area .tab:selected .label {
+    -fx-text-fill: #0284c7;
+    -fx-font-weight: bold;
 }
 
 /* Controls - Buttons & Inputs */

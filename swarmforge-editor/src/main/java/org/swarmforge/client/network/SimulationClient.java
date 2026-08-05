@@ -8,6 +8,7 @@ package org.swarmforge.client.network;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import org.swarmforge.protocol.grpc.*;
 
@@ -116,8 +117,16 @@ public class SimulationClient {
 
             @Override
             public void onError(Throwable t) {
-                LOG.warning("Stream error: " + t.getMessage());
+                boolean wasConnected = connected;
                 connected = false;
+                if (wasConnected) {
+                    Status status = Status.fromThrowable(t);
+                    if (status.getCode() == Status.Code.UNAVAILABLE || status.getCode() == Status.Code.CANCELLED) {
+                        LOG.info("Simulation stream disconnected (" + status.getCode() + ")");
+                    } else {
+                        LOG.warning("Stream error (" + status.getCode() + "): " + t.getMessage());
+                    }
+                }
             }
 
             @Override

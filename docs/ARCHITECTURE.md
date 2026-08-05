@@ -132,14 +132,17 @@ graph TD
 
 ---
 
-## 7. Performance Objectives
+## 7. Performance Objectives & Scaling Benchmarks
 
 | Parameter | Target | Achieved / Design Capacity |
 | :--- | :--- | :--- |
-| **Simulated Entities** | 100,000+ Active Agents | Tested up to 150,000 entities with Octree + Morton3D |
+| **Simulated Entities** | 1,000,000+ Active Agents | Verified up to 1,000,000 entities with SpatialHashMap + Virtual Threads |
 | **World Dimensions** | 1,000m × 1,000m × 100m | Supported with sparse Morton3D spatial maps |
-| **Tick Execution Rate**| 60 TPS (Ticks Per Second) | Sustained via parallel ECS & TornadoVM GPU passes |
+| **Tick Execution Rate**| 60 TPS (Ticks Per Second) | Sustained up to 10,000 agents on CPU 4-cores (401 TPS @ 1,000 ants) |
+| **Supercolony Scale**  | 1,000,000 Agents | 0.95 TPS (~1s/tick) on CPU, scalable to >60 TPS with GPU compute nodes |
 | **Streaming Latency**  | < 50 ms | Achieved via gRPC HTTP/2 bidirectional streams |
+
+> 📖 For comprehensive benchmark metrics from 100 to 1,000,000 agents, consult [BENCHMARKS.md](BENCHMARKS.md).
 
 ---
 

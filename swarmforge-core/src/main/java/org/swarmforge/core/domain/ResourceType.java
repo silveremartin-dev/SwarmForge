@@ -22,5 +22,6 @@ public enum ResourceType {
     WOOD_CELLULOSE,
     SAP,
     AMBROSIA_FUNGUS,
-    HONEYDEW_PRODUCER
+    HONEYDEW_PRODUCER,
+    PROPOLIS_RESIN
 }
