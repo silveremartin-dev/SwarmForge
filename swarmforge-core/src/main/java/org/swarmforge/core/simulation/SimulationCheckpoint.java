@@ -6,184 +6,84 @@
  */
 package org.swarmforge.core.simulation;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import org.swarmforge.core.event.GodModeIntervention;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.Instant;
-import java.util.*;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Full simulation state checkpoint for save/resume functionality.
+ * Encapsulates a simulation checkpoint containing both the physical state snapshot
+ * and the recorded God Mode intervention journal up to that tick.
+ * Guarantees full deterministic reproducibility of custom simulation runs.
  *
  * @author Gemini AI Assistant
+ * @author Silvère Martin-Michiellot
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class SimulationCheckpoint implements Serializable {
 
     private static final long serialVersionUID = 1L;
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            .enable(SerializationFeature.INDENT_OUTPUT);
 
-    // Metadata
-    private String id;
-    private Instant createdAt;
-    private long tickNumber;
-    private String description;
+    private final String id;
+    private final String name;
+    private final long tick;
+    private final long timestamp;
+    private final SimulationSnapshot snapshot;
+    private final List<GodModeIntervention> interventionsRecorded;
 
-    // World State
-    private int worldWidth, worldHeight, worldDepth;
-    private byte[] terrariumData; // Compressed cell data
-
-    // Colony States
-    private List<ColonyState> colonies = new ArrayList<>();
-
-    // Weather/Time State
-
-    // Weather/Time State
-
-    /**
-     * Create checkpoint from current simulation state.
-     */
-    public static SimulationCheckpoint capture(Simulation simulation, String description) {
-        SimulationCheckpoint cp = new SimulationCheckpoint();
-        cp.id = UUID.randomUUID().toString();
-        cp.createdAt = Instant.now();
-        cp.tickNumber = simulation.getTickCount();
-        cp.description = description;
-
-        var terrarium = simulation.getTerrarium();
-        cp.worldWidth = terrarium.getWidth();
-        cp.worldHeight = terrarium.getHeight();
-        cp.worldDepth = terrarium.getDepth();
-        cp.terrariumData = serializeTerrarium(terrarium);
-
-        // Capture colony states
-        for (var colony : simulation.getColonies()) {
-            ColonyState cs = new ColonyState();
-            cs.id = colony.getId().toString();
-            cs.speciesName = colony.getSpeciesName();
-            cs.nestX = colony.getNestX();
-            cs.nestY = colony.getNestY();
-            cs.nestZ = colony.getNestZ();
-            cs.foodStored = colony.getFoodStored();
-            cs.waterStored = colony.getWaterStored();
-            cs.population = colony.getPopulation();
-            cp.colonies.add(cs);
-        }
-
-        // Weather state
-        // (Weather state not currently persisted in checkpoint)
-
-        return cp;
+    public SimulationCheckpoint(String name, long tick, SimulationSnapshot snapshot, List<GodModeIntervention> interventionsRecorded) {
+        this.id = java.util.UUID.randomUUID().toString();
+        this.name = name != null && !name.trim().isEmpty() ? name : "Checkpoint @ Tick #" + tick;
+        this.tick = tick;
+        this.timestamp = System.currentTimeMillis();
+        this.snapshot = snapshot;
+        this.interventionsRecorded = interventionsRecorded != null ? new ArrayList<>(interventionsRecorded) : new ArrayList<>();
     }
-
-    /**
-     * Save checkpoint to file (gzipped JSON).
-     */
-    public void saveToFile(Path path) throws IOException {
-        try (OutputStream os = Files.newOutputStream(path);
-                GZIPOutputStream gzip = new GZIPOutputStream(os)) {
-            MAPPER.writeValue(gzip, this);
-        }
-    }
-
-    /**
-     * Load checkpoint from file.
-     */
-    public static SimulationCheckpoint loadFromFile(Path path) throws IOException {
-        try (InputStream is = Files.newInputStream(path);
-                GZIPInputStream gzip = new GZIPInputStream(is)) {
-            return MAPPER.readValue(gzip, SimulationCheckpoint.class);
-        }
-    }
-
-    /**
-     * Restore simulation state from this checkpoint.
-     */
-    public void restore(Simulation simulation) {
-        simulation.reset(tickNumber);
-
-        // Restore terrarium
-        deserializeTerrarium(terrariumData, simulation.getTerrarium());
-
-        // Note: Full colony restoration requires more complex logic
-        // This is a simplified version that restores metadata only
-    }
-
-    private static byte[] serializeTerrarium(org.swarmforge.core.domain.Terrarium terrarium) {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                GZIPOutputStream gzip = new GZIPOutputStream(baos);
-                ObjectOutputStream oos = new ObjectOutputStream(gzip)) {
-
-            // Export cells as map (only non-air cells)
-            Map<String, Object> data = new HashMap<>();
-            data.put("width", terrarium.getWidth());
-            data.put("height", terrarium.getHeight());
-            data.put("depth", terrarium.getDepth());
-            // Additional cell data would go here...
-
-            oos.writeObject(data);
-            gzip.finish();
-            return baos.toByteArray();
-        } catch (IOException e) {
-            return new byte[0];
-        }
-    }
-
-    private static void deserializeTerrarium(byte[] data, org.swarmforge.core.domain.Terrarium terrarium) {
-        if (data == null || data.length == 0)
-            return;
-        // Restore logic would parse the data and set cells
-    }
-
-    // === Getters ===
 
     public String getId() {
         return id;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
+    public String getName() {
+        return name;
     }
 
-    public long getTickNumber() {
-        return tickNumber;
+    public long getTick() {
+        return tick;
     }
 
-    public String getDescription() {
-        return description;
+    public long getTimestamp() {
+        return timestamp;
     }
 
-    public int getWorldWidth() {
-        return worldWidth;
+    public SimulationSnapshot getSnapshot() {
+        return snapshot;
     }
 
-    public int getWorldHeight() {
-        return worldHeight;
+    public List<GodModeIntervention> getInterventionsRecorded() {
+        return new ArrayList<>(interventionsRecorded);
     }
 
-    public int getWorldDepth() {
-        return worldDepth;
+    public byte[] toCompressedBytes() throws java.io.IOException {
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        try (java.util.zip.GZIPOutputStream gzos = new java.util.zip.GZIPOutputStream(baos);
+             java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(gzos)) {
+            oos.writeObject(this);
+            oos.flush();
+        }
+        return baos.toByteArray();
     }
 
-    public List<ColonyState> getColonies() {
-        return colonies;
+    public static SimulationCheckpoint fromCompressedBytes(byte[] compressedData) throws java.io.IOException, ClassNotFoundException {
+        java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(compressedData);
+        try (java.util.zip.GZIPInputStream gzis = new java.util.zip.GZIPInputStream(bais);
+             java.io.ObjectInputStream ois = new java.io.ObjectInputStream(gzis)) {
+            return (SimulationCheckpoint) ois.readObject();
+        }
     }
 
-    /**
-     * Colony state snapshot.
-     */
-    public static class ColonyState implements Serializable {
-        public String id;
-        public String speciesName;
-        public float nestX, nestY, nestZ;
-        public float foodStored, waterStored;
-        public int population;
+    @Override
+    public String toString() {
+        return String.format("%s (Tick #%d, %d Interventions)", name, tick, interventionsRecorded.size());
     }
 }

@@ -103,6 +103,41 @@ public class ThemeManager {
         }
     }
 
+    /**
+     * Applies the current graphic theme (dark/light) to a JavaFX Dialog or Alert.
+     */
+    public void applyTheme(javafx.scene.control.Dialog<?> dialog) {
+        if (dialog == null) return;
+        javafx.scene.control.DialogPane dialogPane = dialog.getDialogPane();
+        if (dialogPane != null) {
+            Theme theme = currentTheme.get();
+            dialogPane.getStylesheets().clear();
+            URL cssUrl = getClass().getResource(theme.getCssPath());
+            if (cssUrl != null) {
+                dialogPane.getStylesheets().add(cssUrl.toExternalForm());
+            }
+            dialogPane.getStyleClass().add("custom-dialog");
+        }
+    }
+
+    /**
+     * Creates and returns a themed Alert dialog.
+     */
+    public static javafx.scene.control.Alert createAlert(javafx.scene.control.Alert.AlertType alertType, String contentText) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(alertType, contentText);
+        getInstance().applyTheme(alert);
+        return alert;
+    }
+
+    /**
+     * Creates and returns a themed TextInputDialog.
+     */
+    public static javafx.scene.control.TextInputDialog createTextInputDialog(String defaultValue) {
+        javafx.scene.control.TextInputDialog dialog = new javafx.scene.control.TextInputDialog(defaultValue);
+        getInstance().applyTheme(dialog);
+        return dialog;
+    }
+
     private void updateAllScenes() {
         registeredScenes.removeIf(scene -> scene.getWindow() == null && !registeredScenes.contains(scene));
         for (Scene scene : registeredScenes) {

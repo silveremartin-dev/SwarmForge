@@ -237,6 +237,30 @@ public class SimulationSnapshot implements Serializable {
     }
 
     /**
+    * Serialize to compressed bytes (GZIP).
+    */
+    public byte[] toCompressedBytes() throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (java.util.zip.GZIPOutputStream gzos = new java.util.zip.GZIPOutputStream(baos);
+             ObjectOutputStream oos = new ObjectOutputStream(gzos)) {
+            oos.writeObject(this);
+            oos.flush();
+        }
+        return baos.toByteArray();
+    }
+
+    /**
+    * Deserialize from compressed bytes (GZIP).
+    */
+    public static SimulationSnapshot fromCompressedBytes(byte[] compressedData) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream bais = new ByteArrayInputStream(compressedData);
+        try (java.util.zip.GZIPInputStream gzis = new java.util.zip.GZIPInputStream(bais);
+             ObjectInputStream ois = new ObjectInputStream(gzis)) {
+            return (SimulationSnapshot) ois.readObject();
+        }
+    }
+
+    /**
      * Serialize to bytes.
      */
     public byte[] toBytes() throws IOException {

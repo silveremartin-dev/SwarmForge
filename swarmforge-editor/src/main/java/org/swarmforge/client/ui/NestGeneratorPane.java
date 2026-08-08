@@ -19,6 +19,8 @@ import javafx.scene.text.Font;
 import java.io.File;
 import java.util.*;
 import java.util.function.Consumer;
+import org.kordamp.ikonli.feather.Feather;
+import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.NotificationOverlay;
 
@@ -58,12 +60,15 @@ public class NestGeneratorPane extends BorderPane {
     private ComboBox<String> matSelect;
     private Slider workerSizeSlider;
     private Slider depthSlider, tunnelWidthSlider, branchingSlider;
+    private Spinner<Integer> initialFoodSpinner;
     private Label lblTotalChambersValue;
     private final Map<String, Spinner<Integer>> chamberSpinners = new LinkedHashMap<>();
 
     // Presets
     private ComboBox<String> presetsCombo;
     private final NestPresetManager presetMgr = new NestPresetManager();
+    private boolean isDirty = false;
+    private String lastSelectedPreset = null;
 
     // Model
     private GeneratedNest nest;
@@ -102,24 +107,53 @@ public class NestGeneratorPane extends BorderPane {
         Label lp = new Label();
         lp.textProperty().bind(i18n.createStringBinding("preset.label"));
         lp.setStyle("-fx-font-weight: bold;");
+        lp.setGraphic(new FontIcon(Feather.SLIDERS));
 
         presetsCombo = new ComboBox<>();
+        presetsCombo.setEditable(true);
         presetsCombo.setPrefWidth(210);
         presetsCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
         presetsCombo.setTooltip(new Tooltip("Sélectionnez une configuration pré-définie ou enregistrée (Atta, Apis, Bombus, Vespula, Macrotermes, Crematogaster, Temnothorax, Eciton)."));
         refreshPresetsCombo();
         presetsCombo.setOnAction(e -> {
+            if (isUpdatingSpeciesCombo) return;
             String s = presetsCombo.getValue();
-            if (s != null && presetMgr.contains(s)) applyCfg(presetMgr.get(s));
+            if (s == null || s.equals(lastSelectedPreset)) return;
+
+            if (isDirty) {
+                Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Attention : Vous avez des modifications non enregistrées sur la configuration du nid.\n\nVoulez-vous vraiment charger le preset '" + s + "' et abandonner vos modifications ?"
+                );
+                alert.setTitle("Modifications non enregistrées");
+                alert.setHeaderText("Changement de preset de nid");
+                java.util.Optional<ButtonType> res = alert.showAndWait();
+                if (res.isEmpty() || res.get() != ButtonType.OK) {
+                    isUpdatingSpeciesCombo = true;
+                    try {
+                        presetsCombo.setValue(lastSelectedPreset);
+                    } finally {
+                        isUpdatingSpeciesCombo = false;
+                    }
+                    return;
+                }
+            }
+
+            if (presetMgr.contains(s)) {
+                lastSelectedPreset = s;
+                applyCfg(presetMgr.get(s));
+            }
         });
 
         Button bAdd = new Button();
+        bAdd.setGraphic(new FontIcon(Feather.SAVE));
         bAdd.textProperty().bind(i18n.createStringBinding("preset.save"));
         bAdd.getStyleClass().add("btn-secondary");
         bAdd.setTooltip(new Tooltip("Enregistrer les paramètres actuels de l'architecture du nid comme nouveau preset."));
         bAdd.setOnAction(e -> doAddPreset());
 
         Button bDel = new Button();
+        bDel.setGraphic(new FontIcon(Feather.TRASH_2));
         bDel.textProperty().bind(i18n.createStringBinding("preset.delete"));
         bDel.getStyleClass().add("btn-danger");
         bDel.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
@@ -127,23 +161,20 @@ public class NestGeneratorPane extends BorderPane {
         bDel.setOnAction(e -> doDeletePreset());
 
         Button bExp = new Button();
+        bExp.setGraphic(new FontIcon(Feather.DOWNLOAD));
         bExp.textProperty().bind(i18n.createStringBinding("preset.export"));
         bExp.getStyleClass().add("btn-secondary");
         bExp.setTooltip(new Tooltip("Exporter l'architecture et la géométrie 3D du nid au format JSON."));
         bExp.setOnAction(e -> doExport());
 
         Button bImp = new Button();
+        bImp.setGraphic(new FontIcon(Feather.UPLOAD));
         bImp.textProperty().bind(i18n.createStringBinding("preset.import"));
         bImp.getStyleClass().add("btn-secondary");
         bImp.setTooltip(new Tooltip("Importer un fichier JSON de configuration de nid."));
         bImp.setOnAction(e -> doImport());
 
-        Button bHelp = new Button("📖 Aide & Glossaire");
-        bHelp.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
-        bHelp.setTooltip(new Tooltip("Ouvrir le glossaire pédagogique des architectures de nids, matériaux et structures sociales."));
-        bHelp.setOnAction(e -> GlossaryDialog.show("nest"));
-
-        r.getChildren().addAll(t, sp, bHelp, new Separator(Orientation.VERTICAL), lp, presetsCombo, bAdd, bDel,
+        r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd, bDel,
             new Separator(Orientation.VERTICAL), bExp, bImp);
         v.getChildren().addAll(r, new Separator());
         return v;
@@ -398,8 +429,18 @@ public class NestGeneratorPane extends BorderPane {
 
         updateTotalChambers();
 
-        VBox cdBlock = new VBox(5, cdTitle, new Separator(),
-            totalChambersBox, grid);
+        Label lblInitialFood = new Label("🍖 Stock Nourriture Initial du Nid :");
+        lblInitialFood.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        lblInitialFood.setTooltip(new Tooltip("Stock de nourriture déposé initialement dans le nid au démarrage de la simulation."));
+        initialFoodSpinner = new Spinner<>(0, 50000, 500, 50);
+        initialFoodSpinner.setEditable(true);
+        initialFoodSpinner.setPrefWidth(218);
+        initialFoodSpinner.setTooltip(new Tooltip("Quantité initiale de nourriture (en unités/calories) stockée dans les loges de nourriture du nid."));
+        initialFoodSpinner.valueProperty().addListener((o, a, b) -> onManualParameterChanged());
+
+        VBox cdBlock = new VBox(6, cdTitle, new Separator(),
+            totalChambersBox, grid,
+            new Separator(), lblInitialFood, initialFoodSpinner);
         cdBlock.getStyleClass().add("card-pane");
 
         cfg.getChildren().addAll(speciesBlock, archBlock, cdBlock);
@@ -663,14 +704,37 @@ public class NestGeneratorPane extends BorderPane {
     }
 
     private void doAddPreset() {
-        TextInputDialog d = new TextInputDialog(presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom Nest Preset");
+        String defaultName = (presetsCombo.getEditor() != null && !presetsCombo.getEditor().getText().isBlank())
+                ? presetsCombo.getEditor().getText().trim()
+                : (presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom Nest Preset");
+        TextInputDialog d = org.swarmforge.client.util.ThemeManager.createTextInputDialog(defaultName);
         d.setTitle("Save Preset"); d.setHeaderText("Nom du preset :"); d.setContentText("Nom :");
         d.showAndWait().ifPresent(name -> {
             if (name == null || name.isBlank()) return;
-            presetMgr.save(name, getConfiguration());
-            refreshPresetsCombo();
-            presetsCombo.setValue(name);
-            new Alert(Alert.AlertType.INFORMATION, "Preset \"" + name + "\" sauvegardé.").show();
+            String clean = name.trim();
+            if (presetMgr.contains(clean)) {
+                Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Le preset de nid '" + clean + "' existe déjà.\n\nVoulez-vous le remplacer par la configuration actuelle ?"
+                );
+                confirmAlert.setTitle("Remplacer le Preset Existant");
+                confirmAlert.setHeaderText("Confirmation de remplacement");
+                java.util.Optional<ButtonType> res = confirmAlert.showAndWait();
+                if (res.isEmpty() || res.get() != ButtonType.OK) {
+                    return;
+                }
+            }
+            presetMgr.save(clean, getConfiguration());
+            isUpdatingSpeciesCombo = true;
+            try {
+                refreshPresetsCombo();
+                presetsCombo.setValue(clean);
+            } finally {
+                isUpdatingSpeciesCombo = false;
+            }
+            lastSelectedPreset = clean;
+            isDirty = false;
+            NotificationOverlay.show(this, "Preset \"" + clean + "\" sauvegardé.", NotificationOverlay.NotificationType.SUCCESS);
         });
     }
 
@@ -683,6 +747,7 @@ public class NestGeneratorPane extends BorderPane {
 
     private void onManualParameterChanged() {
         if (isUpdatingSpeciesCombo) return;
+        isDirty = true;
         isUpdatingSpeciesCombo = true;
         try {
             if (speciesModelCombo != null) {
@@ -690,6 +755,9 @@ public class NestGeneratorPane extends BorderPane {
             }
             if (speciesStatusLabel != null) {
                 speciesStatusLabel.setText("Paramètres du nid modifiés (Nid sur mesure).");
+            }
+            if (presetsCombo != null && presetsCombo.getSelectionModel().getSelectedItem() != null) {
+                presetsCombo.getSelectionModel().clearSelection();
             }
         } finally {
             isUpdatingSpeciesCombo = false;
@@ -712,6 +780,9 @@ public class NestGeneratorPane extends BorderPane {
                     nestStageCombo.getSelectionModel().select(stg);
                 }
             }
+            if (c.containsKey("initialFood") && initialFoodSpinner != null) {
+                initialFoodSpinner.getValueFactory().setValue(((Number) c.get("initialFood")).intValue());
+            }
             if (c.containsKey("chamberDistribution")) {
                 @SuppressWarnings("unchecked")
                 Map<String,Object> dist = (Map<String,Object>) c.get("chamberDistribution");
@@ -720,6 +791,7 @@ public class NestGeneratorPane extends BorderPane {
             updateTotalChambers();
         } finally {
             isUpdatingSpeciesCombo = false;
+            isDirty = false;
         }
         regen();
         repaint();
@@ -973,6 +1045,7 @@ public class NestGeneratorPane extends BorderPane {
         c.put("tunnelWidth",  (int) tunnelWidthSlider.getValue());
         c.put("branching",    (int) branchingSlider.getValue());
         c.put("nestStageIndex", nestStageCombo != null ? nestStageCombo.getSelectionModel().getSelectedIndex() : 2);
+        c.put("initialFood", initialFoodSpinner != null ? initialFoodSpinner.getValue() : 500);
         Map<String,Integer> dist = new LinkedHashMap<>();
         chamberSpinners.forEach((k,v) -> dist.put(k, v.getValue()));
         c.put("chamberDistribution", dist);

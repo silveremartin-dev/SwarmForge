@@ -10,10 +10,13 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.RadialGradient;
@@ -43,6 +46,7 @@ public class MinimapOverlay extends VBox {
     private final GraphicsContext gcTop;
     private final Canvas canvasSide;
     private final GraphicsContext gcSide;
+    private final VBox mapContentBox;
 
     private int worldWidth = 100;
     private int worldHeight = 100;
@@ -61,11 +65,17 @@ public class MinimapOverlay extends VBox {
     private static final int GRID_RES = 32;
 
     private boolean syncViews = true;
+    private boolean isCollapsed = false;
 
     public MinimapOverlay(int width) {
         setSpacing(4);
         setPadding(new Insets(6));
         setStyle("-fx-background-color: rgba(15, 23, 42, 0.95); -fx-border-color: #0284c7; -fx-border-width: 1.5; -fx-border-radius: 6; -fx-background-radius: 6;");
+
+        // CRITICAL FIX: Restrict Max Size so StackPane does NOT stretch VBox over full screen
+        setPrefWidth(width + 16);
+        setMaxWidth(width + 20);
+        setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
         // Canvases matching World Editor ratio
         int topH = (int) (width * 0.7);
@@ -95,10 +105,24 @@ public class MinimapOverlay extends VBox {
         chkSync.setStyle("-fx-text-fill: #00d4ff; -fx-font-size: 9px; -fx-font-weight: bold;");
         chkSync.selectedProperty().addListener((o, a, b) -> this.syncViews = b);
 
-        HBox headerBox = new HBox(6, lblHeader, chkSync);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        mapContentBox = new VBox(4, lblTop, canvasTop, lblSide, canvasSide);
+
+        Button btnCollapse = new Button("−");
+        btnCollapse.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 0 4; -fx-cursor: hand;");
+        btnCollapse.setOnAction(e -> {
+            isCollapsed = !isCollapsed;
+            mapContentBox.setVisible(!isCollapsed);
+            mapContentBox.setManaged(!isCollapsed);
+            btnCollapse.setText(isCollapsed ? "+" : "−");
+        });
+
+        HBox headerBox = new HBox(4, lblHeader, chkSync, spacer, btnCollapse);
         headerBox.setAlignment(Pos.CENTER_LEFT);
 
-        getChildren().addAll(headerBox, lblTop, canvasTop, lblSide, canvasSide);
+        getChildren().addAll(headerBox, mapContentBox);
 
         // Click handlers
         canvasTop.addEventHandler(MouseEvent.MOUSE_CLICKED, e -> {

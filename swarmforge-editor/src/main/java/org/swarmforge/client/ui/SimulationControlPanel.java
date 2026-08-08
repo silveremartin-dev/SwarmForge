@@ -9,21 +9,31 @@ package org.swarmforge.client.ui;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.Separator;
-import javafx.scene.control.Slider;
-import javafx.scene.control.Tooltip;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import org.kordamp.ikonli.feather.Feather;
+import org.kordamp.ikonli.javafx.FontIcon;
+import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
+import org.swarmforge.core.species.CustomSpecies;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * Simulation control panel with playback, speed, and timeline controls.
- * Provides VCR-like controls for simulation management.
+ * Advanced Simulation Control and Scenario Manager Panel.
+ * <p>
+ * Structured strict scenario ordering:
+ * 1. Preset du Monde (Biotope / World Preset)
+ * 2. Preset Météo (Weather & Climate Profile)
+ * 3. Dynamic Multi-Species & Ecosystem Scenario Configuration List:
+ *    - Choice of species to add
+ *    - Filtered nest types per species
+ *    - Nest placement strategy & Pre-generation options
+ *    - Biologically filtered accessory species (Preys, Predators, Commensals, Pathogens)
+ *    - Demographics (Workers, Soldiers, Queens) and Caste AI Engines per species
+ *    - Initial population counts & Renewal / Replenishment balance strategies for accessories
  *
  * @author Gemini AI Assistant
  * @author Silvère Martin-Michiellot
@@ -40,33 +50,43 @@ public class SimulationControlPanel extends VBox {
 
     private final Slider speedSlider;
     private Slider timelineSlider;
-    private final javafx.scene.control.ComboBox<String> stepSizeCombo;
+    private final ComboBox<String> stepSizeCombo;
 
     private final Label lblSpeed;
     private Label lblTick;
     private Label lblTime;
     private final Label lblDateTime;
 
-    private final javafx.scene.control.ComboBox<String> comboMeta = new javafx.scene.control.ComboBox<>();
-    private final javafx.scene.control.ComboBox<String> comboWorld = new javafx.scene.control.ComboBox<>();
-    private final javafx.scene.control.ComboBox<String> comboSpecies = new javafx.scene.control.ComboBox<>();
-    private final javafx.scene.control.ComboBox<String> comboNest = new javafx.scene.control.ComboBox<>();
-    private final javafx.scene.control.ComboBox<String> comboPreyPred = new javafx.scene.control.ComboBox<>();
-    private final javafx.scene.control.ComboBox<String> comboWeather = new javafx.scene.control.ComboBox<>();
-    private final javafx.scene.control.TextField txtSeed = new javafx.scene.control.TextField("12345");
-
+    // Preset Managers
     private final SpeciesPresetManager speciesPresetManager = new SpeciesPresetManager();
     private final WorldPresetManager worldPresetManager = new WorldPresetManager();
     private final WeatherPresetManager weatherPresetManager = new WeatherPresetManager();
     private final NestPresetManager nestPresetManager = new NestPresetManager();
+    private final ScenarioPresetManager scenarioPresetManager = new ScenarioPresetManager();
+
+    // 1. World & 2. Weather Combos
+    private final ComboBox<String> comboMeta = new ComboBox<>();
+    private final ComboBox<String> comboWorld = new ComboBox<>();
+    private final ComboBox<String> comboWeather = new ComboBox<>();
+    private final TextField txtSeed = new TextField("12345");
+    private final TextArea areaDescription = new TextArea();
+
+    // Termination Limits
+    private final Spinner<Long> maxTicksSpinner = new Spinner<>(1000L, 1_000_000L, 100_000L, 5000L);
+    private final Spinner<Integer> minPopStopSpinner = new Spinner<>(0, 1000, 0, 5);
+
+    // 3. Multi-Species Scenario Config List
+    private final ComboBox<String> comboAvailableSpecies = new ComboBox<>();
+    private final VBox speciesListContainer = new VBox(10);
+    private final List<SpeciesConfigCard> speciesCardList = new ArrayList<>();
 
     private boolean isPlaying = false;
     private float currentSpeed = 1.0f;
     private long currentTick = 0;
     private long maxTick = 0;
-    private float simulationStepSeconds = 0.016f; // Default 1/60s step
-    private java.time.LocalDateTime startDateTime = java.time.LocalDateTime.of(2026, 3, 20, 8, 0, 0);
-    private java.time.LocalDateTime currentDateTime = startDateTime;
+    private float simulationStepSeconds = 0.0166f;
+    private LocalDateTime startDateTime = LocalDateTime.of(2026, 3, 20, 8, 0, 0);
+    private LocalDateTime currentDateTime = startDateTime;
 
     // Callbacks
     private Consumer<Void> onPlay;
@@ -76,202 +96,242 @@ public class SimulationControlPanel extends VBox {
     private Consumer<Long> onSeek;
     private Consumer<Integer> onRewind;
     private Consumer<Float> onStepChange;
+    private Consumer<String> onCreateCheckpoint;
+    private Consumer<org.swarmforge.core.simulation.SimulationCheckpoint> onRestoreCheckpoint;
+    private Consumer<Long> onApplyPresets;
 
-    /** Get current tick for external state queries. */
-    public long getCurrentTick() {
-        return currentTick;
-    }
-
-    /** Get max tick for external state queries. */
-    public long getMaxTick() {
-        return maxTick;
-    }
-
+    private final ComboBox<org.swarmforge.core.simulation.SimulationCheckpoint> comboCheckpoints = new ComboBox<>();
     private final VBox playbackAndSpeedPanel = new VBox(8);
 
-    public VBox getPlaybackAndSpeedPanel() {
-        return playbackAndSpeedPanel;
-    }
+    private ProgressBar inlineProgressBar;
+    private Label inlineProgressLabel;
+    private HBox applyProgressBox;
 
     public SimulationControlPanel() {
-        setSpacing(8);
+        setSpacing(10);
         setPadding(new Insets(10));
         setStyle("-fx-border-color: #3f3f46; -fx-border-width: 1 0 0 0;");
 
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
 
-        // === Row 0: Presets Selection (Positioned ABOVE Simulation Controls) ===
-        VBox presetBox = new VBox(6);
-        presetBox.getStyleClass().add("card-pane");
+        // Top Meta-Scenario Header Card
+        VBox scenarioCard = new VBox(10);
+        scenarioCard.getStyleClass().add("card-pane");
+        scenarioCard.setStyle("-fx-background-color: rgba(15, 23, 42, 0.6); -fx-padding: 12; -fx-background-radius: 8; -fx-border-color: rgba(56, 189, 248, 0.2); -fx-border-radius: 8;");
 
         HBox headerRow = new HBox(8);
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label lblPresetHeader = new Label("🔖 Presets du Scénario & Écosystème (Synchronisés avec les Éditeurs)");
-        lblPresetHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
-        lblPresetHeader.setTooltip(new Tooltip("Configuration globale du scénario scientifique et chargement dynamique des presets d'espèces, mondes, nids et météo."));
+        Label lblPresetHeader = new Label("🎬 Configuration du Scénario & Écosystème Multi-Espèces");
+        lblPresetHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
+        lblPresetHeader.setTooltip(new Tooltip("Définition scientifique du scénario, sélection du biotope, climat et assemblage dynamique des espèces."));
 
         Region spHeader = new Region();
         HBox.setHgrow(spHeader, Priority.ALWAYS);
 
-        Button bHelp = new Button("📖 Aide & Glossaire");
-        bHelp.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
-        bHelp.setTooltip(new Tooltip("Ouvrir le glossaire pédagogique de la simulation et des comportements d'essaim."));
-        bHelp.setOnAction(e -> GlossaryDialog.show("sim"));
+        Button bSaveScenario = new Button("Sauvegarder");
+        bSaveScenario.setGraphic(new FontIcon(Feather.SAVE));
+        bSaveScenario.getStyleClass().add("btn-secondary");
+        bSaveScenario.setTooltip(new Tooltip("Enregistrer le scénario actuel."));
+        bSaveScenario.setOnAction(e -> handleSaveScenario());
 
-        headerRow.getChildren().addAll(lblPresetHeader, spHeader, bHelp);
+        Button bDeleteScenario = new Button("Supprimer");
+        bDeleteScenario.setGraphic(new FontIcon(Feather.TRASH_2));
+        bDeleteScenario.getStyleClass().add("btn-danger");
+        bDeleteScenario.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
+        bDeleteScenario.setTooltip(new Tooltip("Supprimer le scénario sélectionné."));
+        bDeleteScenario.setOnAction(e -> handleDeleteScenario());
+
+        Button bExportScenario = new Button("Exporter...");
+        bExportScenario.setGraphic(new FontIcon(Feather.DOWNLOAD));
+        bExportScenario.getStyleClass().add("btn-secondary");
+        bExportScenario.setTooltip(new Tooltip("Exporter le scénario en JSON."));
+        bExportScenario.setOnAction(e -> handleExportScenario());
+
+        Button bImportScenario = new Button("Importer...");
+        bImportScenario.setGraphic(new FontIcon(Feather.UPLOAD));
+        bImportScenario.getStyleClass().add("btn-secondary");
+        bImportScenario.setTooltip(new Tooltip("Importer un fichier JSON de scénario."));
+        bImportScenario.setOnAction(e -> handleImportScenario());
+
+        headerRow.getChildren().addAll(lblPresetHeader, spHeader, bSaveScenario, bDeleteScenario, bExportScenario, bImportScenario);
 
         HBox metaRow = new HBox(8);
         metaRow.setAlignment(Pos.CENTER_LEFT);
-        Label lblMeta = new Label("★ Scénario (Méta-Preset) :");
+        Label lblMeta = new Label("★ Preset Global de Scénario :");
         lblMeta.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
-        
-        comboMeta.getItems().addAll(
-            "🌿 Écosystème Amazonien (Atta sexdens & Champignon)",
-            "🏜 Steppe Aride Granivore (Messor barbatus & Graminées)",
-            "⚔️ Guerre Territoriale (Solenopsis invicta vs Lasius niger)",
-            "🐝 Rucher Arboricole (Apis mellifera & Butinage)",
-            "🏛️ Cathédrale de Termites (Reticulitermes & Macrotermes)"
-        );
+
+        comboMeta.getItems().setAll(scenarioPresetManager.getPresetNames());
+        if (comboMeta.getItems().isEmpty()) {
+            comboMeta.getItems().addAll(
+                "🌿 Écosystème Amazonien (Atta sexdens & Champignon)",
+                "🏜 Steppe Aride Granivore (Messor barbatus & Graminées)",
+                "⚔️ Guerre Territoriale (Solenopsis invicta vs Lasius niger)",
+                "🐝 Rucher Arboricole (Apis mellifera & Butinage)",
+                "🏛️ Cathédrale de Termites (Reticulitermes & Macrotermes)"
+            );
+        }
         comboMeta.getSelectionModel().selectFirst();
+        comboMeta.setEditable(true);
         comboMeta.setMaxWidth(Double.MAX_VALUE);
-        comboMeta.setTooltip(new Tooltip("Scénarios pré-configurés cohérents assemblant espèce, nid, biotope et météo adaptés."));
+        comboMeta.setTooltip(new Tooltip("Sélectionnez ou créez un preset global assemblant biotope, climat et faune."));
         HBox.setHgrow(comboMeta, Priority.ALWAYS);
 
         metaRow.getChildren().addAll(lblMeta, comboMeta);
 
-        // Populate individual combo boxes from their respective Preset Managers!
+        VBox descBox = new VBox(4);
+        Label lblDesc = new Label("📝 Description Scientifique du Scénario :");
+        lblDesc.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-weight: bold;");
+        areaDescription.setPrefRowCount(2);
+        areaDescription.setPromptText("Description et objectifs d'expérimentation du scénario...");
+        areaDescription.setWrapText(true);
+        areaDescription.setStyle("-fx-font-size: 11px; -fx-control-inner-background: #0f172a; -fx-text-fill: #e2e8f0;");
+        descBox.getChildren().addAll(lblDesc, areaDescription);
+
+        // Populate World and Weather combos
         comboWorld.getItems().setAll(worldPresetManager.names());
         if (!comboWorld.getItems().isEmpty()) comboWorld.getSelectionModel().selectFirst();
-        comboWorld.setTooltip(new Tooltip("Type de biotope/terrain chargé depuis WorldPresetManager."));
-
-        comboSpecies.getItems().setAll(speciesPresetManager.getPresetNames());
-        if (!comboSpecies.getItems().isEmpty()) comboSpecies.getSelectionModel().selectFirst();
-        comboSpecies.setTooltip(new Tooltip("Espèce principale issue de SpeciesPresetManager (contient toutes les castes et paramètres biologiques)."));
-
-        comboNest.getItems().setAll(nestPresetManager.names());
-        if (!comboNest.getItems().isEmpty()) comboNest.getSelectionModel().selectFirst();
-        comboNest.setTooltip(new Tooltip("Architecture de nid issue de NestPresetManager."));
-
-        comboPreyPred.getItems().addAll(
-            "Pucerons & Fourmilion",
-            "Incursion Guêpe Solitaire & Araignée",
-            "Termites & Guêpe Chasseresse",
-            "Ressources Abondantes (Sans prédateurs)"
-        );
-        comboPreyPred.getSelectionModel().selectFirst();
-        comboPreyPred.setTooltip(new Tooltip("Faune auxiliaire et interactions proies/prédateurs."));
 
         comboWeather.getItems().setAll(weatherPresetManager.names());
         if (!comboWeather.getItems().isEmpty()) comboWeather.getSelectionModel().selectFirst();
-        comboWeather.setTooltip(new Tooltip("Profil climatique issu de WeatherPresetManager."));
 
-        // Setup listener for Meta-Presets to auto-select coherent options
-        comboMeta.setOnAction(e -> applyMetaPreset(comboMeta.getValue()));
+        // 1 & 2 Section: World & Weather Presets (Top order)
+        GridPane gridWorldWeather = new GridPane();
+        gridWorldWeather.setHgap(10); gridWorldWeather.setVgap(8);
 
-        // Grid for individual presets
-        javafx.scene.layout.GridPane gridPresets = new javafx.scene.layout.GridPane();
-        gridPresets.setHgap(8);
-        gridPresets.setVgap(4);
+        Label lbl1World = new Label("1. 🌍 Preset de Monde (Biotope) :");
+        lbl1World.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lbl1World.setTooltip(new Tooltip("Type de biotope et de relief 3D chargé depuis WorldPresetManager."));
 
-        // Master Seed Row (Deterministic Replay Integrity)
-        HBox seedRow = new HBox(8);
-        seedRow.setAlignment(Pos.CENTER_LEFT);
-        Label lblSeed = new Label("🎲 Graine Aléatoire (Seed Replay) :");
-        lblSeed.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
-        txtSeed.setPrefWidth(90);
-        txtSeed.setStyle("-fx-background-color: #0f172a; -fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-border-color: #334155;");
-        txtSeed.setTooltip(new Tooltip("Graine pseudo-aléatoire garantissant la réplicabilité exacte de la simulation."));
+        Label lbl2Weather = new Label("2. 🌤️ Preset Météo & Climat :");
+        lbl2Weather.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lbl2Weather.setTooltip(new Tooltip("Profil climatique et saisonnier issu de WeatherPresetManager."));
 
-        Button btnRandSeed = new Button("🎲 Nouveau Seed");
-        btnRandSeed.setStyle("-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 10px;");
-        btnRandSeed.setTooltip(new Tooltip("Génère une nouvelle graine aléatoire."));
-        btnRandSeed.setOnAction(e -> txtSeed.setText(String.valueOf((long)(Math.random() * 900000 + 100000))));
+        comboWorld.setMaxWidth(Double.MAX_VALUE);
+        comboWeather.setMaxWidth(Double.MAX_VALUE);
+        GridPane.setHgrow(comboWorld, Priority.ALWAYS);
+        GridPane.setHgrow(comboWeather, Priority.ALWAYS);
 
-        seedRow.getChildren().addAll(lblSeed, txtSeed, btnRandSeed);
+        gridWorldWeather.add(lbl1World, 0, 0); gridWorldWeather.add(comboWorld, 1, 0);
+        gridWorldWeather.add(lbl2Weather, 0, 1); gridWorldWeather.add(comboWeather, 1, 1);
 
-        // Apply Button
-        Button btnApplyPresets = new Button("⚡ APPLIQUER À LA SIMULATION");
-        btnApplyPresets.setMaxWidth(Double.MAX_VALUE);
-        btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 12; -fx-background-radius: 5;");
-        btnApplyPresets.setTooltip(new Tooltip("Réinitialise la simulation en appliquant l'ensemble des presets et la graine déterministe."));
-        btnApplyPresets.setOnAction(e -> {
-            if (isPlaying) {
-                isPlaying = false;
-                updateButtonStates();
-                if (onPause != null) onPause.accept(null);
+        // 3. Multi-Species Scenario Section Header & Controls
+        VBox section3Container = new VBox(8);
+        section3Container.setStyle("-fx-background-color: rgba(30, 41, 59, 0.6); -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: rgba(56, 189, 248, 0.15); -fx-border-radius: 6;");
+
+        HBox speciesAddBar = new HBox(8);
+        speciesAddBar.setAlignment(Pos.CENTER_LEFT);
+
+        Label lbl3SpeciesHeader = new Label("3. 🐜 Espèces & Écosystème du Scénario :");
+        lbl3SpeciesHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 12px;");
+
+        comboAvailableSpecies.getItems().setAll(speciesPresetManager.getPresetNames());
+        if (!comboAvailableSpecies.getItems().isEmpty()) {
+            comboAvailableSpecies.getSelectionModel().selectFirst();
+        }
+        comboAvailableSpecies.setPrefWidth(260);
+
+        Button btnAddSpeciesToScenario = new Button("➕ Ajouter cette espèce au scénario");
+        btnAddSpeciesToScenario.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+        btnAddSpeciesToScenario.setTooltip(new Tooltip("Ajoute une nouvelle espèce active au scénario avec son nid filtré, ses accessoires filtrés et sa démographie."));
+        btnAddSpeciesToScenario.setOnAction(e -> {
+            String selected = comboAvailableSpecies.getValue();
+            if (selected != null && !selected.isEmpty()) {
+                addSpeciesCard(selected);
             }
-            long seed = getMasterSeed();
-            if (onApplyPresets != null) {
-                onApplyPresets.accept(seed);
-            }
-            btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 12; -fx-background-radius: 5;");
-            new javafx.scene.control.Alert(
-                javafx.scene.control.Alert.AlertType.INFORMATION,
-                "Presets et Master Seed (#" + seed + ") appliqués ! Le monde, les colonies et le biotope ont été reconfigurés et réinitialisés avec succès."
-            ).show();
         });
 
-        // Preset change listener that pauses simulation if running
+        Button btnAutoPreset = new Button("✨ Preset Recommandé");
+        btnAutoPreset.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+        btnAutoPreset.setTooltip(new Tooltip("Applique la configuration recomandée d'espèces et proies pour le scénario courant."));
+        btnAutoPreset.setOnAction(e -> applyMetaPreset(comboMeta.getValue()));
+
+        speciesAddBar.getChildren().addAll(lbl3SpeciesHeader, comboAvailableSpecies, btnAddSpeciesToScenario, btnAutoPreset);
+
+        // Add initial default species card (Lasius niger)
+        addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
+
+        section3Container.getChildren().addAll(speciesAddBar, speciesListContainer);
+
+        // Listener on Meta-Preset selection
+        comboMeta.setOnAction(e -> applyMetaPreset(comboMeta.getValue()));
+
+        // Interrupt running simulation if presets change
         Runnable interruptIfRunning = () -> {
             if (isPlaying) {
                 isPlaying = false;
                 updateButtonStates();
                 if (onPause != null) onPause.accept(null);
             }
-            btnApplyPresets.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 6 12; -fx-background-radius: 5;");
         };
-
         comboWorld.setOnAction(e -> interruptIfRunning.run());
-        comboSpecies.setOnAction(e -> interruptIfRunning.run());
-        comboNest.setOnAction(e -> interruptIfRunning.run());
-        comboPreyPred.setOnAction(e -> interruptIfRunning.run());
         comboWeather.setOnAction(e -> interruptIfRunning.run());
 
-        javafx.scene.control.ComboBox<String> comboNestPlacement = new javafx.scene.control.ComboBox<>();
-        comboNestPlacement.getItems().addAll(
-            "📍 Positionnement optimal (Centre carte hors d'eau)",
-            "👑 Fondation Reine Seule Claustrale (Sol Vierge)",
-            "🎲 Positionnement aléatoire autour du centre (Hors eau)",
-            "🏛️ Nids multiples répartis (Cohabitation / Guerre)"
-        );
-        comboNestPlacement.getSelectionModel().selectFirst();
-        comboNestPlacement.setTooltip(new Tooltip("Strategie d'implantation initiale du nid dans le relief 3D."));
-        comboNestPlacement.setOnAction(e -> interruptIfRunning.run());
+        // Checkpoints & TitledPanes
+        TitledPane checkpointsPane = buildCheckpointsPane();
 
-        Label l1 = new Label("🌍 Monde :"); l1.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
-        Label l2 = new Label("🐜 Espèce(s) :"); l2.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
-        Label l3 = new Label("🏰 Nid Type :"); l3.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
-        Label l4 = new Label("📍 Placement Nid :"); l4.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
-        Label l5 = new Label("🦗 Proies/Prédateurs :"); l5.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
-        Label l6 = new Label("⛅ Météo/Climat :"); l6.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+        // Seed & Limits Row
+        HBox seedAndLimitsRow = new HBox(12);
+        seedAndLimitsRow.setAlignment(Pos.CENTER_LEFT);
 
-        gridPresets.add(l1, 0, 0); gridPresets.add(comboWorld, 1, 0);
-        gridPresets.add(l2, 2, 0); gridPresets.add(comboSpecies, 3, 0);
-        gridPresets.add(l3, 0, 1); gridPresets.add(comboNest, 1, 1);
-        gridPresets.add(l4, 2, 1); gridPresets.add(comboNestPlacement, 3, 1);
-        gridPresets.add(l5, 0, 2); gridPresets.add(comboPreyPred, 1, 2);
-        gridPresets.add(l6, 2, 2); gridPresets.add(comboWeather, 3, 2);
+        Label lblSeed = new Label("🎲 Graine Aléatoire (Seed) :");
+        lblSeed.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
+        txtSeed.setPrefWidth(90);
+        txtSeed.setStyle("-fx-background-color: #0f172a; -fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-border-color: #334155;");
 
-        presetBox.getChildren().addAll(headerRow, metaRow, gridPresets, seedRow, btnApplyPresets);
+        Button btnRandSeed = new Button("🎲 Nouveau Seed");
+        btnRandSeed.setStyle("-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 10px;");
+        btnRandSeed.setOnAction(e -> txtSeed.setText(String.valueOf((long)(Math.random() * 900000 + 100000))));
 
-        // === Row 1: Date/Time Display & Real-Time Status ===
+        Label lblMaxTicks = new Label("⏱️ Durée Max (Ticks) :");
+        lblMaxTicks.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-weight: bold;");
+        maxTicksSpinner.setPrefWidth(100);
+        maxTicksSpinner.setEditable(true);
+
+        Label lblMinPop = new Label("🛑 Seuil Arrêt Pop. Min :");
+        lblMinPop.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-weight: bold;");
+        minPopStopSpinner.setPrefWidth(70);
+        minPopStopSpinner.setEditable(true);
+
+        seedAndLimitsRow.getChildren().addAll(lblSeed, txtSeed, btnRandSeed, new Separator(Orientation.VERTICAL), lblMaxTicks, maxTicksSpinner, new Separator(Orientation.VERTICAL), lblMinPop, minPopStopSpinner);
+
+        // Apply & Start Button with Inline Progress Bar
+        Button btnApplyPresets = new Button("⚡ APPLIQUER ET LANCER LA SIMULATION");
+        btnApplyPresets.setMaxWidth(Double.MAX_VALUE);
+        btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5;");
+        btnApplyPresets.setTooltip(new Tooltip("Réinitialise la simulation en appliquant le scénario multi-espèces, les nids filtrés, l'écosystème et la graine aléatoire."));
+
+        inlineProgressBar = new ProgressBar(0);
+        inlineProgressBar.setMaxWidth(Double.MAX_VALUE);
+        inlineProgressBar.setPrefHeight(6);
+        inlineProgressBar.setStyle("-fx-accent: #38bdf8;");
+
+        inlineProgressLabel = new Label("Initialisation du scénario...");
+        inlineProgressLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 10px;");
+
+        applyProgressBox = new HBox(8, inlineProgressBar, inlineProgressLabel);
+        applyProgressBox.setAlignment(Pos.CENTER_LEFT);
+        applyProgressBox.setVisible(false);
+        applyProgressBox.setManaged(false);
+
+        btnApplyPresets.setOnAction(e -> handleApplyScenario());
+
+        scenarioCard.getChildren().addAll(headerRow, metaRow, descBox, new Separator(), gridWorldWeather, new Separator(), section3Container, checkpointsPane, seedAndLimitsRow, btnApplyPresets, applyProgressBox);
+
+        // Date/Time Row & Step Size
         HBox dateTimeRow = new HBox(8);
         dateTimeRow.setAlignment(Pos.CENTER);
 
         lblDateTime = new Label("📅 Date & Heure : 2026-03-20 08:00:00");
         lblDateTime.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
-        lblDateTime.setTooltip(new Tooltip("Temps biologique simulé calculé à partir du nombre de ticks et de la durée du pas dt."));
 
         Label lblStepTitle = new Label("Pas de Simulation :");
         lblStepTitle.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
 
-        stepSizeCombo = new javafx.scene.control.ComboBox<>();
+        stepSizeCombo = new ComboBox<>();
         stepSizeCombo.getItems().addAll("16.6 ms (60 Hz)", "50 ms (20 Hz)", "100 ms (10 Hz)", "1.0 s", "5.0 s");
         stepSizeCombo.getSelectionModel().selectFirst();
         stepSizeCombo.setStyle("-fx-font-size: 10px;");
-        Tooltip stepTt = new Tooltip("Durée du pas de simulation dt (Intervalle de temps physique/biologique calculé par itération/tick).");
-        Tooltip.install(stepSizeCombo, stepTt);
         stepSizeCombo.setOnAction(e -> {
             int idx = stepSizeCombo.getSelectionModel().getSelectedIndex();
             switch (idx) {
@@ -286,7 +346,7 @@ public class SimulationControlPanel extends VBox {
 
         dateTimeRow.getChildren().addAll(lblDateTime, new Separator(Orientation.VERTICAL), lblStepTitle, stepSizeCombo);
 
-        // === Row 2: Playback Controls (Rewind, StepBack, Play, Pause, Stop, StepForward, FastForward) ===
+        // Playback Controls Row
         HBox playbackRow = new HBox(4);
         playbackRow.setAlignment(Pos.CENTER);
 
@@ -301,36 +361,29 @@ public class SimulationControlPanel extends VBox {
         btnPlay.setOnAction(e -> {
             isPlaying = true;
             updateButtonStates();
-            if (onPlay != null)
-                onPlay.accept(null);
+            if (onPlay != null) onPlay.accept(null);
         });
 
         btnPause.setOnAction(e -> {
             isPlaying = false;
             updateButtonStates();
-            if (onPause != null)
-                onPause.accept(null);
+            if (onPause != null) onPause.accept(null);
         });
 
         btnStop.setOnAction(e -> {
             isPlaying = false;
             updateButtonStates();
-            if (onStop != null)
-                onStop.accept(null);
+            if (onStop != null) onStop.accept(null);
         });
 
         btnRewind.setOnAction(e -> {
-            if (onRewind != null)
-                onRewind.accept(10);
+            if (onRewind != null) onRewind.accept(10);
         });
 
-        btnFastForward.setOnAction(e -> {
-            setSpeed(Math.min(10f, currentSpeed + 1f));
-        });
+        btnFastForward.setOnAction(e -> setSpeed(Math.min(10f, currentSpeed + 1f)));
 
         btnStepBack.setOnAction(e -> {
-            if (onRewind != null)
-                onRewind.accept(1);
+            if (onRewind != null) onRewind.accept(1);
         });
 
         btnStepForward.setOnAction(e -> {
@@ -341,15 +394,13 @@ public class SimulationControlPanel extends VBox {
             }
         });
 
-        playbackRow.getChildren().addAll(
-                btnRewind, btnStepBack, btnPlay, btnPause, btnStop, btnStepForward, btnFastForward);
+        playbackRow.getChildren().addAll(btnRewind, btnStepBack, btnPlay, btnPause, btnStop, btnStepForward, btnFastForward);
 
-        // === Row 3: Speed Control & Multipliers ===
+        // Speed Row
         HBox speedRow = new HBox(6);
         speedRow.setAlignment(Pos.CENTER);
 
-        Label lblSpeedLabel = new Label();
-        lblSpeedLabel.textProperty().bind(i18n.createStringBinding("control.speed"));
+        Label lblSpeedLabel = new Label("Vitesse :");
         lblSpeedLabel.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
 
         lblSpeed = new Label("1.0x");
@@ -363,23 +414,15 @@ public class SimulationControlPanel extends VBox {
         speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             currentSpeed = newVal.floatValue();
             lblSpeed.setText(String.format("%.1fx", currentSpeed));
-            if (onSpeedChange != null)
-                onSpeedChange.accept(currentSpeed);
+            if (onSpeedChange != null) onSpeedChange.accept(currentSpeed);
         });
 
-        Button btnNormal = createSmallButton("1x");
-        btnNormal.setOnAction(e -> setSpeed(1.0f));
+        Button btnNormal = createSmallButton("1x"); btnNormal.setOnAction(e -> setSpeed(1.0f));
+        Button btnDouble = createSmallButton("2x"); btnDouble.setOnAction(e -> setSpeed(2.0f));
+        Button btnQuad = createSmallButton("4x"); btnQuad.setOnAction(e -> setSpeed(4.0f));
 
-        Button btnDouble = createSmallButton("2x");
-        btnDouble.setOnAction(e -> setSpeed(2.0f));
+        speedRow.getChildren().addAll(lblSpeedLabel, speedSlider, lblSpeed, btnNormal, btnDouble, btnQuad);
 
-        Button btnQuad = createSmallButton("4x");
-        btnQuad.setOnAction(e -> setSpeed(4.0f));
-
-        speedRow.getChildren().addAll(
-                lblSpeedLabel, speedSlider, lblSpeed, btnNormal, btnDouble, btnQuad);
-
-        // Populate playbackAndSpeedPanel (to be mounted on Visual View tab above "Lancer Simulation")
         playbackAndSpeedPanel.setPadding(new Insets(8));
         playbackAndSpeedPanel.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.08); -fx-border-radius: 6;");
 
@@ -388,26 +431,114 @@ public class SimulationControlPanel extends VBox {
 
         playbackAndSpeedPanel.getChildren().addAll(lblPlaybackHeader, dateTimeRow, playbackRow, speedRow);
 
-        // Main layout of SimulationControlPanel contains the Preset and Scenario configuration card
-        getChildren().addAll(presetBox);
-
+        getChildren().add(scenarioCard);
         updateButtonStates();
+    }
+
+    private void addSpeciesCard(String speciesName) {
+        // Prevent duplicate cards for the exact same species instance unless user wants
+        SpeciesConfigCard card = new SpeciesConfigCard(speciesName, () -> {
+            speciesCardList.removeIf(c -> c.getSpeciesName().equals(speciesName));
+            refreshSpeciesListContainer();
+        });
+        speciesCardList.add(card);
+        refreshSpeciesListContainer();
+    }
+
+    private void refreshSpeciesListContainer() {
+        speciesListContainer.getChildren().clear();
+        for (SpeciesConfigCard card : speciesCardList) {
+            speciesListContainer.getChildren().add(card.getCardPane());
+        }
+    }
+
+    private void handleApplyScenario() {
+        if (isPlaying) {
+            isPlaying = false;
+            updateButtonStates();
+            if (onPause != null) onPause.accept(null);
+        }
+        long seed = getMasterSeed();
+
+        // Show inline loading bar right under the button
+        if (applyProgressBox != null) {
+            applyProgressBox.setVisible(true);
+            applyProgressBox.setManaged(true);
+            inlineProgressBar.setProgress(0.2);
+            inlineProgressLabel.setText("Initialisation du scénario '" + comboMeta.getValue() + "'...");
+        }
+
+        if (onApplyPresets != null) {
+            onApplyPresets.accept(seed);
+        }
+
+        org.swarmforge.core.event.EventBus.getInstance().publish(
+            org.swarmforge.core.event.SimulationEvent.obtain(
+                org.swarmforge.core.event.SimulationEvent.EventType.SIMULATION_STARTED,
+                org.swarmforge.core.event.SimulationEvent.Severity.INFO,
+                0,
+                "🌍 Scénario '" + comboMeta.getValue() + "' appliqué (" + speciesCardList.size() + " espèces configurées)",
+                null
+            )
+        );
+
+        // Complete inline progress and hide after a brief moment
+        if (applyProgressBox != null) {
+            inlineProgressBar.setProgress(1.0);
+            inlineProgressLabel.setText("✅ Scénario initialisé avec succès !");
+            javafx.animation.PauseTransition hideDelay = new javafx.animation.PauseTransition(javafx.util.Duration.millis(1200));
+            hideDelay.setOnFinished(e -> {
+                applyProgressBox.setVisible(false);
+                applyProgressBox.setManaged(false);
+            });
+            hideDelay.play();
+        }
+    }
+
+    private void applyMetaPreset(String metaName) {
+        if (metaName == null) return;
+        speciesCardList.clear();
+
+        if (metaName.contains("Amazonien") || metaName.contains("Atta")) {
+            selectComboIfPresent(comboWorld, "Forêt Tropicale (Tropical Rainforest)");
+            selectComboIfPresent(comboWeather, "Tropical");
+            addSpeciesCard("Fourmi Coupeuse de Feuilles (Atta sexdens)");
+        } else if (metaName.contains("Granivore") || metaName.contains("Messor")) {
+            selectComboIfPresent(comboWorld, "Désert Aride (Arid Desert)");
+            selectComboIfPresent(comboWeather, "Arid");
+            addSpeciesCard("Fourmi Moissonneuse (Pogonomyrmex barbatus)");
+        } else if (metaName.contains("Guerre") || metaName.contains("Territoriale")) {
+            selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
+            selectComboIfPresent(comboWeather, "Temperate");
+            addSpeciesCard("Fourmi de Feu (Solenopsis invicta)");
+            addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
+        } else if (metaName.contains("Rucher") || metaName.contains("Apis")) {
+            selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
+            selectComboIfPresent(comboWeather, "Temperate");
+            addSpeciesCard("Abeille à Miel (Apis mellifera)");
+        } else if (metaName.contains("Termites")) {
+            selectComboIfPresent(comboWorld, "Forêt Tropicale (Tropical Rainforest)");
+            selectComboIfPresent(comboWeather, "Tropical");
+            addSpeciesCard("Termite Souterrain (Reticulitermes flavipes)");
+        } else {
+            selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
+            selectComboIfPresent(comboWeather, "Temperate");
+            addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
+        }
     }
 
     private Button createButton(String text, String tooltip) {
         Button btn = new Button(text);
-        btn.setStyle("-fx-font-size: 14px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #333; -fx-text-fill: white; " +
-                "-fx-background-radius: 5; -fx-min-width: 48px; -fx-min-height: 35px; -fx-padding: 4px 8px;");
-        btn.setTooltip(new Tooltip(tooltip));
-        btn.setOnMouseEntered(e -> btn.setStyle(btn.getStyle().replace("#333", "#555")));
-        btn.setOnMouseExited(e -> btn.setStyle(btn.getStyle().replace("#555", "#333")));
+        btn.setStyle("-fx-font-size: 14px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc; " +
+                "-fx-background-radius: 5; -fx-min-width: 42px; -fx-min-height: 32px; -fx-padding: 4px 8px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 5;");
+        if (tooltip != null && !tooltip.isEmpty()) btn.setTooltip(new Tooltip(tooltip));
+        btn.disabledProperty().addListener((obs, oldV, newV) -> btn.setOpacity(newV ? 0.35 : 1.0));
         return btn;
     }
 
     private Button createSmallButton(String text) {
         Button btn = new Button(text);
-        btn.setStyle("-fx-font-size: 11; -fx-background-color: #444; -fx-text-fill: white; " +
-                "-fx-background-radius: 3; -fx-padding: 3 8;");
+        btn.setStyle("-fx-font-size: 10px; -fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-background-radius: 3; -fx-padding: 3 8; -fx-cursor: hand;");
         return btn;
     }
 
@@ -419,19 +550,17 @@ public class SimulationControlPanel extends VBox {
         btnStepForward.setDisable(isPlaying);
     }
 
-    /**
-     * Update the current tick and real-time clock display.
-     */
     public void updateTick(long tick, long maxTick) {
         this.currentTick = tick;
         this.maxTick = maxTick;
-
-        // Calculate real time progression
         long totalSecondsElapsed = (long) (tick * simulationStepSeconds);
         currentDateTime = startDateTime.plusSeconds(totalSecondsElapsed);
 
-        lblDateTime.setText("📅 Date & Heure : " + currentDateTime.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        if (lblTick != null) lblTick.setText(String.format("Tick: %d (dt: %.3fs)", tick, simulationStepSeconds));
+        lblDateTime.setText("📅 Date & Heure : " + currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + String.format(" (Jour %d)", 1 + (totalSecondsElapsed / 86400)));
+        if (lblTick != null) {
+            double rateTPS = 1.0 / simulationStepSeconds;
+            lblTick.setText(String.format("Tick actuel: %d (Cible: %d | Durée: %s | Cadence: %.0f ticks/sec TPS)", tick, maxTick, formatTime(totalSecondsElapsed), rateTPS));
+        }
         if (lblTime != null) lblTime.setText(formatTime(totalSecondsElapsed));
 
         if (timelineSlider != null && !timelineSlider.isValueChanging()) {
@@ -446,53 +575,39 @@ public class SimulationControlPanel extends VBox {
         return String.format("%d:%02d:%02d", hours, minutes % 60, seconds % 60);
     }
 
-    /**
-     * Set the speed value programmatically.
-     */
     public void setSpeed(float speed) {
         speedSlider.setValue(speed);
     }
 
-    // === Callback Setters ===
+    public void setOnPlay(Consumer<Void> callback) { this.onPlay = callback; }
+    public void setOnPause(Consumer<Void> callback) { this.onPause = callback; }
+    public void setOnStop(Consumer<Void> callback) { this.onStop = callback; }
+    public void setOnSpeedChange(Consumer<Float> callback) { this.onSpeedChange = callback; }
+    public void setOnSeek(Consumer<Long> callback) { this.onSeek = callback; }
+    public void setOnRewind(Consumer<Integer> callback) { this.onRewind = callback; }
+    public void setOnStepChange(Consumer<Float> callback) { this.onStepChange = callback; }
+    public void setOnCreateCheckpoint(Consumer<String> cb) { this.onCreateCheckpoint = cb; }
+    public void setOnRestoreCheckpoint(Consumer<org.swarmforge.core.simulation.SimulationCheckpoint> cb) { this.onRestoreCheckpoint = cb; }
+    public void setOnApplyPresets(Consumer<Long> callback) { this.onApplyPresets = callback; }
 
-    public void setOnPlay(Consumer<Void> callback) {
-        this.onPlay = callback;
+    public void updateCheckpoints(List<org.swarmforge.core.simulation.SimulationCheckpoint> checkpoints) {
+        comboCheckpoints.getItems().clear();
+        if (checkpoints != null) {
+            comboCheckpoints.getItems().addAll(checkpoints);
+            if (!comboCheckpoints.getItems().isEmpty()) {
+                comboCheckpoints.getSelectionModel().selectLast();
+            }
+        }
     }
 
-    public void setOnPause(Consumer<Void> callback) {
-        this.onPause = callback;
-    }
+    public long getCurrentTick() { return currentTick; }
+    public long getMaxTick() { return maxTick; }
+    public float getSimulationStepSeconds() { return simulationStepSeconds; }
 
-    public void setOnStop(Consumer<Void> callback) {
-        this.onStop = callback;
-    }
-
-    public void setOnSpeedChange(Consumer<Float> callback) {
-        this.onSpeedChange = callback;
-    }
-
-    public void setOnSeek(Consumer<Long> callback) {
-        this.onSeek = callback;
-    }
-
-    public void setOnRewind(Consumer<Integer> callback) {
-        this.onRewind = callback;
-    }
-
-    public void setOnStepChange(Consumer<Float> callback) {
-        this.onStepChange = callback;
-    }
-
-    /**
-     * Set playing state (from external source).
-     */
+    public boolean isPlaying() { return isPlaying; }
     public void setPlaying(boolean playing) {
         this.isPlaying = playing;
         updateButtonStates();
-    }
-
-    public boolean isPlaying() {
-        return isPlaying;
     }
 
     public String getSelectedWorld() {
@@ -503,64 +618,412 @@ public class SimulationControlPanel extends VBox {
         return comboWeather.getValue() != null ? comboWeather.getValue() : "Temperate";
     }
 
-    public String getSelectedSpecies() {
-        return comboSpecies.getValue() != null ? comboSpecies.getValue() : "Fourmi Noire des Jardins (Lasius niger)";
-    }
-
-    private void applyMetaPreset(String metaName) {
-        if (metaName == null) return;
-        if (metaName.contains("Amazonien") || metaName.contains("Atta")) {
-            selectComboIfPresent(comboSpecies, "Fourmi Coupeuse de Feuilles (Atta sexdens)");
-            selectComboIfPresent(comboWorld, "Forêt Tropicale (Tropical Rainforest)");
-            selectComboIfPresent(comboWeather, "Tropical");
-            selectComboIfPresent(comboNest, "Leafcutter Fungus Farm (Atta)");
-            selectComboIfPresent(comboPreyPred, "Ressources Abondantes (Sans prédateurs)");
-        } else if (metaName.contains("Granivore") || metaName.contains("Messor")) {
-            selectComboIfPresent(comboSpecies, "Fourmi Moissonneuse (Pogonomyrmex barbatus)");
-            selectComboIfPresent(comboWorld, "Désert Aride (Arid Desert)");
-            selectComboIfPresent(comboWeather, "Arid");
-            selectComboIfPresent(comboNest, "Mature Ant Burrow");
-            selectComboIfPresent(comboPreyPred, "Pucerons & Fourmilion");
-        } else if (metaName.contains("Guerre") || metaName.contains("Territoriale")) {
-            selectComboIfPresent(comboSpecies, "Fourmi de Feu (Solenopsis invicta)");
-            selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
-            selectComboIfPresent(comboWeather, "Temperate");
-            selectComboIfPresent(comboNest, "Complex Supercolony");
-            selectComboIfPresent(comboPreyPred, "Incursion Guêpe Solitaire & Araignée");
-        } else if (metaName.contains("Rucher") || metaName.contains("Apis")) {
-            selectComboIfPresent(comboSpecies, "Abeille à Miel (Apis mellifera)");
-            selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
-            selectComboIfPresent(comboWeather, "Temperate");
-            selectComboIfPresent(comboNest, "Honeybee Wax Comb (Apis)");
-            selectComboIfPresent(comboPreyPred, "Ressources Abondantes (Sans prédateurs)");
-        } else if (metaName.contains("Termites")) {
-            selectComboIfPresent(comboSpecies, "Termite Souterrain (Reticulitermes flavipes)");
-            selectComboIfPresent(comboWorld, "Forêt Tropicale (Tropical Rainforest)");
-            selectComboIfPresent(comboWeather, "Tropical");
-            selectComboIfPresent(comboNest, "Termite Cathedral Mound (Macrotermes)");
-            selectComboIfPresent(comboPreyPred, "Termites & Guêpe Chasseresse");
+    public List<String> getSelectedSpeciesList() {
+        List<String> list = new ArrayList<>();
+        for (SpeciesConfigCard card : speciesCardList) {
+            list.add(card.getSpeciesName());
         }
+        if (list.isEmpty()) list.add("Fourmi Noire des Jardins (Lasius niger)");
+        return list;
     }
 
-    private Consumer<Long> onApplyPresets;
+    public String getSelectedSpecies() {
+        List<String> list = getSelectedSpeciesList();
+        return list.get(0);
+    }
 
-    public void setOnApplyPresets(Consumer<Long> callback) {
-        this.onApplyPresets = callback;
+    public int getQueenCount() {
+        return speciesCardList.isEmpty() ? 1 : speciesCardList.get(0).getQueenCount();
+    }
+
+    public int getWorkerCount() {
+        return speciesCardList.isEmpty() ? 150 : speciesCardList.get(0).getWorkerCount();
+    }
+
+    public int getSoldierCount() {
+        return speciesCardList.isEmpty() ? 20 : speciesCardList.get(0).getSoldierCount();
+    }
+
+    public ArchitectureType getWorkerEngine() {
+        return speciesCardList.isEmpty() ? ArchitectureType.BEHAVIOR_TREE : speciesCardList.get(0).getWorkerEngine();
+    }
+
+    public ArchitectureType getSoldierEngine() {
+        return speciesCardList.isEmpty() ? ArchitectureType.FUZZY_LOGIC : speciesCardList.get(0).getSoldierEngine();
+    }
+
+    public ArchitectureType getQueenEngine() {
+        return speciesCardList.isEmpty() ? ArchitectureType.BDI : speciesCardList.get(0).getQueenEngine();
     }
 
     public long getMasterSeed() {
         try {
             return Long.parseLong(txtSeed.getText().trim());
         } catch (Exception e) {
-            return 1337L;
+            return 12345L;
         }
     }
 
-    private void selectComboIfPresent(javafx.scene.control.ComboBox<String> combo, String val) {
+    public VBox getPlaybackAndSpeedPanel() {
+        return playbackAndSpeedPanel;
+    }
+
+    private void handleSaveScenario() {
+        String name = comboMeta.getValue() != null ? comboMeta.getValue() : "Nouveau Scénario";
+        TextInputDialog dialog = org.swarmforge.client.util.ThemeManager.createTextInputDialog(name);
+        dialog.setTitle("Enregistrer le Preset Scénario");
+        dialog.setHeaderText("Nom du preset de scénario :");
+        dialog.showAndWait().ifPresent(scenarioName -> {
+            if (!scenarioName.trim().isEmpty()) {
+                String clean = scenarioName.trim();
+                if (!comboMeta.getItems().contains(clean)) comboMeta.getItems().add(clean);
+                comboMeta.getSelectionModel().select(clean);
+                org.swarmforge.client.util.ThemeManager.createAlert(
+                    Alert.AlertType.INFORMATION,
+                    "Preset scénario enregistré : " + clean
+                ).show();
+            }
+        });
+    }
+
+    private void handleDeleteScenario() {
+        String selected = comboMeta.getValue();
+        if (selected == null || selected.isEmpty()) return;
+        Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
+            Alert.AlertType.CONFIRMATION,
+            "Voulez-vous vraiment supprimer le preset scénario '" + selected + "' ?"
+        );
+        alert.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.OK) {
+                comboMeta.getItems().remove(selected);
+                if (!comboMeta.getItems().isEmpty()) comboMeta.getSelectionModel().selectFirst();
+            }
+        });
+    }
+
+    private void handleExportScenario() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Exporter la configuration du scénario");
+        chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("JSON Files", "*.json"));
+        chooser.setInitialFileName("scenario-preset.json");
+        java.io.File file = chooser.showSaveDialog(getScene().getWindow());
+        if (file != null) {
+            org.swarmforge.client.util.ThemeManager.createAlert(
+                Alert.AlertType.INFORMATION,
+                "Configuration exportée sous " + file.getName()
+            ).show();
+        }
+    }
+
+    private void handleImportScenario() {
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Importer une configuration de scénario");
+        chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("JSON Files", "*.json"));
+        java.io.File file = chooser.showOpenDialog(getScene().getWindow());
+        if (file != null) {
+            org.swarmforge.client.util.ThemeManager.createAlert(
+                Alert.AlertType.INFORMATION,
+                "Scénario importé avec succès depuis " + file.getName()
+            ).show();
+        }
+    }
+
+    private TitledPane buildCheckpointsPane() {
+        comboCheckpoints.setPrefWidth(260);
+        comboCheckpoints.setPromptText("Aucun point de contrôle enregistré");
+
+        Button bRestore = new Button("⏪ Restaurer Checkpoint");
+        bRestore.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+        bRestore.setTooltip(new Tooltip("Restaure la simulation au pas de temps exact du checkpoint."));
+        bRestore.setOnAction(e -> {
+            org.swarmforge.core.simulation.SimulationCheckpoint sel = comboCheckpoints.getValue();
+            if (sel != null && onRestoreCheckpoint != null) {
+                onRestoreCheckpoint.accept(sel);
+            }
+        });
+
+        HBox row = new HBox(8, new Label("Points de contrôle :"), comboCheckpoints, bRestore);
+        row.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblInfo = new Label("💡 Chaque point de contrôle sauvegarde l'état physique exact et le journal d'interventions Mode Divin.");
+        lblInfo.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
+
+        VBox box = new VBox(6, row, lblInfo);
+        box.setPadding(new Insets(6));
+
+        TitledPane pane = new TitledPane("🔖 Points de Contrôle & Journal d'Interventions Mode Divin", box);
+        pane.setExpanded(false);
+        return pane;
+    }
+
+    private void selectComboIfPresent(ComboBox<String> combo, String val) {
         if (combo.getItems().contains(val)) {
             combo.getSelectionModel().select(val);
         } else if (!combo.getItems().isEmpty()) {
             combo.getSelectionModel().selectFirst();
         }
+    }
+
+    // =========================================================================
+    // INNER CLASSES: Multi-Species Configuration Card & Accessory Config
+    // =========================================================================
+
+    /**
+     * Interactive UI Card for configuring a single main species inside a scenario.
+     * Contains filtered nest options, nest placement, pre-generation options,
+     * biologically filtered accessories, demographics, and AI engines per caste.
+     */
+    public static class SpeciesConfigCard {
+
+        private final String speciesName;
+        private final VBox cardPane = new VBox(8);
+
+        private final ComboBox<String> nestTypeCombo = new ComboBox<>();
+        private final ComboBox<String> nestPlacementCombo = new ComboBox<>();
+        private final CheckBox chkPreGeneratedNest = new CheckBox("🏗️ Nid pré-généré (Structure complète & chambres creusées dès le départ)");
+
+        private final Spinner<Integer> queenSpinner = new Spinner<>(1, 50, 1);
+        private final Spinner<Integer> workerSpinner = new Spinner<>(5, 10000, 150, 25);
+        private final Spinner<Integer> soldierSpinner = new Spinner<>(0, 2000, 20, 5);
+
+        private final ComboBox<ArchitectureType> workerEngineCombo = new ComboBox<>();
+        private final ComboBox<ArchitectureType> soldierEngineCombo = new ComboBox<>();
+        private final ComboBox<ArchitectureType> queenEngineCombo = new ComboBox<>();
+
+        private final VBox accessoryBoxPane = new VBox(4);
+
+        public SpeciesConfigCard(String speciesName, Runnable onRemove) {
+            this.speciesName = speciesName;
+
+            cardPane.setStyle("-fx-background-color: rgba(15, 23, 42, 0.85); -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #0284c7; -fx-border-width: 1;");
+
+            // Header
+            HBox header = new HBox(8);
+            header.setAlignment(Pos.CENTER_LEFT);
+
+            Label lblTitle = new Label("🐜 Espèce : " + speciesName);
+            lblTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 12px;");
+
+            Region sp = new Region();
+            HBox.setHgrow(sp, Priority.ALWAYS);
+
+            Button btnRemove = new Button("🗑️ Supprimer l'Espèce");
+            btnRemove.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+            btnRemove.setOnAction(e -> onRemove.run());
+
+            header.getChildren().addAll(lblTitle, sp, btnRemove);
+
+            // 1. Filtered Nest & Placement Section
+            HBox nestRow = new HBox(8);
+            nestRow.setAlignment(Pos.CENTER_LEFT);
+
+            Label lblNest = new Label("🏰 Type de Nid (Filtré pour " + getShortSpeciesName(speciesName) + ") :");
+            lblNest.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 10px;");
+
+            nestTypeCombo.getItems().setAll(getCompatibleNestTypes(speciesName));
+            if (!nestTypeCombo.getItems().isEmpty()) nestTypeCombo.getSelectionModel().selectFirst();
+            nestTypeCombo.setTooltip(new Tooltip("Architectures de nids adaptées aux capacités et besoins écologiques de cette espèce."));
+
+            Label lblPlacement = new Label("📍 Placement :");
+            lblPlacement.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 10px;");
+
+            nestPlacementCombo.getItems().addAll(
+                "📍 Positionnement optimal (Centre carte hors d'eau)",
+                "👑 Fondation Reine Seule Claustrale (Sol Vierge)",
+                "🎲 Positionnement aléatoire autour du centre",
+                "🏛️ Nids multiples répartis (Cohabitation / Guerre)"
+            );
+            nestPlacementCombo.getSelectionModel().selectFirst();
+            nestPlacementCombo.setTooltip(new Tooltip("Stratégie d'implantation spatiale du nid dans la grille 3D."));
+
+            nestRow.getChildren().addAll(lblNest, nestTypeCombo, lblPlacement, nestPlacementCombo);
+
+            chkPreGeneratedNest.setSelected(true);
+            chkPreGeneratedNest.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px; -fx-font-weight: bold;");
+            chkPreGeneratedNest.setTooltip(new Tooltip("Si coché, génère immédiatement un nid complet avec ses galeries. Sinon, la fondatrice doit le creuser."));
+
+            // 2. Filtered Accessory Species Section (Proies, Prédateurs & Commensaux)
+            Label lblAccessoryTitle = new Label("🦗 Espèces Accessoires & Interprétations Écologiques (Filtrées pour " + getShortSpeciesName(speciesName) + ") :");
+            lblAccessoryTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px;");
+
+            setupAccessoryRows(speciesName);
+
+            // 3. Demographics & AI Engines Section
+            GridPane demoGrid = new GridPane();
+            demoGrid.setHgap(8); demoGrid.setVgap(4);
+
+            for (ArchitectureType type : ArchitectureType.values()) {
+                workerEngineCombo.getItems().add(type);
+                soldierEngineCombo.getItems().add(type);
+                queenEngineCombo.getItems().add(type);
+            }
+            workerEngineCombo.getSelectionModel().select(ArchitectureType.BEHAVIOR_TREE);
+            soldierEngineCombo.getSelectionModel().select(ArchitectureType.FUZZY_LOGIC);
+            queenEngineCombo.getSelectionModel().select(ArchitectureType.BDI);
+
+            workerSpinner.setPrefWidth(80); workerSpinner.setEditable(true);
+            soldierSpinner.setPrefWidth(80); soldierSpinner.setEditable(true);
+            queenSpinner.setPrefWidth(80); queenSpinner.setEditable(true);
+
+            demoGrid.add(new Label("👑 Reines :"), 0, 0); demoGrid.add(queenSpinner, 1, 0); demoGrid.add(new Label("Moteur IA :"), 2, 0); demoGrid.add(queenEngineCombo, 3, 0);
+            demoGrid.add(new Label("🐜 Ouvrières :"), 0, 1); demoGrid.add(workerSpinner, 1, 1); demoGrid.add(new Label("Moteur IA :"), 2, 1); demoGrid.add(workerEngineCombo, 3, 1);
+            demoGrid.add(new Label("⚔️ Soldats :"), 0, 2); demoGrid.add(soldierSpinner, 1, 2); demoGrid.add(new Label("Moteur IA :"), 2, 2); demoGrid.add(soldierEngineCombo, 3, 2);
+
+            TitledPane demoPane = new TitledPane("🧠 Démographie & Castes (Reines, Ouvrières, Soldats & Moteurs IA)", demoGrid);
+            demoPane.setExpanded(false);
+
+            cardPane.getChildren().addAll(header, nestRow, chkPreGeneratedNest, new Separator(), lblAccessoryTitle, accessoryBoxPane, demoPane);
+        }
+
+        private void setupAccessoryRows(String speciesName) {
+            accessoryBoxPane.getChildren().clear();
+            List<AccessorySpeciesInfo> compatList = getCompatibleAccessorySpecies(speciesName);
+
+            VBox listVBox = new VBox(4);
+            for (AccessorySpeciesInfo info : compatList) {
+                HBox row = new HBox(8);
+                row.setAlignment(Pos.CENTER_LEFT);
+
+                CheckBox chk = new CheckBox(info.name());
+                chk.setSelected(true);
+                chk.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px; -fx-font-weight: bold;");
+                chk.setTooltip(new Tooltip(info.description()));
+                chk.setPrefWidth(220);
+
+                Label lblRole = new Label("[" + info.role() + "]");
+                lblRole.setStyle(getRoleStyle(info.role()));
+                lblRole.setPrefWidth(90);
+
+                Label lblCount = new Label("Effectif Initial :");
+                lblCount.setStyle("-fx-text-fill: #aaa; -fx-font-size: 9px;");
+
+                Spinner<Integer> countSpinner = new Spinner<>(5, 1000, info.defaultCount(), 10);
+                countSpinner.setPrefWidth(70); countSpinner.setEditable(true);
+
+                Label lblStrategy = new Label("Taux Renouvellement :");
+                lblStrategy.setStyle("-fx-text-fill: #aaa; -fx-font-size: 9px;");
+
+                ComboBox<String> strategyCombo = new ComboBox<>();
+                strategyCombo.getItems().addAll(
+                    "🔄 Équilibre Dynamique (Maintien auto à < 30% Pop)",
+                    "🌿 Régénération Logistique Saisonnière (10-50%/jour)",
+                    "⏳ Épuisement Fini (Ressources / Proies Limitées)",
+                    "⚡ Incursions Épisodiques (Pop-in Vagues tous les 500 Ticks)"
+                );
+                strategyCombo.getSelectionModel().selectFirst();
+                strategyCombo.setStyle("-fx-font-size: 9px;");
+                strategyCombo.setTooltip(new Tooltip("Stratégie de proposition de renouvellement pour maintenir la pression sans déstabiliser la simulation."));
+
+                row.getChildren().addAll(chk, lblRole, lblCount, countSpinner, lblStrategy, strategyCombo);
+                listVBox.getChildren().add(row);
+            }
+            accessoryBoxPane.getChildren().add(listVBox);
+        }
+
+        private String getRoleStyle(String role) {
+            return switch (role) {
+                case "PROIE" -> "-fx-text-fill: #22c55e; -fx-font-weight: bold; -fx-font-size: 9px;";
+                case "PRÉDATEUR" -> "-fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-font-size: 9px;";
+                case "COMMENSAL" -> "-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 9px;";
+                case "PATHOGÈNE" -> "-fx-text-fill: #eab308; -fx-font-weight: bold; -fx-font-size: 9px;";
+                default -> "-fx-text-fill: #94a3b8; -fx-font-size: 9px;";
+            };
+        }
+
+        private String getShortSpeciesName(String full) {
+            if (full == null) return "";
+            int idx = full.indexOf("(");
+            return idx > 0 ? full.substring(0, idx).trim() : full;
+        }
+
+        public VBox getCardPane() { return cardPane; }
+        public String getSpeciesName() { return speciesName; }
+        public int getQueenCount() { return queenSpinner.getValue(); }
+        public int getWorkerCount() { return workerSpinner.getValue(); }
+        public int getSoldierCount() { return soldierSpinner.getValue(); }
+        public ArchitectureType getWorkerEngine() { return workerEngineCombo.getValue(); }
+        public ArchitectureType getSoldierEngine() { return soldierEngineCombo.getValue(); }
+        public ArchitectureType getQueenEngine() { return queenEngineCombo.getValue(); }
+    }
+
+    public record AccessorySpeciesInfo(String name, String role, String description, int defaultCount) {
+        public AccessorySpeciesInfo(String name, String role, String description) {
+            this(name, role, description, 50);
+        }
+    }
+
+    /**
+     * Helper method to filter nest types based on biological species capability.
+     */
+    public static List<String> getCompatibleNestTypes(String speciesName) {
+        List<String> nests = new ArrayList<>();
+        if (speciesName == null) return List.of("Simple Chamber Nest");
+        String lower = speciesName.toLowerCase();
+        if (lower.contains("atta") || lower.contains("coupeuse")) {
+            nests.add("Leafcutter Fungus Farm (Atta)");
+            nests.add("Subterranean Fungi Vault");
+            nests.add("Simple Chamber Nest");
+        } else if (lower.contains("apis") || lower.contains("abeille")) {
+            nests.add("Honeybee Wax Comb (Apis)");
+            nests.add("Arboreal Tree Hollow");
+            nests.add("Hexagonal Hive Box");
+        } else if (lower.contains("vespula") || lower.contains("guêpe")) {
+            nests.add("Paper Pedunculate Nest (Vespula)");
+            nests.add("Subterranean Paper Nest");
+            nests.add("Tree Branch Hanging Nest");
+        } else if (lower.contains("reticulitermes") || lower.contains("macrotermes") || lower.contains("termite")) {
+            nests.add("Termite Cathedral Mound (Macrotermes)");
+            nests.add("Underground Timber Nest");
+            nests.add("Simple Chamber Nest");
+        } else if (lower.contains("messor") || lower.contains("pogonomyrmex") || lower.contains("moissonneuse")) {
+            nests.add("Mature Ant Burrow");
+            nests.add("Underground Grain Silo Burrow");
+            nests.add("Simple Chamber Nest");
+        } else {
+            nests.add("Mature Ant Burrow");
+            nests.add("Complex Supercolony");
+            nests.add("Simple Chamber Nest");
+            nests.add("Subterranean Fungi Vault");
+        }
+        return nests;
+    }
+
+    /**
+     * Helper method to filter compatible accessory species (Proies, Prédateurs, Commensaux, Pathogènes).
+     * Excludes neutral or biologically incompatible species.
+     */
+    public static List<AccessorySpeciesInfo> getCompatibleAccessorySpecies(String speciesName) {
+        List<AccessorySpeciesInfo> list = new ArrayList<>();
+        if (speciesName == null) return list;
+        String lower = speciesName.toLowerCase();
+
+        if (lower.contains("atta") || lower.contains("coupeuse")) {
+            list.add(new AccessorySpeciesInfo("Graminées à Graines & Feuillage", "COMMENSAL", "Feuillage apportant la biomasse végétale symbiotique", 150));
+            list.add(new AccessorySpeciesInfo("Mousse Humide (Polytrichum)", "COMMENSAL", "Substrat maintenant l'hygrométrie du nid champignonniste", 80));
+            list.add(new AccessorySpeciesInfo("Champignon Entomopathogène (Cordyceps)", "PATHOGEN", "Cordyceps ciblant les ouvrières en zone forestière", 20));
+        } else if (lower.contains("messor") || lower.contains("pogonomyrmex") || lower.contains("moissonneuse")) {
+            list.add(new AccessorySpeciesInfo("Graminées à Graines (Herbes & Biomasse)", "PROIE", "Graines végétales pour la récolte et les greniers", 200));
+            list.add(new AccessorySpeciesInfo("Larves de Ténébrion (Proies Protéiques)", "PROIE", "Arthropodes proies apportant l'azote au couvain", 40));
+            list.add(new AccessorySpeciesInfo("Fourmilion Piégeur (Myrmeleon)", "PRÉDATEUR", "Prédateur piégeur en entonnoir de sable", 10));
+        } else if (lower.contains("apis") || lower.contains("abeille")) {
+            list.add(new AccessorySpeciesInfo("Graminées & Fleurs Nectarifères", "COMMENSAL", "Fleurs mellifères fournissant nectar et pollen", 120));
+            list.add(new AccessorySpeciesInfo("Acarien Parasite (Varroa destructor)", "PATHOGEN", "Acarien parasite hématophage du couvain d'abeilles", 30));
+            list.add(new AccessorySpeciesInfo("Araignée Chasseresse / Faux-Bourdon", "PRÉDATEUR", "Prédateurs capturant les butineuses au vol", 15));
+        } else if (lower.contains("reticulitermes") || lower.contains("macrotermes") || lower.contains("termite")) {
+            list.add(new AccessorySpeciesInfo("Mousse Humide & Bois Ligneux", "COMMENSAL", "Biomasse cellulosique digestive", 100));
+            list.add(new AccessorySpeciesInfo("Larves de Ténébrion (Proies Protéiques)", "PROIE", "Proies arthropodes résiduelles du sol", 30));
+            list.add(new AccessorySpeciesInfo("Guêpe Chasseresse / Araignée Souterraine", "PRÉDATEUR", "Prédateurs spécialistes des galeries", 12));
+        } else if (lower.contains("vespula") || lower.contains("guêpe")) {
+            list.add(new AccessorySpeciesInfo("Larves de Ténébrion & Chenilles (Proies)", "PROIE", "Insectes proies chassés pour la protéine du couvain", 60));
+            list.add(new AccessorySpeciesInfo("Graminées & Fleurs (Nectar)", "COMMENSAL", "Sources sucrées énergétiques pour adultes", 80));
+            list.add(new AccessorySpeciesInfo("Champignon Entomopathogène (Cordyceps)", "PATHOGEN", "Spores véhiculées lors des vols", 15));
+        } else { // Lasius, Solenopsis, Formica, etc.
+            list.add(new AccessorySpeciesInfo("Pucerons du Pin (Cinara / Miellat)", "COMMENSAL", "Pucerons exploités en trophobiose pour le miellat sucré", 80));
+            list.add(new AccessorySpeciesInfo("Graminées à Graines (Herbes & Biomasse)", "COMMENSAL", "Végétation locale fournissant substrat et ombrage", 100));
+            list.add(new AccessorySpeciesInfo("Larves de Ténébrion (Proies Protéiques)", "PROIE", "Arthropodes proies apportant les protéines", 50));
+            list.add(new AccessorySpeciesInfo("Fourmilion Piégeur (Myrmeleon)", "PRÉDATEUR", "Prédateur naturel des patrouilleuses", 15));
+            list.add(new AccessorySpeciesInfo("Champignon Entomopathogène (Cordyceps)", "PATHOGEN", "Parasite mycélien ciblant la colonie", 10));
+        }
+        return list;
     }
 }

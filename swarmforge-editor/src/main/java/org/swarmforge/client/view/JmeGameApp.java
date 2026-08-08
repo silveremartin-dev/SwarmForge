@@ -147,19 +147,9 @@ public class JmeGameApp extends SimpleApplication {
             cam.lookAt(new Vector3f(32, 10, 32), Vector3f.UNIT_Y);
             viewPort.setBackgroundColor(new ColorRGBA(0.06f, 0.09f, 0.16f, 1.0f));
 
-            // Generate default 3D Terrarium scene immediately so the viewport is populated on launch
-            org.swarmforge.core.domain.Terrarium initTerrarium = new org.swarmforge.core.domain.Terrarium(64, 32, 64);
-            for (int x = 0; x < 64; x++) {
-                for (int z = 0; z < 64; z++) {
-                    int surfaceY = 8 + (int) (Math.sin(x * 0.12) * 2 + Math.cos(z * 0.12) * 2);
-                    for (int y = 0; y <= surfaceY; y++) {
-                        org.swarmforge.core.domain.TerrariumCell.Material mat = (y == surfaceY) ?
-                                org.swarmforge.core.domain.TerrariumCell.Material.EARTH : org.swarmforge.core.domain.TerrariumCell.Material.ROCK;
-                        initTerrarium.setCell(new org.swarmforge.core.domain.TerrariumCell(x, y, z, mat, new float[8], 20f, 50f));
-                    }
-                }
-            }
-            renderTerrarium(initTerrarium);
+            // Attach empty terrain node; terrain will be rendered when simulation or terrarium is loaded
+            this.terrainNode = new com.jme3.scene.Node("TerrainNode");
+            rootNode.attachChild(terrainNode);
 
             // Initialize simple buffer
             pixelBuffer = BufferUtils.createByteBuffer(width * height * 4);
@@ -448,60 +438,24 @@ public class JmeGameApp extends SimpleApplication {
                         ? networkClient.getLatestIndividuals()
                         : java.util.Collections.emptyList();
 
-        // If not connected, maybe local simulation?
-        if (individuals.isEmpty() && simulation != null) {
-            // Adapt local simulation to same interface if possible, or just skip for now to
-            // keep code clean
-            // Let's assume network client only for "Visual Polish" phase to verify
-            // performant rendering
-        }
-
-        for (org.swarmforge.protocol.grpc.IndividualDelta ind : individuals) {
-            String id = ind.getId();
-            activeIds.add(id);
-
-            org.swarmforge.protocol.grpc.IndividualDelta.LifeStage protoStage = ind.getLifeStage();
-            org.swarmforge.core.domain.Individual.LifeStage lifeStage = org.swarmforge.core.domain.Individual.LifeStage
-                    .valueOf(protoStage.name());
-
-            com.jme3.scene.Geometry antGeom = (com.jme3.scene.Geometry) antVisuals.get(id);
-
-            // Check if we need to update the geometry (e.g. stage changed)
-            if (antGeom != null) {
-                String currentStageName = (String) antGeom.getUserData("LifeStage");
-                if (currentStageName != null && !currentStageName.equals(lifeStage.name())) {
-                    // Stage changed! Remove old geometry
-                    antGeom.removeFromParent();
-                    antVisuals.remove(id);
-                    antGeom = null; // Force recreation
+        if (!individuals.isEmpty()) {
+            for (org.swarmforge.protocol.grpc.IndividualDelta ind : individuals) {
+                String id = ind.getId();
+                org.swarmforge.protocol.grpc.IndividualDelta.LifeStage protoStage = ind.getLifeStage();
+                org.swarmforge.core.domain.Individual.LifeStage lifeStage = org.swarmforge.core.domain.Individual.LifeStage
+                        .valueOf(protoStage.name());
+                updateSingleAntVisual(id, org.swarmforge.core.domain.Individual.Caste.WORKER, lifeStage,
+                        ind.getPosition().getX(), ind.getPosition().getZ(), ind.getPosition().getY(), ind.getHeading(), activeIds, null);
+            }
+        } else if (simulation != null) {
+            for (org.swarmforge.core.domain.Colony colony : simulation.getColonies()) {
+                for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
+                    String id = ind.getId();
+                    org.swarmforge.core.domain.Individual.Caste caste = ind.getCaste() != null ? ind.getCaste() : org.swarmforge.core.domain.Individual.Caste.WORKER;
+                    org.swarmforge.core.domain.Individual.LifeStage stage = ind.getLifeStage() != null ? ind.getLifeStage() : org.swarmforge.core.domain.Individual.LifeStage.ADULT;
+                    updateSingleAntVisual(id, caste, stage, ind.getX(), ind.getZ(), ind.getY(), ind.getHeading(), activeIds, ind.getSpecies());
                 }
             }
-
-            if (antGeom == null) {
-                // Determine caste from ID or default? The Delta doesn't send Caste yet!
-                // For now, assume WORKER.
-                antGeom = antVisualizer.createAntGeometry(org.swarmforge.core.domain.Individual.Caste.WORKER,
-                        lifeStage);
-                antGeom.setUserData("LifeStage", lifeStage.name());
-                antGeom.setUserData("ID", id);
-
-                // Attach to appropriate node (maybe need separate nodes for stages?)
-                // For now, using WORKER node for everything or we should register nodes for
-                // stages?
-                // Visualizer registers nodes by Caste.
-                // Let's just use WORKER caste node for simplicity, or we should pass caste
-                // properly.
-                // ideally we pass caste in delta.
-                antVisualizer.getInstancedNode(org.swarmforge.core.domain.Individual.Caste.WORKER).attachChild(antGeom);
-                antVisuals.put(id, antGeom);
-            }
-
-            Vector3f targetPos = new Vector3f(ind.getPosition().getX(), ind.getPosition().getZ(),
-                    ind.getPosition().getY());
-            antGeom.setLocalTranslation(targetPos);
-            // Orientation
-            float heading = ind.getHeading();
-            antGeom.setLocalRotation(new com.jme3.math.Quaternion().fromAngles(0, heading, 0));
         }
 
         // Cleanup
@@ -513,6 +467,48 @@ public class JmeGameApp extends SimpleApplication {
                 it.remove();
             }
         }
+    }
+
+    private void updateSingleAntVisual(String id, org.swarmforge.core.domain.Individual.Caste caste,
+                                       org.swarmforge.core.domain.Individual.LifeStage lifeStage,
+                                       float x, float y, float z, float heading,
+                                       java.util.Set<String> activeIds,
+                                       org.swarmforge.core.species.Species species) {
+        if (!antsVisible) return;
+        activeIds.add(id);
+
+        com.jme3.scene.Geometry antGeom = (com.jme3.scene.Geometry) antVisuals.get(id);
+
+        if (antGeom != null) {
+            String currentStageName = (String) antGeom.getUserData("LifeStage");
+            if (currentStageName != null && !currentStageName.equals(lifeStage.name())) {
+                antGeom.removeFromParent();
+                antVisuals.remove(id);
+                antGeom = null;
+            }
+        }
+
+        if (antGeom == null) {
+            antGeom = antVisualizer.createOrganismGeometry(caste, lifeStage, species);
+            antGeom.setUserData("LifeStage", lifeStage.name());
+            antGeom.setUserData("ID", id);
+
+            // Deterministic individual size polymorphism (±6% subtle variation around CasteTemplate average)
+            int hash = id != null ? Math.abs(id.hashCode()) : 0;
+            float variance = 1.0f + (((hash % 1000) / 1000.0f) - 0.5f) * 0.12f;
+            antGeom.setLocalScale(variance);
+
+            com.jme3.scene.instancing.InstancedNode node = antVisualizer.getInstancedNode(caste);
+            if (node != null) {
+                node.attachChild(antGeom);
+            } else {
+                rootNode.attachChild(antGeom);
+            }
+            antVisuals.put(id, antGeom);
+        }
+
+        antGeom.setLocalTranslation(x, y, z);
+        antGeom.setLocalRotation(new com.jme3.math.Quaternion().fromAngles(0, heading, 0));
     }
 
     private void initializeInstancing() {
@@ -708,6 +704,88 @@ public class JmeGameApp extends SimpleApplication {
                     if (sunLight != null) {
                         sunLight.setColor(ColorRGBA.White);
                     }
+                }
+            }
+        });
+    }
+
+    private boolean terrainVisible = true;
+    private boolean tunnelsVisible = true;
+    private boolean antsVisible = true;
+    private boolean pheromonesVisible = true;
+    private boolean weatherVisible = true;
+
+    public void setTerrainVisible(boolean visible) {
+        this.terrainVisible = visible;
+        enqueueTask(() -> {
+            if (terrainNode != null) {
+                if (visible) {
+                    if (terrainNode.getParent() == null) rootNode.attachChild(terrainNode);
+                } else {
+                    terrainNode.removeFromParent();
+                }
+            }
+        });
+    }
+
+    public void setTunnelsVisible(boolean visible) {
+        this.tunnelsVisible = visible;
+        enqueueTask(() -> {
+            if (tunnelVisualizer != null && tunnelVisualizer.getRootNode() != null) {
+                if (visible) {
+                    if (tunnelVisualizer.getRootNode().getParent() == null) rootNode.attachChild(tunnelVisualizer.getRootNode());
+                } else {
+                    tunnelVisualizer.getRootNode().removeFromParent();
+                }
+            }
+        });
+    }
+
+    public void setAntsVisible(boolean visible) {
+        this.antsVisible = visible;
+        enqueueTask(() -> {
+            if (antVisualizer != null) {
+                for (org.swarmforge.core.domain.Individual.Caste caste : org.swarmforge.core.domain.Individual.Caste.values()) {
+                    com.jme3.scene.instancing.InstancedNode node = antVisualizer.getInstancedNode(caste);
+                    if (node != null) {
+                        if (visible) {
+                            if (node.getParent() == null) rootNode.attachChild(node);
+                        } else {
+                            node.removeFromParent();
+                        }
+                    }
+                }
+            }
+            if (!visible) {
+                for (com.jme3.scene.Spatial ant : antVisuals.values()) {
+                    ant.removeFromParent();
+                }
+                antVisuals.clear();
+            }
+        });
+    }
+
+    public void setPheromonesVisible(boolean visible) {
+        this.pheromonesVisible = visible;
+        enqueueTask(() -> {
+            if (pheromoneVisualizer != null && pheromoneVisualizer.getRootNode() != null) {
+                if (visible) {
+                    if (pheromoneVisualizer.getRootNode().getParent() == null) rootNode.attachChild(pheromoneVisualizer.getRootNode());
+                } else {
+                    pheromoneVisualizer.getRootNode().removeFromParent();
+                }
+            }
+        });
+    }
+
+    public void setWeatherVisible(boolean visible) {
+        this.weatherVisible = visible;
+        enqueueTask(() -> {
+            if (weatherVisualizer != null && weatherVisualizer.getRootNode() != null) {
+                if (visible) {
+                    if (weatherVisualizer.getRootNode().getParent() == null) rootNode.attachChild(weatherVisualizer.getRootNode());
+                } else {
+                    weatherVisualizer.getRootNode().removeFromParent();
                 }
             }
         });

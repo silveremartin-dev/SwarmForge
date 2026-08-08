@@ -64,6 +64,8 @@ public class AccessorySpeciesEditorPane extends VBox {
     private TextField growthRateField;
     private TextField initialBiomassDensityField;
     private TextField initialPopulationDensityField;
+    private Spinner<Integer> individualCountSpinner;
+    private ComboBox<String> nestDispatchCombo;
     private CheckBox diapauseCheck;
 
     // Seasonal Controls & Hemisphere
@@ -118,6 +120,11 @@ public class AccessorySpeciesEditorPane extends VBox {
         i18n.localeProperty().addListener((obs, oldL, newL) -> refreshI18nLabels());
 
         getChildren().addAll(headerLabel, topToolbar, new Separator(), tabPane);
+
+        attachUserChangeListeners();
+        if (!accessoryPresetCombo.getItems().isEmpty()) {
+            applyAccessoryPreset(accessoryPresetCombo.getValue());
+        }
     }
 
     private HBox createToolbar() {
@@ -127,28 +134,62 @@ public class AccessorySpeciesEditorPane extends VBox {
         lblPreset = new Label();
         lblPreset.textProperty().bind(i18n.createStringBinding("preset.label"));
         lblPreset.setStyle("-fx-font-weight: bold;");
+        lblPreset.setGraphic(new FontIcon(Feather.SLIDERS));
 
         accessoryPresetCombo = new ComboBox<>(FXCollections.observableArrayList(
-                "swarmforge-accessory-gramineae",
-                "swarmforge-accessory-cinara-aphid",
-                "swarmforge-accessory-tenebrio-larva",
-                "swarmforge-accessory-myrmeleon-antlion",
-                "swarmforge-accessory-cordyceps-fungus",
-                "swarmforge-accessory-varroa-mite",
-                "swarmforge-accessory-polytrichum-moss"
+                "Graminées à Graines (Herbes & Biomasse)",
+                "Pucerons du Pin (Cinara aphid / Miellat)",
+                "Larves de Ténébrion (Proies Protéiques)",
+                "Fourmilion Piégeur (Myrmeleon / Prédateur)",
+                "Champignon Entomopathogène (Cordyceps)",
+                "Acarien Parasite (Varroa destructor)",
+                "Mousse Humide (Polytrichum / Substrat)"
         ));
+        accessoryPresetCombo.setEditable(true);
         accessoryPresetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
         accessoryPresetCombo.setTooltip(new Tooltip("Sélectionnez une espèce accessoire pré-configurée (Plantes, Pucerons, Proies, Prédateurs, Pathogènes)."));
         accessoryPresetCombo.getSelectionModel().selectFirst();
-        accessoryPresetCombo.setPrefWidth(240);
+        accessoryPresetCombo.setPrefWidth(260);
+
+        accessoryPresetCombo.setOnAction(e -> {
+            if (isUpdatingFields) return;
+            String sel = accessoryPresetCombo.getValue();
+            if (sel == null || sel.equals(lastSelectedPreset)) return;
+
+            if (isDirty) {
+                Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Attention : Vous avez des modifications non enregistrées sur l'espèce accessoire actuelle.\n\nVoulez-vous vraiment charger le preset '" + sel + "' et abandonner vos modifications ?"
+                );
+                alert.setTitle("Modifications non enregistrées");
+                alert.setHeaderText("Changement de preset d'espèce accessoire");
+                java.util.Optional<ButtonType> res = alert.showAndWait();
+                if (res.isEmpty() || res.get() != ButtonType.OK) {
+                    isUpdatingFields = true;
+                    try {
+                        accessoryPresetCombo.setValue(lastSelectedPreset);
+                    } finally {
+                        isUpdatingFields = false;
+                    }
+                    return;
+                }
+            }
+
+            if (sel != null) {
+                lastSelectedPreset = sel;
+                applyAccessoryPreset(sel);
+            }
+        });
 
         btnSave = new Button();
+        btnSave.setGraphic(new FontIcon(Feather.SAVE));
         btnSave.textProperty().bind(i18n.createStringBinding("preset.save"));
         btnSave.getStyleClass().add("btn-secondary");
         btnSave.setTooltip(new Tooltip("Enregistrer la configuration de l'espèce accessoire."));
         btnSave.setOnAction(e -> handleAddPreset());
 
         btnDelete = new Button();
+        btnDelete.setGraphic(new FontIcon(Feather.TRASH_2));
         btnDelete.textProperty().bind(i18n.createStringBinding("preset.delete"));
         btnDelete.getStyleClass().add("btn-danger");
         btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
@@ -156,23 +197,20 @@ public class AccessorySpeciesEditorPane extends VBox {
         btnDelete.setOnAction(e -> handleDeletePreset());
 
         btnExport = new Button();
+        btnExport.setGraphic(new FontIcon(Feather.DOWNLOAD));
         btnExport.textProperty().bind(i18n.createStringBinding("preset.export"));
         btnExport.getStyleClass().add("btn-secondary");
         btnExport.setTooltip(new Tooltip("Exporter l'espèce accessoire au format JSON."));
         btnExport.setOnAction(e -> handleSave());
 
         btnImport = new Button();
+        btnImport.setGraphic(new FontIcon(Feather.UPLOAD));
         btnImport.textProperty().bind(i18n.createStringBinding("preset.import"));
         btnImport.getStyleClass().add("btn-secondary");
         btnImport.setTooltip(new Tooltip("Importer un fichier JSON d'espèce accessoire."));
         btnImport.setOnAction(e -> handleLoad());
 
-        Button bHelp = new Button("📖 Aide & Glossaire");
-        bHelp.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
-        bHelp.setTooltip(new Tooltip("Ouvrir le glossaire pédagogique de l'environnement, des plantes et prédateurs."));
-        bHelp.setOnAction(e -> GlossaryDialog.show("env"));
-
-        bar.getChildren().addAll(lblPreset, accessoryPresetCombo, btnSave, btnDelete, bHelp, new Separator(Orientation.VERTICAL), btnExport, btnImport);
+        bar.getChildren().addAll(lblPreset, accessoryPresetCombo, btnSave, btnDelete, new Separator(Orientation.VERTICAL), btnExport, btnImport);
         return bar;
     }
 
@@ -268,6 +306,20 @@ public class AccessorySpeciesEditorPane extends VBox {
         initialBiomassDensityField = new TextField("150.0");
         initialPopulationDensityField = new TextField("25.0");
 
+        individualCountSpinner = new Spinner<>(0, 10000, 50, 10);
+        individualCountSpinner.setEditable(true);
+        individualCountSpinner.setTooltip(new Tooltip("Nombre total d'individus de cette espèce accessoire introduits initialement."));
+
+        nestDispatchCombo = new ComboBox<>(FXCollections.observableArrayList(
+                "Tous les nids hôtes compatibles (Filtrage biologique)",
+                "Nids de l'Espèce Principale uniquement (Nid #1)",
+                "Répartition uniforme sur tous les nids du monde",
+                "Extérieur uniquement (Zone d'exploration hors nids)",
+                "Loges d'élevage / Couvain uniquement (Commensaux & Parasites)"
+        ));
+        nestDispatchCombo.getSelectionModel().selectFirst();
+        nestDispatchCombo.setTooltip(new Tooltip("Règle de répartition des individus entre les nids : affecte les organismes uniquement dans les nids qui les acceptent et exclut ceux qui les réfutent."));
+
         diapauseCheck = new CheckBox(i18n.get("accessory.field.diapause.check"));
         diapauseCheck.setSelected(true);
         Tooltip tDiapause = new Tooltip(i18n.get("accessory.field.diapause.tt"));
@@ -284,7 +336,9 @@ public class AccessorySpeciesEditorPane extends VBox {
         grid.addRow(7, createLabelKey("accessory.field.growth_rate", "accessory.field.growth_rate.tt"), growthRateField);
         grid.addRow(8, createLabelKey("accessory.field.biomass_density", "accessory.field.biomass_density.tt"), initialBiomassDensityField);
         grid.addRow(9, createLabelKey("accessory.field.pop_density", "accessory.field.pop_density.tt"), initialPopulationDensityField);
-        grid.addRow(10, createLabelKey("accessory.field.diapause", "accessory.field.diapause.tt"), diapauseCheck);
+        grid.addRow(10, new Label("Nombre d'Individus à Introduire :"), individualCountSpinner);
+        grid.addRow(11, new Label("Règle de Répartition dans les Nids :"), nestDispatchCombo);
+        grid.addRow(12, createLabelKey("accessory.field.diapause", "accessory.field.diapause.tt"), diapauseCheck);
 
         card.getChildren().addAll(title, grid);
         return card;
@@ -559,12 +613,34 @@ public class AccessorySpeciesEditorPane extends VBox {
     }
 
     private void handleAddPreset() {
-        String name = accessoryNameField != null ? accessoryNameField.getText().trim() : "";
-        if (name.isEmpty()) name = "swarmforge-accessory-custom";
-        if (!accessoryPresetCombo.getItems().contains(name)) {
-            accessoryPresetCombo.getItems().add(name);
+        String editedText = accessoryPresetCombo.getEditor() != null ? accessoryPresetCombo.getEditor().getText().trim() : "";
+        String fieldText = accessoryNameField != null ? accessoryNameField.getText().trim() : "";
+        String name = !editedText.isEmpty() ? editedText : (!fieldText.isEmpty() ? fieldText : "swarmforge-accessory-custom");
+
+        if (accessoryPresetCombo.getItems().contains(name)) {
+            Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
+                Alert.AlertType.CONFIRMATION,
+                "Le preset d'espèce accessoire '" + name + "' existe déjà.\n\nVoulez-vous le remplacer par la configuration actuelle ?"
+            );
+            confirmAlert.setTitle("Remplacer le Preset Existant");
+            confirmAlert.setHeaderText("Confirmation de remplacement");
+            java.util.Optional<ButtonType> res = confirmAlert.showAndWait();
+            if (res.isEmpty() || res.get() != ButtonType.OK) {
+                return;
+            }
         }
-        accessoryPresetCombo.getSelectionModel().select(name);
+
+        isUpdatingFields = true;
+        try {
+            if (!accessoryPresetCombo.getItems().contains(name)) {
+                accessoryPresetCombo.getItems().add(name);
+            }
+            accessoryPresetCombo.getSelectionModel().select(name);
+        } finally {
+            isUpdatingFields = false;
+        }
+        lastSelectedPreset = name;
+        isDirty = false;
         NotificationOverlay.show(this, "Preset espèce accessoire enregistré : " + name, NotificationOverlay.NotificationType.SUCCESS);
     }
 
@@ -592,10 +668,12 @@ public class AccessorySpeciesEditorPane extends VBox {
     }
 
     private void handleDeletePreset() {
-        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
+            Alert.AlertType.CONFIRMATION,
+            String.format(i18n.get("preset.delete.confirm"), accessoryPresetCombo.getValue())
+        );
         confirmAlert.setTitle(i18n.get("preset.delete.title"));
         confirmAlert.setHeaderText("Supprimer l'Espèce Accessoire");
-        confirmAlert.setContentText(String.format(i18n.get("preset.delete.confirm"), accessoryPresetCombo.getValue()));
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -625,6 +703,166 @@ public class AccessorySpeciesEditorPane extends VBox {
         }
         if (helpSearchField != null) {
             helpSearchField.setPromptText(i18n.get("accessory.help.search_prompt"));
+        }
+    }
+
+    private boolean isUpdatingFields = false;
+    private boolean isDirty = false;
+    private String lastSelectedPreset = null;
+
+    private void clearPresetSelection() {
+        if (!isUpdatingFields && accessoryPresetCombo != null) {
+            isDirty = true;
+            isUpdatingFields = true;
+            try {
+                accessoryPresetCombo.getSelectionModel().clearSelection();
+            } finally {
+                isUpdatingFields = false;
+            }
+        }
+    }
+
+    private void attachUserChangeListeners() {
+        Runnable clearLsn = this::clearPresetSelection;
+        if (accessoryNameField != null) accessoryNameField.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (categoryCombo != null) categoryCombo.valueProperty().addListener((o, a, b) -> clearLsn.run());
+        if (biomeCombo != null) biomeCombo.valueProperty().addListener((o, a, b) -> clearLsn.run());
+        if (latitudeField != null) latitudeField.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (minTempField != null) minTempField.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (optTempField != null) optTempField.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (maxTempField != null) maxTempField.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (growthRateField != null) growthRateField.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (initialBiomassDensityField != null) initialBiomassDensityField.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (initialPopulationDensityField != null) initialPopulationDensityField.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (diapauseCheck != null) diapauseCheck.selectedProperty().addListener((o, a, b) -> clearLsn.run());
+        if (hemisphereCombo != null) hemisphereCombo.valueProperty().addListener((o, a, b) -> clearLsn.run());
+        if (seasonSlider1 != null) seasonSlider1.valueProperty().addListener((o, a, b) -> clearLsn.run());
+        if (seasonSlider2 != null) seasonSlider2.valueProperty().addListener((o, a, b) -> clearLsn.run());
+        if (seasonSlider3 != null) seasonSlider3.valueProperty().addListener((o, a, b) -> clearLsn.run());
+        if (seasonSlider4 != null) seasonSlider4.valueProperty().addListener((o, a, b) -> clearLsn.run());
+        if (targetCasteCombo != null) targetCasteCombo.valueProperty().addListener((o, a, b) -> clearLsn.run());
+        if (huntModeCombo != null) huntModeCombo.valueProperty().addListener((o, a, b) -> clearLsn.run());
+        if (killRateField != null) killRateField.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (pathogenVectorCombo != null) pathogenVectorCombo.valueProperty().addListener((o, a, b) -> clearLsn.run());
+        if (transmissionR0Field != null) transmissionR0Field.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (incubationDaysField != null) incubationDaysField.textProperty().addListener((o, a, b) -> clearLsn.run());
+        if (mortalityRateField != null) mortalityRateField.textProperty().addListener((o, a, b) -> clearLsn.run());
+    }
+
+    private void applyAccessoryPreset(String name) {
+        if (name == null || name.isEmpty()) return;
+        isUpdatingFields = true;
+        try {
+            if (name.contains("Graminées")) {
+                accessoryNameField.setText("Graminées à Graines (Messor)");
+                categoryCombo.setValue("FLORA");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("45.0");
+                minTempField.setText("5.0");
+                optTempField.setText("22.0");
+                maxTempField.setText("35.0");
+                growthRateField.setText("1.2");
+                initialBiomassDensityField.setText("150.0");
+                initialPopulationDensityField.setText("25.0");
+                diapauseCheck.setSelected(true);
+                hemisphereCombo.getSelectionModel().select(0);
+                seasonSlider1.setValue(0.8); seasonSlider2.setValue(1.0); seasonSlider3.setValue(0.6); seasonSlider4.setValue(0.1);
+                targetCasteCombo.setValue("Toutes Castes");
+                huntModeCombo.setValue("Attaque Directe (Oiseau / Tamandua)");
+                killRateField.setText("0.0");
+                pathogenVectorCombo.setValue("Spores Aériennes (Cordyceps)");
+                transmissionR0Field.setText("0.0"); incubationDaysField.setText("0.0"); mortalityRateField.setText("0.0");
+            } else if (name.contains("Pucerons")) {
+                accessoryNameField.setText("Pucerons du Pin (Cinara / Miellat)");
+                categoryCombo.setValue("APHID_MUTUALIST");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("48.5");
+                minTempField.setText("8.0"); optTempField.setText("20.0"); maxTempField.setText("30.0");
+                growthRateField.setText("2.5");
+                initialBiomassDensityField.setText("80.0"); initialPopulationDensityField.setText("100.0");
+                diapauseCheck.setSelected(true);
+                hemisphereCombo.getSelectionModel().select(0);
+                seasonSlider1.setValue(0.7); seasonSlider2.setValue(1.0); seasonSlider3.setValue(0.5); seasonSlider4.setValue(0.0);
+                targetCasteCombo.setValue("Ouvrières");
+                huntModeCombo.setValue("Embrouille / Affût (Araignée)");
+                killRateField.setText("0.2");
+                pathogenVectorCombo.setValue("Toilette / Allogrooming");
+                transmissionR0Field.setText("1.2"); incubationDaysField.setText("5.0"); mortalityRateField.setText("5.0");
+            } else if (name.contains("Ténébrion")) {
+                accessoryNameField.setText("Larves de Ténébrion (Proies Protéiques)");
+                categoryCombo.setValue("PREY_INSECT");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("43.0");
+                minTempField.setText("10.0"); optTempField.setText("25.0"); maxTempField.setText("38.0");
+                growthRateField.setText("3.0");
+                initialBiomassDensityField.setText("200.0"); initialPopulationDensityField.setText("50.0");
+                diapauseCheck.setSelected(false);
+                seasonSlider1.setValue(0.6); seasonSlider2.setValue(0.9); seasonSlider3.setValue(0.7); seasonSlider4.setValue(0.2);
+                targetCasteCombo.setValue("Ouvrières");
+                huntModeCombo.setValue("Attaque Directe (Oiseau / Tamandua)");
+                killRateField.setText("1.5");
+                transmissionR0Field.setText("0.0"); incubationDaysField.setText("0.0"); mortalityRateField.setText("0.0");
+            } else if (name.contains("Fourmilion")) {
+                accessoryNameField.setText("Fourmilion Piégeur (Myrmeleon / Prédateur)");
+                categoryCombo.setValue("PREDATOR");
+                biomeCombo.setValue("MEDITERRANEAN");
+                latitudeField.setText("38.0");
+                minTempField.setText("12.0"); optTempField.setText("28.0"); maxTempField.setText("42.0");
+                growthRateField.setText("0.5");
+                initialBiomassDensityField.setText("20.0"); initialPopulationDensityField.setText("5.0");
+                diapauseCheck.setSelected(true);
+                seasonSlider1.setValue(0.5); seasonSlider2.setValue(1.0); seasonSlider3.setValue(0.8); seasonSlider4.setValue(0.1);
+                targetCasteCombo.setValue("Ouvrières");
+                huntModeCombo.setValue("Piège / Entonnoir (Fourmilion)");
+                killRateField.setText("5.0");
+                transmissionR0Field.setText("0.0"); incubationDaysField.setText("0.0"); mortalityRateField.setText("0.0");
+            } else if (name.contains("Cordyceps") || name.contains("Entomopathogène")) {
+                accessoryNameField.setText("Champignon Entomopathogène (Cordyceps)");
+                categoryCombo.setValue("PATHOGEN_PARASITE");
+                biomeCombo.setValue("TROPICAL_RAINFOREST");
+                latitudeField.setText("3.0");
+                minTempField.setText("15.0"); optTempField.setText("26.0"); maxTempField.setText("34.0");
+                growthRateField.setText("4.0");
+                initialBiomassDensityField.setText("10.0"); initialPopulationDensityField.setText("30.0");
+                diapauseCheck.setSelected(false);
+                seasonSlider1.setValue(1.0); seasonSlider2.setValue(0.8); seasonSlider3.setValue(1.0); seasonSlider4.setValue(0.8);
+                targetCasteCombo.setValue("Ouvrières");
+                huntModeCombo.setValue("Parasitoïde (Ponte interne / Guêpe)");
+                killRateField.setText("2.0");
+                pathogenVectorCombo.setValue("Spores Aériennes (Cordyceps)");
+                transmissionR0Field.setText("3.8"); incubationDaysField.setText("3.0"); mortalityRateField.setText("25.0");
+            } else if (name.contains("Varroa") || name.contains("Acarien")) {
+                accessoryNameField.setText("Acarien Parasite (Varroa destructor)");
+                categoryCombo.setValue("PATHOGEN_PARASITE");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("45.0");
+                minTempField.setText("12.0"); optTempField.setText("24.0"); maxTempField.setText("36.0");
+                growthRateField.setText("2.8");
+                initialBiomassDensityField.setText("5.0"); initialPopulationDensityField.setText("80.0");
+                diapauseCheck.setSelected(false);
+                seasonSlider1.setValue(0.7); seasonSlider2.setValue(1.0); seasonSlider3.setValue(0.6); seasonSlider4.setValue(0.2);
+                targetCasteCombo.setValue("Nymphes / Couvain");
+                huntModeCombo.setValue("Parasitoïde (Ponte interne / Guêpe)");
+                killRateField.setText("1.0");
+                pathogenVectorCombo.setValue("Contact Sol & Galerie");
+                transmissionR0Field.setText("2.8"); incubationDaysField.setText("2.0"); mortalityRateField.setText("15.0");
+            } else if (name.contains("Mousse")) {
+                accessoryNameField.setText("Mousse Humide (Polytrichum / Substrat)");
+                categoryCombo.setValue("FLORA");
+                biomeCombo.setValue("TAIGA_BOREAL");
+                latitudeField.setText("60.0");
+                minTempField.setText("2.0"); optTempField.setText("18.0"); maxTempField.setText("28.0");
+                growthRateField.setText("0.8");
+                initialBiomassDensityField.setText("300.0"); initialPopulationDensityField.setText("10.0");
+                diapauseCheck.setSelected(true);
+                seasonSlider1.setValue(0.9); seasonSlider2.setValue(0.7); seasonSlider3.setValue(0.4); seasonSlider4.setValue(0.1);
+                targetCasteCombo.setValue("Toutes Castes");
+                huntModeCombo.setValue("Attaque Directe (Oiseau / Tamandua)");
+                killRateField.setText("0.0");
+            }
+        } finally {
+            isUpdatingFields = false;
+            isDirty = false;
         }
     }
 }

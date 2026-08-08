@@ -93,53 +93,40 @@ public class SimulationAudioManager {
 
                         // 1. Biome Ambiance (Bird chirps / Wind rustle)
                         if (ambientEnabled) {
-                            if ("Forest".equalsIgnoreCase(currentBiome) || "Tempérée".equalsIgnoreCase(currentBiome)) {
-                                // Gentle wind breeze + occasional bird chirp
-                                double wind = Math.sin(phaseAmbient * 0.005) * 0.08 * (rand.nextDouble() * 0.2 + 0.9);
-                                phaseAmbient += 1.0;
-                                double chirp = 0.0;
-                                if ((tick % 12000) < 150) { // Periodic bird chirp
-                                    double chirpFreq = 2200.0 + Math.sin((tick % 12000) * 0.1) * 600.0;
-                                    chirp = Math.sin(chirpFreq * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.15;
-                                }
-                                sampleVal += (wind + chirp);
-                            } else if ("Desert".equalsIgnoreCase(currentBiome) || "Désert".equalsIgnoreCase(currentBiome)) {
-                                // Dry wind hiss
-                                double dryWind = (rand.nextDouble() - 0.5) * 0.06 * Math.sin(tick * 0.0003);
-                                sampleVal += dryWind;
+                            // Gentle wind breeze + periodic bird chirp
+                            double wind = Math.sin(phaseAmbient * 0.003) * 0.15 * (rand.nextDouble() * 0.3 + 0.85);
+                            phaseAmbient += 1.0;
+                            double chirp = 0.0;
+                            if ((tick % 8000) < 180) { // Frequent natural bird chirp
+                                double chirpFreq = 2400.0 + Math.sin((tick % 8000) * 0.12) * 800.0;
+                                chirp = Math.sin(chirpFreq * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.25;
                             }
+                            sampleVal += (wind + chirp);
                         }
 
                         // 2. Weather Effects (Rain / Thunder / Storm)
                         if (weatherEnabled) {
-                            if (currentWeather.contains("Rain") || currentWeather.contains("Pluie") || currentWeather.contains("Caniculaire")) {
-                                double rainNoise = (rand.nextDouble() - 0.5) * 0.12; // Rain patter
+                            if (currentWeather != null && (currentWeather.contains("Rain") || currentWeather.contains("Pluie") || currentWeather.contains("Orage"))) {
+                                double rainNoise = (rand.nextDouble() - 0.5) * 0.22; // Rain patter
                                 sampleVal += rainNoise;
                             }
-                            if (currentWeather.contains("Thunder") || currentWeather.contains("Orage")) {
-                                if ((tick % 25000) < 400) { // Thunder rumble
-                                    double rumble = Math.sin(50.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * (rand.nextDouble() * 0.3);
+                            if (currentWeather != null && (currentWeather.contains("Thunder") || currentWeather.contains("Orage"))) {
+                                if ((tick % 15000) < 600) { // Thunder rumble
+                                    double rumble = Math.sin(45.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * (rand.nextDouble() * 0.4);
                                     sampleVal += rumble;
                                 }
                             }
                         }
 
-                        // 3. Insect & Subterranean Activity (Excavation / Clicking in galleries)
+                        // 3. Insect & Subterranean Activity (Excavation / Mandible clicking / Crawling)
                         if (insectEnabled) {
-                            if (cameraDepth > 0.3) {
-                                // Subterranean tunnel echo & mandibles crunching
-                                if (rand.nextDouble() < 0.003) { // Mandible click
-                                    double click = (rand.nextDouble() - 0.5) * 0.25;
-                                    sampleVal += click;
-                                }
-                                double lowTunnelHum = Math.sin(80.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.04;
-                                sampleVal += lowTunnelHum;
-                            } else {
-                                // Surface foraging rustle
-                                if (rand.nextDouble() < 0.001) {
-                                    sampleVal += (rand.nextDouble() - 0.5) * 0.15;
-                                }
+                            // Subterranean tunnel echo & mandibles crunching
+                            if (rand.nextDouble() < 0.02) { // Frequent mandible click / leg rustle
+                                double click = (rand.nextDouble() - 0.5) * 0.35;
+                                sampleVal += click;
                             }
+                            double lowTunnelHum = Math.sin(90.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.08;
+                            sampleVal += lowTunnelHum;
                         }
 
                         // Master Volume & Clipping clamp

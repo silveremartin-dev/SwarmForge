@@ -20,6 +20,8 @@ import java.io.File;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
+import org.kordamp.ikonli.feather.Feather;
+import org.kordamp.ikonli.javafx.FontIcon;
 
 /**
  * World Editor Pane for SwarmForge Studio.
@@ -417,8 +419,10 @@ public class WorldEditorPane extends BorderPane {
 
         Label lblPreset = new Label("Preset :");
         lblPreset.setStyle("-fx-font-weight: bold; -fx-text-fill: #e4e4e7;");
+        lblPreset.setGraphic(new FontIcon(Feather.SLIDERS));
 
         presetsCombo = new ComboBox<>();
+        presetsCombo.setEditable(true);
         presetsCombo.setPromptText("Sélectionner un preset...");
         presetsCombo.getItems().setAll(presetManager.names());
         presetsCombo.setTooltip(new Tooltip("Sélectionnez un preset de monde 3D pré-configuré (Forêt, Désert, Rivières, etc.)."));
@@ -431,32 +435,31 @@ public class WorldEditorPane extends BorderPane {
         });
 
         Button bSave = new Button("Sauvegarder");
+        bSave.setGraphic(new FontIcon(Feather.SAVE));
         bSave.getStyleClass().add("btn-secondary");
         bSave.setTooltip(new Tooltip("Enregistrer la configuration actuelle du monde comme nouveau preset."));
         bSave.setOnAction(e -> handleSavePreset());
 
         Button bDelete = new Button("Supprimer");
+        bDelete.setGraphic(new FontIcon(Feather.TRASH_2));
         bDelete.getStyleClass().add("btn-danger");
         bDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
         bDelete.setTooltip(new Tooltip("Supprimer le preset de monde sélectionné."));
         bDelete.setOnAction(e -> handleDeletePreset());
 
         Button bExport = new Button("Exporter...");
+        bExport.setGraphic(new FontIcon(Feather.DOWNLOAD));
         bExport.getStyleClass().add("btn-secondary");
         bExport.setTooltip(new Tooltip("Exporter la configuration du monde au format JSON."));
         bExport.setOnAction(e -> doExport());
 
         Button bImport = new Button("Importer...");
+        bImport.setGraphic(new FontIcon(Feather.UPLOAD));
         bImport.getStyleClass().add("btn-secondary");
         bImport.setTooltip(new Tooltip("Importer un fichier JSON de configuration de monde."));
         bImport.setOnAction(e -> doImport());
 
-        Button bHelp = new Button("📖 Aide & Glossaire");
-        bHelp.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
-        bHelp.setTooltip(new Tooltip("Ouvrir le glossaire pédagogique des biotopes, sols, hydrographie et écosystèmes."));
-        bHelp.setOnAction(e -> GlossaryDialog.show("env"));
-
-        r.getChildren().addAll(title, sp, lblPreset, presetsCombo, bSave, bDelete, bHelp, new Separator(Orientation.VERTICAL), bExport, bImport);
+        r.getChildren().addAll(title, sp, lblPreset, presetsCombo, bSave, bDelete, new Separator(Orientation.VERTICAL), bExport, bImport);
 
         Label subtitle = new Label("Génération de relief, sol, ouvert végétal, hydrographie, sculpture 3D & déformation voxel (0.1-1.0mm)");
         subtitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
@@ -466,7 +469,9 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private void handleSavePreset() {
-        String defaultName = presetsCombo.getValue() != null ? presetsCombo.getValue() : "Nouveau Preset Monde";
+        String defaultName = (presetsCombo.getEditor() != null && !presetsCombo.getEditor().getText().isBlank())
+                ? presetsCombo.getEditor().getText().trim()
+                : (presetsCombo.getValue() != null ? presetsCombo.getValue() : "Nouveau Preset Monde");
         TextInputDialog dialog = new TextInputDialog(defaultName);
         dialog.setTitle("Enregistrer le Preset Monde");
         dialog.setHeaderText("Saisissez un nom pour ce preset de monde :");

@@ -127,6 +127,10 @@ public class Simulation {
     }
 
     public Colony addColony(String speciesType) {
+        return addColony(speciesType, 1, 150, 20);
+    }
+
+    public Colony addColony(String speciesType, int queens, int workers, int soldiers) {
         org.swarmforge.core.species.Species species;
         switch (speciesType) {
             case "FormicaRufa" -> species = new org.swarmforge.core.species.FormicaRufa();
@@ -141,6 +145,15 @@ public class Simulation {
         float y = (float) (Math.random() * terrarium.getHeight());
 
         Colony colony = new Colony(species, x, y, 0); // Z=0 surface
+        for (int i = 0; i < queens; i++) {
+            colony.createQueen();
+        }
+        for (int i = 0; i < workers; i++) {
+            colony.createWorker();
+        }
+        for (int i = 0; i < soldiers; i++) {
+            colony.createSoldier();
+        }
         addColony(colony);
         return colony;
     }
@@ -689,6 +702,47 @@ public class Simulation {
         }
 
         return success;
+    }
+
+    private final java.util.List<org.swarmforge.core.event.GodModeIntervention> interventionJournal = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+    private final java.util.List<SimulationCheckpoint> checkpoints = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+
+    public void logIntervention(org.swarmforge.core.event.GodModeIntervention intervention) {
+        if (intervention != null) {
+            interventionJournal.add(intervention);
+            org.swarmforge.core.event.EventBus.getInstance().publish(
+                org.swarmforge.core.event.SimulationEvent.obtain(
+                    org.swarmforge.core.event.SimulationEvent.EventType.GOD_MODE_INTERVENTION,
+                    org.swarmforge.core.event.SimulationEvent.Severity.INFO,
+                    getTickCount(),
+                    "⚡ Intervention Mode Divin (" + intervention.actionType() + ") enregistrée au tick #" + getTickCount(),
+                    null
+                )
+            );
+        }
+    }
+
+    public java.util.List<org.swarmforge.core.event.GodModeIntervention> getInterventionJournal() {
+        return new java.util.ArrayList<>(interventionJournal);
+    }
+
+    public SimulationCheckpoint createCheckpoint(String name) {
+        SimulationSnapshot snap = SimulationSnapshot.capture(this);
+        SimulationCheckpoint cp = new SimulationCheckpoint(name, getTickCount(), snap, interventionJournal);
+        checkpoints.add(cp);
+        return cp;
+    }
+
+    public boolean restoreCheckpoint(SimulationCheckpoint cp) {
+        if (cp == null || cp.getSnapshot() == null) return false;
+        cp.getSnapshot().restore(this);
+        this.interventionJournal.clear();
+        this.interventionJournal.addAll(cp.getInterventionsRecorded());
+        return true;
+    }
+
+    public java.util.List<SimulationCheckpoint> getCheckpoints() {
+        return new java.util.ArrayList<>(checkpoints);
     }
 
     /**

@@ -403,3 +403,77 @@
 .btn-danger:hover {
     -fx-background-color: #991b1b;
 }
+
+/* Dialog & Alert Theme Styling */
+.dialog-pane {
+    -fx-background-color: #18181b;
+    -fx-border-color: #3f3f46;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.dialog-pane > .header-panel {
+    -fx-background-color: #27272a;
+    -fx-border-color: #3f3f46;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 10px 14px;
+}
+
+.dialog-pane > .header-panel > .label,
+.dialog-pane:header *.header-panel *.label {
+    -fx-text-fill: #38bdf8;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.dialog-pane > .content {
+    -fx-background-color: #18181b;
+    -fx-padding: 14px 16px;
+}
+
+.dialog-pane > .content > .label,
+.dialog-pane *.content *.label {
+    -fx-text-fill: #e4e4e7;
+    -fx-font-size: 12px;
+}
+
+.dialog-pane > .button-bar {
+    -fx-background-color: #18181b;
+    -fx-padding: 10px 14px;
+}
+
+.dialog-pane > .button-bar > .container {
+    -fx-background-color: #18181b;
+}
+
+.dialog-pane .button {
+    -fx-background-color: #27272a;
+    -fx-text-fill: #f4f4f5;
+    -fx-border-color: #3f3f46;
+    -fx-background-radius: 6px;
+    -fx-border-radius: 6px;
+    -fx-padding: 6px 14px;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+}
+
+.dialog-pane .button:hover {
+    -fx-background-color: #0284c7;
+    -fx-border-color: #0369a1;
+    -fx-text-fill: #ffffff;
+}
+
+.dialog-pane .text-field {
+    -fx-background-color: #27272a;
+    -fx-text-fill: #f4f4f5;
+    -fx-border-color: #3f3f46;
+    -fx-background-radius: 4px;
+    -fx-border-radius: 4px;
+    -fx-padding: 6px 10px;
+}
+
+.dialog-pane .text-field:focused {
+    -fx-border-color: #38bdf8;
+}
+

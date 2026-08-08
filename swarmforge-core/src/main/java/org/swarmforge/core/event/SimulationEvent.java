@@ -54,6 +54,7 @@ public class SimulationEvent {
         SIMULATION_STOPPED,
         TICK_COMPLETED,
         MILESTONE_REACHED,
+        GOD_MODE_INTERVENTION,
         // Generic/Legacy Types
         INFO,
         BIRTH,

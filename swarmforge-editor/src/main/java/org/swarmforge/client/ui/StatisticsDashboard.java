@@ -22,22 +22,20 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
- * Real-Time Dynamic Colony & Eco-Engine Statistics Dashboard.
- * Displays statistics in real-time temporal units (seconds/hours) and provides
- * detailed multi-colony dynamic caste tracking and export capabilities.
+ * Versatile Real-Time Dynamic Colony & Eco-Engine Statistics Dashboard.
+ * Displays statistics in real-time temporal units with time-window controls (3 min default),
+ * species & colony separation, caste breakdowns, bio-resource graphs, weather/climate metrics,
+ * TPS performance tracking, and CSV export capabilities.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
 public class StatisticsDashboard extends VBox {
 
-    private static final int MAX_DATA_POINTS = 600;
+    private static final int MAX_DATA_POINTS = 3600; // Store up to 1 hour of data at 1 Hz
 
     public static class ColonyStats {
         public long simTicks;
@@ -46,8 +44,14 @@ public class StatisticsDashboard extends VBox {
         public int queens;
         public int workers;
         public int soldiers;
+        public int males;
         public double food;
         public double water;
+        public double protein;
+        public double carbohydrate;
+        public double temperature = 22.5; // °C
+        public double rainfall = 0.0;     // mm/h
+        public double pheromones = 100.0;
         public double tickRate;
         public int births;
         public int deaths;
@@ -78,16 +82,43 @@ public class StatisticsDashboard extends VBox {
         }
     }
 
+    // Dynamic series map for species/colonies: Key = ColonyName (or "Colonie #1 - Species")
+    private final Map<String, XYChart.Series<Number, Number>> colonySeriesMap = new LinkedHashMap<>();
+
+    // Caste Series
     private final XYChart.Series<Number, Number> totalPopSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> queensSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> workersSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> soldiersSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> malesSeries = new XYChart.Series<>();
 
+    // Bio-Resources Series
     private final XYChart.Series<Number, Number> foodSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> waterSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> proteinSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> birthsSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> deathsSeries = new XYChart.Series<>();
+
+    // Weather & Ecosystem Series
+    private final XYChart.Series<Number, Number> tempSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> rainSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> pheroSeries = new XYChart.Series<>();
+
+    // System Performance Series
     private final XYChart.Series<Number, Number> tpsSeries = new XYChart.Series<>();
+
+    // Charts
+    private final LineChart<Number, Number> chartMultiColony;
+    private final LineChart<Number, Number> chartCastes;
+    private final LineChart<Number, Number> chartResources;
+    private final LineChart<Number, Number> chartWeather;
+    private final LineChart<Number, Number> chartPerformance;
+
+    private final VBox chartsContainer = new VBox(14);
+
+    // Controls
+    private final ComboBox<String> comboGraphView = new ComboBox<>();
+    private final ComboBox<String> comboTimeWindow = new ComboBox<>();
 
     private final CheckBox chkTotalPop = new CheckBox();
     private final CheckBox chkWorkers = new CheckBox();
@@ -101,7 +132,9 @@ public class StatisticsDashboard extends VBox {
 
     private final List<ColonyStats> historyList = new ArrayList<>();
 
+    // KPI Labels
     private final Label lblPopulation = new Label("0");
+    private final Label lblColoniesCount = new Label("0");
     private final Label lblQueens = new Label("0");
     private final Label lblWorkers = new Label("0");
     private final Label lblSoldiers = new Label("0");
@@ -110,34 +143,78 @@ public class StatisticsDashboard extends VBox {
     private final Label lblTickRate = new Label("0 tps");
     private final Label lblSimTime = new Label("00:00:00 (0.0 s)");
 
+    private long lastGraphUpdateMillis = 0;
+    private double currentSelectedWindowSec = 180.0; // 3 minutes default
+
     public StatisticsDashboard() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         setSpacing(14);
         setPadding(new Insets(14));
 
-        // === Header Controls ===
-        HBox headerBar = new HBox(15);
+        // === Header Toolbar ===
+        HBox headerBar = new HBox(12);
         headerBar.setAlignment(Pos.CENTER_LEFT);
 
-        Label titleLabel = new Label("📊 " + i18n.get("stats.dashboard_title", "Tableau de Bord Statistiques (Temporalité Réelle)"));
+        Label titleLabel = new Label("📊 " + i18n.get("stats.dashboard_title", "Tableau de Bord Statistiques Temporel"));
         titleLabel.getStyleClass().add("card-title");
         titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #0284c7;");
-        titleLabel.setTooltip(new Tooltip("Suivi scientifique centralisé des paramètres bio-écologiques et temporels."));
+        titleLabel.setTooltip(new Tooltip("Suivi scientifique centralisé des colonies, castes, bio-ressources et climat."));
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button btnExport = new Button("📤 " + i18n.get("stats.export_btn", "Exporter Statistiques Détaillées (CSV / Excel)"));
+        // View Mode Selector
+        Label lblViewMode = new Label("📉 Graphiques :");
+        lblViewMode.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-font-weight: bold;");
+        comboGraphView.getItems().addAll(
+                "Tous les Graphiques (Vue Globale)",
+                "Démographie Multi-Colonies & Espèces",
+                "Répartition des Castes (Reines, Ouvrières, Soldats)",
+                "Ressources & Biomasse (Nourriture, Eau)",
+                "Écosystème & Climat (Température, Pluie)",
+                "Performances Moteur (TPS)"
+        );
+        comboGraphView.getSelectionModel().selectFirst();
+        comboGraphView.setTooltip(new Tooltip("Filtrer l'affichage des graphiques temporels par catégorie d'analyse."));
+        comboGraphView.setOnAction(e -> updateVisibleCharts());
+
+        // Time Window Selector (3 Minutes default as requested)
+        Label lblTimeWindow = new Label("⏱️ Fenêtre :");
+        lblTimeWindow.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-font-weight: bold;");
+        comboTimeWindow.getItems().addAll(
+                "1 Minute (60 s)",
+                "3 Minutes (180 s) — Recommandé",
+                "5 Minutes (300 s)",
+                "10 Minutes (600 s)",
+                "Tout l'historique"
+        );
+        comboTimeWindow.getSelectionModel().select(1); // 3 Minutes default
+        comboTimeWindow.setTooltip(new Tooltip("Durée d'observation de la courbe temporelle. Une fenêtre de 3 minutes permet d'observer l'évolution sereinement sans défilement trop rapide."));
+        comboTimeWindow.setOnAction(e -> {
+            int idx = comboTimeWindow.getSelectionModel().getSelectedIndex();
+            switch (idx) {
+                case 0 -> currentSelectedWindowSec = 60.0;
+                case 1 -> currentSelectedWindowSec = 180.0;
+                case 2 -> currentSelectedWindowSec = 300.0;
+                case 3 -> currentSelectedWindowSec = 600.0;
+                case 4 -> currentSelectedWindowSec = -1.0; // All history
+            }
+            if (!historyList.isEmpty()) {
+                updateChartXAxes(historyList.get(historyList.size() - 1).getSimTimeSeconds());
+            }
+        });
+
+        Button btnExport = new Button("📤 " + i18n.get("stats.export_btn", "Exporter CSV"));
         btnExport.getStyleClass().add("btn-primary");
-        btnExport.setTooltip(new Tooltip("Exporter l'historique complet avec durée exacte en secondes réelles, horodatage, pas dt, et métriques par caste."));
+        btnExport.setTooltip(new Tooltip("Exporter l'historique complet avec pas dt, durée exacte en secondes et métriques par colonie/caste."));
         btnExport.setOnAction(e -> exportToCSV());
 
         Button btnClear = new Button("🗑 " + i18n.get("log.btn.clear", "Réinitialiser"));
         btnClear.getStyleClass().add("btn-secondary");
-        btnClear.setTooltip(new Tooltip("Effacer les données actuelles des graphiques et réinitialiser l'historique d'enregistrement."));
+        btnClear.setTooltip(new Tooltip("Réinitialiser l'historique d'enregistrement et les courbes des graphiques."));
         btnClear.setOnAction(e -> clear());
 
-        headerBar.getChildren().addAll(titleLabel, spacer, btnClear, btnExport);
+        headerBar.getChildren().addAll(titleLabel, spacer, lblViewMode, comboGraphView, lblTimeWindow, comboTimeWindow, btnClear, btnExport);
 
         // === Summary KPI Cards ===
         GridPane summaryGrid = createSummaryPanel();
@@ -145,15 +222,15 @@ public class StatisticsDashboard extends VBox {
         summaryPane.textProperty().bind(i18n.createStringBinding("stats.summary"));
         summaryPane.setContent(summaryGrid);
         summaryPane.setCollapsible(false);
-        summaryPane.setTooltip(new Tooltip("Indicateurs Clés de Performance (KPI) calculés en temps réel."));
+        summaryPane.setTooltip(new Tooltip("Indicateurs Clés de Performance (KPI) calculés en temps réel pour l'écosystème."));
 
-        // === Interactive Metric Selection Panel ===
-        VBox selectorBox = new VBox(8);
+        // === Metric Checkboxes Bar ===
+        VBox selectorBox = new VBox(6);
         selectorBox.getStyleClass().add("card-pane");
 
-        Label lblSelect = new Label("🎯 " + i18n.get("stats.series_select", "Sélection des statistiques à afficher sur les graphiques temporels :"));
+        Label lblSelect = new Label("🎯 " + i18n.get("stats.series_select", "Sélection des séries temporelles à afficher :"));
         lblSelect.getStyleClass().add("card-title");
-        lblSelect.setTooltip(new Tooltip("Cochez ou décochez les séries temporelles à faire apparaître sur les courbes d'évolution."));
+        lblSelect.setTooltip(new Tooltip("Cochez ou décochez les séries à faire apparaître sur les courbes."));
 
         chkTotalPop.textProperty().bind(i18n.createStringBinding("stats.population_total"));
         chkWorkers.textProperty().bind(i18n.createStringBinding("stats.workers"));
@@ -165,17 +242,7 @@ public class StatisticsDashboard extends VBox {
         chkDeaths.textProperty().bind(i18n.createStringBinding("stats.deaths"));
         chkTps.textProperty().bind(i18n.createStringBinding("stats.tps"));
 
-        chkTotalPop.setTooltip(new Tooltip("Afficher la courbe de la population totale de la colonie."));
-        chkWorkers.setTooltip(new Tooltip("Afficher le nombre d'ouvrières en activité."));
-        chkSoldiers.setTooltip(new Tooltip("Afficher le nombre de soldats défensifs."));
-        chkQueens.setTooltip(new Tooltip("Afficher le nombre de reines reproductrices."));
-        chkFood.setTooltip(new Tooltip("Afficher la réserve accumulée de nourriture."));
-        chkWater.setTooltip(new Tooltip("Afficher le niveau de réserve d'eau."));
-        chkBirths.setTooltip(new Tooltip("Afficher le cumul des naissances."));
-        chkDeaths.setTooltip(new Tooltip("Afficher le cumul de la mortalité."));
-        chkTps.setTooltip(new Tooltip("Afficher la vitesse de calcul du moteur (TPS - Ticks Par Seconde)."));
-
-        FlowPane checkFlow = new FlowPane(14, 8);
+        FlowPane checkFlow = new FlowPane(12, 6);
         checkFlow.getChildren().addAll(chkTotalPop, chkWorkers, chkSoldiers, chkQueens, chkFood, chkWater, chkBirths, chkDeaths, chkTps);
 
         for (Node n : checkFlow.getChildren()) {
@@ -186,42 +253,70 @@ public class StatisticsDashboard extends VBox {
 
         selectorBox.getChildren().addAll(lblSelect, checkFlow);
 
-        // Setup Chart Series Names
-        totalPopSeries.setName(i18n.get("stats.population_total", "Population Totale"));
+        // === Setup Charts ===
+        chartMultiColony = createChart("📈 1. Démographie Multi-Colonies & Espèces (Effectif par Colonie)", "Individus (Par Colonie)");
+        chartCastes = createChart("👥 2. Répartition Globale par Caste (Reines, Ouvrières, Soldats, Mâles)", "Effectif par Caste");
+        chartResources = createChart("🌾 3. Bio-Ressources & Événements (Nourriture, Eau, Naissances, Décès)", "Quantité / Événements");
+        chartWeather = createChart("🌤️ 4. Écosystème & Climat (Température °C, Pluviométrie mm/h, Phéromones)", "Unités Environnementales");
+        chartPerformance = createChart("⚡ 5. Performances Moteur (Vitesse Calcul TPS)", "Ticks Par Seconde (TPS)");
+
+        // Setup series names
+        totalPopSeries.setName("Population Totale Globale");
         queensSeries.setName(i18n.get("stats.queens", "Reines"));
         workersSeries.setName(i18n.get("stats.workers", "Ouvrières"));
         soldiersSeries.setName(i18n.get("stats.soldiers", "Soldats"));
+        malesSeries.setName("Mâles");
 
-        foodSeries.setName(i18n.get("stats.food", "Nourriture"));
-        waterSeries.setName(i18n.get("stats.water", "Eau"));
-        birthsSeries.setName(i18n.get("stats.births", "Naissances"));
-        deathsSeries.setName(i18n.get("stats.deaths", "Décès"));
-        tpsSeries.setName(i18n.get("stats.tps", "Vitesse (TPS)"));
+        foodSeries.setName(i18n.get("stats.food", "Nourriture Stockée"));
+        waterSeries.setName(i18n.get("stats.water", "Eau / Humidité"));
+        proteinSeries.setName("Protéines");
+        birthsSeries.setName(i18n.get("stats.births", "Cumul Naissances"));
+        deathsSeries.setName(i18n.get("stats.deaths", "Cumul Décès"));
 
-        LineChart<Number, Number> popChart = createChart(i18n.get("stats.pop_chart", "Évolution des Populations (Secondes Réelles)"));
-        popChart.getData().addAll(totalPopSeries, queensSeries, workersSeries, soldiersSeries);
+        tempSeries.setName("Température Air (°C)");
+        rainSeries.setName("Pluviométrie (mm/h)");
+        pheroSeries.setName("Intensité Phéromones");
 
-        LineChart<Number, Number> resChart = createChart(i18n.get("stats.res_chart", "Ressources & Performances Système (Secondes Réelles)"));
-        resChart.getData().addAll(foodSeries, waterSeries, birthsSeries, deathsSeries, tpsSeries);
+        tpsSeries.setName(i18n.get("stats.tps", "Vitesse Engine (TPS)"));
 
-        // Bind visibility
-        chkTotalPop.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(popChart, totalPopSeries, newV));
-        chkQueens.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(popChart, queensSeries, newV));
-        chkWorkers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(popChart, workersSeries, newV));
-        chkSoldiers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(popChart, soldiersSeries, newV));
+        // Assign series to charts
+        chartCastes.getData().addAll(totalPopSeries, queensSeries, workersSeries, soldiersSeries, malesSeries);
+        chartResources.getData().addAll(foodSeries, waterSeries, proteinSeries, birthsSeries, deathsSeries);
+        chartWeather.getData().addAll(tempSeries, rainSeries, pheroSeries);
+        chartPerformance.getData().addAll(tpsSeries);
 
-        chkFood.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(resChart, foodSeries, newV));
-        chkWater.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(resChart, waterSeries, newV));
-        chkBirths.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(resChart, birthsSeries, newV));
-        chkDeaths.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(resChart, deathsSeries, newV));
-        chkTps.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(resChart, tpsSeries, newV));
+        // Bind visibility controls
+        chkTotalPop.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, totalPopSeries, newV));
+        chkQueens.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, queensSeries, newV));
+        chkWorkers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, workersSeries, newV));
+        chkSoldiers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, soldiersSeries, newV));
 
-        VBox chartsBox = new VBox(12, popChart, resChart);
-        ScrollPane scrollCharts = new ScrollPane(chartsBox);
+        chkFood.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, foodSeries, newV));
+        chkWater.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, waterSeries, newV));
+        chkBirths.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, birthsSeries, newV));
+        chkDeaths.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, deathsSeries, newV));
+        chkTps.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartPerformance, tpsSeries, newV));
+
+        updateVisibleCharts();
+
+        ScrollPane scrollCharts = new ScrollPane(chartsContainer);
         scrollCharts.setFitToWidth(true);
         VBox.setVgrow(scrollCharts, Priority.ALWAYS);
 
         getChildren().addAll(headerBar, summaryPane, selectorBox, scrollCharts);
+    }
+
+    private void updateVisibleCharts() {
+        chartsContainer.getChildren().clear();
+        int selected = comboGraphView.getSelectionModel().getSelectedIndex();
+        switch (selected) {
+            case 0 -> chartsContainer.getChildren().addAll(chartMultiColony, chartCastes, chartResources, chartWeather, chartPerformance);
+            case 1 -> chartsContainer.getChildren().add(chartMultiColony);
+            case 2 -> chartsContainer.getChildren().add(chartCastes);
+            case 3 -> chartsContainer.getChildren().add(chartResources);
+            case 4 -> chartsContainer.getChildren().add(chartWeather);
+            case 5 -> chartsContainer.getChildren().add(chartPerformance);
+        }
     }
 
     private void toggleSeries(LineChart<Number, Number> chart, XYChart.Series<Number, Number> series, boolean show) {
@@ -237,19 +332,21 @@ public class StatisticsDashboard extends VBox {
     private GridPane createSummaryPanel() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         GridPane grid = new GridPane();
-        grid.setHgap(20);
+        grid.setHgap(16);
         grid.setVgap(10);
         grid.setPadding(new Insets(10));
 
-        grid.add(createKpiCard(i18n.get("stats.population", "Population :"), lblPopulation, "Total des individus vivants"), 0, 0);
-        grid.add(createKpiCard(i18n.get("stats.queens", "Reines :"), lblQueens, "Reines génétiquement reproductrices"), 1, 0);
-        grid.add(createKpiCard(i18n.get("stats.workers", "Ouvrières :"), lblWorkers, "Ouvrières assurant le fourrageage et le couvain"), 2, 0);
-        grid.add(createKpiCard(i18n.get("stats.soldiers", "Soldats :"), lblSoldiers, "Soldats armés de mandibules défensives"), 3, 0);
+        grid.add(createKpiCard(i18n.get("stats.population", "Pop. Totale :"), lblPopulation, "Total des individus vivants dans la simulation"), 0, 0);
+        grid.add(createKpiCard("Colonies Actives :", lblColoniesCount, "Nombre de colonies & espèces distinctes résidant dans le terrarium"), 1, 0);
+        grid.add(createKpiCard(i18n.get("stats.queens", "Reines :"), lblQueens, "Reines génétiquement reproductrices"), 2, 0);
+        grid.add(createKpiCard(i18n.get("stats.workers", "Ouvrières :"), lblWorkers, "Ouvrières assurant le fourrageage et le couvain"), 3, 0);
 
-        grid.add(createKpiCard(i18n.get("stats.food", "Nourriture :"), lblFood, "Réserves de nourriture stockées dans le nid"), 0, 1);
-        grid.add(createKpiCard(i18n.get("stats.water", "Eau :"), lblWater, "Réserves d'eau et humidité du nid"), 1, 1);
-        grid.add(createKpiCard(i18n.get("stats.tick_rate", "Vitesse Engine :"), lblTickRate, "Cadence de simulation en Ticks Par Seconde (TPS)"), 2, 1);
-        grid.add(createKpiCard(i18n.get("stats.sim_time", "Durée Réelle :"), lblSimTime, "Temps de simulation écoulé converti en unités temporelles réelles"), 3, 1);
+        grid.add(createKpiCard(i18n.get("stats.soldiers", "Soldats :"), lblSoldiers, "Soldats armés de mandibules défensives"), 0, 1);
+        grid.add(createKpiCard(i18n.get("stats.food", "Nourriture :"), lblFood, "Réserves de nourriture accumulées dans les nids"), 1, 1);
+        grid.add(createKpiCard(i18n.get("stats.water", "Eau / Humidité :"), lblWater, "Réserves d'eau et niveau d'hygrométrie du nid"), 2, 1);
+        grid.add(createKpiCard(i18n.get("stats.tick_rate", "Cadence TPS :"), lblTickRate, "Vitesse de calcul du moteur en Ticks Par Seconde"), 3, 1);
+
+        grid.add(createKpiCard(i18n.get("stats.sim_time", "Durée & Date :"), lblSimTime, "Temps de simulation écoulé et date théorique convertie"), 0, 2, 4, 1);
 
         return grid;
     }
@@ -270,22 +367,22 @@ public class StatisticsDashboard extends VBox {
         return box;
     }
 
-    private LineChart<Number, Number> createChart(String title) {
+    private LineChart<Number, Number> createChart(String title, String yLabel) {
         NumberAxis xAxis = new NumberAxis();
         xAxis.setLabel("Temps Réel Écoulé (secondes)");
         xAxis.setForceZeroInRange(false);
 
         NumberAxis yAxis = new NumberAxis();
-        yAxis.setLabel("Valeur / Quantité");
+        yAxis.setLabel(yLabel);
 
         LineChart<Number, Number> chart = new LineChart<>(xAxis, yAxis);
         chart.setTitle(title);
         chart.setCreateSymbols(false);
         chart.setAnimated(false);
         chart.setLegendVisible(true);
-        chart.setPrefHeight(240);
+        chart.setPrefHeight(230);
         chart.getStyleClass().add("chart-holder");
-        Tooltip.install(chart, new Tooltip(title + " — Axe X gradué en secondes réelles."));
+        Tooltip.install(chart, new Tooltip(title + " — Axe X gradué en secondes réelles avec lissage temporel."));
 
         return chart;
     }
@@ -293,11 +390,24 @@ public class StatisticsDashboard extends VBox {
     public void update(ColonyStats stats) {
         if (stats == null) return;
         historyList.add(stats);
+        if (historyList.size() > MAX_DATA_POINTS) {
+            historyList.remove(0);
+        }
 
         double timeSeconds = stats.getSimTimeSeconds();
+        long now = System.currentTimeMillis();
+
+        // Rate limit graph updates to ~2 Hz (every 500ms) to ensure smooth curve progression without frantic leftward shifting
+        boolean updateGraphsNow = (now - lastGraphUpdateMillis >= 500);
+        if (updateGraphsNow) {
+            lastGraphUpdateMillis = now;
+        }
 
         Platform.runLater(() -> {
+            // Update KPI Cards continuously
             lblPopulation.setText(String.valueOf(stats.population));
+            int colCount = stats.colonyCasteCounts.isEmpty() ? (stats.population > 0 ? 1 : 0) : stats.colonyCasteCounts.size();
+            lblColoniesCount.setText(String.valueOf(colCount));
             lblQueens.setText(String.valueOf(stats.queens));
             lblWorkers.setText(String.valueOf(stats.workers));
             lblSoldiers.setText(String.valueOf(stats.soldiers));
@@ -306,27 +416,98 @@ public class StatisticsDashboard extends VBox {
             lblTickRate.setText(String.format("%.1f tps", stats.tickRate));
             lblSimTime.setText(formatTime(stats.simTicks, stats.stepTimeSeconds));
 
-            totalPopSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.population));
-            queensSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.queens));
-            workersSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.workers));
-            soldiersSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.soldiers));
+            if (updateGraphsNow) {
+                // 1. Multi-Colony & Species Chart Update
+                if (stats.colonyCasteCounts != null && !stats.colonyCasteCounts.isEmpty()) {
+                    for (Map.Entry<String, Map<String, Integer>> entry : stats.colonyCasteCounts.entrySet()) {
+                        String colName = entry.getKey();
+                        Map<String, Integer> casteMap = entry.getValue();
+                        int colTotal = casteMap.getOrDefault("Total", casteMap.values().stream().mapToInt(Integer::intValue).sum());
 
-            foodSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.food));
-            waterSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.water));
-            birthsSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.births));
-            deathsSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.deaths));
-            tpsSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.tickRate));
+                        XYChart.Series<Number, Number> series = colonySeriesMap.computeIfAbsent(colName, k -> {
+                            XYChart.Series<Number, Number> s = new XYChart.Series<>();
+                            s.setName(k);
+                            chartMultiColony.getData().add(s);
+                            return s;
+                        });
 
-            trimSeries(totalPopSeries);
-            trimSeries(queensSeries);
-            trimSeries(workersSeries);
-            trimSeries(soldiersSeries);
-            trimSeries(foodSeries);
-            trimSeries(waterSeries);
-            trimSeries(birthsSeries);
-            trimSeries(deathsSeries);
-            trimSeries(tpsSeries);
+                        series.getData().add(new XYChart.Data<>(timeSeconds, colTotal));
+                        trimSeries(series);
+                    }
+                } else if (stats.population > 0) {
+                    // Default fallback colony series
+                    XYChart.Series<Number, Number> series = colonySeriesMap.computeIfAbsent("Colonie Primaire (Lasius niger)", k -> {
+                        XYChart.Series<Number, Number> s = new XYChart.Series<>();
+                        s.setName(k);
+                        chartMultiColony.getData().add(s);
+                        return s;
+                    });
+                    series.getData().add(new XYChart.Data<>(timeSeconds, stats.population));
+                    trimSeries(series);
+                }
+
+                // 2. Castes Breakdown Chart
+                totalPopSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.population));
+                queensSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.queens));
+                workersSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.workers));
+                soldiersSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.soldiers));
+                malesSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.males));
+
+                // 3. Resources Chart
+                foodSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.food));
+                waterSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.water));
+                proteinSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.protein));
+                birthsSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.births));
+                deathsSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.deaths));
+
+                // 4. Weather Chart
+                tempSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.temperature));
+                rainSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.rainfall));
+                pheroSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.pheromones));
+
+                // 5. Performance Chart
+                tpsSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.tickRate));
+
+                // Trim series lengths
+                trimSeries(totalPopSeries);
+                trimSeries(queensSeries);
+                trimSeries(workersSeries);
+                trimSeries(soldiersSeries);
+                trimSeries(malesSeries);
+                trimSeries(foodSeries);
+                trimSeries(waterSeries);
+                trimSeries(proteinSeries);
+                trimSeries(birthsSeries);
+                trimSeries(deathsSeries);
+                trimSeries(tempSeries);
+                trimSeries(rainSeries);
+                trimSeries(pheroSeries);
+                trimSeries(tpsSeries);
+
+                // Update X-Axis Windows according to time window selector
+                updateChartXAxes(timeSeconds);
+            }
         });
+    }
+
+    private void updateChartXAxes(double currentTimeSec) {
+        double window = currentSelectedWindowSec;
+        List<LineChart<Number, Number>> allCharts = List.of(chartMultiColony, chartCastes, chartResources, chartWeather, chartPerformance);
+
+        for (LineChart<Number, Number> c : allCharts) {
+            NumberAxis xAxis = (NumberAxis) c.getXAxis();
+            if (window <= 0) {
+                // All history
+                xAxis.setAutoRanging(true);
+            } else {
+                xAxis.setAutoRanging(false);
+                double minX = Math.max(0, currentTimeSec - window);
+                double maxX = Math.max(window, currentTimeSec);
+                xAxis.setLowerBound(minX);
+                xAxis.setUpperBound(maxX);
+                xAxis.setTickUnit(window / 6.0); // 6 clean tick intervals
+            }
+        }
     }
 
     private void trimSeries(XYChart.Series<Number, Number> series) {
@@ -337,17 +518,32 @@ public class StatisticsDashboard extends VBox {
 
     public void clear() {
         historyList.clear();
+        for (XYChart.Series<Number, Number> s : colonySeriesMap.values()) {
+            s.getData().clear();
+        }
+        chartMultiColony.getData().clear();
+        colonySeriesMap.clear();
+
         totalPopSeries.getData().clear();
         queensSeries.getData().clear();
         workersSeries.getData().clear();
         soldiersSeries.getData().clear();
+        malesSeries.getData().clear();
+
         foodSeries.getData().clear();
         waterSeries.getData().clear();
+        proteinSeries.getData().clear();
         birthsSeries.getData().clear();
         deathsSeries.getData().clear();
+
+        tempSeries.getData().clear();
+        rainSeries.getData().clear();
+        pheroSeries.getData().clear();
+
         tpsSeries.getData().clear();
 
         lblPopulation.setText("0");
+        lblColoniesCount.setText("0");
         lblQueens.setText("0");
         lblWorkers.setText("0");
         lblSoldiers.setText("0");
@@ -370,17 +566,18 @@ public class StatisticsDashboard extends VBox {
                 writer.println("# SwarmForge Simulation Analytics Export");
                 writer.println("# Date_Export; " + LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
                 writer.println("# Total_Records; " + historyList.size());
-                writer.println("Horodatage_Local;Temps_Simule_Secondes;Duree_Formatee;Tick_Moteur;Pas_dt_Sec;Population_Totale;Reines;Ouvrieres;Soldats;Nourriture;Eau;Vitesse_TPS;Naissances;Deces;Evenement_Actif");
+                writer.println("Horodatage_Local;Temps_Simule_Secondes;Duree_Formatee;Tick_Moteur;Pas_dt_Sec;Population_Totale;Reines;Ouvrieres;Soldats;Nourriture;Eau;Proteines;Temperature_C;Pluviometrie_mm;Vitesse_TPS;Naissances;Deces;Evenement_Actif");
 
                 for (ColonyStats s : historyList) {
                     double timeSec = s.getSimTimeSeconds();
                     String timeFormatted = formatTime(s.simTicks, s.stepTimeSeconds);
                     String localTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-                    writer.printf("%s;%.2f;%s;%d;%.4f;%d;%d;%d;%d;%.2f;%.2f;%.2f;%d;%d;%s%n",
+                    writer.printf("%s;%.2f;%s;%d;%.4f;%d;%d;%d;%d;%.2f;%.2f;%.2f;%.1f;%.1f;%.2f;%d;%d;%s%n",
                             localTime, timeSec, timeFormatted, s.simTicks, s.stepTimeSeconds,
                             s.population, s.queens, s.workers, s.soldiers,
-                            s.food, s.water, s.tickRate, s.births, s.deaths, s.activeEvent);
+                            s.food, s.water, s.protein, s.temperature, s.rainfall,
+                            s.tickRate, s.births, s.deaths, s.activeEvent);
                 }
                 new Alert(Alert.AlertType.INFORMATION, "Exportation statistique exhaustive réussie !\nFichier enregistré sous : " + file.getAbsolutePath()).show();
             } catch (Exception ex) {
@@ -395,7 +592,7 @@ public class StatisticsDashboard extends VBox {
         long hours = wholeSec / 3600;
         long minutes = (wholeSec % 3600) / 60;
         long seconds = wholeSec % 60;
-        return String.format("%02d:%02d:%02d (%.1f s)", hours, minutes, seconds, totalSeconds);
+        long simulatedDay = 1 + (wholeSec / 86400);
+        return String.format("J%d %02d:%02d:%02d (%.1f s)", simulatedDay, hours % 24, minutes, seconds, totalSeconds);
     }
 }
-

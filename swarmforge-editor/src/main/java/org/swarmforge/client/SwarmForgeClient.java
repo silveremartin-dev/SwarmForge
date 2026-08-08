@@ -246,35 +246,13 @@ public class SwarmForgeClient extends Application {
 
                 // Embedded SimulationControlPanel (Contains Preset Selectors ABOVE Start/Pause/Stop controls)
                 this.simControlPanel = new org.swarmforge.client.ui.SimulationControlPanel();
-                this.simControlPanel.setOnApplyPresets(seed -> {
-                        if (this.lastGeneratedTerrarium == null) {
-                                this.lastGeneratedTerrarium = new org.swarmforge.core.domain.Terrarium(64, 32, 64);
-                        }
-                        if (this.localSimulation == null) {
-                                this.localSimulation = new org.swarmforge.core.simulation.Simulation(this.lastGeneratedTerrarium);
-                        }
-                        this.localSimulation.reset(0);
-                        this.localSimulation.setMasterSeed(seed);
-
-                        String selSpecies = simControlPanel.getSelectedSpecies();
-                        String speciesKey = "LasiusNiger";
-                        if (selSpecies.contains("Atta")) speciesKey = "AttaCephalotes";
-                        else if (selSpecies.contains("Solenopsis") || selSpecies.contains("Feu")) speciesKey = "SolenopsisInvicta";
-                        else if (selSpecies.contains("Formica")) speciesKey = "FormicaRufa";
-
-                        this.localSimulation.addColony(speciesKey);
-
-                        if (gameView != null && gameView.getGameApp() != null) {
-                                gameView.getGameApp().setSimulation(this.localSimulation);
-                        }
-                });
                 controlsInner.getChildren().add(this.simControlPanel);
 
                 // Live Data Stream Status
                 controlsInner.getChildren().add(new Separator());
                 Label statsLabel = new Label("🌐 Moteur de Simulation : Mode Local Autonome (Standalone) | Avancement : Pas n° 0");
                 statsLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-                Tooltip.install(statsLabel, new Tooltip("Statut du moteur de calcul de la simulation (Local autonomes ou Serveur gRPC synchrone)."));
+                Tooltip.install(statsLabel, new Tooltip("Statut du moteur de calcul de la simulation (Local autonome ou Serveur gRPC synchrone)."));
                 controlsInner.getChildren().add(statsLabel);
 
                 controlsTab.setContent(new ScrollPane(controlsInner));
@@ -284,24 +262,185 @@ public class SwarmForgeClient extends Application {
                 visualTab.textProperty().bind(i18n.createStringBinding("tab.visual_view"));
                 visualTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.EYE));
                 visualTab.setContent(createVisualSimulationViewport());
+                visualTab.setDisable(true);
 
                 // --- God Mode Sub-Tab ---
                 Tab godTab = new Tab();
                 godTab.textProperty().bind(i18n.createStringBinding("tab.god_mode"));
+                godTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ZAP));
                 org.swarmforge.client.ui.InterventionPanel interventionPanel = new org.swarmforge.client.ui.InterventionPanel();
-                godTab.setContent(interventionPanel);
+                interventionPanel.setCallback(new org.swarmforge.client.ui.InterventionPanel.InterventionCallback() {
+                    @Override
+                    public void spawnAnts(String colonyId, String caste, int count, float x, float y, float z) {
+                        if (localSimulation != null) {
+                            org.swarmforge.core.domain.Colony targetColony = null;
+                            for (org.swarmforge.core.domain.Colony c : localSimulation.getColonies()) {
+                                String name = c.getSpeciesName();
+                                if (colonyId != null && (name.contains(colonyId) || colonyId.contains(name))) {
+                                    targetColony = c;
+                                    break;
+                                }
+                            }
+                            if (targetColony == null && !localSimulation.getColonies().isEmpty()) {
+                                targetColony = localSimulation.getColonies().get(0);
+                            }
+                            if (targetColony != null) {
+                                for (int i = 0; i < count; i++) {
+                                    if (caste != null && (caste.contains("Reine") || caste.contains("Queen"))) {
+                                        targetColony.createQueen();
+                                    } else if (caste != null && (caste.contains("Soldat") || caste.contains("Soldier"))) {
+                                        targetColony.createSoldier();
+                                    } else if (caste != null && (caste.contains("Mâle") || caste.contains("Male"))) {
+                                        targetColony.createMale();
+                                    } else {
+                                        targetColony.createWorker();
+                                    }
+                                }
+                            }
+                        }
+                        if (networkClient != null && networkClient.isConnected()) {
+                            networkClient.spawnFood(x, y, z, count);
+                        }
+                    }
 
-                // --- Dedicated Statistics Sub-Tab (Placed between God Mode and Event Log) ---
+                    @Override
+                    public void killAnts(String colonyId, String caste, int count) {
+                        if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
+                            org.swarmforge.core.domain.Colony colony = localSimulation.getColonies().get(0);
+                            int killed = 0;
+                            for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
+                                if (killed >= count) break;
+                                ind.die();
+                                killed++;
+                            }
+                            colony.removeDeadIndividuals();
+                        }
+                    }
+
+                    @Override
+                    public void spawnFood(float x, float y, float z, float amount) {
+                        if (localSimulation != null) {
+                            localSimulation.spawnFood(x, y, z, amount, org.swarmforge.core.domain.ResourceType.SUGAR);
+                        }
+                        if (networkClient != null && networkClient.isConnected()) {
+                            networkClient.spawnFood(x, y, z, amount);
+                        }
+                    }
+
+                    @Override
+                    public void triggerDisaster(String type, float intensity) {
+                        if (networkClient != null && networkClient.isConnected()) {
+                            networkClient.triggerDisaster(type, intensity);
+                        }
+                    }
+
+                    @Override
+                    public void stopDisasters() {
+                    }
+
+                    @Override
+                    public void modifyParameter(String param, Object value) {
+                        if (localSimulation != null && value instanceof Number val) {
+                            if ("foodRate".equals(param)) {
+                                localSimulation.setDiffusionInterval(Math.max(1, (int) (10 * val.floatValue())));
+                            }
+                        }
+                    }
+                });
+                godTab.setContent(interventionPanel);
+                godTab.setDisable(true);
+
+                // --- Dedicated Statistics Sub-Tab ---
                 Tab statsTab = new Tab();
                 statsTab.textProperty().bind(i18n.createStringBinding("tab.stats"));
                 statsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.BAR_CHART_2));
                 this.statisticsDashboard = new org.swarmforge.client.ui.StatisticsDashboard();
                 statsTab.setContent(this.statisticsDashboard);
+                statsTab.setDisable(true);
 
                 // --- Event Log Sub-Tab ---
                 Tab eventLogTab = new Tab();
                 eventLogTab.textProperty().bind(i18n.createStringBinding("tab.log"));
+                eventLogTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.LIST));
                 eventLogTab.setContent(new org.swarmforge.client.ui.EventLogPane());
+                eventLogTab.setDisable(true);
+
+                // Set callback on Apply Presets
+                this.simControlPanel.setOnApplyPresets(seed -> {
+                        if (this.localSimulation != null) {
+                                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                                confirm.setTitle("Remplacement du Scénario");
+                                confirm.setHeaderText("Une simulation est actuellement en cours d'exécution");
+                                confirm.setContentText("Voulez-vous vraiment la réinitialiser et appliquer ce nouveau scénario ? Son état sera automatiquement sauvegardé.");
+                                java.util.Optional<ButtonType> opt = confirm.showAndWait();
+                                if (opt.isEmpty() || opt.get() != ButtonType.OK) {
+                                        return; // Interrompre le remplacement
+                                }
+                                this.localSimulation.recordSnapshot();
+                        }
+
+                        if (this.lastGeneratedTerrarium == null) {
+                                this.lastGeneratedTerrarium = new org.swarmforge.core.domain.Terrarium(64, 32, 64);
+                        }
+                        this.localSimulation = new org.swarmforge.core.simulation.Simulation(this.lastGeneratedTerrarium);
+                        this.localSimulation.reset(0);
+                        this.localSimulation.setMasterSeed(seed);
+
+                        java.util.List<String> selSpeciesList = simControlPanel.getSelectedSpeciesList();
+                        int queens = simControlPanel.getQueenCount();
+                        int workers = simControlPanel.getWorkerCount();
+                        int soldiers = simControlPanel.getSoldierCount();
+
+                        for (String selSpecies : selSpeciesList) {
+                                String speciesKey = "LasiusNiger";
+                                if (selSpecies != null) {
+                                        if (selSpecies.contains("Atta") || selSpecies.contains("Coupeuse")) speciesKey = "AttaCephalotes";
+                                        else if (selSpecies.contains("Solenopsis") || selSpecies.contains("Feu")) speciesKey = "SolenopsisInvicta";
+                                        else if (selSpecies.contains("Formica") || selSpecies.contains("Rousse")) speciesKey = "FormicaRufa";
+                                        else if (selSpecies.contains("Camponotus")) speciesKey = "Camponotus";
+                                        else if (selSpecies.contains("Apis") || selSpecies.contains("Abeille")) speciesKey = "ApisMellifera";
+                                        else if (selSpecies.contains("Termite") || selSpecies.contains("Macrotermes")) speciesKey = "Macrotermes";
+                                }
+                                this.localSimulation.addColony(speciesKey, queens, workers, soldiers);
+                        }
+
+                        if (gameView != null && gameView.getGameApp() != null) {
+                                gameView.getGameApp().setSimulation(this.localSimulation);
+                        }
+
+                        this.simControlPanel.updateCheckpoints(this.localSimulation.getCheckpoints());
+
+                        // Activer les onglets de dépendance dès qu'un scénario est appliqué
+                        visualTab.setDisable(false);
+                        godTab.setDisable(false);
+                        statsTab.setDisable(false);
+                        eventLogTab.setDisable(false);
+                });
+
+                this.simControlPanel.setOnCreateCheckpoint(name -> {
+                    if (this.localSimulation != null) {
+                        org.swarmforge.core.simulation.SimulationCheckpoint cp = this.localSimulation.createCheckpoint(name);
+                        this.simControlPanel.updateCheckpoints(this.localSimulation.getCheckpoints());
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION, "Point de contrôle '" + cp.getName() + "' enregistré à l'itération #" + cp.getTick() + " (avec " + cp.getInterventionsRecorded().size() + " interventions Mode Divin).");
+                        alert.show();
+                    } else {
+                        Alert alert = new Alert(Alert.AlertType.WARNING, "Veuillez d'abord appliquer un scénario avant de créer un point de contrôle.");
+                        alert.show();
+                    }
+                });
+
+                this.simControlPanel.setOnRestoreCheckpoint(cp -> {
+                    if (this.localSimulation != null && cp != null) {
+                        boolean ok = this.localSimulation.restoreCheckpoint(cp);
+                        if (ok) {
+                            if (this.minimapOverlay != null) {
+                                this.minimapOverlay.update(this.localSimulation);
+                            }
+                            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Point de contrôle '" + cp.getName() + "' restauré avec succès à l'itération #" + cp.getTick() + " !");
+                            alert.show();
+                        }
+                    }
+                });
 
                 subTabs.getTabs().addAll(controlsTab, visualTab, godTab, statsTab, eventLogTab);
                 pane.setCenter(subTabs);
@@ -324,7 +463,7 @@ public class SwarmForgeClient extends Application {
                         }
                 });
 
-                // HUD Loop, Audio Sync & Statistics Updates
+                // HUD Loop, Audio Sync, God Mode & Statistics Updates
                 javafx.animation.AnimationTimer timer = new javafx.animation.AnimationTimer() {
                         @Override
                         public void handle(long now) {
@@ -335,9 +474,30 @@ public class SwarmForgeClient extends Application {
                                 if (isPlaying && !isConnected && simControlPanel != null) {
                                     long newTick = simControlPanel.getCurrentTick() + 1;
                                     simControlPanel.updateTick(newTick, newTick);
+                                    if (localSimulation == null) {
+                                        lastGeneratedTerrarium = new org.swarmforge.core.domain.Terrarium(64, 32, 64);
+                                        localSimulation = new org.swarmforge.core.simulation.Simulation(lastGeneratedTerrarium);
+                                        localSimulation.addColony("LasiusNiger");
+                                    }
+                                    localSimulation.tick();
                                 }
 
-                                long tick = isConnected ? networkClient.getLatestTick() : (simControlPanel != null ? simControlPanel.getCurrentTick() : 0);
+                                if (simulationInactiveOverlay != null) {
+                                    simulationInactiveOverlay.setVisible(!isSimRunning);
+                                }
+
+                                interventionPanel.setSimulationRunning(isSimRunning);
+
+                                if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
+                                    java.util.List<String> colonyNames = new java.util.ArrayList<>();
+                                    for (org.swarmforge.core.domain.Colony c : localSimulation.getColonies()) {
+                                        String speciesName = c.getSpeciesName();
+                                        colonyNames.add(speciesName != null && !speciesName.isEmpty() ? speciesName : "Colonie #" + c.getId().toString().substring(0, 5));
+                                    }
+                                    interventionPanel.updateAvailableColonies(colonyNames);
+                                }
+
+                                long tick = isConnected ? networkClient.getLatestTick() : (simControlPanel != null ? simControlPanel.getCurrentTick() : (localSimulation != null ? localSimulation.getTicksPerSecond() : 0));
                                 String modeStr = isConnected ? "Serveur Dédié (Connecté & Synchronisé)" : "Mode Local Autonome (Standalone)";
                                 statsLabel.setText("🌐 Moteur de Simulation : " + modeStr + " | Avancement : Pas n° " + tick);
 
@@ -361,17 +521,68 @@ public class SwarmForgeClient extends Application {
                                     );
                                 }
 
-                                // Update statistics when simulation is active
-                                if (statisticsDashboard != null && isSimRunning) {
+                                // Update statistics continuously so initial colony counts are visible
+                                if (statisticsDashboard != null) {
                                         StatisticsDashboard.ColonyStats stats = new StatisticsDashboard.ColonyStats();
                                         stats.simTicks = tick;
-                                        stats.population = 50 + (int) (tick / 10);
-                                        stats.workers = Math.max(0, stats.population - 5);
-                                        stats.soldiers = 4;
-                                        stats.queens = 1;
-                                        stats.food = Math.max(0, 1000.0f - (tick * 0.5f));
-                                        stats.water = 500.0f;
-                                        stats.tickRate = isPlaying ? 60.0f : 0.0f;
+                                        stats.stepTimeSeconds = simControlPanel != null ? simControlPanel.getSimulationStepSeconds() : 0.05;
+                                        int pop = 0;
+                                        int workers = 0;
+                                        int soldiers = 0;
+                                        int queens = 0;
+                                        int males = 0;
+                                        float foodAmt = 0;
+                                        float waterAmt = 0;
+
+                                        if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
+                                            for (org.swarmforge.core.domain.Colony col : localSimulation.getColonies()) {
+                                                int cPop = col.getPopulation();
+                                                int cW = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.WORKER);
+                                                int cS = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.SOLDIER);
+                                                int cQ = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.QUEEN);
+                                                int cM = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.MALE);
+                                                float cFood = col.getFoodStored();
+                                                float cWater = col.getWaterStored();
+
+                                                pop += cPop;
+                                                workers += cW;
+                                                soldiers += cS;
+                                                queens += cQ;
+                                                males += cM;
+                                                foodAmt += cFood;
+                                                waterAmt += cWater;
+
+                                                Map<String, Integer> casteMap = new HashMap<>();
+                                                casteMap.put("Reines", cQ);
+                                                casteMap.put("Ouvrières", cW);
+                                                casteMap.put("Soldats", cS);
+                                                casteMap.put("Mâles", cM);
+                                                casteMap.put("Total", cPop);
+
+                                                String speciesName = col.getSpeciesName();
+                                                String colName = (speciesName != null && !speciesName.isEmpty())
+                                                        ? speciesName
+                                                        : "Colonie #" + col.getId().toString().substring(0, 5);
+                                                stats.colonyCasteCounts.put(colName, casteMap);
+                                            }
+                                        } else {
+                                            pop = isSimRunning ? 171 : 0;
+                                            workers = isSimRunning ? 150 : 0;
+                                            soldiers = isSimRunning ? 20 : 0;
+                                            queens = isSimRunning ? 1 : 0;
+                                            males = 0;
+                                            foodAmt = isSimRunning ? Math.max(0, 1000.0f - (tick * 0.5f)) : 0;
+                                            waterAmt = isSimRunning ? 500.0f : 0;
+                                        }
+
+                                        stats.population = pop;
+                                        stats.workers = workers;
+                                        stats.soldiers = soldiers;
+                                        stats.queens = queens;
+                                        stats.males = males;
+                                        stats.food = foodAmt;
+                                        stats.water = waterAmt;
+                                        stats.tickRate = isPlaying ? (float) (1.0 / stats.stepTimeSeconds) : 0.0f;
                                         statisticsDashboard.update(stats);
                                 }
                         }
@@ -449,6 +660,7 @@ public class SwarmForgeClient extends Application {
 
                 // Minimap Overlay (Bottom-Right Dual Top-Down & Profil View)
                 this.minimapOverlay = new MinimapOverlay(200);
+                minimapOverlay.setMaxSize(javafx.scene.layout.Region.USE_PREF_SIZE, javafx.scene.layout.Region.USE_PREF_SIZE);
                 viewport3D.getChildren().add(minimapOverlay);
                 StackPane.setAlignment(minimapOverlay, Pos.BOTTOM_RIGHT);
                 StackPane.setMargin(minimapOverlay, new Insets(10));
@@ -459,31 +671,19 @@ public class SwarmForgeClient extends Application {
                         }
                 });
 
-                // Pheromone Overlay Canvas (Bottom-Left transparent heatmap view)
-                this.pheromoneOverlay = new PheromoneOverlay(200, 150);
-                pheromoneOverlay.setMaxSize(200, 150);
-                pheromoneOverlay.setId("pheromoneOverlay");
-                viewport3D.getChildren().add(pheromoneOverlay);
-                StackPane.setAlignment(pheromoneOverlay, Pos.BOTTOM_LEFT);
-                StackPane.setMargin(pheromoneOverlay, new Insets(10));
-
-                // 3D Inactive Overlay Placeholder
-                this.simulationInactiveOverlay = new VBox(15);
+                // 3D Inactive Overlay Placeholder (Sleek Top Bar)
+                this.simulationInactiveOverlay = new VBox(4);
                 simulationInactiveOverlay.setAlignment(Pos.CENTER);
-                simulationInactiveOverlay.setStyle("-fx-background-color: rgba(15, 23, 42, 0.92); -fx-padding: 30; -fx-background-radius: 12; -fx-border-color: rgba(56, 189, 248, 0.3); -fx-border-width: 1; -fx-border-radius: 12;");
-                simulationInactiveOverlay.setMaxSize(550, 200);
+                simulationInactiveOverlay.setStyle("-fx-background-color: rgba(15, 23, 42, 0.75); -fx-padding: 8 16; -fx-background-radius: 20; -fx-border-color: rgba(56, 189, 248, 0.3); -fx-border-width: 1; -fx-border-radius: 20;");
+                simulationInactiveOverlay.setMaxSize(360, 50);
 
-                Label lblInactiveTitle = new Label("🎬 Vue 3D en Attente de la Simulation");
-                lblInactiveTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 18px; -fx-font-weight: bold;");
+                Label lblInactiveTitle = new Label("🎬 Vue 3D Prête — Attente du Lancement");
+                lblInactiveTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 12px; -fx-font-weight: bold;");
 
-                Label lblInactiveDesc = new Label("La vue 3D s'active automatiquement lorsqu'une simulation est lancée.\nVeuillez configurer / peupler un monde puis cliquer sur '▶ Lancer la simulation' dans le Gestionnaire de Simulation.");
-                lblInactiveDesc.setWrapText(true);
-                lblInactiveDesc.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
-                lblInactiveDesc.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px;");
-
-                simulationInactiveOverlay.getChildren().addAll(lblInactiveTitle, lblInactiveDesc);
+                simulationInactiveOverlay.getChildren().addAll(lblInactiveTitle);
                 viewport3D.getChildren().add(simulationInactiveOverlay);
-                StackPane.setAlignment(simulationInactiveOverlay, Pos.CENTER);
+                StackPane.setAlignment(simulationInactiveOverlay, Pos.TOP_CENTER);
+                StackPane.setMargin(simulationInactiveOverlay, new Insets(15));
 
                 // If simulation is already active or loaded, hide overlay
                 if (localSimulation != null || (simControlPanel != null && simControlPanel.isPlaying())) {
@@ -494,7 +694,8 @@ public class SwarmForgeClient extends Application {
 
                 // Right Side Controls Sidebar (Glassmorphic Toolbar for Render Modes, Audio Mixer & Video Recording)
                 VBox sideControls = new VBox(10);
-                sideControls.setPrefWidth(260);
+                sideControls.setPrefWidth(350);
+                sideControls.setMinWidth(340);
                 sideControls.setPadding(new Insets(10));
                 sideControls.getStyleClass().add("card-pane");
 
@@ -502,12 +703,7 @@ public class SwarmForgeClient extends Application {
                 Label lblSideTitle = new Label("🎛️ Rendu 3D & Contrôles");
                 lblSideTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
 
-                Button bHelp3D = new Button("📖 Aide & Glossaire");
-                bHelp3D.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
-                bHelp3D.setTooltip(new Tooltip("Ouvrir le glossaire de la vue 3D et des aides visuelles."));
-                bHelp3D.setOnAction(e -> org.swarmforge.client.ui.GlossaryDialog.show("visu"));
-
-                HBox sideHeaderBox = new HBox(8, lblSideTitle, new Region() {{ HBox.setHgrow(this, Priority.ALWAYS); }}, bHelp3D);
+                HBox sideHeaderBox = new HBox(8, lblSideTitle);
                 sideHeaderBox.setAlignment(Pos.CENTER_LEFT);
 
                 // 2. Moved Controls from Simulation Manager: Date & Time, VCR Playback (Rewind/FastForward), Speed & Multipliers
@@ -548,10 +744,10 @@ public class SwarmForgeClient extends Application {
 
                 mediaSection.getChildren().addAll(lblMedia, btnPhoto, btnRecVideo);
 
-                // 4. Render Mode Section (Gamified Voxel & Overlays)
+                // 4. Render Mode & 3D Layer Management Section
                 VBox renderSection = new VBox(6);
                 renderSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
-                Label lblRenderMode = new Label("🎮 Style Voxel & Overlays :");
+                Label lblRenderMode = new Label("🎛️ Gestion des Couches 3D (Layers) :");
                 lblRenderMode.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
 
                 Button btnGamifiedToggle = new Button("🎮 Mode Voxel Gamifié");
@@ -578,19 +774,42 @@ public class SwarmForgeClient extends Application {
                 chkMinimap.setTooltip(new Tooltip("Affiche l'incrustation carte 2D (vue du dessus & coupe verticale)."));
                 chkMinimap.selectedProperty().addListener((o, a, b) -> minimapOverlay.setVisible(b));
 
-                CheckBox chkPheromones = new CheckBox("🧪 Overlay Phéromones");
-                chkPheromones.setSelected(true);
-                chkPheromones.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
-                chkPheromones.setTooltip(new Tooltip("Visualiser les champs de phéromones (pistes de nourriture, d'alarme et de recrutement) en transparence 3D."));
-
-                VBox pheromoneControlsPane = pheromoneOverlay.getControlsPane();
-                chkPheromones.selectedProperty().addListener((o, a, b) -> {
-                        pheromoneOverlay.setVisible(b);
-                        pheromoneControlsPane.setVisible(b);
-                        pheromoneControlsPane.setManaged(b);
+                CheckBox chkTerrain = new CheckBox("🏔️ Terrain & Sol 3D");
+                chkTerrain.setSelected(true);
+                chkTerrain.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkTerrain.selectedProperty().addListener((o, a, b) -> {
+                        if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setTerrainVisible(b);
                 });
 
-                renderSection.getChildren().addAll(lblRenderMode, btnGamifiedToggle, chkMinimap, chkPheromones, pheromoneControlsPane);
+                CheckBox chkNid = new CheckBox("🏰 Nid & Galeries Souterraines");
+                chkNid.setSelected(true);
+                chkNid.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkNid.selectedProperty().addListener((o, a, b) -> {
+                        if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setTunnelsVisible(b);
+                });
+
+                CheckBox chkPheromonesLayer = new CheckBox("🧪 Overlays Phéromones 3D");
+                chkPheromonesLayer.setSelected(true);
+                chkPheromonesLayer.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkPheromonesLayer.selectedProperty().addListener((o, a, b) -> {
+                        if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setPheromonesVisible(b);
+                });
+
+                CheckBox chkAntsLayer = new CheckBox("🐜 Insectes & Colonie 3D");
+                chkAntsLayer.setSelected(true);
+                chkAntsLayer.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkAntsLayer.selectedProperty().addListener((o, a, b) -> {
+                        if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setAntsVisible(b);
+                });
+
+                CheckBox chkWeatherLayer = new CheckBox("🌤️ Météo & Atmosphère");
+                chkWeatherLayer.setSelected(true);
+                chkWeatherLayer.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkWeatherLayer.selectedProperty().addListener((o, a, b) -> {
+                        if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setWeatherVisible(b);
+                });
+
+                renderSection.getChildren().addAll(lblRenderMode, btnGamifiedToggle, chkMinimap, chkTerrain, chkNid, chkPheromonesLayer, chkAntsLayer, chkWeatherLayer);
 
                 // 5. Audio Synthesizer Mixer Section
                 VBox audioSection = new VBox(6);
@@ -625,47 +844,11 @@ public class SwarmForgeClient extends Application {
 
                 audioSection.getChildren().addAll(lblAudio, volBox, chkAmbientSound, chkWeatherSound, chkInsectSound);
 
-                // 6. Camera Position Shortcuts & Navigation
-                VBox cameraSection = new VBox(6);
-                cameraSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
-                Label lblCam = new Label("📷 Navigation Caméra 3D :");
-                lblCam.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
-
-                Button btnFocusNest = new Button("🎯 Cadrer sur le Nid (C)");
-                btnFocusNest.setMaxWidth(Double.MAX_VALUE);
-                btnFocusNest.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
-                btnFocusNest.setTooltip(new Tooltip("Recentrer la caméra 3D sur le nid de la colonie."));
-                btnFocusNest.setOnAction(e -> {
-                        if (gameView != null && gameView.getGameApp() != null) {
-                                gameView.getGameApp().panCameraTo(0, 0, 0);
-                        }
-                });
-
-                Button btnTopView = new Button("🔝 Vue du Dessus (Top-Down)");
-                btnTopView.setMaxWidth(Double.MAX_VALUE);
-                btnTopView.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
-                btnTopView.setTooltip(new Tooltip("Basculer la caméra en vue orthogonale du dessus."));
-                btnTopView.setOnAction(e -> {
-                        if (gameView != null && gameView.getGameApp() != null) {
-                                gameView.getGameApp().setTopDownView();
-                        }
-                });
-
-                Button btnResetCam = new Button("🔄 Réinitialiser Vue (Double-Clic)");
-                btnResetCam.setMaxWidth(Double.MAX_VALUE);
-                btnResetCam.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
-                btnResetCam.setTooltip(new Tooltip("Réinitialiser l'angle d'inclinaison et la distance de la caméra."));
-                btnResetCam.setOnAction(e -> {
-                        if (gameView != null && gameView.getGameApp() != null) {
-                                gameView.getGameApp().resetCamera();
-                        }
-                });
-
-                cameraSection.getChildren().addAll(lblCam, btnFocusNest, btnTopView, btnResetCam);
-
-                sideControls.getChildren().addAll(sideHeaderBox, playbackAndSpeedNode, new Separator(), mediaSection, renderSection, audioSection, cameraSection);
+                sideControls.getChildren().addAll(sideHeaderBox, playbackAndSpeedNode, new Separator(), mediaSection, renderSection, audioSection);
 
                 ScrollPane sideScroll = new ScrollPane(sideControls);
+                sideScroll.setMinWidth(350);
+                sideScroll.setPrefWidth(350);
                 sideScroll.setFitToWidth(true);
                 sideScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
                 sideScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
@@ -1077,6 +1260,14 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRow(vAccessory, "Hivernation & Diapause Automatique", "Mise en léthargie métabolique sous 10°C ou lors du raccourcissement automnal de la photopériode.", "https://fr.wikipedia.org/wiki/Diapause");
                 addGlossaryRow(vAccessory, "Taux de Transmission Pathogène (R0)", "Nombre moyen d'infections secondaires générées par un individu infecté dans la colonie.", "https://fr.wikipedia.org/wiki/Nombre_reproductif_de_base");
 
+                // Sort each section alphabetically by localized entry title
+                sortGlossaryVBox(vNest);
+                sortGlossaryVBox(vSocial);
+                sortGlossaryVBox(vEnv);
+                sortGlossaryVBox(vReasoning);
+                sortGlossaryVBox(vSensors);
+                sortGlossaryVBox(vAccessory);
+
                 Tab tNest = new Tab("Architectures de Nids", new ScrollPane(vNest));
                 Tab tSocial = new Tab("Structure Sociale & Reines", new ScrollPane(vSocial));
                 Tab tEnv = new Tab("Sol & Géologie SIG", new ScrollPane(vEnv));
@@ -1118,6 +1309,30 @@ public class SwarmForgeClient extends Application {
                                 row.setManaged(visible);
                         }
                 }
+        }
+
+        private void sortGlossaryVBox(VBox box) {
+                java.text.Collator collator = java.text.Collator.getInstance(java.util.Locale.FRENCH);
+                collator.setStrength(java.text.Collator.PRIMARY);
+                java.util.List<Node> list = new java.util.ArrayList<>(box.getChildren());
+                list.sort((n1, n2) -> {
+                        if (n1 instanceof HBox h1 && n2 instanceof HBox h2) {
+                                String t1 = extractRowTitle(h1);
+                                String t2 = extractRowTitle(h2);
+                                return collator.compare(t1, t2);
+                        }
+                        return 0;
+                });
+                box.getChildren().setAll(list);
+        }
+
+        private String extractRowTitle(HBox row) {
+                for (Node n : row.getChildren()) {
+                        if (n instanceof Label l && l.getStyleClass().contains("help-entry-title")) {
+                                return l.getText().replaceAll("^•\\s*", "").replaceAll("\\s*:\\s*$", "").trim();
+                        }
+                }
+                return "";
         }
 
         private void addGlossaryRow(VBox box, String title, String description, String wikiUrl) {

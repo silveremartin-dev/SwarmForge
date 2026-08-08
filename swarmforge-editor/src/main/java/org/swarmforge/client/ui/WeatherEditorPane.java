@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import org.kordamp.ikonli.feather.Feather;
+import org.kordamp.ikonli.javafx.FontIcon;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Consumer;
@@ -162,11 +164,14 @@ public class WeatherEditorPane extends BorderPane {
         scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         setCenter(scrollPane);
 
+        attachUserChangeListeners();
+
         // Load default preset
         refreshPresetsCombo();
         if (!presetsCombo.getItems().isEmpty()) {
             presetsCombo.getSelectionModel().selectFirst();
             String first = presetsCombo.getValue();
+            lastSelectedPreset = first;
             if (presetMgr.contains(first)) {
                 applyPresetConfig(presetMgr.get(first));
             }
@@ -176,6 +181,9 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     // ── Header Bar ─────────────────────────────────────────────────────────────
+    private boolean isUpdatingFields = false;
+    private boolean isDirty = false;
+    private String lastSelectedPreset = null;
 
     private VBox buildHeader() {
         I18nManager i18n = I18nManager.getInstance();
@@ -196,25 +204,52 @@ public class WeatherEditorPane extends BorderPane {
         Label lp = new Label();
         lp.textProperty().bind(i18n.createStringBinding("preset.label"));
         lp.setStyle("-fx-font-weight: bold; -fx-text-fill: #e4e4e7;");
+        lp.setGraphic(new FontIcon(Feather.SLIDERS));
 
         presetsCombo = new ComboBox<>();
+        presetsCombo.setEditable(true);
         presetsCombo.setPrefWidth(210);
         presetsCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
         presetsCombo.setTooltip(new Tooltip("Sélectionnez un profil climatique pré-configuré (Méditerranéen, Tropical, Aride, Tempéré, Boréal, etc.)."));
         presetsCombo.setOnAction(e -> {
+            if (isUpdatingFields) return;
             String s = presetsCombo.getValue();
-            if (s != null && presetMgr.contains(s)) {
+            if (s == null || s.equals(lastSelectedPreset)) return;
+
+            if (isDirty) {
+                Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Attention : Vous avez des modifications non enregistrées sur le profil climatique actuel.\n\nVoulez-vous vraiment charger le preset '" + s + "' et abandonner vos modifications ?"
+                );
+                alert.setTitle("Modifications non enregistrées");
+                alert.setHeaderText("Changement de profil climatique");
+                java.util.Optional<ButtonType> res = alert.showAndWait();
+                if (res.isEmpty() || res.get() != ButtonType.OK) {
+                    isUpdatingFields = true;
+                    try {
+                        presetsCombo.setValue(lastSelectedPreset);
+                    } finally {
+                        isUpdatingFields = false;
+                    }
+                    return;
+                }
+            }
+
+            if (presetMgr.contains(s)) {
+                lastSelectedPreset = s;
                 applyPresetConfig(presetMgr.get(s));
             }
         });
 
         Button bAdd = new Button();
+        bAdd.setGraphic(new FontIcon(Feather.SAVE));
         bAdd.getStyleClass().add("btn-secondary");
         bAdd.textProperty().bind(i18n.createStringBinding("preset.save"));
         bAdd.setTooltip(new Tooltip("Enregistrer la configuration climatique actuelle comme nouveau preset."));
         bAdd.setOnAction(e -> doSavePreset());
 
         Button bDel = new Button();
+        bDel.setGraphic(new FontIcon(Feather.TRASH_2));
         bDel.getStyleClass().add("btn-danger");
         bDel.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
         bDel.textProperty().bind(i18n.createStringBinding("preset.delete"));
@@ -222,23 +257,20 @@ public class WeatherEditorPane extends BorderPane {
         bDel.setOnAction(e -> doDeletePreset());
 
         Button bExp = new Button();
+        bExp.setGraphic(new FontIcon(Feather.DOWNLOAD));
         bExp.getStyleClass().add("btn-secondary");
         bExp.textProperty().bind(i18n.createStringBinding("preset.export"));
         bExp.setTooltip(new Tooltip("Exporter le profil climatique au format JSON."));
         bExp.setOnAction(e -> doExport());
 
         Button bImp = new Button();
+        bImp.setGraphic(new FontIcon(Feather.UPLOAD));
         bImp.getStyleClass().add("btn-secondary");
         bImp.textProperty().bind(i18n.createStringBinding("preset.import"));
         bImp.setTooltip(new Tooltip("Importer un fichier JSON de configuration climatique."));
         bImp.setOnAction(e -> doImport());
 
-        Button bHelp = new Button("📖 Aide & Glossaire");
-        bHelp.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
-        bHelp.setTooltip(new Tooltip("Ouvrir le glossaire pédagogique du climat, des saisons et microclimats."));
-        bHelp.setOnAction(e -> GlossaryDialog.show("env"));
-
-        r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd, bDel, bHelp,
+        r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd, bDel,
                 new Separator(Orientation.VERTICAL), bExp, bImp);
 
         v.getChildren().addAll(r, new Separator());
@@ -1347,39 +1379,77 @@ public class WeatherEditorPane extends BorderPane {
         pane.setCollapsible(true);
     }
 
+    private void onFieldEdited() {
+        if (isUpdatingFields) return;
+        isDirty = true;
+        if (presetsCombo != null && presetsCombo.getSelectionModel().getSelectedItem() != null) {
+            isUpdatingFields = true;
+            try {
+                presetsCombo.getSelectionModel().clearSelection();
+            } finally {
+                isUpdatingFields = false;
+            }
+        }
+    }
+
+    private void attachUserChangeListeners() {
+        if (latSpinner != null) latSpinner.valueProperty().addListener((o, a, b) -> onFieldEdited());
+        if (lonSpinner != null) lonSpinner.valueProperty().addListener((o, a, b) -> onFieldEdited());
+        if (altSpinner != null) altSpinner.valueProperty().addListener((o, a, b) -> onFieldEdited());
+        if (pressureSpinner != null) pressureSpinner.valueProperty().addListener((o, a, b) -> onFieldEdited());
+        if (windDirCombo != null) windDirCombo.valueProperty().addListener((o, a, b) -> onFieldEdited());
+        if (soilInertiaSpinner != null) soilInertiaSpinner.valueProperty().addListener((o, a, b) -> onFieldEdited());
+        if (depthAttenSpinner != null) depthAttenSpinner.valueProperty().addListener((o, a, b) -> onFieldEdited());
+
+        for (int i = 0; i < 12; i++) {
+            if (minSpinners[i] != null) minSpinners[i].valueProperty().addListener((o, a, b) -> onFieldEdited());
+            if (avgSpinners[i] != null) avgSpinners[i].valueProperty().addListener((o, a, b) -> onFieldEdited());
+            if (maxSpinners[i] != null) maxSpinners[i].valueProperty().addListener((o, a, b) -> onFieldEdited());
+        }
+
+        for (Slider s : disasterProbabilities.values()) {
+            if (s != null) s.valueProperty().addListener((o, a, b) -> onFieldEdited());
+        }
+    }
+
     // ── Preset & Data Binding Actions ─────────────────────────────────────────
 
     private void applyPresetConfig(Map<String, Object> cfg) {
         if (cfg == null) return;
+        isUpdatingFields = true;
+        try {
+            if (cfg.containsKey("latitude") && latSpinner != null) latSpinner.getValueFactory().setValue(num(cfg, "latitude"));
+            if (cfg.containsKey("longitude") && lonSpinner != null) lonSpinner.getValueFactory().setValue(num(cfg, "longitude"));
+            if (cfg.containsKey("altitude") && altSpinner != null) altSpinner.getValueFactory().setValue(num(cfg, "altitude"));
+            if (cfg.containsKey("basePressure") && pressureSpinner != null) pressureSpinner.getValueFactory().setValue(num(cfg, "basePressure"));
+            if (cfg.containsKey("windDirection") && windDirCombo != null) windDirCombo.setValue((String) cfg.get("windDirection"));
+            if (cfg.containsKey("soilInertiaDays") && soilInertiaSpinner != null) soilInertiaSpinner.getValueFactory().setValue(num(cfg, "soilInertiaDays"));
+            if (cfg.containsKey("depthAttenuation") && depthAttenSpinner != null) depthAttenSpinner.getValueFactory().setValue(num(cfg, "depthAttenuation"));
 
-        if (cfg.containsKey("latitude") && latSpinner != null) latSpinner.getValueFactory().setValue(num(cfg, "latitude"));
-        if (cfg.containsKey("longitude") && lonSpinner != null) lonSpinner.getValueFactory().setValue(num(cfg, "longitude"));
-        if (cfg.containsKey("altitude") && altSpinner != null) altSpinner.getValueFactory().setValue(num(cfg, "altitude"));
-        if (cfg.containsKey("basePressure") && pressureSpinner != null) pressureSpinner.getValueFactory().setValue(num(cfg, "basePressure"));
-        if (cfg.containsKey("windDirection") && windDirCombo != null) windDirCombo.setValue((String) cfg.get("windDirection"));
-        if (cfg.containsKey("soilInertiaDays") && soilInertiaSpinner != null) soilInertiaSpinner.getValueFactory().setValue(num(cfg, "soilInertiaDays"));
-        if (cfg.containsKey("depthAttenuation") && depthAttenSpinner != null) depthAttenSpinner.getValueFactory().setValue(num(cfg, "depthAttenuation"));
+            copyList(cfg, "tempMin", tempMin);
+            copyList(cfg, "tempAvg", tempAvg);
+            copyList(cfg, "tempMax", tempMax);
 
-        copyList(cfg, "tempMin", tempMin);
-        copyList(cfg, "tempAvg", tempAvg);
-        copyList(cfg, "tempMax", tempMax);
+            copyList(cfg, "windMin", windMin);
+            copyList(cfg, "windAvg", windAvg);
+            copyList(cfg, "windMax", windMax);
 
-        copyList(cfg, "windMin", windMin);
-        copyList(cfg, "windAvg", windAvg);
-        copyList(cfg, "windMax", windMax);
+            copyList(cfg, "rainMin", rainMin);
+            copyList(cfg, "rainAvg", rainAvg);
+            copyList(cfg, "rainMax", rainMax);
 
-        copyList(cfg, "rainMin", rainMin);
-        copyList(cfg, "rainAvg", rainAvg);
-        copyList(cfg, "rainMax", rainMax);
+            copyList(cfg, "humidityMin", humidityMin);
+            copyList(cfg, "humidityAvg", humidityAvg);
+            copyList(cfg, "humidityMax", humidityMax);
 
-        copyList(cfg, "humidityMin", humidityMin);
-        copyList(cfg, "humidityAvg", humidityAvg);
-        copyList(cfg, "humidityMax", humidityMax);
-
-        updatePhotoperiod();
-        updateSpinnersForActiveParam();
-        syncAndValidate();
-        redrawCurves();
+            updatePhotoperiod();
+            updateSpinnersForActiveParam();
+            syncAndValidate();
+            redrawCurves();
+        } finally {
+            isUpdatingFields = false;
+            isDirty = false;
+        }
     }
 
     private double num(Map<String, Object> m, String k) {
@@ -1404,16 +1474,39 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     private void doSavePreset() {
-        TextInputDialog d = new TextInputDialog(presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom Climate Profile");
+        String defaultName = (presetsCombo.getEditor() != null && !presetsCombo.getEditor().getText().isBlank())
+                ? presetsCombo.getEditor().getText().trim()
+                : (presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom Climate Profile");
+        TextInputDialog d = org.swarmforge.client.util.ThemeManager.createTextInputDialog(defaultName);
         d.setTitle("Enregistrer Preset Climat");
         d.setHeaderText("Nom du profil climatique :");
         d.setContentText("Nom :");
         d.showAndWait().ifPresent(name -> {
             if (name == null || name.isBlank()) return;
-            presetMgr.save(name, getConfiguration());
-            refreshPresetsCombo();
-            presetsCombo.setValue(name);
-            NotificationOverlay.show(this, "Preset \"" + name + "\" sauvegardé avec succès.", NotificationOverlay.NotificationType.SUCCESS);
+            String clean = name.trim();
+            if (presetMgr.contains(clean)) {
+                Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Le preset climatique '" + clean + "' existe déjà.\n\nVoulez-vous le remplacer par la configuration actuelle ?"
+                );
+                confirmAlert.setTitle("Remplacer le Preset Existant");
+                confirmAlert.setHeaderText("Confirmation de remplacement");
+                java.util.Optional<ButtonType> res = confirmAlert.showAndWait();
+                if (res.isEmpty() || res.get() != ButtonType.OK) {
+                    return;
+                }
+            }
+            presetMgr.save(clean, getConfiguration());
+            isUpdatingFields = true;
+            try {
+                refreshPresetsCombo();
+                presetsCombo.setValue(clean);
+            } finally {
+                isUpdatingFields = false;
+            }
+            lastSelectedPreset = clean;
+            isDirty = false;
+            NotificationOverlay.show(this, "Preset \"" + clean + "\" sauvegardé avec succès.", NotificationOverlay.NotificationType.SUCCESS);
         });
     }
 

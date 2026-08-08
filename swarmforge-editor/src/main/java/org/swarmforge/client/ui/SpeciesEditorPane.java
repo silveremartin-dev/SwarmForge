@@ -118,6 +118,10 @@ public class SpeciesEditorPane extends VBox {
     private Consumer<CustomSpecies> onApplyListener;
     private Consumer<CustomSpecies> onGenerateNestForSpeciesListener;
 
+    private boolean isUpdatingFields = false;
+    private boolean isDirty = false;
+    private String lastSelectedPreset = null;
+
     public SpeciesEditorPane() {
         setSpacing(15);
         setPadding(new Insets(15));
@@ -140,12 +144,18 @@ public class SpeciesEditorPane extends VBox {
 
         getChildren().addAll(headerLabel, topToolbar, warningBannerBox, new Separator(), tabPane);
 
-        casteRows.addListener((javafx.collections.ListChangeListener<CasteRow>) c -> validateParameters());
+        casteRows.addListener((javafx.collections.ListChangeListener<CasteRow>) c -> {
+            onFieldEdited();
+            validateParameters();
+        });
+
+        attachUserChangeListeners();
 
         // Load default preset if available
         if (!presetManager.getPresetNames().isEmpty()) {
             String firstPreset = presetManager.getPresetNames().iterator().next();
             presetCombo.getSelectionModel().select(firstPreset);
+            lastSelectedPreset = firstPreset;
             loadPresetToUI(presetManager.getPreset(firstPreset));
         }
     }
@@ -168,26 +178,53 @@ public class SpeciesEditorPane extends VBox {
         Label lblPreset = new Label();
         lblPreset.textProperty().bind(i18n.createStringBinding("preset.label"));
         lblPreset.setStyle("-fx-font-weight: bold;");
+        lblPreset.setGraphic(new FontIcon(Feather.SLIDERS));
 
         presetCombo = new ComboBox<>();
+        presetCombo.setEditable(true);
         presetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
         presetCombo.setTooltip(new Tooltip("Sélectionnez une espèce d'insecte eusocial pré-configurée (Lasius, Atta, Apis, Bombus, Vespula, Macrotermes, etc.)."));
         presetCombo.getItems().setAll(presetManager.getPresetNames());
         presetCombo.setPrefWidth(240);
         presetCombo.setOnAction(e -> {
+            if (isUpdatingFields) return;
             String sel = presetCombo.getValue();
-            if (sel != null && presetManager.contains(sel)) {
+            if (sel == null || sel.equals(lastSelectedPreset)) return;
+
+            if (isDirty) {
+                Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Attention : Vous avez des modifications non enregistrées sur l'espèce actuelle.\n\nVoulez-vous vraiment charger le preset '" + sel + "' et abandonner vos modifications ?"
+                );
+                alert.setTitle("Modifications non enregistrées");
+                alert.setHeaderText("Changement de preset d'espèce");
+                java.util.Optional<ButtonType> res = alert.showAndWait();
+                if (res.isEmpty() || res.get() != ButtonType.OK) {
+                    isUpdatingFields = true;
+                    try {
+                        presetCombo.setValue(lastSelectedPreset);
+                    } finally {
+                        isUpdatingFields = false;
+                    }
+                    return;
+                }
+            }
+
+            if (presetManager.contains(sel)) {
+                lastSelectedPreset = sel;
                 loadPresetToUI(presetManager.getPreset(sel));
             }
         });
 
         Button btnSave = new Button();
+        btnSave.setGraphic(new FontIcon(Feather.SAVE));
         btnSave.textProperty().bind(i18n.createStringBinding("preset.save"));
         btnSave.getStyleClass().add("btn-secondary");
         btnSave.setTooltip(new Tooltip("Enregistrer la configuration actuelle de l'espèce comme nouveau preset."));
         btnSave.setOnAction(e -> handleAddPreset());
 
         Button btnDelete = new Button();
+        btnDelete.setGraphic(new FontIcon(Feather.TRASH_2));
         btnDelete.textProperty().bind(i18n.createStringBinding("preset.delete"));
         btnDelete.getStyleClass().add("btn-danger");
         btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
@@ -195,23 +232,20 @@ public class SpeciesEditorPane extends VBox {
         btnDelete.setOnAction(e -> handleDeletePreset());
 
         Button btnExport = new Button();
+        btnExport.setGraphic(new FontIcon(Feather.DOWNLOAD));
         btnExport.textProperty().bind(i18n.createStringBinding("preset.export"));
         btnExport.getStyleClass().add("btn-secondary");
         btnExport.setTooltip(new Tooltip("Exporter les paramètres de l'espèce au format JSON."));
         btnExport.setOnAction(e -> handleSaveDisk());
 
         Button btnImport = new Button();
+        btnImport.setGraphic(new FontIcon(Feather.UPLOAD));
         btnImport.textProperty().bind(i18n.createStringBinding("preset.import"));
         btnImport.getStyleClass().add("btn-secondary");
         btnImport.setTooltip(new Tooltip("Importer un fichier JSON de configuration d'espèce."));
         btnImport.setOnAction(e -> handleLoadDisk());
 
-        Button bHelp = new Button("📖 Aide & Glossaire");
-        bHelp.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
-        bHelp.setTooltip(new Tooltip("Ouvrir le glossaire pédagogique des structures sociales, reines et comportements."));
-        bHelp.setOnAction(e -> GlossaryDialog.show("social"));
-
-        bar.getChildren().addAll(lblPreset, presetCombo, btnSave, btnDelete, bHelp, new Separator(Orientation.VERTICAL), btnExport, btnImport);
+        bar.getChildren().addAll(lblPreset, presetCombo, btnSave, btnDelete, new Separator(Orientation.VERTICAL), btnExport, btnImport);
         return bar;
     }
 
@@ -1070,10 +1104,37 @@ public class SpeciesEditorPane extends VBox {
     // --- Helper Methods ---
 
     private void handleAddPreset() {
-        String name = commonNameField != null ? commonNameField.getText().trim() : "";
+        String editedText = presetCombo.getEditor() != null ? presetCombo.getEditor().getText().trim() : "";
+        String common = commonNameField != null ? commonNameField.getText().trim() : "";
+        String scientific = scientificNameField != null ? scientificNameField.getText().trim() : "";
+
+        String name = editedText;
         if (name.isEmpty()) {
-            new Alert(Alert.AlertType.WARNING, "Veuillez spécifier un nom commun dans l'onglet Taxonomie.").show();
+            if (!common.isEmpty() && !scientific.isEmpty()) {
+                name = common + " (" + scientific + ")";
+            } else if (!common.isEmpty()) {
+                name = common;
+            } else if (!scientific.isEmpty()) {
+                name = scientific;
+            }
+        }
+
+        if (name.isEmpty()) {
+            new Alert(Alert.AlertType.WARNING, "Veuillez spécifier un nom commun, un nom scientifique ou un nom de preset.").show();
             return;
+        }
+
+        if (presetManager.contains(name)) {
+            Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
+                Alert.AlertType.CONFIRMATION,
+                "Le preset d'espèce '" + name + "' existe déjà.\n\nVoulez-vous le remplacer par la configuration actuelle ?"
+            );
+            confirmAlert.setTitle("Remplacer le Preset Existant");
+            confirmAlert.setHeaderText("Confirmation de remplacement");
+            java.util.Optional<ButtonType> res = confirmAlert.showAndWait();
+            if (res.isEmpty() || res.get() != ButtonType.OK) {
+                return;
+            }
         }
 
         CustomSpecies species = buildSpeciesFromUI();
@@ -1081,12 +1142,19 @@ public class SpeciesEditorPane extends VBox {
 
         presetManager.addPreset(name, species);
 
-        if (!presetCombo.getItems().contains(name)) {
-            presetCombo.getItems().add(name);
+        isUpdatingFields = true;
+        try {
+            if (!presetCombo.getItems().contains(name)) {
+                presetCombo.getItems().add(name);
+            }
+            presetCombo.getSelectionModel().select(name);
+        } finally {
+            isUpdatingFields = false;
         }
-        presetCombo.getSelectionModel().select(name);
+        lastSelectedPreset = name;
+        isDirty = false;
 
-        new Alert(Alert.AlertType.INFORMATION, "Preset '" + name + "' ajouté et sauvegardé.").show();
+        NotificationOverlay.show(this, "Preset espèce '" + name + "' sauvegardé.", NotificationOverlay.NotificationType.SUCCESS);
     }
 
     private void handleDeletePreset() {
@@ -1148,92 +1216,158 @@ public class SpeciesEditorPane extends VBox {
         }
     }
 
-    private void loadPresetToUI(CustomSpecies s) {
-        if (s == null) return;
-
-        commonNameField.setText(s.getCommonName());
-        scientificNameField.setText(s.getScientificName());
-        insectTypeCombo.getSelectionModel().select(s.getInsectType());
-        categoryCombo.getSelectionModel().select(s.getCategory());
-        descriptionArea.setText(s.getDescription());
-
-        queenModeCombo.getSelectionModel().select(s.getQueenCountMode());
-        queenCountSpinner.getValueFactory().setValue(s.getQueenCount());
-        queenLifespanField.setText(String.valueOf(s.getQueenLifespan()));
-        queenEggRateField.setText(String.valueOf(s.getQueenEggLayingRate()));
-        hasKingCheckBox.setSelected(s.isHasKing());
-        kingLifespanField.setText(String.valueOf(s.getKingLifespan()));
-        nuptialFlightCombo.getSelectionModel().select(s.getNuptialFlightType());
-
-        eggDurationField.setText(String.valueOf(s.getEggStageDuration()));
-        larvaDurationField.setText(String.valueOf(s.getLarvaStageDuration()));
-        larvaDietCombo.getSelectionModel().select(s.getLarvaDietRequirement());
-        pupaDurationField.setText(String.valueOf(s.getPupaStageDuration()));
-
-        primaryDietCombo.getSelectionModel().select(s.getPrimaryDiet());
-        secondaryDietCombo.getSelectionModel().select(s.getSecondaryDiet());
-        foodConsumptionField.setText(String.valueOf(s.getDailyFoodConsumption()));
-        waterReqField.setText(String.valueOf(s.getWaterRequirement()));
-        workerLifespanField.setText(String.valueOf(s.getWorkerLifespan()));
-        workerSpeedField.setText(String.valueOf(s.getWorkerSpeed()));
-        viewDistanceField.setText(String.valueOf(s.getViewDistance()));
-        colonySizeField.setText(String.valueOf(s.getTypicalColonySize()));
-        megaColonyCheckBox.setSelected(s.formsMegaColonies());
-        flyCheckBox.setSelected(s.isWorkersCanFly());
-
-        nestTypeCombo.getSelectionModel().select(s.getNestType());
-        optTempField.setText(String.valueOf(s.getOptimalTempCelsius()));
-        minTempField.setText(String.valueOf(s.getMinTempCelsius()));
-        maxTempField.setText(String.valueOf(s.getMaxTempCelsius()));
-        aggressionSlider.setValue(s.getAggression());
-        territorialitySlider.setValue(s.getTerritoriality());
-        venomCombo.getSelectionModel().select(s.getVenomType());
-
-        // Sensory & Perception Profile
-        hasMagnetoreceptionCheckBox.setSelected(s.hasMagnetoreception());
-        magnetoSensField.setText(String.valueOf(s.getMagnetoreceptionSensitivity()));
-        thermoSensField.setText(String.valueOf(s.getThermoreceptionSensitivity()));
-        gasSensField.setText(String.valueOf(s.getGasSensitivityCo2Ppm()));
-        visualAcuityField.setText(String.valueOf(s.getVisualAcuity()));
-        minLightField.setText(String.valueOf(s.getMinLightLevelThreshold()));
-        hasVibrationSensingCheckBox.setSelected(s.hasSubstrateVibrationSensing());
-        vibrationSensField.setText(String.valueOf(s.getVibrationSensitivityDb()));
-        hasHygroreceptionCheckBox.setSelected(s.hasHygroreception());
-        hygroSensField.setText(String.valueOf(s.getHygroreceptionSensitivityPercent()));
-        hasElectrosensingCheckBox.setSelected(s.hasElectrosensing());
-        electroSensField.setText(String.valueOf(s.getElectroceptionSensitivityVolts()));
-        hasPolarizedLightCheckBox.setSelected(s.hasPolarizedLightNavigation());
-
-        // Motor & Biomechanical Profile
-        wingbeatHzField.setText(String.valueOf(s.getWingbeatFrequencyHz()));
-        hasHoveringCheckBox.setSelected(s.hasHoveringCapability());
-        maxPayloadRatioField.setText(String.valueOf(s.getMaxCarryingPayloadRatio()));
-        bitingForceMpaField.setText(String.valueOf(s.getMandibularBitingForceMPa()));
-        hasAutothysisCheckBox.setSelected(s.hasAutothysis());
-        hasAroliaAdhesionCheckBox.setSelected(s.hasSubstrateAdhesionArolia());
-
-        // Castes
-        casteRows.clear();
-        if (s.getCasteTemplates() != null) {
-            for (CasteTemplate ct : s.getCasteTemplates()) {
-                double body = ct.getBodyLengthMm() > 0 ? ct.getBodyLengthMm() : ct.getAttribute("size_mm", 5.0f);
-                double head = ct.getHeadWidthMm() > 0 ? ct.getHeadWidthMm() : (body * 0.25);
-                CasteRow row = new CasteRow(ct.getName(), body, head, ct.getLifespan(), ct.getBaseHealth(), ct.getBaseDamage(), ct.isCanFly());
-                row.setForagingWeight(ct.getTaskForagingWeight());
-                row.setDefenseWeight(ct.getTaskDefenseWeight());
-                row.setExcavationWeight(ct.getTaskExcavationWeight());
-                row.setNursingWeight(ct.getTaskNursingWeight());
-                row.setQueenCareWeight(ct.getTaskQueenCareWeight());
-                row.setSanitationWeight(ct.getTaskSanitationWeight());
-                row.setTargetRatio(ct.getTargetRatio());
-                row.setDecisionArch(ct.getDecisionArchitectureType() != null ? ct.getDecisionArchitectureType() : "BDI");
-                row.setVenomType(ct.getVenomType() != null ? ct.getVenomType() : "NONE");
-                row.setVenomToxicity(ct.getVenomToxicity());
-                row.setVenomRangeMm(ct.getVenomRangeMm());
-                casteRows.add(row);
+    private void onFieldEdited() {
+        if (isUpdatingFields) return;
+        isDirty = true;
+        if (presetCombo != null && presetCombo.getSelectionModel().getSelectedItem() != null) {
+            isUpdatingFields = true;
+            try {
+                presetCombo.getSelectionModel().clearSelection();
+            } finally {
+                isUpdatingFields = false;
             }
         }
-        validateParameters();
+    }
+
+    private void attachUserChangeListeners() {
+        TextField[] fields = {
+            commonNameField, scientificNameField, queenLifespanField, queenEggRateField,
+            kingLifespanField, eggDurationField, larvaDurationField, pupaDurationField,
+            foodConsumptionField, waterReqField, workerLifespanField, workerSpeedField,
+            viewDistanceField, colonySizeField, optTempField, minTempField, maxTempField,
+            magnetoSensField, thermoSensField, gasSensField, visualAcuityField, minLightField,
+            vibrationSensField, hygroSensField, electroSensField, wingbeatHzField,
+            maxPayloadRatioField, bitingForceMpaField
+        };
+        for (TextField tf : fields) {
+            if (tf != null) tf.textProperty().addListener((obs, oldV, newV) -> onFieldEdited());
+        }
+
+        ComboBox<?>[] combos = {
+            insectTypeCombo, categoryCombo, queenModeCombo, nuptialFlightCombo,
+            larvaDietCombo, primaryDietCombo, secondaryDietCombo, nestTypeCombo, venomCombo
+        };
+        for (ComboBox<?> cb : combos) {
+            if (cb != null) cb.valueProperty().addListener((obs, oldV, newV) -> onFieldEdited());
+        }
+
+        CheckBox[] checkBoxes = {
+            hasKingCheckBox, megaColonyCheckBox, flyCheckBox, hasMagnetoreceptionCheckBox,
+            hasVibrationSensingCheckBox, hasHygroreceptionCheckBox, hasElectrosensingCheckBox,
+            hasPolarizedLightCheckBox, hasHoveringCheckBox, hasAutothysisCheckBox,
+            hasAroliaAdhesionCheckBox
+        };
+        for (CheckBox chk : checkBoxes) {
+            if (chk != null) chk.selectedProperty().addListener((obs, oldV, newV) -> onFieldEdited());
+        }
+
+        Slider[] sliders = { aggressionSlider, territorialitySlider };
+        for (Slider s : sliders) {
+            if (s != null) s.valueProperty().addListener((obs, oldV, newV) -> onFieldEdited());
+        }
+
+        if (queenCountSpinner != null) {
+            queenCountSpinner.valueProperty().addListener((obs, oldV, newV) -> onFieldEdited());
+        }
+        if (descriptionArea != null) {
+            descriptionArea.textProperty().addListener((obs, oldV, newV) -> onFieldEdited());
+        }
+    }
+
+    private void loadPresetToUI(CustomSpecies s) {
+        if (s == null) return;
+        isUpdatingFields = true;
+        try {
+            commonNameField.setText(s.getCommonName());
+            scientificNameField.setText(s.getScientificName());
+            insectTypeCombo.getSelectionModel().select(s.getInsectType());
+            categoryCombo.getSelectionModel().select(s.getCategory());
+            descriptionArea.setText(s.getDescription());
+
+            queenModeCombo.getSelectionModel().select(s.getQueenCountMode());
+            queenCountSpinner.getValueFactory().setValue(s.getQueenCount());
+            queenLifespanField.setText(String.valueOf(s.getQueenLifespan()));
+            queenEggRateField.setText(String.valueOf(s.getQueenEggLayingRate()));
+            hasKingCheckBox.setSelected(s.isHasKing());
+            kingLifespanField.setText(String.valueOf(s.getKingLifespan()));
+            nuptialFlightCombo.getSelectionModel().select(s.getNuptialFlightType());
+
+            eggDurationField.setText(String.valueOf(s.getEggStageDuration()));
+            larvaDurationField.setText(String.valueOf(s.getLarvaStageDuration()));
+            larvaDietCombo.getSelectionModel().select(s.getLarvaDietRequirement());
+            pupaDurationField.setText(String.valueOf(s.getPupaStageDuration()));
+
+            primaryDietCombo.getSelectionModel().select(s.getPrimaryDiet());
+            secondaryDietCombo.getSelectionModel().select(s.getSecondaryDiet());
+            foodConsumptionField.setText(String.valueOf(s.getDailyFoodConsumption()));
+            waterReqField.setText(String.valueOf(s.getWaterRequirement()));
+            workerLifespanField.setText(String.valueOf(s.getWorkerLifespan()));
+            workerSpeedField.setText(String.valueOf(s.getWorkerSpeed()));
+            viewDistanceField.setText(String.valueOf(s.getViewDistance()));
+            colonySizeField.setText(String.valueOf(s.getTypicalColonySize()));
+            megaColonyCheckBox.setSelected(s.formsMegaColonies());
+            flyCheckBox.setSelected(s.isWorkersCanFly());
+
+            nestTypeCombo.getSelectionModel().select(s.getNestType());
+            optTempField.setText(String.valueOf(s.getOptimalTempCelsius()));
+            minTempField.setText(String.valueOf(s.getMinTempCelsius()));
+            maxTempField.setText(String.valueOf(s.getMaxTempCelsius()));
+            aggressionSlider.setValue(s.getAggression());
+            territorialitySlider.setValue(s.getTerritoriality());
+            venomCombo.getSelectionModel().select(s.getVenomType());
+
+            // Sensory & Perception Profile
+            hasMagnetoreceptionCheckBox.setSelected(s.hasMagnetoreception());
+            magnetoSensField.setText(String.valueOf(s.getMagnetoreceptionSensitivity()));
+            thermoSensField.setText(String.valueOf(s.getThermoreceptionSensitivity()));
+            gasSensField.setText(String.valueOf(s.getGasSensitivityCo2Ppm()));
+            visualAcuityField.setText(String.valueOf(s.getVisualAcuity()));
+            minLightField.setText(String.valueOf(s.getMinLightLevelThreshold()));
+            hasVibrationSensingCheckBox.setSelected(s.hasSubstrateVibrationSensing());
+            vibrationSensField.setText(String.valueOf(s.getVibrationSensitivityDb()));
+            hasHygroreceptionCheckBox.setSelected(s.hasHygroreception());
+            hygroSensField.setText(String.valueOf(s.getHygroreceptionSensitivityPercent()));
+            hasElectrosensingCheckBox.setSelected(s.hasElectrosensing());
+            electroSensField.setText(String.valueOf(s.getElectroceptionSensitivityVolts()));
+            hasPolarizedLightCheckBox.setSelected(s.hasPolarizedLightNavigation());
+
+            // Motor & Biomechanical Profile
+            wingbeatHzField.setText(String.valueOf(s.getWingbeatFrequencyHz()));
+            hasHoveringCheckBox.setSelected(s.hasHoveringCapability());
+            maxPayloadRatioField.setText(String.valueOf(s.getMaxCarryingPayloadRatio()));
+            bitingForceMpaField.setText(String.valueOf(s.getMandibularBitingForceMPa()));
+            hasAutothysisCheckBox.setSelected(s.hasAutothysis());
+            hasAroliaAdhesionCheckBox.setSelected(s.hasSubstrateAdhesionArolia());
+
+            // Castes
+            casteRows.clear();
+            if (s.getCasteTemplates() != null) {
+                for (CasteTemplate ct : s.getCasteTemplates()) {
+                    double body = ct.getBodyLengthMm() > 0 ? ct.getBodyLengthMm() : ct.getAttribute("size_mm", 5.0f);
+                    double head = ct.getHeadWidthMm() > 0 ? ct.getHeadWidthMm() : (body * 0.25);
+                    CasteRow row = new CasteRow(ct.getName(), body, head, ct.getLifespan(), ct.getBaseHealth(), ct.getBaseDamage(), ct.isCanFly());
+                    row.setForagingWeight(ct.getTaskForagingWeight());
+                    row.setDefenseWeight(ct.getTaskDefenseWeight());
+                    row.setExcavationWeight(ct.getTaskExcavationWeight());
+                    row.setNursingWeight(ct.getTaskNursingWeight());
+                    row.setQueenCareWeight(ct.getTaskQueenCareWeight());
+                    row.setSanitationWeight(ct.getTaskSanitationWeight());
+                    row.setTargetRatio(ct.getTargetRatio());
+                    row.setDecisionArch(ct.getDecisionArchitectureType() != null ? ct.getDecisionArchitectureType() : "BDI");
+                    row.setVenomType(ct.getVenomType() != null ? ct.getVenomType() : "NONE");
+                    row.setVenomToxicity(ct.getVenomToxicity());
+                    row.setVenomRangeMm(ct.getVenomRangeMm());
+                    casteRows.add(row);
+                }
+            }
+            if (casteTable != null && !casteRows.isEmpty()) {
+                casteTable.getSelectionModel().selectFirst();
+            }
+            validateParameters();
+        } finally {
+            isUpdatingFields = false;
+            isDirty = false;
+        }
     }
 
     private CustomSpecies buildSpeciesFromUI() {

@@ -226,8 +226,19 @@ public class EventLogPane extends BorderPane {
                 typeLabel.setStyle("-fx-text-fill: " + getTypeColor(event.getType()) + "; -fx-font-weight: bold;");
                 typeLabel.setMinWidth(120);
 
-                // Message
-                Label msgLabel = new Label(event.getMessage());
+                // Message & Numerical Data Details
+                StringBuilder msgBuilder = new StringBuilder(event.getMessage());
+                if (event.getData() != null && !event.getData().isEmpty()) {
+                    msgBuilder.append("  📊 [");
+                    boolean first = true;
+                    for (java.util.Map.Entry<String, Object> entry : event.getData().entrySet()) {
+                        if (!first) msgBuilder.append(", ");
+                        msgBuilder.append(entry.getKey()).append(": ").append(entry.getValue());
+                        first = false;
+                    }
+                    msgBuilder.append("]");
+                }
+                Label msgLabel = new Label(msgBuilder.toString());
                 msgLabel.setStyle("-fx-text-fill: white;");
 
                 box.getChildren().addAll(sevLabel, timeLabel, tickLabel, typeLabel, msgLabel);

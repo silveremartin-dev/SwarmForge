@@ -54,12 +54,16 @@ public class InterventionPanel extends BorderPane {
         title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #ff6b6b;");
         title.setTooltip(new Tooltip("Contrôles d'intervention directe en mode divin pour modifier la simulation en cours de fonctionnement."));
         
-        Label warning = new Label();
-        warning.textProperty().bind(i18n.createStringBinding("god.warning"));
-        warning.setStyle("-fx-text-fill: #ffc107; -fx-font-style: italic;");
-        warning.setTooltip(new Tooltip("Attention : Toutes les interventions effectuées ici s'appliquent immédiatement à la simulation sans annulation possible."));
-        
-        VBox header = new VBox(5, title, warning);
+        simStateWarningLabel = new Label("⚠️ Simulation arrêtée — Démarrez la simulation (▶) pour exécuter des interventions en Mode Divin.");
+        simStateWarningLabel.setStyle("-fx-text-fill: #f87171; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: rgba(239,68,68,0.15); -fx-padding: 6 10; -fx-background-radius: 4;");
+        simStateWarningLabel.setMaxWidth(Double.MAX_VALUE);
+
+        Label persistenceNoticeLabel = new Label("⚡ Persistance & Déterminisme : Toutes vos interventions en Mode Divin sont horodatées (Tick exact) et inscrites dans le Journal du Scénario. Elles seront réappliquées déterministement lors des restaurations de Checkpoints.");
+        persistenceNoticeLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 10px; -fx-background-color: rgba(56,189,248,0.1); -fx-padding: 6 10; -fx-background-radius: 4; -fx-border-color: rgba(56,189,248,0.3); -fx-border-width: 1;");
+        persistenceNoticeLabel.setWrapText(true);
+        persistenceNoticeLabel.setMaxWidth(Double.MAX_VALUE);
+
+        VBox header = new VBox(5, title, simStateWarningLabel, persistenceNoticeLabel);
         setTop(header);
 
         // Main content - Accordion with sections
@@ -70,9 +74,10 @@ public class InterventionPanel extends BorderPane {
         TitledPane resourcePane = createResourceSection();
         TitledPane speedPane = createCasteGenerationSpeedSection();
         TitledPane disasterPane = createDisasterSection();
+        TitledPane scheduledEventsPane = createScheduledEventsSection();
         TitledPane paramPane = createParameterSection();
 
-        accordion.getPanes().addAll(spawnPane, killPane, resourcePane, speedPane, disasterPane, paramPane);
+        accordion.getPanes().addAll(spawnPane, killPane, resourcePane, speedPane, disasterPane, scheduledEventsPane, paramPane);
         accordion.setExpandedPane(spawnPane);
 
         VBox content = new VBox(15, accordion);
@@ -207,9 +212,21 @@ public class InterventionPanel extends BorderPane {
         btnKill.setTooltip(new Tooltip("Élimine immédiatement le nombre d'individus ciblés dans la colonie sélectionnée."));
         btnKill.setOnAction(e -> {
             String selectedColony = killColonySelect.getValue();
-            log("Élimination de " + killCount.getValue() + " " + targetSelect.getValue() + " dans " + selectedColony);
-            if (callback != null) callback.killAnts(selectedColony, targetSelect.getValue(), killCount.getValue());
-            publishEvent(SimulationEvent.EventType.WORKER_DIED);
+            String target = targetSelect.getValue();
+            int count = killCount.getValue();
+            String msg = String.format("Élimination de %d [%s] (%s) via Mode Divin", count, target, selectedColony);
+            log(msg);
+            if (callback != null) callback.killAnts(selectedColony, target, count);
+            
+            SimulationEvent.EventType eventType = target.contains("Reine") ? SimulationEvent.EventType.QUEEN_DIED :
+                        target.contains("Soldat") ? SimulationEvent.EventType.SOLDIER_DIED :
+                        SimulationEvent.EventType.WORKER_DIED;
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("colony", selectedColony);
+            data.put("caste", target);
+            data.put("count", count);
+            data.put("source", "Mode Divin");
+            EventBus.getInstance().publish(SimulationEvent.obtain(eventType, SimulationEvent.Severity.WARNING, 0, msg, data));
         });
 
         Label lblTarget = new Label();
@@ -234,9 +251,13 @@ public class InterventionPanel extends BorderPane {
             confirm.setContentText(i18n.get("god.kill.confirm_msg") + " (" + selectedColony + ")");
             confirm.showAndWait().ifPresent(r -> {
                 if (r == ButtonType.OK) {
-                    log("⚠ Extinction totale déclenchée pour la colonie : " + selectedColony);
+                    String msg = "⚠ Extinction totale déclenchée pour la colonie : " + selectedColony + " via Mode Divin";
+                    log(msg);
                     if (callback != null) callback.killAnts(selectedColony, "ALL", 999999);
-                    publishEvent(SimulationEvent.EventType.COLONY_DESTROYED);
+                    java.util.Map<String, Object> data = new java.util.HashMap<>();
+                    data.put("colony", selectedColony);
+                    data.put("source", "Mode Divin");
+                    EventBus.getInstance().publish(SimulationEvent.obtain(SimulationEvent.EventType.COLONY_DESTROYED, SimulationEvent.Severity.CRITICAL, 0, msg, data));
                 }
             });
         });
@@ -279,8 +300,11 @@ public class InterventionPanel extends BorderPane {
             float x = Float.parseFloat(posXField.getText());
             float y = Float.parseFloat(posYField.getText());
             float z = Float.parseFloat(posZField.getText());
-            log("Apparition de " + (int)foodSlider.getValue() + " unités de nourriture aux coordonnées (" + x + "," + y + "," + z + ")");
-            if (callback != null) callback.spawnFood(x, y, z, (float)foodSlider.getValue());
+            int amount = (int)foodSlider.getValue();
+            String msg = String.format("Apparition de %d unités de nourriture aux coordonnées (X:%.2fm, Y:%.2fm, Z:%.2fm) via Mode Divin", amount, x, y, z);
+            log(msg);
+            if (callback != null) callback.spawnFood(x, y, z, (float)amount);
+            EventBus.getInstance().publish(SimulationEvent.foodDiscovered(0, "SYSTEM", (int)x, (int)y, amount));
         });
 
         // Water spawning
@@ -291,7 +315,7 @@ public class InterventionPanel extends BorderPane {
             float x = Float.parseFloat(posXField.getText());
             float y = Float.parseFloat(posYField.getText());
             float z = Float.parseFloat(posZField.getText());
-            log("Apparition d'une source d'eau à (" + x + "," + y + "," + z + ")");
+            log(String.format("Apparition d'une source d'eau aux coordonnées (X:%.2fm, Y:%.2fm, Z:%.2fm) via Mode Divin", x, y, z));
         });
 
         // Remove resources
@@ -435,7 +459,8 @@ public class InterventionPanel extends BorderPane {
         btnTrigger.setOnAction(e -> {
             String type = disasterSelect.getValue();
             float intensity = (float) intensitySlider.getValue();
-            log("⚠ CATASTROPHE DÉCLENCHÉE : " + type + " (Intensité : " + String.format("%.1f", intensity) + ")");
+            String msg = "⚠ CATASTROPHE DÉCLENCHÉE : " + type + " (Intensité : " + String.format("%.1f", intensity) + ") via Mode Divin";
+            log(msg);
             if (callback != null) callback.triggerDisaster(type, intensity);
             EventBus.getInstance().publish(SimulationEvent.disasterOccurred(0, type, intensity, 100));
         });
@@ -509,6 +534,131 @@ public class InterventionPanel extends BorderPane {
         return pane;
     }
 
+    public static class ScheduledEvent {
+        public long targetTick;
+        public String eventType;
+        public String description;
+        public boolean executed = false;
+        public boolean paused = false;
+
+        public ScheduledEvent(long targetTick, String eventType, String description) {
+            this.targetTick = targetTick;
+            this.eventType = eventType;
+            this.description = description;
+        }
+    }
+
+    private final javafx.collections.ObservableList<ScheduledEvent> scheduledEventsList = javafx.collections.FXCollections.observableArrayList();
+    private ListView<String> scheduledEventsListView;
+
+    private TitledPane createScheduledEventsSection() {
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(12));
+
+        Label lblTitle = new Label("⏱️ Programmez des Événements Futurs (Horodatage Tick Target) :");
+        lblTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(8); grid.setVgap(8);
+
+        Spinner<Integer> tickTargetSpinner = new Spinner<>(1, 1000000, 1000, 100);
+        tickTargetSpinner.setEditable(true);
+        tickTargetSpinner.setPrefWidth(120);
+
+        ComboBox<String> eventTypeCombo = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
+                "🔥 Incendie de Forêt",
+                "🌊 Inondation / Pluie Diluvienne",
+                "☣️ Épidémie / Parasite Cordyceps",
+                "🍖 Apport de Nourriture (500 cal)",
+                "🐜 Injection 50 Ouvrières",
+                "👑 Ponte Extraordinaire de la Reine"
+        ));
+        eventTypeCombo.getSelectionModel().selectFirst();
+
+        TextField descField = new TextField("Événement automatique programmé");
+        descField.setPrefWidth(180);
+
+        Button btnAddEvent = new Button("➕ Programmer");
+        btnAddEvent.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnAddEvent.setOnAction(e -> {
+            ScheduledEvent ev = new ScheduledEvent(tickTargetSpinner.getValue(), eventTypeCombo.getValue(), descField.getText());
+            scheduledEventsList.add(ev);
+            refreshScheduledEventsListView();
+            log(String.format("⏱️ Événement programmé pour le Tick %d : %s (%s)", ev.targetTick, ev.eventType, ev.description));
+        });
+
+        grid.addRow(0, new Label("Tick Cible :"), tickTargetSpinner, new Label("Type :"), eventTypeCombo);
+        grid.addRow(1, new Label("Description :"), descField, btnAddEvent);
+
+        scheduledEventsListView = new ListView<>();
+        scheduledEventsListView.setPrefHeight(110);
+        scheduledEventsListView.setStyle("-fx-control-inner-background: #18181b; -fx-text-fill: #e4e4e7;");
+
+        HBox btnBox = new HBox(8);
+        Button btnDeleteEv = new Button("🗑️ Supprimer");
+        btnDeleteEv.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white;");
+        btnDeleteEv.setOnAction(e -> {
+            int idx = scheduledEventsListView.getSelectionModel().getSelectedIndex();
+            if (idx >= 0 && idx < scheduledEventsList.size()) {
+                scheduledEventsList.remove(idx);
+                refreshScheduledEventsListView();
+            }
+        });
+
+        Button btnRunNow = new Button("▶️ Exécuter Maintenant");
+        btnRunNow.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white;");
+        btnRunNow.setOnAction(e -> {
+            int idx = scheduledEventsListView.getSelectionModel().getSelectedIndex();
+            if (idx >= 0 && idx < scheduledEventsList.size()) {
+                ScheduledEvent ev = scheduledEventsList.get(idx);
+                executeScheduledEvent(ev);
+                ev.executed = true;
+                refreshScheduledEventsListView();
+            }
+        });
+
+        btnBox.getChildren().addAll(btnDeleteEv, btnRunNow);
+
+        box.getChildren().addAll(lblTitle, grid, new Separator(), new Label("Liste des Événements Planifiés :"), scheduledEventsListView, btnBox);
+
+        TitledPane pane = new TitledPane("⏱️ File d'Événements Programmés (Scheduled Events Queue)", box);
+        pane.setTooltip(new Tooltip("Planification temporelle d'interventions et de catastrophes automatiques déclenchées au Tick exact."));
+        styleTitledPane(pane);
+        return pane;
+    }
+
+    private void refreshScheduledEventsListView() {
+        if (scheduledEventsListView == null) return;
+        javafx.collections.ObservableList<String> items = javafx.collections.FXCollections.observableArrayList();
+        for (ScheduledEvent ev : scheduledEventsList) {
+            String status = ev.executed ? "✅ Executé" : ev.paused ? "⏸️ En Pause" : "⏳ En Attente";
+            items.add(String.format("[%s] Tick %d : %s — %s", status, ev.targetTick, ev.eventType, ev.description));
+        }
+        scheduledEventsListView.setItems(items);
+    }
+
+    private void executeScheduledEvent(ScheduledEvent ev) {
+        String msg = String.format("⚡ Exécution de l'événement programmé (Tick %d) : %s (%s)", ev.targetTick, ev.eventType, ev.description);
+        log(msg);
+        if (ev.eventType.contains("Incendie") || ev.eventType.contains("Inondation") || ev.eventType.contains("Épidémie")) {
+            if (callback != null) callback.triggerDisaster(ev.eventType, 0.7f);
+        } else if (ev.eventType.contains("Nourriture")) {
+            if (callback != null) callback.spawnFood(1.0f, 1.0f, 0.1f, 500f);
+        } else if (ev.eventType.contains("Ouvrières")) {
+            if (callback != null) callback.spawnAnts("Colonie #1", "Ouvrière", 50, 1.0f, 1.0f, 0.1f);
+        }
+    }
+
+    public void processScheduledEvents(long currentTick) {
+        for (ScheduledEvent ev : scheduledEventsList) {
+            if (!ev.executed && !ev.paused && currentTick >= ev.targetTick) {
+                ev.executed = true;
+                executeScheduledEvent(ev);
+                javafx.application.Platform.runLater(this::refreshScheduledEventsListView);
+            }
+        }
+    }
+
     private VBox createLogSection() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         VBox box = new VBox(5);
@@ -529,6 +679,22 @@ public class InterventionPanel extends BorderPane {
         return box;
     }
 
+    private boolean isSimulationRunning = false;
+    private Label simStateWarningLabel;
+
+    public void setSimulationRunning(boolean running) {
+        this.isSimulationRunning = running;
+        if (simStateWarningLabel != null) {
+            if (!running) {
+                simStateWarningLabel.setText("⏸ Simulation en pause — Mode Divin actif (les interventions modifient l'état du monde immédiatement).");
+                simStateWarningLabel.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: rgba(245,158,11,0.15); -fx-padding: 6 10; -fx-background-radius: 4;");
+            } else {
+                simStateWarningLabel.setText("● Simulation en cours — Mode Divin actif en temps réel.");
+                simStateWarningLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: rgba(74,222,128,0.15); -fx-padding: 6 10; -fx-background-radius: 4;");
+            }
+        }
+    }
+
     private void styleTitledPane(TitledPane pane) {
         pane.setStyle("-fx-text-fill: white;");
     }
@@ -542,19 +708,30 @@ public class InterventionPanel extends BorderPane {
             float y = Float.parseFloat(posYField.getText());
             float z = Float.parseFloat(posZField.getText());
 
-            log("Spawned " + count + " " + caste + "s for " + colony + " at (" + x + "," + y + "," + z + ")");
+            String msg = String.format("Apparition de %d ind. [%s] (%s) aux coord. (X:%.2fm, Y:%.2fm, Z:%.2fm) via Mode Divin",
+                    count, caste, colony != null ? colony : "Colonie Primaire", x, y, z);
+            log(msg);
             
             if (callback != null) {
                 callback.spawnAnts(colony, caste, count, x, y, z);
             }
 
-            // Publish event
-            publishEvent(caste.equals("Queen") ? SimulationEvent.EventType.QUEEN_BORN : 
-                        caste.equals("Soldier") ? SimulationEvent.EventType.SOLDIER_BORN : 
-                        SimulationEvent.EventType.WORKER_BORN);
+            SimulationEvent.EventType eventType = caste.contains("Reine") || caste.contains("Queen") ? SimulationEvent.EventType.QUEEN_BORN : 
+                        caste.contains("Soldat") || caste.contains("Soldier") ? SimulationEvent.EventType.SOLDIER_BORN : 
+                        SimulationEvent.EventType.WORKER_BORN;
+            
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("colony", colony);
+            data.put("caste", caste);
+            data.put("count", count);
+            data.put("x", x);
+            data.put("y", y);
+            data.put("z", z);
+            data.put("source", "Mode Divin");
+            EventBus.getInstance().publish(SimulationEvent.obtain(eventType, SimulationEvent.Severity.INFO, 0, msg, data));
 
         } catch (NumberFormatException e) {
-            new Alert(Alert.AlertType.ERROR, "Invalid position values").show();
+            new Alert(Alert.AlertType.ERROR, "Valeurs de position X/Y/Z invalides.").show();
         }
     }
 
@@ -611,17 +788,17 @@ public class InterventionPanel extends BorderPane {
         casteSelect.getItems().clear();
 
         if (colonyName != null && (colonyName.contains("Atta") || colonyName.contains("Leafcutter"))) {
-            casteSelect.getItems().addAll("Reine Géante", "Ouvrière Minime (Nourrice)", "Ouvrière Média (Coupeuse)", "Soldat Majeur (Garde)");
+            casteSelect.getItems().addAll("Ouvrière Média (Coupeuse)", "Ouvrière Minime (Nourrice)", "Soldat Majeur (Garde)", "Reine Géante");
         } else if (colonyName != null && (colonyName.contains("Apis") || colonyName.contains("Abeille"))) {
-            casteSelect.getItems().addAll("Reine Abeille", "Ouvrière Butineuse", "Faux-Bourdon (Mâle)");
+            casteSelect.getItems().addAll("Ouvrière Butineuse", "Reine Abeille", "Faux-Bourdon (Mâle)");
         } else if (colonyName != null && (colonyName.contains("Termite") || colonyName.contains("Reticulitermes"))) {
-            casteSelect.getItems().addAll("Reine Physogastre", "Roi Reproducteur", "Ouvrier Termite", "Soldat à Mandiboles");
+            casteSelect.getItems().addAll("Ouvrier Termite", "Soldat à Mandiboles", "Reine Physogastre", "Roi Reproducteur");
         } else if (colonyName != null && (colonyName.contains("Vespula") || colonyName.contains("Guêpe"))) {
-            casteSelect.getItems().addAll("Fondatrice (Reine)", "Ouvrière Chasseresse");
+            casteSelect.getItems().addAll("Ouvrière Chasseresse", "Fondatrice (Reine)");
         } else if (colonyName != null && (colonyName.contains("Solenopsis") || colonyName.contains("Feu"))) {
-            casteSelect.getItems().addAll("Reine", "Ouvrière Mineure", "Ouvrière Majeure / Soldat");
+            casteSelect.getItems().addAll("Ouvrière Mineure", "Ouvrière Majeure / Soldat", "Reine");
         } else {
-            casteSelect.getItems().addAll("Reine Fondatrice", "Ouvrière Généraliste", "Soldat Guardien", "Éclaireuse", "Nourrice");
+            casteSelect.getItems().addAll("Ouvrière Généraliste", "Soldat Guardien", "Éclaireuse", "Nourrice", "Reine Fondatrice");
         }
         casteSelect.getSelectionModel().selectFirst();
     }
