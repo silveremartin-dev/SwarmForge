@@ -139,11 +139,6 @@ public class SimulationAutoTestRunner {
         Individual queen = colony.getLivingIndividuals().stream()
             .filter(i -> i.getCaste() == Individual.Caste.QUEEN)
             .findFirst()
-            .orElseThrow(() -> new IllegalStateException("Queen not spawned"));
-
-        queen.setHomePosition(40, 40, 10);
-        queen.setPosition(40, 40, 10);
-
             .orElse(null);
 
         if (queen == null || !queen.isAlive()) {
