@@ -38,6 +38,7 @@ public class SpeciesPresetManager {
         if (PRESETS_FILE.exists()) {
             try {
                 ObjectMapper mapper = new ObjectMapper();
+                mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
                 Map<String, CustomSpecies> saved = mapper.readValue(PRESETS_FILE, new TypeReference<LinkedHashMap<String, CustomSpecies>>() {});
                 presets.putAll(saved);
             } catch (Exception e) {

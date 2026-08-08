@@ -107,6 +107,16 @@
                 <artifactId>jme3-lwjgl3</artifactId>
                 <version>${jmonkeyengine.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.jmonkeyengine</groupId>
+                <artifactId>jme3-plugins</artifactId>
+                <version>${jmonkeyengine.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jmonkeyengine</groupId>
+                <artifactId>jme3-jogg</artifactId>
+                <version>${jmonkeyengine.version}</version>
+            </dependency>
 
             <!-- JavaFX -->
             <dependency>

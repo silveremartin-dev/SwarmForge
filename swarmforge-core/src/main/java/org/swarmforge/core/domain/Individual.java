@@ -53,6 +53,10 @@ public class Individual implements java.io.Serializable, AgentView {
     private Job job = Job.IDLE; // Default
     private float maturationThreshold = 2000f; // Ticks between stages
 
+    // Tree Climbing & Vegetation Interactivity
+    private boolean climbingTree = false;
+    private float treeClimbHeight = 0.0f;
+
     // Brain
     private org.swarmforge.core.behavior.ReasoningArchitecture brain;
 
@@ -76,6 +80,49 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public float[] getChcProfile() {
         return chcProfile;
+    }
+
+    public boolean isClimbingTree() {
+        return climbingTree;
+    }
+
+    public float getTreeClimbHeight() {
+        return treeClimbHeight;
+    }
+
+    public void climbTree(float targetHeight) {
+        this.climbingTree = true;
+        this.treeClimbHeight = Math.max(0.0f, targetHeight);
+        this.z = Math.max(this.z, this.treeClimbHeight);
+    }
+
+    public void descendTree() {
+        this.climbingTree = false;
+        this.treeClimbHeight = 0.0f;
+        this.z = 0.0f;
+    }
+
+    public boolean harvestPlant(org.swarmforge.core.world.VegetationSystem.Plant plant) {
+        if (plant == null || !alive) return false;
+        if (plant.type == org.swarmforge.core.world.VegetationSystem.PlantType.GRASS ||
+            plant.type == org.swarmforge.core.world.VegetationSystem.PlantType.FLOWER) {
+            float seeds = plant.harvestSeeds(0.5f);
+            if (seeds > 0) {
+                setCarriedItem(CarriedItem.FOOD);
+                setCarriedResourceType(ResourceType.SEED);
+                return true;
+            }
+        } else if (plant.type == org.swarmforge.core.world.VegetationSystem.PlantType.TREE ||
+                   plant.type == org.swarmforge.core.world.VegetationSystem.PlantType.SHRUB) {
+            float foliage = plant.harvestFoliage(0.5f);
+            if (foliage > 0) {
+                climbTree(plant.getCurrentHeight() * 0.5f);
+                setCarriedItem(CarriedItem.FOOD);
+                setCarriedResourceType(ResourceType.LEAF);
+                return true;
+            }
+        }
+        return false;
     }
 
     public void setChcProfile(float[] profile) {

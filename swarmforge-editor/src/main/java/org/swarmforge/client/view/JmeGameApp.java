@@ -450,7 +450,7 @@ public class JmeGameApp extends SimpleApplication {
         } else if (simulation != null) {
             for (org.swarmforge.core.domain.Colony colony : simulation.getColonies()) {
                 for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
-                    String id = ind.getId();
+                    String id = ind.getId().toString();
                     org.swarmforge.core.domain.Individual.Caste caste = ind.getCaste() != null ? ind.getCaste() : org.swarmforge.core.domain.Individual.Caste.WORKER;
                     org.swarmforge.core.domain.Individual.LifeStage stage = ind.getLifeStage() != null ? ind.getLifeStage() : org.swarmforge.core.domain.Individual.LifeStage.ADULT;
                     updateSingleAntVisual(id, caste, stage, ind.getX(), ind.getZ(), ind.getY(), ind.getHeading(), activeIds, ind.getSpecies());

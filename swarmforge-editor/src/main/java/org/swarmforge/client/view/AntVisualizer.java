@@ -38,6 +38,49 @@ public class AntVisualizer {
         }
     }
 
+    public Material getMaterial(Individual.Caste caste) {
+        return matCache.get(caste);
+    }
+
+    private Mesh createAntMesh(Individual.Caste caste) {
+        return createOrganismMesh(caste, null);
+    }
+
+    public ColorRGBA getColor(Individual.Caste caste) {
+        switch (caste) {
+            case QUEEN:
+                return new ColorRGBA(0.4f, 0.1f, 0.1f, 1.0f);
+            case SOLDIER:
+                return new ColorRGBA(0.15f, 0.15f, 0.15f, 1.0f);
+            case MALE:
+                return new ColorRGBA(0.2f, 0.2f, 0.3f, 1.0f);
+            default:
+                return new ColorRGBA(0.6f, 0.3f, 0.1f, 1.0f);
+        }
+    }
+
+    public Geometry createImmatureGeometry(Individual.LifeStage stage) {
+        Mesh mesh;
+        ColorRGBA color;
+        if (stage == Individual.LifeStage.EGG) {
+            mesh = new Sphere(8, 8, 0.15f);
+            color = new ColorRGBA(0.95f, 0.95f, 0.85f, 0.9f);
+        } else if (stage == Individual.LifeStage.LARVA) {
+            mesh = new Sphere(8, 8, 0.25f);
+            color = new ColorRGBA(0.9f, 0.9f, 0.75f, 1.0f);
+        } else {
+            mesh = new Sphere(8, 8, 0.35f);
+            color = new ColorRGBA(0.85f, 0.75f, 0.55f, 1.0f);
+        }
+        Geometry geom = new Geometry("Immature_" + stage, mesh);
+        Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        mat.setBoolean("UseMaterialColors", true);
+        mat.setColor("Diffuse", color);
+        mat.setColor("Ambient", color);
+        geom.setMaterial(mat);
+        return geom;
+    }
+
     public Geometry createAntGeometry(Individual.Caste caste, Individual.LifeStage stage) {
         return createOrganismGeometry(caste, stage, null);
     }

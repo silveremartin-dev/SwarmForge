@@ -22,6 +22,8 @@ import org.swarmforge.client.ui.StatisticsDashboard;
 
 import java.util.logging.Logger;
 import java.net.URL;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * SwarmForge "Simulation Studio" Client.

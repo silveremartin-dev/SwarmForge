@@ -7,6 +7,7 @@
 package org.swarmforge.core.species;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.swarmforge.core.domain.CasteTemplate;
 
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.List;
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
+@JsonTypeInfo(use = JsonTypeInfo.Id.NONE)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CustomSpecies implements Species {
 

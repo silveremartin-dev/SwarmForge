@@ -43,13 +43,23 @@ export default function Terrarium() {
         metalness: 0.2,
     }), [])
 
-    // Underground Water Table Line (Nappe phréatique at Y: -3.1m)
+    // Subterranean Water Table Cutaway Horizon (Nappe Phréatique Y: -3.1m)
     const waterTableGeo = useMemo(() => new THREE.BoxGeometry(100, 0.15, 100), [])
     const waterTableMat = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#0284c7',
         transparent: true,
         opacity: 0.65,
         roughness: 0.1,
+    }), [])
+
+    // Option A2: Chamfered Bezel Glass Enclosure Rim (Cadre d'observation d'aquarium/terrarium à Y: 0)
+    const bezelGeo = useMemo(() => new THREE.BoxGeometry(100.2, 0.12, 100.2), [])
+    const bezelMat = useMemo(() => new THREE.MeshStandardMaterial({
+        color: '#38bdf8',
+        metalness: 0.8,
+        roughness: 0.2,
+        transparent: true,
+        opacity: 0.9,
     }), [])
 
     // Outer Perimeter Skirt Frame (Encloses the 4 vertical sides cleanly at X=0,100 Z=0,100)
@@ -60,6 +70,25 @@ export default function Terrarium() {
         roughness: 0.95,
         side: THREE.BackSide,
     }), [])
+
+    // Option B1: Volumetric Gravel & Pebble Inclusions along the cutaway walls
+    const gravelInclusions = useMemo(() => {
+        const items = []
+        const rand = (seed) => Math.sin(seed * 9999) - Math.floor(Math.sin(seed * 9999))
+        for (let i = 0; i < 40; i++) {
+            const side = i % 4
+            let x = 0, z = 0
+            if (side === 0) { x = rand(i) * 100; z = 0.1 }
+            else if (side === 1) { x = 99.9; z = rand(i) * 100 }
+            else if (side === 2) { x = rand(i) * 100; z = 99.9 }
+            else { x = 0.1; z = rand(i) * 100 }
+            const y = -0.5 - rand(i * 3) * 3.8
+            const scale = 0.15 + rand(i * 7) * 0.35
+            const color = i % 3 === 0 ? '#e2e8f0' : (i % 3 === 1 ? '#7c2d12' : '#fef08a')
+            items.push({ id: i, pos: [x, y, z], scale, color })
+        }
+        return items
+    }, [])
 
     return (
         <group ref={groupRef}>
@@ -102,6 +131,21 @@ export default function Terrarium() {
                 material={waterTableMat}
                 position={[50, -3.1, 50]}
             />
+
+            {/* Option A2: Chamfered Glass Bezel Rim Frame (Seams sealing top edge) */}
+            <mesh
+                geometry={bezelGeo}
+                material={bezelMat}
+                position={[50, 0, 50]}
+            />
+
+            {/* Option B1: Volumetric Gravel & Quartz Pebble Inclusions on Cutaway Side Walls */}
+            {gravelInclusions.map((g) => (
+                <mesh key={g.id} position={g.pos}>
+                    <sphereGeometry args={[g.scale, 6, 6]} />
+                    <meshStandardMaterial color={g.color} roughness={0.8} />
+                </mesh>
+            ))}
 
             {/* Perimeter Skirt Backing Box (Smooth clean dark edges) */}
             <mesh

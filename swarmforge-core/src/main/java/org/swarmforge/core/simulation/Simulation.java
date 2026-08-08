@@ -64,6 +64,7 @@ public class Simulation {
     private final SoilStructureSystem soilStructureSystem;
     private final PheromoneClimateSystem pheromoneClimateSystem;
     private final SymbiosisSystem symbiosisSystem;
+    private final org.swarmforge.core.world.VegetationSystem vegetationSystem;
     private final java.util.Map<org.swarmforge.core.domain.Colony, org.swarmforge.core.structure.ConstructionManager> constructionManagers = new java.util.concurrent.ConcurrentHashMap<>();
 
     // Cluster
@@ -110,6 +111,9 @@ public class Simulation {
         this.soilStructureSystem = new SoilStructureSystem(this);
         this.pheromoneClimateSystem = new PheromoneClimateSystem(this);
         this.symbiosisSystem = new SymbiosisSystem(this);
+        this.vegetationSystem = new org.swarmforge.core.world.VegetationSystem(
+                terrarium != null ? terrarium.getWidth() : 100,
+                terrarium != null ? terrarium.getDepth() : 100);
 
         this.dayNightCycle = new org.swarmforge.core.world.DayNightCycle();
     }
@@ -469,6 +473,9 @@ public class Simulation {
         soilStructureSystem.tick();
         pheromoneClimateSystem.tick();
         symbiosisSystem.tick();
+        if (vegetationSystem != null) {
+            vegetationSystem.tick(weather.getTemperature(), weather.getHumidity());
+        }
 
         // Advance weather (1 tick = 1 second, 3600 ticks = 1 hour)
         if (currentTick % 360 == 0) {
@@ -492,6 +499,10 @@ public class Simulation {
     }
 
     // Getters
+    public org.swarmforge.core.world.VegetationSystem getVegetationSystem() {
+        return vegetationSystem;
+    }
+
     public long getTickCount() {
         return tickCount.get();
     }

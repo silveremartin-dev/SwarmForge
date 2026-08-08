@@ -17,11 +17,26 @@ The **World Editor Pane** provides procedural voxel terrain generation (Perlin/S
 ![SwarmForge World Editor](docs/images/world_editor.png)
 
 ### 2. Species & Caste Parameterization Studio
-The **Species Editor Pane** allows fine-grained customization of morphological, physiological, and behavioral parameters across castes (Queens, Workers, Soldiers, Drones). Includes 13 procedural nest architectures (Subterranean Fungi Vaults, Mound Nests, Paper Pedunculate, Wax Comb Hexagonal, etc.) and custom dietary profiles.
+The **Species Editor Pane** allows fine-grained customization of morphological, physiological, and behavioral parameters across castes (Queens, Workers, Soldiers, Drones). Includes custom dietary profiles, haplodiploid genetic traits, and endocrine sensitivity.
 
 ![SwarmForge Species Editor](docs/images/species_editor.png)
 
-### 3. High-Fidelity 3D Simulation & Telemetry Engine
+### 3. Nest Architecture Generator
+The **Nest Generator Pane** provides procedural 3D underground nest synthesis. Configure 13 biological nest types (Subterranean Fungi Vaults, Mound Nests, Paper Pedunculate, Wax Comb Hexagonal, etc.), gallery branching algorithms, nursery volume distributions, and camera-synchronized 2D depth profile cutaways.
+
+![SwarmForge Nest Generator](docs/images/nest_generator.png)
+
+### 4. Realistic Weather & Atmospheric Physics Editor
+The **Weather Editor Pane** drives a 12-month geographic climate engine with Perlin micro-fluctuations, continuous solar diurnal curves, barometric pressure tendency equations, soil thermal inertia phase lags, and a Markov Chain state transition machine for discrete meteorological phenomena (Sun, Rain, Hail, Blizzard, Tempest).
+
+![SwarmForge Weather Editor](docs/images/weather_editor.png)
+
+### 5. Dynamic Analytics & Eco-Engine Statistics Dashboard
+The **Statistics Dashboard** offers real-time telemetry, population demographic pyramids, resource stockpile metrics (sugar, protein, honeydew), bioluminescent pheromone diffusion overlays, and colony spatial territory heatmaps.
+
+![SwarmForge Statistics Dashboard](docs/images/statistics_dashboard.png)
+
+### 6. High-Fidelity 3D Simulation Engine
 Real-time 3D simulation with live agent inspection, bioluminescent pheromone trail diffusion maps, endocrine system telemetry, and population dynamics tracking.
 
 ![SwarmForge 3D Simulation](docs/images/simulation.png)

@@ -156,6 +156,14 @@ public class WorldEditorPane extends BorderPane {
     private Slider voidDensitySlider;    // densité des cavernes
     private CheckBox showHumidityCheck;  // overlay humidité (vue Top)
 
+    // Option A & Option B Controls (Jupe Soudée & Rendu Volumétrique)
+    private CheckBox useAdvancedVolumetricModeCheck;   // Bascule Mode Basique (Jupe Soudée) vs Mode Volumétrique Avancé
+    private CheckBox showChamferedBezelCheck;          // Option A2 : Cadre d'observation biseauté (Bezel Glass Enclosure)
+    private CheckBox showGravelInclusionsCheck;        // Option B1 : Inclusions de Graviers, Galets & Micro-abris
+    private CheckBox enableVolumetricScannerCheck;     // Option B2 : Scanner Volumétrique & Coupe Dynamique
+    private Slider slicePlaneSlider;                   // Option B2 : Slider de Coupe Log Géologique (0% -> 100%)
+    private CheckBox showTranslucentVolumetricModeCheck;// Option B3 : Translucidité 3D Volumétrique & Shader Bruit
+
     // Callbacks
     private Consumer<Map<String, Object>> onGenerateCallback;
 
@@ -747,11 +755,46 @@ public class WorldEditorPane extends BorderPane {
         Label soilHint = new Label("💡 Détermine la répartition des couches géologiques et l'humidité souterraine.");
         soilHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
+        // --- OPTION A & OPTION B RENDERING CONTROLS ---
+        useAdvancedVolumetricModeCheck = new CheckBox("📦 Activer Rendu Volumétrique Avancé (Option B)");
+        useAdvancedVolumetricModeCheck.setSelected(true);
+        useAdvancedVolumetricModeCheck.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+
+        showChamferedBezelCheck = new CheckBox("🛡️ Cadre Biseauté Bac Terrarium (Option A2)");
+        showChamferedBezelCheck.setSelected(true);
+
+        showGravelInclusionsCheck = new CheckBox("⚪ Inclusions de Graviers & Galets Voxels (Option B1)");
+        showGravelInclusionsCheck.setSelected(true);
+
+        enableVolumetricScannerCheck = new CheckBox("🔬 Scanner Log & Coupe Volumétrique 3D (Option B2)");
+        enableVolumetricScannerCheck.setSelected(false);
+
+        slicePlaneSlider = mkSlider(0.0, 100.0, 50.0);
+        addLsn(slicePlaneSlider);
+
+        showTranslucentVolumetricModeCheck = new CheckBox("💧 Translucidité 3D du Substrat (Option B3)");
+        showTranslucentVolumetricModeCheck.setSelected(false);
+
+        addBoolLsn(useAdvancedVolumetricModeCheck, showChamferedBezelCheck, showGravelInclusionsCheck,
+                   enableVolumetricScannerCheck, showTranslucentVolumetricModeCheck);
+
+        VBox modeBox = new VBox(6,
+            new Label("🖼️ Rendu de la Jupe & Structure Volumétrique Souterraine :") {{ setStyle("-fx-font-weight: bold; -fx-text-fill: #f59e0b;"); }},
+            useAdvancedVolumetricModeCheck,
+            new HBox(8, showChamferedBezelCheck, showGravelInclusionsCheck),
+            enableVolumetricScannerCheck,
+            new Label("Position de Coupe du Scanner (%):"), sv(slicePlaneSlider, "%"),
+            showTranslucentVolumetricModeCheck
+        );
+        modeBox.setStyle("-fx-background-color: #1e1b4b; -fx-padding: 8px; -fx-border-color: #4338ca; -fx-border-radius: 6px; -fx-background-radius: 6px;");
+
         return new VBox(8,
                 new Label("🏜️ Composition du Substrat Surface (%) :"),
                 grid,
                 new Separator(),
                 toggleLayersBox,
+                new Separator(),
+                modeBox,
                 new Separator(),
                 new Label("🗻 Stratification & Structure Souterraine 3D :"),
                 new Label("Degré de Stratification :"), sv(stratificationSlider, ""),
@@ -1366,6 +1409,15 @@ public class WorldEditorPane extends BorderPane {
                 gc3D.fillOval(p[0] - 18, p[1] - 88, 36, 34);
                 gc3D.setFill(Color.web("#15803d"));
                 gc3D.fillOval(p[0] - 14, p[1] - 92, 28, 26);
+
+                // Insectes / Fourmis grimpeuses sur le tronc et dans l'arbre
+                if (i % 2 == 0) {
+                    gc3D.setFill(Color.web("#f97316")); // Worker ant marker (orange/brown)
+                    gc3D.fillOval(p[0] - 2, p[1] - 25, 4, 4);
+                    gc3D.fillOval(p[0] + 1, p[1] - 35, 3, 3);
+                    gc3D.setFill(Color.web("#ef4444")); // Forager near canopy
+                    gc3D.fillOval(p[0] - 8, p[1] - 70, 4, 4);
+                }
             }
         }
 
@@ -1377,18 +1429,14 @@ public class WorldEditorPane extends BorderPane {
 
     private void drawAllStratigraphySideWalls3D(double cx, double cy, double scale, double radAz, double radEl, double maxDepthPx, int step) {
         // Define the 4 outer boundary edges of the terrain block
-        // Edge 0: South (y = 0, x: 0 -> GRID_SIZE - step)
-        // Edge 1: East  (x = GRID_SIZE - step, y: 0 -> GRID_SIZE - step)
-        // Edge 2: North (y = GRID_SIZE - step, x: 0 -> GRID_SIZE - step)
-        // Edge 3: West  (x = 0, y: 0 -> GRID_SIZE - step)
         double halfGrid = GRID_SIZE / 2.0;
 
         // Calculate projected Y depth for each wall center to sort back-to-front
         double[][] edgeCenters = {
-            {0.0, -halfGrid}, // Edge 0 (South)
-            {halfGrid - step, 0.0}, // Edge 1 (East)
-            {0.0, halfGrid - step}, // Edge 2 (North)
-            {-halfGrid, 0.0}  // Edge 3 (West)
+            {0.0, -halfGrid},       // Edge 0 (South: y = 0)
+            {halfGrid - step, 0.0}, // Edge 1 (East:  x = GRID_SIZE - step)
+            {0.0, halfGrid - step}, // Edge 2 (North: y = GRID_SIZE - step)
+            {-halfGrid, 0.0}        // Edge 3 (West:  x = 0)
         };
 
         Integer[] order = {0, 1, 2, 3};
@@ -1398,36 +1446,51 @@ public class WorldEditorPane extends BorderPane {
             return Double.compare(pyA, pyB); // Ascending order (back to front)
         });
 
+        // OPTION B2: Render Volumetric Scanner Slice Plane if enabled
+        if (enableVolumetricScannerCheck != null && enableVolumetricScannerCheck.isSelected()) {
+            double sliceRatio = slicePlaneSlider != null ? slicePlaneSlider.getValue() / 100.0 : 0.5;
+            int sliceX = Math.min(GRID_SIZE - step - 1, Math.max(step, (int) (GRID_SIZE * sliceRatio)));
+            for (int y = 0; y < GRID_SIZE - step; y += step) {
+                drawSingleWallSegment3D(sliceX, y, sliceX, y + step, cx, cy, scale, radAz, radEl, maxDepthPx, true);
+            }
+        }
+
+        // Render 4 Stitched Outer Walls (Option A1 + Option A2 + Option B1)
         for (int edgeIdx : order) {
             switch (edgeIdx) {
                 case 0 -> { // South: y = 0
                     for (int x = 0; x < GRID_SIZE - step; x += step) {
-                        drawSingleWallSegment3D(x, 0, x + step, 0, cx, cy, scale, radAz, radEl, maxDepthPx);
+                        drawSingleWallSegment3D(x, 0, x + step, 0, cx, cy, scale, radAz, radEl, maxDepthPx, false);
                     }
                 }
                 case 1 -> { // East: x = GRID_SIZE - step
                     for (int y = 0; y < GRID_SIZE - step; y += step) {
-                        drawSingleWallSegment3D(GRID_SIZE - step, y, GRID_SIZE - step, y + step, cx, cy, scale, radAz, radEl, maxDepthPx);
+                        drawSingleWallSegment3D(GRID_SIZE - step, y, GRID_SIZE - step, y + step, cx, cy, scale, radAz, radEl, maxDepthPx, false);
                     }
                 }
                 case 2 -> { // North: y = GRID_SIZE - step
                     for (int x = 0; x < GRID_SIZE - step; x += step) {
-                        drawSingleWallSegment3D(x, GRID_SIZE - step, x + step, GRID_SIZE - step, cx, cy, scale, radAz, radEl, maxDepthPx);
+                        drawSingleWallSegment3D(x, GRID_SIZE - step, x + step, GRID_SIZE - step, cx, cy, scale, radAz, radEl, maxDepthPx, false);
                     }
                 }
                 case 3 -> { // West: x = 0
                     for (int y = 0; y < GRID_SIZE - step; y += step) {
-                        drawSingleWallSegment3D(0, y, 0, y + step, cx, cy, scale, radAz, radEl, maxDepthPx);
+                        drawSingleWallSegment3D(0, y, 0, y + step, cx, cy, scale, radAz, radEl, maxDepthPx, false);
                     }
                 }
             }
         }
     }
 
-    private void drawSingleWallSegment3D(int x0, int y0, int x1, int y1, double cx, double cy, double scale, double radAz, double radEl, double maxDepthPx) {
+    private void drawSingleWallSegment3D(int x0, int y0, int x1, int y1, double cx, double cy, double scale, double radAz, double radEl, double maxDepthPx, boolean isSliceCutaway) {
         double layerDepthPx = maxDepthPx / SOIL_DEPTH;
+        // OPTION A1: Sommets exactement soudés aux altitudes du relief (surfZ0 & surfZ1)
         double surfZ0 = heightGrid[x0][y0] * 40.0;
         double surfZ1 = heightGrid[x1][y1] * 40.0;
+
+        boolean isTranslucent = showTranslucentVolumetricModeCheck != null && showTranslucentVolumetricModeCheck.isSelected();
+        boolean showInclusions = showGravelInclusionsCheck != null && showGravelInclusionsCheck.isSelected();
+        boolean isAdvMode = useAdvancedVolumetricModeCheck == null || useAdvancedVolumetricModeCheck.isSelected();
 
         for (int d = 0; d < SOIL_DEPTH; d++) {
             double topZ0 = surfZ0 - d * layerDepthPx;
@@ -1445,15 +1508,41 @@ public class WorldEditorPane extends BorderPane {
 
             Color matCol;
             if (isVoid) {
-                matCol = Color.web("#0f172a");
+                matCol = Color.web("#0f172a"); // Cavité / tunnel
             } else if (!isMaterialVisible(mat)) {
                 matCol = Color.web("#1e293b", 0.3);
             } else {
                 matCol = getMaterialColor(mat);
             }
 
+            if (isSliceCutaway) {
+                matCol = matCol.deriveColor(0, 1.1, 1.2, 1.0); // Surbrillance plan de coupe
+            }
+
+            if (isTranslucent) {
+                matCol = Color.color(matCol.getRed(), matCol.getGreen(), matCol.getBlue(), 0.55);
+            }
+
             gc3D.setFill(matCol);
             gc3D.fillPolygon(new double[]{pTop0[0], pTop1[0], pBot1[0], pBot0[0]}, new double[]{pTop0[1], pTop1[1], pBot1[1], pBot0[1]}, 4);
+
+            // OPTION B1: Inclusions de graviers ⚪, cailloux, argile 🔴 & humidité 💧 sur chaque voxel
+            if (isAdvMode && showInclusions && !isVoid && isMaterialVisible(mat)) {
+                double midX = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
+                double midY = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[1]) / 4.0;
+                double voxSize = Math.max(1.5, Math.abs(pTop1[0] - pTop0[0]) * 0.4);
+
+                if (mat == 3) { // Pierre / Gravier
+                    gc3D.setFill(Color.web("#e2e8f0")); // Galets de quartz
+                    gc3D.fillOval(midX - voxSize * 0.5, midY - voxSize * 0.5, voxSize, voxSize * 0.7);
+                } else if (mat == 2) { // Argile
+                    gc3D.setFill(Color.web("#7c2d12")); // Lentille d'argile compacte
+                    gc3D.fillRect(midX - voxSize * 0.4, midY - voxSize * 0.3, voxSize * 0.8, voxSize * 0.5);
+                } else if (mat == 1) { // Sable
+                    gc3D.setFill(Color.web("#fef08a")); // Grains de quartz sableux
+                    gc3D.fillOval(midX - voxSize * 0.3, midY - voxSize * 0.3, voxSize * 0.6, voxSize * 0.6);
+                }
+            }
 
             if (showHumidityCheck != null && showHumidityCheck.isSelected()) {
                 gc3D.setFill(Color.web("#0284c7", humidityGrid[x0][y0] * 0.45));
@@ -1465,12 +1554,22 @@ public class WorldEditorPane extends BorderPane {
             gc3D.strokePolygon(new double[]{pTop0[0], pTop1[0], pBot1[0], pBot0[0]}, new double[]{pTop0[1], pTop1[1], pBot1[1], pBot0[1]}, 4);
         }
 
+        // OPTION A2: Cadre biseauté bac d'observation / aquarium (Bezel Glass Enclosure)
+        if (showChamferedBezelCheck != null && showChamferedBezelCheck.isSelected()) {
+            double[] pTop0 = project3DPoint(x0, y0, surfZ0, cx, cy, scale, radAz, radEl);
+            double[] pTop1 = project3DPoint(x1, y1, surfZ1, cx, cy, scale, radAz, radEl);
+
+            gc3D.setStroke(Color.web("#38bdf8", 0.9));
+            gc3D.setLineWidth(1.6);
+            gc3D.strokeLine(pTop0[0], pTop0[1], pTop1[0], pTop1[1]);
+        }
+
         double botBed0 = surfZ0 - maxDepthPx;
         double botBed1 = surfZ1 - maxDepthPx;
         double[] pBed0 = project3DPoint(x0, y0, botBed0, cx, cy, scale, radAz, radEl);
         double[] pBed1 = project3DPoint(x1, y1, botBed1, cx, cy, scale, radAz, radEl);
         gc3D.setStroke(Color.web("#020617"));
-        gc3D.setLineWidth(1.5);
+        gc3D.setLineWidth(1.8);
         gc3D.strokeLine(pBed0[0], pBed0[1], pBed1[0], pBed1[1]);
     }
 

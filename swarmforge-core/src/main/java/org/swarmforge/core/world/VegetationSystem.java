@@ -68,6 +68,23 @@ public class VegetationSystem {
         public int getCurrentHeight() {
             return (int) (type.getMaxHeight() * growth);
         }
+
+        public float harvestFoliage(float amount) {
+            float available = Math.max(0.1f, health * growth);
+            float harvested = Math.min(available, amount);
+            health = Math.max(0.1f, health - harvested * 0.05f);
+            return harvested;
+        }
+
+        public float harvestSeeds(float amount) {
+            if (type == PlantType.GRASS || type == PlantType.FLOWER) {
+                float available = Math.max(0.1f, growth);
+                float harvested = Math.min(available, amount);
+                growth = Math.max(0.1f, growth - harvested * 0.1f);
+                return harvested;
+            }
+            return 0.0f;
+        }
     }
 
     private final java.util.List<Plant> plants = new java.util.concurrent.CopyOnWriteArrayList<>();
@@ -75,8 +92,8 @@ public class VegetationSystem {
     private final int worldWidth, worldDepth;
 
     public VegetationSystem(int width, int depth) {
-        this.worldWidth = width;
-        this.worldDepth = depth;
+        this.worldWidth = Math.max(1, width);
+        this.worldDepth = Math.max(1, depth);
     }
 
     /**
@@ -125,8 +142,29 @@ public class VegetationSystem {
         for (int i = 0; i < count; i++) {
             int x = rng.nextInt(worldWidth);
             int z = rng.nextInt(worldDepth);
-            plants.add(new Plant(type, x, 0, z)); // Surface level
+            Plant p = new Plant(type, x, 0, z);
+            p.growth = 1.0f; // Initial plants are mature
+            plants.add(p);
         }
+    }
+
+    /**
+     * Find nearest plant to specific position.
+     */
+    public Plant findNearestPlant(float x, float z, float maxDist, PlantType filterType) {
+        Plant nearest = null;
+        float minDistSq = maxDist * maxDist;
+        for (Plant p : plants) {
+            if (filterType != null && p.type != filterType) continue;
+            float dx = p.x - x;
+            float dz = p.z - z;
+            float d2 = dx * dx + dz * dz;
+            if (d2 < minDistSq) {
+                minDistSq = d2;
+                nearest = p;
+            }
+        }
+        return nearest;
     }
 
     private Plant spreadSeed(Plant parent) {
@@ -161,3 +199,4 @@ public class VegetationSystem {
         return plants.size();
     }
 }
+
