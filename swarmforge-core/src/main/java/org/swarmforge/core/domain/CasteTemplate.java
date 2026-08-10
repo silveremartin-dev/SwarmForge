@@ -167,6 +167,10 @@ public class CasteTemplate implements java.io.Serializable {
         return canFly;
     }
 
+    public boolean canFly() {
+        return canFly;
+    }
+
     public void setCanFly(boolean canFly) {
         this.canFly = canFly;
     }

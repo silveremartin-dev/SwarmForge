@@ -577,24 +577,8 @@ public class WeatherEditorPane extends BorderPane {
         double annualTemp = getAvg(tempAvg);
         double annualRain = getSum(rainAvg);
 
-        String vegType;
-        if (Math.abs(lat) > 65 || annualTemp < 0) {
-            vegType = "❄️ Toundra / Sol Permafrost (Tundra & Snow)";
-        } else if (annualRain < 200) {
-            vegType = "🏜️ Désert Aride / Minéral (Arid Sand & Rock Desert)";
-        } else if (annualRain < 450) {
-            vegType = "🌾 Steppe & Savane Sèche (Semi-arid Steppe)";
-        } else if (annualTemp > 20 && annualRain > 1800) {
-            vegType = "🌴 Forêt Tropicale Humide (Equatorial Rainforest)";
-        } else if (annualTemp > 16 && annualRain < 700) {
-            vegType = "🌿 Maquis Méditerranéen & Garrigue (Mediterranean Shrubland)";
-        } else if (annualTemp > 10) {
-            vegType = "🌳 Forêt Tempérée Décidue (Temperate Deciduous Forest)";
-        } else {
-            vegType = "🌲 Forêt Boréale (Taiga / Boreal Coniferous)";
-        }
-
-        vegCoverLabel.setText(vegType);
+        org.swarmforge.core.domain.BioclimaticZone zone = org.swarmforge.core.domain.BioclimaticZone.classify(lat, annualTemp, annualRain);
+        vegCoverLabel.setText(zone.getDisplayName() + " — Adéquation: " + zone.getRecommendedInsectSpecies());
     }
 
     private void updatePhotoperiod() {

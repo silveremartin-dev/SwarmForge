@@ -57,6 +57,7 @@ public class NestPresetManager {
         m.put("Leafcutter Fungus Vault (Atta)",     make("Leafcutter Fungus Vault (Atta)",     "🐜 Ants (Formicidae)",             "SUBTERRANEAN_FUNGI_VAULT", "EARTH",      7.0, 45, 35, 3, 4, 1, 4,  3, 3, 4, 12));
         m.put("Arboreal Carton Nest (Crematogaster)", make("Arboreal Carton Nest (Crematogaster)", "🐜 Ants (Formicidae)",         "CARTON_NEST",        "CARTON_PULP",       3.5, 15, 20, 2, 3, 1, 5,  6, 2, 2,  0));
         m.put("Stem & Gall Nest (Temnothorax)",     make("Stem & Gall Nest (Temnothorax)",     "🐜 Ants (Formicidae)",             "BAMBOO_STEM_NEST",   "WOOD_PULP_PAPER",   2.5,  8,  8, 1, 1, 1, 3,  2, 1, 1,  0));
+        m.put("Trunk Cavity Nest (Camponotus)",     make("Trunk Cavity Nest (Camponotus)",     "🐜 Ants (Formicidae)",             "HOLLOW_TRUNK_NEST",  "DEAD_WOOD",        12.0, 10, 20, 3, 3, 1, 6,  8, 2, 2,  0));
         m.put("Army Ant Bivouac (Eciton)",          make("Army Ant Bivouac (Eciton)",          "🐜 Ants (Formicidae)",             "BIVOUAC_LIVING_NEST","LIVING_INSECT_BODIES", 8.0, 15, 25, 3, 3, 1, 8,  8, 2, 2,  0));
 
         // Bee presets

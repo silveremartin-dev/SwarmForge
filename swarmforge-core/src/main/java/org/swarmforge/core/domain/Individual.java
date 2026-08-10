@@ -240,6 +240,34 @@ public class Individual implements java.io.Serializable, AgentView {
         return fatigue;
     }
 
+    public boolean canFly() {
+        if (casteTemplate != null && (casteTemplate.isCanFly() || casteTemplate.canFly())) return true;
+        if (species != null && species.isWorkersCanFly()) return true;
+        return false;
+    }
+
+    public void fly3D(float targetX, float targetY, float targetZ, float speed) {
+        if (!alive) return;
+        float dx = targetX - x;
+        float dy = targetY - y;
+        float dz = targetZ - z;
+        float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist < 0.001f) return;
+
+        float effectiveSpeed = speed;
+        if (genome != null) {
+            effectiveSpeed *= genome.getSpeedMultiplier();
+        }
+        float step = Math.min(dist, effectiveSpeed);
+        x += (dx / dist) * step;
+        y += (dy / dist) * step;
+        z += (dz / dist) * step;
+        heading = (float) Math.atan2(dy, dx);
+
+        float wingbeatHz = species != null ? species.getWingbeatFrequencyHz() : 200.0f;
+        energy -= 0.15f * (wingbeatHz / 200.0f) * step;
+    }
+
     /**
      * Update position based on heading and speed.
      */
@@ -250,6 +278,10 @@ public class Individual implements java.io.Serializable, AgentView {
         }
         x += Math.cos(heading) * effectiveSpeed;
         y += Math.sin(heading) * effectiveSpeed;
+        if (canFly() && z > 0.0f) {
+            // Keep subtle hovering bobbing in 3D air
+            z += (float) (Math.sin(age * 0.2f) * 0.05f);
+        }
     }
 
     /**

@@ -49,6 +49,7 @@ public final class NestAlgorithm {
         Random rnd = new Random((long)(maxDepth*31 + entrances*7 + queenCnt*3 + broodCnt*17 + arch.hashCode()));
 
         switch (arch) {
+            case "WOODEN_BEEHIVE"         -> generateWoodenBeehive(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
             case "WAX_COMB_HEXAGONAL"      -> generateHexagonalComb(nest, chamberTarget, queenCnt, broodCnt, foodCnt, anatomicalScale, rnd);
             case "WAX_POTS_CLUSTER"        -> generatePotCluster(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
             case "PAPER_PEDUNCULATE"       -> generatePaperNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
@@ -136,9 +137,48 @@ public final class NestAlgorithm {
         }
     }
 
-    // ── 2. Honeybee Hexagonal Comb ─────────────────────────────────────────────
+    // ── 2. Wooden Beehive (Dadant / Langstroth) ──────────────────────────────
 
-    // ── 2. Honeybee Hexagonal Comb ─────────────────────────────────────────────
+    private static void generateWoodenBeehive(NestGeneratorPane.GeneratedNest nest, double maxDepth,
+            int count, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, double scale, Random rnd) {
+        // Entrance flight board at base of hive box
+        NestGeneratorPane.NestNode flightBoard = node(nest, 0, 0, 0, "ENTRANCE", 3.0 * scale, Color.LIMEGREEN);
+
+        // Frame box boundaries and parallel vertical frames
+        double boxW = 12.0 * scale;
+        int frames = 4;
+        NestGeneratorPane.NestNode prevFrameTop = flightBoard;
+
+        for (int f = 0; f < frames; f++) {
+            double yOff = (f - 1.5) * 3.5 * scale;
+            NestGeneratorPane.NestNode frameTop = node(nest, 0, yOff, 2.0 * scale, "JUNCTION", 1.8 * scale, Color.SIENNA);
+            edge(nest, flightBoard, frameTop, rnd);
+            if (f > 0) {
+                edge(nest, prevFrameTop, frameTop, rnd);
+            }
+            prevFrameTop = frameTop;
+
+            int cellsPerFrame = Math.max(3, count / frames);
+            NestGeneratorPane.NestNode prevCell = frameTop;
+            for (int i = 0; i < cellsPerFrame; i++) {
+                double x = (-boxW / 2.5) + (i % 4) * (boxW / 3.5);
+                double z = 3.5 * scale + (i / 4) * 3.2 * scale;
+
+                String type = (z < 6.0 * scale && queenCnt > 0 && f == 1 && i == 0) ? "QUEEN"
+                            : (z > 8.0 * scale) ? "FOOD" : "BROOD";
+                Color col = type.equals("QUEEN") ? Color.GOLD : type.equals("FOOD") ? Color.ORANGE : Color.DEEPSKYBLUE;
+
+                NestGeneratorPane.NestNode cell = nodeLenticular(nest, x, yOff, z, type, 3.2 * scale, 2.2 * scale, 2.8 * scale, col);
+                edge(nest, frameTop, cell, rnd);
+                if (i > 0) {
+                    edge(nest, prevCell, cell, rnd);
+                }
+                prevCell = cell;
+            }
+        }
+    }
+
+    // ── 3. Honeybee Hexagonal Comb ─────────────────────────────────────────────
 
     private static void generateHexagonalComb(NestGeneratorPane.GeneratedNest nest, int chambers,
             int queenCnt, int broodCnt, int foodCnt, double scale, Random rnd) {

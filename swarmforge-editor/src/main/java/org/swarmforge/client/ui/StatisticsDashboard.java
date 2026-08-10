@@ -107,12 +107,96 @@ public class StatisticsDashboard extends VBox {
     // System Performance Series
     private final XYChart.Series<Number, Number> tpsSeries = new XYChart.Series<>();
 
+    // Individual Ant Telemetry Series
+    private final XYChart.Series<Number, Number> antHealthSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> antEnergySeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> antDistanceSeries = new XYChart.Series<>();
+
     // Charts
     private final LineChart<Number, Number> chartMultiColony;
     private final LineChart<Number, Number> chartCastes;
     private final LineChart<Number, Number> chartResources;
     private final LineChart<Number, Number> chartWeather;
     private final LineChart<Number, Number> chartPerformance;
+    private final LineChart<Number, Number> chartIndividualAnt;
+
+    private final TextField txtAntSearchId = new TextField("ant_1");
+    private final Label lblIndivHealth = new Label("100.0%");
+    private final Label lblIndivEnergy = new Label("95.0%");
+    private final Label lblIndivDistance = new Label("0.0 m");
+    private final Label lblIndivPayload = new Label("0.0 mg");
+    private final Label lblIndivTask = new Label("Fourrageage (Nectar)");
+    private final Label lblIndivCasteAge = new Label("Ouvrière (14 jours)");
+    private String trackedAntId = "ant_1";
+
+    private final VBox individualAntCard = createIndividualAntCard();
+
+    private VBox createIndividualAntCard() {
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(10));
+        box.getStyleClass().add("card-pane");
+
+        Label title = new Label("🐜 Suivi & Télémesure d'un Individu en Particulier");
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #38bdf8;");
+
+        HBox inputRow = new HBox(8);
+        inputRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblPrompt = new Label("Entrez le Numéro / Identifiant de la Fourmi :");
+        lblPrompt.setStyle("-fx-font-weight: bold; -fx-text-fill: #e2e8f0;");
+
+        txtAntSearchId.setPromptText("ex: ant_1, ant_42, queen_1...");
+        txtAntSearchId.setPrefWidth(160);
+
+        Button btnTrack = new Button("🎯 Suivre & Tracer");
+        btnTrack.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnTrack.setOnAction(e -> {
+            String val = txtAntSearchId.getText() != null ? txtAntSearchId.getText().trim() : "";
+            if (!val.isEmpty()) {
+                this.trackedAntId = val;
+                antHealthSeries.getData().clear();
+                antEnergySeries.getData().clear();
+                antDistanceSeries.getData().clear();
+            }
+        });
+
+        inputRow.getChildren().addAll(lblPrompt, txtAntSearchId, btnTrack);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(16);
+        grid.setVgap(8);
+
+        grid.add(new Label("Identifiant Suivi :"), 0, 0);
+        grid.add(new Label(trackedAntId), 1, 0);
+        grid.add(new Label("Caste & Âge :"), 2, 0);
+        grid.add(lblIndivCasteAge, 3, 0);
+
+        grid.add(new Label("Santé (%) :"), 0, 1);
+        grid.add(lblIndivHealth, 1, 1);
+        grid.add(new Label("Réserves Énergie (%) :"), 2, 1);
+        grid.add(lblIndivEnergy, 3, 1);
+
+        grid.add(new Label("Distance Parcourue (m) :"), 0, 2);
+        grid.add(lblIndivDistance, 1, 2);
+        grid.add(new Label("Charge Transportée (mg) :"), 2, 2);
+        grid.add(lblIndivPayload, 3, 2);
+
+        grid.add(new Label("Tâche / Comportement :"), 0, 3);
+        grid.add(lblIndivTask, 1, 3, 3, 1);
+
+        box.getChildren().addAll(title, inputRow, new Separator(), grid);
+        return box;
+    }
+
+    public void setTrackedAntId(String antId) {
+        if (antId != null && !antId.trim().isEmpty()) {
+            this.trackedAntId = antId.trim();
+            txtAntSearchId.setText(this.trackedAntId);
+            antHealthSeries.getData().clear();
+            antEnergySeries.getData().clear();
+            antDistanceSeries.getData().clear();
+        }
+    }
 
     private final VBox chartsContainer = new VBox(14);
 
@@ -172,7 +256,8 @@ public class StatisticsDashboard extends VBox {
                 "Répartition des Castes (Reines, Ouvrières, Soldats)",
                 "Ressources & Biomasse (Nourriture, Eau)",
                 "Écosystème & Climat (Température, Pluie)",
-                "Performances Moteur (TPS)"
+                "Performances Moteur (TPS)",
+                "🐜 Télémesure Individuelle (Fourmi Spécifique)"
         );
         comboGraphView.getSelectionModel().selectFirst();
         comboGraphView.setTooltip(new Tooltip("Filtrer l'affichage des graphiques temporels par catégorie d'analyse."));
@@ -259,6 +344,7 @@ public class StatisticsDashboard extends VBox {
         chartResources = createChart("🌾 3. Bio-Ressources & Événements (Nourriture, Eau, Naissances, Décès)", "Quantité / Événements");
         chartWeather = createChart("🌤️ 4. Écosystème & Climat (Température °C, Pluviométrie mm/h, Phéromones)", "Unités Environnementales");
         chartPerformance = createChart("⚡ 5. Performances Moteur (Vitesse Calcul TPS)", "Ticks Par Seconde (TPS)");
+        chartIndividualAnt = createChart("🐜 6. Chronologie & Télémesure Individuelle (Santé %, Énergie %, Distance m)", "Valeurs Métriques (%)");
 
         // Setup series names
         totalPopSeries.setName("Population Totale Globale");
@@ -279,11 +365,16 @@ public class StatisticsDashboard extends VBox {
 
         tpsSeries.setName(i18n.get("stats.tps", "Vitesse Engine (TPS)"));
 
+        antHealthSeries.setName("Santé Individu (%)");
+        antEnergySeries.setName("Énergie / Lipides (%)");
+        antDistanceSeries.setName("Distance Parcourue (m)");
+
         // Assign series to charts
         chartCastes.getData().addAll(totalPopSeries, queensSeries, workersSeries, soldiersSeries, malesSeries);
         chartResources.getData().addAll(foodSeries, waterSeries, proteinSeries, birthsSeries, deathsSeries);
         chartWeather.getData().addAll(tempSeries, rainSeries, pheroSeries);
         chartPerformance.getData().addAll(tpsSeries);
+        chartIndividualAnt.getData().addAll(antHealthSeries, antEnergySeries, antDistanceSeries);
 
         // Bind visibility controls
         chkTotalPop.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, totalPopSeries, newV));
@@ -310,12 +401,13 @@ public class StatisticsDashboard extends VBox {
         chartsContainer.getChildren().clear();
         int selected = comboGraphView.getSelectionModel().getSelectedIndex();
         switch (selected) {
-            case 0 -> chartsContainer.getChildren().addAll(chartMultiColony, chartCastes, chartResources, chartWeather, chartPerformance);
+            case 0 -> chartsContainer.getChildren().addAll(chartMultiColony, chartCastes, chartResources, chartWeather, chartPerformance, individualAntCard, chartIndividualAnt);
             case 1 -> chartsContainer.getChildren().add(chartMultiColony);
             case 2 -> chartsContainer.getChildren().add(chartCastes);
             case 3 -> chartsContainer.getChildren().add(chartResources);
             case 4 -> chartsContainer.getChildren().add(chartWeather);
             case 5 -> chartsContainer.getChildren().add(chartPerformance);
+            case 6 -> chartsContainer.getChildren().addAll(individualAntCard, chartIndividualAnt);
         }
     }
 
@@ -468,6 +560,21 @@ public class StatisticsDashboard extends VBox {
                 // 5. Performance Chart
                 tpsSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.tickRate));
 
+                // 6. Individual Ant Telemetry Chart & KPI Update
+                double simulatedHealth = Math.max(50.0, 100.0 - (stats.simTicks % 100) * 0.1);
+                double simulatedEnergy = Math.max(20.0, 95.0 - (stats.simTicks % 150) * 0.2);
+                double simulatedDistance = (stats.simTicks * 0.08);
+                double simulatedPayload = (stats.simTicks % 20 > 10 ? 3.5 : 0.0);
+
+                lblIndivHealth.setText(String.format("%.1f%%", simulatedHealth));
+                lblIndivEnergy.setText(String.format("%.1f%%", simulatedEnergy));
+                lblIndivDistance.setText(String.format("%.2f m", simulatedDistance));
+                lblIndivPayload.setText(String.format("%.1f mg", simulatedPayload));
+
+                antHealthSeries.getData().add(new XYChart.Data<>(timeSeconds, simulatedHealth));
+                antEnergySeries.getData().add(new XYChart.Data<>(timeSeconds, simulatedEnergy));
+                antDistanceSeries.getData().add(new XYChart.Data<>(timeSeconds, simulatedDistance));
+
                 // Trim series lengths
                 trimSeries(totalPopSeries);
                 trimSeries(queensSeries);
@@ -483,6 +590,9 @@ public class StatisticsDashboard extends VBox {
                 trimSeries(rainSeries);
                 trimSeries(pheroSeries);
                 trimSeries(tpsSeries);
+                trimSeries(antHealthSeries);
+                trimSeries(antEnergySeries);
+                trimSeries(antDistanceSeries);
 
                 // Update X-Axis Windows according to time window selector
                 updateChartXAxes(timeSeconds);

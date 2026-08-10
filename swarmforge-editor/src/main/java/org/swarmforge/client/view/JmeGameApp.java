@@ -209,9 +209,6 @@ public class JmeGameApp extends SimpleApplication {
         @Override
         public void onAction(String name, boolean isPressed, float tpf) {
             if (name.equals("Click") && !isPressed) { // On Release
-                if (currentTool.equals("View Mode"))
-                    return;
-
                 // Ray Cast
                 com.jme3.math.Vector2f click2d = inputManager.getCursorPosition();
                 Vector3f click3d = cam.getWorldCoordinates(new com.jme3.math.Vector2f(click2d.x, click2d.y), 0f)
@@ -226,6 +223,25 @@ public class JmeGameApp extends SimpleApplication {
                 if (results.size() > 0) {
                     com.jme3.collision.CollisionResult closes = results.getClosestCollision();
                     Geometry geom = closes.getGeometry();
+
+                    // Check if clicked spatial or parent is an ANT
+                    com.jme3.scene.Spatial antSpatial = geom;
+                    while (antSpatial != null && antSpatial.getUserData("ID") == null) {
+                        antSpatial = antSpatial.getParent();
+                    }
+
+                    if (antSpatial != null && antSpatial.getUserData("ID") != null) {
+                        followedAntId = (String) antSpatial.getUserData("ID");
+                        String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                        System.out.println("Following Ant: " + followedAntId);
+                        if (selectionListener != null) {
+                            final String id = followedAntId;
+                            final String fStage = stage;
+                            Platform.runLater(() -> selectionListener.onAntSelected(id, "Ouvrière (Worker)", fStage, 95.0f, 88.0f, 12.0f, 450.0f, "Forager"));
+                        }
+                        return;
+                    }
+
                     // Parse name "Voxel_x_y_z"
                     String[] parts = geom.getName().split("_");
                     if (parts.length == 4 && parts[0].equals("Voxel")) {
@@ -269,21 +285,15 @@ public class JmeGameApp extends SimpleApplication {
                                 Platform.runLater(() -> selectionListener.onVoxelSelected(x, y, z, fMat, fM, fT, fC));
                             }
                         }
-                    } else if (geom.getUserData("ID") != null) {
-                        // It's an ANT!
-                        followedAntId = (String) geom.getUserData("ID");
-                        String stage = geom.getUserData("LifeStage") != null ? (String) geom.getUserData("LifeStage") : "ADULT";
-                        System.out.println("Following Ant: " + followedAntId);
-                        if (selectionListener != null) {
-                            final String id = followedAntId;
-                            final String fStage = stage;
-                            Platform.runLater(() -> selectionListener.onAntSelected(id, "Ouvrière (Worker)", fStage, 95.0f, 88.0f, 12.0f, 450.0f, "Forager"));
-                        }
                     }
                 }
             }
         }
     };
+
+    public String getFollowedAntId() {
+        return followedAntId;
+    }
 
     private String followedAntId = null;
 

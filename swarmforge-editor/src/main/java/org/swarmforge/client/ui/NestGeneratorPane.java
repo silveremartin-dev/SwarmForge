@@ -174,8 +174,19 @@ public class NestGeneratorPane extends BorderPane {
         bImp.setTooltip(new Tooltip("Importer un fichier JSON de configuration de nid."));
         bImp.setOnAction(e -> doImport());
 
+        Button bEval = new Button("🧪 Évaluer Placement");
+        bEval.setGraphic(new FontIcon(Feather.CHECK_CIRCLE));
+        bEval.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        bEval.setTooltip(new Tooltip("Évaluer la viabilité biologique, la hauteur et le placement de la ruche ou du nid."));
+        bEval.setOnAction(e -> {
+            javafx.stage.Stage stage = (getScene() != null && getScene().getWindow() instanceof javafx.stage.Stage)
+                    ? (javafx.stage.Stage) getScene().getWindow() : null;
+            new HivePlacementEvaluatorDialog(stage, getConfiguration()).show();
+        });
+
         r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd, bDel,
-            new Separator(Orientation.VERTICAL), bExp, bImp);
+            new Separator(Orientation.VERTICAL), bExp, bImp,
+            new Separator(Orientation.VERTICAL), bEval);
         v.getChildren().addAll(r, new Separator());
         return v;
     }
@@ -320,8 +331,8 @@ public class NestGeneratorPane extends BorderPane {
         archSelect.setTooltip(new Tooltip("Architecture biologique : 11 structures réelles (Souterrain, Dôme, Cire, Papier, Voûtes fongiques, Carton, Bivouac, etc.)."));
         archSelect.getItems().addAll(
             "BURROW_UNDERGROUND", "SURFACE_MOUND", "SUBTERRANEAN_FUNGI_VAULT",
-            "WAX_COMB_HEXAGONAL", "WAX_POTS_CLUSTER", "PAPER_PEDUNCULATE",
-            "CATHEDRAL_MOUND", "ARBOREAL_SILK_LEAF", "CARTON_NEST",
+            "WAX_COMB_HEXAGONAL", "WOODEN_BEEHIVE", "WAX_POTS_CLUSTER", "PAPER_PEDUNCULATE",
+            "CATHEDRAL_MOUND", "ARBOREAL_SILK_LEAF", "HOLLOW_TRUNK_NEST", "CARTON_NEST",
             "BAMBOO_STEM_NEST", "BIVOUAC_LIVING_NEST");
         archSelect.getSelectionModel().selectFirst();
         archSelect.setPrefWidth(218);
@@ -334,9 +345,9 @@ public class NestGeneratorPane extends BorderPane {
         Label ml = new Label();
         ml.textProperty().bind(i18n.createStringBinding("nest.arch.material"));
         matSelect = new ComboBox<>();
-        matSelect.setTooltip(new Tooltip("Matériau biologique de construction (Terre, Cire, Papier, Ciment, Soie, Propolis, Carton, Corps vivants)."));
-        matSelect.getItems().addAll("EARTH", "WOOD_PULP_PAPER", "BEESWAX",
-            "STERCORAL_CEMENT", "SILK_WEAVE", "PROPOLIS", "CARTON_PULP", "LIVING_INSECT_BODIES");
+        matSelect.setTooltip(new Tooltip("Matériau biologique de construction (Terre, Bois, Cire, Papier, Ciment, Soie, Propolis, Carton, Corps vivants)."));
+        matSelect.getItems().addAll("EARTH", "WOOD_PLANK", "WOOD_PULP_PAPER", "BEESWAX",
+            "STERCORAL_CEMENT", "SILK_WEAVE", "PROPOLIS", "CARTON_PULP", "TREE_TRUNK", "TREE_BRANCH", "TREE_LEAF", "LIVING_INSECT_BODIES");
         matSelect.getSelectionModel().selectFirst();
         matSelect.setPrefWidth(218);
         matSelect.setOnAction(e -> {

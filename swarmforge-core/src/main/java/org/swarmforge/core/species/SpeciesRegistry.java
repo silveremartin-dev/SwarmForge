@@ -88,15 +88,21 @@ public class SpeciesRegistry {
     }
 
     private void loadDefaultPresets() {
-        // Fallback default builtin species
-        CustomSpecies formica = new ReticulitermesFlavipes();
-        registerSpecies("reticulitermes-flavipes", formica);
-
-        CustomSpecies lasius = new CustomSpecies();
-        lasius.setPresetName("Lasius niger");
-        lasius.setCommonName("Fourmi Noire des Jardins");
-        lasius.setScientificName("Lasius niger");
-        registerSpecies("lasius-niger", lasius);
+        // Builtin eusocial species registry
+        register(new AttaCephalotes());
+        register(new ApisMellifera());
+        register(new BombusTerrestris());
+        register(new VespulaGermanica());
+        register(new VespaCrabro());
+        register(new FormicaRufa());
+        register(new LasiusNiger());
+        register(new SolenopsisInvicta());
+        register(new CamponotusPennsylvanicus());
+        register(new LinepithemaHumile());
+        register(new ReticulitermesFlavipes());
+        register(new PseudoregmaBambucicola());
+        register(new KladothripsHarteri());
+        register(new AustroplatypusIncompertus());
 
         // Load custom user JSON files from ~/.swarmforge/presets/species/
         try {

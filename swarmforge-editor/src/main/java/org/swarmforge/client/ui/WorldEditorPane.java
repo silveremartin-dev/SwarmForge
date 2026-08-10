@@ -124,10 +124,28 @@ public class WorldEditorPane extends BorderPane {
     private Slider staticPoolsSlider;
     private Slider waterTableDepthSlider;
 
-    // Controls: 5. Vertical Host Structures
+    // Controls: 5. Vertical Host Structures & Botanical Tree Species
     private Slider treeCountSlider;
     private Slider hollowLogsSlider;
     private Slider rockCrevicesSlider;
+
+    // Botanical Tree Species Composition Spinners & Selectors
+    private ComboBox<String> comboTreeSpecies;
+    private Spinner<Integer> oakPctSpinner;
+    private Spinner<Integer> pinePctSpinner;
+    private Spinner<Integer> acaciaPctSpinner;
+    private Spinner<Integer> birchPctSpinner;
+    private Spinner<Integer> bambooPctSpinner;
+    private Spinner<Integer> cactusPctSpinner;
+    private Spinner<Integer> deadWoodPctSpinner;
+
+    // Bioclimatic Zone Badge & Insect Compatibility Labels
+    private Label lblBioclimaticZoneBadge = new Label("🌳 Forêt Tempérée Décidue");
+    private Label lblAttaCompatScore = new Label("85%");
+    private Label lblAphidCompatScore = new Label("70%");
+    private Label lblWoodNestCompatScore = new Label("90%");
+    private Label lblAcaciaAntCompatScore = new Label("60%");
+    private Label lblCactusAntCompatScore = new Label("40%");
 
 
     // Controls: 7. 3D Sculpting Brushes & Voxel Painting Mode
@@ -642,6 +660,7 @@ public class WorldEditorPane extends BorderPane {
                                 lonField.setText(String.format(java.util.Locale.US, "%.4f", lon));
                                 geoStatusLabel.setText("🟢 " + name + " (Lat: " + String.format(java.util.Locale.US, "%.4f", lat) + "°, Lon: " + String.format(java.util.Locale.US, "%.4f", lon) + "°)");
                                 geoStatusLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-size: 10px;");
+                                applyBioclimaticAdaptation(lat, lon);
                                 regenerateAndRepaint();
                             });
                             return;
@@ -659,6 +678,52 @@ public class WorldEditorPane extends BorderPane {
                 });
             }
         }).start();
+    }
+
+    private void applyBioclimaticAdaptation(double lat, double lon) {
+        org.swarmforge.core.domain.BioclimaticZone zone = org.swarmforge.core.domain.BioclimaticZone.classify(
+            lat, 20.0 * (1.0 - Math.abs(lat) / 90.0), Math.abs(lat) < 23.5 ? 2000.0 : (Math.abs(lat) > 60 ? 300.0 : 700.0)
+        );
+
+        if (lblBioclimaticZoneBadge != null) {
+            lblBioclimaticZoneBadge.setText(zone.getDisplayName());
+        }
+
+        switch (zone) {
+            case ARID_DESERT -> {
+                if (comboTreeSpecies != null) comboTreeSpecies.getSelectionModel().select(3); // Cactus Saguaro
+                if (sandSpinner != null) sandSpinner.getValueFactory().setValue(70);
+                if (stoneSpinner != null) stoneSpinner.getValueFactory().setValue(20);
+                if (earthSpinner != null) earthSpinner.getValueFactory().setValue(10);
+                if (baseHumiditySlider != null) baseHumiditySlider.setValue(0.12);
+            }
+            case TROPICAL_RAINFOREST -> {
+                if (comboTreeSpecies != null) comboTreeSpecies.getSelectionModel().select(2); // Acacia / Equatorial
+                if (earthSpinner != null) earthSpinner.getValueFactory().setValue(60);
+                if (claySpinner != null) claySpinner.getValueFactory().setValue(30);
+                if (baseHumiditySlider != null) baseHumiditySlider.setValue(0.85);
+            }
+            case ARCTIC_TUNDRA -> {
+                if (comboTreeSpecies != null) comboTreeSpecies.getSelectionModel().select(4); // Bouleaux & Toundra
+                if (stoneSpinner != null) stoneSpinner.getValueFactory().setValue(50);
+                if (earthSpinner != null) earthSpinner.getValueFactory().setValue(40);
+                if (baseHumiditySlider != null) baseHumiditySlider.setValue(0.30);
+            }
+            case MEDITERRANEAN -> {
+                if (comboTreeSpecies != null) comboTreeSpecies.getSelectionModel().select(1); // Pinède Résineuse
+                if (earthSpinner != null) earthSpinner.getValueFactory().setValue(40);
+                if (stoneSpinner != null) stoneSpinner.getValueFactory().setValue(30);
+                if (baseHumiditySlider != null) baseHumiditySlider.setValue(0.35);
+            }
+            default -> {
+                if (comboTreeSpecies != null) comboTreeSpecies.getSelectionModel().select(0); // Futaie de Chênes
+                if (earthSpinner != null) earthSpinner.getValueFactory().setValue(50);
+                if (sandSpinner != null) sandSpinner.getValueFactory().setValue(20);
+                if (claySpinner != null) claySpinner.getValueFactory().setValue(20);
+                if (baseHumiditySlider != null) baseHumiditySlider.setValue(0.45);
+            }
+        }
+        updateEcologicalCompatibilityScores();
     }
 
     private VBox buildScaleBlock() {
@@ -886,15 +951,127 @@ public class WorldEditorPane extends BorderPane {
         rockCrevicesSlider = mkSlider(0, 8, 3);
         addLsn(treeCountSlider, hollowLogsSlider, rockCrevicesSlider);
 
-        Label structHint = new Label("💡 Permet l'hébergement de nids arboricoles (Crematogaster, Oecophylla) ou de nids de guêpes/abeilles sociales.");
+        // Botanical Tree Species Composition Selectors & Spinners
+        comboTreeSpecies = new ComboBox<>();
+        comboTreeSpecies.getItems().addAll(
+            "🌳 Biome Futaie de Chênes & Feuillus (Atta / Camponotus)",
+            "🌲 Biome Pinède Résineuse (Pucerons Cinara / Formica)",
+            "🌵 Biome Savane d'Acacias (Pseudomyrmex / Nectaires)",
+            "🌵 Biome Désert Aride & Cactus Saguaro (Myrmecocystus / Cephalotes)",
+            "🌿 Biome Bouleaux & Graminées (Messor / Prédation)",
+            "🎋 Biome Bambouseraie (Temnothorax / Colobopsis)",
+            "🪵 Biome Bois Mort & Souches en Décomposition"
+        );
+        comboTreeSpecies.getSelectionModel().selectFirst();
+        comboTreeSpecies.setPrefWidth(270);
+        comboTreeSpecies.setOnAction(e -> updateTreeSpeciesSpinnersFromPreset());
+
+        oakPctSpinner      = mkSpinner(0, 100, 45);
+        pinePctSpinner     = mkSpinner(0, 100, 20);
+        acaciaPctSpinner   = mkSpinner(0, 100, 10);
+        birchPctSpinner    = mkSpinner(0, 100, 10);
+        bambooPctSpinner   = mkSpinner(0, 100, 5);
+        cactusPctSpinner   = mkSpinner(0, 100, 0);
+        deadWoodPctSpinner = mkSpinner(0, 100, 10);
+
+        for (Spinner<Integer> sp : new Spinner[]{oakPctSpinner, pinePctSpinner, acaciaPctSpinner, birchPctSpinner, bambooPctSpinner, cactusPctSpinner, deadWoodPctSpinner}) {
+            sp.valueProperty().addListener((o, a, b) -> updateEcologicalCompatibilityScores());
+        }
+
+        GridPane botGrid = new GridPane();
+        botGrid.setHgap(8); botGrid.setVgap(6);
+        botGrid.add(new Label("🌳 Chêne (Quercus) % :"), 0, 0); botGrid.add(oakPctSpinner, 1, 0);
+        botGrid.add(new Label("🌲 Pin Sylvestre (Pinus) % :"), 0, 1); botGrid.add(pinePctSpinner, 1, 1);
+        botGrid.add(new Label("🌵 Acacia (Vachellia EFN) % :"), 0, 2); botGrid.add(acaciaPctSpinner, 1, 2);
+        botGrid.add(new Label("🌵 Cactus Saguaro (Opuntia) % :"), 0, 3); botGrid.add(cactusPctSpinner, 1, 3);
+        botGrid.add(new Label("🌿 Bouleau (Betula) % :"), 0, 4); botGrid.add(birchPctSpinner, 1, 4);
+        botGrid.add(new Label("🎋 Bambou (Phyllostachys) % :"), 0, 5); botGrid.add(bambooPctSpinner, 1, 5);
+        botGrid.add(new Label("🪵 Bois Mort / Souches % :"), 0, 6); botGrid.add(deadWoodPctSpinner, 1, 6);
+
+        // Bioclimatic Zone & Ecological Compatibility Diagnostic
+        lblBioclimaticZoneBadge.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-font-size: 11px;");
+
+        GridPane diagGrid = new GridPane();
+        diagGrid.setHgap(10); diagGrid.setVgap(4);
+        diagGrid.setStyle("-fx-background-color: #1e1b4b; -fx-padding: 8px; -fx-border-color: #4338ca; -fx-border-radius: 6px;");
+
+        lblAttaCompatScore.setStyle("-fx-font-weight: bold; -fx-text-fill: #4ade80;");
+        lblAphidCompatScore.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        lblWoodNestCompatScore.setStyle("-fx-font-weight: bold; -fx-text-fill: #f59e0b;");
+        lblAcaciaAntCompatScore.setStyle("-fx-font-weight: bold; -fx-text-fill: #e879f9;");
+        lblCactusAntCompatScore.setStyle("-fx-font-weight: bold; -fx-text-fill: #f43f5e;");
+
+        diagGrid.add(new Label("🌐 Zone Bioclimatique :"), 0, 0); diagGrid.add(lblBioclimaticZoneBadge, 1, 0);
+        diagGrid.add(new Label("🍃 Atta (Coupeuses de feuilles) :"), 0, 1); diagGrid.add(lblAttaCompatScore, 1, 1);
+        diagGrid.add(new Label("🍯 Formica / Lasius (Éleveuses Pucerons) :"), 0, 2); diagGrid.add(lblAphidCompatScore, 1, 2);
+        diagGrid.add(new Label("🐜 Camponotus (Charpentières / Bois) :"), 0, 3); diagGrid.add(lblWoodNestCompatScore, 1, 3);
+        diagGrid.add(new Label("🌵 Pseudomyrmex (Mutualistes Acacia) :"), 0, 4); diagGrid.add(lblAcaciaAntCompatScore, 1, 4);
+        diagGrid.add(new Label("🌵 Desert Ants (Nids Cactus / Saguaro) :"), 0, 5); diagGrid.add(lblCactusAntCompatScore, 1, 5);
+
+        updateEcologicalCompatibilityScores();
+
+        Label structHint = new Label("💡 Détermine la composition déterministe des espèces d'arbres voxels et l'attraction trophique spécifique des espèces d'insectes.");
         structHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
         return new VBox(8,
-                new Label("Nombre d'Arbres / Troncs:"), sv(treeCountSlider, ""),
-                new Label("Souches de Bois Creuses (Camponotus / Nids):"), sv(hollowLogsSlider, ""),
-                new Label("Fissures / Rentrées Rocheuses:"), sv(rockCrevicesSlider, ""),
+                new Label("Nombre d'Arbres / Troncs :"), sv(treeCountSlider, ""),
+                new Label("Souches de Bois Creuses (Camponotus / Nids) :"), sv(hollowLogsSlider, ""),
+                new Label("Fissures / Rentrées Rocheuses :"), sv(rockCrevicesSlider, ""),
+                new Separator(),
+                new Label("🌳 Espèce d'Arbre Dominante du Biome :"),
+                comboTreeSpecies,
+                new Label("📊 Matrice de Composition Botanique (% des Arbres) :"),
+                botGrid,
+                new Separator(),
+                new Label("🧪 Diagnostic d'Attraction Écologique :"),
+                diagGrid,
                 structHint
         );
+    }
+
+    private void updateTreeSpeciesSpinnersFromPreset() {
+        int idx = comboTreeSpecies.getSelectionModel().getSelectedIndex();
+        switch (idx) {
+            case 0 -> { oakPctSpinner.getValueFactory().setValue(70); pinePctSpinner.getValueFactory().setValue(10); acaciaPctSpinner.getValueFactory().setValue(0); cactusPctSpinner.getValueFactory().setValue(0); birchPctSpinner.getValueFactory().setValue(10); bambooPctSpinner.getValueFactory().setValue(0); deadWoodPctSpinner.getValueFactory().setValue(10); }
+            case 1 -> { oakPctSpinner.getValueFactory().setValue(10); pinePctSpinner.getValueFactory().setValue(75); acaciaPctSpinner.getValueFactory().setValue(0); cactusPctSpinner.getValueFactory().setValue(0); birchPctSpinner.getValueFactory().setValue(5); bambooPctSpinner.getValueFactory().setValue(0); deadWoodPctSpinner.getValueFactory().setValue(10); }
+            case 2 -> { oakPctSpinner.getValueFactory().setValue(0); pinePctSpinner.getValueFactory().setValue(5); acaciaPctSpinner.getValueFactory().setValue(80); cactusPctSpinner.getValueFactory().setValue(0); birchPctSpinner.getValueFactory().setValue(0); bambooPctSpinner.getValueFactory().setValue(0); deadWoodPctSpinner.getValueFactory().setValue(15); }
+            case 3 -> { oakPctSpinner.getValueFactory().setValue(0); pinePctSpinner.getValueFactory().setValue(0); acaciaPctSpinner.getValueFactory().setValue(15); cactusPctSpinner.getValueFactory().setValue(75); birchPctSpinner.getValueFactory().setValue(0); bambooPctSpinner.getValueFactory().setValue(0); deadWoodPctSpinner.getValueFactory().setValue(10); }
+            case 4 -> { oakPctSpinner.getValueFactory().setValue(15); pinePctSpinner.getValueFactory().setValue(15); acaciaPctSpinner.getValueFactory().setValue(0); cactusPctSpinner.getValueFactory().setValue(0); birchPctSpinner.getValueFactory().setValue(60); bambooPctSpinner.getValueFactory().setValue(0); deadWoodPctSpinner.getValueFactory().setValue(10); }
+            case 5 -> { oakPctSpinner.getValueFactory().setValue(5); pinePctSpinner.getValueFactory().setValue(0); acaciaPctSpinner.getValueFactory().setValue(0); cactusPctSpinner.getValueFactory().setValue(0); birchPctSpinner.getValueFactory().setValue(5); bambooPctSpinner.getValueFactory().setValue(80); deadWoodPctSpinner.getValueFactory().setValue(10); }
+            case 6 -> { oakPctSpinner.getValueFactory().setValue(10); pinePctSpinner.getValueFactory().setValue(10); acaciaPctSpinner.getValueFactory().setValue(0); cactusPctSpinner.getValueFactory().setValue(0); birchPctSpinner.getValueFactory().setValue(10); bambooPctSpinner.getValueFactory().setValue(0); deadWoodPctSpinner.getValueFactory().setValue(70); }
+        }
+        updateEcologicalCompatibilityScores();
+    }
+
+    private void updateEcologicalCompatibilityScores() {
+        int oak = oakPctSpinner != null ? oakPctSpinner.getValue() : 45;
+        int pine = pinePctSpinner != null ? pinePctSpinner.getValue() : 20;
+        int acacia = acaciaPctSpinner != null ? acaciaPctSpinner.getValue() : 10;
+        int birch = birchPctSpinner != null ? birchPctSpinner.getValue() : 10;
+        int cactus = cactusPctSpinner != null ? cactusPctSpinner.getValue() : 0;
+        int deadWood = deadWoodPctSpinner != null ? deadWoodPctSpinner.getValue() : 10;
+
+        double lat = 48.8;
+        if (latField != null) {
+            try { lat = Double.parseDouble(latField.getText().trim()); } catch (Exception ignored) {}
+        }
+        double baseHum = baseHumiditySlider != null ? baseHumiditySlider.getValue() : 0.35;
+        org.swarmforge.core.domain.BioclimaticZone zone = org.swarmforge.core.domain.BioclimaticZone.classify(lat, 20.0 * (1.0 - Math.abs(lat) / 90.0), baseHum * 2000.0);
+        if (lblBioclimaticZoneBadge != null) {
+            lblBioclimaticZoneBadge.setText(zone.getDisplayName());
+        }
+
+        int attaScore = Math.min(100, oak * 1 + birch * 1 + acacia / 2);
+        int aphidScore = Math.min(100, pine * 1 + birch * 1 + oak / 2);
+        int woodScore = Math.min(100, deadWood * 1 + oak * 1 + pine / 2);
+        int acaciaScore = Math.min(100, acacia * 1 + deadWood / 2);
+        int cactusScore = Math.min(100, cactus * 1 + acacia / 2);
+
+        if (lblAttaCompatScore != null) lblAttaCompatScore.setText(attaScore + "% (Optimal Feuillage)");
+        if (lblAphidCompatScore != null) lblAphidCompatScore.setText(aphidScore + "% (Hôte Cinara/Miellat)");
+        if (lblWoodNestCompatScore != null) lblWoodNestCompatScore.setText(woodScore + "% (Excavation Lignicole)");
+        if (lblAcaciaAntCompatScore != null) lblAcaciaAntCompatScore.setText(acaciaScore + "% (Nectaires & Domaties)");
+        if (lblCactusAntCompatScore != null) lblCactusAntCompatScore.setText(cactusScore + "% (Nids Cactus / Aride)");
     }
 
 

@@ -95,7 +95,26 @@ public class LiveInspectorPane extends VBox {
         });
         btnFollowAnt.setVisible(false);
 
-        getChildren().addAll(header, subTitleLabel, new Separator(), statsGrid, btnFollowAnt);
+        // Direct ID Follow Input Box
+        HBox directFollowBox = new HBox(6);
+        directFollowBox.setAlignment(Pos.CENTER_LEFT);
+        TextField txtAntId = new TextField();
+        txtAntId.setPromptText("ID Fourmi (ex: ant_1)");
+        txtAntId.setPrefWidth(160);
+        txtAntId.setStyle("-fx-background-color: #27272a; -fx-text-fill: white; -fx-border-color: #3f3f46; -fx-border-radius: 4;");
+
+        Button btnDirectFollow = new Button("🎥 Follow");
+        btnDirectFollow.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnDirectFollow.setTooltip(new Tooltip("Suivre directement la fourmi avec cet identifiant"));
+        btnDirectFollow.setOnAction(e -> {
+            String targetId = txtAntId.getText() != null ? txtAntId.getText().trim() : "";
+            if (!targetId.isEmpty() && onFollowAntCallback != null) {
+                onFollowAntCallback.accept(targetId);
+            }
+        });
+        directFollowBox.getChildren().addAll(txtAntId, btnDirectFollow);
+
+        getChildren().addAll(header, subTitleLabel, new Separator(), statsGrid, btnFollowAnt, new Separator(), directFollowBox);
         setVisible(true);
     }
 

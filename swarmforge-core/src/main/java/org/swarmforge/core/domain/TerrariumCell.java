@@ -115,7 +115,11 @@ public record TerrariumCell(
         BAMBOO_STEM, // Hollow/excavatable bamboo stem
         FUNGUS_GARDEN, // Cultivated fungus garden substrate for Atta & Ambrosia beetles
         DEAD_ANIMAL, // Dead insect, prey carcass, decay substrate
-        DEAD_PLANT // Dead plant tissue, fallen log, decaying organic biomass
+        DEAD_PLANT, // Dead plant tissue, fallen log, decaying organic biomass
+        TREE_TRUNK, // Living tree trunk wood for arboreal & bark-nesting species
+        TREE_BRANCH, // Living tree branch support for hanging nests
+        TREE_LEAF, // Living foliage leaf substrate for silk weaver nests
+        WOODEN_HIVE_BOX // Modular wooden hive box wall (Dadant/Langstroth)
     }
 
     /**
@@ -218,7 +222,7 @@ public record TerrariumCell(
      */
     public boolean isPassable() {
         return material == Material.AIR || material == Material.CHAMBER ||
-                material == Material.LEAF_LITTER;
+                material == Material.LEAF_LITTER || material == Material.TREE_LEAF;
     }
 
     /**
@@ -229,7 +233,8 @@ public record TerrariumCell(
                 material == Material.MUD || material == Material.CLAY ||
                 material == Material.LEAF_LITTER || material == Material.DEAD_WOOD ||
                 material == Material.PLANT_GALL || material == Material.BAMBOO_STEM ||
-                material == Material.FUNGUS_GARDEN;
+                material == Material.FUNGUS_GARDEN || material == Material.TREE_TRUNK ||
+                material == Material.TREE_BRANCH || material == Material.WOODEN_HIVE_BOX;
     }
 
     /**
