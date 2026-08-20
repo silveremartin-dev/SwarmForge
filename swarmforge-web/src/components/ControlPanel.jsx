@@ -112,11 +112,12 @@ export default function ControlPanel() {
 
     const styles = {
         panel: {
-            position: 'absolute',
-            top: 60,
-            right: 20,
-            width: 340,
-            maxHeight: 'calc(100vh - 80px)',
+            position: inline ? 'relative' : 'absolute',
+            top: inline ? 0 : 60,
+            right: inline ? 'auto' : 20,
+            left: inline ? 0 : 'auto',
+            width: inline ? '100%' : 340,
+            maxHeight: inline ? 'none' : 'calc(100vh - 80px)',
             overflowY: 'auto',
             background: 'rgba(15, 23, 42, 0.94)',
             backdropFilter: 'blur(16px)',
@@ -303,7 +304,7 @@ export default function ControlPanel() {
                 <select
                     value={selectedScenarioMetaId}
                     onChange={handleScenarioChange}
-                    style={{ ...styles.select, background: '#1e1b4b', color: '#a78bfa', borderColor: '#6366f1' }}
+                    style={{ ...styles.select, background: '#0f172a', color: '#38bdf8', borderColor: '#334155' }}
                 >
                     {scenarioMetaPresets.map(s => (
                         <option key={s.id} value={s.id}>
@@ -478,11 +479,11 @@ export default function ControlPanel() {
                                 padding: '4px 2px',
                                 fontSize: 9,
                                 fontWeight: 700,
-                                border: 'none',
+                                border: paramCategoryTab === tab.id ? '1px solid #38bdf8' : '1px solid transparent',
                                 borderRadius: 4,
                                 cursor: 'pointer',
-                                background: paramCategoryTab === tab.id ? '#0284c7' : 'transparent',
-                                color: paramCategoryTab === tab.id ? '#fff' : '#94a3b8',
+                                background: paramCategoryTab === tab.id ? '#1e293b' : 'transparent',
+                                color: paramCategoryTab === tab.id ? '#38bdf8' : '#94a3b8',
                                 transition: 'all 0.15s ease',
                             }}
                         >

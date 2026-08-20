@@ -109,21 +109,18 @@ public class SimulationControlPanel extends VBox {
 
     public SimulationControlPanel() {
         setSpacing(10);
-        setPadding(new Insets(10));
-        setStyle("-fx-border-color: #3f3f46; -fx-border-width: 1 0 0 0;");
 
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
 
-        // Top Meta-Scenario Header Card
-        VBox scenarioCard = new VBox(10);
-        scenarioCard.getStyleClass().add("card-pane");
-        scenarioCard.setStyle("-fx-background-color: rgba(15, 23, 42, 0.6); -fx-padding: 12; -fx-background-radius: 8; -fx-border-color: rgba(56, 189, 248, 0.2); -fx-border-radius: 8;");
+        // 1. Top Standardized Header Bar
+        VBox headerVBox = new VBox(6);
+        headerVBox.setPadding(new Insets(8, 10, 5, 10));
 
         HBox headerRow = new HBox(8);
         headerRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label lblPresetHeader = new Label("🎬 Configuration du Scénario & Écosystème Multi-Espèces");
-        lblPresetHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
+        Label lblPresetHeader = new Label("Configuration du Scénario & Écosystème Multi-Espèces");
+        lblPresetHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 18px;");
         lblPresetHeader.setTooltip(new Tooltip("Définition scientifique du scénario, sélection du biotope, climat et assemblage dynamique des espèces."));
 
         Region spHeader = new Region();
@@ -155,6 +152,12 @@ public class SimulationControlPanel extends VBox {
         bImportScenario.setOnAction(e -> handleImportScenario());
 
         headerRow.getChildren().addAll(lblPresetHeader, spHeader, bSaveScenario, bDeleteScenario, bExportScenario, bImportScenario);
+        headerVBox.getChildren().addAll(headerRow, new Separator());
+
+        // Top Meta-Scenario Header Card
+        VBox scenarioCard = new VBox(10);
+        scenarioCard.getStyleClass().add("card-pane");
+        scenarioCard.setStyle("-fx-background-color: #18181b; -fx-padding: 12; -fx-background-radius: 8; -fx-border-color: #27272a; -fx-border-radius: 8;");
 
         HBox metaRow = new HBox(8);
         metaRow.setAlignment(Pos.CENTER_LEFT);
@@ -185,7 +188,7 @@ public class SimulationControlPanel extends VBox {
         areaDescription.setPrefRowCount(2);
         areaDescription.setPromptText("Description et objectifs d'expérimentation du scénario...");
         areaDescription.setWrapText(true);
-        areaDescription.setStyle("-fx-font-size: 11px; -fx-control-inner-background: #0f172a; -fx-text-fill: #e2e8f0;");
+        areaDescription.setStyle("-fx-font-size: 11px; -fx-control-inner-background: #09090b; -fx-text-fill: #e2e8f0;");
         descBox.getChildren().addAll(lblDesc, areaDescription);
 
         // Populate World and Weather combos
@@ -217,7 +220,7 @@ public class SimulationControlPanel extends VBox {
 
         // 3. Multi-Species Scenario Section Header & Controls
         VBox section3Container = new VBox(8);
-        section3Container.setStyle("-fx-background-color: rgba(30, 41, 59, 0.6); -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: rgba(56, 189, 248, 0.15); -fx-border-radius: 6;");
+        section3Container.setStyle("-fx-background-color: #121214; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #27272a; -fx-border-radius: 6;");
 
         HBox speciesAddBar = new HBox(8);
         speciesAddBar.setAlignment(Pos.CENTER_LEFT);
@@ -316,7 +319,7 @@ public class SimulationControlPanel extends VBox {
 
         btnApplyPresets.setOnAction(e -> handleApplyScenario());
 
-        scenarioCard.getChildren().addAll(headerRow, metaRow, descBox, new Separator(), gridWorldWeather, new Separator(), section3Container, checkpointsPane, seedAndLimitsRow, btnApplyPresets, applyProgressBox);
+        scenarioCard.getChildren().addAll(metaRow, descBox, new Separator(), gridWorldWeather, new Separator(), section3Container, checkpointsPane, seedAndLimitsRow, btnApplyPresets, applyProgressBox);
 
         // Date/Time Row & Step Size
         HBox dateTimeRow = new HBox(8);
@@ -431,7 +434,7 @@ public class SimulationControlPanel extends VBox {
 
         playbackAndSpeedPanel.getChildren().addAll(lblPlaybackHeader, dateTimeRow, playbackRow, speedRow);
 
-        getChildren().add(scenarioCard);
+        getChildren().addAll(headerVBox, scenarioCard);
         updateButtonStates();
     }
 
@@ -795,7 +798,7 @@ public class SimulationControlPanel extends VBox {
         public SpeciesConfigCard(String speciesName, Runnable onRemove) {
             this.speciesName = speciesName;
 
-            cardPane.setStyle("-fx-background-color: rgba(15, 23, 42, 0.85); -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #0284c7; -fx-border-width: 1;");
+            cardPane.setStyle("-fx-background-color: #18181b; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #0284c7; -fx-border-width: 1;");
 
             // Header
             HBox header = new HBox(8);
@@ -957,33 +960,27 @@ public class SimulationControlPanel extends VBox {
      */
     public static List<String> getCompatibleNestTypes(String speciesName) {
         List<String> nests = new ArrayList<>();
-        if (speciesName == null) return List.of("Simple Chamber Nest");
+        if (speciesName == null) return List.of("Young Ant Burrow (Lasius niger)");
         String lower = speciesName.toLowerCase();
         if (lower.contains("atta") || lower.contains("coupeuse")) {
-            nests.add("Leafcutter Fungus Farm (Atta)");
-            nests.add("Subterranean Fungi Vault");
-            nests.add("Simple Chamber Nest");
+            nests.add("Leafcutter Fungus Vault (Atta sexdens)");
+            nests.add("Mature Ant Burrow (Formica fusca)");
+            nests.add("Young Ant Burrow (Lasius niger)");
         } else if (lower.contains("apis") || lower.contains("abeille")) {
-            nests.add("Honeybee Wax Comb (Apis)");
-            nests.add("Arboreal Tree Hollow");
-            nests.add("Hexagonal Hive Box");
+            nests.add("Honeybee Wax Comb (Apis mellifera)");
+            nests.add("Bumblebee Pot Cluster (Bombus terrestris)");
         } else if (lower.contains("vespula") || lower.contains("guêpe")) {
-            nests.add("Paper Pedunculate Nest (Vespula)");
-            nests.add("Subterranean Paper Nest");
-            nests.add("Tree Branch Hanging Nest");
+            nests.add("Paper Wasp Nest (Vespula vulgaris)");
         } else if (lower.contains("reticulitermes") || lower.contains("macrotermes") || lower.contains("termite")) {
-            nests.add("Termite Cathedral Mound (Macrotermes)");
-            nests.add("Underground Timber Nest");
-            nests.add("Simple Chamber Nest");
+            nests.add("Termite Cathedral Mound (Macrotermes bellicosus)");
         } else if (lower.contains("messor") || lower.contains("pogonomyrmex") || lower.contains("moissonneuse")) {
-            nests.add("Mature Ant Burrow");
-            nests.add("Underground Grain Silo Burrow");
-            nests.add("Simple Chamber Nest");
+            nests.add("Mature Ant Burrow (Messor barbarus)");
+            nests.add("Young Ant Burrow (Lasius niger)");
         } else {
-            nests.add("Mature Ant Burrow");
-            nests.add("Complex Supercolony");
-            nests.add("Simple Chamber Nest");
-            nests.add("Subterranean Fungi Vault");
+            nests.add("Mature Ant Burrow (Formica fusca)");
+            nests.add("Complex Supercolony (Linepithema humile)");
+            nests.add("Young Ant Burrow (Lasius niger)");
+            nests.add("Leafcutter Fungus Vault (Atta sexdens)");
         }
         return nests;
     }

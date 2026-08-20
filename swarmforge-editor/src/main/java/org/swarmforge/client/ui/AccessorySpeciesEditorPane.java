@@ -95,15 +95,7 @@ public class AccessorySpeciesEditorPane extends VBox {
     private final List<HBox> helpEntriesList = new ArrayList<>();
 
     public AccessorySpeciesEditorPane() {
-        setSpacing(12);
-        setPadding(new Insets(15));
-
-        // Header Title
-        headerLabel = new Label(i18n.get("accessory.title"));
-        headerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
-
-        // Toolbar
-        HBox topToolbar = createToolbar();
+        setSpacing(10);
 
         // Main TabPane
         tabPane = new TabPane();
@@ -119,12 +111,32 @@ public class AccessorySpeciesEditorPane extends VBox {
         // Dynamic Locale Listener for UI Updating
         i18n.localeProperty().addListener((obs, oldL, newL) -> refreshI18nLabels());
 
-        getChildren().addAll(headerLabel, topToolbar, new Separator(), tabPane);
+        getChildren().addAll(buildHeader(), tabPane);
 
         attachUserChangeListeners();
         if (!accessoryPresetCombo.getItems().isEmpty()) {
             applyAccessoryPreset(accessoryPresetCombo.getValue());
         }
+    }
+
+    private VBox buildHeader() {
+        VBox v = new VBox(6);
+        v.setPadding(new Insets(8, 10, 5, 10));
+
+        HBox r = new HBox(8);
+        r.setAlignment(Pos.CENTER_LEFT);
+
+        headerLabel = new Label(i18n.get("accessory.title"));
+        headerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+
+        Region sp = new Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+
+        HBox toolbar = createToolbar();
+
+        r.getChildren().addAll(headerLabel, sp, toolbar);
+        v.getChildren().addAll(r, new Separator());
+        return v;
     }
 
     private HBox createToolbar() {

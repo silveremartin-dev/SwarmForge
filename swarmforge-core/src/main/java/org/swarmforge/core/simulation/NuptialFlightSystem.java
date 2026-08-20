@@ -38,8 +38,8 @@ public class NuptialFlightSystem {
         for (Colony colony : simulation.getColonies()) {
             if (colony.getPopulation() < 500) continue; // Mature colonies only
 
-            Species.InsectOrder order = colony.getSpecies().getInsectOrder();
-            boolean triggersSwarm = checkConditions(order, weather);
+            Species.InsectOrder order = colony.getSpecies() != null ? colony.getSpecies().getInsectOrder() : Species.InsectOrder.ANT;
+            boolean triggersSwarm = checkConditions(colony.getSpecies(), weather);
 
             if (triggersSwarm) {
                 triggerSwarmingEvent(colony, order);
@@ -47,7 +47,7 @@ public class NuptialFlightSystem {
         }
     }
 
-    private boolean checkConditions(Species.InsectOrder order, WeatherSystem weather) {
+    private boolean checkConditions(Species species, WeatherSystem weather) {
         float temp = weather.getTemperature();
         float humidity = weather.getHumidity();
         float wind = weather.getWindSpeed();
@@ -56,14 +56,28 @@ public class NuptialFlightSystem {
 
         if (rain > 1.0f) return false; // Flight inhibited during active heavy rain
 
+        float optTemp = species != null ? species.getOptimalTempCelsius() : 24.0f;
+        float minTemp = species != null ? species.getMinTempCelsius() : 15.0f;
+        float maxTemp = species != null ? species.getMaxTempCelsius() : 35.0f;
+
+        if (temp < minTemp || temp > maxTemp) return false;
+
+        String flightType = species != null ? species.getNuptialFlightType() : "AERIAL_SWARM";
+        if ("IN_NEST".equalsIgnoreCase(flightType)) {
+            return (temp >= optTemp - 5.0f && temp <= optTemp + 5.0f); // In-nest mating without atmospheric flight restriction
+        } else if ("BUDDING".equalsIgnoreCase(flightType)) {
+            return (temp >= optTemp - 4.0f && temp <= optTemp + 6.0f && wind <= 20.0f);
+        }
+
+        Species.InsectOrder order = species != null ? species.getInsectOrder() : Species.InsectOrder.ANT;
         return switch (order) {
-            case ANT -> (temp >= 20.0f && temp <= 32.0f && humidity >= 70.0f && wind <= 12.0f && isDay);
-            case BEE -> (temp >= 18.0f && temp <= 30.0f && wind <= 15.0f && isDay && weather.getWeatherState().flightSuitability > 0.8f);
-            case WASP -> (temp >= 15.0f && temp <= 26.0f && wind <= 18.0f && isDay);
-            case TERMITE -> (temp >= 22.0f && humidity >= 75.0f && wind <= 8.0f); // Often post-rain dusk/warm night
-            case APHID -> (temp >= 16.0f && temp <= 28.0f && wind <= 10.0f && isDay); // Winged alate dispersal
-            case THRIPS -> (temp >= 20.0f && temp <= 32.0f && wind <= 8.0f && isDay); // Gall colonization flight
-            case BEETLE -> (temp >= 18.0f && humidity >= 65.0f && wind <= 14.0f); // Wood dispersal flight
+            case ANT -> (temp >= (optTemp - 4.0f) && temp <= (optTemp + 8.0f) && humidity >= 65.0f && wind <= 12.0f && isDay);
+            case BEE -> (temp >= (optTemp - 6.0f) && temp <= (optTemp + 6.0f) && wind <= 15.0f && isDay && weather.getWeatherState().flightSuitability > 0.8f);
+            case WASP -> (temp >= (optTemp - 7.0f) && temp <= (optTemp + 5.0f) && wind <= 18.0f && isDay);
+            case TERMITE -> (temp >= (optTemp - 3.0f) && humidity >= 70.0f && wind <= 8.0f); // Often post-rain dusk/warm night
+            case APHID -> (temp >= (optTemp - 6.0f) && temp <= (optTemp + 6.0f) && wind <= 10.0f && isDay);
+            case THRIPS -> (temp >= (optTemp - 4.0f) && temp <= (optTemp + 6.0f) && wind <= 8.0f && isDay);
+            case BEETLE -> (temp >= (optTemp - 5.0f) && humidity >= 60.0f && wind <= 14.0f);
         };
     }
 

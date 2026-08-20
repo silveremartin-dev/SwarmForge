@@ -89,7 +89,6 @@ public class SpeciesEditorPane extends VBox {
     private TextField maxTempField;
     private Slider aggressionSlider;
     private Slider territorialitySlider;
-    private ComboBox<String> venomCombo;
 
     // Sensory & Perception Systems
     private CheckBox hasMagnetoreceptionCheckBox;
@@ -123,15 +122,7 @@ public class SpeciesEditorPane extends VBox {
     private String lastSelectedPreset = null;
 
     public SpeciesEditorPane() {
-        setSpacing(15);
-        setPadding(new Insets(15));
-
-        // Header Title
-        Label headerLabel = new Label("Concepteur d'Espèces Eusociales");
-        headerLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
-
-        // 1. Top Action Toolbar (Presets & File Operations)
-        HBox topToolbar = createTopToolbar();
+        setSpacing(10);
 
         // Warning Banner for parameter inconsistencies
         warningBannerBox = new VBox(8);
@@ -142,7 +133,7 @@ public class SpeciesEditorPane extends VBox {
         // 2. TabPane for Parameter Sections
         TabPane tabPane = createTabPane();
 
-        getChildren().addAll(headerLabel, topToolbar, warningBannerBox, new Separator(), tabPane);
+        getChildren().addAll(buildHeader(), warningBannerBox, tabPane);
 
         casteRows.addListener((javafx.collections.ListChangeListener<CasteRow>) c -> {
             onFieldEdited();
@@ -160,6 +151,26 @@ public class SpeciesEditorPane extends VBox {
         }
     }
 
+    private VBox buildHeader() {
+        VBox v = new VBox(6);
+        v.setPadding(new Insets(8, 10, 5, 10));
+
+        HBox r = new HBox(8);
+        r.setAlignment(Pos.CENTER_LEFT);
+
+        Label title = new Label("Concepteur d'Espèces Eusociales");
+        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+
+        Region sp = new Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+
+        HBox toolbar = createTopToolbar();
+
+        r.getChildren().addAll(title, sp, toolbar);
+        v.getChildren().addAll(r, new Separator());
+        return v;
+    }
+
     public void setOnApply(Consumer<CustomSpecies> listener) {
         this.onApplyListener = listener;
     }
@@ -171,7 +182,6 @@ public class SpeciesEditorPane extends VBox {
     private HBox createTopToolbar() {
         HBox bar = new HBox(12);
         bar.setAlignment(Pos.CENTER_LEFT);
-        bar.setPadding(new Insets(10));
 
         I18nManager i18n = I18nManager.getInstance();
 
@@ -253,28 +263,28 @@ public class SpeciesEditorPane extends VBox {
         mainTabPane = new TabPane();
         mainTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        Tab tabTaxonomy = new Tab("Taxonomie & Groupes", createTaxonomyPane());
+        Tab tabTaxonomy = new Tab("Taxonomie", createTaxonomyPane());
         tabTaxonomy.setGraphic(new FontIcon(Feather.BOOK));
 
         Tab tabQueens = new Tab("Colonie & Reines", createQueensPane());
         tabQueens.setGraphic(new FontIcon(Feather.AWARD));
 
-        Tab tabStages = new Tab("Stades de Vie", createStagesPane());
-        tabStages.setGraphic(new FontIcon(Feather.CLOCK));
-
         Tab tabCastes = new Tab("Castes & Morphologie", createCastesPane());
         tabCastes.setGraphic(new FontIcon(Feather.USERS));
+
+        Tab tabStages = new Tab("Stades de Vie", createStagesPane());
+        tabStages.setGraphic(new FontIcon(Feather.CLOCK));
 
         Tab tabDiet = new Tab("Régime & Métabolisme", createDietPane());
         tabDiet.setGraphic(new FontIcon(Feather.FEATHER));
 
-        Tab tabNest = new Tab("Nid & Comportement", createNestPane());
-        tabNest.setGraphic(new FontIcon(Feather.HOME));
-
         Tab tabSensors = new Tab("Capteurs & Perception", createSensorsPane());
         tabSensors.setGraphic(new FontIcon(Feather.EYE));
 
-        List<Tab> tabs = List.of(tabTaxonomy, tabQueens, tabStages, tabCastes, tabDiet, tabNest, tabSensors);
+        Tab tabNest = new Tab("Nids & Comportements", createNestPane());
+        tabNest.setGraphic(new FontIcon(Feather.HOME));
+
+        List<Tab> tabs = List.of(tabTaxonomy, tabQueens, tabCastes, tabStages, tabDiet, tabSensors, tabNest);
         mainTabPane.getTabs().addAll(tabs);
         VBox.setVgrow(mainTabPane, Priority.ALWAYS);
         return mainTabPane;
@@ -426,6 +436,9 @@ public class SpeciesEditorPane extends VBox {
         );
         nuptialFlightCombo.getSelectionModel().select("AERIAL_SWARM");
 
+        colonySizeField = new TextField("15000");
+        megaColonyCheckBox = new CheckBox("Forme des Supercolonies (Agglomération de nids / Unicolonialité)");
+
         grid.addRow(0, createTooltipLabel("Structure Gynique (Mode Reine):", "Mode d'organisation des reines reproductrices : Monogyne (1 reine), Polygyne (plusieurs reines), ou Gamergates (ouvrières pondeuses).", queenModeCombo, "Monogyne"), queenModeCombo);
         grid.addRow(1, createTooltipLabel("Effectif de Reines Fondatrices (ind):", "Nombre initial ou maximum de reines reproductrices fertiles résidant dans la colonie.", queenCountSpinner), queenCountSpinner);
         grid.addRow(2, createTooltipLabel("Durée de Vie Reine (jours):", "Longévité maximale de la reine avant sénescence naturelle et fin de fertilité.", queenLifespanField), queenLifespanField);
@@ -433,6 +446,8 @@ public class SpeciesEditorPane extends VBox {
         grid.addRow(4, createTooltipLabel("Roi Reproducteur (Isoptera):", "Présence d'un mâle reproducteur permanent (roi) vivant aux côtés de la reine, caractéristique des Termites.", hasKingCheckBox, "King"), hasKingCheckBox);
         grid.addRow(5, createTooltipLabel("Durée de Vie Roi (jours):", "Longévité du roi reproducteur chez les espèces isoptères.", kingLifespanField), kingLifespanField);
         grid.addRow(6, createTooltipLabel("Vol Nuptial / Mode d'Essaimage:", "Stratégie de dispersion et d'accouplement : Essaimage aérien, division d'essaim, bouturage de nid ou accouplement intranidale.", nuptialFlightCombo, "Nuptial"), nuptialFlightCombo);
+        grid.addRow(7, createTooltipLabel("Population Colonie Mature (ind):", "Taille moyenne de la population d'une colonie mature à l'équilibre écologique.", colonySizeField), colonySizeField);
+        grid.addRow(8, createTooltipLabel("Supercolonies (Unicolonialité):", "Capacité à former un réseau de nids inter-connectés sans agressivité intra-spécifique.", megaColonyCheckBox), megaColonyCheckBox);
 
         return wrapScroll(grid);
     }
@@ -542,7 +557,7 @@ public class SpeciesEditorPane extends VBox {
 
         TableColumn<CasteRow, Double> bodyCol = new TableColumn<>("Longueur (mm)");
         bodyCol.setCellValueFactory(new PropertyValueFactory<>("bodyLengthMm"));
-        bodyCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.DoubleStringConverter()));
+        bodyCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedDoubleStringConverter()));
         bodyCol.setOnEditCommit(e -> {
             e.getRowValue().setBodyLengthMm(e.getNewValue());
             casteTable.refresh();
@@ -551,7 +566,7 @@ public class SpeciesEditorPane extends VBox {
 
         TableColumn<CasteRow, Double> headCol = new TableColumn<>("Tête (mm)");
         headCol.setCellValueFactory(new PropertyValueFactory<>("headWidthMm"));
-        headCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.DoubleStringConverter()));
+        headCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedDoubleStringConverter()));
         headCol.setOnEditCommit(e -> {
             e.getRowValue().setHeadWidthMm(e.getNewValue());
             casteTable.refresh();
@@ -560,6 +575,13 @@ public class SpeciesEditorPane extends VBox {
 
         TableColumn<CasteRow, Double> tunnelCol = new TableColumn<>("Ø Tunnel Min (mm)");
         tunnelCol.setCellValueFactory(new PropertyValueFactory<>("minTunnelMm"));
+        tunnelCol.setCellFactory(col -> new TableCell<CasteRow, Double>() {
+            @Override
+            protected void updateItem(Double item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : formatDec(item));
+            }
+        });
         tunnelCol.setPrefWidth(125);
 
         TableColumn<CasteRow, Integer> lifeCol = new TableColumn<>("Vie (jours)");
@@ -570,13 +592,13 @@ public class SpeciesEditorPane extends VBox {
 
         TableColumn<CasteRow, Float> healthCol = new TableColumn<>("Santé");
         healthCol.setCellValueFactory(new PropertyValueFactory<>("health"));
-        healthCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.FloatStringConverter()));
+        healthCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         healthCol.setOnEditCommit(e -> e.getRowValue().setHealth(e.getNewValue()));
         healthCol.setPrefWidth(65);
 
         TableColumn<CasteRow, Float> dmgCol = new TableColumn<>("Attaque");
         dmgCol.setCellValueFactory(new PropertyValueFactory<>("damage"));
-        dmgCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.FloatStringConverter()));
+        dmgCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         dmgCol.setOnEditCommit(e -> e.getRowValue().setDamage(e.getNewValue()));
         dmgCol.setPrefWidth(65);
 
@@ -608,7 +630,7 @@ public class SpeciesEditorPane extends VBox {
 
         TableColumn<CasteRow, Float> ratioCol = new TableColumn<>("Ratio Cible");
         ratioCol.setCellValueFactory(new PropertyValueFactory<>("targetRatio"));
-        ratioCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.FloatStringConverter()));
+        ratioCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         ratioCol.setOnEditCommit(e -> e.getRowValue().setTargetRatio(e.getNewValue()));
         ratioCol.setPrefWidth(75);
 
@@ -620,41 +642,68 @@ public class SpeciesEditorPane extends VBox {
 
         TableColumn<CasteRow, Float> forageCol = new TableColumn<>("Poids Récolte");
         forageCol.setCellValueFactory(new PropertyValueFactory<>("foragingWeight"));
-        forageCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.FloatStringConverter()));
+        forageCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         forageCol.setOnEditCommit(e -> e.getRowValue().setForagingWeight(e.getNewValue()));
         forageCol.setPrefWidth(85);
 
         TableColumn<CasteRow, Float> defCol = new TableColumn<>("Poids Défense");
         defCol.setCellValueFactory(new PropertyValueFactory<>("defenseWeight"));
-        defCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.FloatStringConverter()));
+        defCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         defCol.setOnEditCommit(e -> e.getRowValue().setDefenseWeight(e.getNewValue()));
         defCol.setPrefWidth(85);
 
         TableColumn<CasteRow, Float> excCol = new TableColumn<>("Poids Excavation");
         excCol.setCellValueFactory(new PropertyValueFactory<>("excavationWeight"));
-        excCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.FloatStringConverter()));
+        excCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         excCol.setOnEditCommit(e -> e.getRowValue().setExcavationWeight(e.getNewValue()));
         excCol.setPrefWidth(95);
 
         TableColumn<CasteRow, Float> nurseCol = new TableColumn<>("Poids Soins");
         nurseCol.setCellValueFactory(new PropertyValueFactory<>("nursingWeight"));
-        nurseCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.FloatStringConverter()));
+        nurseCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         nurseCol.setOnEditCommit(e -> e.getRowValue().setNursingWeight(e.getNewValue()));
         nurseCol.setPrefWidth(75);
 
-        TableColumn<CasteRow, String> venomTypeCol = new TableColumn<>("Arme Venin");
+        TableColumn<CasteRow, String> venomTypeCol = new TableColumn<>("Armes / Venin");
         venomTypeCol.setCellValueFactory(new PropertyValueFactory<>("venomType"));
-        venomTypeCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn());
-        venomTypeCol.setOnEditCommit(e -> e.getRowValue().setVenomType(e.getNewValue()));
-        venomTypeCol.setPrefWidth(110);
+        venomTypeCol.setCellFactory(col -> new TableCell<CasteRow, String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(getVenomTitle(item));
+                }
+            }
+        });
+        venomTypeCol.setPrefWidth(140);
 
         TableColumn<CasteRow, Float> venomToxCol = new TableColumn<>("Toxicité Venin");
         venomToxCol.setCellValueFactory(new PropertyValueFactory<>("venomToxicity"));
-        venomToxCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.FloatStringConverter()));
+        venomToxCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         venomToxCol.setOnEditCommit(e -> e.getRowValue().setVenomToxicity(e.getNewValue()));
         venomToxCol.setPrefWidth(90);
 
-        casteTable.getColumns().addAll(nameCol, bodyCol, headCol, tunnelCol, lifeCol, healthCol, dmgCol, flyCol, ratioCol, archCol, forageCol, defCol, excCol, nurseCol, venomTypeCol, venomToxCol);
+        TableColumn<CasteRow, Float> biteCol = new TableColumn<>("Morsure (MPa)");
+        biteCol.setCellValueFactory(new PropertyValueFactory<>("bitingForceMpa"));
+        biteCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
+        biteCol.setOnEditCommit(e -> e.getRowValue().setBitingForceMpa(e.getNewValue()));
+        biteCol.setPrefWidth(95);
+
+        TableColumn<CasteRow, Float> loadCol = new TableColumn<>("Portance (g/g)");
+        loadCol.setCellValueFactory(new PropertyValueFactory<>("maxPayloadRatio"));
+        loadCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
+        loadCol.setOnEditCommit(e -> e.getRowValue().setMaxPayloadRatio(e.getNewValue()));
+        loadCol.setPrefWidth(90);
+
+        TableColumn<CasteRow, Float> hzCol = new TableColumn<>("Ailes (Hz)");
+        hzCol.setCellValueFactory(new PropertyValueFactory<>("wingbeatFrequencyHz"));
+        hzCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
+        hzCol.setOnEditCommit(e -> e.getRowValue().setWingbeatFrequencyHz(e.getNewValue()));
+        hzCol.setPrefWidth(80);
+
+        casteTable.getColumns().addAll(nameCol, bodyCol, headCol, tunnelCol, lifeCol, healthCol, dmgCol, flyCol, biteCol, loadCol, hzCol, ratioCol, archCol, forageCol, defCol, excCol, nurseCol, venomTypeCol, venomToxCol);
 
         // Controls to add/edit caste (Inspector Panel)
         VBox casteInspectorCard = new VBox(10);
@@ -683,44 +732,78 @@ public class SpeciesEditorPane extends VBox {
         TextField excavationWField = new TextField("0.20");
         TextField nursingWField = new TextField("0.15");
 
-        ComboBox<String> casteVenomCombo = new ComboBox<>();
-        casteVenomCombo.getItems().addAll("NONE", "FORMIC_ACID", "SOLENOPSIN", "NEUROTOXIN", "CYTOTOXIN", "TERPENE_RESIN", "AUTOTHYSIS_BOMB", "ACID_SPRAY", "POWERFUL_MANDIBLES");
-        ComboBoxTooltipHelper.setupDescriptiveComboBox(casteVenomCombo, SpeciesEditorPane::getVenomTitle, SpeciesEditorPane::getVenomDescription);
-        casteVenomCombo.setValue("NONE");
+        // Motor & Biomechanical Caste Parameters
+        TextField casteWingbeatHzF = new TextField("0.0");
+        CheckBox casteHoverCheck = new CheckBox("Vol Stationnaire");
+        TextField castePayloadRatioF = new TextField("5.0");
+        TextField casteBitingForceMpaF = new TextField("15.0");
+        CheckBox casteAutothysisCheck = new CheckBox("Défense Autothysie Explosive");
+        CheckBox casteAroliaCheck = new CheckBox("Adhésion Ventouses Arolia");
+        casteAroliaCheck.setSelected(true);
+
+        MenuButton casteVenomMenuButton = new MenuButton("🚫 Sans Venin (Attaque Physique)");
+        casteVenomMenuButton.setPrefWidth(220);
+        casteVenomMenuButton.getStyleClass().add("btn-secondary");
+
+        List<String> venomOptions = List.of(
+            "NONE", "FORMIC_ACID", "VENOMOUS_STING", "CHEMICAL_SPRAY", "ACID_SPRAY",
+            "SOLENOPSIN", "NEUROTOXIN", "CYTOTOXIN", "TERPENE_RESIN", "AUTOTHYSIS_BOMB", "POWERFUL_MANDIBLES"
+        );
+
+        java.util.Map<String, CheckMenuItem> casteVenomCheckItems = new java.util.LinkedHashMap<>();
+        for (String opt : venomOptions) {
+            CheckMenuItem item = new CheckMenuItem(getVenomTitle(opt));
+            item.setOnAction(e -> {
+                if ("NONE".equals(opt) && item.isSelected()) {
+                    casteVenomCheckItems.forEach((k, v) -> { if (!"NONE".equals(k)) v.setSelected(false); });
+                } else if (!"NONE".equals(opt) && item.isSelected()) {
+                    if (casteVenomCheckItems.containsKey("NONE")) casteVenomCheckItems.get("NONE").setSelected(false);
+                }
+                updateVenomMenuText(casteVenomMenuButton, casteVenomCheckItems);
+                onFieldEdited();
+            });
+            casteVenomCheckItems.put(opt, item);
+            casteVenomMenuButton.getItems().add(item);
+        }
+        updateVenomMenuText(casteVenomMenuButton, casteVenomCheckItems);
+
         TextField casteVenomToxField = new TextField("10.0");
 
         casteTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 casteNameF.setText(newVal.getName());
-                casteBodyF.setText(String.valueOf(newVal.getBodyLengthMm()));
-                casteHeadF.setText(String.valueOf(newVal.getHeadWidthMm()));
+                casteBodyF.setText(formatDec(newVal.getBodyLengthMm()));
+                casteHeadF.setText(formatDec(newVal.getHeadWidthMm()));
                 casteLifeF.setText(String.valueOf(newVal.getLifespan()));
-                casteHealthF.setText(String.valueOf(newVal.getHealth()));
-                casteDmgF.setText(String.valueOf(newVal.getDamage()));
+                casteHealthF.setText(formatDec(newVal.getHealth()));
+                casteDmgF.setText(formatDec(newVal.getDamage()));
                 casteFlyCheck.setSelected(newVal.isCanFly());
 
-                targetRatioF.setText(String.valueOf(newVal.getTargetRatio()));
+                targetRatioF.setText(formatDec(newVal.getTargetRatio()));
                 decisionArchCombo.setValue(newVal.getDecisionArch());
-                foragingWField.setText(String.valueOf(newVal.getForagingWeight()));
-                defenseWField.setText(String.valueOf(newVal.getDefenseWeight()));
-                excavationWField.setText(String.valueOf(newVal.getExcavationWeight()));
-                nursingWField.setText(String.valueOf(newVal.getNursingWeight()));
-                casteVenomCombo.setValue(newVal.getVenomType());
-                casteVenomToxField.setText(String.valueOf(newVal.getVenomToxicity()));
+                foragingWField.setText(formatDec(newVal.getForagingWeight()));
+                defenseWField.setText(formatDec(newVal.getDefenseWeight()));
+                excavationWField.setText(formatDec(newVal.getExcavationWeight()));
+                nursingWField.setText(formatDec(newVal.getNursingWeight()));
+                setSelectedVenomTypes(casteVenomCheckItems, casteVenomMenuButton, newVal.getVenomType());
+                casteVenomToxField.setText(formatDec(newVal.getVenomToxicity()));
+
+                casteWingbeatHzF.setText(formatDec(newVal.getWingbeatFrequencyHz()));
+                casteHoverCheck.setSelected(newVal.isHasHoveringCapability());
+                castePayloadRatioF.setText(formatDec(newVal.getMaxPayloadRatio()));
+                casteBitingForceMpaF.setText(formatDec(newVal.getBitingForceMpa()));
+                casteAutothysisCheck.setSelected(newVal.isHasAutothysis());
+                casteAroliaCheck.setSelected(newVal.isHasAroliaAdhesion());
             }
         });
 
         casteForm.addRow(0, createTooltipLabel("Nom Caste:", "Appellation fonctionnelle de la caste au sein de la colonie.", casteNameF), casteNameF, createTooltipLabel("Longueur Corps (mm):", "Longueur totale du corps du sommet de la tête à l'apex de l'abdomen en mm.", casteBodyF), casteBodyF, createTooltipLabel("Largeur Tête (mm):", "Largeur maximale de la capsule céphalique déterminant le diamètre minimal des galeries.", casteHeadF), casteHeadF);
         casteForm.addRow(1, createTooltipLabel("Durée de vie (jours):", "Espérance de vie moyenne des membres de cette caste en jours.", casteLifeF), casteLifeF, createTooltipLabel("Santé de base:", "Points de vie initiaux de la caste.", casteHealthF), casteHealthF, createTooltipLabel("Dégâts Attaque:", "Valeur des dégâts physiques infligés par coup ou morsure.", casteDmgF), casteDmgF);
-        casteForm.addRow(2, createTooltipLabel("Ratio Cible (%):", "Pourcentage cible de cette caste dans la colonie", targetRatioF), targetRatioF,
-                createTooltipLabel("Modèle Décision:", "Architecture cognitive (BDI, Réseau de Neurones, FSM, Arbre de Comportement, Logique Floue)", decisionArchCombo, "FSM"), decisionArchCombo,
-                createTooltipLabel("Capacité Vol:", "Indique si les individus de cette caste sont munis d'ailes et capables de piloter le vol.", casteFlyCheck), casteFlyCheck);
-        casteForm.addRow(3, createTooltipLabel("Poids Récolte:", "Poids d'allocation pour le forage", foragingWField), foragingWField,
-                createTooltipLabel("Poids Défense:", "Poids d'allocation pour la défense/garde", defenseWField), defenseWField,
-                createTooltipLabel("Poids Excavation:", "Poids d'allocation pour l'excavation", excavationWField), excavationWField);
-        casteForm.addRow(4, createTooltipLabel("Poids Soins:", "Poids d'allocation pour le couvain", nursingWField), nursingWField,
-                createTooltipLabel("Arme Venin:", "Type de venin ou projection chimique spécifique à la caste", casteVenomCombo), casteVenomCombo,
-                createTooltipLabel("Toxicité Venin:", "Dégâts ou effet toxique par action de venin", casteVenomToxField), casteVenomToxField);
+        casteForm.addRow(2, createTooltipLabel("Capacité Vol:", "Indique si les individus de cette caste sont munis d'ailes et capables de piloter le vol.", casteFlyCheck), casteFlyCheck, createTooltipLabel("Battement Ailes (Hz):", "Fréquence d'oscillation alaire spécifique si cette caste vole (0Hz si aptère).", casteWingbeatHzF), casteWingbeatHzF, createTooltipLabel("Vol Stationnaire:", "Capacité à maintenir une position immobile en vol battu.", casteHoverCheck), casteHoverCheck);
+        casteForm.addRow(3, createTooltipLabel("Force Morsure (MPa):", "Force mandibulaire de cisaillement développée par la musculature céphalique de cette caste.", casteBitingForceMpaF, "Mandibule"), casteBitingForceMpaF, createTooltipLabel("Capacité Portance (g/g):", "Multiplicateur de charge transportable rapporté au propre poids du corps de cette caste.", castePayloadRatioF), castePayloadRatioF, createTooltipLabel("Ratio Cible (%):", "Pourcentage cible de cette caste parmi les ouvrières de la colonie (ex: 80% ouvrières, 20% soldats). Pour les castes reproductrices (Reines, Rois, Mâles), ce ratio est de 0.00 car leur population dépend du mode de fondation.", targetRatioF), targetRatioF);
+        casteForm.addRow(4, createTooltipLabel("Modèle Décision:", "Architecture cognitive (BDI, Réseau de Neurones, FSM, Arbre de Comportement, Logique Floue)", decisionArchCombo, "FSM"), decisionArchCombo, createTooltipLabel("Poids Récolte:", "Poids d'allocation pour le forage", foragingWField), foragingWField, createTooltipLabel("Poids Défense:", "Poids de la défense/garde", defenseWField), defenseWField);
+        casteForm.addRow(5, createTooltipLabel("Poids Excavation:", "Poids d'allocation pour l'excavation", excavationWField), excavationWField, createTooltipLabel("Poids Soins:", "Poids d'allocation pour le couvain", nursingWField), nursingWField, createTooltipLabel("Adhésion Ventouses Arolia:", "Présence de ventouses tarsiennes arolia pour marcher sur parois verticales & plafonds.", casteAroliaCheck, "Arolia"), casteAroliaCheck);
+        casteForm.addRow(6, createTooltipLabel("Armes & Venin (Multi-sélection):", "Armes défensives et toxines chimiques équipées par cette caste (sélection multiple possible)", casteVenomMenuButton), casteVenomMenuButton, createTooltipLabel("Toxicité Venin:", "Dégâts ou effet toxique par action de venin", casteVenomToxField), casteVenomToxField, createTooltipLabel("Autothysie Explosive:", "Défense suicidaire par rupture abdominale propre à cette caste.", casteAutothysisCheck, "Autothysie"), casteAutothysisCheck);
 
         HBox casteBtns = new HBox(10);
         Button btnAddCaste = new Button("Ajouter / Mettre à jour Caste", new FontIcon(Feather.PLUS_CIRCLE));
@@ -729,6 +812,7 @@ public class SpeciesEditorPane extends VBox {
             try {
                 double body = Double.parseDouble(casteBodyF.getText());
                 double head = Double.parseDouble(casteHeadF.getText());
+                String selectedVenoms = getSelectedVenomTypes(casteVenomCheckItems);
                 CasteRow sel = casteTable.getSelectionModel().getSelectedItem();
                 if (sel != null && sel.getName().equalsIgnoreCase(casteNameF.getText())) {
                     sel.setBodyLengthMm(body);
@@ -743,8 +827,15 @@ public class SpeciesEditorPane extends VBox {
                     sel.setDefenseWeight(Float.parseFloat(defenseWField.getText()));
                     sel.setExcavationWeight(Float.parseFloat(excavationWField.getText()));
                     sel.setNursingWeight(Float.parseFloat(nursingWField.getText()));
-                    sel.setVenomType(casteVenomCombo.getValue());
+                    sel.setVenomType(selectedVenoms);
                     sel.setVenomToxicity(Float.parseFloat(casteVenomToxField.getText()));
+
+                    sel.setWingbeatFrequencyHz(Float.parseFloat(casteWingbeatHzF.getText()));
+                    sel.setHasHoveringCapability(casteHoverCheck.isSelected());
+                    sel.setMaxPayloadRatio(Float.parseFloat(castePayloadRatioF.getText()));
+                    sel.setBitingForceMpa(Float.parseFloat(casteBitingForceMpaF.getText()));
+                    sel.setHasAutothysis(casteAutothysisCheck.isSelected());
+                    sel.setHasAroliaAdhesion(casteAroliaCheck.isSelected());
                     casteTable.refresh();
                 } else {
                     CasteRow row = new CasteRow(
@@ -762,8 +853,15 @@ public class SpeciesEditorPane extends VBox {
                     row.setDefenseWeight(Float.parseFloat(defenseWField.getText()));
                     row.setExcavationWeight(Float.parseFloat(excavationWField.getText()));
                     row.setNursingWeight(Float.parseFloat(nursingWField.getText()));
-                    row.setVenomType(casteVenomCombo.getValue());
+                    row.setVenomType(selectedVenoms);
                     row.setVenomToxicity(Float.parseFloat(casteVenomToxField.getText()));
+
+                    row.setWingbeatFrequencyHz(Float.parseFloat(casteWingbeatHzF.getText()));
+                    row.setHasHoveringCapability(casteHoverCheck.isSelected());
+                    row.setMaxPayloadRatio(Float.parseFloat(castePayloadRatioF.getText()));
+                    row.setBitingForceMpa(Float.parseFloat(casteBitingForceMpaF.getText()));
+                    row.setHasAutothysis(casteAutothysisCheck.isSelected());
+                    row.setHasAroliaAdhesion(casteAroliaCheck.isSelected());
                     casteRows.add(row);
                 }
             } catch (Exception ex) {
@@ -811,30 +909,21 @@ public class SpeciesEditorPane extends VBox {
 
         foodConsumptionField = new TextField("0.5");
         waterReqField = new TextField("0.2");
+
+        // Legacy / fallback fields maintained for CustomSpecies model compatibility
         workerLifespanField = new TextField("6000");
         workerSpeedField = new TextField("0.5");
-        viewDistanceField = new TextField("5.0");
-        colonySizeField = new TextField("15000");
-
-        megaColonyCheckBox = new CheckBox("Forme des Supercolonies (Agglomération de nids)");
-
-        flyCheckBox = new CheckBox("Ouvrières capables de voler (Abeilles / Guêpes)");
+        flyCheckBox = new CheckBox("Ouvrières capables de voler");
 
         grid.addRow(0, createTooltipLabel("Nourriture Principale:", "Source trophique primaire consommée pour l'énergie métabolique de la colonie."), primaryDietCombo);
         grid.addRow(1, createTooltipLabel("Nourriture Secondaire:", "Source trophique complémentaire (ex: apport protéique en période de couvain)."), secondaryDietCombo);
         grid.addRow(2, createTooltipLabel("Consommation Métabolique (g/ind/j):", "Masse de nourriture consommée quotidiennement par un individu adulte."), foodConsumptionField);
         grid.addRow(3, createTooltipLabel("Besoin Hydrique (mL/ind/j):", "Volume d'eau nécessaire quotidiennement pour maintenir l'hydratation et le métabolisme."), waterReqField);
-        grid.addRow(4, createTooltipLabel("Espérance de Vie Ouvrière (jours):", "Durée de vie moyenne des ouvrières adultes en l'absence de traumatisme."), workerLifespanField);
-        grid.addRow(5, createTooltipLabel("Vitesse Maximale Déplacement (cm/s):", "Vitesse de marche au sol dans des conditions idéales de terrain."), workerSpeedField);
-        grid.addRow(6, createTooltipLabel("Rayon Détection Visuelle (cm):", "Distance maximale de perception visuelle des objets, ennemis et nourriture."), viewDistanceField);
-        grid.addRow(7, createTooltipLabel("Population Colonie Mature (ind):", "Taille moyenne de la population d'une colonie mature à l'équilibre écologique."), colonySizeField);
-        grid.addRow(8, createTooltipLabel("Supercolonies (Unicolonialité):", "Capacité à former un réseau de nids inter-connectés sans agressivité intra-spécifique."), megaColonyCheckBox);
-        grid.addRow(9, createTooltipLabel("Capacité de Vol Ouvrières:", "Indique si les ouvrières adultes possèdent des ailes fonctionnelles pour le vol (ex: Abeilles, Guêpes)."), flyCheckBox);
 
         return wrapScroll(grid);
     }
 
-    // --- Tab 6: Nest & Behavior ---
+    // --- Tab 7: Nest & Behavior ---
     private ScrollPane createNestPane() {
         GridPane grid = createGrid();
 
@@ -868,10 +957,6 @@ public class SpeciesEditorPane extends VBox {
         territorialitySlider.setShowTickLabels(true);
         territorialitySlider.setShowTickMarks(true);
 
-        venomCombo = new ComboBox<>(FXCollections.observableArrayList("NONE", "FORMIC_ACID", "VENOMOUS_STING", "CHEMICAL_SPRAY", "POWERFUL_MANDIBLES"));
-        ComboBoxTooltipHelper.setupDescriptiveComboBox(venomCombo, SpeciesEditorPane::getVenomTitle, SpeciesEditorPane::getVenomDescription);
-        venomCombo.getSelectionModel().select("FORMIC_ACID");
-
         optTempField.textProperty().addListener((obs, o, n) -> validateParameters());
         minTempField.textProperty().addListener((obs, o, n) -> validateParameters());
         maxTempField.textProperty().addListener((obs, o, n) -> validateParameters());
@@ -893,8 +978,7 @@ public class SpeciesEditorPane extends VBox {
         grid.addRow(3, createTooltipLabel("Température Maxima (°C):", "Température critique au-dessus de laquelle survient le choc thermique et la mortalité."), maxTempField);
         grid.addRow(4, createTooltipLabel("Niveau d'Agressivité:", "Propension comportementale à engager le combat contre d'autres colonies."), aggressionSlider);
         grid.addRow(5, createTooltipLabel("Territorialité:", "Intensité de patrouille et défense exclusive de la zone d'influence autour du nid."), territorialitySlider);
-        grid.addRow(6, createTooltipLabel("Arme / Type de Venin:", "Système défensif ou toxine éjectée (acide formique, venin à aiguillon, mandibules)."), venomCombo);
-        grid.addRow(7, createTooltipLabel("Génération de Nid Synchronisée:", "Ouvre le Générateur de Nids et pré-configure l'architecture, le matériau et la distribution des chambres pour cette espèce."), btnGenerateSpeciesNest);
+        grid.addRow(6, createTooltipLabel("Génération de Nid Synchronisée:", "Ouvre le Générateur de Nids et pré-configure l'architecture, le matériau et la distribution des chambres pour cette espèce."), btnGenerateSpeciesNest);
 
         return wrapScroll(grid);
     }
@@ -946,6 +1030,20 @@ public class SpeciesEditorPane extends VBox {
             }
         } catch (Exception ignored) {}
 
+        // 5. Male Caste warning check for Hymenoptera
+        String insectType = insectTypeCombo != null ? insectTypeCombo.getValue() : "ANT";
+        if (insectType != null && (insectType.equalsIgnoreCase("ANT") || insectType.equalsIgnoreCase("BEE") || insectType.equalsIgnoreCase("WASP"))) {
+            boolean hasMaleCaste = casteRows.stream().anyMatch(r ->
+                r.getName().toLowerCase().contains("mâle") ||
+                r.getName().toLowerCase().contains("male") ||
+                r.getName().toLowerCase().contains("drone") ||
+                r.getName().toLowerCase().contains("bourdon")
+            );
+            if (!hasMaleCaste) {
+                warnings.add("Accouplement & Vol Nuptial : Aucune caste 'Mâle Reproducteur' (Alé / Faux-bourdon) n'est actuellement définie dans le tableau des castes.");
+            }
+        }
+
         // Update warning banner
         warningBannerBox.getChildren().clear();
         if (warnings.isEmpty()) {
@@ -976,6 +1074,15 @@ public class SpeciesEditorPane extends VBox {
                         validateParameters();
                     });
                     row.getChildren().addAll(wLbl, btnAddKing);
+                } else if (w.contains("caste 'Mâle Reproducteur'")) {
+                    Button btnAddMale = new Button("➕ Ajouter la caste 'Mâle Reproducteur'", new FontIcon(Feather.PLUS_CIRCLE));
+                    btnAddMale.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+                    btnAddMale.setOnAction(e -> {
+                        CasteRow maleRow = new CasteRow("Mâle Reproducteur (Alé)", 4.5, 1.1, 500, 45, 0, true);
+                        casteRows.add(maleRow);
+                        validateParameters();
+                    });
+                    row.getChildren().addAll(wLbl, btnAddMale);
                 } else if (w.contains("Monogyne")) {
                     Button btnFixMonogyne = new Button("🔧 Ajuster à 1 reine", new FontIcon(Feather.CHECK));
                     btnFixMonogyne.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
@@ -1013,6 +1120,7 @@ public class SpeciesEditorPane extends VBox {
         thermoSensField = new TextField("0.5");
         gasSensField = new TextField("400.0");
         visualAcuityField = new TextField("1.0");
+        viewDistanceField = new TextField("5.0");
         minLightField = new TextField("0.05");
 
         hasVibrationSensingCheckBox = new CheckBox("Perception Vibrations du Substrat (Organe de Johnston / Tambourinage alerte)");
@@ -1033,43 +1141,19 @@ public class SpeciesEditorPane extends VBox {
         gridSensors.addRow(2, createTooltipLabel("Sensibilité Thermique (Δ°C/mm):", "Capacité à détecter des gradients de température pour la thermorégulation.", thermoSensField), thermoSensField);
         gridSensors.addRow(3, createTooltipLabel("Seuil Détection CO₂ Nodal (ppm):", "Seuil de détection du dioxyde de carbone pour la ventilation du nid en parties par million.", gasSensField), gasSensField);
         gridSensors.addRow(4, createTooltipLabel("Acuité Visuelle Ommatediale (0-1):", "Résolution visuelle relative fournie par les ommatidies des yeux composés.", visualAcuityField), visualAcuityField);
-        gridSensors.addRow(5, createTooltipLabel("Seuil Luminosité Minimale (lux):", "Niveau de lumière minimal permettant la vision nocturne ou crépusculaire.", minLightField), minLightField);
-        gridSensors.addRow(6, createTooltipLabel("Perception Vibrations Substrat (Subgenual):", "Sensibilité aux vibrations sismiques et mécaniques transmises par le sol.", hasVibrationSensingCheckBox, "Subgenual"), hasVibrationSensingCheckBox);
-        gridSensors.addRow(7, createTooltipLabel("Seuil Vibration Substrat (dB):", "Intensité minimale des vibrations mesurable par l'organe subgénual en décibels.", vibrationSensField), vibrationSensField);
-        gridSensors.addRow(8, createTooltipLabel("Hygroréception (Humidité Relative):", "Capacité à percevoir les gradients d'humidité atmosphérique et du sol.", hasHygroreceptionCheckBox), hasHygroreceptionCheckBox);
-        gridSensors.addRow(9, createTooltipLabel("Sensibilité Humidité Relative (%):", "Gradient d'humidité minimum détectable par les récepteurs antennaires en pourcentage.", hygroSensField), hygroSensField);
-        gridSensors.addRow(10, createTooltipLabel("Champ Électrostatique Mimétique:", "Sensibilité aux charges électrostatiques atmosphériques et florales.", hasElectrosensingCheckBox), hasElectrosensingCheckBox);
-        gridSensors.addRow(11, createTooltipLabel("Seuil Électrique Atmosphérique (V/m):", "Seuil de détection du champ électrique en Volts par mètre.", electroSensField), electroSensField);
-        gridSensors.addRow(12, createTooltipLabel("Boussole Lumière Polarisée UV:", "Utilisation du motif de polarisation UV du ciel pour la navigation spatiale rétrospective.", hasPolarizedLightCheckBox, "UV"), hasPolarizedLightCheckBox);
+        gridSensors.addRow(5, createTooltipLabel("Rayon Détection Visuelle (cm):", "Distance maximale de perception visuelle des objets, ennemis et nourriture.", viewDistanceField), viewDistanceField);
+        gridSensors.addRow(6, createTooltipLabel("Seuil Luminosité Minimale (lux):", "Niveau de lumière minimal permettant la vision nocturne ou crépusculaire.", minLightField), minLightField);
+        gridSensors.addRow(7, createTooltipLabel("Perception Vibrations Substrat (Subgenual):", "Sensibilité aux vibrations sismiques et mécaniques transmises par le sol.", hasVibrationSensingCheckBox, "Subgenual"), hasVibrationSensingCheckBox);
+        gridSensors.addRow(8, createTooltipLabel("Seuil Vibration Substrat (dB):", "Intensité minimale des vibrations mesurable par l'organe subgénual en décibels.", vibrationSensField), vibrationSensField);
+        gridSensors.addRow(9, createTooltipLabel("Hygroréception (Humidité Relative):", "Capacité à percevoir les gradients d'humidité atmosphérique et du sol.", hasHygroreceptionCheckBox), hasHygroreceptionCheckBox);
+        gridSensors.addRow(10, createTooltipLabel("Sensibilité Humidité Relative (%):", "Gradient d'humidité minimum détectable par les récepteurs antennaires en pourcentage.", hygroSensField), hygroSensField);
+        gridSensors.addRow(11, createTooltipLabel("Champ Électrostatique Mimétique:", "Sensibilité aux charges électrostatiques atmosphériques et florales.", hasElectrosensingCheckBox), hasElectrosensingCheckBox);
+        gridSensors.addRow(12, createTooltipLabel("Seuil Électrique Atmosphérique (V/m):", "Seuil de détection du champ électrique en Volts par mètre.", electroSensField), electroSensField);
+        gridSensors.addRow(13, createTooltipLabel("Boussole Lumière Polarisée UV:", "Utilisation du motif de polarisation UV du ciel pour la navigation spatiale rétrospective.", hasPolarizedLightCheckBox, "UV"), hasPolarizedLightCheckBox);
 
         cardSensors.getChildren().addAll(titleSensors, gridSensors);
 
-        // 2. Motor & Biomechanical Card
-        VBox cardMotor = new VBox(10);
-        cardMotor.getStyleClass().add("card-pane");
-        Label titleMotor = new Label("⚙️ Systèmes Moteurs & Capacité Biomécanique (SI)");
-        titleMotor.getStyleClass().add("card-title");
-
-        GridPane gridMotor = createGrid();
-
-        wingbeatHzField = new TextField("200.0");
-        hasHoveringCheckBox = new CheckBox("Vol Stationnaire (Hovering flight - Abeilles / Guêpes)");
-        maxPayloadRatioField = new TextField("5.0");
-        bitingForceMpaField = new TextField("15.0");
-        hasAutothysisCheckBox = new CheckBox("Autothysie (Explosion chimique suicidaire de défense)");
-        hasAroliaAdhesionCheckBox = new CheckBox("Adhésion Ventouses Arolia (Marche sur parois verticales & plafonds lisses)");
-        hasAroliaAdhesionCheckBox.setSelected(true);
-
-        gridMotor.addRow(0, createTooltipLabel("Fréquence Battement d'Ailes (Hz):", "Fréquence d'oscillation des ailes en Hertz pour les espèces volantes.", wingbeatHzField), wingbeatHzField);
-        gridMotor.addRow(1, createTooltipLabel("Vol Stationnaire (Hovering):", "Capacité à maintenir une position immobile en vol battu.", hasHoveringCheckBox), hasHoveringCheckBox);
-        gridMotor.addRow(2, createTooltipLabel("Capacité Portance Mécanique (g/g):", "Multiplicateur de charge transportable rapporté au propre poids du corps.", maxPayloadRatioField), maxPayloadRatioField);
-        gridMotor.addRow(3, createTooltipLabel("Force Mandibulaire Cisaillement (MPa):", "Pression maximale exercée par les mandibules en MégaPascals.", bitingForceMpaField, "Mandibule"), bitingForceMpaField);
-        gridMotor.addRow(4, createTooltipLabel("Défense Autothysie Explosive:", "Capacité de défense suicidaire par rupture de la paroi abdominale et sécrétion engluante.", hasAutothysisCheckBox, "Autothysie"), hasAutothysisCheckBox);
-        gridMotor.addRow(5, createTooltipLabel("Adhésion Ventouses Arolia (Plafond):", "Présence de ventouses arolia sous les tarses pour la marche sur parois verticales et plafonds lisses.", hasAroliaAdhesionCheckBox, "Arolia"), hasAroliaAdhesionCheckBox);
-
-        cardMotor.getChildren().addAll(titleMotor, gridMotor);
-
-        // 3. Dynamic Plugin Extensibility Card
+        // 2. Dynamic Plugin Extensibility Card
         VBox cardPlugins = new VBox(10);
         cardPlugins.getStyleClass().add("card-pane");
         Label titlePlugins = new Label("🔌 Attributs d'Extension & Plugins (Extensibilité Dynamique)");
@@ -1097,7 +1181,7 @@ public class SpeciesEditorPane extends VBox {
 
         cardPlugins.getChildren().addAll(titlePlugins, gridPlugins);
 
-        box.getChildren().addAll(cardSensors, cardMotor, cardPlugins);
+        box.getChildren().addAll(cardSensors, cardPlugins);
         return wrapScroll(box);
     }
 
@@ -1245,7 +1329,7 @@ public class SpeciesEditorPane extends VBox {
 
         ComboBox<?>[] combos = {
             insectTypeCombo, categoryCombo, queenModeCombo, nuptialFlightCombo,
-            larvaDietCombo, primaryDietCombo, secondaryDietCombo, nestTypeCombo, venomCombo
+            larvaDietCombo, primaryDietCombo, secondaryDietCombo, nestTypeCombo
         };
         for (ComboBox<?> cb : combos) {
             if (cb != null) cb.valueProperty().addListener((obs, oldV, newV) -> onFieldEdited());
@@ -1314,7 +1398,6 @@ public class SpeciesEditorPane extends VBox {
             maxTempField.setText(String.valueOf(s.getMaxTempCelsius()));
             aggressionSlider.setValue(s.getAggression());
             territorialitySlider.setValue(s.getTerritoriality());
-            venomCombo.getSelectionModel().select(s.getVenomType());
 
             // Sensory & Perception Profile
             hasMagnetoreceptionCheckBox.setSelected(s.hasMagnetoreception());
@@ -1357,6 +1440,13 @@ public class SpeciesEditorPane extends VBox {
                     row.setVenomType(ct.getVenomType() != null ? ct.getVenomType() : "NONE");
                     row.setVenomToxicity(ct.getVenomToxicity());
                     row.setVenomRangeMm(ct.getVenomRangeMm());
+
+                    row.setWingbeatFrequencyHz(ct.getWingbeatFrequencyHz() >= 0.0f ? ct.getWingbeatFrequencyHz() : (ct.isCanFly() ? s.getWingbeatFrequencyHz() : 0.0f));
+                    row.setHasHoveringCapability(ct.getHasHoveringCapability() != null ? ct.getHasHoveringCapability() : (ct.isCanFly() && s.hasHoveringCapability()));
+                    row.setMaxPayloadRatio(ct.getMaxCarryingPayloadRatio() >= 0.0f ? ct.getMaxCarryingPayloadRatio() : s.getMaxCarryingPayloadRatio());
+                    row.setBitingForceMpa(ct.getMandibularBitingForceMPa() >= 0.0f ? ct.getMandibularBitingForceMPa() : (float) Math.max(1.0, Math.round(s.getMandibularBitingForceMPa() * (head / 1.5) * 10.0) / 10.0));
+                    row.setHasAutothysis(ct.getHasAutothysis() != null ? ct.getHasAutothysis() : s.hasAutothysis());
+                    row.setHasAroliaAdhesion(ct.getHasSubstrateAdhesionArolia() != null ? ct.getHasSubstrateAdhesionArolia() : s.hasSubstrateAdhesionArolia());
                     casteRows.add(row);
                 }
             }
@@ -1410,7 +1500,11 @@ public class SpeciesEditorPane extends VBox {
         s.setMaxTempCelsius(parseFloat(maxTempField.getText(), 38.0f));
         s.setAggression((float) aggressionSlider.getValue());
         s.setTerritoriality((float) territorialitySlider.getValue());
-        s.setVenomType(venomCombo.getValue());
+        if (!casteRows.isEmpty()) {
+            s.setVenomType(casteRows.get(0).getVenomType());
+        } else {
+            s.setVenomType("NONE");
+        }
 
         // Sensory Profile
         s.setHasMagnetoreception(hasMagnetoreceptionCheckBox.isSelected());
@@ -1454,6 +1548,13 @@ public class SpeciesEditorPane extends VBox {
             ct.setVenomType(r.getVenomType());
             ct.setVenomToxicity(r.getVenomToxicity());
             ct.setVenomRangeMm(r.getVenomRangeMm());
+
+            ct.setWingbeatFrequencyHz(r.getWingbeatFrequencyHz());
+            ct.setHasHoveringCapability(r.isHasHoveringCapability());
+            ct.setMaxCarryingPayloadRatio(r.getMaxPayloadRatio());
+            ct.setMandibularBitingForceMPa(r.getBitingForceMpa());
+            ct.setHasAutothysis(r.isHasAutothysis());
+            ct.setHasSubstrateAdhesionArolia(r.isHasAroliaAdhesion());
             templates.add(ct);
         }
         s.setCasteTemplates(templates);
@@ -1640,6 +1741,14 @@ public class SpeciesEditorPane extends VBox {
         private float venomToxicity = 10.0f;
         private float venomRangeMm = 2.0f;
 
+        // Motor & Biomechanical Caste Traits
+        private float wingbeatFrequencyHz = 0.0f;
+        private boolean hasHoveringCapability = false;
+        private float maxPayloadRatio = 5.0f;
+        private float bitingForceMpa = 15.0f;
+        private boolean hasAutothysis = false;
+        private boolean hasAroliaAdhesion = true;
+
         public CasteRow(String name, double bodyLengthMm, double headWidthMm, int lifespan, float health, float damage, boolean canFly) {
             this.name = name;
             this.bodyLengthMm = bodyLengthMm;
@@ -1705,6 +1814,24 @@ public class SpeciesEditorPane extends VBox {
 
         public float getVenomRangeMm() { return venomRangeMm; }
         public void setVenomRangeMm(float venomRangeMm) { this.venomRangeMm = venomRangeMm; }
+
+        public float getWingbeatFrequencyHz() { return wingbeatFrequencyHz; }
+        public void setWingbeatFrequencyHz(float wingbeatFrequencyHz) { this.wingbeatFrequencyHz = wingbeatFrequencyHz; }
+
+        public boolean isHasHoveringCapability() { return hasHoveringCapability; }
+        public void setHasHoveringCapability(boolean hasHoveringCapability) { this.hasHoveringCapability = hasHoveringCapability; }
+
+        public float getMaxPayloadRatio() { return maxPayloadRatio; }
+        public void setMaxPayloadRatio(float maxPayloadRatio) { this.maxPayloadRatio = maxPayloadRatio; }
+
+        public float getBitingForceMpa() { return bitingForceMpa; }
+        public void setBitingForceMpa(float bitingForceMpa) { this.bitingForceMpa = bitingForceMpa; }
+
+        public boolean isHasAutothysis() { return hasAutothysis; }
+        public void setHasAutothysis(boolean hasAutothysis) { this.hasAutothysis = hasAutothysis; }
+
+        public boolean isHasAroliaAdhesion() { return hasAroliaAdhesion; }
+        public void setHasAroliaAdhesion(boolean hasAroliaAdhesion) { this.hasAroliaAdhesion = hasAroliaAdhesion; }
     }
 
     public static String getDietTitle(String diet) {
@@ -1777,30 +1904,81 @@ public class SpeciesEditorPane extends VBox {
         };
     }
 
+    private String getSelectedVenomTypes(java.util.Map<String, CheckMenuItem> items) {
+        List<String> selected = new ArrayList<>();
+        for (java.util.Map.Entry<String, CheckMenuItem> entry : items.entrySet()) {
+            if (entry.getValue().isSelected()) {
+                selected.add(entry.getKey());
+            }
+        }
+        if (selected.isEmpty()) return "NONE";
+        return String.join(", ", selected);
+    }
+
+    private void setSelectedVenomTypes(java.util.Map<String, CheckMenuItem> items, MenuButton btn, String venomStr) {
+        if (items == null || btn == null) return;
+        List<String> selectedKeys = new ArrayList<>();
+        if (venomStr != null && !venomStr.trim().isEmpty()) {
+            for (String p : venomStr.split(",")) {
+                selectedKeys.add(p.trim());
+            }
+        }
+        if (selectedKeys.isEmpty()) selectedKeys.add("NONE");
+
+        for (java.util.Map.Entry<String, CheckMenuItem> entry : items.entrySet()) {
+            entry.getValue().setSelected(selectedKeys.contains(entry.getKey()));
+        }
+        updateVenomMenuText(btn, items);
+    }
+
+    private void updateVenomMenuText(MenuButton btn, java.util.Map<String, CheckMenuItem> items) {
+        String selStr = getSelectedVenomTypes(items);
+        btn.setText(getVenomTitle(selStr));
+    }
+
     public static String getVenomTitle(String v) {
-        if (v == null) return "";
-        return switch (v) {
+        if (v == null || v.trim().isEmpty()) return "";
+        if (v.contains(",")) {
+            String[] parts = v.split(",");
+            List<String> titles = new ArrayList<>();
+            for (String p : parts) {
+                String title = getVenomTitle(p.trim());
+                if (!title.isEmpty()) titles.add(title);
+            }
+            return String.join(", ", titles);
+        }
+        return switch (v.trim()) {
             case "NONE" -> "🚫 Sans Venin (Attaque Physique)";
             case "FORMIC_ACID" -> "🧪 Acide Formique (Projection)";
             case "VENOMOUS_STING" -> "🗡️ Aiguillon Venimeux (Dard)";
             case "CHEMICAL_SPRAY" -> "💨 Spray Chimique Répulsif";
-            case "POWERFUL_MANDIBLES" -> "✂️ Mandibles Puissantes (Cisaille)";
+            case "ACID_SPRAY" -> "💨 Projection Acide Répulsive";
+            case "POWERFUL_MANDIBLES" -> "✂️ Mandibules Puissantes (Cisaille)";
             case "SOLENOPSIN" -> "🔥 Solénopsine (Alcaloïde Brûlant)";
             case "NEUROTOXIN" -> "🧠 Neurotoxine Paralysante";
             case "CYTOTOXIN" -> "🧫 Cytotoxine Nécrotique";
             case "TERPENE_RESIN" -> "🌲 Résine Terpénique Collante";
             case "AUTOTHYSIS_BOMB" -> "💥 Autothyse (Explosion Suicidaire)";
-            default -> v;
+            default -> v.trim();
         };
     }
 
     public static String getVenomDescription(String v) {
-        if (v == null) return "";
-        return switch (v) {
+        if (v == null || v.trim().isEmpty()) return "";
+        if (v.contains(",")) {
+            String[] parts = v.split(",");
+            List<String> descs = new ArrayList<>();
+            for (String p : parts) {
+                String desc = getVenomDescription(p.trim());
+                if (!desc.isEmpty()) descs.add(desc);
+            }
+            return String.join(" | ", descs);
+        }
+        return switch (v.trim()) {
             case "NONE" -> "Pas de venin chimique. Combat exclusivement par morsures de mandibles et lutte mécanique.";
             case "FORMIC_ACID" -> "Projection à distance ou application d'acide formique concentré provoquant des brûlures chimiques corrosives.";
             case "VENOMOUS_STING" -> "Injection directe de venin protéique au moyen d'un dard abdominal rétractile provoquant douleur intense et paralysie.";
-            case "CHEMICAL_SPRAY" -> "Pulvérisation d'un spray répulsif ou asphyxiant provoquant la désorientation des assaillants.";
+            case "CHEMICAL_SPRAY", "ACID_SPRAY" -> "Pulvérisation ou projection d'un spray répulsif ou corrosif provoquant des brûlures et la désorientation des assaillants.";
             case "POWERFUL_MANDIBLES" -> "Mandibles hypertrophiées capables d'exercer une pression mécanique létale ou de décapiter les proies.";
             case "SOLENOPSIN" -> "Alcaloïde toxique nécrotique provoquant une douleur de brûlure vive et une pustule locale (Solenopsis invicta).";
             case "NEUROTOXIN" -> "Substance ciblant le système nerveux central des arthropodes pour bloquer la transmission neuromusculaire.";
@@ -1833,5 +2011,39 @@ public class SpeciesEditorPane extends VBox {
             case "FUZZY_LOGIC" -> "Évaluation de conditions floues (ex: 'Faim élevée' AND 'Danger moyen') pour nuancer les comportements.";
             default -> "";
         };
+    }
+
+    public static String formatDec(double val) {
+        if (Double.isNaN(val) || Double.isInfinite(val)) return "0";
+        if (val == Math.floor(val)) return String.format(java.util.Locale.US, "%.0f", val);
+        return String.format(java.util.Locale.US, "%.2f", val);
+    }
+
+    public static String formatDec(float val) {
+        return formatDec((double) val);
+    }
+
+    public static class FormattedDoubleStringConverter extends javafx.util.StringConverter<Double> {
+        @Override
+        public String toString(Double object) {
+            if (object == null) return "0";
+            return formatDec(object);
+        }
+        @Override
+        public Double fromString(String string) {
+            try { return Double.parseDouble(string.trim()); } catch (Exception e) { return 0.0; }
+        }
+    }
+
+    public static class FormattedFloatStringConverter extends javafx.util.StringConverter<Float> {
+        @Override
+        public String toString(Float object) {
+            if (object == null) return "0";
+            return formatDec(object);
+        }
+        @Override
+        public Float fromString(String string) {
+            try { return Float.parseFloat(string.trim()); } catch (Exception e) { return 0.0f; }
+        }
     }
 }

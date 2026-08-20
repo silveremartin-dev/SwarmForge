@@ -3,8 +3,8 @@ import { create } from 'zustand'
 export const DEFAULT_WORLD_PRESETS = [
     {
         id: 'world_terrarium_01',
-        name: 'Mon Terrarium N°1',
-        description: 'Terrarium tempéré sub-millimétrique avec substrat argilo-sableux et micro-hydrographie',
+        name: 'My Terrarium No. 1',
+        description: 'Temperate sub-millimeter terrarium with clay-sandy substrate and micro-hydrography',
         scale: { sizeX: 2.0, sizeY: 2.0, resolutionMm: 0.5 },
         terrain: { roughness: 0.45, compaction: 65, soilComposition: { earth: 50, sand: 20, clay: 20, stone: 10 } },
         hydrology: { hasRiver: true, riverWidthMm: 120, riverFlowVelocity: 0.3, staticPools: 2 },
@@ -12,8 +12,8 @@ export const DEFAULT_WORLD_PRESETS = [
     },
     {
         id: 'world_tropical_rainforest',
-        name: 'Forêt Tropicale Humide',
-        description: 'Substrat litière riche, humidité élevée, arbres denses et micro-cours d\'eau torrentiel',
+        name: 'Tropical Rainforest',
+        description: 'Rich litter substrate, high humidity, dense trees and torrential micro-stream',
         scale: { sizeX: 3.5, sizeY: 3.5, resolutionMm: 0.4 },
         terrain: { roughness: 0.70, compaction: 40, soilComposition: { earth: 70, sand: 10, clay: 10, stone: 10 } },
         hydrology: { hasRiver: true, riverWidthMm: 250, riverFlowVelocity: 0.8, staticPools: 4 },
@@ -21,8 +21,8 @@ export const DEFAULT_WORLD_PRESETS = [
     },
     {
         id: 'world_desert_canyon',
-        name: 'Désert Aride & Grottes',
-        description: 'Substrat sableux instable, absence d\'eau de surface, températures extrêmes',
+        name: 'Arid Desert & Caves',
+        description: 'Unstable sandy substrate, absence of surface water, extreme temperatures',
         scale: { sizeX: 4.0, sizeY: 4.0, resolutionMm: 0.8 },
         terrain: { roughness: 0.30, compaction: 85, soilComposition: { earth: 10, sand: 70, clay: 10, stone: 10 } },
         hydrology: { hasRiver: false, riverWidthMm: 0, riverFlowVelocity: 0, staticPools: 0 },
@@ -33,24 +33,24 @@ export const DEFAULT_WORLD_PRESETS = [
 export const DEFAULT_SPECIES_PRESETS = [
     {
         id: 'species_formica_fusca',
-        name: 'Formica fusca (Fourmi Noire des Bois)',
-        description: 'Espèce agile récolteuse de miellat, forte réactivité et stratégie de vol de Lévy',
+        name: 'Formica fusca (Black Wood Ant)',
+        description: 'Agile honeydew harvester species, high reactivity and Lévy flight strategy',
         taxonomicalClass: 'Formicinae',
         morphology: { workerLengthMm: 5.5, soldierLengthMm: 7.0, colorHex: '#2a221b' },
         behavior: { foragingStrategy: 'LEVY_FLIGHT', aggressionLevel: 0.4, trailDecayRate: 0.05 }
     },
     {
         id: 'species_messor_barbarus',
-        name: 'Messor barbarus (Fourmi Moissonneuse)',
-        description: 'Espèce polymorphe spécialisée dans la récolte de graines et fabrication du pain de fourmi',
+        name: 'Messor barbarus (Harvester Ant)',
+        description: 'Polymorphic species specialized in seed harvesting and ant bread production',
         taxonomicalClass: 'Myrmicinae',
         morphology: { workerLengthMm: 4.0, soldierLengthMm: 11.0, colorHex: '#7f1d1d' },
         behavior: { foragingStrategy: 'PHYSICAL_TRAIL', aggressionLevel: 0.6, trailDecayRate: 0.02 }
     },
     {
         id: 'species_linepithema_humile',
-        name: 'Linepithema humile (Fourmi d\'Argentine)',
-        description: 'Espèce invasive polygyne formant de supercolonies agressives sans frontières territoriales',
+        name: 'Linepithema humile (Argentine Ant)',
+        description: 'Polygyne invasive species forming aggressive supercolonies without territorial borders',
         taxonomicalClass: 'Dolichoderinae',
         morphology: { workerLengthMm: 2.8, soldierLengthMm: 3.2, colorHex: '#92400e' },
         behavior: { foragingStrategy: 'MASS_RECRUITMENT', aggressionLevel: 0.95, trailDecayRate: 0.01 }
@@ -60,8 +60,8 @@ export const DEFAULT_SPECIES_PRESETS = [
 export const DEFAULT_NEST_PRESETS = [
     {
         id: 'nest_dome_brindilles',
-        name: 'Dôme de Brindilles & Galeries Humides',
-        description: 'Nid dôme thermo-régulé en surface avec réseau de galeries sous-terraines',
+        name: 'Twig Dome & Damp Galleries',
+        description: 'Thermoregulated surface dome nest with subterranean gallery network',
         nestType: 'DOME_AND_SUBTERRANEAN',
         depthCm: 25,
         chambers: { queen: 1, nursery: 3, food: 4, waste: 2 },
@@ -69,8 +69,8 @@ export const DEFAULT_NEST_PRESETS = [
     },
     {
         id: 'nest_messor_granary',
-        name: 'Greniers Sub-Superficielles Messor',
-        description: 'Chambres sèches dédiées au stockage des graines et salles de broyage',
+        name: 'Messor Sub-Surface Granaries',
+        description: 'Dry chambers dedicated to seed storage and crushing rooms',
         nestType: 'SUBTERRANEAN_GRANARY',
         depthCm: 45,
         chambers: { queen: 1, nursery: 4, food: 8, waste: 3 },
@@ -78,8 +78,8 @@ export const DEFAULT_NEST_PRESETS = [
     },
     {
         id: 'nest_arboreal_log',
-        name: 'Loge de Souche Creuse Arboricole',
-        description: 'Nid creusé dans le bois mort vermoulu avec micro-chambres étagées',
+        name: 'Arboreal Hollow Log Lodge',
+        description: 'Nest hollowed into decaying deadwood with tiered micro-chambers',
         nestType: 'ARBOREAL_WOOD',
         depthCm: 10,
         chambers: { queen: 1, nursery: 2, food: 2, waste: 1 },
@@ -90,35 +90,35 @@ export const DEFAULT_NEST_PRESETS = [
 export const DEFAULT_PREY_PREDATOR_PRESETS = [
     {
         id: 'prey_pred_pucerons_fourmilion',
-        name: 'Écosystème Pucerons & Fourmilion',
-        description: 'Troupeau de pucerons producteurs de miellat + pièges d\'entonnoirs de Fourmilion',
+        name: 'Aphid & Antlion Ecosystem',
+        description: 'Honeydew-producing aphid herd + Antlion funnel traps',
         prey: [
-            { type: 'APHID', name: 'Pucerons du Chardon (Aphis fabae)', count: 60, honeydewRate: 0.8 },
-            { type: 'SEED', name: 'Graines de Graminées', count: 150 }
+            { type: 'APHID', name: 'Thistle Aphids (Aphis fabae)', count: 60, honeydewRate: 0.8 },
+            { type: 'SEED', name: 'Grass Seeds', count: 150 }
         ],
         predators: [
-            { type: 'ANTLION', name: 'Larves de Fourmilion (Myrmeleon)', count: 2, aggression: 0.9 }
+            { type: 'ANTLION', name: 'Antlion Larvae (Myrmeleon)', count: 2, aggression: 0.9 }
         ]
     },
     {
         id: 'prey_pred_vespula_attack',
-        name: 'Incursion Guêpe Solitaire & Araignée',
-        description: 'Guêpe prédatrice en maraude (Vespula) et Araignée sauteuse',
+        name: 'Solitary Wasp & Spider Incursion',
+        description: 'Marauding predatory wasp (Vespula) and jumping spider',
         prey: [
-            { type: 'CATERPILLAR', name: 'Chenille Lymantria', count: 5, honeydewRate: 0 }
+            { type: 'CATERPILLAR', name: 'Lymantria Caterpillar', count: 5, honeydewRate: 0 }
         ],
         predators: [
-            { type: 'WASP', name: 'Guêpe Solitaire (Vespula germanica)', count: 1, aggression: 1.0 },
-            { type: 'SPIDER', name: 'Araignée Sauteuse (Salticidae)', count: 3, aggression: 0.75 }
+            { type: 'WASP', name: 'Solitary Wasp (Vespula germanica)', count: 1, aggression: 1.0 },
+            { type: 'SPIDER', name: 'Jumping Spider (Salticidae)', count: 3, aggression: 0.75 }
         ]
     },
     {
         id: 'prey_pred_peaceful_abundance',
-        name: 'Ressources Abondantes sans Prédateurs',
-        description: 'Abondance de proies inoffensives et graines pour expansion rapide de la colonie',
+        name: 'Abundant Resources without Predators',
+        description: 'Abundance of harmless prey and seeds for rapid colony expansion',
         prey: [
-            { type: 'APHID', name: 'Pucerons Verts', count: 120, honeydewRate: 1.0 },
-            { type: 'SEED', name: 'Graines de Pin & Graminées', count: 300 }
+            { type: 'APHID', name: 'Green Aphids', count: 120, honeydewRate: 1.0 },
+            { type: 'SEED', name: 'Pine & Grass Seeds', count: 300 }
         ],
         predators: []
     }
@@ -127,8 +127,8 @@ export const DEFAULT_PREY_PREDATOR_PRESETS = [
 export const DEFAULT_WEATHER_PRESETS = [
     {
         id: 'weather_printemps_doux',
-        name: 'Printemps Doux (22°C, 14h Jour, Pluie Fine)',
-        description: 'Conditions équilibrées idéales pour l\'activité printanière',
+        name: 'Mild Spring (22°C, 14h Daylight, Light Rain)',
+        description: 'Balanced conditions ideal for spring activity',
         season: 'SPRING',
         photoperiodHours: 14,
         tempDay: 22,
@@ -138,8 +138,8 @@ export const DEFAULT_WEATHER_PRESETS = [
     },
     {
         id: 'weather_ete_caniculaire',
-        name: 'Été Caniculaire & Orages (34°C, Pluie Torrentielle)',
-        description: 'Fortes chaleurs diurnes déclenchant de violents orages et éclairs',
+        name: 'Heatwave Summer & Storms (34°C, Torrential Rain)',
+        description: 'High daytime heat triggering violent storms and lightning',
         season: 'SUMMER',
         photoperiodHours: 16,
         tempDay: 34,
@@ -149,8 +149,8 @@ export const DEFAULT_WEATHER_PRESETS = [
     },
     {
         id: 'weather_automne_frais',
-        name: 'Automne Humide & Venté (14°C, Brouillard)',
-        description: 'Refroidissement progressif, vents modérés et brouillard matinal',
+        name: 'Cool & Windy Autumn (14°C, Fog)',
+        description: 'Gradual cooling, moderate winds and morning fog',
         season: 'AUTUMN',
         photoperiodHours: 10,
         tempDay: 14,
@@ -163,8 +163,8 @@ export const DEFAULT_WEATHER_PRESETS = [
 export const DEFAULT_SCENARIO_META_PRESETS = [
     {
         id: 'scenario_mon_terrarium_1',
-        name: 'Mon Terrarium N°1 (Complet)',
-        description: 'Scénario complet combinant le Terrarium Tempéré, Formica fusca, le Dôme de Brindilles, les Pucerons/Fourmilion et le Printemps Doux.',
+        name: 'My Terrarium No. 1 (Complete)',
+        description: 'Complete scenario combining Temperate Terrarium, Formica fusca, Twig Dome, Aphids/Antlion and Mild Spring.',
         academicCategory: 'Optimal Foraging & Ecosystem Balance',
         masterSeed: 12345,
         worldPresetId: 'world_terrarium_01',
@@ -175,9 +175,9 @@ export const DEFAULT_SCENARIO_META_PRESETS = [
     },
     {
         id: 'scenario_savane_messor',
-        name: 'Savane Granivore - Messor barbarus',
-        description: 'Comportement d\'excavation et récolte de graines en environnement méditerranéen aride.',
-        academicCategory: 'Division du Travail & Greniers',
+        name: 'Granivorous Savanna - Messor barbarus',
+        description: 'Excavation behavior and seed harvesting in arid Mediterranean environment.',
+        academicCategory: 'Division of Labor & Granaries',
         masterSeed: 424242,
         worldPresetId: 'world_desert_canyon',
         speciesPresetId: 'species_messor_barbarus',
@@ -187,9 +187,9 @@ export const DEFAULT_SCENARIO_META_PRESETS = [
     },
     {
         id: 'scenario_guerre_invasives',
-        name: 'Conflit Territorial & Prédateurs - Linepithema',
-        description: 'Raid prédateur et expansion d\'une supercolonie d\'Argentine sous climat tropical.',
-        academicCategory: 'Écologie des Populations & Compétition',
+        name: 'Territorial Conflict & Predators - Linepithema',
+        description: 'Predatory raid and Argentine supercolony expansion under tropical climate.',
+        academicCategory: 'Population Ecology & Competition',
         masterSeed: 777777,
         worldPresetId: 'world_tropical_rainforest',
         speciesPresetId: 'species_linepithema_humile',
@@ -203,7 +203,25 @@ export const DEFAULT_SCENARIO_META_PRESETS = [
 const loadLocal = (key, fallback) => {
     try {
         const saved = localStorage.getItem(`swarmforge_preset_${key}`)
-        return saved ? JSON.parse(saved) : fallback
+        if (!saved) return fallback
+        const parsed = JSON.parse(saved)
+        // If cached array contains obsolete French names, discard cache and use English defaults
+        const isObsoleteFrench = Array.isArray(parsed) && parsed.some(item => 
+            item.name && (
+                item.name.includes('Mon Terrarium') || 
+                item.name.includes('Fourmi') || 
+                item.name.includes('Pucerons') ||
+                item.name.includes('Dôme') ||
+                item.name.includes('Printemps') ||
+                item.name.includes('Forêt') ||
+                item.name.includes('Désert') ||
+                item.name.includes('Écosystème') ||
+                item.name.includes('Greniers') ||
+                item.name.includes('Incursion')
+            )
+        )
+        if (isObsoleteFrench) return fallback
+        return parsed
     } catch (e) {
         return fallback
     }

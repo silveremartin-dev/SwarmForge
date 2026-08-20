@@ -3,7 +3,7 @@ import { useSimulationStore } from '../store/simulationStore'
 import { showToast } from '../store/toastStore'
 import { Zap, Plus, Skull, Apple, ShieldAlert, Sparkles, Download, Trash2, History, Layers } from 'lucide-react'
 
-export default function GodModePanel() {
+export default function GodModePanel({ inline = false }) {
     const {
         colonies,
         tick,
@@ -175,11 +175,11 @@ export default function GodModePanel() {
             padding: '5px 8px',
             fontSize: 10,
             fontWeight: 700,
-            border: 'none',
+            border: active ? '1px solid #c084fc' : '1px solid transparent',
             borderRadius: 4,
             cursor: 'pointer',
-            background: active ? '#a855f7' : 'transparent',
-            color: active ? '#ffffff' : '#94a3b8',
+            background: active ? '#1e293b' : 'transparent',
+            color: active ? '#c084fc' : '#94a3b8',
             transition: 'all 0.15s ease',
         }),
         section: {
@@ -328,9 +328,9 @@ export default function GodModePanel() {
                                 onChange={(e) => setFoodType(e.target.value)}
                                 style={{ ...styles.select, flex: 1 }}
                             >
-                                <option value="SUGAR_NECTAR">🍯 Nectar Sucré</option>
-                                <option value="SEEDS">🌾 Graines & Graminées</option>
-                                <option value="INSECT_MEAT">🥩 Proie / Viande</option>
+                                <option value="SUGAR_NECTAR">🍯 Sweet Nectar</option>
+                                <option value="SEEDS">🌾 Seeds & Grasses</option>
+                                <option value="INSECT_MEAT">🥩 Prey / Meat</option>
                             </select>
                             <input
                                 type="number"
@@ -363,9 +363,9 @@ export default function GodModePanel() {
                                 onChange={(e) => setAntCasteToAdd(e.target.value)}
                                 style={{ ...styles.select, flex: 1 }}
                             >
-                                <option value="WORKER">👷 Ouvrière</option>
-                                <option value="SOLDIER">🛡️ Soldat</option>
-                                <option value="QUEEN">👑 Reine Fondatrice</option>
+                                <option value="WORKER">👷 Worker</option>
+                                <option value="SOLDIER">🛡️ Soldier</option>
+                                <option value="QUEEN">👑 Founding Queen</option>
                             </select>
                             <input
                                 type="number"
@@ -555,10 +555,10 @@ export default function GodModePanel() {
                             onChange={(e) => setNewColonySpecies(e.target.value)}
                             style={{ width: '100%', background: '#1e293b', border: '1px solid #475569', color: '#38bdf8', padding: 6, borderRadius: 6, fontSize: 11 }}
                         >
-                            <option value="Formica fusca">Formica fusca (Fourmi Noire)</option>
-                            <option value="Messor barbarus">Messor barbarus (Fourmi Moissonneuse)</option>
-                            <option value="Linepithema humile">Linepithema humile (Fourmi d'Argentine)</option>
-                            <option value="Crematogaster scutellaris">Crematogaster scutellaris (Arboricole)</option>
+                            <option value="Formica fusca">Formica fusca (Black Wood Ant)</option>
+                            <option value="Messor barbarus">Messor barbarus (Harvester Ant)</option>
+                            <option value="Linepithema humile">Linepithema humile (Argentine Ant)</option>
+                            <option value="Crematogaster scutellaris">Crematogaster scutellaris (Arboreal)</option>
                         </select>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 4 }}>
                             <button onClick={() => setShowNewColonyModal(false)} style={{ padding: '5px 10px', background: '#334155', border: 'none', color: '#fff', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}>Annuler</button>

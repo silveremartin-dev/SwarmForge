@@ -76,10 +76,16 @@ public class SpeciesPresetManager {
         lasius.setAggression(0.3f);
 
         CasteTemplate lasiusQueen = new CasteTemplate("Reine", 500f, 10f);
-        lasiusQueen.setDescription("Reine fondatrice (9mm)");
+        lasiusQueen.setDescription("Reine fondatrice / Gyne (9mm)");
         lasiusQueen.setLifespan(30000);
+        lasiusQueen.setCanFly(true);
         lasiusQueen.setBodyLengthMm(9.0f);
         lasiusQueen.setHeadWidthMm(2.4f);
+        lasiusQueen.setWingbeatFrequencyHz(180.0f);
+        lasiusQueen.setHasHoveringCapability(false);
+        lasiusQueen.setMaxCarryingPayloadRatio(2.5f);
+        lasiusQueen.setMandibularBitingForceMPa(8.0f);
+        lasiusQueen.setTargetRatio(0.00f);
 
         CasteTemplate lasiusWorker = new CasteTemplate("Ouvrière", 80f, 4f);
         lasiusWorker.setDescription("Ouvrière généraliste (4mm)");
@@ -88,8 +94,23 @@ public class SpeciesPresetManager {
         lasiusWorker.setCanCarry(true);
         lasiusWorker.setBodyLengthMm(4.0f);
         lasiusWorker.setHeadWidthMm(1.0f);
+        lasiusWorker.setWingbeatFrequencyHz(0.0f);
+        lasiusWorker.setMaxCarryingPayloadRatio(5.0f);
+        lasiusWorker.setMandibularBitingForceMPa(12.0f);
+        lasiusWorker.setTargetRatio(1.00f);
 
-        lasius.setCasteTemplates(List.of(lasiusQueen, lasiusWorker));
+        CasteTemplate lasiusMale = new CasteTemplate("Mâle Reproducteur (Alé)", 45f, 0f);
+        lasiusMale.setDescription("Mâle ailé haploïde pour le vol nuptial (4.5mm)");
+        lasiusMale.setLifespan(500);
+        lasiusMale.setCanFly(true);
+        lasiusMale.setBodyLengthMm(4.5f);
+        lasiusMale.setHeadWidthMm(1.1f);
+        lasiusMale.setWingbeatFrequencyHz(210.0f);
+        lasiusMale.setMaxCarryingPayloadRatio(1.0f);
+        lasiusMale.setMandibularBitingForceMPa(1.0f);
+        lasiusMale.setTargetRatio(0.00f);
+
+        lasius.setCasteTemplates(List.of(lasiusQueen, lasiusWorker, lasiusMale));
         map.put(lasius.getPresetName(), lasius);
 
         // 2. Fourmi de Feu (Solenopsis invicta)
@@ -115,20 +136,33 @@ public class SpeciesPresetManager {
 
         CasteTemplate fireQueen = new CasteTemplate("Reine", 450f, 15f);
         fireQueen.setLifespan(20000);
+        fireQueen.setCanFly(true);
         fireQueen.setBodyLengthMm(8.0f);
         fireQueen.setHeadWidthMm(2.0f);
+        fireQueen.setWingbeatFrequencyHz(190.0f);
+        fireQueen.setMaxCarryingPayloadRatio(2.0f);
+        fireQueen.setMandibularBitingForceMPa(10.0f);
+        fireQueen.setTargetRatio(0.00f);
 
         CasteTemplate fireMinor = new CasteTemplate("Ouvrière Mineure", 60f, 8f);
         fireMinor.setLifespan(3500);
         fireMinor.setCanDig(true);
         fireMinor.setBodyLengthMm(3.0f);
         fireMinor.setHeadWidthMm(0.8f);
+        fireMinor.setWingbeatFrequencyHz(0.0f);
+        fireMinor.setMaxCarryingPayloadRatio(4.0f);
+        fireMinor.setMandibularBitingForceMPa(8.0f);
+        fireMinor.setTargetRatio(0.85f);
 
         CasteTemplate fireMajor = new CasteTemplate("Ouvrière Majeure / Soldat", 150f, 25f);
         fireMajor.setLifespan(5000);
         fireMajor.setBaseDefense(5f);
         fireMajor.setBodyLengthMm(6.0f);
         fireMajor.setHeadWidthMm(1.8f);
+        fireMajor.setWingbeatFrequencyHz(0.0f);
+        fireMajor.setMaxCarryingPayloadRatio(8.0f);
+        fireMajor.setMandibularBitingForceMPa(35.0f);
+        fireMajor.setTargetRatio(0.15f);
 
         solenopsis.setCasteTemplates(List.of(fireQueen, fireMinor, fireMajor));
         map.put(solenopsis.getPresetName(), solenopsis);
@@ -155,22 +189,39 @@ public class SpeciesPresetManager {
 
         CasteTemplate attaQueen = new CasteTemplate("Reine Géante", 1000f, 20f);
         attaQueen.setLifespan(35000);
+        attaQueen.setCanFly(true);
         attaQueen.setBodyLengthMm(30.0f);
         attaQueen.setHeadWidthMm(7.0f);
+        attaQueen.setWingbeatFrequencyHz(110.0f);
+        attaQueen.setMaxCarryingPayloadRatio(1.5f);
+        attaQueen.setMandibularBitingForceMPa(25.0f);
+        attaQueen.setTargetRatio(0.00f);
 
         CasteTemplate attaMinima = new CasteTemplate("Ouvrière Minime (Nourrice)", 40f, 2f);
         attaMinima.setBodyLengthMm(2.0f);
         attaMinima.setHeadWidthMm(0.6f);
+        attaMinima.setWingbeatFrequencyHz(0.0f);
+        attaMinima.setMaxCarryingPayloadRatio(2.0f);
+        attaMinima.setMandibularBitingForceMPa(2.0f);
+        attaMinima.setTargetRatio(0.45f);
 
         CasteTemplate attaMedia = new CasteTemplate("Ouvrière Média (Coupeuse)", 100f, 10f);
         attaMedia.setCanCarry(true);
         attaMedia.setBodyLengthMm(7.0f);
         attaMedia.setHeadWidthMm(2.2f);
+        attaMedia.setWingbeatFrequencyHz(0.0f);
+        attaMedia.setMaxCarryingPayloadRatio(20.0f);
+        attaMedia.setMandibularBitingForceMPa(35.0f);
+        attaMedia.setTargetRatio(0.45f);
 
         CasteTemplate attaMajor = new CasteTemplate("Soldat Majeur (Garde)", 300f, 45f);
         attaMajor.setBaseDefense(8f);
         attaMajor.setBodyLengthMm(16.0f);
         attaMajor.setHeadWidthMm(6.0f);
+        attaMajor.setWingbeatFrequencyHz(0.0f);
+        attaMajor.setMaxCarryingPayloadRatio(10.0f);
+        attaMajor.setMandibularBitingForceMPa(120.0f);
+        attaMajor.setTargetRatio(0.10f);
 
         atta.setCasteTemplates(List.of(attaQueen, attaMinima, attaMedia, attaMajor));
         map.put(atta.getPresetName(), atta);
@@ -202,6 +253,11 @@ public class SpeciesPresetManager {
         apisQueen.setCanFly(true);
         apisQueen.setBodyLengthMm(20.0f);
         apisQueen.setHeadWidthMm(4.0f);
+        apisQueen.setWingbeatFrequencyHz(180.0f);
+        apisQueen.setHasHoveringCapability(false);
+        apisQueen.setMaxCarryingPayloadRatio(1.5f);
+        apisQueen.setMandibularBitingForceMPa(3.0f);
+        apisQueen.setTargetRatio(0.00f);
 
         CasteTemplate apisWorker = new CasteTemplate("Ouvrière Butineuse", 90f, 12f);
         apisWorker.setLifespan(3000);
@@ -209,12 +265,22 @@ public class SpeciesPresetManager {
         apisWorker.setCanCarry(true);
         apisWorker.setBodyLengthMm(14.0f);
         apisWorker.setHeadWidthMm(3.5f);
+        apisWorker.setWingbeatFrequencyHz(230.0f);
+        apisWorker.setHasHoveringCapability(true);
+        apisWorker.setMaxCarryingPayloadRatio(6.0f);
+        apisWorker.setMandibularBitingForceMPa(5.0f);
+        apisWorker.setTargetRatio(1.00f);
 
         CasteTemplate apisDrone = new CasteTemplate("Faux-Bourdon (Mâle)", 120f, 0f);
         apisDrone.setLifespan(2500);
         apisDrone.setCanFly(true);
         apisDrone.setBodyLengthMm(16.0f);
         apisDrone.setHeadWidthMm(4.2f);
+        apisDrone.setWingbeatFrequencyHz(200.0f);
+        apisDrone.setHasHoveringCapability(false);
+        apisDrone.setMaxCarryingPayloadRatio(1.0f);
+        apisDrone.setMandibularBitingForceMPa(1.0f);
+        apisDrone.setTargetRatio(0.00f);
 
         apis.setCasteTemplates(List.of(apisQueen, apisWorker, apisDrone));
         map.put(apis.getPresetName(), apis);
@@ -244,12 +310,22 @@ public class SpeciesPresetManager {
         vespulaQueen.setCanFly(true);
         vespulaQueen.setBodyLengthMm(19.0f);
         vespulaQueen.setHeadWidthMm(4.5f);
+        vespulaQueen.setWingbeatFrequencyHz(160.0f);
+        vespulaQueen.setHasHoveringCapability(true);
+        vespulaQueen.setMaxCarryingPayloadRatio(3.0f);
+        vespulaQueen.setMandibularBitingForceMPa(18.0f);
+        vespulaQueen.setTargetRatio(0.00f);
 
         CasteTemplate vespulaWorker = new CasteTemplate("Ouvrière Chasseresse", 100f, 22f);
         vespulaWorker.setLifespan(2500);
         vespulaWorker.setCanFly(true);
         vespulaWorker.setBodyLengthMm(13.0f);
         vespulaWorker.setHeadWidthMm(3.2f);
+        vespulaWorker.setWingbeatFrequencyHz(210.0f);
+        vespulaWorker.setHasHoveringCapability(true);
+        vespulaWorker.setMaxCarryingPayloadRatio(5.0f);
+        vespulaWorker.setMandibularBitingForceMPa(22.0f);
+        vespulaWorker.setTargetRatio(1.00f);
 
         vespula.setCasteTemplates(List.of(vespulaQueen, vespulaWorker));
         map.put(vespula.getPresetName(), vespula);
@@ -278,20 +354,36 @@ public class SpeciesPresetManager {
         CasteTemplate termiteQueen = new CasteTemplate("Reine Physogastre", 600f, 2f);
         termiteQueen.setBodyLengthMm(22.0f);
         termiteQueen.setHeadWidthMm(3.0f);
+        termiteQueen.setWingbeatFrequencyHz(0.0f);
+        termiteQueen.setMaxCarryingPayloadRatio(0.5f);
+        termiteQueen.setMandibularBitingForceMPa(2.0f);
+        termiteQueen.setTargetRatio(0.00f);
 
         CasteTemplate termiteKing = new CasteTemplate("Roi Reproducteur", 300f, 5f);
         termiteKing.setBodyLengthMm(10.0f);
         termiteKing.setHeadWidthMm(2.0f);
+        termiteKing.setWingbeatFrequencyHz(0.0f);
+        termiteKing.setMaxCarryingPayloadRatio(1.0f);
+        termiteKing.setMandibularBitingForceMPa(3.0f);
+        termiteKing.setTargetRatio(0.00f);
 
         CasteTemplate termiteWorker = new CasteTemplate("Ouvrier Termite", 50f, 3f);
         termiteWorker.setCanDig(true);
         termiteWorker.setBodyLengthMm(5.0f);
         termiteWorker.setHeadWidthMm(1.2f);
+        termiteWorker.setWingbeatFrequencyHz(0.0f);
+        termiteWorker.setMaxCarryingPayloadRatio(6.0f);
+        termiteWorker.setMandibularBitingForceMPa(8.0f);
+        termiteWorker.setTargetRatio(0.85f);
 
         CasteTemplate termiteSoldier = new CasteTemplate("Soldat à Mandiboles", 200f, 35f);
         termiteSoldier.setBaseDefense(6f);
         termiteSoldier.setBodyLengthMm(7.0f);
         termiteSoldier.setHeadWidthMm(2.5f);
+        termiteSoldier.setWingbeatFrequencyHz(0.0f);
+        termiteSoldier.setMaxCarryingPayloadRatio(4.0f);
+        termiteSoldier.setMandibularBitingForceMPa(55.0f);
+        termiteSoldier.setTargetRatio(0.15f);
 
         termite.setCasteTemplates(List.of(termiteQueen, termiteKing, termiteWorker, termiteSoldier));
         map.put(termite.getPresetName(), termite);
@@ -318,12 +410,20 @@ public class SpeciesPresetManager {
         CasteTemplate harvestQueen = new CasteTemplate("Reine", 450f, 10f);
         harvestQueen.setBodyLengthMm(12.0f);
         harvestQueen.setHeadWidthMm(3.0f);
+        harvestQueen.setWingbeatFrequencyHz(170.0f);
+        harvestQueen.setMaxCarryingPayloadRatio(3.0f);
+        harvestQueen.setMandibularBitingForceMPa(20.0f);
+        harvestQueen.setTargetRatio(0.00f);
 
         CasteTemplate harvestWorker = new CasteTemplate("Ouvrière Moissonneuse", 90f, 14f);
         harvestWorker.setCanCarry(true);
         harvestWorker.setCanDig(true);
         harvestWorker.setBodyLengthMm(7.0f);
         harvestWorker.setHeadWidthMm(2.0f);
+        harvestWorker.setWingbeatFrequencyHz(0.0f);
+        harvestWorker.setMaxCarryingPayloadRatio(12.0f);
+        harvestWorker.setMandibularBitingForceMPa(40.0f);
+        harvestWorker.setTargetRatio(1.00f);
 
         harvester.setCasteTemplates(List.of(harvestQueen, harvestWorker));
         map.put(harvester.getPresetName(), harvester);

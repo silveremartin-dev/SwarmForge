@@ -57,8 +57,9 @@ public class NestMicroclimateSystem {
                         cell.temperature(), cell.humidity(), currentCo2, cell.o2(), cell.n2o(),
                         cell.light(), cell.windX(), cell.windY(), cell.pressure()));
 
-                // Hypercapnia check (> 2.5% CO2 triggers ventilation shaft excavation)
-                if (currentCo2 > 0.025f) {
+                // Hypercapnia check (CO2 exceeds species sensitivity threshold * factor)
+                float co2Limit = colony.getSpecies() != null ? Math.max(0.015f, colony.getSpecies().getGasSensitivityCo2Ppm() * 0.00005f) : 0.025f;
+                if (currentCo2 > co2Limit) {
                     simulation.queueEvent(new SimulationEvent(
                             SimulationEvent.EventType.MILESTONE_REACHED,
                             currentTick,

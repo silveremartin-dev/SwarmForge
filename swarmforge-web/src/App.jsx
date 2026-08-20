@@ -15,6 +15,7 @@ import WorldEditorPanel from './components/WorldEditorPanel'
 import ClimateStudioPanel from './components/ClimateStudioPanel'
 import ViewportToolbar from './components/ViewportToolbar'
 import WeatherControlWidget from './components/WeatherControlWidget'
+import SimulationLeftSidebar from './components/SimulationLeftSidebar'
 import ToastContainer from './components/ToastContainer'
 
 import GodModePanel from './components/GodModePanel'
@@ -25,7 +26,7 @@ const ErrorBoundary = ({ children }) => {
 }
 
 export default function App() {
-    const { connected, connect, disconnect } = useSimulationStore()
+    const { connected, connect, disconnect, running, tick } = useSimulationStore()
     const { environment } = useSimulationStore()
     const [showUnderground, setShowUnderground] = useState(true)
     const [activeMode, setActiveMode] = useState('SIMULATION') // Default to 'SIMULATION' mode for quick access to Simulation Manager
@@ -55,8 +56,8 @@ export default function App() {
             <ToastContainer />
 
             <ErrorBoundary>
-                {/* Status Indicator (Cleaned without useless button) */}
-                <div style={{ position: 'absolute', top: 60, left: 20, zIndex: 100, color: '#fff', background: 'rgba(15, 23, 42, 0.85)', padding: '8px 14px', borderRadius: 8, backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 11 }}>
+                {/* Status Indicator */}
+                <div style={{ position: 'absolute', top: 60, left: activeMode === 'SIMULATION' || activeMode === 'WORLD_EDITOR' ? 450 : 20, zIndex: 100, color: '#fff', background: 'rgba(15, 23, 42, 0.85)', padding: '8px 14px', borderRadius: 8, backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 11, transition: 'all 0.2s ease' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span>Statut:</span>
                         <span style={{ color: connected ? '#4ade80' : '#38bdf8', fontWeight: 'bold' }}>
@@ -69,17 +70,17 @@ export default function App() {
                 </div>
 
                 {!running && tick === 0 && (
-                    <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 120, background: 'rgba(15, 23, 42, 0.92)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 12, padding: '24px 32px', textAlign: 'center', color: '#fff', boxShadow: '0 20px 40px rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)', maxWidth: 480 }}>
+                    <div style={{ position: 'absolute', top: '40%', left: '55%', transform: 'translate(-50%, -50%)', zIndex: 80, background: 'rgba(15, 23, 42, 0.92)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 12, padding: '24px 32px', textAlign: 'center', color: '#fff', boxShadow: '0 20px 40px rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)', maxWidth: 480 }}>
                         <h3 style={{ fontSize: 16, fontWeight: 800, color: '#38bdf8', marginBottom: 8, marginTop: 0 }}>🎬 Vue 3D en Attente de Simulation</h3>
                         <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, margin: 0 }}>
                             La vue 3D s'active automatiquement dès le démarrage de la simulation.<br/>
-                            Veuillez configurer / peupler un monde puis cliquer sur <strong style={{ color: '#10b981' }}>"▶ LANCER SIMULATION"</strong> dans le Gestionnaire de Simulation.
+                            Veuillez configurer / peupler un monde puis cliquer sur <strong style={{ color: '#10b981' }}>"▶ LANCER SIMULATION"</strong> dans le Panneau de Contrôle à gauche.
                         </p>
                     </div>
                 )}
 
                 <VRButton />
-                <Canvas shadows camera={{ position: [20, 20, 20], fov: 50 }} gl={{ preserveDrawingBuffer: true }}>
+                <Canvas shadows camera={{ position: [50, 65, 125], fov: 45 }} gl={{ preserveDrawingBuffer: true }}>
                     <XR>
                         <Controllers />
                         <Hands />
@@ -109,7 +110,7 @@ export default function App() {
 
                         <Grid
                             args={[100, 100]}
-                            position={[50, 0, 50]}
+                            position={[50, -0.01, 50]}
                             cellSize={5}
                             cellThickness={0.5}
                             cellColor="#1a1a2e"
@@ -122,6 +123,9 @@ export default function App() {
                             enableDamping
                             dampingFactor={0.05}
                             target={[50, 0, 50]}
+                            maxPolarAngle={Math.PI / 2 - 0.02}
+                            minDistance={5}
+                            maxDistance={250}
                         />
                         <Stats />
                     </XR>
@@ -136,12 +140,9 @@ export default function App() {
             {activeMode === 'CLIMATE_STUDIO' && <ClimateStudioPanel />}
             {activeMode === 'SIMULATION' && (
                 <>
-                    <ControlPanel />
+                    <SimulationLeftSidebar />
                     <InspectorPanel />
                     <WeatherControlWidget />
-                    <div style={{ position: 'absolute', top: 125, left: 20, width: 330, zIndex: 90, maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
-                        <GodModePanel />
-                    </div>
                 </>
             )}
         </div>

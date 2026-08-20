@@ -6,6 +6,7 @@
  */
 package org.swarmforge.core.species;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.swarmforge.core.domain.CasteTemplate;
@@ -409,6 +410,7 @@ public class CustomSpecies implements Species {
     }
 
     @Override
+    @JsonIgnore
     public List<CasteTemplate> getCastes() {
         return casteTemplates;
     }

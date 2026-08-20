@@ -34,38 +34,114 @@ public class WorldPresetManager {
         Map<String, Map<String, Object>> map = new LinkedHashMap<>();
 
         map.put("Tempéré Standard (Temperate Forest)", makeConfig(
-                256, 256, 64, 1.0, 48.8566, 2.3522, "FOREST", 0.65, 0.55, 0.45
+                2.0, 1.5, 0.5, 48.8566, 2.3522, "FOREST",
+                0.45, 0.45, 65.0, 0.7, 0.3, 0.08,
+                50, 20, 20, 10, 20,
+                0, 70, 10, 0, 0, 10, 0, 10,
+                "774829", 40.0, 60.0, 50.0, 40.0,
+                true, true, true, false, true, true, true,
+                true, 120.0, 0.3, 2.0, 15.0,
+                8, 3, 3
         ));
         map.put("Désert Aride (Arid Desert)", makeConfig(
-                384, 384, 48, 1.0, 24.7136, 46.5163, "DESERT", 0.85, 0.15, 0.70
+                4.0, 1.0, 0.8, 24.7136, 46.5163, "DESERT",
+                0.65, 0.12, 70.0, 0.3, 0.5, 0.02,
+                10, 70, 0, 20, 0,
+                3, 0, 0, 15, 75, 0, 0, 10,
+                "284910", 10.0, 20.0, 5.0, 20.0,
+                false, false, true, false, false, false, false,
+                false, 60.0, 0.0, 0.0, 45.0,
+                3, 1, 6
         ));
         map.put("Forêt Tropicale (Tropical Rainforest)", makeConfig(
-                256, 256, 80, 0.8, -3.1190, -60.0217, "TROPICAL", 0.40, 0.90, 0.35
+                3.0, 2.0, 0.4, -3.1190, -60.0217, "TROPICAL",
+                0.40, 0.85, 50.0, 0.6, 0.4, 0.12,
+                60, 5, 30, 5, 40,
+                2, 0, 5, 80, 0, 0, 0, 15,
+                "918273", 80.0, 70.0, 80.0, 60.0,
+                true, true, true, true, true, false, true,
+                true, 250.0, 0.8, 4.0, 8.0,
+                12, 5, 2
         ));
         map.put("Montagne Rocheuse (Alpine Mountain)", makeConfig(
-                512, 512, 128, 1.2, 45.8326, 6.8652, "ALPINE", 0.90, 0.40, 0.85
+                5.0, 2.5, 0.6, 45.8326, 6.8652, "ALPINE",
+                0.90, 0.40, 85.0, 0.8, 0.2, 0.15,
+                20, 10, 10, 60, 10,
+                1, 10, 75, 0, 0, 15, 0, 0,
+                "551928", 25.0, 50.0, 40.0, 50.0,
+                false, true, true, false, true, true, true,
+                true, 90.0, 1.2, 1.0, 25.0,
+                5, 2, 8
         ));
         map.put("Permafrost Arctique (Arctic Tundra)", makeConfig(
-                256, 256, 32, 1.0, 78.2232, 15.6469, "ARCTIC", 0.30, 0.30, 0.90
+                2.5, 1.2, 0.5, 78.2232, 15.6469, "ARCTIC",
+                0.25, 0.30, 90.0, 0.9, 0.1, 0.04,
+                40, 0, 10, 50, 5,
+                4, 15, 15, 0, 0, 60, 0, 10,
+                "109283", 15.0, 30.0, 15.0, 25.0,
+                false, false, true, false, true, false, false,
+                false, 50.0, 0.1, 3.0, 5.0,
+                2, 1, 5
         ));
 
         return map;
     }
 
-    private Map<String, Object> makeConfig(int width, int height, int depth, double resolution,
+    private Map<String, Object> makeConfig(double surfaceSize, double depth, double res,
                                            double lat, double lon, String biome,
-                                           double elevationScale, double moistureScale, double compaction) {
+                                           double roughness, double baseHumidity, double compaction,
+                                           double stratification, double mixingRate, double voidDensity,
+                                           int earth, int sand, int clay, int stone, int organic,
+                                           int treeSpeciesIdx, int oak, int pine, int acacia, int cactus, int birch, int bamboo, int deadWood,
+                                           String floraSeed, double edibleDensity, double nonEdibleDensity, double leafLitter, double twigDebris,
+                                           boolean aphidPlant, boolean nectarFlowers, boolean seedGrass, boolean fungusFoliage, boolean moss, boolean pineLitter, boolean fernObstacle,
+                                           boolean hasRiver, double riverWidth, double riverVelocity, double staticPools, double waterTableDepth,
+                                           int treeCount, int hollowLogs, int rockCrevices) {
         Map<String, Object> cfg = new LinkedHashMap<>();
-        cfg.put("width", width);
-        cfg.put("height", height);
-        cfg.put("depth", depth);
-        cfg.put("resolution", resolution);
+        cfg.put("surfaceSizeMeters", surfaceSize);
+        cfg.put("depthMeters", depth);
+        cfg.put("resolutionMm", res);
         cfg.put("latitude", lat);
         cfg.put("longitude", lon);
         cfg.put("biome", biome);
-        cfg.put("elevationScale", elevationScale);
-        cfg.put("moistureScale", moistureScale);
-        cfg.put("soilCompaction", compaction);
+        cfg.put("roughness", roughness);
+        cfg.put("baseHumidity", baseHumidity);
+        cfg.put("compaction", compaction);
+        cfg.put("stratification", stratification);
+        cfg.put("mixingRate", mixingRate);
+        cfg.put("voidDensity", voidDensity);
+        cfg.put("soilComposition", Map.of(
+                "earth", earth,
+                "sand", sand,
+                "clay", clay,
+                "stone", stone,
+                "organic", organic
+        ));
+        cfg.put("treeSpeciesIndex", treeSpeciesIdx);
+        cfg.put("treeComposition", Map.of(
+                "oak", oak, "pine", pine, "acacia", acacia, "cactus", cactus,
+                "birch", birch, "bamboo", bamboo, "deadWood", deadWood
+        ));
+        cfg.put("floraSeed", floraSeed);
+        cfg.put("edibleFloraDensity", edibleDensity);
+        cfg.put("nonEdibleFloraDensity", nonEdibleDensity);
+        cfg.put("leafLitter", leafLitter);
+        cfg.put("twigDebris", twigDebris);
+        cfg.put("aphidPlant", aphidPlant);
+        cfg.put("nectarFlowers", nectarFlowers);
+        cfg.put("seedGrass", seedGrass);
+        cfg.put("fungusFoliage", fungusFoliage);
+        cfg.put("moss", moss);
+        cfg.put("pineLitter", pineLitter);
+        cfg.put("fernObstacle", fernObstacle);
+        cfg.put("hasRiver", hasRiver);
+        cfg.put("riverWidthMm", riverWidth);
+        cfg.put("riverVelocity", riverVelocity);
+        cfg.put("staticPools", staticPools);
+        cfg.put("waterTableDepth", waterTableDepth);
+        cfg.put("treeCount", treeCount);
+        cfg.put("hollowLogs", hollowLogs);
+        cfg.put("rockCrevices", rockCrevices);
         return cfg;
     }
 

@@ -38,25 +38,26 @@ public class DiapauseSystem {
         for (Colony colony : simulation.getColonies()) {
             Species.InsectOrder order = colony.getSpecies().getInsectOrder();
             float deepNestTemp = weather.getTemperatureAtDepth(15);
+            float speciesMinTemp = colony.getSpecies() != null ? colony.getSpecies().getMinTempCelsius() : 10.0f;
 
             switch (order) {
                 case ANT -> {
-                    if (deepNestTemp < 10.0f) {
+                    if (deepNestTemp < speciesMinTemp) {
                         applyAntDiapause(colony);
                     }
                 }
                 case BEE -> {
-                    if (ambientTemp < 14.0f) {
+                    if (ambientTemp < speciesMinTemp + 4.0f) {
                         applyBeeWinterCluster(colony);
                     }
                 }
                 case WASP -> {
-                    if (ambientTemp < 8.0f) {
+                    if (ambientTemp < speciesMinTemp - 2.0f) {
                         applyWaspWinterDormancy(colony);
                     }
                 }
                 case TERMITE -> {
-                    if (deepNestTemp < 12.0f) {
+                    if (deepNestTemp < speciesMinTemp + 2.0f) {
                         applyTermiteSubterraneanRetreat(colony);
                     }
                 }

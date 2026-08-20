@@ -195,8 +195,7 @@ public class WeatherEditorPane extends BorderPane {
 
         Label t = new Label();
         t.textProperty().bind(i18n.createStringBinding("weather.title"));
-        t.getStyleClass().add("card-title");
-        t.setStyle("-fx-font-size: 18px;");
+        t.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);

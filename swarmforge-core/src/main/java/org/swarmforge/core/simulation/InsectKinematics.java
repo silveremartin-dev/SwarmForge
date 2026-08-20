@@ -69,4 +69,48 @@ public class InsectKinematics {
     public static boolean canEnterGallery(float predatorWidthMm, float galleryDiameterMm) {
         return galleryDiameterMm >= predatorWidthMm * 1.05f; // 5% clearance required
     }
+
+    // ── Caste vs. Species Trait Fallback Resolution ─────────────────────────
+
+    public static float resolveWingbeatHz(org.swarmforge.core.domain.CasteTemplate caste, org.swarmforge.core.species.Species species) {
+        if (caste != null && caste.getWingbeatFrequencyHz() >= 0.0f) {
+            return caste.getWingbeatFrequencyHz();
+        }
+        return species != null ? species.getWingbeatFrequencyHz() : 200.0f;
+    }
+
+    public static boolean resolveHoveringCapability(org.swarmforge.core.domain.CasteTemplate caste, org.swarmforge.core.species.Species species) {
+        if (caste != null && caste.getHasHoveringCapability() != null) {
+            return caste.getHasHoveringCapability();
+        }
+        return species != null && species.hasHoveringCapability();
+    }
+
+    public static float resolveMaxPayloadRatio(org.swarmforge.core.domain.CasteTemplate caste, org.swarmforge.core.species.Species species) {
+        if (caste != null && caste.getMaxCarryingPayloadRatio() >= 0.0f) {
+            return caste.getMaxCarryingPayloadRatio();
+        }
+        return species != null ? species.getMaxCarryingPayloadRatio() : 5.0f;
+    }
+
+    public static float resolveBitingForceMPa(org.swarmforge.core.domain.CasteTemplate caste, org.swarmforge.core.species.Species species) {
+        if (caste != null && caste.getMandibularBitingForceMPa() >= 0.0f) {
+            return caste.getMandibularBitingForceMPa();
+        }
+        return species != null ? species.getMandibularBitingForceMPa() : 15.0f;
+    }
+
+    public static boolean resolveAutothysis(org.swarmforge.core.domain.CasteTemplate caste, org.swarmforge.core.species.Species species) {
+        if (caste != null && caste.getHasAutothysis() != null) {
+            return caste.getHasAutothysis();
+        }
+        return species != null && species.hasAutothysis();
+    }
+
+    public static boolean resolveAroliaAdhesion(org.swarmforge.core.domain.CasteTemplate caste, org.swarmforge.core.species.Species species) {
+        if (caste != null && caste.getHasSubstrateAdhesionArolia() != null) {
+            return caste.getHasSubstrateAdhesionArolia();
+        }
+        return species == null || species.hasSubstrateAdhesionArolia();
+    }
 }

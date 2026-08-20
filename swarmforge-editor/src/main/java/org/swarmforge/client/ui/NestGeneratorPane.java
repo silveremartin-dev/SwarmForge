@@ -100,7 +100,7 @@ public class NestGeneratorPane extends BorderPane {
 
         Label t = new Label();
         t.textProperty().bind(i18n.createStringBinding("nest.title"));
-        t.setStyle("-fx-font-size:18;-fx-font-weight:bold;");
+        t.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
 
@@ -255,7 +255,7 @@ public class NestGeneratorPane extends BorderPane {
         I18nManager i18n = I18nManager.getInstance();
         VBox cfg = new VBox(10);
         cfg.setPadding(new Insets(10));
-        cfg.setPrefWidth(272);
+        cfg.setPrefWidth(330);
 
         // Species Link Selector (Connection with Species Management)
         Label speciesTitle = new Label("🔗 Modèle d'Espèce de Référence");
@@ -264,7 +264,7 @@ public class NestGeneratorPane extends BorderPane {
         speciesModelCombo = new ComboBox<>();
         speciesModelCombo.setTooltip(new Tooltip("Choisissez le modèle d'espèce de référence (ex: Lasius, Atta, Apis, Vespula, Macrotermes) pour pré-configurer le nid."));
         populateSpeciesModelCombo();
-        speciesModelCombo.setPrefWidth(218);
+        speciesModelCombo.setPrefWidth(270);
         speciesModelCombo.setOnAction(e -> {
             if (!isUpdatingSpeciesCombo) {
                 onSpeciesModelSelected();
@@ -283,7 +283,7 @@ public class NestGeneratorPane extends BorderPane {
             i18n.get("nest.species.age.mature"),
             i18n.get("nest.species.age.giant")
         );
-        nestStageCombo.setPrefWidth(218);
+        nestStageCombo.setPrefWidth(270);
         nestStageCombo.getSelectionModel().select(2); // Mature by default
         nestStageCombo.setOnAction(e -> {
             if (!isUpdatingSpeciesCombo) {
@@ -319,7 +319,7 @@ public class NestGeneratorPane extends BorderPane {
             "🐜 Termites (Isoptera)"
         );
         categorySelect.getSelectionModel().selectFirst();
-        categorySelect.setPrefWidth(218);
+        categorySelect.setPrefWidth(270);
         categorySelect.setOnAction(e -> {
             onCategoryChanged();
             onManualParameterChanged();
@@ -335,7 +335,7 @@ public class NestGeneratorPane extends BorderPane {
             "CATHEDRAL_MOUND", "ARBOREAL_SILK_LEAF", "HOLLOW_TRUNK_NEST", "CARTON_NEST",
             "BAMBOO_STEM_NEST", "BIVOUAC_LIVING_NEST");
         archSelect.getSelectionModel().selectFirst();
-        archSelect.setPrefWidth(218);
+        archSelect.setPrefWidth(270);
         archSelect.setOnAction(e -> {
             onManualParameterChanged();
             regen();
@@ -349,7 +349,7 @@ public class NestGeneratorPane extends BorderPane {
         matSelect.getItems().addAll("EARTH", "WOOD_PLANK", "WOOD_PULP_PAPER", "BEESWAX",
             "STERCORAL_CEMENT", "SILK_WEAVE", "PROPOLIS", "CARTON_PULP", "TREE_TRUNK", "TREE_BRANCH", "TREE_LEAF", "LIVING_INSECT_BODIES");
         matSelect.getSelectionModel().selectFirst();
-        matSelect.setPrefWidth(218);
+        matSelect.setPrefWidth(270);
         matSelect.setOnAction(e -> {
             onManualParameterChanged();
             regen();
@@ -445,7 +445,7 @@ public class NestGeneratorPane extends BorderPane {
         lblInitialFood.setTooltip(new Tooltip("Stock de nourriture déposé initialement dans le nid au démarrage de la simulation."));
         initialFoodSpinner = new Spinner<>(0, 50000, 500, 50);
         initialFoodSpinner.setEditable(true);
-        initialFoodSpinner.setPrefWidth(218);
+        initialFoodSpinner.setPrefWidth(270);
         initialFoodSpinner.setTooltip(new Tooltip("Quantité initiale de nourriture (en unités/calories) stockée dans les loges de nourriture du nid."));
         initialFoodSpinner.valueProperty().addListener((o, a, b) -> onManualParameterChanged());
 
@@ -456,7 +456,7 @@ public class NestGeneratorPane extends BorderPane {
 
         cfg.getChildren().addAll(speciesBlock, archBlock, cdBlock);
         ScrollPane sc = new ScrollPane(cfg);
-        sc.setFitToWidth(true); sc.setPrefWidth(290); sc.setMaxWidth(290);
+        sc.setFitToWidth(true); sc.setPrefWidth(350); sc.setMaxWidth(350);
         return sc;
     }
 

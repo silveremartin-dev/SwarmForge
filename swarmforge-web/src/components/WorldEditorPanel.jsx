@@ -15,9 +15,9 @@ export default function WorldEditorPanel() {
     })
     const [flora, setFlora] = useState({
         edibleDensity: 40,
-        edibleSpecies: ['Cirsium (Pucerons)', 'Fleurs à Nectar', 'Graminées à Graines'],
+        edibleSpecies: ['Cirsium (Aphids)', 'Nectar Flowers', 'Seed Grasses'],
         nonEdibleDensity: 60,
-        nonEdibleSpecies: ['Mousse Polytrichum', 'Fougères', 'Aiguilles de Pin'],
+        nonEdibleSpecies: ['Polytrichum Moss', 'Ferns', 'Pine Needles'],
     })
     const [hydrology, setHydrology] = useState({
         hasRiver: true,

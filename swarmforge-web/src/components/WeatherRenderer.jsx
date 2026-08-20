@@ -2,16 +2,18 @@ import { useRef, useMemo, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSimulationStore } from '../store/simulationStore'
+import { soundEngine } from '../utils/soundEngine'
 
 /**
  * WeatherRenderer Component
- * Renders interactive 3D environmental weather effects in Simulation Mode:
- * - Soleil (Sun mesh, solar halo, directional rays)
- * - Éclairs (Lightning bolt geometry & screen flash lights during storms or triggers)
- * - Nuages (3D drifting cloud clusters reacting to wind)
- * - Pluie / Neige / Grêle (Precipitation particle engine for rain, snow, hail)
- * - Brouillard (Volumetric atmospheric fog adapting to humidity & climate)
- * - Vent / Poussière (Wind vector dust & pollen particles)
+ * Renders interactive 3D environmental weather effects & solar/lunar mechanics:
+ * - Soleil (Sun mesh, solar trajectory East -> South -> West, facade insolation North vs South)
+ * - Lune (3D Moon mesh & pale blue lunar crepuscular lighting during night)
+ * - Éclairs (Instant visual lightning bolt flash + distance-delayed thunder sound propagation)
+ * - Nuages (3D drifting volumetric cloud deck reacting to wind)
+ * - Pluie / Neige / Grêle (Precipitation particle engine)
+ * - Brouillard & Vent (Volumetric fog & atmospheric dust stream)
+ * - Vision Nocturne (Night vision soft ambient illumination toggle)
  */
 export default function WeatherRenderer() {
     const { environment, weatherToggles } = useSimulationStore()
@@ -25,7 +27,7 @@ export default function WeatherRenderer() {
     const timeOfDay = environment.timeOfDay || 'DAY'
     const isNight = environment.lightLevel !== undefined ? environment.lightLevel < 0.3 : (timeOfDay === 'NIGHT')
 
-    // Toggles
+    // Display Toggles
     const {
         showSun = true,
         showLightning = true,
@@ -33,10 +35,23 @@ export default function WeatherRenderer() {
         showPrecipitation = true,
         showFog = true,
         showWindDust = true,
+        nightVision = false,
         lightningTrigger = 0,
     } = weatherToggles || {}
 
-    // ── 1. PRECIPITATION ENGINE (Rain, Snow, Hail) ─────────────────────────────
+    // ── 1. SOLAR & LUNAR CELESTIAL DYNAMICS ──────────────────────────────────────
+    const sunAngle = environment.sunAngle ?? 0.5
+    // Solar trajectory across sky (East -> South -> West)
+    const sunX = Math.cos((sunAngle - 0.25) * Math.PI * 2) * 60
+    const sunY = Math.sin((sunAngle - 0.25) * Math.PI * 2) * 55
+    const sunZ = 20 * Math.sin(sunAngle * Math.PI) // Solar inclination calculating North vs South facade insolation
+
+    // Moon position directly opposite the Sun
+    const moonX = -sunX
+    const moonY = -sunY
+    const moonZ = -sunZ
+
+    // ── 2. PRECIPITATION ENGINE (Rain, Snow, Hail) ─────────────────────────────
     const precipRef = useRef()
     const maxParticles = 3000
     const isSnow = temp <= 0 || weatherState === 'SNOW' || weatherState === 'BLIZZARD'
@@ -84,12 +99,11 @@ export default function WeatherRenderer() {
         precipRef.current.geometry.attributes.position.needsUpdate = true
     })
 
-    // ── 2. LIGHTNING / ÉCLAIRS SYSTEM ─────────────────────────────────────────
+    // ── 3. LIGHTNING & SPEED OF SOUND PROPAGATION DELAY ───────────────────────
     const [lightningActive, setLightningActive] = useState(false)
     const [lightningMesh, setLightningMesh] = useState(null)
     const prevTriggerRef = useRef(lightningTrigger)
 
-    // Trigger lightning bolt on manual click or during storms
     useEffect(() => {
         const isStorm = weatherState === 'THUNDERSTORM' || weatherState === 'TEMPEST' || weatherState === 'HAIL'
         const manualTriggered = lightningTrigger !== prevTriggerRef.current
@@ -109,25 +123,25 @@ export default function WeatherRenderer() {
             if (Math.random() > 0.4) {
                 flashLightning()
             }
-        }, 4000)
+        }, 4500)
 
         return () => clearInterval(interval)
     }, [weatherState, showLightning])
 
     const flashLightning = () => {
+        // 1. Instant visual lightning flash (t = 0)
         setLightningActive(true)
 
-        // Generate jagged electric bolt points
-        const startX = (Math.random() - 0.5) * 60
-        const startZ = (Math.random() - 0.5) * 60
+        const startX = (Math.random() - 0.5) * 70
+        const startZ = (Math.random() - 0.5) * 70
         const points = []
-        let currentPos = new THREE.Vector3(startX, 50, startZ)
+        let currentPos = new THREE.Vector3(startX, 55, startZ)
         points.push(currentPos.clone())
 
         while (currentPos.y > 0) {
             currentPos.y -= 3 + Math.random() * 4
-            currentPos.x += (Math.random() - 0.5) * 6
-            currentPos.z += (Math.random() - 0.5) * 6
+            currentPos.x += (Math.random() - 0.5) * 7
+            currentPos.z += (Math.random() - 0.5) * 7
             points.push(currentPos.clone())
         }
 
@@ -137,19 +151,28 @@ export default function WeatherRenderer() {
         setTimeout(() => {
             setLightningActive(false)
         }, 180)
+
+        // 2. Physical Speed of Sound Audio Propagation Delay (v = 343 m/s)
+        const distFromCenter = Math.sqrt(startX * startX + startZ * startZ)
+        const soundDelayMs = 350 + Math.floor((distFromCenter / 50) * 2000)
+
+        setTimeout(() => {
+            soundEngine.ensureContext()
+            soundEngine.triggerThunder()
+        }, soundDelayMs)
     }
 
-    // ── 3. CLOUDS DECK (3D Volumetric Drifting Clouds) ─────────────────────────
+    // ── 4. CLOUDS DECK (3D Volumetric Drifting Clouds) ─────────────────────────
     const cloudGroupRef = useRef()
-    const cloudCount = 12
+    const cloudCount = 14
 
     const cloudPuffs = useMemo(() => {
         const clouds = []
         for (let c = 0; c < cloudCount; c++) {
             const puffs = []
-            const cx = (Math.random() - 0.5) * 100
+            const cx = (Math.random() - 0.5) * 110
             const cy = 35 + Math.random() * 15
-            const cz = (Math.random() - 0.5) * 100
+            const cz = (Math.random() - 0.5) * 110
             const puffCount = 5 + Math.floor(Math.random() * 6)
 
             for (let p = 0; p < puffCount; p++) {
@@ -172,18 +195,11 @@ export default function WeatherRenderer() {
         cloudGroupRef.current.rotation.y += windSpeed * 0.0005 * delta
     })
 
-    // Cloud color shifts based on weather
     const cloudColor = (weatherState === 'THUNDERSTORM' || weatherState === 'TEMPEST')
-        ? '#222831'
+        ? '#1e2430'
         : (weatherState === 'CLOUDY' || weatherState === 'RAIN' || weatherState === 'SNOW')
-            ? '#707793'
+            ? '#64748b'
             : isNight ? '#1e2029' : '#ffffff'
-
-    // ── 4. SUN MESH & SOLAR RAYS ───────────────────────────────────────────────
-    const sunAngle = environment.sunAngle ?? 0.5
-    const sunX = Math.cos((sunAngle - 0.25) * Math.PI * 2) * 55
-    const sunY = Math.sin((sunAngle - 0.25) * Math.PI * 2) * 55
-    const sunZ = 15
 
     // ── 5. WIND DUST & POLLEN PARTICLES ───────────────────────────────────────
     const dustRef = useRef()
@@ -199,56 +215,42 @@ export default function WeatherRenderer() {
         return pos
     }, [])
 
-    useFrame((state, delta) => {
-        if (!dustRef.current || !showWindDust) return
-        const pos = dustRef.current.geometry.attributes.position.array
-        const speed = windSpeed * 0.3 * delta
-
-        for (let i = 0; i < dustCount; i++) {
-            pos[i * 3] += speed
-            if (pos[i * 3] > 50) pos[i * 3] = -50
-        }
-        dustRef.current.geometry.attributes.position.needsUpdate = true
-    })
-
-    // ── 6. FOG DENSITY & COLOR ────────────────────────────────────────────────
-    const fogDensity = (humidity > 80 || weatherState === 'FOG' || weatherState === 'TEMPEST')
-        ? 0.025
-        : (weatherState === 'RAIN' || weatherState === 'SNOW')
-            ? 0.012
-            : 0.004
-
-    const fogColor = isNight ? '#0b0f19' : (weatherState === 'THUNDERSTORM' || weatherState === 'TEMPEST') ? '#1e2430' : '#88aaff'
-
     return (
         <group>
-            {/* 🌫️ 1. Volumetric Fog Layer */}
-            {showFog && <fogExp2 attach="fog" args={[fogColor, fogDensity]} />}
+            {/* 👁️ Night Vision Soft Ambient Illumination */}
+            {nightVision && (
+                <ambientLight intensity={0.95} color="#cbd5e1" />
+            )}
 
-            {/* ☀️ 2. Sun & Solar Flares */}
-            {showSun && !isNight && (
-                <group position={[sunX, sunY, sunZ]}>
-                    {/* Glowing Sun Core */}
-                    <mesh>
-                        <sphereGeometry args={[3.5, 32, 32]} />
-                        <meshBasicMaterial color={sunY < 15 ? '#ff7733' : '#ffffaa'} />
+            {/* ☀️ 1. Sun Mesh & Direct Facade Insolation */}
+            {showSun && sunY > -5 && (
+                <group>
+                    <mesh position={[sunX, sunY, sunZ]}>
+                        <sphereGeometry args={[3, 16, 16]} />
+                        <meshBasicMaterial color={sunY < 15 ? '#ff7733' : '#fff5cc'} />
                     </mesh>
-
-                    {/* Solar Corona Glow */}
-                    <mesh scale={[1.4, 1.4, 1.4]}>
-                        <sphereGeometry args={[3.5, 16, 16]} />
-                        <meshBasicMaterial
-                            color={sunY < 15 ? '#ffaa00' : '#ffee77'}
-                            transparent
-                            opacity={0.35}
-                        />
-                    </mesh>
-
-                    {/* Direct Light Source */}
                     <directionalLight
-                        intensity={Math.max(0.2, environment.lightLevel * 1.8)}
+                        position={[sunX, sunY, sunZ]}
+                        intensity={Math.max(0.2, (sunY / 55) * 1.5)}
                         color={sunY < 15 ? '#ff8844' : '#ffffff'}
                         castShadow
+                        shadow-mapSize={[2048, 2048]}
+                    />
+                </group>
+            )}
+
+            {/* 🌙 2. 3D Moon Mesh & Lunar Crepuscular Light */}
+            {isNight && moonY > -10 && (
+                <group>
+                    <mesh position={[moonX, Math.max(10, moonY), moonZ]}>
+                        <sphereGeometry args={[2.5, 16, 16]} />
+                        <meshStandardMaterial color="#94a3b8" emissive="#38bdf8" emissiveIntensity={0.25} roughness={0.8} />
+                    </mesh>
+                    {/* Soft Pale Blue Lunar Crepuscular Light */}
+                    <directionalLight
+                        position={[moonX, Math.max(15, moonY), moonZ]}
+                        intensity={nightVision ? 0.6 : 0.25}
+                        color="#7dd3fc"
                     />
                 </group>
             )}
@@ -274,14 +276,12 @@ export default function WeatherRenderer() {
                 </group>
             )}
 
-            {/* ⚡ 4. Lightning Bolt & Flash Light */}
+            {/* ⚡ 4. Lightning Bolt & Strobe Flash */}
             {showLightning && lightningActive && (
                 <group>
-                    {/* Ambient Strobe Flash */}
                     <ambientLight intensity={4.5} color="#b0c4de" />
                     <pointLight position={[0, 45, 0]} intensity={25.0} color="#e0ffff" distance={150} />
 
-                    {/* Jagged Bolt Line */}
                     {lightningMesh && (
                         <line geometry={lightningMesh}>
                             <lineBasicMaterial color="#ffffff" linewidth={4} />

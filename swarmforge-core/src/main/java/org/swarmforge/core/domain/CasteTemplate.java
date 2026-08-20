@@ -63,6 +63,14 @@ public class CasteTemplate implements java.io.Serializable {
     private int neuralHiddenLayers = 2;
     private float[] neuralWeights = new float[]{0.5f, -0.2f, 0.8f, 0.1f, -0.5f, 0.3f};
 
+    // Motor & Biomechanical Caste Traits
+    private float wingbeatFrequencyHz = -1.0f; // -1.0f means fallback to species default
+    private Boolean hasHoveringCapability = null; // null means fallback to species default
+    private float maxCarryingPayloadRatio = -1.0f; // -1.0f means fallback to species default
+    private float mandibularBitingForceMPa = -1.0f; // -1.0f means fallback to species default
+    private Boolean hasAutothysis = null; // null means fallback to species default
+    private Boolean hasSubstrateAdhesionArolia = null; // null means fallback to species default
+
     // Advanced Venom Systems & Chemical Warfare
     private String venomType = "NONE"; // NONE, FORMIC_ACID, SOLENOPSIN, NEUROTOXIN, CYTOTOXIN, TERPENE_RESIN, AUTOTHYSIS_BOMB, ACID_SPRAY, POWERFUL_MANDIBLES
     private float venomToxicity = 10.0f;
@@ -274,6 +282,28 @@ public class CasteTemplate implements java.io.Serializable {
 
     public float getAcidPhLevel() { return acidPhLevel; }
     public void setAcidPhLevel(float acidPhLevel) { this.acidPhLevel = acidPhLevel; }
+
+    // Motor & Biomechanical Getters/Setters
+    public float getWingbeatFrequencyHz() { return wingbeatFrequencyHz; }
+    public void setWingbeatFrequencyHz(float wingbeatFrequencyHz) { this.wingbeatFrequencyHz = wingbeatFrequencyHz; }
+
+    public Boolean getHasHoveringCapability() { return hasHoveringCapability; }
+    public boolean isHasHoveringCapability() { return hasHoveringCapability != null ? hasHoveringCapability : false; }
+    public void setHasHoveringCapability(Boolean hasHoveringCapability) { this.hasHoveringCapability = hasHoveringCapability; }
+
+    public float getMaxCarryingPayloadRatio() { return maxCarryingPayloadRatio; }
+    public void setMaxCarryingPayloadRatio(float maxCarryingPayloadRatio) { this.maxCarryingPayloadRatio = maxCarryingPayloadRatio; }
+
+    public float getMandibularBitingForceMPa() { return mandibularBitingForceMPa; }
+    public void setMandibularBitingForceMPa(float mandibularBitingForceMPa) { this.mandibularBitingForceMPa = mandibularBitingForceMPa; }
+
+    public Boolean getHasAutothysis() { return hasAutothysis; }
+    public boolean isHasAutothysis() { return hasAutothysis != null ? hasAutothysis : false; }
+    public void setHasAutothysis(Boolean hasAutothysis) { this.hasAutothysis = hasAutothysis; }
+
+    public Boolean getHasSubstrateAdhesionArolia() { return hasSubstrateAdhesionArolia; }
+    public boolean isHasSubstrateAdhesionArolia() { return hasSubstrateAdhesionArolia != null ? hasSubstrateAdhesionArolia : true; }
+    public void setHasSubstrateAdhesionArolia(Boolean hasSubstrateAdhesionArolia) { this.hasSubstrateAdhesionArolia = hasSubstrateAdhesionArolia; }
 
     public void setAttribute(String key, float value) {
         attributes.put(key, value);

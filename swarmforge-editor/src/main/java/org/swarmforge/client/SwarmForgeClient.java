@@ -682,6 +682,9 @@ public class SwarmForgeClient extends Application {
                 Label lblInactiveTitle = new Label("🎬 Vue 3D Prête — Attente du Lancement");
                 lblInactiveTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 12px; -fx-font-weight: bold;");
 
+                simulationInactiveOverlay.setMouseTransparent(true);
+                simulationInactiveOverlay.setPickOnBounds(false);
+
                 simulationInactiveOverlay.getChildren().addAll(lblInactiveTitle);
                 viewport3D.getChildren().add(simulationInactiveOverlay);
                 StackPane.setAlignment(simulationInactiveOverlay, Pos.TOP_CENTER);
@@ -919,7 +922,12 @@ public class SwarmForgeClient extends Application {
 
                 Label title = new Label();
                 title.textProperty().bind(i18n.createStringBinding("settings.title"));
-                title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+                title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+
+                VBox headerBox = new VBox(6);
+                headerBox.getChildren().addAll(title, new Separator());
+
+                main.getChildren().add(headerBox);
 
                 GridPane grid = new GridPane();
                 grid.setHgap(20);
@@ -981,7 +989,7 @@ public class SwarmForgeClient extends Application {
                 grid.add(themeLabel, 0, 1);
                 grid.add(themeCombo, 1, 1);
 
-                main.getChildren().addAll(title, new Separator(), grid);
+                main.getChildren().add(grid);
                 return main;
         }
 
@@ -1193,11 +1201,26 @@ public class SwarmForgeClient extends Application {
         }
 
         private Node createGlossaryPaneView() {
-                VBox box = new VBox(15);
-                box.setPadding(new Insets(15));
+                VBox mainBox = new VBox(10);
+                mainBox.setPadding(new Insets(0));
+
+                VBox headerVBox = new VBox(6);
+                headerVBox.setPadding(new Insets(8, 10, 5, 10));
+
+                HBox headerRow = new HBox(8);
+                headerRow.setAlignment(Pos.CENTER_LEFT);
 
                 Label title = new Label("📖 Glossaire & Référence Technique Universelle");
-                title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #0284c7;");
+                title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+
+                Region sp = new Region();
+                HBox.setHgrow(sp, Priority.ALWAYS);
+
+                headerRow.getChildren().addAll(title, sp);
+                headerVBox.getChildren().addAll(headerRow, new Separator());
+
+                VBox contentBox = new VBox(12);
+                contentBox.setPadding(new Insets(10, 15, 15, 15));
 
                 Label subtitle = new Label("Référence complète centralisant tous les paramètres de simulation, métriques biologiques, capteurs, substrats géologiques, architectures de nids et espèces associées.");
                 subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-wrap-text: true;");
@@ -1291,8 +1314,10 @@ public class SwarmForgeClient extends Application {
                         filterVBoxRows(vAccessory, query);
                 });
 
-                box.getChildren().addAll(title, subtitle, searchField, tabPane);
-                return box;
+                contentBox.getChildren().addAll(subtitle, searchField, tabPane);
+                VBox.setVgrow(contentBox, Priority.ALWAYS);
+                mainBox.getChildren().addAll(headerVBox, contentBox);
+                return mainBox;
         }
 
         private void filterVBoxRows(VBox box, String query) {

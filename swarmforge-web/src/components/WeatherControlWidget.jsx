@@ -4,7 +4,7 @@ import { useSimulationStore } from '../store/simulationStore'
 /**
  * WeatherControlWidget Component
  * Provides a GUI overlay during Simulation Mode to toggle and display
- * atmospheric visual effects: Sun, Lightning, Clouds, Rain, Fog, Wind dust.
+ * atmospheric visual effects: Sun, Moon, Lightning, Clouds, Rain, Fog, Wind dust, Night Vision.
  */
 export default function WeatherControlWidget() {
     const { environment, weatherToggles, setWeatherToggle, triggerLightning } = useSimulationStore()
@@ -17,13 +17,14 @@ export default function WeatherControlWidget() {
         showPrecipitation = true,
         showFog = true,
         showWindDust = true,
+        nightVision = false,
     } = weatherToggles || {}
 
     const styles = {
         container: {
             position: 'absolute',
             bottom: 20,
-            left: 20,
+            right: 20,
             zIndex: 95,
             background: 'rgba(15, 23, 42, 0.88)',
             backdropFilter: 'blur(12px)',
@@ -31,7 +32,7 @@ export default function WeatherControlWidget() {
             borderRadius: 10,
             padding: collapsed ? '8px 12px' : '14px',
             color: '#f8fafc',
-            width: collapsed ? 'auto' : 280,
+            width: collapsed ? 'auto' : 290,
             boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
             fontFamily: 'system-ui, -apple-system, sans-serif',
             transition: 'all 0.25s ease',
@@ -108,7 +109,7 @@ export default function WeatherControlWidget() {
                             style={styles.toggleBtn(showSun)}
                             onClick={() => setWeatherToggle('showSun', !showSun)}
                         >
-                            ☀️ Soleil
+                            ☀️ Soleil / Lune
                         </button>
                         <button
                             style={styles.toggleBtn(showLightning)}
@@ -139,6 +140,12 @@ export default function WeatherControlWidget() {
                             onClick={() => setWeatherToggle('showWindDust', !showWindDust)}
                         >
                             💨 Vent & Poussière
+                        </button>
+                        <button
+                            style={{ ...styles.toggleBtn(nightVision), gridColumn: 'span 2' }}
+                            onClick={() => setWeatherToggle('nightVision', !nightVision)}
+                        >
+                            👁️ Vision Nocturne (Voir la nuit)
                         </button>
                     </div>
 
