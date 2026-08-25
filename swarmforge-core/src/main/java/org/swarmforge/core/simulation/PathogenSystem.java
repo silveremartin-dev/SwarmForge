@@ -55,4 +55,19 @@ public class PathogenSystem {
         float transmissionProb = sporeDensity * (relativeHumidity / 100.0f) * 0.05f;
         return Math.random() < transmissionProb;
     }
+
+    /**
+     * Social Immunity: Active worker-to-worker Allogrooming removes 85% of un-germinated surface spores.
+     */
+    public static float performSocialAllogrooming(float initialSporeLoad) {
+        return Math.max(0.0f, initialSporeLoad * 0.15f); // 85% spore load cleared
+    }
+
+    /**
+     * Social Immunity: Formic acid (HCOOH) spraying on nest chambers inhibits pathogen proliferation.
+     */
+    public static float applyFormicAcidDisinfection(float chamberPathogenLoad, boolean hasFormicAcidAccess) {
+        if (!hasFormicAcidAccess) return chamberPathogenLoad;
+        return Math.max(0.0f, chamberPathogenLoad * 0.40f); // 60% pathogen reduction
+    }
 }

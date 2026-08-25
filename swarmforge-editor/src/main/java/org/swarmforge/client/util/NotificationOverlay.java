@@ -45,12 +45,22 @@ public class NotificationOverlay {
     }
 
     /**
-     * Shows a non-blocking toast notification banner over the container.
+     * Shows a non-blocking toast notification banner over the container (silent by default).
      */
     public static void show(Pane parent, String message, NotificationType type) {
+        show(parent, message, type, false);
+    }
+
+    /**
+     * Shows a non-blocking toast notification banner over the container with optional sound.
+     */
+    public static void show(Pane parent, String message, NotificationType type, boolean playSound) {
         if (parent == null || message == null || message.isBlank()) return;
 
         Platform.runLater(() -> {
+            if (playSound) {
+                SoundEffectManager.getInstance().playClickSound();
+            }
             HBox toast = new HBox(10);
             toast.setAlignment(Pos.CENTER_LEFT);
             toast.setPadding(new Insets(10, 16, 10, 16));

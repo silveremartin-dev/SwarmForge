@@ -198,5 +198,25 @@ public class VegetationSystem {
     public int getPlantCount() {
         return plants.size();
     }
+
+    /**
+     * Root Evapotranspiration Coupling: Computes deep subterranean soil moisture suction by plant root systems.
+     * Transpiration rate (liters/m²/tick) scales with plant density, foliage maturity, and solar irradiance.
+     */
+    public float calculateRootEvapotranspiration(float solarIrradiance) {
+        if (plants.isEmpty()) return 0.0f;
+        float totalTranspiration = 0.0f;
+        for (Plant p : plants) {
+            float rootScale = switch (p.type) {
+                case TREE -> 1.5f;
+                case SHRUB -> 0.8f;
+                case GRASS -> 0.3f;
+                case FLOWER -> 0.2f;
+                case MOSS -> 0.05f;
+            };
+            totalTranspiration += rootScale * p.growth * p.health * (0.2f + 0.8f * solarIrradiance);
+        }
+        return totalTranspiration * 0.01f;
+    }
 }
 

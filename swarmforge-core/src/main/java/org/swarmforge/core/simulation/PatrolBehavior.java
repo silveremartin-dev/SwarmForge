@@ -47,7 +47,7 @@ public class PatrolBehavior implements BehaviorStrategy {
 
         // Move
         ind.move(0.4f);
-        ind.setEnergy(ind.getEnergy() - 0.03f);
+        ind.setEnergy(ind.getEnergy() - 0.0001f);
     }
 
     private void rushToAlarm(Individual ind, BehaviorContext ctx) {
@@ -62,7 +62,7 @@ public class PatrolBehavior implements BehaviorStrategy {
 
     private void attackEnemy(Individual ind) {
         // Combat logic would go here
-        ind.setEnergy(ind.getEnergy() - 0.2f); // Fighting is exhausting
+        ind.setEnergy(ind.getEnergy() - 0.001f); // Fighting is exhausting
     }
 
     private void patrol(Individual ind, Colony colony) {

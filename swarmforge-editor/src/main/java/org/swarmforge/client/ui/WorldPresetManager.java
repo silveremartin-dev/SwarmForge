@@ -33,8 +33,8 @@ public class WorldPresetManager {
     private Map<String, Map<String, Object>> builtins() {
         Map<String, Map<String, Object>> map = new LinkedHashMap<>();
 
-        // 1. Forêt Tempérée Décidue (Fontainebleau, France)
-        map.put("Tempéré Decidu (Fontainebleau, FR)", makeConfig(
+        // 1. Temperate Deciduous Forest (Fontainebleau, France)
+        map.put("Temperate Deciduous (Fontainebleau, FR)", makeConfig(
                 25.0, 3.0, 0.5, 48.4047, 2.7016, "FOREST",
                 0.45, 0.45, 65.0, 0.7, 0.3, 0.08,
                 50, 20, 20, 10, 20,
@@ -45,8 +45,8 @@ public class WorldPresetManager {
                 8, 3, 3
         ));
 
-        // 2. Désert Aride Erg Chebbi (Sahara, Maroc)
-        map.put("Désert Aride (Erg Chebbi, MA)", makeConfig(
+        // 2. Arid Desert Erg Chebbi (Sahara, Morocco)
+        map.put("Arid Desert (Erg Chebbi, MA)", makeConfig(
                 25.0, 3.0, 0.8, 31.1444, -3.9708, "DESERT",
                 0.65, 0.12, 70.0, 0.3, 0.5, 0.02,
                 5, 80, 0, 15, 0,
@@ -57,8 +57,8 @@ public class WorldPresetManager {
                 3, 1, 6
         ));
 
-        // 3. Forêt Tropicale Équatoriale (Amazonie, Manaus, Brésil)
-        map.put("Forêt Tropicale (Manaus, BR)", makeConfig(
+        // 3. Equatorial Tropical Rainforest (Amazon, Manaus, Brazil)
+        map.put("Tropical Rainforest (Manaus, BR)", makeConfig(
                 25.0, 3.0, 0.4, -3.1190, -60.0217, "TROPICAL",
                 0.40, 0.85, 50.0, 0.6, 0.4, 0.12,
                 45, 5, 40, 10, 35,
@@ -69,8 +69,8 @@ public class WorldPresetManager {
                 12, 5, 2
         ));
 
-        // 4. Montagne Rocheuse & Éboulis (Mont Blanc, Chamonix, France)
-        map.put("Montagne Rocheuse (Mont Blanc, FR)", makeConfig(
+        // 4. Rocky Mountain & Scree (Mont Blanc, Chamonix, France)
+        map.put("Rocky Mountain (Mont Blanc, FR)", makeConfig(
                 25.0, 3.0, 0.6, 45.8326, 6.8652, "ALPINE",
                 0.90, 0.40, 85.0, 0.8, 0.2, 0.15,
                 15, 15, 10, 60, 5,
@@ -81,8 +81,8 @@ public class WorldPresetManager {
                 5, 2, 8
         ));
 
-        // 5. Permafrost Arctique (Longyearbyen, Svalbard, Norvège)
-        map.put("Permafrost Arctique (Svalbard, NO)", makeConfig(
+        // 5. Arctic Permafrost (Longyearbyen, Svalbard, Norway)
+        map.put("Permafrost Tundra (Svalbard, NO)", makeConfig(
                 25.0, 3.0, 0.5, 78.2232, 15.6469, "ARCTIC",
                 0.25, 0.30, 90.0, 0.9, 0.1, 0.04,
                 35, 10, 15, 40, 15,
@@ -93,8 +93,8 @@ public class WorldPresetManager {
                 2, 1, 5
         ));
 
-        // 6. Savane d'Acacias (Serengeti, Tanzanie)
-        map.put("Savane d'Acacias (Serengeti, TZ)", makeConfig(
+        // 6. Acacia Savanna (Serengeti, Tanzania)
+        map.put("Acacia Savanna (Serengeti, TZ)", makeConfig(
                 25.0, 3.0, 0.5, -2.3333, 34.8333, "SAVANNA",
                 0.35, 0.28, 60.0, 0.5, 0.4, 0.05,
                 30, 35, 25, 10, 10,
@@ -105,8 +105,8 @@ public class WorldPresetManager {
                 6, 4, 3
         ));
 
-        // 7. Maquis Méditerranéen (Corse, France)
-        map.put("Maquis Méditerranéen (Corse, FR)", makeConfig(
+        // 7. Mediterranean Shrubland (Corsica, France)
+        map.put("Mediterranean Shrubland (Corsica, FR)", makeConfig(
                 25.0, 3.0, 0.5, 42.1500, 9.1500, "MEDITERRANEAN",
                 0.55, 0.35, 70.0, 0.6, 0.3, 0.06,
                 35, 25, 15, 25, 15,
@@ -117,8 +117,8 @@ public class WorldPresetManager {
                 7, 3, 5
         ));
 
-        // 8. Taïga Boréale (Rovaniemi, Laponie, Finlande)
-        map.put("Taïga Boréale (Rovaniemi, FI)", makeConfig(
+        // 8. Boreal Taiga (Rovaniemi, Lapland, Finland)
+        map.put("Boreal Taiga (Rovaniemi, FI)", makeConfig(
                 25.0, 3.0, 0.5, 66.5039, 25.7294, "TAIGA",
                 0.40, 0.55, 65.0, 0.75, 0.25, 0.07,
                 40, 20, 15, 25, 25,
@@ -129,8 +129,8 @@ public class WorldPresetManager {
                 9, 4, 3
         ));
 
-        // 9. Marécage & Mangrove (Everglades, Floride, USA)
-        map.put("Marécage & Mangrove (Everglades, US)", makeConfig(
+        // 9. Swamp & Mangrove (Everglades, Florida, USA)
+        map.put("Swamp & Mangrove (Everglades, US)", makeConfig(
                 25.0, 3.0, 0.4, 25.2866, -80.8987, "WETLAND",
                 0.20, 0.90, 40.0, 0.4, 0.5, 0.10,
                 55, 10, 30, 5, 40,
@@ -141,8 +141,8 @@ public class WorldPresetManager {
                 8, 6, 2
         ));
 
-        // 10. Steppe Semi-Aride (Astana, Kazakhstan)
-        map.put("Steppe Semi-Aride (Astana, KZ)", makeConfig(
+        // 10. Semi-Arid Steppe (Astana, Kazakhstan)
+        map.put("Semi-Arid Steppe (Astana, KZ)", makeConfig(
                 25.0, 3.0, 0.6, 51.1694, 71.4491, "STEPPE",
                 0.30, 0.30, 75.0, 0.65, 0.35, 0.04,
                 50, 25, 20, 5, 15,

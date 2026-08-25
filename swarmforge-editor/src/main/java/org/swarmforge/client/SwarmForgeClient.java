@@ -7,6 +7,7 @@
 package org.swarmforge.client;
 
 import org.swarmforge.client.util.I18nManager;
+import org.swarmforge.client.util.NotificationOverlay;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -19,6 +20,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.swarmforge.client.view.GameViewPane;
 import org.swarmforge.client.ui.MinimapOverlay;
+import org.swarmforge.client.util.NotificationOverlay;
 import org.swarmforge.client.ui.PheromoneOverlay;
 import org.swarmforge.client.ui.StatisticsDashboard;
 
@@ -155,6 +157,35 @@ public class SwarmForgeClient extends Application {
         glossaryTab.setContent(createGlossaryPaneView());
 
         mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, accessoryTab, weatherTab, nestTab, settingsTab, glossaryTab);
+
+        final boolean[] isProgrammaticTabSwitch = { false };
+        mainTabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+            if (isProgrammaticTabSwitch[0]) return;
+            if (oldTab != null && oldTab.getContent() != null) {
+                javafx.scene.Node content = oldTab.getContent();
+                boolean canLeave = true;
+                if (content instanceof org.swarmforge.client.ui.SpeciesEditorPane speciesEditor) {
+                    canLeave = speciesEditor.promptUnsavedChanges();
+                } else if (content instanceof org.swarmforge.client.ui.WorldEditorPane worldEditor) {
+                    canLeave = worldEditor.promptUnsavedChanges();
+                } else if (content instanceof org.swarmforge.client.ui.WeatherEditorPane weatherEditor) {
+                    canLeave = weatherEditor.promptUnsavedChanges();
+                } else if (content instanceof org.swarmforge.client.ui.NestGeneratorPane nestEditor) {
+                    canLeave = nestEditor.promptUnsavedChanges();
+                } else if (content instanceof org.swarmforge.client.ui.AccessorySpeciesEditorPane accessoryEditor) {
+                    canLeave = accessoryEditor.promptUnsavedChanges();
+                }
+
+                if (!canLeave) {
+                    isProgrammaticTabSwitch[0] = true;
+                    try {
+                        mainTabs.getSelectionModel().select(oldTab);
+                    } finally {
+                        isProgrammaticTabSwitch[0] = false;
+                    }
+                }
+            }
+        });
 
         // Style tab graphics
         for (Tab t : mainTabs.getTabs()) {
@@ -403,7 +434,9 @@ public class SwarmForgeClient extends Application {
                         int workers = simControlPanel.getWorkerCount();
                         int soldiers = simControlPanel.getSoldierCount();
 
-                        for (String selSpecies : selSpeciesList) {
+                        int totalCols = selSpeciesList.size();
+                        for (int colIdx = 0; colIdx < totalCols; colIdx++) {
+                                String selSpecies = selSpeciesList.get(colIdx);
                                 String speciesKey = "LasiusNiger";
                                 if (selSpecies != null) {
                                         if (selSpecies.contains("Atta") || selSpecies.contains("Coupeuse")) speciesKey = "AttaCephalotes";
@@ -413,7 +446,11 @@ public class SwarmForgeClient extends Application {
                                         else if (selSpecies.contains("Apis") || selSpecies.contains("Abeille")) speciesKey = "ApisMellifera";
                                         else if (selSpecies.contains("Termite") || selSpecies.contains("Macrotermes")) speciesKey = "Macrotermes";
                                 }
-                                this.localSimulation.addColony(speciesKey, queens, workers, soldiers);
+                                org.swarmforge.core.spatial.OptimalColonyPlacementEngine.PlacementResult pos =
+                                        org.swarmforge.core.spatial.OptimalColonyPlacementEngine.calculateOptimalPosition(
+                                                this.lastGeneratedTerrarium, speciesKey, colIdx, totalCols, "Optimal Multi-Territory Cluster"
+                                        );
+                                this.localSimulation.addColony(speciesKey, queens, workers, soldiers, pos.x(), pos.y());
                         }
 
                         if (gameView != null && gameView.getGameApp() != null) {
@@ -535,7 +572,11 @@ public class SwarmForgeClient extends Application {
                                     );
                                 }
 
-                                // Update statistics continuously so initial colony counts are visible
+                                 if (simWorldViewer != null && localSimulation != null) {
+                                     simWorldViewer.setSimulation(localSimulation);
+                                 }
+
+                                 // Update statistics continuously so initial colony counts are visible
                                 if (statisticsDashboard != null) {
                                         StatisticsDashboard.ColonyStats stats = new StatisticsDashboard.ColonyStats();
                                         stats.simTicks = tick;
@@ -664,10 +705,11 @@ public class SwarmForgeClient extends Application {
                 BorderPane rootPane = new BorderPane();
 
                 // Center Viewport: WorldEditorPane 3-View System (3D View + Mouse Orbit/Pan/Zoom Controls + 2D Minimaps)
+                // Center Viewport: WorldEditorPane 3-View System (3D View + Mouse Orbit/Pan/Zoom Controls + 2D Minimaps)
                 org.swarmforge.client.ui.WorldEditorPane simWorldViewer = new org.swarmforge.client.ui.WorldEditorPane();
-                simWorldViewer.setHideConfigPanel(true);
+                simWorldViewer.setSimulationMode(true);
                 
-                // 3D Inactive Overlay Placeholder (Sleek Top Bar)
+                // 3D Inactive Overlay Placeholder (Sleek Top Bar - Hidden)
                 this.simulationInactiveOverlay = new VBox(4);
                 simulationInactiveOverlay.setAlignment(Pos.CENTER);
                 simulationInactiveOverlay.setStyle("-fx-background-color: rgba(15, 23, 42, 0.75); -fx-padding: 8 16; -fx-background-radius: 20; -fx-border-color: rgba(56, 189, 248, 0.3); -fx-border-width: 1; -fx-border-radius: 20;");
@@ -678,6 +720,8 @@ public class SwarmForgeClient extends Application {
 
                 simulationInactiveOverlay.setMouseTransparent(true);
                 simulationInactiveOverlay.setPickOnBounds(false);
+                simulationInactiveOverlay.setVisible(false);
+                simulationInactiveOverlay.setManaged(false);
 
                 simulationInactiveOverlay.getChildren().addAll(lblInactiveTitle);
 
@@ -692,10 +736,8 @@ public class SwarmForgeClient extends Application {
                 StackPane.setAlignment(btnExitFullscreen, Pos.TOP_RIGHT);
                 StackPane.setMargin(btnExitFullscreen, new Insets(15));
 
-                // If simulation is already active or loaded, hide overlay
-                if (localSimulation != null || (simControlPanel != null && simControlPanel.isPlaying())) {
-                        simulationInactiveOverlay.setVisible(false);
-                }
+                simulationInactiveOverlay.setVisible(false);
+                simulationInactiveOverlay.setManaged(false);
 
                 rootPane.setCenter(viewportStack);
 
@@ -719,10 +761,49 @@ public class SwarmForgeClient extends Application {
                 if (simControlPanel != null) {
                         simControlPanel.setOnPlay(v -> {
                                 if (simulationInactiveOverlay != null) simulationInactiveOverlay.setVisible(false);
+                                if (localSimulation != null) localSimulation.start();
+                        });
+                        simControlPanel.setOnPause(v -> {
+                                if (localSimulation != null) localSimulation.pause();
+                        });
+                        simControlPanel.setOnStop(v -> {
+                                if (localSimulation != null) {
+                                        localSimulation.stop();
+                                        localSimulation.reset(0);
+                                        simControlPanel.updateTick(0, 0);
+                                }
+                                if (simulationInactiveOverlay != null) simulationInactiveOverlay.setVisible(true);
+                        });
+                        simControlPanel.setOnRewind(steps -> {
+                                if (localSimulation != null) {
+                                        localSimulation.rewind(steps);
+                                        long curTick = localSimulation.getTickCount();
+                                        simControlPanel.updateTick(curTick, curTick);
+                                        simWorldViewer.repaintAllViews();
+                                }
+                        });
+                        simControlPanel.setOnStepForward(v -> {
+                                if (localSimulation != null) {
+                                        localSimulation.tick();
+                                        long curTick = localSimulation.getTickCount();
+                                        simControlPanel.updateTick(curTick, curTick);
+                                        simWorldViewer.repaintAllViews();
+                                }
+                        });
+                        simControlPanel.setOnSeek(tick -> {
+                                if (localSimulation != null) {
+                                        localSimulation.seekToTick(tick);
+                                        long curTick = localSimulation.getTickCount();
+                                        simControlPanel.updateTick(curTick, curTick);
+                                        simWorldViewer.repaintAllViews();
+                                }
+                        });
+                        simControlPanel.setOnSpeedChange(speed -> {
+                                if (localSimulation != null) localSimulation.setSpeedMultiplier(speed);
                         });
                 }
 
-                // 3. Media & Recording Section
+                // 3. Media & Recording Section (Toast Notifications)
                 VBox mediaSection = new VBox(6);
                 mediaSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
                 Label lblMedia = new Label("📸 Captures & Média :");
@@ -736,7 +817,7 @@ public class SwarmForgeClient extends Application {
                 Button btnPhoto = new Button("📷 Capture d'Écran HD (PNG)");
                 btnPhoto.setMaxWidth(Double.MAX_VALUE);
                 btnPhoto.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
-                btnPhoto.setOnAction(e -> new Alert(Alert.AlertType.INFORMATION, "Capture Photo HD enregistrée sous swarmforge_snapshot.png !").show());
+                btnPhoto.setOnAction(e -> NotificationOverlay.show(rootPane, "📸 Capture Photo HD enregistrée sous swarmforge_snapshot.png !", NotificationOverlay.NotificationType.SUCCESS));
 
                 Button btnRecVideo = new Button("🎥 Enregistrer Séquence Animée");
                 btnRecVideo.setMaxWidth(Double.MAX_VALUE);
@@ -745,10 +826,11 @@ public class SwarmForgeClient extends Application {
                         if (btnRecVideo.getText().contains("Enregistrer")) {
                                 btnRecVideo.setText("⏹ Stop & Exporter MP4");
                                 btnRecVideo.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                                NotificationOverlay.show(rootPane, "🎥 Enregistrement vidéo 3D démarré...", NotificationOverlay.NotificationType.INFO);
                         } else {
                                 btnRecVideo.setText("🎥 Enregistrer Séquence Animée");
                                 btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
-                                new Alert(Alert.AlertType.INFORMATION, "Vidéo 3D exportée avec succès au format MP4 !").show();
+                                NotificationOverlay.show(rootPane, "🎥 Vidéo 3D exportée avec succès au format MP4 !", NotificationOverlay.NotificationType.SUCCESS);
                         }
                 });
 
@@ -772,7 +854,7 @@ public class SwarmForgeClient extends Application {
                 org.swarmforge.client.ui.ComboBoxTooltipHelper.setupDescriptiveComboBox(comboRenderMode,
                     val -> val,
                     val -> switch (val) {
-                        case "🌿 Mode Réaliste (Naturaliste Photoréaliste)" -> "Affiche le monde avec éclairage naturel, végétation vivante, strates géologiques et textures réalistes.";
+                        case "🌿 Mode Réaliste (Naturaliste Photoréaliste)" -> "Affiche le monde avec éclairage naturel, végétation vivante, strates géologiques et textures realistic.";
                         case "🔬 Mode Scientifique (Minimaliste Structural)" -> "Vue schématique dépouillée des artefacts décoratifs. Concentrée sur les galeries, vecteurs et gradients de phéromones.";
                         case "🎮 Mode Gamifié (Voxel / Minecraft)" -> "Rendu voxelisé à base de blocs cubiques texturés style Minecraft.";
                         default -> val;
@@ -811,6 +893,29 @@ public class SwarmForgeClient extends Application {
                         simWorldViewer.setTerrainVisible(b);
                 });
 
+                CheckBox chkTrees = new CheckBox("🌲 Arbres & Couvert Végétal");
+                chkTrees.setSelected(true);
+                chkTrees.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkTrees.setTooltip(new Tooltip("Afficher ou masquer les arbres, souches et le couvert végétal 3D."));
+                chkTrees.selectedProperty().addListener((o, a, b) -> simWorldViewer.setShowTrees(b));
+
+                CheckBox chkSkirt = new CheckBox("🧱 Jupe 3D & Stratigraphie Souterraine");
+                chkSkirt.setSelected(true);
+                chkSkirt.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkSkirt.setTooltip(new Tooltip("Afficher ou masquer les parois latérales de la jupe 3D et les couches du sol."));
+                chkSkirt.selectedProperty().addListener((o, a, b) -> simWorldViewer.setShow3DSkirt(b));
+
+                CheckBox chkScanner = new CheckBox("🔬 Coupe Scanner Volumétrique 3D & Log");
+                chkScanner.setSelected(false);
+                chkScanner.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkScanner.setTooltip(new Tooltip("Activer le mode de coupe scanner volumétrique 3D avec log stratigraphique."));
+                chkScanner.selectedProperty().addListener((o, a, b) -> simWorldViewer.setVolumetricScannerEnabled(b));
+
+                Slider sliceSlider = new Slider(0, 100, 50);
+                sliceSlider.setPrefWidth(120);
+                sliceSlider.valueProperty().addListener((o, a, b) -> simWorldViewer.setSlicePlane(b.doubleValue()));
+                HBox sliceBox = new HBox(6, new Label("Coupe 3D:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;"); }}, sliceSlider);
+
                 CheckBox chkNid = new CheckBox("🏰 Nid & Galeries Souterraines");
                 chkNid.setSelected(true);
                 chkNid.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
@@ -843,7 +948,7 @@ public class SwarmForgeClient extends Application {
                         simWorldViewer.setWeatherVisible(b);
                 });
 
-                renderSection.getChildren().addAll(lblRenderMode, comboRenderMode, chkMinimap, chkTerrain, chkNid, chkPheromonesLayer, chkAntsLayer, chkWeatherLayer);
+                renderSection.getChildren().addAll(lblRenderMode, comboRenderMode, chkMinimap, chkTerrain, chkTrees, chkSkirt, chkScanner, sliceBox, chkNid, chkPheromonesLayer, chkAntsLayer, chkWeatherLayer);
 
                 // Audio Controls Section
                 VBox audioSection = new VBox(6);
@@ -866,7 +971,13 @@ public class SwarmForgeClient extends Application {
                 chkAmbientSound.setTooltip(new Tooltip("Activer le paysage sonore d'ambiance naturelle (vent, oiseaux, pluie)."));
                 chkAmbientSound.selectedProperty().addListener((o, a, b) -> audioMgr.setAmbientEnabled(b));
 
-                CheckBox chkWeatherSound = new CheckBox("⛈️ Sons Météo (Pluie/Orage)");
+                CheckBox chkRiverSound = new CheckBox("🌊 Bruit Eau Rivière (Procédural)");
+                chkRiverSound.setSelected(audioMgr.isRiverEnabled());
+                chkRiverSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkRiverSound.setTooltip(new Tooltip("Activer le son du courant d’eau et clapotis de rivière."));
+                chkRiverSound.selectedProperty().addListener((o, a, b) -> audioMgr.setRiverEnabled(b));
+
+                CheckBox chkWeatherSound = new CheckBox("⛈️ Sons Météo (Pluie/Grêle/Orage)");
                 chkWeatherSound.setSelected(audioMgr.isWeatherEnabled());
                 chkWeatherSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
                 chkWeatherSound.setTooltip(new Tooltip("Activer les effets sonores météorologiques synchrone."));
@@ -878,7 +989,7 @@ public class SwarmForgeClient extends Application {
                 chkInsectSound.setTooltip(new Tooltip("Activer les sons procéduraux d'activité des insectes et d'excavation."));
                 chkInsectSound.selectedProperty().addListener((o, a, b) -> audioMgr.setInsectEnabled(b));
 
-                audioSection.getChildren().addAll(lblAudio, volBox, chkAmbientSound, chkWeatherSound, chkInsectSound);
+                audioSection.getChildren().addAll(lblAudio, volBox, chkAmbientSound, chkRiverSound, chkWeatherSound, chkInsectSound);
 
                 sideControls.getChildren().addAll(sideHeaderBox, playbackAndSpeedNode, new Separator(), mediaSection, renderSection, audioSection);
 

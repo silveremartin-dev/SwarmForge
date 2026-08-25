@@ -56,7 +56,7 @@ public class ScenarioPresetManager {
     }
 
     public Set<String> getPresetNames() {
-        return presets.keySet();
+        return new TreeSet<>(presets.keySet());
     }
 
     public Scenario get(String title) {

@@ -82,6 +82,37 @@ public class NestGeneratorPane extends BorderPane {
     private boolean isDirty = false;
     private String lastSelectedPreset = null;
 
+    public boolean isDirty() {
+        return isDirty;
+    }
+
+    public boolean promptUnsavedChanges() {
+        if (!isDirty) return true;
+        I18nManager i18n = I18nManager.getInstance();
+        Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
+            Alert.AlertType.CONFIRMATION,
+            "Vous avez des modifications non enregistrées dans le Générateur de Nid. Voulez-vous enregistrer vos modifications avant de continuer ?"
+        );
+        alert.setTitle("Modifications non enregistrées");
+        alert.setHeaderText("Quitter l'éditeur de nid ?");
+
+        ButtonType btnSave = new ButtonType(i18n.get("common.btn.save", "Enregistrer"), ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnDiscard = new ButtonType("Abandonner", ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        alert.getButtonTypes().setAll(btnSave, btnDiscard, btnCancel);
+        java.util.Optional<ButtonType> result = alert.showAndWait();
+
+        if (result.isPresent() && result.get() == btnSave) {
+            doAddPreset();
+            return !isDirty;
+        } else if (result.isPresent() && result.get() == btnDiscard) {
+            isDirty = false;
+            return true;
+        }
+        return false;
+    }
+
     // Model
     private GeneratedNest nest;
     private Consumer<Map<String, Object>> onApplyCallback;
@@ -315,10 +346,20 @@ public class NestGeneratorPane extends BorderPane {
         archSelect = new ComboBox<>();
         archSelect.setTooltip(new Tooltip("Architecture biologique : 11 structures réelles (Ruche en cire, Nid papier, Cathédrale termite, Dôme, Souterrain, etc.)."));
         archSelect.getItems().addAll(
-            "ARBOREAL_SILK_LEAF", "BAMBOO_STEM_NEST", "BIVOUAC_LIVING_NEST",
-            "BURROW_UNDERGROUND", "CARTON_NEST", "CATHEDRAL_MOUND",
-            "HOLLOW_TRUNK_NEST", "PAPER_PEDUNCULATE", "SUBTERRANEAN_FUNGI_VAULT",
-            "SURFACE_MOUND", "WAX_COMB_HEXAGONAL", "WAX_POTS_CLUSTER", "WOODEN_BEEHIVE");
+            "Arboreal Carton Nest",
+            "Arboreal Silk Leaf",
+            "Bamboo Stem & Gall",
+            "Bivouac Living Nest",
+            "Cathedral Mound",
+            "Hanging Paper Nest",
+            "Hexagonal Wax Comb",
+            "Hollow Trunk Cavity",
+            "Subterranean Burrow",
+            "Subterranean Fungi Vault",
+            "Surface Dome Mound",
+            "Wax Pots Cluster",
+            "Wooden Beehive"
+        );
         archSelect.getSelectionModel().selectFirst();
         archSelect.setPrefWidth(270);
         archSelect.setOnAction(e -> {
@@ -1021,35 +1062,6 @@ public class NestGeneratorPane extends BorderPane {
         }
     }
 
-    private void applyCfg(Map<String, Object> c) {
-        isUpdatingSpeciesCombo = true;
-        try {
-            if (c.containsKey("taxonCategory")) categorySelect.setValue((String) c.get("taxonCategory"));
-            if (c.containsKey("architecture"))  archSelect.setValue((String) c.get("architecture"));
-            if (c.containsKey("material"))      matSelect.setValue((String) c.get("material"));
-            if (c.containsKey("workerSizeMm"))  workerSizeSlider.setValue(num(c, "workerSizeMm"));
-            if (c.containsKey("depth"))         depthSlider.setValue(num(c,"depth"));
-            if (c.containsKey("tunnelWidth"))   tunnelWidthSlider.setValue(num(c,"tunnelWidth"));
-            if (c.containsKey("branching"))     branchingSlider.setValue(num(c,"branching"));
-            if (c.containsKey("nestStageIndex") && nestStageCombo != null) {
-                int stg = ((Number) c.get("nestStageIndex")).intValue();
-                if (stg >= 0 && stg < nestStageCombo.getItems().size()) {
-                    nestStageCombo.getSelectionModel().select(stg);
-                }
-            }
-            if (c.containsKey("chamberDistribution")) {
-                @SuppressWarnings("unchecked")
-                Map<String,Object> dist = (Map<String,Object>) c.get("chamberDistribution");
-                dist.forEach((k,v) -> setSp(k, ((Number)v).intValue()));
-            }
-            updateTotalChambers();
-        } finally {
-            isUpdatingSpeciesCombo = false;
-            isDirty = false;
-        }
-        regen();
-        repaint();
-    }
 
     public void configureFromSpecies(org.swarmforge.core.species.CustomSpecies species) {
         if (species == null) return;
@@ -1280,6 +1292,39 @@ public class NestGeneratorPane extends BorderPane {
         } catch (Exception ex) { new Alert(Alert.AlertType.ERROR, ex.getMessage()).show(); }
     }
 
+    public void applyCfg(Map<String, Object> cfg) {
+        if (cfg == null) return;
+        isUpdatingSpeciesCombo = true;
+        try {
+            if (cfg.containsKey("presetName") && presetsCombo != null) {
+                String pName = String.valueOf(cfg.get("presetName"));
+                if (presetsCombo.getItems().contains(pName)) {
+                    presetsCombo.setValue(pName);
+                }
+            }
+            if (cfg.containsKey("taxonCategory") && categorySelect != null) categorySelect.setValue(String.valueOf(cfg.get("taxonCategory")));
+            if (cfg.containsKey("architecture") && archSelect != null) archSelect.setValue(String.valueOf(cfg.get("architecture")));
+            if (cfg.containsKey("material") && matSelect != null) matSelect.setValue(String.valueOf(cfg.get("material")));
+            if (cfg.containsKey("workerSizeMm") && workerSizeSlider != null) workerSizeSlider.setValue(num(cfg, "workerSizeMm"));
+            if (cfg.containsKey("depth") && depthSlider != null) depthSlider.setValue(num(cfg, "depth"));
+            if (cfg.containsKey("tunnelWidth") && tunnelWidthSlider != null) tunnelWidthSlider.setValue(num(cfg, "tunnelWidth"));
+            if (cfg.containsKey("branching") && branchingSlider != null) branchingSlider.setValue(num(cfg, "branching"));
+            if (cfg.containsKey("nestStageIndex") && nestStageCombo != null) {
+                int idx = ((Number) cfg.get("nestStageIndex")).intValue();
+                if (idx >= 0 && idx < nestStageCombo.getItems().size()) nestStageCombo.getSelectionModel().select(idx);
+            }
+            if (cfg.containsKey("chamberDistribution") && cfg.get("chamberDistribution") instanceof Map<?,?> distMap) {
+                distMap.forEach((k, v) -> setSp(String.valueOf(k), ((Number) v).intValue()));
+                updateTotalChambers();
+            }
+            regen();
+            repaint();
+        } finally {
+            isUpdatingSpeciesCombo = false;
+            isDirty = false;
+        }
+    }
+
     private void applyToWorld() {
         if (onApplyCallback != null) onApplyCallback.accept(getConfiguration());
         else new Alert(Alert.AlertType.WARNING,"No world editor connected.").show();
@@ -1350,6 +1395,18 @@ public class NestGeneratorPane extends BorderPane {
         public String architecture = "BURROW_UNDERGROUND";
         public String material = "EARTH";
         public double workerSizeMm = 5.0;
+        public double rootX = 0;
+        public double rootY = 0;
+
+        public double getRootX() {
+            if (!nodes.isEmpty()) return nodes.get(0).x;
+            return rootX;
+        }
+
+        public double getRootY() {
+            if (!nodes.isEmpty()) return nodes.get(0).y;
+            return rootY;
+        }
     }
 }
 

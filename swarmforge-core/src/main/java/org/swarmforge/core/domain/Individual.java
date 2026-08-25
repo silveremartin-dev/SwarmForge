@@ -200,9 +200,17 @@ public class Individual implements java.io.Serializable, AgentView {
         this.x = x;
         this.y = y;
         this.z = z;
+        this.homeX = x;
+        this.homeY = y;
+        this.homeZ = z;
         this.alive = true;
         this.health = 100f;
+        this.maxHealth = 100f;
         this.energy = 100f;
+        this.maxEnergy = 100f;
+        this.hunger = 0f;
+        this.thirst = 0f;
+        this.fatigue = 0f;
     }
 
     public Individual(UUID colonyId, CasteTemplate template, float x, float y, float z) {
@@ -268,11 +276,54 @@ public class Individual implements java.io.Serializable, AgentView {
         energy -= 0.15f * (wingbeatHz / 200.0f) * step;
     }
 
+    private float ambientTemperatureC = 24.0f;
+
+    public float getAmbientTemperatureC() {
+        return ambientTemperatureC;
+    }
+
+    public void setAmbientTemperatureC(float tempC) {
+        this.ambientTemperatureC = tempC;
+    }
+
     /**
-     * Update position based on heading and speed.
+     * Compute thermodynamic response factor using asymmetric Schoolfield thermal reaction norm kinetics.
+     * Incorporates rapid enzymatic inactivation near Critical Thermal Maximum (CTmax).
+     */
+    public float getQ10ThermalFactor() {
+        float optTemp = species != null ? species.getOptimalTempCelsius() : 24.0f;
+        float minTemp = species != null ? species.getMinTempCelsius() : 10.0f;
+        float maxTemp = species != null ? species.getMaxTempCelsius() : 40.0f;
+        
+        float diff = ambientTemperatureC - optTemp;
+        if (diff <= 0) {
+            // Below optimal: gradual exponentialArrhenius deceleration
+            float sigmaLow = Math.max(1.0f, 0.4f * (optTemp - minTemp));
+            return Math.max(0.05f, (float) Math.exp(-(diff * diff) / (2.0f * sigmaLow * sigmaLow)));
+        } else {
+            // Above optimal: sharp asymmetric denaturation drop-off towards CTmax
+            float sigmaHigh = Math.max(0.5f, 0.2f * (maxTemp - optTemp));
+            float q10 = (float) Math.exp(-(diff * diff) / (2.0f * sigmaHigh * sigmaHigh));
+            if (ambientTemperatureC >= maxTemp) return 0.05f; // Heat torpor / thermal collapse
+            return Math.max(0.05f, Math.min(1.2f, q10));
+        }
+    }
+
+    /**
+     * Get biomechanically accurate attack damage based on mandibular biting force (MPa) and muscle strength.
+     */
+    public float getAttackDamage() {
+        float mandibularForce = species != null ? species.getMandibularBitingForceMPa() : 15.0f;
+        float strength = species != null ? species.getStrength() : 5.0f;
+        float casteMult = (caste == Caste.SOLDIER) ? 2.5f : ((caste == Caste.QUEEN) ? 1.5f : 1.0f);
+        return casteMult * (mandibularForce / 15.0f) * (strength / 5.0f) * attackDamage;
+    }
+
+    /**
+     * Update position based on heading and speed (modulated by thermodynamic Q10 kinetics).
      */
     public void move(float speed) {
-        float effectiveSpeed = speed;
+        float effectiveSpeed = speed * getQ10ThermalFactor();
         if (genome != null) {
             effectiveSpeed *= genome.getSpeedMultiplier();
         }
@@ -317,9 +368,20 @@ public class Individual implements java.io.Serializable, AgentView {
             metabolism *= genome.getMetabolismRate();
         }
 
-        energy -= 0.1f * metabolism;
-        hunger += 0.05f * metabolism;
-        thirst += 0.03f * metabolism;
+        // Thermodynamic metabolism scaling: warmer ambient temp slightly increases energy burn
+        metabolism *= getQ10ThermalFactor();
+
+        // Realistic energy decay rates (days to weeks of survival on full tank)
+        energy -= 0.0001f * metabolism;
+        hunger += 0.00005f * metabolism;
+        thirst += 0.000025f * metabolism;
+
+        // Thermal Stress Health Damage (if temperature exceeds biological tolerance bounds)
+        float minTemp = species != null ? species.getMinTempCelsius() : 10.0f;
+        float maxTemp = species != null ? species.getMaxTempCelsius() : 40.0f;
+        if (ambientTemperatureC < minTemp - 5.0f || ambientTemperatureC > maxTemp + 5.0f) {
+            takeDamage(0.2f);
+        }
 
         // 1. Starvation & Dehydration Mortality (Hunger = 100 or Energy = 0)
         if (energy <= 0 || hunger >= 100 || thirst >= 100) {
@@ -327,8 +389,8 @@ public class Individual implements java.io.Serializable, AgentView {
             return;
         }
 
-        // 2. Biological Aging Mortality Across Castes
-        float maxLifespan = 7500f; // Default worker lifespan
+        // 2. Biological Aging Mortality Across Castes (Lifespan in ticks)
+        float maxLifespan = 50000f; // Default worker lifespan
         if (species != null) {
             maxLifespan = switch (caste) {
                 case QUEEN -> species.getQueenLifespan();
@@ -338,10 +400,10 @@ public class Individual implements java.io.Serializable, AgentView {
             };
         } else {
             maxLifespan = switch (caste) {
-                case QUEEN -> 50000f;
-                case SOLDIER -> 10000f;
-                case MALE -> 3000f;
-                case WORKER, FORAGER, NURSE -> 7500f;
+                case QUEEN -> 250000f;
+                case SOLDIER -> 100000f;
+                case MALE -> 30000f;
+                case WORKER, FORAGER, NURSE -> 75000f;
             };
         }
 
@@ -629,7 +691,9 @@ public class Individual implements java.io.Serializable, AgentView {
                 return ActionResult.ok();
             }
             case REST -> {
-                energy = Math.min(100, energy + 0.5f);
+                energy = Math.min(maxEnergy, energy + 5.0f);
+                hunger = Math.max(0f, hunger - 5.0f);
+                thirst = Math.max(0f, thirst - 5.0f);
                 return ActionResult.ok();
             }
             case ATTACK -> {
@@ -667,6 +731,10 @@ public class Individual implements java.io.Serializable, AgentView {
                         colony.addResource(ResourceType.SEED, 1.0f);
                     }
                     setCarriedItem(CarriedItem.NONE);
+                    // Ants feed while depositing food at the nest
+                    this.hunger = 0f;
+                    this.thirst = 0f;
+                    this.energy = this.maxEnergy;
                     return ActionResult.ok();
                 }
                 return ActionResult.failure("Not carrying food");
@@ -740,9 +808,6 @@ public class Individual implements java.io.Serializable, AgentView {
             return;
 
         jobUpdate(constructionManager);
-
-        // Movement
-        move(1.0f); // Default speed
 
         // Energy consumption
         tick();

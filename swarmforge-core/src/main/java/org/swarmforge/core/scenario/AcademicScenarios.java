@@ -157,6 +157,95 @@ public class AcademicScenarios {
     }
 
     /**
+     * Scenario 5: Trophallaxis & Nutrient Dynamics.
+     */
+    public static Scenario createTrophallaxisScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_05_TROPHALLAXIS",
+                "Flux Alimentaire & Trophallaxie Coloniale",
+                "Analyse de la distribution trophallactique des nutriments et répercussion de la sous-nutrition sur le couvain et la reine."
+        );
+        scenario.setAcademicCategory("Sociobiologie / Métabolisme Colonial");
+        scenario.setMasterSeed(seed);
+        scenario.setFoodPatchesCount(10);
+
+        Map<String, ArchitectureType> engine = new HashMap<>();
+        engine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
+        engine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Camponotus ligniperda (Trophallaxis)", "COLONY_TROPH", 1, 100, 0, 100, engine));
+        scenario.addTargetMetric("NUTRIENT_SPREAD_VELOCITY");
+        scenario.addTargetMetric("REPRODUCTIVE_CASTING_FEEDING_INDEX");
+        return scenario;
+    }
+
+    /**
+     * Scenario 6: Epidemiology & Self-Quarantine.
+     */
+    public static Scenario createEpidemiologyScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_06_EPIDEMIOLOGY_QUARANTINE",
+                "Épidémiologie & Auto-Confinement Bio-Comportemental",
+                "Propagation d'un spore fongique entomopathogène (Cordyceps) et observation des comportements de quarantaine et de nécrophores."
+        );
+        scenario.setAcademicCategory("Éthologie / Immunité Sociale");
+        scenario.setMasterSeed(seed);
+
+        Map<String, ArchitectureType> engine = new HashMap<>();
+        engine.put("WORKER", ArchitectureType.FUZZY_LOGIC);
+        engine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
+        engine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Quarantine Group)", "COLONY_EPIDEM", 1, 150, 20, 100, engine));
+        scenario.addTargetMetric("CONTAGION_RO");
+        scenario.addTargetMetric("NECROPHORIC_REMOVAL_EFFICIENCY");
+        return scenario;
+    }
+
+    /**
+     * Scenario 7: Attine Fungi Agriculture.
+     */
+    public static Scenario createAttineFungiScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_07_ATTINE_FUNGI",
+                "Symbiose Fongi-Coloniale des Attines",
+                "Culture symbiotique de Leucoagaricus par Atta sexdens via l'apport de feuillage et le désherbage sélectif."
+        );
+        scenario.setAcademicCategory("Symbiose & Agriculture Animale");
+        scenario.setMasterSeed(seed);
+
+        Map<String, ArchitectureType> engine = new HashMap<>();
+        engine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
+        engine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Atta sexdens (Fungi Cultivators)", "COLONY_ATTA", 1, 200, 30, 250, engine));
+        scenario.addTargetMetric("FUNGI_BIOMASS_YIELD");
+        scenario.addTargetMetric("LEAF_HARVEST_RATE");
+        return scenario;
+    }
+
+    /**
+     * Scenario 8: Stigmergic Pheromones.
+     */
+    public static Scenario createStigmergyScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_08_STIGMERGIC_PHEROMONES",
+                "Stigmergie Phéromonale & Résolution de Mazes",
+                "Optimisation de parcours par d'intenses dépôts stigmergiques de phéromones de piste en milieu labyrinthique."
+        );
+        scenario.setAcademicCategory("Intelligence Collective & Stigmergie");
+        scenario.setMasterSeed(seed);
+
+        Map<String, ArchitectureType> engine = new HashMap<>();
+        engine.put("WORKER", ArchitectureType.NEURAL_NETWORK);
+
+        scenario.addColony(new Scenario.ColonySetup("Lasius niger (Stigmergy Team)", "COLONY_STIGMERGY", 1, 180, 0, 50, engine));
+        scenario.addTargetMetric("PATH_SHORTEST_RATIO");
+        scenario.addTargetMetric("PHEROMONE_CONCENTRIC_PEAK");
+        return scenario;
+    }
+
+    /**
      * List all available academic scenarios.
      */
     public static List<Scenario> getAllAcademicScenarios(long seed) {
@@ -164,7 +253,11 @@ public class AcademicScenarios {
                 createLevyVsBrownianScenario(seed),
                 createPolyethismScenario(seed),
                 createNestMorphogenesisScenario(seed),
-                createInterspecificCompetitionScenario(seed)
+                createInterspecificCompetitionScenario(seed),
+                createTrophallaxisScenario(seed),
+                createEpidemiologyScenario(seed),
+                createAttineFungiScenario(seed),
+                createStigmergyScenario(seed)
         );
     }
 }

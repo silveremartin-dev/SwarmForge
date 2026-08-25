@@ -48,20 +48,21 @@ public final class NestAlgorithm {
 
         Random rnd = new Random((long)(maxDepth*31 + entrances*7 + queenCnt*3 + broodCnt*17 + arch.hashCode()));
 
-        switch (arch) {
-            case "WOODEN_BEEHIVE"         -> generateWoodenBeehive(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "WAX_COMB_HEXAGONAL"      -> generateHexagonalComb(nest, chamberTarget, queenCnt, broodCnt, foodCnt, anatomicalScale, rnd);
-            case "WAX_POTS_CLUSTER"        -> generatePotCluster(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "PAPER_PEDUNCULATE"       -> generatePaperNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "CATHEDRAL_MOUND"        -> generateCathedralMound(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd);
-            case "ARBOREAL_SILK_LEAF"      -> generateArborealLeafNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "SUBTERRANEAN_FUNGI_VAULT" -> generateFungiVault(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd);
-            case "CARTON_NEST"             -> generateCartonNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "BAMBOO_STEM_NEST"        -> generateStemGallNest(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "BIVOUAC_LIVING_NEST"     -> generateBivouacNest(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "HOLLOW_TRUNK_NEST"       -> generateHollowTrunkNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
-            case "SURFACE_MOUND"           -> generateMoundBurrow(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd, true);
-            default                        -> generateMoundBurrow(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd, false);
+        String archKey = arch != null ? arch : "Subterranean Burrow";
+        switch (archKey) {
+            case "WOODEN_BEEHIVE", "Wooden Beehive"                      -> generateWoodenBeehive(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "WAX_COMB_HEXAGONAL", "Hexagonal Wax Comb"              -> generateHexagonalComb(nest, chamberTarget, queenCnt, broodCnt, foodCnt, anatomicalScale, rnd);
+            case "WAX_POTS_CLUSTER", "Wax Pots Cluster"                  -> generatePotCluster(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "PAPER_PEDUNCULATE", "Hanging Paper Nest"               -> generatePaperNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "CATHEDRAL_MOUND", "Cathedral Mound"                    -> generateCathedralMound(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd);
+            case "ARBOREAL_SILK_LEAF", "Arboreal Silk Leaf"              -> generateArborealLeafNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "SUBTERRANEAN_FUNGI_VAULT", "Subterranean Fungi Vault"  -> generateFungiVault(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd);
+            case "CARTON_NEST", "Arboreal Carton Nest"                   -> generateCartonNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "BAMBOO_STEM_NEST", "Bamboo Stem & Gall"                -> generateStemGallNest(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "BIVOUAC_LIVING_NEST", "Bivouac Living Nest"            -> generateBivouacNest(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "HOLLOW_TRUNK_NEST", "Hollow Trunk Cavity"              -> generateHollowTrunkNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "SURFACE_MOUND", "Surface Dome Mound"                   -> generateMoundBurrow(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd, true);
+            default                                                      -> generateMoundBurrow(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd, false);
         }
 
         return nest;

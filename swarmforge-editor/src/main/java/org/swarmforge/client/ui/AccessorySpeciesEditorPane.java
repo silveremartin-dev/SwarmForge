@@ -94,6 +94,41 @@ public class AccessorySpeciesEditorPane extends VBox {
     private VBox helpEntriesBox;
     private final List<HBox> helpEntriesList = new ArrayList<>();
 
+    private boolean isDirty = false;
+    private boolean isUpdatingFields = false;
+    private String lastSelectedPreset = null;
+
+    public boolean isDirty() {
+        return isDirty;
+    }
+
+    public boolean promptUnsavedChanges() {
+        if (!isDirty) return true;
+        I18nManager i18n = I18nManager.getInstance();
+        Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
+            Alert.AlertType.CONFIRMATION,
+            "Vous avez des modifications non enregistrées dans l'Éditeur d'Espèces Associées. Voulez-vous enregistrer vos modifications avant de continuer ?"
+        );
+        alert.setTitle("Modifications non enregistrées");
+        alert.setHeaderText("Quitter l'éditeur d'espèces associées ?");
+
+        ButtonType btnSave = new ButtonType(i18n.get("common.btn.save", "Enregistrer"), ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnDiscard = new ButtonType("Abandonner", ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        alert.getButtonTypes().setAll(btnSave, btnDiscard, btnCancel);
+        java.util.Optional<ButtonType> result = alert.showAndWait();
+
+        if (result.isPresent() && result.get() == btnSave) {
+            handleAddPreset();
+            return !isDirty;
+        } else if (result.isPresent() && result.get() == btnDiscard) {
+            isDirty = false;
+            return true;
+        }
+        return false;
+    }
+
     public AccessorySpeciesEditorPane() {
         setSpacing(10);
 
@@ -158,6 +193,11 @@ public class AccessorySpeciesEditorPane extends VBox {
                 "Termites Proies (Microtermes / Nourriture)",
                 "Fourmilion Piégeur (Myrmeleon / Entonnoir)",
                 "Araignée Sauteuse (Salticidae / Affût)",
+                "Frelon Asiatique (Chasseur Volant d'Abeilles)",
+                "Philanthe Apivore (Guêpe Chasseuse d'Abeilles)",
+                "Bondrée Apivore (Rapace Déstructeur de Guêpes)",
+                "Fourmi Raideuse Megaponera (Raideur de Termites)",
+                "Pic Noir (Prédateur de Scolytes & Fourmis)",
                 "Tamandua / Tamanoir (Attaque Nid Directe)",
                 "Guêpe Parasitoïde (Eucharitidae / Ponte)",
                 "Champignon Entomopathogène (Cordyceps Zombie)",
@@ -729,10 +769,6 @@ public class AccessorySpeciesEditorPane extends VBox {
         }
     }
 
-    private boolean isUpdatingFields = false;
-    private boolean isDirty = false;
-    private String lastSelectedPreset = null;
-
     private void clearPresetSelection() {
         if (!isUpdatingFields && accessoryPresetCombo != null) {
             isDirty = true;
@@ -911,6 +947,46 @@ public class AccessorySpeciesEditorPane extends VBox {
                 latitudeField.setText("46.0");
                 minTempField.setText("8.0"); optTempField.setText("23.0"); maxTempField.setText("35.0");
                 growthRateField.setText("0.6"); initialBiomassDensityField.setText("15.0"); initialPopulationDensityField.setText("8.0");
+            } else if (name.contains("Frelon Asiatique")) {
+                accessoryNameField.setText("Frelon Asiatique (Prédateur d'Abeilles)");
+                categoryCombo.setValue("PREDATOR");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("44.5");
+                minTempField.setText("10.0"); optTempField.setText("25.0"); maxTempField.setText("36.0");
+                growthRateField.setText("1.4"); initialBiomassDensityField.setText("25.0"); initialPopulationDensityField.setText("12.0");
+                targetCasteCombo.setValue("Ouvrières"); huntModeCombo.setValue("Attaque Directe (Oiseau / Tamandua)"); killRateField.setText("8.0");
+            } else if (name.contains("Philanthe")) {
+                accessoryNameField.setText("Philanthe Apivore (Guêpe Chasseuse)");
+                categoryCombo.setValue("PREDATOR");
+                biomeCombo.setValue("MEDITERRANEAN");
+                latitudeField.setText("42.0");
+                minTempField.setText("12.0"); optTempField.setText("26.0"); maxTempField.setText("38.0");
+                growthRateField.setText("1.0"); initialBiomassDensityField.setText("10.0"); initialPopulationDensityField.setText("6.0");
+                targetCasteCombo.setValue("Ouvrières"); huntModeCombo.setValue("Embrouille / Affût (Araignée)"); killRateField.setText("6.0");
+            } else if (name.contains("Bondrée")) {
+                accessoryNameField.setText("Bondrée Apivore (Rapace Guêpes & Abeilles)");
+                categoryCombo.setValue("PREDATOR");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("49.0");
+                minTempField.setText("8.0"); optTempField.setText("22.0"); maxTempField.setText("32.0");
+                growthRateField.setText("0.2"); initialBiomassDensityField.setText("2.0"); initialPopulationDensityField.setText("2.0");
+                targetCasteCombo.setValue("Toutes Castes"); huntModeCombo.setValue("Attaque Directe (Oiseau / Tamandua)"); killRateField.setText("35.0");
+            } else if (name.contains("Megaponera")) {
+                accessoryNameField.setText("Fourmi Raideuse Megaponera (Raid Termites)");
+                categoryCombo.setValue("PREDATOR");
+                biomeCombo.setValue("TROPICAL_RAINFOREST");
+                latitudeField.setText("-1.0");
+                minTempField.setText("20.0"); optTempField.setText("29.0"); maxTempField.setText("38.0");
+                growthRateField.setText("2.5"); initialBiomassDensityField.setText("80.0"); initialPopulationDensityField.setText("150.0");
+                targetCasteCombo.setValue("Ouvrières"); huntModeCombo.setValue("Attaque Directe (Oiseau / Tamandua)"); killRateField.setText("12.0");
+            } else if (name.contains("Pic Noir")) {
+                accessoryNameField.setText("Pic Noir (Prédateur de Scolytes)");
+                categoryCombo.setValue("PREDATOR");
+                biomeCombo.setValue("TAIGA_BOREAL");
+                latitudeField.setText("58.0");
+                minTempField.setText("-5.0"); optTempField.setText("18.0"); maxTempField.setText("30.0");
+                growthRateField.setText("0.3"); initialBiomassDensityField.setText("4.0"); initialPopulationDensityField.setText("3.0");
+                targetCasteCombo.setValue("Ouvrières"); huntModeCombo.setValue("Attaque Directe (Oiseau / Tamandua)"); killRateField.setText("20.0");
             } else if (name.contains("Tamandua")) {
                 accessoryNameField.setText("Tamandua / Tamanoir (Attaque Nid Directe)");
                 categoryCombo.setValue("PREDATOR");

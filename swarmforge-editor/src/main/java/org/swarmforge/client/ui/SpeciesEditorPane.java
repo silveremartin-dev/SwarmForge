@@ -22,10 +22,12 @@ import org.swarmforge.core.species.CustomSpecies;
 
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.NotificationOverlay;
+import org.swarmforge.client.util.ThemeManager;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -177,6 +179,37 @@ public class SpeciesEditorPane extends VBox {
         r.getChildren().addAll(title, sp, toolbar);
         v.getChildren().addAll(r, new Separator());
         return v;
+    }
+
+    public boolean isDirty() {
+        return isDirty;
+    }
+
+    public boolean promptUnsavedChanges() {
+        if (!isDirty) return true;
+        I18nManager i18n = I18nManager.getInstance();
+        Alert alert = ThemeManager.createAlert(
+            Alert.AlertType.CONFIRMATION,
+            "Vous avez des modifications non enregistrées dans l'Éditeur d'Espèces. Voulez-vous enregistrer vos modifications avant de continuer ?"
+        );
+        alert.setTitle("Modifications non enregistrées");
+        alert.setHeaderText("Quitter l'éditeur d'espèces ?");
+
+        ButtonType btnSave = new ButtonType(i18n.get("common.btn.save", "Enregistrer"), ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnDiscard = new ButtonType("Abandonner", ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        alert.getButtonTypes().setAll(btnSave, btnDiscard, btnCancel);
+        Optional<ButtonType> result = alert.showAndWait();
+
+        if (result.isPresent() && result.get() == btnSave) {
+            handleAddPreset();
+            return !isDirty;
+        } else if (result.isPresent() && result.get() == btnDiscard) {
+            isDirty = false;
+            return true;
+        }
+        return false;
     }
 
     public void setOnApply(Consumer<CustomSpecies> listener) {
@@ -979,19 +1012,19 @@ public class SpeciesEditorPane extends VBox {
         GridPane grid = createGrid();
 
         nestTypeCombo = new ComboBox<>(FXCollections.observableArrayList(
-            "WAX_COMB_HEXAGONAL",
-            "WAX_POTS_CLUSTER",
-            "PAPER_PEDUNCULATE",
-            "CATHEDRAL_MOUND",
             "ARBOREAL_SILK_LEAF",
-            "SUBTERRANEAN_FUNGI_VAULT",
-            "CARTON_NEST",
             "BAMBOO_STEM_NEST",
             "BIVOUAC_LIVING_NEST",
-            "MOUND",
-            "TREE",
+            "CARTON_NEST",
+            "CATHEDRAL_MOUND",
             "MATURE",
-            "SIMPLE"
+            "MOUND",
+            "PAPER_PEDUNCULATE",
+            "SIMPLE",
+            "SUBTERRANEAN_FUNGI_VAULT",
+            "TREE",
+            "WAX_COMB_HEXAGONAL",
+            "WAX_POTS_CLUSTER"
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(nestTypeCombo, SpeciesEditorPane::getNestTypeTitle, SpeciesEditorPane::getNestTypeDescription);
         nestTypeCombo.getSelectionModel().select("MATURE");

@@ -227,7 +227,7 @@ public class WeatherPresetManager {
     }
 
     public Set<String> names() {
-        return presets.keySet();
+        return new TreeSet<>(presets.keySet());
     }
 
     public Map<String, Object> get(String name) {

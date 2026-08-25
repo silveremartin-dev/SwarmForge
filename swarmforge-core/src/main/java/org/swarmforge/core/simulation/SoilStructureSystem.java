@@ -98,7 +98,7 @@ public class SoilStructureSystem {
 
     /**
      * Carves a voxel in real-time during ant/queen gallery excavation or manual 3D sculpting.
-     * Evaluates immediate structural load and triggers local voxel deformation.
+     * Evaluates immediate structural load and triggers local voxel deformation based on Mohr-Coulomb failure criteria.
      */
     public boolean digGalleryVoxel(Terrarium terrarium, int x, int y, int z, float compactionIndex) {
         if (terrarium == null || !terrarium.inBounds(x, y, z)) return false;
@@ -109,10 +109,23 @@ public class SoilStructureSystem {
         // Perform real-time physical deformation check on upper voxels (ceiling stability)
         if (z + 1 < terrarium.getDepth()) {
             TerrariumCell topCell = terrarium.getCell(x, y, z + 1);
-            if (topCell.material() == TerrariumCell.Material.SAND && compactionIndex < 40.0f) { // Loose Sand ceiling collapses
-                terrarium.setCell(TerrariumCell.air(x, y, z + 1));
-                terrarium.setCell(TerrariumCell.sand(x, y, z)); // Sand falls down into excavated voxel
-                return false; // Tunnel collapsed
+            if (topCell.material() == TerrariumCell.Material.SAND || topCell.material() == TerrariumCell.Material.DIRT) {
+                float moisture = topCell.humidity(); // 0 to 100%
+                
+                // Mohr-Coulomb shear strength: tau = c(moisture) + sigma_n * tan(phi)
+                // Capillary cohesion c(moisture) peaks at 15-35% humidity, collapses at saturation > 85% or dryness < 5%
+                float cohesion = (moisture > 85.0f || moisture < 5.0f) ? 5.0f : (15.0f + 0.8f * moisture);
+                float normalStress = (terrarium.getDepth() - z) * 0.5f + compactionIndex * 0.3f;
+                float frictionAngleRad = (topCell.material() == TerrariumCell.Material.SAND) ? (float) Math.toRadians(30.0) : (float) Math.toRadians(45.0);
+                float shearStrength = cohesion + normalStress * (float) Math.tan(frictionAngleRad);
+
+                float stressLoad = (terrarium.getDepth() - z) * 1.2f;
+                
+                if (shearStrength < stressLoad || (topCell.material() == TerrariumCell.Material.SAND && compactionIndex < 35.0f && moisture < 10.0f)) { 
+                    terrarium.setCell(TerrariumCell.air(x, y, z + 1));
+                    terrarium.setCell(TerrariumCell.sand(x, y, z)); // Sand falls down into excavated voxel
+                    return false; // Tunnel collapsed
+                }
             }
         }
         return true; // Tunnel voxel successfully excavated

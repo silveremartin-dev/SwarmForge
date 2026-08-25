@@ -5,7 +5,7 @@
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![gRPC](https://img.shields.io/badge/API-gRPC%20%7C%20REST-blue)](https://grpc.io/)
 
-**SwarmForge** is a state-of-the-art, high-performance simulation platform for eusocial insect colonies (ants, bees, wasps, termites). Designed for computational biology, artificial life research, and interactive ecological visualization, SwarmForge combines real-time 3D graphics (jMonkeyEngine 3.6), OpenCL GPU acceleration, virtual thread multi-core processing, and advanced symbolic/bionic decision architectures (BDI, FSM, Neural Nets, Endocrine System).
+**SwarmForge** is a state-of-the-art, high-performance, academic-grade simulation platform for modeling **social and eusocial insect societies** (ants, honeybees, wasps, termites, bumblebees). Designed for computational biology, myrmecology, artificial life research, and interactive 3D ecological visualization, SwarmForge combines real-time 3D graphics (jMonkeyEngine 3.6), OpenCL/TornadoVM GPU acceleration, virtual thread multi-core processing, physics-based nest thermodynamics, dynamic weather engines, and advanced decision architectures (BDI, FSM, Neural Networks, Fuzzy Logic, Endocrine Feedback Systems).
 
 ---
 
@@ -14,17 +14,17 @@
 ![SwarmForge Live Interactive Studio Showcase](docs/images/swarmforge_demo.gif)
 
 ### 1. 3D Terrarium & World Editor
-The **World Editor Pane** provides procedural voxel terrain generation (Perlin/Simplex noise), soil moisture & depth strata simulation, underground water table dynamics, and real-time biome customization.
+The **World Editor Pane** provides procedural voxel terrain generation (Perlin/Simplex noise), soil moisture & depth strata simulation, underground water table dynamics, subterranean cut planes, and real-time biome customization.
 
 ![SwarmForge World Editor](docs/images/world_editor.png)
 
 ### 2. Species & Caste Parameterization Studio
-The **Species Editor Pane** allows fine-grained customization of morphological, physiological, and behavioral parameters across castes (Queens, Workers, Soldiers, Drones). Includes custom dietary profiles, haplodiploid genetic traits, and endocrine sensitivity.
+The **Species Editor Pane** allows fine-grained customization of morphological, physiological, and behavioral parameters across castes (Queens, Workers, Soldiers, Drones). Includes custom dietary profiles, haplodiploid genetic traits, endocrine sensitivity, and an **Accessory Species Catalog** spanning 18 biological categories (Flora, Mutualists, Prey, Predators, Pathogens, Detritivores).
 
 ![SwarmForge Species Editor](docs/images/species_editor.png)
 
-### 3. Nest Architecture Generator
-The **Nest Generator Pane** provides procedural 3D underground nest synthesis. Configure 13 biological nest types (Subterranean Fungi Vaults, Mound Nests, Paper Pedunculate, Wax Comb Hexagonal, etc.), gallery branching algorithms, nursery volume distributions, and camera-synchronized 2D depth profile cutaways.
+### 3. Nest Architecture & Thermodynamics Generator
+The **Nest Generator Pane** provides procedural 3D underground nest synthesis coupled with a **Nest Thermodynamics Engine** modeling stack-effect buoyancy ventilation, metabolic $CO_2$ dispersion, and thermal regulation across 13 biological nest typologies (Subterranean Fungi Vaults, Mound Nests, Paper Pedunculate, Wax Comb Hexagonal, Carton Nests, Living Bivouacs, etc.).
 
 ![SwarmForge Nest Generator](docs/images/nest_generator.png)
 
@@ -34,7 +34,7 @@ The **Weather Editor Pane** drives a 12-month geographic climate engine with Per
 ![SwarmForge Weather Editor](docs/images/weather_editor.png)
 
 ### 5. Dynamic Analytics & Eco-Engine Statistics Dashboard
-The **Statistics Dashboard** offers real-time telemetry, population demographic pyramids, resource stockpile metrics (sugar, protein, honeydew), bioluminescent pheromone diffusion overlays, and colony spatial territory heatmaps.
+The **Statistics Dashboard** offers real-time telemetry, population demographic pyramids, resource stockpile metrics (sugar, protein, honeydew, fungus), bioluminescent pheromone diffusion overlays, and colony spatial territory heatmaps.
 
 ![SwarmForge Statistics Dashboard](docs/images/statistics_dashboard.png)
 
@@ -49,14 +49,15 @@ Real-time 3D simulation with live agent inspection, bioluminescent pheromone tra
 
 | Feature Subsystem | Technical Capabilities & Implementation |
 |-------------------|------------------------------------------|
-| **Core Engine** | Java 21 Virtual Threads, `SpatialHashMap` ($O(1)$ spatial queries), sparse 3D grid layout. |
-| **GPU Acceleration** | OpenCL via Aparapi for 3D pheromone decay, evaporation, and gradient diffusion matrix calculations. |
-| **Cognitive Architectures** | BDI (Belief-Desire-Intention), Finite State Machines (FSM), Neural Networks, Fuzzy Logic, Behavior Trees. |
-| **Endocrine System** | Hormonal feedback loops (Juvenile Hormone, Ecdysone, Octopamine) influencing stress, aggression, and task allocation. |
-| **Procedural Nests** | 13 biological nest types with queen sociality models (Monogyne, Polygyne, Oligogyne, Gamergate). |
+| **Core Engine** | Java 21 Virtual Threads, `SpatialHashMap` ($O(1)$ spatial queries), 3D Octree ($O(\log N)$ range queries), Morton3D Z-curve coding. |
+| **GPU Acceleration** | OpenCL / TornadoVM for 3D pheromone decay, evaporation, and gradient diffusion matrix calculations. |
+| **Cognitive Architectures** | BDI (Belief-Desire-Intention), Finite State Machines (FSM), Reinforcement Learning (Q-Learning), Fuzzy Logic, Behavior Trees. |
+| **Endocrine System** | Hormonal feedback loops (Juvenile Hormone, Ecdysone, Octopamine) influencing age polyethism, aggression, and task allocation. |
+| **Nest Thermodynamics** | Stack-effect buoyancy ventilation, passive thermal regulation, metabolic $CO_2$ feedback grids. |
+| **Persistence Tier** | Dual-mode persistence: **PostgreSQL** relational database with automatic fallback to **H2 In-Memory** database (local standalone mode) and local **JSON Presets** (`~/.swarmforge/presets/`). |
+| **State Checkpointing** | Binary GZIP compressed snapshots (`SimulationCheckpoint`) recording physical grid states and God Mode intervention journals for 100% deterministic reproducibility. |
 | **Weather & Climate** | Dynamic solar angle, precipitation, humidity, ambient temperature, seasonal transitions, magnetic field vectors. |
-| **Academic Benchmarks** | Reproducible research scenarios (Foraging Efficiency, Interspecific Warfare, Disease Epidemics, Climate Stress). |
-| **Security & Protocol** | gRPC over TLS, JWT authentication (`JwtServerInterceptor`), REST API with CORS support. |
+| **Security & Protocol** | gRPC over TLS, Protobuf/FlatBuffers zero-copy streaming, JWT authentication (`JwtServerInterceptor`), REST API with CORS. |
 
 ---
 
@@ -79,19 +80,26 @@ SwarmForge includes a dedicated benchmark suite (`swarmforge-benchmarks`) measur
 
 ---
 
-## 🏗️ Project Structure
+## 🏗️ Project Architecture & Subsystem Modules
 
 ```
 SwarmForge/
-├── swarmforge-core/       # Domain model, simulation engine, GPU kernels, BDI AI, Weather
-├── swarmforge-server/     # gRPC microservices, JWT security, REST server, Persistence (PostgreSQL/H2, Redis)
-├── swarmforge-editor/     # JavaFX 3D Studio & UI suite (World, Species, Weather, Scenario Editors)
+├── swarmforge-core/       # Domain models, ECS simulation engine, GPU kernels, BDI AI, Nest Thermodynamics, Weather
+├── swarmforge-server/     # gRPC microservices, JWT security, REST server, Persistence (PostgreSQL / H2, Redis)
+├── swarmforge-editor/     # JavaFX 21 + jMonkeyEngine 3.6 Studio UI (World, Species, Weather, Nest, Accessory Editors)
 ├── swarmforge-client/     # Lightweight Java client SDK & visualizer
-├── swarmforge-compute/    # Distributed compute node cluster agent
-├── swarmforge-web/        # React 18 + Three.js web application
-├── swarmforge-plugins/    # Plugin architecture and extension APIs
-└── swarmforge-benchmarks/ # JMH performance & throughput benchmarks
+├── swarmforge-compute/    # Distributed compute node cluster agent (TornadoVM / GPU matrix tasks)
+├── swarmforge-web/        # React 18 + Three.js web dashboard & gRPC-Web viewer
+├── swarmforge-plugins/    # Plugin architecture and extension APIs for custom species/behaviors
+└── swarmforge-benchmarks/ # JMH performance & throughput benchmark suite
 ```
+
+---
+
+## 🗺️ Multi-Node & Multiplayer Extension Specifications
+
+For technical specifications regarding multi-client server browsers, automated periodic checkpoint rotation policies, terrarium border topology alignment, and player-to-player diplomatic protocols:
+- 📖 Read the [Multi-Node Architecture & Extension Specification](docs/PROPOSED_MULTINODE_SPECIFICATION.md).
 
 ---
 
@@ -101,11 +109,11 @@ SwarmForge/
 - **Java 21 LTS** or higher
 - **Maven 3.9+**
 - **Node.js 18+** *(optional, for web client)*
-- **OpenCL compatible GPU** *(optional, for hardware acceleration)*
+- **OpenCL / CUDA compatible GPU** *(optional, for TornadoVM hardware acceleration)*
 
 ### Compilation & Build
 ```bash
-# Build the entire platform
+# Build the entire multi-module platform
 mvn clean install -DskipTests
 
 # Generate complete internal Javadoc

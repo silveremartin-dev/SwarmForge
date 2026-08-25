@@ -270,14 +270,16 @@ public final class NestRenderer {
 
         double maxD = nest != null ? nest.maxDepth : 30.0;
         double scale = nest != null ? nest.workerSizeMm / 5.0 : 1.0;
+        double rx0 = nest != null ? nest.getRootX() : 0.0;
+        double ry0 = nest != null ? nest.getRootY() : 0.0;
 
         switch (arch) {
             case "WOODEN_BEEHIVE" -> {
-                // 3D Translucent Wooden Hive Box enclosing frames & brood cells
-                gc.setStroke(Color.web("#d97706", 0.65)); gc.setLineWidth(1.8 * zoom);
-                double boxW = 8.0 * scale, boxH = 13.5 * scale;
-                double zMin = -1.0 * scale, zMax = zMin + boxH;
-                double[][] corners = {{-boxW, -boxW}, {boxW, -boxW}, {boxW, boxW}, {-boxW, boxW}};
+                // 3D Translucent Wooden Hive Box enclosing multiple parallel frames
+                gc.setStroke(Color.web("#d97706", 0.75)); gc.setLineWidth(2.0 * zoom);
+                double boxW = 9.0 * scale, boxD = 9.0 * scale, boxH = 15.0 * scale;
+                double zMin = -2.0 * scale, zMax = zMin + boxH;
+                double[][] corners = {{rx0 - boxW, ry0 - boxD}, {rx0 + boxW, ry0 - boxD}, {rx0 + boxW, ry0 + boxD}, {rx0 - boxW, ry0 + boxD}};
                 for (int i = 0; i < 4; i++) {
                     int next = (i + 1) % 4;
                     double[] b1 = proj.apply(new double[]{corners[i][0], corners[i][1], zMin});
@@ -289,27 +291,57 @@ public final class NestRenderer {
                     gc.strokeLine(t1[0], t1[1], t2[0], t2[1]);
                     gc.strokeLine(b1[0], b1[1], t1[0], t1[1]);
                 }
+                // Draw 5 parallel hanging wax combs inside the wooden hive frame box
+                for (double offsetY = -6.0 * scale; offsetY <= 6.0 * scale; offsetY += 3.0 * scale) {
+                    double cW = 7.5 * scale, cH = 11.0 * scale;
+                    double[] topA = proj.apply(new double[]{rx0 - cW, ry0 + offsetY, zMin + 1.5 * scale});
+                    double[] topB = proj.apply(new double[]{rx0 + cW, ry0 + offsetY, zMin + 1.5 * scale});
+                    double[] botA = proj.apply(new double[]{rx0 - cW, ry0 + offsetY, zMin + 1.5 * scale + cH});
+                    double[] botB = proj.apply(new double[]{rx0 + cW, ry0 + offsetY, zMin + 1.5 * scale + cH});
+
+                    gc.setStroke(Color.web("#fbbf24", 0.65)); gc.setLineWidth(1.4 * zoom);
+                    gc.strokeLine(topA[0], topA[1], topB[0], topB[1]);
+                    gc.strokeLine(botA[0], botA[1], botB[0], botB[1]);
+                    gc.strokeLine(topA[0], topA[1], botA[0], botA[1]);
+                    gc.strokeLine(topB[0], topB[1], botB[0], botB[1]);
+                }
+
                 // Flight slot entrance
-                double[] ent1 = proj.apply(new double[]{-4 * scale, boxW, 0});
-                double[] ent2 = proj.apply(new double[]{4 * scale, boxW, 0});
-                gc.setStroke(Color.web("#ef4444", 0.90)); gc.setLineWidth(3.0 * zoom);
+                double[] ent1 = proj.apply(new double[]{rx0 - 4 * scale, ry0 + boxD, zMax - 1.5 * scale});
+                double[] ent2 = proj.apply(new double[]{rx0 + 4 * scale, ry0 + boxD, zMax - 1.5 * scale});
+                gc.setStroke(Color.web("#ef4444", 0.95)); gc.setLineWidth(3.5 * zoom);
                 gc.strokeLine(ent1[0], ent1[1], ent2[0], ent2[1]);
             }
             case "WAX_COMB_HEXAGONAL" -> {
-                // Hanging vertical wax comb frame outline
-                double combW = 12.0 * scale, combH = 14.0 * scale;
-                double[] topA = proj.apply(new double[]{-combW, 0, 0}), topB = proj.apply(new double[]{combW, 0, 0});
-                double[] botA = proj.apply(new double[]{-combW, 0, combH}), botB = proj.apply(new double[]{combW, 0, combH});
+                // Multiple parallel vertical hexagonal wax comb frames (7 combs)
+                double cW = 11.0 * scale, cH = 14.0 * scale;
+                int combCount = 7;
+                double spacing = 2.4 * scale;
+                double startY = ry0 - ((combCount - 1) * spacing) / 2.0;
 
-                gc.setStroke(Color.web("#f59e0b", 0.70)); gc.setLineWidth(2.0 * zoom);
-                gc.strokeLine(topA[0], topA[1], topB[0], topB[1]);
-                gc.strokeLine(botA[0], botA[1], botB[0], botB[1]);
-                gc.strokeLine(topA[0], topA[1], botA[0], botA[1]);
-                gc.strokeLine(topB[0], topB[1], botB[0], botB[1]);
+                for (int i = 0; i < combCount; i++) {
+                    double yPos = startY + i * spacing;
+                    double[] topA = proj.apply(new double[]{rx0 - cW, yPos, 0});
+                    double[] topB = proj.apply(new double[]{rx0 + cW, yPos, 0});
+                    double[] botA = proj.apply(new double[]{rx0 - cW, yPos, cH});
+                    double[] botB = proj.apply(new double[]{rx0 + cW, yPos, cH});
+
+                    gc.setStroke(Color.web("#f59e0b", 0.75)); gc.setLineWidth(1.8 * zoom);
+                    gc.strokeLine(topA[0], topA[1], topB[0], topB[1]);
+                    gc.strokeLine(botA[0], botA[1], botB[0], botB[1]);
+                    gc.strokeLine(topA[0], topA[1], botA[0], botA[1]);
+                    gc.strokeLine(topB[0], topB[1], botB[0], botB[1]);
+
+                    // Honey storage top band highlight
+                    double[] hTopA = proj.apply(new double[]{rx0 - cW, yPos, cH * 0.25});
+                    double[] hTopB = proj.apply(new double[]{rx0 + cW, yPos, cH * 0.25});
+                    gc.setStroke(Color.web("#fef08a", 0.60)); gc.setLineWidth(1.2 * zoom);
+                    gc.strokeLine(hTopA[0], hTopA[1], hTopB[0], hTopB[1]);
+                }
             }
             case "WAX_POTS_CLUSTER" -> {
                 // Organic moss/wax protective dome envelope
-                double[] cp = proj.apply(new double[]{0, 0, 4.0 * scale});
+                double[] cp = proj.apply(new double[]{rx0, ry0, 4.0 * scale});
                 double rx = 12.0 * scale * zoom * 0.85, ry = 12.0 * scale * zoom * 0.42;
 
                 gc.setFill(Color.web("#65a30d", 0.22));
@@ -320,11 +352,11 @@ public final class NestRenderer {
             case "PAPER_PEDUNCULATE" -> {
                 // Tree branch & peduncle petiole stem
                 gc.setStroke(Color.web("#92400e", 0.75)); gc.setLineWidth(3.5 * zoom);
-                double[] brA = proj.apply(new double[]{-16, 0, -5 * scale}), brB = proj.apply(new double[]{16, 0, -5 * scale});
+                double[] brA = proj.apply(new double[]{rx0 - 16, ry0, -5 * scale}), brB = proj.apply(new double[]{rx0 + 16, ry0, -5 * scale});
                 gc.strokeLine(brA[0], brA[1], brB[0], brB[1]);
 
                 gc.setStroke(Color.web("#78350f", 0.90)); gc.setLineWidth(2.0 * zoom);
-                double[] stemTop = proj.apply(new double[]{0, 0, -5 * scale}), stemBot = proj.apply(new double[]{0, 0, 0});
+                double[] stemTop = proj.apply(new double[]{rx0, ry0, -5 * scale}), stemBot = proj.apply(new double[]{rx0, ry0, 0});
                 gc.strokeLine(stemTop[0], stemTop[1], stemBot[0], stemBot[1]);
 
                 // Hanging paper envelope tiers
@@ -332,7 +364,7 @@ public final class NestRenderer {
                 for (double zLevel = 0; zLevel <= nestH; zLevel += 3.0 * scale) {
                     double norm = zLevel / nestH;
                     double rad = (Math.sin(norm * Math.PI) * 10.0 + 2.5) * scale;
-                    double[] cp = proj.apply(new double[]{0, 0, zLevel});
+                    double[] cp = proj.apply(new double[]{rx0, ry0, zLevel});
                     double rx = rad * zoom * 0.85, ry = rad * zoom * 0.42;
 
                     gc.setFill(Color.web("#e2e8f0", 0.22 + (1 - norm) * 0.20));
@@ -342,12 +374,12 @@ public final class NestRenderer {
                 }
             }
             case "CATHEDRAL_MOUND" -> {
-                // Conical cathedral mound spire above ground
+                // Conical cathedral mound spire precisely aligned at (rx0, ry0)
                 double moundH = 18.0;
                 int baseRad = 14;
                 for (double hZ = 0; hZ <= moundH; hZ += 1.5) {
                     double radius = baseRad * (1.0 - Math.pow(hZ / moundH, 0.75));
-                    double[] centerP = proj.apply(new double[]{0, 0, -hZ});
+                    double[] centerP = proj.apply(new double[]{rx0, ry0, -hZ});
                     double rx = radius * zoom * 0.85, ry = radius * zoom * 0.42;
 
                     gc.setFill(Color.web("#854d0e", 0.30 + (hZ / moundH) * 0.35));
@@ -358,26 +390,26 @@ public final class NestRenderer {
                 // Ventilation buttresses
                 double[] angles = {0, Math.PI / 3, 2 * Math.PI / 3, Math.PI, 4 * Math.PI / 3, 5 * Math.PI / 3};
                 for (double ang : angles) {
-                    double[] botP = proj.apply(new double[]{baseRad * Math.cos(ang), baseRad * Math.sin(ang), 0});
-                    double[] topP = proj.apply(new double[]{3 * Math.cos(ang), 3 * Math.sin(ang), -moundH});
+                    double[] botP = proj.apply(new double[]{rx0 + baseRad * Math.cos(ang), ry0 + baseRad * Math.sin(ang), 0});
+                    double[] topP = proj.apply(new double[]{rx0 + 3 * Math.cos(ang), ry0 + 3 * Math.sin(ang), -moundH});
                     gc.setStroke(Color.web("#ca8a04", 0.85)); gc.setLineWidth(2.0);
                     gc.strokeLine(botP[0], botP[1], topP[0], topP[1]);
                 }
                 // Subterranean cellar box below ground
                 gc.setStroke(Color.web("#713f12", 0.35)); gc.setLineWidth(1.0);
                 for (double g = -14; g <= 14; g += 7) {
-                    double[] a = proj.apply(new double[]{g, -14, maxD}), b = proj.apply(new double[]{g, 14, maxD});
+                    double[] a = proj.apply(new double[]{rx0 + g, ry0 - 14, maxD}), b = proj.apply(new double[]{rx0 + g, ry0 + 14, maxD});
                     gc.strokeLine(a[0], a[1], b[0], b[1]);
                 }
             }
             case "ARBOREAL_SILK_LEAF" -> {
                 // Support tree branch
                 gc.setStroke(Color.web("#92400e", 0.75)); gc.setLineWidth(3.0 * zoom);
-                double[] b1 = proj.apply(new double[]{-16, 0, -8 * scale}), b2 = proj.apply(new double[]{16, 0, -8 * scale});
+                double[] b1 = proj.apply(new double[]{rx0 - 16, ry0, -8 * scale}), b2 = proj.apply(new double[]{rx0 + 16, ry0, -8 * scale});
                 gc.strokeLine(b1[0], b1[1], b2[0], b2[1]);
 
                 // Translucent foliage sphere & silk weave threads
-                double[] centerP = proj.apply(new double[]{0, 0, 3 * scale});
+                double[] centerP = proj.apply(new double[]{rx0, ry0, 3 * scale});
                 double rx = 13.0 * scale * zoom * 0.85, ry = 13.0 * scale * zoom * 0.42;
 
                 gc.setFill(Color.web("#15803d", 0.22));
@@ -389,23 +421,23 @@ public final class NestRenderer {
                 gc.setStroke(Color.web("#f8fafc", 0.50)); gc.setLineWidth(1.0 * zoom);
                 for (int i = 0; i < 6; i++) {
                     double a1 = i * Math.PI / 3;
-                    double[] s1 = proj.apply(new double[]{12 * scale * Math.cos(a1), 12 * scale * Math.sin(a1), (i % 2 == 0 ? -2 : 8) * scale});
-                    double[] s2 = proj.apply(new double[]{-12 * scale * Math.cos(a1), -12 * scale * Math.sin(a1), (i % 2 == 0 ? 8 : -2) * scale});
+                    double[] s1 = proj.apply(new double[]{rx0 + 12 * scale * Math.cos(a1), ry0 + 12 * scale * Math.sin(a1), (i % 2 == 0 ? -2 : 8) * scale});
+                    double[] s2 = proj.apply(new double[]{rx0 - 12 * scale * Math.cos(a1), ry0 - 12 * scale * Math.sin(a1), (i % 2 == 0 ? 8 : -2) * scale});
                     gc.strokeLine(s1[0], s1[1], s2[0], s2[1]);
                 }
             }
             case "SUBTERRANEAN_FUNGI_VAULT" -> {
-                // Surface craters
+                // Surface craters aligned at root
                 for (int i = 0; i < 3; i++) {
                     double ang = i * (Math.PI * 2 / 3.0);
-                    double[] crP = proj.apply(new double[]{(5.0 + i * 2.0) * Math.cos(ang) * scale, (5.0 + i * 2.0) * Math.sin(ang) * scale, 0});
+                    double[] crP = proj.apply(new double[]{rx0 + (5.0 + i * 2.0) * Math.cos(ang) * scale, ry0 + (5.0 + i * 2.0) * Math.sin(ang) * scale, 0});
                     gc.setFill(Color.web("#854d0e", 0.40));
                     gc.fillOval(crP[0] - 6 * zoom, crP[1] - 3 * zoom, 12 * zoom, 6 * zoom);
                 }
 
                 // Fungi vaults translucent purple contour
                 double zVault = maxD * 0.45;
-                double[] vaultP = proj.apply(new double[]{0, 0, zVault});
+                double[] vaultP = proj.apply(new double[]{rx0, ry0, zVault});
                 double rx = 14.0 * scale * zoom * 0.85, ry = 14.0 * scale * zoom * 0.42;
                 gc.setFill(Color.web("#a855f7", 0.25));
                 gc.fillOval(vaultP[0] - rx, vaultP[1] - ry, rx * 2, ry * 2);
@@ -414,7 +446,7 @@ public final class NestRenderer {
 
                 // Refuse waste pit contour
                 double zWaste = maxD * 0.85;
-                double[] wasteP = proj.apply(new double[]{0, 0, zWaste});
+                double[] wasteP = proj.apply(new double[]{rx0, ry0, zWaste});
                 double rxW = 10.0 * scale * zoom * 0.85, ryW = 10.0 * scale * zoom * 0.42;
                 gc.setFill(Color.web("#ef4444", 0.25));
                 gc.fillOval(wasteP[0] - rxW, wasteP[1] - ryW, rxW * 2, ryW * 2);
@@ -424,11 +456,11 @@ public final class NestRenderer {
             case "CARTON_NEST" -> {
                 // Host tree trunk anchor
                 gc.setStroke(Color.web("#78350f", 0.70)); gc.setLineWidth(4.0 * zoom);
-                double[] trunkB = proj.apply(new double[]{0, -10 * scale, 16 * scale}), trunkT = proj.apply(new double[]{0, -10 * scale, -14 * scale});
+                double[] trunkB = proj.apply(new double[]{rx0, ry0 - 10 * scale, 16 * scale}), trunkT = proj.apply(new double[]{rx0, ry0 - 10 * scale, -14 * scale});
                 gc.strokeLine(trunkB[0], trunkB[1], trunkT[0], trunkT[1]);
 
                 // Concentric spherical carton globe
-                double[] cp = proj.apply(new double[]{0, 0, 2 * scale});
+                double[] cp = proj.apply(new double[]{rx0, ry0, 2 * scale});
                 double rx = 12.0 * scale * zoom * 0.85, ry = 12.0 * scale * zoom * 0.42;
 
                 gc.setFill(Color.web("#a16207", 0.28));
@@ -438,33 +470,33 @@ public final class NestRenderer {
             }
             case "BAMBOO_STEM_NEST" -> {
                 // Bamboo cylinder stem
-                double stemMinX = -15.0 * scale, stemMaxX = 18.0 * scale;
+                double stemMinX = rx0 - 15.0 * scale, stemMaxX = rx0 + 18.0 * scale;
                 double rStem = 3.6 * scale;
 
                 gc.setStroke(Color.web("#84cc16", 0.60)); gc.setLineWidth(1.6 * zoom);
                 for (double x = stemMinX; x <= stemMaxX; x += 6 * scale) {
-                    double[] topP = proj.apply(new double[]{x, 0, -rStem});
-                    double[] botP = proj.apply(new double[]{x, 0, rStem});
+                    double[] topP = proj.apply(new double[]{x, ry0, -rStem});
+                    double[] botP = proj.apply(new double[]{x, ry0, rStem});
                     gc.strokeLine(topP[0], topP[1], botP[0], botP[1]);
                 }
 
-                double[] leftTop = proj.apply(new double[]{stemMinX, 0, -rStem});
-                double[] rightTop = proj.apply(new double[]{stemMaxX, 0, -rStem});
-                double[] leftBot = proj.apply(new double[]{stemMinX, 0, rStem});
-                double[] rightBot = proj.apply(new double[]{stemMaxX, 0, rStem});
+                double[] leftTop = proj.apply(new double[]{stemMinX, ry0, -rStem});
+                double[] rightTop = proj.apply(new double[]{stemMaxX, ry0, -rStem});
+                double[] leftBot = proj.apply(new double[]{stemMinX, ry0, rStem});
+                double[] rightBot = proj.apply(new double[]{stemMaxX, ry0, rStem});
 
                 gc.strokeLine(leftTop[0], leftTop[1], rightTop[0], rightTop[1]);
                 gc.strokeLine(leftBot[0], leftBot[1], rightBot[0], rightBot[1]);
 
                 // Entrance plug
-                double[] plug = proj.apply(new double[]{-12 * scale, 0, 0});
+                double[] plug = proj.apply(new double[]{rx0 - 12 * scale, ry0, 0});
                 gc.setFill(Color.web("#ef4444", 0.85));
                 gc.fillOval(plug[0] - 3 * zoom, plug[1] - 3 * zoom, 6 * zoom, 6 * zoom);
             }
             case "BIVOUAC_LIVING_NEST" -> {
                 // Overhead fallen log shelter
                 gc.setStroke(Color.web("#78350f", 0.80)); gc.setLineWidth(4.0 * zoom);
-                double[] log1 = proj.apply(new double[]{-15, 0, -8 * scale}), log2 = proj.apply(new double[]{16, 0, -8 * scale});
+                double[] log1 = proj.apply(new double[]{rx0 - 15, ry0, -8 * scale}), log2 = proj.apply(new double[]{rx0 + 16, ry0, -8 * scale});
                 gc.strokeLine(log1[0], log1[1], log2[0], log2[1]);
 
                 // Living ant catenary body curtain
@@ -472,7 +504,7 @@ public final class NestRenderer {
                 for (double zLevel = -8 * scale; zLevel <= bivouacH; zLevel += 2.0 * scale) {
                     double norm = (zLevel - (-8 * scale)) / (bivouacH - (-8 * scale));
                     double rad = (Math.sin(norm * Math.PI) * 10.0 + 2.0) * scale;
-                    double[] cp = proj.apply(new double[]{0, 0, zLevel});
+                    double[] cp = proj.apply(new double[]{rx0, ry0, zLevel});
                     double rx = rad * zoom * 0.85, ry = rad * zoom * 0.42;
 
                     gc.setFill(Color.web("#dc2626", 0.22 + (1 - norm) * 0.15));
@@ -482,11 +514,11 @@ public final class NestRenderer {
                 }
             }
             case "SURFACE_MOUND" -> {
-                // Earth dome mound above ground
+                // Earth dome mound precisely aligned at (rx0, ry0)
                 double moundH = 8.0 * scale;
                 for (double hZ = 0; hZ <= moundH; hZ += 1.5 * scale) {
                     double radius = 14.0 * scale * (1.0 - Math.pow(hZ / moundH, 0.65));
-                    double[] cp = proj.apply(new double[]{0, 0, -hZ});
+                    double[] cp = proj.apply(new double[]{rx0, ry0, -hZ});
                     double rx = radius * zoom * 0.85, ry = radius * zoom * 0.42;
 
                     gc.setFill(Color.web("#ca8a04", 0.25 + (hZ / moundH) * 0.25));
@@ -497,7 +529,7 @@ public final class NestRenderer {
                 // Subterranean soil volume below
                 gc.setStroke(Color.web("#78350f", 0.35)); gc.setLineWidth(1.0);
                 for (double g = -14; g <= 14; g += 7) {
-                    double[] a = proj.apply(new double[]{g, -14, maxD}), b = proj.apply(new double[]{g, 14, maxD});
+                    double[] a = proj.apply(new double[]{rx0 + g, ry0 - 14, maxD}), b = proj.apply(new double[]{rx0 + g, ry0 + 14, maxD});
                     gc.strokeLine(a[0], a[1], b[0], b[1]);
                 }
             }
@@ -505,14 +537,14 @@ public final class NestRenderer {
                 // Hollow trunk cylinder
                 gc.setStroke(Color.web("#78350f", 0.65)); gc.setLineWidth(1.8 * zoom);
                 for (double z = -14 * scale; z <= 14 * scale; z += 4 * scale) {
-                    double[] cp = proj.apply(new double[]{0, 0, z});
+                    double[] cp = proj.apply(new double[]{rx0, ry0, z});
                     double rx = 8.5 * scale * zoom * 0.85, ry = 8.5 * scale * zoom * 0.42;
                     gc.setFill(Color.web("#78350f", 0.22));
                     gc.fillOval(cp[0] - rx, cp[1] - ry, rx * 2, ry * 2);
                     gc.strokeOval(cp[0] - rx, cp[1] - ry, rx * 2, ry * 2);
                 }
                 // Knot entrance hole
-                double[] knot = proj.apply(new double[]{0, -5.5 * scale, -4.0 * scale});
+                double[] knot = proj.apply(new double[]{rx0, ry0 - 5.5 * scale, -4.0 * scale});
                 gc.setFill(Color.web("#22c55e", 0.85));
                 gc.fillOval(knot[0] - 4 * zoom, knot[1] - 3 * zoom, 8 * zoom, 6 * zoom);
             }
@@ -521,10 +553,10 @@ public final class NestRenderer {
                 gc.setStroke(Color.rgb(148, 163, 184, 0.25)); gc.setLineWidth(0.8);
                 double bw = 22, bd = 22;
                 double[][] botCorners = {
-                    {-bw, -bd, maxD}, {bw, -bd, maxD}, {bw, bd, maxD}, {-bw, bd, maxD}
+                    {rx0 - bw, ry0 - bd, maxD}, {rx0 + bw, ry0 - bd, maxD}, {rx0 + bw, ry0 + bd, maxD}, {rx0 - bw, ry0 + bd, maxD}
                 };
                 double[][] topCorners = {
-                    {-bw, -bd, 0}, {bw, -bd, 0}, {bw, bd, 0}, {-bw, bd, 0}
+                    {rx0 - bw, ry0 - bd, 0}, {rx0 + bw, ry0 - bd, 0}, {rx0 + bw, ry0 + bd, 0}, {rx0 - bw, ry0 + bd, 0}
                 };
                 for (int i = 0; i < 4; i++) {
                     double[] p1 = proj.apply(botCorners[i]), p2 = proj.apply(botCorners[(i + 1) % 4]);

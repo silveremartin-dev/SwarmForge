@@ -72,6 +72,6 @@ public class DiggingBehavior {
         network.dig(startNode.id(), dx * 2, dy * 2, dz * 2, TunnelNetwork.ChamberType.TUNNEL);
 
         // Cost energy
-        individual.setEnergy(individual.getEnergy() - 2f);
+        individual.setEnergy(individual.getEnergy() - 0.01f);
     }
 }

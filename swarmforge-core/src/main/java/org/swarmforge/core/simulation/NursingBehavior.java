@@ -77,7 +77,7 @@ public class NursingBehavior implements BehaviorStrategy {
             }
         }
 
-        ind.setEnergy(ind.getEnergy() - 0.02f);
+        ind.setEnergy(ind.getEnergy() - 0.0001f);
     }
 
     private void moveTowardsNest(Individual ind, Colony colony) {

@@ -62,13 +62,13 @@ public class DefenseBehavior implements BehaviorStrategy {
             ind.move(0.05f);
         }
 
-        ind.setEnergy(ind.getEnergy() - 0.02f);
+        ind.setEnergy(ind.getEnergy() - 0.0001f);
     }
 
     private void engageEnemy(Individual ind, BehaviorContext ctx) {
         // Turn towards threat and advance
         ind.move(0.6f);
-        ind.setEnergy(ind.getEnergy() - 0.15f);
+        ind.setEnergy(ind.getEnergy() - 0.001f);
         // Combat would reduce health of both parties
     }
 

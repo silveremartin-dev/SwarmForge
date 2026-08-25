@@ -370,7 +370,14 @@ public class Colony implements java.io.Serializable {
      * Add resource to colony storage.
      */
     public void addResource(ResourceType type, float amount) {
-        resources.merge(type, amount, (a, b) -> a + b);
+        resources.merge(type, amount, Float::sum);
+        if (type != null && type.getCategory() != null) {
+            switch (type.getCategory()) {
+                case PROTEIN -> proteinStored += amount;
+                case CARBOHYDRATE -> carbohydrateStored += amount;
+                case WATER -> waterStored += amount;
+            }
+        }
     }
 
     /**
@@ -383,6 +390,13 @@ public class Colony implements java.io.Serializable {
         float toTake = Math.min(current, amount);
         if (toTake > 0) {
             resources.put(type, current - toTake);
+            if (type != null && type.getCategory() != null) {
+                switch (type.getCategory()) {
+                    case PROTEIN -> proteinStored = Math.max(0f, proteinStored - toTake);
+                    case CARBOHYDRATE -> carbohydrateStored = Math.max(0f, carbohydrateStored - toTake);
+                    case WATER -> waterStored = Math.max(0f, waterStored - toTake);
+                }
+            }
         }
         return toTake;
     }
@@ -450,5 +464,43 @@ public class Colony implements java.io.Serializable {
 
     public org.swarmforge.core.diplomacy.DiplomacyManager getDiplomacy() {
         return diplomacyManager;
+    }
+
+    private int queenSpermathecaSperm = 50000; // Finite sperm count in queen's spermatheca
+
+    public int getQueenSpermathecaSperm() {
+        return queenSpermathecaSperm;
+    }
+
+    /**
+     * Process internal colony mechanics (Fungus Garden cultivation, Queen egg-laying based on protein storage & spermatheca reserves).
+     */
+    public void tick() {
+        // 1. Process Fungus Garden if present
+        if (fungusGarden != null) {
+            fungusGarden.tick();
+        }
+
+        // 2. Queen Oviposition & Haplodiploid Determination
+        if (hasQueen() && proteinStored >= 5.0f && (age % 600 == 0)) { // Every ~10 seconds
+            float eggCost = 5.0f;
+            proteinStored -= eggCost;
+            
+            Individual newEgg;
+            if (queenSpermathecaSperm > 0) {
+                // Diploid female worker
+                queenSpermathecaSperm--;
+                newEgg = createWorker();
+            } else {
+                // Spermatheca depleted: Arrhenotokous Parthenogenesis -> Haploid Male
+                newEgg = createMale();
+            }
+
+            if (newEgg != null) {
+                newEgg.setLifeStage(Individual.LifeStage.EGG);
+            }
+        }
+
+        age++;
     }
 }

@@ -57,7 +57,12 @@ public class SymbiosisSystem {
 
             // 2. Trophobiosis: Honeydew Harvest for Lasius & Formica
             if (colony.getSpeciesName().contains("Lasius") || colony.getSpeciesName().contains("Formica")) {
-                colony.addResource(ResourceType.HONEYDEW, 12.0f);
+                org.swarmforge.core.world.VegetationSystem veg = simulation.getVegetationSystem();
+                int plantCount = (veg != null) ? veg.getPlants().size() : 5;
+                if (plantCount > 0) {
+                    float harvestAmount = Math.min(15.0f, 2.0f + plantCount * 0.5f);
+                    colony.addResource(ResourceType.HONEYDEW, harvestAmount);
+                }
             }
         }
     }

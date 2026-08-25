@@ -36,6 +36,7 @@ public class SimulationAudioManager {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private boolean ambientEnabled = true;
+    private boolean riverEnabled = true;
     private boolean weatherEnabled = true;
     private boolean insectEnabled = true;
     private double masterVolume = 0.7; // 0.0 - 1.0
@@ -80,7 +81,10 @@ public class SimulationAudioManager {
                 // Low-pass filter memory states for smooth acoustics
                 double rainFilter = 0.0;
                 double windFilter = 0.0;
+                double riverFilter = 0.0;
+                double fireFilter = 0.0;
                 double clickEnv = 0.0;
+                double bubbleEnv = 0.0;
 
                 while (running.get()) {
                     if (masterVolume <= 0.001 || !simRunning) {
@@ -119,12 +123,40 @@ public class SimulationAudioManager {
                             sampleVal += (windMod + leafRustle + chirp);
                         }
 
-                        // 2. Weather Effects (Rain patter & deep thunder rumble)
+                        // 1b. Procedural River Water Stream & Flow Gurgling Audio
+                        if (riverEnabled) {
+                            double rawWater = (rand.nextDouble() - 0.5) * 0.12;
+                            riverFilter = 0.88 * riverFilter + 0.12 * rawWater; // Low-pass water flow
+                            double flowMod = Math.sin(tick * 0.004) * 0.4 + 0.6;
+
+                            if (rand.nextDouble() < 0.003) {
+                                bubbleEnv = 1.0;
+                            }
+                            double gurgle = 0.0;
+                            if (bubbleEnv > 0.001) {
+                                gurgle = Math.sin(780.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * bubbleEnv * 0.035;
+                                bubbleEnv *= 0.96;
+                            }
+                            sampleVal += (riverFilter * 0.65 + gurgle) * flowMod;
+                        }
+
+                        // 2. Weather Effects (Rain patter, Hail taps, Wildfire crackle & deep thunder rumble)
                         if (weatherEnabled) {
                             if (currentWeather != null && (currentWeather.contains("Rain") || currentWeather.contains("Pluie") || currentWeather.contains("Orage") || currentWeather.contains("Snow") || currentWeather.contains("Neige"))) {
                                 double rawRain = (rand.nextDouble() - 0.5) * 0.25;
                                 rainFilter = 0.82 * rainFilter + 0.18 * rawRain; // Soft pink noise rain
                                 sampleVal += rainFilter * 0.8;
+                            }
+                            if (currentWeather != null && (currentWeather.contains("Hail") || currentWeather.contains("Grêle"))) {
+                                if (rand.nextDouble() < 0.015) {
+                                    sampleVal += (rand.nextDouble() - 0.5) * 0.28; // Hail impact clicks
+                                }
+                            }
+                            if (currentWeather != null && (currentWeather.contains("Fire") || currentWeather.contains("Incendie"))) {
+                                double fireRoar = (rand.nextDouble() - 0.5) * 0.15;
+                                fireFilter = 0.90 * fireFilter + 0.10 * fireRoar;
+                                double crackle = rand.nextDouble() < 0.01 ? (rand.nextDouble() - 0.5) * 0.3 : 0.0;
+                                sampleVal += (fireFilter * 0.5 + crackle);
                             }
                             if (currentWeather != null && (currentWeather.contains("Thunder") || currentWeather.contains("Orage"))) {
                                 int tCycle = tick % 18000;
@@ -181,6 +213,14 @@ public class SimulationAudioManager {
 
     public boolean isAmbientEnabled() {
         return ambientEnabled;
+    }
+
+    public void setRiverEnabled(boolean enabled) {
+        this.riverEnabled = enabled;
+    }
+
+    public boolean isRiverEnabled() {
+        return riverEnabled;
     }
 
     public void setWeatherEnabled(boolean enabled) {

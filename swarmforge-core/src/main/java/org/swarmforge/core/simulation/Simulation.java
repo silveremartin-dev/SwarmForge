@@ -135,6 +135,13 @@ public class Simulation {
     }
 
     public Colony addColony(String speciesType, int queens, int workers, int soldiers) {
+        int nextColonyIndex = colonies.size();
+        org.swarmforge.core.spatial.OptimalColonyPlacementEngine.PlacementResult pos = 
+            org.swarmforge.core.spatial.OptimalColonyPlacementEngine.calculateOptimalPosition(terrarium, speciesType, nextColonyIndex, nextColonyIndex + 1, "Optimal Multi-Territory Cluster");
+        return addColony(speciesType, queens, workers, soldiers, pos.x(), pos.y());
+    }
+
+    public Colony addColony(String speciesType, int queens, int workers, int soldiers, float x, float y) {
         org.swarmforge.core.species.Species species;
         switch (speciesType) {
             case "FormicaRufa" -> species = new org.swarmforge.core.species.FormicaRufa();
@@ -143,10 +150,6 @@ public class Simulation {
             case "Camponotus" -> species = new org.swarmforge.core.species.Camponotus();
             default -> species = new org.swarmforge.core.species.LasiusNiger();
         }
-
-        // Random position for now, or determined by Matchmaking logic later
-        float x = (float) (Math.random() * terrarium.getWidth());
-        float y = (float) (Math.random() * terrarium.getHeight());
 
         Colony colony = new Colony(species, x, y, 0); // Z=0 surface
         for (int i = 0; i < queens; i++) {
@@ -167,26 +170,79 @@ public class Simulation {
     private class ColonyObserver implements org.swarmforge.core.domain.ColonyListener {
         @Override
         public void onBirth(Colony colony, Individual individual) {
-            eventQueue.offer(new SimulationEvent(SimulationEvent.EventType.BIRTH,
-                    tickCount.get(), "New " + individual.getCaste() + " born in " + colony.getSpeciesName()));
+            SimulationEvent.EventType type;
+            String message;
+            if (individual.getLifeStage() == Individual.LifeStage.EGG) {
+                type = SimulationEvent.EventType.WORKER_BORN;
+                message = "Ponte : La reine de " + colony.getSpeciesName() + " a pondu un œuf (" + individual.getCaste() + ")";
+            } else {
+                type = switch (individual.getCaste()) {
+                    case QUEEN -> SimulationEvent.EventType.QUEEN_BORN;
+                    case SOLDIER -> SimulationEvent.EventType.SOLDIER_BORN;
+                    default -> SimulationEvent.EventType.WORKER_BORN;
+                };
+                message = "Naissance : " + individual.getCaste() + " dans la colonie " + colony.getSpeciesName();
+            }
+
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("colony", colony.getSpeciesName());
+            data.put("caste", individual.getCaste().name());
+            data.put("stage", individual.getLifeStage().name());
+
+            SimulationEvent event = SimulationEvent.obtain(type, SimulationEvent.Severity.INFO, tickCount.get(), message, data);
+            eventQueue.offer(event);
+            org.swarmforge.core.event.EventBus.getInstance().publish(event);
         }
 
         @Override
         public void onDeath(Colony colony, Individual individual) {
-            eventQueue.offer(new SimulationEvent(SimulationEvent.EventType.DEATH,
-                    tickCount.get(), individual.getCaste() + " died in " + colony.getSpeciesName()));
+            SimulationEvent.EventType type = switch (individual.getCaste()) {
+                case QUEEN -> SimulationEvent.EventType.QUEEN_DIED;
+                case SOLDIER -> SimulationEvent.EventType.SOLDIER_DIED;
+                default -> SimulationEvent.EventType.WORKER_DIED;
+            };
+            SimulationEvent.Severity severity = (individual.getCaste() == Individual.Caste.QUEEN)
+                    ? SimulationEvent.Severity.CRITICAL
+                    : SimulationEvent.Severity.WARNING;
+
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("colony", colony.getSpeciesName());
+            data.put("caste", individual.getCaste().name());
+
+            String message = "Décès : " + individual.getCaste() + " de la colonie " + colony.getSpeciesName();
+            SimulationEvent event = SimulationEvent.obtain(type, severity, tickCount.get(), message, data);
+            eventQueue.offer(event);
+            org.swarmforge.core.event.EventBus.getInstance().publish(event);
         }
     }
 
     public void start() {
         if (state.compareAndSet(State.STOPPED, State.RUNNING) ||
                 state.compareAndSet(State.PAUSED, State.RUNNING)) {
+            org.swarmforge.core.event.EventBus.getInstance().publish(
+                SimulationEvent.obtain(
+                    SimulationEvent.EventType.SIMULATION_STARTED,
+                    SimulationEvent.Severity.INFO,
+                    getTickCount(),
+                    "▶️ Simulation démarrée",
+                    null
+                )
+            );
             simulationThread = Thread.ofVirtual().name("simulation-loop").start(this::runLoop);
         }
     }
 
     public void pause() {
         state.set(State.PAUSED);
+        org.swarmforge.core.event.EventBus.getInstance().publish(
+            SimulationEvent.obtain(
+                SimulationEvent.EventType.SIMULATION_PAUSED,
+                SimulationEvent.Severity.INFO,
+                getTickCount(),
+                "⏸️ Simulation mise en pause",
+                null
+            )
+        );
     }
 
     public org.swarmforge.core.gpu.SparsePheromoneGrid getPheromoneGrid() {
@@ -202,6 +258,15 @@ public class Simulation {
         if (simulationThread != null) {
             simulationThread.interrupt();
         }
+        org.swarmforge.core.event.EventBus.getInstance().publish(
+            SimulationEvent.obtain(
+                SimulationEvent.EventType.SIMULATION_STOPPED,
+                SimulationEvent.Severity.INFO,
+                getTickCount(),
+                "⏹️ Simulation arrêtée",
+                null
+            )
+        );
     }
 
     private void runLoop() {
@@ -309,21 +374,20 @@ public class Simulation {
                             }
                         }
                     }
-                } else {
-                    // Fallback for brainless entities (eggs, etc) or legacy behavior
-                    individual.tick();
                 }
 
-                // Keep existing growth/lifecycle logic
-                // ind.tick(); // Replaced by update below
+                // Update thermodynamic ambient temperature from weather context
+                individual.setAmbientTemperatureC(context.getTemperature());
+
+                // Process growth and lifecycle stage progression
                 processGrowth(individual);
 
-                // Update individual with construction context if applicable
+                // Update individual with construction context if applicable (calls tick())
                 org.swarmforge.core.structure.ConstructionManager cm = constructionManagers.get(colony);
                 if (cm != null) {
-                    individual.update(cm); // This handles movement, job logic, and energy tick
+                    individual.update(cm);
                 } else {
-                    individual.tick(); // Fallback
+                    individual.tick();
                 }
 
                 // Collect living individuals for spatial index update
@@ -367,21 +431,21 @@ public class Simulation {
                 case EGG -> {
                     ind.setLifeStage(Individual.LifeStage.LARVA);
                     ind.setMaturationThreshold(ind.getMaturationThreshold() * 2); // Larva stage is longer
-                    eventQueue.offer(new SimulationEvent(SimulationEvent.EventType.BIRTH,
-                            tickCount.get(), "Egg hatched into Larva"));
+                    SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.WORKER_BORN, SimulationEvent.Severity.INFO, tickCount.get(), "Éclosion : L'œuf a éclos en Larve", null);
+                    eventQueue.offer(evt);
+                    org.swarmforge.core.event.EventBus.getInstance().publish(evt);
                 }
                 case LARVA -> {
-                    // Larva needs food to pupate? For now just time based.
-                    if (ind.getEnergy() > 50) { // Simple condition
+                    if (ind.getEnergy() > 50) {
                         ind.setLifeStage(Individual.LifeStage.PUPA);
                         ind.setMaturationThreshold(ind.getMaturationThreshold() * 1.5f);
-                        eventQueue.offer(new SimulationEvent(SimulationEvent.EventType.BIRTH,
-                                tickCount.get(), "Larva pupated"));
+                        SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.WORKER_BORN, SimulationEvent.Severity.INFO, tickCount.get(), "Métamorphose : La larve s'est métamorphosée en Nymphe", null);
+                        eventQueue.offer(evt);
+                        org.swarmforge.core.event.EventBus.getInstance().publish(evt);
                     }
                 }
                 case PUPA -> {
                     ind.setLifeStage(Individual.LifeStage.ADULT);
-                    // Assign Job based on Caste?
                     if (ind.getCaste() == Individual.Caste.WORKER) {
                         float r = ind.getRandom().nextFloat();
                         if (r < 0.2f) {
@@ -394,8 +458,12 @@ public class Simulation {
                     } else if (ind.getCaste() == Individual.Caste.SOLDIER) {
                         ind.setJob(Individual.Job.GUARD);
                     }
-                    eventQueue.offer(new SimulationEvent(SimulationEvent.EventType.BIRTH,
-                            tickCount.get(), "New Adult emerged"));
+                    SimulationEvent evt = SimulationEvent.obtain(
+                        ind.getCaste() == Individual.Caste.QUEEN ? SimulationEvent.EventType.QUEEN_BORN :
+                        (ind.getCaste() == Individual.Caste.SOLDIER ? SimulationEvent.EventType.SOLDIER_BORN : SimulationEvent.EventType.WORKER_BORN),
+                        SimulationEvent.Severity.INFO, tickCount.get(), "Émergence : Nouvel Adulte (" + ind.getCaste() + ") émergé", null);
+                    eventQueue.offer(evt);
+                    org.swarmforge.core.event.EventBus.getInstance().publish(evt);
                 }
                 case ADULT -> {
                     // unexpected

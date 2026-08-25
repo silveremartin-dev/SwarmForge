@@ -103,4 +103,29 @@ public interface SimulationContext {
      * Get water level at position (0.0=dry, 1.0=flooded).
      */
     float getWaterLevel(float x, float y, float z);
+
+    /**
+     * Get relative humidity (% RH, 0.0 to 100.0).
+     */
+    float getRelativeHumidity(float x, float y, float z);
+
+    /**
+     * Get CO2 concentration in ppm (ambient baseline ~400 ppm).
+     */
+    float getCo2Ppm(float x, float y, float z);
+
+    /**
+     * Get geomagnetic inclination angle (degrees) for magnetoreceptive species orientation.
+     */
+    float getGeomagneticHeading(float x, float y, float z);
+
+    /**
+     * Get local thermal gradient X component for thermoreception navigation.
+     */
+    float getThermalGradientX(float x, float y, float z);
+
+    /**
+     * Get local thermal gradient Y component for thermoreception navigation.
+     */
+    float getThermalGradientY(float x, float y, float z);
 }

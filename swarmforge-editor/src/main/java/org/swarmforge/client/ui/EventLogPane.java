@@ -80,14 +80,23 @@ public class EventLogPane extends BorderPane {
         HBox filters = new HBox(10);
         filters.setAlignment(Pos.CENTER_LEFT);
 
-        // Type filter
+        // Type filter (Excludes redundant generic types: INFO, DEBUG, WARNING, ERROR, SYSTEM, BIRTH, DEATH)
         Label typeLabel = new Label();
         typeLabel.textProperty().bind(i18n.createStringBinding("log.filter.type"));
         typeLabel.setStyle("-fx-text-fill: white;");
         typeFilter = new ComboBox<>();
-        typeFilter.getItems().add("All");
+        typeFilter.getItems().add("Tous");
         for (SimulationEvent.EventType type : SimulationEvent.EventType.values()) {
-            typeFilter.getItems().add(type.name());
+            if (type == SimulationEvent.EventType.INFO ||
+                type == SimulationEvent.EventType.BIRTH ||
+                type == SimulationEvent.EventType.DEATH ||
+                type == SimulationEvent.EventType.SYSTEM ||
+                type == SimulationEvent.EventType.DEBUG ||
+                type == SimulationEvent.EventType.ERROR ||
+                type == SimulationEvent.EventType.WARNING) {
+                continue;
+            }
+            typeFilter.getItems().add(formatTypeString(type));
         }
         typeFilter.getSelectionModel().selectFirst();
         typeFilter.setOnAction(e -> updateFilter());
@@ -97,7 +106,7 @@ public class EventLogPane extends BorderPane {
         sevLabel.textProperty().bind(i18n.createStringBinding("log.filter.severity"));
         sevLabel.setStyle("-fx-text-fill: white;");
         severityFilter = new ComboBox<>();
-        severityFilter.getItems().addAll("All", "INFO", "WARNING", "CRITICAL");
+        severityFilter.getItems().addAll("Tous", "INFO", "WARNING", "CRITICAL");
         severityFilter.getSelectionModel().selectFirst();
         severityFilter.setOnAction(e -> updateFilter());
 
@@ -148,8 +157,14 @@ public class EventLogPane extends BorderPane {
         String typeValue = typeFilter.getValue();
         String sevValue = severityFilter.getValue();
 
-        Predicate<SimulationEvent> typePred = e -> "All".equals(typeValue) || e.getType().name().equals(typeValue);
-        Predicate<SimulationEvent> sevPred = e -> "All".equals(sevValue) || e.getSeverity().name().equals(sevValue);
+        Predicate<SimulationEvent> typePred = e -> {
+            if ("Tous".equals(typeValue) || "All".equals(typeValue) || typeValue == null) return true;
+            return formatTypeString(e.getType()).equals(typeValue) || e.getType().name().equals(typeValue);
+        };
+        Predicate<SimulationEvent> sevPred = e -> {
+            if ("Tous".equals(sevValue) || "All".equals(sevValue) || sevValue == null) return true;
+            return e.getSeverity().name().equals(sevValue);
+        };
 
         filteredEvents.setPredicate(typePred.and(sevPred));
         updateStats();
@@ -188,6 +203,38 @@ public class EventLogPane extends BorderPane {
         }
     }
 
+    private static String formatTypeString(SimulationEvent.EventType type) {
+        if (type == null) return "Événement";
+        return switch (type) {
+            case COLONY_FOUNDED -> "Fondation Colonie";
+            case COLONY_DESTROYED -> "Destruction Colonie";
+            case QUEEN_BORN -> "Naissance Reine";
+            case QUEEN_DIED -> "Décès Reine";
+            case WORKER_BORN -> "Naissance Ouvrière";
+            case WORKER_DIED -> "Décès Ouvrière";
+            case SOLDIER_BORN -> "Naissance Soldat";
+            case SOLDIER_DIED -> "Décès Soldat";
+            case FOOD_DISCOVERED -> "Nourriture Découverte";
+            case FOOD_DEPLETED -> "Nourriture Épuisée";
+            case NEST_EXPANDED -> "Extension du Nid";
+            case NEST_DAMAGED -> "Nid Endommagé";
+            case RAID_STARTED -> "Raid Commencé";
+            case RAID_ENDED -> "Raid Terminé";
+            case TERRITORY_CLAIMED -> "Territoire Conquis";
+            case COMBAT_OCCURRED -> "Combat Interspécifique";
+            case WEATHER_CHANGED -> "Changement Climat";
+            case DISASTER_OCCURRED -> "Désastre Écologique";
+            case SEASON_CHANGED -> "Changement Saison";
+            case SIMULATION_STARTED -> "Départ Simulation";
+            case SIMULATION_PAUSED -> "Pause Simulation";
+            case SIMULATION_STOPPED -> "Arrêt Simulation";
+            case TICK_COMPLETED -> "Pas Simulation";
+            case MILESTONE_REACHED -> "Jalon Franchi";
+            case GOD_MODE_INTERVENTION -> "Mode Divin";
+            default -> type.name().replace("_", " ");
+        };
+    }
+
     /**
      * Custom cell for event display with color coding.
      */
@@ -220,18 +267,18 @@ public class EventLogPane extends BorderPane {
                 tickLabel.setMinWidth(70);
 
                 // Type
-                Label typeLabel = new Label(formatType(event.getType()));
+                Label typeLabel = new Label(formatTypeString(event.getType()));
                 typeLabel.setStyle("-fx-text-fill: " + getTypeColor(event.getType()) + "; -fx-font-weight: bold;");
-                typeLabel.setMinWidth(120);
+                typeLabel.setMinWidth(140);
 
-                // Message & Numerical Data Details
+                // Message & Numerical Data Details with Human Readable Labels & Formatted IDs
                 StringBuilder msgBuilder = new StringBuilder(event.getMessage());
                 if (event.getData() != null && !event.getData().isEmpty()) {
                     msgBuilder.append("  📊 [");
                     boolean first = true;
                     for (java.util.Map.Entry<String, Object> entry : event.getData().entrySet()) {
                         if (!first) msgBuilder.append(", ");
-                        msgBuilder.append(entry.getKey()).append(": ").append(entry.getValue());
+                        msgBuilder.append(formatKey(entry.getKey())).append(": ").append(formatValue(entry.getValue()));
                         first = false;
                     }
                     msgBuilder.append("]");
@@ -247,6 +294,32 @@ public class EventLogPane extends BorderPane {
             }
         }
 
+        private String formatKey(String key) {
+            if (key == null) return "";
+            return switch (key) {
+                case "colonyId", "colony" -> "Colonie";
+                case "species" -> "Espèce";
+                case "caste" -> "Caste";
+                case "stage" -> "Stade";
+                case "cause" -> "Cause";
+                case "attackerId" -> "Attaquant";
+                case "defenderId" -> "Défenseur";
+                case "disasterType" -> "Type";
+                case "affectedArea" -> "Zone touchée";
+                case "amount" -> "Quantité";
+                default -> Character.toUpperCase(key.charAt(0)) + key.substring(1);
+            };
+        }
+
+        private String formatValue(Object value) {
+            if (value == null) return "";
+            String str = value.toString();
+            if (str.length() == 36 && str.contains("-")) {
+                return "Nid #" + str.substring(0, 8).toUpperCase();
+            }
+            return str;
+        }
+
         private String getSeverityIcon(SimulationEvent.Severity sev) {
             if (sev == null) return "ℹ️";
             if (sev == SimulationEvent.Severity.WARNING) return "⚠️";
@@ -259,10 +332,6 @@ public class EventLogPane extends BorderPane {
             if (sev == SimulationEvent.Severity.WARNING) return "rgba(255, 193, 7, 0.1)";
             if (sev == SimulationEvent.Severity.CRITICAL) return "rgba(220, 53, 69, 0.2)";
             return "transparent";
-        }
-
-        private String formatType(SimulationEvent.EventType type) {
-            return type != null ? type.name().replace("_", " ") : "UNKNOWN";
         }
 
         private String getTypeColor(SimulationEvent.EventType type) {

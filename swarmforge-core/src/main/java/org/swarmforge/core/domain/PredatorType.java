@@ -124,7 +124,63 @@ public enum PredatorType {
             4f,
             5f,
             0f,
-            HuntingStyle.AMBUSH);
+            HuntingStyle.AMBUSH),
+
+    ASIAN_HORNET(
+            "Frelon Asiatique (Prédateur spécialisé d'Abeilles)",
+            4.2f,
+            18f,
+            20f,
+            0f,
+            HuntingStyle.SWOOP),
+
+    BEE_WOLF(
+            "Philanthe Apivore (Guêpe chasseuse d'Abeilles)",
+            3.5f,
+            14f,
+            16f,
+            0f,
+            HuntingStyle.CHASE),
+
+    VARROA_MITE(
+            "Mite Varroa (Ectoparasite des Nymphes d'Abeilles)",
+            0.2f,
+            5f,
+            3f,
+            0.9f,
+            HuntingStyle.AMBUSH),
+
+    HONEY_BUZZARD(
+            "Bondrée Apivore (Oiseau rapace de Nids de Guêpes/Abeilles)",
+            5.5f,
+            45f,
+            35f,
+            0f,
+            HuntingStyle.SWOOP),
+
+    MEGAPONERA_RAIDER(
+            "Fourmi Raideuse Megaponera (Raid spécialisé sur Termites)",
+            2.2f,
+            16f,
+            14f,
+            0f,
+            HuntingStyle.CHASE),
+
+    AARDVARK_MOUND_BREAKER(
+            "Oryctérope / Tamanoir (Destructeur de Termitières)",
+            1.0f,
+            50f,
+            25f,
+            0f,
+            HuntingStyle.CHASE),
+
+    WOODPECKER(
+            "Pic Noir (Prédateur de Scolytes & Fourmis Bois)",
+            4.8f,
+            30f,
+            28f,
+            0f,
+            HuntingStyle.SWOOP);
 
     /**
      * Hunting style determines AI behavior.

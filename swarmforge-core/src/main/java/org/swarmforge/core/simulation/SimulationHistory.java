@@ -64,7 +64,7 @@ public class SimulationHistory {
     public boolean recordIfNeeded(Simulation simulation) {
         long currentTick = simulation.getTickCount();
 
-        if (currentTick - lastSnapshotTick >= snapshotInterval) {
+        if (count == 0 || currentTick - lastSnapshotTick >= snapshotInterval) {
             record(SimulationSnapshot.capture(simulation));
             lastSnapshotTick = currentTick;
             return true;

@@ -189,4 +189,39 @@ public class SimulationContextImpl implements SimulationContext {
     public float getWaterLevel(float x, float y, float z) {
         return simulation.getWaterGrid().getWaterAt(x, y, z);
     }
+
+    @Override
+    public float getRelativeHumidity(float x, float y, float z) {
+        // High subterranean humidity (~85%), lower ambient surface humidity (~55%)
+        if (z < 0) return 85.0f;
+        return isRaining() ? 95.0f : 55.0f;
+    }
+
+    @Override
+    public float getCo2Ppm(float x, float y, float z) {
+        // Underground respiration accumulation (baseline 400 ppm, elevated underground)
+        if (z < 0) {
+            return 400.0f + Math.abs(z) * 150.0f;
+        }
+        return 400.0f;
+    }
+
+    @Override
+    public float getGeomagneticHeading(float x, float y, float z) {
+        // Earth magnetic field inclination gradient (approx 45 degrees north)
+        return 45.0f;
+    }
+
+    @Override
+    public float getThermalGradientX(float x, float y, float z) {
+        float left = getTemperature();
+        float right = getTemperature();
+        return right - left;
+    }
+
+    @Override
+    public float getThermalGradientY(float x, float y, float z) {
+        // Surface is exposed to solar warming, subterranean is insulated
+        return (z < 0) ? -0.1f : 0.1f;
+    }
 }

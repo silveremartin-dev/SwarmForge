@@ -49,8 +49,10 @@ public class DiseaseManager {
     public DiseaseManager(Simulation simulation) {
         this.simulation = simulation;
 
-        // Register default diseases
+        // Register all biological pathogen and parasite types
         diseases.add(new FungalInfection());
+        diseases.add(new BacterialGutInfection());
+        diseases.add(new MiteInfestation());
     }
 
     /**

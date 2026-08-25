@@ -69,7 +69,9 @@ public class PassiveVentilationEngine implements Serializable {
         float draftVelocity = calculateStackEffectAirflow(grid, externalTempC, externalWindSpeed);
         NestType nestType = grid.getNestType();
 
-        float co2PurgeFraction = Math.min(0.40f, 0.02f * draftVelocity * nestType.getBaselineCo2PurgeRate());
+        // Knudsen Gas Diffusion in narrow galleries guarantees minimum passive molecular exchange (D_Knudsen = 0.005)
+        float knudsenDiffusionFloor = 0.005f;
+        float co2PurgeFraction = Math.min(0.40f, knudsenDiffusionFloor + 0.02f * draftVelocity * nestType.getBaselineCo2PurgeRate());
         float thermalEquilRate = Math.min(0.30f, 0.01f * draftVelocity / Math.max(0.1f, nestType.getThermalInsulation()));
 
         // Ant metabolic CO2 emission: ~0.5 ppm per ant per tick inside air voxels

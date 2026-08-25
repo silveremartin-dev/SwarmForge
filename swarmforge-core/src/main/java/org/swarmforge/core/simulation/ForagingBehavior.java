@@ -65,7 +65,7 @@ public class ForagingBehavior implements BehaviorStrategy {
         ind.move(MOVE_SPEED);
 
         // Consume energy
-        ind.setEnergy(ind.getEnergy() - 0.05f);
+        ind.setEnergy(ind.getEnergy() - 0.0001f);
     }
 
     private void followPheromone(Individual ind, Terrarium terrarium, int pheromoneType) {

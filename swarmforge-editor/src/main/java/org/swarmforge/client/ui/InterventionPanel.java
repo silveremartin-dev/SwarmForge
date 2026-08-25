@@ -8,14 +8,14 @@ package org.swarmforge.client.ui;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import org.swarmforge.core.event.EventBus;
-import org.swarmforge.core.event.SimulationEvent;
 
 /**
  * Intervention Panel - God Mode controls for runtime simulation manipulation.
- * Allows adding/removing entities, triggering events, and modifying parameters.
+ * Features an overarching Scheduled Event Queue system, comprehensive food taxonomy,
+ * multi-day disaster duration scaling, and direct manipulation of fundamental abiotic physical drivers.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
@@ -26,10 +26,31 @@ public class InterventionPanel extends BorderPane {
     private ComboBox<String> casteSelect;
     private ComboBox<String> colonySelect;
     private TextField posXField, posYField, posZField;
-    private ComboBox<String> killColonySelect;
     private ComboBox<String> disasterSelect;
     private Slider intensitySlider;
+    private Slider durationSlider;
+    private Label durationValLabel;
     private TextArea logArea;
+
+    private ComboBox<String> eventColonySelect;
+    private Spinner<Integer> spDay, spHour, spMin, spSec;
+
+    private Slider tempSlider;
+    private Label tempValLabel;
+    private Slider humiditySlider;
+    private Label humidityValLabel;
+    private Slider windSlider;
+    private Label windValLabel;
+    private Slider solarSlider;
+    private Label solarValLabel;
+
+    private Label derivedPheroLabel;
+    private Label derivedPrimaryProductivityLabel;
+    private Label derivedOvipositionLabel;
+
+    private Slider foodSlider;
+    private ComboBox<String> resourceTypeSelect;
+    private ComboBox<String> foodNatureSelect;
 
     // Callback for interventions (set by client)
     private InterventionCallback callback;
@@ -43,6 +64,40 @@ public class InterventionPanel extends BorderPane {
         void modifyParameter(String param, Object value);
     }
 
+    public static class ScheduledEvent {
+        public long targetTick;
+        public String timeFormatted;
+        public String category; // ENTITIES, RESOURCE, DISASTER, PARAMETERS
+        public String eventType;
+        public String colonyTarget;
+        public String description;
+        public int count = 10;
+        public String caste = "Ouvrière";
+        public float posX = 1.0f, posY = 1.0f, posZ = 0.1f;
+        public float amount = 100f;
+        public String foodNature = "Graines & Semences";
+        public float intensity = 0.5f;
+        public int durationMinutes = 60;
+        public float tempCelsius = 22.0f;
+        public float humidityPercent = 65.0f;
+        public float windMetersPerSec = 1.5f;
+        public float solarWattsPerM2 = 450.0f;
+        public boolean executed = false;
+        public boolean paused = false;
+
+        public ScheduledEvent(long targetTick, String timeFormatted, String category, String eventType, String colonyTarget, String description) {
+            this.targetTick = targetTick;
+            this.timeFormatted = timeFormatted;
+            this.category = category;
+            this.eventType = eventType;
+            this.colonyTarget = colonyTarget;
+            this.description = description;
+        }
+    }
+
+    private final javafx.collections.ObservableList<ScheduledEvent> scheduledEventsList = javafx.collections.FXCollections.observableArrayList();
+    private ListView<String> scheduledEventsListView;
+
     public InterventionPanel() {
         setPadding(new Insets(15));
 
@@ -53,12 +108,12 @@ public class InterventionPanel extends BorderPane {
         title.textProperty().bind(i18n.createStringBinding("god.title"));
         title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #ff6b6b;");
         title.setTooltip(new Tooltip("Contrôles d'intervention directe en mode divin pour modifier la simulation en cours de fonctionnement."));
-        
+
         simStateWarningLabel = new Label("⚠️ Simulation arrêtée — Démarrez la simulation (▶) pour exécuter des interventions en Mode Divin.");
         simStateWarningLabel.setStyle("-fx-text-fill: #f87171; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: rgba(239,68,68,0.15); -fx-padding: 6 10; -fx-background-radius: 4;");
         simStateWarningLabel.setMaxWidth(Double.MAX_VALUE);
 
-        Label persistenceNoticeLabel = new Label("⚡ Persistance & Déterminisme : Toutes vos interventions en Mode Divin sont horodatées (Tick exact) et inscrites dans le Journal du Scénario. Elles seront réappliquées déterministement lors des restaurations de Checkpoints.");
+        Label persistenceNoticeLabel = new Label("⚡ Horodatage & Physique Abiotique : Toutes vos interventions sont inscrites dans le continuum spatio-temporel du monde. La dissipation chimique et la productivité sont dérivées déterministement des drivers physiques (Température, Humidité, Vent, Radiance).");
         persistenceNoticeLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 10px; -fx-background-color: rgba(56,189,248,0.1); -fx-padding: 6 10; -fx-background-radius: 4; -fx-border-color: rgba(56,189,248,0.3); -fx-border-width: 1;");
         persistenceNoticeLabel.setWrapText(true);
         persistenceNoticeLabel.setMaxWidth(Double.MAX_VALUE);
@@ -66,537 +121,83 @@ public class InterventionPanel extends BorderPane {
         VBox header = new VBox(5, title, simStateWarningLabel, persistenceNoticeLabel);
         setTop(header);
 
-        // Main content - Accordion with sections
-        Accordion accordion = new Accordion();
+        // Main scrollable content
+        VBox mainContent = new VBox(15);
+        mainContent.setPadding(new Insets(12, 5, 12, 5));
 
-        TitledPane spawnPane = createSpawnSection();
-        TitledPane killPane = createKillSection();
-        TitledPane resourcePane = createResourceSection();
-        TitledPane speedPane = createCasteGenerationSpeedSection();
-        TitledPane disasterPane = createDisasterSection();
-        TitledPane scheduledEventsPane = createScheduledEventsSection();
-        TitledPane paramPane = createParameterSection();
+        // 1. OVERARCHING CONTAINER: Scheduled Events Queue
+        VBox queueContainer = createScheduledEventsQueueBlock();
+        mainContent.getChildren().add(queueContainer);
 
-        accordion.getPanes().addAll(spawnPane, killPane, resourcePane, speedPane, disasterPane, scheduledEventsPane, paramPane);
-        accordion.setExpandedPane(spawnPane);
+        // 2. CONFIGURATION SUB-BLOCKS TITLE
+        Label subBlocksHeader = new Label("🛠️ Sous-blocs de Configuration des Événements & Interventions :");
+        subBlocksHeader.setStyle("-fx-font-weight: bold; -fx-text-fill: #f59e0b; -fx-font-size: 13px;");
+        mainContent.getChildren().add(subBlocksHeader);
 
-        VBox content = new VBox(15, accordion);
-        content.setPadding(new Insets(15, 0, 0, 0));
-        setCenter(content);
+        // Sub-block 1: Time Target (Calendar Time Only) & Colony Target
+        mainContent.getChildren().add(createCardSubBlock("📅 Horodatage Cible (Jour / HH:MM:SS) & Colonie Affectée", createTimeAndColonyConfigNode()));
+
+        // Sub-block 2: Entities & Castes (Apparition / Élimination / Extinction)
+        mainContent.getChildren().add(createCardSubBlock("🐜 Entités & Castes (Apparition / Élimination / Extinction)", createEntitiesSubBlockNode()));
+
+        // Sub-block 3: Resources & Biomass (With Complete Social Insect Food Taxonomy)
+        mainContent.getChildren().add(createCardSubBlock("🍖 Ressources & Biomasse (Taxonomie Complète des Insectes Sociaux)", createResourcesSubBlockNode()));
+
+        // Sub-block 4: Disasters & Environmental Events (Magnitude & Multi-Week Duration)
+        mainContent.getChildren().add(createCardSubBlock("🌊 Catastrophes & Climat (Magnitude & Échelle Multi-Semaines)", createDisastersSubBlockNode()));
+
+        // Sub-block 5: Abiotic Core Physical Drivers (Temperature, Humidity, Wind, Solar Radiation)
+        mainContent.getChildren().add(createCardSubBlock("🌡️ Conditions Abiotiques & Microclimat Sol/Air (Moteur Physico-Chimique)", createParametersSubBlockNode()));
+
+        ScrollPane scrollPane = new ScrollPane(mainContent);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+
+        setCenter(scrollPane);
 
         // Bottom: Action Log
         setBottom(createLogSection());
     }
 
-    private TitledPane createSpawnSection() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(15));
-
-        // Colony selector
-        Label colLabel = new Label();
-        colLabel.textProperty().bind(i18n.createStringBinding("god.spawn.colony"));
-        colLabel.setStyle("-fx-text-fill: white;");
-        colonySelect = new ComboBox<>();
-        colonySelect.getItems().addAll("Colonie #1 (Lasius niger)", "Colonie #2 (Atta sexdens)", "+ Nouvelle Colonie");
-        colonySelect.getSelectionModel().selectFirst();
-        colonySelect.setPrefWidth(200);
-        colonySelect.setTooltip(new Tooltip("Sélectionnez la colonie cible dynamique issue de la simulation active."));
-        colonySelect.setOnAction(e -> updateCastesForSelectedColony(colonySelect.getValue()));
-
-        // Caste selector
-        Label casteLabel = new Label();
-        casteLabel.textProperty().bind(i18n.createStringBinding("god.spawn.caste"));
-        casteLabel.setStyle("-fx-text-fill: white;");
-        casteSelect = new ComboBox<>();
-        updateCastesForSelectedColony(colonySelect.getValue());
-        casteSelect.setPrefWidth(200);
-        casteSelect.setTooltip(new Tooltip("Sélectionnez la caste morphologique disponible pour l'espèce de cette colonie."));
-
-        // Count
-        Label countLabel = new Label();
-        countLabel.textProperty().bind(i18n.createStringBinding("god.spawn.count"));
-        countLabel.setStyle("-fx-text-fill: white;");
-        antCountSpinner = new Spinner<>(1, 1000, 10);
-        antCountSpinner.setEditable(true);
-        antCountSpinner.setPrefWidth(100);
-        antCountSpinner.setTooltip(new Tooltip("Nombre d'individus à injecter instantanément dans la colonie (1 à 1000)."));
-
-        // Position with explicit Metric Units [0 .. Terrarium Bounds (dynamique selon Éditeur de Monde, ex: 2.0m x 2.0m)]
-        Label posLabel = new Label("Coordonnées (m) :");
-        posLabel.setStyle("-fx-text-fill: white;");
-        HBox posBox = new HBox(5);
-        posXField = new TextField("1.0");
-        posXField.setPrefWidth(60);
-        posXField.setTooltip(new Tooltip("Position X en mètres [0.0 m ... Largeur définie dans l'Éditeur de Monde (ex: 2.0m)]."));
-
-        posYField = new TextField("1.0");
-        posYField.setPrefWidth(60);
-        posYField.setTooltip(new Tooltip("Position Y en mètres [0.0 m ... Profondeur définie dans l'Éditeur de Monde (ex: 2.0m)]."));
-
-        posZField = new TextField("0.1");
-        posZField.setPrefWidth(60);
-        posZField.setTooltip(new Tooltip("Altitude/Profondeur Z en mètres [0.0 m = Sol, 0.1m = Surface, >0.5m = Air]."));
-
-        Label lblMetersUnit = new Label("m");
-        lblMetersUnit.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-
-        posBox.getChildren().addAll(new Label("X:"), posXField, new Label("Y:"), posYField, new Label("Z:"), posZField, lblMetersUnit);
-
-        // Spawn button
-        Button btnSpawn = new Button();
-        btnSpawn.textProperty().bind(i18n.createStringBinding("god.spawn.btn"));
-        btnSpawn.setStyle("-fx-background-color: #28a745; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnSpawn.setTooltip(new Tooltip("Injection immédiate des individus configurés aux coordonnées métriques X,Y,Z indiquées."));
-        btnSpawn.setOnAction(e -> spawnAnts());
-
-        grid.add(colLabel, 0, 0);
-        grid.add(colonySelect, 1, 0);
-        grid.add(casteLabel, 0, 1);
-        grid.add(casteSelect, 1, 1);
-        grid.add(countLabel, 0, 2);
-        grid.add(antCountSpinner, 1, 2);
-        grid.add(posLabel, 0, 3);
-        grid.add(posBox, 1, 3);
-        grid.add(btnSpawn, 1, 4);
-
-        TitledPane pane = new TitledPane();
-        pane.textProperty().bind(i18n.createStringBinding("god.spawn.title"));
-        pane.setContent(grid);
-        pane.setTooltip(new Tooltip("Génération et injection instantanée d'individus dans une colonie active."));
-        styleTitledPane(pane);
-        return pane;
+    private VBox createCardSubBlock(String titleStr, Node contentNode) {
+        VBox card = new VBox(8);
+        card.setPadding(new Insets(12));
+        card.setStyle("-fx-background-color: #18181b; -fx-border-color: #27272a; -fx-border-width: 1; -fx-border-radius: 8; -fx-background-radius: 8;");
+        Label title = new Label(titleStr);
+        title.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-font-size: 12px;");
+        card.getChildren().addAll(title, new Separator(), contentNode);
+        return card;
     }
 
-    private TitledPane createKillSection() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        VBox content = new VBox(10);
-        content.setPadding(new Insets(15));
-
-        // Colony Target Selection for Elimination
-        HBox colonyRow = new HBox(10);
-        colonyRow.setAlignment(Pos.CENTER_LEFT);
-        Label lblColonyTarget = new Label("Colonie Cible :");
-        lblColonyTarget.setStyle("-fx-text-fill: white;");
-        killColonySelect = new ComboBox<>();
-        killColonySelect.getItems().addAll(i18n.get("god.spawn.colony_1"), i18n.get("god.spawn.colony_2"), i18n.get("god.spawn.colony_new"));
-        killColonySelect.getSelectionModel().selectFirst();
-        killColonySelect.setPrefWidth(200);
-        killColonySelect.setTooltip(new Tooltip("Sélectionnez la colonie spécifique ciblée par l'action d'élimination."));
-        colonyRow.getChildren().addAll(lblColonyTarget, killColonySelect);
-
-        HBox row1 = new HBox(10);
-        row1.setAlignment(Pos.CENTER_LEFT);
-        
-        ComboBox<String> targetSelect = new ComboBox<>();
-        targetSelect.getItems().addAll(
-            i18n.get("god.kill.target_workers"),
-            i18n.get("god.kill.target_soldiers"),
-            i18n.get("god.kill.target_oldest"),
-            i18n.get("god.kill.target_weakest"),
-            i18n.get("god.kill.target_queens")
-        );
-        targetSelect.getSelectionModel().selectFirst();
-        targetSelect.setPrefWidth(150);
-        targetSelect.setTooltip(new Tooltip("Sélectionnez le sous-groupe ou profil d'individus à éliminer dans la colonie."));
-        
-        Spinner<Integer> killCount = new Spinner<>(1, 1000, 5);
-        killCount.setPrefWidth(80);
-        killCount.setTooltip(new Tooltip("Nombre d'individus de la colonie à éliminer."));
-
-        Button btnKill = new Button();
-        btnKill.textProperty().bind(i18n.createStringBinding("god.kill.btn"));
-        btnKill.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white;");
-        btnKill.setTooltip(new Tooltip("Élimine immédiatement le nombre d'individus ciblés dans la colonie sélectionnée."));
-        btnKill.setOnAction(e -> {
-            String selectedColony = killColonySelect.getValue();
-            String target = targetSelect.getValue();
-            int count = killCount.getValue();
-            String msg = String.format("Élimination de %d [%s] (%s) via Mode Divin", count, target, selectedColony);
-            log(msg);
-            if (callback != null) callback.killAnts(selectedColony, target, count);
-            
-            SimulationEvent.EventType eventType = target.contains("Reine") ? SimulationEvent.EventType.QUEEN_DIED :
-                        target.contains("Soldat") ? SimulationEvent.EventType.SOLDIER_DIED :
-                        SimulationEvent.EventType.WORKER_DIED;
-            java.util.Map<String, Object> data = new java.util.HashMap<>();
-            data.put("colony", selectedColony);
-            data.put("caste", target);
-            data.put("count", count);
-            data.put("source", "Mode Divin");
-            EventBus.getInstance().publish(SimulationEvent.obtain(eventType, SimulationEvent.Severity.WARNING, 0, msg, data));
-        });
-
-        Label lblTarget = new Label();
-        lblTarget.textProperty().bind(i18n.createStringBinding("god.kill.target"));
-        lblTarget.setStyle("-fx-text-fill: white;");
-
-        Label lblCount = new Label();
-        lblCount.textProperty().bind(i18n.createStringBinding("god.kill.count"));
-        lblCount.setStyle("-fx-text-fill: white;");
-
-        row1.getChildren().addAll(lblTarget, targetSelect, lblCount, killCount, btnKill);
-
-        // Mass extinction button
-        Button btnExtinct = new Button();
-        btnExtinct.textProperty().bind(i18n.createStringBinding("god.kill.extinct"));
-        btnExtinct.setStyle("-fx-background-color: #6c0000; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnExtinct.setTooltip(new Tooltip("Destruction totale et définitive de l'intégralité de la colonie sélectionnée (100% mortalité)."));
-        btnExtinct.setOnAction(e -> {
-            String selectedColony = killColonySelect.getValue();
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.titleProperty().bind(i18n.createStringBinding("god.kill.confirm_title"));
-            confirm.setContentText(i18n.get("god.kill.confirm_msg") + " (" + selectedColony + ")");
-            confirm.showAndWait().ifPresent(r -> {
-                if (r == ButtonType.OK) {
-                    String msg = "⚠ Extinction totale déclenchée pour la colonie : " + selectedColony + " via Mode Divin";
-                    log(msg);
-                    if (callback != null) callback.killAnts(selectedColony, "ALL", 999999);
-                    java.util.Map<String, Object> data = new java.util.HashMap<>();
-                    data.put("colony", selectedColony);
-                    data.put("source", "Mode Divin");
-                    EventBus.getInstance().publish(SimulationEvent.obtain(SimulationEvent.EventType.COLONY_DESTROYED, SimulationEvent.Severity.CRITICAL, 0, msg, data));
-                }
-            });
-        });
-
-        content.getChildren().addAll(colonyRow, row1, new Separator(), btnExtinct);
-
-        TitledPane pane = new TitledPane();
-        pane.textProperty().bind(i18n.createStringBinding("god.kill.title"));
-        pane.setContent(content);
-        pane.setTooltip(new Tooltip("Élimination sélective d'individus ou extinction complète d'une colonie ciblée."));
-        styleTitledPane(pane);
-        return pane;
-    }
-
-    private TitledPane createResourceSection() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(15));
-
-        // Food spawning
-        Label foodLabel = new Label();
-        foodLabel.textProperty().bind(i18n.createStringBinding("god.resources.food_amount"));
-        foodLabel.setStyle("-fx-text-fill: white;");
-        Slider foodSlider = new Slider(10, 1000, 100);
-        foodSlider.setShowTickLabels(true);
-        foodSlider.setPrefWidth(180);
-        foodSlider.setTooltip(new Tooltip("Quantité d'unités nutritives (biomasse/sucre) à déposer sur le terrain."));
-
-        Label foodValue = new Label("100");
-        foodValue.setStyle("-fx-text-fill: #e4e4e7;");
-        foodSlider.valueProperty().addListener((o,a,b) -> foodValue.setText(String.format("%.0f", b.doubleValue())));
-
-        Button btnFood = new Button();
-        btnFood.textProperty().bind(i18n.createStringBinding("god.resources.btn_food"));
-        btnFood.setStyle("-fx-background-color: #3f3f46; -fx-text-fill: white;");
-        btnFood.setTooltip(new Tooltip("Dépose une source de nourriture de surface aux coordonnées X,Y,Z indiquées."));
-        btnFood.setOnAction(e -> {
-            float x = Float.parseFloat(posXField.getText());
-            float y = Float.parseFloat(posYField.getText());
-            float z = Float.parseFloat(posZField.getText());
-            int amount = (int)foodSlider.getValue();
-            String msg = String.format("Apparition de %d unités de nourriture aux coordonnées (X:%.2fm, Y:%.2fm, Z:%.2fm) via Mode Divin", amount, x, y, z);
-            log(msg);
-            if (callback != null) callback.spawnFood(x, y, z, (float)amount);
-            EventBus.getInstance().publish(SimulationEvent.foodDiscovered(0, "SYSTEM", (int)x, (int)y, amount));
-        });
-
-        // Water spawning
-        Button btnWater = new Button();
-        btnWater.textProperty().bind(i18n.createStringBinding("god.resources.btn_water"));
-        btnWater.setTooltip(new Tooltip("Dépose une flaque/source d'eau douce de surface aux coordonnées X,Y,Z indiquées."));
-        btnWater.setOnAction(e -> {
-            float x = Float.parseFloat(posXField.getText());
-            float y = Float.parseFloat(posYField.getText());
-            float z = Float.parseFloat(posZField.getText());
-            log(String.format("Apparition d'une source d'eau aux coordonnées (X:%.2fm, Y:%.2fm, Z:%.2fm) via Mode Divin", x, y, z));
-        });
-
-        // Remove resources
-        Button btnRemoveFood = new Button();
-        btnRemoveFood.textProperty().bind(i18n.createStringBinding("god.resources.btn_remove_food"));
-        btnRemoveFood.setStyle("-fx-background-color: #6c757d; -fx-text-fill: white;");
-        btnRemoveFood.setTooltip(new Tooltip("Supprime uniquement les dépôts de nourriture libres éparpillés sur le sol (n'affecte ni les réserves internes stockées dans le nid, ni la flore/graminées vivantes)."));
-        btnRemoveFood.setOnAction(e -> log("Purge de la nourriture de surface libre effectuée (les stocks de nid et la flore vivante sont préservés)."));
-
-        grid.add(foodLabel, 0, 0);
-        grid.add(foodSlider, 1, 0);
-        grid.add(foodValue, 2, 0);
-        grid.add(btnFood, 1, 1);
-        grid.add(btnWater, 2, 1);
-        grid.add(new Separator(), 0, 2, 3, 1);
-        grid.add(btnRemoveFood, 1, 3);
-
-        TitledPane pane = new TitledPane();
-        pane.textProperty().bind(i18n.createStringBinding("god.resources.title"));
-        pane.setContent(grid);
-        pane.setTooltip(new Tooltip("Injection et nettoyage des ressources environnementales de surface (Nourriture & Eau)."));
-        styleTitledPane(pane);
-        return pane;
-    }
-
-    private TitledPane createCasteGenerationSpeedSection() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(15));
-
-        // Worker generation speed
-        Label lblWorkerSpeed = new Label();
-        lblWorkerSpeed.textProperty().bind(i18n.createStringBinding("god.speed_castes.workers"));
-        lblWorkerSpeed.setStyle("-fx-text-fill: white;");
-        Slider workerSpeedSlider = new Slider(0.1, 5.0, 1.0);
-        workerSpeedSlider.setShowTickLabels(true);
-        workerSpeedSlider.setTooltip(new Tooltip("Multiplicateur de vitesse de ponte et développement des ouvrières (0.1x à 5.0x)."));
-        Label lblWorkerVal = new Label("1.0x");
-        lblWorkerVal.setStyle("-fx-text-fill: #38bdf8;");
-        workerSpeedSlider.valueProperty().addListener((o, a, b) -> {
-            lblWorkerVal.setText(String.format("%.1fx", b.doubleValue()));
-            log("Vitesse ponte/génération Ouvrières fixée à " + String.format("%.1fx", b.doubleValue()));
-        });
-
-        // Soldier generation speed
-        Label lblSoldierSpeed = new Label();
-        lblSoldierSpeed.textProperty().bind(i18n.createStringBinding("god.speed_castes.soldiers"));
-        lblSoldierSpeed.setStyle("-fx-text-fill: white;");
-        Slider soldierSpeedSlider = new Slider(0.1, 5.0, 1.0);
-        soldierSpeedSlider.setShowTickLabels(true);
-        soldierSpeedSlider.setTooltip(new Tooltip("Multiplicateur de vitesse de ponte et développement des soldats (0.1x à 5.0x)."));
-        Label lblSoldierVal = new Label("1.0x");
-        lblSoldierVal.setStyle("-fx-text-fill: #ef4444;");
-        soldierSpeedSlider.valueProperty().addListener((o, a, b) -> {
-            lblSoldierVal.setText(String.format("%.1fx", b.doubleValue()));
-            log("Vitesse ponte/génération Soldats fixée à " + String.format("%.1fx", b.doubleValue()));
-        });
-
-        // Predator generation speed
-        Label lblPredatorSpeed = new Label();
-        lblPredatorSpeed.textProperty().bind(i18n.createStringBinding("god.speed_castes.predators"));
-        lblPredatorSpeed.setStyle("-fx-text-fill: white;");
-        Slider predatorSpeedSlider = new Slider(0.1, 5.0, 1.0);
-        predatorSpeedSlider.setShowTickLabels(true);
-        predatorSpeedSlider.setTooltip(new Tooltip("Taux d'apparition et d'intrusion des prédateurs externes dans l'écosystème (0.1x à 5.0x)."));
-        Label lblPredatorVal = new Label("1.0x");
-        lblPredatorVal.setStyle("-fx-text-fill: #a855f7;");
-        predatorSpeedSlider.valueProperty().addListener((o, a, b) -> {
-            lblPredatorVal.setText(String.format("%.1fx", b.doubleValue()));
-            log("Taux d'apparition Prédateurs fixé à " + String.format("%.1fx", b.doubleValue()));
-        });
-
-        grid.add(lblWorkerSpeed, 0, 0); grid.add(workerSpeedSlider, 1, 0); grid.add(lblWorkerVal, 2, 0);
-        grid.add(lblSoldierSpeed, 0, 1); grid.add(soldierSpeedSlider, 1, 1); grid.add(lblSoldierVal, 2, 1);
-        grid.add(lblPredatorSpeed, 0, 2); grid.add(predatorSpeedSlider, 1, 2); grid.add(lblPredatorVal, 2, 2);
-
-        TitledPane pane = new TitledPane();
-        pane.textProperty().bind(i18n.createStringBinding("god.speed_castes.title"));
-        pane.setContent(grid);
-        pane.setTooltip(new Tooltip("Ajustement direct des taux de ponte et de réapparition par caste et pour les prédateurs."));
-        styleTitledPane(pane);
-        return pane;
-    }
-
-    private TitledPane createDisasterSection() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        VBox content = new VBox(15);
-        content.setPadding(new Insets(15));
-
-        // Disaster type selector
-        HBox typeRow = new HBox(10);
-        typeRow.setAlignment(Pos.CENTER_LEFT);
-        Label typeLabel = new Label();
-        typeLabel.textProperty().bind(i18n.createStringBinding("god.disasters.type"));
-        typeLabel.setStyle("-fx-text-fill: white;");
-        disasterSelect = new ComboBox<>();
-        disasterSelect.getItems().addAll(
-            i18n.get("god.disasters.fire"),
-            i18n.get("god.disasters.flood"),
-            i18n.get("god.disasters.tornado"),
-            i18n.get("god.disasters.drought"),
-            i18n.get("god.disasters.freeze"),
-            i18n.get("god.disasters.lightning"),
-            i18n.get("god.disasters.pestilence"),
-            i18n.get("god.disasters.landslide"),
-            i18n.get("god.disasters.heatwave"),
-            i18n.get("god.disasters.pollution")
-        );
-        disasterSelect.getSelectionModel().selectFirst();
-        disasterSelect.setPrefWidth(180);
-        disasterSelect.setTooltip(new Tooltip("Sélectionnez le type de catastrophe naturelle ou climatique à déclencher instantanément."));
-        typeRow.getChildren().addAll(typeLabel, disasterSelect);
-
-        // Intensity slider
-        HBox intRow = new HBox(10);
-        intRow.setAlignment(Pos.CENTER_LEFT);
-        Label intLabel = new Label();
-        intLabel.textProperty().bind(i18n.createStringBinding("god.disasters.intensity"));
-        intLabel.setStyle("-fx-text-fill: white;");
-        intensitySlider = new Slider(0.1, 1.0, 0.5);
-        intensitySlider.setShowTickLabels(true);
-        intensitySlider.setPrefWidth(200);
-        intensitySlider.setTooltip(new Tooltip("Définissez la sévérité et l'amplitude de l'événement destructeur (Faible -> Catastrophique)."));
-        
-        Label intValue = new Label(i18n.get("god.disasters.intensity_med"));
-        intValue.setStyle("-fx-text-fill: #ffc107;");
-        intensitySlider.valueProperty().addListener((o,a,b) -> {
-            double v = b.doubleValue();
-            intValue.setText(v < 0.3 ? i18n.get("god.disasters.intensity_low") : v < 0.7 ? i18n.get("god.disasters.intensity_med") : i18n.get("god.disasters.intensity_catastrophic"));
-            intValue.setStyle("-fx-text-fill: " + (v < 0.3 ? "#28a745" : v < 0.7 ? "#ffc107" : "#dc3545") + ";");
-        });
-        intRow.getChildren().addAll(intLabel, intensitySlider, intValue);
-
-        // Trigger button
-        Button btnTrigger = new Button();
-        btnTrigger.textProperty().bind(i18n.createStringBinding("god.disasters.btn_trigger"));
-        btnTrigger.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;");
-        btnTrigger.setTooltip(new Tooltip("Déclenche immédiatement la catastrophe sélectionnée dans le terrarium activement simulé."));
-        btnTrigger.setOnAction(e -> {
-            String type = disasterSelect.getValue();
-            float intensity = (float) intensitySlider.getValue();
-            String msg = "⚠ CATASTROPHE DÉCLENCHÉE : " + type + " (Intensité : " + String.format("%.1f", intensity) + ") via Mode Divin";
-            log(msg);
-            if (callback != null) callback.triggerDisaster(type, intensity);
-            EventBus.getInstance().publish(SimulationEvent.disasterOccurred(0, type, intensity, 100));
-        });
-
-        // Stop Ongoing Disasters button
-        Button btnStopDisasters = new Button();
-        btnStopDisasters.textProperty().bind(i18n.createStringBinding("god.disasters.btn_stop"));
-        btnStopDisasters.setStyle("-fx-background-color: #ea580c; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnStopDisasters.setTooltip(new Tooltip("Interrompt immédiatement toutes les catastrophes climatiques ou épidémies actuellement en cours dans le monde."));
-        btnStopDisasters.setOnAction(e -> {
-            log("🛑 Arrêt forcé de toutes les catastrophes en cours.");
-            if (callback != null) callback.stopDisasters();
-        });
-
-        content.getChildren().addAll(typeRow, intRow, btnTrigger, new Separator(), btnStopDisasters);
-
-        TitledPane pane = new TitledPane();
-        pane.textProperty().bind(i18n.createStringBinding("god.disasters.title"));
-        pane.setContent(content);
-        pane.setTooltip(new Tooltip("Déclenchement et interruption de catastrophes environnementales (Incendies, Inondations, Épidémies, Canicules)."));
-        styleTitledPane(pane);
-        return pane;
-    }
-
-    private TitledPane createParameterSection() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(15));
-
-        // Pheromone decay
-        Label pheroLabel = new Label();
-        pheroLabel.textProperty().bind(i18n.createStringBinding("god.params.phero_decay"));
-        pheroLabel.setStyle("-fx-text-fill: white;");
-        Slider pheroSlider = new Slider(0.01, 0.2, 0.05);
-        pheroSlider.setPrefWidth(200);
-        pheroSlider.setTooltip(new Tooltip("Taux de dissipation/évaporation des pistes phéromonales déposées au sol par seconde."));
-
-        // Food spawn rate
-        Label foodRateLabel = new Label();
-        foodRateLabel.textProperty().bind(i18n.createStringBinding("god.params.food_rate"));
-        foodRateLabel.setStyle("-fx-text-fill: white;");
-        Slider foodRateSlider = new Slider(0, 1.0, 0.3);
-        foodRateSlider.setPrefWidth(200);
-        foodRateSlider.setTooltip(new Tooltip("Fréquence de régénération automatique des sources de nourriture naturelles sur le terrain."));
-
-        Button btnApply = new Button();
-        btnApply.textProperty().bind(i18n.createStringBinding("god.params.btn_apply"));
-        btnApply.setStyle("-fx-background-color: #3f3f46; -fx-text-fill: white;");
-        btnApply.setTooltip(new Tooltip("Applique immédiatement les nouveaux paramètres physiques et biologiques au moteur de simulation."));
-        btnApply.setOnAction(e -> {
-            log("Paramètres physiques et biologiques mis à jour.");
-            if (callback != null) {
-                callback.modifyParameter("pheromoneDecay", pheroSlider.getValue());
-                callback.modifyParameter("foodRate", foodRateSlider.getValue());
-            }
-        });
-
-        grid.add(pheroLabel, 0, 0);
-        grid.add(pheroSlider, 1, 0);
-        grid.add(foodRateLabel, 0, 1);
-        grid.add(foodRateSlider, 1, 1);
-        grid.add(btnApply, 1, 2);
-
-        TitledPane pane = new TitledPane();
-        pane.textProperty().bind(i18n.createStringBinding("god.params.title"));
-        pane.setContent(grid);
-        pane.setTooltip(new Tooltip("Réglages avancés de dissipation des pistes chimiques et de régénération des ressources."));
-        styleTitledPane(pane);
-        return pane;
-    }
-
-    public static class ScheduledEvent {
-        public long targetTick;
-        public String eventType;
-        public String description;
-        public boolean executed = false;
-        public boolean paused = false;
-
-        public ScheduledEvent(long targetTick, String eventType, String description) {
-            this.targetTick = targetTick;
-            this.eventType = eventType;
-            this.description = description;
-        }
-    }
-
-    private final javafx.collections.ObservableList<ScheduledEvent> scheduledEventsList = javafx.collections.FXCollections.observableArrayList();
-    private ListView<String> scheduledEventsListView;
-
-    private TitledPane createScheduledEventsSection() {
+    /**
+     * Overarching container holding the Scheduled Event Queue Table and master operation buttons.
+     */
+    private VBox createScheduledEventsQueueBlock() {
         VBox box = new VBox(10);
         box.setPadding(new Insets(12));
+        box.setStyle("-fx-background-color: rgba(2, 132, 199, 0.08); -fx-border-color: #0284c7; -fx-border-width: 1.5; -fx-border-radius: 8; -fx-background-radius: 8;");
 
-        Label lblTitle = new Label("⏱️ Programmez des Événements Futurs (Horodatage Tick Target) :");
-        lblTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
-
-        GridPane grid = new GridPane();
-        grid.setHgap(8); grid.setVgap(8);
-
-        Spinner<Integer> tickTargetSpinner = new Spinner<>(1, 1000000, 1000, 100);
-        tickTargetSpinner.setEditable(true);
-        tickTargetSpinner.setPrefWidth(120);
-
-        ComboBox<String> eventTypeCombo = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
-                "🔥 Incendie de Forêt",
-                "🌊 Inondation / Pluie Diluvienne",
-                "☣️ Épidémie / Parasite Cordyceps",
-                "🍖 Apport de Nourriture (500 cal)",
-                "🐜 Injection 50 Ouvrières",
-                "👑 Ponte Extraordinaire de la Reine"
-        ));
-        eventTypeCombo.getSelectionModel().selectFirst();
-
-        TextField descField = new TextField("Événement automatique programmé");
-        descField.setPrefWidth(180);
-
-        Button btnAddEvent = new Button("➕ Programmer");
-        btnAddEvent.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnAddEvent.setOnAction(e -> {
-            ScheduledEvent ev = new ScheduledEvent(tickTargetSpinner.getValue(), eventTypeCombo.getValue(), descField.getText());
-            scheduledEventsList.add(ev);
-            refreshScheduledEventsListView();
-            log(String.format("⏱️ Événement programmé pour le Tick %d : %s (%s)", ev.targetTick, ev.eventType, ev.description));
-        });
-
-        grid.addRow(0, new Label("Tick Cible :"), tickTargetSpinner, new Label("Type :"), eventTypeCombo);
-        grid.addRow(1, new Label("Description :"), descField, btnAddEvent);
+        Label lblQueueTitle = new Label("⏱️ File d'Événements Programmés (Master Event Queue)");
+        lblQueueTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-font-size: 14px;");
 
         scheduledEventsListView = new ListView<>();
-        scheduledEventsListView.setPrefHeight(110);
-        scheduledEventsListView.setStyle("-fx-control-inner-background: #18181b; -fx-text-fill: #e4e4e7;");
+        scheduledEventsListView.setPrefHeight(130);
+        scheduledEventsListView.setStyle("-fx-control-inner-background: #0f172a; -fx-text-fill: #e4e4e7; -fx-font-family: monospace;");
 
-        HBox btnBox = new HBox(8);
+        // Action Toolbar Buttons
+        HBox btnToolbar = new HBox(8);
+        btnToolbar.setAlignment(Pos.CENTER_LEFT);
+
+        Button btnScheduleConfigured = new Button("➕ Programmer l'Événement Configuré Ci-Dessous");
+        btnScheduleConfigured.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+        btnScheduleConfigured.setOnAction(e -> scheduleCurrentConfiguredEvent());
+
+        Button btnExecuteLive = new Button("⚡ Exécuter Immédiatement (En Direct)");
+        btnExecuteLive.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+        btnExecuteLive.setOnAction(e -> executeCurrentConfiguredEventLive());
+
         Button btnDeleteEv = new Button("🗑️ Supprimer");
-        btnDeleteEv.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white;");
+        btnDeleteEv.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-cursor: hand;");
         btnDeleteEv.setOnAction(e -> {
             int idx = scheduledEventsListView.getSelectionModel().getSelectedIndex();
             if (idx >= 0 && idx < scheduledEventsList.size()) {
@@ -605,8 +206,8 @@ public class InterventionPanel extends BorderPane {
             }
         });
 
-        Button btnRunNow = new Button("▶️ Exécuter Maintenant");
-        btnRunNow.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white;");
+        Button btnRunNow = new Button("▶️ Exécuter Sélectionné");
+        btnRunNow.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-cursor: hand;");
         btnRunNow.setOnAction(e -> {
             int idx = scheduledEventsListView.getSelectionModel().getSelectedIndex();
             if (idx >= 0 && idx < scheduledEventsList.size()) {
@@ -617,73 +218,483 @@ public class InterventionPanel extends BorderPane {
             }
         });
 
-        btnBox.getChildren().addAll(btnDeleteEv, btnRunNow);
+        Button btnTogglePause = new Button("⏸️ Pauser/Réactiver");
+        btnTogglePause.setStyle("-fx-background-color: #64748b; -fx-text-fill: white; -fx-cursor: hand;");
+        btnTogglePause.setOnAction(e -> {
+            int idx = scheduledEventsListView.getSelectionModel().getSelectedIndex();
+            if (idx >= 0 && idx < scheduledEventsList.size()) {
+                ScheduledEvent ev = scheduledEventsList.get(idx);
+                ev.paused = !ev.paused;
+                refreshScheduledEventsListView();
+            }
+        });
 
-        box.getChildren().addAll(lblTitle, grid, new Separator(), new Label("Liste des Événements Planifiés :"), scheduledEventsListView, btnBox);
+        btnToolbar.getChildren().addAll(btnScheduleConfigured, btnExecuteLive, btnDeleteEv, btnRunNow, btnTogglePause);
 
-        TitledPane pane = new TitledPane("⏱️ File d'Événements Programmés (Scheduled Events Queue)", box);
-        pane.setTooltip(new Tooltip("Planification temporelle d'interventions et de catastrophes automatiques déclenchées au Tick exact."));
-        styleTitledPane(pane);
-        return pane;
+        box.getChildren().addAll(lblQueueTitle, scheduledEventsListView, btnToolbar);
+        return box;
+    }
+
+    /**
+     * Sub-block 1: Calendar Time Input (Jour / Heure / Minute / Seconde) & Colony Target
+     */
+    private Node createTimeAndColonyConfigNode() {
+        VBox box = new VBox(8);
+
+        HBox timeRow = new HBox(8);
+        timeRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblTimeHeader = new Label("Date & Heure Cibles :");
+        lblTimeHeader.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+
+        spDay = new Spinner<>(1, 365, 1); spDay.setEditable(true); spDay.setPrefWidth(65);
+        spHour = new Spinner<>(0, 23, 8); spHour.setEditable(true); spHour.setPrefWidth(60);
+        spMin = new Spinner<>(0, 59, 0); spMin.setEditable(true); spMin.setPrefWidth(60);
+        spSec = new Spinner<>(0, 59, 0); spSec.setEditable(true); spSec.setPrefWidth(60);
+
+        Label lblColonyTarget = new Label("Colonie Cible :");
+        lblColonyTarget.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+
+        eventColonySelect = new ComboBox<>();
+        eventColonySelect.getItems().addAll("Toutes les Colonies (Global)", "Colonie #1 (Lasius niger)", "Colonie #2 (Atta sexdens)");
+        eventColonySelect.getSelectionModel().selectFirst();
+        eventColonySelect.setPrefWidth(210);
+
+        timeRow.getChildren().addAll(
+                lblTimeHeader,
+                new Label("Jour:"), spDay,
+                new Label("H:"), spHour,
+                new Label("M:"), spMin,
+                new Label("S:"), spSec,
+                lblColonyTarget, eventColonySelect
+        );
+
+        box.getChildren().add(timeRow);
+        return box;
+    }
+
+    /**
+     * Sub-block 2: Entities & Castes (Apparition / Injection & Élimination / Extinction)
+     */
+    private Node createEntitiesSubBlockNode() {
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(8);
+
+        Label colLabel = new Label("Colonie Cible :");
+        colLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
+        colonySelect = new ComboBox<>();
+        colonySelect.getItems().addAll("Colonie #1 (Lasius niger)", "Colonie #2 (Atta sexdens)");
+        colonySelect.getSelectionModel().selectFirst();
+        colonySelect.setPrefWidth(220);
+        colonySelect.setOnAction(e -> updateCastesForSelectedColony(colonySelect.getValue()));
+
+        Label lblAction = new Label("Type d'Action :");
+        lblAction.setStyle("-fx-text-fill: white;");
+        ComboBox<String> actionCombo = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
+                "➕ Injection / Apparition",
+                "☠️ Élimination Ciblée",
+                "💀 Extinction Totale de la Colonie"
+        ));
+        actionCombo.getSelectionModel().selectFirst();
+        actionCombo.setPrefWidth(220);
+
+        Label casteLabel = new Label("Caste Cible :");
+        casteLabel.setStyle("-fx-text-fill: white;");
+        casteSelect = new ComboBox<>();
+        casteSelect.setPrefWidth(220);
+        updateCastesForSelectedColony(colonySelect.getValue());
+
+        Label countLabel = new Label("Quantité :");
+        countLabel.setStyle("-fx-text-fill: white;");
+        antCountSpinner = new Spinner<>(1, 1000, 10);
+        antCountSpinner.setEditable(true);
+        antCountSpinner.setPrefWidth(100);
+
+        Label posLabel = new Label("Position (m) :");
+        posLabel.setStyle("-fx-text-fill: white;");
+        HBox posBox = new HBox(5);
+        posXField = new TextField("1.0"); posXField.setPrefWidth(55);
+        posYField = new TextField("1.0"); posYField.setPrefWidth(55);
+        posZField = new TextField("0.1"); posZField.setPrefWidth(55);
+        posBox.getChildren().addAll(new Label("X:"), posXField, new Label("Y:"), posYField, new Label("Z:"), posZField);
+
+        grid.add(colLabel, 0, 0); grid.add(colonySelect, 1, 0);
+        grid.add(lblAction, 0, 1); grid.add(actionCombo, 1, 1);
+        grid.add(casteLabel, 0, 2); grid.add(casteSelect, 1, 2);
+        grid.add(countLabel, 0, 3); grid.add(antCountSpinner, 1, 3);
+        grid.add(posLabel, 0, 4); grid.add(posBox, 1, 4);
+
+        return grid;
+    }
+
+    /**
+     * Sub-block 3: Resources & Biomass with Taxonomy for Ants, Bees, Wasps, and Termites
+     */
+    private Node createResourcesSubBlockNode() {
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(8);
+
+        Label lblResType = new Label("Type de Ressource :");
+        lblResType.setStyle("-fx-text-fill: white;");
+        resourceTypeSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
+                "🍖 Biomasse / Nourriture de Surface",
+                "💧 Source d'Eau Douce",
+                "🧹 Purge de la Nourriture Libre"
+        ));
+        resourceTypeSelect.getSelectionModel().selectFirst();
+        resourceTypeSelect.setPrefWidth(220);
+
+        Label lblNature = new Label("Nature & Taxonomie Alimentaire :");
+        lblNature.setStyle("-fx-text-fill: white;");
+        foodNatureSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
+                "🍃 Semences & Graines (Granivores / Messor)",
+                "🍯 Miellat & Sucres Liquides (Aphidophages / Lasius & Formica)",
+                "🌱 Biomasse Foliaire & Végétale (Atta / Leafcutter)",
+                "🥩 Protéines & Proies Animales (Carnivores / Solenopsis & Guêpes)",
+                "🌸 Nectar & Pollen Floral (Abeilles / Apis & Bourdons)",
+                "🪵 Lignine & Bois Mort (Termites Lignivores / Reticulitermes)",
+                "🍂 Humus, Cellulose & Cartonnage (Termites Humivores)",
+                "🍄 Mycélium Termitomyces (Termites Champignonnistes)",
+                "👑 Gelée Royale & Bouillie Larvaire (Nourrices / Reines)"
+        ));
+        foodNatureSelect.getSelectionModel().selectFirst();
+        foodNatureSelect.setPrefWidth(330);
+
+        Label foodLabel = new Label("Quantité (unités) :");
+        foodLabel.setStyle("-fx-text-fill: white;");
+        foodSlider = new Slider(10, 1000, 100);
+        foodSlider.setPrefWidth(180);
+        Label foodValue = new Label("100 u");
+        foodValue.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        foodSlider.valueProperty().addListener((o,a,b) -> foodValue.setText(String.format("%.0f u", b.doubleValue())));
+
+        grid.add(lblResType, 0, 0); grid.add(resourceTypeSelect, 1, 0);
+        grid.add(lblNature, 0, 1); grid.add(foodNatureSelect, 1, 1);
+        grid.add(foodLabel, 0, 2); grid.add(foodSlider, 1, 2); grid.add(foodValue, 2, 2);
+
+        return grid;
+    }
+
+    /**
+     * Sub-block 4: Environmental Disasters with Magnitude & Multi-Week Duration
+     */
+    private Node createDisastersSubBlockNode() {
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(8);
+
+        Label typeLabel = new Label("Type de Catastrophe :");
+        typeLabel.setStyle("-fx-text-fill: white;");
+        disasterSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
+                "🔥 Incendie de Forêt",
+                "🌊 Inondation / Pluie Diluvienne",
+                "☣️ Épidémie / Parasite Cordyceps",
+                "☀️ Sécheresse / Canicule Extrême",
+                "❄️ Gel Intense & Baisse Température",
+                "☠️ Pollution Sol / Toxines"
+        ));
+        disasterSelect.getSelectionModel().selectFirst();
+        disasterSelect.setPrefWidth(220);
+
+        Label intLabel = new Label("Magnitude / Intensité :");
+        intLabel.setStyle("-fx-text-fill: white;");
+        intensitySlider = new Slider(0.1, 1.0, 0.5);
+        intensitySlider.setPrefWidth(180);
+        Label intValue = new Label("Moyenne (0.5)");
+        intValue.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold;");
+        intensitySlider.valueProperty().addListener((o,a,b) -> {
+            double v = b.doubleValue();
+            intValue.setText(v < 0.3 ? "Faible (" + String.format("%.1f", v) + ")" : v < 0.7 ? "Moyenne (" + String.format("%.1f", v) + ")" : "Catastrophique (" + String.format("%.1f", v) + ")");
+        });
+
+        Label durLabel = new Label("Durée de l'Événement :");
+        durLabel.setStyle("-fx-text-fill: white;");
+        // Slider scale: 5 min to 43,200 min (30 days / 1 month)
+        durationSlider = new Slider(5, 43200, 1440);
+        durationSlider.setPrefWidth(180);
+        durationValLabel = new Label("24h (1 Jour)");
+        durationValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        durationSlider.valueProperty().addListener((o, a, b) -> {
+            int mins = b.intValue();
+            if (mins < 60) {
+                durationValLabel.setText(mins + " min");
+            } else if (mins < 1440) {
+                int hrs = mins / 60;
+                int remMins = mins % 60;
+                durationValLabel.setText(hrs + "h" + (remMins > 0 ? " " + remMins + "m" : ""));
+            } else {
+                int days = mins / 1440;
+                int remHrs = (mins % 1440) / 60;
+                if (days >= 7) {
+                    int wks = days / 7;
+                    durationValLabel.setText(String.format("%d Jours (%d Semaine%s)", days, wks, wks > 1 ? "s" : ""));
+                } else {
+                    durationValLabel.setText(String.format("%d Jours %s", days, remHrs > 0 ? remHrs + "h" : ""));
+                }
+            }
+        });
+
+        Button btnStopDisasters = new Button("🛑 Arrêter Toutes les Catastrophes");
+        btnStopDisasters.setStyle("-fx-background-color: #ea580c; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnStopDisasters.setOnAction(e -> {
+            log("🛑 Arrêt forcé de toutes les catastrophes en cours.");
+            if (callback != null) callback.stopDisasters();
+        });
+
+        grid.add(typeLabel, 0, 0); grid.add(disasterSelect, 1, 0);
+        grid.add(intLabel, 0, 1); grid.add(intensitySlider, 1, 1); grid.add(intValue, 2, 1);
+        grid.add(durLabel, 0, 2); grid.add(durationSlider, 1, 2); grid.add(durationValLabel, 2, 2);
+        grid.add(btnStopDisasters, 1, 3);
+
+        return grid;
+    }
+
+    /**
+     * Sub-block 5: Abiotic Core Physical Drivers (Temperature, Humidity, Wind, Solar Radiation)
+     */
+    private Node createParametersSubBlockNode() {
+        VBox box = new VBox(10);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(8);
+
+        // 1. Température Ambiante Air & Sol (°C)
+        Label lblTemp = new Label("🌡️ Température Air/Sol (°C) :");
+        lblTemp.setStyle("-fx-text-fill: white;");
+        tempSlider = new Slider(-10.0, 50.0, 22.0);
+        tempSlider.setPrefWidth(180);
+        tempValLabel = new Label("22.0 °C");
+        tempValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        tempSlider.valueProperty().addListener((o, a, b) -> {
+            tempValLabel.setText(String.format("%.1f °C", b.doubleValue()));
+            updateDerivedPhysicalOutputs();
+        });
+
+        // 2. Humidité Relative Air (%)
+        Label lblHumidity = new Label("💧 Humidité Relative Air (%) :");
+        lblHumidity.setStyle("-fx-text-fill: white;");
+        humiditySlider = new Slider(10.0, 100.0, 65.0);
+        humiditySlider.setPrefWidth(180);
+        humidityValLabel = new Label("65.0 %");
+        humidityValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        humiditySlider.valueProperty().addListener((o, a, b) -> {
+            humidityValLabel.setText(String.format("%.1f %%", b.doubleValue()));
+            updateDerivedPhysicalOutputs();
+        });
+
+        // 3. Vent & Circulation d'Air (m/s)
+        Label lblWind = new Label("💨 Vitesse du Vent (m/s) :");
+        lblWind.setStyle("-fx-text-fill: white;");
+        windSlider = new Slider(0.0, 25.0, 1.5);
+        windSlider.setPrefWidth(180);
+        windValLabel = new Label("1.5 m/s");
+        windValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        windSlider.valueProperty().addListener((o, a, b) -> {
+            windValLabel.setText(String.format("%.1f m/s", b.doubleValue()));
+            updateDerivedPhysicalOutputs();
+        });
+
+        // 4. Rayonnement Solaire (W/m²)
+        Label lblSolar = new Label("☀️ Radiance Solaire (W/m²) :");
+        lblSolar.setStyle("-fx-text-fill: white;");
+        solarSlider = new Slider(0.0, 1200.0, 450.0);
+        solarSlider.setPrefWidth(180);
+        solarValLabel = new Label("450 W/m²");
+        solarValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        solarSlider.valueProperty().addListener((o, a, b) -> {
+            solarValLabel.setText(String.format("%.0f W/m²", b.doubleValue()));
+            updateDerivedPhysicalOutputs();
+        });
+
+        grid.add(lblTemp, 0, 0); grid.add(tempSlider, 1, 0); grid.add(tempValLabel, 2, 0);
+        grid.add(lblHumidity, 0, 1); grid.add(humiditySlider, 1, 1); grid.add(humidityValLabel, 2, 1);
+        grid.add(lblWind, 0, 2); grid.add(windSlider, 1, 2); grid.add(windValLabel, 2, 2);
+        grid.add(lblSolar, 0, 3); grid.add(solarSlider, 1, 3); grid.add(solarValLabel, 2, 3);
+
+        // Derived physical outputs display panel
+        VBox derivedBox = new VBox(4);
+        derivedBox.setStyle("-fx-background-color: rgba(56, 189, 248, 0.06); -fx-padding: 8; -fx-background-radius: 6; -fx-border-color: rgba(56, 189, 248, 0.2); -fx-border-width: 1;");
+
+        Label lblDerivedHeader = new Label("📊 Conéquences Physico-Chimiques & Biologiques Calculées par le Moteur :");
+        lblDerivedHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 11px; -fx-font-weight: bold;");
+
+        derivedPheroLabel = new Label();
+        derivedPheroLabel.setStyle("-fx-text-fill: #e4e4e7; -fx-font-size: 11px;");
+
+        derivedPrimaryProductivityLabel = new Label();
+        derivedPrimaryProductivityLabel.setStyle("-fx-text-fill: #e4e4e7; -fx-font-size: 11px;");
+
+        derivedOvipositionLabel = new Label();
+        derivedOvipositionLabel.setStyle("-fx-text-fill: #e4e4e7; -fx-font-size: 11px;");
+
+        derivedBox.getChildren().addAll(lblDerivedHeader, derivedPheroLabel, derivedPrimaryProductivityLabel, derivedOvipositionLabel);
+
+        updateDerivedPhysicalOutputs();
+
+        box.getChildren().addAll(grid, derivedBox);
+        return box;
+    }
+
+    private void updateDerivedPhysicalOutputs() {
+        if (tempSlider == null) return;
+
+        double temp = tempSlider.getValue();
+        double hum = humiditySlider.getValue();
+        double wind = windSlider.getValue();
+        double solar = solarSlider.getValue();
+
+        // Evaporation equation (Antoine/Magnus vapor pressure approximation)
+        double calcEvapRate = 0.02 + (temp / 100.0) * (1.0 + wind / 5.0) * (1.0 - hum / 120.0);
+        calcEvapRate = Math.max(0.005, Math.min(0.30, calcEvapRate));
+
+        // Primary productivity (Photosynthetic PAR model)
+        double calcProdRate = (solar / 1000.0) * (hum / 100.0) * (temp > 5 && temp < 40 ? 1.0 : 0.2);
+        calcProdRate = Math.max(0.0, Math.min(1.5, calcProdRate));
+
+        // Queen Oviposition thermal efficiency
+        double calcOviposRate = temp >= 15 && temp <= 32 ? 1.0 + (temp - 22.0) * 0.05 : Math.max(0.1, 1.0 - Math.abs(temp - 22.0) * 0.08);
+
+        derivedPheroLabel.setText(String.format("• Evaporation Phéromonale Dérivée : %.2f %% / s (T°=%.1f°C, H=%.0f%%, Vent=%.1fm/s)", calcEvapRate * 100.0, temp, hum, wind));
+        derivedPrimaryProductivityLabel.setText(String.format("• Photosynthèse & Biomasse Primaire : %.2f u / s (Radiance=%.0fW/m²)", calcProdRate, solar));
+        derivedOvipositionLabel.setText(String.format("• Coefficient Thermique de Ponte Reine : %.2fx (Optimum 22-28°C)", calcOviposRate));
+    }
+
+    /**
+     * Reads configured sub-block state and schedules an event into the Queue.
+     */
+    private void scheduleCurrentConfiguredEvent() {
+        double stepSec = 0.016666666666666666;
+        int d = spDay.getValue();
+        int h = spHour.getValue();
+        int m = spMin.getValue();
+        int s = spSec.getValue();
+        long totalSec = (long) (d - 1) * 86400L + h * 3600L + m * 60L + s;
+        long targetTick = Math.max(1, Math.round(totalSec / stepSec));
+        String timeFormatted = String.format("J%d %02d:%02d:%02d", d, h, m, s);
+
+        String colTarget = eventColonySelect.getValue();
+        String caste = casteSelect.getValue();
+        int count = antCountSpinner.getValue();
+        float posX = Float.parseFloat(posXField.getText());
+        float posY = Float.parseFloat(posYField.getText());
+        float posZ = Float.parseFloat(posZField.getText());
+        String disasterType = disasterSelect.getValue();
+        float intensity = (float) intensitySlider.getValue();
+        int durMins = (int) durationSlider.getValue();
+        String foodNat = foodNatureSelect.getValue();
+
+        ScheduledEvent ev = new ScheduledEvent(targetTick, timeFormatted, "MIXED", disasterType, colTarget,
+                String.format("Event %s (Mag:%.1f, Durée:%dmin) [%d %s - %s]", disasterType, intensity, durMins, count, caste, foodNat));
+        ev.caste = caste;
+        ev.count = count;
+        ev.posX = posX; ev.posY = posY; ev.posZ = posZ;
+        ev.intensity = intensity;
+        ev.durationMinutes = durMins;
+        ev.foodNature = foodNat;
+        ev.amount = (float) foodSlider.getValue();
+        ev.tempCelsius = (float) tempSlider.getValue();
+        ev.humidityPercent = (float) humiditySlider.getValue();
+        ev.windMetersPerSec = (float) windSlider.getValue();
+        ev.solarWattsPerM2 = (float) solarSlider.getValue();
+
+        scheduledEventsList.add(ev);
+        refreshScheduledEventsListView();
+        log(String.format("⏱️ Événement programmé pour le Jour %d %02d:%02d:%02d : %s [%s]",
+                d, h, m, s, ev.eventType, ev.colonyTarget));
+    }
+
+    /**
+     * Executes the currently configured sub-block values immediately in real-time.
+     */
+    private void executeCurrentConfiguredEventLive() {
+        String colTarget = colonySelect.getValue();
+        String caste = casteSelect.getValue();
+        int count = antCountSpinner.getValue();
+        float x = Float.parseFloat(posXField.getText());
+        float y = Float.parseFloat(posYField.getText());
+        float z = Float.parseFloat(posZField.getText());
+
+        if (callback != null) {
+            callback.spawnAnts(colTarget, caste, count, x, y, z);
+            callback.triggerDisaster(disasterSelect.getValue(), (float) intensitySlider.getValue());
+            callback.modifyParameter("temperatureCelsius", tempSlider.getValue());
+            callback.modifyParameter("humidityPercent", humiditySlider.getValue());
+            callback.modifyParameter("windSpeed", windSlider.getValue());
+            callback.modifyParameter("solarRadiation", solarSlider.getValue());
+        }
+        log(String.format("⚡ Intervention directe exécutée : Apparition %d [%s] (%s) [Climat: T=%.1f°C, H=%.0f%%]",
+                count, caste, colTarget, tempSlider.getValue(), humiditySlider.getValue()));
     }
 
     private void refreshScheduledEventsListView() {
         if (scheduledEventsListView == null) return;
         javafx.collections.ObservableList<String> items = javafx.collections.FXCollections.observableArrayList();
         for (ScheduledEvent ev : scheduledEventsList) {
-            String status = ev.executed ? "✅ Executé" : ev.paused ? "⏸️ En Pause" : "⏳ En Attente";
-            items.add(String.format("[%s] Tick %d : %s — %s", status, ev.targetTick, ev.eventType, ev.description));
+            String status = ev.executed ? "✅ Exécuté" : ev.paused ? "⏸️ En Pause" : "⏳ En Attente";
+            String colStr = (ev.colonyTarget != null && !ev.colonyTarget.contains("Global")) ? " [" + ev.colonyTarget + "]" : "";
+            String timeStr = ev.timeFormatted != null && !ev.timeFormatted.isEmpty() ? " (" + ev.timeFormatted + ")" : "";
+            items.add(String.format("[%s]%s : %s%s — %s", status, timeStr, ev.eventType, colStr, ev.description));
         }
         scheduledEventsListView.setItems(items);
     }
 
     private void executeScheduledEvent(ScheduledEvent ev) {
-        String msg = String.format("⚡ Exécution de l'événement programmé (Tick %d) : %s (%s)", ev.targetTick, ev.eventType, ev.description);
+        String colStr = (ev.colonyTarget != null && !ev.colonyTarget.contains("Global")) ? ev.colonyTarget : "Colonie Primaire";
+        String msg = String.format("⚡ Exécution de l'événement programmé (%s) : %s [%s] (%s)", ev.timeFormatted, ev.eventType, colStr, ev.description);
         log(msg);
-        if (ev.eventType.contains("Incendie") || ev.eventType.contains("Inondation") || ev.eventType.contains("Épidémie")) {
-            if (callback != null) callback.triggerDisaster(ev.eventType, 0.7f);
-        } else if (ev.eventType.contains("Nourriture")) {
-            if (callback != null) callback.spawnFood(1.0f, 1.0f, 0.1f, 500f);
-        } else if (ev.eventType.contains("Ouvrières")) {
-            if (callback != null) callback.spawnAnts("Colonie #1", "Ouvrière", 50, 1.0f, 1.0f, 0.1f);
+        if (callback != null) {
+            if (ev.eventType.contains("Incendie") || ev.eventType.contains("Inondation") || ev.eventType.contains("Épidémie") || ev.eventType.contains("Sécheresse")) {
+                callback.triggerDisaster(ev.eventType, ev.intensity);
+            } else if (ev.eventType.contains("Nourriture") || ev.eventType.contains("Biomasse")) {
+                callback.spawnFood(ev.posX, ev.posY, ev.posZ, ev.amount);
+            } else {
+                callback.spawnAnts(colStr, ev.caste, ev.count, ev.posX, ev.posY, ev.posZ);
+            }
         }
     }
 
+    /**
+     * Processes events for the given simulation tick.
+     * Automatically handles simulation time rewind (seeking/rewinding back resets executed events).
+     */
     public void processScheduledEvents(long currentTick) {
+        boolean needsRefresh = false;
         for (ScheduledEvent ev : scheduledEventsList) {
-            if (!ev.executed && !ev.paused && currentTick >= ev.targetTick) {
+            if (ev.executed && currentTick < ev.targetTick) {
+                ev.executed = false;
+                needsRefresh = true;
+            }
+            else if (!ev.executed && !ev.paused && currentTick >= ev.targetTick) {
                 ev.executed = true;
                 executeScheduledEvent(ev);
-                javafx.application.Platform.runLater(this::refreshScheduledEventsListView);
+                needsRefresh = true;
             }
+        }
+        if (needsRefresh) {
+            javafx.application.Platform.runLater(this::refreshScheduledEventsListView);
         }
     }
 
     private VBox createLogSection() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         VBox box = new VBox(5);
-        box.setPadding(new Insets(10, 0, 0, 0));
+        box.setPadding(new Insets(8, 0, 0, 0));
 
         Label logLabel = new Label();
         logLabel.textProperty().bind(i18n.createStringBinding("god.log.title"));
         logLabel.setStyle("-fx-text-fill: #888;");
-        logLabel.setTooltip(new Tooltip("Historique chronologique des interventions manuelles exécutées en Mode Divin."));
 
         logArea = new TextArea();
         logArea.setEditable(false);
-        logArea.setPrefHeight(100);
+        logArea.setPrefHeight(90);
         logArea.setStyle("-fx-control-inner-background: #18181b; -fx-text-fill: #e4e4e7; -fx-font-family: monospace;");
-        logArea.setTooltip(new Tooltip("Journal d'audit horodaté enregistrant les apparitions, éliminations et catastrophes."));
 
         box.getChildren().addAll(logLabel, logArea);
         return box;
     }
 
-    private boolean isSimulationRunning = false;
     private Label simStateWarningLabel;
 
     public void setSimulationRunning(boolean running) {
-        this.isSimulationRunning = running;
         if (simStateWarningLabel != null) {
             if (!running) {
                 simStateWarningLabel.setText("⏸ Simulation en pause — Mode Divin actif (les interventions modifient l'état du monde immédiatement).");
@@ -695,50 +706,6 @@ public class InterventionPanel extends BorderPane {
         }
     }
 
-    private void styleTitledPane(TitledPane pane) {
-        pane.setStyle("-fx-text-fill: white;");
-    }
-
-    private void spawnAnts() {
-        try {
-            String colony = colonySelect.getValue();
-            String caste = casteSelect.getValue();
-            int count = antCountSpinner.getValue();
-            float x = Float.parseFloat(posXField.getText());
-            float y = Float.parseFloat(posYField.getText());
-            float z = Float.parseFloat(posZField.getText());
-
-            String msg = String.format("Apparition de %d ind. [%s] (%s) aux coord. (X:%.2fm, Y:%.2fm, Z:%.2fm) via Mode Divin",
-                    count, caste, colony != null ? colony : "Colonie Primaire", x, y, z);
-            log(msg);
-            
-            if (callback != null) {
-                callback.spawnAnts(colony, caste, count, x, y, z);
-            }
-
-            SimulationEvent.EventType eventType = caste.contains("Reine") || caste.contains("Queen") ? SimulationEvent.EventType.QUEEN_BORN : 
-                        caste.contains("Soldat") || caste.contains("Soldier") ? SimulationEvent.EventType.SOLDIER_BORN : 
-                        SimulationEvent.EventType.WORKER_BORN;
-            
-            java.util.Map<String, Object> data = new java.util.HashMap<>();
-            data.put("colony", colony);
-            data.put("caste", caste);
-            data.put("count", count);
-            data.put("x", x);
-            data.put("y", y);
-            data.put("z", z);
-            data.put("source", "Mode Divin");
-            EventBus.getInstance().publish(SimulationEvent.obtain(eventType, SimulationEvent.Severity.INFO, 0, msg, data));
-
-        } catch (NumberFormatException e) {
-            new Alert(Alert.AlertType.ERROR, "Valeurs de position X/Y/Z invalides.").show();
-        }
-    }
-
-    private void publishEvent(SimulationEvent.EventType type) {
-        EventBus.getInstance().publish(new SimulationEvent(type, 0, type.name() + " via God Mode"));
-    }
-
     private void log(String message) {
         String time = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
         logArea.appendText("[" + time + "] " + message + "\n");
@@ -748,40 +715,35 @@ public class InterventionPanel extends BorderPane {
         this.callback = callback;
     }
 
-    /**
-     * Updates the colony dropdowns dynamically with active simulation colonies.
-     */
     public void updateAvailableColonies(java.util.List<String> activeColonyNames) {
         if (activeColonyNames == null || activeColonyNames.isEmpty()) return;
-        
-        String selSpawn = colonySelect.getValue();
-        String selKill = killColonySelect != null ? killColonySelect.getValue() : null;
 
-        colonySelect.getItems().setAll(activeColonyNames);
-        if (killColonySelect != null) {
-            killColonySelect.getItems().setAll(activeColonyNames);
-        }
-
-        if (selSpawn != null && colonySelect.getItems().contains(selSpawn)) {
-            colonySelect.getSelectionModel().select(selSpawn);
-        } else {
-            colonySelect.getSelectionModel().selectFirst();
-        }
-
-        if (killColonySelect != null) {
-            if (selKill != null && killColonySelect.getItems().contains(selKill)) {
-                killColonySelect.getSelectionModel().select(selKill);
+        if (colonySelect != null) {
+            String selSpawn = colonySelect.getValue();
+            colonySelect.getItems().setAll(activeColonyNames);
+            if (selSpawn != null && colonySelect.getItems().contains(selSpawn)) {
+                colonySelect.getSelectionModel().select(selSpawn);
             } else {
-                killColonySelect.getSelectionModel().selectFirst();
+                colonySelect.getSelectionModel().selectFirst();
             }
         }
 
-        updateCastesForSelectedColony(colonySelect.getValue());
+        if (eventColonySelect != null) {
+            java.util.List<String> items = new java.util.ArrayList<>();
+            items.add("Toutes les Colonies (Global)");
+            items.addAll(activeColonyNames);
+            String selEv = eventColonySelect.getValue();
+            eventColonySelect.getItems().setAll(items);
+            if (selEv != null && eventColonySelect.getItems().contains(selEv)) {
+                eventColonySelect.getSelectionModel().select(selEv);
+            } else {
+                eventColonySelect.getSelectionModel().selectFirst();
+            }
+        }
+
+        updateCastesForSelectedColony(colonySelect != null ? colonySelect.getValue() : null);
     }
 
-    /**
-     * Updates the caste dropdown dynamically based on the selected colony's species.
-     */
     private void updateCastesForSelectedColony(String colonyName) {
         if (casteSelect == null) return;
 

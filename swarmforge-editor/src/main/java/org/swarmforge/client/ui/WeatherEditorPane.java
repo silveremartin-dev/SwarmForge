@@ -135,6 +135,41 @@ public class WeatherEditorPane extends BorderPane {
     // Disaster Probabilities Settings
     private final Map<String, Slider> disasterProbabilities = new HashMap<>();
 
+    private boolean isDirty = false;
+    private boolean isUpdatingFields = false;
+    private String lastSelectedPreset = null;
+
+    public boolean isDirty() {
+        return isDirty;
+    }
+
+    public boolean promptUnsavedChanges() {
+        if (!isDirty) return true;
+        I18nManager i18n = I18nManager.getInstance();
+        Alert alert = ThemeManager.createAlert(
+            Alert.AlertType.CONFIRMATION,
+            "Vous avez des modifications non enregistrées dans l'Éditeur Météo & Climat. Voulez-vous enregistrer vos modifications avant de continuer ?"
+        );
+        alert.setTitle("Modifications non enregistrées");
+        alert.setHeaderText("Quitter l'éditeur météo ?");
+
+        ButtonType btnSave = new ButtonType(i18n.get("common.btn.save", "Enregistrer"), ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnDiscard = new ButtonType("Abandonner", ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        alert.getButtonTypes().setAll(btnSave, btnDiscard, btnCancel);
+        Optional<ButtonType> result = alert.showAndWait();
+
+        if (result.isPresent() && result.get() == btnSave) {
+            doSavePreset();
+            return !isDirty;
+        } else if (result.isPresent() && result.get() == btnDiscard) {
+            isDirty = false;
+            return true;
+        }
+        return false;
+    }
+
     public WeatherEditorPane() {
         setTop(buildHeader());
 
@@ -181,10 +216,6 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     // ── Header Bar ─────────────────────────────────────────────────────────────
-    private boolean isUpdatingFields = false;
-    private boolean isDirty = false;
-    private String lastSelectedPreset = null;
-
     private VBox buildHeader() {
         I18nManager i18n = I18nManager.getInstance();
         VBox v = new VBox(6);
