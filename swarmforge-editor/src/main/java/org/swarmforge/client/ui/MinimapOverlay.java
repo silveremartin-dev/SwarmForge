@@ -6,6 +6,8 @@
  */
 package org.swarmforge.client.ui;
 
+import org.swarmforge.client.util.I18nManager;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.canvas.Canvas;
@@ -77,30 +79,30 @@ public class MinimapOverlay extends VBox {
         setMaxWidth(width + 20);
         setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
 
-        // Canvases matching World Editor ratio
-        int topH = (int) (width * 0.7);
-        int sideH = (int) (width * 0.5);
+        int w = Math.max(10, width);
+        int topH = Math.max(10, (int) (w * 0.7));
+        int sideH = Math.max(10, (int) (w * 0.5));
 
-        this.canvasTop = new Canvas(width, topH);
+        this.canvasTop = new Canvas(w, topH);
         this.gcTop = canvasTop.getGraphicsContext2D();
 
-        this.canvasSide = new Canvas(width, sideH);
+        this.canvasSide = new Canvas(w, sideH);
         this.gcSide = canvasSide.getGraphicsContext2D();
 
         this.densityGridTop = new int[GRID_RES][GRID_RES];
         this.densityGridSide = new int[GRID_RES][GRID_RES];
 
         // Header Labels matching World Editor style
-        Label lblHeader = new Label("🗺️ Mini-Map Dual System");
+        Label lblHeader = new Label(I18nManager.getInstance().get("minimap.title"));
         lblHeader.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
-        Label lblTop = new Label("⬜ Vue du Dessus (Top-Down)");
+        Label lblTop = new Label(I18nManager.getInstance().get("minimap.topdown"));
         lblTop.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #cbd5e1;");
 
-        Label lblSide = new Label("⬛ Vue de Profil / Coupe (Side View)");
+        Label lblSide = new Label(I18nManager.getInstance().get("minimap.sideview"));
         lblSide.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #cbd5e1;");
 
-        CheckBox chkSync = new CheckBox("🔗 Synchroniser");
+        CheckBox chkSync = new CheckBox(I18nManager.getInstance().get("minimap.sync"));
         chkSync.setSelected(true);
         chkSync.setStyle("-fx-text-fill: #00d4ff; -fx-font-size: 9px; -fx-font-weight: bold;");
         chkSync.selectedProperty().addListener((o, a, b) -> this.syncViews = b);
@@ -191,6 +193,7 @@ public class MinimapOverlay extends VBox {
     }
 
     private void redrawTop(List<Colony> colonies) {
+        if (canvasTop == null || canvasTop.getWidth() <= 0 || canvasTop.getHeight() <= 0) return;
         double w = canvasTop.getWidth();
         double h = canvasTop.getHeight();
 
@@ -268,6 +271,7 @@ public class MinimapOverlay extends VBox {
     }
 
     private void redrawSide(List<Colony> colonies) {
+        if (canvasSide == null || canvasSide.getWidth() <= 0 || canvasSide.getHeight() <= 0) return;
         double w = canvasSide.getWidth();
         double h = canvasSide.getHeight();
 
@@ -330,15 +334,19 @@ public class MinimapOverlay extends VBox {
      * Clear the minimaps.
      */
     public void clear() {
-        gcTop.setFill(Color.rgb(15, 23, 42));
-        gcTop.fillRect(0, 0, canvasTop.getWidth(), canvasTop.getHeight());
-        gcTop.setFill(Color.GRAY);
-        gcTop.fillText("Vue du Dessus (Top-Down)", canvasTop.getWidth() / 2 - 60, canvasTop.getHeight() / 2);
+        if (canvasTop != null && canvasTop.getWidth() > 0 && canvasTop.getHeight() > 0) {
+            gcTop.setFill(Color.rgb(15, 23, 42));
+            gcTop.fillRect(0, 0, canvasTop.getWidth(), canvasTop.getHeight());
+            gcTop.setFill(Color.GRAY);
+            gcTop.fillText("Vue du Dessus (Top-Down)", canvasTop.getWidth() / 2 - 60, canvasTop.getHeight() / 2);
+        }
 
-        gcSide.setFill(Color.rgb(15, 23, 42));
-        gcSide.fillRect(0, 0, canvasSide.getWidth(), canvasSide.getHeight());
-        gcSide.setFill(Color.GRAY);
-        gcSide.fillText("Vue de Profil (Side View)", canvasSide.getWidth() / 2 - 60, canvasSide.getHeight() / 2);
+        if (canvasSide != null && canvasSide.getWidth() > 0 && canvasSide.getHeight() > 0) {
+            gcSide.setFill(Color.rgb(15, 23, 42));
+            gcSide.fillRect(0, 0, canvasSide.getWidth(), canvasSide.getHeight());
+            gcSide.setFill(Color.GRAY);
+            gcSide.fillText("Vue de Profil (Side View)", canvasSide.getWidth() / 2 - 60, canvasSide.getHeight() / 2);
+        }
     }
 
     /**

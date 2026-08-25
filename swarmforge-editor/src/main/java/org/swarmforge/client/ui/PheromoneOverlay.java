@@ -6,6 +6,8 @@
  */
 package org.swarmforge.client.ui;
 
+import org.swarmforge.client.util.I18nManager;
+
 import javafx.geometry.Insets;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -67,7 +69,7 @@ public class PheromoneOverlay extends VBox {
         setPadding(new Insets(0));
 
         // Canvas
-        canvas = new Canvas(width, height);
+        canvas = new Canvas(Math.max(10, width), Math.max(10, height));
         gc = canvas.getGraphicsContext2D();
 
         // Control Panel VBox (for placement in right panel)
@@ -88,11 +90,11 @@ public class PheromoneOverlay extends VBox {
         box.setPadding(new Insets(8));
         box.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
 
-        Label lblHeader = new Label("🧪 Overlay Phéromones & Heatmaps :");
+        Label lblHeader = new Label(I18nManager.getInstance().get("pheromone.overlay_title"));
         lblHeader.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
 
         // Overlay type selector
-        Label lblType = new Label("Mode Heatmap :");
+        Label lblType = new Label(I18nManager.getInstance().get("pheromone.mode"));
         lblType.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px; -fx-font-weight: bold;");
 
         ComboBox<String> typeCombo = new ComboBox<>();
@@ -117,7 +119,7 @@ public class PheromoneOverlay extends VBox {
             redraw();
         });
 
-        HBox opacityBox = new HBox(6, new Label("Opacité :") {{ setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;"); }}, opacitySlider, lblOpacityVal);
+        HBox opacityBox = new HBox(6, new Label(I18nManager.getInstance().get("pheromone.opacity")) {{ setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;"); }}, opacitySlider, lblOpacityVal);
 
         // Threshold slider
         Label lblThresholdVal = new Label(String.format("Seuil : %.2f", threshold));
@@ -131,10 +133,10 @@ public class PheromoneOverlay extends VBox {
             redraw();
         });
 
-        HBox thresholdBox = new HBox(6, new Label("Seuil :") {{ setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;"); }}, thresholdSlider, lblThresholdVal);
+        HBox thresholdBox = new HBox(6, new Label(I18nManager.getInstance().get("pheromone.threshold")) {{ setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;"); }}, thresholdSlider, lblThresholdVal);
 
         // Grid toggle
-        CheckBox gridCheck = new CheckBox("Grille Météo / Voxels");
+        CheckBox gridCheck = new CheckBox(I18nManager.getInstance().get("pheromone.weather_grid"));
         gridCheck.setSelected(showGrid);
         gridCheck.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
         gridCheck.setOnAction(e -> {
@@ -170,6 +172,7 @@ public class PheromoneOverlay extends VBox {
      * Redraw the overlay with high visual fidelity.
      */
     public void redraw() {
+        if (canvas == null || canvas.getWidth() <= 0 || canvas.getHeight() <= 0) return;
         gc.setFill(Color.rgb(15, 23, 42, 0.9));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
@@ -248,6 +251,7 @@ public class PheromoneOverlay extends VBox {
      * Clear the overlay.
      */
     public void clear() {
+        if (canvas == null || canvas.getWidth() <= 0 || canvas.getHeight() <= 0) return;
         gc.setFill(Color.rgb(15, 23, 42));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 

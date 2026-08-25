@@ -230,6 +230,44 @@ export default function GodModePanel({ inline = false }) {
         }),
     }
 
+    const [nestTypeToBuild, setNestTypeToBuild] = useState('PINE_NEEDLES')
+    const [nestScaleToBuild, setNestScaleToBuild] = useState(1.2)
+    const { addNest, phantomNestsVisible, togglePhantomNests, ghostNest, setGhostNest } = useSimulationStore()
+
+    const handlePreviewGhostNest = () => {
+        setGhostNest({
+            active: true,
+            type: nestTypeToBuild,
+            x: posX,
+            y: posY,
+            z: posZ,
+            scale: nestScaleToBuild,
+        })
+        showToast(`👻 Prévisualisation fantomatique activée pour le nid (${nestTypeToBuild}) à (${posX}m, ${posY}m)`, 'info')
+    }
+
+    const handleBuildNest = () => {
+        const nestNames = {
+            PINE_NEEDLES: 'Dôme d\'Épines de Pin',
+            TERMITE_MOUND: 'Termitière Cathédrale',
+            WASP_BRANCH: 'Guêpier Suspendu sur Branche',
+            WOODEN_BEEHIVE: 'Ruche Ruche Traditionnelle',
+            TREE_TRUNK: 'Cavité dans Tronc d\'Arbre',
+            EARTH_MOUND: 'Fourmilière Terrestre'
+        }
+        addNest({
+            name: nestNames[nestTypeToBuild] || nestTypeToBuild,
+            type: nestTypeToBuild,
+            x: posX,
+            y: posY,
+            z: posZ,
+            scale: nestScaleToBuild,
+            population: 100
+        })
+        setGhostNest({ active: false })
+        showToast(`🏗️ Nid "${nestNames[nestTypeToBuild]}" placé avec succès !`, 'success')
+    }
+
     return (
         <div style={styles.container}>
             <div style={styles.header}>

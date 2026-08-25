@@ -52,8 +52,25 @@ public class TunnelNetwork implements java.io.Serializable {
     private final float maxDepth = 50.0f;
 
     public TunnelNetwork(Colony colony) {
-        // Create entrance
-        createNode(colony.getNestX(), colony.getNestY(), -0.1f, ChamberType.ENTRANCE);
+        float nx = colony.getNestX();
+        float ny = colony.getNestY();
+        float nz = colony.getNestZ();
+
+        UUID entrance = createNode(nx, ny, -0.1f, ChamberType.ENTRANCE);
+        UUID shaft = createNode(nx, ny, -5.0f, ChamberType.TUNNEL);
+        createEdge(entrance, shaft);
+
+        UUID queenChamber = createNode(nx + 3.0f, ny, -12.0f, ChamberType.QUEEN_CHAMBER);
+        createEdge(shaft, queenChamber);
+
+        UUID broodChamber = createNode(nx - 3.0f, ny + 2.0f, -8.0f, ChamberType.BROOD_CHAMBER);
+        createEdge(shaft, broodChamber);
+
+        UUID foodStorage = createNode(nx + 2.0f, ny - 3.0f, -6.0f, ChamberType.FOOD_STORAGE);
+        createEdge(shaft, foodStorage);
+
+        UUID wasteDump = createNode(nx - 4.0f, ny - 2.0f, -15.0f, ChamberType.WASTE_DUMP);
+        createEdge(queenChamber, wasteDump);
     }
 
     /**

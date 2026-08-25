@@ -130,6 +130,14 @@ public class SpeciesEditorPane extends VBox {
         warningBannerBox.setVisible(false);
         warningBannerBox.setManaged(false);
 
+        // Initialize Biomechanical & Motor fields
+        wingbeatHzField = new TextField("200.0");
+        hasHoveringCheckBox = new CheckBox();
+        maxPayloadRatioField = new TextField("5.0");
+        bitingForceMpaField = new TextField("15.0");
+        hasAutothysisCheckBox = new CheckBox();
+        hasAroliaAdhesionCheckBox = new CheckBox();
+
         // 2. TabPane for Parameter Sections
         TabPane tabPane = createTabPane();
 
@@ -158,7 +166,7 @@ public class SpeciesEditorPane extends VBox {
         HBox r = new HBox(8);
         r.setAlignment(Pos.CENTER_LEFT);
 
-        Label title = new Label("Concepteur d'Espèces Eusociales");
+        Label title = new Label(I18nManager.getInstance().get("species.editor_title"));
         title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
         Region sp = new Region();
@@ -206,7 +214,7 @@ public class SpeciesEditorPane extends VBox {
                     Alert.AlertType.CONFIRMATION,
                     "Attention : Vous avez des modifications non enregistrées sur l'espèce actuelle.\n\nVoulez-vous vraiment charger le preset '" + sel + "' et abandonner vos modifications ?"
                 );
-                alert.setTitle("Modifications non enregistrées");
+                alert.setTitle(I18nManager.getInstance().get("common.dialog.unsaved"));
                 alert.setHeaderText("Changement de preset d'espèce");
                 java.util.Optional<ButtonType> res = alert.showAndWait();
                 if (res.isEmpty() || res.get() != ButtonType.OK) {
@@ -336,7 +344,7 @@ public class SpeciesEditorPane extends VBox {
         // Taxon links HBox
         HBox taxonLinks = new HBox(10);
         taxonLinks.setAlignment(Pos.CENTER_LEFT);
-        Label lblLinksTitle = new Label("Fiches Taxonomiques :");
+        Label lblLinksTitle = new Label(I18nManager.getInstance().get("species.taxonomy_sheet"));
         lblLinksTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
 
         Hyperlink linkFormicidae = new Hyperlink("🐜 Formicidae (Fourmis)");
@@ -703,15 +711,24 @@ public class SpeciesEditorPane extends VBox {
         hzCol.setOnEditCommit(e -> e.getRowValue().setWingbeatFrequencyHz(e.getNewValue()));
         hzCol.setPrefWidth(80);
 
-        casteTable.getColumns().addAll(nameCol, bodyCol, headCol, tunnelCol, lifeCol, healthCol, dmgCol, flyCol, biteCol, loadCol, hzCol, ratioCol, archCol, forageCol, defCol, excCol, nurseCol, venomTypeCol, venomToxCol);
+        // Table Columns grouped in phase with the 4 Inspector sections
+        casteTable.getColumns().addAll(
+            // 👤 Identité & Morphologie
+            nameCol, bodyCol, headCol, tunnelCol, healthCol, dmgCol, lifeCol,
+            // ⚡ Biomécanique & Vol
+            flyCol, hzCol, biteCol, loadCol,
+            // 🧠 IA & Allocation Tâches
+            archCol, ratioCol, forageCol, defCol, excCol, nurseCol,
+            // 🛡️ Armes & Toxines
+            venomTypeCol, venomToxCol
+        );
 
-        // Controls to add/edit caste (Inspector Panel)
+        // Controls to add/edit caste (Inspector Panel by Columns)
         VBox casteInspectorCard = new VBox(10);
         casteInspectorCard.getStyleClass().add("card-pane");
-        Label titleInspector = new Label("🔍 Inspecteur & Éditeur de la Caste sélectionnée");
+        Label titleInspector = new Label("🔍 Inspecteur & Éditeur de la Caste sélectionnée (Mode Colonnes)");
         titleInspector.getStyleClass().add("card-title");
 
-        GridPane casteForm = createGrid();
         TextField casteNameF = new TextField("Soldat");
         TextField casteBodyF = new TextField("6.0");
         TextField casteHeadF = new TextField("1.8");
@@ -797,13 +814,47 @@ public class SpeciesEditorPane extends VBox {
             }
         });
 
-        casteForm.addRow(0, createTooltipLabel("Nom Caste:", "Appellation fonctionnelle de la caste au sein de la colonie.", casteNameF), casteNameF, createTooltipLabel("Longueur Corps (mm):", "Longueur totale du corps du sommet de la tête à l'apex de l'abdomen en mm.", casteBodyF), casteBodyF, createTooltipLabel("Largeur Tête (mm):", "Largeur maximale de la capsule céphalique déterminant le diamètre minimal des galeries.", casteHeadF), casteHeadF);
-        casteForm.addRow(1, createTooltipLabel("Durée de vie (jours):", "Espérance de vie moyenne des membres de cette caste en jours.", casteLifeF), casteLifeF, createTooltipLabel("Santé de base:", "Points de vie initiaux de la caste.", casteHealthF), casteHealthF, createTooltipLabel("Dégâts Attaque:", "Valeur des dégâts physiques infligés par coup ou morsure.", casteDmgF), casteDmgF);
-        casteForm.addRow(2, createTooltipLabel("Capacité Vol:", "Indique si les individus de cette caste sont munis d'ailes et capables de piloter le vol.", casteFlyCheck), casteFlyCheck, createTooltipLabel("Battement Ailes (Hz):", "Fréquence d'oscillation alaire spécifique si cette caste vole (0Hz si aptère).", casteWingbeatHzF), casteWingbeatHzF, createTooltipLabel("Vol Stationnaire:", "Capacité à maintenir une position immobile en vol battu.", casteHoverCheck), casteHoverCheck);
-        casteForm.addRow(3, createTooltipLabel("Force Morsure (MPa):", "Force mandibulaire de cisaillement développée par la musculature céphalique de cette caste.", casteBitingForceMpaF, "Mandibule"), casteBitingForceMpaF, createTooltipLabel("Capacité Portance (g/g):", "Multiplicateur de charge transportable rapporté au propre poids du corps de cette caste.", castePayloadRatioF), castePayloadRatioF, createTooltipLabel("Ratio Cible (%):", "Pourcentage cible de cette caste parmi les ouvrières de la colonie (ex: 80% ouvrières, 20% soldats). Pour les castes reproductrices (Reines, Rois, Mâles), ce ratio est de 0.00 car leur population dépend du mode de fondation.", targetRatioF), targetRatioF);
-        casteForm.addRow(4, createTooltipLabel("Modèle Décision:", "Architecture cognitive (BDI, Réseau de Neurones, FSM, Arbre de Comportement, Logique Floue)", decisionArchCombo, "FSM"), decisionArchCombo, createTooltipLabel("Poids Récolte:", "Poids d'allocation pour le forage", foragingWField), foragingWField, createTooltipLabel("Poids Défense:", "Poids de la défense/garde", defenseWField), defenseWField);
-        casteForm.addRow(5, createTooltipLabel("Poids Excavation:", "Poids d'allocation pour l'excavation", excavationWField), excavationWField, createTooltipLabel("Poids Soins:", "Poids d'allocation pour le couvain", nursingWField), nursingWField, createTooltipLabel("Adhésion Ventouses Arolia:", "Présence de ventouses tarsiennes arolia pour marcher sur parois verticales & plafonds.", casteAroliaCheck, "Arolia"), casteAroliaCheck);
-        casteForm.addRow(6, createTooltipLabel("Armes & Venin (Multi-sélection):", "Armes défensives et toxines chimiques équipées par cette caste (sélection multiple possible)", casteVenomMenuButton), casteVenomMenuButton, createTooltipLabel("Toxicité Venin:", "Dégâts ou effet toxique par action de venin", casteVenomToxField), casteVenomToxField, createTooltipLabel("Autothysie Explosive:", "Défense suicidaire par rupture abdominale propre à cette caste.", casteAutothysisCheck, "Autothysie"), casteAutothysisCheck);
+        // Inspector Columns Layout (Organized by vertical columns)
+        HBox casteInspectorColumns = new HBox(10);
+
+        // Column 1: 👤 Identité & Morphologie
+        GridPane col1Grid = createColumnGrid();
+        col1Grid.addRow(0, createTooltipLabel("Nom Caste:", "Appellation fonctionnelle de la caste au sein de la colonie.", casteNameF), casteNameF);
+        col1Grid.addRow(1, createTooltipLabel("Longueur Corps (mm):", "Longueur totale du corps du sommet de la tête à l'apex de l'abdomen en mm.", casteBodyF), casteBodyF);
+        col1Grid.addRow(2, createTooltipLabel("Largeur Tête (mm):", "Largeur maximale de la capsule céphalique déterminant le diamètre minimal des galeries.", casteHeadF), casteHeadF);
+        col1Grid.addRow(3, createTooltipLabel("Santé de base:", "Points de vie initiaux de la caste.", casteHealthF), casteHealthF);
+        col1Grid.addRow(4, createTooltipLabel("Dégâts Attaque:", "Valeur des dégâts physiques infligés par coup ou morsure.", casteDmgF), casteDmgF);
+        col1Grid.addRow(5, createTooltipLabel("Durée de vie (j):", "Espérance de vie moyenne des membres de cette caste en jours.", casteLifeF), casteLifeF);
+        VBox col1Box = createInspectorColumnBox("👤 Identité & Morphologie", col1Grid);
+
+        // Column 2: ⚡ Biomécanique & Vol
+        GridPane col2Grid = createColumnGrid();
+        col2Grid.addRow(0, createTooltipLabel("Capacité Vol:", "Indique si les individus de cette caste sont munis d'ailes et capables de piloter le vol.", casteFlyCheck), casteFlyCheck);
+        col2Grid.addRow(1, createTooltipLabel("Battement Ailes (Hz):", "Fréquence d'oscillation alaire spécifique si cette caste vole (0Hz si aptère).", casteWingbeatHzF), casteWingbeatHzF);
+        col2Grid.addRow(2, createTooltipLabel("Vol Stationnaire:", "Capacité à maintenir une position immobile en vol battu.", casteHoverCheck), casteHoverCheck);
+        col2Grid.addRow(3, createTooltipLabel("Force Morsure (MPa):", "Force mandibulaire de cisaillement développée par la musculature céphalique.", casteBitingForceMpaF, "Mandibule"), casteBitingForceMpaF);
+        col2Grid.addRow(4, createTooltipLabel("Portance (g/g):", "Multiplicateur de charge transportable rapporté au propre poids du corps.", castePayloadRatioF), castePayloadRatioF);
+        col2Grid.addRow(5, createTooltipLabel("Adhésion Arolia:", "Présence de ventouses tarsiennes arolia pour marcher sur parois verticales & plafonds.", casteAroliaCheck, "Arolia"), casteAroliaCheck);
+        VBox col2Box = createInspectorColumnBox("⚡ Biomécanique & Vol", col2Grid);
+
+        // Column 3: 🧠 IA & Allocation Tâches
+        GridPane col3Grid = createColumnGrid();
+        col3Grid.addRow(0, createTooltipLabel("Modèle Décision:", "Architecture cognitive (BDI, Réseau de Neurones, FSM, Arbre de Comportement, Logique Floue)", decisionArchCombo, "FSM"), decisionArchCombo);
+        col3Grid.addRow(1, createTooltipLabel("Ratio Cible (%):", "Pourcentage cible de cette caste parmi les ouvrières de la colonie.", targetRatioF), targetRatioF);
+        col3Grid.addRow(2, createTooltipLabel("Poids Récolte:", "Poids d'allocation pour le forage", foragingWField), foragingWField);
+        col3Grid.addRow(3, createTooltipLabel("Poids Défense:", "Poids de la défense/garde", defenseWField), defenseWField);
+        col3Grid.addRow(4, createTooltipLabel("Poids Excavation:", "Poids d'allocation pour l'excavation", excavationWField), excavationWField);
+        col3Grid.addRow(5, createTooltipLabel("Poids Soins:", "Poids d'allocation pour le couvain", nursingWField), nursingWField);
+        VBox col3Box = createInspectorColumnBox("🧠 IA & Allocation Tâches", col3Grid);
+
+        // Column 4: 🛡️ Armes & Venin
+        GridPane col4Grid = createColumnGrid();
+        col4Grid.addRow(0, createTooltipLabel("Armes & Venin:", "Armes défensives et toxines chimiques équipées par cette caste (sélection multiple possible)", casteVenomMenuButton), casteVenomMenuButton);
+        col4Grid.addRow(1, createTooltipLabel("Toxicité Venin:", "Dégâts ou effet toxique par action de venin", casteVenomToxField), casteVenomToxField);
+        col4Grid.addRow(2, createTooltipLabel("Autothysie Explosive:", "Défense suicidaire par rupture abdominale propre à cette caste.", casteAutothysisCheck, "Autothysie"), casteAutothysisCheck);
+        VBox col4Box = createInspectorColumnBox("🛡️ Armes & Toxines", col4Grid);
+
+        casteInspectorColumns.getChildren().addAll(col1Box, col2Box, col3Box, col4Box);
 
         HBox casteBtns = new HBox(10);
         Button btnAddCaste = new Button("Ajouter / Mettre à jour Caste", new FontIcon(Feather.PLUS_CIRCLE));
@@ -889,7 +940,7 @@ public class SpeciesEditorPane extends VBox {
         });
 
         casteBtns.getChildren().addAll(btnAddCaste, btnDelCaste);
-        casteInspectorCard.getChildren().addAll(titleInspector, casteForm, casteBtns);
+        casteInspectorCard.getChildren().addAll(titleInspector, casteInspectorColumns, casteBtns);
 
         box.getChildren().addAll(infoLabel, casteTable, casteInspectorCard);
         return wrapScroll(box);
@@ -1690,6 +1741,31 @@ public class SpeciesEditorPane extends VBox {
         HBox row = new HBox(5, t, d);
         row.setPadding(new Insets(4, 0, 4, 0));
         box.getChildren().add(row);
+    }
+
+    private GridPane createColumnGrid() {
+        GridPane grid = new GridPane();
+        grid.setHgap(8);
+        grid.setVgap(8);
+        grid.setPadding(new Insets(6));
+        ColumnConstraints c1 = new ColumnConstraints();
+        c1.setMinWidth(120);
+        c1.setPrefWidth(130);
+        c1.setHgrow(Priority.NEVER);
+        ColumnConstraints c2 = new ColumnConstraints();
+        c2.setHgrow(Priority.ALWAYS);
+        grid.getColumnConstraints().addAll(c1, c2);
+        return grid;
+    }
+
+    private VBox createInspectorColumnBox(String title, GridPane grid) {
+        VBox box = new VBox(8);
+        box.setStyle("-fx-background-color: rgba(255, 255, 255, 0.02); -fx-border-color: rgba(255, 255, 255, 0.08); -fx-border-radius: 6px; -fx-background-radius: 6px; -fx-padding: 10px;");
+        Label lblTitle = new Label(title);
+        lblTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #38bdf8;");
+        box.getChildren().addAll(lblTitle, new Separator(), grid);
+        HBox.setHgrow(box, Priority.ALWAYS);
+        return box;
     }
 
     private GridPane createGrid() {

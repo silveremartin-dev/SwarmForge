@@ -33,8 +33,9 @@ public class WorldPresetManager {
     private Map<String, Map<String, Object>> builtins() {
         Map<String, Map<String, Object>> map = new LinkedHashMap<>();
 
-        map.put("Tempéré Standard (Temperate Forest)", makeConfig(
-                2.0, 1.5, 0.5, 48.8566, 2.3522, "FOREST",
+        // 1. Forêt Tempérée Décidue (Fontainebleau, France)
+        map.put("Tempéré Decidu (Fontainebleau, FR)", makeConfig(
+                25.0, 3.0, 0.5, 48.4047, 2.7016, "FOREST",
                 0.45, 0.45, 65.0, 0.7, 0.3, 0.08,
                 50, 20, 20, 10, 20,
                 0, 70, 10, 0, 0, 10, 0, 10,
@@ -43,45 +44,113 @@ public class WorldPresetManager {
                 true, 120.0, 0.3, 2.0, 15.0,
                 8, 3, 3
         ));
-        map.put("Désert Aride (Arid Desert)", makeConfig(
-                4.0, 1.0, 0.8, 24.7136, 46.5163, "DESERT",
+
+        // 2. Désert Aride Erg Chebbi (Sahara, Maroc)
+        map.put("Désert Aride (Erg Chebbi, MA)", makeConfig(
+                25.0, 3.0, 0.8, 31.1444, -3.9708, "DESERT",
                 0.65, 0.12, 70.0, 0.3, 0.5, 0.02,
-                10, 70, 0, 20, 0,
+                5, 80, 0, 15, 0,
                 3, 0, 0, 15, 75, 0, 0, 10,
                 "284910", 10.0, 20.0, 5.0, 20.0,
                 false, false, true, false, false, false, false,
                 false, 60.0, 0.0, 0.0, 45.0,
                 3, 1, 6
         ));
-        map.put("Forêt Tropicale (Tropical Rainforest)", makeConfig(
-                3.0, 2.0, 0.4, -3.1190, -60.0217, "TROPICAL",
+
+        // 3. Forêt Tropicale Équatoriale (Amazonie, Manaus, Brésil)
+        map.put("Forêt Tropicale (Manaus, BR)", makeConfig(
+                25.0, 3.0, 0.4, -3.1190, -60.0217, "TROPICAL",
                 0.40, 0.85, 50.0, 0.6, 0.4, 0.12,
-                60, 5, 30, 5, 40,
-                2, 0, 5, 80, 0, 0, 0, 15,
+                45, 5, 40, 10, 35,
+                2, 0, 5, 80, 0, 0, 5, 10,
                 "918273", 80.0, 70.0, 80.0, 60.0,
                 true, true, true, true, true, false, true,
                 true, 250.0, 0.8, 4.0, 8.0,
                 12, 5, 2
         ));
-        map.put("Montagne Rocheuse (Alpine Mountain)", makeConfig(
-                5.0, 2.5, 0.6, 45.8326, 6.8652, "ALPINE",
+
+        // 4. Montagne Rocheuse & Éboulis (Mont Blanc, Chamonix, France)
+        map.put("Montagne Rocheuse (Mont Blanc, FR)", makeConfig(
+                25.0, 3.0, 0.6, 45.8326, 6.8652, "ALPINE",
                 0.90, 0.40, 85.0, 0.8, 0.2, 0.15,
-                20, 10, 10, 60, 10,
-                1, 10, 75, 0, 0, 15, 0, 0,
+                15, 15, 10, 60, 5,
+                1, 10, 75, 0, 0, 10, 0, 5,
                 "551928", 25.0, 50.0, 40.0, 50.0,
                 false, true, true, false, true, true, true,
                 true, 90.0, 1.2, 1.0, 25.0,
                 5, 2, 8
         ));
-        map.put("Permafrost Arctique (Arctic Tundra)", makeConfig(
-                2.5, 1.2, 0.5, 78.2232, 15.6469, "ARCTIC",
+
+        // 5. Permafrost Arctique (Longyearbyen, Svalbard, Norvège)
+        map.put("Permafrost Arctique (Svalbard, NO)", makeConfig(
+                25.0, 3.0, 0.5, 78.2232, 15.6469, "ARCTIC",
                 0.25, 0.30, 90.0, 0.9, 0.1, 0.04,
-                40, 0, 10, 50, 5,
+                35, 10, 15, 40, 15,
                 4, 15, 15, 0, 0, 60, 0, 10,
                 "109283", 15.0, 30.0, 15.0, 25.0,
                 false, false, true, false, true, false, false,
                 false, 50.0, 0.1, 3.0, 5.0,
                 2, 1, 5
+        ));
+
+        // 6. Savane d'Acacias (Serengeti, Tanzanie)
+        map.put("Savane d'Acacias (Serengeti, TZ)", makeConfig(
+                25.0, 3.0, 0.5, -2.3333, 34.8333, "SAVANNA",
+                0.35, 0.28, 60.0, 0.5, 0.4, 0.05,
+                30, 35, 25, 10, 10,
+                2, 5, 5, 80, 0, 0, 0, 10,
+                "381920", 50.0, 40.0, 30.0, 30.0,
+                false, true, true, false, false, false, false,
+                true, 150.0, 0.4, 1.0, 30.0,
+                6, 4, 3
+        ));
+
+        // 7. Maquis Méditerranéen (Corse, France)
+        map.put("Maquis Méditerranéen (Corse, FR)", makeConfig(
+                25.0, 3.0, 0.5, 42.1500, 9.1500, "MEDITERRANEAN",
+                0.55, 0.35, 70.0, 0.6, 0.3, 0.06,
+                35, 25, 15, 25, 15,
+                1, 15, 70, 0, 0, 0, 0, 15,
+                "492810", 35.0, 50.0, 45.0, 45.0,
+                true, true, true, false, true, true, true,
+                true, 80.0, 0.3, 1.0, 20.0,
+                7, 3, 5
+        ));
+
+        // 8. Taïga Boréale (Rovaniemi, Laponie, Finlande)
+        map.put("Taïga Boréale (Rovaniemi, FI)", makeConfig(
+                25.0, 3.0, 0.5, 66.5039, 25.7294, "TAIGA",
+                0.40, 0.55, 65.0, 0.75, 0.25, 0.07,
+                40, 20, 15, 25, 25,
+                1, 10, 80, 0, 0, 10, 0, 10,
+                "618293", 30.0, 70.0, 70.0, 60.0,
+                true, false, true, true, true, true, true,
+                true, 140.0, 0.4, 3.0, 10.0,
+                9, 4, 3
+        ));
+
+        // 9. Marécage & Mangrove (Everglades, Floride, USA)
+        map.put("Marécage & Mangrove (Everglades, US)", makeConfig(
+                25.0, 3.0, 0.4, 25.2866, -80.8987, "WETLAND",
+                0.20, 0.90, 40.0, 0.4, 0.5, 0.10,
+                55, 10, 30, 5, 40,
+                2, 0, 10, 70, 0, 0, 10, 10,
+                "829104", 75.0, 65.0, 60.0, 50.0,
+                true, true, true, true, true, false, true,
+                true, 300.0, 0.2, 5.0, 2.0,
+                8, 6, 2
+        ));
+
+        // 10. Steppe Semi-Aride (Astana, Kazakhstan)
+        map.put("Steppe Semi-Aride (Astana, KZ)", makeConfig(
+                25.0, 3.0, 0.6, 51.1694, 71.4491, "STEPPE",
+                0.30, 0.30, 75.0, 0.65, 0.35, 0.04,
+                50, 25, 20, 5, 15,
+                4, 20, 10, 0, 0, 50, 0, 20,
+                "501928", 65.0, 30.0, 20.0, 25.0,
+                false, true, true, false, false, false, false,
+                true, 70.0, 0.3, 1.0, 25.0,
+                4, 2, 4
         ));
 
         return map;
@@ -163,7 +232,7 @@ public class WorldPresetManager {
     }
 
     public Set<String> names() {
-        return presets.keySet();
+        return new TreeSet<>(presets.keySet());
     }
 
     public Map<String, Object> get(String name) {

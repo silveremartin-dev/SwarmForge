@@ -6,6 +6,8 @@
  */
 package org.swarmforge.client;
 
+import org.swarmforge.client.util.I18nManager;
+
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -52,7 +54,12 @@ public class SwarmForgeClient extends Application {
         @Override
     public void start(Stage primaryStage) {
         LOG.info("Starting SwarmForge Editor...");
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+
+        // Show Splash Screen on startup with progress bar
+        org.swarmforge.client.ui.SplashScreen splashScreen = new org.swarmforge.client.ui.SplashScreen();
+        splashScreen.show();
+
+        org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
         
         // Window Icon
         try {
@@ -65,7 +72,7 @@ public class SwarmForgeClient extends Application {
         }
 
         // title binding
-        primaryStage.titleProperty().bind(org.swarmforge.client.util.I18nManager.getInstance().createStringBinding("app.title"));
+        primaryStage.titleProperty().bind(I18nManager.getInstance().createStringBinding("app.title"));
 
         // Root Layout
         BorderPane root = new BorderPane();
@@ -166,7 +173,12 @@ public class SwarmForgeClient extends Application {
             Platform.exit();
             System.exit(0);
         });
-        primaryStage.show();
+
+        // Start loading progress on splash screen and reveal main window upon completion
+        splashScreen.startProgressAndLaunch(() -> {
+            primaryStage.show();
+            primaryStage.toFront();
+        });
 
         // Auto-connect to server at launch (localhost:50051)
         Platform.runLater(() -> {
@@ -182,7 +194,7 @@ public class SwarmForgeClient extends Application {
 
 
     private void showAboutDialog() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+        org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(i18n.get("dialog.about.title"));
         alert.setHeaderText(i18n.get("dialog.about.header"));
@@ -191,7 +203,7 @@ public class SwarmForgeClient extends Application {
     }
 
         private Node createSimulationManager() {
-                org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+                org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
                 BorderPane pane = new BorderPane();
                 pane.setPadding(new Insets(10));
 
@@ -249,13 +261,6 @@ public class SwarmForgeClient extends Application {
                 // Embedded SimulationControlPanel (Contains Preset Selectors ABOVE Start/Pause/Stop controls)
                 this.simControlPanel = new org.swarmforge.client.ui.SimulationControlPanel();
                 controlsInner.getChildren().add(this.simControlPanel);
-
-                // Live Data Stream Status
-                controlsInner.getChildren().add(new Separator());
-                Label statsLabel = new Label("🌐 Moteur de Simulation : Mode Local Autonome (Standalone) | Avancement : Pas n° 0");
-                statsLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-                Tooltip.install(statsLabel, new Tooltip("Statut du moteur de calcul de la simulation (Local autonome ou Serveur gRPC synchrone)."));
-                controlsInner.getChildren().add(statsLabel);
 
                 controlsTab.setContent(new ScrollPane(controlsInner));
 
@@ -417,6 +422,7 @@ public class SwarmForgeClient extends Application {
                         godTab.setDisable(false);
                         statsTab.setDisable(false);
                         eventLogTab.setDisable(false);
+                        subTabs.getSelectionModel().select(visualTab);
                 });
 
                 this.simControlPanel.setOnCreateCheckpoint(name -> {
@@ -440,6 +446,7 @@ public class SwarmForgeClient extends Application {
                             }
                             Alert alert = new Alert(Alert.AlertType.INFORMATION, "Point de contrôle '" + cp.getName() + "' restauré avec succès à l'itération #" + cp.getTick() + " !");
                             alert.show();
+                            subTabs.getSelectionModel().select(visualTab);
                         }
                     }
                 });
@@ -471,7 +478,7 @@ public class SwarmForgeClient extends Application {
                         public void handle(long now) {
                                 boolean isConnected = networkClient != null && networkClient.isConnected();
                                 boolean isPlaying = simControlPanel != null && simControlPanel.isPlaying();
-                                boolean isSimRunning = isConnected || isPlaying;
+                                boolean isSimRunning = isPlaying;
 
                                 if (isPlaying && !isConnected && simControlPanel != null) {
                                     long newTick = simControlPanel.getCurrentTick() + 1;
@@ -651,28 +658,10 @@ public class SwarmForgeClient extends Application {
         private Node createVisualSimulationViewport() {
                 BorderPane rootPane = new BorderPane();
 
-                // Center Viewport: 3D Canvas + Overlays
-                StackPane viewport3D = new StackPane();
-                viewport3D.setId("viewport3D");
-
-                // JME 3D View
-                this.gameView = new GameViewPane(1024, 720);
-                setupMouseControls(gameView);
-                viewport3D.getChildren().add(gameView);
-
-                // Minimap Overlay (Bottom-Right Dual Top-Down & Profil View)
-                this.minimapOverlay = new MinimapOverlay(200);
-                minimapOverlay.setMaxSize(javafx.scene.layout.Region.USE_PREF_SIZE, javafx.scene.layout.Region.USE_PREF_SIZE);
-                viewport3D.getChildren().add(minimapOverlay);
-                StackPane.setAlignment(minimapOverlay, Pos.BOTTOM_RIGHT);
-                StackPane.setMargin(minimapOverlay, new Insets(10));
-
-                minimapOverlay.setOnNavigate((x, y) -> {
-                        if (gameView != null && gameView.getGameApp() != null) {
-                                gameView.getGameApp().panCameraTo(x, 0, y);
-                        }
-                });
-
+                // Center Viewport: WorldEditorPane 3-View System (3D View + Mouse Orbit/Pan/Zoom Controls + 2D Minimaps)
+                org.swarmforge.client.ui.WorldEditorPane simWorldViewer = new org.swarmforge.client.ui.WorldEditorPane();
+                simWorldViewer.setHideConfigPanel(true);
+                
                 // 3D Inactive Overlay Placeholder (Sleek Top Bar)
                 this.simulationInactiveOverlay = new VBox(4);
                 simulationInactiveOverlay.setAlignment(Pos.CENTER);
@@ -686,16 +675,24 @@ public class SwarmForgeClient extends Application {
                 simulationInactiveOverlay.setPickOnBounds(false);
 
                 simulationInactiveOverlay.getChildren().addAll(lblInactiveTitle);
-                viewport3D.getChildren().add(simulationInactiveOverlay);
+
+                // Full Screen Floating Exit Button
+                Button btnExitFullscreen = new Button("❌ Quitter Plein Écran (ESC)");
+                btnExitFullscreen.setStyle("-fx-background-color: rgba(239, 68, 68, 0.9); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 20; -fx-padding: 6 14; -fx-cursor: hand;");
+                btnExitFullscreen.setVisible(false);
+
+                StackPane viewportStack = new StackPane(simWorldViewer, simulationInactiveOverlay, btnExitFullscreen);
                 StackPane.setAlignment(simulationInactiveOverlay, Pos.TOP_CENTER);
                 StackPane.setMargin(simulationInactiveOverlay, new Insets(15));
+                StackPane.setAlignment(btnExitFullscreen, Pos.TOP_RIGHT);
+                StackPane.setMargin(btnExitFullscreen, new Insets(15));
 
                 // If simulation is already active or loaded, hide overlay
                 if (localSimulation != null || (simControlPanel != null && simControlPanel.isPlaying())) {
                         simulationInactiveOverlay.setVisible(false);
                 }
 
-                rootPane.setCenter(viewport3D);
+                rootPane.setCenter(viewportStack);
 
                 // Right Side Controls Sidebar (Glassmorphic Toolbar for Render Modes, Audio Mixer & Video Recording)
                 VBox sideControls = new VBox(10);
@@ -723,31 +720,34 @@ public class SwarmForgeClient extends Application {
                 // 3. Media & Recording Section
                 VBox mediaSection = new VBox(6);
                 mediaSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
-                Label lblMedia = new Label("📸 Captures & Vidéo MP4 :");
+                Label lblMedia = new Label("📸 Captures & Média :");
                 lblMedia.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
 
-                Button btnPhoto = new Button("📸 Capture Photo HD");
+                Button btnFullscreenMode = new Button("🖥️ Mode Plein Écran 3D");
+                btnFullscreenMode.setMaxWidth(Double.MAX_VALUE);
+                btnFullscreenMode.setStyle("-fx-background-color: #38bdf8; -fx-text-fill: #0f172a; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                btnFullscreenMode.setTooltip(new Tooltip("Activer la vue 3D plein écran sans barres ni fenêtres (Échap pour quitter)."));
+
+                Button btnPhoto = new Button("📷 Capture d'Écran HD (PNG)");
                 btnPhoto.setMaxWidth(Double.MAX_VALUE);
-                btnPhoto.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
-                btnPhoto.setTooltip(new Tooltip("Prendre une capture photo haute résolution du viewport 3D actuel."));
+                btnPhoto.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
                 btnPhoto.setOnAction(e -> new Alert(Alert.AlertType.INFORMATION, "Capture Photo HD enregistrée sous swarmforge_snapshot.png !").show());
 
-                Button btnRecVideo = new Button("🎥 Enregistrer Vidéo MP4");
+                Button btnRecVideo = new Button("🎥 Enregistrer Séquence Animée");
                 btnRecVideo.setMaxWidth(Double.MAX_VALUE);
-                btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
-                btnRecVideo.setTooltip(new Tooltip("Démarrer / arrêter l'enregistrement d'une séquence vidéo MP4 de la simulation."));
+                btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
                 btnRecVideo.setOnAction(e -> {
                         if (btnRecVideo.getText().contains("Enregistrer")) {
                                 btnRecVideo.setText("⏹ Stop & Exporter MP4");
                                 btnRecVideo.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
                         } else {
-                                btnRecVideo.setText("🎥 Enregistrer Vidéo MP4");
-                                btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
+                                btnRecVideo.setText("🎥 Enregistrer Séquence Animée");
+                                btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
                                 new Alert(Alert.AlertType.INFORMATION, "Vidéo 3D exportée avec succès au format MP4 !").show();
                         }
                 });
 
-                mediaSection.getChildren().addAll(lblMedia, btnPhoto, btnRecVideo);
+                mediaSection.getChildren().addAll(lblMedia, btnFullscreenMode, btnPhoto, btnRecVideo);
 
                 // 4. Render Mode & 3D Layer Management Section
                 VBox renderSection = new VBox(6);
@@ -755,35 +755,55 @@ public class SwarmForgeClient extends Application {
                 Label lblRenderMode = new Label("🎛️ Gestion des Couches 3D (Layers) :");
                 lblRenderMode.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
 
-                Button btnGamifiedToggle = new Button("🎮 Mode Voxel Gamifié");
-                btnGamifiedToggle.setMaxWidth(Double.MAX_VALUE);
-                btnGamifiedToggle.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
-                btnGamifiedToggle.setTooltip(new Tooltip("Bascule entre le mode de rendu photoréaliste et le mode Voxel gamifié style blocs."));
-                btnGamifiedToggle.setOnAction(e -> {
-                        boolean isGamifiedNow = btnGamifiedToggle.getText().contains("Gamifié");
-                        if (isGamifiedNow) {
-                                btnGamifiedToggle.setText("🔲 Rendu 3D Classique");
-                                btnGamifiedToggle.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
-                        } else {
-                                btnGamifiedToggle.setText("🎮 Mode Voxel Gamifié");
-                                btnGamifiedToggle.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4;");
-                        }
+                ComboBox<String> comboRenderMode = new ComboBox<>();
+                comboRenderMode.getItems().addAll(
+                    "🌿 Mode Réaliste (Naturaliste Photoréaliste)",
+                    "🔬 Mode Scientifique (Minimaliste Structural)",
+                    "🎮 Mode Gamifié (Voxel / Minecraft)"
+                );
+                comboRenderMode.getSelectionModel().selectFirst();
+                comboRenderMode.setMaxWidth(Double.MAX_VALUE);
+                comboRenderMode.setStyle("-fx-font-size: 11px;");
+                org.swarmforge.client.ui.ComboBoxTooltipHelper.setupDescriptiveComboBox(comboRenderMode,
+                    val -> val,
+                    val -> switch (val) {
+                        case "🌿 Mode Réaliste (Naturaliste Photoréaliste)" -> "Affiche le monde avec éclairage naturel, végétation vivante, strates géologiques et textures réalistes.";
+                        case "🔬 Mode Scientifique (Minimaliste Structural)" -> "Vue schématique dépouillée des artefacts décoratifs. Concentrée sur les galeries, vecteurs et gradients de phéromones.";
+                        case "🎮 Mode Gamifié (Voxel / Minecraft)" -> "Rendu voxelisé à base de blocs cubiques texturés style Minecraft.";
+                        default -> val;
+                    }
+                );
+                comboRenderMode.getSelectionModel().selectedItemProperty().addListener((o, oldV, newV) -> {
+                    if (newV == null) return;
+                    if (newV.contains("Scientifique")) {
+                        simWorldViewer.setRenderMode(org.swarmforge.client.ui.WorldEditorPane.RenderMode.SCIENTIFIC);
+                        if (gameView != null) gameView.setScientificMode(true);
+                    } else if (newV.contains("Gamifié")) {
+                        simWorldViewer.setRenderMode(org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED);
+                        if (gameView != null) gameView.setGamifiedVoxelMode(true);
+                    } else {
+                        simWorldViewer.setRenderMode(org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC);
                         if (gameView != null) {
-                                gameView.setGamifiedVoxelMode(isGamifiedNow);
+                            gameView.setScientificMode(false);
+                            gameView.setGamifiedVoxelMode(false);
                         }
+                    }
                 });
 
                 CheckBox chkMinimap = new CheckBox("🗺️ Afficher Mini-Map Dual");
                 chkMinimap.setSelected(true);
                 chkMinimap.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
                 chkMinimap.setTooltip(new Tooltip("Affiche l'incrustation carte 2D (vue du dessus & coupe verticale)."));
-                chkMinimap.selectedProperty().addListener((o, a, b) -> minimapOverlay.setVisible(b));
+                chkMinimap.selectedProperty().addListener((o, a, b) -> {
+                        simWorldViewer.setDualMinimapVisible(b);
+                });
 
                 CheckBox chkTerrain = new CheckBox("🏔️ Terrain & Sol 3D");
                 chkTerrain.setSelected(true);
                 chkTerrain.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
                 chkTerrain.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setTerrainVisible(b);
+                        simWorldViewer.setTerrainVisible(b);
                 });
 
                 CheckBox chkNid = new CheckBox("🏰 Nid & Galeries Souterraines");
@@ -791,6 +811,7 @@ public class SwarmForgeClient extends Application {
                 chkNid.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
                 chkNid.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setTunnelsVisible(b);
+                        simWorldViewer.setGalleriesVisible(b);
                 });
 
                 CheckBox chkPheromonesLayer = new CheckBox("🧪 Overlays Phéromones 3D");
@@ -798,6 +819,7 @@ public class SwarmForgeClient extends Application {
                 chkPheromonesLayer.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
                 chkPheromonesLayer.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setPheromonesVisible(b);
+                        simWorldViewer.setPheromonesVisible(b);
                 });
 
                 CheckBox chkAntsLayer = new CheckBox("🐜 Insectes & Colonie 3D");
@@ -805,6 +827,7 @@ public class SwarmForgeClient extends Application {
                 chkAntsLayer.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
                 chkAntsLayer.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setAntsVisible(b);
+                        simWorldViewer.setColonyVisible(b);
                 });
 
                 CheckBox chkWeatherLayer = new CheckBox("🌤️ Météo & Atmosphère");
@@ -812,21 +835,24 @@ public class SwarmForgeClient extends Application {
                 chkWeatherLayer.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
                 chkWeatherLayer.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setWeatherVisible(b);
+                        simWorldViewer.setWeatherVisible(b);
                 });
 
-                renderSection.getChildren().addAll(lblRenderMode, btnGamifiedToggle, chkMinimap, chkTerrain, chkNid, chkPheromonesLayer, chkAntsLayer, chkWeatherLayer);
+                renderSection.getChildren().addAll(lblRenderMode, comboRenderMode, chkMinimap, chkTerrain, chkNid, chkPheromonesLayer, chkAntsLayer, chkWeatherLayer);
 
-                // 5. Audio Synthesizer Mixer Section
+                // Audio Controls Section
                 VBox audioSection = new VBox(6);
                 audioSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
-                Label lblAudio = new Label("🔊 Mixeur Sonore Simulation :");
+                Label lblAudio = new Label("🔊 Sound Design Procédural :");
                 lblAudio.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
 
                 org.swarmforge.client.audio.SimulationAudioManager audioMgr = org.swarmforge.client.audio.SimulationAudioManager.getInstance();
 
-                Slider masterVolSlider = new Slider(0.0, 1.0, audioMgr.getMasterVolume());
-                masterVolSlider.setTooltip(new Tooltip("Volume sonore général du synthétiseur de simulation."));
-                masterVolSlider.valueProperty().addListener((o, oldV, newV) -> audioMgr.setMasterVolume(newV.doubleValue()));
+                Slider masterVolSlider = new Slider(0, 100, 70);
+                masterVolSlider.setStyle("-fx-font-size: 9px;");
+                masterVolSlider.valueProperty().addListener((o, oldV, newV) -> {
+                        audioMgr.setMasterVolume(newV.doubleValue() / 100.0);
+                });
                 HBox volBox = new HBox(6, new Label("Volume :") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;"); }}, masterVolSlider);
 
                 CheckBox chkAmbientSound = new CheckBox("🌲 Ambiance Biome (Oiseaux/Vent)");
@@ -860,6 +886,42 @@ public class SwarmForgeClient extends Application {
                 sideScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
 
                 rootPane.setRight(sideScroll);
+
+                // Native Stage Full Screen Toggle Action
+                Runnable toggleFullscreen = () -> {
+                        javafx.stage.Stage stage = rootPane.getScene() != null ? (javafx.stage.Stage) rootPane.getScene().getWindow() : null;
+                        boolean isCurrentlyFullscreen = stage != null && stage.isFullScreen();
+
+                        if (!isCurrentlyFullscreen) {
+                                rootPane.setRight(null);
+                                btnExitFullscreen.setVisible(true);
+                                if (stage != null) {
+                                        stage.setFullScreenExitKeyCombination(javafx.scene.input.KeyCombination.NO_MATCH);
+                                        stage.setFullScreen(true);
+                                }
+                        } else {
+                                rootPane.setRight(sideScroll);
+                                btnExitFullscreen.setVisible(false);
+                                if (stage != null) {
+                                        stage.setFullScreen(false);
+                                }
+                        }
+                };
+
+                btnFullscreenMode.setOnAction(e -> toggleFullscreen.run());
+                btnExitFullscreen.setOnAction(e -> toggleFullscreen.run());
+
+                // Scene-wide key listener filter for reliable ESC key handling anywhere
+                rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                        if (newScene != null) {
+                                newScene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, ke -> {
+                                        if (ke.getCode() == javafx.scene.input.KeyCode.ESCAPE && btnExitFullscreen.isVisible()) {
+                                                toggleFullscreen.run();
+                                                ke.consume();
+                                        }
+                                });
+                        }
+                });
 
                 return rootPane;
         }
@@ -915,10 +977,10 @@ public class SwarmForgeClient extends Application {
         }
 
         private Node createSettingsPane() {
-                org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-                VBox main = new VBox(20);
-                main.setPadding(new Insets(25));
-                main.setMaxWidth(600);
+                org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
+                VBox main = new VBox(10);
+                main.setPadding(new Insets(10, 15, 10, 15));
+                main.setMaxWidth(650);
 
                 Label title = new Label();
                 title.textProperty().bind(i18n.createStringBinding("settings.title"));

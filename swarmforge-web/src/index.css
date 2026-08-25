@@ -1,3 +1,40 @@
+/* Look & Feel Design System Themes: Gaming, Scientifique, Réaliste (Naturel) */
+:root {
+  --bg-primary: #0b0f19;
+  --bg-panel: rgba(15, 23, 42, 0.85);
+  --bg-panel-border: rgba(255, 255, 255, 0.12);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent-color: #38bdf8;
+  --accent-glow: rgba(56, 189, 248, 0.4);
+  --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --panel-radius: 12px;
+}
+
+[data-theme="scientific"] {
+  --bg-primary: #0f172a;
+  --bg-panel: rgba(255, 255, 255, 0.94);
+  --bg-panel-border: rgba(148, 163, 184, 0.4);
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --accent-color: #2563eb;
+  --accent-glow: rgba(37, 99, 235, 0.3);
+  --font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  --panel-radius: 4px;
+}
+
+[data-theme="realistic"] {
+  --bg-primary: #0d150e;
+  --bg-panel: rgba(20, 32, 22, 0.88);
+  --bg-panel-border: rgba(163, 230, 53, 0.2);
+  --text-main: #f0fdf4;
+  --text-muted: #86efac;
+  --accent-color: #84cc16;
+  --accent-glow: rgba(132, 204, 22, 0.4);
+  --font-family: 'Georgia', 'Outfit', system-ui, serif;
+  --panel-radius: 16px;
+}
+
 /* Custom Global Styling & Mouseover Hover Effects for SwarmForge Studio */
 * {
   box-sizing: border-box;
@@ -6,11 +43,12 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: #0b0f19;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  color: #f8fafc;
+  background-color: var(--bg-primary);
+  font-family: var(--font-family);
+  color: var(--text-main);
   overflow: hidden;
   user-select: none;
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 /* Sleek Modern Custom Scrollbars */
@@ -25,23 +63,25 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(56, 189, 248, 0.4);
+  background: var(--accent-color);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.8);
+  background: var(--accent-color);
+  filter: brightness(1.2);
 }
 
 /* Firefox Scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(56, 189, 248, 0.4) rgba(15, 23, 42, 0.6);
+  scrollbar-color: var(--accent-color) rgba(15, 23, 42, 0.6);
 }
 
 /* Universal Hover / Mouseover Visual Feedback */
 button, select, input[type="button"], input[type="submit"] {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
 }
 
 button:hover {
@@ -54,12 +94,12 @@ button:active {
 }
 
 select:hover {
-  border-color: #38bdf8 !important;
-  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 8px var(--accent-glow);
 }
 
 input[type="number"]:hover, input[type="text"]:hover {
-  border-color: #38bdf8 !important;
+  border-color: var(--accent-color) !important;
 }
 
 /* Range input thumb mouseover styling */
@@ -76,7 +116,18 @@ input[type="range"]:hover::-webkit-slider-thumb {
   filter: brightness(1.2);
 }
 
-/* Keyframes for Toast & Animations */
+/* Keyframes for Phantom Nest Pulsing Glow & Animations */
+@keyframes phantomPulse {
+  0%, 100% {
+    opacity: 0.35;
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.5));
+  }
+  50% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 20px rgba(56, 189, 248, 0.9));
+  }
+}
+
 @keyframes slideDownFade {
   from {
     opacity: 0;
@@ -90,9 +141,9 @@ input[type="range"]:hover::-webkit-slider-thumb {
 
 @keyframes pulseGlow {
   0%, 100% {
-    box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    box-shadow: 0 0 10px var(--accent-glow);
   }
   50% {
-    box-shadow: 0 0 20px rgba(56, 189, 248, 0.7);
+    box-shadow: 0 0 20px var(--accent-glow);
   }
 }

@@ -436,7 +436,7 @@ public class SpeciesPresetManager {
     }
 
     public Set<String> getPresetNames() {
-        return presets.keySet();
+        return new TreeSet<>(presets.keySet());
     }
 
     public CustomSpecies getPreset(String name) {

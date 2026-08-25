@@ -47,6 +47,7 @@ public class NestGeneratorPane extends BorderPane {
 
     // Synchronization control
     private CheckBox syncViewsCheckBox;
+    private CheckBox showGhostMeshCheckBox;
 
     // Controls
     private ComboBox<String> speciesModelCombo;
@@ -60,9 +61,20 @@ public class NestGeneratorPane extends BorderPane {
     private ComboBox<String> matSelect;
     private Slider workerSizeSlider;
     private Slider depthSlider, tunnelWidthSlider, branchingSlider;
-    private Spinner<Integer> initialFoodSpinner;
     private Label lblTotalChambersValue;
     private final Map<String, Spinner<Integer>> chamberSpinners = new LinkedHashMap<>();
+
+    // Placement Evaluator Controls (Embedded Live Diagnostics)
+    private Slider evalHeightSlider;
+    private ComboBox<String> evalOrientationCombo;
+    private Slider evalTempSlider;
+    private Slider evalMoistureSlider;
+    private Slider evalForagingSlider;
+    private Slider evalCompactionSlider;
+    private ProgressBar evalScoreProgressBar;
+    private Label evalScoreLabel;
+    private Label evalBadgeLabel;
+    private VBox evalRecommendationsBox;
 
     // Presets
     private ComboBox<String> presetsCombo;
@@ -125,7 +137,7 @@ public class NestGeneratorPane extends BorderPane {
                     Alert.AlertType.CONFIRMATION,
                     "Attention : Vous avez des modifications non enregistrées sur la configuration du nid.\n\nVoulez-vous vraiment charger le preset '" + s + "' et abandonner vos modifications ?"
                 );
-                alert.setTitle("Modifications non enregistrées");
+                alert.setTitle(I18nManager.getInstance().get("common.dialog.unsaved"));
                 alert.setHeaderText("Changement de preset de nid");
                 java.util.Optional<ButtonType> res = alert.showAndWait();
                 if (res.isEmpty() || res.get() != ButtonType.OK) {
@@ -174,19 +186,8 @@ public class NestGeneratorPane extends BorderPane {
         bImp.setTooltip(new Tooltip("Importer un fichier JSON de configuration de nid."));
         bImp.setOnAction(e -> doImport());
 
-        Button bEval = new Button("🧪 Évaluer Placement");
-        bEval.setGraphic(new FontIcon(Feather.CHECK_CIRCLE));
-        bEval.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
-        bEval.setTooltip(new Tooltip("Évaluer la viabilité biologique, la hauteur et le placement de la ruche ou du nid."));
-        bEval.setOnAction(e -> {
-            javafx.stage.Stage stage = (getScene() != null && getScene().getWindow() instanceof javafx.stage.Stage)
-                    ? (javafx.stage.Stage) getScene().getWindow() : null;
-            new HivePlacementEvaluatorDialog(stage, getConfiguration()).show();
-        });
-
         r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd, bDel,
-            new Separator(Orientation.VERTICAL), bExp, bImp,
-            new Separator(Orientation.VERTICAL), bEval);
+            new Separator(Orientation.VERTICAL), bExp, bImp);
         v.getChildren().addAll(r, new Separator());
         return v;
     }
@@ -224,21 +225,36 @@ public class NestGeneratorPane extends BorderPane {
     // ── Config panel ──────────────────────────────────────────────────────────
 
     private void populateSpeciesModelCombo() {
+        filterSpeciesModelComboByCategory(categorySelect != null ? categorySelect.getValue() : null);
+    }
+
+    private void filterSpeciesModelComboByCategory(String category) {
         if (speciesModelCombo == null) return;
+        String targetType = null;
+        if (category != null) {
+            if (category.contains("Ants")) targetType = "ANT";
+            else if (category.contains("Honeybees") || category.contains("Bumblebees")) targetType = "BEE";
+            else if (category.contains("Wasps")) targetType = "WASP";
+            else if (category.contains("Termites")) targetType = "TERMITE";
+        }
+
+        String curSel = speciesModelCombo.getValue();
+        boolean wasUpdating = isUpdatingSpeciesCombo;
         isUpdatingSpeciesCombo = true;
         try {
-            String curSel = speciesModelCombo.getValue();
             speciesModelCombo.getItems().clear();
             org.swarmforge.client.ui.SpeciesPresetManager mgr = new org.swarmforge.client.ui.SpeciesPresetManager();
             for (String pName : mgr.getPresetNames()) {
                 org.swarmforge.core.species.CustomSpecies sp = mgr.getPreset(pName);
                 String icon = "🐜";
-                if (sp != null && sp.getInsectType() != null) {
-                    String t = sp.getInsectType().toUpperCase();
-                    if (t.contains("BEE") || t.contains("WASP")) icon = "🐝";
-                    else if (t.contains("TERMITE")) icon = "🐜";
+                String spType = sp != null && sp.getInsectType() != null ? sp.getInsectType().toUpperCase() : "ANT";
+                if (spType.contains("BEE") || spType.contains("WASP")) icon = "🐝";
+                else if (spType.contains("TERMITE")) icon = "🐜";
+
+                if (targetType == null || spType.contains(targetType) ||
+                    (targetType.equals("BEE") && (spType.contains("BEE") || spType.contains("WASP")))) {
+                    speciesModelCombo.getItems().add(icon + " " + pName);
                 }
-                speciesModelCombo.getItems().add(icon + " " + pName);
             }
             speciesModelCombo.getItems().add("✨ Espèce Personnalisée Active");
             if (curSel != null && speciesModelCombo.getItems().contains(curSel)) {
@@ -247,7 +263,7 @@ public class NestGeneratorPane extends BorderPane {
                 speciesModelCombo.getSelectionModel().selectFirst();
             }
         } finally {
-            isUpdatingSpeciesCombo = false;
+            isUpdatingSpeciesCombo = wasUpdating;
         }
     }
 
@@ -257,12 +273,34 @@ public class NestGeneratorPane extends BorderPane {
         cfg.setPadding(new Insets(10));
         cfg.setPrefWidth(330);
 
-        // Species Link Selector (Connection with Species Management)
-        Label speciesTitle = new Label("🔗 Modèle d'Espèce de Référence");
-        speciesTitle.setStyle("-fx-font-size:13;-fx-font-weight:bold;-fx-padding:2 0 2 0;-fx-text-fill:#38bdf8;");
+        // Master Control Block: 5 Primary Structural & Biological Parameters (Strict Order)
+        Label mainSpecsTitle = new Label("🏗️ Morphologie & Spécifications du Nid");
+        mainSpecsTitle.setStyle("-fx-font-size:13;-fx-font-weight:bold;-fx-padding:2 0 2 0;-fx-text-fill:#38bdf8;");
 
+        // 1. Insect Category
+        Label lblCat = new Label("1. Catégorie / Famille d'Insectes :");
+        lblCat.setStyle("-fx-font-weight:bold;-fx-font-size:11px;-fx-text-fill:#a78bfa;");
+        categorySelect = new ComboBox<>();
+        categorySelect.setTooltip(new Tooltip("Famille d'insectes eusociaux : adapte la morphologie générale et filtre les espèces de référence."));
+        categorySelect.getItems().addAll(
+            "🐜 Ants (Formicidae)",
+            "🐝 Honeybees (Apis)",
+            "🐝 Bumblebees (Bombus)",
+            "🐝 Wasps & Hornets (Vespidae)",
+            "🐜 Termites (Isoptera)"
+        );
+        categorySelect.getSelectionModel().selectFirst();
+        categorySelect.setPrefWidth(270);
+        categorySelect.setOnAction(e -> {
+            onCategoryChanged();
+            onManualParameterChanged();
+        });
+
+        // 2. Species Reference Model (Filtered by Category)
+        Label lblSpecies = new Label("2. Espèce de Référence (Compatible) :");
+        lblSpecies.setStyle("-fx-font-weight:bold;-fx-font-size:11px;-fx-text-fill:#38bdf8;");
         speciesModelCombo = new ComboBox<>();
-        speciesModelCombo.setTooltip(new Tooltip("Choisissez le modèle d'espèce de référence (ex: Lasius, Atta, Apis, Vespula, Macrotermes) pour pré-configurer le nid."));
+        speciesModelCombo.setTooltip(new Tooltip("Modèle d'espèce de référence dont les caractéristiques biologiques déduisent la taille et les galeries."));
         populateSpeciesModelCombo();
         speciesModelCombo.setPrefWidth(270);
         speciesModelCombo.setOnAction(e -> {
@@ -271,10 +309,44 @@ public class NestGeneratorPane extends BorderPane {
             }
         });
 
-        Label stageTitle = new Label();
-        stageTitle.textProperty().bind(i18n.createStringBinding("nest.species.age"));
-        stageTitle.setStyle("-fx-font-size:11;-fx-font-weight:bold;-fx-text-fill:#94a3b8;-fx-padding:2 0 0 0;");
+        // 3. Nest Architecture Type
+        Label lblArch = new Label("3. Type d'Architecture du Nid :");
+        lblArch.setStyle("-fx-font-weight:bold;-fx-font-size:11px;-fx-text-fill:#eab308;");
+        archSelect = new ComboBox<>();
+        archSelect.setTooltip(new Tooltip("Architecture biologique : 11 structures réelles (Ruche en cire, Nid papier, Cathédrale termite, Dôme, Souterrain, etc.)."));
+        archSelect.getItems().addAll(
+            "ARBOREAL_SILK_LEAF", "BAMBOO_STEM_NEST", "BIVOUAC_LIVING_NEST",
+            "BURROW_UNDERGROUND", "CARTON_NEST", "CATHEDRAL_MOUND",
+            "HOLLOW_TRUNK_NEST", "PAPER_PEDUNCULATE", "SUBTERRANEAN_FUNGI_VAULT",
+            "SURFACE_MOUND", "WAX_COMB_HEXAGONAL", "WAX_POTS_CLUSTER", "WOODEN_BEEHIVE");
+        archSelect.getSelectionModel().selectFirst();
+        archSelect.setPrefWidth(270);
+        archSelect.setOnAction(e -> {
+            onManualParameterChanged();
+            regen();
+            repaint();
+        });
 
+        // 4. Construction Material
+        Label lblMat = new Label("4. Matériau de Construction :");
+        lblMat.setStyle("-fx-font-weight:bold;-fx-font-size:11px;-fx-text-fill:#22c55e;");
+        matSelect = new ComboBox<>();
+        matSelect.setTooltip(new Tooltip("Matériau biologique de construction (Terre, Cire, Papier, Ciment stercoral, Soie, Propolis, Carton, Corps vivants)."));
+        matSelect.getItems().addAll(
+            "BEESWAX", "CARTON_PULP", "EARTH", "LIVING_INSECT_BODIES",
+            "PROPOLIS", "SILK_WEAVE", "STERCORAL_CEMENT", "TREE_BRANCH",
+            "TREE_LEAF", "TREE_TRUNK", "WOOD_PLANK", "WOOD_PULP_PAPER");
+        matSelect.getSelectionModel().selectFirst();
+        matSelect.setPrefWidth(270);
+        matSelect.setOnAction(e -> {
+            onManualParameterChanged();
+            regen();
+            repaint();
+        });
+
+        // 5. Nest Development Stage / Maturity
+        Label lblStage = new Label("5. Stade de Développement / Maturité :");
+        lblStage.setStyle("-fx-font-weight:bold;-fx-font-size:11px;-fx-text-fill:#ec4899;");
         nestStageCombo = new ComboBox<>();
         nestStageCombo.setTooltip(new Tooltip("Stade de maturité de la colonie (Fondation < 200 ind., Établi 25%, Mature 100%, Vieux Nid / Supercolonie > 200%)."));
         nestStageCombo.getItems().addAll(
@@ -294,102 +366,61 @@ public class NestGeneratorPane extends BorderPane {
         speciesStatusLabel = new Label("Nid synchronisé avec le modèle d'espèce.");
         speciesStatusLabel.setStyle("-fx-font-size:10;-fx-text-fill:#94a3b8;-fx-wrap-text:true;");
 
-        VBox speciesBlock = new VBox(6,
-            speciesTitle, new Separator(),
-            speciesModelCombo,
-            stageTitle, nestStageCombo,
-            speciesStatusLabel
-        );
-        speciesBlock.getStyleClass().add("card-pane");
-
-        // Nest Architecture & Species (non-collapsible block)
-        Label archTitle = new Label();
-        archTitle.textProperty().bind(i18n.createStringBinding("nest.arch.title"));
-        archTitle.setStyle("-fx-font-size:13;-fx-font-weight:bold;-fx-padding:2 0 2 0;");
-
-        Label cl = new Label();
-        cl.textProperty().bind(i18n.createStringBinding("nest.arch.category"));
-        categorySelect = new ComboBox<>();
-        categorySelect.setTooltip(new Tooltip("Famille d'insectes eusociaux : adapte la morphologie générale et le style architectural du nid."));
-        categorySelect.getItems().addAll(
-            "🐜 Ants (Formicidae)",
-            "🐝 Honeybees (Apis)",
-            "🐝 Bumblebees (Bombus)",
-            "🐝 Wasps & Hornets (Vespidae)",
-            "🐜 Termites (Isoptera)"
-        );
-        categorySelect.getSelectionModel().selectFirst();
-        categorySelect.setPrefWidth(270);
-        categorySelect.setOnAction(e -> {
-            onCategoryChanged();
-            onManualParameterChanged();
-        });
-
-        Label al = new Label();
-        al.textProperty().bind(i18n.createStringBinding("nest.arch.type"));
-        archSelect = new ComboBox<>();
-        archSelect.setTooltip(new Tooltip("Architecture biologique : 11 structures réelles (Souterrain, Dôme, Cire, Papier, Voûtes fongiques, Carton, Bivouac, etc.)."));
-        archSelect.getItems().addAll(
-            "BURROW_UNDERGROUND", "SURFACE_MOUND", "SUBTERRANEAN_FUNGI_VAULT",
-            "WAX_COMB_HEXAGONAL", "WOODEN_BEEHIVE", "WAX_POTS_CLUSTER", "PAPER_PEDUNCULATE",
-            "CATHEDRAL_MOUND", "ARBOREAL_SILK_LEAF", "HOLLOW_TRUNK_NEST", "CARTON_NEST",
-            "BAMBOO_STEM_NEST", "BIVOUAC_LIVING_NEST");
-        archSelect.getSelectionModel().selectFirst();
-        archSelect.setPrefWidth(270);
-        archSelect.setOnAction(e -> {
-            onManualParameterChanged();
-            regen();
-            repaint();
-        });
-
-        Label ml = new Label();
-        ml.textProperty().bind(i18n.createStringBinding("nest.arch.material"));
-        matSelect = new ComboBox<>();
-        matSelect.setTooltip(new Tooltip("Matériau biologique de construction (Terre, Bois, Cire, Papier, Ciment, Soie, Propolis, Carton, Corps vivants)."));
-        matSelect.getItems().addAll("EARTH", "WOOD_PLANK", "WOOD_PULP_PAPER", "BEESWAX",
-            "STERCORAL_CEMENT", "SILK_WEAVE", "PROPOLIS", "CARTON_PULP", "TREE_TRUNK", "TREE_BRANCH", "TREE_LEAF", "LIVING_INSECT_BODIES");
-        matSelect.getSelectionModel().selectFirst();
-        matSelect.setPrefWidth(270);
-        matSelect.setOnAction(e -> {
-            onManualParameterChanged();
-            regen();
-            repaint();
-        });
-
+        // Morphological Parameters (Auto-calculated from species & adjustable sliders)
         workerSizeSlider  = mkSlider(2.0, 30.0, 5.0);
-        workerSizeSlider.setTooltip(new Tooltip("Échelle morphologique de l'ouvrière en mm : conditionne le volume lenticulaire des chambres et le gabarit des tunnels."));
+        workerSizeSlider.setTooltip(new Tooltip("Échelle morphologique de l'ouvrière (déduite automatiquement de l'espèce de référence)."));
 
         depthSlider       = mkSlider(4,  60, 20);
         depthSlider.setTooltip(new Tooltip("Profondeur maximale ou hauteur verticale du nid en cm / blocs de grille."));
 
         tunnelWidthSlider = mkSlider(1,   5,  2);
-        tunnelWidthSlider.setTooltip(new Tooltip("Diamètre de passage des galeries en mm pour la circulation des castes."));
+        tunnelWidthSlider.setTooltip(new Tooltip("Diamètre des galeries (déduit automatiquement de l'espèce de référence)."));
 
         branchingSlider   = mkSlider(1,   5,  3);
         branchingSlider.setTooltip(new Tooltip("Facteur de ramification et connexions secondaires entre les galeries et chambres."));
 
         addLsn(workerSizeSlider, depthSlider, tunnelWidthSlider, branchingSlider);
 
-        Label lblWorkerScale = new Label(); lblWorkerScale.textProperty().bind(i18n.createStringBinding("nest.arch.worker_scale"));
-        lblWorkerScale.setTooltip(new Tooltip("Taille moyenne de l'ouvrière (mm)."));
-        Label lblMaxDepth = new Label(); lblMaxDepth.textProperty().bind(i18n.createStringBinding("nest.arch.max_depth"));
-        lblMaxDepth.setTooltip(new Tooltip("Profondeur maximale du nid (cm / unités)."));
-        Label lblTunnelWidth = new Label(); lblTunnelWidth.textProperty().bind(i18n.createStringBinding("nest.arch.tunnel_width"));
-        lblTunnelWidth.setTooltip(new Tooltip("Largeur des galeries (mm)."));
-        Label lblBranching = new Label(); lblBranching.textProperty().bind(i18n.createStringBinding("nest.arch.branching"));
-        lblBranching.setTooltip(new Tooltip("Degré d'interconnexion et de ramification."));
+        Button btnAutoAdapt = new Button("⚡ Adapter à l'Espèce");
+        btnAutoAdapt.setGraphic(new FontIcon(Feather.ZAP));
+        btnAutoAdapt.setStyle("-fx-background-color:#0284c7;-fx-text-fill:white;-fx-font-weight:bold;-fx-font-size:11px;-fx-padding:5 12;-fx-background-radius:4;");
+        btnAutoAdapt.setTooltip(new Tooltip("Adapter automatiquement la taille des ouvrières, le diamètre des galeries, la profondeur et la répartition des chambres à l'espèce sélectionnée."));
+        btnAutoAdapt.setOnAction(e -> {
+            if (activeCustomSpecies != null) {
+                configureFromSpecies(activeCustomSpecies);
+                NotificationOverlay.show(this, "Spécifications du nid adaptées à " + activeCustomSpecies.getCommonName() + " !", NotificationOverlay.NotificationType.SUCCESS);
+            } else {
+                onSpeciesModelSelected();
+                String selSp = speciesModelCombo != null && speciesModelCombo.getValue() != null ? speciesModelCombo.getValue() : "l'espèce sélectionnée";
+                NotificationOverlay.show(this, "Spécifications du nid adaptées à " + selSp + " !", NotificationOverlay.NotificationType.SUCCESS);
+            }
+        });
 
-        VBox archBlock = new VBox(7,
-            archTitle, new Separator(),
-            cl, categorySelect,
-            al, archSelect,
-            ml, matSelect,
-            lblWorkerScale,  sv(workerSizeSlider),
-            lblMaxDepth, sv(depthSlider),
-            lblTunnelWidth,       sv(tunnelWidthSlider),
-            lblBranching,   sv(branchingSlider)
+        Label lblWorkerAuto = new Label("🐜 Taille ouvrière (déduite de l'espèce) :");
+        lblWorkerAuto.setStyle("-fx-font-size:10px;-fx-text-fill:#94a3b8;");
+
+        Label lblTunnelAuto = new Label("🚇 Largeur galeries (déduite) :");
+        lblTunnelAuto.setStyle("-fx-font-size:10px;-fx-text-fill:#94a3b8;");
+
+        Label lblMaxDepth = new Label(); lblMaxDepth.textProperty().bind(i18n.createStringBinding("nest.arch.max_depth"));
+        Label lblBranching = new Label(); lblBranching.textProperty().bind(i18n.createStringBinding("nest.arch.branching"));
+
+        VBox masterBlock = new VBox(7,
+            mainSpecsTitle, new Separator(),
+            lblCat, categorySelect,
+            lblSpecies, speciesModelCombo,
+            lblArch, archSelect,
+            lblMat, matSelect,
+            lblStage, nestStageCombo,
+            speciesStatusLabel,
+            new Separator(),
+            btnAutoAdapt,
+            lblWorkerAuto, sv(workerSizeSlider),
+            lblTunnelAuto, sv(tunnelWidthSlider),
+            lblMaxDepth,   sv(depthSlider),
+            lblBranching,  sv(branchingSlider)
         );
-        archBlock.getStyleClass().add("card-pane");
+        masterBlock.getStyleClass().add("card-pane");
 
         // Chamber Distribution (non-collapsible)
         Label cdTitle = new Label();
@@ -440,25 +471,215 @@ public class NestGeneratorPane extends BorderPane {
 
         updateTotalChambers();
 
-        Label lblInitialFood = new Label("🍖 Stock Nourriture Initial du Nid :");
-        lblInitialFood.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
-        lblInitialFood.setTooltip(new Tooltip("Stock de nourriture déposé initialement dans le nid au démarrage de la simulation."));
-        initialFoodSpinner = new Spinner<>(0, 50000, 500, 50);
-        initialFoodSpinner.setEditable(true);
-        initialFoodSpinner.setPrefWidth(270);
-        initialFoodSpinner.setTooltip(new Tooltip("Quantité initiale de nourriture (en unités/calories) stockée dans les loges de nourriture du nid."));
-        initialFoodSpinner.valueProperty().addListener((o, a, b) -> onManualParameterChanged());
-
         VBox cdBlock = new VBox(6, cdTitle, new Separator(),
-            totalChambersBox, grid,
-            new Separator(), lblInitialFood, initialFoodSpinner);
+            totalChambersBox, grid);
         cdBlock.getStyleClass().add("card-pane");
 
-        cfg.getChildren().addAll(speciesBlock, archBlock, cdBlock);
+        // 1. Environment Placement Parameters Block
+        VBox envPlacementBlock = buildEnvironmentPlacementBlock();
+
+        // 2. Real-Time Spatial Viability Diagnostics Block
+        VBox viabilityBlock = buildPlacementViabilityCard();
+
+        cfg.getChildren().addAll(masterBlock, cdBlock, envPlacementBlock, viabilityBlock);
         ScrollPane sc = new ScrollPane(cfg);
-        sc.setFitToWidth(true); sc.setPrefWidth(350); sc.setMaxWidth(350);
+        sc.setFitToWidth(true); sc.setPrefWidth(360); sc.setMaxWidth(360);
         return sc;
     }
+
+    private VBox buildEnvironmentPlacementBlock() {
+        Label envTitle = new Label("🌍 Paramètres de Placement Environnemental");
+        envTitle.setStyle("-fx-font-size:12;-fx-font-weight:bold;-fx-text-fill:#38bdf8;");
+
+        // 1. Height Slider
+        evalHeightSlider = mkSlider(-2.0, 15.0, 0.0);
+        evalHeightSlider.setTooltip(new Tooltip("Élévation / Profondeur du nid par rapport au niveau du sol en mètres."));
+        evalHeightSlider.valueProperty().addListener((o, a, n) -> updatePlacementViabilityScore());
+        HBox heightBox = createEvalSliderRow("Élévation / Hauteur (m) :", evalHeightSlider, "m");
+
+        // 2. Solar Orientation
+        evalOrientationCombo = new ComboBox<>();
+        evalOrientationCombo.getItems().addAll(
+            "Sud-Est (South-East - Sun Morning)",
+            "Sud (South - Full Solar)",
+            "Est (East - Morning Light)",
+            "Ouest (West - Evening Heat)",
+            "Nord (North - Shaded / Cool)"
+        );
+        evalOrientationCombo.getSelectionModel().selectFirst();
+        evalOrientationCombo.setPrefWidth(220);
+        evalOrientationCombo.setOnAction(e -> updatePlacementViabilityScore());
+
+        HBox orientRow = new HBox(8, new Label("Exposition Solaire :"), evalOrientationCombo);
+        orientRow.setAlignment(Pos.CENTER_LEFT);
+
+        // 3. Thermal Temp
+        evalTempSlider = mkSlider(5.0, 42.0, 22.0);
+        evalTempSlider.setTooltip(new Tooltip("Température microclimatique ambiante de l'habitat en °C."));
+        evalTempSlider.valueProperty().addListener((o, a, n) -> updatePlacementViabilityScore());
+        HBox tempBox = createEvalSliderRow("Température (°C) :", evalTempSlider, "°C");
+
+        // 4. Substrate Moisture
+        evalMoistureSlider = mkSlider(0.0, 100.0, 45.0);
+        evalMoistureSlider.setTooltip(new Tooltip("Taux d'humidité relative du substrat ou de l'air en %."));
+        evalMoistureSlider.valueProperty().addListener((o, a, n) -> updatePlacementViabilityScore());
+        HBox moistureBox = createEvalSliderRow("Humidité Substrat (%) :", evalMoistureSlider, "%");
+
+        // 5. Foraging Radius
+        evalForagingSlider = mkSlider(5.0, 300.0, 35.0);
+        evalForagingSlider.setTooltip(new Tooltip("Distance moyenne vers les ressources florales, eau ou proies en mètres."));
+        evalForagingSlider.valueProperty().addListener((o, a, n) -> updatePlacementViabilityScore());
+        HBox foragingBox = createEvalSliderRow("Distance Fleurs (m) :", evalForagingSlider, "m");
+
+        // 6. Compaction
+        evalCompactionSlider = mkSlider(10.0, 150.0, 65.0);
+        evalCompactionSlider.setTooltip(new Tooltip("Dureté / Cohésion du substrat porteur en kPa."));
+        evalCompactionSlider.valueProperty().addListener((o, a, n) -> updatePlacementViabilityScore());
+        HBox compactionBox = createEvalSliderRow("Compacité (kPa) :", evalCompactionSlider, "kPa");
+
+        VBox block = new VBox(6,
+            envTitle, new Separator(),
+            heightBox, orientRow, tempBox, moistureBox, foragingBox, compactionBox
+        );
+        block.getStyleClass().add("card-pane");
+        return block;
+    }
+
+    private VBox buildPlacementViabilityCard() {
+        Label evalTitle = new Label("📊 Diagnostic & Viabilité Spatiale en Temps Réel");
+        evalTitle.setStyle("-fx-font-size:12;-fx-font-weight:bold;-fx-text-fill:#38bdf8;");
+
+        // Results Section
+        evalScoreProgressBar = new ProgressBar(0.85);
+        evalScoreProgressBar.setPrefWidth(160);
+        evalScoreProgressBar.setPrefHeight(16);
+
+        evalScoreLabel = new Label("85%");
+        evalScoreLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #22c55e;");
+
+        evalBadgeLabel = new Label("🟢 OPTIMAL");
+        evalBadgeLabel.setStyle("-fx-background-color: #15803d; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10; -fx-font-size: 10px;");
+
+        HBox scoreHeaderBox = new HBox(8, evalScoreProgressBar, evalScoreLabel, evalBadgeLabel);
+        scoreHeaderBox.setAlignment(Pos.CENTER_LEFT);
+
+        evalRecommendationsBox = new VBox(4);
+        evalRecommendationsBox.setPadding(new Insets(6));
+        evalRecommendationsBox.setStyle("-fx-background-color: #18181b; -fx-background-radius: 6;");
+
+        VBox block = new VBox(6,
+            evalTitle, new Separator(),
+            new Label("📊 Score Global de Viabilité Spatiale :"),
+            scoreHeaderBox,
+            new Label("💡 Diagnostics & Contraintes Biologiques :"),
+            evalRecommendationsBox
+        );
+        block.getStyleClass().add("card-pane");
+
+        updatePlacementViabilityScore();
+        return block;
+    }
+
+    private HBox createEvalSliderRow(String labelText, Slider slider, String unit) {
+        HBox row = new HBox(6);
+        row.setAlignment(Pos.CENTER_LEFT);
+        Label lbl = new Label(labelText);
+        lbl.setPrefWidth(140);
+        lbl.setStyle("-fx-font-size:11px;");
+
+        Label valLbl = new Label(String.format("%.1f %s", slider.getValue(), unit));
+        valLbl.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-min-width: 48; -fx-font-size:11px;");
+        slider.valueProperty().addListener((o, a, n) -> valLbl.setText(String.format("%.1f %s", n.doubleValue(), unit)));
+
+        row.getChildren().addAll(lbl, slider, valLbl);
+        return row;
+    }
+
+    private void updatePlacementViabilityScore() {
+        if (evalScoreProgressBar == null) return;
+        double height = evalHeightSlider != null ? evalHeightSlider.getValue() : 0.0;
+        double temp = evalTempSlider != null ? evalTempSlider.getValue() : 22.0;
+        double moisture = evalMoistureSlider != null ? evalMoistureSlider.getValue() : 45.0;
+        double foraging = evalForagingSlider != null ? evalForagingSlider.getValue() : 35.0;
+        double compaction = evalCompactionSlider != null ? evalCompactionSlider.getValue() : 65.0;
+
+        String arch = archSelect != null ? archSelect.getValue() : "BURROW_UNDERGROUND";
+
+        double score = 100.0;
+        evalRecommendationsBox.getChildren().clear();
+
+        // 1. Height & Elevation Clearance Checks
+        if (arch.contains("BEEHIVE") || arch.contains("WAX_COMB")) {
+            if (height < 0.4) {
+                score -= 25.0;
+                addEvalRec("⚠️ Ruche en Bois : Risque d'humidité et prédateurs de sol. Élever à >= 0.5m du sol.");
+            } else if (height > 2.5) {
+                score -= 15.0;
+                addEvalRec("ℹ️ Hauteur élevée : Exposition au vent fort susceptible de perturber l'envol.");
+            } else {
+                addEvalRec("✅ Élévation idéale (0.5m - 2.0m) : Protection du sol et isolation.");
+            }
+        } else if (arch.contains("PAPER_PEDUNCULATE")) {
+            if (height < 2.5) {
+                score -= 35.0;
+                addEvalRec("🚨 Guêpier Suspendu : Hauteur < 2.5m vulnérable aux prédateurs terrestres.");
+            } else {
+                addEvalRec("✅ Ancrage aérien optimal : Pédoncule fixé en hauteur à l'abri du sol.");
+            }
+        } else if (arch.contains("BURROW") || arch.contains("FUNGI_VAULT")) {
+            if (height > 0.5) {
+                score -= 30.0;
+                addEvalRec("⚠️ Galerie souterraine placée au-dessus de la surface du sol.");
+            } else {
+                addEvalRec("✅ Profondeur idéale : Protection thermique naturelle du sol.");
+            }
+        }
+
+        // 2. Thermal Microclimate
+        if (temp < 15.0) { score -= 20.0; addEvalRec("⚠️ Température ambiante fraîche (<15°C) : Développement du couvain ralenti."); }
+        else if (temp > 35.0) { score -= 25.0; addEvalRec("🚨 Surchauffe thermique (>35°C) : Risque de fonte des cires ou mortalité."); }
+        else { addEvalRec("✅ Microclimat thermique optimal (18°C - 30°C)."); }
+
+        // 3. Moisture
+        if (moisture < 20.0) { score -= 20.0; addEvalRec("⚠️ Desséchement du substrat (<20%) : Risque de déshydratation du couvain."); }
+        else if (moisture > 80.0) { score -= 20.0; addEvalRec("⚠️ Saturation en eau (>80%) : Risque de moisissure fongique."); }
+        else { addEvalRec("✅ Taux d'humidité du substrat équilibré."); }
+
+        // 4. Foraging
+        if (foraging > 150.0) { score -= 20.0; addEvalRec("⚠️ Distance florale/eau élevée (>150m) : Dépense énergétique de vol élevée."); }
+        else { addEvalRec("✅ Proximité immédiate des ressources florales et eau."); }
+
+        // 5. Compaction
+        if (compaction < 30.0) { score -= 15.0; addEvalRec("⚠️ Substrat meuble instable (<30 kPa) : Risque d'effondrement."); }
+
+        score = Math.max(0.0, Math.min(100.0, score));
+        evalScoreProgressBar.setProgress(score / 100.0);
+        evalScoreLabel.setText(String.format("%.0f%%", score));
+
+        if (score >= 80) {
+            evalScoreProgressBar.setStyle("-fx-accent: #22c55e;");
+            evalScoreLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #22c55e;");
+            evalBadgeLabel.setText("🟢 OPTIMAL");
+            evalBadgeLabel.setStyle("-fx-background-color: #15803d; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10; -fx-font-size: 10px;");
+        } else if (score >= 50) {
+            evalScoreProgressBar.setStyle("-fx-accent: #f59e0b;");
+            evalScoreLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;");
+            evalBadgeLabel.setText("🟠 VIABLE");
+            evalBadgeLabel.setStyle("-fx-background-color: #b45309; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10; -fx-font-size: 10px;");
+        } else {
+            evalScoreProgressBar.setStyle("-fx-accent: #ef4444;");
+            evalScoreLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #ef4444;");
+            evalBadgeLabel.setText("🔴 CRITIQUE");
+            evalBadgeLabel.setStyle("-fx-background-color: #b91c1c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10; -fx-font-size: 10px;");
+        }
+    }
+
+    private void addEvalRec(String msg) {
+        Label l = new Label(msg);
+        l.setStyle("-fx-font-size: 10px; -fx-text-fill: #e4e4e7; -fx-wrap-text: true;");
+        evalRecommendationsBox.getChildren().add(l);
+    }
+
 
     private void onCategoryChanged() {
         String cat = categorySelect.getValue();
@@ -519,12 +740,30 @@ public class NestGeneratorPane extends BorderPane {
 
         setupMouse();
 
-        StackPane h3d = new StackPane(canvas3D);
+        Pane h3d = new Pane(canvas3D);
         h3d.setStyle("-fx-border-color:#555;-fx-border-width:1;");
-        StackPane hSide = new StackPane(canvasSide);
+        HBox.setHgrow(h3d, Priority.ALWAYS);
+
+        canvas3D.widthProperty().bind(h3d.widthProperty());
+        canvas3D.heightProperty().bind(h3d.heightProperty());
+        canvas3D.widthProperty().addListener((obs, oldV, newV) -> repaint());
+        canvas3D.heightProperty().addListener((obs, oldV, newV) -> repaint());
+
+        Pane hSide = new Pane(canvasSide);
         hSide.setStyle("-fx-border-color:#444;-fx-border-width:1;");
-        StackPane hTop  = new StackPane(canvasTop);
+        hSide.setPrefSize(215, 245);
+        canvasSide.widthProperty().bind(hSide.widthProperty());
+        canvasSide.heightProperty().bind(hSide.heightProperty());
+        canvasSide.widthProperty().addListener((obs, oldV, newV) -> repaint());
+        canvasSide.heightProperty().addListener((obs, oldV, newV) -> repaint());
+
+        Pane hTop = new Pane(canvasTop);
         hTop.setStyle("-fx-border-color:#444;-fx-border-width:1;");
+        hTop.setPrefSize(215, 245);
+        canvasTop.widthProperty().bind(hTop.widthProperty());
+        canvasTop.heightProperty().bind(hTop.heightProperty());
+        canvasTop.widthProperty().addListener((obs, oldV, newV) -> repaint());
+        canvasTop.heightProperty().addListener((obs, oldV, newV) -> repaint());
 
         Label ls = new Label();
         ls.textProperty().bind(i18n.createStringBinding("nest.view.side"));
@@ -539,6 +778,7 @@ public class NestGeneratorPane extends BorderPane {
 
         HBox area = new HBox(6, h3d, side);
         area.setPadding(new Insets(8, 8, 4, 8));
+        VBox.setVgrow(area, Priority.ALWAYS);
 
         // UI Legend & Control Bar under canvas area
         HBox legendBar = buildLegendBar();
@@ -557,11 +797,17 @@ public class NestGeneratorPane extends BorderPane {
         syncViewsCheckBox.setSelected(true);
         syncViewsCheckBox.setStyle("-fx-text-fill:#00d4ff;-fx-font-weight:bold;-fx-font-size:11;");
 
+        showGhostMeshCheckBox = new CheckBox("👻 Vue fantôme 3D");
+        showGhostMeshCheckBox.setSelected(true);
+        showGhostMeshCheckBox.setStyle("-fx-text-fill:#38bdf8;-fx-font-weight:bold;-fx-font-size:11;");
+        showGhostMeshCheckBox.setTooltip(new Tooltip("Activer ou désactiver l'affichage de la vue fantôme 3D des structures de nid."));
+        showGhostMeshCheckBox.setOnAction(e -> repaint());
+
         Label title = new Label();
         title.textProperty().bind(i18n.createStringBinding("nest.legend.title"));
         title.setStyle("-fx-font-weight:bold;-fx-text-fill:#aaa;-fx-font-size:11;");
 
-        bar.getChildren().addAll(syncViewsCheckBox, new Separator(Orientation.VERTICAL), title);
+        bar.getChildren().addAll(syncViewsCheckBox, showGhostMeshCheckBox, new Separator(Orientation.VERTICAL), title);
 
         String[][] items = {
             {"nest.legend.entrance", "#32CD32"},
@@ -790,9 +1036,6 @@ public class NestGeneratorPane extends BorderPane {
                 if (stg >= 0 && stg < nestStageCombo.getItems().size()) {
                     nestStageCombo.getSelectionModel().select(stg);
                 }
-            }
-            if (c.containsKey("initialFood") && initialFoodSpinner != null) {
-                initialFoodSpinner.getValueFactory().setValue(((Number) c.get("initialFood")).intValue());
             }
             if (c.containsKey("chamberDistribution")) {
                 @SuppressWarnings("unchecked")
@@ -1056,7 +1299,6 @@ public class NestGeneratorPane extends BorderPane {
         c.put("tunnelWidth",  (int) tunnelWidthSlider.getValue());
         c.put("branching",    (int) branchingSlider.getValue());
         c.put("nestStageIndex", nestStageCombo != null ? nestStageCombo.getSelectionModel().getSelectedIndex() : 2);
-        c.put("initialFood", initialFoodSpinner != null ? initialFoodSpinner.getValue() : 500);
         Map<String,Integer> dist = new LinkedHashMap<>();
         chamberSpinners.forEach((k,v) -> dist.put(k, v.getValue()));
         c.put("chamberDistribution", dist);
@@ -1076,9 +1318,9 @@ public class NestGeneratorPane extends BorderPane {
 
     // ── Drawing delegates ─────────────────────────────────────────────────────
 
-    private void draw3D()   { NestRenderer.draw3D(nest, gc3D, canvas3D.getWidth(), canvas3D.getHeight(), azimuth, elevation, zoom, getTunnelWidth(), pan3DX, pan3DY); }
-    private void drawSide() { NestRenderer.drawSide(nest, gcSide, canvasSide.getWidth(), canvasSide.getHeight(), getTunnelWidth(), sideZoom, sidePanX, sidePanY); }
-    private void drawTop()  { NestRenderer.drawTop(nest,  gcTop,  canvasTop.getWidth(),  canvasTop.getHeight(),  getTunnelWidth(), topZoom, topPanX, topPanY); }
+    private void draw3D()   { if (canvas3D != null && canvas3D.getWidth() >= 10 && canvas3D.getHeight() >= 10) NestRenderer.draw3D(nest, gc3D, canvas3D.getWidth(), canvas3D.getHeight(), azimuth, elevation, zoom, getTunnelWidth(), pan3DX, pan3DY, showGhostMeshCheckBox == null || showGhostMeshCheckBox.isSelected()); }
+    private void drawSide() { if (canvasSide != null && canvasSide.getWidth() >= 10 && canvasSide.getHeight() >= 10) NestRenderer.drawSide(nest, gcSide, canvasSide.getWidth(), canvasSide.getHeight(), getTunnelWidth(), sideZoom, sidePanX, sidePanY); }
+    private void drawTop()  { if (canvasTop != null && canvasTop.getWidth() >= 10 && canvasTop.getHeight() >= 10) NestRenderer.drawTop(nest,  gcTop,  canvasTop.getWidth(),  canvasTop.getHeight(),  getTunnelWidth(), topZoom, topPanX, topPanY); }
 
     // ── Inner model classes ───────────────────────────────────────────────────
 

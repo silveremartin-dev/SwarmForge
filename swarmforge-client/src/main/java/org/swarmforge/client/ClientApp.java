@@ -6,6 +6,8 @@
  */
 package org.swarmforge.client;
 
+import org.swarmforge.client.util.I18nManager;
+
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -68,11 +70,11 @@ public class ClientApp extends Application {
         } catch (Exception ignored) {}
 
         // Title
-        Label title = new Label("SwarmForge Viewer");
+        Label title = new Label(I18nManager.getInstance().get("client.title"));
         title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
         titleBox.getChildren().add(title);
 
-        Label subtitle = new Label("Connect to a running simulation");
+        Label subtitle = new Label(I18nManager.getInstance().get("client.subtitle"));
         subtitle.setStyle("-fx-font-size: 14px;");
 
         // Server Connection Form
@@ -81,11 +83,11 @@ public class ClientApp extends Application {
         form.setVgap(10);
         form.setAlignment(Pos.CENTER);
 
-        Label lblHost = new Label("Server Host:");
+        Label lblHost = new Label(I18nManager.getInstance().get("client.host"));
         TextField txtHost = new TextField(serverHost);
         txtHost.setPromptText("localhost");
 
-        Label lblPort = new Label("Server Port:");
+        Label lblPort = new Label(I18nManager.getInstance().get("client.port"));
         lblPort.setId("lblPort");
         TextField txtPort = new TextField(String.valueOf(serverPort));
         txtPort.setPromptText("50051");
@@ -96,7 +98,7 @@ public class ClientApp extends Application {
         form.add(txtPort, 1, 1);
 
         // God Mode Toggle
-        CheckBox chkGodMode = new CheckBox("Enable God Mode (Interventions)");
+        CheckBox chkGodMode = new CheckBox(I18nManager.getInstance().get("client.godmode"));
         chkGodMode.setId("godModeToggle");
         chkGodMode.setSelected(false);
 
@@ -111,7 +113,7 @@ public class ClientApp extends Application {
         HBox buttons = new HBox(15);
         buttons.setAlignment(Pos.CENTER);
 
-        Button btnRefresh = new Button("Refresh List");
+        Button btnRefresh = new Button(I18nManager.getInstance().get("client.refresh"));
         btnRefresh.setId("btnRefresh");
         btnRefresh.setOnAction(e -> {
             serverHost = txtHost.getText();
@@ -119,7 +121,7 @@ public class ClientApp extends Application {
             refreshSimulationList(simList);
         });
 
-        Button btnConnect = new Button("Connect & View");
+        Button btnConnect = new Button(I18nManager.getInstance().get("client.connect"));
         btnConnect.setStyle("-fx-font-weight: bold;");
         btnConnect.setOnAction(e -> {
             serverHost = txtHost.getText();
@@ -136,10 +138,10 @@ public class ClientApp extends Application {
         buttons.getChildren().addAll(btnRefresh, btnConnect);
 
         // Status
-        Label status = new Label("Ready");
+        Label status = new Label(I18nManager.getInstance().get("status.ready"));
         status.setId("statusLabel");
 
-        Label availableSimsLabel = new Label("Available Simulations");
+        Label availableSimsLabel = new Label(I18nManager.getInstance().get("client.available_sims"));
         availableSimsLabel.setId("availableSimsLabel");
 
         root.getChildren().addAll(titleBox, subtitle, new Separator(), form, chkGodMode,
@@ -198,7 +200,7 @@ public class ClientApp extends Application {
         VBox infoPanel = new VBox(10);
         infoPanel.setAlignment(Pos.CENTER);
         infoPanel.setPadding(new Insets(20));
-        Label infoTitle = new Label("Controller Active");
+        Label infoTitle = new Label(I18nManager.getInstance().get("client.controller_active"));
         infoTitle.setStyle("-fx-font-size: 24px;");
         Label infoDesc = new Label(
                 "3D Simulation is running in a separate window.\nUse this window for God Mode controls.");
@@ -275,15 +277,15 @@ public class ClientApp extends Application {
         panel.setPadding(new Insets(10));
         panel.setMinWidth(250);
 
-        Label title = new Label("⚡ GOD MODE");
+        Label title = new Label(I18nManager.getInstance().get("godmode.title"));
         title.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
 
         // Intervention buttons
-        Button btnAddFood = new Button("Add Food Source");
-        Button btnSpawnAnts = new Button("Spawn Ants");
-        Button btnTriggerRain = new Button("Trigger Rain");
-        Button btnTriggerHeat = new Button("Heat Wave");
-        Button btnKillSelected = new Button("Kill Selected");
+        Button btnAddFood = new Button(I18nManager.getInstance().get("godmode.add_food"));
+        Button btnSpawnAnts = new Button(I18nManager.getInstance().get("godmode.spawn_ants"));
+        Button btnTriggerRain = new Button(I18nManager.getInstance().get("godmode.trigger_rain"));
+        Button btnTriggerHeat = new Button(I18nManager.getInstance().get("godmode.heat_wave"));
+        Button btnKillSelected = new Button(I18nManager.getInstance().get("godmode.kill_selected"));
 
         btnKillSelected.setId("btnKillSelected");
 

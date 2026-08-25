@@ -6,6 +6,8 @@
  */
 package org.swarmforge.client.ui;
 
+import org.swarmforge.client.util.I18nManager;
+
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -231,7 +233,7 @@ public class StatisticsDashboard extends VBox {
     private double currentSelectedWindowSec = 180.0; // 3 minutes default
 
     public StatisticsDashboard() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+        org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
         setSpacing(14);
         setPadding(new Insets(14));
 
@@ -422,7 +424,7 @@ public class StatisticsDashboard extends VBox {
     }
 
     private GridPane createSummaryPanel() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+        org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
         GridPane grid = new GridPane();
         grid.setHgap(16);
         grid.setVgap(10);

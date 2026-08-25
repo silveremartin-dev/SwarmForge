@@ -1,8 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Camera, Video, Square, Download, Play, Pause } from 'lucide-react'
+import { Camera, Video, Square, Download, Play, Pause, Eye, Biohazard, ShieldAlert } from 'lucide-react'
 import { showToast } from '../store/toastStore'
+import { useSimulationStore } from '../store/simulationStore'
+import { soundEngine } from '../utils/soundEngine'
 
 export default function ViewportToolbar({ canvasRef }) {
+    const { phantomNestsVisible, togglePhantomNests, triggerEpidemic, cureEpidemic, diseaseParams } = useSimulationStore()
     const [recording, setRecording] = useState(false)
     const [recordingPaused, setRecordingPaused] = useState(false)
     const [recordTime, setRecordTime] = useState(0)
@@ -140,6 +143,17 @@ export default function ViewportToolbar({ canvasRef }) {
         }
     }, [recording, recordedChunks])
 
+    const handleEpidemicToggle = () => {
+        if (diseaseParams.activeOutbreak) {
+            cureEpidemic()
+            showToast('💉 Soin fongicide appliqué: Épidémie stoppée', 'info')
+        } else {
+            triggerEpidemic('CORDYCEPS', 4)
+            soundEngine.triggerDiseaseOutbreakSound()
+            showToast('☣️ ÉPIDÉMIE DE CORDYCEPS DÉCLENCHÉE !', 'warn')
+        }
+    }
+
     return (
         <div style={{
             position: 'absolute',
@@ -150,15 +164,63 @@ export default function ViewportToolbar({ canvasRef }) {
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            background: 'rgba(15, 23, 42, 0.85)',
+            background: 'var(--bg-panel, rgba(15, 23, 42, 0.85))',
             backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
+            border: '1px solid var(--bg-panel-border, rgba(255, 255, 255, 0.15))',
             padding: '8px 16px',
             borderRadius: 30,
             boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
             color: '#fff',
-            fontFamily: 'system-ui, sans-serif'
+            fontFamily: 'var(--font-family, system-ui, sans-serif)'
         }}>
+            {/* Phantom / Ghost Nests Overlay Toggle Button */}
+            <button
+                onClick={togglePhantomNests}
+                title="Activer/Désactiver l'affichage Fantomatique (Hologramme) des Nids"
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 12px',
+                    background: phantomNestsVisible ? 'rgba(56, 189, 248, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+                    border: `1px solid ${phantomNestsVisible ? '#38bdf8' : 'rgba(255, 255, 255, 0.15)'}`,
+                    color: phantomNestsVisible ? '#38bdf8' : '#94a3b8',
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                }}
+            >
+                <Eye size={15} />
+                <span>{phantomNestsVisible ? '👻 Fantomatique Activé' : '👻 Fantomatique Masqué'}</span>
+            </button>
+
+            {/* Disease Epidemic Outbreak Quick Action Button */}
+            <button
+                onClick={handleEpidemicToggle}
+                title={diseaseParams.activeOutbreak ? "Éradiquer l'épidémie avec un fongicide" : "Déclencher une épidémie de Cordyceps"}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 12px',
+                    background: diseaseParams.activeOutbreak ? 'rgba(239, 68, 68, 0.3)' : 'rgba(163, 230, 53, 0.15)',
+                    border: `1px solid ${diseaseParams.activeOutbreak ? '#ef4444' : '#84cc16'}`,
+                    color: diseaseParams.activeOutbreak ? '#f87171' : '#a3e635',
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                }}
+            >
+                <Biohazard size={15} />
+                <span>{diseaseParams.activeOutbreak ? '☣️ Soigner Épidémie' : '☣️ Injecter Pathogène'}</span>
+            </button>
+
+            <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.2)' }} />
+
             {/* Photo Capture Button */}
             <button
                 onClick={takePhotoSnapshot}

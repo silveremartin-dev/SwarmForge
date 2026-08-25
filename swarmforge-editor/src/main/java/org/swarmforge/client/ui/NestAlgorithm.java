@@ -59,6 +59,7 @@ public final class NestAlgorithm {
             case "CARTON_NEST"             -> generateCartonNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
             case "BAMBOO_STEM_NEST"        -> generateStemGallNest(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
             case "BIVOUAC_LIVING_NEST"     -> generateBivouacNest(nest, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
+            case "HOLLOW_TRUNK_NEST"       -> generateHollowTrunkNest(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, anatomicalScale, rnd);
             case "SURFACE_MOUND"           -> generateMoundBurrow(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd, true);
             default                        -> generateMoundBurrow(nest, maxDepth, chamberTarget, queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, branching, anatomicalScale, rnd, false);
         }
@@ -496,6 +497,38 @@ public final class NestAlgorithm {
                 edge(nest, prevBody, bodyCluster, rnd);
             }
             prevBody = bodyCluster;
+        }
+    }
+
+    // ── 11. Hollow Tree Trunk Cavity Nest ─────────────────────────────────────
+
+    private static void generateHollowTrunkNest(NestGeneratorPane.GeneratedNest nest, double maxDepth,
+            int count, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, double scale, Random rnd) {
+        // Hollow trunk knot entrance hole
+        NestGeneratorPane.NestNode knotHole = node(nest, 0, -5.5 * scale, -4.0 * scale, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN);
+
+        // Central vertical cavity shaft
+        NestGeneratorPane.NestNode cavityCenter = node(nest, 0, 0, 0, "JUNCTION", 2.0 * scale, Color.SIENNA);
+        edge(nest, knotHole, cavityCenter, rnd);
+
+        int levels = Math.max(3, count / 3);
+        NestGeneratorPane.NestNode prevLevel = cavityCenter;
+        for (int l = 0; l < levels; l++) {
+            double z = (-10.0 + l * (20.0 / Math.max(1, levels - 1))) * scale;
+            double ang = l * 1.2 + rnd.nextDouble() * 0.4;
+            double rad = (2.0 + (l % 2) * 2.5) * scale;
+
+            String type = (l == levels / 2 && queenCnt > 0) ? "QUEEN"
+                        : (z < -3.0 * scale) ? "FOOD"
+                        : (z > 7.0 * scale && wasteCnt > 0) ? "WASTE" : "BROOD";
+            Color col = type.equals("QUEEN") ? Color.GOLD : type.equals("FOOD") ? Color.ORANGE : type.equals("WASTE") ? Color.INDIANRED : Color.DEEPSKYBLUE;
+
+            NestGeneratorPane.NestNode cell = nodeLenticular(nest, rad * Math.cos(ang), rad * Math.sin(ang), z, type, 3.5 * scale, 3.5 * scale, 2.2 * scale, col);
+            edge(nest, cavityCenter, cell, rnd);
+            if (l > 0) {
+                edge(nest, prevLevel, cell, rnd);
+            }
+            prevLevel = cell;
         }
     }
 

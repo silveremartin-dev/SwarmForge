@@ -568,6 +568,18 @@ public class JmeGameApp extends SimpleApplication {
     }
 
     /**
+     * Focus camera on 2D world coordinates (X, Y) from minimap or navigation controls.
+     */
+    public void focusCameraOnWorldCoords(double x, double y) {
+        panCameraTo((float) x, 15.0f, (float) y);
+    }
+
+    public void focusCameraOnWorldCoords(float x, float y) {
+        panCameraTo(x, 15.0f, y);
+    }
+
+
+    /**
      * Reset camera to default 3D perspective position.
      */
     public void resetCamera() {
@@ -714,6 +726,18 @@ public class JmeGameApp extends SimpleApplication {
                     if (sunLight != null) {
                         sunLight.setColor(ColorRGBA.White);
                     }
+                }
+            }
+        });
+    }
+
+    public void setScientificMode(boolean scientific) {
+        enqueueTask(() -> {
+            if (viewPort != null) {
+                if (scientific) {
+                    viewPort.setBackgroundColor(new ColorRGBA(0.02f, 0.04f, 0.08f, 1.0f));
+                } else {
+                    viewPort.setBackgroundColor(new ColorRGBA(0.06f, 0.09f, 0.16f, 1.0f));
                 }
             }
         });

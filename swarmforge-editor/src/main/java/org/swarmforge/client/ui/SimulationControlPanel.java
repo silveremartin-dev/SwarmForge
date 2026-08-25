@@ -6,6 +6,8 @@
  */
 package org.swarmforge.client.ui;
 
+import org.swarmforge.client.util.I18nManager;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -110,7 +112,7 @@ public class SimulationControlPanel extends VBox {
     public SimulationControlPanel() {
         setSpacing(10);
 
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+        org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
 
         // 1. Top Standardized Header Bar
         VBox headerVBox = new VBox(6);
@@ -126,26 +128,26 @@ public class SimulationControlPanel extends VBox {
         Region spHeader = new Region();
         HBox.setHgrow(spHeader, Priority.ALWAYS);
 
-        Button bSaveScenario = new Button("Sauvegarder");
+        Button bSaveScenario = new Button(I18nManager.getInstance().get("common.btn.save"));
         bSaveScenario.setGraphic(new FontIcon(Feather.SAVE));
         bSaveScenario.getStyleClass().add("btn-secondary");
         bSaveScenario.setTooltip(new Tooltip("Enregistrer le scénario actuel."));
         bSaveScenario.setOnAction(e -> handleSaveScenario());
 
-        Button bDeleteScenario = new Button("Supprimer");
+        Button bDeleteScenario = new Button(I18nManager.getInstance().get("common.btn.delete"));
         bDeleteScenario.setGraphic(new FontIcon(Feather.TRASH_2));
         bDeleteScenario.getStyleClass().add("btn-danger");
         bDeleteScenario.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
         bDeleteScenario.setTooltip(new Tooltip("Supprimer le scénario sélectionné."));
         bDeleteScenario.setOnAction(e -> handleDeleteScenario());
 
-        Button bExportScenario = new Button("Exporter...");
+        Button bExportScenario = new Button(I18nManager.getInstance().get("common.btn.export"));
         bExportScenario.setGraphic(new FontIcon(Feather.DOWNLOAD));
         bExportScenario.getStyleClass().add("btn-secondary");
         bExportScenario.setTooltip(new Tooltip("Exporter le scénario en JSON."));
         bExportScenario.setOnAction(e -> handleExportScenario());
 
-        Button bImportScenario = new Button("Importer...");
+        Button bImportScenario = new Button(I18nManager.getInstance().get("common.btn.import"));
         bImportScenario.setGraphic(new FontIcon(Feather.UPLOAD));
         bImportScenario.getStyleClass().add("btn-secondary");
         bImportScenario.setTooltip(new Tooltip("Importer un fichier JSON de scénario."));
@@ -498,34 +500,81 @@ public class SimulationControlPanel extends VBox {
         }
     }
 
+    private void alignWeatherWithWorld() {
+        String world = comboWorld.getValue();
+        if (world == null) return;
+        String targetWeather = "Temperate";
+        if (world.contains("Tropical") || world.contains("Amazon")) {
+            targetWeather = "Tropical";
+        } else if (world.contains("Aride") || world.contains("Desert") || world.contains("Savane")) {
+            targetWeather = "Arid";
+        } else if (world.contains("Alpin") || world.contains("Toundra") || world.contains("Montagne")) {
+            targetWeather = "Polar";
+        } else {
+            targetWeather = "Temperate";
+        }
+        selectComboIfPresent(comboWeather, targetWeather);
+        org.swarmforge.client.util.ThemeManager.createAlert(
+            Alert.AlertType.INFORMATION,
+            "Climat aligné avec succès sur '" + targetWeather + "' selon le biotope et la zone latitudinale de '" + world + "' !"
+        ).show();
+    }
+
     private void applyMetaPreset(String metaName) {
         if (metaName == null) return;
         speciesCardList.clear();
 
-        if (metaName.contains("Amazonien") || metaName.contains("Atta")) {
+        if (metaName.contains("Fondation Claustrale") || metaName.contains("Démarrage")) {
+            selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
+            selectComboIfPresent(comboWeather, "Temperate");
+            areaDescription.setText("Scénario d'initialisation biologique modélisant la fondation solitaire d'une reine claustrale de Lasius niger après le vol nuptial d'été. La reine vit en réclusion souterraine complète et métabolise ses muscles alaires pour nourrir le premier couvain d'ouvrières nanitiques. Nécessite une humidité constante et un sol stable.");
+            addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
+            if (!speciesCardList.isEmpty()) {
+                SpeciesConfigCard card = speciesCardList.get(0);
+                card.setQueenCount(1);
+                card.setWorkerCount(0);
+                card.setSoldierCount(0);
+            }
+        } else if (metaName.contains("Amazonien") || metaName.contains("Atta")) {
             selectComboIfPresent(comboWorld, "Forêt Tropicale (Tropical Rainforest)");
             selectComboIfPresent(comboWeather, "Tropical");
+            areaDescription.setText("Scénario d'écosystème néotropical axé sur la symbiose obligée entre la fourmi coupeuse de feuilles Atta sexdens et son champignon Leucoagaricus gongylophorus. Les ouvrières découpent le feuillage pour alimenter les meules souterraines tout en défendant le nid contre les parasites Cordyceps.");
             addSpeciesCard("Fourmi Coupeuse de Feuilles (Atta sexdens)");
         } else if (metaName.contains("Granivore") || metaName.contains("Messor")) {
             selectComboIfPresent(comboWorld, "Désert Aride (Arid Desert)");
             selectComboIfPresent(comboWeather, "Arid");
+            areaDescription.setText("Scénario xérique simulant la collecte, le transport et le décorticage de graines par les fourmis moissonneuses Messor barbarus. Les majors aux mandibules puissantes préparent le pain de fourmi stocké dans les chambres greniers sèches du nid.");
             addSpeciesCard("Fourmi Moissonneuse (Pogonomyrmex barbatus)");
         } else if (metaName.contains("Guerre") || metaName.contains("Territoriale")) {
             selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
             selectComboIfPresent(comboWeather, "Temperate");
+            areaDescription.setText("Scénario d'affrontement interspécifique direct entre la fourmi de feu invasive Solenopsis invicta et la fourmi noire indigène Lasius niger pour le contrôle territorial des sources de miellat et des proies protéiques.");
             addSpeciesCard("Fourmi de Feu (Solenopsis invicta)");
             addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
         } else if (metaName.contains("Rucher") || metaName.contains("Apis")) {
             selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
             selectComboIfPresent(comboWeather, "Temperate");
+            areaDescription.setText("Scénario d'organisation d'une ruche d'Apis mellifera en cavité d'arbre. Les butineuses exécutent des danses frétillantes pour indiquer les coordonnées des fleurs nectarifères et maintenir la thermorégulation du couvain.");
             addSpeciesCard("Abeille à Miel (Apis mellifera)");
-        } else if (metaName.contains("Termites")) {
+        } else if (metaName.contains("Termites") || metaName.contains("Macrotermes")) {
             selectComboIfPresent(comboWorld, "Forêt Tropicale (Tropical Rainforest)");
             selectComboIfPresent(comboWeather, "Tropical");
+            areaDescription.setText("Scénario modélisant la construction d'une termitière géante cathédrale par Macrotermes bellicosus avec ventilation passive régulant le CO2 et l'humidité requise par leurs champignons digestifs.");
             addSpeciesCard("Termite Souterrain (Reticulitermes flavipes)");
+        } else if (metaName.contains("Alpin") || metaName.contains("Hivernale")) {
+            selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
+            selectComboIfPresent(comboWeather, "Temperate");
+            areaDescription.setText("Scénario boréal montagnard avec Formica rufa. La colonie dresse un dôme d'aiguilles de pin orienté au sud pour capter le rayonnement solaire printanier et réchauffer le couvain avant la diapause.");
+            addSpeciesCard("Fourmi de Feu (Solenopsis invicta)");
+        } else if (metaName.contains("Supercolonie") || metaName.contains("Polycalique")) {
+            selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
+            selectComboIfPresent(comboWeather, "Temperate");
+            areaDescription.setText("Scénario d'organisation polycalique unicoloniale. Plusieurs nids distincts partagent la même signature chimique cuticulaire et coopèrent pacifiquement sans agression inter-nids, échangeant ouvrières et couvain.");
+            addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
         } else {
             selectComboIfPresent(comboWorld, "Tempéré Standard (Temperate Forest)");
             selectComboIfPresent(comboWeather, "Temperate");
+            areaDescription.setText("Scénario général d'écosystème terrestre multi-espèces.");
             addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
         }
     }
@@ -731,12 +780,18 @@ public class SimulationControlPanel extends VBox {
         }
     }
 
-    private TitledPane buildCheckpointsPane() {
+    private VBox buildCheckpointsPane() {
+        VBox box = new VBox(6);
+        box.setStyle("-fx-background-color: #18181b; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #d97706; -fx-border-width: 1;");
+
+        Label lblTitle = new Label("🔖 Points de Contrôle & Journal d'Interventions Mode Divin");
+        lblTitle.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 11px;");
+
         comboCheckpoints.setPrefWidth(260);
         comboCheckpoints.setPromptText("Aucun point de contrôle enregistré");
 
         Button bRestore = new Button("⏪ Restaurer Checkpoint");
-        bRestore.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+        bRestore.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-cursor: hand;");
         bRestore.setTooltip(new Tooltip("Restaure la simulation au pas de temps exact du checkpoint."));
         bRestore.setOnAction(e -> {
             org.swarmforge.core.simulation.SimulationCheckpoint sel = comboCheckpoints.getValue();
@@ -745,18 +800,14 @@ public class SimulationControlPanel extends VBox {
             }
         });
 
-        HBox row = new HBox(8, new Label("Points de contrôle :"), comboCheckpoints, bRestore);
+        HBox row = new HBox(8, new Label("Points de contrôle :") {{ setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;"); }}, comboCheckpoints, bRestore);
         row.setAlignment(Pos.CENTER_LEFT);
 
         Label lblInfo = new Label("💡 Chaque point de contrôle sauvegarde l'état physique exact et le journal d'interventions Mode Divin.");
         lblInfo.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
 
-        VBox box = new VBox(6, row, lblInfo);
-        box.setPadding(new Insets(6));
-
-        TitledPane pane = new TitledPane("🔖 Points de Contrôle & Journal d'Interventions Mode Divin", box);
-        pane.setExpanded(false);
-        return pane;
+        box.getChildren().addAll(lblTitle, row, lblInfo);
+        return box;
     }
 
     private void selectComboIfPresent(ComboBox<String> combo, String val) {
@@ -783,10 +834,13 @@ public class SimulationControlPanel extends VBox {
 
         private final ComboBox<String> nestTypeCombo = new ComboBox<>();
         private final ComboBox<String> nestPlacementCombo = new ComboBox<>();
-        private final CheckBox chkPreGeneratedNest = new CheckBox("🏗️ Nid pré-généré (Structure complète & chambres creusées dès le départ)");
+        private final ComboBox<String> nestRelationCombo = new ComboBox<>();
+        private final Spinner<Double> posXSpinner = new Spinner<>(-500.0, 500.0, 0.0, 10.0);
+        private final Spinner<Double> posZSpinner = new Spinner<>(-500.0, 500.0, 0.0, 10.0);
+        private final Spinner<Integer> initialFoodSpinner = new Spinner<>(0, 50000, 500, 50);
 
-        private final Spinner<Integer> queenSpinner = new Spinner<>(1, 50, 1);
-        private final Spinner<Integer> workerSpinner = new Spinner<>(5, 10000, 150, 25);
+        private final Spinner<Integer> queenSpinner = new Spinner<>(0, 50, 1);
+        private final Spinner<Integer> workerSpinner = new Spinner<>(0, 10000, 150, 25);
         private final Spinner<Integer> soldierSpinner = new Spinner<>(0, 2000, 20, 5);
 
         private final ComboBox<ArchitectureType> workerEngineCombo = new ComboBox<>();
@@ -811,12 +865,12 @@ public class SimulationControlPanel extends VBox {
             HBox.setHgrow(sp, Priority.ALWAYS);
 
             Button btnRemove = new Button("🗑️ Supprimer l'Espèce");
-            btnRemove.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+            btnRemove.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-cursor: hand;");
             btnRemove.setOnAction(e -> onRemove.run());
 
             header.getChildren().addAll(lblTitle, sp, btnRemove);
 
-            // 1. Filtered Nest & Placement Section
+            // 1. Filtered Nest, Placement & Inter-Nest Strategy
             HBox nestRow = new HBox(8);
             nestRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -825,33 +879,80 @@ public class SimulationControlPanel extends VBox {
 
             nestTypeCombo.getItems().setAll(getCompatibleNestTypes(speciesName));
             if (!nestTypeCombo.getItems().isEmpty()) nestTypeCombo.getSelectionModel().selectFirst();
-            nestTypeCombo.setTooltip(new Tooltip("Architectures de nids adaptées aux capacités et besoins écologiques de cette espèce."));
+            nestTypeCombo.setTooltip(new Tooltip("Architectures de nids adaptées aux capacités et besoins écologiques de cette espèce. Le nid est systématiquement pré-généré à partir de ces paramètres."));
 
             Label lblPlacement = new Label("📍 Placement :");
             lblPlacement.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 10px;");
 
             nestPlacementCombo.getItems().addAll(
-                "📍 Positionnement optimal (Centre carte hors d'eau)",
-                "👑 Fondation Reine Seule Claustrale (Sol Vierge)",
-                "🎲 Positionnement aléatoire autour du centre",
-                "🏛️ Nids multiples répartis (Cohabitation / Guerre)"
+                "📍 Centre de la Carte (Optimal hors d'eau)",
+                "👑 Fondation Reine (Sol Vierge - Surface)",
+                "🎲 Positionnement Aléatoire (Dispersé)",
+                "✋ Placement Manuel (Coordonnées X, Z)"
             );
             nestPlacementCombo.getSelectionModel().selectFirst();
-            nestPlacementCombo.setTooltip(new Tooltip("Stratégie d'implantation spatiale du nid dans la grille 3D."));
+            nestPlacementCombo.setTooltip(new Tooltip("Stratégie d'implantation spatiale du nid dans la grille 3D. Pour simuler plusieurs nids, ajoutez à nouveau la même espèce dans le scénario."));
 
-            nestRow.getChildren().addAll(lblNest, nestTypeCombo, lblPlacement, nestPlacementCombo);
+            Label lblInitialFood = new Label("🍖 Nourriture :");
+            lblInitialFood.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 10px;");
 
-            chkPreGeneratedNest.setSelected(true);
-            chkPreGeneratedNest.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px; -fx-font-weight: bold;");
-            chkPreGeneratedNest.setTooltip(new Tooltip("Si coché, génère immédiatement un nid complet avec ses galeries. Sinon, la fondatrice doit le creuser."));
+            initialFoodSpinner.setPrefWidth(75);
+            initialFoodSpinner.setEditable(true);
+            initialFoodSpinner.setTooltip(new Tooltip("Réserve initiale de ressources alimentaires attribuée au nid au lancement."));
 
-            // 2. Filtered Accessory Species Section (Proies, Prédateurs & Commensaux)
-            Label lblAccessoryTitle = new Label("🦗 Espèces Accessoires & Interprétations Écologiques (Filtrées pour " + getShortSpeciesName(speciesName) + ") :");
-            lblAccessoryTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px;");
+            nestRow.getChildren().addAll(lblNest, nestTypeCombo, lblPlacement, nestPlacementCombo, lblInitialFood, initialFoodSpinner);
 
-            setupAccessoryRows(speciesName);
+            // Manual Position Box (Visible when manual placement is chosen)
+            HBox manualPosBox = new HBox(8);
+            manualPosBox.setAlignment(Pos.CENTER_LEFT);
+            manualPosBox.setStyle("-fx-padding: 4 0 0 0;");
 
-            // 3. Demographics & AI Engines Section
+            Label lblManualX = new Label("Coordonnée X :");
+            lblManualX.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 10px;");
+            posXSpinner.setPrefWidth(85); posXSpinner.setEditable(true);
+
+            Label lblManualZ = new Label("Coordonnée Z :");
+            lblManualZ.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 10px;");
+            posZSpinner.setPrefWidth(85); posZSpinner.setEditable(true);
+
+            manualPosBox.getChildren().addAll(lblManualX, posXSpinner, lblManualZ, posZSpinner);
+            manualPosBox.setVisible(false);
+            manualPosBox.setManaged(false);
+
+            nestPlacementCombo.valueProperty().addListener((o, oldV, newV) -> {
+                boolean isManual = newV != null && newV.contains("Manuel");
+                manualPosBox.setVisible(isManual);
+                manualPosBox.setManaged(isManual);
+            });
+
+            // Inter-Nest Relationship Strategy Row
+            HBox relationRow = new HBox(8);
+            relationRow.setAlignment(Pos.CENTER_LEFT);
+
+            Label lblRelation = new Label("⚔️ Strategy Inter-Nids (Même Espèce) :");
+            lblRelation.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
+
+            nestRelationCombo.getItems().addAll(
+                "⚔️ Monocoloniale (Compétition & Guerre inter-nids - Reconnaissance par hydrocarbures cuticulaires)",
+                "🤝 Supercolonie Unicoloniale (Tolérance, entraide & échange de couvain/ouvrières)",
+                "🛡️ Neutralité Territoriale (Évitement passif sans affrontement direct)"
+            );
+            nestRelationCombo.getSelectionModel().selectFirst();
+            nestRelationCombo.setPrefWidth(420);
+            nestRelationCombo.setTooltip(new Tooltip("Configure les interactions comportementales si plusieurs nids de la même espèce sont instanciés dans la simulation."));
+
+            relationRow.getChildren().addAll(lblRelation, nestRelationCombo);
+
+            // 2. Demographics & AI Engines Standard Block (Moved before Accessory Species)
+            VBox demoBox = new VBox(6);
+            demoBox.setStyle("-fx-background-color: #121214; -fx-padding: 8; -fx-background-radius: 6; -fx-border-color: #334155; -fx-border-width: 1;");
+
+            Label lblDemoTitle = new Label("🧠 Démographie & Castes (Reines, Ouvrières, Soldats & Moteurs IA)");
+            lblDemoTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+            Label lblSpatialInfo = new Label("ℹ️ Répartition Spatiale des Castes : Les Reines et le Couvain sont déposés au cœur de la chambre royale souterraine. Les Ouvrières sont réparties dans les galeries et chambres de réserve, les Soldats à proximité des accès au nid, et les Forageuses en patrouille à la surface du sol.");
+            lblSpatialInfo.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 9.5px; -fx-wrap-text: true;");
+
             GridPane demoGrid = new GridPane();
             demoGrid.setHgap(8); demoGrid.setVgap(4);
 
@@ -868,14 +969,19 @@ public class SimulationControlPanel extends VBox {
             soldierSpinner.setPrefWidth(80); soldierSpinner.setEditable(true);
             queenSpinner.setPrefWidth(80); queenSpinner.setEditable(true);
 
-            demoGrid.add(new Label("👑 Reines :"), 0, 0); demoGrid.add(queenSpinner, 1, 0); demoGrid.add(new Label("Moteur IA :"), 2, 0); demoGrid.add(queenEngineCombo, 3, 0);
-            demoGrid.add(new Label("🐜 Ouvrières :"), 0, 1); demoGrid.add(workerSpinner, 1, 1); demoGrid.add(new Label("Moteur IA :"), 2, 1); demoGrid.add(workerEngineCombo, 3, 1);
-            demoGrid.add(new Label("⚔️ Soldats :"), 0, 2); demoGrid.add(soldierSpinner, 1, 2); demoGrid.add(new Label("Moteur IA :"), 2, 2); demoGrid.add(soldierEngineCombo, 3, 2);
+            demoGrid.add(new Label("👑 Reines :") {{ setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;"); }}, 0, 0); demoGrid.add(queenSpinner, 1, 0); demoGrid.add(new Label("Moteur IA :") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;"); }}, 2, 0); demoGrid.add(queenEngineCombo, 3, 0);
+            demoGrid.add(new Label("🐜 Ouvrières :") {{ setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;"); }}, 0, 1); demoGrid.add(workerSpinner, 1, 1); demoGrid.add(new Label("Moteur IA :") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;"); }}, 2, 1); demoGrid.add(workerEngineCombo, 3, 1);
+            demoGrid.add(new Label("⚔️ Soldats :") {{ setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;"); }}, 0, 2); demoGrid.add(soldierSpinner, 1, 2); demoGrid.add(new Label("Moteur IA :") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;"); }}, 2, 2); demoGrid.add(soldierEngineCombo, 3, 2);
 
-            TitledPane demoPane = new TitledPane("🧠 Démographie & Castes (Reines, Ouvrières, Soldats & Moteurs IA)", demoGrid);
-            demoPane.setExpanded(false);
+            demoBox.getChildren().addAll(lblDemoTitle, lblSpatialInfo, demoGrid);
 
-            cardPane.getChildren().addAll(header, nestRow, chkPreGeneratedNest, new Separator(), lblAccessoryTitle, accessoryBoxPane, demoPane);
+            // 3. Filtered Accessory Species Section (Proies, Prédateurs & Commensaux)
+            Label lblAccessoryTitle = new Label("🦗 Espèces Accessoires & Interprétations Écologiques (Filtrées pour " + getShortSpeciesName(speciesName) + ") :");
+            lblAccessoryTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px;");
+
+            setupAccessoryRows(speciesName);
+
+            cardPane.getChildren().addAll(header, nestRow, manualPosBox, relationRow, new Separator(), demoBox, new Separator(), lblAccessoryTitle, accessoryBoxPane);
         }
 
         private void setupAccessoryRows(String speciesName) {
@@ -947,6 +1053,7 @@ public class SimulationControlPanel extends VBox {
         public ArchitectureType getWorkerEngine() { return workerEngineCombo.getValue(); }
         public ArchitectureType getSoldierEngine() { return soldierEngineCombo.getValue(); }
         public ArchitectureType getQueenEngine() { return queenEngineCombo.getValue(); }
+        public int getInitialFood() { return initialFoodSpinner.getValue(); }
     }
 
     public record AccessorySpeciesInfo(String name, String role, String description, int defaultCount) {

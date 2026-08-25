@@ -150,18 +150,29 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         accessoryPresetCombo = new ComboBox<>(FXCollections.observableArrayList(
                 "Graminées à Graines (Herbes & Biomasse)",
-                "Pucerons du Pin (Cinara aphid / Miellat)",
+                "Fleurs Nectarifères & Nectaires (Acacia EFN)",
+                "Mousse Humide (Polytrichum / Substrat)",
+                "Pucerons du Pin (Cinara pini / Miellat)",
+                "Cochenilles des Racines (Eurhizococcus / Souterrain)",
                 "Larves de Ténébrion (Proies Protéiques)",
-                "Fourmilion Piégeur (Myrmeleon / Prédateur)",
-                "Champignon Entomopathogène (Cordyceps)",
+                "Termites Proies (Microtermes / Nourriture)",
+                "Fourmilion Piégeur (Myrmeleon / Entonnoir)",
+                "Araignée Sauteuse (Salticidae / Affût)",
+                "Tamandua / Tamanoir (Attaque Nid Directe)",
+                "Guêpe Parasitoïde (Eucharitidae / Ponte)",
+                "Champignon Entomopathogène (Cordyceps Zombie)",
                 "Acarien Parasite (Varroa destructor)",
-                "Mousse Humide (Polytrichum / Substrat)"
+                "Microsporidie Intestinale (Nosema bombi)",
+                "Champignon Symbiotique Atta (Leucoagaricus)",
+                "Champignon des Termites (Termitomyces)",
+                "Collemboles Détritivores (Nettoyage Dépotoir)",
+                "Staphylin Myrmécophile (Lomechusa Commensal)"
         ));
         accessoryPresetCombo.setEditable(true);
         accessoryPresetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
-        accessoryPresetCombo.setTooltip(new Tooltip("Sélectionnez une espèce accessoire pré-configurée (Plantes, Pucerons, Proies, Prédateurs, Pathogènes)."));
+        accessoryPresetCombo.setTooltip(new Tooltip("Sélectionnez une espèce accessoire pré-configurée (Plantes, Pucerons, Proies, Prédateurs, Pathogènes, Champignons, Détritivores)."));
         accessoryPresetCombo.getSelectionModel().selectFirst();
-        accessoryPresetCombo.setPrefWidth(260);
+        accessoryPresetCombo.setPrefWidth(300);
 
         accessoryPresetCombo.setOnAction(e -> {
             if (isUpdatingFields) return;
@@ -871,10 +882,88 @@ public class AccessorySpeciesEditorPane extends VBox {
                 targetCasteCombo.setValue("Toutes Castes");
                 huntModeCombo.setValue("Attaque Directe (Oiseau / Tamandua)");
                 killRateField.setText("0.0");
+            } else if (name.contains("Nectaires")) {
+                accessoryNameField.setText("Fleurs Nectarifères & Nectaires (Acacia EFN)");
+                categoryCombo.setValue("FLORA");
+                biomeCombo.setValue("MEDITERRANEAN");
+                latitudeField.setText("35.0");
+                minTempField.setText("10.0"); optTempField.setText("25.0"); maxTempField.setText("38.0");
+                growthRateField.setText("1.8"); initialBiomassDensityField.setText("180.0"); initialPopulationDensityField.setText("40.0");
+                diapauseCheck.setSelected(false);
+            } else if (name.contains("Cochenilles")) {
+                accessoryNameField.setText("Cochenilles des Racines (Eurhizococcus)");
+                categoryCombo.setValue("APHID_MUTUALIST");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("44.0");
+                minTempField.setText("6.0"); optTempField.setText("21.0"); maxTempField.setText("32.0");
+                growthRateField.setText("1.5"); initialBiomassDensityField.setText("60.0"); initialPopulationDensityField.setText("120.0");
+            } else if (name.contains("Termites Proies")) {
+                accessoryNameField.setText("Termites Proies (Microtermes)");
+                categoryCombo.setValue("PREY_INSECT");
+                biomeCombo.setValue("TROPICAL_RAINFOREST");
+                latitudeField.setText("5.0");
+                minTempField.setText("18.0"); optTempField.setText("28.0"); maxTempField.setText("36.0");
+                growthRateField.setText("3.5"); initialBiomassDensityField.setText("250.0"); initialPopulationDensityField.setText("300.0");
+            } else if (name.contains("Araignée")) {
+                accessoryNameField.setText("Araignée Sauteuse (Salticidae)");
+                categoryCombo.setValue("PREDATOR");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("46.0");
+                minTempField.setText("8.0"); optTempField.setText("23.0"); maxTempField.setText("35.0");
+                growthRateField.setText("0.6"); initialBiomassDensityField.setText("15.0"); initialPopulationDensityField.setText("8.0");
+            } else if (name.contains("Tamandua")) {
+                accessoryNameField.setText("Tamandua / Tamanoir (Attaque Nid Directe)");
+                categoryCombo.setValue("PREDATOR");
+                biomeCombo.setValue("TROPICAL_RAINFOREST");
+                latitudeField.setText("-2.0");
+                minTempField.setText("20.0"); optTempField.setText("30.0"); maxTempField.setText("40.0");
+                growthRateField.setText("0.1"); initialBiomassDensityField.setText("1.0"); initialPopulationDensityField.setText("1.0");
+                killRateField.setText("25.0");
+            } else if (name.contains("Guêpe Parasitoïde")) {
+                accessoryNameField.setText("Guêpe Parasitoïde (Eucharitidae)");
+                categoryCombo.setValue("PATHOGEN_PARASITE");
+                biomeCombo.setValue("TROPICAL_RAINFOREST");
+                latitudeField.setText("8.0");
+                minTempField.setText("16.0"); optTempField.setText("27.0"); maxTempField.setText("35.0");
+                growthRateField.setText("2.0"); initialBiomassDensityField.setText("5.0"); initialPopulationDensityField.setText("40.0");
+            } else if (name.contains("Microsporidie") || name.contains("Nosema")) {
+                accessoryNameField.setText("Microsporidie Intestinale (Nosema bombi)");
+                categoryCombo.setValue("PATHOGEN_PARASITE");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("50.0");
+                minTempField.setText("4.0"); optTempField.setText("18.0"); maxTempField.setText("30.0");
+                growthRateField.setText("3.2"); initialBiomassDensityField.setText("2.0"); initialPopulationDensityField.setText("150.0");
+            } else if (name.contains("Leucoagaricus") || name.contains("Symbiotique Atta")) {
+                accessoryNameField.setText("Champignon Symbiotique Atta (Leucoagaricus)");
+                categoryCombo.setValue("FUNGI");
+                biomeCombo.setValue("TROPICAL_RAINFOREST");
+                latitudeField.setText("0.0");
+                minTempField.setText("18.0"); optTempField.setText("26.0"); maxTempField.setText("32.0");
+                growthRateField.setText("4.5"); initialBiomassDensityField.setText("400.0"); initialPopulationDensityField.setText("1.0");
+            } else if (name.contains("Termitomyces")) {
+                accessoryNameField.setText("Champignon des Termites (Termitomyces)");
+                categoryCombo.setValue("FUNGI");
+                biomeCombo.setValue("TROPICAL_RAINFOREST");
+                latitudeField.setText("-5.0");
+                minTempField.setText("19.0"); optTempField.setText("27.0"); maxTempField.setText("33.0");
+                growthRateField.setText("4.0"); initialBiomassDensityField.setText("350.0"); initialPopulationDensityField.setText("1.0");
+            } else if (name.contains("Collemboles") || name.contains("Dépotoir")) {
+                accessoryNameField.setText("Collemboles Détritivores (Nettoyage Dépotoir)");
+                categoryCombo.setValue("DETRITIVORE");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("48.0");
+                minTempField.setText("5.0"); optTempField.setText("19.0"); maxTempField.setText("28.0");
+                growthRateField.setText("2.2"); initialBiomassDensityField.setText("50.0"); initialPopulationDensityField.setText("200.0");
+            } else if (name.contains("Staphylin") || name.contains("Lomechusa")) {
+                accessoryNameField.setText("Staphylin Myrmécophile (Lomechusa Commensal)");
+                categoryCombo.setValue("DETRITIVORE");
+                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
+                latitudeField.setText("47.0");
+                minTempField.setText("7.0"); optTempField.setText("20.0"); maxTempField.setText("30.0");
+                growthRateField.setText("1.1"); initialBiomassDensityField.setText("15.0"); initialPopulationDensityField.setText("30.0");
             }
         } finally {
             isUpdatingFields = false;
-            isDirty = false;
         }
     }
 }

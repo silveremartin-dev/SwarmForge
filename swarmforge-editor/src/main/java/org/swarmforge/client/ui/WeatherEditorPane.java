@@ -220,7 +220,7 @@ public class WeatherEditorPane extends BorderPane {
                     Alert.AlertType.CONFIRMATION,
                     "Attention : Vous avez des modifications non enregistrées sur le profil climatique actuel.\n\nVoulez-vous vraiment charger le preset '" + s + "' et abandonner vos modifications ?"
                 );
-                alert.setTitle("Modifications non enregistrées");
+                alert.setTitle(I18nManager.getInstance().get("common.dialog.unsaved"));
                 alert.setHeaderText("Changement de profil climatique");
                 java.util.Optional<ButtonType> res = alert.showAndWait();
                 if (res.isEmpty() || res.get() != ButtonType.OK) {
@@ -334,7 +334,7 @@ public class WeatherEditorPane extends BorderPane {
         btnFetch.textProperty().bind(i18n.createStringBinding("weather.geo.search_btn"));
         btnFetch.setOnAction(e -> fetchRealWeather(citySearchField.getText()));
 
-        geoStatusLabel = new Label("💡 Entrez une ville pour charger automatiquement le climat réel.");
+        geoStatusLabel = new Label(I18nManager.getInstance().get("weather.hint.city"));
         geoStatusLabel.setStyle("-fx-text-fill:#aaa;-fx-font-size:11;");
 
         searchRow.getChildren().addAll(lblSearch, citySearchField, btnFetch, geoStatusLabel);
@@ -344,7 +344,7 @@ public class WeatherEditorPane extends BorderPane {
         grid.setHgap(15);
         grid.setVgap(10);
 
-        Label lblLat = new Label("🌍 Latitude (°N/S) :");
+        Label lblLat = new Label(I18nManager.getInstance().get("weather.geo.lat"));
         lblLat.setStyle("-fx-font-weight:bold;");
         latSpinner = new Spinner<>(-90.0, 90.0, 48.8, 0.5);
         latSpinner.setEditable(true);
@@ -356,13 +356,13 @@ public class WeatherEditorPane extends BorderPane {
             updateCoherenceStatus();
         });
 
-        Label lblLon = new Label("🌐 Longitude (°E/W) :");
+        Label lblLon = new Label(I18nManager.getInstance().get("weather.geo.lon"));
         lblLon.setStyle("-fx-font-weight:bold;");
         lonSpinner = new Spinner<>(-180.0, 180.0, 2.35, 0.5);
         lonSpinner.setEditable(true);
         lonSpinner.setPrefWidth(100);
 
-        Label lblAlt = new Label("⛰️ Altitude / Élévation (m) :");
+        Label lblAlt = new Label(I18nManager.getInstance().get("weather.geo.alt"));
         lblAlt.setStyle("-fx-font-weight:bold;");
         altSpinner = new Spinner<>(0.0, 4000.0, 100.0, 50.0);
         altSpinner.setEditable(true);
@@ -985,6 +985,7 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     private void redrawCurves() {
+        if (curveCanvas == null || curveCanvas.getWidth() <= 0 || curveCanvas.getHeight() <= 0) return;
         double w = curveCanvas.getWidth();
         double h = curveCanvas.getHeight();
 

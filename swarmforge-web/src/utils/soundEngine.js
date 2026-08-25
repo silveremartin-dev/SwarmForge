@@ -22,6 +22,8 @@ class ProceduralSoundEngine {
             weather: null,
             insects: null,
             digging: null,
+            river: null,
+            disease: null,
         };
 
         // Volumes (0.0 to 1.0)
@@ -31,6 +33,8 @@ class ProceduralSoundEngine {
             weather: 0.60,
             insects: 0.45,
             digging: 0.50,
+            river: 0.70,
+            disease: 0.80,
         };
 
         // Active sound nodes & timers
@@ -39,9 +43,12 @@ class ProceduralSoundEngine {
         this.windLfo = null;
         this.rainNode = null;
         this.rainFilter = null;
+        this.riverNode = null;
+        this.riverFilter = null;
         this.birdTimer = null;
         this.leavesTimer = null;
         this.raindropTimer = null;
+        this.spatialAudioEnabled = true;
     }
 
     init() {
@@ -66,6 +73,7 @@ class ProceduralSoundEngine {
 
         this.isInitialized = true;
         this.startWindAmbiance();
+        this.startRiverAmbiance();
         this.scheduleNextBirdChirp();
         this.scheduleNextLeavesRustle();
     }
@@ -435,6 +443,108 @@ class ProceduralSoundEngine {
         gain.connect(this.gains.digging);
 
         scratch.start(now);
+    }
+
+    // --- 8. PROCEDURAL RIVER WATER FLOW SYNTHESIS (Bruit de rivière qui coule) ---
+    startRiverAmbiance() {
+        if (!this.ctx || !this.gains.river) return;
+
+        // Continuous bandpass filtered water flow noise with soft bubbling LFO
+        const bufferSize = this.ctx.sampleRate * 4;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1);
+        }
+
+        const noiseSource = this.ctx.createBufferSource();
+        noiseSource.buffer = buffer;
+        noiseSource.loop = true;
+
+        this.riverFilter = this.ctx.createBiquadFilter();
+        this.riverFilter.type = 'bandpass';
+        this.riverFilter.frequency.setValueAtTime(650, this.ctx.currentTime);
+        this.riverFilter.Q.value = 1.8;
+
+        // LFO for river stream modulation / water bubbling
+        const riverLfo = this.ctx.createOscillator();
+        riverLfo.frequency.value = 0.45;
+        const lfoGain = this.ctx.createGain();
+        lfoGain.gain.value = 250;
+
+        riverLfo.connect(lfoGain);
+        lfoGain.connect(this.riverFilter.frequency);
+        riverLfo.start();
+
+        noiseSource.connect(this.riverFilter);
+        this.riverFilter.connect(this.gains.river);
+        noiseSource.start();
+        this.riverNode = noiseSource;
+    }
+
+    updateRiverSound(cameraPos, riverPos = { x: 25, y: 0, z: 50 }) {
+        if (!this.ctx || !this.gains.river || !cameraPos) return;
+
+        // Distance-based attenuation (Spatialization for river)
+        const dx = cameraPos.x - riverPos.x;
+        const dy = cameraPos.y - riverPos.y;
+        const dz = cameraPos.z - riverPos.z;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        // Max hearable distance = 100 meters
+        const maxDist = 100;
+        const proximity = Math.max(0, 1 - dist / maxDist);
+        const targetVol = Math.pow(proximity, 1.8) * this.volumes.river;
+
+        this.gains.river.gain.setTargetAtTime(targetVol, this.ctx.currentTime, 0.15);
+    }
+
+    // --- 9. DISEASE & EPIDEMIC OUTBREAK ALERT SOUND (Alerte maladie/épidémie) ---
+    triggerDiseaseOutbreakSound() {
+        this.ensureContext();
+        if (!this.ctx || !this.gains.disease || this.muted) return;
+
+        const now = this.ctx.currentTime;
+        // Dissonant warning synth sweep (Fungal spore alert)
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc1.type = 'sawtooth';
+        osc2.type = 'sine';
+
+        osc1.frequency.setValueAtTime(440, now);
+        osc1.frequency.linearRampToValueAtTime(220, now + 0.5);
+
+        osc2.frequency.setValueAtTime(466.16, now); // Dissonant minor second (Bb)
+        osc2.frequency.linearRampToValueAtTime(233.08, now + 0.5);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.25, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(this.gains.disease);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.65);
+        osc2.stop(now + 0.65);
+    }
+
+    // --- 10. 3D SPATIAL AUDIO LISTENER POSITIONAL UPDATE ---
+    updateSpatialListener(cameraX, cameraY, cameraZ) {
+        if (!this.ctx || !this.ctx.listener || !this.spatialAudioEnabled) return;
+        const listener = this.ctx.listener;
+        if (listener.positionX) {
+            listener.positionX.setTargetAtTime(cameraX, this.ctx.currentTime, 0.1);
+            listener.positionY.setTargetAtTime(cameraY, this.ctx.currentTime, 0.1);
+            listener.positionZ.setTargetAtTime(cameraZ, this.ctx.currentTime, 0.1);
+        } else if (listener.setPosition) {
+            listener.setPosition(cameraX, cameraY, cameraZ);
+        }
     }
 
     // --- CONTROLS & VOLUME MANAGEMENT ---

@@ -1,31 +1,66 @@
 import { useRef, useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useSimulationStore } from '../store/simulationStore'
 import AntMesh from './AntMesh'
 import LODAnts from './LODAnts'
 import FoodSource from './FoodSource'
 import Predator from './Predator'
+import NestRenderer from './NestRenderer'
+import { soundEngine } from '../utils/soundEngine'
 
 export default function Terrarium() {
-    const { ants, foodSources, predators, environment } = useSimulationStore()
+    const { ants, foodSources, predators, environment, lookAndFeel, environmentLighting, disasterState } = useSimulationStore()
     const groupRef = useRef()
+    const riverMeshRef = useRef()
+    const floodMeshRef = useRef()
+    const { camera } = useThree()
+
+    // Realtime spatial listener & river audio update based on 3D camera distance
+    useFrame((state) => {
+        if (camera) {
+            soundEngine.updateSpatialListener(camera.position.x, camera.position.y, camera.position.z)
+            soundEngine.updateRiverSound(camera.position, { x: 25, y: 0, z: 50 })
+        }
+        if (riverMeshRef.current) {
+            // Animate subtle water surface ripples
+            riverMeshRef.current.position.y = 0.02 + Math.sin(state.clock.getElapsedTime() * 2) * 0.015
+        }
+        if (floodMeshRef.current && disasterState?.activeDisaster === 'FLASH_FLOOD') {
+            const floodLevel = 0.2 + (disasterState.intensity / 100) * 1.5
+            floodMeshRef.current.position.y = Math.min(1.5, floodLevel)
+        }
+    })
+
+    // Dynamic Fog Color based on Day/Night & Climate
+    const fogColor = useMemo(() => {
+        if (environmentLighting?.isNight) return '#0f172a' // Midnight blue fog
+        if (lookAndFeel === 'SCIENTIFIC') return '#090d16'
+        return '#87ceeb' // Sky blue daytime fog
+    }, [environmentLighting?.isNight, lookAndFeel])
+
+    // Ground Surface color adapted by Look & Feel theme
+    const groundColor = useMemo(() => {
+        if (lookAndFeel === 'SCIENTIFIC') return '#1e293b' // High-contrast slate laboratory floor
+        if (lookAndFeel === 'REALISTIC') return '#2d3a24'  // Mossy forest topsoil
+        return '#3d2817'                                  // Gaming earth brown
+    }, [lookAndFeel])
 
     // Ground Surface plane (100m x 100m, centered at [50, 0, 50])
     const groundGeometry = useMemo(() => new THREE.PlaneGeometry(100, 100), [])
     const groundMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#3d2817',
+        color: groundColor,
         roughness: 0.85,
-        metalness: 0.1,
-    }), [])
+        metalness: lookAndFeel === 'SCIENTIFIC' ? 0.3 : 0.1,
+    }), [groundColor, lookAndFeel])
 
     // Geological Stratum 1: Topsoil / Humus (Y: 0.0m to -0.8m, height 0.8m)
     const topsoilGeo = useMemo(() => new THREE.BoxGeometry(100, 0.8, 100), [])
     const topsoilMat = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#4a321f',
+        color: lookAndFeel === 'REALISTIC' ? '#352417' : '#4a321f',
         roughness: 0.9,
         metalness: 0.05,
-    }), [])
+    }), [lookAndFeel])
 
     // Geological Stratum 2: Subsoil / Clay & Sand (Y: -0.8m to -2.8m, height 2.0m)
     const subsoilGeo = useMemo(() => new THREE.BoxGeometry(100, 2.0, 100), [])
@@ -52,15 +87,27 @@ export default function Terrarium() {
         roughness: 0.1,
     }), [])
 
+    // 3D Surface River Stream Mesh (Running from Z=0 to Z=100 at X=25)
+    const riverGeometry = useMemo(() => new THREE.PlaneGeometry(12, 100), [])
+    const riverMaterial = useMemo(() => new THREE.MeshStandardMaterial({
+        color: '#0284c7',
+        roughness: 0.1,
+        metalness: 0.8,
+        transparent: true,
+        opacity: 0.85,
+        emissive: '#0369a1',
+        emissiveIntensity: 0.2,
+    }), [])
+
     // Option A2: Chamfered Bezel Glass Enclosure Rim (Cadre d'observation d'aquarium/terrarium à Y: 0)
     const bezelGeo = useMemo(() => new THREE.BoxGeometry(100.2, 0.12, 100.2), [])
     const bezelMat = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#38bdf8',
+        color: lookAndFeel === 'SCIENTIFIC' ? '#2563eb' : (lookAndFeel === 'REALISTIC' ? '#84cc16' : '#38bdf8'),
         metalness: 0.8,
         roughness: 0.2,
         transparent: true,
         opacity: 0.9,
-    }), [])
+    }), [lookAndFeel])
 
     // Outer Perimeter Skirt Frame (Encloses the 4 vertical sides cleanly at X=0,100 Z=0,100)
     const skirtBorderGeo = useMemo(() => new THREE.BoxGeometry(100.05, 5.0, 100.05), [])
@@ -92,6 +139,9 @@ export default function Terrarium() {
 
     return (
         <group ref={groupRef}>
+            {/* Atmospheric Fog Effect */}
+            <fogExp2 attach="fog" args={[fogColor, 0.008]} />
+
             {/* Ground Surface - Exactly flush at Y=0 */}
             <mesh
                 geometry={groundGeometry}
@@ -100,6 +150,24 @@ export default function Terrarium() {
                 position={[50, 0, 50]}
                 receiveShadow
             />
+
+            {/* 3D River Stream flowing on the terrarium surface at X=25 */}
+            <mesh
+                ref={riverMeshRef}
+                geometry={riverGeometry}
+                material={riverMaterial}
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[25, 0.02, 50]}
+                receiveShadow
+            />
+
+            {/* Natural Disaster: Flash Flood Water Level Layer */}
+            {disasterState?.activeDisaster === 'FLASH_FLOOD' && (
+                <mesh ref={floodMeshRef} position={[50, 0.2, 50]}>
+                    <boxGeometry args={[100, 0.4, 100]} />
+                    <meshStandardMaterial color="#0284c7" transparent opacity={0.7} roughness={0.1} />
+                </mesh>
+            )}
 
             {/* Geological Skirt Stratum 1: Topsoil / Humus (Couche arable Y: [0, -0.8]) */}
             <mesh
@@ -153,6 +221,9 @@ export default function Terrarium() {
                 material={skirtBorderMat}
                 position={[50, -2.5, 50]}
             />
+
+            {/* Nests Renderer (Épine de pin, Termitière, Guêpier + branche, Ruche en bois...) */}
+            <NestRenderer />
 
             {/* Ants (LOD System) */}
             <LODAnts ants={ants} />

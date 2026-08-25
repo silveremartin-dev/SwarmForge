@@ -6,6 +6,8 @@
  */
 package org.swarmforge.client.ui;
 
+import org.swarmforge.client.util.I18nManager;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.chart.LineChart;
@@ -50,7 +52,7 @@ public class PopulationGraphPane extends VBox {
         // Header Title
         HBox header = new HBox(8);
         header.setAlignment(Pos.CENTER_LEFT);
-        Label titleLabel = new Label("📈 Évolution Temporelle des Populations & Ressources");
+        Label titleLabel = new Label(I18nManager.getInstance().get("graph.pop_title"));
         titleLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
         titleLabel.setTooltip(new Tooltip("Graphique d'analyse temporelle des effectifs par caste et par colonie en secondes réelles."));
         header.getChildren().add(titleLabel);
@@ -64,7 +66,7 @@ public class PopulationGraphPane extends VBox {
         yAxis1.setLabel("Effectif (Individus)");
 
         populationChart = new LineChart<>(xAxis1, yAxis1);
-        populationChart.setTitle("Démographie des Colonies par Caste");
+        populationChart.setTitle(I18nManager.getInstance().get("graph.demographics"));
         populationChart.setCreateSymbols(false);
         populationChart.setAnimated(false);
         populationChart.setPrefHeight(240);
@@ -79,7 +81,7 @@ public class PopulationGraphPane extends VBox {
         yAxis2.setLabel("Quantité / Événements");
 
         resourcesChart = new LineChart<>(xAxis2, yAxis2);
-        resourcesChart.setTitle("Ressources de Surface & Événements Démographiques");
+        resourcesChart.setTitle(I18nManager.getInstance().get("graph.resources_events"));
         resourcesChart.setCreateSymbols(false);
         resourcesChart.setAnimated(false);
         resourcesChart.setPrefHeight(220);

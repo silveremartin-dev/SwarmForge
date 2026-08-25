@@ -6,6 +6,8 @@
  */
 package org.swarmforge.client.ui;
 
+import org.swarmforge.client.util.I18nManager;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -43,7 +45,7 @@ public class LiveInspectorPane extends VBox {
         setStyle("-fx-background-color: rgba(24, 24, 27, 0.92); -fx-border-color: #38bdf8; " +
                 "-fx-border-width: 1; -fx-border-radius: 8; -fx-background-radius: 8;");
 
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+        org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
 
         // Header
         HBox header = new HBox(8);
@@ -129,7 +131,7 @@ public class LiveInspectorPane extends VBox {
      * Display properties of a clicked voxel/block.
      */
     public void inspectVoxel(int x, int y, int z, String material, float moisture, float temp, float compaction) {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+        org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
         titleLabel.textProperty().unbind();
         titleLabel.setText(i18n.get("inspector.voxel_title", x, y, z));
         subTitleLabel.textProperty().unbind();
@@ -152,7 +154,7 @@ public class LiveInspectorPane extends VBox {
      * Display properties of a clicked ant/individual.
      */
     public void inspectAnt(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+        org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
         this.currentInspectedAntId = id;
         titleLabel.textProperty().unbind();
         titleLabel.setText(i18n.get("inspector.ant_title", caste));

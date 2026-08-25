@@ -77,6 +77,11 @@ public class SimulationAudioManager {
                 double phaseInsect = 0.0;
                 int tick = 0;
 
+                // Low-pass filter memory states for smooth acoustics
+                double rainFilter = 0.0;
+                double windFilter = 0.0;
+                double clickEnv = 0.0;
+
                 while (running.get()) {
                     if (masterVolume <= 0.001 || !simRunning) {
                         // Silent when paused or muted
@@ -91,47 +96,56 @@ public class SimulationAudioManager {
                         tick++;
                         double sampleVal = 0.0;
 
-                        // 1. Biome Ambiance (Bird chirps / Wind rustle)
+                        // 1. Biome Ambiance (Soft Wind breeze & harmonic bird calls)
                         if (ambientEnabled) {
-                            // Gentle wind breeze + periodic bird chirp
-                            double wind = Math.sin(phaseAmbient * 0.003) * 0.15 * (rand.nextDouble() * 0.3 + 0.85);
-                            phaseAmbient += 1.0;
+                            double rawWind = (rand.nextDouble() - 0.5) * 0.08;
+                            windFilter = 0.96 * windFilter + 0.04 * rawWind; // Deep low-pass wind
+                            double windMod = (Math.sin(tick * 0.0003) * 0.5 + 0.5) * windFilter * 2.0;
+
                             double chirp = 0.0;
-                            if ((tick % 8000) < 180) { // Frequent natural bird chirp
-                                double chirpFreq = 2400.0 + Math.sin((tick % 8000) * 0.12) * 800.0;
-                                chirp = Math.sin(chirpFreq * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.25;
+                            int cycle = tick % 12000;
+                            if (cycle < 400) {
+                                double env = Math.sin(cycle / 400.0 * Math.PI); // Smooth envelope
+                                double chirpFreq = 2200.0 + Math.sin(cycle * 0.08) * 600.0;
+                                chirp = Math.sin(chirpFreq * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.12 * env;
                             }
-                            sampleVal += (wind + chirp);
+                            sampleVal += (windMod + chirp);
                         }
 
-                        // 2. Weather Effects (Rain / Thunder / Storm)
+                        // 2. Weather Effects (Low-passed soft rain patter & thunder rumble)
                         if (weatherEnabled) {
-                            if (currentWeather != null && (currentWeather.contains("Rain") || currentWeather.contains("Pluie") || currentWeather.contains("Orage"))) {
-                                double rainNoise = (rand.nextDouble() - 0.5) * 0.22; // Rain patter
-                                sampleVal += rainNoise;
+                            if (currentWeather != null && (currentWeather.contains("Rain") || currentWeather.contains("Pluie") || currentWeather.contains("Orage") || currentWeather.contains("Snow") || currentWeather.contains("Neige"))) {
+                                double rawRain = (rand.nextDouble() - 0.5) * 0.15;
+                                rainFilter = 0.85 * rainFilter + 0.15 * rawRain; // Soft pink noise rain
+                                sampleVal += rainFilter * 0.6;
                             }
                             if (currentWeather != null && (currentWeather.contains("Thunder") || currentWeather.contains("Orage"))) {
-                                if ((tick % 15000) < 600) { // Thunder rumble
-                                    double rumble = Math.sin(45.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * (rand.nextDouble() * 0.4);
+                                int tCycle = tick % 18000;
+                                if (tCycle < 800) { // Deep thunder rumble
+                                    double tEnv = Math.sin(tCycle / 800.0 * Math.PI);
+                                    double rumble = Math.sin(40.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * tEnv * 0.25;
                                     sampleVal += rumble;
                                 }
                             }
                         }
 
-                        // 3. Insect & Subterranean Activity (Excavation / Mandible clicking / Crawling)
+                        // 3. Insect & Subterranean Activity (Resonant mandible clicks & low earth resonance)
                         if (insectEnabled) {
-                            // Subterranean tunnel echo & mandibles crunching
-                            if (rand.nextDouble() < 0.02) { // Frequent mandible click / leg rustle
-                                double click = (rand.nextDouble() - 0.5) * 0.35;
-                                sampleVal += click;
+                            if (rand.nextDouble() < 0.003) {
+                                clickEnv = 1.0; // Trigger click pulse
                             }
-                            double lowTunnelHum = Math.sin(90.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.08;
-                            sampleVal += lowTunnelHum;
+                            if (clickEnv > 0.001) {
+                                double clickTone = Math.sin(3200.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * clickEnv * 0.10;
+                                sampleVal += clickTone;
+                                clickEnv *= 0.985; // Damped decay
+                            }
+                            double earthHum = Math.sin(65.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.04;
+                            sampleVal += earthHum;
                         }
 
-                        // Master Volume & Clipping clamp
+                        // Master Volume & Soft Limiting
                         sampleVal *= masterVolume;
-                        sampleVal = Math.max(-1.0, Math.min(1.0, sampleVal));
+                        sampleVal = Math.tanh(sampleVal); // Smooth soft-knee saturation prevents digital clipping
 
                         short pcmShort = (short) (sampleVal * 32767.0);
                         buffer[i * 2] = (byte) (pcmShort & 0xFF);
@@ -181,11 +195,22 @@ public class SimulationAudioManager {
         return masterVolume;
     }
 
+    private boolean hasTrees = true;
+    private double cameraZoom = 7.5;
+
+    public void setHasTrees(boolean hasTrees) {
+        this.hasTrees = hasTrees;
+    }
+
+    public void setCameraZoom(double zoom) {
+        this.cameraZoom = zoom;
+    }
+
     public void updateState(String biome, String weather, double cameraDepth, boolean isSimRunning) {
         this.currentBiome = biome;
         this.currentWeather = weather;
-        this.cameraDepth = cameraDepth;
         this.simRunning = isSimRunning;
+        this.cameraZoom = cameraDepth;
     }
 
     public void stop() {

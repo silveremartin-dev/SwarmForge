@@ -11,6 +11,8 @@
 
 ## 📸 Component Showcase & Visual Editors
 
+![SwarmForge Live Interactive Studio Showcase](docs/images/swarmforge_demo.gif)
+
 ### 1. 3D Terrarium & World Editor
 The **World Editor Pane** provides procedural voxel terrain generation (Perlin/Simplex noise), soil moisture & depth strata simulation, underground water table dynamics, and real-time biome customization.
 

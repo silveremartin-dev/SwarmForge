@@ -121,13 +121,11 @@ public class EventLogPane extends BorderPane {
         btnExport.textProperty().bind(i18n.createStringBinding("log.btn.export"));
         btnExport.setOnAction(e -> exportEvents());
 
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
         filters.getChildren().addAll(typeLabel, typeFilter, sevLabel, severityFilter, autoScrollCheck,
-                new Region() {
-                    {
-                        HBox.setHgrow(this, Priority.ALWAYS);
-                    }
-                },
-                btnClear, btnExport);
+                spacer, btnClear, btnExport);
 
         toolbar.getChildren().addAll(title, filters);
         return toolbar;
@@ -250,33 +248,32 @@ public class EventLogPane extends BorderPane {
         }
 
         private String getSeverityIcon(SimulationEvent.Severity sev) {
-            return switch (sev) {
-                case INFO -> "ℹ️";
-                case WARNING -> "⚠️";
-                case CRITICAL -> "🔴";
-            };
+            if (sev == null) return "ℹ️";
+            if (sev == SimulationEvent.Severity.WARNING) return "⚠️";
+            if (sev == SimulationEvent.Severity.CRITICAL) return "🔴";
+            return "ℹ️";
         }
 
         private String getBackgroundColor(SimulationEvent.Severity sev) {
-            return switch (sev) {
-                case INFO -> "transparent";
-                case WARNING -> "rgba(255, 193, 7, 0.1)";
-                case CRITICAL -> "rgba(220, 53, 69, 0.2)";
-            };
+            if (sev == null) return "transparent";
+            if (sev == SimulationEvent.Severity.WARNING) return "rgba(255, 193, 7, 0.1)";
+            if (sev == SimulationEvent.Severity.CRITICAL) return "rgba(220, 53, 69, 0.2)";
+            return "transparent";
         }
 
         private String formatType(SimulationEvent.EventType type) {
-            return type.name().replace("_", " ");
+            return type != null ? type.name().replace("_", " ") : "UNKNOWN";
         }
 
         private String getTypeColor(SimulationEvent.EventType type) {
-            return switch (type) {
-                case COLONY_FOUNDED, QUEEN_BORN, WORKER_BORN, SOLDIER_BORN -> "#28a745";
-                case COLONY_DESTROYED, QUEEN_DIED, WORKER_DIED, SOLDIER_DIED -> "#dc3545";
-                case RAID_STARTED, COMBAT_OCCURRED -> "#ff6b6b";
-                case FOOD_DISCOVERED, NEST_EXPANDED -> "#a1a1aa";
-                case DISASTER_OCCURRED -> "#ffc107";
-                case WEATHER_CHANGED, SEASON_CHANGED -> "#6c757d";
+            if (type == null) return "#e4e4e7";
+            return switch (type.name()) {
+                case "COLONY_FOUNDED", "QUEEN_BORN", "WORKER_BORN", "SOLDIER_BORN" -> "#28a745";
+                case "COLONY_DESTROYED", "QUEEN_DIED", "WORKER_DIED", "SOLDIER_DIED" -> "#dc3545";
+                case "RAID_STARTED", "COMBAT_OCCURRED" -> "#ff6b6b";
+                case "FOOD_DISCOVERED", "NEST_EXPANDED" -> "#a1a1aa";
+                case "DISASTER_OCCURRED" -> "#ffc107";
+                case "WEATHER_CHANGED", "SEASON_CHANGED" -> "#6c757d";
                 default -> "#e4e4e7";
             };
         }

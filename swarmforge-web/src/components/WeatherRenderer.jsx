@@ -16,16 +16,15 @@ import { soundEngine } from '../utils/soundEngine'
  * - Vision Nocturne (Night vision soft ambient illumination toggle)
  */
 export default function WeatherRenderer() {
-    const { environment, weatherToggles } = useSimulationStore()
+    const { environment, weatherToggles, environmentLighting, climateEngine } = useSimulationStore()
 
     // Environment parameters with fallbacks
-    const temp = environment.temperature ?? 20
-    const humidity = environment.humidity ?? 50
-    const intensity = environment.rainIntensity ?? 0
-    const windSpeed = environment.windSpeed ?? 5
+    const temp = environmentLighting?.currentCalculatedTempC ?? environment.temperature ?? 20
+    const humidity = climateEngine?.cloudCover ? Math.floor(climateEngine.cloudCover * 100) : (environment.humidity ?? 50)
+    const intensity = climateEngine?.precipitationMm ?? environment.rainIntensity ?? 0
+    const windSpeed = climateEngine?.windSpeedMs ?? environment.windSpeed ?? 5
     const weatherState = environment.weatherState || (intensity > 15 ? 'TEMPEST' : intensity > 5 ? 'THUNDERSTORM' : intensity > 0.5 ? 'RAIN' : temp <= 0 ? 'SNOW' : 'CLEAR')
-    const timeOfDay = environment.timeOfDay || 'DAY'
-    const isNight = environment.lightLevel !== undefined ? environment.lightLevel < 0.3 : (timeOfDay === 'NIGHT')
+    const isNight = environmentLighting?.isNight ?? (environment.lightLevel !== undefined ? environment.lightLevel < 0.3 : false)
 
     // Display Toggles
     const {
@@ -39,17 +38,19 @@ export default function WeatherRenderer() {
         lightningTrigger = 0,
     } = weatherToggles || {}
 
-    // ── 1. SOLAR & LUNAR CELESTIAL DYNAMICS ──────────────────────────────────────
-    const sunAngle = environment.sunAngle ?? 0.5
-    // Solar trajectory across sky (East -> South -> West)
-    const sunX = Math.cos((sunAngle - 0.25) * Math.PI * 2) * 60
-    const sunY = Math.sin((sunAngle - 0.25) * Math.PI * 2) * 55
-    const sunZ = 20 * Math.sin(sunAngle * Math.PI) // Solar inclination calculating North vs South facade insolation
+    // ── 1. SOLAR & LUNAR CELESTIAL DYNAMICS (Driven by Real Astronomical Math) ─────
+    const elevationRad = ((environmentLighting?.sunElevationDeg ?? 42) * Math.PI) / 180.0
+    const azimuthRad = ((environmentLighting?.sunAzimuthDeg ?? 145) * Math.PI) / 180.0
 
-    // Moon position directly opposite the Sun
-    const moonX = -sunX
+    // Sun 3D Trajectory (Centered on map [50, 0, 50], radius 70m)
+    const sunX = 50 + Math.cos(elevationRad) * Math.sin(azimuthRad) * 75
+    const sunY = Math.sin(elevationRad) * 65
+    const sunZ = 50 + Math.cos(elevationRad) * Math.cos(azimuthRad) * 75
+
+    // Moon 3D Trajectory (Opposite position on celestial sphere)
+    const moonX = 100 - sunX
     const moonY = -sunY
-    const moonZ = -sunZ
+    const moonZ = 100 - sunZ
 
     // ── 2. PRECIPITATION ENGINE (Rain, Snow, Hail) ─────────────────────────────
     const precipRef = useRef()

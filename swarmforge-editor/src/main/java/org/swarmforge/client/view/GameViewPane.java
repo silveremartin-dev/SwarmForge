@@ -51,6 +51,12 @@ public class GameViewPane extends Pane {
         }
     }
 
+    public void setScientificMode(boolean scientific) {
+        if (gameApp != null) {
+            gameApp.setScientificMode(scientific);
+        }
+    }
+
     public void stop() {
         gameApp.stop();
     }
