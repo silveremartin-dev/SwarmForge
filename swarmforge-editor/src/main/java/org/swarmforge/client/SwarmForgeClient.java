@@ -50,6 +50,7 @@ public class SwarmForgeClient extends Application {
         private org.swarmforge.client.ui.SimulationControlPanel simControlPanel;
         private VBox simulationInactiveOverlay;
         private Label syncLabel;
+        private Label statsLabel;
 
         @Override
     public void start(Stage primaryStage) {
@@ -238,6 +239,10 @@ public class SwarmForgeClient extends Application {
                 statusLabel.setStyle(networkClient.isConnected() ? "-fx-text-fill: #4ade80; -fx-font-weight: bold;" : "-fx-text-fill: #f87171;");
                 statusLabel.setTooltip(new Tooltip("État actuel de la connexion au moteur gRPC"));
 
+                this.statsLabel = new Label("🌐 Moteur de Simulation : Mode Local Autonome (Standalone) | Avancement : Pas n° 0");
+                this.statsLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 11px; -fx-font-weight: bold;");
+                this.statsLabel.setTooltip(new Tooltip("Statut dynamique de la simulation et compteur de pas"));
+
                 this.syncLabel = new Label("● Persistance Locale Active (Base SQLite & Sauvegarde autonome)");
                 this.syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
                 this.syncLabel.setTooltip(new Tooltip("Indicateur de persistance des données (SQLite locale en mode standalone, PostgreSQL distante en mode connecté)"));
@@ -245,7 +250,7 @@ public class SwarmForgeClient extends Application {
                 Region bannerSpacer = new Region();
                 HBox.setHgrow(bannerSpacer, Priority.ALWAYS);
 
-                connectBox.getChildren().addAll(hostLabel, hostField, portLabel, portField, btnConnect, statusLabel, bannerSpacer, syncLabel);
+                connectBox.getChildren().addAll(hostLabel, hostField, portLabel, portField, btnConnect, statusLabel, bannerSpacer, this.statsLabel, this.syncLabel);
                 pane.setTop(connectBox);
                 BorderPane.setMargin(connectBox, new Insets(0, 0, 10, 0));
 

@@ -273,7 +273,7 @@ public class SimulationControlPanel extends VBox {
         comboWeather.setOnAction(e -> interruptIfRunning.run());
 
         // Checkpoints & TitledPanes
-        TitledPane checkpointsPane = buildCheckpointsPane();
+        VBox checkpointsPane = buildCheckpointsPane();
 
         // Seed & Limits Row
         HBox seedAndLimitsRow = new HBox(12);
@@ -925,11 +925,13 @@ public class SimulationControlPanel extends VBox {
                 manualPosBox.setManaged(isManual);
             });
 
-            // Inter-Nest Relationship Strategy Row
+            // Inter-Nest Relationship Strategy & Supercolony Checkbox Row
+            VBox relationBox = new VBox(4);
+
             HBox relationRow = new HBox(8);
             relationRow.setAlignment(Pos.CENTER_LEFT);
 
-            Label lblRelation = new Label("⚔️ Strategy Inter-Nids (Même Espèce) :");
+            Label lblRelation = new Label("⚔️ Stratégie Inter-Nids (Même Espèce) :");
             lblRelation.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
 
             nestRelationCombo.getItems().addAll(
@@ -942,6 +944,13 @@ public class SimulationControlPanel extends VBox {
             nestRelationCombo.setTooltip(new Tooltip("Configure les interactions comportementales si plusieurs nids de la même espèce sont instanciés dans la simulation."));
 
             relationRow.getChildren().addAll(lblRelation, nestRelationCombo);
+
+            CheckBox chkSupercolonyMember = new CheckBox("🤝 Rejoindre le réseau Supercolonie Polycalique (Coopération, libre passage & partage de couvain entre nids alliés)");
+            chkSupercolonyMember.setSelected(false);
+            chkSupercolonyMember.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 10px; -fx-font-weight: bold;");
+            chkSupercolonyMember.setTooltip(new Tooltip("Cocher cette case pour intégrer cette colonie au réseau coopératif de supercolonie. Les nids dont cette case est décochée restent des colonies indépendantes et autonomes en guerre ou compétition."));
+
+            relationBox.getChildren().addAll(relationRow, chkSupercolonyMember);
 
             // 2. Demographics & AI Engines Standard Block (Moved before Accessory Species)
             VBox demoBox = new VBox(6);
@@ -981,7 +990,7 @@ public class SimulationControlPanel extends VBox {
 
             setupAccessoryRows(speciesName);
 
-            cardPane.getChildren().addAll(header, nestRow, manualPosBox, relationRow, new Separator(), demoBox, new Separator(), lblAccessoryTitle, accessoryBoxPane);
+            cardPane.getChildren().addAll(header, nestRow, manualPosBox, relationBox, new Separator(), demoBox, new Separator(), lblAccessoryTitle, accessoryBoxPane);
         }
 
         private void setupAccessoryRows(String speciesName) {
@@ -1048,8 +1057,11 @@ public class SimulationControlPanel extends VBox {
         public VBox getCardPane() { return cardPane; }
         public String getSpeciesName() { return speciesName; }
         public int getQueenCount() { return queenSpinner.getValue(); }
+        public void setQueenCount(int count) { queenSpinner.getValueFactory().setValue(count); }
         public int getWorkerCount() { return workerSpinner.getValue(); }
+        public void setWorkerCount(int count) { workerSpinner.getValueFactory().setValue(count); }
         public int getSoldierCount() { return soldierSpinner.getValue(); }
+        public void setSoldierCount(int count) { soldierSpinner.getValueFactory().setValue(count); }
         public ArchitectureType getWorkerEngine() { return workerEngineCombo.getValue(); }
         public ArchitectureType getSoldierEngine() { return soldierEngineCombo.getValue(); }
         public ArchitectureType getQueenEngine() { return queenEngineCombo.getValue(); }

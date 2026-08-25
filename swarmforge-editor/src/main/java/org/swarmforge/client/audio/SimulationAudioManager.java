@@ -96,11 +96,18 @@ public class SimulationAudioManager {
                         tick++;
                         double sampleVal = 0.0;
 
-                        // 1. Biome Ambiance (Soft Wind breeze & harmonic bird calls)
+                        // 1. Biome Ambiance (Soft Wind breeze, leaf rustle in trees & harmonic bird calls)
                         if (ambientEnabled) {
-                            double rawWind = (rand.nextDouble() - 0.5) * 0.08;
+                            double rawWind = (rand.nextDouble() - 0.5) * 0.10;
                             windFilter = 0.96 * windFilter + 0.04 * rawWind; // Deep low-pass wind
-                            double windMod = (Math.sin(tick * 0.0003) * 0.5 + 0.5) * windFilter * 2.0;
+                            double windMod = (Math.sin(tick * 0.0003) * 0.5 + 0.5) * windFilter * 2.5;
+
+                            // Leaf rustle audio when trees/flora are present
+                            double leafRustle = 0.0;
+                            if (hasTrees) {
+                                double rawLeaf = (rand.nextDouble() - 0.5) * 0.04;
+                                leafRustle = Math.sin(tick * 0.02) * rawLeaf * (Math.sin(tick * 0.0008) * 0.5 + 0.5);
+                            }
 
                             double chirp = 0.0;
                             int cycle = tick % 12000;
@@ -109,38 +116,43 @@ public class SimulationAudioManager {
                                 double chirpFreq = 2200.0 + Math.sin(cycle * 0.08) * 600.0;
                                 chirp = Math.sin(chirpFreq * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.12 * env;
                             }
-                            sampleVal += (windMod + chirp);
+                            sampleVal += (windMod + leafRustle + chirp);
                         }
 
-                        // 2. Weather Effects (Low-passed soft rain patter & thunder rumble)
+                        // 2. Weather Effects (Rain patter & deep thunder rumble)
                         if (weatherEnabled) {
                             if (currentWeather != null && (currentWeather.contains("Rain") || currentWeather.contains("Pluie") || currentWeather.contains("Orage") || currentWeather.contains("Snow") || currentWeather.contains("Neige"))) {
-                                double rawRain = (rand.nextDouble() - 0.5) * 0.15;
-                                rainFilter = 0.85 * rainFilter + 0.15 * rawRain; // Soft pink noise rain
-                                sampleVal += rainFilter * 0.6;
+                                double rawRain = (rand.nextDouble() - 0.5) * 0.25;
+                                rainFilter = 0.82 * rainFilter + 0.18 * rawRain; // Soft pink noise rain
+                                sampleVal += rainFilter * 0.8;
                             }
                             if (currentWeather != null && (currentWeather.contains("Thunder") || currentWeather.contains("Orage"))) {
                                 int tCycle = tick % 18000;
-                                if (tCycle < 800) { // Deep thunder rumble
-                                    double tEnv = Math.sin(tCycle / 800.0 * Math.PI);
-                                    double rumble = Math.sin(40.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * tEnv * 0.25;
+                                if (tCycle < 900) { // Deep thunder rumble
+                                    double tEnv = Math.sin(tCycle / 900.0 * Math.PI);
+                                    double rumble = Math.sin(40.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * tEnv * 0.40;
                                     sampleVal += rumble;
                                 }
                             }
                         }
 
-                        // 3. Insect & Subterranean Activity (Resonant mandible clicks & low earth resonance)
+                        // 3. Insect & Subterranean Digging Activity (Only audible when zoomed closely onto nest)
                         if (insectEnabled) {
-                            if (rand.nextDouble() < 0.003) {
-                                clickEnv = 1.0; // Trigger click pulse
+                            // Spatial attenuation: digging sounds ONLY audible when camera zoom > 12.0
+                            double zoomFactor = Math.max(0.0, Math.min(1.0, (cameraZoom - 12.0) / 10.0));
+                            if (zoomFactor > 0.0) {
+                                if (rand.nextDouble() < 0.002) {
+                                    clickEnv = 1.0; // Trigger quiet soil scraping pulse
+                                }
+                                if (clickEnv > 0.001) {
+                                    // Muffled low-frequency dirt digging resonance (350 Hz)
+                                    double diggingTone = Math.sin(350.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * clickEnv * 0.05 * zoomFactor;
+                                    sampleVal += diggingTone;
+                                    clickEnv *= 0.970; // Damped decay
+                                }
+                                double earthHum = Math.sin(65.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.02 * zoomFactor;
+                                sampleVal += earthHum;
                             }
-                            if (clickEnv > 0.001) {
-                                double clickTone = Math.sin(3200.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * clickEnv * 0.10;
-                                sampleVal += clickTone;
-                                clickEnv *= 0.985; // Damped decay
-                            }
-                            double earthHum = Math.sin(65.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.04;
-                            sampleVal += earthHum;
                         }
 
                         // Master Volume & Soft Limiting

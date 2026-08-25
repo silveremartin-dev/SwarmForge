@@ -43,6 +43,9 @@ public class SwarmForgeClientUITest {
         this.stage = stage;
         this.app = new SwarmForgeClient();
         app.start(stage);
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException ignored) {}
 
         // Ensure screenshot directory exists
         SCREENSHOT_DIR.toFile().mkdirs();
