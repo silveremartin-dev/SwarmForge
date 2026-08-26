@@ -917,4 +917,43 @@ public class Individual implements java.io.Serializable, AgentView {
         float electricFieldVoltsPerMeter,
         float solarAzimuthRad
     ) {}
+
+    /**
+     * Returns a active biological behavior flags summary for mouseover / inspector HUD rendering.
+     */
+    public String getActiveBehaviorsSummary() {
+        if (species == null) return "STANDARD_PATROL";
+        java.util.List<String> list = new java.util.ArrayList<>();
+        if (species.canFarmAphids()) list.add("APHID_FARMING");
+        if (species.hasRoyalPheromoneInhibition()) list.add("ROYAL_INHIBITION");
+        if (species.canDrumSubstrate()) list.add("ACOUSTIC_DRUMMING");
+        if (species.isPolycalic()) list.add("POLYCALIC_ROUTING");
+        if (species.canCollectPropolis()) list.add("PROPOLIS_SHIELD");
+        if (species.canSewLeavesWithLarvalSilk()) list.add("WEAVER_SILK");
+        if (species.canWeedFungusGarden()) list.add("FUNGUS_WEEDING");
+        if (species.canMakeStercoralCement()) list.add("STERCORAL_CEMENT");
+        if (species.hasProctodealTrophallaxis()) list.add("PROCTODEAL_TROPHALLAXIS");
+        if (species.canPerformPhragmosis()) list.add("PHRAGMOSIS_GATE");
+        if (species.canPerformEvaporativeCooling()) list.add("EVAPORATIVE_COOLING");
+        if (species.hasTrapJawMechanism()) list.add("TRAP_JAW");
+        if (species.isSlaveMakingSpecies()) list.add("DULOSIS_RAID");
+        if (species.canFormLivingBivouac()) list.add("LIVING_BIVOUAC");
+        if (species.hasSolarOrientedMound()) list.add("SOLAR_MOUND");
+        if (species.canPerformAllogrooming()) list.add("ALLOGROOMING");
+        if (species.canPerformTrembleDance()) list.add("TREMBLE_DANCE");
+        if (species.hasThermalTrailDecay()) list.add("THERMAL_TRAIL_DECAY");
+        if (species.canPerformThoracicIncubation()) list.add("THORACIC_INCUBATION");
+        if (species.canPerformRitualJousting()) list.add("RITUAL_JOUSTING");
+        if (species.hasTerritorialRepellentPheromone()) list.add("TERRITORIAL_REPELLENT");
+        if (species.canDetectHydrostaticPressure()) list.add("FLOOD_DETECTION");
+        if (species.isRobberBeeSpecies()) list.add("ROBBER_BEE_RAID");
+        if (species.canStridulateRescueCall()) list.add("RESCUE_STRIDULATION");
+        if (species.isHoneypotStorageCaste()) list.add("HONEYPOT_STORAGE");
+        if (species.canPlugContaminatedGalleries()) list.add("GRAVEL_PLUGGING");
+        if (species.hasOleicAcidThresholdNecrophoresis()) list.add("NECROPHORESIS");
+        if (species.hasUVPolarizedLightNavigation()) list.add("UV_COMPASS");
+
+        if (list.isEmpty()) return "BASE_PATROL";
+        return String.join(" | ", list);
+    }
 }

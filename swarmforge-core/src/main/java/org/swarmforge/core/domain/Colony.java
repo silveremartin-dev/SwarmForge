@@ -173,6 +173,14 @@ public class Colony implements java.io.Serializable {
         this.carbohydrateStored = v;
     }
 
+    public float getSugarStored() {
+        return getCarbohydrateStored();
+    }
+
+    public void setSugarStored(float v) {
+        setCarbohydrateStored(v);
+    }
+
     public void addCarbohydrate(float v) {
         this.carbohydrateStored += v;
     }

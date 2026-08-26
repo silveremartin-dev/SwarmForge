@@ -2481,15 +2481,15 @@ public class WorldEditorPane extends BorderPane {
             }
         }
 
-        // Draw 3D Overlays for Underground Galleries, Insects & Nests, and Pheromones
-        if (isGalleriesVisible || (showGalleriesCheck != null && showGalleriesCheck.isSelected())) {
-            drawGalleriesOverlay3D(cx, cy, scale, radAz, radEl);
-        }
+        // Draw 3D Overlays for Underground Galleries, Insects & Nests, Pheromones, and Weather (Simulation Mode Only)
         if (isSimulationMode) {
+            if (isGalleriesVisible || (showGalleriesCheck != null && showGalleriesCheck.isSelected())) {
+                drawGalleriesOverlay3D(cx, cy, scale, radAz, radEl);
+            }
             if (isColonyVisible) drawColonyOverlay3D(cx, cy, scale, radAz, radEl);
             if (isPheromonesVisible) drawPheromoneOverlay3D(cx, cy, scale, radAz, radEl);
+            if (isWeatherVisible) drawWeatherOverlay3D(w, h);
         }
-        if (isWeatherVisible) drawWeatherOverlay3D(w, h);
 
         // Draw 3D Hover Info Overlay on top of 3D Canvas
         draw3DHoverOverlay(w, h, cx, cy, scale, radAz, radEl);
@@ -2859,7 +2859,7 @@ public class WorldEditorPane extends BorderPane {
         gc3D.fillText(String.format(Locale.US, "🚀 Cap (Heading): %.0f° | Vitesse: 1.25 cm/s", Math.toDegrees(followedAnt.getHeading())), hx + 12, hy + 144);
 
         gc3D.setFill(Color.web("#4ade80"));
-        gc3D.fillText("🧪 Empreinte Odorante CHC: Gestalt Colonie Certifiée", hx + 12, hy + 162);
+        gc3D.fillText(String.format("🧬 Comportements Actifs: [%s]", followedAnt.getActiveBehaviorsSummary()), hx + 12, hy + 162);
     }
 
     private void drawGalleriesOverlay3D(double cx, double cy, double scale, double radAz, double radEl) {

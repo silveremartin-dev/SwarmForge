@@ -1046,6 +1046,7 @@ public class SwarmForgeClient extends Application {
         private Node createWorldEditor() {
                 // World Editor Pane with 3-View System (3D, Top-Down, Side) & 3D Sculpting Brushes
                 org.swarmforge.client.ui.WorldEditorPane worldEditorPane = new org.swarmforge.client.ui.WorldEditorPane();
+                worldEditorPane.setSimulationMode(false);
                 worldEditorPane.setOnGenerate(config -> {
                         try {
                                 double sizeMeters = (double) config.getOrDefault("surfaceSizeMeters", 2.0);

@@ -719,6 +719,36 @@ public class CustomSpecies implements Species {
     @Override public boolean hasThermalTrailDecay() { return hasThermalTrailDecay; }
     public void setHasThermalTrailDecay(boolean val) { this.hasThermalTrailDecay = val; }
 
+    @Override public boolean canPerformThoracicIncubation() { return canPerformThoracicIncubation; }
+    public void setCanPerformThoracicIncubation(boolean val) { this.canPerformThoracicIncubation = val; }
+
+    @Override public boolean canPerformRitualJousting() { return canPerformRitualJousting; }
+    public void setCanPerformRitualJousting(boolean val) { this.canPerformRitualJousting = val; }
+
+    @Override public boolean hasTerritorialRepellentPheromone() { return hasTerritorialRepellentPheromone; }
+    public void setHasTerritorialRepellentPheromone(boolean val) { this.hasTerritorialRepellentPheromone = val; }
+
+    @Override public boolean canDetectHydrostaticPressure() { return canDetectHydrostaticPressure; }
+    public void setCanDetectHydrostaticPressure(boolean val) { this.canDetectHydrostaticPressure = val; }
+
+    @Override public boolean isRobberBeeSpecies() { return isRobberBeeSpecies; }
+    public void setIsRobberBeeSpecies(boolean val) { this.isRobberBeeSpecies = val; }
+
+    @Override public boolean canStridulateRescueCall() { return canStridulateRescueCall; }
+    public void setCanStridulateRescueCall(boolean val) { this.canStridulateRescueCall = val; }
+
+    @Override public boolean isHoneypotStorageCaste() { return isHoneypotStorageCaste; }
+    public void setIsHoneypotStorageCaste(boolean val) { this.isHoneypotStorageCaste = val; }
+
+    @Override public boolean canPlugContaminatedGalleries() { return canPlugContaminatedGalleries; }
+    public void setCanPlugContaminatedGalleries(boolean val) { this.canPlugContaminatedGalleries = val; }
+
+    @Override public boolean hasOleicAcidThresholdNecrophoresis() { return hasOleicAcidThresholdNecrophoresis; }
+    public void setHasOleicAcidThresholdNecrophoresis(boolean val) { this.hasOleicAcidThresholdNecrophoresis = val; }
+
+    @Override public boolean hasUVPolarizedLightNavigation() { return hasUVPolarizedLightNavigation; }
+    public void setHasUVPolarizedLightNavigation(boolean val) { this.hasUVPolarizedLightNavigation = val; }
+
     // --- Dynamic Plugin Extensibility Attributes ---
     private java.util.Map<String, Object> customAttributes = new java.util.HashMap<>();
 

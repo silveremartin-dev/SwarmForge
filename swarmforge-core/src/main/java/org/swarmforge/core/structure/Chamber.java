@@ -66,6 +66,11 @@ public class Chamber implements java.io.Serializable {
     }
 
     private float stabilityFactor = 1.0f;
+    private float contaminationLevel = 0.0f;
+
     public float getStabilityFactor() { return stabilityFactor; }
     public void setStabilityFactor(float factor) { this.stabilityFactor = factor; }
+
+    public float getContaminationLevel() { return contaminationLevel; }
+    public void setContaminationLevel(float level) { this.contaminationLevel = level; }
 }
