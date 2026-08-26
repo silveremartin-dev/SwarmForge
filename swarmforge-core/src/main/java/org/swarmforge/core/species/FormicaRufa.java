@@ -39,6 +39,7 @@ public class FormicaRufa extends CustomSpecies {
         setNestType("MOUND");
         setVenomType("FORMIC_ACID");
         setAggression(0.75f);
+        setCanPerformSocialThermoregulation(true);
 
         CasteTemplate queen = new CasteTemplate("Reine", 600f, 15f);
         queen.setLifespan(365 * 20);

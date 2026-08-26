@@ -40,6 +40,13 @@ public class ApisMellifera extends CustomSpecies {
         setNestType("WAX_COMB");
         setVenomType("VENOMOUS_STING");
         setAggression(0.2f);
+        setCanPerformWaggleDance(true);
+        setCanPerformSocialThermoregulation(true);
+        setCanPerformNecrophoresis(true);
+        setHasElectrosensing(true);
+        setHasPolarizedLightNavigation(true);
+        setCanPerformEvaporativeCooling(true);
+        setCanPerformTrembleDance(true);
 
         CasteTemplate queen = new CasteTemplate("Reine Abeille", 400f, 5f);
         queen.setLifespan(365 * 4);

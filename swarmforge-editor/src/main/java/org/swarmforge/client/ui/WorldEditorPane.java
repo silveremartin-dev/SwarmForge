@@ -2918,18 +2918,16 @@ public class WorldEditorPane extends BorderPane {
         double maturityScale = Math.max(0.65, Math.min(2.5, Math.sqrt(Math.max(10, workerCount) / 400.0)));
 
         String nestType = "Subterranean";
-        if (comboTreeSpecies != null) {
-            if (speciesSeedField != null && speciesSeedField.getText() != null) {
-                String s = speciesSeedField.getText().toLowerCase();
-                if (s.contains("termit") || s.contains("macrotermes")) nestType = "TermiteCathedral";
-                else if (s.contains("vespula") || s.contains("polistes") || s.contains("guêpe")) nestType = "PaperWaspSuspended";
-                else if (s.contains("apis") || s.contains("abeille")) nestType = "HoneybeeTreeComb";
-                else if (s.contains("formica") || s.contains("rufous")) nestType = "ThatchMound";
-                else if (s.contains("atta") || s.contains("coupeuse")) nestType = "LeafcutterVault";
-                else if (s.contains("cremato")) nestType = "ArborealCarton";
-                else if (s.contains("eciton")) nestType = "LivingBivouac";
-                else if (s.contains("oeco")) nestType = "WeaverLeaf";
-            }
+        if (speciesAdaptCombo != null && speciesAdaptCombo.getValue() != null) {
+            String s = speciesAdaptCombo.getValue().toLowerCase();
+            if (s.contains("termit") || s.contains("macrotermes")) nestType = "TermiteCathedral";
+            else if (s.contains("vespula") || s.contains("polistes") || s.contains("guêpe")) nestType = "PaperWaspSuspended";
+            else if (s.contains("apis") || s.contains("abeille")) nestType = "HoneybeeTreeComb";
+            else if (s.contains("formica") || s.contains("rufous")) nestType = "ThatchMound";
+            else if (s.contains("atta") || s.contains("coupeuse")) nestType = "LeafcutterVault";
+            else if (s.contains("cremato")) nestType = "ArborealCarton";
+            else if (s.contains("eciton")) nestType = "LivingBivouac";
+            else if (s.contains("oeco")) nestType = "WeaverLeaf";
         }
 
         double zScale = zoom / 7.5;

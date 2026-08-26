@@ -109,7 +109,7 @@ public class SoilStructureSystem {
         // Perform real-time physical deformation check on upper voxels (ceiling stability)
         if (z + 1 < terrarium.getDepth()) {
             TerrariumCell topCell = terrarium.getCell(x, y, z + 1);
-            if (topCell.material() == TerrariumCell.Material.SAND || topCell.material() == TerrariumCell.Material.DIRT) {
+            if (topCell.material() == TerrariumCell.Material.SAND || topCell.material() == TerrariumCell.Material.EARTH) {
                 float moisture = topCell.humidity(); // 0 to 100%
                 
                 // Mohr-Coulomb shear strength: tau = c(moisture) + sigma_n * tan(phi)

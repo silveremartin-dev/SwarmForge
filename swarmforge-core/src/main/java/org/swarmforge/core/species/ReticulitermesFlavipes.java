@@ -41,7 +41,8 @@ public class ReticulitermesFlavipes extends CustomSpecies {
         setVenomType("POWERFUL_MANDIBLES");
         setAggression(0.4f);
 
-        // Sensory Profile (Magnetoreception for mound/gallery orientation, thermal & gas sensing)
+        setHasTermiteGutSymbiosis(true);
+        setHasProctodealTrophallaxis(true);
         setHasMagnetoreception(true);
         setMagnetoreceptionSensitivity(2.5f); // High sensitivity to geomagnetic field
         setThermoreceptionSensitivity(0.2f); // High thermal gradient sensitivity for subterranean chambers

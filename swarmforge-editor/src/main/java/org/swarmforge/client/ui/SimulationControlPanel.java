@@ -511,7 +511,6 @@ public class SimulationControlPanel extends VBox {
         getChildren().addAll(headerVBox, scenarioCard);
         updateButtonStates();
     }
-    }
 
     private void addSpeciesCard(String speciesName) {
         // Prevent duplicate cards for the exact same species instance unless user wants
@@ -660,6 +659,12 @@ public class SimulationControlPanel extends VBox {
         } else if (metaName.contains("Supercolonie") || metaName.contains("Polycalique")) {
             selectComboIfPresent(comboWorld, "Temperate Deciduous (Fontainebleau, FR)");
             selectComboIfPresent(comboWeather, "Temperate");
+            areaDescription.setText("🌴 SCÉNARIO 8 : SUPERCOLONIE POLYCALIQUE INVASIVE (Linepithema humile)\n" +
+                    "Réseau décentralisé inter-nids de grande échelle. Absence d'agressivité unicoloniale inter-nids et flux continus de reines et d'ouvrières entre les nids secondaires (calies). " +
+                    "Compétition par exploitation agressive et monopolisation des ressources alimentaires du biotope.");
+            addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
+        }
+    }
 
     private Button createButton(String text, String tooltip) {
         Button btn = new Button(text);

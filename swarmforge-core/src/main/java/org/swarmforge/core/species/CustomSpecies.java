@@ -103,6 +103,45 @@ public class CustomSpecies implements Species {
     private boolean hasAutothysis = false;
     private boolean hasSubstrateAdhesionArolia = true;
 
+    // --- Species-Specific Behavioral Capability Flags ---
+    private boolean canPerformBiostructures = false;
+    private boolean canPerformNecrophoresis = true;
+    private boolean canPerformSocialThermoregulation = false;
+    private boolean isUnicolonial = false;
+    private boolean hasMandibularWearPolyethism = true;
+    private boolean canPerformTandemRunning = false;
+    private boolean canPerformWaggleDance = false;
+    private boolean canPerformLarvalSalivaryTrophallaxis = false;
+    private boolean hasTermiteGutSymbiosis = false;
+    private boolean canFarmAphids = false;
+    private boolean hasRoyalPheromoneInhibition = true;
+    private boolean canDrumSubstrate = false;
+    private boolean isPolycalic = false;
+    private boolean canCollectPropolis = false;
+    private boolean canSewLeavesWithLarvalSilk = false;
+    private boolean canWeedFungusGarden = false;
+    private boolean canMakeStercoralCement = false;
+    private boolean hasProctodealTrophallaxis = false;
+    private boolean canPerformPhragmosis = false;
+    private boolean canPerformEvaporativeCooling = false;
+    private boolean hasTrapJawMechanism = false;
+    private boolean isSlaveMakingSpecies = false;
+    private boolean canFormLivingBivouac = false;
+    private boolean hasSolarOrientedMound = false;
+    private boolean canPerformAllogrooming = true;
+    private boolean canPerformTrembleDance = false;
+    private boolean hasThermalTrailDecay = true;
+    private boolean canPerformThoracicIncubation = false;
+    private boolean canPerformRitualJousting = false;
+    private boolean hasTerritorialRepellentPheromone = false;
+    private boolean canDetectHydrostaticPressure = true;
+    private boolean isRobberBeeSpecies = false;
+    private boolean canStridulateRescueCall = false;
+    private boolean isHoneypotStorageCaste = false;
+    private boolean canPlugContaminatedGalleries = false;
+    private boolean hasOleicAcidThresholdNecrophoresis = true;
+    private boolean hasUVPolarizedLightNavigation = false;
+
     // --- Castes ---
     private List<CasteTemplate> casteTemplates = new ArrayList<>();
 
@@ -598,6 +637,87 @@ public class CustomSpecies implements Species {
     @Override
     public boolean hasSubstrateAdhesionArolia() { return hasSubstrateAdhesionArolia; }
     public void setHasSubstrateAdhesionArolia(boolean hasSubstrateAdhesionArolia) { this.hasSubstrateAdhesionArolia = hasSubstrateAdhesionArolia; }
+
+    @Override public boolean canPerformBiostructures() { return canPerformBiostructures; }
+    public void setCanPerformBiostructures(boolean val) { this.canPerformBiostructures = val; }
+
+    @Override public boolean canPerformNecrophoresis() { return canPerformNecrophoresis; }
+    public void setCanPerformNecrophoresis(boolean val) { this.canPerformNecrophoresis = val; }
+
+    @Override public boolean canPerformSocialThermoregulation() { return canPerformSocialThermoregulation; }
+    public void setCanPerformSocialThermoregulation(boolean val) { this.canPerformSocialThermoregulation = val; }
+
+    @Override public boolean isUnicolonial() { return isUnicolonial; }
+    public void setIsUnicolonial(boolean val) { this.isUnicolonial = val; }
+
+    @Override public boolean hasMandibularWearPolyethism() { return hasMandibularWearPolyethism; }
+    public void setHasMandibularWearPolyethism(boolean val) { this.hasMandibularWearPolyethism = val; }
+
+    @Override public boolean canPerformTandemRunning() { return canPerformTandemRunning; }
+    public void setCanPerformTandemRunning(boolean val) { this.canPerformTandemRunning = val; }
+
+    @Override public boolean canPerformWaggleDance() { return canPerformWaggleDance; }
+    public void setCanPerformWaggleDance(boolean val) { this.canPerformWaggleDance = val; }
+
+    @Override public boolean canPerformLarvalSalivaryTrophallaxis() { return canPerformLarvalSalivaryTrophallaxis; }
+    public void setCanPerformLarvalSalivaryTrophallaxis(boolean val) { this.canPerformLarvalSalivaryTrophallaxis = val; }
+
+    @Override public boolean hasTermiteGutSymbiosis() { return hasTermiteGutSymbiosis; }
+    public void setHasTermiteGutSymbiosis(boolean val) { this.hasTermiteGutSymbiosis = val; }
+
+    @Override public boolean canFarmAphids() { return canFarmAphids; }
+    public void setCanFarmAphids(boolean val) { this.canFarmAphids = val; }
+
+    @Override public boolean hasRoyalPheromoneInhibition() { return hasRoyalPheromoneInhibition; }
+    public void setHasRoyalPheromoneInhibition(boolean val) { this.hasRoyalPheromoneInhibition = val; }
+
+    @Override public boolean canDrumSubstrate() { return canDrumSubstrate; }
+    public void setCanDrumSubstrate(boolean val) { this.canDrumSubstrate = val; }
+
+    @Override public boolean isPolycalic() { return isPolycalic; }
+    public void setIsPolycalic(boolean val) { this.isPolycalic = val; }
+
+    @Override public boolean canCollectPropolis() { return canCollectPropolis; }
+    public void setCanCollectPropolis(boolean val) { this.canCollectPropolis = val; }
+
+    @Override public boolean canSewLeavesWithLarvalSilk() { return canSewLeavesWithLarvalSilk; }
+    public void setCanSewLeavesWithLarvalSilk(boolean val) { this.canSewLeavesWithLarvalSilk = val; }
+
+    @Override public boolean canWeedFungusGarden() { return canWeedFungusGarden; }
+    public void setCanWeedFungusGarden(boolean val) { this.canWeedFungusGarden = val; }
+
+    @Override public boolean canMakeStercoralCement() { return canMakeStercoralCement; }
+    public void setCanMakeStercoralCement(boolean val) { this.canMakeStercoralCement = val; }
+
+    @Override public boolean hasProctodealTrophallaxis() { return hasProctodealTrophallaxis; }
+    public void setHasProctodealTrophallaxis(boolean val) { this.hasProctodealTrophallaxis = val; }
+
+    @Override public boolean canPerformPhragmosis() { return canPerformPhragmosis; }
+    public void setCanPerformPhragmosis(boolean val) { this.canPerformPhragmosis = val; }
+
+    @Override public boolean canPerformEvaporativeCooling() { return canPerformEvaporativeCooling; }
+    public void setCanPerformEvaporativeCooling(boolean val) { this.canPerformEvaporativeCooling = val; }
+
+    @Override public boolean hasTrapJawMechanism() { return hasTrapJawMechanism; }
+    public void setHasTrapJawMechanism(boolean val) { this.hasTrapJawMechanism = val; }
+
+    @Override public boolean isSlaveMakingSpecies() { return isSlaveMakingSpecies; }
+    public void setIsSlaveMakingSpecies(boolean val) { this.isSlaveMakingSpecies = val; }
+
+    @Override public boolean canFormLivingBivouac() { return canFormLivingBivouac; }
+    public void setCanFormLivingBivouac(boolean val) { this.canFormLivingBivouac = val; }
+
+    @Override public boolean hasSolarOrientedMound() { return hasSolarOrientedMound; }
+    public void setHasSolarOrientedMound(boolean val) { this.hasSolarOrientedMound = val; }
+
+    @Override public boolean canPerformAllogrooming() { return canPerformAllogrooming; }
+    public void setCanPerformAllogrooming(boolean val) { this.canPerformAllogrooming = val; }
+
+    @Override public boolean canPerformTrembleDance() { return canPerformTrembleDance; }
+    public void setCanPerformTrembleDance(boolean val) { this.canPerformTrembleDance = val; }
+
+    @Override public boolean hasThermalTrailDecay() { return hasThermalTrailDecay; }
+    public void setHasThermalTrailDecay(boolean val) { this.hasThermalTrailDecay = val; }
 
     // --- Dynamic Plugin Extensibility Attributes ---
     private java.util.Map<String, Object> customAttributes = new java.util.HashMap<>();

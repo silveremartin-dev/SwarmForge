@@ -20,6 +20,9 @@ public class SoilHydricCoupling {
     private float snowDensity = 100.0f;       // kg/m^3 (100 = fresh powder, 450 = compacted firn)
     private float iceThicknessMm = 0.0f;      // Surface ice sheet thickness in mm
     private float frostDepthCells = 0.0f;     // Subterranean freezing front depth in cells
+    private final int maxDepth;
+    private final float[] soilMoistureByDepth;
+    private float surfaceMoisture = 45.0f;
 
     public SoilHydricCoupling(int maxDepth) {
         this.maxDepth = Math.max(1, maxDepth);

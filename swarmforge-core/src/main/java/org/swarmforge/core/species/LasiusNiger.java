@@ -39,6 +39,7 @@ public class LasiusNiger extends CustomSpecies {
         setNestType("UNDERGROUND_BURROW");
         setVenomType("FORMIC_ACID");
         setAggression(0.3f);
+        setCanPerformTandemRunning(true);
 
         CasteTemplate queen = new CasteTemplate("Reine", 500f, 10f);
         queen.setDescription("Reine fondatrice (9mm)");

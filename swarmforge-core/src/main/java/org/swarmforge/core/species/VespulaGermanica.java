@@ -39,6 +39,7 @@ public class VespulaGermanica extends CustomSpecies {
         setNestType("PAPER_NEST");
         setVenomType("VENOMOUS_STING");
         setAggression(0.85f);
+        setCanPerformLarvalSalivaryTrophallaxis(true);
 
         CasteTemplate queen = new CasteTemplate("Fondatrice (Reine)", 450f, 20f);
         queen.setCanFly(true);

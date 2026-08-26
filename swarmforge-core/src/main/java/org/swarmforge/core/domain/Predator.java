@@ -79,6 +79,11 @@ public class Predator {
             case KLEPTOPARASITE_THRIPS -> 15f;
             case CATERPILLAR -> 45f;
             case MYRMECOPHILE_BEETLE -> 35f;
+            case ASIAN_HORNET -> 50f;
+            case BEE_WOLF -> 35f;
+            case VARROA_MITE -> 10f;
+            case HONEY_BUZZARD -> 120f;
+            default -> 30f;
         };
     }
 

@@ -37,6 +37,7 @@ public class CamponotusPennsylvanicus extends CustomSpecies {
         setSecondaryDiet("INSECTS_MEAT");
         setNestType("WOOD_TUNNELS");
         setVenomType("POWERFUL_MANDIBLES");
+        setCanDrumSubstrate(true);
 
         CasteTemplate queen = new CasteTemplate("Reine", 750f, 15f);
         queen.setLifespan(365 * 25);

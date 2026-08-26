@@ -81,13 +81,6 @@ public class Colony implements java.io.Serializable {
 
     private int age = 0;
 
-    public void tick() {
-        this.age++;
-        if (fungusGarden != null) {
-            fungusGarden.tick();
-        }
-    }
-
     public int getAgeInTicks() {
         return age;
     }
@@ -371,11 +364,13 @@ public class Colony implements java.io.Serializable {
      */
     public void addResource(ResourceType type, float amount) {
         resources.merge(type, amount, Float::sum);
-        if (type != null && type.getCategory() != null) {
-            switch (type.getCategory()) {
-                case PROTEIN -> proteinStored += amount;
-                case CARBOHYDRATE -> carbohydrateStored += amount;
-                case WATER -> waterStored += amount;
+        if (type != null) {
+            if (type == ResourceType.PROTEIN || type == ResourceType.INSECT) {
+                proteinStored += amount;
+            } else if (type == ResourceType.CARBOHYDRATE || type == ResourceType.SUGAR || type == ResourceType.NECTAR || type == ResourceType.HONEYDEW) {
+                carbohydrateStored += amount;
+            } else if (type == ResourceType.WATER) {
+                waterStored += amount;
             }
         }
     }
@@ -390,11 +385,13 @@ public class Colony implements java.io.Serializable {
         float toTake = Math.min(current, amount);
         if (toTake > 0) {
             resources.put(type, current - toTake);
-            if (type != null && type.getCategory() != null) {
-                switch (type.getCategory()) {
-                    case PROTEIN -> proteinStored = Math.max(0f, proteinStored - toTake);
-                    case CARBOHYDRATE -> carbohydrateStored = Math.max(0f, carbohydrateStored - toTake);
-                    case WATER -> waterStored = Math.max(0f, waterStored - toTake);
+            if (type != null) {
+                if (type == ResourceType.PROTEIN || type == ResourceType.INSECT) {
+                    proteinStored = Math.max(0f, proteinStored - toTake);
+                } else if (type == ResourceType.CARBOHYDRATE || type == ResourceType.SUGAR || type == ResourceType.NECTAR || type == ResourceType.HONEYDEW) {
+                    carbohydrateStored = Math.max(0f, carbohydrateStored - toTake);
+                } else if (type == ResourceType.WATER) {
+                    waterStored = Math.max(0f, waterStored - toTake);
                 }
             }
         }
@@ -503,4 +500,12 @@ public class Colony implements java.io.Serializable {
 
         age++;
     }
+
+    private int broodCount = 50;
+    private int enslavedPupaeCount = 0;
+
+    public int getBroodCount() { return broodCount; }
+    public void decrementBroodCount() { if (broodCount > 0) broodCount--; }
+    public void incrementEnslavedPupaeCount() { enslavedPupaeCount++; }
+    public int getEnslavedPupaeCount() { return enslavedPupaeCount; }
 }

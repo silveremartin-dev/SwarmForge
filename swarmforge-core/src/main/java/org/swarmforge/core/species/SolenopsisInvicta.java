@@ -39,6 +39,7 @@ public class SolenopsisInvicta extends CustomSpecies {
         setNestType("MOUND");
         setVenomType("VENOMOUS_STING");
         setAggression(0.9f);
+        setCanPerformBiostructures(true);
 
         CasteTemplate queen = new CasteTemplate("Reine", 450f, 15f);
         queen.setLifespan(365 * 7);

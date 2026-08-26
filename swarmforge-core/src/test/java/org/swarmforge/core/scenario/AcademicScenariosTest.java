@@ -22,7 +22,7 @@ public class AcademicScenariosTest {
     public void testAcademicScenariosCreation() {
         List<Scenario> scenarios = AcademicScenarios.getAllAcademicScenarios(12345L);
         assertNotNull(scenarios);
-        assertEquals(4, scenarios.size());
+        assertEquals(8, scenarios.size());
 
         Scenario s1 = scenarios.get(0);
         assertEquals("ACAD_01_LEVY_BROWNIAN", s1.getId());

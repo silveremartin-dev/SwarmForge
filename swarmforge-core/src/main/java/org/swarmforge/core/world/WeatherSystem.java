@@ -197,7 +197,7 @@ public class WeatherSystem {
         currentHumidity = (float) Math.max(10, Math.min(100, baseHumAvg + ((currentRainfall > 0 || currentSnowfall > 0) ? 20 : -diurnalTemp * 0.8)));
 
         // 5. Hydric Coupling & Subterranean Moisture updates
-        hydricCoupling.updateMoisture(currentRainfall + currentSnowfall, currentTemp, currentWindSpeed, deltaHours);
+        hydricCoupling.updateHydricAndThermalState(currentRainfall, currentSnowfall, currentTemp, currentWindSpeed, deltaHours);
 
         // 6. Daylight hours check
         float dayLength = calculateDayLength();

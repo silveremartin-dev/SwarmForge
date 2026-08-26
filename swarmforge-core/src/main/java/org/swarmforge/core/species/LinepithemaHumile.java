@@ -37,6 +37,7 @@ public class LinepithemaHumile extends CustomSpecies {
         setSecondaryDiet("INSECTS_MEAT");
         setNestType("UNDERGROUND_BURROW");
         setAggression(0.6f);
+        setIsUnicolonial(true);
 
         CasteTemplate queen = new CasteTemplate("Reine", 300f, 8f);
         queen.setLifespan(365 * 10);

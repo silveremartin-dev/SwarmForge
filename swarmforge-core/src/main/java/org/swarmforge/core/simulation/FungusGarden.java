@@ -71,4 +71,8 @@ public class FungusGarden implements java.io.Serializable {
     public float getHealth() {
         return health;
     }
+
+    private float contaminationLevel = 0.0f; // Escovopsis mold contamination
+    public float getContaminationLevel() { return contaminationLevel; }
+    public void setContaminationLevel(float level) { this.contaminationLevel = Math.max(0f, level); }
 }

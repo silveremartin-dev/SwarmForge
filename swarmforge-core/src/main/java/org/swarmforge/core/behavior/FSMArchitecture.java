@@ -31,7 +31,13 @@ public class FSMArchitecture implements ReasoningArchitecture {
         ATTACKING,
         FLEEING,
         NURSING,
-        RESTING
+        RESTING,
+        WAGGLE_DANCING,
+        BIOSTRUCTURE_LOCKED,
+        NECROPHORE_TRANSPORT,
+        THERMOREGULATING,
+        LARVAL_TROPHALLAXIS,
+        TANDEM_RUNNING
     }
 
     private State currentState = State.IDLE;
@@ -57,6 +63,12 @@ public class FSMArchitecture implements ReasoningArchitecture {
         stateHandlers.put(State.ATTACKING, this::handleAttacking);
         stateHandlers.put(State.FLEEING, this::handleFleeing);
         stateHandlers.put(State.RESTING, this::handleResting);
+        stateHandlers.put(State.WAGGLE_DANCING, this::handleWaggleDancing);
+        stateHandlers.put(State.BIOSTRUCTURE_LOCKED, this::handleBiostructureLocked);
+        stateHandlers.put(State.NECROPHORE_TRANSPORT, this::handleNecrophoreTransport);
+        stateHandlers.put(State.THERMOREGULATING, this::handleThermoregulating);
+        stateHandlers.put(State.LARVAL_TROPHALLAXIS, this::handleLarvalTrophallaxis);
+        stateHandlers.put(State.TANDEM_RUNNING, this::handleTandemRunning);
     }
 
     @Override
@@ -250,6 +262,53 @@ public class FSMArchitecture implements ReasoningArchitecture {
             return Action.rest();
         }
         return Action.rest();
+    }
+
+    // === Species-Specific Behavioral State Handlers ===
+
+    private Action handleWaggleDancing(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
+        // Honeybee (Apis mellifera) waggle dance execution on vertical comb
+        if (agent instanceof Individual ind && ind.getSpecies() != null && ind.getSpecies().canPerformWaggleDance()) {
+            // Dance step: figure-eight vibration loop broadcasting vector
+            transitionTo(State.IDLE);
+            return Action.rest();
+        }
+        transitionTo(State.IDLE);
+        return Action.rest();
+    }
+
+    private Action handleBiostructureLocked(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
+        // Army ant / Fire ant biostructure (living bridge / water raft)
+        if (agent instanceof Individual ind && ind.getSpecies() != null && ind.getSpecies().canPerformBiostructures()) {
+            return Action.rest(); // Remain immobile as structural voxel element
+        }
+        transitionTo(State.IDLE);
+        return Action.rest();
+    }
+
+    private Action handleNecrophoreTransport(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
+        // Oleic acid corpse transportation to refuse dump
+        if (isNearHome(agent)) {
+            transitionTo(State.IDLE);
+            return Action.rest();
+        }
+        return Action.returnHome();
+    }
+
+    private Action handleThermoregulating(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
+        // Shivering / Fanning thermoregulation
+        return Action.rest();
+    }
+
+    private Action handleLarvalTrophallaxis(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
+        // Wasp / Hornet larval meatball feeding & saliva reward exchange
+        transitionTo(State.IDLE);
+        return Action.rest();
+    }
+
+    private Action handleTandemRunning(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
+        // Leader-follower tandem recruitment
+        return Action.returnHome();
     }
 
     private Action randomMove() {

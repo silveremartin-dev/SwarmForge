@@ -50,6 +50,7 @@ public class SwarmForgeClient extends Application {
         private PheromoneOverlay pheromoneOverlay;
         private StatisticsDashboard statisticsDashboard;
         private org.swarmforge.client.ui.SimulationControlPanel simControlPanel;
+        private org.swarmforge.client.ui.WorldEditorPane simWorldViewer;
         private VBox simulationInactiveOverlay;
         private Label syncLabel;
         private Label statsLabel;
@@ -706,8 +707,8 @@ public class SwarmForgeClient extends Application {
 
                 // Center Viewport: WorldEditorPane 3-View System (3D View + Mouse Orbit/Pan/Zoom Controls + 2D Minimaps)
                 // Center Viewport: WorldEditorPane 3-View System (3D View + Mouse Orbit/Pan/Zoom Controls + 2D Minimaps)
-                org.swarmforge.client.ui.WorldEditorPane simWorldViewer = new org.swarmforge.client.ui.WorldEditorPane();
-                simWorldViewer.setSimulationMode(true);
+                this.simWorldViewer = new org.swarmforge.client.ui.WorldEditorPane();
+                this.simWorldViewer.setSimulationMode(true);
                 
                 // 3D Inactive Overlay Placeholder (Sleek Top Bar - Hidden)
                 this.simulationInactiveOverlay = new VBox(4);

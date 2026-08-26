@@ -64,4 +64,8 @@ public class Chamber implements java.io.Serializable {
     public void removeLoad(float amount) {
         this.currentLoad = Math.max(0, currentLoad - amount);
     }
+
+    private float stabilityFactor = 1.0f;
+    public float getStabilityFactor() { return stabilityFactor; }
+    public void setStabilityFactor(float factor) { this.stabilityFactor = factor; }
 }

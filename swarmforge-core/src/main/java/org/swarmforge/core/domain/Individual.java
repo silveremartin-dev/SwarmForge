@@ -410,7 +410,18 @@ public class Individual implements java.io.Serializable, AgentView {
         if (age >= maxLifespan) {
             die(); // Mortality from old age
         }
+
+        // 3. Species-Specific Mandibular Wear & Age Polyethism Shift
+        if (species != null && species.hasMandibularWearPolyethism() && (job == Job.BUILDER || caste == Caste.FORAGER)) {
+            mandibleWear = org.swarmforge.core.simulation.MandibularBiomechanicsSystem.applyMandibleWear(mandibleWear, 1.0f);
+            if (org.swarmforge.core.simulation.MandibularBiomechanicsSystem.requiresRetirementToNurse(mandibleWear)) {
+                this.job = Job.NURSE;
+            }
+        }
     }
+
+    private float mandibleWear = 0.0f;
+    public float getMandibleWear() { return mandibleWear; }
 
     public UUID getId() {
         return id;
@@ -851,10 +862,6 @@ public class Individual implements java.io.Serializable, AgentView {
     public void die() {
         this.alive = false;
         // Optional: clear references, etc.
-    }
-
-    public float getAttackDamage() {
-        return attackDamage;
     }
 
     public float getMaxHealth() {

@@ -244,6 +244,44 @@ public interface Species {
      */
     default boolean hasSubstrateAdhesionArolia() { return true; }
 
+    default boolean canPerformBiostructures() { return false; } // Bridges, Rafts, Bivouacs (Eciton, Solenopsis)
+    default boolean canPerformNecrophoresis() { return true; }  // Oleic acid corpse cleanup (Most ants & social bees)
+    default boolean canPerformSocialThermoregulation() { return false; } // Endothermic shivering & fanning (Formica, Apis)
+    default boolean isUnicolonial() { return false; } // Supercolony CHC tolerance (Linepithema humile)
+    default boolean hasMandibularWearPolyethism() { return true; } // Tooth wear age shifts
+    default boolean canPerformTandemRunning() { return false; } // Leader-follower recruitment (Temnothorax)
+    default boolean canPerformWaggleDance() { return false; } // Polar vector dance (Apis mellifera)
+    default boolean canPerformLarvalSalivaryTrophallaxis() { return false; } // Wasp protein-saliva exchange (Vespula/Vespa)
+    default boolean hasTermiteGutSymbiosis() { return false; } // Lignocellulose protist digestion (Isoptera)
+    default boolean canFarmAphids() { return false; } // Aphid milking and herd protection (Lasius, Formica)
+    default boolean hasRoyalPheromoneInhibition() { return true; } // 9-ODA ovary suppression & queen succession
+    default boolean canDrumSubstrate() { return false; } // Head-banging substrate acoustic vibrations (Camponotus, Reticulitermes)
+    default boolean isPolycalic() { return false; } // Polycalic inter-mound network routing (Formica lugubris)
+    default boolean canCollectPropolis() { return false; } // Resin foraging & antimicrobial propolis coating (Apis mellifera)
+    default boolean canSewLeavesWithLarvalSilk() { return false; } // Arboreal weaver ant silk sewing (Oecophylla)
+    default boolean canWeedFungusGarden() { return false; } // Escovopsis weeding & Pseudonocardia antibiotic application (Atta)
+    default boolean canMakeStercoralCement() { return false; } // Soil-saliva-feces plastering (Macrotermes)
+    default boolean hasProctodealTrophallaxis() { return false; } // Anal protist transfer (Reticulitermes)
+    default boolean canPerformPhragmosis() { return false; } // Flat head-door gallery plugging (Cephalotes, Colobopsis)
+    default boolean canPerformEvaporativeCooling() { return false; } // Water droplet hive cooling (Apis mellifera)
+    default boolean hasTrapJawMechanism() { return false; } // Elastic catapult mandible snap (Odontomachus)
+    default boolean isSlaveMakingSpecies() { return false; } // Dulosis raids on host pupae (Polyergus)
+    default boolean canFormLivingBivouac() { return false; } // Interlocking worker suspended nest (Eciton)
+    default boolean hasSolarOrientedMound() { return false; } // Asymmetric south-sloping pine needle mound (Formica)
+    default boolean canPerformAllogrooming() { return true; } // Mutual grooming & fungal spore removal (Lasius, Apis)
+    default boolean canPerformTrembleDance() { return false; } // Receiver recruitment dance when overwhelmed (Apis)
+    default boolean hasThermalTrailDecay() { return true; } // Temperature-dependent Q10 trail evaporation (Linepithema)
+    default boolean canPerformThoracicIncubation() { return false; } // Thoracic muscle shivering brood incubation (Formica, Apis)
+    default boolean canPerformRitualJousting() { return false; } // Non-lethal tournament intimidation (Myrmecocystus)
+    default boolean hasTerritorialRepellentPheromone() { return false; } // Inter-species avoidance marking (Solenopsis, Linepithema)
+    default boolean canDetectHydrostaticPressure() { return true; } // Barometric flood evacuation (Subterranean ants)
+    default boolean isRobberBeeSpecies() { return false; } // Honey theft raids on weak hives (Lestrimelitta)
+    default boolean canStridulateRescueCall() { return false; } // Acoustic emergency rescue stridulation (Atta, Pogonomyrmex)
+    default boolean isHoneypotStorageCaste() { return false; } // Replete swollen abdominal liquid storage (Myrmecocystus)
+    default boolean canPlugContaminatedGalleries() { return false; } // Antiseptic gravel chamber sealing (Lasius)
+    default boolean hasOleicAcidThresholdNecrophoresis() { return true; } // Oleic acid oxidation corpse cleanup
+    default boolean hasUVPolarizedLightNavigation() { return false; } // Polarized UV sky compass (Cataglyphis)
+
     // ── Extensible Custom & Plugin Attributes ─────────────────────────────────
     /**
      * Generic dynamic attributes map for plugin extensibility and novel sensory/motor parameters.

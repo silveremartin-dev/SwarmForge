@@ -38,6 +38,7 @@ public class AttaCephalotes extends CustomSpecies {
         setNestType("UNDERGROUND_BURROW");
         setVenomType("POWERFUL_MANDIBLES");
         setAggression(0.5f);
+        setCanWeedFungusGarden(true);
 
         CasteTemplate queen = new CasteTemplate("Reine Géante", 1000f, 20f);
         queen.setLifespan(365 * 20);

@@ -11,37 +11,45 @@
 
 ## 📸 Component Showcase & Visual Editors
 
-![SwarmForge Live Interactive Studio Showcase](docs/images/swarmforge_demo.gif)
-
 ### 1. 3D Terrarium & World Editor
 The **World Editor Pane** provides procedural voxel terrain generation (Perlin/Simplex noise), soil moisture & depth strata simulation, underground water table dynamics, subterranean cut planes, and real-time biome customization.
 
-![SwarmForge World Editor](docs/images/world_editor.png)
+![SwarmForge World Editor](docs/images/real_shots/real_shot_02__diteur_de_Monde.png)
 
 ### 2. Species & Caste Parameterization Studio
-The **Species Editor Pane** allows fine-grained customization of morphological, physiological, and behavioral parameters across castes (Queens, Workers, Soldiers, Drones). Includes custom dietary profiles, haplodiploid genetic traits, endocrine sensitivity, and an **Accessory Species Catalog** spanning 18 biological categories (Flora, Mutualists, Prey, Predators, Pathogens, Detritivores).
+The **Species Editor Pane** allows fine-grained customization of morphological, physiological, and behavioral parameters across castes (Queens, Workers, Soldiers, Drones). Includes custom dietary profiles, haplodiploid genetic traits, and endocrine sensitivity controls.
 
-![SwarmForge Species Editor](docs/images/species_editor.png)
+![SwarmForge Species Editor](docs/images/real_shots/real_shot_03__diteur_dEsp_ces.png)
 
-### 3. Nest Architecture & Thermodynamics Generator
-The **Nest Generator Pane** provides procedural 3D underground nest synthesis coupled with a **Nest Thermodynamics Engine** modeling stack-effect buoyancy ventilation, metabolic $CO_2$ dispersion, and thermal regulation across 13 biological nest typologies (Subterranean Fungi Vaults, Mound Nests, Paper Pedunculate, Wax Comb Hexagonal, Carton Nests, Living Bivouacs, etc.).
+### 3. Accessory & Associated Species Catalog
+The **Accessory Species Editor** spans 18 biological categories including flora, mutualists, prey, predators, pathogens, fungi, detritivores, and commensals to model rich ecological interactions.
 
-![SwarmForge Nest Generator](docs/images/nest_generator.png)
+![SwarmForge Accessory Species Editor](docs/images/real_shots/real_shot_04_Esp_ces_Associ_es___Commensaux.png)
 
-### 4. Realistic Weather & Atmospheric Physics Editor
-The **Weather Editor Pane** drives a 12-month geographic climate engine with Perlin micro-fluctuations, continuous solar diurnal curves, barometric pressure tendency equations, soil thermal inertia phase lags, and a Markov Chain state transition machine for discrete meteorological phenomena (Sun, Rain, Hail, Blizzard, Tempest).
+### 4. Nest Architecture & Thermodynamics Generator
+The **Nest Generator Pane** provides procedural 3D underground nest synthesis coupled with a **Nest Thermodynamics Engine** modeling stack-effect buoyancy ventilation, metabolic $CO_2$ dispersion, and thermal regulation across biological nest typologies.
 
-![SwarmForge Weather Editor](docs/images/weather_editor.png)
+![SwarmForge Nest Generator](docs/images/real_shots/real_shot_06_G_n_rateur_de_Nid.png)
 
-### 5. Dynamic Analytics & Eco-Engine Statistics Dashboard
-The **Statistics Dashboard** offers real-time telemetry, population demographic pyramids, resource stockpile metrics (sugar, protein, honeydew, fungus), bioluminescent pheromone diffusion overlays, and colony spatial territory heatmaps.
+### 5. Realistic Weather & Atmospheric Physics Editor
+The **Weather Editor Pane** drives a 12-month geographic climate engine with Perlin micro-fluctuations, continuous solar diurnal curves, barometric pressure tendency equations, soil thermal inertia phase lags, and meteorological state transitions.
 
-![SwarmForge Statistics Dashboard](docs/images/statistics_dashboard.png)
+![SwarmForge Weather Editor](docs/images/real_shots/real_shot_05_M_t_o___Climat.png)
 
-### 6. High-Fidelity 3D Simulation Engine
-Real-time 3D simulation with live agent inspection, bioluminescent pheromone trail diffusion maps, endocrine system telemetry, and population dynamics tracking.
+### 6. Interactive 3D Simulation View
+Real-time simulation viewport with live agent inspection, bioluminescent pheromone trail diffusion overlays, endocrine telemetry, and population dynamics tracking.
 
-![SwarmForge 3D Simulation](docs/images/simulation.png)
+![SwarmForge 3D Simulation](docs/images/real_shots/real_shot_01_Simulation.png)
+
+### 7. Client Settings & System Configuration
+Comprehensive configuration pane for controlling renderer options, network gRPC connection endpoints, frame rates, theme selections, and persistence preferences.
+
+![SwarmForge Settings](docs/images/real_shots/real_shot_07_Param_tres.png)
+
+### 8. Technical Reference & Biological Glossary
+Built-in interactive documentation, domain definitions, biological equations, and ethological behavior glossary for quick reference within the studio.
+
+![SwarmForge Technical Reference](docs/images/real_shots/real_shot_08___Glossaire___R_f_rence_Technique.png)
 
 ---
 
