@@ -26,6 +26,7 @@ import org.swarmforge.client.ui.StatisticsDashboard;
 
 import java.util.logging.Logger;
 import java.net.URL;
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -412,17 +413,20 @@ public class SwarmForgeClient extends Application {
                 // Set callback on Apply Presets
                 this.simControlPanel.setOnApplyPresets(seed -> {
                         if (this.localSimulation != null) {
-                                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-                                confirm.setTitle("Remplacement du Scénario");
-                                confirm.setHeaderText("Une simulation est actuellement en cours d'exécution");
-                                confirm.setContentText("Voulez-vous vraiment la réinitialiser et appliquer ce nouveau scénario ? Son état sera automatiquement sauvegardé.");
-                                java.util.Optional<ButtonType> opt = confirm.showAndWait();
-                                if (opt.isEmpty() || opt.get() != ButtonType.OK) {
-                                        return; // Interrompre le remplacement
-                                }
-                                this.localSimulation.recordSnapshot();
+                                javafx.application.Platform.runLater(() -> {
+                                        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                                        confirm.setTitle("Remplacement du Scénario");
+                                        confirm.setHeaderText("Une simulation est actuellement en cours d'exécution");
+                                        confirm.setContentText("Voulez-vous vraiment la réinitialiser et appliquer ce nouveau scénario ? Son état sera automatiquement sauvegardé.");
+                                        java.util.Optional<ButtonType> opt = confirm.showAndWait();
+                                        if (opt.isEmpty() || opt.get() != ButtonType.OK) {
+                                                return; // Interrompre le remplacement
+                                        }
+                                        this.localSimulation.recordSnapshot();
+                                });
                         }
 
+                        System.out.println("[INFO] [SwarmForge Engine] Création du terrarium et de la simulation locale...");
                         if (this.lastGeneratedTerrarium == null) {
                                 this.lastGeneratedTerrarium = new org.swarmforge.core.domain.Terrarium(64, 32, 64);
                         }
@@ -430,14 +434,29 @@ public class SwarmForgeClient extends Application {
                         this.localSimulation.reset(0);
                         this.localSimulation.setMasterSeed(seed);
 
-                        java.util.List<String> selSpeciesList = simControlPanel.getSelectedSpeciesList();
-                        int queens = simControlPanel.getQueenCount();
-                        int workers = simControlPanel.getWorkerCount();
-                        int soldiers = simControlPanel.getSoldierCount();
+                        List<org.swarmforge.client.ui.SimulationControlPanel.SpeciesConfigCard> speciesCards = simControlPanel.getSpeciesCards();
+                        int totalCols = speciesCards.isEmpty() ? 1 : speciesCards.size();
 
-                        int totalCols = selSpeciesList.size();
+                        System.out.println("[INFO] [SwarmForge Engine] Instanciation de " + totalCols + " colonie(s)...");
+
                         for (int colIdx = 0; colIdx < totalCols; colIdx++) {
-                                String selSpecies = selSpeciesList.get(colIdx);
+                                String selSpecies;
+                                int queens, workers, soldiers, initialFood;
+                                if (!speciesCards.isEmpty()) {
+                                        var card = speciesCards.get(colIdx);
+                                        selSpecies = card.getSpeciesName();
+                                        queens = card.getQueenCount();
+                                        workers = card.getWorkerCount();
+                                        soldiers = card.getSoldierCount();
+                                        initialFood = card.getInitialFood();
+                                } else {
+                                        selSpecies = simControlPanel.getSelectedSpecies();
+                                        queens = simControlPanel.getQueenCount();
+                                        workers = simControlPanel.getWorkerCount();
+                                        soldiers = simControlPanel.getSoldierCount();
+                                        initialFood = 500;
+                                }
+
                                 String speciesKey = "LasiusNiger";
                                 if (selSpecies != null) {
                                         if (selSpecies.contains("Atta") || selSpecies.contains("Coupeuse")) speciesKey = "AttaCephalotes";
@@ -447,25 +466,36 @@ public class SwarmForgeClient extends Application {
                                         else if (selSpecies.contains("Apis") || selSpecies.contains("Abeille")) speciesKey = "ApisMellifera";
                                         else if (selSpecies.contains("Termite") || selSpecies.contains("Macrotermes")) speciesKey = "Macrotermes";
                                 }
+
                                 org.swarmforge.core.spatial.OptimalColonyPlacementEngine.PlacementResult pos =
                                         org.swarmforge.core.spatial.OptimalColonyPlacementEngine.calculateOptimalPosition(
                                                 this.lastGeneratedTerrarium, speciesKey, colIdx, totalCols, "Optimal Multi-Territory Cluster"
                                         );
-                                this.localSimulation.addColony(speciesKey, queens, workers, soldiers, pos.x(), pos.y());
+
+                                System.out.println("[INFO] [SwarmForge Engine]   -> Colonie #" + (colIdx + 1) + ": " + speciesKey +
+                                        " [X=" + String.format("%.1f", pos.x()) + ", Y=" + String.format("%.1f", pos.y()) + "] | Reines: " + queens +
+                                        ", Ouvrières: " + workers + ", Soldats: " + soldiers + ", Réserve Nourriture: " + initialFood);
+
+                                org.swarmforge.core.domain.Colony colony = this.localSimulation.addColony(speciesKey, queens, workers, soldiers, pos.x(), pos.y());
+                                if (colony != null && initialFood > 0) {
+                                        colony.setFoodStored(initialFood);
+                                }
                         }
 
-                        if (gameView != null && gameView.getGameApp() != null) {
-                                gameView.getGameApp().setSimulation(this.localSimulation);
-                        }
+                        javafx.application.Platform.runLater(() -> {
+                                if (gameView != null && gameView.getGameApp() != null) {
+                                        gameView.getGameApp().setSimulation(this.localSimulation);
+                                }
 
-                        this.simControlPanel.updateCheckpoints(this.localSimulation.getCheckpoints());
+                                this.simControlPanel.updateCheckpoints(this.localSimulation.getCheckpoints());
 
-                        // Activer les onglets de dépendance dès qu'un scénario est appliqué
-                        visualTab.setDisable(false);
-                        godTab.setDisable(false);
-                        statsTab.setDisable(false);
-                        eventLogTab.setDisable(false);
-                        subTabs.getSelectionModel().select(visualTab);
+                                // Activer les onglets de dépendance dès qu'un scénario est appliqué
+                                visualTab.setDisable(false);
+                                godTab.setDisable(false);
+                                statsTab.setDisable(false);
+                                eventLogTab.setDisable(false);
+                                subTabs.getSelectionModel().select(visualTab);
+                        });
                 });
 
                 this.simControlPanel.setOnCreateCheckpoint(name -> {
@@ -1442,10 +1472,13 @@ public class SwarmForgeClient extends Application {
 
                 // Section 4: Moteurs de Raisonnement & Cognition
                 VBox vReasoning = new VBox(10); vReasoning.setPadding(new Insets(15));
-                addGlossaryRow(vReasoning, "Automate à États Finis (FSM)", "Comportement réactif déterministe passant d'un état à un autre selon des déclencheurs stricts.", "https://fr.wikipedia.org/wiki/Automate_%C3%A0_%C3%A9tats_finis");
-                addGlossaryRow(vReasoning, "BDI (Beliefs-Desires-Intentions)", "Modélisation cognitive complète : croyances sur l'environnement, désirs prioritaires et intentions d'action.", "https://fr.wikipedia.org/wiki/Mod%C3%A8le_BDI");
-                addGlossaryRow(vReasoning, "Logique Floue (Fuzzy Logic)", "Prise de décision continue basée sur des degrés de vérité (ex: Légèrement affamé, Très effrayé).", "https://fr.wikipedia.org/wiki/Logique_floue");
-                addGlossaryRow(vReasoning, "Réseaux de Neurones Spikant (SNN)", "Moteur de comportement neuromorphique basé sur l'intégration de potentiels d'action.", "https://fr.wikipedia.org/wiki/R%C3%A9seau_de_neurones_artificiels");
+                addGlossaryRow(vReasoning, "Arbre de Comportements (Behavior Tree)", "Architecture hiérarchique basée sur des nœuds d'exécution (Séquences, Sélecteurs, Décorateurs et Actions) réévalués périodiquement.", "https://fr.wikipedia.org/wiki/Arbre_de_comportement");
+                addGlossaryRow(vReasoning, "Architecture à Tableau Blanc (Blackboard)", "Espace de mémoire partagé et décentralisé permettant aux agents de déposer et consulter des besoins prioritaires sans contrôleur central.", "https://en.wikipedia.org/wikiBlackboard_system");
+                addGlossaryRow(vReasoning, "Automate à États Finis (FSM)", "Modèle comportemental réactif déterministe basculant entre états discrets (ex: Repos -> Exploration -> Transport) selon des déclencheurs stricts.", "https://fr.wikipedia.org/wiki/Automate_%C3%A0_%C3%A9tats_finis");
+                addGlossaryRow(vReasoning, "BDI (Croyances - Désirs - Intentions)", "Modélisation cognitive agentique à haut niveau : croyances environnementales, désirs prioritaires et plan d'action intentionnel.", "https://fr.wikipedia.org/wiki/Mod%C3%A8le_BDI");
+                addGlossaryRow(vReasoning, "Logique Floue (Fuzzy Logic)", "Moteur de décision à logique floue utilisant des degrés d'appartenance continus entre 0 et 1 pour des transitions comportementales graduelles.", "https://fr.wikipedia.org/wiki/Logique_floue");
+                addGlossaryRow(vReasoning, "Moteur Hybride Combiné (Hybrid)", "Architecture hybride multi-niveaux couplant une planification stratégique BDI/Arbre de Décision avec un contrôle réactif FSM ou Flou.", "https://fr.wikipedia.org/wiki/Syst%C3%A8me_hybride");
+                addGlossaryRow(vReasoning, "Réseau de Neurones Spikant (SNN / Neural Network)", "Moteur neuromorphique à impulsions couplé à un apprentissage par renforcement (Q-Learning / STDP) pour l'adaptation continue.", "https://fr.wikipedia.org/wiki/R%C3%A9seau_de_neurones_artificiels");
 
                 // Section 5: Capteurs & Biomécanique
                 VBox vSensors = new VBox(10); vSensors.setPadding(new Insets(15));

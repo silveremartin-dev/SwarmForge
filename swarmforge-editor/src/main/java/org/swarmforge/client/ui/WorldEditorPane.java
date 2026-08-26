@@ -215,6 +215,17 @@ public class WorldEditorPane extends BorderPane {
         return currentRenderMode;
     }
 
+    private double simWindSpeed = 15.0;
+    private String simWindDirection = "SW";
+    private String simSeason = "Summer";
+
+    public void updateWeatherSimulationParameters(double windSpeed, String windDirection, String season) {
+        this.simWindSpeed = windSpeed;
+        if (windDirection != null) this.simWindDirection = windDirection;
+        if (season != null) this.simSeason = season;
+        repaintAllViews();
+    }
+
     // Controls: 4. Hydrology
     private CheckBox riverCheck;
     private Slider riverWidthSlider;
@@ -339,7 +350,11 @@ public class WorldEditorPane extends BorderPane {
         setTop(buildHeader());
         setLeft(buildConfig());
         setCenter(buildViews());
-        repaintAllViews();
+        if (presetsCombo != null && presetsCombo.getValue() != null && presetManager.contains(presetsCombo.getValue())) {
+            loadConfiguration(presetManager.get(presetsCombo.getValue()));
+        } else {
+            repaintAllViews();
+        }
     }
 
     private void initDefaultTerrainGrid() {
@@ -844,8 +859,10 @@ public class WorldEditorPane extends BorderPane {
                 staticPoolsSlider.setValue(2);
             }
             case 1 -> { // Atta sexdens (Tropical Rainforest)
-                if (presetsCombo.getItems().contains("Forêt Tropicale (Manaus, BR)")) {
-                    presetsCombo.getSelectionModel().select("Forêt Tropicale (Manaus, BR)");
+                String pKey = "Tropical Rainforest (Manaus, BR)";
+                if (presetManager.contains(pKey)) {
+                    presetsCombo.getSelectionModel().select(pKey);
+                    loadConfiguration(presetManager.get(pKey));
                 } else {
                     surfaceSizeSlider.setValue(25.0); depthSlider.setValue(3.0); baseHumiditySlider.setValue(0.85);
                     earthSpinner.getValueFactory().setValue(45); claySpinner.getValueFactory().setValue(40);
@@ -860,8 +877,10 @@ public class WorldEditorPane extends BorderPane {
                 hollowLogsSlider.setValue(6); treeCountSlider.setValue(8);
             }
             case 3 -> { // Cataglyphis bombycina (Sahara Arid Desert)
-                if (presetsCombo.getItems().contains("Désert Aride (Erg Chebbi, MA)")) {
-                    presetsCombo.getSelectionModel().select("Désert Aride (Erg Chebbi, MA)");
+                String pKey = "Arid Desert (Erg Chebbi, MA)";
+                if (presetManager.contains(pKey)) {
+                    presetsCombo.getSelectionModel().select(pKey);
+                    loadConfiguration(presetManager.get(pKey));
                 } else {
                     surfaceSizeSlider.setValue(25.0); depthSlider.setValue(3.0); baseHumiditySlider.setValue(0.12);
                     sandSpinner.getValueFactory().setValue(80); stoneSpinner.getValueFactory().setValue(15);
@@ -870,8 +889,10 @@ public class WorldEditorPane extends BorderPane {
                 }
             }
             case 4 -> { // Formica rufa (Taiga Boreal Forest)
-                if (presetsCombo.getItems().contains("Taïga Boréale (Rovaniemi, FI)")) {
-                    presetsCombo.getSelectionModel().select("Taïga Boréale (Rovaniemi, FI)");
+                String pKey = "Permafrost Tundra (Svalbard, NO)";
+                if (presetManager.contains(pKey)) {
+                    presetsCombo.getSelectionModel().select(pKey);
+                    loadConfiguration(presetManager.get(pKey));
                 } else {
                     surfaceSizeSlider.setValue(25.0); depthSlider.setValue(3.0); baseHumiditySlider.setValue(0.55);
                     earthSpinner.getValueFactory().setValue(40); stoneSpinner.getValueFactory().setValue(25);
@@ -880,8 +901,10 @@ public class WorldEditorPane extends BorderPane {
                 }
             }
             case 5 -> { // Lasius niger (Temperate Forest)
-                if (presetsCombo.getItems().contains("Tempéré Decidu (Fontainebleau, FR)")) {
-                    presetsCombo.getSelectionModel().select("Tempéré Decidu (Fontainebleau, FR)");
+                String pKey = "Temperate Deciduous (Fontainebleau, FR)";
+                if (presetManager.contains(pKey)) {
+                    presetsCombo.getSelectionModel().select(pKey);
+                    loadConfiguration(presetManager.get(pKey));
                 } else {
                     surfaceSizeSlider.setValue(25.0); depthSlider.setValue(3.0); baseHumiditySlider.setValue(0.45);
                     earthSpinner.getValueFactory().setValue(50); sandSpinner.getValueFactory().setValue(20);
@@ -890,8 +913,10 @@ public class WorldEditorPane extends BorderPane {
                 }
             }
             case 6 -> { // Messor barbarus (Semi-Arid Steppe)
-                if (presetsCombo.getItems().contains("Steppe Semi-Aride (Astana, KZ)")) {
-                    presetsCombo.getSelectionModel().select("Steppe Semi-Aride (Astana, KZ)");
+                String pKey = "Mediterranean Shrubland (Corsica, FR)";
+                if (presetManager.contains(pKey)) {
+                    presetsCombo.getSelectionModel().select(pKey);
+                    loadConfiguration(presetManager.get(pKey));
                 } else {
                     surfaceSizeSlider.setValue(25.0); depthSlider.setValue(3.0); baseHumiditySlider.setValue(0.30);
                     sandSpinner.getValueFactory().setValue(35); earthSpinner.getValueFactory().setValue(45);
@@ -899,8 +924,10 @@ public class WorldEditorPane extends BorderPane {
                 }
             }
             case 7 -> { // Pseudomyrmex gracilis (Acacia Savanna)
-                if (presetsCombo.getItems().contains("Savane d'Acacias (Serengeti, TZ)")) {
-                    presetsCombo.getSelectionModel().select("Savane d'Acacias (Serengeti, TZ)");
+                String pKey = "Acacia Savanna (Serengeti, TZ)";
+                if (presetManager.contains(pKey)) {
+                    presetsCombo.getSelectionModel().select(pKey);
+                    loadConfiguration(presetManager.get(pKey));
                 } else {
                     comboTreeSpecies.getSelectionModel().select(2); // Acacia
                     acaciaPctSpinner.getValueFactory().setValue(80); nectarFlowersCheck.setSelected(true);
@@ -927,7 +954,7 @@ public class WorldEditorPane extends BorderPane {
         String defaultName = (presetsCombo.getEditor() != null && !presetsCombo.getEditor().getText().isBlank())
                 ? presetsCombo.getEditor().getText().trim()
                 : (presetsCombo.getValue() != null ? presetsCombo.getValue() : "Nouveau Preset Monde");
-        TextInputDialog dialog = new TextInputDialog(defaultName);
+        TextInputDialog dialog = org.swarmforge.client.util.ThemeManager.createTextInputDialog(defaultName);
         dialog.setTitle("Enregistrer le Preset Monde");
         dialog.setHeaderText("Saisissez un nom pour ce preset de monde :");
         dialog.setContentText("Nom :");
@@ -937,7 +964,7 @@ public class WorldEditorPane extends BorderPane {
                 presetManager.save(cleanName, getConfiguration());
                 presetsCombo.getItems().setAll(presetManager.names());
                 presetsCombo.getSelectionModel().select(cleanName);
-                new Alert(Alert.AlertType.INFORMATION, "Preset monde enregistré : " + cleanName).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Preset monde enregistré : " + cleanName).show();
             }
         });
     }
@@ -946,10 +973,9 @@ public class WorldEditorPane extends BorderPane {
         String selected = presetsCombo.getValue();
         if (selected == null || selected.isEmpty()) return;
 
-        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, "Voulez-vous vraiment supprimer le preset '" + selected + "' ?");
         confirmAlert.setTitle("Supprimer le Preset");
         confirmAlert.setHeaderText("Supprimer le Preset Monde");
-        confirmAlert.setContentText("Voulez-vous vraiment supprimer le preset '" + selected + "' ?");
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -960,7 +986,7 @@ public class WorldEditorPane extends BorderPane {
                 } else {
                     presetsCombo.getSelectionModel().clearSelection();
                 }
-                new Alert(Alert.AlertType.INFORMATION, "Preset monde supprimé.").show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Preset monde supprimé.").show();
             }
         });
     }
@@ -1002,50 +1028,53 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private VBox buildTerrainSourceBlock() {
-        cityNameField = new TextField("Fontainebleau, FR");
-        cityNameField.setPrefWidth(130);
-        cityNameField.setOnAction(e -> regenerateAndRepaint());
+        cityNameField = new TextField("Serengeti, TZ");
+        cityNameField.setPromptText("Ex: Serengeti, Paris, Manaus...");
+        cityNameField.setPrefWidth(160);
+        cityNameField.setOnAction(e -> fetchCityCoordinates(cityNameField.getText()));
 
-        citySearchField = new TextField("Fontainebleau");
-        citySearchField.setPromptText("Ex: Paris, Tokyo, Manaus...");
-        citySearchField.setPrefWidth(110);
-        citySearchField.setOnAction(e -> fetchCityCoordinates(citySearchField.getText()));
-
-        Button btnSearchCity = new Button("🔍 Ville");
-        btnSearchCity.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
-        btnSearchCity.setOnAction(e -> fetchCityCoordinates(citySearchField.getText()));
-
-        latField = new TextField("48.4047");
+        latField = new TextField("-2.3333");
         latField.setPrefWidth(70);
-        lonField = new TextField("2.7016");
+        lonField = new TextField("34.8333");
         lonField.setPrefWidth(70);
 
-        Button btnImportGPS = new Button("📍 Appliquer SIG");
-        btnImportGPS.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+        Button btnSyncGeo = new Button("🌐 Synchroniser SIG");
+        btnSyncGeo.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
+        btnSyncGeo.setTooltip(new Tooltip("Si la ville est renseignée, recherche ses coordonnées GPS. Si la Lat/Lon est saisie, applique le SIG et la zone bioclimatique."));
 
-        geoStatusLabel = new Label("ℹ️ Recherche par Nom de Ville et/ou Coordonnées GPS réelles.");
+        geoStatusLabel = new Label("ℹ️ Saisissez le nom de la ville OU la Lat/Lon puis cliquez sur Synchroniser.");
         geoStatusLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8; -fx-wrap-text: true;");
 
-        btnImportGPS.setOnAction(e -> {
-            regenerateAndRepaint();
-            geoStatusLabel.setText("🟢 SIG appliqué pour Lat: " + latField.getText() + "°, Lon: " + lonField.getText() + "° !");
-            geoStatusLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #4ade80; -fx-wrap-text: true;");
+        btnSyncGeo.setOnAction(e -> {
+            String cName = cityNameField.getText().trim();
+            if (!cName.isEmpty()) {
+                fetchCityCoordinates(cName);
+            } else {
+                try {
+                    double lat = Double.parseDouble(latField.getText().trim());
+                    double lon = Double.parseDouble(lonField.getText().trim());
+                    geoStatusLabel.setText("🟢 SIG appliqué pour Lat: " + String.format(java.util.Locale.US, "%.4f", lat) + "°, Lon: " + String.format(java.util.Locale.US, "%.4f", lon) + "°");
+                    geoStatusLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #4ade80; -fx-wrap-text: true;");
+                    applyBioclimaticAdaptation(lat, lon);
+                    regenerateAndRepaint();
+                } catch (Exception ex) {
+                    geoStatusLabel.setText("⚠️ Coordonnées GPS invalides.");
+                    geoStatusLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #ef4444;");
+                }
+            }
         });
 
-        HBox presetNameRow = new HBox(5, new Label("Ville/Nom:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, cityNameField);
-        presetNameRow.setAlignment(Pos.CENTER_LEFT);
-
-        HBox cityRow = new HBox(5, new Label("Chercher:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, citySearchField, btnSearchCity);
+        HBox cityRow = new HBox(6, new Label("Ville :") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, cityNameField);
         cityRow.setAlignment(Pos.CENTER_LEFT);
 
-        HBox gpsRow = new HBox(5,
-            new Label("Lat:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, latField,
-            new Label("Lon:") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, lonField,
-            btnImportGPS
+        HBox gpsRow = new HBox(6,
+            new Label("Lat :") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, latField,
+            new Label("Lon :") {{ setStyle("-fx-text-fill: #aaa; -fx-font-size: 11px;"); }}, lonField,
+            btnSyncGeo
         );
         gpsRow.setAlignment(Pos.CENTER_LEFT);
 
-        return new VBox(8, presetNameRow, cityRow, gpsRow, geoStatusLabel);
+        return new VBox(8, cityRow, gpsRow, geoStatusLabel);
     }
 
     private void fetchCityCoordinates(String cityQuery) {
@@ -1240,7 +1269,7 @@ public class WorldEditorPane extends BorderPane {
         slopeAngleSlider.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
 
         slopeDirectionCombo = new ComboBox<>();
-        slopeDirectionCombo.getItems().addAll("Sud ➔ Nord", "Nord ➔ Sud", "Ouest ➔ Est", "Est ➔ Ouest");
+        slopeDirectionCombo.getItems().addAll("East ➔ West", "North ➔ South", "South ➔ North", "West ➔ East");
         slopeDirectionCombo.getSelectionModel().selectFirst();
         slopeDirectionCombo.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
 
@@ -1424,13 +1453,13 @@ public class WorldEditorPane extends BorderPane {
 
         comboTreeSpecies = new ComboBox<>();
         comboTreeSpecies.getItems().addAll(
-            "🎋 Biome Bambouseraie (Temnothorax / Colobopsis)",
-            "🪵 Biome Bois Mort & Souches en Décomposition",
-            "🌿 Biome Bouleaux & Graminées (Messor / Prédation)",
-            "🌵 Biome Désert Aride & Cactus Saguaro (Myrmecocystus / Cephalotes)",
-            "🌳 Biome Futaie de Chênes & Feuillus (Atta / Camponotus)",
-            "🌲 Biome Pinède Résineuse (Pucerons Cinara / Formica)",
-            "🌵 Biome Savane d'Acacias (Pseudomyrmex / Nectaires)"
+            "🌵 Acacia Savannah Biome (Pseudomyrmex / Nectaries)",
+            "🎋 Bamboo Grove Biome (Temnothorax / Colobopsis)",
+            "🌿 Birch & Grasses Biome (Messor / Foraging)",
+            "🪵 Dead Wood & Rotting Stumps Biome",
+            "🌵 Desert & Saguaro Cactus Biome (Myrmecocystus / Cephalotes)",
+            "🌳 Oak & Hardwood Forest Biome (Atta / Camponotus)",
+            "🌲 Pine Forest Biome (Formica / Cinara Aphids)"
         );
         comboTreeSpecies.getSelectionModel().selectFirst();
         comboTreeSpecies.setPrefWidth(270);
@@ -1616,18 +1645,13 @@ public class WorldEditorPane extends BorderPane {
         enableSculptingCheck.setOnAction(e -> repaintAllViews());
 
         brushModeSelect = new ComboBox<>();
-        brushModeSelect.getItems().addAll("RAISE_ELEVATION", "LOWER_ELEVATION", "SMOOTH");
+        brushModeSelect.getItems().addAll("Lower Elevation", "Raise Elevation", "Smooth Relief");
         ComboBoxTooltipHelper.setupDescriptiveComboBox(brushModeSelect,
-            val -> switch (val) {
-                case "RAISE_ELEVATION" -> "⛰️ RAISE_ELEVATION (Surélever Relief)";
-                case "LOWER_ELEVATION" -> "⛏️ LOWER_ELEVATION (Creuser Relief)";
-                case "SMOOTH" -> "🌊 SMOOTH (Lisser Relief)";
-                default -> val;
-            },
-            val -> switch (val) {
-                case "RAISE_ELEVATION" -> "Augmente progressivement l'altitude du relief aux coordonnées peintes.";
-                case "LOWER_ELEVATION" -> "Creuse le terrain et abaisse l'altitude des voxels de surface.";
-                case "SMOOTH" -> "Calcule la moyenne d'altitude locale pour lisser les pentes brusques.";
+            val -> val,
+            val -> switch (val != null ? val : "") {
+                case "Raise Elevation" -> "Increases the terrain elevation at painted coordinates.";
+                case "Lower Elevation" -> "Digs into the terrain and lowers surface voxel elevation.";
+                case "Smooth Relief" -> "Calculates local average elevation to smooth sharp slopes.";
                 default -> "";
             }
         );
@@ -1636,7 +1660,7 @@ public class WorldEditorPane extends BorderPane {
         brushModeSelect.valueProperty().addListener((o, a, b) -> repaintAllViews());
 
         brushSubstrateSelect = new ComboBox<>();
-        brushSubstrateSelect.getItems().addAll("EARTH", "SAND", "CLAY", "STONE");
+        brushSubstrateSelect.getItems().addAll("Clay Substrate", "Earth Substrate", "Sand Substrate", "Stone Substrate");
 
         brushRadiusSlider = mkSlider(1, 15, 4);
         brushStrengthSlider = mkSlider(10, 100, 50);
@@ -1739,7 +1763,7 @@ public class WorldEditorPane extends BorderPane {
         enableVolumetricScannerCheck.setSelected(false);
         enableVolumetricScannerCheck.setStyle("-fx-text-fill: #e4e4e7; -fx-font-size: 11px;");
 
-        slicePlaneSlider = mkSlider(0.0, 100.0, 50.0);
+        slicePlaneSlider = mkSlider(0.0, 100.0, 100.0);
         slicePlaneSlider.valueProperty().addListener((o, a, b) -> repaintAllViews());
 
         showTranslucentVolumetricModeCheck = new CheckBox("💧 Translucidité 3D Substrat");
@@ -1767,7 +1791,7 @@ public class WorldEditorPane extends BorderPane {
         );
 
         panel.getChildren().addAll(title, showChamferedBezelCheck, showGravelInclusionsCheck, showSubstrateStratigraphyCheck,
-                                   enableVolumetricScannerCheck, new Label("Coupe Scanner (%) :"), sv(slicePlaneSlider, "%"),
+                                   new Label("Coupe Scanner (%) :"), sv(slicePlaneSlider, "%"),
                                    showTranslucentVolumetricModeCheck, new Separator(), visBox);
         return panel;
     }
@@ -1993,11 +2017,11 @@ public class WorldEditorPane extends BorderPane {
                     int cx = Math.max(0, Math.min(GRID_SIZE-1, gx+dx));
                     int cy2 = Math.max(0, Math.min(GRID_SIZE-1, gy+dy));
                     double falloff = 1.0 - Math.sqrt(dx*dx+dy*dy)/(double)(radius+1);
-                    if (mode != null && mode.contains("RAISE")) {
+                    if (mode != null && (mode.contains("RAISE") || mode.contains("Raise"))) {
                         heightGrid[cx][cy2] = Math.min(1.0, heightGrid[cx][cy2] + strength*falloff);
-                    } else if (mode != null && mode.contains("LOWER")) {
+                    } else if (mode != null && (mode.contains("LOWER") || mode.contains("Lower"))) {
                         heightGrid[cx][cy2] = Math.max(0.01, heightGrid[cx][cy2] - strength*falloff);
-                    } else if (mode != null && mode.contains("SMOOTH")) {
+                    } else if (mode != null && (mode.contains("SMOOTH") || mode.contains("Smooth"))) {
                         heightGrid[cx][cy2] = lrp(heightGrid[cx][cy2], 0.5, strength*2*falloff);
                     }
                 }
@@ -2404,78 +2428,237 @@ public class WorldEditorPane extends BorderPane {
                 int speciesIdx = ti.speciesIdx;
 
                 double baseTreeHeightM = switch (speciesIdx) {
-                    case 0 -> 6.0;   // Bambouseraie
-                    case 1 -> 2.5;   // Souche
-                    case 2 -> 12.0;  // Bouleau
-                    case 3 -> 4.0;   // Cactus Saguaro
-                    case 4 -> 15.0;  // Quercus (Chêne)
-                    case 5 -> 18.0;  // Pinus (Pin)
-                    case 6 -> 8.0;   // Acacia
-                    default -> 15.0;
+                    case 0 -> 3.0;   // Bambouseraie
+                    case 1 -> 1.0;   // Souche / Bois mort
+                    case 2 -> 6.0;   // Bouleau
+                    case 3 -> 3.5;   // Cactus Saguaro
+                    case 4 -> 7.5;   // Quercus (Chêne)
+                    case 5 -> 8.5;   // Pinus (Pin)
+                    case 6 -> 5.5;   // Acacia
+                    default -> 6.5;
                 };
 
-                double treeHeightM = baseTreeHeightM * ti.ageScale;
-                double trunkH = treeHeightM * pixelsPerMeter * 0.50;
-                double trunkW = Math.max(2.5, (treeHeightM * 0.07) * pixelsPerMeter);
-                double canopyR = Math.max(5.0, (treeHeightM * 0.30) * pixelsPerMeter);
+                // Bound tree height relative to terrain parcel size so trees remain proportioned
+                double treeHeightM = Math.min(baseTreeHeightM * ti.ageScale, Math.max(2.2, sideM * 0.75));
 
-                // 1. Dynamic Directional Soft Cast Shadow on Terrain Surface
-                gc3D.setFill(Color.web("#020617", 0.32));
-                gc3D.fillOval(p[0] - canopyR * 0.8 + 6, p[1] - canopyR * 0.2, canopyR * 1.8, canopyR * 0.5);
+                // Trunk height to branching base (30-45% of tree height)
+                double trunkRatio = switch (speciesIdx) {
+                    case 0 -> 0.60;
+                    case 1 -> 0.40;
+                    case 2 -> 0.35;
+                    case 3 -> 0.85;
+                    case 5 -> 0.30;
+                    case 6 -> 0.45;
+                    default -> 0.35;
+                };
+                double trunkH = treeHeightM * pixelsPerMeter * trunkRatio;
 
-                // 2. Animated Wind Sway offset in REALISTIC mode
-                double windSway = 0.0;
-                if (currentRenderMode == RenderMode.REALISTIC) {
-                    windSway = Math.sin(System.currentTimeMillis() * 0.0025 + p[0] * 0.03) * Math.max(1.5, canopyR * 0.22);
+                // Trunk width (DBH): ~8% of tree height in meters, scaled to pixels (NO artificial 8px clamp!)
+                double trunkW = Math.max(3.5, (treeHeightM * 0.08) * pixelsPerMeter);
+
+                // Canopy radius: ~42% of tree height in meters, scaled to pixels (NO artificial 18px clamp!)
+                double canopyR = Math.max(8.0, (treeHeightM * 0.42) * pixelsPerMeter);
+
+                // 1. Dynamic Directional Soft Cast Shadow (ONLY in Simulation mode, zero in 3D Editor mode)
+                if (isSimulationMode) {
+                    gc3D.setFill(Color.web("#020617", 0.32));
+                    gc3D.fillOval(p[0] - canopyR * 0.8 + 6, p[1] - canopyR * 0.2, canopyR * 1.8, canopyR * 0.5);
                 }
-                double swayX = p[0] + windSway;
+
+                // 2. Animated Wind Sway offset (ONLY in Simulation mode, zero in 3D Editor mode)
+                double windSwayX = 0.0;
+                double windSwayY = 0.0;
+                if (isSimulationMode) {
+                    double windFactor = Math.min(1.5, Math.max(0.1, simWindSpeed / 30.0));
+                    double windAngleRad = switch (simWindDirection.toUpperCase()) {
+                        case "N" -> -Math.PI / 2;
+                        case "NE" -> -Math.PI / 4;
+                        case "E" -> 0.0;
+                        case "SE" -> Math.PI / 4;
+                        case "S" -> Math.PI / 2;
+                        case "SW" -> 3.0 * Math.PI / 4.0;
+                        case "W" -> Math.PI;
+                        case "NW" -> -3.0 * Math.PI / 4.0;
+                        default -> 3.0 * Math.PI / 4.0;
+                    };
+                    double swayAmp = Math.sin(System.currentTimeMillis() * 0.0022 + p[0] * 0.02) * (canopyR * 0.12 * windFactor);
+                    windSwayX = Math.cos(windAngleRad) * swayAmp;
+                    windSwayY = Math.sin(windAngleRad) * swayAmp * 0.4;
+                }
+                double swayX = p[0] + windSwayX;
+
+                // Seasonal State & Palette Determination (0=Spring, 1=Summer, 2=Autumn, 3=Winter)
+                int seasonIdx = 1; // Summer default
+                if (simSeason != null) {
+                    String sName = simSeason.toLowerCase();
+                    if (sName.contains("printemps") || sName.contains("spring")) seasonIdx = 0;
+                    else if (sName.contains("été") || sName.contains("summer")) seasonIdx = 1;
+                    else if (sName.contains("automne") || sName.contains("autumn") || sName.contains("fall")) seasonIdx = 2;
+                    else if (sName.contains("hiver") || sName.contains("winter")) seasonIdx = 3;
+                }
 
                 switch (speciesIdx) {
-                    case 0 -> { // Bambouseraie
-                        gc3D.setStroke(Color.web("#84cc16")); gc3D.setLineWidth(Math.max(1.8, trunkW * 0.5));
+                    case 0 -> { // Bambouseraie (Bamboo Cluster)
+                        gc3D.setStroke(Color.web("#84cc16")); gc3D.setLineWidth(Math.max(2.0, trunkW * 0.35));
+                        gc3D.strokeLine(p[0] - trunkW * 0.6, p[1], swayX - trunkW * 0.4, p[1] - trunkH * 1.1);
+                        gc3D.strokeLine(p[0] + trunkW * 0.6, p[1], swayX + trunkW * 0.7, p[1] - trunkH * 1.25);
                         gc3D.strokeLine(p[0], p[1], swayX, p[1] - trunkH * 1.2);
-                        gc3D.setFill(Color.web("#a3e635"));
-                        gc3D.fillOval(swayX - canopyR * 0.4, p[1] - trunkH * 1.3, canopyR * 0.8, canopyR * 0.8);
+                        Color fCol = switch (seasonIdx) {
+                            case 0 -> Color.web("#84cc16"); // Spring fresh
+                            case 2 -> Color.web("#eab308"); // Autumn yellowing
+                            case 3 -> Color.web("#a1a1aa"); // Winter frosted
+                            default -> Color.web("#4ade80"); // Summer
+                        };
+                        gc3D.setFill(fCol);
+                        gc3D.fillOval(swayX - canopyR * 0.6, p[1] - trunkH * 1.25, canopyR * 1.2, canopyR * 0.7);
                     }
-                    case 1 -> { // Souche / Bois Mort
+                    case 1 -> { // Souche / Bois Mort & Champignons (Dead Stump)
                         gc3D.setFill(Color.web("#78350f"));
-                        gc3D.fillRect(p[0] - trunkW * 0.8, p[1] - trunkH * 0.4, trunkW * 1.6, trunkH * 0.4);
+                        gc3D.fillRect(p[0] - trunkW * 0.9, p[1] - trunkH * 0.5, trunkW * 1.8, trunkH * 0.5);
                         gc3D.setFill(Color.web("#451a03"));
-                        gc3D.fillOval(p[0] - trunkW * 0.8, p[1] - trunkH * 0.45, trunkW * 1.6, trunkH * 0.2);
+                        gc3D.fillOval(p[0] - trunkW * 0.9, p[1] - trunkH * 0.55, trunkW * 1.8, trunkH * 0.25);
+                        gc3D.setFill(Color.web("#b45309"));
+                        gc3D.fillOval(p[0] - trunkW * 0.6, p[1] - trunkH * 0.52, trunkW * 1.2, trunkH * 0.15);
+                        gc3D.setFill(Color.web("#f59e0b"));
+                        gc3D.fillOval(p[0] + trunkW * 0.7, p[1] - trunkH * 0.3, trunkW * 0.6, trunkH * 0.12);
                     }
-                    case 2 -> { // Bouleau (Betula)
-                        gc3D.setFill(Color.web("#f8fafc")); gc3D.fillRect(p[0] - trunkW * 0.4, p[1] - trunkH, trunkW * 0.8, trunkH);
-                        gc3D.setFill(Color.web("#0f172a")); gc3D.fillRect(p[0] - trunkW * 0.4, p[1] - trunkH * 0.6, trunkW * 0.8, 2);
-                        gc3D.setFill(Color.web("#4ade80"));
-                        gc3D.fillOval(swayX - canopyR * 0.8, p[1] - trunkH - canopyR * 1.2, canopyR * 1.6, canopyR * 1.4);
+                    case 2 -> { // Bouleau (Betula - Birch with delicate weeping branches)
+                        gc3D.setFill(Color.web("#f8fafc"));
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
+                        gc3D.setFill(Color.web("#0f172a"));
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH * 0.7, trunkW, Math.max(2.0, trunkW * 0.15));
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH * 0.4, trunkW, Math.max(2.0, trunkW * 0.15));
+
+                        gc3D.setStroke(Color.web("#334155"));
+                        gc3D.setLineWidth(Math.max(1.5, trunkW * 0.3));
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.4, swayX - canopyR * 0.6, p[1] - trunkH * 0.75);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.4, swayX + canopyR * 0.6, p[1] - trunkH * 0.75);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.65, swayX - canopyR * 0.4, p[1] - trunkH * 0.95);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.65, swayX + canopyR * 0.4, p[1] - trunkH * 0.95);
+
+                        if (seasonIdx != 3) {
+                            Color bCol1 = switch (seasonIdx) {
+                                case 0 -> Color.web("#86efac");
+                                case 2 -> Color.web("#fde047");
+                                default -> Color.web("#4ade80");
+                            };
+                            gc3D.setFill(bCol1);
+                            gc3D.fillOval(swayX - canopyR * 0.75, p[1] - trunkH - canopyR * 0.7, canopyR * 1.5, canopyR * 1.2);
+                        } else {
+                            gc3D.setFill(Color.web("#f8fafc", 0.9));
+                            gc3D.fillOval(swayX - canopyR * 0.4, p[1] - trunkH - 3, canopyR * 0.8, 5);
+                        }
                     }
                     case 3 -> { // Cactus Saguaro
                         gc3D.setFill(Color.web("#15803d"));
-                        gc3D.fillRect(p[0] - trunkW * 0.5, p[1] - trunkH, trunkW, trunkH);
-                        gc3D.fillRect(p[0] - trunkH * 0.35, p[1] - trunkH * 0.7, trunkH * 0.7, trunkW * 0.7);
-                        gc3D.fillRect(p[0] - trunkH * 0.35, p[1] - trunkH * 0.85, trunkW * 0.7, trunkH * 0.2);
-                        gc3D.fillRect(p[0] + trunkH * 0.25, p[1] - trunkH * 0.9, trunkW * 0.7, trunkH * 0.25);
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
+                        gc3D.setFill(Color.web("#166534"));
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW * 0.35, trunkH);
+                        gc3D.fillRect(p[0] - trunkH * 0.3, p[1] - trunkH * 0.6, trunkH * 0.6, trunkW * 0.7);
+                        gc3D.fillRect(p[0] - trunkH * 0.3, p[1] - trunkH * 0.85, trunkW * 0.7, trunkH * 0.3);
+                        gc3D.fillRect(p[0] + trunkH * 0.2, p[1] - trunkH * 0.9, trunkW * 0.7, trunkH * 0.35);
+                        if (seasonIdx == 0) {
+                            gc3D.setFill(Color.web("#fef08a"));
+                            gc3D.fillOval(p[0] - 2, p[1] - trunkH - 3, 5, 5);
+                        }
                     }
-                    case 5 -> { // Pin Sylvestre (Conifer)
-                        gc3D.setFill(Color.web("#78350f")); gc3D.fillRect(p[0] - trunkW * 0.4, p[1] - trunkH, trunkW * 0.8, trunkH);
-                        double[] pxs1 = {swayX, swayX - canopyR, swayX + canopyR};
-                        double[] pys1 = {p[1] - trunkH - canopyR * 1.5, p[1] - trunkH * 0.5, p[1] - trunkH * 0.5};
-                        gc3D.setFill(Color.web("#14532d")); gc3D.fillPolygon(pxs1, pys1, 3);
-                        double[] pxs2 = {swayX, swayX - canopyR * 0.8, swayX + canopyR * 0.8};
-                        double[] pys2 = {p[1] - trunkH - canopyR * 2.0, p[1] - trunkH * 0.8, p[1] - trunkH * 0.8};
-                        gc3D.setFill(Color.web("#166534")); gc3D.fillPolygon(pxs2, pys2, 3);
+                    case 5 -> { // Pin Sylvestre (Scotch Pine - Tiered Whorled Branches starting lower down)
+                        gc3D.setFill(Color.web("#78350f"));
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
+                        gc3D.setFill(Color.web("#451a03"));
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW * 0.35, trunkH);
+
+                        gc3D.setStroke(Color.web("#451a03"));
+                        gc3D.setLineWidth(Math.max(1.8, trunkW * 0.35));
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.35, swayX - canopyR * 0.85, p[1] - trunkH * 0.4);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.35, swayX + canopyR * 0.85, p[1] - trunkH * 0.4);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.65, swayX - canopyR * 0.65, p[1] - trunkH * 0.7);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.65, swayX + canopyR * 0.65, p[1] - trunkH * 0.7);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.85, swayX - canopyR * 0.45, p[1] - trunkH * 0.88);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.85, swayX + canopyR * 0.45, p[1] - trunkH * 0.88);
+
+                        Color pCol1 = seasonIdx == 3 ? Color.web("#14532d") : Color.web("#166534");
+                        Color pCol2 = seasonIdx == 3 ? Color.web("#166534") : Color.web("#15803d");
+                        Color pCol3 = seasonIdx == 3 ? Color.web("#15803d") : Color.web("#22c55e");
+
+                        double[] pxs1 = {swayX, swayX - canopyR * 0.95, swayX + canopyR * 0.95};
+                        double[] pys1 = {p[1] - trunkH - canopyR * 0.7, p[1] - trunkH * 0.35, p[1] - trunkH * 0.35};
+                        gc3D.setFill(pCol1); gc3D.fillPolygon(pxs1, pys1, 3);
+
+                        double[] pxs2 = {swayX, swayX - canopyR * 0.75, swayX + canopyR * 0.75};
+                        double[] pys2 = {p[1] - trunkH - canopyR * 1.1, p[1] - trunkH * 0.62, p[1] - trunkH * 0.62};
+                        gc3D.setFill(pCol2); gc3D.fillPolygon(pxs2, pys2, 3);
+
+                        double[] pxs3 = {swayX, swayX - canopyR * 0.5, swayX + canopyR * 0.5};
+                        double[] pys3 = {p[1] - trunkH - canopyR * 1.45, p[1] - trunkH * 0.82, p[1] - trunkH * 0.82};
+                        gc3D.setFill(pCol3); gc3D.fillPolygon(pxs3, pys3, 3);
+
+                        if (seasonIdx == 3) {
+                            gc3D.setFill(Color.web("#f8fafc", 0.95));
+                            gc3D.fillPolygon(new double[]{swayX, swayX - canopyR * 0.5, swayX + canopyR * 0.5}, new double[]{p[1] - trunkH - canopyR * 1.45, p[1] - trunkH - canopyR * 1.15, p[1] - trunkH - canopyR * 1.15}, 3);
+                        }
                     }
-                    case 6 -> { // Acacia (Parasol Savanna)
-                        gc3D.setFill(Color.web("#78350f")); gc3D.fillRect(p[0] - trunkW * 0.3, p[1] - trunkH, trunkW * 0.6, trunkH);
-                        gc3D.setFill(Color.web("#65a30d"));
-                        gc3D.fillOval(swayX - canopyR * 1.5, p[1] - trunkH - canopyR * 0.6, canopyR * 3.0, canopyR * 0.8);
+                    case 6 -> { // Acacia (Savanna Parasol - Flat Umbrella Canopy Scaffold)
+                        gc3D.setFill(Color.web("#78350f"));
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
+                        gc3D.setFill(Color.web("#451a03"));
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW * 0.35, trunkH);
+
+                        gc3D.setStroke(Color.web("#451a03"));
+                        gc3D.setLineWidth(Math.max(2.0, trunkW * 0.35));
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.5, swayX - canopyR * 0.85, p[1] - trunkH * 0.95);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.5, swayX + canopyR * 0.85, p[1] - trunkH * 0.95);
+                        gc3D.strokeLine(swayX - canopyR * 0.4, p[1] - trunkH * 0.7, swayX - canopyR * 1.2, p[1] - trunkH * 1.05);
+                        gc3D.strokeLine(swayX + canopyR * 0.4, p[1] - trunkH * 0.7, swayX + canopyR * 1.2, p[1] - trunkH * 1.05);
+
+                        Color aColBase = (seasonIdx == 2 || seasonIdx == 3) ? Color.web("#a16207") : Color.web("#4d7c0f");
+                        Color aColTop  = (seasonIdx == 2 || seasonIdx == 3) ? Color.web("#eab308") : Color.web("#65a30d");
+
+                        gc3D.setFill(aColBase);
+                        gc3D.fillOval(swayX - canopyR * 1.4, p[1] - trunkH * 1.05 - canopyR * 0.3, canopyR * 2.8, canopyR * 0.5);
+                        gc3D.setFill(aColTop);
+                        gc3D.fillOval(swayX - canopyR * 1.5, p[1] - trunkH * 1.15 - canopyR * 0.3, canopyR * 3.0, canopyR * 0.55);
+                        gc3D.setFill(Color.web("#84cc16", 0.6));
+                        gc3D.fillOval(swayX - canopyR * 1.1, p[1] - trunkH * 1.22 - canopyR * 0.25, canopyR * 2.2, canopyR * 0.4);
                     }
-                    default -> { // Chêne Quercus
-                        gc3D.setFill(Color.web("#78350f")); gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
-                        gc3D.setFill(Color.web("#451a03")); gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW * 0.4, trunkH);
-                        gc3D.setFill(Color.web("#14532d")); gc3D.fillOval(swayX - canopyR, p[1] - trunkH - canopyR * 1.4, canopyR * 2, canopyR * 1.6);
-                        gc3D.setFill(Color.web("#166534")); gc3D.fillOval(swayX - canopyR * 0.8, p[1] - trunkH - canopyR * 1.6, canopyR * 1.6, canopyR * 1.4);
-                        gc3D.setFill(Color.web("#15803d")); gc3D.fillOval(swayX - canopyR * 0.6, p[1] - trunkH - canopyR * 1.8, canopyR * 1.2, canopyR * 1.1);
+                    default -> { // Chêne Quercus (Oak Tree - Spreading Gnarled Branches)
+                        gc3D.setFill(Color.web("#78350f"));
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
+                        gc3D.setFill(Color.web("#451a03"));
+                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW * 0.35, trunkH);
+
+                        gc3D.setStroke(Color.web("#451a03"));
+                        gc3D.setLineWidth(Math.max(2.0, trunkW * 0.4));
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.35, swayX - canopyR * 0.75, p[1] - trunkH * 0.7);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.35, swayX + canopyR * 0.75, p[1] - trunkH * 0.7);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.55, swayX - canopyR * 0.45, p[1] - trunkH * 0.95);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.55, swayX + canopyR * 0.45, p[1] - trunkH * 0.95);
+                        gc3D.strokeLine(p[0], p[1] - trunkH * 0.7, swayX, p[1] - trunkH * 1.15);
+
+                        if (seasonIdx == 0) { // Spring
+                            gc3D.setFill(Color.web("#16a34a"));
+                            gc3D.fillOval(swayX - canopyR, p[1] - trunkH - canopyR * 0.9, canopyR * 2.0, canopyR * 1.3);
+                            gc3D.setFill(Color.web("#4ade80"));
+                            gc3D.fillOval(swayX - canopyR * 0.8, p[1] - trunkH - canopyR * 1.15, canopyR * 1.6, canopyR * 1.1);
+                        } else if (seasonIdx == 1) { // Summer
+                            gc3D.setFill(Color.web("#14532d"));
+                            gc3D.fillOval(swayX - canopyR * 1.05, p[1] - trunkH - canopyR * 0.9, canopyR * 2.1, canopyR * 1.3);
+                            gc3D.setFill(Color.web("#166534"));
+                            gc3D.fillOval(swayX - canopyR * 0.85, p[1] - trunkH - canopyR * 1.15, canopyR * 1.7, canopyR * 1.1);
+                            gc3D.setFill(Color.web("#15803d"));
+                            gc3D.fillOval(swayX - canopyR * 0.55, p[1] - trunkH - canopyR * 1.3, canopyR * 1.1, canopyR * 0.9);
+                        } else if (seasonIdx == 2) { // Autumn
+                            gc3D.setFill(Color.web("#b45309"));
+                            gc3D.fillOval(swayX - canopyR * 1.05, p[1] - trunkH - canopyR * 0.9, canopyR * 2.1, canopyR * 1.3);
+                            gc3D.setFill(Color.web("#d97706"));
+                            gc3D.fillOval(swayX - canopyR * 0.85, p[1] - trunkH - canopyR * 1.15, canopyR * 1.7, canopyR * 1.1);
+                            gc3D.setFill(Color.web("#ef4444", 0.85));
+                            gc3D.fillOval(swayX - canopyR * 0.55, p[1] - trunkH - canopyR * 1.3, canopyR * 1.1, canopyR * 0.9);
+                        } else { // Winter
+                            gc3D.setFill(Color.web("#f8fafc", 0.9));
+                            gc3D.fillOval(swayX - canopyR * 0.6, p[1] - trunkH * 0.7 - 4, canopyR * 0.6, 5);
+                            gc3D.fillOval(swayX, p[1] - trunkH * 1.15 - 4, canopyR * 0.6, 5);
+                        }
                     }
                 }
             }
@@ -2531,34 +2714,71 @@ public class WorldEditorPane extends BorderPane {
         if (cutXLimit <= 0 || cutXLimit >= GRID_SIZE) return;
 
         double stepY = 2;
-        for (int y = 0; y < GRID_SIZE - stepY; y += stepY) {
-            double zTop0 = heightGrid[cutXLimit][y] * 40.0;
-            double zTop1 = heightGrid[cutXLimit][(int)(y + stepY)] * 40.0;
-            double zBot0 = zTop0 - maxDepthPx;
-            double zBot1 = zTop1 - maxDepthPx;
+        double layerDepthPx = maxDepthPx / SOIL_DEPTH;
+        boolean showInclusions = showGravelInclusionsCheck != null && showGravelInclusionsCheck.isSelected();
 
-            double[] p0 = project3DPoint(cutXLimit, y, zTop0, cx, cy, scale, radAz, radEl);
-            double[] p1 = project3DPoint(cutXLimit, y + stepY, zTop1, cx, cy, scale, radAz, radEl);
-            double[] p2 = project3DPoint(cutXLimit, y + stepY, zBot1, cx, cy, scale, radAz, radEl);
-            double[] p3 = project3DPoint(cutXLimit, y, zBot0, cx, cy, scale, radAz, radEl);
+        for (int y = 0; y < GRID_SIZE - (int)stepY; y += (int)stepY) {
+            double surfZ0 = heightGrid[cutXLimit][y] * 40.0;
+            double surfZ1 = heightGrid[cutXLimit][y + (int)stepY] * 40.0;
+            if (carvedVoxelGrid[cutXLimit][y]) surfZ0 -= 15.0;
+            if (carvedVoxelGrid[cutXLimit][y + (int)stepY]) surfZ1 -= 15.0;
 
-            double[] pxs = {p0[0], p1[0], p2[0], p3[0]};
-            double[] pys = {p0[1], p1[1], p2[1], p3[1]};
+            double refZ0 = 32.0;
+            double refZ1 = 32.0;
 
-            byte mat = soilLayers[cutXLimit][(int)y][0];
-            Color wallCol = switch (mat) {
-                case 0 -> Color.web("#451a03", 0.92);
-                case 1 -> Color.web("#a16207", 0.92);
-                case 2 -> Color.web("#7c2d12", 0.92);
-                case 3 -> Color.web("#334155", 0.92);
-                default -> Color.web("#371a06", 0.92);
-            };
+            for (int d = 0; d < SOIL_DEPTH; d++) {
+                double topZ0 = Math.min(surfZ0, refZ0 - d * layerDepthPx);
+                double topZ1 = Math.min(surfZ1, refZ1 - d * layerDepthPx);
+                double botZ0 = Math.min(surfZ0, refZ0 - (d + 1) * layerDepthPx);
+                double botZ1 = Math.min(surfZ1, refZ1 - (d + 1) * layerDepthPx);
 
-            gc3D.setFill(wallCol);
-            gc3D.fillPolygon(pxs, pys, 4);
-            gc3D.setStroke(wallCol.darker());
-            gc3D.setLineWidth(0.4);
-            gc3D.strokePolygon(pxs, pys, 4);
+                if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
+
+                byte mat = soilLayers[cutXLimit][y][d];
+                boolean isVoid = voidGrid[cutXLimit][y][d];
+
+                Color matCol;
+                if (isVoid) {
+                    matCol = Color.web("#090d16");
+                } else if (!isMaterialVisible(mat)) {
+                    matCol = Color.web("#1e293b", 0.35);
+                } else {
+                    matCol = getMaterialColor(mat).deriveColor(0, 1.15, 1.1, 1.0);
+                }
+
+                double[] pTop0 = project3DPoint(cutXLimit, y, topZ0, cx, cy, scale, radAz, radEl);
+                double[] pTop1 = project3DPoint(cutXLimit, y + stepY, topZ1, cx, cy, scale, radAz, radEl);
+                double[] pBot1 = project3DPoint(cutXLimit, y + stepY, botZ1, cx, cy, scale, radAz, radEl);
+                double[] pBot0 = project3DPoint(cutXLimit, y, botZ0, cx, cy, scale, radAz, radEl);
+
+                double[] pxs = {pTop0[0], pTop1[0], pBot1[0], pBot0[0]};
+                double[] pys = {pTop0[1], pTop1[1], pBot1[1], pBot0[1]};
+
+                gc3D.setFill(matCol);
+                gc3D.fillPolygon(pxs, pys, 4);
+
+                // Render gravel & pebble inclusions on 3D cutplane
+                if (showInclusions && !isVoid && isMaterialVisible(mat) && (cutXLimit * 13 + y * 7 + d * 19) % 5 == 0) {
+                    double midX = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
+                    double midY = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[1]) / 4.0;
+                    double sz = Math.max(1.5, Math.abs(pTop1[0] - pTop0[0]) * 0.35);
+
+                    if (mat == 3) {
+                        gc3D.setFill(Color.web("#e2e8f0"));
+                        gc3D.fillOval(midX - sz * 0.5, midY - sz * 0.4, sz, sz * 0.7);
+                    } else if (mat == 2) {
+                        gc3D.setFill(Color.web("#7c2d12"));
+                        gc3D.fillRect(midX - sz * 0.4, midY - sz * 0.3, sz * 0.8, sz * 0.5);
+                    } else if (mat == 1) {
+                        gc3D.setFill(Color.web("#fef08a"));
+                        gc3D.fillOval(midX - sz * 0.3, midY - sz * 0.3, sz * 0.6, sz * 0.6);
+                    }
+                }
+
+                gc3D.setStroke(matCol.darker());
+                gc3D.setLineWidth(0.3);
+                gc3D.strokePolygon(pxs, pys, 4);
+            }
         }
 
         if (isScanning) {
@@ -2848,18 +3068,19 @@ public class WorldEditorPane extends BorderPane {
         gc3D.setFill(Color.web("#38bdf8"));
         gc3D.fillText(String.format(Locale.US, "⚡ Énergie: %.0f%% | 🍗 Faim: %.0f%% | 💧 Soif: %.0f%%", followedAnt.getEnergy(), followedAnt.getHunger(), followedAnt.getThirst()), hx + 12, hy + 66);
 
+        double ageDays = followedAnt.getAge() / 600.0;
         gc3D.setFill(Color.web("#e2e8f0"));
-        gc3D.fillText(String.format("🎂 Âge: %.0f ticks | Stade: %s | Tâche: %s", followedAnt.getAge(), followedAnt.getLifeStage(), followedAnt.getJob()), hx + 12, hy + 86);
+        gc3D.fillText(String.format(Locale.US, "🎂 Âge: %.1f jours | Stade: %s | Tâche: %s", ageDays, followedAnt.getLifeStage(), followedAnt.getJob()), hx + 12, hy + 86);
 
         gc3D.setFill(Color.web("#a78bfa"));
-        gc3D.fillText(String.format("🧠 État IA: %s | 📦 Cargo: %s", followedAnt.getState(), followedAnt.getCarriedItem() != org.swarmforge.core.domain.Individual.CarriedItem.NONE ? followedAnt.getCarriedItem() : "Aucun"), hx + 12, hy + 106);
+        gc3D.fillText(String.format("🧠 État IA & Comportements: %s [%s]", followedAnt.getState(), followedAnt.getActiveBehaviorsSummary()), hx + 12, hy + 106);
 
         gc3D.setFill(Color.web("#cbd5e1"));
         gc3D.fillText(String.format(Locale.US, "📍 Pos 3D: (X: %.1f, Y: %.1f, Z: %.1f)", followedAnt.getX(), followedAnt.getY(), followedAnt.getZ()), hx + 12, hy + 126);
-        gc3D.fillText(String.format(Locale.US, "🚀 Cap (Heading): %.0f° | Vitesse: 1.25 cm/s", Math.toDegrees(followedAnt.getHeading())), hx + 12, hy + 144);
+        gc3D.fillText(String.format(Locale.US, "🚀 Cap (Heading): %.0f° | 📦 Cargo: %s", Math.toDegrees(followedAnt.getHeading()), followedAnt.getCarriedItem() != org.swarmforge.core.domain.Individual.CarriedItem.NONE ? followedAnt.getCarriedItem() : "Aucun"), hx + 12, hy + 144);
 
         gc3D.setFill(Color.web("#4ade80"));
-        gc3D.fillText(String.format("🧬 Comportements Actifs: [%s]", followedAnt.getActiveBehaviorsSummary()), hx + 12, hy + 162);
+        gc3D.fillText("🧪 Gestalt Hydrocarbonée Cuticulaire (CHC): Authentifiée", hx + 12, hy + 162);
     }
 
     private void drawGalleriesOverlay3D(double cx, double cy, double scale, double radAz, double radEl) {
@@ -3183,11 +3404,16 @@ public class WorldEditorPane extends BorderPane {
         boolean showInclusions = showGravelInclusionsCheck != null && showGravelInclusionsCheck.isSelected();
         boolean isAdvMode = useAdvancedVolumetricModeCheck == null || useAdvancedVolumetricModeCheck.isSelected();
 
+        double refZ0 = 32.0;
+        double refZ1 = 32.0;
+
         for (int d = 0; d < SOIL_DEPTH; d++) {
-            double topZ0 = surfZ0 - d * layerDepthPx;
-            double topZ1 = surfZ1 - d * layerDepthPx;
-            double botZ0 = surfZ0 - (d + 1) * layerDepthPx;
-            double botZ1 = surfZ1 - (d + 1) * layerDepthPx;
+            double topZ0 = Math.min(surfZ0, refZ0 - d * layerDepthPx);
+            double topZ1 = Math.min(surfZ1, refZ1 - d * layerDepthPx);
+            double botZ0 = Math.min(surfZ0, refZ0 - (d + 1) * layerDepthPx);
+            double botZ1 = Math.min(surfZ1, refZ1 - (d + 1) * layerDepthPx);
+
+            if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
 
             double[] pTop0 = project3DPoint(x0, y0, topZ0, cx, cy, scale, radAz, radEl);
             double[] pTop1 = project3DPoint(x1, y1, topZ1, cx, cy, scale, radAz, radEl);
@@ -3530,7 +3756,7 @@ public class WorldEditorPane extends BorderPane {
         if (onGenerateCallback != null) {
             onGenerateCallback.accept(getConfiguration());
         } else {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION, "Génération du Monde exécutée (Résolution sub-millimétrique: " + resolutionSlider.getValue() + "mm).");
+            Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Génération du Monde exécutée (Résolution sub-millimétrique: " + resolutionSlider.getValue() + "mm).");
             alert.setTitle("Éditeur de Monde");
             alert.setHeaderText("Monde Généré avec Succès");
             alert.show();
@@ -3619,9 +3845,9 @@ public class WorldEditorPane extends BorderPane {
         if (f == null) return;
         try {
             new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(f, getConfiguration());
-            new Alert(Alert.AlertType.INFORMATION, "Preset sauvegardé avec succès.").show();
+            org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Preset sauvegardé avec succès.").show();
         } catch (Exception ex) {
-            new Alert(Alert.AlertType.ERROR, "Erreur d'exportation: " + ex.getMessage()).show();
+            org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Erreur d'exportation: " + ex.getMessage()).show();
         }
     }
 
@@ -3635,15 +3861,33 @@ public class WorldEditorPane extends BorderPane {
             @SuppressWarnings("unchecked")
             Map<String, Object> cfg = new com.fasterxml.jackson.databind.ObjectMapper().readValue(f, Map.class);
             loadConfiguration(cfg);
-            new Alert(Alert.AlertType.INFORMATION, "Preset de monde chargé.").show();
+            org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Preset de monde chargé.").show();
         } catch (Exception ex) {
-            new Alert(Alert.AlertType.ERROR, "Erreur d'importation: " + ex.getMessage()).show();
+            org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Erreur d'importation: " + ex.getMessage()).show();
         }
     }
 
     public void loadConfiguration(Map<String, Object> cfg) {
         if (cfg == null) return;
-        if (cfg.containsKey("cityName") && cityNameField != null) cityNameField.setText(String.valueOf(cfg.get("cityName")));
+        isUpdatingFields = true;
+        try {
+            if (cfg.containsKey("presetName") && presetsCombo != null) {
+                String pName = String.valueOf(cfg.get("presetName"));
+                if (presetsCombo.getItems().contains(pName)) {
+                    presetsCombo.setValue(pName);
+                }
+            }
+            if (cfg.containsKey("cityName") && cityNameField != null) {
+                cityNameField.setText(String.valueOf(cfg.get("cityName")));
+            } else if (cfg.containsKey("presetName") && cityNameField != null) {
+                String pName = String.valueOf(cfg.get("presetName"));
+                if (pName.contains("(") && pName.contains(")")) {
+                    cityNameField.setText(pName.substring(pName.indexOf("(") + 1, pName.indexOf(")")));
+                }
+            }
+            if (citySearchField != null && cityNameField != null) {
+                citySearchField.setText(cityNameField.getText());
+            }
         if (cfg.containsKey("reliefSeed") && reliefSeedField != null) reliefSeedField.setText(String.valueOf(cfg.get("reliefSeed")));
         if (cfg.containsKey("soilSeed") && soilSeedField != null) soilSeedField.setText(String.valueOf(cfg.get("soilSeed")));
         if (cfg.containsKey("hydroSeed") && hydroSeedField != null) hydroSeedField.setText(String.valueOf(cfg.get("hydroSeed")));
@@ -3673,6 +3917,11 @@ public class WorldEditorPane extends BorderPane {
                 double lat = Double.parseDouble(String.valueOf(cfg.get("latitude")));
                 double lon = Double.parseDouble(String.valueOf(cfg.get("longitude")));
                 applyBioclimaticAdaptation(lat, lon);
+                if (geoStatusLabel != null) {
+                    String cName = cityNameField != null ? cityNameField.getText() : "Serengeti, TZ";
+                    geoStatusLabel.setText("🟢 " + cName + " (Lat: " + String.format(java.util.Locale.US, "%.4f", lat) + "°, Lon: " + String.format(java.util.Locale.US, "%.4f", lon) + "°)");
+                    geoStatusLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-size: 10px;");
+                }
             } catch (Exception ignored) {}
         }
 
@@ -3723,6 +3972,9 @@ public class WorldEditorPane extends BorderPane {
         if (cfg.containsKey("treeCount") && treeCountSlider != null) treeCountSlider.setValue(((Number) cfg.get("treeCount")).doubleValue());
         if (cfg.containsKey("hollowLogs") && hollowLogsSlider != null) hollowLogsSlider.setValue(((Number) cfg.get("hollowLogs")).doubleValue());
         if (cfg.containsKey("rockCrevices") && rockCrevicesSlider != null) rockCrevicesSlider.setValue(((Number) cfg.get("rockCrevices")).doubleValue());
+        } finally {
+            isUpdatingFields = false;
+        }
 
         regenerateAndRepaint();
     }

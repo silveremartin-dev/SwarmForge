@@ -49,7 +49,7 @@ public class Colony implements java.io.Serializable {
     }
 
     public Colony(Species species, float x, float y, float z) {
-        this.id = UUID.randomUUID();
+        this.id = new UUID(java.util.concurrent.ThreadLocalRandom.current().nextLong(), java.util.concurrent.ThreadLocalRandom.current().nextLong());
         this.species = species;
         this.speciesName = species.getScientificName(); // Fixed legacy accessor
         this.individuals = new CopyOnWriteArrayList<>();
@@ -98,37 +98,56 @@ public class Colony implements java.io.Serializable {
     private float proteinStored;
     private float carbohydrateStored;
 
-    // Factory methods for individuals
-    public Individual createQueen() {
-        Individual ind = new Individual(this.id, Individual.Caste.QUEEN, nestX, nestY, nestZ);
-        ind.setSpecies(this.species);
-        ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-        addIndividual(ind);
-        return ind;
+    public List<Individual> createQueens(int count) {
+        if (count <= 0) return List.of();
+        List<Individual> batch = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            Individual ind = new Individual(this.id, Individual.Caste.QUEEN, nestX, nestY, nestZ);
+            ind.setSpecies(this.species);
+            ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            batch.add(ind);
+        }
+        addIndividualsBulk(batch);
+        return batch;
     }
 
-    public Individual createWorker() {
-        Individual ind = new Individual(this.id, Individual.Caste.WORKER, nestX, nestY, nestZ);
-        ind.setSpecies(this.species);
-        ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-        addIndividual(ind);
-        return ind;
+    public List<Individual> createWorkers(int count) {
+        if (count <= 0) return List.of();
+        List<Individual> batch = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            Individual ind = new Individual(this.id, Individual.Caste.WORKER, nestX, nestY, nestZ);
+            ind.setSpecies(this.species);
+            ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            batch.add(ind);
+        }
+        addIndividualsBulk(batch);
+        return batch;
     }
 
-    public Individual createSoldier() {
-        Individual ind = new Individual(this.id, Individual.Caste.SOLDIER, nestX, nestY, nestZ);
-        ind.setSpecies(this.species);
-        ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-        addIndividual(ind);
-        return ind;
+    public List<Individual> createSoldiers(int count) {
+        if (count <= 0) return List.of();
+        List<Individual> batch = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            Individual ind = new Individual(this.id, Individual.Caste.SOLDIER, nestX, nestY, nestZ);
+            ind.setSpecies(this.species);
+            ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            batch.add(ind);
+        }
+        addIndividualsBulk(batch);
+        return batch;
     }
 
-    public Individual createMale() {
-        Individual ind = new Individual(this.id, Individual.Caste.MALE, nestX, nestY, nestZ);
-        ind.setSpecies(this.species);
-        ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-        addIndividual(ind);
-        return ind;
+    public List<Individual> createMales(int count) {
+        if (count <= 0) return List.of();
+        List<Individual> batch = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            Individual ind = new Individual(this.id, Individual.Caste.MALE, nestX, nestY, nestZ);
+            ind.setSpecies(this.species);
+            ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            batch.add(ind);
+        }
+        addIndividualsBulk(batch);
+        return batch;
     }
 
     /**
@@ -205,6 +224,26 @@ public class Colony implements java.io.Serializable {
         listeners.remove(listener);
     }
 
+    public Individual createQueen() {
+        List<Individual> list = createQueens(1);
+        return list.isEmpty() ? null : list.get(0);
+    }
+
+    public Individual createWorker() {
+        List<Individual> list = createWorkers(1);
+        return list.isEmpty() ? null : list.get(0);
+    }
+
+    public Individual createSoldier() {
+        List<Individual> list = createSoldiers(1);
+        return list.isEmpty() ? null : list.get(0);
+    }
+
+    public Individual createMale() {
+        List<Individual> list = createMales(1);
+        return list.isEmpty() ? null : list.get(0);
+    }
+
     /**
      * Add an individual to this colony.
      */
@@ -214,6 +253,15 @@ public class Colony implements java.io.Serializable {
         for (ColonyListener l : listeners) {
             l.onBirth(this, individual);
         }
+    }
+
+    /**
+     * Bulk add individuals without single-element array copying.
+     */
+    public void addIndividualsBulk(java.util.Collection<Individual> batch) {
+        if (batch == null || batch.isEmpty()) return;
+        individuals.addAll(batch);
+        totalBorn += batch.size();
     }
 
     /**

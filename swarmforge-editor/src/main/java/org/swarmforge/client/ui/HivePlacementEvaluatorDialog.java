@@ -96,11 +96,11 @@ public class HivePlacementEvaluatorDialog extends Stage {
         // 2. Solar Orientation
         orientationCombo = new ComboBox<>();
         orientationCombo.getItems().addAll(
-            "Sud-Est (South-East - Sun Morning)",
-            "Sud (South - Full Solar)",
-            "Est (East - Morning Light)",
-            "Ouest (West - Evening Heat)",
-            "Nord (North - Shaded / Cool)"
+            "East (Morning Light)",
+            "North (Shaded / Cool)",
+            "South (Full Solar)",
+            "South-East (Morning Sun)",
+            "West (Evening Heat)"
         );
         orientationCombo.getSelectionModel().selectFirst();
         orientationCombo.setPrefWidth(220);
@@ -176,9 +176,7 @@ public class HivePlacementEvaluatorDialog extends Stage {
         root.getChildren().addAll(header, subTitle, new Separator(), contentBox, footer);
 
         Scene scene = new Scene(root, 680, 520);
-        try {
-            scene.getStylesheets().add(getClass().getResource("/css/dark-theme.css").toExternalForm());
-        } catch (Exception ignored) {}
+        org.swarmforge.client.util.ThemeManager.getInstance().registerScene(scene);
         setScene(scene);
 
         calculateScore();

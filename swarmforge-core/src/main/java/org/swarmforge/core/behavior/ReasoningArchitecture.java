@@ -22,13 +22,13 @@ public interface ReasoningArchitecture extends java.io.Serializable {
      * Architecture type identifier.
      */
     enum ArchitectureType {
-        BEHAVIOR_TREE("Behavior Tree"),
-        BLACKBOARD("Blackboard Architecture"),
-        BDI("BDI (Belief-Desire-Intention)"),
-        FINITE_STATE_MACHINE("Finite State Machine (FSM)"),
-        FUZZY_LOGIC("Fuzzy Logic"),
-        HYBRID("Hybrid Architecture"),
-        NEURAL_NETWORK("Neural Network");
+        BEHAVIOR_TREE("Arbre de Comportements (Behavior Tree)"),
+        BLACKBOARD("Architecture à Tableau Blanc (Blackboard)"),
+        FINITE_STATE_MACHINE("Automate à États Finis (FSM)"),
+        BDI("BDI (Croyances - Désirs - Intentions)"),
+        FUZZY_LOGIC("Logique Floue (Fuzzy Logic)"),
+        HYBRID("Moteur Hybride Combiné (Hybrid)"),
+        NEURAL_NETWORK("Réseau de Neurones Spikant (SNN / Neural Network)");
 
         private final String displayName;
 

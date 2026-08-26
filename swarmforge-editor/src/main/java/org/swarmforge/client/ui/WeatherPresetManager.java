@@ -48,7 +48,7 @@ public class WeatherPresetManager {
         Map<String, Map<String, Object>> m = new LinkedHashMap<>();
 
         // 1. Temperate (Paris)
-        m.put("Temperate", makePreset("Temperate", 48.8, 2.35, 100.0, 1013.25, "SW", 3.0, 0.85,
+        m.put("Temperate", makePreset("Temperate", "Paris", 48.8, 2.35, 100.0, 1013.25, "SW", 3.0, 0.85,
             new double[]{ -1,  0,  4,  9, 14, 17, 19, 18, 14,  9,  4,  0}, // Temp Min
             new double[]{  3,  5,  9, 14, 19, 22, 25, 24, 20, 14,  8,  4}, // Temp Avg
             new double[]{  7,  9, 14, 19, 24, 27, 30, 29, 25, 19, 12,  8}, // Temp Max
@@ -64,7 +64,7 @@ public class WeatherPresetManager {
         ));
 
         // 2. Tropical (Manaus)
-        m.put("Tropical", makePreset("Tropical", -3.1, -60.0, 50.0, 1011.0, "E", 2.0, 0.90,
+        m.put("Tropical", makePreset("Tropical", "Manaus", -3.1, -60.0, 50.0, 1011.0, "E", 2.0, 0.90,
             new double[]{ 22, 22, 23, 24, 24, 23, 23, 23, 23, 23, 23, 22}, // Temp Min
             new double[]{ 26, 27, 28, 29, 28, 27, 27, 27, 28, 28, 27, 26}, // Temp Avg
             new double[]{ 31, 32, 33, 34, 33, 31, 31, 31, 32, 32, 31, 31}, // Temp Max
@@ -79,8 +79,8 @@ public class WeatherPresetManager {
             new double[]{ 92, 90, 92, 95, 98, 99, 98, 97, 95, 94, 93, 92}  // Hum Max
         ));
 
-        // 3. Arid (Sahara)
-        m.put("Arid", makePreset("Arid", 22.8, 5.5, 1300.0, 1015.0, "NE", 5.0, 0.70,
+        // 3. Arid (Sahara / Tamanrasset)
+        m.put("Arid", makePreset("Arid", "Tamanrasset", 22.8, 5.5, 1300.0, 1015.0, "NE", 5.0, 0.70,
             new double[]{  5,  7, 11, 15, 20, 24, 27, 26, 22, 16, 10,  6}, // Temp Min
             new double[]{ 12, 15, 20, 25, 31, 35, 38, 37, 33, 26, 18, 13}, // Temp Avg
             new double[]{ 20, 23, 28, 34, 40, 45, 47, 46, 42, 35, 26, 20}, // Temp Max
@@ -96,7 +96,7 @@ public class WeatherPresetManager {
         ));
 
         // 4. Mediterranean (Marseille)
-        m.put("Mediterranean", makePreset("Mediterranean", 43.3, 5.4, 50.0, 1016.0, "NW", 3.0, 0.80,
+        m.put("Mediterranean", makePreset("Mediterranean", "Marseille", 43.3, 5.4, 50.0, 1016.0, "NW", 3.0, 0.80,
             new double[]{  4,  5,  7, 10, 14, 18, 21, 21, 18, 14,  9,  5}, // Temp Min
             new double[]{  9, 10, 13, 16, 20, 24, 27, 27, 24, 19, 14, 10}, // Temp Avg
             new double[]{ 14, 15, 18, 22, 26, 30, 33, 33, 29, 24, 18, 14}, // Temp Max
@@ -111,8 +111,8 @@ public class WeatherPresetManager {
             new double[]{ 88, 86, 82, 78, 74, 68, 64, 66, 72, 82, 88, 89}  // Hum Max
         ));
 
-        // 5. Arctic (Svalbard)
-        m.put("Arctic", makePreset("Arctic", 78.2, 15.6, 20.0, 1008.0, "NE", 7.0, 0.95,
+        // 5. Arctic (Longyearbyen / Svalbard)
+        m.put("Arctic", makePreset("Arctic", "Longyearbyen", 78.2, 15.6, 20.0, 1008.0, "NE", 7.0, 0.95,
             new double[]{-32,-33,-28,-19, -8, -1,  2,  1, -4,-13,-23,-29}, // Temp Min
             new double[]{-26,-27,-22,-13, -3,  3,  7,  5,  0, -8,-17,-23}, // Temp Avg
             new double[]{-20,-21,-16, -7,  2,  8, 12, 10,  4, -3,-11,-17}, // Temp Max
@@ -130,7 +130,7 @@ public class WeatherPresetManager {
         return m;
     }
 
-    private Map<String, Object> makePreset(String name,
+    private Map<String, Object> makePreset(String name, String cityName,
             double lat, double lon, double alt, double press, String windDir, double soilInertia, double depthAtten,
             double[] tMin, double[] tAvg, double[] tMax,
             double[] wMin, double[] wAvg, double[] wMax,
@@ -139,6 +139,7 @@ public class WeatherPresetManager {
 
         Map<String, Object> cfg = new LinkedHashMap<>();
         cfg.put("presetName", name);
+        cfg.put("cityName", cityName);
 
         cfg.put("latitude", lat);
         cfg.put("longitude", lon);

@@ -106,7 +106,7 @@ public class EventLogPane extends BorderPane {
         sevLabel.textProperty().bind(i18n.createStringBinding("log.filter.severity"));
         sevLabel.setStyle("-fx-text-fill: white;");
         severityFilter = new ComboBox<>();
-        severityFilter.getItems().addAll("Tous", "INFO", "WARNING", "CRITICAL");
+        severityFilter.getItems().addAll("All Severities", "Critical Only", "Info Only", "Warning Only");
         severityFilter.getSelectionModel().selectFirst();
         severityFilter.setOnAction(e -> updateFilter());
 
@@ -162,8 +162,11 @@ public class EventLogPane extends BorderPane {
             return formatTypeString(e.getType()).equals(typeValue) || e.getType().name().equals(typeValue);
         };
         Predicate<SimulationEvent> sevPred = e -> {
-            if ("Tous".equals(sevValue) || "All".equals(sevValue) || sevValue == null) return true;
-            return e.getSeverity().name().equals(sevValue);
+            if ("All Severities".equals(sevValue) || "Tous".equals(sevValue) || "All".equals(sevValue) || sevValue == null) return true;
+            if ("Critical Only".equals(sevValue) || "CRITICAL".equals(sevValue)) return e.getSeverity() == SimulationEvent.Severity.CRITICAL;
+            if ("Info Only".equals(sevValue) || "INFO".equals(sevValue)) return e.getSeverity() == SimulationEvent.Severity.INFO;
+            if ("Warning Only".equals(sevValue) || "WARNING".equals(sevValue)) return e.getSeverity() == SimulationEvent.Severity.WARNING;
+            return true;
         };
 
         filteredEvents.setPredicate(typePred.and(sevPred));

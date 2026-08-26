@@ -35,6 +35,7 @@ public class WorldPresetManager {
 
         // 1. Temperate Deciduous Forest (Fontainebleau, France)
         map.put("Temperate Deciduous (Fontainebleau, FR)", makeConfig(
+                "Fontainebleau, FR",
                 25.0, 3.0, 0.5, 48.4047, 2.7016, "FOREST",
                 0.45, 0.45, 65.0, 0.7, 0.3, 0.08,
                 50, 20, 20, 10, 20,
@@ -47,6 +48,7 @@ public class WorldPresetManager {
 
         // 2. Arid Desert Erg Chebbi (Sahara, Morocco)
         map.put("Arid Desert (Erg Chebbi, MA)", makeConfig(
+                "Erg Chebbi, MA",
                 25.0, 3.0, 0.8, 31.1444, -3.9708, "DESERT",
                 0.65, 0.12, 70.0, 0.3, 0.5, 0.02,
                 5, 80, 0, 15, 0,
@@ -59,6 +61,7 @@ public class WorldPresetManager {
 
         // 3. Equatorial Tropical Rainforest (Amazon, Manaus, Brazil)
         map.put("Tropical Rainforest (Manaus, BR)", makeConfig(
+                "Manaus, BR",
                 25.0, 3.0, 0.4, -3.1190, -60.0217, "TROPICAL",
                 0.40, 0.85, 50.0, 0.6, 0.4, 0.12,
                 45, 5, 40, 10, 35,
@@ -71,6 +74,7 @@ public class WorldPresetManager {
 
         // 4. Rocky Mountain & Scree (Mont Blanc, Chamonix, France)
         map.put("Rocky Mountain (Mont Blanc, FR)", makeConfig(
+                "Mont Blanc, FR",
                 25.0, 3.0, 0.6, 45.8326, 6.8652, "ALPINE",
                 0.90, 0.40, 85.0, 0.8, 0.2, 0.15,
                 15, 15, 10, 60, 5,
@@ -83,6 +87,7 @@ public class WorldPresetManager {
 
         // 5. Arctic Permafrost (Longyearbyen, Svalbard, Norway)
         map.put("Permafrost Tundra (Svalbard, NO)", makeConfig(
+                "Svalbard, NO",
                 25.0, 3.0, 0.5, 78.2232, 15.6469, "ARCTIC",
                 0.25, 0.30, 90.0, 0.9, 0.1, 0.04,
                 35, 10, 15, 40, 15,
@@ -95,6 +100,7 @@ public class WorldPresetManager {
 
         // 6. Acacia Savanna (Serengeti, Tanzania)
         map.put("Acacia Savanna (Serengeti, TZ)", makeConfig(
+                "Serengeti, TZ",
                 25.0, 3.0, 0.5, -2.3333, 34.8333, "SAVANNA",
                 0.35, 0.28, 60.0, 0.5, 0.4, 0.05,
                 30, 35, 25, 10, 10,
@@ -107,6 +113,7 @@ public class WorldPresetManager {
 
         // 7. Mediterranean Shrubland (Corsica, France)
         map.put("Mediterranean Shrubland (Corsica, FR)", makeConfig(
+                "Corsica, FR",
                 25.0, 3.0, 0.5, 42.1500, 9.1500, "MEDITERRANEAN",
                 0.55, 0.35, 70.0, 0.6, 0.3, 0.06,
                 35, 25, 15, 25, 15,
@@ -119,6 +126,7 @@ public class WorldPresetManager {
 
         // 8. Boreal Taiga (Rovaniemi, Lapland, Finland)
         map.put("Boreal Taiga (Rovaniemi, FI)", makeConfig(
+                "Rovaniemi, FI",
                 25.0, 3.0, 0.5, 66.5039, 25.7294, "TAIGA",
                 0.40, 0.55, 65.0, 0.75, 0.25, 0.07,
                 40, 20, 15, 25, 25,
@@ -131,6 +139,7 @@ public class WorldPresetManager {
 
         // 9. Swamp & Mangrove (Everglades, Florida, USA)
         map.put("Swamp & Mangrove (Everglades, US)", makeConfig(
+                "Everglades, US",
                 25.0, 3.0, 0.4, 25.2866, -80.8987, "WETLAND",
                 0.20, 0.90, 40.0, 0.4, 0.5, 0.10,
                 55, 10, 30, 5, 40,
@@ -143,6 +152,7 @@ public class WorldPresetManager {
 
         // 10. Semi-Arid Steppe (Astana, Kazakhstan)
         map.put("Semi-Arid Steppe (Astana, KZ)", makeConfig(
+                "Astana, KZ",
                 25.0, 3.0, 0.6, 51.1694, 71.4491, "STEPPE",
                 0.30, 0.30, 75.0, 0.65, 0.35, 0.04,
                 50, 25, 20, 5, 15,
@@ -156,7 +166,7 @@ public class WorldPresetManager {
         return map;
     }
 
-    private Map<String, Object> makeConfig(double surfaceSize, double depth, double res,
+    private Map<String, Object> makeConfig(String cityName, double surfaceSize, double depth, double res,
                                            double lat, double lon, String biome,
                                            double roughness, double baseHumidity, double compaction,
                                            double stratification, double mixingRate, double voidDensity,
@@ -167,6 +177,7 @@ public class WorldPresetManager {
                                            boolean hasRiver, double riverWidth, double riverVelocity, double staticPools, double waterTableDepth,
                                            int treeCount, int hollowLogs, int rockCrevices) {
         Map<String, Object> cfg = new LinkedHashMap<>();
+        cfg.put("cityName", cityName);
         cfg.put("surfaceSizeMeters", surfaceSize);
         cfg.put("depthMeters", depth);
         cfg.put("resolutionMm", res);

@@ -312,10 +312,9 @@ public class WeatherEditorPane extends BorderPane {
         if (sel == null || sel.isEmpty()) return;
 
         I18nManager i18n = I18nManager.getInstance();
-        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, String.format(i18n.get("preset.delete.confirm"), sel));
         confirmAlert.setTitle(i18n.get("preset.delete.title"));
         confirmAlert.setHeaderText("Supprimer le Profil Climat");
-        confirmAlert.setContentText(String.format(i18n.get("preset.delete.confirm"), sel));
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -665,7 +664,7 @@ public class WeatherEditorPane extends BorderPane {
         Label lblPress = createTooltipLabel("🎚️ Pression Atmosphérique (hPa) :", "Pression barométrique de base calculée selon le modèle OACI de l'atmosphère standard en hectopascals (hPa).", pressureSpinner, "Pression Atmosphérique");
 
         windDirCombo = new ComboBox<>();
-        windDirCombo.getItems().addAll("N", "NE", "E", "SE", "S", "SW", "W", "NW");
+        windDirCombo.getItems().addAll("E", "N", "NE", "NW", "S", "SE", "SW", "W");
         ComboBoxTooltipHelper.setupDescriptiveComboBox(windDirCombo,
             val -> switch (val) {
                 case "N" -> "⬆️ Nord (N)";
@@ -1440,6 +1439,22 @@ public class WeatherEditorPane extends BorderPane {
             if (cfg.containsKey("windDirection") && windDirCombo != null) windDirCombo.setValue((String) cfg.get("windDirection"));
             if (cfg.containsKey("soilInertiaDays") && soilInertiaSpinner != null) soilInertiaSpinner.getValueFactory().setValue(num(cfg, "soilInertiaDays"));
             if (cfg.containsKey("depthAttenuation") && depthAttenSpinner != null) depthAttenSpinner.getValueFactory().setValue(num(cfg, "depthAttenuation"));
+
+            if (citySearchField != null) {
+                if (cfg.containsKey("cityName")) {
+                    citySearchField.setText(String.valueOf(cfg.get("cityName")));
+                } else {
+                    String pName = String.valueOf(cfg.getOrDefault("presetName", ""));
+                    String city = switch (pName) {
+                        case "Arctic" -> "Longyearbyen";
+                        case "Arid" -> "Tamanrasset";
+                        case "Mediterranean" -> "Marseille";
+                        case "Tropical" -> "Manaus";
+                        default -> "Paris";
+                    };
+                    citySearchField.setText(city);
+                }
+            }
 
             copyList(cfg, "tempMin", tempMin);
             copyList(cfg, "tempAvg", tempAvg);

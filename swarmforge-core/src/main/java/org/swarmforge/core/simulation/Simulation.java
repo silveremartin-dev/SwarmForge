@@ -152,15 +152,9 @@ public class Simulation {
         }
 
         Colony colony = new Colony(species, x, y, 0); // Z=0 surface
-        for (int i = 0; i < queens; i++) {
-            colony.createQueen();
-        }
-        for (int i = 0; i < workers; i++) {
-            colony.createWorker();
-        }
-        for (int i = 0; i < soldiers; i++) {
-            colony.createSoldier();
-        }
+        if (queens > 0) colony.createQueens(queens);
+        if (workers > 0) colony.createWorkers(workers);
+        if (soldiers > 0) colony.createSoldiers(soldiers);
         addColony(colony);
         return colony;
     }

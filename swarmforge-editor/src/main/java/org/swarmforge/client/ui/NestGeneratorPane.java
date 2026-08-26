@@ -228,10 +228,9 @@ public class NestGeneratorPane extends BorderPane {
         if (sel == null || sel.isEmpty()) return;
 
         I18nManager i18n = I18nManager.getInstance();
-        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, String.format(i18n.get("preset.delete.confirm"), sel));
         confirmAlert.setTitle(i18n.get("preset.delete.title"));
         confirmAlert.setHeaderText("Supprimer le Preset Nid");
-        confirmAlert.setContentText(String.format(i18n.get("preset.delete.confirm"), sel));
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -315,10 +314,10 @@ public class NestGeneratorPane extends BorderPane {
         categorySelect.setTooltip(new Tooltip("Famille d'insectes eusociaux : adapte la morphologie générale et filtre les espèces de référence."));
         categorySelect.getItems().addAll(
             "🐜 Ants (Formicidae)",
-            "🐝 Honeybees (Apis)",
             "🐝 Bumblebees (Bombus)",
-            "🐝 Wasps & Hornets (Vespidae)",
-            "🐜 Termites (Isoptera)"
+            "🐝 Honeybees (Apis)",
+            "🐜 Termites (Isoptera)",
+            "🐝 Wasps & Hornets (Vespidae)"
         );
         categorySelect.getSelectionModel().selectFirst();
         categorySelect.setPrefWidth(270);
@@ -374,9 +373,19 @@ public class NestGeneratorPane extends BorderPane {
         matSelect = new ComboBox<>();
         matSelect.setTooltip(new Tooltip("Matériau biologique de construction (Terre, Cire, Papier, Ciment stercoral, Soie, Propolis, Carton, Corps vivants)."));
         matSelect.getItems().addAll(
-            "BEESWAX", "CARTON_PULP", "EARTH", "LIVING_INSECT_BODIES",
-            "PROPOLIS", "SILK_WEAVE", "STERCORAL_CEMENT", "TREE_BRANCH",
-            "TREE_LEAF", "TREE_TRUNK", "WOOD_PLANK", "WOOD_PULP_PAPER");
+            "Beeswax (Apidae)",
+            "Carton & Wood Pulp",
+            "Earth & Clay Soil",
+            "Living Insect Bodies (Bivouac)",
+            "Propolis & Tree Resin",
+            "Silk Weave (Oecophylla Larvae)",
+            "Stercoral Cement (Termite Feces/Mud)",
+            "Tree Branch & Bark",
+            "Tree Leaf Tissue",
+            "Tree Trunk & Hollow Wood",
+            "Wood Plank Construction",
+            "Wood Pulp Paper (Vespidae)"
+        );
         matSelect.getSelectionModel().selectFirst();
         matSelect.setPrefWidth(270);
         matSelect.setOnAction(e -> {
@@ -541,11 +550,11 @@ public class NestGeneratorPane extends BorderPane {
         // 2. Solar Orientation
         evalOrientationCombo = new ComboBox<>();
         evalOrientationCombo.getItems().addAll(
-            "Sud-Est (South-East - Sun Morning)",
-            "Sud (South - Full Solar)",
-            "Est (East - Morning Light)",
-            "Ouest (West - Evening Heat)",
-            "Nord (North - Shaded / Cool)"
+            "East (Morning Light)",
+            "North (Shaded / Cool)",
+            "South (Full Solar)",
+            "South-East (Morning Sun)",
+            "West (Evening Heat)"
         );
         evalOrientationCombo.getSelectionModel().selectFirst();
         evalOrientationCombo.setPrefWidth(220);
@@ -726,24 +735,83 @@ public class NestGeneratorPane extends BorderPane {
         String cat = categorySelect.getValue();
         if (cat == null) return;
         if (cat.contains("Honeybees")) {
-            archSelect.setValue("WAX_COMB_HEXAGONAL");
-            matSelect.setValue("BEESWAX");
+            setArchSelectValue("Hexagonal Wax Comb");
+            setMatSelectValue("Beeswax (Apidae)");
         } else if (cat.contains("Bumblebees")) {
-            archSelect.setValue("WAX_POTS_CLUSTER");
-            matSelect.setValue("PROPOLIS");
+            setArchSelectValue("Wax Pots Cluster");
+            setMatSelectValue("Propolis & Tree Resin");
         } else if (cat.contains("Wasps")) {
-            archSelect.setValue("PAPER_PEDUNCULATE");
-            matSelect.setValue("WOOD_PULP_PAPER");
+            setArchSelectValue("Hanging Paper Nest");
+            setMatSelectValue("Wood Pulp Paper (Vespidae)");
         } else if (cat.contains("Termites")) {
-            archSelect.setValue("CATHEDRAL_MOUND");
-            matSelect.setValue("STERCORAL_CEMENT");
+            setArchSelectValue("Cathedral Mound");
+            setMatSelectValue("Stercoral Cement (Termite Feces/Mud)");
         } else if (cat.contains("Ants")) {
-            if (!archSelect.getValue().equals("ARBOREAL_SILK_LEAF") && !archSelect.getValue().equals("SURFACE_MOUND")) {
-                archSelect.setValue("BURROW_UNDERGROUND");
+            if (archSelect.getValue() != null && !archSelect.getValue().contains("Silk") && !archSelect.getValue().contains("Dome")) {
+                setArchSelectValue("Subterranean Burrow");
             }
-            matSelect.setValue("EARTH");
+            setMatSelectValue("Earth & Clay Soil");
         }
         regen(); repaint();
+    }
+
+    private void setArchSelectValue(String val) {
+        if (archSelect == null || val == null) return;
+        String mapped = switch (val.toUpperCase()) {
+            case "WAX_COMB_HEXAGONAL", "HEXAGONAL WAX COMB" -> "Hexagonal Wax Comb";
+            case "WAX_POTS_CLUSTER", "WAX POTS CLUSTER" -> "Wax Pots Cluster";
+            case "PAPER_PEDUNCULATE", "HANGING PAPER NEST" -> "Hanging Paper Nest";
+            case "CATHEDRAL_MOUND", "CATHEDRAL MOUND" -> "Cathedral Mound";
+            case "SUBTERRANEAN_FUNGI_VAULT", "SUBTERRANEAN FUNGI VAULT" -> "Subterranean Fungi Vault";
+            case "CARTON_NEST", "ARBOREAL CARTON NEST", "ARBOREAL_CARTON_NEST" -> "Arboreal Carton Nest";
+            case "BAMBOO_STEM_NEST", "BAMBOO STEM & GALL", "BAMBOO_STEM_GALL" -> "Bamboo Stem & Gall";
+            case "BIVOUAC_LIVING_NEST", "BIVOUAC LIVING NEST" -> "Bivouac Living Nest";
+            case "ARBOREAL_SILK_LEAF", "ARBOREAL SILK LEAF" -> "Arboreal Silk Leaf";
+            case "MOUND", "SURFACE_MOUND", "SURFACE DOME MOUND" -> "Surface Dome Mound";
+            case "BURROW_UNDERGROUND", "SUBTERRANEAN BURROW", "SUBTERRANEAN_BURROW", "SIMPLE" -> "Subterranean Burrow";
+            case "HOLLOW TRUNK CAVITY", "HOLLOW_TRUNK_CAVITY", "HOLLOW_TRUNK_NEST", "TREE" -> "Hollow Trunk Cavity";
+            case "WOODEN BEEHIVE", "WOODEN_BEEHIVE" -> "Wooden Beehive";
+            default -> val;
+        };
+        if (archSelect.getItems().contains(mapped)) {
+            archSelect.setValue(mapped);
+        } else {
+            for (String item : archSelect.getItems()) {
+                if (item.equalsIgnoreCase(val)) {
+                    archSelect.setValue(item);
+                    return;
+                }
+            }
+        }
+    }
+
+    private void setMatSelectValue(String val) {
+        if (matSelect == null || val == null) return;
+        String mapped = switch (val.toUpperCase()) {
+            case "BEESWAX" -> "Beeswax (Apidae)";
+            case "CARTON_PULP" -> "Carton & Wood Pulp";
+            case "EARTH" -> "Earth & Clay Soil";
+            case "LIVING_INSECT_BODIES" -> "Living Insect Bodies (Bivouac)";
+            case "PROPOLIS" -> "Propolis & Tree Resin";
+            case "SILK_WEAVE" -> "Silk Weave (Oecophylla Larvae)";
+            case "STERCORAL_CEMENT" -> "Stercoral Cement (Termite Feces/Mud)";
+            case "TREE_BRANCH" -> "Tree Branch & Bark";
+            case "TREE_LEAF" -> "Tree Leaf Tissue";
+            case "TREE_TRUNK" -> "Tree Trunk & Hollow Wood";
+            case "WOOD_PLANK" -> "Wood Plank Construction";
+            case "WOOD_PULP_PAPER" -> "Wood Pulp Paper (Vespidae)";
+            default -> val;
+        };
+        if (matSelect.getItems().contains(mapped)) {
+            matSelect.setValue(mapped);
+        } else {
+            for (String item : matSelect.getItems()) {
+                if (item.equalsIgnoreCase(val)) {
+                    matSelect.setValue(item);
+                    return;
+                }
+            }
+        }
     }
 
     private Label lbl(String s) { return new Label(s); }
@@ -1075,47 +1143,47 @@ public class NestGeneratorPane extends BorderPane {
 
             if ("TERMITE".equalsIgnoreCase(orderStr)) {
                 categorySelect.setValue("🐜 Termites (Isoptera)");
-                archSelect.setValue("CATHEDRAL_MOUND");
-                matSelect.setValue("STERCORAL_CEMENT");
+                setArchSelectValue("Cathedral Mound");
+                setMatSelectValue("Stercoral Cement (Termite Feces/Mud)");
             } else if ("BEE".equalsIgnoreCase(orderStr)) {
                 if (species.getCommonName().toLowerCase().contains("bourdon") || (species.getScientificName() != null && species.getScientificName().toLowerCase().contains("bombus"))) {
                     categorySelect.setValue("🐝 Bumblebees (Bombus)");
-                    archSelect.setValue("WAX_POTS_CLUSTER");
-                    matSelect.setValue("PROPOLIS");
+                    setArchSelectValue("Wax Pots Cluster");
+                    setMatSelectValue("Propolis & Tree Resin");
                 } else {
                     categorySelect.setValue("🐝 Honeybees (Apis)");
-                    archSelect.setValue("WAX_COMB_HEXAGONAL");
-                    matSelect.setValue("BEESWAX");
+                    setArchSelectValue("Hexagonal Wax Comb");
+                    setMatSelectValue("Beeswax (Apidae)");
                 }
             } else if ("WASP".equalsIgnoreCase(orderStr)) {
                 categorySelect.setValue("🐝 Wasps & Hornets (Vespidae)");
-                archSelect.setValue("PAPER_PEDUNCULATE");
-                matSelect.setValue("WOOD_PULP_PAPER");
+                setArchSelectValue("Hanging Paper Nest");
+                setMatSelectValue("Wood Pulp Paper (Vespidae)");
             } else {
                 // ANT
                 categorySelect.setValue("🐜 Ants (Formicidae)");
                 String cName = species.getCommonName() != null ? species.getCommonName().toLowerCase() : "";
                 if ("SUBTERRANEAN_FUNGI_VAULT".equalsIgnoreCase(nestTypeStr) || cName.contains("champignonniste") || cName.contains("coupeuse")) {
-                    archSelect.setValue("SUBTERRANEAN_FUNGI_VAULT");
-                    matSelect.setValue("EARTH");
+                    setArchSelectValue("Subterranean Fungi Vault");
+                    setMatSelectValue("Earth & Clay Soil");
                 } else if ("CARTON_NEST".equalsIgnoreCase(nestTypeStr) || cName.contains("carton")) {
-                    archSelect.setValue("CARTON_NEST");
-                    matSelect.setValue("CARTON_PULP");
+                    setArchSelectValue("Arboreal Carton Nest");
+                    setMatSelectValue("Carton & Wood Pulp");
                 } else if ("BAMBOO_STEM_NEST".equalsIgnoreCase(nestTypeStr) || cName.contains("temnothorax") || cName.contains("galle") || cName.contains("tige")) {
-                    archSelect.setValue("BAMBOO_STEM_NEST");
-                    matSelect.setValue("WOOD_PULP_PAPER");
+                    setArchSelectValue("Bamboo Stem & Gall");
+                    setMatSelectValue("Wood Pulp Paper (Vespidae)");
                 } else if ("BIVOUAC_LIVING_NEST".equalsIgnoreCase(nestTypeStr) || cName.contains("légionnaire") || cName.contains("eciton")) {
-                    archSelect.setValue("BIVOUAC_LIVING_NEST");
-                    matSelect.setValue("LIVING_INSECT_BODIES");
+                    setArchSelectValue("Bivouac Living Nest");
+                    setMatSelectValue("Living Insect Bodies (Bivouac)");
                 } else if ("ARBOREAL_SILK_LEAF".equalsIgnoreCase(nestTypeStr) || cName.contains("tisserande")) {
-                    archSelect.setValue("ARBOREAL_SILK_LEAF");
-                    matSelect.setValue("SILK_WEAVE");
+                    setArchSelectValue("Arboreal Silk Leaf");
+                    setMatSelectValue("Silk Weave (Oecophylla Larvae)");
                 } else if ("MOUND".equalsIgnoreCase(nestTypeStr) || "SURFACE_MOUND".equalsIgnoreCase(nestTypeStr) || cName.contains("fire") || cName.contains("feu")) {
-                    archSelect.setValue("SURFACE_MOUND");
-                    matSelect.setValue("EARTH");
+                    setArchSelectValue("Surface Dome Mound");
+                    setMatSelectValue("Earth & Clay Soil");
                 } else {
-                    archSelect.setValue("BURROW_UNDERGROUND");
-                    matSelect.setValue("EARTH");
+                    setArchSelectValue("Subterranean Burrow");
+                    setMatSelectValue("Earth & Clay Soil");
                 }
             }
 
@@ -1277,7 +1345,7 @@ public class NestGeneratorPane extends BorderPane {
         File f = fc.showSaveDialog(getScene().getWindow());
         if (f == null) return;
         try { new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(f, getConfiguration()); }
-        catch (Exception ex) { new Alert(Alert.AlertType.ERROR, ex.getMessage()).show(); }
+        catch (Exception ex) { org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, ex.getMessage()).show(); }
     }
 
     private void doImport() {
@@ -1289,7 +1357,7 @@ public class NestGeneratorPane extends BorderPane {
             @SuppressWarnings("unchecked")
             Map<String,Object> cfg = new com.fasterxml.jackson.databind.ObjectMapper().readValue(f, Map.class);
             applyCfg(cfg);
-        } catch (Exception ex) { new Alert(Alert.AlertType.ERROR, ex.getMessage()).show(); }
+        } catch (Exception ex) { org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, ex.getMessage()).show(); }
     }
 
     public void applyCfg(Map<String, Object> cfg) {
@@ -1303,8 +1371,8 @@ public class NestGeneratorPane extends BorderPane {
                 }
             }
             if (cfg.containsKey("taxonCategory") && categorySelect != null) categorySelect.setValue(String.valueOf(cfg.get("taxonCategory")));
-            if (cfg.containsKey("architecture") && archSelect != null) archSelect.setValue(String.valueOf(cfg.get("architecture")));
-            if (cfg.containsKey("material") && matSelect != null) matSelect.setValue(String.valueOf(cfg.get("material")));
+            if (cfg.containsKey("architecture") && archSelect != null) setArchSelectValue(String.valueOf(cfg.get("architecture")));
+            if (cfg.containsKey("material") && matSelect != null) setMatSelectValue(String.valueOf(cfg.get("material")));
             if (cfg.containsKey("workerSizeMm") && workerSizeSlider != null) workerSizeSlider.setValue(num(cfg, "workerSizeMm"));
             if (cfg.containsKey("depth") && depthSlider != null) depthSlider.setValue(num(cfg, "depth"));
             if (cfg.containsKey("tunnelWidth") && tunnelWidthSlider != null) tunnelWidthSlider.setValue(num(cfg, "tunnelWidth"));
@@ -1327,7 +1395,7 @@ public class NestGeneratorPane extends BorderPane {
 
     private void applyToWorld() {
         if (onApplyCallback != null) onApplyCallback.accept(getConfiguration());
-        else new Alert(Alert.AlertType.WARNING,"No world editor connected.").show();
+        else org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.WARNING,"No world editor connected.").show();
     }
 
     public void setOnApply(Consumer<Map<String,Object>> cb) { this.onApplyCallback = cb; }

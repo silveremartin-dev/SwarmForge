@@ -140,8 +140,9 @@ public class AccessorySpeciesEditorPane extends VBox {
         tabTaxonomy = new Tab(i18n.get("accessory.tab.taxonomy"), new ScrollPane(createTaxonomyCard()));
         tabSeasonal = new Tab(i18n.get("accessory.tab.seasonal"), new ScrollPane(createSeasonalCard()));
         tabPredators = new Tab(i18n.get("accessory.tab.predators"), new ScrollPane(createPredatorPathogenCard()));
+        tabHelp = new Tab(i18n.get("accessory.tab.help"), createHelpTabContent());
 
-        tabPane.getTabs().addAll(tabTaxonomy, tabSeasonal, tabPredators);
+        tabPane.getTabs().addAll(tabTaxonomy, tabSeasonal, tabPredators, tabHelp);
 
         // Dynamic Locale Listener for UI Updating
         i18n.localeProperty().addListener((obs, oldL, newL) -> refreshI18nLabels());
@@ -302,13 +303,13 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         accessoryNameField = new TextField("Graminées à Graines (Messor)");
         categoryCombo = new ComboBox<>(FXCollections.observableArrayList(
-                "FLORA",
                 "APHID_MUTUALIST",
-                "PREY_INSECT",
-                "PREDATOR",
-                "PATHOGEN_PARASITE",
+                "DETRITIVORE",
+                "FLORA",
                 "FUNGI",
-                "DETRITIVORE"
+                "PATHOGEN_PARASITE",
+                "PREDATOR",
+                "PREY_INSECT"
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(categoryCombo,
             val -> switch (val) {
@@ -335,11 +336,11 @@ public class AccessorySpeciesEditorPane extends VBox {
         categoryCombo.getSelectionModel().selectFirst();
 
         biomeCombo = new ComboBox<>(FXCollections.observableArrayList(
-                "TEMPERATE_DECIDUOUS",
-                "MEDITERRANEAN",
-                "TROPICAL_RAINFOREST",
                 "ARID_DESERT",
-                "TAIGA_BOREAL"
+                "MEDITERRANEAN",
+                "TAIGA_BOREAL",
+                "TEMPERATE_DECIDUOUS",
+                "TROPICAL_RAINFOREST"
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(biomeCombo,
             val -> switch (val) {
@@ -374,11 +375,11 @@ public class AccessorySpeciesEditorPane extends VBox {
         individualCountSpinner.setTooltip(new Tooltip("Nombre total d'individus de cette espèce accessoire introduits initialement."));
 
         nestDispatchCombo = new ComboBox<>(FXCollections.observableArrayList(
-                "Tous les nids hôtes compatibles (Filtrage biologique)",
-                "Nids de l'Espèce Principale uniquement (Nid #1)",
-                "Répartition uniforme sur tous les nids du monde",
-                "Extérieur uniquement (Zone d'exploration hors nids)",
-                "Loges d'élevage / Couvain uniquement (Commensaux & Parasites)"
+                "All Compatible Host Nests (Biological Filtering)",
+                "Brood Chambers Only (Commensals & Parasites)",
+                "Exterior Exploration Zone Only (Outside Nests)",
+                "Primary Species Nests Only (Nest #1)",
+                "Uniform Distribution Across All World Nests"
         ));
         nestDispatchCombo.getSelectionModel().selectFirst();
         nestDispatchCombo.setTooltip(new Tooltip("Règle de répartition des individus entre les nids : affecte les organismes uniquement dans les nids qui les acceptent et exclut ceux qui les réfutent."));
@@ -497,24 +498,24 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         grid.getColumnConstraints().addAll(col1, col2);
 
-        targetCasteCombo = new ComboBox<>(FXCollections.observableArrayList("Ouvrières", "Nymphes / Couvain", "Sexués / Reines", "Toutes Castes"));
+        targetCasteCombo = new ComboBox<>(FXCollections.observableArrayList("All Castes", "Brood / Pupae", "Queens / Alates", "Workers"));
         targetCasteCombo.getSelectionModel().selectFirst();
 
         huntModeCombo = new ComboBox<>(FXCollections.observableArrayList(
-                "Piège / Entonnoir (Fourmilion)",
-                "Embrouille / Affût (Araignée)",
-                "Attaque Directe (Oiseau / Tamandua)",
-                "Parasitoïde (Ponte interne / Guêpe)"
+                "Ambush / Stalking (Spider)",
+                "Direct Attack (Bird / Anteater)",
+                "Parasitoid (Internal Egg-laying / Wasp)",
+                "Trap / Funnel (Antlion)"
         ));
         huntModeCombo.getSelectionModel().selectFirst();
 
         killRateField = new TextField("3.5");
 
         pathogenVectorCombo = new ComboBox<>(FXCollections.observableArrayList(
-                "Spores Aériennes (Cordyceps)",
-                "Contact Sol & Galerie",
-                "Toilette / Allogrooming",
-                "Nourriture Contaminée"
+                "Airborne Spores (Cordyceps)",
+                "Contaminated Food",
+                "Grooming / Allogrooming",
+                "Soil & Gallery Contact"
         ));
         pathogenVectorCombo.getSelectionModel().selectFirst();
 
@@ -753,12 +754,12 @@ public class AccessorySpeciesEditorPane extends VBox {
     }
 
     private void refreshI18nLabels() {
-        headerLabel.setText(i18n.get("accessory.title"));
+        if (headerLabel != null) headerLabel.setText(i18n.get("accessory.title"));
 
-        tabTaxonomy.setText(i18n.get("accessory.tab.taxonomy"));
-        tabSeasonal.setText(i18n.get("accessory.tab.seasonal"));
-        tabPredators.setText(i18n.get("accessory.tab.predators"));
-        tabHelp.setText(i18n.get("accessory.tab.help"));
+        if (tabTaxonomy != null) tabTaxonomy.setText(i18n.get("accessory.tab.taxonomy"));
+        if (tabSeasonal != null) tabSeasonal.setText(i18n.get("accessory.tab.seasonal"));
+        if (tabPredators != null) tabPredators.setText(i18n.get("accessory.tab.predators"));
+        if (tabHelp != null) tabHelp.setText(i18n.get("accessory.tab.help"));
 
         updateSeasonLabels();
         if (seasonHintLabel != null) {

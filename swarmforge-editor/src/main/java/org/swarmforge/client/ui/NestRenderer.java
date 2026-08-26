@@ -245,20 +245,93 @@ public final class NestRenderer {
         };
     }
 
+    public static String normalizeArchKey(String arch) {
+        if (arch == null) return "BURROW_UNDERGROUND";
+        String s = arch.toUpperCase();
+        if (s.contains("CARTON")) return "CARTON_NEST";
+        if (s.contains("HEXAGONAL") || s.contains("WAX_COMB")) return "WAX_COMB_HEXAGONAL";
+        if (s.contains("POTS") || s.contains("WAX_POTS")) return "WAX_POTS_CLUSTER";
+        if (s.contains("PAPER") || s.contains("PEDUNCULATE")) return "PAPER_PEDUNCULATE";
+        if (s.contains("CATHEDRAL")) return "CATHEDRAL_MOUND";
+        if (s.contains("SILK") || s.contains("LEAF")) return "ARBOREAL_SILK_LEAF";
+        if (s.contains("FUNGI") || s.contains("VAULT")) return "SUBTERRANEAN_FUNGI_VAULT";
+        if (s.contains("BAMBOO") || s.contains("STEM")) return "BAMBOO_STEM_NEST";
+        if (s.contains("BIVOUAC")) return "BIVOUAC_LIVING_NEST";
+        if (s.contains("HOLLOW") || s.contains("TRUNK")) return "HOLLOW_TRUNK_NEST";
+        if (s.contains("SURFACE") || s.contains("MOUND")) return "SURFACE_MOUND";
+        if (s.contains("BEEHIVE") || s.contains("WOODEN")) return "WOODEN_BEEHIVE";
+        return "BURROW_UNDERGROUND";
+    }
+
+    public static String normalizeMatKey(String mat) {
+        if (mat == null) return "EARTH";
+        String s = mat.toUpperCase();
+        if (s.contains("CARTON")) return "CARTON_PULP";
+        if (s.contains("BEESWAX")) return "BEESWAX";
+        if (s.contains("LIVING") || s.contains("BODIES") || s.contains("BIVOUAC")) return "LIVING_INSECT_BODIES";
+        if (s.contains("PROPOLIS")) return "PROPOLIS";
+        if (s.contains("SILK")) return "SILK_WEAVE";
+        if (s.contains("STERCORAL") || s.contains("CEMENT")) return "STERCORAL_CEMENT";
+        if (s.contains("BRANCH")) return "TREE_BRANCH";
+        if (s.contains("LEAF")) return "TREE_LEAF";
+        if (s.contains("TRUNK")) return "TREE_TRUNK";
+        if (s.contains("PLANK")) return "WOOD_PLANK";
+        if (s.contains("PAPER") || s.contains("WOOD_PULP_PAPER")) return "WOOD_PULP_PAPER";
+        if (s.contains("EARTH") || s.contains("SOIL") || s.contains("CLAY")) return "EARTH";
+        return "EARTH";
+    }
+
+    public static String formatArchitectureName(String arch) {
+        String key = normalizeArchKey(arch);
+        return switch (key) {
+            case "CARTON_NEST" -> "Arboreal Carton Nest";
+            case "WAX_COMB_HEXAGONAL" -> "Hexagonal Wax Comb";
+            case "WAX_POTS_CLUSTER" -> "Wax Pots Cluster";
+            case "PAPER_PEDUNCULATE" -> "Hanging Paper Nest";
+            case "CATHEDRAL_MOUND" -> "Cathedral Mound";
+            case "ARBOREAL_SILK_LEAF" -> "Arboreal Silk Leaf";
+            case "SUBTERRANEAN_FUNGI_VAULT" -> "Subterranean Fungi Vault";
+            case "BAMBOO_STEM_NEST" -> "Bamboo Stem & Gall";
+            case "BIVOUAC_LIVING_NEST" -> "Bivouac Living Nest";
+            case "HOLLOW_TRUNK_NEST" -> "Hollow Trunk Cavity";
+            case "SURFACE_MOUND" -> "Surface Dome Mound";
+            case "WOODEN_BEEHIVE" -> "Wooden Beehive";
+            default -> "Subterranean Burrow";
+        };
+    }
+
+    public static String formatMaterialName(String mat) {
+        String key = normalizeMatKey(mat);
+        return switch (key) {
+            case "CARTON_PULP" -> "Carton & Wood Pulp";
+            case "BEESWAX" -> "Beeswax (Apidae)";
+            case "LIVING_INSECT_BODIES" -> "Living Insect Bodies (Bivouac)";
+            case "PROPOLIS" -> "Propolis & Tree Resin";
+            case "SILK_WEAVE" -> "Silk Weave (Oecophylla Larvae)";
+            case "STERCORAL_CEMENT" -> "Stercoral Cement (Termite Feces/Mud)";
+            case "TREE_BRANCH" -> "Tree Branch & Bark";
+            case "TREE_LEAF" -> "Tree Leaf Tissue";
+            case "TREE_TRUNK" -> "Tree Trunk & Hollow Wood";
+            case "WOOD_PLANK" -> "Wood Plank Construction";
+            case "WOOD_PULP_PAPER" -> "Wood Pulp Paper (Vespidae)";
+            default -> "Earth & Clay Soil";
+        };
+    }
+
     private static void legendHeader(GraphicsContext gc, NestGeneratorPane.GeneratedNest nest,
             double x, double y) {
         long chambers = nest.nodes.stream()
             .filter(n -> !"JUNCTION".equals(n.type) && !"ENTRANCE".equals(n.type)).count();
         gc.setFill(Color.rgb(180,180,180,0.85)); gc.setFont(Font.font("SansSerif",11));
         gc.fillText(String.format("Arch: %s | Mat: %s | Scale: %.1fmm | Chambers: %d",
-            nest.architecture, nest.material, nest.workerSizeMm, chambers), x, y);
+            formatArchitectureName(nest.architecture), formatMaterialName(nest.material), nest.workerSizeMm, chambers), x, y);
     }
 
     /** Draws 3D Ghost Mesh contours for all 13 biological architectures. */
     private static void drawGhostMesh(String arch, NestGeneratorPane.GeneratedNest nest,
             java.util.function.Function<double[], double[]> proj, GraphicsContext gc, double zoom) {
 
-        if (arch == null) arch = "BURROW_UNDERGROUND";
+        String archKey = normalizeArchKey(arch);
 
         // 1. Surface Ground Grid Mesh (z = 0)
         gc.setStroke(Color.rgb(56, 189, 248, 0.30)); gc.setLineWidth(1.0);
@@ -273,7 +346,7 @@ public final class NestRenderer {
         double rx0 = nest != null ? nest.getRootX() : 0.0;
         double ry0 = nest != null ? nest.getRootY() : 0.0;
 
-        switch (arch) {
+        switch (archKey) {
             case "WOODEN_BEEHIVE" -> {
                 // 3D Translucent Wooden Hive Box enclosing multiple parallel frames
                 gc.setStroke(Color.web("#d97706", 0.75)); gc.setLineWidth(2.0 * zoom);

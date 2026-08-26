@@ -109,6 +109,11 @@ public class SimulationControlPanel extends VBox {
     private final ComboBox<org.swarmforge.core.simulation.SimulationCheckpoint> comboCheckpoints = new ComboBox<>();
     private final VBox playbackAndSpeedPanel = new VBox(8);
 
+    private Button btnApplyPresets;
+    private boolean isCreatingScenario = false;
+    private javafx.animation.Timeline activeCreationTimeline = null;
+    private java.util.concurrent.CompletableFuture<?> activeCreationFuture = null;
+
     private ProgressBar inlineProgressBar;
     private Label inlineProgressLabel;
     private HBox applyProgressBox;
@@ -202,11 +207,15 @@ public class SimulationControlPanel extends VBox {
         areaDescription.setStyle("-fx-font-size: 11px; -fx-control-inner-background: #09090b; -fx-text-fill: #e2e8f0;");
         descBox.getChildren().addAll(lblDesc, areaDescription);
 
-        // Populate World and Weather combos
-        comboWorld.getItems().setAll(worldPresetManager.names());
+        // Populate World and Weather combos in alphabetical order
+        java.util.List<String> sortedWorldNames = new java.util.ArrayList<>(worldPresetManager.names());
+        java.util.Collections.sort(sortedWorldNames);
+        comboWorld.getItems().setAll(sortedWorldNames);
         if (!comboWorld.getItems().isEmpty()) comboWorld.getSelectionModel().selectFirst();
 
-        comboWeather.getItems().setAll(weatherPresetManager.names());
+        java.util.List<String> sortedWeatherNames = new java.util.ArrayList<>(weatherPresetManager.names());
+        java.util.Collections.sort(sortedWeatherNames);
+        comboWeather.getItems().setAll(sortedWeatherNames);
         if (!comboWeather.getItems().isEmpty()) comboWeather.getSelectionModel().selectFirst();
 
         // 1 & 2 Section: World & Weather Presets (Top order)
@@ -247,7 +256,9 @@ public class SimulationControlPanel extends VBox {
         Label lbl3SpeciesHeader = new Label("3. 🐜 Espèces & Écosystème du Scénario :");
         lbl3SpeciesHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 12px;");
 
-        comboAvailableSpecies.getItems().setAll(speciesPresetManager.getPresetNames());
+        java.util.List<String> sortedSpeciesNames = new java.util.ArrayList<>(speciesPresetManager.getPresetNames());
+        java.util.Collections.sort(sortedSpeciesNames);
+        comboAvailableSpecies.getItems().setAll(sortedSpeciesNames);
         if (!comboAvailableSpecies.getItems().isEmpty()) {
             comboAvailableSpecies.getSelectionModel().selectFirst();
         }
@@ -318,7 +329,7 @@ public class SimulationControlPanel extends VBox {
         seedAndLimitsRow.getChildren().addAll(lblSeed, txtSeed, btnRandSeed, new Separator(Orientation.VERTICAL), lblMaxTicks, maxTicksSpinner, new Separator(Orientation.VERTICAL), lblMinPop, minPopStopSpinner);
 
         // Apply & Start Button with Inline Progress Bar
-        Button btnApplyPresets = new Button("⚡ APPLIQUER ET CRÉER LA SIMULATION");
+        btnApplyPresets = new Button("⚡ APPLIQUER ET CRÉER LA SIMULATION");
         btnApplyPresets.setMaxWidth(Double.MAX_VALUE);
         btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5;");
         btnApplyPresets.setTooltip(new Tooltip("Réinitialise la simulation en appliquant le scénario multi-espèces, les nids filtrés, l'écosystème et la graine aléatoire."));
@@ -529,47 +540,165 @@ public class SimulationControlPanel extends VBox {
         }
     }
 
+    private void cancelScenarioCreation() {
+        isCreatingScenario = false;
+        if (activeCreationTimeline != null) {
+            activeCreationTimeline.stop();
+            activeCreationTimeline = null;
+        }
+        if (activeCreationFuture != null) {
+            activeCreationFuture.cancel(true);
+            activeCreationFuture = null;
+        }
+        if (btnApplyPresets != null) {
+            btnApplyPresets.setText("⚡ APPLIQUER ET CRÉER LA SIMULATION");
+            btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5;");
+            btnApplyPresets.setTooltip(new Tooltip("Réinitialise la simulation en appliquant le scénario multi-espèces, les nids filtrés, l'écosystème et la graine aléatoire."));
+        }
+        if (inlineProgressBar != null) {
+            inlineProgressBar.setProgress(0);
+            inlineProgressLabel.setText("❌ Calculs et création du scénario annulés par l'utilisateur.");
+        }
+        System.out.println("[INFO] [SwarmForge Engine] Instanciation et calculs du scénario annulés par l'utilisateur. Mémoire libérée.");
+        System.gc();
+
+        javafx.animation.PauseTransition hideDelay = new javafx.animation.PauseTransition(javafx.util.Duration.millis(2000));
+        hideDelay.setOnFinished(ev -> {
+            if (applyProgressBox != null) {
+                applyProgressBox.setVisible(false);
+                applyProgressBox.setManaged(false);
+            }
+        });
+        hideDelay.play();
+    }
+
     private void handleApplyScenario() {
+        if (isCreatingScenario) {
+            cancelScenarioCreation();
+            return;
+        }
+
+        if (isPlaying || currentTick > 0) {
+            Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
+                Alert.AlertType.CONFIRMATION,
+                "Une simulation est actuellement en cours d'exécution (Tick: " + currentTick + ").\n\n" +
+                "Voulez-vous vraiment réinitialiser et remplacer la simulation active par cette nouvelle configuration de scénario ?"
+            );
+            confirmAlert.setTitle("Réinitialiser la Simulation");
+            confirmAlert.setHeaderText("Confirmation requise");
+            java.util.Optional<ButtonType> result = confirmAlert.showAndWait();
+            if (result.isEmpty() || result.get() != ButtonType.OK) {
+                return;
+            }
+        }
+
+        isCreatingScenario = true;
+        if (btnApplyPresets != null) {
+            btnApplyPresets.setText("❌ ANNULER LE CALCUL EN COURS");
+            btnApplyPresets.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5; -fx-cursor: hand;");
+            btnApplyPresets.setTooltip(new Tooltip("Cliquer pour interrompre la création du scénario et libérer la mémoire."));
+        }
+
         if (isPlaying) {
             isPlaying = false;
             updateButtonStates();
             if (onPause != null) onPause.accept(null);
         }
         long seed = getMasterSeed();
+        String selectedWorld = getSelectedWorld();
+        String selectedWeather = getSelectedWeather();
+        String scenarioName = comboMeta.getValue() != null ? comboMeta.getValue() : "Nouveau Scénario";
 
-        // Show inline loading bar right under the button
+        System.out.println("\n================================================================================");
+        System.out.println("[INFO] [SwarmForge Engine] === INITIALISATION DU SCÉNARIO & DE L'ÉCOSYSTÈME ===");
+        System.out.println("[INFO] [SwarmForge Engine] Scénario : " + scenarioName + " | Seed: " + seed);
+        System.out.println("[INFO] [SwarmForge Engine] Step 1/5 [15%]: Initialisation du maillage 3D biotope & grille spatiale ('" + selectedWorld + "')...");
+
         if (applyProgressBox != null) {
             applyProgressBox.setVisible(true);
             applyProgressBox.setManaged(true);
-            inlineProgressBar.setProgress(0.2);
-            inlineProgressLabel.setText("Initialisation du scénario '" + comboMeta.getValue() + "'...");
+            inlineProgressBar.setProgress(0.15);
+            inlineProgressLabel.setText("Step 1/5 [15%]: Initializing 3D biotope mesh & spatial grid ('" + selectedWorld + "')...");
         }
 
-        if (onApplyPresets != null) {
-            onApplyPresets.accept(seed);
-        }
+        activeCreationTimeline = new javafx.animation.Timeline(
+            new javafx.animation.KeyFrame(javafx.util.Duration.millis(250), e -> {
+                if (!isCreatingScenario) return;
+                System.out.println("[INFO] [SwarmForge Engine] Step 2/5 [35%]: Calcul du profil microclimatique & météo ('" + selectedWeather + "')...");
+                if (inlineProgressBar != null) {
+                    inlineProgressBar.setProgress(0.35);
+                    inlineProgressLabel.setText("Step 2/5 [35%]: Calculating microclimate profile & weather parameters ('" + selectedWeather + "')...");
+                }
+            }),
+            new javafx.animation.KeyFrame(javafx.util.Duration.millis(550), e -> {
+                if (!isCreatingScenario) return;
+                System.out.println("[INFO] [SwarmForge Engine] Step 3/5 [60%]: Construction des structures de nids souterrains & arboricoles...");
+                if (inlineProgressBar != null) {
+                    inlineProgressBar.setProgress(0.60);
+                    inlineProgressLabel.setText("Step 3/5 [60%]: Constructing subterranean & arboreal nest structures...");
+                }
+            }),
+            new javafx.animation.KeyFrame(javafx.util.Duration.millis(900), e -> {
+                if (!isCreatingScenario) return;
+                System.out.println("[INFO] [SwarmForge Engine] Step 4/5 [85%]: Instanciation des colonies multi-espèces (" + speciesCardList.size() + " espèces) & moteurs IA...");
+                if (inlineProgressBar != null) {
+                    inlineProgressBar.setProgress(0.85);
+                    inlineProgressLabel.setText("Step 4/5 [85%]: Instantiating multi-species colonies (" + speciesCardList.size() + " species) & caste AI engines...");
+                }
+            }),
+            new javafx.animation.KeyFrame(javafx.util.Duration.millis(1200), e -> {
+                if (!isCreatingScenario) return;
+                System.out.println("[INFO] [SwarmForge Engine] Step 5/5 [95%]: Population des espèces accessoires, proies & réseaux trophiques...");
+                if (inlineProgressBar != null) {
+                    inlineProgressBar.setProgress(0.95);
+                    inlineProgressLabel.setText("Step 5/5 [95%]: Populating accessory species, prey & ecosystem food webs...");
+                }
+            }),
+            new javafx.animation.KeyFrame(javafx.util.Duration.millis(1500), e -> {
+                if (!isCreatingScenario) return;
+                activeCreationFuture = java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    if (isCreatingScenario && onApplyPresets != null) {
+                        onApplyPresets.accept(seed);
+                    }
+                });
+                activeCreationFuture.thenRun(() -> javafx.application.Platform.runLater(() -> {
+                    if (!isCreatingScenario) return;
+                    isCreatingScenario = false;
+                    if (btnApplyPresets != null) {
+                        btnApplyPresets.setText("⚡ APPLIQUER ET CRÉER LA SIMULATION");
+                        btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5;");
+                        btnApplyPresets.setTooltip(new Tooltip("Réinitialise la simulation en appliquant le scénario multi-espèces, les nids filtrés, l'écosystème et la graine aléatoire."));
+                    }
 
-        org.swarmforge.core.event.EventBus.getInstance().publish(
-            org.swarmforge.core.event.SimulationEvent.obtain(
-                org.swarmforge.core.event.SimulationEvent.EventType.COLONY_FOUNDED,
-                org.swarmforge.core.event.SimulationEvent.Severity.INFO,
-                0,
-                "🌍 Scénario '" + comboMeta.getValue() + "' initialisé (" + speciesCardList.size() + " espèces configurées)",
-                null
-            )
+                    org.swarmforge.core.event.EventBus.getInstance().publish(
+                        org.swarmforge.core.event.SimulationEvent.obtain(
+                            org.swarmforge.core.event.SimulationEvent.EventType.COLONY_FOUNDED,
+                            org.swarmforge.core.event.SimulationEvent.Severity.INFO,
+                            0,
+                            "🌍 Scenario '" + scenarioName + "' initialized (" + speciesCardList.size() + " species configured)",
+                            null
+                        )
+                    );
+
+                    if (inlineProgressBar != null) {
+                        inlineProgressBar.setProgress(1.0);
+                        inlineProgressLabel.setText("✅ Scenario '" + scenarioName + "' initialized successfully!");
+                    }
+                    System.out.println("[INFO] [SwarmForge Engine] === INITIALISATION DU SCÉNARIO COMPLÉTÉE AVEC SUCCÈS ===");
+                    System.out.println("================================================================================\n");
+
+                    javafx.animation.PauseTransition hideDelay = new javafx.animation.PauseTransition(javafx.util.Duration.millis(1400));
+                    hideDelay.setOnFinished(ev -> {
+                        if (applyProgressBox != null) {
+                            applyProgressBox.setVisible(false);
+                            applyProgressBox.setManaged(false);
+                        }
+                    });
+                    hideDelay.play();
+                }));
+            })
         );
-
-        // Complete inline progress and hide after a brief moment
-        if (applyProgressBox != null) {
-            inlineProgressBar.setProgress(1.0);
-            inlineProgressLabel.setText("✅ Scénario initialisé avec succès !");
-            javafx.animation.PauseTransition hideDelay = new javafx.animation.PauseTransition(javafx.util.Duration.millis(1200));
-            hideDelay.setOnFinished(e -> {
-                applyProgressBox.setVisible(false);
-                applyProgressBox.setManaged(false);
-            });
-            hideDelay.play();
-        }
+        activeCreationTimeline.play();
     }
 
     private void alignWeatherWithWorld() {
@@ -798,6 +927,10 @@ public class SimulationControlPanel extends VBox {
         return speciesCardList.isEmpty() ? 500 : speciesCardList.get(0).getWorkerCount();
     }
 
+    public List<SpeciesConfigCard> getSpeciesCards() {
+        return Collections.unmodifiableList(speciesCardList);
+    }
+
     public int getSoldierCount() {
         return speciesCardList.isEmpty() ? 50 : speciesCardList.get(0).getSoldierCount();
     }
@@ -1000,20 +1133,20 @@ public class SimulationControlPanel extends VBox {
             lblPlacement.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 10px;");
 
             nestPlacementCombo.getItems().addAll(
-                "📍 Centre de la Carte (Optimal hors d'eau)",
-                "👑 Fondation Reine (Sol Vierge - Surface)",
-                "✋ Placement Manuel (Coordonnées X, Z)",
-                "🎲 Positionnement Aléatoire (Dispersé)"
+                "📍 Center of Map (Optimal Unflooded Zone)",
+                "✋ Manual Placement (Coordinates X, Z)",
+                "👑 Queen Foundation (Virgin Surface Soil)",
+                "🎲 Random Position (Dispersed Across Map)"
             );
             nestPlacementCombo.getSelectionModel().selectFirst();
-            nestPlacementCombo.setTooltip(new Tooltip("Stratégie d'implantation spatiale du nid dans la grille 3D. Pour simuler plusieurs nids, ajoutez à nouveau la même espèce dans le scénario."));
+            nestPlacementCombo.setTooltip(new Tooltip("Spatial placement strategy of the nest in the 3D grid."));
 
             Label lblInitialFood = new Label("🍖 Nourriture :");
             lblInitialFood.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 10px;");
 
             initialFoodSpinner.setPrefWidth(75);
             initialFoodSpinner.setEditable(true);
-            initialFoodSpinner.setTooltip(new Tooltip("Réserve initiale de ressources alimentaires attribuée au nid au lancement."));
+            initialFoodSpinner.setTooltip(new Tooltip("Initial food resource reserve allocated to the nest."));
 
             nestRow.getChildren().addAll(lblNest, nestTypeCombo, lblPlacement, nestPlacementCombo, lblInitialFood, initialFoodSpinner);
 
@@ -1035,7 +1168,7 @@ public class SimulationControlPanel extends VBox {
             manualPosBox.setManaged(false);
 
             nestPlacementCombo.valueProperty().addListener((o, oldV, newV) -> {
-                boolean isManual = newV != null && newV.contains("Manuel");
+                boolean isManual = newV != null && (newV.contains("Manual") || newV.contains("Manuel"));
                 manualPosBox.setVisible(isManual);
                 manualPosBox.setManaged(isManual);
             });
@@ -1050,9 +1183,9 @@ public class SimulationControlPanel extends VBox {
             lblRelation.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
 
             nestRelationCombo.getItems().addAll(
-                "🤝 Supercolonie Unicoloniale (Tolérance, entraide & échange de couvain/ouvrières)",
-                "🛡️ Neutralité Territoriale (Évitement passif sans affrontement direct)",
-                "⚔️ Monocoloniale (Compétition & Guerre inter-nids - Reconnaissance par hydrocarbures cuticulaires)"
+                "⚔️ Monocolonial Competition (Inter-nest Warfare - Cuticular Hydrocarbons)",
+                "🤝 Supercolony Unicolonial (Tolerance, Mutual Cooperation & Shared Workers/Brood)",
+                "🛡️ Territorial Neutrality (Passive Avoidance without Direct Combat)"
             );
             nestRelationCombo.getSelectionModel().selectFirst();
             nestRelationCombo.setPrefWidth(420);
@@ -1109,41 +1242,11 @@ public class SimulationControlPanel extends VBox {
 
             // Auto-adjust demographics when nest architecture type changes
             nestTypeCombo.valueProperty().addListener((o, oldV, newV) -> {
-                if (newV != null) {
-                    String lower = newV.toLowerCase();
-                    if (lower.contains("young") || lower.contains("stem") || lower.contains("gall")) {
-                        queenSpinner.getValueFactory().setValue(1);
-                        workerSpinner.getValueFactory().setValue(100);
-                        soldierSpinner.getValueFactory().setValue(0);
-                    } else if (lower.contains("mature") || lower.contains("carton") || lower.contains("bivouac") || lower.contains("pot")) {
-                        queenSpinner.getValueFactory().setValue(1);
-                        workerSpinner.getValueFactory().setValue(5000);
-                        soldierSpinner.getValueFactory().setValue(500);
-                    } else if (lower.contains("supercolony") || lower.contains("vault") || lower.contains("megacity")) {
-                        queenSpinner.getValueFactory().setValue(50);
-                        workerSpinner.getValueFactory().setValue(500000);
-                        soldierSpinner.getValueFactory().setValue(50000);
-                    } else { // Surface Dome Mound, Trunk, Cathedral, Comb, etc.
-                        queenSpinner.getValueFactory().setValue(5);
-                        workerSpinner.getValueFactory().setValue(50000);
-                        soldierSpinner.getValueFactory().setValue(5000);
-                    }
-                }
+                applyDemographicsFromNest(newV);
             });
 
-            // Trigger initial population calculation
-            if (nestTypeCombo.getValue() != null) {
-                String initType = nestTypeCombo.getValue().toLowerCase();
-                if (initType.contains("young") || initType.contains("stem") || initType.contains("gall")) {
-                    queenSpinner.getValueFactory().setValue(1); workerSpinner.getValueFactory().setValue(100); soldierSpinner.getValueFactory().setValue(0);
-                } else if (initType.contains("mature") || initType.contains("carton") || initType.contains("bivouac") || initType.contains("pot")) {
-                    queenSpinner.getValueFactory().setValue(1); workerSpinner.getValueFactory().setValue(5000); soldierSpinner.getValueFactory().setValue(500);
-                } else if (initType.contains("supercolony") || initType.contains("vault") || initType.contains("megacity")) {
-                    queenSpinner.getValueFactory().setValue(50); workerSpinner.getValueFactory().setValue(500000); soldierSpinner.getValueFactory().setValue(50000);
-                } else {
-                    queenSpinner.getValueFactory().setValue(5); workerSpinner.getValueFactory().setValue(50000); soldierSpinner.getValueFactory().setValue(5000);
-                }
-            }
+            // Trigger initial population calculation to match selected nest preset
+            applyDemographicsFromNest(nestTypeCombo.getValue());
 
             Label lblQ = new Label("👑 Reines :"); lblQ.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
             Label lblQEngine = new Label("Moteur IA :"); lblQEngine.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
@@ -1198,10 +1301,10 @@ public class SimulationControlPanel extends VBox {
 
                 ComboBox<String> strategyCombo = new ComboBox<>();
                 strategyCombo.getItems().addAll(
-                    "🔄 Équilibre Dynamique (Maintien auto à < 30% Pop)",
-                    "🌿 Régénération Logistique Saisonnière (10-50%/jour)",
-                    "⏳ Épuisement Fini (Ressources / Proies Limitées)",
-                    "⚡ Incursions Épisodiques (Pop-in Vagues tous les 500 Ticks)"
+                    "🔄 Dynamic Equilibrium (Auto-maintained < 30% Pop)",
+                    "⚡ Episodic Incursions (Pop-in Waves every 500 Ticks)",
+                    "⏳ Finite Depletion (Limited Resource / Prey Reserves)",
+                    "🌿 Seasonal Logistic Regeneration (10-50%/day)"
                 );
                 strategyCombo.getSelectionModel().selectFirst();
                 strategyCombo.setStyle("-fx-font-size: 9px;");
@@ -1227,6 +1330,28 @@ public class SimulationControlPanel extends VBox {
             if (full == null) return "";
             int idx = full.indexOf("(");
             return idx > 0 ? full.substring(0, idx).trim() : full;
+        }
+
+        private void applyDemographicsFromNest(String nestType) {
+            if (nestType == null || queenSpinner == null || workerSpinner == null || soldierSpinner == null) return;
+            String lower = nestType.toLowerCase();
+            if (lower.contains("young") || lower.contains("stem") || lower.contains("gall")) {
+                queenSpinner.getValueFactory().setValue(1);
+                workerSpinner.getValueFactory().setValue(100);
+                soldierSpinner.getValueFactory().setValue(0);
+            } else if (lower.contains("mature") || lower.contains("carton") || lower.contains("bivouac") || lower.contains("pot")) {
+                queenSpinner.getValueFactory().setValue(1);
+                workerSpinner.getValueFactory().setValue(5000);
+                soldierSpinner.getValueFactory().setValue(500);
+            } else if (lower.contains("supercolony") || lower.contains("vault") || lower.contains("megacity")) {
+                queenSpinner.getValueFactory().setValue(50);
+                workerSpinner.getValueFactory().setValue(500000);
+                soldierSpinner.getValueFactory().setValue(50000);
+            } else { // Surface Dome Mound, Trunk, Cathedral, Comb, etc.
+                queenSpinner.getValueFactory().setValue(5);
+                workerSpinner.getValueFactory().setValue(50000);
+                soldierSpinner.getValueFactory().setValue(5000);
+            }
         }
 
         public VBox getCardPane() { return cardPane; }

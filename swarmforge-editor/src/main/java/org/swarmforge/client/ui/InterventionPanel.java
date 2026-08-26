@@ -337,9 +337,9 @@ public class InterventionPanel extends BorderPane {
         Label lblResType = new Label("Type de Ressource :");
         lblResType.setStyle("-fx-text-fill: white;");
         resourceTypeSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
-                "🍖 Biomasse / Nourriture de Surface",
-                "💧 Source d'Eau Douce",
-                "🧹 Purge de la Nourriture Libre"
+                "Fresh Water Source",
+                "Purge Free Food Resources",
+                "Surface Food & Biomass"
         ));
         resourceTypeSelect.getSelectionModel().selectFirst();
         resourceTypeSelect.setPrefWidth(220);
@@ -347,15 +347,15 @@ public class InterventionPanel extends BorderPane {
         Label lblNature = new Label("Nature & Taxonomie Alimentaire :");
         lblNature.setStyle("-fx-text-fill: white;");
         foodNatureSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
-                "🍃 Semences & Graines (Granivores / Messor)",
-                "🍯 Miellat & Sucres Liquides (Aphidophages / Lasius & Formica)",
-                "🌱 Biomasse Foliaire & Végétale (Atta / Leafcutter)",
-                "🥩 Protéines & Proies Animales (Carnivores / Solenopsis & Guêpes)",
-                "🌸 Nectar & Pollen Floral (Abeilles / Apis & Bourdons)",
-                "🪵 Lignine & Bois Mort (Termites Lignivores / Reticulitermes)",
-                "🍂 Humus, Cellulose & Cartonnage (Termites Humivores)",
-                "🍄 Mycélium Termitomyces (Termites Champignonnistes)",
-                "👑 Gelée Royale & Bouillie Larvaire (Nourrices / Reines)"
+                "Foliar & Plant Biomass (Atta / Leafcutter)",
+                "Fungus Mycelium Termitomyces (Termites)",
+                "Honeydew & Liquid Sugars (Lasius & Formica)",
+                "Humus, Cellulose & Wood Fibers (Termites)",
+                "Lignin & Dead Wood (Reticulitermes)",
+                "Nectar & Floral Pollen (Apis & Bumblebees)",
+                "Proteins & Prey Animals (Solenopsis & Wasps)",
+                "Royal Jelly & Larval Brood Food (Nurses / Queens)",
+                "Seeds & Grain Biomass (Messor)"
         ));
         foodNatureSelect.getSelectionModel().selectFirst();
         foodNatureSelect.setPrefWidth(330);
@@ -385,12 +385,12 @@ public class InterventionPanel extends BorderPane {
         Label typeLabel = new Label("Type de Catastrophe :");
         typeLabel.setStyle("-fx-text-fill: white;");
         disasterSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
-                "🔥 Incendie de Forêt",
-                "🌊 Inondation / Pluie Diluvienne",
-                "☣️ Épidémie / Parasite Cordyceps",
-                "☀️ Sécheresse / Canicule Extrême",
-                "❄️ Gel Intense & Baisse Température",
-                "☠️ Pollution Sol / Toxines"
+                "Cold Frost & Low Temperature",
+                "Drought & Heat Wave",
+                "Epidemic & Cordyceps Parasite",
+                "Flood & Heavy Rain",
+                "Forest Fire",
+                "Soil Contamination & Toxins"
         ));
         disasterSelect.getSelectionModel().selectFirst();
         disasterSelect.setPrefWidth(220);
@@ -750,17 +750,17 @@ public class InterventionPanel extends BorderPane {
         casteSelect.getItems().clear();
 
         if (colonyName != null && (colonyName.contains("Atta") || colonyName.contains("Leafcutter"))) {
-            casteSelect.getItems().addAll("Ouvrière Média (Coupeuse)", "Ouvrière Minime (Nourrice)", "Soldat Majeur (Garde)", "Reine Géante");
+            casteSelect.getItems().addAll("Giant Queen", "Major Soldier (Guard)", "Media Worker (Cutter)", "Minim Worker (Nurse)");
         } else if (colonyName != null && (colonyName.contains("Apis") || colonyName.contains("Abeille"))) {
-            casteSelect.getItems().addAll("Ouvrière Butineuse", "Reine Abeille", "Faux-Bourdon (Mâle)");
+            casteSelect.getItems().addAll("Drone (Male)", "Forager Worker", "Queen Bee");
         } else if (colonyName != null && (colonyName.contains("Termite") || colonyName.contains("Reticulitermes"))) {
-            casteSelect.getItems().addAll("Ouvrier Termite", "Soldat à Mandiboles", "Reine Physogastre", "Roi Reproducteur");
+            casteSelect.getItems().addAll("Mandibulate Soldier", "Physogastric Queen", "Reproductive King", "Termite Worker");
         } else if (colonyName != null && (colonyName.contains("Vespula") || colonyName.contains("Guêpe"))) {
-            casteSelect.getItems().addAll("Ouvrière Chasseresse", "Fondatrice (Reine)");
+            casteSelect.getItems().addAll("Foundress (Queen)", "Hunter Worker");
         } else if (colonyName != null && (colonyName.contains("Solenopsis") || colonyName.contains("Feu"))) {
-            casteSelect.getItems().addAll("Ouvrière Mineure", "Ouvrière Majeure / Soldat", "Reine");
+            casteSelect.getItems().addAll("Major Worker / Soldier", "Minor Worker", "Queen");
         } else {
-            casteSelect.getItems().addAll("Ouvrière Généraliste", "Soldat Guardien", "Éclaireuse", "Nourrice", "Reine Fondatrice");
+            casteSelect.getItems().addAll("Foundress Queen", "Generalist Worker", "Guardian Soldier", "Nurse", "Scout");
         }
         casteSelect.getSelectionModel().selectFirst();
     }

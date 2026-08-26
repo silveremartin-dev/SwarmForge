@@ -258,9 +258,30 @@ public class SimulationAudioManager {
         this.cameraZoom = zoom;
     }
 
+    private String currentSeason = "Summer";
+    private double windSpeedMps = 15.0;
+    private double rainRateMmHr = 0.0;
+
+    public void setSeason(String season) {
+        if (season != null) this.currentSeason = season;
+    }
+
+    public void setWindAndPrecipitation(double windSpeed, double rainRate) {
+        this.windSpeedMps = windSpeed;
+        this.rainRateMmHr = rainRate;
+    }
+
     public void updateState(String biome, String weather, double cameraDepth, boolean isSimRunning) {
-        this.currentBiome = biome;
-        this.currentWeather = weather;
+        if (biome != null) this.currentBiome = biome;
+        if (weather != null) this.currentWeather = weather;
+        this.simRunning = isSimRunning;
+        this.cameraZoom = cameraDepth;
+    }
+
+    public void updateState(String biome, String weather, String season, double cameraDepth, boolean isSimRunning) {
+        if (biome != null) this.currentBiome = biome;
+        if (weather != null) this.currentWeather = weather;
+        if (season != null) this.currentSeason = season;
         this.simRunning = isSimRunning;
         this.cameraZoom = cameraDepth;
     }

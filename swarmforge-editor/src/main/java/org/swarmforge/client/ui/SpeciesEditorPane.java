@@ -49,6 +49,7 @@ public class SpeciesEditorPane extends VBox {
     // General & Taxonomy
     private TextField commonNameField;
     private TextField scientificNameField;
+    private TextField genusField;
     private ComboBox<String> insectTypeCombo;
     private ComboBox<org.swarmforge.core.species.SpeciesCategory> categoryCombo;
     private TextArea descriptionArea;
@@ -337,25 +338,20 @@ public class SpeciesEditorPane extends VBox {
 
         commonNameField = new TextField("Fourmi Noire des Jardins");
         scientificNameField = new TextField("Lasius niger");
+        genusField = new TextField("Lasius");
 
-        insectTypeCombo = new ComboBox<>(FXCollections.observableArrayList("ANT", "BEE", "WASP", "TERMITE", "OTHER"));
+        insectTypeCombo = new ComboBox<>(FXCollections.observableArrayList("Ants (Formicidae)", "Bees (Apidae)", "Other Eusocial Taxa", "Termites (Termitoidae)", "Wasps (Vespidae)"));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(insectTypeCombo,
-            val -> switch (val) {
-                case "ANT" -> "🐜 Formicidae (Fourmis)";
-                case "BEE" -> "🐝 Apidae (Abeilles)";
-                case "WASP" -> "🐝 Vespidae (Guêpes)";
-                case "TERMITE" -> "🐜 Termitoidae (Termites)";
-                default -> "🪲 Autre Taxon Eusocial";
-            },
-            val -> switch (val) {
-                case "ANT" -> "Insectes eusociaux formant de vastes colonies avec spécialisation poussée des castes et architecture sous-terraine.";
-                case "BEE" -> "Insectes hyménoptères eusociaux produisant du miel, pratiquant la danse des abeilles et logeant en rayons de cire.";
-                case "WASP" -> "Hyménoptères eusociaux ou solitaires prédateurs bâtissant des nids en papier/carton mâché à partir de fibres de bois.";
-                case "TERMITE" -> "Isoptères eusociaux consommant de la cellulose, organisés en castes aveugles sous la conduite d'un couple royal (Reine + Roi).";
-                default -> "Autres arthropodes subsociaux ou eusociaux (ex: Thrips, Pucerons galligènes, Crevettes eusociales).";
+            val -> val,
+            val -> switch (val != null ? val : "") {
+                case "Ants (Formicidae)" -> "Eusocial insects forming large subterranean colonies with specialized castes.";
+                case "Bees (Apidae)" -> "Hymenopteran insects producing honey, practicing bee dances, and building wax combs.";
+                case "Wasps (Vespidae)" -> "Predatory hymenopterans constructing paper/carton nests from wood fibers.";
+                case "Termites (Termitoidae)" -> "Isoptera consuming cellulose, organized into blind worker/soldier castes under a royal couple.";
+                default -> "Other subsocial or eusocial arthropod taxa (e.g. Thrips, Gall aphids, Eusocial shrimp).";
             }
         );
-        insectTypeCombo.getSelectionModel().select("ANT");
+        insectTypeCombo.getSelectionModel().select("Ants (Formicidae)");
 
         categoryCombo = new ComboBox<>(FXCollections.observableArrayList(
                 org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY,
@@ -399,11 +395,12 @@ public class SpeciesEditorPane extends VBox {
 
         grid.addRow(0, createTooltipLabel("Nom Commun (fr/en):", "Nom vernaculaire de l'espèce dans le langage courant.", commonNameField), commonNameField);
         grid.addRow(1, createTooltipLabel("Nom Scientifique (Binomial):", "Nomenclature binomiale latine officielle (ex: Lasius niger, Formica rufa, Atta cephalotes).", scientificNameField), scientificNameField);
-        grid.addRow(2, createTooltipLabel("Ordre Taxonomique / Famille:", "Grand groupe taxonomique d'insectes eusociaux (Fourmi, Abeille, Guêpe, Termite).", insectTypeCombo), insectTypeCombo);
-        grid.addRow(3, new Label(""), taxonLinks);
-        grid.addRow(4, createTooltipLabel("Rôle Écologique / Catégorie:", "Statut trophique et rôle fonctionnel dans l'écosystème de simulation.", categoryCombo), categoryCombo);
-        grid.addRow(5, new Label(""), categoryHintLabel);
-        grid.addRow(6, createTooltipLabel("Description & Notes Écologiques:", "Résumé descriptif de la biologie, de l'habitat et du comportement de l'espèce.", descriptionArea), descriptionArea);
+        grid.addRow(2, createTooltipLabel("Genre Taxonomique (Genus):", "Genre auquel appartient l'espèce (ex: Lasius, Formica, Atta, Apis, Solenopsis, Vespula, Reticulitermes).", genusField), genusField);
+        grid.addRow(3, createTooltipLabel("Ordre Taxonomique / Famille:", "Grand groupe taxonomique d'insectes eusociaux (Fourmi, Abeille, Guêpe, Termite).", insectTypeCombo), insectTypeCombo);
+        grid.addRow(4, new Label(""), taxonLinks);
+        grid.addRow(5, createTooltipLabel("Rôle Écologique / Catégorie:", "Statut trophique et rôle fonctionnel dans l'écosystème de simulation.", categoryCombo), categoryCombo);
+        grid.addRow(6, new Label(""), categoryHintLabel);
+        grid.addRow(7, createTooltipLabel("Description & Notes Écologiques:", "Résumé descriptif de la biologie, de l'habitat et du comportement de l'espèce.", descriptionArea), descriptionArea);
 
         return wrapScroll(grid);
     }
@@ -420,24 +417,19 @@ public class SpeciesEditorPane extends VBox {
     private ScrollPane createQueensPane() {
         GridPane grid = createGrid();
 
-        queenModeCombo = new ComboBox<>(FXCollections.observableArrayList("MONOGYNE", "POLYGYNE", "GAMERGATES"));
+        queenModeCombo = new ComboBox<>(FXCollections.observableArrayList("Gamergates (Reproductive Workers)", "Monogyne (Single Queen)", "Polygyne (Multiple Queens)"));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(queenModeCombo,
-            val -> switch (val) {
-                case "MONOGYNE" -> "👑 Monogyne (Une seule Reine)";
-                case "POLYGYNE" -> "👑👑 Polygyne (Multiples Reines)";
-                case "GAMERGATES" -> "🐜 Gamergates (Ouvrières Reproductrices)";
-                default -> val;
-            },
-            val -> switch (val) {
-                case "MONOGYNE" -> "La colonie ne tolère stricte qu'une unique reine féconde. La mort de la reine entraîne le déclin terminal de la colonie.";
-                case "POLYGYNE" -> "Plusieurs reines fécondes cohabitent pacifiquement dans le même nid, assurant une ponte massive et une pérennité accrue.";
-                case "GAMERGATES" -> "Absence de caste reine morphologique distincte : des ouvrières spécialisées (gamergates) s'accouplent et assurent la ponte.";
+            val -> val,
+            val -> switch (val != null ? val : "") {
+                case "Monogyne (Single Queen)" -> "Strictly one egg-laying queen tolerated per colony. Her death triggers colony decline.";
+                case "Polygyne (Multiple Queens)" -> "Multiple fertile queens cohabit peacefully, ensuring high egg laying and resilience.";
+                case "Gamergates (Reproductive Workers)" -> "No distinct queen caste; specialized workers (gamergates) mate and lay eggs.";
                 default -> "";
             }
         );
-        queenModeCombo.getSelectionModel().select("MONOGYNE");
+        queenModeCombo.getSelectionModel().select("Monogyne (Single Queen)");
         queenModeCombo.setOnAction(e -> {
-            if ("MONOGYNE".equals(queenModeCombo.getValue())) {
+            if (queenModeCombo.getValue() != null && queenModeCombo.getValue().contains("Monogyne")) {
                 queenCountSpinner.getValueFactory().setValue(1);
             }
             validateParameters();
@@ -445,7 +437,7 @@ public class SpeciesEditorPane extends VBox {
 
         queenCountSpinner = new Spinner<>(1, 500, 1);
         queenCountSpinner.valueProperty().addListener((obs, oldV, newV) -> {
-            if ("MONOGYNE".equals(queenModeCombo.getValue()) && newV > 1) {
+            if (queenModeCombo.getValue() != null && queenModeCombo.getValue().contains("Monogyne") && newV > 1) {
                 queenCountSpinner.getValueFactory().setValue(1);
             }
             validateParameters();
@@ -458,23 +450,18 @@ public class SpeciesEditorPane extends VBox {
         hasKingCheckBox.setOnAction(e -> validateParameters());
 
         kingLifespanField = new TextField("15000");
-        nuptialFlightCombo = new ComboBox<>(FXCollections.observableArrayList("AERIAL_SWARM", "SWARM_DIVISION", "BUDDING", "IN_NEST"));
+        nuptialFlightCombo = new ComboBox<>(FXCollections.observableArrayList("Aerial Swarm Flight", "Budding / Sociotomy", "In-Nest Mating", "Swarm Division"));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(nuptialFlightCombo,
-            val -> switch (val) {
-                case "AERIAL_SWARM" -> "🌤️ Vol Nuptial Aérien";
-                case "SWARM_DIVISION" -> "🐝 Essaimage par Division";
-                case "BUDDING" -> "🌱 Bouturage de Nid (Sociotomie)";
-                case "IN_NEST" -> "🕳️ Accouplement Intranidale";
-                default -> val;
-            },
-            val -> switch (val) {
-                case "AERIAL_SWARM" -> "Synchronisation synchrone de princesses et de mâles s'envolant massivement dans les airs lors de conditions météo chaudes et humides.";
-                case "SWARM_DIVISION" -> "La reine mère quitte le nid d'origine accompagnée d'une cohorte d'ouvrières pour fonder une nouvelle colonie à proximité.";
-                case "BUDDING" -> "Séparation progressive d'un groupe d'ouvrières avec une ou plusieurs reines fertiles vers un nid satellite adjacent.";
-                case "IN_NEST" -> "Accouplement des ailés à l'intérieur même du nid d'origine sans vol aérien risqué (fréquent chez les espèces parasites).";
+            val -> val,
+            val -> switch (val != null ? val : "") {
+                case "Aerial Swarm Flight" -> "Mass synchronized flight of alate alates and males in warm, humid weather.";
+                case "Budding / Sociotomy" -> "Progressive separation of workers with fertile queens to a nearby satellite nest.";
+                case "In-Nest Mating" -> "Alates mate inside the parent nest without risky flight.";
+                case "Swarm Division" -> "Mother queen leaves with a worker cohort to establish a new colony.";
                 default -> "";
             }
         );
+        nuptialFlightCombo.getSelectionModel().select("Aerial Swarm Flight");
         nuptialFlightCombo.getSelectionModel().select("AERIAL_SWARM");
 
         colonySizeField = new TextField("15000");
@@ -506,28 +493,27 @@ public class SpeciesEditorPane extends VBox {
         GridPane gridDurations = createGrid();
         eggDurationField = new TextField("300");
         larvaDurationField = new TextField("600");
-        larvaDietCombo = new ComboBox<>(FXCollections.observableArrayList("HIGH_PROTEIN_MEAT", "SUGAR_HONEY", "FUNGUS", "CELLULOSE", "SEEDS", "OMNIVORE"));
+        larvaDietCombo = new ComboBox<>(FXCollections.observableArrayList(
+            "Cellulose & Wood Fibers",
+            "Fungus Garden Mycelium",
+            "High Protein Meat & Insects",
+            "Omnivorous Mixed Diet",
+            "Seeds & Harvested Grains",
+            "Sugars, Honey & Nectar"
+        ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(larvaDietCombo,
-            val -> switch (val) {
-                case "HIGH_PROTEIN_MEAT" -> "🥩 Protéines & Chasse d'Insectes";
-                case "SUGAR_HONEY" -> "🍯 Nectar, Miellat & Sucres";
-                case "FUNGUS" -> "🍄 Meule de Champignon Symbiotique";
-                case "CELLULOSE" -> "🪵 Cellulose & Bois Mâché";
-                case "SEEDS" -> "🌾 Graines Granivores (Pain de Fourmi)";
-                case "OMNIVORE" -> "🥗 Régime Opportuniste Omnivore";
-                default -> val;
-            },
-            val -> switch (val) {
-                case "HIGH_PROTEIN_MEAT" -> "Régime hautement protéique à base d'insectes proies broyés, indispensable au développement rapide du couvain et des soldats.";
-                case "SUGAR_HONEY" -> "Régime liquide riche en glucides (nectar floral, miellat de pucerons, jus de fruits) apportant l'énergie métabolique.";
-                case "FUNGUS" -> "Nourriture mycélienne cultivée par la colonie dans des chambres souterraines à partir de substrat végétal mâché (Atta).";
-                case "CELLULOSE" -> "Digestats de bois et de fibres végétales dégradés par des protozoaires et bactéries symbiotiques intestinales (Termites).";
-                case "SEEDS" -> "Graines récoltées, décortiquées et broyées avec la salive enzymatique pour former le 'pain de fourmi' (Messor).";
-                case "OMNIVORE" -> "Alimentation variée combinant miellat, cadavres d'arthropodes, graines et liquides sucrés.";
+            val -> val,
+            val -> switch (val != null ? val : "") {
+                case "Cellulose & Wood Fibers" -> "Wood digests and plant fibers broken down by intestinal symbionts (Termites).";
+                case "Fungus Garden Mycelium" -> "Mycelial food cultivated by the colony on chewed leaf substrate (Atta).";
+                case "High Protein Meat & Insects" -> "High protein diet from crushed prey insects, essential for brood and soldier development.";
+                case "Omnivorous Mixed Diet" -> "Varied diet combining honeydew, arthropod remains, seeds, and sugary liquids.";
+                case "Seeds & Harvested Grains" -> "Harvested, shelled, and crushed seeds forming 'ant bread' (Messor).";
+                case "Sugars, Honey & Nectar" -> "Carbohydrate-rich liquid diet (nectar, aphid honeydew, fruit juices) providing metabolic energy.";
                 default -> "";
             }
         );
-        larvaDietCombo.getSelectionModel().select("HIGH_PROTEIN_MEAT");
+        larvaDietCombo.getSelectionModel().select("High Protein Meat & Insects");
         pupaDurationField = new TextField("500");
 
         gridDurations.addRow(0, createTooltipLabel("Durée Stade Œuf (jours):", "Période d'incubation requise avant le premier stade larvaire.", eggDurationField), eggDurationField);
@@ -773,9 +759,9 @@ public class SpeciesEditorPane extends VBox {
         // Advanced Caste Parameters
         TextField targetRatioF = new TextField("0.25");
         ComboBox<String> decisionArchCombo = new ComboBox<>();
-        decisionArchCombo.getItems().addAll("BDI", "NEURAL_NETWORK", "FSM", "BEHAVIOR_TREE", "FUZZY_LOGIC");
+        decisionArchCombo.getItems().addAll("BDI (Belief-Desire-Intention)", "Behavior Tree", "FSM (Finite State Machine)", "Fuzzy Logic Engine", "Neural Network (ANN)");
         ComboBoxTooltipHelper.setupDescriptiveComboBox(decisionArchCombo, SpeciesEditorPane::getDecisionArchTitle, SpeciesEditorPane::getDecisionArchDescription);
-        decisionArchCombo.setValue("BDI");
+        decisionArchCombo.setValue("BDI (Belief-Desire-Intention)");
 
         TextField foragingWField = new TextField("0.30");
         TextField defenseWField = new TextField("0.20");
@@ -949,7 +935,7 @@ public class SpeciesEditorPane extends VBox {
                     casteRows.add(row);
                 }
             } catch (Exception ex) {
-                new Alert(Alert.AlertType.ERROR, "Format de nombre invalide.").show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Format de nombre invalide.").show();
             }
         });
 
@@ -958,13 +944,12 @@ public class SpeciesEditorPane extends VBox {
         btnDelCaste.setOnAction(e -> {
             CasteRow sel = casteTable.getSelectionModel().getSelectedItem();
             if (sel == null) {
-                new Alert(Alert.AlertType.WARNING, "Veuillez sélectionner une caste dans le tableau avant de la supprimer.").show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.WARNING, "Veuillez sélectionner une caste dans le tableau avant de la supprimer.").show();
                 return;
             }
-            Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+            Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, "Êtes-vous sûr de vouloir supprimer cette caste ? Cette action est irréversible.");
             confirmAlert.setTitle("Confirmation de suppression");
             confirmAlert.setHeaderText("Supprimer la caste : " + sel.getName());
-            confirmAlert.setContentText("Êtes-vous sûr de vouloir supprimer cette caste ? Cette action est irréversible.");
             confirmAlert.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.OK) {
                     casteRows.remove(sel);
@@ -983,13 +968,26 @@ public class SpeciesEditorPane extends VBox {
     private ScrollPane createDietPane() {
         GridPane grid = createGrid();
 
-        primaryDietCombo = new ComboBox<>(FXCollections.observableArrayList("SUGARS_NECTAR", "INSECTS_MEAT", "SEEDS", "FUNGUS", "WOOD_CELLULOSE", "HONEYDEW", "OMNIVORE"));
+        primaryDietCombo = new ComboBox<>(FXCollections.observableArrayList(
+            "Fungus & Cultivated Mycelium",
+            "Honeydew & Aphid Trophobiosis",
+            "Insects & Meat Protein",
+            "Omnivorous Polyphagous",
+            "Seeds & Granivory Grains",
+            "Sugars & Plant Nectar",
+            "Wood & Cellulose Fibers"
+        ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(primaryDietCombo, SpeciesEditorPane::getDietTitle, SpeciesEditorPane::getDietDescription);
-        primaryDietCombo.getSelectionModel().select("HONEYDEW");
+        primaryDietCombo.getSelectionModel().select("Honeydew & Aphid Trophobiosis");
 
-        secondaryDietCombo = new ComboBox<>(FXCollections.observableArrayList("NONE", "INSECTS_MEAT", "SUGARS_NECTAR", "SEEDS"));
+        secondaryDietCombo = new ComboBox<>(FXCollections.observableArrayList(
+            "Insects & Meat Protein",
+            "None (No Secondary Diet)",
+            "Seeds & Granivory Grains",
+            "Sugars & Plant Nectar"
+        ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(secondaryDietCombo, SpeciesEditorPane::getDietTitle, SpeciesEditorPane::getDietDescription);
-        secondaryDietCombo.getSelectionModel().select("INSECTS_MEAT");
+        secondaryDietCombo.getSelectionModel().select("Insects & Meat Protein");
 
         foodConsumptionField = new TextField("0.5");
         waterReqField = new TextField("0.2");
@@ -1052,7 +1050,7 @@ public class SpeciesEditorPane extends VBox {
             if (onGenerateNestForSpeciesListener != null) {
                 onGenerateNestForSpeciesListener.accept(s);
             } else {
-                new Alert(Alert.AlertType.INFORMATION, "Espèce active configurée pour la génération de nid : " + s.getCommonName()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Espèce active configurée pour la génération de nid : " + s.getCommonName()).show();
             }
         });
 
@@ -1255,7 +1253,7 @@ public class SpeciesEditorPane extends VBox {
             String k = customKeyField.getText().trim();
             String v = customValueField.getText().trim();
             if (!k.isEmpty()) {
-                new Alert(Alert.AlertType.INFORMATION, "Attribut d'extension '" + k + "' enregistrable pour l'espèce active.").show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Attribut d'extension '" + k + "' enregistrable pour l'espèce active.").show();
             }
         });
 
@@ -1288,7 +1286,7 @@ public class SpeciesEditorPane extends VBox {
         }
 
         if (name.isEmpty()) {
-            new Alert(Alert.AlertType.WARNING, "Veuillez spécifier un nom commun, un nom scientifique ou un nom de preset.").show();
+            org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.WARNING, "Veuillez spécifier un nom commun, un nom scientifique ou un nom de preset.").show();
             return;
         }
 
@@ -1330,10 +1328,9 @@ public class SpeciesEditorPane extends VBox {
         if (selected == null || selected.isEmpty()) return;
 
         I18nManager i18n = I18nManager.getInstance();
-        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, String.format(i18n.get("preset.delete.confirm"), selected));
         confirmAlert.setTitle(i18n.get("preset.delete.title"));
         confirmAlert.setHeaderText("Supprimer l'Espèce");
-        confirmAlert.setContentText(String.format(i18n.get("preset.delete.confirm"), selected));
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -1360,9 +1357,9 @@ public class SpeciesEditorPane extends VBox {
             try {
                 CustomSpecies species = buildSpeciesFromUI();
                 presetManager.saveToFile(f, species);
-                new Alert(Alert.AlertType.INFORMATION, "Espèce enregistrée avec succès sous " + f.getName()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Espèce enregistrée avec succès sous " + f.getName()).show();
             } catch (Exception ex) {
-                new Alert(Alert.AlertType.ERROR, "Erreur de sauvegarde: " + ex.getMessage()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Erreur de sauvegarde: " + ex.getMessage()).show();
             }
         }
     }
@@ -1377,9 +1374,9 @@ public class SpeciesEditorPane extends VBox {
             try {
                 CustomSpecies species = presetManager.loadFromFile(f);
                 loadPresetToUI(species);
-                new Alert(Alert.AlertType.INFORMATION, "Espèce '" + species.getCommonName() + "' chargée avec succès!").show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Espèce '" + species.getCommonName() + "' chargée avec succès!").show();
             } catch (Exception ex) {
-                new Alert(Alert.AlertType.ERROR, "Erreur de chargement: " + ex.getMessage()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Erreur de chargement: " + ex.getMessage()).show();
             }
         }
     }
@@ -1399,7 +1396,7 @@ public class SpeciesEditorPane extends VBox {
 
     private void attachUserChangeListeners() {
         TextField[] fields = {
-            commonNameField, scientificNameField, queenLifespanField, queenEggRateField,
+            commonNameField, scientificNameField, genusField, queenLifespanField, queenEggRateField,
             kingLifespanField, eggDurationField, larvaDurationField, pupaDurationField,
             foodConsumptionField, waterReqField, workerLifespanField, workerSpeedField,
             viewDistanceField, colonySizeField, optTempField, minTempField, maxTempField,
@@ -1448,25 +1445,26 @@ public class SpeciesEditorPane extends VBox {
         try {
             commonNameField.setText(s.getCommonName());
             scientificNameField.setText(s.getScientificName());
-            insectTypeCombo.getSelectionModel().select(s.getInsectType());
+            if (genusField != null) genusField.setText(s.getGenus());
+            selectComboValue(insectTypeCombo, s.getInsectType());
             categoryCombo.getSelectionModel().select(s.getCategory());
             descriptionArea.setText(s.getDescription());
 
-            queenModeCombo.getSelectionModel().select(s.getQueenCountMode());
+            selectComboValue(queenModeCombo, s.getQueenCountMode());
             queenCountSpinner.getValueFactory().setValue(s.getQueenCount());
             queenLifespanField.setText(String.valueOf(s.getQueenLifespan()));
             queenEggRateField.setText(String.valueOf(s.getQueenEggLayingRate()));
             hasKingCheckBox.setSelected(s.isHasKing());
             kingLifespanField.setText(String.valueOf(s.getKingLifespan()));
-            nuptialFlightCombo.getSelectionModel().select(s.getNuptialFlightType());
+            selectComboValue(nuptialFlightCombo, s.getNuptialFlightType());
 
             eggDurationField.setText(String.valueOf(s.getEggStageDuration()));
             larvaDurationField.setText(String.valueOf(s.getLarvaStageDuration()));
-            larvaDietCombo.getSelectionModel().select(s.getLarvaDietRequirement());
+            selectComboValue(larvaDietCombo, s.getLarvaDietRequirement());
             pupaDurationField.setText(String.valueOf(s.getPupaStageDuration()));
 
-            primaryDietCombo.getSelectionModel().select(s.getPrimaryDiet());
-            secondaryDietCombo.getSelectionModel().select(s.getSecondaryDiet());
+            selectComboValue(primaryDietCombo, s.getPrimaryDiet());
+            selectComboValue(secondaryDietCombo, s.getSecondaryDiet());
             foodConsumptionField.setText(String.valueOf(s.getDailyFoodConsumption()));
             waterReqField.setText(String.valueOf(s.getWaterRequirement()));
             workerLifespanField.setText(String.valueOf(s.getWorkerLifespan()));
@@ -1550,6 +1548,7 @@ public class SpeciesEditorPane extends VBox {
 
         s.setCommonName(commonNameField.getText());
         s.setScientificName(scientificNameField.getText());
+        s.setGenus(genusField != null ? genusField.getText().trim() : "");
         s.setInsectType(insectTypeCombo.getValue());
         s.setCategory(categoryCombo.getValue() != null ? categoryCombo.getValue() : org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY);
         s.setDescription(descriptionArea.getText());
@@ -2154,5 +2153,73 @@ public class SpeciesEditorPane extends VBox {
         public Float fromString(String string) {
             try { return Float.parseFloat(string.trim()); } catch (Exception e) { return 0.0f; }
         }
+    }
+
+    public static void selectComboValue(ComboBox<String> combo, String val) {
+        if (combo == null || val == null) return;
+        if (combo.getItems().contains(val)) {
+            combo.getSelectionModel().select(val);
+            return;
+        }
+        String mapped = mapTechnicalToReadable(val);
+        if (mapped != null && combo.getItems().contains(mapped)) {
+            combo.getSelectionModel().select(mapped);
+        } else {
+            for (String item : combo.getItems()) {
+                if (item.equalsIgnoreCase(val)) {
+                    combo.getSelectionModel().select(item);
+                    return;
+                }
+            }
+        }
+    }
+
+    public static String mapTechnicalToReadable(String val) {
+        if (val == null) return "";
+        return switch (val.toUpperCase().trim()) {
+            case "ANT" -> "Ants (Formicidae)";
+            case "BEE" -> "Bees (Apidae)";
+            case "OTHER" -> "Other Eusocial Taxa";
+            case "TERMITE" -> "Termites (Termitoidae)";
+            case "WASP" -> "Wasps (Vespidae)";
+
+            case "GAMERGATES" -> "Gamergates (Reproductive Workers)";
+            case "MONOGYNE" -> "Monogyne (Single Queen)";
+            case "POLYGYNE" -> "Polygyne (Multiple Queens)";
+
+            case "AERIAL_SWARM" -> "Aerial Swarm Flight";
+            case "BUDDING" -> "Budding / Sociotomy";
+            case "IN_NEST" -> "In-Nest Mating";
+            case "SWARM_DIVISION" -> "Swarm Division";
+
+            case "CELLULOSE" -> "Cellulose & Wood Fibers";
+            case "FUNGUS" -> "Fungus Garden Mycelium";
+            case "HIGH_PROTEIN_MEAT" -> "High Protein Meat & Insects";
+            case "OMNIVORE" -> "Omnivorous Mixed Diet";
+            case "SEEDS" -> "Seeds & Harvested Grains";
+            case "SUGAR_HONEY" -> "Sugars, Honey & Nectar";
+
+            case "HONEYDEW" -> "Honeydew & Aphid Trophobiosis";
+            case "INSECTS_MEAT" -> "Insects & Meat Protein";
+            case "SUGARS_NECTAR" -> "Sugars & Plant Nectar";
+            case "WOOD_CELLULOSE" -> "Wood & Cellulose Fibers";
+            case "NONE" -> "None (No Secondary Diet)";
+
+            case "BDI" -> "BDI (Belief-Desire-Intention)";
+            case "BEHAVIOR_TREE" -> "Behavior Tree";
+            case "FSM" -> "FSM (Finite State Machine)";
+            case "FUZZY_LOGIC" -> "Fuzzy Logic Engine";
+            case "NEURAL_NETWORK" -> "Neural Network (ANN)";
+
+            case "LOWER_ELEVATION" -> "Lower Elevation";
+            case "RAISE_ELEVATION" -> "Raise Elevation";
+            case "SMOOTH" -> "Smooth Relief";
+
+            case "CLAY" -> "Clay Substrate";
+            case "EARTH" -> "Earth Substrate";
+            case "SAND" -> "Sand Substrate";
+            case "STONE" -> "Stone Substrate";
+            default -> val;
+        };
     }
 }

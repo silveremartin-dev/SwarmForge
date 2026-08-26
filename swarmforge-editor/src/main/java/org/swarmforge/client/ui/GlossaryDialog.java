@@ -84,11 +84,13 @@ public class GlossaryDialog {
 
         // Tab 4: Behavioral Reasoning Engines
         VBox vReasoning = createSortedTabBox(i18n, new String[][]{
-            {"glossary.reasoning.fsm.title", "glossary.reasoning.fsm.desc"},
-            {"glossary.reasoning.fuzzy.title", "glossary.reasoning.fuzzy.desc"},
-            {"glossary.reasoning.bdi.title", "glossary.reasoning.bdi.desc"},
-            {"glossary.reasoning.nn.title", "glossary.reasoning.nn.desc"},
+            {"glossary.reasoning.bt.title", "glossary.reasoning.bt.desc"},
             {"glossary.reasoning.blackboard.title", "glossary.reasoning.blackboard.desc"},
+            {"glossary.reasoning.fsm.title", "glossary.reasoning.fsm.desc"},
+            {"glossary.reasoning.bdi.title", "glossary.reasoning.bdi.desc"},
+            {"glossary.reasoning.fuzzy.title", "glossary.reasoning.fuzzy.desc"},
+            {"glossary.reasoning.hybrid.title", "glossary.reasoning.hybrid.desc"},
+            {"glossary.reasoning.nn.title", "glossary.reasoning.nn.desc"},
             {"glossary.reasoning.bulk.title", "glossary.reasoning.bulk.desc"},
             {"glossary.reasoning.quorum.title", "glossary.reasoning.quorum.desc"}
         });
