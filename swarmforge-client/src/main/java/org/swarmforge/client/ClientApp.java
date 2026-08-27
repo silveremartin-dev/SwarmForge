@@ -131,7 +131,8 @@ public class ClientApp extends Application {
             if (selected != null && !selected.startsWith("⏳")) {
                 launchViewer(primaryStage, selected);
             } else {
-                new Alert(Alert.AlertType.WARNING, "Please select a simulation first").show();
+                Alert alert = new Alert(Alert.AlertType.WARNING, "Please select a simulation first");
+                alert.show();
             }
         });
 

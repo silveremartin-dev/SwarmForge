@@ -129,6 +129,10 @@ public class ThemeManager {
         return alert;
     }
 
+    public static javafx.scene.control.Alert createAlert(javafx.scene.control.Alert.AlertType alertType) {
+        return createAlert(alertType, "");
+    }
+
     /**
      * Creates and returns a themed TextInputDialog.
      */

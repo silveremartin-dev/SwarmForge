@@ -691,9 +691,9 @@ public class StatisticsDashboard extends VBox {
                             s.food, s.water, s.protein, s.temperature, s.rainfall,
                             s.tickRate, s.births, s.deaths, s.activeEvent);
                 }
-                new Alert(Alert.AlertType.INFORMATION, "Exportation statistique exhaustive réussie !\nFichier enregistré sous : " + file.getAbsolutePath()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Exportation statistique exhaustive réussie !\nFichier enregistré sous : " + file.getAbsolutePath()).show();
             } catch (Exception ex) {
-                new Alert(Alert.AlertType.ERROR, "Erreur lors de l'exportation CSV : " + ex.getMessage()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Erreur lors de l'exportation CSV : " + ex.getMessage()).show();
             }
         }
     }

@@ -213,6 +213,8 @@ public class WeatherEditorPane extends BorderPane {
         } else {
             applyDefaultValues();
         }
+
+        ThemeManager.getInstance().currentThemeProperty().addListener((obs, oldTheme, newTheme) -> redrawCurves());
     }
 
     // ── Header Bar ─────────────────────────────────────────────────────────────
@@ -233,7 +235,7 @@ public class WeatherEditorPane extends BorderPane {
 
         Label lp = new Label();
         lp.textProperty().bind(i18n.createStringBinding("preset.label"));
-        lp.setStyle("-fx-font-weight: bold; -fx-text-fill: #e4e4e7;");
+        lp.setStyle("-fx-font-weight: bold;");
         lp.setGraphic(new FontIcon(Feather.SLIDERS));
 
         presetsCombo = new ComboBox<>();

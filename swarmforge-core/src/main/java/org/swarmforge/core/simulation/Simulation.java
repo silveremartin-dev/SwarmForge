@@ -284,8 +284,13 @@ public class Simulation {
         long currentTick = tickCount.incrementAndGet();
         updateEnvironment(currentTick);
 
-        // Rebuild spatial index for individuals
+        // Pre-populate spatial index for individuals before brain decision processing
         spatialIndex.clear();
+        for (Colony colony : colonies) {
+            for (Individual ind : colony.getLivingIndividuals()) {
+                spatialIndex.insert(ind, ind.getX(), ind.getY(), ind.getZ());
+            }
+        }
 
         // Rebuild food index
         foodIndex.clear();
@@ -307,10 +312,8 @@ public class Simulation {
             }
         }
 
-        // Process colonies in parallel using virtual threads
-        // Collect individuals to insert into spatial index after parallel processing
-        java.util.List<Individual> livingIndividuals = java.util.Collections
-                .synchronizedList(new java.util.ArrayList<>());
+        // Process colonies in parallel using virtual threads with non-blocking concurrent queue
+        java.util.concurrent.ConcurrentLinkedQueue<Individual> livingIndividuals = new java.util.concurrent.ConcurrentLinkedQueue<>();
 
         // Use parallel streams with virtual thread executor for better scalability
         SimulationContext context = new SimulationContextImpl(this); // Create context once per tick
@@ -370,6 +373,20 @@ public class Simulation {
                     }
                 }
 
+                // Coordinate boundary clamping to prevent out-of-bounds positioning
+                if (terrarium != null) {
+                    float maxX = terrarium.getWidth() - 1.0f;
+                    float maxY = terrarium.getHeight() - 1.0f;
+                    float maxZ = terrarium.getDepth() - 1.0f;
+                    float cx = Math.max(0.0f, Math.min(maxX, individual.getX()));
+                    float cy = Math.max(0.0f, Math.min(maxY, individual.getY()));
+                    float cz = Math.max(0.0f, Math.min(maxZ, individual.getZ()));
+                    if (cx != individual.getX() || cy != individual.getY() || cz != individual.getZ()) {
+                        individual.setPosition(cx, cy, cz);
+                        individual.setHeading(individual.getHeading() + (float) Math.PI);
+                    }
+                }
+
                 // Update thermodynamic ambient temperature from weather context
                 individual.setAmbientTemperatureC(context.getTemperature());
 
@@ -405,7 +422,8 @@ public class Simulation {
             colony.tick(); // Update internal state (Fungus Gardens, Consumption)
         });
 
-        // Update spatial index (synchronized operation, done after parallel processing)
+        // Re-insert moved living individuals into spatial index
+        spatialIndex.clear();
         for (Individual ind : livingIndividuals) {
             spatialIndex.insert(ind, ind.getX(), ind.getY(), ind.getZ());
         }
@@ -539,9 +557,19 @@ public class Simulation {
             vegetationSystem.tick(weather.getTemperature(), weather.getHumidity());
         }
 
-        // Advance weather (1 tick = 1 second, 3600 ticks = 1 hour)
-        if (currentTick % 360 == 0) {
-            weather.advanceTime(0.1f); // 0.1 hours = 6 minutes
+        if (dayNightCycle != null) {
+            dayNightCycle.tick();
+        }
+        if (seasonManager != null) {
+            seasonManager.tick();
+        }
+
+        // Advance weather continuously every tick (1 tick = 1 second => 1/3600 hour)
+        if (weather != null) {
+            weather.advanceTime(1.0f / 3600.0f);
+            if (dayNightCycle != null) {
+                dayNightCycle.setPhase(weather.getTimeOfDay() / 24.0f);
+            }
         }
     }
 

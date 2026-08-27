@@ -1,0 +1,74 @@
+# Blender MTL File: 'Lowpoly tropical plant set.blend'
+# Material Count: 6
+
+newmtl Plant_alpha_1
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd Alpha texture\Plant alpha 1.png
+map_d  Alpha texture\\Plant alpha 1.png
+
+newmtl Plant_alpha_2
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.007874 0.007874 0.007874
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd Alpha texture\Plant alpha 2.png
+map_d  Alpha texture\\Plant alpha 2.png
+
+newmtl Plant_alpha_3
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.015789 0.015789 0.015789
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd Alpha texture\Plant alpha 3.png
+map_d  Alpha texture\\Plant alpha 3.png
+
+newmtl Plant_alpha_4
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.019474 0.019474 0.019474
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd Alpha texture\Plant alpha 4.png
+map_d  Alpha texture\\Plant alpha 4.png
+
+newmtl Plant_alpha_5
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.005263 0.005263 0.005263
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 2
+map_Kd Alpha texture\Plant alpha 5.png
+map_d  Alpha texture\\Plant alpha 5.png
+
+newmtl Plant_alpha_6
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd Alpha texture\Plant alpha 6.png
+map_d  Alpha texture\\Plant alpha 6.png

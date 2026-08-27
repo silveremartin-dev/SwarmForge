@@ -203,16 +203,20 @@ public class SoundEffectManager {
      */
     public String[] getSoundBankSuggestions() {
         return new String[]{
+            "ant_colony_activity.mp3 (Activités & stridulations collectives de la colonie)",
+            "anthill_nest_sounds.mp3 (Sons internes de la fourmilière & galeries souterraines)",
+            "sand_soil_digging.mp3 (Bruitage de creusement dans le sol & grattage de sable)",
+            "dry_leaves_rustling.mp3 (Bruissement de feuilles sèches & litière forestière)",
+            "soft_wind_leaves.mp3 (Brise légère traversant le feuillage)",
+            "wind_gust_leaves.mp3 (Rafales de vent & bruissement d'arbres)",
+            "strong_howling_wind.mp3 (Vent violent & bourrasques de tempête)",
+            "desert_wind_ambient.mp3 (Vent chaud & aride du désert)",
+            "water_splash2.ogg (Clapotis d'eau & éclaboussures de cours d'eau)",
             "river_stream.wav (Bruit d'eau de rivière fluide)",
             "rainforest_day.wav (Ambiance jungle tropicale & oiseaux néotropicaux)",
-            "desert_wind.wav (Sifflement du vent dans les dunes arides)",
-            "boreal_taiga.wav (Vent boréal & bruissement d'aiguilles de pin)",
-            "temperate_forest.wav (Sous-bois tempéré & chant d'oiseaux)",
             "crickets_night.wav (Ambiance nocturne & grillons)",
             "rain_heavy.wav (Averse de pluie sur la canopée)",
-            "thunder_strike.wav (Gondlement du tonnerre distant)",
-            "ant_mandible_click.wav (Bruitage de stridulation / mandibles de fourmi)",
-            "fire_burn.wav (Crépitement d'incendie de forêt)"
+            "thunder_strike.wav (Gondlement du tonnerre distant)"
         };
     }
 

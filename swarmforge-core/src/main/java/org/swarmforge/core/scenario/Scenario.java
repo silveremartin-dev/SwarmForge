@@ -58,9 +58,12 @@ public class Scenario implements Serializable {
     // Academic & Scientific Metrics
     private final List<String> targetMetrics = new ArrayList<>();
 
-    // Termination Criteria
+    // Termination Limits
     private long maxSimulationTicks = 100_000L;
     private int minPopulationStopThreshold = 0;
+
+    // Numerical Integration Step Size (dt)
+    private float simulationStepSeconds = 0.0166f;
 
     public Scenario() {}
 
@@ -172,4 +175,7 @@ public class Scenario implements Serializable {
 
     public int getMinPopulationStopThreshold() { return minPopulationStopThreshold; }
     public void setMinPopulationStopThreshold(int threshold) { this.minPopulationStopThreshold = threshold; }
+
+    public float getSimulationStepSeconds() { return simulationStepSeconds; }
+    public void setSimulationStepSeconds(float simulationStepSeconds) { this.simulationStepSeconds = simulationStepSeconds; }
 }

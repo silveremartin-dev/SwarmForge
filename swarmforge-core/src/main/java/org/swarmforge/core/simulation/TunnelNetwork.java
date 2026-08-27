@@ -56,21 +56,234 @@ public class TunnelNetwork implements java.io.Serializable {
         float ny = colony.getNestY();
         float nz = colony.getNestZ();
 
-        UUID entrance = createNode(nx, ny, -0.1f, ChamberType.ENTRANCE);
-        UUID shaft = createNode(nx, ny, -5.0f, ChamberType.TUNNEL);
-        createEdge(entrance, shaft);
+        String nestType = (colony.getSpecies() != null && colony.getSpecies().getNestType() != null)
+                ? colony.getSpecies().getNestType().toUpperCase()
+                : "BURROW_UNDERGROUND";
 
-        UUID queenChamber = createNode(nx + 3.0f, ny, -12.0f, ChamberType.QUEEN_CHAMBER);
-        createEdge(shaft, queenChamber);
+        buildNetworkForArchitecture(nx, ny, nz, nestType);
+    }
 
-        UUID broodChamber = createNode(nx - 3.0f, ny + 2.0f, -8.0f, ChamberType.BROOD_CHAMBER);
-        createEdge(shaft, broodChamber);
+    public void rebuildForArchitecture(float nx, float ny, float nz, String architectureType) {
+        nodes.clear();
+        edges.clear();
+        buildNetworkForArchitecture(nx, ny, nz, architectureType);
+    }
 
-        UUID foodStorage = createNode(nx + 2.0f, ny - 3.0f, -6.0f, ChamberType.FOOD_STORAGE);
-        createEdge(shaft, foodStorage);
+    private void buildNetworkForArchitecture(float nx, float ny, float nz, String nestType) {
+        if (nestType.contains("WOOD") || nestType.contains("TREE") || nestType.contains("TRUNK") || nestType.contains("HOLLOW")) {
+            // Arboreal / Hollow Tree Cavity (Camponotus / Carpenter ants)
+            UUID entrance = createNode(nx, ny - 1.5f, nz + 1.5f, ChamberType.ENTRANCE);
+            UUID shaft1 = createNode(nx, ny, nz + 4.0f, ChamberType.TUNNEL);
+            UUID shaft2 = createNode(nx, ny, nz + 8.0f, ChamberType.TUNNEL);
+            createEdge(entrance, shaft1);
+            createEdge(shaft1, shaft2);
 
-        UUID wasteDump = createNode(nx - 4.0f, ny - 2.0f, -15.0f, ChamberType.WASTE_DUMP);
-        createEdge(queenChamber, wasteDump);
+            UUID queenChamber = createNode(nx, ny, nz + 6.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(shaft1, queenChamber);
+
+            UUID brood1 = createNode(nx + 2.5f, ny, nz + 3.5f, ChamberType.BROOD_CHAMBER);
+            UUID brood2 = createNode(nx - 2.5f, ny, nz + 5.5f, ChamberType.BROOD_CHAMBER);
+            createEdge(shaft1, brood1);
+            createEdge(queenChamber, brood2);
+
+            UUID foodStorage = createNode(nx + 2.0f, ny, nz + 9.0f, ChamberType.FOOD_STORAGE);
+            createEdge(shaft2, foodStorage);
+
+            UUID wasteDump = createNode(nx, ny, nz + 0.5f, ChamberType.WASTE_DUMP);
+            createEdge(entrance, wasteDump);
+
+        } else if (nestType.contains("WAX_COMB") || nestType.contains("BEEHIVE") || nestType.contains("HEXAGONAL")) {
+            // Honeybee Hexagonal Comb / Beehive (Apis)
+            UUID entrance = createNode(nx, ny, nz + 0.5f, ChamberType.ENTRANCE);
+            UUID frameShaft = createNode(nx, ny, nz + 3.5f, ChamberType.TUNNEL);
+            createEdge(entrance, frameShaft);
+
+            UUID queenCell = createNode(nx, ny, nz + 2.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(entrance, queenCell);
+
+            UUID brood1 = createNode(nx - 2.0f, ny, nz + 4.5f, ChamberType.BROOD_CHAMBER);
+            UUID brood2 = createNode(nx + 2.0f, ny, nz + 4.5f, ChamberType.BROOD_CHAMBER);
+            createEdge(frameShaft, brood1);
+            createEdge(frameShaft, brood2);
+
+            UUID honeyVault = createNode(nx, ny, nz + 7.5f, ChamberType.FOOD_STORAGE);
+            createEdge(frameShaft, honeyVault);
+
+        } else if (nestType.contains("WAX_POTS") || nestType.contains("POTS_CLUSTER") || nestType.contains("BOMBUS")) {
+            // Bumblebee Pot Cluster (Bombus)
+            UUID entrance = createNode(nx, ny, nz + 0.2f, ChamberType.ENTRANCE);
+            UUID hub = createNode(nx, ny, nz - 0.5f, ChamberType.TUNNEL);
+            createEdge(entrance, hub);
+
+            UUID queenChamber = createNode(nx, ny, nz - 1.2f, ChamberType.QUEEN_CHAMBER);
+            createEdge(hub, queenChamber);
+
+            UUID brood1 = createNode(nx + 1.5f, ny + 1.0f, nz - 1.0f, ChamberType.BROOD_CHAMBER);
+            UUID brood2 = createNode(nx - 1.5f, ny - 1.0f, nz - 1.0f, ChamberType.BROOD_CHAMBER);
+            createEdge(hub, brood1);
+            createEdge(hub, brood2);
+
+            UUID foodPots = createNode(nx + 1.0f, ny - 1.5f, nz - 0.8f, ChamberType.FOOD_STORAGE);
+            createEdge(hub, foodPots);
+
+            UUID wastePot = createNode(nx - 1.0f, ny + 1.5f, nz - 1.5f, ChamberType.WASTE_DUMP);
+            createEdge(queenChamber, wastePot);
+
+        } else if (nestType.contains("PAPER") || nestType.contains("PEDUNCULATE") || nestType.contains("VESPA")) {
+            // Paper Wasp Hanging Nest (Vespidae)
+            UUID peduncle = createNode(nx, ny, nz + 7.5f, ChamberType.TUNNEL);
+            UUID entrance = createNode(nx, ny, nz + 1.5f, ChamberType.ENTRANCE);
+            UUID centralSpire = createNode(nx, ny, nz + 4.5f, ChamberType.TUNNEL);
+            createEdge(peduncle, centralSpire);
+            createEdge(centralSpire, entrance);
+
+            UUID queenCell = createNode(nx, ny, nz + 6.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(centralSpire, queenCell);
+
+            UUID brood1 = createNode(nx - 2.0f, ny, nz + 4.0f, ChamberType.BROOD_CHAMBER);
+            UUID brood2 = createNode(nx + 2.0f, ny, nz + 4.0f, ChamberType.BROOD_CHAMBER);
+            createEdge(centralSpire, brood1);
+            createEdge(centralSpire, brood2);
+
+            UUID foodVault = createNode(nx, ny + 2.0f, nz + 5.0f, ChamberType.FOOD_STORAGE);
+            createEdge(centralSpire, foodVault);
+
+        } else if (nestType.contains("CATHEDRAL") || nestType.contains("TERMITE") || nestType.contains("STERCORAL")) {
+            // Termite Cathedral Mound (Isoptera)
+            UUID entrance = createNode(nx, ny, nz + 0.5f, ChamberType.ENTRANCE);
+            UUID spire = createNode(nx, ny, nz + 9.0f, ChamberType.TUNNEL);
+            UUID shaft = createNode(nx, ny, nz - 3.0f, ChamberType.TUNNEL);
+            createEdge(entrance, spire);
+            createEdge(entrance, shaft);
+
+            UUID royalCell = createNode(nx, ny, nz - 8.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(shaft, royalCell);
+
+            UUID nursery = createNode(nx + 3.0f, ny, nz - 5.0f, ChamberType.BROOD_CHAMBER);
+            createEdge(shaft, nursery);
+
+            UUID foodFungus = createNode(nx - 3.0f, ny, nz - 6.0f, ChamberType.FOOD_STORAGE);
+            createEdge(shaft, foodFungus);
+
+            UUID wasteVault = createNode(nx, ny + 3.0f, nz - 12.0f, ChamberType.WASTE_DUMP);
+            createEdge(royalCell, wasteVault);
+
+        } else if (nestType.contains("FUNGI") || nestType.contains("VAULT") || nestType.contains("ATTA")) {
+            // Leafcutter Ant Subterranean Fungi Vault (Atta)
+            UUID entrance1 = createNode(nx - 3.0f, ny, nz + 0.1f, ChamberType.ENTRANCE);
+            UUID entrance2 = createNode(nx + 3.0f, ny, nz + 0.1f, ChamberType.ENTRANCE);
+            UUID mainShaft = createNode(nx, ny, nz - 6.0f, ChamberType.TUNNEL);
+            createEdge(entrance1, mainShaft);
+            createEdge(entrance2, mainShaft);
+
+            UUID fungusVault1 = createNode(nx - 5.0f, ny + 2.0f, nz - 10.0f, ChamberType.FOOD_STORAGE);
+            UUID fungusVault2 = createNode(nx + 5.0f, ny - 2.0f, nz - 12.0f, ChamberType.BROOD_CHAMBER);
+            createEdge(mainShaft, fungusVault1);
+            createEdge(mainShaft, fungusVault2);
+
+            UUID royalVault = createNode(nx, ny, nz - 14.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(mainShaft, royalVault);
+
+            UUID wastePit = createNode(nx, ny, nz - 20.0f, ChamberType.WASTE_DUMP);
+            createEdge(royalVault, wastePit);
+
+        } else if (nestType.contains("MOUND") || nestType.contains("SURFACE_MOUND") || nestType.contains("FORMICA")) {
+            // Thatch Mound & Galleries (Formica rufa)
+            UUID ent1 = createNode(nx - 2.0f, ny, nz + 0.5f, ChamberType.ENTRANCE);
+            UUID ent2 = createNode(nx + 2.0f, ny, nz + 0.5f, ChamberType.ENTRANCE);
+            UUID solarium = createNode(nx, ny, nz + 4.0f, ChamberType.BROOD_CHAMBER);
+            UUID shaft = createNode(nx, ny, nz - 3.0f, ChamberType.TUNNEL);
+            createEdge(ent1, shaft);
+            createEdge(ent2, shaft);
+            createEdge(shaft, solarium);
+
+            UUID queenWinter = createNode(nx, ny, nz - 10.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(shaft, queenWinter);
+
+            UUID subBrood = createNode(nx - 3.0f, ny + 1.0f, nz - 6.0f, ChamberType.BROOD_CHAMBER);
+            createEdge(shaft, subBrood);
+
+            UUID foodPantry = createNode(nx + 2.0f, ny - 2.0f, nz - 4.0f, ChamberType.FOOD_STORAGE);
+            createEdge(shaft, foodPantry);
+
+            UUID wastePit = createNode(nx - 2.0f, ny - 3.0f, nz - 12.0f, ChamberType.WASTE_DUMP);
+            createEdge(queenWinter, wastePit);
+
+        } else if (nestType.contains("SILK") || nestType.contains("LEAF") || nestType.contains("OECOPHYLLA")) {
+            // Arboreal Weaver Ant Leaf Nest (Oecophylla)
+            UUID branch = createNode(nx, ny, nz + 6.0f, ChamberType.ENTRANCE);
+            UUID canopyHub = createNode(nx, ny, nz + 10.0f, ChamberType.TUNNEL);
+            createEdge(branch, canopyHub);
+
+            UUID queenLeaf = createNode(nx, ny, nz + 9.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(canopyHub, queenLeaf);
+
+            UUID broodLeaf = createNode(nx - 2.5f, ny, nz + 8.5f, ChamberType.BROOD_CHAMBER);
+            UUID foodLeaf = createNode(nx + 2.5f, ny, nz + 8.5f, ChamberType.FOOD_STORAGE);
+            createEdge(canopyHub, broodLeaf);
+            createEdge(canopyHub, foodLeaf);
+
+        } else if (nestType.contains("CARTON")) {
+            // Carton Wood Nest (Crematogaster)
+            UUID entrance = createNode(nx, ny, nz + 4.0f, ChamberType.ENTRANCE);
+            UUID core = createNode(nx, ny, nz + 6.0f, ChamberType.TUNNEL);
+            createEdge(entrance, core);
+
+            UUID queenCell = createNode(nx, ny, nz + 5.5f, ChamberType.QUEEN_CHAMBER);
+            createEdge(core, queenCell);
+
+            UUID broodG = createNode(nx - 2.0f, ny, nz + 7.0f, ChamberType.BROOD_CHAMBER);
+            UUID foodG = createNode(nx + 2.0f, ny, nz + 7.0f, ChamberType.FOOD_STORAGE);
+            createEdge(core, broodG);
+            createEdge(core, foodG);
+
+        } else if (nestType.contains("BAMBOO") || nestType.contains("STEM")) {
+            // Bamboo / Plant Stem Nest (Colobopsis)
+            UUID entrance = createNode(nx - 6.0f, ny, nz + 2.0f, ChamberType.ENTRANCE);
+            UUID stemTunnel = createNode(nx, ny, nz + 2.0f, ChamberType.TUNNEL);
+            createEdge(entrance, stemTunnel);
+
+            UUID queenChamber = createNode(nx + 2.0f, ny, nz + 2.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(stemTunnel, queenChamber);
+
+            UUID broodChamber = createNode(nx + 5.0f, ny, nz + 2.0f, ChamberType.BROOD_CHAMBER);
+            createEdge(queenChamber, broodChamber);
+
+            UUID foodStorage = createNode(nx - 2.0f, ny, nz + 2.0f, ChamberType.FOOD_STORAGE);
+            createEdge(stemTunnel, foodStorage);
+
+        } else if (nestType.contains("BIVOUAC")) {
+            // Living Army Ant Bivouac (Eciton)
+            UUID anchor = createNode(nx, ny, nz + 3.0f, ChamberType.TUNNEL);
+            UUID entrance = createNode(nx, ny, nz + 1.5f, ChamberType.ENTRANCE);
+            createEdge(anchor, entrance);
+
+            UUID protectedCore = createNode(nx, ny, nz + 0.5f, ChamberType.QUEEN_CHAMBER);
+            createEdge(entrance, protectedCore);
+
+            UUID broodCluster = createNode(nx - 2.0f, ny, nz - 0.5f, ChamberType.BROOD_CHAMBER);
+            UUID foodCluster = createNode(nx + 2.0f, ny, nz - 0.5f, ChamberType.FOOD_STORAGE);
+            createEdge(protectedCore, broodCluster);
+            createEdge(protectedCore, foodCluster);
+
+        } else {
+            // Default Subterranean Burrow (Lasius / Solenopsis)
+            UUID entrance = createNode(nx, ny, nz - 0.1f, ChamberType.ENTRANCE);
+            UUID shaft = createNode(nx, ny, nz - 5.0f, ChamberType.TUNNEL);
+            createEdge(entrance, shaft);
+
+            UUID queenChamber = createNode(nx + 3.0f, ny, nz - 12.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(shaft, queenChamber);
+
+            UUID broodChamber = createNode(nx - 3.0f, ny + 2.0f, nz - 8.0f, ChamberType.BROOD_CHAMBER);
+            createEdge(shaft, broodChamber);
+
+            UUID foodStorage = createNode(nx + 2.0f, ny - 3.0f, nz - 6.0f, ChamberType.FOOD_STORAGE);
+            createEdge(shaft, foodStorage);
+
+            UUID wasteDump = createNode(nx - 4.0f, ny - 2.0f, nz - 15.0f, ChamberType.WASTE_DUMP);
+            createEdge(queenChamber, wasteDump);
+        }
     }
 
     /**
@@ -83,7 +296,7 @@ public class TunnelNetwork implements java.io.Serializable {
 
         float nx = parent.x() + dx;
         float ny = parent.y() + dy;
-        float nz = Math.max(-maxDepth, Math.min(-0.1f, parent.z() + dz));
+        float nz = parent.z() + dz;
 
         UUID newNodeId = createNode(nx, ny, nz, type);
         createEdge(parentId, newNodeId);

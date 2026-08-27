@@ -1,0 +1,111 @@
+# Blender MTL File: 'bamboo set .blend'
+# Material Count: 9
+
+newmtl bamboo_leaf_1
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd B textures\bamboo leaf 2.png
+map_d B textures\\bamboo leaf 2.png
+
+newmtl bamboo_leaf_2
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.604255 0.604255 0.604255
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd B textures\bamboo leaf 2.png
+map_Bump B textures\\bamboo leaf 2.png
+map_d B textures\\bamboo leaf 2.png
+
+newmtl bamboo_leaf_3
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd B textures\bamboo leaf 3.png
+map_d B textures\\bamboo leaf 3.png
+
+newmtl bamboo_shrub_1
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd B textures\bamboo shrub 1.png
+map_d B textures\\bamboo shrub 1.png
+
+newmtl bamboo_shrub_2
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd B textures\bamboo shrub 2.png
+map_d B textures\\bamboo shrub 2.png
+
+newmtl bamboo_shrub_3
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd B textures\bamboo shrub 3.png
+map_d B textures\\bamboo shrub 3.png
+
+newmtl bamboo_stick_1_baked
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.019608 0.019608 0.019608
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd B textures\bamboo stick 1 bake.png
+map_Bump -bm 0.878049 B textures\\bamboo stick 1 bake.png
+
+newmtl bamboo_stick_2
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.895745 0.868815 0.868815
+Ks 0.095745 0.095745 0.095745
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd B textures\bamboo stick 2 bake.png
+map_Bump -bm 0.594595 B textures\\bamboo stick 2 bake.png
+
+newmtl bamboo_stick_3
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.093220 0.093220 0.093220
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd B textures\bamboo stick 3 bake.png
+map_Bump -bm 0.591837 B textures\\bamboo stick 3 bake.png

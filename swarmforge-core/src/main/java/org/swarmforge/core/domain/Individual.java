@@ -1158,6 +1158,9 @@ public class Individual implements java.io.Serializable, AgentView {
         if (species.canSerializeGlobalEthologicalBitSet()) list.add("GLOBAL_ETHOLOGICAL_BITSET_SERIALIZATION");
 
         if (list.isEmpty()) return "BASE_PATROL";
-        return String.join(" | ", list);
+        if (list.size() > 3) {
+            return String.join(", ", list.subList(0, 3)) + String.format(" (+%d)", list.size() - 3);
+        }
+        return String.join(", ", list);
     }
 }

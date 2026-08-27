@@ -100,6 +100,13 @@ public class Terrarium {
         return cells.values();
     }
 
+    /**
+     * Check if the terrarium contains active water cells (rivers, lakes, streams).
+     */
+    public boolean hasWater() {
+        return cells.values().stream().anyMatch(c -> c.material() == TerrariumCell.Material.WATER);
+    }
+
     public void clear() {
         cells.clear();
         colonies.clear();

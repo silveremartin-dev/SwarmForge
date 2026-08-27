@@ -147,6 +147,13 @@ public class WeatherSystem {
         double perlinWindNoise = PerlinNoise.noise(timeSeed, 5.8) * 10.0; // +/- 10 km/h wind gusts
         double perlinPressNoise = PerlinNoise.noise(timeSeed, 9.4) * 8.0;  // Barometric drift
 
+        // Dynamic Wind Direction evolution based on continuous turbulence & atmospheric drift
+        double windAngle = PerlinNoise.noise(timeSeed * 0.1, 15.3) * 360.0;
+        if (windAngle < 0) windAngle += 360.0;
+        String[] directions = new String[] { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+        int dirIdx = (int) Math.floor(((windAngle + 22.5) % 360.0) / 45.0);
+        this.windDirection = directions[Math.abs(dirIdx) % 8];
+
         currentTemp = (float) (baseTempAvg + diurnalTemp + perlinTempNoise + tempOffset);
 
         // Barometric Pressure & Pressure Tendency (dP/dt)

@@ -698,9 +698,10 @@ public class JmeGameApp extends SimpleApplication {
         }
 
         if (simulation != null) {
-            if (!simulation.getColonies().isEmpty()) {
-                org.swarmforge.core.domain.Colony colony = simulation.getColonies().get(0);
-                tunnelVisualizer.update(colony.getTunnelNetwork());
+            for (org.swarmforge.core.domain.Colony colony : simulation.getColonies()) {
+                if (colony.getTunnelNetwork() != null) {
+                    tunnelVisualizer.update(colony.getTunnelNetwork());
+                }
             }
             if (simulation.getWeather() != null) {
                 weatherVisualizer.update(simulation.getWeather(), tpf);

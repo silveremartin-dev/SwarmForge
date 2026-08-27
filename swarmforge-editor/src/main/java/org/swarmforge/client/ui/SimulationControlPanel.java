@@ -18,7 +18,9 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
 import org.swarmforge.core.species.CustomSpecies;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Consumer;
@@ -53,12 +55,13 @@ public class SimulationControlPanel extends VBox {
 
     private final Slider speedSlider;
     private Slider timelineSlider;
-    private final ComboBox<String> stepSizeCombo;
+    private final ComboBox<String> scenarioStepCombo = new ComboBox<>();
 
     private final Label lblSpeed;
     private Label lblTick;
     private Label lblTime;
     private final Label lblDateTime;
+    private Label lblStepDt;
 
     // Preset Managers
     private final SpeciesPresetManager speciesPresetManager = new SpeciesPresetManager();
@@ -75,7 +78,7 @@ public class SimulationControlPanel extends VBox {
     private final TextArea areaDescription = new TextArea();
 
     // Termination Limits
-    private final Spinner<Long> maxTicksSpinner = new Spinner<>(1000L, 1_000_000L, 100_000L, 5000L);
+    private final Spinner<Integer> maxTicksSpinner = new Spinner<>(1000, 1_000_000, 100_000, 5000);
     private final Spinner<Integer> minPopStopSpinner = new Spinner<>(0, 1000, 0, 5);
 
     // 3. Multi-Species Scenario Config List
@@ -140,7 +143,6 @@ public class SimulationControlPanel extends VBox {
         // Top Meta-Scenario Header Card
         VBox scenarioCard = new VBox(10);
         scenarioCard.getStyleClass().add("card-pane");
-        scenarioCard.setStyle("-fx-background-color: #18181b; -fx-padding: 12; -fx-background-radius: 8; -fx-border-color: #27272a; -fx-border-radius: 8;");
 
         Button bSaveScenario = new Button("Enregistrer");
         bSaveScenario.setGraphic(new FontIcon(Feather.SAVE));
@@ -204,7 +206,7 @@ public class SimulationControlPanel extends VBox {
         areaDescription.setPrefRowCount(2);
         areaDescription.setPromptText("Description et objectifs d'expérimentation du scénario...");
         areaDescription.setWrapText(true);
-        areaDescription.setStyle("-fx-font-size: 11px; -fx-control-inner-background: #09090b; -fx-text-fill: #e2e8f0;");
+        areaDescription.setStyle("-fx-font-size: 11px;");
         descBox.getChildren().addAll(lblDesc, areaDescription);
 
         // Populate World and Weather combos in alphabetical order
@@ -218,7 +220,7 @@ public class SimulationControlPanel extends VBox {
         comboWeather.getItems().setAll(sortedWeatherNames);
         if (!comboWeather.getItems().isEmpty()) comboWeather.getSelectionModel().selectFirst();
 
-        // 1 & 2 Section: World & Weather Presets (Top order)
+        // 1 & 2 & 3 Section: World, Weather & Start Date/Time Presets
         GridPane gridWorldWeather = new GridPane();
         gridWorldWeather.setHgap(10); gridWorldWeather.setVgap(8);
 
@@ -230,30 +232,47 @@ public class SimulationControlPanel extends VBox {
         lbl2Weather.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
         lbl2Weather.setTooltip(new Tooltip("Profil climatique et saisonnier issu de WeatherPresetManager."));
 
-        comboWorld.setMaxWidth(Double.MAX_VALUE);
-        comboWeather.setMaxWidth(Double.MAX_VALUE);
-        GridPane.setHgrow(comboWorld, Priority.ALWAYS);
-        GridPane.setHgrow(comboWeather, Priority.ALWAYS);
+        Label lbl4Step = new Label("4. ⏱️ Pas de Calcul Physique (Δt) :");
+        lbl4Step.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lbl4Step.setTooltip(new Tooltip("Définit la fidélité d'intégration numérique Δt des équations physiques et éthologiques. Persisté dans le scénario pour garantir un déterminisme mathématique strict et reproductible."));
 
-        Button btnAlignClimate = new Button("🌐 Aligner Climat");
-        btnAlignClimate.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px;");
-        btnAlignClimate.setTooltip(new Tooltip("Alignement automatique du climat en fonction du biotope 3D sélectionné."));
-        btnAlignClimate.setOnAction(e -> handleAlignClimateWithWorld());
-
-        HBox weatherRow = new HBox(6, comboWeather, btnAlignClimate);
-        HBox.setHgrow(comboWeather, Priority.ALWAYS);
+        scenarioStepCombo.getItems().setAll(
+            "16.6 ms (60 Hz - Fidélité Physique Max / Défaut)",
+            "50 ms (20 Hz - Précision Standard)",
+            "100 ms (10 Hz - Mode Rapide)",
+            "1.0 s (Mode Macroscopique Écosystème)",
+            "5.0 s (Mode Ultra Macroscopique)"
+        );
+        scenarioStepCombo.getSelectionModel().selectFirst();
+        scenarioStepCombo.setPrefWidth(240);
+        scenarioStepCombo.setStyle("-fx-font-size: 11px;");
+        scenarioStepCombo.setTooltip(new Tooltip("Pas de calcul Δt figé et persisté dans le scénario (garantissant un déterminisme parfait basé sur le Seed)."));
+        scenarioStepCombo.setOnAction(e -> {
+            int idx = scenarioStepCombo.getSelectionModel().getSelectedIndex();
+            switch (idx) {
+                case 0 -> simulationStepSeconds = 0.0166f;
+                case 1 -> simulationStepSeconds = 0.05f;
+                case 2 -> simulationStepSeconds = 0.1f;
+                case 3 -> simulationStepSeconds = 1.0f;
+                case 4 -> simulationStepSeconds = 5.0f;
+            }
+            updateStepDtLabel();
+            if (onStepChange != null) onStepChange.accept(simulationStepSeconds);
+        });
 
         gridWorldWeather.add(lbl1World, 0, 0); gridWorldWeather.add(comboWorld, 1, 0);
         gridWorldWeather.add(lbl2Weather, 0, 1); gridWorldWeather.add(weatherRow, 1, 1);
+        gridWorldWeather.add(lbl3DateTime, 0, 2); gridWorldWeather.add(startDateTimeBox, 1, 2);
+        gridWorldWeather.add(lbl4Step, 0, 3); gridWorldWeather.add(scenarioStepCombo, 1, 3);
 
-        // 3. Multi-Species Scenario Section Header & Controls
+        // 4. Multi-Species Scenario Section Header & Controls
         VBox section3Container = new VBox(8);
-        section3Container.setStyle("-fx-background-color: #121214; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #27272a; -fx-border-radius: 6;");
+        section3Container.getStyleClass().add("card-pane");
 
         HBox speciesAddBar = new HBox(8);
         speciesAddBar.setAlignment(Pos.CENTER_LEFT);
 
-        Label lbl3SpeciesHeader = new Label("3. 🐜 Espèces & Écosystème du Scénario :");
+        Label lbl3SpeciesHeader = new Label("4. 🐜 Espèces & Écosystème du Scénario :");
         lbl3SpeciesHeader.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 12px;");
 
         java.util.List<String> sortedSpeciesNames = new java.util.ArrayList<>(speciesPresetManager.getPresetNames());
@@ -310,7 +329,7 @@ public class SimulationControlPanel extends VBox {
         Label lblSeed = new Label("🎲 Graine Aléatoire (Seed) :");
         lblSeed.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
         txtSeed.setPrefWidth(90);
-        txtSeed.setStyle("-fx-background-color: #0f172a; -fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-border-color: #334155;");
+        txtSeed.setStyle("-fx-font-weight: bold;");
 
         Button btnRandSeed = new Button("🎲 Nouveau Seed");
         btnRandSeed.setStyle("-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 10px;");
@@ -361,29 +380,13 @@ public class SimulationControlPanel extends VBox {
 
         dateTimeRow.getChildren().add(lblDateTime);
 
-        // Line 2: Pas de Simulation & Compteur de Ticks
+        // Line 2: Pas de Simulation (Read-only scenario parameter) & Compteur de Ticks
         HBox stepRow = new HBox(8);
         stepRow.setAlignment(Pos.CENTER);
 
-        Label lblStepTitle = new Label("⏱️ Pas de Simulation :");
-        lblStepTitle.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px; -fx-font-weight: bold;");
-
-        stepSizeCombo = new ComboBox<>();
-        stepSizeCombo.getItems().addAll("16.6 ms (60 Hz)", "50 ms (20 Hz)", "100 ms (10 Hz)", "1.0 s", "5.0 s");
-        stepSizeCombo.getSelectionModel().selectFirst();
-        stepSizeCombo.setStyle("-fx-font-size: 10px;");
-        stepSizeCombo.setTooltip(new Tooltip("Sélectionnez l'intervalle de temps physique calculé entre deux ticks consécutifs de simulation."));
-        stepSizeCombo.setOnAction(e -> {
-            int idx = stepSizeCombo.getSelectionModel().getSelectedIndex();
-            switch (idx) {
-                case 0 -> simulationStepSeconds = 0.0166f;
-                case 1 -> simulationStepSeconds = 0.05f;
-                case 2 -> simulationStepSeconds = 0.1f;
-                case 3 -> simulationStepSeconds = 1.0f;
-                case 4 -> simulationStepSeconds = 5.0f;
-            }
-            if (onStepChange != null) onStepChange.accept(simulationStepSeconds);
-        });
+        lblStepDt = new Label("⏱️ Δt physique: 16.6 ms (60 Hz - Mode Fin / Déterministe)");
+        lblStepDt.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px;");
+        lblStepDt.setTooltip(new Tooltip("Le pas de temps Δt est fixé par la configuration du scénario pour préserver le déterminisme mathématique (Seed). Utilisez le curseur Vitesse (1x-20x) pour accélérer le débit d'exécution."));
 
         Label lblTickLabel = new Label("Tick :");
         lblTickLabel.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
@@ -391,7 +394,7 @@ public class SimulationControlPanel extends VBox {
         lblTick.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
         lblTick.setTooltip(new Tooltip("Nombre de pas de temps (ticks) exécutés depuis le début du scénario."));
 
-        stepRow.getChildren().addAll(lblStepTitle, stepSizeCombo, new Separator(Orientation.VERTICAL), lblTickLabel, lblTick);
+        stepRow.getChildren().addAll(lblStepDt, new Separator(Orientation.VERTICAL), lblTickLabel, lblTick);
 
         // Line 3 & Line 4: Playback Controls (Split into 2 balanced rows for compact UI fit)
         HBox playbackRow1 = new HBox(4);
@@ -400,38 +403,45 @@ public class SimulationControlPanel extends VBox {
         HBox playbackRow2 = new HBox(4);
         playbackRow2.setAlignment(Pos.CENTER);
 
-        btnGoToBeginning = createButton("⏮️ Début", "Début du scénario (Réinitialiser au Tick 0)");
-        btnRewind = createButton("⏪ -100 Ticks", "Retour arrière rapide de 100 ticks");
-        btnStepBack = createButton("◀ -1 Tick", "Pas à pas arrière (1 tick)");
-        btnPlay = createButton("▶ Jouer", i18n.get("control.play_tt"));
-        btnPause = createButton("⏸ Pause", i18n.get("control.pause_tt"));
-        btnStepForward = createButton("▶ +1 Tick", i18n.get("control.step_fw_tt"));
-        btnFastForward = createButton("⏩ +100 Ticks", "Avance rapide de 100 ticks");
-        btnGoToEnd = createButton("⏭️ Fin", "Sauter à la fin du scénario (Tick Max)");
+        btnGoToBeginning = createButton("⏮", "Début du scénario (Réinitialiser au début)");
+        btnRewind = createButton("⏪", "Retour arrière (100 pas)");
+        btnStepBack = createButton("◀", "Pas arrière (-1 pas)");
+        btnPlay = createButton("▶", "Démarrer / Reprendre la simulation");
+        btnPause = createButton("⏸", "Mettre la simulation en pause");
+        btnStepForward = createButton("▶|", "Pas avant (+1 pas)");
+        btnFastForward = createButton("⏩", "Avance rapide (100 pas)");
+        btnGoToEnd = createButton("⏭", "Sauter à la fin de la simulation");
 
         btnGoToBeginning.setOnAction(e -> {
-            org.swarmforge.client.util.SoundEffectManager.getInstance().playClickSound();
             isPlaying = false;
-            isPaused = false;
-            isStopped = true;
+            isPaused = true;
+            isStopped = false;
             currentTick = 0;
             updateTick(0, maxTick);
             updateButtonStates();
+            if (onPause != null) onPause.accept(null);
             if (onSeek != null) onSeek.accept(0L);
         });
 
         btnRewind.setOnAction(e -> {
-            org.swarmforge.client.util.SoundEffectManager.getInstance().playClickSound();
+            isPlaying = false;
+            isPaused = true;
+            isStopped = false;
+            updateButtonStates();
+            if (onPause != null) onPause.accept(null);
             if (onRewind != null) onRewind.accept(100);
         });
 
         btnStepBack.setOnAction(e -> {
-            org.swarmforge.client.util.SoundEffectManager.getInstance().playClickSound();
+            isPlaying = false;
+            isPaused = true;
+            isStopped = false;
+            updateButtonStates();
+            if (onPause != null) onPause.accept(null);
             if (onRewind != null) onRewind.accept(1);
         });
 
         btnPlay.setOnAction(e -> {
-            org.swarmforge.client.util.SoundEffectManager.getInstance().playClickSound();
             isPlaying = true;
             isPaused = false;
             isStopped = false;
@@ -440,7 +450,6 @@ public class SimulationControlPanel extends VBox {
         });
 
         btnPause.setOnAction(e -> {
-            org.swarmforge.client.util.SoundEffectManager.getInstance().playClickSound();
             isPlaying = false;
             isPaused = true;
             isStopped = false;
@@ -449,16 +458,14 @@ public class SimulationControlPanel extends VBox {
         });
 
         btnStepForward.setOnAction(e -> {
-            org.swarmforge.client.util.SoundEffectManager.getInstance().playClickSound();
             if (!isPlaying) {
                 currentTick++;
                 updateTick(currentTick, Math.max(maxTick, currentTick));
-                if (onSeek != null) onSeek.accept(currentTick);
+                if (onStepForward != null) onStepForward.accept(null);
             }
         });
 
         btnFastForward.setOnAction(e -> {
-            org.swarmforge.client.util.SoundEffectManager.getInstance().playClickSound();
             if (!isPlaying) {
                 currentTick += 100;
                 updateTick(currentTick, Math.max(maxTick, currentTick));
@@ -467,40 +474,45 @@ public class SimulationControlPanel extends VBox {
         });
 
         btnGoToEnd.setOnAction(e -> {
-            org.swarmforge.client.util.SoundEffectManager.getInstance().playClickSound();
             isPlaying = false;
-            isPaused = false;
-            isStopped = true;
+            isPaused = true;
+            isStopped = false;
             currentTick = maxTick;
             updateTick(maxTick, maxTick);
             updateButtonStates();
+            if (onPause != null) onPause.accept(null);
             if (onSeek != null) onSeek.accept(maxTick);
         });
 
-        playbackRow1.getChildren().addAll(btnGoToBeginning, btnRewind, btnStepBack, btnPlay);
-        playbackRow2.getChildren().addAll(btnPause, btnStepForward, btnFastForward, btnGoToEnd);
+        playbackRow1.getChildren().addAll(btnGoToBeginning, btnRewind, btnStepBack, btnPlay, btnPause, btnStepForward, btnFastForward, btnGoToEnd);
 
-        // Line 5: Speed Slider & Multiplier Preset Buttons Row
-        HBox speedRow = new HBox(4);
-        speedRow.setAlignment(Pos.CENTER);
+        // Line 5a: Speed Slider & Readout Label
+        HBox speedSliderRow = new HBox(8);
+        speedSliderRow.setAlignment(Pos.CENTER);
 
-        Label lblSpeedLabel = new Label("🚀 Vitesse :");
+        Label lblSpeedLabel = new Label("🚀 Vitesse de Lecture :");
         lblSpeedLabel.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px; -fx-font-weight: bold;");
 
         lblSpeed = new Label("1.0x");
-        lblSpeed.setStyle("-fx-text-fill: #4fc3f7; -fx-font-weight: bold; -fx-font-size: 11px;");
-        lblSpeed.setPrefWidth(35);
+        lblSpeed.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lblSpeed.setPrefWidth(40);
 
         speedSlider = new Slider(0.1, 20.0, 1.0);
         speedSlider.setShowTickLabels(false);
         speedSlider.setShowTickMarks(false);
-        speedSlider.setPrefWidth(75);
+        speedSlider.setPrefWidth(140);
         speedSlider.setTooltip(new Tooltip("Ajustez le facteur d'accélération temporelle de la simulation (0.1x à 20x)."));
         speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             currentSpeed = newVal.floatValue();
             lblSpeed.setText(String.format("%.1fx", currentSpeed));
             if (onSpeedChange != null) onSpeedChange.accept(currentSpeed);
         });
+
+        speedSliderRow.getChildren().addAll(lblSpeedLabel, speedSlider, lblSpeed);
+
+        // Line 5b: Speed Multiplier Preset Buttons (Placed BELOW the slider for legibility)
+        HBox speedPresetsRow = new HBox(5);
+        speedPresetsRow.setAlignment(Pos.CENTER);
 
         Button btnP05 = createSmallButton("0.5x"); btnP05.setTooltip(new Tooltip("Vitesse ralentie (0.5x).")); btnP05.setOnAction(e -> setSpeed(0.5f));
         Button btnP1  = createSmallButton("1x");   btnP1.setTooltip(new Tooltip("Vitesse réelle normale (1.0x).")); btnP1.setOnAction(e -> setSpeed(1.0f));
@@ -509,15 +521,15 @@ public class SimulationControlPanel extends VBox {
         Button btnP10 = createSmallButton("10x");  btnP10.setTooltip(new Tooltip("Vitesse ultra rapide 10x.")); btnP10.setOnAction(e -> setSpeed(10.0f));
         Button btnP20 = createSmallButton("20x");  btnP20.setTooltip(new Tooltip("Vitesse maximale 20x.")); btnP20.setOnAction(e -> setSpeed(20.0f));
 
-        speedRow.getChildren().addAll(lblSpeedLabel, speedSlider, lblSpeed, btnP05, btnP1, btnP2, btnP5, btnP10, btnP20);
+        speedPresetsRow.getChildren().addAll(btnP05, btnP1, btnP2, btnP5, btnP10, btnP20);
 
         playbackAndSpeedPanel.setPadding(new Insets(8));
-        playbackAndSpeedPanel.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.08); -fx-border-radius: 6;");
+        playbackAndSpeedPanel.getStyleClass().add("card-pane");
 
         Label lblPlaybackHeader = new Label("⏱️ Contrôles Temps, Vitesse & Lecture");
         lblPlaybackHeader.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
 
-        playbackAndSpeedPanel.getChildren().addAll(lblPlaybackHeader, dateTimeRow, stepRow, playbackRow1, playbackRow2, speedRow);
+        playbackAndSpeedPanel.getChildren().addAll(lblPlaybackHeader, dateTimeRow, stepRow, playbackRow1, speedSliderRow, speedPresetsRow);
 
         getChildren().addAll(headerVBox, scenarioCard);
         updateButtonStates();
@@ -721,10 +733,93 @@ public class SimulationControlPanel extends VBox {
         ).show();
     }
 
+    public void updateScenarioCreationProgress(double progressFraction, String statusMessage) {
+        javafx.application.Platform.runLater(() -> {
+            if (inlineProgressBar != null) {
+                inlineProgressBar.setProgress(Math.min(1.0, Math.max(0.0, progressFraction)));
+            }
+            if (inlineProgressLabel != null) {
+                inlineProgressLabel.setText(statusMessage);
+            }
+        });
+    }
+
     private void applyMetaPreset(String metaName) {
         if (metaName == null) return;
         speciesCardList.clear();
 
+        // 1. Try resolving exact or partial match from ScenarioPresetManager (Academic & Custom Scenarios)
+        org.swarmforge.core.scenario.Scenario scenario = scenarioPresetManager.get(metaName);
+        if (scenario == null) {
+            for (org.swarmforge.core.scenario.Scenario s : scenarioPresetManager.getAll().values()) {
+                if (s.getTitle().equalsIgnoreCase(metaName) || s.getId().equalsIgnoreCase(metaName) || metaName.contains(s.getTitle())) {
+                    scenario = s;
+                    break;
+                }
+            }
+        }
+
+        if (scenario != null) {
+            if (areaDescription != null) {
+                areaDescription.setText("🔬 SCÉNARIO ACADÉMIQUE / PROFIL : " + scenario.getTitle() + "\n\n" + scenario.getDescription());
+            }
+            if (txtSeed != null) {
+                txtSeed.setText(String.valueOf(scenario.getMasterSeed()));
+            }
+            if (maxTicksSpinner != null && scenario.getMaxSimulationTicks() > 0) {
+                maxTicksSpinner.getValueFactory().setValue((int) Math.min(Integer.MAX_VALUE, scenario.getMaxSimulationTicks()));
+            }
+            if (minPopStopSpinner != null && scenario.getMinPopulationStopThreshold() >= 0) {
+                minPopStopSpinner.getValueFactory().setValue(scenario.getMinPopulationStopThreshold());
+            }
+
+            // Load simulation step size dt if present
+            if (scenario.getSimulationStepSeconds() > 0) {
+                this.simulationStepSeconds = scenario.getSimulationStepSeconds();
+                if (Math.abs(simulationStepSeconds - 0.0166f) < 0.005f) {
+                    scenarioStepCombo.getSelectionModel().select(0);
+                } else if (Math.abs(simulationStepSeconds - 0.05f) < 0.01f) {
+                    scenarioStepCombo.getSelectionModel().select(1);
+                } else if (Math.abs(simulationStepSeconds - 0.1f) < 0.01f) {
+                    scenarioStepCombo.getSelectionModel().select(2);
+                } else if (Math.abs(simulationStepSeconds - 1.0f) < 0.1f) {
+                    scenarioStepCombo.getSelectionModel().select(3);
+                } else if (Math.abs(simulationStepSeconds - 5.0f) < 0.5f) {
+                    scenarioStepCombo.getSelectionModel().select(4);
+                }
+                updateStepDtLabel();
+            }
+
+            // Biome to world mapping
+            String biome = scenario.getBiomeName();
+            if (biome != null) {
+                switch (biome.toUpperCase()) {
+                    case "ARID_SAVANNA", "DESERT", "ARID" -> selectComboIfPresent(comboWorld, "Arid Savanna (Serengeti, TZ)");
+                    case "TROPICAL_RAINFOREST", "TROPICAL" -> selectComboIfPresent(comboWorld, "Tropical Rainforest (Manaus, BR)");
+                    case "ALPINE_TUNDRA", "POLAR", "TUNDRA" -> selectComboIfPresent(comboWorld, "Alpine Tundra (Valais, CH)");
+                    case "BOREAL_TAIGA", "TAIGA" -> selectComboIfPresent(comboWorld, "Boreal Taiga (Rovaniemi, FI)");
+                    default -> selectComboIfPresent(comboWorld, "Temperate Deciduous (Fontainebleau, FR)");
+                }
+            }
+            alignWeatherWithWorld();
+
+            // Populate species cards
+            if (!scenario.getColonies().isEmpty()) {
+                for (org.swarmforge.core.scenario.Scenario.ColonySetup setup : scenario.getColonies()) {
+                    addSpeciesCard(setup.speciesName());
+                    if (!speciesCardList.isEmpty()) {
+                        SpeciesConfigCard card = speciesCardList.get(speciesCardList.size() - 1);
+                        card.setQueenCount(setup.queenCount());
+                        card.setWorkerCount(setup.workerCount());
+                        card.setSoldierCount(setup.soldierCount());
+                        card.setInitialFood(setup.initialFoodStore());
+                    }
+                }
+            }
+            return;
+        }
+
+        // 2. Built-in Preset Fallbacks
         if (metaName.contains("Fondation Claustrale") || metaName.contains("Démarrage")) {
             selectComboIfPresent(comboWorld, "Temperate Deciduous (Fontainebleau, FR)");
             selectComboIfPresent(comboWeather, "Temperate");
@@ -797,8 +892,8 @@ public class SimulationControlPanel extends VBox {
 
     private Button createButton(String text, String tooltip) {
         Button btn = new Button(text);
-        btn.setStyle("-fx-font-size: 14px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc; " +
-                "-fx-background-radius: 5; -fx-min-width: 42px; -fx-min-height: 32px; -fx-padding: 4px 8px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 5;");
+        btn.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc; " +
+                "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 5;");
         if (tooltip != null && !tooltip.isEmpty()) btn.setTooltip(new Tooltip(tooltip));
         btn.disabledProperty().addListener((obs, oldV, newV) -> btn.setOpacity(newV ? 0.35 : 1.0));
         return btn;
@@ -812,27 +907,27 @@ public class SimulationControlPanel extends VBox {
 
     private void updateButtonStates() {
         if (isPlaying) {
-            btnPlay.setStyle("-fx-font-size: 11px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #16a34a; -fx-text-fill: white; " +
-                    "-fx-background-radius: 4; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #22c55e; -fx-border-width: 2px; -fx-border-radius: 4; -fx-font-weight: bold;");
-            btnPause.setStyle("-fx-font-size: 11px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc; " +
-                    "-fx-background-radius: 4; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 4;");
+            btnPlay.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #16a34a; -fx-text-fill: white; " +
+                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #22c55e; -fx-border-width: 2px; -fx-border-radius: 5; -fx-font-weight: bold;");
+            btnPause.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #94a3b8; " +
+                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 5;");
         } else if (isPaused) {
-            btnPlay.setStyle("-fx-font-size: 11px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #0284c7; -fx-text-fill: white; " +
-                    "-fx-background-radius: 4; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #38bdf8; -fx-border-radius: 4;");
-            btnPause.setStyle("-fx-font-size: 11px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #d97706; -fx-text-fill: white; " +
-                    "-fx-background-radius: 4; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #f59e0b; -fx-border-width: 2px; -fx-border-radius: 4; -fx-font-weight: bold;");
+            btnPlay.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #94a3b8; " +
+                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 5;");
+            btnPause.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #d97706; -fx-text-fill: white; " +
+                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #f59e0b; -fx-border-width: 2px; -fx-border-radius: 5; -fx-font-weight: bold;");
         } else {
-            btnPlay.setStyle("-fx-font-size: 11px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #0284c7; -fx-text-fill: white; " +
-                    "-fx-background-radius: 4; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #38bdf8; -fx-border-radius: 4;");
-            btnPause.setStyle("-fx-font-size: 11px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc; " +
-                    "-fx-background-radius: 4; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 4;");
+            btnPlay.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #0284c7; -fx-text-fill: white; " +
+                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #38bdf8; -fx-border-radius: 5;");
+            btnPause.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc; " +
+                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 5;");
         }
 
-        btnRewind.setDisable(isPlaying);
-        btnStepBack.setDisable(isPlaying);
+        btnRewind.setDisable(false);
+        btnStepBack.setDisable(false);
         btnStepForward.setDisable(isPlaying);
         btnFastForward.setDisable(isPlaying);
-        btnGoToBeginning.setDisable(isPlaying);
+        btnGoToBeginning.setDisable(false);
         btnGoToEnd.setDisable(isPlaying);
     }
 
@@ -844,14 +939,31 @@ public class SimulationControlPanel extends VBox {
 
         lblDateTime.setText("📅 Date & Heure : " + currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + String.format(" (Jour %d)", 1 + (totalSecondsElapsed / 86400)));
         if (lblTick != null) {
-            double rateTPS = 1.0 / simulationStepSeconds;
-            lblTick.setText(String.format("Tick actuel: %d (Cible: %d | Durée: %s | Cadence: %.0f ticks/sec TPS)", tick, maxTick, formatTime(totalSecondsElapsed), rateTPS));
+            lblTick.setText(String.format("%d / %d", tick, maxTick));
         }
         if (lblTime != null) lblTime.setText(formatTime(totalSecondsElapsed));
 
         if (timelineSlider != null && !timelineSlider.isValueChanging()) {
             timelineSlider.setMax(Math.max(maxTick, tick + 100));
             timelineSlider.setValue(tick);
+        }
+    }
+
+    private void updateStepDtLabel() {
+        if (lblStepDt != null) {
+            String labelText;
+            if (Math.abs(simulationStepSeconds - 0.0166f) < 0.005f) {
+                labelText = "⏱️ Δt physique: 16.6 ms (60 Hz - Mode Fin / Déterministe)";
+            } else if (Math.abs(simulationStepSeconds - 0.05f) < 0.01f) {
+                labelText = "⏱️ Δt physique: 50 ms (20 Hz - Standard)";
+            } else if (Math.abs(simulationStepSeconds - 0.1f) < 0.01f) {
+                labelText = "⏱️ Δt physique: 100 ms (10 Hz - Rapide)";
+            } else if (Math.abs(simulationStepSeconds - 1.0f) < 0.1f) {
+                labelText = "⏱️ Δt physique: 1.0 s (Macroscopique)";
+            } else {
+                labelText = String.format("⏱️ Δt physique: %.1f s (Ultra Macro)", simulationStepSeconds);
+            }
+            lblStepDt.setText(labelText);
         }
     }
 
@@ -862,7 +974,12 @@ public class SimulationControlPanel extends VBox {
     }
 
     public void setSpeed(float speed) {
-        speedSlider.setValue(speed);
+        this.currentSpeed = speed;
+        if (speedSlider != null) speedSlider.setValue(speed);
+    }
+
+    public float getSpeedMultiplier() {
+        return currentSpeed;
     }
 
     public void setOnPlay(Consumer<Void> callback) { this.onPlay = callback; }
@@ -955,6 +1072,14 @@ public class SimulationControlPanel extends VBox {
         }
     }
 
+    public long getMaxSimulationTicks() {
+        return maxTicksSpinner != null && maxTicksSpinner.getValue() != null ? maxTicksSpinner.getValue().longValue() : 100_000L;
+    }
+
+    public int getMinPopulationStopThreshold() {
+        return minPopStopSpinner != null && minPopStopSpinner.getValue() != null ? minPopStopSpinner.getValue() : 0;
+    }
+
     public VBox getPlaybackAndSpeedPanel() {
         return playbackAndSpeedPanel;
     }
@@ -1030,7 +1155,8 @@ public class SimulationControlPanel extends VBox {
 
     private VBox buildCheckpointsPane() {
         VBox box = new VBox(6);
-        box.setStyle("-fx-background-color: #18181b; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #d97706; -fx-border-width: 1;");
+        box.getStyleClass().add("card-pane");
+        box.setStyle("-fx-border-color: #d97706; -fx-border-width: 1;");
 
         Label lblTitle = new Label("🔖 Points de Contrôle & Journal d'Interventions Mode Divin");
         lblTitle.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 11px;");
@@ -1100,7 +1226,7 @@ public class SimulationControlPanel extends VBox {
         public SpeciesConfigCard(String speciesName, Runnable onRemove) {
             this.speciesName = speciesName;
 
-            cardPane.setStyle("-fx-background-color: #18181b; -fx-padding: 10; -fx-background-radius: 6; -fx-border-color: #0284c7; -fx-border-width: 1;");
+            cardPane.getStyleClass().add("card-pane");
 
             // Header
             HBox header = new HBox(8);
@@ -1202,7 +1328,7 @@ public class SimulationControlPanel extends VBox {
 
             // 2. Demographics & AI Engines Standard Block (Unified AI engine by default across castes)
             VBox demoBox = new VBox(6);
-            demoBox.setStyle("-fx-background-color: #121214; -fx-padding: 8; -fx-background-radius: 6; -fx-border-color: #334155; -fx-border-width: 1;");
+            demoBox.getStyleClass().add("card-pane");
 
             Label lblDemoTitle = new Label("🧠 Démographie & Castes (Reines, Ouvrières, Soldats & Moteur IA Unifié)");
             lblDemoTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
@@ -1335,19 +1461,34 @@ public class SimulationControlPanel extends VBox {
         private void applyDemographicsFromNest(String nestType) {
             if (nestType == null || queenSpinner == null || workerSpinner == null || soldierSpinner == null) return;
             String lower = nestType.toLowerCase();
-            if (lower.contains("young") || lower.contains("stem") || lower.contains("gall")) {
+            // Young / Small / Stem / Gall (EN, FR, ES, DE, ZH)
+            if (lower.contains("jeune") || lower.contains("young") || lower.contains("joven") || lower.contains("jung") || lower.contains("幼") ||
+                lower.contains("tige") || lower.contains("stem") || lower.contains("tallo") || lower.contains("stängel") || lower.contains("茎") ||
+                lower.contains("galle") || lower.contains("gall") || lower.contains("agalla") || lower.contains("瘿") || lower.contains("初")) {
                 queenSpinner.getValueFactory().setValue(1);
                 workerSpinner.getValueFactory().setValue(100);
                 soldierSpinner.getValueFactory().setValue(0);
-            } else if (lower.contains("mature") || lower.contains("carton") || lower.contains("bivouac") || lower.contains("pot")) {
+            } 
+            // Mature / Wood / Carton / Bivouac / Pots (EN, FR, ES, DE, ZH)
+            else if (lower.contains("mature") || lower.contains("maduro") || lower.contains("reif") || lower.contains("成熟") ||
+                     lower.contains("carton") || lower.contains("cartón") || lower.contains("karton") || lower.contains("纸") ||
+                     lower.contains("bivouac") || lower.contains("biwak") || lower.contains("露营") ||
+                     lower.contains("pot") || lower.contains("vaseta") || lower.contains("topf") || lower.contains("壶")) {
                 queenSpinner.getValueFactory().setValue(1);
                 workerSpinner.getValueFactory().setValue(5000);
                 soldierSpinner.getValueFactory().setValue(500);
-            } else if (lower.contains("supercolony") || lower.contains("vault") || lower.contains("megacity")) {
+            } 
+            // Supercolony / Fungus / Megacity / Vault (EN, FR, ES, DE, ZH)
+            else if (lower.contains("supercolonie") || lower.contains("supercolony") || lower.contains("supercolonia") || lower.contains("superkolonie") || lower.contains("超级") ||
+                     lower.contains("champignon") || lower.contains("fungus") || lower.contains("hongo") || lower.contains("pilz") || lower.contains("真菌") ||
+                     lower.contains("mégapole") || lower.contains("megacity") || lower.contains("megaciudad") || lower.contains("megastadt") || lower.contains("巨城") ||
+                     lower.contains("voûte") || lower.contains("vault") || lower.contains("bóveda") || lower.contains("gewölbe") || lower.contains("拱")) {
                 queenSpinner.getValueFactory().setValue(50);
                 workerSpinner.getValueFactory().setValue(500000);
                 soldierSpinner.getValueFactory().setValue(50000);
-            } else { // Surface Dome Mound, Trunk, Cathedral, Comb, etc.
+            } 
+            // Standard / Surface Dome Mound / Cathedral / Comb (EN, FR, ES, DE, ZH)
+            else {
                 queenSpinner.getValueFactory().setValue(5);
                 workerSpinner.getValueFactory().setValue(50000);
                 soldierSpinner.getValueFactory().setValue(5000);
@@ -1366,6 +1507,7 @@ public class SimulationControlPanel extends VBox {
         public ArchitectureType getSoldierEngine() { return soldierEngineCombo.getValue(); }
         public ArchitectureType getQueenEngine() { return queenEngineCombo.getValue(); }
         public int getInitialFood() { return initialFoodSpinner.getValue(); }
+        public void setInitialFood(int food) { initialFoodSpinner.getValueFactory().setValue(food); }
     }
 
     public record AccessorySpeciesInfo(String name, String role, String description, int defaultCount) {
@@ -1380,41 +1522,41 @@ public class SimulationControlPanel extends VBox {
      */
     public static List<String> getCompatibleNestTypes(String speciesName) {
         List<String> nests = new ArrayList<>();
-        if (speciesName == null) return List.of("Young Ant Burrow (Lasius niger)");
+        if (speciesName == null) return List.of("Jeune Nid Souterrain");
         String lower = speciesName.toLowerCase();
         if (lower.contains("atta") || lower.contains("coupeuse")) {
-            nests.add("Leafcutter Fungus Vault (Atta sexdens)");
+            nests.add("Jardins à Champignons Souterrains");
         } else if (lower.contains("apis") || lower.contains("abeille")) {
-            nests.add("Honeybee Wax Comb (Apis mellifera)");
+            nests.add("Rayons d'Abeille Hexagonaux");
         } else if (lower.contains("bombus") || lower.contains("bourdon")) {
-            nests.add("Bumblebee Pot Cluster (Bombus terrestris)");
+            nests.add("Pots de Cire & Propolis");
         } else if (lower.contains("vespula") || lower.contains("guêpe")) {
-            nests.add("Paper Wasp Nest (Vespula vulgaris)");
+            nests.add("Nid Suspendu en Papier");
         } else if (lower.contains("reticulitermes") || lower.contains("macrotermes") || lower.contains("termite")) {
-            nests.add("Termite Cathedral Mound (Macrotermes bellicosus)");
+            nests.add("Termitière Cathédrale");
         } else if (lower.contains("messor") || lower.contains("pogonomyrmex") || lower.contains("moissonneuse")) {
-            nests.add("Mature Ant Burrow (Messor barbarus)");
-            nests.add("Young Ant Burrow (Lasius niger)");
+            nests.add("Galeries Souterraines Matures");
+            nests.add("Jeune Nid Souterrain");
         } else if (lower.contains("crematogaster") || lower.contains("carton")) {
-            nests.add("Arboreal Carton Nest (Crematogaster scutellaris)");
+            nests.add("Nid Ligneux Cartonné");
         } else if (lower.contains("temnothorax") || lower.contains("galle")) {
-            nests.add("Stem & Gall Nest (Temnothorax unifasciatus)");
+            nests.add("Nid en Tige Creuse & Galle");
         } else if (lower.contains("camponotus") || lower.contains("charpentière")) {
-            nests.add("Trunk Cavity Nest (Camponotus herculeanus)");
+            nests.add("Nid en Cavité de Tronc");
         } else if (lower.contains("eciton") || lower.contains("légionnaire")) {
-            nests.add("Army Ant Bivouac (Eciton burchellii)");
+            nests.add("Bivouac Vivant");
         } else if (lower.contains("oecophylla") || lower.contains("tisserande")) {
-            nests.add("Weaver Ant Leaf Nest (Oecophylla smaragdina)");
+            nests.add("Nid de Soie Arboricole");
         } else if (lower.contains("formica") || lower.contains("rousse")) {
-            nests.add("Surface Dome Mound (Formica rufa)");
-            nests.add("Mature Ant Burrow (Formica fusca)");
+            nests.add("Dôme d'Aiguilles Solaire");
+            nests.add("Galeries Souterraines Matures");
         } else if (lower.contains("linepithema") || lower.contains("argentine")) {
-            nests.add("Complex Supercolony (Linepithema humile)");
+            nests.add("Supercolonie Complexe");
         } else {
-            // Default Lasius niger subterranean burrow suite
-            nests.add("Young Ant Burrow (Lasius niger)");
-            nests.add("Mature Ant Burrow (Lasius niger)");
-            nests.add("Complex Supercolony (Linepithema humile)");
+            // Default subterranean burrow suite
+            nests.add("Jeune Nid Souterrain");
+            nests.add("Galeries Souterraines Matures");
+            nests.add("Supercolonie Complexe");
         }
         Collections.sort(nests);
         return nests;
@@ -1479,5 +1621,23 @@ public class SimulationControlPanel extends VBox {
         if (comboWeather.getItems().contains(targetWeather)) {
             comboWeather.getSelectionModel().select(targetWeather);
         }
+    }
+
+    public boolean isPlaying() {
+        return isPlaying;
+    }
+
+    public void pauseSimulation() {
+        if (isPlaying) {
+            isPlaying = false;
+            isPaused = true;
+            isStopped = false;
+            updateButtonStates();
+            if (onPause != null) onPause.accept(null);
+        }
+    }
+
+    public float getSimulationStepSeconds() {
+        return simulationStepSeconds;
     }
 }

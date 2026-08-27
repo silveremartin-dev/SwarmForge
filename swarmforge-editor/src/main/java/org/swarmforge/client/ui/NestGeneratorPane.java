@@ -23,6 +23,7 @@ import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.NotificationOverlay;
+import org.swarmforge.client.util.ThemeManager;
 
 public class NestGeneratorPane extends BorderPane {
 
@@ -129,6 +130,10 @@ public class NestGeneratorPane extends BorderPane {
         }
         regen();
         repaint();
+        ThemeManager.getInstance().currentThemeProperty().addListener((obs, oldTheme, newTheme) -> {
+            updatePlacementViabilityScore();
+            repaint();
+        });
     }
 
     // ── Header ────────────────────────────────────────────────────────────────
@@ -615,7 +620,7 @@ public class NestGeneratorPane extends BorderPane {
 
         evalRecommendationsBox = new VBox(4);
         evalRecommendationsBox.setPadding(new Insets(6));
-        evalRecommendationsBox.setStyle("-fx-background-color: #18181b; -fx-background-radius: 6;");
+        evalRecommendationsBox.getStyleClass().add("card-pane");
 
         VBox block = new VBox(6,
             evalTitle, new Separator(),
@@ -702,6 +707,29 @@ public class NestGeneratorPane extends BorderPane {
         // 5. Compaction
         if (compaction < 30.0) { score -= 15.0; addEvalRec("⚠️ Substrat meuble instable (<30 kPa) : Risque d'effondrement."); }
 
+        // 6. Colony Population vs Nest Capacity Validation & Spillover Diagnostics
+        int totalChambers = (int) getChamberCount();
+        int estNestCap = Math.max(40, totalChambers * 25);
+        int estPop = activeCustomSpecies != null ? activeCustomSpecies.getTypicalColonySize() : 300;
+        int queenChambers = getSp("👑 Queen Chamber");
+        int foodChambers = getSp("🍖 Food Storage");
+
+        if (estPop > estNestCap) {
+            score -= 15.0;
+            addEvalRec(String.format("⚠️ Capacité du Nid (~%d ind.) < Population (%d ind.). Les %d individus en surnombre émergeront en surface autour du cratère.", estNestCap, estPop, estPop - estNestCap));
+        } else {
+            addEvalRec(String.format("✅ Capacité du nid (~%d ind.) suffisante pour la population initiale (%d ind.).", estNestCap, estPop));
+        }
+
+        if (queenChambers == 0) {
+            score -= 20.0;
+            addEvalRec("🚨 Loge Royale manquante (0) : La reine et la ponte n'auront pas de chambre dédiée.");
+        }
+        if (foodChambers == 0) {
+            score -= 10.0;
+            addEvalRec("⚠️ Absence de Greniers de Stockage : Risque de disette ou d'encombrement du couvain.");
+        }
+
         score = Math.max(0.0, Math.min(100.0, score));
         evalScoreProgressBar.setProgress(score / 100.0);
         evalScoreLabel.setText(String.format("%.0f%%", score));
@@ -726,7 +754,9 @@ public class NestGeneratorPane extends BorderPane {
 
     private void addEvalRec(String msg) {
         Label l = new Label(msg);
-        l.setStyle("-fx-font-size: 10px; -fx-text-fill: #e4e4e7; -fx-wrap-text: true;");
+        boolean isDark = ThemeManager.getInstance().getCurrentTheme() == ThemeManager.Theme.DARK;
+        String textFill = isDark ? "#e4e4e7" : "#0f172a";
+        l.setStyle("-fx-font-size: 10px; -fx-text-fill: " + textFill + "; -fx-wrap-text: true;");
         evalRecommendationsBox.getChildren().add(l);
     }
 
@@ -902,14 +932,17 @@ public class NestGeneratorPane extends BorderPane {
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.setStyle("-fx-border-color:#3f3f46;-fx-border-width:1 0 0 0;");
 
-        syncViewsCheckBox = new CheckBox("🔗 Synchroniser les vues (Zoom & Panning)");
+        syncViewsCheckBox = new CheckBox();
+        syncViewsCheckBox.textProperty().bind(i18n.createStringBinding("nest.chk.sync_views"));
         syncViewsCheckBox.setSelected(true);
         syncViewsCheckBox.setStyle("-fx-text-fill:#00d4ff;-fx-font-weight:bold;-fx-font-size:11;");
 
-        showGhostMeshCheckBox = new CheckBox("👻 Vue fantôme 3D");
+        showGhostMeshCheckBox = new CheckBox();
+        showGhostMeshCheckBox.textProperty().bind(i18n.createStringBinding("nest.chk.ghost_mesh"));
         showGhostMeshCheckBox.setSelected(true);
         showGhostMeshCheckBox.setStyle("-fx-text-fill:#38bdf8;-fx-font-weight:bold;-fx-font-size:11;");
-        showGhostMeshCheckBox.setTooltip(new Tooltip("Activer ou désactiver l'affichage de la vue fantôme 3D des structures de nid."));
+        showGhostMeshCheckBox.setTooltip(new Tooltip());
+        showGhostMeshCheckBox.getTooltip().textProperty().bind(i18n.createStringBinding("nest.chk.ghost_mesh.tt"));
         showGhostMeshCheckBox.setOnAction(e -> repaint());
 
         Label title = new Label();

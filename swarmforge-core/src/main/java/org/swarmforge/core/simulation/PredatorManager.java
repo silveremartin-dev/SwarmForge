@@ -78,6 +78,20 @@ public class PredatorManager {
             }
 
             updatePredatorAI(predator);
+
+            // Enforce terrarium boundary clamping to prevent predator escape or out-of-bounds positioning
+            if (simulation != null && simulation.getTerrarium() != null) {
+                var terrarium = simulation.getTerrarium();
+                float maxX = terrarium.getWidth() - 1.0f;
+                float maxY = terrarium.getHeight() - 1.0f;
+                float maxZ = terrarium.getDepth() - 1.0f;
+                float cx = Math.max(0.0f, Math.min(maxX, predator.getX()));
+                float cy = Math.max(0.0f, Math.min(maxY, predator.getY()));
+                float cz = Math.max(0.0f, Math.min(maxZ, predator.getZ()));
+                if (cx != predator.getX() || cy != predator.getY() || cz != predator.getZ()) {
+                    predator.setPosition(cx, cy, cz);
+                }
+            }
         }
 
         // Remove dead predators

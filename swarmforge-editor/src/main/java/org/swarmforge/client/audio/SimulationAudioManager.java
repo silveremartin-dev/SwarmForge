@@ -43,6 +43,11 @@ public class SimulationAudioManager {
 
     private String currentBiome = "Forest";
     private String currentWeather = "Clear";
+    private String currentSeason = "SUMMER";
+    private boolean hasRiver = false;
+    private int populationCount = 100;
+    private double windSpeedMps = 5.0;
+    private double rainRateMmHr = 0.0;
     private double cameraDepth = 0.0; // 0.0 = surface, >0.5 = subterranean
     boolean simRunning = false;
 
@@ -96,95 +101,111 @@ public class SimulationAudioManager {
                     }
 
                     int samples = buffer.length / 2;
+                    String weatherUpper = currentWeather != null ? currentWeather.toUpperCase() : "CLEAR";
+                    String seasonUpper = currentSeason != null ? currentSeason.toUpperCase() : "SUMMER";
+                    boolean isWinter = seasonUpper.contains("WINTER") || seasonUpper.contains("HIVER") || seasonUpper.contains("INVIERNO") || seasonUpper.contains("冬");
+
                     for (int i = 0; i < samples; i++) {
                         tick++;
                         double sampleVal = 0.0;
 
-                        // 1. Biome Ambiance (Soft Wind breeze, leaf rustle in trees & harmonic bird calls)
+                        // 1. Biome Ambiance (Breeze, foliage rustle & bird chirps)
                         if (ambientEnabled) {
-                            double rawWind = (rand.nextDouble() - 0.5) * 0.10;
-                            windFilter = 0.96 * windFilter + 0.04 * rawWind; // Deep low-pass wind
-                            double windMod = (Math.sin(tick * 0.0003) * 0.5 + 0.5) * windFilter * 2.5;
+                            double rawWind = (rand.nextDouble() - 0.5) * 0.08;
+                            windFilter = 0.96 * windFilter + 0.04 * rawWind;
+                            double baseWindFactor = Math.max(0.3, windSpeedMps / 10.0);
+                            double windMod = (Math.sin(tick * 0.0003) * 0.5 + 0.5) * windFilter * 2.0 * baseWindFactor;
 
-                            // Leaf rustle audio when trees/flora are present
+                            // Leaf rustle audio when trees/foliage are present
                             double leafRustle = 0.0;
-                            if (hasTrees) {
-                                double rawLeaf = (rand.nextDouble() - 0.5) * 0.04;
+                            if (hasTrees && !isWinter) {
+                                double rawLeaf = (rand.nextDouble() - 0.5) * 0.035;
                                 leafRustle = Math.sin(tick * 0.02) * rawLeaf * (Math.sin(tick * 0.0008) * 0.5 + 0.5);
                             }
 
+                            // Bird chirps (Muted in winter)
                             double chirp = 0.0;
-                            int cycle = tick % 12000;
-                            if (cycle < 400) {
-                                double env = Math.sin(cycle / 400.0 * Math.PI); // Smooth envelope
-                                double chirpFreq = 2200.0 + Math.sin(cycle * 0.08) * 600.0;
-                                chirp = Math.sin(chirpFreq * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.12 * env;
+                            if (!isWinter) {
+                                int cycle = tick % 14000;
+                                if (cycle < 400) {
+                                    double env = Math.sin(cycle / 400.0 * Math.PI);
+                                    double chirpFreq = 2200.0 + Math.sin(cycle * 0.08) * 600.0;
+                                    chirp = Math.sin(chirpFreq * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.08 * env;
+                                }
                             }
                             sampleVal += (windMod + leafRustle + chirp);
                         }
 
-                        // 1b. Procedural River Water Stream & Flow Gurgling Audio
-                        if (riverEnabled) {
+                        // 1b. Procedural River Water Stream & Flow Audio (STRICTLY conditioned on hasRiver presence)
+                        if (riverEnabled && hasRiver) {
                             double rawWater = (rand.nextDouble() - 0.5) * 0.12;
                             riverFilter = 0.88 * riverFilter + 0.12 * rawWater; // Low-pass water flow
-                            double flowMod = Math.sin(tick * 0.004) * 0.4 + 0.6;
+                            double flowMod = Math.sin(tick * 0.004) * 0.35 + 0.65;
 
-                            if (rand.nextDouble() < 0.003) {
+                            if (rand.nextDouble() < 0.004) {
                                 bubbleEnv = 1.0;
                             }
                             double gurgle = 0.0;
                             if (bubbleEnv > 0.001) {
-                                gurgle = Math.sin(780.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * bubbleEnv * 0.035;
+                                gurgle = Math.sin(780.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * bubbleEnv * 0.03;
                                 bubbleEnv *= 0.96;
                             }
-                            sampleVal += (riverFilter * 0.65 + gurgle) * flowMod;
+                            sampleVal += (riverFilter * 0.50 + gurgle) * flowMod;
                         }
 
-                        // 2. Weather Effects (Rain patter, Hail taps, Wildfire crackle & deep thunder rumble)
+                        // 2. Weather Effects (Rain patter, Wind storm, Hail, Fire & Thunder across 5 languages)
                         if (weatherEnabled) {
-                            if (currentWeather != null && (currentWeather.contains("Rain") || currentWeather.contains("Pluie") || currentWeather.contains("Orage") || currentWeather.contains("Snow") || currentWeather.contains("Neige"))) {
-                                double rawRain = (rand.nextDouble() - 0.5) * 0.25;
-                                rainFilter = 0.82 * rainFilter + 0.18 * rawRain; // Soft pink noise rain
-                                sampleVal += rainFilter * 0.8;
+                            boolean isRain = isRainType(weatherUpper) || rainRateMmHr > 0.1;
+                            boolean isStorm = isStormType(weatherUpper) || windSpeedMps > 18.0;
+                            boolean isThunder = weatherUpper.contains("THUNDER") || weatherUpper.contains("ORAGE") || weatherUpper.contains("TORMENTA") || weatherUpper.contains("GEWITTER") || weatherUpper.contains("雷");
+                            boolean isFire = weatherUpper.contains("FIRE") || weatherUpper.contains("INCENDIE") || weatherUpper.contains("INCENDIO") || weatherUpper.contains("FEUER") || weatherUpper.contains("火");
+
+                            if (isRain) {
+                                double intensity = Math.max(0.3, Math.min(2.0, rainRateMmHr / 5.0 + 0.5));
+                                double rawRain = (rand.nextDouble() - 0.5) * 0.22 * intensity;
+                                rainFilter = 0.82 * rainFilter + 0.18 * rawRain;
+                                sampleVal += rainFilter * 0.7;
                             }
-                            if (currentWeather != null && (currentWeather.contains("Hail") || currentWeather.contains("Grêle"))) {
-                                if (rand.nextDouble() < 0.015) {
-                                    sampleVal += (rand.nextDouble() - 0.5) * 0.28; // Hail impact clicks
-                                }
+
+                            if (isStorm) {
+                                double stormWind = (rand.nextDouble() - 0.5) * 0.20;
+                                windFilter = 0.92 * windFilter + 0.08 * stormWind;
+                                sampleVal += windFilter * 0.8;
                             }
-                            if (currentWeather != null && (currentWeather.contains("Fire") || currentWeather.contains("Incendie"))) {
+
+                            if (isFire) {
                                 double fireRoar = (rand.nextDouble() - 0.5) * 0.15;
                                 fireFilter = 0.90 * fireFilter + 0.10 * fireRoar;
-                                double crackle = rand.nextDouble() < 0.01 ? (rand.nextDouble() - 0.5) * 0.3 : 0.0;
-                                sampleVal += (fireFilter * 0.5 + crackle);
+                                double crackle = rand.nextDouble() < 0.012 ? (rand.nextDouble() - 0.5) * 0.28 : 0.0;
+                                sampleVal += (fireFilter * 0.45 + crackle);
                             }
-                            if (currentWeather != null && (currentWeather.contains("Thunder") || currentWeather.contains("Orage"))) {
-                                int tCycle = tick % 18000;
-                                if (tCycle < 900) { // Deep thunder rumble
-                                    double tEnv = Math.sin(tCycle / 900.0 * Math.PI);
-                                    double rumble = Math.sin(40.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * tEnv * 0.40;
+
+                            if (isThunder) {
+                                int tCycle = tick % 16000;
+                                if (tCycle < 800) {
+                                    double tEnv = Math.sin(tCycle / 800.0 * Math.PI);
+                                    double rumble = Math.sin(42.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * tEnv * 0.35;
                                     sampleVal += rumble;
                                 }
                             }
                         }
 
-                        // 3. Insect & Subterranean Digging Activity (Only audible when zoomed closely onto nest)
-                        if (insectEnabled) {
-                            // Spatial attenuation: digging sounds ONLY audible when camera zoom > 12.0
-                            double zoomFactor = Math.max(0.0, Math.min(1.0, (cameraZoom - 12.0) / 10.0));
-                            if (zoomFactor > 0.0) {
-                                if (rand.nextDouble() < 0.002) {
-                                    clickEnv = 1.0; // Trigger quiet soil scraping pulse
-                                }
-                                if (clickEnv > 0.001) {
-                                    // Muffled low-frequency dirt digging resonance (350 Hz)
-                                    double diggingTone = Math.sin(350.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * clickEnv * 0.05 * zoomFactor;
-                                    sampleVal += diggingTone;
-                                    clickEnv *= 0.970; // Damped decay
-                                }
-                                double earthHum = Math.sin(65.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * 0.02 * zoomFactor;
-                                sampleVal += earthHum;
+                        // 3. Insect Colony Activity (mandible clicking & chitin rustle scaled by active population & zoom)
+                        if (insectEnabled && populationCount > 0) {
+                            double popScale = Math.min(2.5, Math.log10(Math.max(10, populationCount)) * 0.7);
+                            double zoomFactor = Math.max(0.2, Math.min(1.5, cameraZoom / 7.5));
+                            double insectVol = 0.015 * popScale * zoomFactor;
+
+                            if (rand.nextDouble() < (0.002 * popScale)) {
+                                clickEnv = 1.0;
                             }
+                            if (clickEnv > 0.001) {
+                                double diggingTone = Math.sin(380.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * clickEnv * insectVol;
+                                sampleVal += diggingTone;
+                                clickEnv *= 0.965;
+                            }
+                            double earthHum = Math.sin(70.0 * (tick / (double) SAMPLE_RATE) * 2.0 * Math.PI) * (insectVol * 0.4);
+                            sampleVal += earthHum;
                         }
 
                         // Master Volume & Soft Limiting
@@ -247,24 +268,23 @@ public class SimulationAudioManager {
         return masterVolume;
     }
 
-    private boolean hasTrees = true;
-    private double cameraZoom = 7.5;
-
-    public void setHasTrees(boolean hasTrees) {
-        this.hasTrees = hasTrees;
+    private boolean isRainType(String w) {
+        if (w == null) return false;
+        return w.contains("RAIN") || w.contains("PLUIE") || w.contains("LLUVIA") || w.contains("REGEN") || w.contains("雨") ||
+               w.contains("STORM") || w.contains("ORAGE") || w.contains("AVERSE") || w.contains("SCHAUER");
     }
 
-    public void setCameraZoom(double zoom) {
-        this.cameraZoom = zoom;
+    private boolean isStormType(String w) {
+        if (w == null) return false;
+        return w.contains("WIND") || w.contains("VENT") || w.contains("VIENTO") || w.contains("WINDIG") || w.contains("风") ||
+               w.contains("TEMPÊTE") || w.contains("TORMENTA") || w.contains("UNWETTER") || w.contains("暴风");
     }
 
-    private String currentSeason = "Summer";
-    private double windSpeedMps = 15.0;
-    private double rainRateMmHr = 0.0;
-
-    public void setSeason(String season) {
-        if (season != null) this.currentSeason = season;
-    }
+    public void setHasRiver(boolean hasRiver) { this.hasRiver = hasRiver; }
+    public void setPopulationCount(int populationCount) { this.populationCount = populationCount; }
+    public void setHasTrees(boolean hasTrees) { this.hasTrees = hasTrees; }
+    public void setCameraZoom(double zoom) { this.cameraZoom = zoom; }
+    public void setSeason(String season) { if (season != null) this.currentSeason = season; }
 
     public void setWindAndPrecipitation(double windSpeed, double rainRate) {
         this.windSpeedMps = windSpeed;
@@ -278,12 +298,14 @@ public class SimulationAudioManager {
         this.cameraZoom = cameraDepth;
     }
 
-    public void updateState(String biome, String weather, String season, double cameraDepth, boolean isSimRunning) {
+    public void updateState(String biome, String weather, String season, boolean hasRiver, int populationCount, double cameraZoom, boolean isSimRunning) {
         if (biome != null) this.currentBiome = biome;
         if (weather != null) this.currentWeather = weather;
         if (season != null) this.currentSeason = season;
+        this.hasRiver = hasRiver;
+        this.populationCount = populationCount;
+        this.cameraZoom = cameraZoom;
         this.simRunning = isSimRunning;
-        this.cameraZoom = cameraDepth;
     }
 
     public void stop() {

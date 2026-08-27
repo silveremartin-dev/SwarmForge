@@ -62,6 +62,7 @@ public class SimulationManagerView extends VBox {
             // Logic to create simulation entry in DB
             System.out.println("Creating simulation: " + worldCombo.getValue() + " with " + speciesCombo.getValue());
             Alert alert = new Alert(Alert.AlertType.INFORMATION, "Simulation Created! ID: " + UUID.randomUUID());
+            alert.getDialogPane().setStyle("-fx-background-color: #1e1e2e; -fx-text-fill: white;");
             alert.show();
         });
 

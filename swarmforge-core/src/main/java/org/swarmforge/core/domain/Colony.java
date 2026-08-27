@@ -101,8 +101,13 @@ public class Colony implements java.io.Serializable {
     public List<Individual> createQueens(int count) {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
+        var qChamber = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.QUEEN_CHAMBER, nestX, nestY, nestZ) : null;
+        float baseSx = qChamber != null ? qChamber.x() : nestX;
+        float baseSy = qChamber != null ? qChamber.y() : nestY;
+        float baseSz = qChamber != null ? qChamber.z() : nestZ;
+
         for (int i = 0; i < count; i++) {
-            Individual ind = new Individual(this.id, Individual.Caste.QUEEN, nestX, nestY, nestZ);
+            Individual ind = new Individual(this.id, Individual.Caste.QUEEN, baseSx, baseSy, baseSz);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
             batch.add(ind);
@@ -111,12 +116,51 @@ public class Colony implements java.io.Serializable {
         return batch;
     }
 
+    public int calculateSubterraneanCapacity() {
+        if (nest != null && nest.getChambers() != null && !nest.getChambers().isEmpty()) {
+            int cap = 0;
+            for (var chamber : nest.getChambers()) {
+                cap += Math.max(15, (int) chamber.getCapacity());
+            }
+            return Math.max(40, cap);
+        }
+        if (tunnelNetwork != null && tunnelNetwork.getChambers() != null) {
+            return Math.max(40, tunnelNetwork.getChambers().size() * 25);
+        }
+        return 150;
+    }
+
     public List<Individual> createWorkers(int count) {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
+        var brood = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ) : null;
+        var food = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.FOOD_STORAGE, nestX, nestY, nestZ) : null;
+        var ent = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) : null;
+
+        int subterraneanCap = calculateSubterraneanCapacity();
+
         for (int i = 0; i < count; i++) {
-            Individual ind = new Individual(this.id, Individual.Caste.WORKER, nestX, nestY, nestZ);
+            float sx, sy, sz;
+            Individual.Job job = Individual.Job.NURSE;
+
+            if (i < subterraneanCap) {
+                var targetNode = (i % 3 == 0 && brood != null) ? brood : ((i % 3 == 1 && food != null) ? food : ent);
+                sx = targetNode != null ? targetNode.x() : nestX;
+                sy = targetNode != null ? targetNode.y() : nestY;
+                sz = targetNode != null ? targetNode.z() : nestZ;
+            } else {
+                // Surface Spillover for excess population exceeding nest volume
+                double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double dist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(2.0, 10.0);
+                sx = (float) (nestX + Math.cos(angle) * dist);
+                sy = (float) (nestY + Math.sin(angle) * dist);
+                sz = 0f; // Surface Z
+                job = Individual.Job.FORAGER; // Excess population assigned to surface foraging
+            }
+
+            Individual ind = new Individual(this.id, Individual.Caste.WORKER, sx, sy, sz);
             ind.setSpecies(this.species);
+            ind.setJob(job);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
             batch.add(ind);
         }
@@ -127,8 +171,26 @@ public class Colony implements java.io.Serializable {
     public List<Individual> createSoldiers(int count) {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
+        var ent = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) : null;
+        int subterraneanCap = calculateSubterraneanCapacity();
+
         for (int i = 0; i < count; i++) {
-            Individual ind = new Individual(this.id, Individual.Caste.SOLDIER, nestX, nestY, nestZ);
+            float sx, sy, sz;
+            if (i < subterraneanCap / 4) {
+                float baseSx = ent != null ? ent.x() : nestX;
+                float baseSy = ent != null ? ent.y() : nestY;
+                float baseSz = ent != null ? ent.z() : nestZ;
+                sx = baseSx; sy = baseSy; sz = baseSz;
+            } else {
+                // Surface spillover around entrance for excess soldiers
+                double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double dist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(1.5, 6.0);
+                sx = (float) (nestX + Math.cos(angle) * dist);
+                sy = (float) (nestY + Math.sin(angle) * dist);
+                sz = 0f;
+            }
+
+            Individual ind = new Individual(this.id, Individual.Caste.SOLDIER, sx, sy, sz);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
             batch.add(ind);
@@ -140,8 +202,13 @@ public class Colony implements java.io.Serializable {
     public List<Individual> createMales(int count) {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
+        var ent = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) : null;
+        float baseSx = ent != null ? ent.x() : nestX;
+        float baseSy = ent != null ? ent.y() : nestY;
+        float baseSz = ent != null ? ent.z() : nestZ;
+
         for (int i = 0; i < count; i++) {
-            Individual ind = new Individual(this.id, Individual.Caste.MALE, nestX, nestY, nestZ);
+            Individual ind = new Individual(this.id, Individual.Caste.MALE, baseSx, baseSy, baseSz);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
             batch.add(ind);
@@ -244,10 +311,8 @@ public class Colony implements java.io.Serializable {
         return list.isEmpty() ? null : list.get(0);
     }
 
-    /**
-     * Add an individual to this colony.
-     */
     public void addIndividual(Individual individual) {
+        if (individual == null || individuals.contains(individual)) return;
         individuals.add(individual);
         totalBorn++;
         for (ColonyListener l : listeners) {
@@ -260,26 +325,32 @@ public class Colony implements java.io.Serializable {
      */
     public void addIndividualsBulk(java.util.Collection<Individual> batch) {
         if (batch == null || batch.isEmpty()) return;
-        individuals.addAll(batch);
-        totalBorn += batch.size();
+        List<Individual> toAdd = batch.stream().filter(ind -> ind != null && !individuals.contains(ind)).toList();
+        if (toAdd.isEmpty()) return;
+        individuals.addAll(toAdd);
+        totalBorn += toAdd.size();
     }
 
     /**
      * Remove dead individuals from the colony.
      */
     public int removeDeadIndividuals() {
-        int removed = 0;
+        java.util.List<Individual> dead = new java.util.ArrayList<>();
         for (Individual ind : individuals) {
             if (!ind.isAlive()) {
-                individuals.remove(ind);
-                totalDied++;
-                removed++;
-                for (ColonyListener l : listeners) {
-                    l.onDeath(this, ind);
-                }
+                dead.add(ind);
             }
         }
-        return removed;
+        if (dead.isEmpty()) return 0;
+
+        individuals.removeAll(dead);
+        totalDied += dead.size();
+        for (Individual ind : dead) {
+            for (ColonyListener l : listeners) {
+                l.onDeath(this, ind);
+            }
+        }
+        return dead.size();
     }
 
     /**

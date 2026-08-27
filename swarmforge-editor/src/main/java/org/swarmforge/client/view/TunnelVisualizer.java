@@ -92,7 +92,7 @@ public class TunnelVisualizer {
 
         Sphere shape = new Sphere(8, 8, radius);
         Geometry geom = new Geometry("Node_" + node.id(), shape);
-        geom.setLocalTranslation(node.x(), node.y(), node.z());
+        geom.setLocalTranslation(node.x(), node.z(), node.y());
 
         Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         mat.setColor("Color", getNodeColor(node.type()));
@@ -102,8 +102,8 @@ public class TunnelVisualizer {
     }
 
     private Geometry createEdgeGeometry(TunnelNode n1, TunnelNode n2, String name) {
-        Vector3f p1 = new Vector3f(n1.x(), n1.y(), n1.z());
-        Vector3f p2 = new Vector3f(n2.x(), n2.y(), n2.z());
+        Vector3f p1 = new Vector3f(n1.x(), n1.z(), n1.y());
+        Vector3f p2 = new Vector3f(n2.x(), n2.z(), n2.y());
         Vector3f diff = p2.subtract(p1);
         float len = diff.length();
 

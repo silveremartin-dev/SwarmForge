@@ -477,3 +477,77 @@
     -fx-border-color: #38bdf8;
 }
 
+/* Custom Sub-Card & Panel Utility Classes for Theme Parity */
+.sub-card {
+    -fx-background-color: #18181b;
+    -fx-border-color: #27272a;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 12px;
+}
+
+.accent-title {
+    -fx-font-weight: bold;
+    -fx-text-fill: #38bdf8;
+    -fx-font-size: 13px;
+}
+
+.sub-title {
+    -fx-font-weight: bold;
+    -fx-text-fill: #f59e0b;
+    -fx-font-size: 13px;
+}
+
+.queue-box {
+    -fx-background-color: rgba(2, 132, 199, 0.12);
+    -fx-border-color: #0284c7;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 12px;
+}
+
+.log-text-area {
+    -fx-control-inner-background: #18181b;
+    -fx-text-fill: #e4e4e7;
+    -fx-font-family: monospace;
+}
+
+.notice-warn {
+    -fx-text-fill: #f87171;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+    -fx-background-color: rgba(239, 68, 68, 0.15);
+    -fx-padding: 6 10;
+    -fx-background-radius: 4;
+}
+
+.notice-info {
+    -fx-text-fill: #38bdf8;
+    -fx-font-size: 10px;
+    -fx-background-color: rgba(56, 189, 248, 0.1);
+    -fx-padding: 6 10;
+    -fx-background-radius: 4;
+    -fx-border-color: rgba(56, 189, 248, 0.3);
+    -fx-border-width: 1;
+}
+
+.header-banner {
+    -fx-background-color: rgba(255, 255, 255, 0.03);
+    -fx-padding: 8 12;
+    -fx-background-radius: 6;
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-border-radius: 6;
+}
+
+.viewport-inactive-overlay {
+    -fx-background-color: rgba(15, 23, 42, 0.85);
+    -fx-padding: 8 16;
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(56, 189, 248, 0.4);
+    -fx-border-width: 1;
+    -fx-border-radius: 20;
+}
+
+
