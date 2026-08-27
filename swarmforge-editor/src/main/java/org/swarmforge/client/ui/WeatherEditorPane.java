@@ -7,6 +7,7 @@
 package org.swarmforge.client.ui;
 
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -113,7 +114,7 @@ public class WeatherEditorPane extends BorderPane {
 
     // Active Curve View
     private ParameterType activeParam = ParameterType.TEMPERATURE;
-    private Canvas curveCanvas;
+    private ResizableCanvas curveCanvas;
     private GraphicsContext gc;
     private ToggleGroup paramToggleGroup;
 
@@ -336,6 +337,7 @@ public class WeatherEditorPane extends BorderPane {
     private void refreshPresetsCombo() {
         String cur = presetsCombo.getValue();
         presetsCombo.getItems().setAll(presetMgr.names());
+        FXCollections.sort(presetsCombo.getItems());
         if (cur != null && presetsCombo.getItems().contains(cur)) {
             presetsCombo.setValue(cur);
         }
@@ -793,7 +795,7 @@ public class WeatherEditorPane extends BorderPane {
         });
 
         // Canvas setup
-        curveCanvas = new Canvas(760, 260);
+        curveCanvas = new ResizableCanvas(760, 260);
         gc = curveCanvas.getGraphicsContext2D();
 
         setupCanvasInteractions();

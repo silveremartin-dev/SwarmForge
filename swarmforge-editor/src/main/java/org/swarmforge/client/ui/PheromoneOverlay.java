@@ -30,7 +30,7 @@ import org.swarmforge.core.simulation.HeatmapEngine;
  */
 public class PheromoneOverlay extends VBox {
 
-    private final Canvas canvas;
+    private final ResizableCanvas canvas;
     private final GraphicsContext gc;
 
     // Pheromone & Heatmap colors
@@ -69,7 +69,7 @@ public class PheromoneOverlay extends VBox {
         setPadding(new Insets(0));
 
         // Canvas
-        canvas = new Canvas(Math.max(10, width), Math.max(10, height));
+        canvas = new ResizableCanvas(Math.max(10, width), Math.max(10, height));
         gc = canvas.getGraphicsContext2D();
 
         // Control Panel VBox (for placement in right panel)
@@ -144,9 +144,46 @@ public class PheromoneOverlay extends VBox {
             redraw();
         });
 
+        Label lblRenderMode = new Label("🎨 Mode de Rendu :");
+        lblRenderMode.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px; -fx-font-weight: bold;");
+
+        ComboBox<String> renderModeCombo = new ComboBox<>();
+        renderModeCombo.getItems().addAll(
+                "🌊 Carte de Densité (Heatmap Continu)",
+                "✨ Système Voxel (Points & Lueur)",
+                "🛰️ Hybride SIG (Surface + Cœur Voxel)"
+        );
+        renderModeCombo.getSelectionModel().select(2);
+        renderModeCombo.setMaxWidth(Double.MAX_VALUE);
+        renderModeCombo.setStyle("-fx-font-size: 10px;");
+
+        // Multi-Channel GIS Layer Toggles
+        Label lblChannels = new Label("📡 Couches de Phéromones (Canaux) :");
+        lblChannels.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 10px; -fx-font-weight: bold;");
+
+        CheckBox chkFood = new CheckBox("🟣 Piste Alimentaire (Violet)");
+        chkFood.setSelected(true); chkFood.setStyle("-fx-text-fill: #c084fc; -fx-font-size: 10px;");
+
+        CheckBox chkHome = new CheckBox("🔵 Nid / Exploration (Bleu)");
+        chkHome.setSelected(true); chkHome.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 10px;");
+
+        CheckBox chkAlarm = new CheckBox("🔴 Alarme / Danger (Rouge)");
+        chkAlarm.setSelected(true); chkAlarm.setStyle("-fx-text-fill: #f87171; -fx-font-size: 10px;");
+
+        CheckBox chkRecruit = new CheckBox("🟠 Recrutement (Ambre)");
+        chkRecruit.setSelected(true); chkRecruit.setStyle("-fx-text-fill: #fbbf24; -fx-font-size: 10px;");
+
+        CheckBox chkQueen = new CheckBox("💖 Royale & Couvain (Rose)");
+        chkQueen.setSelected(true); chkQueen.setStyle("-fx-text-fill: #f472b6; -fx-font-size: 10px;");
+
+        VBox layersBox = new VBox(3, chkFood, chkHome, chkAlarm, chkRecruit, chkQueen);
+        layersBox.setStyle("-fx-padding: 4; -fx-background-color: rgba(15,23,42,0.6); -fx-background-radius: 4;");
+
         box.getChildren().addAll(
                 lblHeader,
                 lblType, typeCombo,
+                lblRenderMode, renderModeCombo,
+                lblChannels, layersBox,
                 opacityBox,
                 thresholdBox,
                 gridCheck);

@@ -49,7 +49,6 @@ public class AccessorySpeciesEditorPane extends VBox {
     private Tab tabTaxonomy;
     private Tab tabSeasonal;
     private Tab tabPredators;
-    private Tab tabHelp;
 
     // UI Controls - Taxonomy & Thermal
     private TextField accessoryNameField;
@@ -88,11 +87,6 @@ public class AccessorySpeciesEditorPane extends VBox {
     private TextField transmissionR0Field;
     private TextField incubationDaysField;
     private TextField mortalityRateField;
-
-    // Integrated Documentation Help
-    private TextField helpSearchField;
-    private VBox helpEntriesBox;
-    private final List<HBox> helpEntriesList = new ArrayList<>();
 
     private boolean isDirty = false;
     private boolean isUpdatingFields = false;
@@ -140,9 +134,8 @@ public class AccessorySpeciesEditorPane extends VBox {
         tabTaxonomy = new Tab(i18n.get("accessory.tab.taxonomy"), new ScrollPane(createTaxonomyCard()));
         tabSeasonal = new Tab(i18n.get("accessory.tab.seasonal"), new ScrollPane(createSeasonalCard()));
         tabPredators = new Tab(i18n.get("accessory.tab.predators"), new ScrollPane(createPredatorPathogenCard()));
-        tabHelp = new Tab(i18n.get("accessory.tab.help"), createHelpTabContent());
 
-        tabPane.getTabs().addAll(tabTaxonomy, tabSeasonal, tabPredators, tabHelp);
+        tabPane.getTabs().addAll(tabTaxonomy, tabSeasonal, tabPredators);
 
         // Dynamic Locale Listener for UI Updating
         i18n.localeProperty().addListener((obs, oldL, newL) -> refreshI18nLabels());
@@ -209,6 +202,7 @@ public class AccessorySpeciesEditorPane extends VBox {
                 "Collemboles Détritivores (Nettoyage Dépotoir)",
                 "Staphylin Myrmécophile (Lomechusa Commensal)"
         ));
+        FXCollections.sort(accessoryPresetCombo.getItems());
         accessoryPresetCombo.setEditable(true);
         accessoryPresetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
         accessoryPresetCombo.setTooltip(new Tooltip("Sélectionnez une espèce accessoire pré-configurée (Plantes, Pucerons, Proies, Prédateurs, Pathogènes, Champignons, Détritivores)."));
@@ -381,6 +375,7 @@ public class AccessorySpeciesEditorPane extends VBox {
                 "Primary Species Nests Only (Nest #1)",
                 "Uniform Distribution Across All World Nests"
         ));
+        FXCollections.sort(nestDispatchCombo.getItems());
         nestDispatchCombo.getSelectionModel().selectFirst();
         nestDispatchCombo.setTooltip(new Tooltip("Règle de répartition des individus entre les nids : affecte les organismes uniquement dans les nids qui les acceptent et exclut ceux qui les réfutent."));
 
@@ -499,6 +494,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         grid.getColumnConstraints().addAll(col1, col2);
 
         targetCasteCombo = new ComboBox<>(FXCollections.observableArrayList("All Castes", "Brood / Pupae", "Queens / Alates", "Workers"));
+        FXCollections.sort(targetCasteCombo.getItems());
         targetCasteCombo.getSelectionModel().selectFirst();
 
         huntModeCombo = new ComboBox<>(FXCollections.observableArrayList(
@@ -507,6 +503,7 @@ public class AccessorySpeciesEditorPane extends VBox {
                 "Parasitoid (Internal Egg-laying / Wasp)",
                 "Trap / Funnel (Antlion)"
         ));
+        FXCollections.sort(huntModeCombo.getItems());
         huntModeCombo.getSelectionModel().selectFirst();
 
         killRateField = new TextField("3.5");
@@ -517,6 +514,7 @@ public class AccessorySpeciesEditorPane extends VBox {
                 "Grooming / Allogrooming",
                 "Soil & Gallery Contact"
         ));
+        FXCollections.sort(pathogenVectorCombo.getItems());
         pathogenVectorCombo.getSelectionModel().selectFirst();
 
         transmissionR0Field = new TextField("2.4");
@@ -533,120 +531,6 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         card.getChildren().addAll(title, grid);
         return card;
-    }
-
-    private VBox createHelpTabContent() {
-        VBox mainBox = new VBox(12);
-        mainBox.setPadding(new Insets(15));
-
-        Label helpTitle = new Label(i18n.get("accessory.help.title"));
-        helpTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
-
-        helpSearchField = new TextField();
-        helpSearchField.setPromptText(i18n.get("accessory.help.search_prompt"));
-        helpSearchField.setStyle("-fx-font-size: 13px;");
-        helpSearchField.textProperty().addListener((obs, oldText, newText) -> filterHelpEntries(newText));
-
-        helpEntriesBox = new VBox(10);
-        helpEntriesBox.setPadding(new Insets(10, 0, 10, 0));
-
-        populateHelpEntries();
-
-        ScrollPane sc = new ScrollPane(helpEntriesBox);
-        sc.setFitToWidth(true);
-        VBox.setVgrow(sc, Priority.ALWAYS);
-
-        mainBox.getChildren().addAll(helpTitle, helpSearchField, sc);
-        return mainBox;
-    }
-
-    private void populateHelpEntries() {
-        helpEntriesList.clear();
-        helpEntriesBox.getChildren().clear();
-
-        // Entry 1: Flora & Plant Biomass
-        addHelpEntry(
-                "FLORA & Biomasse Végétale (g/m²)",
-                "Les plantes et graines constituent la ressource primaire trophique. La biomasse surfacique initiale (g/m²) et le taux de croissance (g/m²/j) déterminent la quantité de graines et de tissus végétaux disponibles pour le forage des ouvrières (ex: Messor, Atta)."
-        );
-
-        // Entry 2: Aphid Mutualists
-        addHelpEntry(
-                "APHID_MUTUALIST & Élevage de Pucerons",
-                "Les pucerons synthétisent le miellat riche en glucides. Les ouvrières protègent les colonies de pucerons contre les coccinelles et en récoltent le liquide sucré par stimulation antennaire (trophobiose)."
-        );
-
-        // Entry 3: Prey Insects
-        addHelpEntry(
-                "PREY_INSECT & Apport Protéique",
-                "Les chenilles, larves de ténébrions et grillons fournissent l'azote et les acides aminés essentiels au développement des larves d'insectes eusociaux et à l'ovogenèse des reines."
-        );
-
-        // Entry 4: Predators & Hunt Modes
-        addHelpEntry(
-                "PREDATOR & Modes de Chasse (Fourmilion, Araignée, Oiseaux)",
-                "Les prédateurs ciblent des castes spécifiques (ex: ouvrières fourrageuses) via des pièges (entonnoirs de sable du fourmilion), des toiles d'araignées ou des attaques directes, régulant la densité de la colonie."
-        );
-
-        // Entry 5: Pathogens & Parasites
-        addHelpEntry(
-                "PATHOGEN_PARASITE & Épidémiologie (Cordyceps, Varroa, R0)",
-                "Les champignons entomopathogènes (Cordyceps) et acariens parasites se propagent par spores aériennes ou allogrooming. Le taux R0 et l'incubation (jours) modélisent les épizooties au sein du nid."
-        );
-
-        // Entry 6: Latitude & Photoperiod
-        addHelpEntry(
-                "Latitude (°N/°S) & Photopériode Solaires",
-                "La latitude définit la déclinaison solaire et la durée du jour tout au long de l'année. Elle synchronise le comportement d'amassage, la ponte et la préparation à l'hivernation."
-        );
-
-        // Entry 7: Thermal Tolerance Ranges
-        addHelpEntry(
-                "Tolérances Thermiques (Min, Opt, Max °C)",
-                "La croissance et la survie des espèces accessoires dépendent de la température ambiante. Sous la température minimale ou au-delà de la maximale, l'activité est stoppée ou la mortalité s'accroît."
-        );
-
-        // Entry 8: Diapause & Overwintering
-        addHelpEntry(
-                "Hivernation / Diapause Automatique",
-                "Mécanisme de léthargie physiologique déclenché lorsque la température descend sous 10°C ou lors du raccourcissement automnal des jours, réduisant le métabolisme et la consommation."
-        );
-    }
-
-    private void addHelpEntry(String title, String description) {
-        Label tLabel = new Label("• " + title + " : ");
-        tLabel.getStyleClass().add("help-entry-title");
-        tLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: -fx-accent; -fx-min-width: 220px;");
-        tLabel.setWrapText(true);
-
-        Label dLabel = new Label(description);
-        dLabel.getStyleClass().add("help-entry-desc");
-        dLabel.setWrapText(true);
-
-        HBox row = new HBox(6, tLabel, dLabel);
-        row.getStyleClass().add("help-entry-row");
-        row.setPadding(new Insets(8));
-        HBox.setHgrow(dLabel, Priority.ALWAYS);
-
-        helpEntriesList.add(row);
-        helpEntriesBox.getChildren().add(row);
-    }
-
-    private void filterHelpEntries(String query) {
-        helpEntriesBox.getChildren().clear();
-        if (query == null || query.trim().isEmpty()) {
-            helpEntriesBox.getChildren().addAll(helpEntriesList);
-            return;
-        }
-
-        String lowerQ = query.toLowerCase().trim();
-        for (HBox row : helpEntriesList) {
-            Label tLabel = (Label) row.getChildren().get(0);
-            Label dLabel = (Label) row.getChildren().get(1);
-            if (tLabel.getText().toLowerCase().contains(lowerQ) || dLabel.getText().toLowerCase().contains(lowerQ)) {
-                helpEntriesBox.getChildren().add(row);
-            }
-        }
     }
 
     private Slider createSlider(double initialVal) {
@@ -759,14 +643,10 @@ public class AccessorySpeciesEditorPane extends VBox {
         if (tabTaxonomy != null) tabTaxonomy.setText(i18n.get("accessory.tab.taxonomy"));
         if (tabSeasonal != null) tabSeasonal.setText(i18n.get("accessory.tab.seasonal"));
         if (tabPredators != null) tabPredators.setText(i18n.get("accessory.tab.predators"));
-        if (tabHelp != null) tabHelp.setText(i18n.get("accessory.tab.help"));
 
         updateSeasonLabels();
         if (seasonHintLabel != null) {
             seasonHintLabel.setText(i18n.get("accessory.season.hint"));
-        }
-        if (helpSearchField != null) {
-            helpSearchField.setPromptText(i18n.get("accessory.help.search_prompt"));
         }
     }
 

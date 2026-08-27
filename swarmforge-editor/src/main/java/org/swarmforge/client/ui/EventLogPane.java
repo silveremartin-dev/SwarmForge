@@ -183,6 +183,19 @@ public class EventLogPane extends BorderPane {
         updateStats();
     }
 
+    private HBox createStatsBar() {
+        HBox bar = new HBox(10);
+        bar.setPadding(new Insets(5, 10, 5, 10));
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setStyle("-fx-background-color: #18181b; -fx-border-color: #27272a; -fx-border-width: 1 0 0 0;");
+
+        eventCountLabel = new Label("0 événements");
+        eventCountLabel.setStyle("-fx-text-fill: #a1a1aa; -fx-font-size: 11px;");
+
+        bar.getChildren().add(eventCountLabel);
+        return bar;
+    }
+
     private void updateStats() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         eventCountLabel.setText(i18n.get("log.stats.events", events.size(), filteredEvents.size()));

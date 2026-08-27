@@ -6,6 +6,7 @@
  */
 package org.swarmforge.client.ui;
 
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -28,7 +29,7 @@ import org.swarmforge.client.util.ThemeManager;
 public class NestGeneratorPane extends BorderPane {
 
     // Canvases
-    private Canvas canvas3D, canvasSide, canvasTop;
+    private ResizableCanvas canvas3D, canvasSide, canvasTop;
     private GraphicsContext gc3D, gcSide, gcTop;
 
     // 3D camera
@@ -291,6 +292,7 @@ public class NestGeneratorPane extends BorderPane {
                     speciesModelCombo.getItems().add(icon + " " + pName);
                 }
             }
+            FXCollections.sort(speciesModelCombo.getItems());
             speciesModelCombo.getItems().add("✨ Espèce Personnalisée Active");
             if (curSel != null && speciesModelCombo.getItems().contains(curSel)) {
                 speciesModelCombo.setValue(curSel);
@@ -318,12 +320,12 @@ public class NestGeneratorPane extends BorderPane {
         categorySelect = new ComboBox<>();
         categorySelect.setTooltip(new Tooltip("Famille d'insectes eusociaux : adapte la morphologie générale et filtre les espèces de référence."));
         categorySelect.getItems().addAll(
-            "🐜 Ants (Formicidae)",
-            "🐝 Bumblebees (Bombus)",
-            "🐝 Honeybees (Apis)",
-            "🐜 Termites (Isoptera)",
-            "🐝 Wasps & Hornets (Vespidae)"
+            "🐜 Ants (Formicidae — Subterranean & Mound Nests)",
+            "🐝 Honeybees & Bumblebees (Apidae — Wax Comb Arrays)",
+            "🐝 Wasps & Hornets (Vespidae — Paper & Carton Nests)",
+            "🪵 Termites (Isoptera — Mastic & Wood Cathedrals)"
         );
+        FXCollections.sort(categorySelect.getItems());
         categorySelect.getSelectionModel().selectFirst();
         categorySelect.setPrefWidth(270);
         categorySelect.setOnAction(e -> {
@@ -364,6 +366,7 @@ public class NestGeneratorPane extends BorderPane {
             "Wax Pots Cluster",
             "Wooden Beehive"
         );
+        FXCollections.sort(archSelect.getItems());
         archSelect.getSelectionModel().selectFirst();
         archSelect.setPrefWidth(270);
         archSelect.setOnAction(e -> {
@@ -391,6 +394,7 @@ public class NestGeneratorPane extends BorderPane {
             "Wood Plank Construction",
             "Wood Pulp Paper (Vespidae)"
         );
+        FXCollections.sort(matSelect.getItems());
         matSelect.getSelectionModel().selectFirst();
         matSelect.setPrefWidth(270);
         matSelect.setOnAction(e -> {
@@ -403,13 +407,14 @@ public class NestGeneratorPane extends BorderPane {
         Label lblStage = new Label("5. Stade de Développement / Maturité :");
         lblStage.setStyle("-fx-font-weight:bold;-fx-font-size:11px;-fx-text-fill:#ec4899;");
         nestStageCombo = new ComboBox<>();
-        nestStageCombo.setTooltip(new Tooltip("Stade de maturité de la colonie (Fondation < 200 ind., Établi 25%, Mature 100%, Vieux Nid / Supercolonie > 200%)."));
+        nestStageCombo.setTooltip(new Tooltip("Stade de maturité de la colonie."));
         nestStageCombo.getItems().addAll(
-            i18n.get("nest.species.age.foundation"),
-            i18n.get("nest.species.age.established"),
-            i18n.get("nest.species.age.mature"),
-            i18n.get("nest.species.age.giant")
+            "1. Incipient Cell (Founding Queen)",
+            "2. Young Colony (Established)",
+            "3. Mature Colony (Peak Expansion)",
+            "4. Supercolony Network (Metropolis)"
         );
+        FXCollections.sort(nestStageCombo.getItems());
         nestStageCombo.setPrefWidth(270);
         nestStageCombo.getSelectionModel().select(2); // Mature by default
         nestStageCombo.setOnAction(e -> {
@@ -873,9 +878,9 @@ public class NestGeneratorPane extends BorderPane {
 
     private VBox buildViews() {
         I18nManager i18n = I18nManager.getInstance();
-        canvas3D   = new Canvas(540, 510); gc3D   = canvas3D.getGraphicsContext2D();
-        canvasSide = new Canvas(215, 245); gcSide = canvasSide.getGraphicsContext2D();
-        canvasTop  = new Canvas(215, 245); gcTop  = canvasTop.getGraphicsContext2D();
+        canvas3D   = new ResizableCanvas(540, 510); gc3D   = canvas3D.getGraphicsContext2D();
+        canvasSide = new ResizableCanvas(215, 245); gcSide = canvasSide.getGraphicsContext2D();
+        canvasTop  = new ResizableCanvas(215, 245); gcTop  = canvasTop.getGraphicsContext2D();
 
         setupMouse();
 

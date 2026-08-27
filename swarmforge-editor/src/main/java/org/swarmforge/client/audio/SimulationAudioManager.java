@@ -45,6 +45,8 @@ public class SimulationAudioManager {
     private String currentWeather = "Clear";
     private String currentSeason = "SUMMER";
     private boolean hasRiver = false;
+    private boolean hasTrees = true;
+    private double cameraZoom = 7.5;
     private int populationCount = 100;
     private double windSpeedMps = 5.0;
     private double rainRateMmHr = 0.0;

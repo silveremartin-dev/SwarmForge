@@ -14,10 +14,14 @@ import javafx.scene.layout.*;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 /**
  * Intervention Panel - God Mode controls for runtime simulation manipulation.
  * Features an overarching Scheduled Event Queue system with atomic event types,
- * comprehensive insect food taxonomy, multi-day disaster duration scaling,
+ * multi-selection, chronological sorting, calendar time formatting,
  * and direct manipulation of fundamental abiotic physical drivers.
  *
  * @author Silvère Martin-Michiellot
@@ -80,6 +84,29 @@ public class InterventionPanel extends BorderPane {
             this.colonyTarget = colonyTarget;
             this.description = description;
         }
+
+        public ScheduledEvent copyWithOffset(long additionalTicks, double stepSec) {
+            long newTarget = this.targetTick + additionalTicks;
+            String newTime = formatTickToCalendarTime(newTarget, stepSec);
+            ScheduledEvent clone = new ScheduledEvent(newTarget, newTime, this.category, this.eventType, this.colonyTarget, this.description);
+            clone.entityAction = this.entityAction;
+            clone.caste = this.caste;
+            clone.count = this.count;
+            clone.posX = this.posX; clone.posY = this.posY; clone.posZ = this.posZ;
+            clone.resourceType = this.resourceType;
+            clone.foodNature = this.foodNature;
+            clone.amount = this.amount;
+            clone.disasterType = this.disasterType;
+            clone.intensity = this.intensity;
+            clone.durationMinutes = this.durationMinutes;
+            clone.tempCelsius = this.tempCelsius;
+            clone.humidityPercent = this.humidityPercent;
+            clone.windMetersPerSec = this.windMetersPerSec;
+            clone.solarWattsPerM2 = this.solarWattsPerM2;
+            clone.executed = false;
+            clone.paused = false;
+            return clone;
+        }
     }
 
     private Spinner<Integer> antCountSpinner;
@@ -91,7 +118,6 @@ public class InterventionPanel extends BorderPane {
     private Slider intensitySlider;
     private Slider durationSlider;
     private Label durationValLabel;
-    private TextArea logArea;
 
     private ComboBox<String> eventColonySelect;
     private Spinner<Integer> spDay, spHour, spMin, spSec;
@@ -193,9 +219,6 @@ public class InterventionPanel extends BorderPane {
         scrollPane.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
 
         setCenter(scrollPane);
-
-        // Bottom: Action Log
-        setBottom(createLogSection());
     }
 
     private VBox createCardSubBlock(String titleStr, Node contentNode) {
@@ -209,7 +232,8 @@ public class InterventionPanel extends BorderPane {
     }
 
     /**
-     * Master Scheduled Event Queue Box.
+     * Master Scheduled Event Queue Box with Multi-Selection, Chronological Sorting,
+     * Repeat Event capability, and clean HH:mm:ss time formatting.
      */
     private VBox createScheduledEventsQueueBlock() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
@@ -222,8 +246,10 @@ public class InterventionPanel extends BorderPane {
         lblQueueTitle.getStyleClass().add("accent-title");
 
         scheduledEventsListView = new ListView<>(scheduledEventsList);
-        scheduledEventsListView.setPrefHeight(150);
+        scheduledEventsListView.setPrefHeight(180);
         scheduledEventsListView.getStyleClass().add("log-text-area");
+        scheduledEventsListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
         scheduledEventsListView.setCellFactory(param -> new ListCell<ScheduledEvent>() {
             @Override
             protected void updateItem(ScheduledEvent ev, boolean empty) {
@@ -231,6 +257,7 @@ public class InterventionPanel extends BorderPane {
                 if (empty || ev == null) {
                     setText(null);
                     setGraphic(null);
+                    setStyle("");
                 } else {
                     HBox cellBox = new HBox(8);
                     cellBox.setAlignment(Pos.CENTER_LEFT);
@@ -238,7 +265,7 @@ public class InterventionPanel extends BorderPane {
                     Label badgeCat = new Label(ev.category.icon + " " + ev.category.label);
                     badgeCat.setStyle(String.format("-fx-background-color: %s; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 3;", ev.category.color));
 
-                    Label timeLabel = new Label("[" + ev.timeFormatted + " | Tick #" + ev.targetTick + "]");
+                    Label timeLabel = new Label("[" + ev.timeFormatted + "]");
                     timeLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
 
                     Label descLabel = new Label(ev.eventType + (ev.colonyTarget != null ? " (" + ev.colonyTarget + ")" : "") + " : " + ev.description);
@@ -246,11 +273,18 @@ public class InterventionPanel extends BorderPane {
                     HBox.setHgrow(descLabel, Priority.ALWAYS);
 
                     String statusText = ev.executed ? "✅ Exécuté" : ev.paused ? "⏸️ Suspendu" : "⏳ En Attente";
-                    String statusBg = ev.executed ? "#10b981" : ev.paused ? "#f59e0b" : "#0284c7";
+                    String statusBg = ev.executed ? "#64748b" : ev.paused ? "#f59e0b" : "#0284c7";
                     Label statusBadge = new Label(statusText);
                     statusBadge.setStyle(String.format("-fx-background-color: %s; -fx-text-fill: white; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 3;", statusBg));
 
                     cellBox.getChildren().addAll(badgeCat, timeLabel, descLabel, statusBadge);
+
+                    if (ev.executed) {
+                        cellBox.setOpacity(0.55);
+                    } else {
+                        cellBox.setOpacity(1.0);
+                    }
+
                     setGraphic(cellBox);
                 }
             }
@@ -264,47 +298,90 @@ public class InterventionPanel extends BorderPane {
         btnRunNow.textProperty().bind(i18n.createStringBinding("god.queue.btn.run_selected"));
         btnRunNow.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
         btnRunNow.setOnAction(e -> {
-            ScheduledEvent ev = scheduledEventsListView.getSelectionModel().getSelectedItem();
-            if (ev != null) {
-                executeScheduledEvent(ev);
-                ev.executed = true;
-                scheduledEventsListView.refresh();
+            List<ScheduledEvent> selected = new ArrayList<>(scheduledEventsListView.getSelectionModel().getSelectedItems());
+            for (ScheduledEvent ev : selected) {
+                if (ev != null && !ev.executed) {
+                    executeScheduledEvent(ev);
+                    ev.executed = true;
+                }
             }
+            sortScheduledEvents();
+            scheduledEventsListView.refresh();
         });
 
         Button btnTogglePause = new Button();
         btnTogglePause.textProperty().bind(i18n.createStringBinding("god.queue.btn.toggle_pause"));
         btnTogglePause.getStyleClass().add("btn-secondary");
         btnTogglePause.setOnAction(e -> {
-            ScheduledEvent ev = scheduledEventsListView.getSelectionModel().getSelectedItem();
-            if (ev != null) {
-                ev.paused = !ev.paused;
-                scheduledEventsListView.refresh();
+            List<ScheduledEvent> selected = new ArrayList<>(scheduledEventsListView.getSelectionModel().getSelectedItems());
+            for (ScheduledEvent ev : selected) {
+                if (ev != null && !ev.executed) {
+                    ev.paused = !ev.paused;
+                }
             }
+            scheduledEventsListView.refresh();
         });
+
+        Button btnRepeatEv = new Button();
+        btnRepeatEv.textProperty().bind(i18n.createStringBinding("god.queue.btn.repeat"));
+        btnRepeatEv.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+        btnRepeatEv.setTooltip(new Tooltip("Duplique les événements sélectionnés décortiqués 10 secondes plus tard."));
+        btnRepeatEv.setOnAction(e -> repeatSelectedEvents(10));
 
         Button btnDeleteEv = new Button();
         btnDeleteEv.textProperty().bind(i18n.createStringBinding("god.queue.btn.delete"));
         btnDeleteEv.getStyleClass().add("btn-danger");
         btnDeleteEv.setOnAction(e -> {
-            ScheduledEvent ev = scheduledEventsListView.getSelectionModel().getSelectedItem();
-            if (ev != null) {
-                scheduledEventsList.remove(ev);
+            List<ScheduledEvent> selected = new ArrayList<>(scheduledEventsListView.getSelectionModel().getSelectedItems());
+            // Direct deletion of upcoming non-executed events (no pop-up dialog as requested)
+            for (ScheduledEvent ev : selected) {
+                if (ev != null && !ev.executed) {
+                    scheduledEventsList.remove(ev);
+                }
             }
+            sortScheduledEvents();
         });
 
         Button btnClearAll = new Button();
         btnClearAll.textProperty().bind(i18n.createStringBinding("god.queue.btn.clear_all"));
         btnClearAll.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
         btnClearAll.setOnAction(e -> {
-            scheduledEventsList.clear();
-            log("🧹 La file d'attente d'événements a été entièrement vidée.");
+            scheduledEventsList.removeIf(ev -> !ev.executed);
+            sortScheduledEvents();
         });
 
-        btnToolbar.getChildren().addAll(btnRunNow, btnTogglePause, btnDeleteEv, btnClearAll);
+        btnToolbar.getChildren().addAll(btnRunNow, btnTogglePause, btnRepeatEv, btnDeleteEv, btnClearAll);
 
         box.getChildren().addAll(lblQueueTitle, scheduledEventsListView, btnToolbar);
         return box;
+    }
+
+    private void sortScheduledEvents() {
+        scheduledEventsList.sort(Comparator.comparingLong((ScheduledEvent ev) -> ev.targetTick));
+    }
+
+    private void repeatSelectedEvents(int offsetSeconds) {
+        List<ScheduledEvent> selected = new ArrayList<>(scheduledEventsListView.getSelectionModel().getSelectedItems());
+        if (selected.isEmpty()) return;
+
+        long offsetTicks = Math.max(1, Math.round(offsetSeconds / simulationStepSec));
+        List<ScheduledEvent> newEvents = new ArrayList<>();
+
+        for (ScheduledEvent ev : selected) {
+            if (ev != null) {
+                ScheduledEvent clone = ev.copyWithOffset(offsetTicks, simulationStepSec);
+                newEvents.add(clone);
+            }
+        }
+
+        scheduledEventsList.addAll(newEvents);
+        sortScheduledEvents();
+
+        scheduledEventsListView.getSelectionModel().clearSelection();
+        for (ScheduledEvent clone : newEvents) {
+            scheduledEventsListView.getSelectionModel().select(clone);
+        }
+        scrollToFirstUpcomingEvent();
     }
 
     /**
@@ -360,14 +437,12 @@ public class InterventionPanel extends BorderPane {
                 btnSyncTime
         );
 
-        lblTargetTickSummary = new Label("🎯 Horodatage visé : Jour 1 08:00:00 (Pas #0) — Colonie Cible: Toutes les Colonies (Global)");
+        lblTargetTickSummary = new Label("🎯 Horodatage visé : Jour 1 08:00:00 — Colonie Cible: Toutes les Colonies (Global)");
         lblTargetTickSummary.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
 
         Runnable updateSummary = () -> {
-            long tSec = calculateTargetSeconds();
-            long tTick = Math.max(1, Math.round(tSec / simulationStepSec));
-            lblTargetTickSummary.setText(String.format("🎯 Horodatage visé : Jour %d %02d:%02d:%02d (Pas #%d) — Colonie: %s",
-                    spDay.getValue(), spHour.getValue(), spMin.getValue(), spSec.getValue(), tTick, eventColonySelect.getValue()));
+            lblTargetTickSummary.setText(String.format("🎯 Horodatage visé : Jour %d %02d:%02d:%02d — Colonie: %s",
+                    spDay.getValue(), spHour.getValue(), spMin.getValue(), spSec.getValue(), eventColonySelect.getValue()));
         };
 
         spDay.valueProperty().addListener((o, a, b) -> updateSummary.run());
@@ -386,6 +461,17 @@ public class InterventionPanel extends BorderPane {
         int m = spMin.getValue() != null ? spMin.getValue() : 0;
         int s = spSec.getValue() != null ? spSec.getValue() : 0;
         return (long) (d - 1) * 86400L + h * 3600L + m * 60L + s;
+    }
+
+    public static String formatTickToCalendarTime(long tick, double stepSec) {
+        long targetSec = (long) (tick * stepSec);
+        int d = (int) (targetSec / 86400L) + 1;
+        long rem = targetSec % 86400L;
+        int h = (int) (rem / 3600L);
+        rem %= 3600L;
+        int m = (int) (rem / 60L);
+        int s = (int) (rem % 60L);
+        return String.format("J%d %02d:%02d:%02d", d, h, m, s);
     }
 
     /**
@@ -604,7 +690,6 @@ public class InterventionPanel extends BorderPane {
         btnStopDisasters.textProperty().bind(i18n.createStringBinding("god.disasters.btn_stop"));
         btnStopDisasters.getStyleClass().add("btn-danger");
         btnStopDisasters.setOnAction(e -> {
-            log("🛑 Arrêt forcé de toutes les catastrophes en cours.");
             if (callback != null) callback.stopDisasters();
         });
 
@@ -751,7 +836,21 @@ public class InterventionPanel extends BorderPane {
     public void syncCurrentSimulationTime(long currentTick, double stepSec) {
         this.currentSimulationTick = currentTick;
         this.simulationStepSec = stepSec > 0 ? stepSec : 0.016666666666666666;
-        javafx.application.Platform.runLater(() -> syncTimePickersWithCurrentTick(10));
+        javafx.application.Platform.runLater(() -> {
+            syncTimePickersWithCurrentTick(10);
+            scrollToFirstUpcomingEvent();
+        });
+    }
+
+    private void scrollToFirstUpcomingEvent() {
+        if (scheduledEventsListView == null || scheduledEventsList.isEmpty()) return;
+        for (int i = 0; i < scheduledEventsList.size(); i++) {
+            ScheduledEvent ev = scheduledEventsList.get(i);
+            if (!ev.executed || ev.targetTick >= currentSimulationTick) {
+                scheduledEventsListView.scrollTo(i);
+                break;
+            }
+        }
     }
 
     private ScheduledEvent createBaseEvent(Category category, String eventType, String desc) {
@@ -781,7 +880,8 @@ public class InterventionPanel extends BorderPane {
                           actionStr.contains("Extinction") ? "EXTINCT" : "KILL";
 
         scheduledEventsList.add(ev);
-        log(String.format("⏱️ Événement d'Entités programmé pour %s : %s", ev.timeFormatted, ev.description));
+        sortScheduledEvents();
+        scrollToFirstUpcomingEvent();
     }
 
     private void executeEntitiesLive() {
@@ -800,7 +900,6 @@ public class InterventionPanel extends BorderPane {
                 callback.spawnAnts(colTarget, caste, count, x, y, z);
             }
         }
-        log(String.format("⚡ Exécution directe d'Entités : %s %d %s [%s]", actionStr, count, caste, colTarget));
     }
 
     private void scheduleResourceEvent() {
@@ -819,7 +918,8 @@ public class InterventionPanel extends BorderPane {
         ev.posX = x; ev.posY = y; ev.posZ = z;
 
         scheduledEventsList.add(ev);
-        log(String.format("⏱️ Événement Ressource programmé pour %s : %s", ev.timeFormatted, ev.description));
+        sortScheduledEvents();
+        scrollToFirstUpcomingEvent();
     }
 
     private void executeResourceLive() {
@@ -832,7 +932,6 @@ public class InterventionPanel extends BorderPane {
         if (callback != null) {
             callback.spawnFood(x, y, z, qty);
         }
-        log(String.format("⚡ Apport de Ressource en direct : %.0f u [%s] à (%.1f, %.1f, %.1f)", qty, resType, x, y, z));
     }
 
     private void scheduleDisasterEvent() {
@@ -847,7 +946,8 @@ public class InterventionPanel extends BorderPane {
         ev.durationMinutes = durMins;
 
         scheduledEventsList.add(ev);
-        log(String.format("⏱️ Événement Catastrophe programmé pour %s : %s", ev.timeFormatted, ev.description));
+        sortScheduledEvents();
+        scrollToFirstUpcomingEvent();
     }
 
     private void executeDisasterLive() {
@@ -857,7 +957,6 @@ public class InterventionPanel extends BorderPane {
         if (callback != null) {
             callback.triggerDisaster(disasterType, intensity);
         }
-        log(String.format("⚡ Déclenchement de Catastrophe en direct : %s (Intensité: %.1f)", disasterType, intensity));
     }
 
     private void scheduleAbioticEvent() {
@@ -874,7 +973,8 @@ public class InterventionPanel extends BorderPane {
         ev.solarWattsPerM2 = solar;
 
         scheduledEventsList.add(ev);
-        log(String.format("⏱️ Événement Abiotique programmé pour %s : %s", ev.timeFormatted, ev.description));
+        sortScheduledEvents();
+        scrollToFirstUpcomingEvent();
     }
 
     private void executeAbioticLive() {
@@ -889,12 +989,10 @@ public class InterventionPanel extends BorderPane {
             callback.modifyParameter("windSpeed", wind);
             callback.modifyParameter("solarRadiation", solar);
         }
-        log(String.format("⚡ Application de Climat en direct : T=%.1f°C, H=%.0f%%, Vent=%.1fm/s, Solaire=%.0fW/m²", temp, hum, wind, solar));
     }
 
     private void executeScheduledEvent(ScheduledEvent ev) {
         String colStr = (ev.colonyTarget != null && !ev.colonyTarget.contains("Global")) ? ev.colonyTarget : "Colonie Primaire";
-        log(String.format("⚡ Exécution de l'événement programmé (%s) [%s] : %s", ev.timeFormatted, ev.category.label, ev.description));
         if (callback != null) {
             switch (ev.category) {
                 case ENTITIES -> {
@@ -935,26 +1033,11 @@ public class InterventionPanel extends BorderPane {
             }
         }
         if (needsRefresh && scheduledEventsListView != null) {
-            javafx.application.Platform.runLater(() -> scheduledEventsListView.refresh());
+            javafx.application.Platform.runLater(() -> {
+                sortScheduledEvents();
+                scheduledEventsListView.refresh();
+            });
         }
-    }
-
-    private VBox createLogSection() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        VBox box = new VBox(5);
-        box.setPadding(new Insets(8, 0, 0, 0));
-
-        Label logLabel = new Label();
-        logLabel.textProperty().bind(i18n.createStringBinding("god.log.title"));
-        logLabel.getStyleClass().add("sub-title");
-
-        logArea = new TextArea();
-        logArea.setEditable(false);
-        logArea.setPrefHeight(90);
-        logArea.getStyleClass().add("log-text-area");
-
-        box.getChildren().addAll(logLabel, logArea);
-        return box;
     }
 
     public void setSimulationRunning(boolean running) {
@@ -971,18 +1054,11 @@ public class InterventionPanel extends BorderPane {
         }
     }
 
-    private void log(String message) {
-        String time = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
-        if (logArea != null) {
-            logArea.appendText("[" + time + "] " + message + "\n");
-        }
-    }
-
     public void setCallback(InterventionCallback callback) {
         this.callback = callback;
     }
 
-    public void updateAvailableColonies(java.util.List<String> activeColonyNames) {
+    public void updateAvailableColonies(List<String> activeColonyNames) {
         if (activeColonyNames == null || activeColonyNames.isEmpty()) return;
 
         if (colonySelect != null) {
@@ -996,7 +1072,7 @@ public class InterventionPanel extends BorderPane {
         }
 
         if (eventColonySelect != null) {
-            java.util.List<String> items = new java.util.ArrayList<>();
+            List<String> items = new ArrayList<>();
             items.add("Toutes les Colonies (Global)");
             items.addAll(activeColonyNames);
             String selEv = eventColonySelect.getValue();

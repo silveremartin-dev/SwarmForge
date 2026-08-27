@@ -300,6 +300,8 @@ public class WeatherSystem {
     public float getMagneticField() { return magneticField; }
 
     public WeatherMarkovChain.WeatherState getWeatherState() { return markovChain.getCurrentState(); }
+    public String getCurrentWeatherType() { return markovChain != null && markovChain.getCurrentState() != null ? markovChain.getCurrentState().name() : "CLEAR"; }
+    public float getRainfallIntensity() { return currentRainfall; }
 
     /**
      * Manually trigger a climate event (tempest, hail, cloudy, blizzard, thunderstorm, etc.).

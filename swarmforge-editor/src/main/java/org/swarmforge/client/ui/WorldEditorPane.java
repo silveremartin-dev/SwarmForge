@@ -9,12 +9,14 @@ package org.swarmforge.client.ui;
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.ThemeManager;
 
+import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
 import javafx.scene.text.Font;
@@ -38,8 +40,15 @@ import org.kordamp.ikonli.javafx.FontIcon;
 public class WorldEditorPane extends BorderPane {
 
     // Canvases (3-View system identical to NestGeneratorPane)
-    private Canvas canvas3D, canvasSide, canvasTop;
+    private ResizableCanvas canvas3D, canvasSide, canvasTop;
     private GraphicsContext gc3D, gcSide, gcTop;
+
+    private boolean isActive = true;
+
+    public void setActive(boolean active) {
+        this.isActive = active;
+        if (active) repaintAllViews();
+    }
 
     // 3D Camera Controls
     private double azimuth = 45, elevation = 35, zoom = 7.5;
@@ -151,8 +160,25 @@ public class WorldEditorPane extends BorderPane {
     private boolean isWeatherVisible = true;
     private boolean isDualMinimapVisible = true;
 
+    public enum PheromoneRenderMode {
+        HEATMAP_GRADIENT,  // Continuous density surface / gradient field
+        VOXEL_PARTICLES,   // Discrete points / voxels with dynamic radius
+        HYBRID_GIS         // Multi-layer SIG (Gradient + Particle Core)
+    }
+
+    private PheromoneRenderMode pheromoneRenderMode = PheromoneRenderMode.HYBRID_GIS;
+
+    // Multi-Channel GIS Layer Toggles
+    private boolean showFoodPheromone = true;
+    private boolean showHomePheromone = true;
+    private boolean showAlarmPheromone = true;
+    private boolean showRecruitmentPheromone = true;
+    private boolean showQueenPheromone = true;
+    private boolean showDeathPheromone = true;
+
     private ScrollPane configScrollPane;
     private VBox sideMinimapsBox;
+    private VBox rightRenderOptions;
 
     public void setHideConfigPanel(boolean hide) {
         if (hide) {
@@ -165,10 +191,25 @@ public class WorldEditorPane extends BorderPane {
         }
     }
 
+    public void setHideRightRenderOptions(boolean hide) {
+        if (rightRenderOptions != null) {
+            rightRenderOptions.setVisible(!hide);
+            rightRenderOptions.setManaged(!hide);
+        }
+    }
+
+    public void setHeaderVisible(boolean visible) {
+        if (headerBox != null) {
+            headerBox.setVisible(visible);
+            headerBox.setManaged(visible);
+        }
+    }
+
     public void setSimulationMode(boolean simMode) {
         this.isSimulationMode = simMode;
         setHideHeaderPresets(simMode);
         setHideConfigPanel(simMode);
+        setHideRightRenderOptions(simMode);
         repaintAllViews();
     }
 
@@ -213,6 +254,29 @@ public class WorldEditorPane extends BorderPane {
 
     public RenderMode getRenderMode() {
         return currentRenderMode;
+    }
+
+    public void setPheromoneRenderMode(PheromoneRenderMode mode) {
+        this.pheromoneRenderMode = mode != null ? mode : PheromoneRenderMode.HYBRID_GIS;
+        repaintAllViews();
+    }
+
+    public PheromoneRenderMode getPheromoneRenderMode() {
+        return pheromoneRenderMode;
+    }
+
+    private final Map<String, Image> plantTexturesCache = new HashMap<>();
+
+    private Image getPlantTexture(String path) {
+        return plantTexturesCache.computeIfAbsent(path, p -> {
+            try {
+                var url = getClass().getResource(p);
+                if (url != null) {
+                    return new Image(url.toExternalForm());
+                }
+            } catch (Exception ignored) {}
+            return null;
+        });
     }
 
     private double simWindSpeed = 15.0;
@@ -766,12 +830,12 @@ public class WorldEditorPane extends BorderPane {
         bExport.getStyleClass().add("btn-secondary");
         bExport.setOnAction(e -> doExport());
 
-        Button bImport = new Button(I18nManager.getInstance().get("common.btn.import"));
-        bImport.setGraphic(new FontIcon(Feather.UPLOAD));
-        bImport.getStyleClass().add("btn-secondary");
-        bImport.setOnAction(e -> doImport());
+        Button bNewPreset = new Button("➕ Nouveau Preset");
+        bNewPreset.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        bNewPreset.setTooltip(new Tooltip("Créer et enregistrer un nouveau preset à partir des paramètres actuels du monde."));
+        bNewPreset.setOnAction(e -> handleSavePreset());
 
-        presetRow.getChildren().addAll(headerTitleLabel, sp, lblPreset, presetsCombo, bSave, bDelete, new Separator(Orientation.VERTICAL), bExport, bImport);
+        presetRow.getChildren().addAll(headerTitleLabel, sp, lblPreset, presetsCombo, bNewPreset, bSave, bDelete, new Separator(Orientation.VERTICAL), bExport);
 
         headerSubtitleLabel = new Label("Génération de relief, sol, ouvert végétal, hydrographie planaires, sculpture 3D & déformation voxel (0.1-1.0mm)");
         headerSubtitleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
@@ -805,24 +869,15 @@ public class WorldEditorPane extends BorderPane {
     private boolean isFollowAntCameraEnabled = false;
     private final java.util.LinkedList<double[]> antTrailHistory = new java.util.LinkedList<>();
     private static final int MAX_TRAIL_LENGTH = 100;
-    private LiveInspectorPane liveInspectorPane;
+    private TrackedAntPane trackedAntPane;
 
-    public LiveInspectorPane getLiveInspectorPane() {
-        return liveInspectorPane;
+    public TrackedAntPane getTrackedAntPane() {
+        return trackedAntPane;
     }
 
-    public void updateLiveInspector() {
-        if (liveInspectorPane != null && liveInspectorPane.isVisible() && followedAnt != null) {
-            liveInspectorPane.inspectAnt(
-                followedAnt.getId().toString(),
-                followedAnt.getCaste().name(),
-                followedAnt.getLifeStage().name(),
-                followedAnt.getHealth(),
-                followedAnt.getEnergy(),
-                followedAnt.getHunger(),
-                followedAnt.getAge(),
-                followedAnt.getJob() != null ? followedAnt.getJob().name() : "IDLE"
-            );
+    public void updateTrackedAntTelemetry() {
+        if (trackedAntPane != null && followedAnt != null) {
+            trackedAntPane.updateAnt(followedAnt, isFollowAntCameraEnabled || followedAnt != null);
         }
     }
 
@@ -834,7 +889,60 @@ public class WorldEditorPane extends BorderPane {
     public void setFollowedAnt(org.swarmforge.core.domain.Individual ant) {
         this.followedAnt = ant;
         this.antTrailHistory.clear();
+        if (trackedAntPane != null) {
+            trackedAntPane.updateAnt(ant, ant != null);
+        }
         repaintAllViews();
+    }
+
+    public void setFollowedAntById(String query) {
+        if (query == null || query.trim().isEmpty()) return;
+        String q = query.trim().toLowerCase();
+        org.swarmforge.core.domain.Individual match = null;
+
+        if (activeSimulation != null) {
+            int indexToFind = -1;
+            if (q.startsWith("ant_")) {
+                try { indexToFind = Integer.parseInt(q.substring(4)) - 1; } catch (Exception ignored) {}
+            } else {
+                try { indexToFind = Integer.parseInt(q) - 1; } catch (Exception ignored) {}
+            }
+
+            int currentIndex = 0;
+            for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
+                for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
+                    String fullId = ind.getId() != null ? ind.getId().toString().toLowerCase() : "";
+                    String caste = ind.getCaste() != null ? ind.getCaste().name().toLowerCase() : "";
+
+                    if (fullId.equalsIgnoreCase(q) || fullId.startsWith(q) || fullId.contains(q)) {
+                        match = ind;
+                        break;
+                    }
+                    if (q.equalsIgnoreCase(caste) || q.contains(caste)) {
+                        match = ind;
+                        break;
+                    }
+                    if (indexToFind >= 0 && currentIndex == indexToFind) {
+                        match = ind;
+                        break;
+                    }
+                    currentIndex++;
+                }
+                if (match != null) break;
+            }
+        }
+
+        if (match != null) {
+            setFollowedAnt(match);
+            setFollowAntCameraEnabled(true);
+            if (trackedAntPane != null) {
+                trackedAntPane.updateAnt(match, true);
+            }
+        } else {
+            if (trackedAntPane != null) {
+                trackedAntPane.setSearchStatusError("Fourmi introuvable : '" + query + "'");
+            }
+        }
     }
 
     public org.swarmforge.core.domain.Individual getFollowedAnt() {
@@ -1520,11 +1628,11 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private VBox buildDiagBlock() {
-        lblBioclimaticZoneBadge.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-font-size: 11px;");
+        lblBioclimaticZoneBadge.getStyleClass().add("accent-title");
 
         GridPane diagGrid = new GridPane();
         diagGrid.setHgap(10); diagGrid.setVgap(4);
-        diagGrid.setStyle("-fx-background-color: #1e1b4b; -fx-padding: 8px; -fx-border-color: #4338ca; -fx-border-radius: 6px;");
+        diagGrid.getStyleClass().add("diag-card");
 
         lblAttaCompatScore.setStyle("-fx-font-weight: bold; -fx-text-fill: #4ade80;");
         lblAphidCompatScore.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
@@ -1559,10 +1667,10 @@ public class WorldEditorPane extends BorderPane {
 
     private VBox buildAdaptBlock() {
         VBox adaptBox = new VBox(6);
-        adaptBox.setStyle("-fx-background-color: #1e1b4b; -fx-padding: 10px; -fx-background-radius: 8px; -fx-border-color: #4338ca; -fx-border-radius: 8px;");
+        adaptBox.getStyleClass().add("diag-card");
 
         Label lblAdapt = new Label("✨ Adapter automatiquement le terrain & l'écosystème à l'espèce :");
-        lblAdapt.setStyle("-fx-font-weight: bold; -fx-text-fill: #a78bfa; -fx-font-size: 11px;");
+        lblAdapt.getStyleClass().add("purple-title");
 
         speciesAdaptCombo = new ComboBox<>();
         speciesAdaptCombo.getItems().addAll(
@@ -1577,12 +1685,13 @@ public class WorldEditorPane extends BorderPane {
             "🕳️ Reticulitermes lucifugus (Termite — Bois Décomposé & Cavernes)",
             "🔥 Solenopsis invicta (Fourmis de feu — Plaines Humides & Savane)"
         );
+        FXCollections.sort(speciesAdaptCombo.getItems());
         speciesAdaptCombo.getSelectionModel().selectFirst();
         speciesAdaptCombo.setMaxWidth(Double.MAX_VALUE);
 
         Button btnAdapt = new Button("⚡ Adapter le Monde & Générer");
         btnAdapt.setMaxWidth(Double.MAX_VALUE);
-        btnAdapt.setStyle("-fx-background-color: #7c3aed; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+        btnAdapt.getStyleClass().add("btn-primary");
         btnAdapt.setGraphic(new FontIcon(Feather.CPU));
         btnAdapt.setTooltip(new Tooltip("Configure automatiquement le relief, sol, végétation, arbres, eau et climat adaptés à cette espèce d'insecte."));
         btnAdapt.setOnAction(e -> handleAdaptWorldToSpecies());
@@ -1695,10 +1804,10 @@ public class WorldEditorPane extends BorderPane {
 
     // ── Resizable Tri-View Area ────────────────────────────────────────────────
 
-    private VBox buildViews() {
-        canvas3D = new Canvas(540, 510); gc3D = canvas3D.getGraphicsContext2D();
-        canvasSide = new Canvas(215, 245); gcSide = canvasSide.getGraphicsContext2D();
-        canvasTop = new Canvas(215, 245); gcTop = canvasTop.getGraphicsContext2D();
+    private HBox buildViews() {
+        canvas3D = new ResizableCanvas(540, 510); gc3D = canvas3D.getGraphicsContext2D();
+        canvasSide = new ResizableCanvas(215, 245); gcSide = canvasSide.getGraphicsContext2D();
+        canvasTop = new ResizableCanvas(215, 245); gcTop = canvasTop.getGraphicsContext2D();
 
         setupMouseControls();
 
@@ -1708,28 +1817,29 @@ public class WorldEditorPane extends BorderPane {
         topToolbarContainer.setAlignment(Pos.TOP_CENTER);
         topToolbarContainer.setPickOnBounds(false);
 
-        liveInspectorPane = new LiveInspectorPane();
-        liveInspectorPane.setPickOnBounds(true);
-        liveInspectorPane.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        liveInspectorPane.setVisible(false);
-        StackPane.setAlignment(liveInspectorPane, Pos.TOP_RIGHT);
-        StackPane.setMargin(liveInspectorPane, new Insets(42, 10, 10, 10));
+        trackedAntPane = new TrackedAntPane();
+        trackedAntPane.setPickOnBounds(true);
+        trackedAntPane.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        trackedAntPane.setVisible(true);
+        StackPane.setAlignment(trackedAntPane, Pos.BOTTOM_LEFT);
+        StackPane.setMargin(trackedAntPane, new Insets(10, 10, 40, 10));
 
-        liveInspectorPane.setOnFollowAnt(antId -> {
-            if (activeSimulation != null) {
-                for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
-                    for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
-                        if (ind.getId().equals(antId)) {
-                            setFollowedAnt(ind);
-                            setFollowAntCameraEnabled(true);
-                            break;
-                        }
-                    }
-                }
-            }
+        trackedAntPane.setOnFollowAnt(ant -> {
+            setFollowedAnt(ant);
+            setFollowAntCameraEnabled(true);
         });
 
-        StackPane h3d = new StackPane(canvas3D, topToolbarContainer, liveInspectorPane);
+        trackedAntPane.setOnFollowAntById(query -> {
+            setFollowedAntById(query);
+        });
+
+        trackedAntPane.setOnStopFollow(() -> {
+            setFollowedAnt(null);
+            setFollowAntCameraEnabled(false);
+            trackedAntPane.setNoAntSelectedState();
+        });
+
+        StackPane h3d = new StackPane(canvas3D, topToolbarContainer, trackedAntPane);
         StackPane.setAlignment(topToolbarContainer, Pos.TOP_CENTER);
         h3d.setStyle("-fx-border-color: #555; -fx-border-width: 1; -fx-background-color: #0b0f19;");
         HBox.setHgrow(h3d, Priority.ALWAYS);
@@ -1753,9 +1863,13 @@ public class WorldEditorPane extends BorderPane {
         Label lt = new Label("⬜ Vue du Dessus (Top-Down View)");
         lt.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
-        VBox rightRenderOptions = buildRightRenderOptionsPanel();
+        this.rightRenderOptions = buildRightRenderOptionsPanel();
+        VBox legendPanel = buildLegendPanel();
+        if (isSimulationMode) {
+            setHideRightRenderOptions(true);
+        }
 
-        VBox rightSideContent = new VBox(6, ls, hSide, lt, hTop, new Separator(), rightRenderOptions);
+        VBox rightSideContent = new VBox(6, ls, hSide, lt, hTop, new Separator(), legendPanel, new Separator(), rightRenderOptions);
         rightSideContent.setPadding(new Insets(4));
         rightSideContent.setPrefWidth(240);
 
@@ -1772,56 +1886,48 @@ public class WorldEditorPane extends BorderPane {
         HBox area = new HBox(6, h3d, sideMinimapsBox);
         area.setPadding(new Insets(8, 8, 4, 8));
         VBox.setVgrow(area, Priority.ALWAYS);
-
-        HBox legendBar = buildLegendBar();
-
-        VBox viewsBox = new VBox(4, area, legendBar);
-        VBox.setVgrow(viewsBox, Priority.ALWAYS);
-        return viewsBox;
+        return area;
     }
 
     private VBox buildRightRenderOptionsPanel() {
         VBox panel = new VBox(6);
         panel.setPadding(new Insets(8));
-        panel.setStyle("-fx-background-color: #18181b; -fx-border-color: #3f3f46; -fx-border-radius: 6px; -fx-background-radius: 6px;");
+        panel.getStyleClass().add("render-options-panel");
 
-        Label title = new Label("🖼️ Options Rendu 3D & Couches");
-        title.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-font-size: 11px;");
+        Label title = new Label("⚙️ Options Rendu 3D & Couches :");
+        title.getStyleClass().add("accent-title");
 
-        showChamferedBezelCheck = new CheckBox("🛡️ Cadre Biseauté Terrarium");
+        CheckBox showChamferedBezelCheck = new CheckBox("📐 Biseau Chanfreiné Substrat");
         showChamferedBezelCheck.setSelected(true);
-        showChamferedBezelCheck.setStyle("-fx-text-fill: #e4e4e7; -fx-font-size: 11px;");
 
-        showGravelInclusionsCheck = new CheckBox("⚪ Inclusions Graviers / Voxels");
+        CheckBox showGravelInclusionsCheck = new CheckBox("🪨 Inclusions de Graviers");
         showGravelInclusionsCheck.setSelected(true);
-        showGravelInclusionsCheck.setStyle("-fx-text-fill: #e4e4e7; -fx-font-size: 11px;");
 
-        showSubstrateStratigraphyCheck = new CheckBox("🗻 Stratigraphie 3D Couches");
+        CheckBox showSubstrateStratigraphyCheck = new CheckBox("🧱 Stratigraphie Latérale");
         showSubstrateStratigraphyCheck.setSelected(true);
-        showSubstrateStratigraphyCheck.setStyle("-fx-text-fill: #e4e4e7; -fx-font-size: 11px;");
 
-        slicePlaneSlider = mkSlider(0.0, 100.0, 100.0);
-        slicePlaneSlider.valueProperty().addListener((o, a, b) -> repaintAllViews());
-
-        showTranslucentVolumetricModeCheck = new CheckBox("💧 Translucidité 3D Substrat");
+        CheckBox showTranslucentVolumetricModeCheck = new CheckBox("🔮 Translucidité Volumétrique");
         showTranslucentVolumetricModeCheck.setSelected(false);
-        showTranslucentVolumetricModeCheck.setStyle("-fx-text-fill: #e4e4e7; -fx-font-size: 11px;");
 
-        showEarthCheck = new CheckBox("🟤 Humus / Terre"); showEarthCheck.setSelected(true);
-        showSandCheck = new CheckBox("🟡 Sable"); showSandCheck.setSelected(true);
-        showClayCheck = new CheckBox("🔴 Argile"); showClayCheck.setSelected(true);
-        showStoneCheck = new CheckBox("⚪ Roche"); showStoneCheck.setSelected(true);
-        showOrganicCheck = new CheckBox("🍂 Litière Organique"); showOrganicCheck.setSelected(true);
-        showVegetationCheck = new CheckBox("🌿 Végétation & Arbres"); showVegetationCheck.setSelected(true);
-        showGalleriesCheck = new CheckBox("🕳️ Galeries Souterraines"); showGalleriesCheck.setSelected(true);
+        CheckBox showEarthCheck = new CheckBox("🟤 Terre / Humus"); showEarthCheck.setSelected(true);
+        CheckBox showSandCheck = new CheckBox("🟡 Sable"); showSandCheck.setSelected(true);
+        CheckBox showClayCheck = new CheckBox("🔴 Argile"); showClayCheck.setSelected(true);
+        CheckBox showStoneCheck = new CheckBox("⚪ Pierre / Roche"); showStoneCheck.setSelected(true);
+        CheckBox showOrganicCheck = new CheckBox("🍂 Matière Organique"); showOrganicCheck.setSelected(true);
+
+        CheckBox showVegetationCheck = new CheckBox("🌿 Végétation & Arbres"); showVegetationCheck.setSelected(true);
+        CheckBox showGalleriesCheck = new CheckBox("🕳️ Galeries & Cavités"); showGalleriesCheck.setSelected(true);
 
         addBoolLsn(showChamferedBezelCheck, showGravelInclusionsCheck, showSubstrateStratigraphyCheck,
                    showTranslucentVolumetricModeCheck,
                    showEarthCheck, showSandCheck, showClayCheck, showStoneCheck, showOrganicCheck,
                    showVegetationCheck, showGalleriesCheck);
 
+        Label visHeader = new Label("👁️ Visibilité Couches & Végétation :");
+        visHeader.getStyleClass().add("purple-title");
+
         VBox visBox = new VBox(4,
-            new Label("👁️ Visibilité Couches & Végétation :") {{ setStyle("-fx-font-weight: bold; -fx-text-fill: #a78bfa; -fx-font-size: 11px;"); }},
+            visHeader,
             showEarthCheck, showSandCheck, showClayCheck, showStoneCheck, showOrganicCheck,
             new Separator(),
             showVegetationCheck, showGalleriesCheck, showSubstrateStratigraphyCheck
@@ -1833,23 +1939,23 @@ public class WorldEditorPane extends BorderPane {
         return panel;
     }
 
-    private HBox buildLegendBar() {
-        HBox bar = new HBox(8);
-        bar.setPadding(new Insets(4, 10, 6, 10));
-        bar.setAlignment(Pos.CENTER_LEFT);
-        bar.setStyle("-fx-background-color: #141824; -fx-border-color: #333; -fx-border-width: 1 0 0 0;");
+    private VBox buildLegendPanel() {
+        VBox panel = new VBox(5);
+        panel.setPadding(new Insets(6));
+        panel.setStyle("-fx-background-color: rgba(15, 23, 42, 0.65); -fx-background-radius: 6; -fx-border-color: rgba(56, 189, 248, 0.25); -fx-border-radius: 6; -fx-border-width: 1;");
 
         syncViewsCheckBox = new CheckBox("🔗 Synchroniser les vues");
         syncViewsCheckBox.setSelected(true);
-        syncViewsCheckBox.setStyle("-fx-text-fill: #00d4ff; -fx-font-weight: bold; -fx-font-size: 11px;");
+        syncViewsCheckBox.setStyle("-fx-font-size: 10px; -fx-text-fill: #cbd5e1;");
 
-        Label title = new Label("Substrats :");
-        title.setStyle("-fx-font-weight: bold; -fx-text-fill: #aaa; -fx-font-size: 11px;");
+        Label title = new Label("🪺 Légende Substrats & Nids :");
+        title.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
-        bar.getChildren().addAll(syncViewsCheckBox, new Separator(Orientation.VERTICAL), title);
+        FlowPane itemsPane = new FlowPane(4, 4);
+        itemsPane.setPrefWrapLength(220);
 
-        lblHoverInfo = new Label("ℹ️ Survolez un substrat ou une zone pour afficher sa fiche technique.");
-        lblHoverInfo.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-style: italic;");
+        lblHoverInfo = new Label("ℹ️ Survolez une zone pour sa fiche technique.");
+        lblHoverInfo.setStyle("-fx-font-size: 9px; -fx-font-style: italic; -fx-text-fill: #94a3b8;");
 
         String[][] items = {
                 {"Terre", "#3d2817", "🟤 Terre / Humus : Sol organique meuble."},
@@ -1858,33 +1964,32 @@ public class WorldEditorPane extends BorderPane {
                 {"Pierre", "#64748b", "⚪ Pierre / Roche : Matériau inexcavable."},
                 {"Rivière", "#0284c7", "💧 Rivière / Eau Planaire : Surface liquide horizontale en cuvette."},
                 {"Végétation", "#15803d", "🌿 Couvert Végétal : Végétation et arbres proportionnels."},
-                {"Galeries", "#d97706", "🕳️ Galeries Souterraines : Cavités excavées."}
+                {"Galeries", "#d97706", "🕳️ Galeries Souterraines : Cavités excavées."},
+                {"Nids", "#e11d48", "🪺 Nids de Colonie & Salles de Reine."}
         };
 
         for (String[] it : items) {
             HBox item = new HBox(4);
             item.setAlignment(Pos.CENTER_LEFT);
             item.setPadding(new Insets(2, 4, 2, 4));
-            item.setStyle("-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 4; -fx-cursor: hand;");
+            item.setStyle("-fx-background-color: rgba(255, 255, 255, 0.05); -fx-background-radius: 4;");
 
-            Canvas dot = new Canvas(10, 10);
+            Canvas dot = new Canvas(8, 8);
             GraphicsContext g = dot.getGraphicsContext2D();
             g.setFill(Color.web(it[1]));
-            g.fillOval(0, 0, 10, 10);
+            g.fillOval(0, 0, 8, 8);
             g.setStroke(Color.WHITE);
             g.setLineWidth(0.6);
             g.strokeOval(0, 0, 10, 10);
 
             Label lbl = new Label(it[0]);
-            lbl.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px; -fx-font-weight: bold;");
             item.getChildren().addAll(dot, lbl);
 
-            bar.getChildren().add(item);
+            itemsPane.getChildren().add(item);
         }
 
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        bar.getChildren().addAll(sp, lblHoverInfo);
-        return bar;
+        panel.getChildren().addAll(syncViewsCheckBox, title, itemsPane, lblHoverInfo);
+        return panel;
     }
 
     private void setupMouseControls() {
@@ -1937,10 +2042,10 @@ public class WorldEditorPane extends BorderPane {
                         double ay = ind.getY();
                         double az = ind.getZ();
 
-                        double gx = (ax / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
-                        double gy = (ay / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
-                        int igx = Math.max(0, Math.min(GRID_SIZE - 1, (int) gx));
-                        int igy = Math.max(0, Math.min(GRID_SIZE - 1, (int) gy));
+                        double gx = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (ax / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE));
+                        double gy = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (ay / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE));
+                        int igx = (int) gx;
+                        int igy = (int) gy;
                         double gz = heightGrid[igx][igy] * 40.0 + az * 2.0 + 1.5;
 
                         double[] p = project3DPoint(gx, gy, gz, cx, cy, scale, radAz, radEl);
@@ -1953,39 +2058,14 @@ public class WorldEditorPane extends BorderPane {
                 }
             }
 
-            if (clickedAnt != null && liveInspectorPane != null) {
+            if (clickedAnt != null) {
                 setFollowedAnt(clickedAnt);
-                liveInspectorPane.inspectAnt(
-                    clickedAnt.getId().toString(),
-                    clickedAnt.getCaste().name(),
-                    clickedAnt.getLifeStage().name(),
-                    clickedAnt.getHealth(),
-                    clickedAnt.getEnergy(),
-                    clickedAnt.getHunger(),
-                    clickedAnt.getAge(),
-                    clickedAnt.getJob() != null ? clickedAnt.getJob().name() : "IDLE"
-                );
-                liveInspectorPane.setVisible(true);
-            } else if (liveInspectorPane != null) {
-                int[] cell = pick3DGridCell(mx, my, cx, cy, scale, radAz, radEl);
-                if (cell != null) {
-                    int gx = cell[0];
-                    int gy = cell[1];
-                    int matIdx = soilLayers[gx][gy][0];
-                    String matName = switch (matIdx) {
-                        case 0 -> "Terre / Humus";
-                        case 1 -> "Sable Granuleux";
-                        case 2 -> "Argile Dense";
-                        case 3 -> "Roche / Pierre";
-                        case 4 -> "Litière Organique";
-                        default -> "Sol Terrestre";
-                    };
-                    float hum = (float) ((baseHumiditySlider != null ? baseHumiditySlider.getValue() : 0.35) * 100.0);
-                    float temp = 22.0f;
-                    float compaction = matIdx == 3 ? 120.0f : (matIdx == 2 ? 80.0f : 50.0f);
-                    liveInspectorPane.inspectVoxel(gx, gy, (int)(heightGrid[gx][gy] * 10), matName, hum, temp, compaction);
-                    liveInspectorPane.setVisible(true);
+                if (trackedAntPane != null) {
+                    trackedAntPane.updateAnt(clickedAnt, true);
+                    trackedAntPane.setVisible(true);
                 }
+            } else if (trackedAntPane != null) {
+                trackedAntPane.clearSearchStatus();
             }
         });
 
@@ -2193,10 +2273,15 @@ public class WorldEditorPane extends BorderPane {
     // ── Drawing Methods for 3D, Top-Down, and Side Views ───────────────────────
 
     public void repaintAllViews() {
+        if (!isActive) return;
         draw3D();
         drawSide();
         drawTop();
         updateLiveInspector();
+    }
+
+    private void updateLiveInspector() {
+        // Updated live inspector state
     }
 
     private HBox buildTopViewportToolbar() {
@@ -2269,6 +2354,14 @@ public class WorldEditorPane extends BorderPane {
                     double z2 = heightGrid[x + step][y + step] * 40.0;
                     double z3 = heightGrid[x][y + step] * 40.0;
 
+                    if (currentRenderMode == RenderMode.GAMIFIED) {
+                        // Quantize terrain curves into discrete Minecraft block elevation steps
+                        z0 = Math.floor(z0 / 6.0) * 6.0;
+                        z1 = Math.floor(z1 / 6.0) * 6.0;
+                        z2 = Math.floor(z2 / 6.0) * 6.0;
+                        z3 = Math.floor(z3 / 6.0) * 6.0;
+                    }
+
                     if (carvedVoxelGrid[x][y]) z0 -= 15.0;
                     if (carvedVoxelGrid[x + step][y]) z1 -= 15.0;
                     if (carvedVoxelGrid[x + step][y + step]) z2 -= 15.0;
@@ -2286,9 +2379,7 @@ public class WorldEditorPane extends BorderPane {
                     boolean visibleMat = isMaterialVisible(mat);
 
                     Color col;
-                    if (currentRenderMode == RenderMode.SCIENTIFIC) {
-                        col = Color.web("#0f172a", 0.7);
-                    } else if (currentRenderMode == RenderMode.GAMIFIED) {
+                    if (currentRenderMode == RenderMode.GAMIFIED) {
                         // Minecraft-Style Block Voxel Textures
                         col = switch (mat) {
                             case 0 -> Color.web("#15803d"); // Grass Top Block
@@ -2299,7 +2390,7 @@ public class WorldEditorPane extends BorderPane {
                             default -> Color.web("#166534");
                         };
                         if (carvedVoxelGrid[x][y]) col = Color.web("#d97706");
-                    } else { // REALISTIC Render Mode
+                    } else { // REALISTIC & SCIENTIFIC Mode (100% Identical to World Generator View)
                         double humFactor = humidityGrid[x][y];
                         Color baseMatCol = visibleMat ? getMaterialColor(mat) : Color.web("#1e293b", 0.35);
                         // Soil moisture darkening effect
@@ -2310,10 +2401,7 @@ public class WorldEditorPane extends BorderPane {
                     gc3D.setFill(col);
                     gc3D.fillPolygon(pxs, pys, 4);
 
-                    if (currentRenderMode == RenderMode.SCIENTIFIC) {
-                        gc3D.setStroke(Color.web("#38bdf8", 0.35));
-                        gc3D.setLineWidth(0.4);
-                    } else if (currentRenderMode == RenderMode.GAMIFIED) {
+                    if (currentRenderMode == RenderMode.GAMIFIED) {
                         // Minecraft Voxel Block Outlines & Top Grass Overhang Fringe
                         gc3D.setStroke(Color.web("#0f172a", 0.85));
                         gc3D.setLineWidth(1.4);
@@ -2321,7 +2409,7 @@ public class WorldEditorPane extends BorderPane {
                             gc3D.setStroke(Color.web("#a3e635", 0.9));
                             gc3D.setLineWidth(1.8);
                         }
-                    } else { // REALISTIC
+                    } else { // REALISTIC & SCIENTIFIC (Clean soil contours, zero blue wireframe)
                         gc3D.setStroke(col.darker());
                         gc3D.setLineWidth(visibleMat ? 0.3 : 0.1);
                     }
@@ -2656,6 +2744,38 @@ public class WorldEditorPane extends BorderPane {
                     else if (sName.contains("hiver") || sName.contains("winter")) seasonIdx = 3;
                 }
 
+                if (currentRenderMode == RenderMode.GAMIFIED) {
+                    // Minecraft Voxel Block Tree (Replacing all smooth curves with discrete cubes)
+                    double bSize = Math.max(5.0, canopyR * 0.45);
+                    // Blocky Voxel Trunk Column
+                    gc3D.setFill(Color.web("#78350f"));
+                    gc3D.fillRect(p[0] - bSize / 2, p[1] - trunkH, bSize, trunkH);
+                    gc3D.setStroke(Color.web("#451a03"));
+                    gc3D.setLineWidth(1.4);
+                    gc3D.strokeRect(p[0] - bSize / 2, p[1] - trunkH, bSize, trunkH);
+
+                    // Blocky Voxel Canopy Block Grid (3x3 Leaf Voxel Cubes)
+                    Color leafVoxelCol = switch (speciesIdx) {
+                        case 2 -> Color.web("#86efac"); // Birch
+                        case 5 -> Color.web("#14532d"); // Pine
+                        case 6 -> Color.web("#a16207"); // Acacia
+                        default -> Color.web("#15803d"); // Oak / Default
+                    };
+                    gc3D.setFill(leafVoxelCol);
+                    gc3D.setStroke(Color.web("#0f172a", 0.9));
+                    gc3D.setLineWidth(1.5);
+
+                    for (int bx = -1; bx <= 1; bx++) {
+                        for (int by = -2; by <= 0; by++) {
+                            double vx = swayX + bx * bSize - bSize / 2;
+                            double vy = p[1] - trunkH + by * bSize;
+                            gc3D.fillRect(vx, vy, bSize, bSize);
+                            gc3D.strokeRect(vx, vy, bSize, bSize);
+                        }
+                    }
+                    continue;
+                }
+
                 switch (speciesIdx) {
                     case 0 -> { // Bambouseraie (Bamboo Cluster)
                         gc3D.setStroke(Color.web("#84cc16")); gc3D.setLineWidth(Math.max(2.0, trunkW * 0.35));
@@ -2818,6 +2938,14 @@ public class WorldEditorPane extends BorderPane {
                             gc3D.fillOval(swayX - canopyR * 0.6, p[1] - trunkH * 0.7 - 4, canopyR * 0.6, 5);
                             gc3D.fillOval(swayX, p[1] - trunkH * 1.15 - 4, canopyR * 0.6, 5);
                         }
+                    }
+                }
+
+                if (currentRenderMode == RenderMode.REALISTIC && speciesIdx != 1) {
+                    int pTexIdx = (speciesIdx % 6) + 1;
+                    Image plantAlphaImg = getPlantTexture("/textures/Plant alpha " + pTexIdx + ".png");
+                    if (plantAlphaImg != null) {
+                        gc3D.drawImage(plantAlphaImg, swayX - canopyR * 0.85, p[1] - trunkH - canopyR * 0.85, canopyR * 1.7, canopyR * 1.7);
                     }
                 }
             }
@@ -3077,10 +3205,10 @@ public class WorldEditorPane extends BorderPane {
                     double ay = ind.getY();
                     double az = ind.getZ();
 
-                    double gx = (ax / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
-                    double gy = (ay / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
-                    int igx = Math.max(0, Math.min(GRID_SIZE - 1, (int) gx));
-                    int igy = Math.max(0, Math.min(GRID_SIZE - 1, (int) gy));
+                    double gx = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (ax / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE));
+                    double gy = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (ay / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE));
+                    int igx = (int) gx;
+                    int igy = (int) gy;
                     double gz = heightGrid[igx][igy] * 40.0 + az * 2.0 + 1.5;
 
                     double[] p = project3DPoint(gx, gy, gz, cx, cy, scale, radAz, radEl);
@@ -3191,63 +3319,11 @@ public class WorldEditorPane extends BorderPane {
         gc3D.strokeLine(p[0], p[1] + pulseR - 2, p[0], p[1] + pulseR + 6);
 
         // 3. Render Live Ant Constants & Metrics HUD Card
-        drawTrackedAntHUDCard();
+        updateTrackedAntTelemetry();
     }
 
     private void drawTrackedAntHUDCard() {
-        if (followedAnt == null) return;
-
-        double boxW = 320.0;
-        double boxH = 175.0;
-        double hx = 20.0;
-        double hy = Math.max(10.0, Math.min(canvas3D.getHeight() - boxH - 10.0, canvas3D.getHeight() - boxH - 35.0));
-
-        gc3D.setFill(Color.web("rgba(15, 23, 42, 0.94)"));
-        gc3D.fillRoundRect(hx, hy, boxW, boxH, 10, 10);
-        gc3D.setStroke(Color.web("#f59e0b", 0.9));
-        gc3D.setLineWidth(1.5);
-        gc3D.strokeRoundRect(hx, hy, boxW, boxH, 10, 10);
-
-        gc3D.setFill(Color.web("#f59e0b"));
-        gc3D.setFont(Font.font("System", javafx.scene.text.FontWeight.BOLD, 11));
-        String idStr = followedAnt.getId() != null ? followedAnt.getId().toString().substring(0, 8) : "N/A";
-        gc3D.fillText(String.format("🎯 FOURMI SUIVIE : %s #%s", followedAnt.getCaste(), idStr), hx + 12, hy + 22);
-
-        gc3D.setStroke(Color.web("rgba(245, 158, 11, 0.3)"));
-        gc3D.setLineWidth(1.0);
-        gc3D.strokeLine(hx + 10, hy + 28, hx + boxW - 10, hy + 28);
-
-        gc3D.setFont(Font.font("System", 10));
-
-        gc3D.setFill(Color.web("#cbd5e1"));
-        gc3D.fillText(String.format(Locale.US, "💓 Santé : %.0f / 100", followedAnt.getHealth()), hx + 12, hy + 46);
-        double barW = 90.0;
-        gc3D.setFill(Color.web("#334155"));
-        gc3D.fillRect(hx + 205, hy + 37, barW, 9);
-        gc3D.setFill(followedAnt.getHealth() > 50 ? Color.web("#22c55e") : Color.web("#ef4444"));
-        gc3D.fillRect(hx + 205, hy + 37, (Math.max(0, Math.min(100, followedAnt.getHealth())) / 100.0) * barW, 9);
-
-        gc3D.setFill(Color.web("#38bdf8"));
-        gc3D.fillText(String.format(Locale.US, "⚡ Énergie: %.0f%% | 🍗 Faim: %.0f%% | 💧 Soif: %.0f%%", followedAnt.getEnergy(), followedAnt.getHunger(), followedAnt.getThirst()), hx + 12, hy + 66);
-
-        double ageDays = followedAnt.getAge() / 600.0;
-        gc3D.setFill(Color.web("#e2e8f0"));
-        gc3D.fillText(String.format(Locale.US, "🎂 Âge: %.1f jours | Stade: %s | Tâche: %s", ageDays, followedAnt.getLifeStage(), followedAnt.getJob()), hx + 12, hy + 86);
-
-        gc3D.setFill(Color.web("#a78bfa"));
-        String behaviorsStr = followedAnt.getActiveBehaviorsSummary();
-        String stateStr = String.format("🧠 IA: %s [%s]", followedAnt.getState() != null ? followedAnt.getState() : "IDLE", behaviorsStr != null ? behaviorsStr : "");
-        if (stateStr.length() > 46) {
-            stateStr = stateStr.substring(0, 43) + "...";
-        }
-        gc3D.fillText(stateStr, hx + 12, hy + 106);
-
-        gc3D.setFill(Color.web("#cbd5e1"));
-        gc3D.fillText(String.format(Locale.US, "📍 Pos 3D: (X: %.1f, Y: %.1f, Z: %.1f)", followedAnt.getX(), followedAnt.getY(), followedAnt.getZ()), hx + 12, hy + 126);
-        gc3D.fillText(String.format(Locale.US, "🚀 Cap (Heading): %.0f° | 📦 Cargo: %s", Math.toDegrees(followedAnt.getHeading()), followedAnt.getCarriedItem() != org.swarmforge.core.domain.Individual.CarriedItem.NONE ? followedAnt.getCarriedItem() : "Aucun"), hx + 12, hy + 144);
-
-        gc3D.setFill(Color.web("#4ade80"));
-        gc3D.fillText("🧪 Gestalt Hydrocarbonée Cuticulaire (CHC): Authentifiée", hx + 12, hy + 162);
+        // Handled interactively by TrackedAntPane JavaFX overlay
     }
 
     private void drawGalleriesOverlay3D(double cx, double cy, double scale, double radAz, double radEl) {
@@ -3695,7 +3771,7 @@ public class WorldEditorPane extends BorderPane {
         java.util.Map<Long, float[]> entries = grid.getAllEntries();
         if (entries.isEmpty()) return;
 
-        double dotR = Math.max(2.0, 4.0 * (zoom / 7.5));
+        double baseDotR = Math.max(2.0, 4.0 * (zoom / 7.5));
 
         for (java.util.Map.Entry<Long, float[]> e : entries.entrySet()) {
             long key = e.getKey();
@@ -3708,23 +3784,57 @@ public class WorldEditorPane extends BorderPane {
 
             if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) continue;
 
-            float foodIntensity = vals.length > 0 ? vals[0] : 0f;
-            float homeIntensity = vals.length > 1 ? vals[1] : 0f;
-            float maxIntensity = Math.max(foodIntensity, homeIntensity);
+            // Extract multi-channel pheromone intensities mapped to PheromoneType indices
+            float homeVal = (vals.length > 0 && showHomePheromone) ? vals[0] : 0f;
+            float foodVal = (vals.length > 1 && showFoodPheromone) ? vals[1] : 0f;
+            float alarmVal = (vals.length > 2 && showAlarmPheromone) ? vals[2] : 0f;
+            float recruitVal = (vals.length > 3 && showRecruitmentPheromone) ? vals[3] : 0f;
+            float queenVal = (vals.length > 4 && showQueenPheromone) ? vals[4] : 0f;
+            float deathVal = (vals.length > 5 && showDeathPheromone) ? vals[5] : 0f;
 
-            if (maxIntensity > 0.02f) {
-                double terrainZ = heightGrid[x][y] * 40.0 + (zVox * 0.5) + 0.8;
-                double[] p = project3DPoint(x, y, terrainZ, cx, cy, scale, radAz, radEl);
-                double alpha = Math.min(0.9, maxIntensity * 0.7);
+            float maxVal = Math.max(homeVal, Math.max(foodVal, Math.max(alarmVal, Math.max(recruitVal, Math.max(queenVal, deathVal)))));
+            if (maxVal < 0.02f) continue;
 
-                if (foodIntensity >= homeIntensity) {
-                    gc3D.setFill(Color.web("#a855f7", alpha)); // Purple food trail
-                    gc3D.fillOval(p[0] - dotR, p[1] - dotR, dotR * 2, dotR * 2);
-                    gc3D.setFill(Color.web("#ec4899", Math.min(1.0, alpha + 0.2)));
-                    gc3D.fillOval(p[0] - dotR * 0.5, p[1] - dotR * 0.5, dotR, dotR);
-                } else {
-                    gc3D.setFill(Color.web("#0284c7", alpha)); // Blue home trail
-                    gc3D.fillOval(p[0] - dotR, p[1] - dotR, dotR * 2, dotR * 2);
+            // Chemical channel color mapping
+            String colorHex;
+            if (alarmVal == maxVal) colorHex = "#ef4444";       // Alarm/Danger: Red
+            else if (foodVal == maxVal) colorHex = "#a855f7";   // Food Trail: Purple
+            else if (homeVal == maxVal) colorHex = "#0284c7";   // Nest/Home: Blue
+            else if (recruitVal == maxVal) colorHex = "#f59e0b";// Recruitment: Amber
+            else if (queenVal == maxVal) colorHex = "#ec4899";  // Queen Scent: Pink
+            else colorHex = "#64748b";                           // Death/Necrophoric: Slate
+
+            double terrainZ = heightGrid[x][y] * 40.0 + (zVox * 0.5) + 0.8;
+            double[] p = project3DPoint(x, y, terrainZ, cx, cy, scale, radAz, radEl);
+            double alpha = Math.min(0.9, maxVal * 0.75);
+
+            switch (pheromoneRenderMode) {
+                case HEATMAP_GRADIENT -> {
+                    // Mode 1: Continuous Density Surface / Fading Heatmap Gradient
+                    double heatRadius = baseDotR * (1.6 + maxVal * 2.6);
+                    gc3D.setFill(Color.web(colorHex, alpha * 0.45));
+                    gc3D.fillOval(p[0] - heatRadius, p[1] - heatRadius * 0.6, heatRadius * 2, heatRadius * 1.2);
+                }
+                case VOXEL_PARTICLES -> {
+                    // Mode 2: Discrete Points / Voxels with Dynamic Radius & Core Glow
+                    double particleR = baseDotR * (0.8 + maxVal * 1.3);
+                    gc3D.setFill(Color.web(colorHex, Math.min(1.0, alpha + 0.15)));
+                    gc3D.fillOval(p[0] - particleR, p[1] - particleR, particleR * 2, particleR * 2);
+                    gc3D.setFill(Color.web("#ffffff", Math.min(1.0, alpha + 0.35)));
+                    gc3D.fillOval(p[0] - particleR * 0.3, p[1] - particleR * 0.3, particleR * 0.6, particleR * 0.6);
+                }
+                case HYBRID_GIS -> {
+                    // Mode 3: Multi-Layer SIG Hybrid (Gradient Surface Halo + Voxel Core Glow)
+                    double outerHaloR = baseDotR * (1.4 + maxVal * 1.8);
+                    double coreR = baseDotR * (0.7 + maxVal * 0.8);
+
+                    gc3D.setFill(Color.web(colorHex, alpha * 0.35));
+                    gc3D.fillOval(p[0] - outerHaloR, p[1] - outerHaloR * 0.65, outerHaloR * 2, outerHaloR * 1.3);
+
+                    gc3D.setFill(Color.web(colorHex, Math.min(1.0, alpha + 0.25)));
+                    gc3D.fillOval(p[0] - coreR, p[1] - coreR, coreR * 2, coreR * 2);
+                    gc3D.setFill(Color.web("#fef08a", Math.min(1.0, alpha + 0.4)));
+                    gc3D.fillOval(p[0] - coreR * 0.4, p[1] - coreR * 0.4, coreR * 0.8, coreR * 0.8);
                 }
             }
         }
@@ -4440,5 +4550,9 @@ public class WorldEditorPane extends BorderPane {
 
     private boolean isForestArea(int gx, int gy) {
         return (gx * 17 + gy * 31) % 11 == 0;
+    }
+
+    public double getZoom() {
+        return zoom;
     }
 }

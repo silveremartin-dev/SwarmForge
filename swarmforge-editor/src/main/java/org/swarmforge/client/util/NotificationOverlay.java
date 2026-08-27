@@ -47,14 +47,14 @@ public class NotificationOverlay {
     /**
      * Shows a non-blocking toast notification banner over the container (silent by default).
      */
-    public static void show(Pane parent, String message, NotificationType type) {
+    public static void show(javafx.scene.Node parent, String message, NotificationType type) {
         show(parent, message, type, false);
     }
 
     /**
      * Shows a non-blocking toast notification banner over the container with optional sound.
      */
-    public static void show(Pane parent, String message, NotificationType type, boolean playSound) {
+    public static void show(javafx.scene.Node parent, String message, NotificationType type, boolean playSound) {
         if (parent == null || message == null || message.isBlank()) return;
 
         Platform.runLater(() -> {
@@ -79,10 +79,13 @@ public class NotificationOverlay {
             toast.setMaxWidth(500);
 
             // Determine target container
-            Pane target = parent;
-            if (parent.getScene() != null && parent.getScene().getRoot() instanceof Pane) {
-                target = (Pane) parent.getScene().getRoot();
+            Pane target = null;
+            if (parent instanceof Pane p) {
+                target = p;
+            } else if (parent.getScene() != null && parent.getScene().getRoot() instanceof Pane r) {
+                target = r;
             }
+            if (target == null) return;
 
             if (target instanceof StackPane) {
                 StackPane.setAlignment(toast, Pos.BOTTOM_RIGHT);

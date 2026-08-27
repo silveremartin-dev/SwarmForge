@@ -595,4 +595,47 @@
     -fx-border-radius: 20;
 }
 
+.diag-card {
+    -fx-background-color: #f0f9ff;
+    -fx-border-color: #0284c7;
+    -fx-border-width: 1px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-padding: 10px;
+}
+
+.purple-title {
+    -fx-font-weight: bold;
+    -fx-text-fill: #7c3aed;
+    -fx-font-size: 11px;
+}
+
+.render-options-panel {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #cbd5e1;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 8px;
+}
+
+.legend-bar {
+    -fx-background-color: #f1f5f9;
+    -fx-border-color: #cbd5e1;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 4px 10px 6px 10px;
+}
+
+.legend-item {
+    -fx-background-color: #e2e8f0;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.legend-item .label {
+    -fx-text-fill: #0f172a;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+
 

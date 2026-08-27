@@ -44,9 +44,9 @@ import java.util.function.BiConsumer;
  */
 public class MinimapOverlay extends VBox {
 
-    private final Canvas canvasTop;
+    private final ResizableCanvas canvasTop;
     private final GraphicsContext gcTop;
-    private final Canvas canvasSide;
+    private final ResizableCanvas canvasSide;
     private final GraphicsContext gcSide;
     private final VBox mapContentBox;
 
@@ -83,10 +83,10 @@ public class MinimapOverlay extends VBox {
         int topH = Math.max(10, (int) (w * 0.7));
         int sideH = Math.max(10, (int) (w * 0.5));
 
-        this.canvasTop = new Canvas(w, topH);
+        this.canvasTop = new ResizableCanvas(w, topH);
         this.gcTop = canvasTop.getGraphicsContext2D();
 
-        this.canvasSide = new Canvas(w, sideH);
+        this.canvasSide = new ResizableCanvas(w, sideH);
         this.gcSide = canvasSide.getGraphicsContext2D();
 
         this.densityGridTop = new int[GRID_RES][GRID_RES];

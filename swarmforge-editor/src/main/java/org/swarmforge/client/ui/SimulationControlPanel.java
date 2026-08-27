@@ -260,6 +260,25 @@ public class SimulationControlPanel extends VBox {
             if (onStepChange != null) onStepChange.accept(simulationStepSeconds);
         });
 
+        Button btnAlignWeather = new Button("🔄 Align");
+        btnAlignWeather.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+        btnAlignWeather.setTooltip(new Tooltip("Aligner le climat sur le biotope sélectionné"));
+        btnAlignWeather.setOnAction(e -> alignWeatherWithWorld());
+        HBox weatherRow = new HBox(6, comboWeather, btnAlignWeather);
+
+        Label lbl3DateTime = new Label("3. 📅 Date/Heure de Départ :");
+        lbl3DateTime.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+        DatePicker startDatePicker = new DatePicker(startDateTime.toLocalDate());
+        startDatePicker.setPrefWidth(130);
+        startDatePicker.setStyle("-fx-font-size: 11px;");
+        startDatePicker.setOnAction(e -> {
+            if (startDatePicker.getValue() != null) {
+                startDateTime = LocalDateTime.of(startDatePicker.getValue(), startDateTime.toLocalTime());
+                updateTick(currentTick, maxTick);
+            }
+        });
+        HBox startDateTimeBox = new HBox(6, startDatePicker);
+
         gridWorldWeather.add(lbl1World, 0, 0); gridWorldWeather.add(comboWorld, 1, 0);
         gridWorldWeather.add(lbl2Weather, 0, 1); gridWorldWeather.add(weatherRow, 1, 1);
         gridWorldWeather.add(lbl3DateTime, 0, 2); gridWorldWeather.add(startDateTimeBox, 1, 2);
@@ -372,7 +391,7 @@ public class SimulationControlPanel extends VBox {
 
         // Line 1: Date & Heure Row
         HBox dateTimeRow = new HBox(8);
-        dateTimeRow.setAlignment(Pos.CENTER);
+        dateTimeRow.setAlignment(Pos.CENTER_LEFT);
 
         lblDateTime = new Label("📅 Date & Heure : 2026-03-20 08:00:00 (Jour 1)");
         lblDateTime.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
@@ -380,28 +399,9 @@ public class SimulationControlPanel extends VBox {
 
         dateTimeRow.getChildren().add(lblDateTime);
 
-        // Line 2: Pas de Simulation (Read-only scenario parameter) & Compteur de Ticks
-        HBox stepRow = new HBox(8);
-        stepRow.setAlignment(Pos.CENTER);
-
-        lblStepDt = new Label("⏱️ Δt physique: 16.6 ms (60 Hz - Mode Fin / Déterministe)");
-        lblStepDt.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px;");
-        lblStepDt.setTooltip(new Tooltip("Le pas de temps Δt est fixé par la configuration du scénario pour préserver le déterminisme mathématique (Seed). Utilisez le curseur Vitesse (1x-20x) pour accélérer le débit d'exécution."));
-
-        Label lblTickLabel = new Label("Tick :");
-        lblTickLabel.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
-        lblTick = new Label("0 / 10000");
-        lblTick.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
-        lblTick.setTooltip(new Tooltip("Nombre de pas de temps (ticks) exécutés depuis le début du scénario."));
-
-        stepRow.getChildren().addAll(lblStepDt, new Separator(Orientation.VERTICAL), lblTickLabel, lblTick);
-
-        // Line 3 & Line 4: Playback Controls (Split into 2 balanced rows for compact UI fit)
-        HBox playbackRow1 = new HBox(4);
+        // Line 2: Playback Controls
+        HBox playbackRow1 = new HBox(3);
         playbackRow1.setAlignment(Pos.CENTER);
-
-        HBox playbackRow2 = new HBox(4);
-        playbackRow2.setAlignment(Pos.CENTER);
 
         btnGoToBeginning = createButton("⏮", "Début du scénario (Réinitialiser au début)");
         btnRewind = createButton("⏪", "Retour arrière (100 pas)");
@@ -486,7 +486,7 @@ public class SimulationControlPanel extends VBox {
 
         playbackRow1.getChildren().addAll(btnGoToBeginning, btnRewind, btnStepBack, btnPlay, btnPause, btnStepForward, btnFastForward, btnGoToEnd);
 
-        // Line 5a: Speed Slider & Readout Label
+        // Line 3: Speed Slider & Readout Label
         HBox speedSliderRow = new HBox(8);
         speedSliderRow.setAlignment(Pos.CENTER);
 
@@ -510,26 +510,13 @@ public class SimulationControlPanel extends VBox {
 
         speedSliderRow.getChildren().addAll(lblSpeedLabel, speedSlider, lblSpeed);
 
-        // Line 5b: Speed Multiplier Preset Buttons (Placed BELOW the slider for legibility)
-        HBox speedPresetsRow = new HBox(5);
-        speedPresetsRow.setAlignment(Pos.CENTER);
-
-        Button btnP05 = createSmallButton("0.5x"); btnP05.setTooltip(new Tooltip("Vitesse ralentie (0.5x).")); btnP05.setOnAction(e -> setSpeed(0.5f));
-        Button btnP1  = createSmallButton("1x");   btnP1.setTooltip(new Tooltip("Vitesse réelle normale (1.0x).")); btnP1.setOnAction(e -> setSpeed(1.0f));
-        Button btnP2  = createSmallButton("2x");   btnP2.setTooltip(new Tooltip("Vitesse accélérée 2x.")); btnP2.setOnAction(e -> setSpeed(2.0f));
-        Button btnP5  = createSmallButton("5x");   btnP5.setTooltip(new Tooltip("Vitesse rapide 5x.")); btnP5.setOnAction(e -> setSpeed(5.0f));
-        Button btnP10 = createSmallButton("10x");  btnP10.setTooltip(new Tooltip("Vitesse ultra rapide 10x.")); btnP10.setOnAction(e -> setSpeed(10.0f));
-        Button btnP20 = createSmallButton("20x");  btnP20.setTooltip(new Tooltip("Vitesse maximale 20x.")); btnP20.setOnAction(e -> setSpeed(20.0f));
-
-        speedPresetsRow.getChildren().addAll(btnP05, btnP1, btnP2, btnP5, btnP10, btnP20);
-
         playbackAndSpeedPanel.setPadding(new Insets(8));
         playbackAndSpeedPanel.getStyleClass().add("card-pane");
 
         Label lblPlaybackHeader = new Label("⏱️ Contrôles Temps, Vitesse & Lecture");
         lblPlaybackHeader.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
 
-        playbackAndSpeedPanel.getChildren().addAll(lblPlaybackHeader, dateTimeRow, stepRow, playbackRow1, speedSliderRow, speedPresetsRow);
+        playbackAndSpeedPanel.getChildren().addAll(lblPlaybackHeader, dateTimeRow, playbackRow1, speedSliderRow);
 
         getChildren().addAll(headerVBox, scenarioCard);
         updateButtonStates();
@@ -600,6 +587,36 @@ public class SimulationControlPanel extends VBox {
             confirmAlert.setHeaderText("Confirmation requise");
             java.util.Optional<ButtonType> result = confirmAlert.showAndWait();
             if (result.isEmpty() || result.get() != ButtonType.OK) {
+                return;
+            }
+        }
+
+        // Validate nest capacity vs. requested population for all configured species
+        StringBuilder warningMsg = new StringBuilder();
+        for (SpeciesConfigCard card : speciesCardList) {
+            int totalPop = card.getQueenCount() + card.getWorkerCount() + card.getSoldierCount();
+            String nestType = card.getNestType() != null ? card.getNestType() : getSelectedNestType();
+            int estCap = estimateNestCapacity(nestType);
+            if (totalPop > estCap) {
+                warningMsg.append(String.format(
+                    "• Espèce '%s' : Population (%,d ind.) > Capacité du nid '%s' (~%,d ind.). %,d individus émergeront en surface.\n",
+                    card.getSpeciesName(), totalPop, nestType, estCap, (totalPop - estCap)
+                ));
+            }
+        }
+
+        if (warningMsg.length() > 0) {
+            Alert warnAlert = org.swarmforge.client.util.ThemeManager.createAlert(
+                Alert.AlertType.WARNING,
+                "⚠️ AVERTISSEMENT : CAPACITÉ DU NID DÉPASSÉE\n\n" +
+                warningMsg.toString() +
+                "\nLe nid conçu pour ce preset ne dispose pas de la capacité suffisante pour abriter l'ensemble des individus sous terre.\n" +
+                "Voulez-vous continuer la création du scénario ?"
+            );
+            warnAlert.setTitle("Attention : Capacité du Nid Insuffisante");
+            warnAlert.setHeaderText("Surpopulation du nid détectée");
+            java.util.Optional<ButtonType> res = warnAlert.showAndWait();
+            if (res.isEmpty() || res.get() != ButtonType.OK) {
                 return;
             }
         }
@@ -892,8 +909,8 @@ public class SimulationControlPanel extends VBox {
 
     private Button createButton(String text, String tooltip) {
         Button btn = new Button(text);
-        btn.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc; " +
-                "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 5;");
+        btn.setStyle("-fx-font-size: 12px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc; " +
+                "-fx-background-radius: 4; -fx-min-width: 29px; -fx-min-height: 28px; -fx-padding: 2px 4px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 4;");
         if (tooltip != null && !tooltip.isEmpty()) btn.setTooltip(new Tooltip(tooltip));
         btn.disabledProperty().addListener((obs, oldV, newV) -> btn.setOpacity(newV ? 0.35 : 1.0));
         return btn;
@@ -907,20 +924,20 @@ public class SimulationControlPanel extends VBox {
 
     private void updateButtonStates() {
         if (isPlaying) {
-            btnPlay.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #16a34a; -fx-text-fill: white; " +
-                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #22c55e; -fx-border-width: 2px; -fx-border-radius: 5; -fx-font-weight: bold;");
-            btnPause.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #94a3b8; " +
-                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 5;");
+            btnPlay.setStyle("-fx-font-size: 12px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #16a34a; -fx-text-fill: white; " +
+                    "-fx-background-radius: 4; -fx-min-width: 29px; -fx-min-height: 28px; -fx-padding: 2px 4px; -fx-cursor: hand; -fx-border-color: #22c55e; -fx-border-width: 2px; -fx-border-radius: 4; -fx-font-weight: bold;");
+            btnPause.setStyle("-fx-font-size: 12px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #94a3b8; " +
+                    "-fx-background-radius: 4; -fx-min-width: 29px; -fx-min-height: 28px; -fx-padding: 2px 4px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 4;");
         } else if (isPaused) {
-            btnPlay.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #94a3b8; " +
-                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 5;");
-            btnPause.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #d97706; -fx-text-fill: white; " +
-                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #f59e0b; -fx-border-width: 2px; -fx-border-radius: 5; -fx-font-weight: bold;");
+            btnPlay.setStyle("-fx-font-size: 12px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #94a3b8; " +
+                    "-fx-background-radius: 4; -fx-min-width: 29px; -fx-min-height: 28px; -fx-padding: 2px 4px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 4;");
+            btnPause.setStyle("-fx-font-size: 12px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #d97706; -fx-text-fill: white; " +
+                    "-fx-background-radius: 4; -fx-min-width: 29px; -fx-min-height: 28px; -fx-padding: 2px 4px; -fx-cursor: hand; -fx-border-color: #f59e0b; -fx-border-width: 2px; -fx-border-radius: 4; -fx-font-weight: bold;");
         } else {
-            btnPlay.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #0284c7; -fx-text-fill: white; " +
-                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #38bdf8; -fx-border-radius: 5;");
-            btnPause.setStyle("-fx-font-size: 13px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc; " +
-                    "-fx-background-radius: 5; -fx-min-width: 34px; -fx-min-height: 30px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 5;");
+            btnPlay.setStyle("-fx-font-size: 12px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #0284c7; -fx-text-fill: white; " +
+                    "-fx-background-radius: 4; -fx-min-width: 29px; -fx-min-height: 28px; -fx-padding: 2px 4px; -fx-cursor: hand; -fx-border-color: #38bdf8; -fx-border-radius: 4;");
+            btnPause.setStyle("-fx-font-size: 12px; -fx-font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc; " +
+                    "-fx-background-radius: 4; -fx-min-width: 29px; -fx-min-height: 28px; -fx-padding: 2px 4px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 4;");
         }
 
         btnRewind.setDisable(false);
@@ -1497,6 +1514,7 @@ public class SimulationControlPanel extends VBox {
 
         public VBox getCardPane() { return cardPane; }
         public String getSpeciesName() { return speciesName; }
+        public String getNestType() { return nestTypeCombo.getValue(); }
         public int getQueenCount() { return queenSpinner.getValue(); }
         public void setQueenCount(int count) { queenSpinner.getValueFactory().setValue(count); }
         public int getWorkerCount() { return workerSpinner.getValue(); }
@@ -1508,6 +1526,19 @@ public class SimulationControlPanel extends VBox {
         public ArchitectureType getQueenEngine() { return queenEngineCombo.getValue(); }
         public int getInitialFood() { return initialFoodSpinner.getValue(); }
         public void setInitialFood(int food) { initialFoodSpinner.getValueFactory().setValue(food); }
+    }
+
+    private int estimateNestCapacity(String nestType) {
+        if (nestType == null) return 350;
+        String lower = nestType.toLowerCase();
+        if (lower.contains("jeune") || lower.contains("young") || lower.contains("tige") || lower.contains("stem") || lower.contains("galle")) {
+            return 150;
+        } else if (lower.contains("mature") || lower.contains("carton") || lower.contains("bivouac") || lower.contains("pot") || lower.contains("cavité") || lower.contains("dôme")) {
+            return 500;
+        } else if (lower.contains("supercolonie") || lower.contains("supercolony") || lower.contains("champignon") || lower.contains("vault") || lower.contains("cathédrale")) {
+            return 2500;
+        }
+        return 350;
     }
 
     public record AccessorySpeciesInfo(String name, String role, String description, int defaultCount) {
@@ -1623,10 +1654,6 @@ public class SimulationControlPanel extends VBox {
         }
     }
 
-    public boolean isPlaying() {
-        return isPlaying;
-    }
-
     public void pauseSimulation() {
         if (isPlaying) {
             isPlaying = false;
@@ -1637,7 +1664,10 @@ public class SimulationControlPanel extends VBox {
         }
     }
 
-    public float getSimulationStepSeconds() {
-        return simulationStepSeconds;
+    public String getSelectedNestType() {
+        if (speciesCardList != null && !speciesCardList.isEmpty() && speciesCardList.get(0).getNestType() != null) {
+            return speciesCardList.get(0).getNestType();
+        }
+        return "Galeries Souterraines Matures";
     }
 }

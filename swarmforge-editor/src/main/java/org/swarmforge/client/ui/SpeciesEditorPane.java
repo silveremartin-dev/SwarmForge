@@ -237,6 +237,7 @@ public class SpeciesEditorPane extends VBox {
         presetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
         presetCombo.setTooltip(new Tooltip("Sélectionnez une espèce d'insecte eusocial pré-configurée (Lasius, Atta, Apis, Bombus, Vespula, Macrotermes, etc.)."));
         presetCombo.getItems().setAll(presetManager.getPresetNames());
+        FXCollections.sort(presetCombo.getItems());
         presetCombo.setPrefWidth(240);
         presetCombo.setOnAction(e -> {
             if (isUpdatingFields) return;

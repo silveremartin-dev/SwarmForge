@@ -98,6 +98,21 @@ public class Colony implements java.io.Serializable {
     private float proteinStored;
     private float carbohydrateStored;
 
+    private float mapWidth = 64.0f;
+    private float mapHeight = 64.0f;
+
+    public void setMapBounds(float width, float height) {
+        this.mapWidth = width;
+        this.mapHeight = height;
+    }
+
+    public void setMapBounds(int width, int height) {
+        setMapBounds((float) width, (float) height);
+    }
+
+    public float getMapWidth() { return mapWidth; }
+    public float getMapHeight() { return mapHeight; }
+
     public List<Individual> createQueens(int count) {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
@@ -106,8 +121,20 @@ public class Colony implements java.io.Serializable {
         float baseSy = qChamber != null ? qChamber.y() : nestY;
         float baseSz = qChamber != null ? qChamber.z() : nestZ;
 
+        List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
+
         for (int i = 0; i < count; i++) {
-            Individual ind = new Individual(this.id, Individual.Caste.QUEEN, baseSx, baseSy, baseSz);
+            float sx = baseSx, sy = baseSy, sz = baseSz;
+            if (!nestChambers.isEmpty()) {
+                org.swarmforge.core.structure.Chamber targetChamber = nestChambers.get(i % nestChambers.size());
+                sx = targetChamber.getX();
+                sy = targetChamber.getY();
+                sz = targetChamber.getZ();
+            }
+            sx = Math.max(1.0f, Math.min(mapWidth - 1.0f, sx));
+            sy = Math.max(1.0f, Math.min(mapHeight - 1.0f, sy));
+
+            Individual ind = new Individual(this.id, Individual.Caste.QUEEN, sx, sy, sz);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
             batch.add(ind);
@@ -120,14 +147,14 @@ public class Colony implements java.io.Serializable {
         if (nest != null && nest.getChambers() != null && !nest.getChambers().isEmpty()) {
             int cap = 0;
             for (var chamber : nest.getChambers()) {
-                cap += Math.max(15, (int) chamber.getCapacity());
+                cap += Math.max(50, (int) chamber.getCapacity());
             }
-            return Math.max(40, cap);
+            return Math.max(500, cap);
         }
-        if (tunnelNetwork != null && tunnelNetwork.getChambers() != null) {
-            return Math.max(40, tunnelNetwork.getChambers().size() * 25);
+        if (tunnelNetwork != null && tunnelNetwork.getNodes() != null && !tunnelNetwork.getNodes().isEmpty()) {
+            return Math.max(500, tunnelNetwork.getNodes().size() * 50);
         }
-        return 150;
+        return 500;
     }
 
     public List<Individual> createWorkers(int count) {
@@ -138,25 +165,39 @@ public class Colony implements java.io.Serializable {
         var ent = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) : null;
 
         int subterraneanCap = calculateSubterraneanCapacity();
+        List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
 
         for (int i = 0; i < count; i++) {
             float sx, sy, sz;
             Individual.Job job = Individual.Job.NURSE;
 
             if (i < subterraneanCap) {
-                var targetNode = (i % 3 == 0 && brood != null) ? brood : ((i % 3 == 1 && food != null) ? food : ent);
-                sx = targetNode != null ? targetNode.x() : nestX;
-                sy = targetNode != null ? targetNode.y() : nestY;
-                sz = targetNode != null ? targetNode.z() : nestZ;
+                if (!nestChambers.isEmpty()) {
+                    org.swarmforge.core.structure.Chamber targetChamber = nestChambers.get(i % nestChambers.size());
+                    double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                    double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.2, 2.5);
+                    sx = (float) (targetChamber.getX() + Math.cos(rAngle) * rDist);
+                    sy = (float) (targetChamber.getY() + Math.sin(rAngle) * rDist);
+                    sz = targetChamber.getZ();
+                } else {
+                    var targetNode = (i % 3 == 0 && brood != null) ? brood : ((i % 3 == 1 && food != null) ? food : ent);
+                    sx = targetNode != null ? targetNode.x() : nestX;
+                    sy = targetNode != null ? targetNode.y() : nestY;
+                    sz = targetNode != null ? targetNode.z() : nestZ;
+                }
             } else {
                 // Surface Spillover for excess population exceeding nest volume
                 double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double dist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(2.0, 10.0);
+                double dist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(2.0, 8.0);
                 sx = (float) (nestX + Math.cos(angle) * dist);
                 sy = (float) (nestY + Math.sin(angle) * dist);
                 sz = 0f; // Surface Z
                 job = Individual.Job.FORAGER; // Excess population assigned to surface foraging
             }
+
+            // Strictly clamp coordinates to terrarium boundary
+            sx = Math.max(1.0f, Math.min(mapWidth - 1.0f, sx));
+            sy = Math.max(1.0f, Math.min(mapHeight - 1.0f, sy));
 
             Individual ind = new Individual(this.id, Individual.Caste.WORKER, sx, sy, sz);
             ind.setSpecies(this.species);
@@ -173,14 +214,17 @@ public class Colony implements java.io.Serializable {
         List<Individual> batch = new java.util.ArrayList<>(count);
         var ent = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) : null;
         int subterraneanCap = calculateSubterraneanCapacity();
+        List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
 
         for (int i = 0; i < count; i++) {
             float sx, sy, sz;
-            if (i < subterraneanCap / 4) {
-                float baseSx = ent != null ? ent.x() : nestX;
-                float baseSy = ent != null ? ent.y() : nestY;
-                float baseSz = ent != null ? ent.z() : nestZ;
-                sx = baseSx; sy = baseSy; sz = baseSz;
+            if (i < subterraneanCap / 4 && !nestChambers.isEmpty()) {
+                org.swarmforge.core.structure.Chamber targetChamber = nestChambers.get(i % nestChambers.size());
+                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.2, 2.0);
+                sx = (float) (targetChamber.getX() + Math.cos(rAngle) * rDist);
+                sy = (float) (targetChamber.getY() + Math.sin(rAngle) * rDist);
+                sz = targetChamber.getZ();
             } else {
                 // Surface spillover around entrance for excess soldiers
                 double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
@@ -189,6 +233,9 @@ public class Colony implements java.io.Serializable {
                 sy = (float) (nestY + Math.sin(angle) * dist);
                 sz = 0f;
             }
+
+            sx = Math.max(1.0f, Math.min(mapWidth - 1.0f, sx));
+            sy = Math.max(1.0f, Math.min(mapHeight - 1.0f, sy));
 
             Individual ind = new Individual(this.id, Individual.Caste.SOLDIER, sx, sy, sz);
             ind.setSpecies(this.species);
@@ -207,8 +254,20 @@ public class Colony implements java.io.Serializable {
         float baseSy = ent != null ? ent.y() : nestY;
         float baseSz = ent != null ? ent.z() : nestZ;
 
+        List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
+
         for (int i = 0; i < count; i++) {
-            Individual ind = new Individual(this.id, Individual.Caste.MALE, baseSx, baseSy, baseSz);
+            float sx = baseSx, sy = baseSy, sz = baseSz;
+            if (!nestChambers.isEmpty()) {
+                org.swarmforge.core.structure.Chamber targetChamber = nestChambers.get(i % nestChambers.size());
+                sx = targetChamber.getX();
+                sy = targetChamber.getY();
+                sz = targetChamber.getZ();
+            }
+            sx = Math.max(1.0f, Math.min(mapWidth - 1.0f, sx));
+            sy = Math.max(1.0f, Math.min(mapHeight - 1.0f, sy));
+
+            Individual ind = new Individual(this.id, Individual.Caste.MALE, sx, sy, sz);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
             batch.add(ind);
