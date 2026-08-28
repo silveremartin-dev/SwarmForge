@@ -113,7 +113,28 @@ public class Colony implements java.io.Serializable {
     public float getMapWidth() { return mapWidth; }
     public float getMapHeight() { return mapHeight; }
 
+    public void applyGaussianAge(Individual ind, boolean isFoundingQueen) {
+        if (ind == null) return;
+        float maxLifespan = ind.getMaxLifespan();
+        if (isFoundingQueen) {
+            // Young founding queen: age between 0 and 0.05 * maxLifespan
+            float youngAge = (float) (java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.0, 0.05) * maxLifespan);
+            ind.setAge(youngAge);
+        } else {
+            // Gaussian distribution across adult workforce (mean = 35%, stdDev = 15%)
+            double mean = 0.35 * maxLifespan;
+            double stdDev = 0.15 * maxLifespan;
+            double sample = mean + stdDev * java.util.concurrent.ThreadLocalRandom.current().nextGaussian();
+            float age = (float) Math.max(0.0, Math.min(0.85 * maxLifespan, sample));
+            ind.setAge(age);
+        }
+    }
+
     public List<Individual> createQueens(int count) {
+        return createQueens(count, true);
+    }
+
+    public List<Individual> createQueens(int count, boolean applyAgeDistribution) {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
         var qChamber = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.QUEEN_CHAMBER, nestX, nestY, nestZ) : null;
@@ -122,6 +143,7 @@ public class Colony implements java.io.Serializable {
         float baseSz = qChamber != null ? qChamber.z() : nestZ;
 
         List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
+        boolean isFoundingQueen = (count == 1);
 
         for (int i = 0; i < count; i++) {
             float sx = baseSx, sy = baseSy, sz = baseSz;
@@ -137,6 +159,9 @@ public class Colony implements java.io.Serializable {
             Individual ind = new Individual(this.id, Individual.Caste.QUEEN, sx, sy, sz);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            if (applyAgeDistribution) {
+                applyGaussianAge(ind, isFoundingQueen);
+            }
             batch.add(ind);
         }
         addIndividualsBulk(batch);
@@ -158,6 +183,10 @@ public class Colony implements java.io.Serializable {
     }
 
     public List<Individual> createWorkers(int count) {
+        return createWorkers(count, true);
+    }
+
+    public List<Individual> createWorkers(int count, boolean applyAgeDistribution) {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
         var brood = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ) : null;
@@ -203,6 +232,9 @@ public class Colony implements java.io.Serializable {
             ind.setSpecies(this.species);
             ind.setJob(job);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            if (applyAgeDistribution) {
+                applyGaussianAge(ind, false);
+            }
             batch.add(ind);
         }
         addIndividualsBulk(batch);
@@ -210,6 +242,10 @@ public class Colony implements java.io.Serializable {
     }
 
     public List<Individual> createSoldiers(int count) {
+        return createSoldiers(count, true);
+    }
+
+    public List<Individual> createSoldiers(int count, boolean applyAgeDistribution) {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
         var ent = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) : null;
@@ -240,6 +276,9 @@ public class Colony implements java.io.Serializable {
             Individual ind = new Individual(this.id, Individual.Caste.SOLDIER, sx, sy, sz);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            if (applyAgeDistribution) {
+                applyGaussianAge(ind, false);
+            }
             batch.add(ind);
         }
         addIndividualsBulk(batch);
@@ -247,6 +286,10 @@ public class Colony implements java.io.Serializable {
     }
 
     public List<Individual> createMales(int count) {
+        return createMales(count, true);
+    }
+
+    public List<Individual> createMales(int count, boolean applyAgeDistribution) {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
         var ent = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) : null;
@@ -270,6 +313,68 @@ public class Colony implements java.io.Serializable {
             Individual ind = new Individual(this.id, Individual.Caste.MALE, sx, sy, sz);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            if (applyAgeDistribution) {
+                applyGaussianAge(ind, false);
+            }
+            batch.add(ind);
+        }
+        addIndividualsBulk(batch);
+        return batch;
+    }
+
+    public List<Individual> createBrood(int count) {
+        return createBrood(count, true);
+    }
+
+    public List<Individual> createBrood(int count, boolean applyAgeDistribution) {
+        if (count <= 0) return List.of();
+        List<Individual> batch = new java.util.ArrayList<>(count);
+        var broodChamber = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ) : null;
+        float baseSx = broodChamber != null ? broodChamber.x() : nestX;
+        float baseSy = broodChamber != null ? broodChamber.y() : nestY;
+        float baseSz = broodChamber != null ? broodChamber.z() : nestZ;
+
+        List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
+
+        for (int i = 0; i < count; i++) {
+            float sx = baseSx, sy = baseSy, sz = baseSz;
+            if (!nestChambers.isEmpty()) {
+                org.swarmforge.core.structure.Chamber targetChamber = nestChambers.get(i % nestChambers.size());
+                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.1, 1.5);
+                sx = (float) (targetChamber.getX() + Math.cos(rAngle) * rDist);
+                sy = (float) (targetChamber.getY() + Math.sin(rAngle) * rDist);
+                sz = targetChamber.getZ();
+            }
+
+            sx = Math.max(1.0f, Math.min(mapWidth - 1.0f, sx));
+            sy = Math.max(1.0f, Math.min(mapHeight - 1.0f, sy));
+
+            Individual ind = new Individual(this.id, Individual.Caste.WORKER, sx, sy, sz);
+            ind.setSpecies(this.species);
+            ind.setJob(Individual.Job.NONE);
+
+            // Brood breakdown: 35% Eggs, 40% Larvae, 25% Pupae
+            double r = java.util.concurrent.ThreadLocalRandom.current().nextDouble();
+            if (r < 0.35) {
+                ind.setLifeStage(Individual.LifeStage.EGG);
+                ind.setMaturationThreshold(2000f);
+                if (applyAgeDistribution) {
+                    ind.setAge((float) (java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, 1900)));
+                }
+            } else if (r < 0.75) {
+                ind.setLifeStage(Individual.LifeStage.LARVA);
+                ind.setMaturationThreshold(4000f);
+                if (applyAgeDistribution) {
+                    ind.setAge((float) (2000f + java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, 3800)));
+                }
+            } else {
+                ind.setLifeStage(Individual.LifeStage.PUPA);
+                ind.setMaturationThreshold(6000f);
+                if (applyAgeDistribution) {
+                    ind.setAge((float) (4000f + java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, 1900)));
+                }
+            }
             batch.add(ind);
         }
         addIndividualsBulk(batch);
@@ -380,11 +485,17 @@ public class Colony implements java.io.Serializable {
     }
 
     /**
-     * Bulk add individuals without single-element array copying.
+     * Bulk add individuals without single-element array copying or O(N^2) list search.
      */
     public void addIndividualsBulk(java.util.Collection<Individual> batch) {
         if (batch == null || batch.isEmpty()) return;
-        List<Individual> toAdd = batch.stream().filter(ind -> ind != null && !individuals.contains(ind)).toList();
+        java.util.List<Individual> toAdd;
+        if (individuals.isEmpty()) {
+            toAdd = batch.stream().filter(java.util.Objects::nonNull).toList();
+        } else {
+            java.util.Set<Individual> existing = new java.util.HashSet<>(individuals);
+            toAdd = batch.stream().filter(ind -> ind != null && !existing.contains(ind)).toList();
+        }
         if (toAdd.isEmpty()) return;
         individuals.addAll(toAdd);
         totalBorn += toAdd.size();

@@ -1469,9 +1469,9 @@ public class NestGeneratorPane extends BorderPane {
 
     // ── Drawing delegates ─────────────────────────────────────────────────────
 
-    private void draw3D()   { if (canvas3D != null && canvas3D.getWidth() >= 10 && canvas3D.getHeight() >= 10) NestRenderer.draw3D(nest, gc3D, canvas3D.getWidth(), canvas3D.getHeight(), azimuth, elevation, zoom, getTunnelWidth(), pan3DX, pan3DY, showGhostMeshCheckBox == null || showGhostMeshCheckBox.isSelected()); }
-    private void drawSide() { if (canvasSide != null && canvasSide.getWidth() >= 10 && canvasSide.getHeight() >= 10) NestRenderer.drawSide(nest, gcSide, canvasSide.getWidth(), canvasSide.getHeight(), getTunnelWidth(), sideZoom, sidePanX, sidePanY); }
-    private void drawTop()  { if (canvasTop != null && canvasTop.getWidth() >= 10 && canvasTop.getHeight() >= 10) NestRenderer.drawTop(nest,  gcTop,  canvasTop.getWidth(),  canvasTop.getHeight(),  getTunnelWidth(), topZoom, topPanX, topPanY); }
+    private void draw3D()   { if (canvas3D != null && gc3D != null && canvas3D.getWidth() >= 10 && canvas3D.getHeight() >= 10 && nest != null) NestRenderer.draw3D(nest, gc3D, canvas3D.getWidth(), canvas3D.getHeight(), azimuth, elevation, zoom, getTunnelWidth(), pan3DX, pan3DY, showGhostMeshCheckBox == null || showGhostMeshCheckBox.isSelected()); }
+    private void drawSide() { if (canvasSide != null && gcSide != null && canvasSide.getWidth() >= 10 && canvasSide.getHeight() >= 10 && nest != null) NestRenderer.drawSide(nest, gcSide, canvasSide.getWidth(), canvasSide.getHeight(), getTunnelWidth(), sideZoom, sidePanX, sidePanY); }
+    private void drawTop()  { if (canvasTop != null && gcTop != null && canvasTop.getWidth() >= 10 && canvasTop.getHeight() >= 10 && nest != null) NestRenderer.drawTop(nest,  gcTop,  canvasTop.getWidth(),  canvasTop.getHeight(),  getTunnelWidth(), topZoom, topPanX, topPanY); }
 
     // ── Inner model classes ───────────────────────────────────────────────────
 

@@ -704,7 +704,9 @@ public class StatisticsDashboard extends VBox {
         long hours = wholeSec / 3600;
         long minutes = (wholeSec % 3600) / 60;
         long seconds = wholeSec % 60;
+        long cs = (long) Math.round((totalSeconds - Math.floor(totalSeconds)) * 100);
+        if (cs >= 100) cs = 99;
         long simulatedDay = 1 + (wholeSec / 86400);
-        return String.format("J%d %02d:%02d:%02d (%.1f s)", simulatedDay, hours % 24, minutes, seconds, totalSeconds);
+        return String.format("Jour %d | %02dh %02dm %02ds %02dcs", simulatedDay, hours, minutes, seconds, cs);
     }
 }

@@ -592,5 +592,37 @@
     -fx-font-weight: bold;
 }
 
+.legend-card-pane {
+    -fx-background-color: rgba(15, 23, 42, 0.75);
+    -fx-background-radius: 6px;
+    -fx-border-color: rgba(56, 189, 248, 0.25);
+    -fx-border-radius: 6px;
+    -fx-border-width: 1px;
+}
+
+.legend-title {
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #38bdf8;
+}
+
+.legend-hover-info {
+    -fx-font-size: 9px;
+    -fx-font-style: italic;
+    -fx-text-fill: #94a3b8;
+}
+
+.legend-checkbox {
+    -fx-font-size: 10px;
+    -fx-text-fill: #cbd5e1;
+}
+
+.viewport-toolbar {
+    -fx-background-color: rgba(15, 23, 42, 0.88);
+    -fx-background-radius: 8px;
+    -fx-border-color: rgba(255, 255, 255, 0.12);
+    -fx-border-radius: 8px;
+}
+
 
 

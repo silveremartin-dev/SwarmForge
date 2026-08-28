@@ -49,11 +49,19 @@ public class SimulationHistory {
     }
 
     /**
-     * Create with default settings (1000 snapshots, every 60 ticks = 1 second).
+     * Create with default settings (1000 snapshots, every 1 tick for precise rewind).
      */
     public SimulationHistory() {
-        this(1000, 60);
+        this(1000, 1);
     }
+
+    /**
+     * Record a snapshot if interval has elapsed.
+     * 
+     * @param simulation Current simulation state
+     * @return true if snapshot was recorded
+     */
+    private long maxRecordedTick = -1;
 
     /**
      * Record a snapshot if interval has elapsed.
@@ -76,12 +84,16 @@ public class SimulationHistory {
      * Record a snapshot.
      */
     public void record(SimulationSnapshot snapshot) {
+        if (snapshot == null) return;
         lock.lock();
         try {
             buffer[head] = snapshot;
             head = (head + 1) % capacity;
             if (count < capacity) {
                 count++;
+            }
+            if (snapshot.getTick() > maxRecordedTick) {
+                maxRecordedTick = snapshot.getTick();
             }
         } finally {
             lock.unlock();
@@ -164,28 +176,22 @@ public class SimulationHistory {
     }
 
     /**
-     * Rewind by a number of steps.
+     * Rewind by a number of steps non-destructively.
      * 
      * @param simulation Target simulation
      * @param steps      Number of snapshot steps to rewind
      * @return true if rewind was successful
      */
     public boolean rewind(Simulation simulation, int steps) {
-        SimulationSnapshot snapshot = getStepsBack(steps);
-        if (snapshot != null) {
-            snapshot.restore(simulation);
+        long targetTick = Math.max(0, simulation.getTickCount() - steps * (long) snapshotInterval);
+        return seekToTick(simulation, targetTick);
+    }
 
-            // Trim future snapshots
-            lock.lock();
-            try {
-                count = Math.max(0, count - steps);
-                head = (head - steps + capacity) % capacity;
-            } finally {
-                lock.unlock();
-            }
-            return true;
-        }
-        return false;
+    /**
+     * Get the highest tick recorded in history.
+     */
+    public long getHighestRecordedTick() {
+        return maxRecordedTick;
     }
 
     /**
@@ -200,6 +206,38 @@ public class SimulationHistory {
             head = 0;
             count = 0;
             lastSnapshotTick = -1;
+            maxRecordedTick = -1;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Truncate snapshots after the specified tick to enforce Option 1 linear mutation truncation.
+     * When a mutation/intervention occurs at a past tick, future recorded snapshots are invalidated.
+     */
+    public void truncateAfter(long targetTick) {
+        lock.lock();
+        try {
+            int newCount = 0;
+            long highestRemaining = -1;
+            for (int i = 0; i < count; i++) {
+                int index = (head - count + i + capacity) % capacity;
+                if (buffer[index] != null) {
+                    if (buffer[index].getTick() > targetTick) {
+                        buffer[index] = null;
+                    } else {
+                        newCount++;
+                        if (buffer[index].getTick() > highestRemaining) {
+                            highestRemaining = buffer[index].getTick();
+                        }
+                    }
+                }
+            }
+            count = newCount;
+            head = (head - (count - newCount) + capacity) % capacity;
+            maxRecordedTick = highestRemaining >= 0 ? highestRemaining : targetTick;
+            lastSnapshotTick = highestRemaining;
         } finally {
             lock.unlock();
         }

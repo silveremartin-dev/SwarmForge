@@ -71,7 +71,10 @@ public class SimulationEvent {
         CRITICAL
     }
 
+    private static final java.util.concurrent.atomic.AtomicLong SEQUENCE_GENERATOR = new java.util.concurrent.atomic.AtomicLong(1);
+
     private UUID id;
+    private long sequenceId;
     private EventType type;
     private Severity severity;
     private long tick;
@@ -106,6 +109,7 @@ public class SimulationEvent {
 
     private void init(EventType type, Severity severity, long tick, String message, Map<String, Object> data) {
         this.id = UUID.randomUUID();
+        this.sequenceId = SEQUENCE_GENERATOR.getAndIncrement();
         this.type = type;
         this.severity = severity;
         this.tick = tick;
@@ -190,6 +194,10 @@ public class SimulationEvent {
     // Getters
     public UUID getId() {
         return id;
+    }
+
+    public long getSequenceId() {
+        return sequenceId;
     }
 
     public EventType getType() {

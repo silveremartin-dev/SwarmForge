@@ -77,6 +77,30 @@ public class ThemeManager {
         return currentTheme;
     }
 
+    public boolean isDarkMode() {
+        return currentTheme.get() == Theme.DARK;
+    }
+
+    public javafx.scene.paint.Color getViewportBackgroundColor() {
+        return isDarkMode() ? javafx.scene.paint.Color.web("#0f172a") : javafx.scene.paint.Color.web("#f8fafc");
+    }
+
+    public javafx.scene.paint.Color getViewportCardBackgroundColor() {
+        return isDarkMode() ? javafx.scene.paint.Color.web("#1e293b") : javafx.scene.paint.Color.web("#ffffff");
+    }
+
+    public javafx.scene.paint.Color getViewportTextColor() {
+        return isDarkMode() ? javafx.scene.paint.Color.web("#e2e8f0") : javafx.scene.paint.Color.web("#0f172a");
+    }
+
+    public javafx.scene.paint.Color getViewportSubtextColor() {
+        return isDarkMode() ? javafx.scene.paint.Color.web("#94a3b8") : javafx.scene.paint.Color.web("#475569");
+    }
+
+    public javafx.scene.paint.Color getViewportGridColor() {
+        return isDarkMode() ? javafx.scene.paint.Color.rgb(56, 189, 248, 0.25) : javafx.scene.paint.Color.rgb(2, 132, 199, 0.35);
+    }
+
     public void registerScene(Scene scene) {
         if (scene != null) {
             registeredScenes.add(scene);

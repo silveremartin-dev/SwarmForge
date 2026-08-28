@@ -25,6 +25,7 @@ public class I18nManager {
     private final ObjectProperty<Locale> locale;
     private final List<Locale> supportedLocales;
     private ResourceBundle bundle;
+    private ResourceBundle fallbackBundle;
 
     private I18nManager() {
         supportedLocales = Arrays.asList(
@@ -34,9 +35,14 @@ public class I18nManager {
             Locale.forLanguageTag("de"),
             Locale.forLanguageTag("zh")
         );
-        locale = new SimpleObjectProperty<>(Locale.getDefault());
+        try {
+            this.fallbackBundle = ResourceBundle.getBundle("i18n.messages", Locale.ENGLISH, new UTF8Control());
+        } catch (Exception e) {
+            LOG.warning("Could not load fallback bundle: " + e.getMessage());
+        }
+        locale = new SimpleObjectProperty<>(Locale.ENGLISH);
         locale.addListener((observable, oldValue, newValue) -> loadBundle(newValue));
-        loadBundle(Locale.getDefault());
+        loadBundle(Locale.ENGLISH);
     }
 
     public static I18nManager getInstance() {
@@ -51,7 +57,7 @@ public class I18nManager {
             LOG.warning("Could not find resource bundle for locale " + locale + ", falling back to default.");
             if (this.bundle == null) {
                 // Fallback to English if completely failed
-                this.bundle = ResourceBundle.getBundle("i18n.messages", Locale.ENGLISH, new UTF8Control());
+                this.bundle = this.fallbackBundle != null ? this.fallbackBundle : ResourceBundle.getBundle("i18n.messages", Locale.ENGLISH, new UTF8Control());
             }
         }
     }
@@ -69,11 +75,24 @@ public class I18nManager {
     }
 
     public String get(String key, Object... args) {
-        try {
-            String pattern = bundle.getString(key);
-            return MessageFormat.format(pattern, args);
-        } catch (MissingResourceException e) {
+        String pattern = null;
+        if (bundle != null && bundle.containsKey(key)) {
+            try {
+                pattern = bundle.getString(key);
+            } catch (MissingResourceException ignored) {}
+        }
+        if (pattern == null && fallbackBundle != null && fallbackBundle.containsKey(key)) {
+            try {
+                pattern = fallbackBundle.getString(key);
+            } catch (MissingResourceException ignored) {}
+        }
+        if (pattern == null) {
             return "!" + key + "!";
+        }
+        try {
+            return MessageFormat.format(pattern, args);
+        } catch (Exception e) {
+            return pattern;
         }
     }
 

@@ -107,6 +107,10 @@ public class Terrarium {
         return cells.values().stream().anyMatch(c -> c.material() == TerrariumCell.Material.WATER);
     }
 
+    public boolean hasRiver() {
+        return hasWater();
+    }
+
     public void clear() {
         cells.clear();
         colonies.clear();

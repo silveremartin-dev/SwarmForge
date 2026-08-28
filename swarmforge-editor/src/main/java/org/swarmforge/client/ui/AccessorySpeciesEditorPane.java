@@ -131,9 +131,17 @@ public class AccessorySpeciesEditorPane extends VBox {
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         VBox.setVgrow(tabPane, Priority.ALWAYS);
 
-        tabTaxonomy = new Tab(i18n.get("accessory.tab.taxonomy"), new ScrollPane(createTaxonomyCard()));
-        tabSeasonal = new Tab(i18n.get("accessory.tab.seasonal"), new ScrollPane(createSeasonalCard()));
-        tabPredators = new Tab(i18n.get("accessory.tab.predators"), new ScrollPane(createPredatorPathogenCard()));
+        tabTaxonomy = new Tab();
+        tabTaxonomy.textProperty().bind(i18n.createStringBinding("accessory.tab.taxonomy"));
+        tabTaxonomy.setContent(new ScrollPane(createTaxonomyCard()));
+
+        tabSeasonal = new Tab();
+        tabSeasonal.textProperty().bind(i18n.createStringBinding("accessory.tab.seasonal"));
+        tabSeasonal.setContent(new ScrollPane(createSeasonalCard()));
+
+        tabPredators = new Tab();
+        tabPredators.textProperty().bind(i18n.createStringBinding("accessory.tab.predators"));
+        tabPredators.setContent(new ScrollPane(createPredatorPathogenCard()));
 
         tabPane.getTabs().addAll(tabTaxonomy, tabSeasonal, tabPredators);
 

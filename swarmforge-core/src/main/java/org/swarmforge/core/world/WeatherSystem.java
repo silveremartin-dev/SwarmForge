@@ -315,7 +315,71 @@ public class WeatherSystem {
 
     public boolean isDaytime() { return isDaytime; }
     public float getSunAngle() { return timeOfDayHours / 24.0f; }
-    public float getLightLevel() { return isDaytime ? 1.0f : 0.15f; }
+
+    public float getCloudCover() {
+        WeatherMarkovChain.WeatherState state = getWeatherState();
+        if (state == null) return 0.0f;
+        return switch (state) {
+            case SUNNY -> 5.0f;
+            case PARTLY_CLOUDY -> 35.0f;
+            case FOG -> 60.0f;
+            case OVERCAST -> 90.0f;
+            case LIGHT_RAIN -> 75.0f;
+            case SNOW -> 80.0f;
+            case HEAVY_RAIN, HAIL, HEATWAVE, DROUGHT -> 95.0f;
+            case THUNDERSTORM, BLIZZARD, TEMPEST, SANDSTORM -> 100.0f;
+        };
+    }
+    public float getLightLevel() {
+        // Solar Astronomical Elevation Angle calculation:
+        // Declination delta = 23.45° * sin(2*pi*(284 + N)/365)
+        double declinationRad = Math.toRadians(23.45 * Math.sin(2.0 * Math.PI * (284.0 + dayOfYear) / 365.0));
+        double latRad = Math.toRadians(latitude);
+
+        // Solar Hour Angle H = 15° * (solar_time - 12)
+        double hourAngleRad = Math.toRadians(15.0 * (timeOfDayHours - 12.0));
+
+        // Solar elevation sin(h) = sin(lat)*sin(dec) + cos(lat)*cos(dec)*cos(H)
+        double sinElevation = Math.sin(latRad) * Math.sin(declinationRad) +
+                              Math.cos(latRad) * Math.cos(declinationRad) * Math.cos(hourAngleRad);
+        double elevationRad = Math.asin(Math.max(-1.0, Math.min(1.0, sinElevation)));
+        double elevationDeg = Math.toDegrees(elevationRad);
+
+        // Direct Illuminance / Solar Arc Factor
+        double solarFactor = 0.0;
+        if (elevationDeg > 0) {
+            // Direct sunlight above horizon with airmass attenuation
+            double airmass = 1.0 / (sinElevation + 0.15 * Math.pow(elevationDeg + 3.885, -1.253));
+            solarFactor = Math.pow(0.7, Math.pow(airmass, 0.678)) * sinElevation;
+            solarFactor = Math.min(1.0, solarFactor * 1.35); // Scale to 0..1
+        } else if (elevationDeg > -6.0) {
+            // Civil Twilight (sun just below horizon)
+            solarFactor = (6.0 + elevationDeg) / 6.0 * 0.12;
+        }
+
+        // Base nocturnal ambient light level (starlight & moon ~ 0.08)
+        float baseLighting = (float) (0.08 + 0.92 * solarFactor);
+
+        // Cloud cover / weather state attenuation factor
+        float cloudCover = getCloudCover();
+        float cloudAttenuation = (float) (1.0 - 0.65 * Math.pow(cloudCover / 100.0f, 2.2));
+
+        WeatherMarkovChain.WeatherState state = getWeatherState();
+        float stateAttenuation = 1.0f;
+        if (state != null) {
+            stateAttenuation = switch (state) {
+                case SUNNY -> 1.0f;
+                case PARTLY_CLOUDY -> 0.92f;
+                case FOG -> 0.65f;
+                case OVERCAST -> 0.55f;
+                case LIGHT_RAIN -> 0.50f;
+                case SNOW -> 0.48f;
+                case HEAVY_RAIN, HAIL, HEATWAVE, DROUGHT -> 0.38f;
+                case THUNDERSTORM, BLIZZARD, TEMPEST, SANDSTORM -> 0.20f;
+            };
+        }
+        return Math.max(0.06f, baseLighting * cloudAttenuation * stateAttenuation);
+    }
     public boolean isRaining() { return currentRainfall > 0 || currentSnowfall > 0; }
     public int getDayOfYear() { return dayOfYear; }
     public float getTimeOfDay() { return timeOfDayHours; }

@@ -12,77 +12,92 @@ import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.simulation.Simulation;
 
 /**
- * Heatwave disaster that raises temperatures dangerously high.
- * Causes increased metabolism and potential death from overheating.
+ * Extreme heatwave disaster raising ambient and soil temperatures.
+ * Progressive thermal stress and metabolic drain scale with duration and intensity.
  */
 public class HeatwaveDisaster implements DisasterEvent {
 
     private final float intensity;
     private final int durationTicks;
+    private int remainingTicks;
 
     public HeatwaveDisaster(float intensity, int durationTicks) {
         this.intensity = Math.min(1.0f, Math.max(0.1f, intensity));
-        this.durationTicks = durationTicks;
+        this.durationTicks = Math.max(10, durationTicks);
+        this.remainingTicks = this.durationTicks;
     }
 
     public HeatwaveDisaster() {
         this(0.6f, 100);
     }
 
-    /**
-     * Get the intended duration of this heatwave in ticks.
-     */
+    @Override
+    public float getIntensity() {
+        return intensity;
+    }
+
+    @Override
     public int getDurationTicks() {
         return durationTicks;
     }
 
     @Override
+    public int getRemainingTicks() {
+        return remainingTicks;
+    }
+
+    @Override
+    public boolean isFinished() {
+        return remainingTicks <= 0;
+    }
+
+    @Override
     public String getName() {
-        return "Extreme Heatwave";
+        return "Extreme Heatwave (Vague de Chaleur)";
     }
 
     @Override
     public String getSeverity() {
-        if (intensity > 0.8f)
-            return "CATASTROPHIC";
-        if (intensity > 0.5f)
-            return "MAJOR";
+        if (intensity > 0.8f) return "CATASTROPHIC";
+        if (intensity > 0.5f) return "MAJOR";
         return "MINOR";
     }
 
     @Override
     public void trigger(Simulation simulation, Terrarium terrarium) {
-        float tempIncrease = intensity * 25f; // Up to 25°C increase
-        System.out.println("☀️ DISASTER ALERT: " + getName() + " (+" +
-                String.format("%.1f", tempIncrease) + "°C)!");
+        System.out.println("☀️ DISASTER TRIGGER: " + getName() + " (" + getSeverity() + " | Durée: " + durationTicks + " pas)!");
+        this.remainingTicks = durationTicks;
+        tick(simulation, terrarium);
+    }
 
-        // Update weather system if available
-        var weather = simulation.getWeather();
-        float newTemp = weather.getTemperature() + tempIncrease;
-        weather.setTemperature(newTemp);
-        weather.setHumidity(Math.max(10f, weather.getHumidity() - intensity * 30f));
+    @Override
+    public void tick(Simulation simulation, Terrarium terrarium) {
+        if (remainingTicks <= 0) return;
+        remainingTicks--;
 
-        int affectedAnts = 0;
+        if (simulation != null) {
+            var weather = simulation.getWeather();
+            if (weather != null) {
+                float targetTempBoost = intensity * 25f;
+                weather.setTemperature(Math.min(55f, weather.getTemperature() + targetTempBoost * 0.05f));
+                weather.setHumidity(Math.max(10f, weather.getHumidity() - intensity * 0.3f));
+            }
 
-        // Immediate heat stress to all surface ants
-        for (Colony colony : simulation.getColonies()) {
-            for (Individual ant : colony.getLivingIndividuals()) {
-                // Surface ants (high Z values) are more affected
-                float depthFactor = 1f - (ant.getZ() / terrarium.getDepth());
-                float heatDamage = intensity * 5f * depthFactor;
+            // Progressive heat stress to surface ants
+            float heatDamagePerTick = intensity * 0.4f;
+            float metabolicDrain = intensity * 0.15f;
 
-                if (heatDamage > 0.5f) {
-                    ant.takeDamage(heatDamage);
-
-                    // Increase energy consumption (faster metabolism)
-                    ant.setEnergy(ant.getEnergy() - intensity * 2f);
-
-                    affectedAnts++;
+            for (Colony colony : simulation.getColonies()) {
+                for (Individual ant : colony.getLivingIndividuals()) {
+                    if (terrarium != null) {
+                        float depthFactor = 1f - (ant.getZ() / (float) terrarium.getDepth());
+                        if (depthFactor > 0.3f) {
+                            ant.takeDamage(heatDamagePerTick * depthFactor);
+                            ant.setEnergy(Math.max(0f, ant.getEnergy() - metabolicDrain));
+                        }
+                    }
                 }
             }
         }
-
-        System.out.println("  Temperature now " + String.format("%.1f", newTemp) +
-                "°C, affected " + affectedAnts + " surface ants");
     }
 }

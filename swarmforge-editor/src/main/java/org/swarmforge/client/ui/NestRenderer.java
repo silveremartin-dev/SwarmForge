@@ -10,6 +10,8 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.*;
 import javafx.scene.text.Font;
 
+import org.swarmforge.client.util.ThemeManager;
+
 import java.util.*;
 
 /** Static rendering methods for NestGeneratorPane multi-species views. */
@@ -33,9 +35,9 @@ public final class NestRenderer {
             double w, double h, double azimuth, double elevation, double zoom, double tunnelW,
             double panX, double panY, boolean showGhost) {
 
-        if (nest == null) return;
+        if (nest == null || gc == null || w < 10 || h < 10) return;
         gc.clearRect(0, 0, w, h);
-        gc.setFill(Color.rgb(12, 14, 25)); gc.fillRect(0, 0, w, h);
+        gc.setFill(ThemeManager.getInstance().getViewportBackgroundColor()); gc.fillRect(0, 0, w, h);
 
         double az = Math.toRadians(azimuth), el = Math.toRadians(elevation);
         double cAz = Math.cos(az), sAz = Math.sin(az);
@@ -43,6 +45,7 @@ public final class NestRenderer {
         double cx = w/2 + panX, cy = h/2 - 15 + panY;
 
         java.util.function.Function<double[], double[]> proj = pt -> {
+            if (pt == null || pt.length < 3) return new double[]{cx, cy, 0};
             double rx = pt[0]*cAz - pt[1]*sAz;
             double ry = pt[0]*sAz + pt[1]*cAz;
             double rz = pt[2];
@@ -77,44 +80,58 @@ public final class NestRenderer {
         // Edges / Tunnels
         double tw = tunnelW * 2.0;
         Color edgeColor = getMaterialColor(nest.material);
-        for (NestGeneratorPane.NestEdge edge : nest.edges) {
-            List<double[]> sp = new ArrayList<>();
-            double avg = 0;
-            for (double[] wp : edge.pts) { double[] p=proj.apply(wp); sp.add(p); avg+=p[2]; }
-            avg /= sp.size();
-            final List<double[]> fsp = sp; final double fa = avg;
-            items.add(new Item(fa-1000, () -> {
-                gc.setStroke(edgeColor.darker()); gc.setLineWidth(tw);
-                gc.beginPath();
-                for (int i=0;i<fsp.size();i++) {
-                    double[] p=fsp.get(i);
-                    if(i==0) gc.moveTo(p[0],p[1]); else gc.lineTo(p[0],p[1]);
+        if (nest.edges != null) {
+            for (NestGeneratorPane.NestEdge edge : nest.edges) {
+                if (edge == null || edge.pts == null || edge.pts.isEmpty()) continue;
+                List<double[]> sp = new ArrayList<>();
+                double avg = 0;
+                for (double[] wp : edge.pts) {
+                    if (wp == null) continue;
+                    double[] p = proj.apply(wp);
+                    sp.add(p);
+                    avg += p[2];
                 }
-                gc.stroke();
-            }));
+                if (sp.isEmpty()) continue;
+                avg /= sp.size();
+                final List<double[]> fsp = sp;
+                final double fa = avg;
+                items.add(new Item(fa-1000, () -> {
+                    gc.setStroke(edgeColor.darker()); gc.setLineWidth(tw);
+                    gc.beginPath();
+                    for (int i=0;i<fsp.size();i++) {
+                        double[] p=fsp.get(i);
+                        if(i==0) gc.moveTo(p[0],p[1]); else gc.lineTo(p[0],p[1]);
+                    }
+                    gc.stroke();
+                }));
+            }
         }
 
         // Nodes / Chambers
-        for (NestGeneratorPane.NestNode n : nest.nodes) {
-            double[] p = proj.apply(new double[]{n.x, n.y, n.z});
-            double rx = n.rx * 2.2, rz = n.rz * 2.2, depth = p[2];
-            items.add(new Item(depth, () -> {
-                if ("ENTRANCE".equals(n.type)) {
-                    gc.setFill(Color.LIMEGREEN);
-                    gc.fillOval(p[0]-6, p[1]-4, 12, 8);
-                } else if (!"JUNCTION".equals(n.type)) {
-                    RadialGradient rg = new RadialGradient(0,0,p[0]-rx*0.3,p[1]-rz*0.3,Math.max(rx,rz)*1.2,false,
-                        CycleMethod.NO_CYCLE,
-                        new Stop(0, n.color.brighter()),
-                        new Stop(0.75, n.color),
-                        new Stop(1, n.color.darker().darker()));
-                    gc.setFill(rg);
-                    // Render anatomical lenticular dome shape (flattened Z height)
-                    gc.fillOval(p[0]-rx, p[1]-rz, rx*2, rz*2);
-                    gc.setStroke(Color.rgb(255,255,255,0.4)); gc.setLineWidth(1);
-                    gc.strokeOval(p[0]-rx, p[1]-rz, rx*2, rz*2);
-                }
-            }));
+        if (nest.nodes != null) {
+            for (NestGeneratorPane.NestNode n : nest.nodes) {
+                if (n == null) continue;
+                Color nodeColor = n.color != null ? n.color : Color.GRAY;
+                double[] p = proj.apply(new double[]{n.x, n.y, n.z});
+                double rx = n.rx * 2.2, rz = n.rz * 2.2, depth = p[2];
+                items.add(new Item(depth, () -> {
+                    if ("ENTRANCE".equals(n.type)) {
+                        gc.setFill(Color.LIMEGREEN);
+                        gc.fillOval(p[0]-6, p[1]-4, 12, 8);
+                    } else if (!"JUNCTION".equals(n.type)) {
+                        RadialGradient rg = new RadialGradient(0,0,p[0]-rx*0.3,p[1]-rz*0.3,Math.max(rx,rz)*1.2,false,
+                            CycleMethod.NO_CYCLE,
+                            new Stop(0, nodeColor.brighter()),
+                            new Stop(0.75, nodeColor),
+                            new Stop(1, nodeColor.darker().darker()));
+                        gc.setFill(rg);
+                        // Render anatomical lenticular dome shape (flattened Z height)
+                        gc.fillOval(p[0]-rx, p[1]-rz, rx*2, rz*2);
+                        gc.setStroke(Color.rgb(255,255,255,0.4)); gc.setLineWidth(1);
+                        gc.strokeOval(p[0]-rx, p[1]-rz, rx*2, rz*2);
+                    }
+                }));
+            }
         }
 
         Collections.sort(items);
@@ -136,17 +153,18 @@ public final class NestRenderer {
 
     public static void drawSide(NestGeneratorPane.GeneratedNest nest, GraphicsContext gc,
             double w, double h, double tunnelW, double zoom, double panX, double panY) {
-        if (nest == null) return;
+        if (nest == null || gc == null || w < 10 || h < 10) return;
+        boolean isDark = ThemeManager.getInstance().isDarkMode();
         gc.clearRect(0,0,w,h);
-        gc.setFill(Color.rgb(18,18,30)); gc.fillRect(0,0,w,h);
+        gc.setFill(ThemeManager.getInstance().getViewportBackgroundColor()); gc.fillRect(0,0,w,h);
 
         double skyH = 28 * zoom + panY;
         double groundY = Math.max(10, skyH) + 7 * zoom;
-        gc.setFill(Color.rgb(30,42,58)); gc.fillRect(0,0,w,Math.max(10, skyH));
-        gc.setFill(Color.rgb(55,85,40)); gc.fillRect(0,Math.max(10, skyH),w,7*zoom);
-        gc.setFill(Color.rgb(52,36,22)); gc.fillRect(0,groundY,w,h);
+        gc.setFill(isDark ? Color.rgb(30,42,58) : Color.rgb(224,242,254)); gc.fillRect(0,0,w,Math.max(10, skyH));
+        gc.setFill(isDark ? Color.rgb(55,85,40) : Color.rgb(134,239,172)); gc.fillRect(0,Math.max(10, skyH),w,7*zoom);
+        gc.setFill(isDark ? Color.rgb(52,36,22) : Color.rgb(217,119,6)); gc.fillRect(0,groundY,w,h);
 
-        gc.setStroke(Color.rgb(70,48,30,0.35)); gc.setLineWidth(1);
+        gc.setStroke(isDark ? Color.rgb(70,48,30,0.35) : Color.rgb(180,140,100,0.45)); gc.setLineWidth(1);
         for (double y=groundY + 25*zoom; y<h; y+=35*zoom) gc.strokeLine(0,y,w,y);
 
         double maxD = nest.maxDepth;
@@ -156,31 +174,39 @@ public final class NestRenderer {
 
         Color edgeColor = getMaterialColor(nest.material);
         gc.setStroke(edgeColor); gc.setLineWidth(tunnelW * 2.1 * zoom);
-        for (NestGeneratorPane.NestEdge e : nest.edges) {
-            gc.beginPath();
-            for (int i=0;i<e.pts.size();i++) {
-                double[] pt=e.pts.get(i);
-                double px=cx+pt[0]*sX, py=groundY+pt[2]*sY;
-                if(i==0) gc.moveTo(px,py); else gc.lineTo(px,py);
-            }
-            gc.stroke();
-        }
-
-        for (NestGeneratorPane.NestNode n : nest.nodes) {
-            double nx=cx+n.x*sX, ny=groundY+n.z*sY;
-            double rx=n.rx*2.4*zoom, rz=n.rz*1.5*zoom;
-            if ("ENTRANCE".equals(n.type)) {
-                gc.setFill(Color.LIMEGREEN);
-                gc.fillOval(nx-7*zoom, groundY-5*zoom, 14*zoom, 10*zoom);
-            }
-            else if (!"JUNCTION".equals(n.type)) {
-                gc.setFill(n.color.darker()); gc.fillOval(nx-rx, ny-rz, rx*2, rz*2);
-                gc.setStroke(n.color); gc.setLineWidth(1.5*zoom);
-                gc.strokeOval(nx-rx, ny-rz, rx*2, rz*2);
+        if (nest.edges != null) {
+            for (NestGeneratorPane.NestEdge e : nest.edges) {
+                if (e == null || e.pts == null || e.pts.isEmpty()) continue;
+                gc.beginPath();
+                for (int i=0;i<e.pts.size();i++) {
+                    double[] pt=e.pts.get(i);
+                    if (pt == null || pt.length < 3) continue;
+                    double px=cx+pt[0]*sX, py=groundY+pt[2]*sY;
+                    if(i==0) gc.moveTo(px,py); else gc.lineTo(px,py);
+                }
+                gc.stroke();
             }
         }
 
-        gc.setFill(Color.rgb(220,220,220)); gc.setFont(Font.font("SansSerif",10));
+        if (nest.nodes != null) {
+            for (NestGeneratorPane.NestNode n : nest.nodes) {
+                if (n == null) continue;
+                Color nodeColor = n.color != null ? n.color : Color.GRAY;
+                double nx=cx+n.x*sX, ny=groundY+n.z*sY;
+                double rx=n.rx*2.4*zoom, rz=n.rz*1.5*zoom;
+                if ("ENTRANCE".equals(n.type)) {
+                    gc.setFill(Color.LIMEGREEN);
+                    gc.fillOval(nx-7*zoom, groundY-5*zoom, 14*zoom, 10*zoom);
+                }
+                else if (!"JUNCTION".equals(n.type)) {
+                    gc.setFill(nodeColor.darker()); gc.fillOval(nx-rx, ny-rz, rx*2, rz*2);
+                    gc.setStroke(nodeColor); gc.setLineWidth(1.5*zoom);
+                    gc.strokeOval(nx-rx, ny-rz, rx*2, rz*2);
+                }
+            }
+        }
+
+        gc.setFill(ThemeManager.getInstance().getViewportTextColor()); gc.setFont(Font.font("SansSerif",10));
         gc.fillText(String.format("Side View (x%.1f) - Scroll: Zoom | Drag: Pan", zoom), 4, 12);
     }
 
@@ -193,39 +219,48 @@ public final class NestRenderer {
 
     public static void drawTop(NestGeneratorPane.GeneratedNest nest, GraphicsContext gc,
             double w, double h, double tunnelW, double zoom, double panX, double panY) {
-        if (nest == null) return;
+        if (nest == null || gc == null || w < 10 || h < 10) return;
+        boolean isDark = ThemeManager.getInstance().isDarkMode();
         gc.clearRect(0,0,w,h);
-        gc.setFill(Color.rgb(18,20,32)); gc.fillRect(0,0,w,h);
+        gc.setFill(ThemeManager.getInstance().getViewportBackgroundColor()); gc.fillRect(0,0,w,h);
 
         double cx = w/2 + panX, cy = h/2 + panY, sc = 8.0 * zoom;
 
-        gc.setStroke(Color.rgb(50,50,75,0.4)); gc.setLineWidth(1);
+        gc.setStroke(isDark ? Color.rgb(50,50,75,0.4) : Color.rgb(180,190,210,0.5)); gc.setLineWidth(1);
         for (double r = 35 * zoom; r < Math.max(w, h); r += 35 * zoom) {
             gc.strokeOval(cx-r, cy-r, r*2, r*2);
         }
 
         Color edgeColor = getMaterialColor(nest.material);
         gc.setStroke(edgeColor); gc.setLineWidth(tunnelW * 2.0 * zoom);
-        for (NestGeneratorPane.NestEdge e : nest.edges) {
-            gc.beginPath();
-            for (int i=0;i<e.pts.size();i++) {
-                double[] pt=e.pts.get(i);
-                double px=cx+pt[0]*sc, py=cy+pt[1]*sc;
-                if(i==0) gc.moveTo(px,py); else gc.lineTo(px,py);
+        if (nest.edges != null) {
+            for (NestGeneratorPane.NestEdge e : nest.edges) {
+                if (e == null || e.pts == null || e.pts.isEmpty()) continue;
+                gc.beginPath();
+                for (int i=0;i<e.pts.size();i++) {
+                    double[] pt=e.pts.get(i);
+                    if (pt == null || pt.length < 2) continue;
+                    double px=cx+pt[0]*sc, py=cy+pt[1]*sc;
+                    if(i==0) gc.moveTo(px,py); else gc.lineTo(px,py);
+                }
+                gc.stroke();
             }
-            gc.stroke();
         }
 
-        for (NestGeneratorPane.NestNode n : nest.nodes) {
-            double nx=cx+n.x*sc, ny=cy+n.y*sc, r=n.radius*2.4*zoom;
-            double depthRatio = n.z/Math.max(1,nest.maxDepth);
-            Color ring = Color.hsb(200-depthRatio*150, 0.8, 0.9);
-            gc.setFill(n.color); gc.fillOval(nx-r,ny-r,r*2,r*2);
-            gc.setStroke(ring); gc.setLineWidth(1.5*zoom);
-            gc.strokeOval(nx-r,ny-r,r*2,r*2);
+        if (nest.nodes != null) {
+            for (NestGeneratorPane.NestNode n : nest.nodes) {
+                if (n == null) continue;
+                Color nodeColor = n.color != null ? n.color : Color.GRAY;
+                double nx=cx+n.x*sc, ny=cy+n.y*sc, r=n.radius*2.4*zoom;
+                double depthRatio = n.z/Math.max(1,nest.maxDepth);
+                Color ring = Color.hsb(200-depthRatio*150, 0.8, 0.9);
+                gc.setFill(nodeColor); gc.fillOval(nx-r,ny-r,r*2,r*2);
+                gc.setStroke(ring); gc.setLineWidth(1.5*zoom);
+                gc.strokeOval(nx-r,ny-r,r*2,r*2);
+            }
         }
 
-        gc.setFill(Color.rgb(220,220,220)); gc.setFont(Font.font("SansSerif",10));
+        gc.setFill(ThemeManager.getInstance().getViewportTextColor()); gc.setFont(Font.font("SansSerif",10));
         gc.fillText(String.format("Top View (x%.1f) - Scroll: Zoom | Drag: Pan", zoom), 4, 12);
     }
 
@@ -322,7 +357,7 @@ public final class NestRenderer {
             double x, double y) {
         long chambers = nest.nodes.stream()
             .filter(n -> !"JUNCTION".equals(n.type) && !"ENTRANCE".equals(n.type)).count();
-        gc.setFill(Color.rgb(180,180,180,0.85)); gc.setFont(Font.font("SansSerif",11));
+        gc.setFill(ThemeManager.getInstance().getViewportSubtextColor()); gc.setFont(Font.font("SansSerif",11));
         gc.fillText(String.format("Arch: %s | Mat: %s | Scale: %.1fmm | Chambers: %d",
             formatArchitectureName(nest.architecture), formatMaterialName(nest.material), nest.workerSizeMm, chambers), x, y);
     }
@@ -644,13 +679,14 @@ public final class NestRenderer {
 
     /** Draws a visual key box mapping node colors to chamber function. */
     public static void drawColorKeyLegend(GraphicsContext gc, double x, double y) {
-        gc.setFill(Color.rgb(20, 24, 38, 0.85));
+        boolean isDark = ThemeManager.getInstance().isDarkMode();
+        gc.setFill(isDark ? Color.rgb(20, 24, 38, 0.85) : Color.rgb(255, 255, 255, 0.92));
         gc.fillRoundRect(x, y, 165, 140, 8, 8);
-        gc.setStroke(Color.rgb(80, 100, 140, 0.6));
+        gc.setStroke(isDark ? Color.rgb(80, 100, 140, 0.6) : Color.rgb(203, 213, 225, 0.9));
         gc.setLineWidth(1);
         gc.strokeRoundRect(x, y, 165, 140, 8, 8);
 
-        gc.setFill(Color.rgb(0, 212, 255));
+        gc.setFill(isDark ? Color.rgb(0, 212, 255) : Color.rgb(2, 132, 199));
         gc.setFont(Font.font("SansSerif", 11));
         gc.fillText("Légende / Color Key", x + 10, y + 16);
 
@@ -669,11 +705,11 @@ public final class NestRenderer {
         for (String[] it : items) {
             gc.setFill(Color.web(it[1]));
             gc.fillOval(x + 10, ly - 7, 9, 9);
-            gc.setStroke(Color.WHITE);
+            gc.setStroke(isDark ? Color.WHITE : Color.rgb(100, 116, 139));
             gc.setLineWidth(0.5);
             gc.strokeOval(x + 10, ly - 7, 9, 9);
 
-            gc.setFill(Color.rgb(220, 220, 230));
+            gc.setFill(ThemeManager.getInstance().getViewportTextColor());
             gc.fillText(it[0], x + 24, ly);
             ly += 15;
         }

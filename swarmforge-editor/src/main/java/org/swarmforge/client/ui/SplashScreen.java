@@ -38,16 +38,24 @@ public class SplashScreen {
         splashStage = new Stage();
         splashStage.initStyle(StageStyle.TRANSPARENT);
 
-        // Header Title & Icon
-        FontIcon logoIcon = new FontIcon(Feather.CPU);
-        logoIcon.setIconSize(40);
-        logoIcon.setStyle("-fx-icon-color: #38bdf8;");
+        // Window Icon registration for taskbar appearance
+        try {
+            java.io.InputStream iconStream = getClass().getResourceAsStream("/icons/icon.png");
+            if (iconStream != null) {
+                splashStage.getIcons().add(new javafx.scene.image.Image(iconStream));
+            }
+        } catch (Exception ignored) {}
+
+        // Header Title & Eusocial Insect Icon Banner
+        FontIcon logoIcon = new FontIcon(Feather.DISC);
+        logoIcon.setIconSize(42);
+        logoIcon.setStyle("-fx-icon-color: #f59e0b;");
 
         Label titleLabel = new Label("SwarmForge Studio");
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
-        Label subtitleLabel = new Label("Moteur de Simulation Eusociale & Terrarium 3D");
-        subtitleLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #94a3b8; -fx-font-style: italic;");
+        Label subtitleLabel = new Label("Simulateur de Sociétés d'Insectes (Fourmis, Termites, Guêpes & Abeilles)");
+        subtitleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
 
         VBox titleBox = new VBox(2, titleLabel, subtitleLabel);
 
@@ -55,7 +63,7 @@ public class SplashScreen {
         headerBox.setAlignment(Pos.CENTER_LEFT);
 
         // Status & Progress Bar Controls
-        statusLabel = new Label("Initialisation du studio SwarmForge...");
+        statusLabel = new Label("Initialisation du moteur de simulation eusociale...");
         statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #e2e8f0;");
 
         percentLabel = new Label("0 %");

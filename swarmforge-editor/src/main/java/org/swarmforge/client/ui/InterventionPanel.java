@@ -22,7 +22,9 @@ import java.util.List;
  * Intervention Panel - God Mode controls for runtime simulation manipulation.
  * Features an overarching Scheduled Event Queue system with atomic event types,
  * multi-selection, chronological sorting, calendar time formatting,
- * and direct manipulation of fundamental abiotic physical drivers.
+ * spatial sliders (centered by default on terrain surface), relative vs absolute
+ * climate delta modifiers with duration, brood management (eggs, larvae, pupae),
+ * and direct manipulation of abiotic physical drivers, pheromones, invasions, and genetic boosts.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
@@ -30,10 +32,13 @@ import java.util.List;
 public class InterventionPanel extends BorderPane {
 
     public enum Category {
-        ENTITIES("🐜", "Entités", "#3b82f6"),
+        ENTITIES("🐜", "Entités & Couvain", "#3b82f6"),
         RESOURCE("🍖", "Ressources", "#10b981"),
         DISASTER("🌊", "Catastrophe", "#ef4444"),
-        ABIOTIC("🌡️", "Climat", "#f59e0b");
+        ABIOTIC("🌡️", "Climat & Abiotique", "#f59e0b"),
+        PHEROMONE("🌀", "Phéromones", "#8b5cf6"),
+        INVASION("🦎", "Invasions", "#dc2626"),
+        MUTATION("🧬", "Génétique", "#ec4899");
 
         public final String icon;
         public final String label;
@@ -55,10 +60,11 @@ public class InterventionPanel extends BorderPane {
         public String description;
 
         // Category-specific parameters
-        public String entityAction = "SPAWN"; // SPAWN, KILL, EXTINCT
+        public String entityAction = "SPAWN"; // SPAWN, KILL, EXTINCT, BROOD_KILL, BROOD_SPAWN
         public String caste = "Ouvrière";
         public int count = 10;
-        public float posX = 1.0f, posY = 1.0f, posZ = 0.1f;
+        // Default position: CENTER of map (32, 32) at terrain surface level (1.0)
+        public float posX = 32.0f, posY = 32.0f, posZ = 1.0f;
 
         public String resourceType = "Surface Food";
         public String foodNature = "Graines & Semences";
@@ -68,10 +74,19 @@ public class InterventionPanel extends BorderPane {
         public float intensity = 0.5f;
         public int durationMinutes = 60;
 
+        // Abiotic Climate Parameters (Relative Offset vs Absolute Target)
+        public boolean isRelativeAbiotic = true;
         public float tempCelsius = 22.0f;
         public float humidityPercent = 65.0f;
         public float windMetersPerSec = 1.5f;
         public float solarWattsPerM2 = 450.0f;
+
+        public float deltaTempCelsius = 5.0f;
+        public float deltaHumidityPercent = 20.0f;
+        public float deltaWindMetersPerSec = 2.0f;
+        public float deltaSolarWattsPerM2 = 100.0f;
+
+        public float radius = 5.0f;
 
         public boolean executed = false;
         public boolean paused = false;
@@ -99,10 +114,16 @@ public class InterventionPanel extends BorderPane {
             clone.disasterType = this.disasterType;
             clone.intensity = this.intensity;
             clone.durationMinutes = this.durationMinutes;
+            clone.isRelativeAbiotic = this.isRelativeAbiotic;
             clone.tempCelsius = this.tempCelsius;
             clone.humidityPercent = this.humidityPercent;
             clone.windMetersPerSec = this.windMetersPerSec;
             clone.solarWattsPerM2 = this.solarWattsPerM2;
+            clone.deltaTempCelsius = this.deltaTempCelsius;
+            clone.deltaHumidityPercent = this.deltaHumidityPercent;
+            clone.deltaWindMetersPerSec = this.deltaWindMetersPerSec;
+            clone.deltaSolarWattsPerM2 = this.deltaSolarWattsPerM2;
+            clone.radius = this.radius;
             clone.executed = false;
             clone.paused = false;
             return clone;
@@ -113,7 +134,11 @@ public class InterventionPanel extends BorderPane {
     private ComboBox<String> casteSelect;
     private ComboBox<String> colonySelect;
     private ComboBox<String> entityActionSelect;
-    private TextField posXField, posYField, posZField;
+
+    // Spatial Sliders (X: Ouest-Est, Y: Sud-Nord, Z: Profondeur-Altitude)
+    private Slider posXSlider, posYSlider, posZSlider;
+    private Label posXValLabel, posYValLabel, posZValLabel;
+
     private ComboBox<String> disasterSelect;
     private Slider intensitySlider;
     private Slider durationSlider;
@@ -123,14 +148,19 @@ public class InterventionPanel extends BorderPane {
     private Spinner<Integer> spDay, spHour, spMin, spSec;
     private Label lblTargetTickSummary;
 
-    private Slider tempSlider;
-    private Label tempValLabel;
-    private Slider humiditySlider;
-    private Label humidityValLabel;
-    private Slider windSlider;
-    private Label windValLabel;
-    private Slider solarSlider;
-    private Label solarValLabel;
+    // Abiotic Controls: Relative Delta vs Absolute Target Mode + Duration
+    private ComboBox<String> abioticModeSelect;
+    private Slider abioticDurationSlider;
+    private Label abioticDurationValLabel;
+
+    private Slider tempSlider, deltaTempSlider;
+    private Label tempValLabel, deltaTempValLabel;
+    private Slider humiditySlider, deltaHumiditySlider;
+    private Label humidityValLabel, deltaHumidityValLabel;
+    private Slider windSlider, deltaWindSlider;
+    private Label windValLabel, deltaWindValLabel;
+    private Slider solarSlider, deltaSolarSlider;
+    private Label solarValLabel, deltaSolarValLabel;
 
     private Label derivedPheroLabel;
     private Label derivedPrimaryProductivityLabel;
@@ -139,6 +169,22 @@ public class InterventionPanel extends BorderPane {
     private Slider foodSlider;
     private ComboBox<String> resourceTypeSelect;
     private ComboBox<String> foodNatureSelect;
+
+    // Pheromones Controls with Intensity & Duration
+    private ComboBox<String> pheromoneTypeSelect;
+    private Slider pheroRadiusSlider, pheroIntensitySlider, pheroDurationSlider;
+    private Label pheroRadiusValLabel, pheroIntensityValLabel, pheroDurationValLabel;
+
+    // Invasions Controls with Count/Intensity & Duration
+    private ComboBox<String> invasionTypeSelect;
+    private Spinner<Integer> invasionCountSpinner;
+    private Slider invasionDurationSlider;
+    private Label invasionDurationValLabel;
+
+    // Mutation Controls with Intensity & Duration
+    private ComboBox<String> mutationTypeSelect;
+    private Slider mutationIntensitySlider, mutationDurationSlider;
+    private Label mutationIntensityValLabel, mutationDurationValLabel;
 
     private Label simStateWarningLabel;
 
@@ -155,6 +201,12 @@ public class InterventionPanel extends BorderPane {
         void triggerDisaster(String type, float intensity);
         void stopDisasters();
         void modifyParameter(String param, Object value);
+
+        default void triggerPheromoneEvent(String type, float x, float y, float z, float intensity, float radius, float durationMinutes) {}
+        default void triggerInvasionEvent(String type, float x, float y, float z, int count, float durationMinutes) {}
+        default void applyGeneticBoost(String colonyId, String boostType, float intensity, float durationMinutes) {}
+        default void modifyAbioticClimate(boolean relative, float temp, float hum, float wind, float solar, float durationMinutes) {}
+        default void manageBrood(String colonyId, String broodType, String action, int count) {}
     }
 
     private final javafx.collections.ObservableList<ScheduledEvent> scheduledEventsList = javafx.collections.FXCollections.observableArrayList();
@@ -193,26 +245,44 @@ public class InterventionPanel extends BorderPane {
         VBox queueContainer = createScheduledEventsQueueBlock();
         mainContent.getChildren().add(queueContainer);
 
-        // 2. CONFIGURATION SUB-BLOCKS TITLE
-        Label subBlocksHeader = new Label();
-        subBlocksHeader.textProperty().bind(i18n.createStringBinding("god.subblocks.title"));
-        subBlocksHeader.getStyleClass().add("sub-title");
-        mainContent.getChildren().add(subBlocksHeader);
+        // 2. OUTER MASTER CONTAINER: Event & Intervention Configuration Sub-blocks
+        VBox subBlocksOuterContainer = new VBox(14);
+        subBlocksOuterContainer.setPadding(new Insets(16));
+        subBlocksOuterContainer.setStyle("-fx-background-color: rgba(15, 23, 42, 0.6); -fx-border-color: rgba(56, 189, 248, 0.35); -fx-border-width: 1.5; -fx-border-radius: 8; -fx-background-radius: 8;");
 
-        // Sub-block 1: Time Target (Calendar Time Only) & Colony Target
-        mainContent.getChildren().add(createCardSubBlock(i18n.get("god.block.time_colony"), createTimeAndColonyConfigNode()));
+        Label subBlocksHeader = new Label("🛠️ Panneau de Configuration des Événements & Interventions");
+        subBlocksHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
-        // Sub-block 2: Entities & Castes (Apparition / Élimination / Extinction)
-        mainContent.getChildren().add(createCardSubBlock(i18n.get("god.block.entities"), createEntitiesSubBlockNode()));
+        subBlocksOuterContainer.getChildren().addAll(subBlocksHeader, new Separator());
 
-        // Sub-block 3: Resources & Biomass (With Complete Social Insect Food Taxonomy)
-        mainContent.getChildren().add(createCardSubBlock(i18n.get("god.block.resources"), createResourcesSubBlockNode()));
+        // Sub-block 1: Time Target & Colony Target
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.time_colony"), createTimeAndColonyConfigNode()));
 
-        // Sub-block 4: Disasters & Environmental Events (Magnitude & Multi-Week Duration)
-        mainContent.getChildren().add(createCardSubBlock(i18n.get("god.block.disasters"), createDisastersSubBlockNode()));
+        // Sub-block 2: Spatial 3D Positioning (Centered on Terrain Surface by Default)
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock("📍 Localisation Spatiale 3D & Altitude du Substrat", createSpatialPositionSubBlockNode()));
 
-        // Sub-block 5: Abiotic Core Physical Drivers (Temperature, Humidity, Wind, Solar Radiation)
-        mainContent.getChildren().add(createCardSubBlock(i18n.get("god.block.abiotic"), createParametersSubBlockNode()));
+        // Sub-block 3: Entities, Castes & Brood (Apparition / Élimination / Couvain)
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock("🐜 Entités, Castes & Gestion du Couvain", createEntitiesSubBlockNode()));
+
+        // Sub-block 4: Resources & Biomass (With Complete Social Insect Food Taxonomy)
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.resources"), createResourcesSubBlockNode()));
+
+        // Sub-block 5: Disasters & Environmental Events (Magnitude & Multi-Week Duration)
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.disasters"), createDisastersSubBlockNode()));
+
+        // Sub-block 6: Abiotic Physical Drivers (Relative Delta +/- & Duration Mode)
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock("🌡️ Conditions Abiotiques (Variations Relatives Δ & Durée)", createParametersSubBlockNode()));
+
+        // Sub-block 7: Pheromones & Behavioral Disruption (Intensity & Duration)
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock("🌀 Phéromones & Perturbations Comportementales", createPheromoneSubBlockNode()));
+
+        // Sub-block 8: Apex Predators & Biological Invasions (Intensity & Duration)
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock("🦎 Invasions Écologiques & Prédateurs Apicaux", createInvasionSubBlockNode()));
+
+        // Sub-block 9: Genetics, Metabolic Boosts & Mutagens (Intensity & Duration)
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock("🧬 Mutagènes, Gelée Royale & Boosts (Intensité & Durée)", createMutationSubBlockNode()));
+
+        mainContent.getChildren().add(subBlocksOuterContainer);
 
         ScrollPane scrollPane = new ScrollPane(mainContent);
         scrollPane.setFitToWidth(true);
@@ -272,15 +342,15 @@ public class InterventionPanel extends BorderPane {
                     descLabel.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 11px;");
                     HBox.setHgrow(descLabel, Priority.ALWAYS);
 
-                    String statusText = ev.executed ? "✅ Exécuté" : ev.paused ? "⏸️ Suspendu" : "⏳ En Attente";
-                    String statusBg = ev.executed ? "#64748b" : ev.paused ? "#f59e0b" : "#0284c7";
+                    String statusText = ev.executed ? "✅ Exécutée" : ev.paused ? "⏸️ Suspendue" : "⏳ En attente";
+                    String statusBg = ev.executed ? "#16a34a" : ev.paused ? "#d97706" : "#0284c7";
                     Label statusBadge = new Label(statusText);
-                    statusBadge.setStyle(String.format("-fx-background-color: %s; -fx-text-fill: white; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 3;", statusBg));
+                    statusBadge.setStyle(String.format("-fx-background-color: %s; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 3;", statusBg));
 
                     cellBox.getChildren().addAll(badgeCat, timeLabel, descLabel, statusBadge);
 
                     if (ev.executed) {
-                        cellBox.setOpacity(0.55);
+                        cellBox.setOpacity(0.75);
                     } else {
                         cellBox.setOpacity(1.0);
                     }
@@ -294,34 +364,6 @@ public class InterventionPanel extends BorderPane {
         HBox btnToolbar = new HBox(8);
         btnToolbar.setAlignment(Pos.CENTER_LEFT);
 
-        Button btnRunNow = new Button();
-        btnRunNow.textProperty().bind(i18n.createStringBinding("god.queue.btn.run_selected"));
-        btnRunNow.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-        btnRunNow.setOnAction(e -> {
-            List<ScheduledEvent> selected = new ArrayList<>(scheduledEventsListView.getSelectionModel().getSelectedItems());
-            for (ScheduledEvent ev : selected) {
-                if (ev != null && !ev.executed) {
-                    executeScheduledEvent(ev);
-                    ev.executed = true;
-                }
-            }
-            sortScheduledEvents();
-            scheduledEventsListView.refresh();
-        });
-
-        Button btnTogglePause = new Button();
-        btnTogglePause.textProperty().bind(i18n.createStringBinding("god.queue.btn.toggle_pause"));
-        btnTogglePause.getStyleClass().add("btn-secondary");
-        btnTogglePause.setOnAction(e -> {
-            List<ScheduledEvent> selected = new ArrayList<>(scheduledEventsListView.getSelectionModel().getSelectedItems());
-            for (ScheduledEvent ev : selected) {
-                if (ev != null && !ev.executed) {
-                    ev.paused = !ev.paused;
-                }
-            }
-            scheduledEventsListView.refresh();
-        });
-
         Button btnRepeatEv = new Button();
         btnRepeatEv.textProperty().bind(i18n.createStringBinding("god.queue.btn.repeat"));
         btnRepeatEv.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
@@ -333,7 +375,6 @@ public class InterventionPanel extends BorderPane {
         btnDeleteEv.getStyleClass().add("btn-danger");
         btnDeleteEv.setOnAction(e -> {
             List<ScheduledEvent> selected = new ArrayList<>(scheduledEventsListView.getSelectionModel().getSelectedItems());
-            // Direct deletion of upcoming non-executed events (no pop-up dialog as requested)
             for (ScheduledEvent ev : selected) {
                 if (ev != null && !ev.executed) {
                     scheduledEventsList.remove(ev);
@@ -350,7 +391,7 @@ public class InterventionPanel extends BorderPane {
             sortScheduledEvents();
         });
 
-        btnToolbar.getChildren().addAll(btnRunNow, btnTogglePause, btnRepeatEv, btnDeleteEv, btnClearAll);
+        btnToolbar.getChildren().addAll(btnRepeatEv, btnDeleteEv, btnClearAll);
 
         box.getChildren().addAll(lblQueueTitle, scheduledEventsListView, btnToolbar);
         return box;
@@ -385,7 +426,7 @@ public class InterventionPanel extends BorderPane {
     }
 
     /**
-     * Sub-block 1: Calendar Time Input (Jour / Heure / Minute / Seconde) & Colony Target
+     * Sub-block 1: Calendar Time Input & Colony Target
      */
     private Node createTimeAndColonyConfigNode() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
@@ -455,6 +496,80 @@ public class InterventionPanel extends BorderPane {
         return box;
     }
 
+    /**
+     * Sub-block 2: Spatial 3D Positioning (Sliders X, Y, Z, Default Centered on Terrain Surface)
+     */
+    private Node createSpatialPositionSubBlockNode() {
+        VBox box = new VBox(10);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(12); grid.setVgap(10);
+
+        // X Slider (Ouest -> Est)
+        Label lblX = new Label("Axe X (Ouest ◄► Est) :");
+        lblX.setStyle("-fx-font-weight: bold;");
+        posXSlider = new Slider(0.0, 64.0, 32.0);
+        posXSlider.setPrefWidth(260);
+        posXSlider.setMajorTickUnit(16.0);
+        posXSlider.setMinorTickCount(3);
+        posXSlider.setSnapToTicks(false);
+        posXValLabel = new Label("32.0 m (Centre de la Carte)");
+        posXValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        posXSlider.valueProperty().addListener((o, a, b) -> {
+            double v = b.doubleValue();
+            String note = (Math.abs(v - 32.0) < 1.0) ? " (Centre)" : (v < 10.0) ? " (Extrême Ouest)" : (v > 54.0) ? " (Extrême Est)" : "";
+            posXValLabel.setText(String.format("%.1f m%s", v, note));
+        });
+
+        // Y Slider (Sud -> Nord)
+        Label lblY = new Label("Axe Y (Sud ◄► Nord) :");
+        lblY.setStyle("-fx-font-weight: bold;");
+        posYSlider = new Slider(0.0, 64.0, 32.0);
+        posYSlider.setPrefWidth(260);
+        posYSlider.setMajorTickUnit(16.0);
+        posYSlider.setMinorTickCount(3);
+        posYSlider.setSnapToTicks(false);
+        posYValLabel = new Label("32.0 m (Centre de la Carte)");
+        posYValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        posYSlider.valueProperty().addListener((o, a, b) -> {
+            double v = b.doubleValue();
+            String note = (Math.abs(v - 32.0) < 1.0) ? " (Centre)" : (v < 10.0) ? " (Extrême Sud)" : (v > 54.0) ? " (Extrême Nord)" : "";
+            posYValLabel.setText(String.format("%.1f m%s", v, note));
+        });
+
+        // Z Slider (Profondeur -> Surface -> Altitude)
+        Label lblZ = new Label("Altitude Z (Hauteur) :");
+        lblZ.setStyle("-fx-font-weight: bold;");
+        posZSlider = new Slider(-5.0, 25.0, 1.0);
+        posZSlider.setPrefWidth(260);
+        posZSlider.setMajorTickUnit(5.0);
+        posZSlider.setMinorTickCount(4);
+        posZSlider.setSnapToTicks(false);
+        posZValLabel = new Label("1.0 m (Surface du Terrain)");
+        posZValLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold;");
+        posZSlider.valueProperty().addListener((o, a, b) -> {
+            double v = b.doubleValue();
+            String desc = (v < 0.0) ? String.format("%.1f m (Sous-sol Deep)", v) : (Math.abs(v - 1.0) < 0.5) ? "1.0 m (Surface du Terrain)" : (v <= 5.0) ? String.format("%.1f m (Bas Relief)", v) : String.format("%.1f m (Haute Canopée / Air)", v);
+            posZValLabel.setText(desc);
+            posZValLabel.setStyle(v < 0.0 ? "-fx-text-fill: #f59e0b; -fx-font-weight: bold;" : v > 5.0 ? "-fx-text-fill: #c084fc; -fx-font-weight: bold;" : "-fx-text-fill: #4ade80; -fx-font-weight: bold;");
+        });
+
+        grid.add(lblX, 0, 0); grid.add(posXSlider, 1, 0); grid.add(posXValLabel, 2, 0);
+        grid.add(lblY, 0, 1); grid.add(posYSlider, 1, 1); grid.add(posYValLabel, 2, 1);
+        grid.add(lblZ, 0, 2); grid.add(posZSlider, 1, 2); grid.add(posZValLabel, 2, 2);
+
+        Button btnResetCenter = new Button("📍 Recentrer au Centre de la Carte (Surface : X=32, Y=32, Z=1)");
+        btnResetCenter.setStyle("-fx-background-color: rgba(56,189,248,0.15); -fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-border-color: #38bdf8; -fx-border-radius: 4; -fx-cursor: hand;");
+        btnResetCenter.setOnAction(e -> {
+            posXSlider.setValue(32.0);
+            posYSlider.setValue(32.0);
+            posZSlider.setValue(1.0);
+        });
+
+        box.getChildren().addAll(grid, btnResetCenter);
+        return box;
+    }
+
     private long calculateTargetSeconds() {
         int d = spDay.getValue() != null ? spDay.getValue() : 1;
         int h = spHour.getValue() != null ? spHour.getValue() : 8;
@@ -475,7 +590,7 @@ public class InterventionPanel extends BorderPane {
     }
 
     /**
-     * Sub-block 2: Entities & Castes (Apparition / Injection & Élimination / Extinction)
+     * Sub-block 3: Entities, Castes & Brood Management
      */
     private Node createEntitiesSubBlockNode() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
@@ -492,44 +607,36 @@ public class InterventionPanel extends BorderPane {
                 i18n.get("god.colony.default2")
         );
         colonySelect.getSelectionModel().selectFirst();
-        colonySelect.setPrefWidth(220);
+        colonySelect.setPrefWidth(240);
         colonySelect.setOnAction(e -> updateCastesForSelectedColony(colonySelect.getValue()));
 
-        Label lblAction = new Label();
-        lblAction.textProperty().bind(i18n.createStringBinding("god.entities.action"));
+        Label lblAction = new Label("Type d'Action :");
+        lblAction.setStyle("-fx-font-weight: bold;");
         entityActionSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
-                i18n.get("god.entities.action.spawn"),
-                i18n.get("god.entities.action.kill"),
-                i18n.get("god.entities.action.extinct")
+                "➕ Injection / Apparition (Adulte / Couvain)",
+                "☠️ Élimination Ciblée d'Individus",
+                "🐣 Élimination / Dépuration du Couvain",
+                "💀 Extinction Totale de la Colonie"
         ));
         entityActionSelect.getSelectionModel().selectFirst();
-        entityActionSelect.setPrefWidth(220);
+        entityActionSelect.setPrefWidth(260);
 
-        Label casteLabel = new Label();
-        casteLabel.textProperty().bind(i18n.createStringBinding("god.entities.caste"));
+        Label casteLabel = new Label("Caste / Couvain Cible :");
+        casteLabel.setStyle("-fx-font-weight: bold;");
         casteSelect = new ComboBox<>();
-        casteSelect.setPrefWidth(220);
+        casteSelect.setPrefWidth(260);
         updateCastesForSelectedColony(colonySelect.getValue());
 
-        Label countLabel = new Label();
-        countLabel.textProperty().bind(i18n.createStringBinding("god.entities.count"));
+        Label countLabel = new Label("Quantité / Nombre d'Individus :");
+        countLabel.setStyle("-fx-font-weight: bold;");
         antCountSpinner = new Spinner<>(1, 1000, 10);
         antCountSpinner.setEditable(true);
-        antCountSpinner.setPrefWidth(100);
-
-        Label posLabel = new Label();
-        posLabel.textProperty().bind(i18n.createStringBinding("god.entities.pos"));
-        HBox posBox = new HBox(5);
-        posXField = new TextField("1.0"); posXField.setPrefWidth(55);
-        posYField = new TextField("1.0"); posYField.setPrefWidth(55);
-        posZField = new TextField("0.1"); posZField.setPrefWidth(55);
-        posBox.getChildren().addAll(new Label("X:"), posXField, new Label("Y:"), posYField, new Label("Z:"), posZField);
+        antCountSpinner.setPrefWidth(120);
 
         grid.add(colLabel, 0, 0); grid.add(colonySelect, 1, 0);
         grid.add(lblAction, 0, 1); grid.add(entityActionSelect, 1, 1);
         grid.add(casteLabel, 0, 2); grid.add(casteSelect, 1, 2);
         grid.add(countLabel, 0, 3); grid.add(antCountSpinner, 1, 3);
-        grid.add(posLabel, 0, 4); grid.add(posBox, 1, 4);
 
         HBox actionBtnRow = new HBox(8);
         Button btnScheduleEntities = new Button();
@@ -537,19 +644,14 @@ public class InterventionPanel extends BorderPane {
         btnScheduleEntities.getStyleClass().add("btn-primary");
         btnScheduleEntities.setOnAction(e -> scheduleEntitiesEvent());
 
-        Button btnLiveEntities = new Button();
-        btnLiveEntities.textProperty().bind(i18n.createStringBinding("god.btn.live_entities"));
-        btnLiveEntities.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-        btnLiveEntities.setOnAction(e -> executeEntitiesLive());
-
-        actionBtnRow.getChildren().addAll(btnScheduleEntities, btnLiveEntities);
+        actionBtnRow.getChildren().add(btnScheduleEntities);
 
         box.getChildren().addAll(grid, actionBtnRow);
         return box;
     }
 
     /**
-     * Sub-block 3: Resources & Biomass with Taxonomy for Ants, Bees, Wasps, and Termites
+     * Sub-block 4: Resources & Biomass
      */
     private Node createResourcesSubBlockNode() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
@@ -601,19 +703,14 @@ public class InterventionPanel extends BorderPane {
         btnScheduleRes.getStyleClass().add("btn-primary");
         btnScheduleRes.setOnAction(e -> scheduleResourceEvent());
 
-        Button btnLiveRes = new Button();
-        btnLiveRes.textProperty().bind(i18n.createStringBinding("god.btn.live_res"));
-        btnLiveRes.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-        btnLiveRes.setOnAction(e -> executeResourceLive());
-
-        actionBtnRow.getChildren().addAll(btnScheduleRes, btnLiveRes);
+        actionBtnRow.getChildren().add(btnScheduleRes);
 
         box.getChildren().addAll(grid, actionBtnRow);
         return box;
     }
 
     /**
-     * Sub-block 4: Environmental Disasters with Magnitude & Multi-Week Duration
+     * Sub-block 5: Environmental Disasters
      */
     private Node createDisastersSubBlockNode() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
@@ -681,11 +778,6 @@ public class InterventionPanel extends BorderPane {
         btnScheduleDisaster.getStyleClass().add("btn-primary");
         btnScheduleDisaster.setOnAction(e -> scheduleDisasterEvent());
 
-        Button btnLiveDisaster = new Button();
-        btnLiveDisaster.textProperty().bind(i18n.createStringBinding("god.btn.live_disaster"));
-        btnLiveDisaster.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-        btnLiveDisaster.setOnAction(e -> executeDisasterLive());
-
         Button btnStopDisasters = new Button();
         btnStopDisasters.textProperty().bind(i18n.createStringBinding("god.disasters.btn_stop"));
         btnStopDisasters.getStyleClass().add("btn-danger");
@@ -693,14 +785,14 @@ public class InterventionPanel extends BorderPane {
             if (callback != null) callback.stopDisasters();
         });
 
-        actionBtnRow.getChildren().addAll(btnScheduleDisaster, btnLiveDisaster, btnStopDisasters);
+        actionBtnRow.getChildren().addAll(btnScheduleDisaster, btnStopDisasters);
 
         box.getChildren().addAll(grid, actionBtnRow);
         return box;
     }
 
     /**
-     * Sub-block 5: Abiotic Core Physical Drivers (Temperature, Humidity, Wind, Solar Radiation)
+     * Sub-block 6: Abiotic Physical Drivers with Relative Delta (+/-) & Duration
      */
     private Node createParametersSubBlockNode() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
@@ -709,54 +801,83 @@ public class InterventionPanel extends BorderPane {
         GridPane grid = new GridPane();
         grid.setHgap(10); grid.setVgap(8);
 
-        Label lblTemp = new Label();
-        lblTemp.textProperty().bind(i18n.createStringBinding("god.abiotic.temp"));
-        tempSlider = new Slider(-10.0, 50.0, 22.0);
-        tempSlider.setPrefWidth(180);
-        tempValLabel = new Label("22.0 °C");
-        tempValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-        tempSlider.valueProperty().addListener((o, a, b) -> {
-            tempValLabel.setText(String.format("%.1f °C", b.doubleValue()));
+        Label lblMode = new Label("Mode d'Application Climat :");
+        lblMode.setStyle("-fx-font-weight: bold;");
+        abioticModeSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
+                "📈 Variation Relative (Δ + / - par rapport au Climat Courant)",
+                "🎯 Valeur Absolue Fixe (Substitut au Climat Courant)"
+        ));
+        abioticModeSelect.getSelectionModel().selectFirst();
+        abioticModeSelect.setPrefWidth(340);
+
+        Label lblDuration = new Label("Durée d'Application du Climat :");
+        lblDuration.setStyle("-fx-font-weight: bold;");
+        abioticDurationSlider = new Slider(5, 43200, 60);
+        abioticDurationSlider.setPrefWidth(200);
+        abioticDurationValLabel = new Label("60 min (1h)");
+        abioticDurationValLabel.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold;");
+        abioticDurationSlider.valueProperty().addListener((o, a, b) -> {
+            int mins = b.intValue();
+            abioticDurationValLabel.setText(mins < 60 ? mins + " min" : (mins < 1440) ? (mins / 60) + "h " + (mins % 60) + "m" : (mins / 1440) + " Jours");
+        });
+
+        // Relative Temp Delta (-20°C to +20°C)
+        Label lblTemp = new Label("Variation Température (Δ °C) :");
+        lblTemp.setStyle("-fx-font-weight: bold;");
+        deltaTempSlider = new Slider(-20.0, 20.0, 5.0);
+        deltaTempSlider.setPrefWidth(200);
+        deltaTempValLabel = new Label("+5.0 °C (Réchauffement)");
+        deltaTempValLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
+        deltaTempSlider.valueProperty().addListener((o, a, b) -> {
+            double v = b.doubleValue();
+            deltaTempValLabel.setText(String.format("%+.1f °C (%s)", v, v > 0 ? "Réchauffement" : v < 0 ? "Refroidissement" : "Inchangé"));
+            deltaTempValLabel.setStyle(v > 0 ? "-fx-text-fill: #ef4444; -fx-font-weight: bold;" : v < 0 ? "-fx-text-fill: #38bdf8; -fx-font-weight: bold;" : "-fx-text-fill: #94a3b8; -fx-font-weight: bold;");
             updateDerivedPhysicalOutputs();
         });
 
-        Label lblHumidity = new Label();
-        lblHumidity.textProperty().bind(i18n.createStringBinding("god.abiotic.humidity"));
-        humiditySlider = new Slider(10.0, 100.0, 65.0);
-        humiditySlider.setPrefWidth(180);
-        humidityValLabel = new Label("65.0 %");
-        humidityValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-        humiditySlider.valueProperty().addListener((o, a, b) -> {
-            humidityValLabel.setText(String.format("%.1f %%", b.doubleValue()));
+        // Relative Humidity Delta (-50% to +50%)
+        Label lblHumidity = new Label("Variation Humidité (Δ %) :");
+        lblHumidity.setStyle("-fx-font-weight: bold;");
+        deltaHumiditySlider = new Slider(-50.0, 50.0, 20.0);
+        deltaHumiditySlider.setPrefWidth(200);
+        deltaHumidityValLabel = new Label("+20.0 % (Humidification)");
+        deltaHumidityValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        deltaHumiditySlider.valueProperty().addListener((o, a, b) -> {
+            double v = b.doubleValue();
+            deltaHumidityValLabel.setText(String.format("%+.1f %% (%s)", v, v > 0 ? "Humidification" : v < 0 ? "Assèchement" : "Inchangé"));
             updateDerivedPhysicalOutputs();
         });
 
-        Label lblWind = new Label();
-        lblWind.textProperty().bind(i18n.createStringBinding("god.abiotic.wind"));
-        windSlider = new Slider(0.0, 25.0, 1.5);
-        windSlider.setPrefWidth(180);
-        windValLabel = new Label("1.5 m/s");
-        windValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-        windSlider.valueProperty().addListener((o, a, b) -> {
-            windValLabel.setText(String.format("%.1f m/s", b.doubleValue()));
+        // Relative Wind Delta (-10 to +15 m/s)
+        Label lblWind = new Label("Variation Vent (Δ m/s) :");
+        lblWind.setStyle("-fx-font-weight: bold;");
+        deltaWindSlider = new Slider(-10.0, 15.0, 2.0);
+        deltaWindSlider.setPrefWidth(200);
+        deltaWindValLabel = new Label("+2.0 m/s");
+        deltaWindValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        deltaWindSlider.valueProperty().addListener((o, a, b) -> {
+            deltaWindValLabel.setText(String.format("%+.1f m/s", b.doubleValue()));
             updateDerivedPhysicalOutputs();
         });
 
-        Label lblSolar = new Label();
-        lblSolar.textProperty().bind(i18n.createStringBinding("god.abiotic.solar"));
-        solarSlider = new Slider(0.0, 1200.0, 450.0);
-        solarSlider.setPrefWidth(180);
-        solarValLabel = new Label("450 W/m²");
-        solarValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-        solarSlider.valueProperty().addListener((o, a, b) -> {
-            solarValLabel.setText(String.format("%.0f W/m²", b.doubleValue()));
+        // Relative Solar Delta (-500 to +500 W/m²)
+        Label lblSolar = new Label("Variation Radiance (Δ W/m²) :");
+        lblSolar.setStyle("-fx-font-weight: bold;");
+        deltaSolarSlider = new Slider(-500.0, 500.0, 100.0);
+        deltaSolarSlider.setPrefWidth(200);
+        deltaSolarValLabel = new Label("+100 W/m²");
+        deltaSolarValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        deltaSolarSlider.valueProperty().addListener((o, a, b) -> {
+            deltaSolarValLabel.setText(String.format("%+.0f W/m²", b.doubleValue()));
             updateDerivedPhysicalOutputs();
         });
 
-        grid.add(lblTemp, 0, 0); grid.add(tempSlider, 1, 0); grid.add(tempValLabel, 2, 0);
-        grid.add(lblHumidity, 0, 1); grid.add(humiditySlider, 1, 1); grid.add(humidityValLabel, 2, 1);
-        grid.add(lblWind, 0, 2); grid.add(windSlider, 1, 2); grid.add(windValLabel, 2, 2);
-        grid.add(lblSolar, 0, 3); grid.add(solarSlider, 1, 3); grid.add(solarValLabel, 2, 3);
+        grid.add(lblMode, 0, 0); grid.add(abioticModeSelect, 1, 0);
+        grid.add(lblDuration, 0, 1); grid.add(abioticDurationSlider, 1, 1); grid.add(abioticDurationValLabel, 2, 1);
+        grid.add(lblTemp, 0, 2); grid.add(deltaTempSlider, 1, 2); grid.add(deltaTempValLabel, 2, 2);
+        grid.add(lblHumidity, 0, 3); grid.add(deltaHumiditySlider, 1, 3); grid.add(deltaHumidityValLabel, 2, 3);
+        grid.add(lblWind, 0, 4); grid.add(deltaWindSlider, 1, 4); grid.add(deltaWindValLabel, 2, 4);
+        grid.add(lblSolar, 0, 5); grid.add(deltaSolarSlider, 1, 5); grid.add(deltaSolarValLabel, 2, 5);
 
         VBox derivedBox = new VBox(4);
         derivedBox.getStyleClass().add("header-banner");
@@ -784,36 +905,180 @@ public class InterventionPanel extends BorderPane {
         btnScheduleAbiotic.getStyleClass().add("btn-primary");
         btnScheduleAbiotic.setOnAction(e -> scheduleAbioticEvent());
 
-        Button btnLiveAbiotic = new Button();
-        btnLiveAbiotic.textProperty().bind(i18n.createStringBinding("god.btn.live_abiotic"));
-        btnLiveAbiotic.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-        btnLiveAbiotic.setOnAction(e -> executeAbioticLive());
-
-        actionBtnRow.getChildren().addAll(btnScheduleAbiotic, btnLiveAbiotic);
+        actionBtnRow.getChildren().add(btnScheduleAbiotic);
 
         box.getChildren().addAll(grid, derivedBox, actionBtnRow);
         return box;
     }
 
+    /**
+     * Sub-block 7: Pheromone & Behavioral Perturbations (With Intensity & Duration)
+     */
+    private Node createPheromoneSubBlockNode() {
+        VBox box = new VBox(10);
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(8);
+
+        Label lblType = new Label("Type d'Événement Phéromonal :");
+        lblType.setStyle("-fx-font-weight: bold;");
+        pheromoneTypeSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
+                "Tempête de Phéromone d'Alarme (Alarm Storm)",
+                "Dissolution des Pistes d'Exploration (Trail Eraser)",
+                "Attracteur Synthétique de Reine (Fake Queen Beacon)",
+                "Phéromone d'Attraction de Biomasse (Attractant Pulse)"
+        ));
+        pheromoneTypeSelect.getSelectionModel().selectFirst();
+        pheromoneTypeSelect.setPrefWidth(300);
+
+        Label lblRadius = new Label("Rayon d'Action (m) :");
+        lblRadius.setStyle("-fx-font-weight: bold;");
+        pheroRadiusSlider = new Slider(1.0, 30.0, 10.0);
+        pheroRadiusSlider.setPrefWidth(180);
+        pheroRadiusValLabel = new Label("10.0 m");
+        pheroRadiusValLabel.setStyle("-fx-text-fill: #8b5cf6; -fx-font-weight: bold;");
+        pheroRadiusSlider.valueProperty().addListener((o, a, b) -> pheroRadiusValLabel.setText(String.format("%.1f m", b.doubleValue())));
+
+        Label lblIntensity = new Label("Intensité / Concentration :");
+        lblIntensity.setStyle("-fx-font-weight: bold;");
+        pheroIntensitySlider = new Slider(0.1, 1.0, 0.8);
+        pheroIntensitySlider.setPrefWidth(180);
+        pheroIntensityValLabel = new Label("Forte (0.8)");
+        pheroIntensityValLabel.setStyle("-fx-text-fill: #8b5cf6; -fx-font-weight: bold;");
+        pheroIntensitySlider.valueProperty().addListener((o, a, b) -> pheroIntensityValLabel.setText(String.format("%.1f", b.doubleValue())));
+
+        Label lblDuration = new Label("Durée de l'Événement (min) :");
+        lblDuration.setStyle("-fx-font-weight: bold;");
+        pheroDurationSlider = new Slider(5, 1440, 30);
+        pheroDurationSlider.setPrefWidth(180);
+        pheroDurationValLabel = new Label("30 min");
+        pheroDurationValLabel.setStyle("-fx-text-fill: #8b5cf6; -fx-font-weight: bold;");
+        pheroDurationSlider.valueProperty().addListener((o, a, b) -> {
+            int mins = b.intValue();
+            pheroDurationValLabel.setText(mins < 60 ? mins + " min" : (mins / 60) + "h " + (mins % 60) + "m");
+        });
+
+        grid.add(lblType, 0, 0); grid.add(pheromoneTypeSelect, 1, 0);
+        grid.add(lblRadius, 0, 1); grid.add(pheroRadiusSlider, 1, 1); grid.add(pheroRadiusValLabel, 2, 1);
+        grid.add(lblIntensity, 0, 2); grid.add(pheroIntensitySlider, 1, 2); grid.add(pheroIntensityValLabel, 2, 2);
+        grid.add(lblDuration, 0, 3); grid.add(pheroDurationSlider, 1, 3); grid.add(pheroDurationValLabel, 2, 3);
+
+        Button btnSchedulePhero = new Button("➕ Programmer l'Impulsion Phéromonale");
+        btnSchedulePhero.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+        btnSchedulePhero.setOnAction(e -> schedulePheromoneEvent());
+
+        box.getChildren().addAll(grid, btnSchedulePhero);
+        return box;
+    }
+
+    /**
+     * Sub-block 8: Apex Predators & Biological Invasions (With Count & Duration)
+     */
+    private Node createInvasionSubBlockNode() {
+        VBox box = new VBox(10);
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(8);
+
+        Label lblType = new Label("Événement d'Invasion / Prédateur :");
+        lblType.setStyle("-fx-font-weight: bold;");
+        invasionTypeSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
+                "Attaque de Tamandua / Fourmilier (Anteater Raid)",
+                "Raid de Fourmis Légionnaires (Army Ant Raid)",
+                "Invasion de Parasites Mites / Varroa (Parasitic Mite Infestation)",
+                "Infestation Fringale de Sauterelles (Locust Swarm)"
+        ));
+        invasionTypeSelect.getSelectionModel().selectFirst();
+        invasionTypeSelect.setPrefWidth(300);
+
+        Label lblCount = new Label("Nombre / Gravité d'Individus :");
+        lblCount.setStyle("-fx-font-weight: bold;");
+        invasionCountSpinner = new Spinner<>(1, 500, 25);
+        invasionCountSpinner.setEditable(true);
+        invasionCountSpinner.setPrefWidth(120);
+
+        Label lblDuration = new Label("Durée de la Pression (min) :");
+        lblDuration.setStyle("-fx-font-weight: bold;");
+        invasionDurationSlider = new Slider(15, 43200, 120);
+        invasionDurationSlider.setPrefWidth(180);
+        invasionDurationValLabel = new Label("2h (120 min)");
+        invasionDurationValLabel.setStyle("-fx-text-fill: #dc2626; -fx-font-weight: bold;");
+        invasionDurationSlider.valueProperty().addListener((o, a, b) -> {
+            int mins = b.intValue();
+            invasionDurationValLabel.setText(mins < 60 ? mins + " min" : (mins < 1440) ? (mins / 60) + "h " + (mins % 60) + "m" : (mins / 1440) + " Jours");
+        });
+
+        grid.add(lblType, 0, 0); grid.add(invasionTypeSelect, 1, 0);
+        grid.add(lblCount, 0, 1); grid.add(invasionCountSpinner, 1, 1);
+        grid.add(lblDuration, 0, 2); grid.add(invasionDurationSlider, 1, 2); grid.add(invasionDurationValLabel, 2, 2);
+
+        Button btnScheduleInvasion = new Button("➕ Programmer l'Invasion Écologique");
+        btnScheduleInvasion.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+        btnScheduleInvasion.setOnAction(e -> scheduleInvasionEvent());
+
+        box.getChildren().addAll(grid, btnScheduleInvasion);
+        return box;
+    }
+
+    /**
+     * Sub-block 9: Genetics, Metabolic Boosts & Mutagens (With Intensity & Duration)
+     */
+    private Node createMutationSubBlockNode() {
+        VBox box = new VBox(10);
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(8);
+
+        Label lblType = new Label("Stimulation Génétique / Mutagène :");
+        lblType.setStyle("-fx-font-weight: bold;");
+        mutationTypeSelect = new ComboBox<>(javafx.collections.FXCollections.observableArrayList(
+                "Suralimentation en Gelée Royale (Boost Oviposition Reine)",
+                "Frénésie & Métabolisme (+50% Vitesse/Attaque)",
+                "Longévité Biologique (Protection Contre la Senescence)",
+                "Anarchie & Perturbation des Castes (Changement de Rôle)"
+        ));
+        mutationTypeSelect.getSelectionModel().selectFirst();
+        mutationTypeSelect.setPrefWidth(320);
+
+        Label lblIntensity = new Label("Facteur d'Intensité / Multiplicateur :");
+        lblIntensity.setStyle("-fx-font-weight: bold;");
+        mutationIntensitySlider = new Slider(1.1, 5.0, 2.0);
+        mutationIntensitySlider.setPrefWidth(180);
+        mutationIntensityValLabel = new Label("2.0x (+200%)");
+        mutationIntensityValLabel.setStyle("-fx-text-fill: #ec4899; -fx-font-weight: bold;");
+        mutationIntensitySlider.valueProperty().addListener((o, a, b) -> mutationIntensityValLabel.setText(String.format("%.1fx", b.doubleValue())));
+
+        Label lblDur = new Label("Durée d'Effet :");
+        lblDur.setStyle("-fx-font-weight: bold;");
+        mutationDurationSlider = new Slider(5, 1440, 60);
+        mutationDurationSlider.setPrefWidth(180);
+        mutationDurationValLabel = new Label("60 min (1h)");
+        mutationDurationValLabel.setStyle("-fx-text-fill: #ec4899; -fx-font-weight: bold;");
+        mutationDurationSlider.valueProperty().addListener((o, a, b) -> {
+            int mins = b.intValue();
+            mutationDurationValLabel.setText(mins < 60 ? mins + " min" : (mins / 60) + "h " + (mins % 60) + "m");
+        });
+
+        grid.add(lblType, 0, 0); grid.add(mutationTypeSelect, 1, 0);
+        grid.add(lblIntensity, 0, 1); grid.add(mutationIntensitySlider, 1, 1); grid.add(mutationIntensityValLabel, 2, 1);
+        grid.add(lblDur, 0, 2); grid.add(mutationDurationSlider, 1, 2); grid.add(mutationDurationValLabel, 2, 2);
+
+        Button btnScheduleMutation = new Button("➕ Programmer la Stimulation Génétique");
+        btnScheduleMutation.setStyle("-fx-background-color: #ec4899; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+        btnScheduleMutation.setOnAction(e -> scheduleMutationEvent());
+
+        box.getChildren().addAll(grid, btnScheduleMutation);
+        return box;
+    }
+
     private void updateDerivedPhysicalOutputs() {
-        if (tempSlider == null) return;
+        if (deltaTempSlider == null) return;
 
-        double temp = tempSlider.getValue();
-        double hum = humiditySlider.getValue();
-        double wind = windSlider.getValue();
-        double solar = solarSlider.getValue();
+        double temp = deltaTempSlider.getValue();
+        double hum = deltaHumiditySlider.getValue();
+        double wind = deltaWindSlider.getValue();
+        double solar = deltaSolarSlider.getValue();
 
-        double calcEvapRate = 0.02 + (temp / 100.0) * (1.0 + wind / 5.0) * (1.0 - hum / 120.0);
-        calcEvapRate = Math.max(0.005, Math.min(0.30, calcEvapRate));
-
-        double calcProdRate = (solar / 1000.0) * (hum / 100.0) * (temp > 5 && temp < 40 ? 1.0 : 0.2);
-        calcProdRate = Math.max(0.0, Math.min(1.5, calcProdRate));
-
-        double calcOviposRate = temp >= 15 && temp <= 32 ? 1.0 + (temp - 22.0) * 0.05 : Math.max(0.1, 1.0 - Math.abs(temp - 22.0) * 0.08);
-
-        derivedPheroLabel.setText(String.format("• Evaporation Phéromonale Dérivée : %.2f %% / s (T°=%.1f°C, H=%.0f%%, Vent=%.1fm/s)", calcEvapRate * 100.0, temp, hum, wind));
-        derivedPrimaryProductivityLabel.setText(String.format("• Photosynthèse & Biomasse Primaire : %.2f u / s (Radiance=%.0fW/m²)", calcProdRate, solar));
-        derivedOvipositionLabel.setText(String.format("• Coefficient Thermique de Ponte Reine : %.2fx (Optimum 22-28°C)", calcOviposRate));
+        derivedPheroLabel.setText(String.format("• Delta Climat : ΔT = %+.1f°C | ΔHumidité = %+.1f%% | ΔVent = %+.1fm/s", temp, hum, wind));
+        derivedPrimaryProductivityLabel.setText(String.format("• Radiance Solaire Relative : %+.0f W/m² (Durée : %d min)", solar, (int) abioticDurationSlider.getValue()));
+        derivedOvipositionLabel.setText("• Impact Thermique estimé sur l'activité du Nid : " + (temp > 0 ? "Accélération Métabolique" : temp < 0 ? "Ralentissement / Léthargie" : "Stabilité"));
     }
 
     // ── ATOMIC SCHEDULING METHODS ──────────────────────────────────────────────
@@ -855,8 +1120,10 @@ public class InterventionPanel extends BorderPane {
 
     private ScheduledEvent createBaseEvent(Category category, String eventType, String desc) {
         long tSec = calculateTargetSeconds();
-        long targetTick = Math.max(1, Math.round(tSec / simulationStepSec));
-        String timeFormatted = String.format("J%d %02d:%02d:%02d", spDay.getValue(), spHour.getValue(), spMin.getValue(), spSec.getValue());
+        long rawTargetTick = Math.max(1, Math.round(tSec / simulationStepSec));
+        // Enforce scheduling constraint: cannot schedule interventions in the past (must be >= currentSimulationTick)
+        long targetTick = Math.max(currentSimulationTick, rawTargetTick);
+        String timeFormatted = formatTickToCalendarTime(targetTick, simulationStepSec);
         String colTarget = eventColonySelect.getValue();
         return new ScheduledEvent(targetTick, timeFormatted, category, eventType, colTarget, desc);
     }
@@ -866,9 +1133,9 @@ public class InterventionPanel extends BorderPane {
         String actionStr = entityActionSelect.getValue();
         String caste = casteSelect.getValue();
         int count = antCountSpinner.getValue();
-        float x = Float.parseFloat(posXField.getText());
-        float y = Float.parseFloat(posYField.getText());
-        float z = Float.parseFloat(posZField.getText());
+        float x = (float) posXSlider.getValue();
+        float y = (float) posYSlider.getValue();
+        float z = (float) posZSlider.getValue();
 
         ScheduledEvent ev = createBaseEvent(Category.ENTITIES, actionStr,
                 String.format("%s %d x %s à (%.1f, %.1f, %.1f)", actionStr, count, caste, x, y, z));
@@ -877,6 +1144,7 @@ public class InterventionPanel extends BorderPane {
         ev.count = count;
         ev.posX = x; ev.posY = y; ev.posZ = z;
         ev.entityAction = actionStr.contains("Injection") || actionStr.contains("Apparition") ? "SPAWN" :
+                          actionStr.contains("Couvain") ? "BROOD_KILL" :
                           actionStr.contains("Extinction") ? "EXTINCT" : "KILL";
 
         scheduledEventsList.add(ev);
@@ -884,31 +1152,13 @@ public class InterventionPanel extends BorderPane {
         scrollToFirstUpcomingEvent();
     }
 
-    private void executeEntitiesLive() {
-        String colTarget = colonySelect.getValue();
-        String actionStr = entityActionSelect.getValue();
-        String caste = casteSelect.getValue();
-        int count = antCountSpinner.getValue();
-        float x = Float.parseFloat(posXField.getText());
-        float y = Float.parseFloat(posYField.getText());
-        float z = Float.parseFloat(posZField.getText());
-
-        if (callback != null) {
-            if (actionStr.contains("Élimination") || actionStr.contains("Extinction")) {
-                callback.killAnts(colTarget, caste, actionStr.contains("Extinction") ? 99999 : count);
-            } else {
-                callback.spawnAnts(colTarget, caste, count, x, y, z);
-            }
-        }
-    }
-
     private void scheduleResourceEvent() {
         String resType = resourceTypeSelect.getValue();
         String foodNat = foodNatureSelect.getValue();
         float qty = (float) foodSlider.getValue();
-        float x = Float.parseFloat(posXField.getText());
-        float y = Float.parseFloat(posYField.getText());
-        float z = Float.parseFloat(posZField.getText());
+        float x = (float) posXSlider.getValue();
+        float y = (float) posYSlider.getValue();
+        float z = (float) posZSlider.getValue();
 
         ScheduledEvent ev = createBaseEvent(Category.RESOURCE, resType,
                 String.format("Apport %.0f u (%s) - %s à (%.1f, %.1f, %.1f)", qty, resType, foodNat, x, y, z));
@@ -920,18 +1170,6 @@ public class InterventionPanel extends BorderPane {
         scheduledEventsList.add(ev);
         sortScheduledEvents();
         scrollToFirstUpcomingEvent();
-    }
-
-    private void executeResourceLive() {
-        String resType = resourceTypeSelect.getValue();
-        float qty = (float) foodSlider.getValue();
-        float x = Float.parseFloat(posXField.getText());
-        float y = Float.parseFloat(posYField.getText());
-        float z = Float.parseFloat(posZField.getText());
-
-        if (callback != null) {
-            callback.spawnFood(x, y, z, qty);
-        }
     }
 
     private void scheduleDisasterEvent() {
@@ -950,45 +1188,84 @@ public class InterventionPanel extends BorderPane {
         scrollToFirstUpcomingEvent();
     }
 
-    private void executeDisasterLive() {
-        String disasterType = disasterSelect.getValue();
-        float intensity = (float) intensitySlider.getValue();
-
-        if (callback != null) {
-            callback.triggerDisaster(disasterType, intensity);
-        }
-    }
-
     private void scheduleAbioticEvent() {
-        float temp = (float) tempSlider.getValue();
-        float hum = (float) humiditySlider.getValue();
-        float wind = (float) windSlider.getValue();
-        float solar = (float) solarSlider.getValue();
+        boolean isRel = abioticModeSelect.getValue().contains("Relative");
+        int durMins = (int) abioticDurationSlider.getValue();
+        float dTemp = (float) deltaTempSlider.getValue();
+        float dHum = (float) deltaHumiditySlider.getValue();
+        float dWind = (float) deltaWindSlider.getValue();
+        float dSolar = (float) deltaSolarSlider.getValue();
 
-        ScheduledEvent ev = createBaseEvent(Category.ABIOTIC, "Variation Climat",
-                String.format("Climat : T=%.1f°C, H=%.0f%%, Vent=%.1fm/s, Solaire=%.0fW/m²", temp, hum, wind, solar));
-        ev.tempCelsius = temp;
-        ev.humidityPercent = hum;
-        ev.windMetersPerSec = wind;
-        ev.solarWattsPerM2 = solar;
+        String desc = isRel ?
+                String.format("Δ Climat (%d min) : ΔT=%+.1f°C, ΔH=%+.0f%%, ΔVent=%+.1fm/s, ΔSol=%+.0fW/m²", durMins, dTemp, dHum, dWind, dSolar) :
+                String.format("Climat Absolu (%d min)", durMins);
+
+        ScheduledEvent ev = createBaseEvent(Category.ABIOTIC, "Variation Climat", desc);
+        ev.isRelativeAbiotic = isRel;
+        ev.durationMinutes = durMins;
+        ev.deltaTempCelsius = dTemp;
+        ev.deltaHumidityPercent = dHum;
+        ev.deltaWindMetersPerSec = dWind;
+        ev.deltaSolarWattsPerM2 = dSolar;
 
         scheduledEventsList.add(ev);
         sortScheduledEvents();
         scrollToFirstUpcomingEvent();
     }
 
-    private void executeAbioticLive() {
-        float temp = (float) tempSlider.getValue();
-        float hum = (float) humiditySlider.getValue();
-        float wind = (float) windSlider.getValue();
-        float solar = (float) solarSlider.getValue();
+    private void schedulePheromoneEvent() {
+        String type = pheromoneTypeSelect.getValue();
+        float radius = (float) pheroRadiusSlider.getValue();
+        float intensity = (float) pheroIntensitySlider.getValue();
+        int durMins = (int) pheroDurationSlider.getValue();
+        float x = (float) posXSlider.getValue();
+        float y = (float) posYSlider.getValue();
+        float z = (float) posZSlider.getValue();
 
-        if (callback != null) {
-            callback.modifyParameter("temperatureCelsius", temp);
-            callback.modifyParameter("humidityPercent", hum);
-            callback.modifyParameter("windSpeed", wind);
-            callback.modifyParameter("solarRadiation", solar);
-        }
+        ScheduledEvent ev = createBaseEvent(Category.PHEROMONE, type,
+                String.format("%s (Rayon: %.1fm, Intensité: %.1f, Durée: %d min) à (%.1f, %.1f, %.1f)", type, radius, intensity, durMins, x, y, z));
+        ev.radius = radius;
+        ev.intensity = intensity;
+        ev.durationMinutes = durMins;
+        ev.posX = x; ev.posY = y; ev.posZ = z;
+
+        scheduledEventsList.add(ev);
+        sortScheduledEvents();
+        scrollToFirstUpcomingEvent();
+    }
+
+    private void scheduleInvasionEvent() {
+        String type = invasionTypeSelect.getValue();
+        int count = invasionCountSpinner.getValue();
+        int durMins = (int) invasionDurationSlider.getValue();
+        float x = (float) posXSlider.getValue();
+        float y = (float) posYSlider.getValue();
+        float z = (float) posZSlider.getValue();
+
+        ScheduledEvent ev = createBaseEvent(Category.INVASION, type,
+                String.format("%s (%d individus, Durée: %d min) à (%.1f, %.1f, %.1f)", type, count, durMins, x, y, z));
+        ev.count = count;
+        ev.durationMinutes = durMins;
+        ev.posX = x; ev.posY = y; ev.posZ = z;
+
+        scheduledEventsList.add(ev);
+        sortScheduledEvents();
+        scrollToFirstUpcomingEvent();
+    }
+
+    private void scheduleMutationEvent() {
+        String type = mutationTypeSelect.getValue();
+        float intensity = (float) mutationIntensitySlider.getValue();
+        int durMins = (int) mutationDurationSlider.getValue();
+
+        ScheduledEvent ev = createBaseEvent(Category.MUTATION, type,
+                String.format("%s (Intensité: %.1fx, Durée: %d min)", type, intensity, durMins));
+        ev.intensity = intensity;
+        ev.durationMinutes = durMins;
+
+        scheduledEventsList.add(ev);
+        sortScheduledEvents();
+        scrollToFirstUpcomingEvent();
     }
 
     private void executeScheduledEvent(ScheduledEvent ev) {
@@ -996,7 +1273,9 @@ public class InterventionPanel extends BorderPane {
         if (callback != null) {
             switch (ev.category) {
                 case ENTITIES -> {
-                    if ("KILL".equals(ev.entityAction) || "EXTINCT".equals(ev.entityAction)) {
+                    if (ev.caste != null && (ev.caste.contains("Brood") || ev.caste.contains("Couvain") || ev.caste.contains("Œufs") || ev.caste.contains("Larves") || ev.caste.contains("Nymphes"))) {
+                        callback.manageBrood(colStr, ev.caste, ev.entityAction, ev.count);
+                    } else if ("KILL".equals(ev.entityAction) || "EXTINCT".equals(ev.entityAction) || "BROOD_KILL".equals(ev.entityAction)) {
                         callback.killAnts(colStr, ev.caste, "EXTINCT".equals(ev.entityAction) ? 99999 : ev.count);
                     } else {
                         callback.spawnAnts(colStr, ev.caste, ev.count, ev.posX, ev.posY, ev.posZ);
@@ -1005,11 +1284,19 @@ public class InterventionPanel extends BorderPane {
                 case RESOURCE -> callback.spawnFood(ev.posX, ev.posY, ev.posZ, ev.amount);
                 case DISASTER -> callback.triggerDisaster(ev.disasterType, ev.intensity);
                 case ABIOTIC -> {
-                    callback.modifyParameter("temperatureCelsius", ev.tempCelsius);
-                    callback.modifyParameter("humidityPercent", ev.humidityPercent);
-                    callback.modifyParameter("windSpeed", ev.windMetersPerSec);
-                    callback.modifyParameter("solarRadiation", ev.solarWattsPerM2);
+                    if (ev.isRelativeAbiotic) {
+                        callback.modifyAbioticClimate(true, ev.deltaTempCelsius, ev.deltaHumidityPercent, ev.deltaWindMetersPerSec, ev.deltaSolarWattsPerM2, ev.durationMinutes);
+                    } else {
+                        callback.modifyAbioticClimate(false, ev.tempCelsius, ev.humidityPercent, ev.windMetersPerSec, ev.solarWattsPerM2, ev.durationMinutes);
+                        callback.modifyParameter("temperatureCelsius", ev.tempCelsius);
+                        callback.modifyParameter("humidityPercent", ev.humidityPercent);
+                        callback.modifyParameter("windSpeed", ev.windMetersPerSec);
+                        callback.modifyParameter("solarRadiation", ev.solarWattsPerM2);
+                    }
                 }
+                case PHEROMONE -> callback.triggerPheromoneEvent(ev.eventType, ev.posX, ev.posY, ev.posZ, ev.intensity, ev.radius, ev.durationMinutes);
+                case INVASION -> callback.triggerInvasionEvent(ev.eventType, ev.posX, ev.posY, ev.posZ, ev.count, ev.durationMinutes);
+                case MUTATION -> callback.applyGeneticBoost(colStr, ev.eventType, ev.intensity, ev.durationMinutes);
             }
         }
     }
@@ -1091,6 +1378,14 @@ public class InterventionPanel extends BorderPane {
         if (casteSelect == null) return;
 
         casteSelect.getItems().clear();
+
+        // Always include Brood options
+        casteSelect.getItems().addAll(
+                "Brood / Couvain Complexe (Œufs, Larves, Nymphes)",
+                "Eggs / Œufs Frayés",
+                "Larvae / Larves",
+                "Pupae / Nymphes & Cocons"
+        );
 
         if (colonyName != null && (colonyName.contains("Atta") || colonyName.contains("Leafcutter"))) {
             casteSelect.getItems().addAll("Giant Queen", "Major Soldier (Guard)", "Media Worker (Cutter)", "Minim Worker (Nurse)");

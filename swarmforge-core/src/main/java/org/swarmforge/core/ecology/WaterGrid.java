@@ -9,9 +9,9 @@ package org.swarmforge.core.ecology;
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.simulation.TunnelNetwork;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manages water simulation including surface flow and tunnel flooding.
@@ -25,7 +25,7 @@ public class WaterGrid {
     private final float[] surfaceWater; // 1D array for 2D grid [x + y * width]
 
     // Tunnel water levels (0.0 to 1.0)
-    private final Map<UUID, Float> tunnelWaterLevels = new HashMap<>();
+    private final Map<UUID, Float> tunnelWaterLevels = new ConcurrentHashMap<>();
 
     public WaterGrid(Terrarium terrarium) {
         this.width = (int) terrarium.getWidth(); // Assuming grid resolution matches 1 unit
@@ -76,7 +76,10 @@ public class WaterGrid {
             }
         }
 
-        // 4. Evaporation
+        // 4. Tunnel Evaporation (once per tick across all tunnel nodes)
+        tunnelWaterLevels.replaceAll((k, v) -> Math.max(0, v - 0.005f));
+
+        // 5. Surface Evaporation
         for (int i = 0; i < surfaceWater.length; i++) {
             surfaceWater[i] = Math.max(0, surfaceWater[i] - 0.001f);
         }
@@ -91,9 +94,6 @@ public class WaterGrid {
             // Water flow logic would go here (e.g. moving water to connected lower nodes).
             // Current implementation: Water remains static in the node until evaporation.
         }
-
-        // Simple evaporation in tunnels
-        tunnelWaterLevels.replaceAll((k, v) -> Math.max(0, v - 0.005f));
     }
 
     public void addTunnelWater(UUID nodeId, float amount) {

@@ -97,10 +97,12 @@ public class WorldEditorPane extends BorderPane {
     private ComboBox<String> slopeDirectionCombo;
 
     // Controls: Layer, Vegetation & Nest Visibility Toggles
+    private CheckBox showTerrainCheck;
     private CheckBox showEarthCheck;
     private CheckBox showSandCheck;
     private CheckBox showClayCheck;
     private CheckBox showStoneCheck;
+    private CheckBox showGravelCheck;
     private CheckBox showOrganicCheck;
     private CheckBox showVegetationCheck;
     private CheckBox showGalleriesCheck;
@@ -141,6 +143,7 @@ public class WorldEditorPane extends BorderPane {
         public int type; // 0=Grass, 1=AphidPlant, 2=NectarFlower, 3=Moss, 4=PineLitter, 5=TwigDebris, 6=Pebble
         public double scale;
         public double rotation;
+        public boolean isCharred = false;
 
         public SurfaceFloraItem(int gx, int gy, int type, double scale, double rotation) {
             this.gx = gx; this.gy = gy; this.type = type; this.scale = scale; this.rotation = rotation;
@@ -337,8 +340,11 @@ public class WorldEditorPane extends BorderPane {
     private static final int SOIL_DEPTH = 32;
     private double[][] heightGrid = new double[GRID_SIZE][GRID_SIZE];
     private byte[][][] soilLayers  = new byte[GRID_SIZE][GRID_SIZE][SOIL_DEPTH];
-    private float[][]  humidityGrid = new float[GRID_SIZE][GRID_SIZE];  // 0.0-1.0
+    private float[][][] humidityGrid = new float[GRID_SIZE][GRID_SIZE][SOIL_DEPTH];  // 0.0-1.0 (3D Tensor)
     private boolean[][][] voidGrid  = new boolean[GRID_SIZE][GRID_SIZE][SOIL_DEPTH]; // cavernes
+    private float[][][] rootGrid = new float[GRID_SIZE][GRID_SIZE][SOIL_DEPTH]; // 3D Root Network (0.0-1.0)
+    private float[][][] tempGrid = new float[GRID_SIZE][GRID_SIZE][SOIL_DEPTH]; // Soil Temperature (°C)
+    private float[][][] phGrid   = new float[GRID_SIZE][GRID_SIZE][SOIL_DEPTH]; // Soil pH (4.0-9.0, 3D Tensor)
     private boolean[][] carvedVoxelGrid = new boolean[GRID_SIZE][GRID_SIZE];
     private List<int[]> riverPath = new ArrayList<>();
 
@@ -347,10 +353,13 @@ public class WorldEditorPane extends BorderPane {
     private Slider mixingRateSlider;
     private Slider baseHumiditySlider;
     private Slider voidDensitySlider;
+    private Slider basePhSlider;
+    private Slider rootDensitySlider;
     private CheckBox showHumidityCheck;
+    private CheckBox showRootsCheck;
+    private CheckBox showPhCheck;
 
     // Volumetric & Rendering Options
-    private CheckBox useAdvancedVolumetricModeCheck;
     private CheckBox showChamferedBezelCheck;
     private CheckBox showGravelInclusionsCheck;
     private Slider slicePlaneSlider;
@@ -505,34 +514,7 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private void generateSoilLayers(double stratification, double mixing) {
-        int[] surfacePct = getSurfaceComposition();
-        for (int x = 0; x < GRID_SIZE; x++) {
-            for (int y = 0; y < GRID_SIZE; y++) {
-                for (int d = 0; d < SOIL_DEPTH; d++) {
-                    double depthRatio = (double) d / (SOIL_DEPTH - 1);
-                    byte idealMat;
-                    if (depthRatio < 0.15) idealMat = 0;       // Humus / Terre
-                    else if (depthRatio < 0.45) idealMat = 2;  // Argile
-                    else if (depthRatio < 0.75) idealMat = 3;  // Pierre
-                    else idealMat = 3;                          // Bedrock
-
-                    double noise = valueNoise3D(x * 0.25, y * 0.25, d * 0.6 + 10);
-
-                    byte mat;
-                    if (d == 0) {
-                        mat = pickSurfaceMaterialCoherent(x, y, surfacePct);
-                    } else {
-                        double blend = stratification + (noise - 0.5) * mixing * 2.0;
-                        if (blend > 0.5) {
-                            mat = idealMat;
-                        } else {
-                            mat = pickSurfaceMaterialCoherent(x, y, surfacePct);
-                        }
-                    }
-                    soilLayers[x][y][d] = mat;
-                }
-            }
-        }
+        generateSoilLayersSeeded(stratification, mixing, 123456L);
     }
 
     private byte pickSurfaceMaterialCoherent(int x, int y, int[] surfacePct) {
@@ -542,7 +524,7 @@ public class WorldEditorPane extends BorderPane {
         }
         double h = heightGrid[x][y];
         if (h > 0.72) return 3;
-        if (h < 0.28 && humidityGrid[x][y] > 0.45) return 2;
+        if (h < 0.28 && humidityGrid[x][y][0] > 0.45) return 2;
 
         double spatialNoise = valueNoise3D(x * 0.05, y * 0.05, 12);
         return pickSurfaceMaterial(surfacePct, spatialNoise);
@@ -584,9 +566,22 @@ public class WorldEditorPane extends BorderPane {
         double wtFactor = 1.0 - Math.min(1.0, wtDepth / 50.0);
         for (int x = 0; x < GRID_SIZE; x++) {
             for (int y = 0; y < GRID_SIZE; y++) {
-                double noise = valueNoise3D(x * 0.2, y * 0.2, 99);
-                humidityGrid[x][y] = (float) Math.max(0, Math.min(1,
-                        baseHumidity + wtFactor * 0.3 + (noise - 0.5) * 0.25));
+                boolean nearRiver = riverCheck != null && riverCheck.isSelected() && isNearRiver(x, y, 4);
+                double riverBoost = nearRiver ? 0.35 : 0.0;
+                for (int d = 0; d < SOIL_DEPTH; d++) {
+                    double depthRatio = (double) d / (SOIL_DEPTH - 1);
+                    byte mat = soilLayers != null ? soilLayers[x][y][d] : 0;
+                    double matRetention = switch (mat) {
+                        case 2 -> 0.15;  // Clay retains humidity
+                        case 1 -> -0.12; // Sand drains fast
+                        case 0 -> 0.08;  // Earth
+                        default -> 0.0;
+                    };
+                    double depthMoistureGain = depthRatio * 0.30 * wtFactor;
+                    double noise = valueNoise3D(x * 0.15, y * 0.15, d * 0.25 + 99);
+                    humidityGrid[x][y][d] = (float) Math.max(0.0, Math.min(1.0,
+                            baseHumidity + depthMoistureGain + matRetention + riverBoost + (noise - 0.5) * 0.2));
+                }
             }
         }
     }
@@ -603,6 +598,90 @@ public class WorldEditorPane extends BorderPane {
                     if (voidGrid[x][y][d] && soilLayers[x][y][d] == 1) {
                         voidGrid[x][y][d] = false;
                     }
+                }
+            }
+        }
+    }
+
+    private void generateRoots(double density) {
+        long tSeed = parseSeed(structSeedField, 555123L);
+        Random rRand = new Random(tSeed);
+
+        int count = treeCountSlider != null ? (int) treeCountSlider.getValue() : 12;
+        List<int[]> treePositions = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            int tx = 10 + (int)(rRand.nextDouble() * (GRID_SIZE - 20));
+            int ty = 10 + (int)(rRand.nextDouble() * (GRID_SIZE - 20));
+            treePositions.add(new int[]{tx, ty});
+        }
+
+        for (int x = 0; x < GRID_SIZE; x++) {
+            for (int y = 0; y < GRID_SIZE; y++) {
+                for (int d = 0; d < SOIL_DEPTH; d++) {
+                    rootGrid[x][y][d] = 0.0f;
+                    if (d > 22) continue; // Root networks stay within top 70% depth
+
+                    double maxRoot = 0.0;
+                    for (int[] tp : treePositions) {
+                        double distSq = (x - tp[0]) * (x - tp[0]) + (y - tp[1]) * (y - tp[1]);
+                        double maxRadius = 14.0 + (tp[0] % 5) * 2.0;
+                        if (distSq <= maxRadius * maxRadius) {
+                            double distRatio = 1.0 - Math.sqrt(distSq) / maxRadius;
+                            double depthRatio = 1.0 - (double) d / 22.0;
+                            double noise = valueNoise3D(x * 0.25, y * 0.25, d * 0.4 + 50);
+                            double rVal = distRatio * depthRatio * density * (0.5 + noise * 0.9);
+                            maxRoot = Math.max(maxRoot, rVal);
+                        }
+                    }
+                    rootGrid[x][y][d] = (float) Math.max(0.0, Math.min(1.0, maxRoot));
+                }
+            }
+        }
+    }
+
+    private void generateTemperatureGrid() {
+        double surfaceTemp = 20.0;
+        if (latField != null) {
+            try {
+                double lat = Double.parseDouble(latField.getText().trim());
+                surfaceTemp = 30.0 - Math.abs(lat) * 0.35;
+            } catch (Exception ignored) {}
+        }
+
+        for (int x = 0; x < GRID_SIZE; x++) {
+            for (int y = 0; y < GRID_SIZE; y++) {
+                for (int d = 0; d < SOIL_DEPTH; d++) {
+                    double depthRatio = (double) d / (SOIL_DEPTH - 1);
+                    double depthCooling = depthRatio * 4.5;
+                    double moistureCooling = humidityGrid[x][y][d] * 1.5;
+                    double noise = valueNoise3D(x * 0.15, y * 0.15, d * 0.3 + 200);
+                    tempGrid[x][y][d] = (float) Math.max(-5.0, surfaceTemp - depthCooling - moistureCooling + (noise - 0.5) * 1.2);
+                }
+            }
+        }
+    }
+
+    private void generatePHGrid(double basePh) {
+        for (int x = 0; x < GRID_SIZE; x++) {
+            for (int y = 0; y < GRID_SIZE; y++) {
+                for (int d = 0; d < SOIL_DEPTH; d++) {
+                    byte mat = soilLayers != null ? soilLayers[x][y][d] : 0;
+                    double depthRatio = (double) d / (SOIL_DEPTH - 1);
+                    double phOffset = switch (mat) {
+                        case 0 -> -0.3; // Humus organic slightly acidic
+                        case 1 -> 0.1;  // Sand neutral
+                        case 2 -> -0.4; // Clay acidic
+                        case 3 -> 0.9;  // Limestone stone alkaline
+                        case 4 -> 0.4;  // Gravel alkaline
+                        case 5 -> -0.6; // Organic litter acidic
+                        default -> 0.0;
+                    };
+                    if (pineLitterCheck != null && pineLitterCheck.isSelected() && d < 3) {
+                        phOffset -= 0.5; // Pine needles acidify top soil
+                    }
+                    double depthAlkalinity = depthRatio * 0.45; // Deep bedrock tends towards alkaline
+                    double noise = valueNoise3D(x * 0.1, y * 0.1, d * 0.2 + 350);
+                    phGrid[x][y][d] = (float) Math.max(4.0, Math.min(9.0, basePh + phOffset + depthAlkalinity + (noise - 0.5) * 0.6));
                 }
             }
         }
@@ -636,25 +715,34 @@ public class WorldEditorPane extends BorderPane {
         double offset = (seed % 10000) * 0.1;
         for (int x = 0; x < GRID_SIZE; x++) {
             for (int y = 0; y < GRID_SIZE; y++) {
+                boolean isRiverNear = riverCheck != null && riverCheck.isSelected() && isNearRiver(x, y, 3);
                 for (int d = 0; d < SOIL_DEPTH; d++) {
                     double depthRatio = (double) d / (SOIL_DEPTH - 1);
-                    byte idealMat;
-                    if (depthRatio < 0.15) idealMat = 0;       // Humus / Terre
-                    else if (depthRatio < 0.45) idealMat = 2;  // Argile
-                    else if (depthRatio < 0.75) idealMat = 3;  // Pierre
-                    else idealMat = 3;                          // Bedrock
+                    double noise = valueNoise3D(x * 0.22 + offset, y * 0.22 + offset, d * 0.5 + 10 + offset);
 
-                    double noise = valueNoise3D(x * 0.25 + offset, y * 0.25 + offset, d * 0.6 + 10 + offset);
-
+                    // Authentic Pedological Stratigraphy (Horizons du Sol):
+                    // Horizon O (0-5% depth): Litière Organique / Détritus (5)
+                    // Horizon A (5-20% depth): Terre Végétale / Humus (0) [ou Sable (1) près des rivières]
+                    // Horizon B (20-55% depth): Argile Limoneuse (2)
+                    // Horizon C (55-80% depth): Gravier & Cailloutis d'Altération (4)
+                    // Horizon R (80-100% depth): Bedrock / Roche Mère Continue (3)
                     byte mat;
                     if (d == 0) {
                         mat = pickSurfaceMaterialCoherent(x, y, surfacePct);
                     } else {
-                        double blend = stratification + (noise - 0.5) * mixing * 2.0;
-                        if (blend > 0.5) {
-                            mat = idealMat;
+                        double blend = (noise - 0.5) * mixing * 1.4;
+                        double effectiveDepth = Math.max(0.0, Math.min(1.0, depthRatio + blend * (1.0 - stratification * 0.65)));
+
+                        if (effectiveDepth < 0.05) {
+                            mat = 5; // Horizon O (Litière Organique)
+                        } else if (effectiveDepth < 0.20) {
+                            mat = isRiverNear ? (byte) 1 : pickSurfaceMaterialCoherent(x, y, surfacePct); // Horizon A (Terre/Sable)
+                        } else if (effectiveDepth < 0.55) {
+                            mat = 2; // Horizon B (Argile)
+                        } else if (effectiveDepth < 0.80) {
+                            mat = 4; // Horizon C (Gravier / Cailloutis d'altération)
                         } else {
-                            mat = pickSurfaceMaterialCoherent(x, y, surfacePct);
+                            mat = 3; // Horizon R (Roche Mère / Bedrock)
                         }
                     }
                     soilLayers[x][y][d] = mat;
@@ -693,6 +781,8 @@ public class WorldEditorPane extends BorderPane {
         double mix   = mixingRateSlider    != null ? mixingRateSlider.getValue()    : 0.3;
         double hum   = baseHumiditySlider  != null ? baseHumiditySlider.getValue()  : 0.35;
         double voids = voidDensitySlider   != null ? voidDensitySlider.getValue()   : 0.08;
+        double phVal = basePhSlider        != null ? basePhSlider.getValue()        : 6.5;
+        double rDens = rootDensitySlider   != null ? rootDensitySlider.getValue()   : 40.0;
 
         generateHumidity(hum);
         riverPath = computeRiverPath();
@@ -700,6 +790,9 @@ public class WorldEditorPane extends BorderPane {
         generateSoilLayersSeeded(strat, mix, sSeed);
         generateVoids(voids);
         generateSurfaceFlora();
+        generateRoots(rDens / 100.0);
+        generateTemperatureGrid();
+        generatePHGrid(phVal);
         updateVoxelMemoryEstimate();
         repaintAllViews();
     }
@@ -733,7 +826,7 @@ public class WorldEditorPane extends BorderPane {
                         surfaceFloraItems.add(new SurfaceFloraItem(x, y, 2, 0.6 + rand.nextDouble() * 0.5, rand.nextDouble() * 360));
                     }
                 }
-                if (mossCheck != null && mossCheck.isSelected() && humidityGrid[x][y] > 0.35 && rand.nextDouble() < nonEdiblePct * 0.45) {
+                if (mossCheck != null && mossCheck.isSelected() && humidityGrid[x][y][0] > 0.35 && rand.nextDouble() < nonEdiblePct * 0.45) {
                     surfaceFloraItems.add(new SurfaceFloraItem(x, y, 3, 0.6 + rand.nextDouble() * 0.8, rand.nextDouble() * 360));
                 }
                 if (pineLitterCheck != null && pineLitterCheck.isSelected() && rand.nextDouble() < litterPct * 0.4) {
@@ -1452,11 +1545,15 @@ public class WorldEditorPane extends BorderPane {
         mixingRateSlider     = mkSlider(0.0, 1.0, 0.3);
         baseHumiditySlider   = mkSlider(0.0, 1.0, 0.35);
         voidDensitySlider    = mkSlider(0.0, 0.3, 0.08);
+        basePhSlider         = mkSlider(4.0, 9.0, 6.5);
+        rootDensitySlider    = mkSlider(0.0, 100.0, 40.0);
 
         stratificationSlider.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
         mixingRateSlider.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
         baseHumiditySlider.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
         voidDensitySlider.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
+        basePhSlider.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
+        rootDensitySlider.valueProperty().addListener((o, a, b) -> regenerateAndRepaint());
 
         return new VBox(8,
                 seedBox,
@@ -1465,7 +1562,9 @@ public class WorldEditorPane extends BorderPane {
                 new Label("Degré de Stratification :"), sv(stratificationSlider, ""),
                 new Label("Taux de Mélange des Couches :"), sv(mixingRateSlider, ""),
                 new Label("Humidité de Base du Sol :"), sv(baseHumiditySlider, ""),
-                new Label("Densité de Vides/Cavernes :"), sv(voidDensitySlider, "")
+                new Label("Densité de Vides/Cavernes :"), sv(voidDensitySlider, ""),
+                new Label("🧪 Acidité / pH du Sol (4.0 - 9.0) :"), sv(basePhSlider, " pH"),
+                new Label("🌳 Densité Réseau Racinaire 3D :"), sv(rootDensitySlider, "%")
         );
     }
 
@@ -1804,10 +1903,12 @@ public class WorldEditorPane extends BorderPane {
 
     // ── Resizable Tri-View Area ────────────────────────────────────────────────
 
+    // ── Resizable Tri-View Area ────────────────────────────────────────────────
+
     private HBox buildViews() {
         canvas3D = new ResizableCanvas(540, 510); gc3D = canvas3D.getGraphicsContext2D();
-        canvasSide = new ResizableCanvas(215, 245); gcSide = canvasSide.getGraphicsContext2D();
-        canvasTop = new ResizableCanvas(215, 245); gcTop = canvasTop.getGraphicsContext2D();
+        canvasSide = new ResizableCanvas(190, 150); gcSide = canvasSide.getGraphicsContext2D();
+        canvasTop = new ResizableCanvas(190, 150); gcTop = canvasTop.getGraphicsContext2D();
 
         setupMouseControls();
 
@@ -1820,7 +1921,7 @@ public class WorldEditorPane extends BorderPane {
         trackedAntPane = new TrackedAntPane();
         trackedAntPane.setPickOnBounds(true);
         trackedAntPane.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        trackedAntPane.setVisible(true);
+        trackedAntPane.setVisible(isSimulationMode);
         StackPane.setAlignment(trackedAntPane, Pos.BOTTOM_LEFT);
         StackPane.setMargin(trackedAntPane, new Insets(10, 10, 40, 10));
 
@@ -1839,7 +1940,26 @@ public class WorldEditorPane extends BorderPane {
             trackedAntPane.setNoAntSelectedState();
         });
 
-        StackPane h3d = new StackPane(canvas3D, topToolbarContainer, trackedAntPane);
+        StackPane hSide = new StackPane(canvasSide);
+        hSide.setStyle("-fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 4; -fx-background-radius: 4; -fx-background-color: #0f172a;");
+        StackPane hTop = new StackPane(canvasTop);
+        hTop.setStyle("-fx-border-color: rgba(255,255,255,0.2); -fx-border-radius: 4; -fx-background-radius: 4; -fx-background-color: #0f172a;");
+
+        Label ls = new Label(I18nManager.getInstance().get("minimap.sideview"));
+        ls.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+
+        Label lt = new Label("⬜ Vue du Dessus (Top-Down View)");
+        lt.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+
+        this.sideMinimapsBox = new VBox(4, lt, hTop, ls, hSide);
+        sideMinimapsBox.setPadding(new Insets(6));
+        sideMinimapsBox.setStyle("-fx-background-color: rgba(15, 23, 42, 0.85); -fx-background-radius: 8; -fx-border-color: rgba(56, 189, 248, 0.4); -fx-border-width: 1; -fx-border-radius: 8;");
+        sideMinimapsBox.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        sideMinimapsBox.setPickOnBounds(true);
+        StackPane.setAlignment(sideMinimapsBox, Pos.TOP_RIGHT);
+        StackPane.setMargin(sideMinimapsBox, new Insets(46, 10, 10, 10));
+
+        StackPane h3d = new StackPane(canvas3D, topToolbarContainer, sideMinimapsBox, trackedAntPane);
         StackPane.setAlignment(topToolbarContainer, Pos.TOP_CENTER);
         h3d.setStyle("-fx-border-color: #555; -fx-border-width: 1; -fx-background-color: #0b0f19;");
         HBox.setHgrow(h3d, Priority.ALWAYS);
@@ -1852,38 +1972,23 @@ public class WorldEditorPane extends BorderPane {
         canvas3D.widthProperty().addListener((obs, oldV, newV) -> repaintAllViews());
         canvas3D.heightProperty().addListener((obs, oldV, newV) -> repaintAllViews());
 
-        StackPane hSide = new StackPane(canvasSide);
-        hSide.setStyle("-fx-border-color: #444; -fx-border-width: 1; -fx-background-color: #0f172a;");
-        StackPane hTop = new StackPane(canvasTop);
-        hTop.setStyle("-fx-border-color: #444; -fx-border-width: 1; -fx-background-color: #0f172a;");
-
-        Label ls = new Label(I18nManager.getInstance().get("minimap.sideview"));
-        ls.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
-
-        Label lt = new Label("⬜ Vue du Dessus (Top-Down View)");
-        lt.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
-
         this.rightRenderOptions = buildRightRenderOptionsPanel();
         VBox legendPanel = buildLegendPanel();
         if (isSimulationMode) {
             setHideRightRenderOptions(true);
         }
 
-        VBox rightSideContent = new VBox(6, ls, hSide, lt, hTop, new Separator(), legendPanel, new Separator(), rightRenderOptions);
+        VBox rightSideContent = new VBox(10, legendPanel, new Separator(), rightRenderOptions);
         rightSideContent.setPadding(new Insets(4));
-        rightSideContent.setPrefWidth(240);
+        rightSideContent.setPrefWidth(245);
 
         ScrollPane rightScroll = new ScrollPane(rightSideContent);
         rightScroll.setFitToWidth(true);
-        rightScroll.setPrefWidth(255);
-        rightScroll.setMinWidth(245);
+        rightScroll.setPrefWidth(260);
+        rightScroll.setMinWidth(250);
         rightScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
 
-        this.sideMinimapsBox = new VBox(rightScroll);
-        sideMinimapsBox.setPadding(new Insets(0, 4, 0, 4));
-        sideMinimapsBox.setAlignment(Pos.TOP_CENTER);
-
-        HBox area = new HBox(6, h3d, sideMinimapsBox);
+        HBox area = new HBox(6, h3d, rightScroll);
         area.setPadding(new Insets(8, 8, 4, 8));
         VBox.setVgrow(area, Priority.ALWAYS);
         return area;
@@ -1897,78 +2002,105 @@ public class WorldEditorPane extends BorderPane {
         Label title = new Label("⚙️ Options Rendu 3D & Couches :");
         title.getStyleClass().add("accent-title");
 
-        CheckBox showChamferedBezelCheck = new CheckBox("📐 Biseau Chanfreiné Substrat");
-        showChamferedBezelCheck.setSelected(true);
+        this.showTerrainCheck = new CheckBox("🏞️ Afficher le Terrain 3D");
+        this.showTerrainCheck.setSelected(true);
+        this.showTerrainCheck.setTooltip(new Tooltip("Affiche ou masque la surface et le maillage du terrain."));
+        this.showTerrainCheck.selectedProperty().addListener((obs, oldV, newV) -> setTerrainVisible(newV));
 
-        CheckBox showGravelInclusionsCheck = new CheckBox("🪨 Inclusions de Graviers");
-        showGravelInclusionsCheck.setSelected(true);
+        this.showChamferedBezelCheck = new CheckBox("📐 Biseau Chanfreiné Substrat");
+        this.showChamferedBezelCheck.setSelected(true);
+        this.showChamferedBezelCheck.setTooltip(new Tooltip("Affiche un biseau bleu biseauté sur l'arête supérieure des parois de coupe du sol."));
 
-        CheckBox showSubstrateStratigraphyCheck = new CheckBox("🧱 Stratigraphie Latérale");
-        showSubstrateStratigraphyCheck.setSelected(true);
+        this.showGravelInclusionsCheck = new CheckBox("🪨 Inclusions de Graviers");
+        this.showGravelInclusionsCheck.setSelected(true);
+        this.showGravelInclusionsCheck.setTooltip(new Tooltip("Affiche ou masque les particules et nodules de graviers/galets incrustés dans les strates rocheuses et argileuses."));
 
-        CheckBox showTranslucentVolumetricModeCheck = new CheckBox("🔮 Translucidité Volumétrique");
-        showTranslucentVolumetricModeCheck.setSelected(false);
+        this.showSubstrateStratigraphyCheck = new CheckBox("🧱 Stratigraphie Latérale");
+        this.showSubstrateStratigraphyCheck.setSelected(true);
+        this.showSubstrateStratigraphyCheck.setTooltip(new Tooltip("Affiche ou masque les parois géologiques latérales du bloc de sol 3D (Jupe)."));
 
-        CheckBox showEarthCheck = new CheckBox("🟤 Terre / Humus"); showEarthCheck.setSelected(true);
-        CheckBox showSandCheck = new CheckBox("🟡 Sable"); showSandCheck.setSelected(true);
-        CheckBox showClayCheck = new CheckBox("🔴 Argile"); showClayCheck.setSelected(true);
-        CheckBox showStoneCheck = new CheckBox("⚪ Pierre / Roche"); showStoneCheck.setSelected(true);
-        CheckBox showOrganicCheck = new CheckBox("🍂 Matière Organique"); showOrganicCheck.setSelected(true);
+        this.showTranslucentVolumetricModeCheck = new CheckBox("🔮 Translucidité Volumétrique");
+        this.showTranslucentVolumetricModeCheck.setSelected(false);
+        this.showTranslucentVolumetricModeCheck.setTooltip(new Tooltip("Rend les couches de substrat semi-transparente pour inspecter l'intérieur du terrain."));
 
-        CheckBox showVegetationCheck = new CheckBox("🌿 Végétation & Arbres"); showVegetationCheck.setSelected(true);
-        CheckBox showGalleriesCheck = new CheckBox("🕳️ Galeries & Cavités"); showGalleriesCheck.setSelected(true);
+        this.showHumidityCheck = new CheckBox("💧 Carte Humidité Substrat");
+        this.showHumidityCheck.setSelected(false);
+        this.showHumidityCheck.setTooltip(new Tooltip("Superpose la carte d'humidité et d'imbibition sur les couches de sol."));
 
-        addBoolLsn(showChamferedBezelCheck, showGravelInclusionsCheck, showSubstrateStratigraphyCheck,
-                   showTranslucentVolumetricModeCheck,
-                   showEarthCheck, showSandCheck, showClayCheck, showStoneCheck, showOrganicCheck,
-                   showVegetationCheck, showGalleriesCheck);
+        this.showOrganicCheck = new CheckBox("🍂 Matière Organique"); this.showOrganicCheck.setSelected(true);
+        this.showEarthCheck = new CheckBox("🟤 Terre / Humus"); this.showEarthCheck.setSelected(true);
+        this.showSandCheck = new CheckBox("🟡 Sable"); this.showSandCheck.setSelected(true);
+        this.showClayCheck = new CheckBox("🔴 Argile"); this.showClayCheck.setSelected(true);
+        this.showGravelCheck = new CheckBox("⚪ Gravier / Cailloutis"); this.showGravelCheck.setSelected(true);
+        this.showStoneCheck = new CheckBox("⚪ Pierre / Roche"); this.showStoneCheck.setSelected(true);
 
-        Label visHeader = new Label("👁️ Visibilité Couches & Végétation :");
+        this.showGalleriesCheck = new CheckBox("🕳️ Cavités & Vides Naturels"); this.showGalleriesCheck.setSelected(true);
+        this.showGalleriesCheck.setTooltip(new Tooltip("Affiche ou masque les cavités souterraines naturelles, les galeries de vers de terre et les poches de porosité du sol."));
+
+        this.showVegetationCheck = new CheckBox("🌿 Végétation & Arbres"); this.showVegetationCheck.setSelected(true);
+        this.showRootsCheck = new CheckBox("🌳 Racines Souterraines 3D"); this.showRootsCheck.setSelected(true);
+        this.showRootsCheck.setTooltip(new Tooltip("Affiche ou masque le maillage racinaire 3D des arbres et de la flore sous le sol."));
+        this.showPhCheck = new CheckBox("🧪 Carte du pH du Sol"); this.showPhCheck.setSelected(false);
+        this.showPhCheck.setTooltip(new Tooltip("Superpose la carte de distribution du pH et de la chimie du sol."));
+
+        this.slicePlaneSlider = mkSlider(0.0, 100.0, 100.0);
+        addLsn(this.slicePlaneSlider);
+
+        addBoolLsn(showTerrainCheck, showChamferedBezelCheck, showGravelInclusionsCheck, showSubstrateStratigraphyCheck,
+                   showTranslucentVolumetricModeCheck, showHumidityCheck,
+                   showOrganicCheck, showEarthCheck, showSandCheck, showClayCheck, showGravelCheck, showStoneCheck, showGalleriesCheck,
+                   showVegetationCheck, showRootsCheck, showPhCheck);
+
+        Label visHeader = new Label("👁️ Visibilité Couches Descendantes :");
         visHeader.getStyleClass().add("purple-title");
 
         VBox visBox = new VBox(4,
             visHeader,
-            showEarthCheck, showSandCheck, showClayCheck, showStoneCheck, showOrganicCheck,
+            showTerrainCheck, showOrganicCheck, showEarthCheck, showSandCheck, showClayCheck, showGravelCheck, showStoneCheck, showGalleriesCheck,
             new Separator(),
-            showVegetationCheck, showGalleriesCheck, showSubstrateStratigraphyCheck
+            showVegetationCheck, showRootsCheck, showPhCheck, showSubstrateStratigraphyCheck,
+            showHumidityCheck
         );
 
-        panel.getChildren().addAll(title, showChamferedBezelCheck, showGravelInclusionsCheck, showSubstrateStratigraphyCheck,
+        panel.getChildren().addAll(title, showTerrainCheck, showChamferedBezelCheck, showSubstrateStratigraphyCheck,
                                    new Label("Coupe Scanner (%) :"), sv(slicePlaneSlider, "%"),
                                    showTranslucentVolumetricModeCheck, new Separator(), visBox);
         return panel;
     }
 
     private VBox buildLegendPanel() {
-        VBox panel = new VBox(5);
+        VBox panel = new VBox(6);
         panel.setPadding(new Insets(6));
-        panel.setStyle("-fx-background-color: rgba(15, 23, 42, 0.65); -fx-background-radius: 6; -fx-border-color: rgba(56, 189, 248, 0.25); -fx-border-radius: 6; -fx-border-width: 1;");
+        panel.getStyleClass().add("legend-card-pane");
 
         syncViewsCheckBox = new CheckBox("🔗 Synchroniser les vues");
         syncViewsCheckBox.setSelected(true);
-        syncViewsCheckBox.setStyle("-fx-font-size: 10px; -fx-text-fill: #cbd5e1;");
+        syncViewsCheckBox.getStyleClass().add("legend-checkbox");
 
-        Label title = new Label("🪺 Légende Substrats & Nids :");
-        title.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        // 1. Substrate Legend Header & Items
+        Label titleSubstrates = new Label("🌱 Légende des Substrats :");
+        titleSubstrates.getStyleClass().add("legend-title");
 
-        FlowPane itemsPane = new FlowPane(4, 4);
-        itemsPane.setPrefWrapLength(220);
+        FlowPane substrateItemsPane = new FlowPane(4, 4);
+        substrateItemsPane.setPrefWrapLength(220);
 
         lblHoverInfo = new Label("ℹ️ Survolez une zone pour sa fiche technique.");
-        lblHoverInfo.setStyle("-fx-font-size: 9px; -fx-font-style: italic; -fx-text-fill: #94a3b8;");
+        lblHoverInfo.getStyleClass().add("legend-hover-info");
 
-        String[][] items = {
-                {"Terre", "#3d2817", "🟤 Terre / Humus : Sol organique meuble."},
-                {"Sable", "#eab308", "🟡 Sable : Substrat granuleux à faible cohésion."},
-                {"Argile", "#9a3412", "🔴 Argile : Substrat minéral dense et plastique."},
-                {"Pierre", "#64748b", "⚪ Pierre / Roche : Matériau inexcavable."},
-                {"Rivière", "#0284c7", "💧 Rivière / Eau Planaire : Surface liquide horizontale en cuvette."},
-                {"Végétation", "#15803d", "🌿 Couvert Végétal : Végétation et arbres proportionnels."},
-                {"Galeries", "#d97706", "🕳️ Galeries Souterraines : Cavités excavées."},
-                {"Nids", "#e11d48", "🪺 Nids de Colonie & Salles de Reine."}
-        };
+        List<String[]> substrateList = new ArrayList<>();
+        substrateList.add(new String[]{"Matière Org.", "#78350f", "🍂 Matière Organique : Détritus et litière de surface."});
+        substrateList.add(new String[]{"Terre", "#3d2817", "🟤 Terre / Humus : Sol organique meuble."});
+        substrateList.add(new String[]{"Sable", "#eab308", "🟡 Sable : Substrat granuleux à faible cohésion."});
+        substrateList.add(new String[]{"Argile", "#9a3412", "🔴 Argile : Substrat minéral dense et plastique."});
+        substrateList.add(new String[]{"Gravier", "#94a3b8", "⚪ Gravier / Cailloutis : Substrat minéral grossier excavable."});
+        substrateList.add(new String[]{"Pierre", "#64748b", "⚪ Pierre / Roche : Socle rocheux inexcavable."});
+        substrateList.add(new String[]{"Cavités", "#0f172a", "🕳️ Cavités Naturelles : Galerie de vers, carst et poches d'air."});
+        substrateList.add(new String[]{"Racines", "#78350f", "🌳 Racines 3D : Obstacle d'excavation & Pucerons radiculaires."});
+        substrateList.add(new String[]{"pH Sol", "#eab308", "🧪 pH & Chimie du Sol : Jaune (Acide) → Vert (Neutre) → Bleu (Alcalin)."});
+        substrateList.add(new String[]{"Rivière", "#0284c7", "💧 Rivière / Eau Planaire : Surface liquide horizontale."});
+        substrateList.add(new String[]{"Végétation", "#15803d", "🌿 Couvert Végétal : Végétation et arbres."});
 
-        for (String[] it : items) {
+        for (String[] it : substrateList) {
             HBox item = new HBox(4);
             item.setAlignment(Pos.CENTER_LEFT);
             item.setPadding(new Insets(2, 4, 2, 4));
@@ -1980,15 +2112,57 @@ public class WorldEditorPane extends BorderPane {
             g.fillOval(0, 0, 8, 8);
             g.setStroke(Color.WHITE);
             g.setLineWidth(0.6);
-            g.strokeOval(0, 0, 10, 10);
+            g.strokeOval(0, 0, 8, 8);
 
             Label lbl = new Label(it[0]);
             item.getChildren().addAll(dot, lbl);
-
-            itemsPane.getChildren().add(item);
+            substrateItemsPane.getChildren().add(item);
         }
 
-        panel.getChildren().addAll(syncViewsCheckBox, title, itemsPane, lblHoverInfo);
+        // 2. Nest Interior Legend Header & Items (Placed below the Substrates Legend)
+        Label titleNestInterior = new Label("🪺 Légende Intérieur du Nid :");
+        titleNestInterior.getStyleClass().add("legend-title");
+        titleNestInterior.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+        FlowPane nestItemsPane = new FlowPane(4, 4);
+        nestItemsPane.setPrefWrapLength(220);
+
+        List<String[]> nestList = new ArrayList<>();
+        nestList.add(new String[]{"Loge Royale", "#9333ea", "👑 Loge Royale : Chambre d'ingestion et ponte des Reines."});
+        nestList.add(new String[]{"Couvain", "#38bdf8", "🥚 Salles à Couvain : Œufs, larves et pupes en maturation."});
+        nestList.add(new String[]{"Stockage", "#22c55e", "🍖 Salles de Stockage : Réserves de nourriture et miellat."});
+        nestList.add(new String[]{"Galeries", "#f59e0b", "🕳️ Galeries & Tunnels : Voies de circulation souterraines."});
+        nestList.add(new String[]{"Entrées", "#ef4444", "🚪 Entrées du Nid : Orifices d'accès et dômes de ventilation."});
+
+        for (String[] it : nestList) {
+            HBox item = new HBox(4);
+            item.setAlignment(Pos.CENTER_LEFT);
+            item.setPadding(new Insets(2, 4, 2, 4));
+            item.setStyle("-fx-background-color: rgba(56, 189, 248, 0.08); -fx-background-radius: 4; -fx-border-color: rgba(56, 189, 248, 0.2); -fx-border-radius: 4;");
+
+            Canvas dot = new Canvas(8, 8);
+            GraphicsContext g = dot.getGraphicsContext2D();
+            g.setFill(Color.web(it[1]));
+            g.fillOval(0, 0, 8, 8);
+            g.setStroke(Color.WHITE);
+            g.setLineWidth(0.6);
+            g.strokeOval(0, 0, 8, 8);
+
+            Label lbl = new Label(it[0]);
+            lbl.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+            item.getChildren().addAll(dot, lbl);
+            nestItemsPane.getChildren().add(item);
+        }
+
+        panel.getChildren().addAll(
+            syncViewsCheckBox,
+            titleSubstrates,
+            substrateItemsPane,
+            new Separator(),
+            titleNestInterior,
+            nestItemsPane,
+            lblHoverInfo
+        );
         return panel;
     }
 
@@ -2118,10 +2292,102 @@ public class WorldEditorPane extends BorderPane {
     private double hoverMX = 0, hoverMY = 0;
 
     private int[] pick3DGridCell(double mx, double my, double cx, double cy, double scale, double radAz, double radEl) {
-        int bestX = -1, bestY = -1;
+        int bestX = -1, bestY = -1, bestD = 0;
         double minDstSq = Double.MAX_VALUE;
         int step = 2;
-        for (int x = 0; x < GRID_SIZE; x += step) {
+
+        double cutRatio = slicePlaneSlider != null ? (slicePlaneSlider.getValue() / 100.0) : 1.0;
+        int cutXLimit = (int) (GRID_SIZE * cutRatio);
+        double targetDepthVal = depthSlider != null ? depthSlider.getValue() : 1.5;
+        double maxDepthPx = targetDepthVal * 22.0;
+        double layerDepthPx = maxDepthPx / SOIL_DEPTH;
+
+        // 1. Check Subterranean Cut Plane Wall (if active)
+        if (cutXLimit > 0 && cutXLimit < GRID_SIZE) {
+            for (int y = 0; y < GRID_SIZE - step; y += step) {
+                double surfZ0 = heightGrid[cutXLimit][y] * 40.0;
+                double surfZ1 = heightGrid[cutXLimit][y + step] * 40.0;
+                if (carvedVoxelGrid[cutXLimit][y]) surfZ0 -= 15.0;
+                if (carvedVoxelGrid[cutXLimit][y + step]) surfZ1 -= 15.0;
+
+                double refZ0 = 32.0;
+                double refZ1 = 32.0;
+
+                for (int d = 0; d < SOIL_DEPTH; d++) {
+                    double topZ0 = Math.min(surfZ0, refZ0 - d * layerDepthPx);
+                    double topZ1 = Math.min(surfZ1, refZ1 - d * layerDepthPx);
+                    double botZ0 = Math.min(surfZ0, refZ0 - (d + 1) * layerDepthPx);
+                    double botZ1 = Math.min(surfZ1, refZ1 - (d + 1) * layerDepthPx);
+
+                    if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
+
+                    double[] pTop0 = project3DPoint(cutXLimit, y, topZ0, cx, cy, scale, radAz, radEl);
+                    double[] pTop1 = project3DPoint(cutXLimit, y + step, topZ1, cx, cy, scale, radAz, radEl);
+                    double[] pBot1 = project3DPoint(cutXLimit, y + step, botZ1, cx, cy, scale, radAz, radEl);
+                    double[] pBot0 = project3DPoint(cutXLimit, y, botZ0, cx, cy, scale, radAz, radEl);
+
+                    double midPx = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
+                    double midPy = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[1]) / 4.0;
+
+                    double dSq = (midPx - mx) * (midPx - mx) + (midPy - my) * (midPy - my);
+                    if (dSq < minDstSq) {
+                        minDstSq = dSq;
+                        bestX = cutXLimit;
+                        bestY = y;
+                        bestD = d;
+                    }
+                }
+            }
+        }
+
+        // 2. Check 4 Subterranean Skirt Walls ("Jupe")
+        int[][] skirtEdges = new int[][]{
+            {0, 0, GRID_SIZE - 1, 0},
+            {GRID_SIZE - 1, 0, GRID_SIZE - 1, GRID_SIZE - 1},
+            {0, GRID_SIZE - 1, GRID_SIZE - 1, GRID_SIZE - 1},
+            {0, 0, 0, GRID_SIZE - 1}
+        };
+        for (int[] edge : skirtEdges) {
+            int ex0 = edge[0], ey0 = edge[1], ex1 = edge[2], ey1 = edge[3];
+            int edx = Integer.compare(ex1, ex0);
+            int edy = Integer.compare(ey1, ey0);
+            int elen = Math.max(Math.abs(ex1 - ex0), Math.abs(ey1 - ey0));
+            for (int i = 0; i < elen; i += step) {
+                int wx0 = ex0 + i * edx;
+                int wy0 = ey0 + i * edy;
+                int wx1 = ex0 + Math.min(elen, i + step) * edx;
+                int wy1 = ey0 + Math.min(elen, i + step) * edy;
+                double surfZ0 = heightGrid[wx0][wy0] * 40.0;
+                double surfZ1 = heightGrid[wx1][wy1] * 40.0;
+
+                for (int d = 0; d < SOIL_DEPTH; d++) {
+                    double topZ0 = Math.min(surfZ0, 32.0 - d * layerDepthPx);
+                    double topZ1 = Math.min(surfZ1, 32.0 - d * layerDepthPx);
+                    double botZ0 = Math.min(surfZ0, 32.0 - (d + 1) * layerDepthPx);
+                    double botZ1 = Math.min(surfZ1, 32.0 - (d + 1) * layerDepthPx);
+                    if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
+
+                    double[] pTop0 = project3DPoint(wx0, wy0, topZ0, cx, cy, scale, radAz, radEl);
+                    double[] pTop1 = project3DPoint(wx1, wy1, topZ1, cx, cy, scale, radAz, radEl);
+                    double[] pBot1 = project3DPoint(wx1, wy1, botZ1, cx, cy, scale, radAz, radEl);
+                    double[] pBot0 = project3DPoint(wx0, wy0, botZ0, cx, cy, scale, radAz, radEl);
+
+                    double midPx = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
+                    double midPy = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[1]) / 4.0;
+
+                    double dSq = (midPx - mx) * (midPx - mx) + (midPy - my) * (midPy - my);
+                    if (dSq < minDstSq) {
+                        minDstSq = dSq;
+                        bestX = wx0;
+                        bestY = wy0;
+                        bestD = d;
+                    }
+                }
+            }
+        }
+
+        // 3. Check Surface Terrain Quads (up to cutXLimit)
+        for (int x = 0; x < Math.min(GRID_SIZE, cutXLimit); x += step) {
             for (int y = 0; y < GRID_SIZE; y += step) {
                 double z = heightGrid[x][y] * 40.0;
                 double[] p = project3DPoint(x, y, z, cx, cy, scale, radAz, radEl);
@@ -2130,11 +2396,13 @@ public class WorldEditorPane extends BorderPane {
                     minDstSq = dSq;
                     bestX = x;
                     bestY = y;
+                    bestD = 0;
                 }
             }
         }
+
         if (minDstSq < 4900.0) { // within 70px radius
-            return new int[]{bestX, bestY};
+            return new int[]{bestX, bestY, bestD};
         }
         return null;
     }
@@ -2146,6 +2414,7 @@ public class WorldEditorPane extends BorderPane {
         if (cw <= 0 || ch <= 0) return;
 
         int gx, gy;
+        int inspectedY;
 
         if ("3D".equals(viewType)) {
             double radAz = Math.toRadians(azimuth);
@@ -2159,56 +2428,65 @@ public class WorldEditorPane extends BorderPane {
                 hover3DCell = picked;
                 hoverMX = mx; hoverMY = my;
                 gx = picked[0]; gy = picked[1];
+                inspectedY = picked[2];
             } else {
                 hover3DCell = null;
                 gx = (int) Math.max(0, Math.min(GRID_SIZE - 1, (mx / cw) * GRID_SIZE));
                 gy = (int) Math.max(0, Math.min(GRID_SIZE - 1, (my / ch) * GRID_SIZE));
+                inspectedY = 0;
             }
             repaintAllViews();
         } else {
             gx = (int) Math.max(0, Math.min(GRID_SIZE - 1, (mx / cw) * GRID_SIZE));
             gy = (int) Math.max(0, Math.min(GRID_SIZE - 1, (my / ch) * GRID_SIZE));
-        }
-
-        // Determine inspected vertical depth (Y layer)
-        int inspectedY;
-        if ("SIDE".equals(viewType)) {
-            inspectedY = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, (my / ch) * SOIL_DEPTH));
-        } else if (!isTerrainVisible || slicePlaneSlider != null && slicePlaneSlider.getValue() < 99.0) {
-            double sliceVal = slicePlaneSlider != null ? slicePlaneSlider.getValue() : 100.0;
-            inspectedY = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, Math.round((1.0 - sliceVal / 100.0) * (SOIL_DEPTH - 1))));
-        } else {
-            inspectedY = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, Math.round(heightGrid[gx][gy] * (SOIL_DEPTH - 1))));
+            if ("SIDE".equals(viewType)) {
+                inspectedY = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, (my / ch) * SOIL_DEPTH));
+            } else if (!isTerrainVisible || (slicePlaneSlider != null && slicePlaneSlider.getValue() < 99.0)) {
+                double sliceVal = slicePlaneSlider != null ? slicePlaneSlider.getValue() : 100.0;
+                inspectedY = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, Math.round((1.0 - sliceVal / 100.0) * (SOIL_DEPTH - 1))));
+            } else {
+                inspectedY = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, Math.round(heightGrid[gx][gy] * (SOIL_DEPTH - 1))));
+            }
         }
 
         double sM = surfaceSizeSlider != null ? surfaceSizeSlider.getValue() : 25.0;
         double dM = depthSlider != null ? depthSlider.getValue() : 3.0;
-        double altM = ((double) inspectedY / (double) (SOIL_DEPTH - 1)) * dM;
+        double altM = ((double) (SOIL_DEPTH - 1 - inspectedY) / (double) (SOIL_DEPTH - 1)) * dM;
 
-        int humPct = (int) (humidityGrid[gx][gy] * 100);
+        int humPct = (int) (humidityGrid[gx][gy][inspectedY] * 100);
         byte mat = soilLayers[gx][gy][inspectedY];
-        String matName = switch (mat) {
-            case 0 -> "Humus / Terre";
-            case 1 -> "Sable";
-            case 2 -> "Argile";
-            case 3 -> "Pierre / Roche";
-            case 4 -> "Litière Organique";
-            case 5 -> "Galerie Souterraine";
-            case 6 -> "Chambre de Couvain";
-            case 7 -> "Chambre Royale";
-            case 8 -> "Grenier / Nourriture";
-            default -> "Terre";
-        };
+        boolean isVoid = voidGrid[gx][gy][inspectedY] || carvedVoxelGrid[gx][gy];
+        String matName;
+        if (isVoid) {
+            matName = "🕳️ Galerie / Cavité Excavée";
+        } else {
+            matName = switch (mat) {
+                case 0 -> "Humus (Terre Végétale)";
+                case 1 -> "Sable Xérique";
+                case 2 -> "Argile Limoneuse";
+                case 3 -> "Roche Mère / Pierre";
+                case 4 -> "Gravier & Cailloutis";
+                case 5 -> "Litière Organique";
+                case 6 -> "Galerie Souterraine";
+                case 7 -> "Chambre de Couvain";
+                case 8 -> "Chambre Royale";
+                default -> "Terre";
+            };
+        }
         boolean isRiver = isNearRiver(gx, gy, 1);
 
-        // Thermal gradient: surface temp minus depth cooling
-        double surfaceTemp = 20.0;
-        double depthFactor = (double) (SOIL_DEPTH - 1 - inspectedY) / (double) (SOIL_DEPTH - 1);
-        double tempC = surfaceTemp - (depthFactor * 3.5);
+        double tempC = tempGrid[gx][gy][inspectedY];
+        if (tempC == 0) {
+            double surfaceTemp = 20.0;
+            double depthFactor = (double) (SOIL_DEPTH - 1 - inspectedY) / (double) (SOIL_DEPTH - 1);
+            tempC = surfaceTemp - (depthFactor * 3.5);
+        }
+        float phVal = phGrid[gx][gy][inspectedY] > 0 ? phGrid[gx][gy][inspectedY] : 6.5f;
+        int rootPct = (int) (rootGrid[gx][gy][inspectedY] * 100);
 
         lblHoverInfo.setText(String.format(Locale.US,
-            "📍 Voxel [%d, %d, %d] | Alt: %.1fm | Substrat: %s | Temp: %.1f°C | Humidité: %d%% | %s",
-            gx, gy, inspectedY, altM, matName, tempC, humPct, isRiver ? "💧 Rivière" : "🌱 Terrestre"));
+            "📍 Voxel [%d, %d, Prof %d/%d] | Alt: %.1fm | Substrat: %s | Temp: %.1f°C | Humidité: %d%% | pH: %.1f | Racines: %d%% | %s",
+            gx, gy, inspectedY, SOIL_DEPTH - 1, altM, matName, tempC, humPct, phVal, rootPct, isRiver ? "💧 Rivière" : "🌱 Terrestre"));
     }
 
     private void handleSculptClick(double mx, double my, String viewType) {
@@ -2288,10 +2566,10 @@ public class WorldEditorPane extends BorderPane {
         HBox bar = new HBox(6);
         bar.setPadding(new Insets(6, 12, 6, 12));
         bar.setAlignment(Pos.CENTER);
-        bar.setStyle("-fx-background-color: rgba(15, 23, 42, 0.88); -fx-background-radius: 8; -fx-border-color: rgba(255, 255, 255, 0.12); -fx-border-radius: 8;");
+        bar.getStyleClass().add("viewport-toolbar");
 
         lblViewportMode = new Label("🔲 Vue Technique 3D Grille — Resizable & Hydrologie Planaire");
-        lblViewportMode.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lblViewportMode.getStyleClass().add("accent-title");
 
         bar.getChildren().add(lblViewportMode);
         return bar;
@@ -2308,6 +2586,60 @@ public class WorldEditorPane extends BorderPane {
         double px = cx + isoX * (scale / 10.0);
         double py = cy + isoY * (scale / 10.0);
         return new double[]{px, py};
+    }
+
+    private void drawVoxelBlockTexture(double[] pxs, double[] pys, byte mat, boolean isTop, boolean isSide, boolean isRightSide, int gx, int gy, int gz) {
+        Color baseCol = switch (mat) {
+            case 0 -> isTop ? Color.web("#15803d") : Color.web("#78350f");
+            case 1 -> isSide ? Color.web("#ca8a04") : Color.web("#eab308");
+            case 2 -> isSide ? Color.web("#92400e") : Color.web("#b45309");
+            case 3 -> isSide ? Color.web("#334155") : Color.web("#64748b");
+            case 4 -> isSide ? Color.web("#475569") : Color.web("#94a3b8");
+            default -> isSide ? Color.web("#451a03") : Color.web("#78350f");
+        };
+        if (isRightSide) baseCol = baseCol.darker();
+
+        gc3D.setFill(baseCol);
+        gc3D.fillPolygon(pxs, pys, 4);
+
+        double midX = (pxs[0] + pxs[1] + pxs[2] + pxs[3]) / 4.0;
+        double midY = (pys[0] + pys[1] + pys[2] + pys[3]) / 4.0;
+        double faceW = Math.abs(pxs[1] - pxs[0]) + Math.abs(pys[2] - pys[1]);
+
+        if (faceW > 3.0) {
+            int hash = (gx * 73856093) ^ (gy * 19349663) ^ (gz * 83492791);
+            Random pRand = new Random(hash);
+
+            for (int p = 0; p < 5; p++) {
+                double rx = (pRand.nextDouble() - 0.5) * 0.7;
+                double ry = (pRand.nextDouble() - 0.5) * 0.7;
+                double dotX = midX + rx * (pxs[1] - pxs[0]) + ry * (pxs[3] - pxs[0]);
+                double dotY = midY + rx * (pys[1] - pys[0]) + ry * (pys[3] - pys[0]);
+                double dotSz = Math.max(1.2, faceW * 0.15);
+
+                Color speckCol = switch (mat) {
+                    case 0 -> isTop ? (pRand.nextBoolean() ? Color.web("#86efac") : Color.web("#14532d"))
+                                    : (pRand.nextBoolean() ? Color.web("#451a03") : Color.web("#9a3412"));
+                    case 1 -> pRand.nextBoolean() ? Color.web("#fde047") : Color.web("#a16207");
+                    case 2 -> pRand.nextBoolean() ? Color.web("#d97706") : Color.web("#7c2d12");
+                    case 3 -> pRand.nextBoolean() ? Color.web("#94a3b8") : Color.web("#1e293b");
+                    case 4 -> pRand.nextBoolean() ? Color.web("#cbd5e1") : Color.web("#1e293b");
+                    default -> pRand.nextBoolean() ? Color.web("#451a03") : Color.web("#9a3412");
+                };
+                gc3D.setFill(speckCol);
+                gc3D.fillRect(dotX - dotSz / 2, dotY - dotSz / 2, dotSz, dotSz);
+            }
+
+            if (mat == 0 && isSide) {
+                gc3D.setStroke(Color.web("#22c55e", 0.95));
+                gc3D.setLineWidth(Math.max(1.5, faceW * 0.12));
+                gc3D.strokeLine(pxs[0], pys[0], pxs[1], pys[1]);
+            }
+        }
+
+        gc3D.setStroke(Color.web("#0f172a", 0.85));
+        gc3D.setLineWidth(1.4);
+        gc3D.strokePolygon(pxs, pys, 4);
     }
 
     private void draw3DTechnical() {
@@ -2347,89 +2679,103 @@ public class WorldEditorPane extends BorderPane {
 
         // 2. Render Solid 3D Continuous Quad Surface Mesh (Respecting Coupe 3D Cut Plane)
         if (isTerrainVisible) {
-            for (int x = 0; x < Math.min(GRID_SIZE - step, cutXLimit); x += step) {
-                for (int y = 0; y < GRID_SIZE - step; y += step) {
-                    double z0 = heightGrid[x][y] * 40.0;
-                    double z1 = heightGrid[x + step][y] * 40.0;
-                    double z2 = heightGrid[x + step][y + step] * 40.0;
-                    double z3 = heightGrid[x][y + step] * 40.0;
-
-                    if (currentRenderMode == RenderMode.GAMIFIED) {
-                        // Quantize terrain curves into discrete Minecraft block elevation steps
-                        z0 = Math.floor(z0 / 6.0) * 6.0;
-                        z1 = Math.floor(z1 / 6.0) * 6.0;
-                        z2 = Math.floor(z2 / 6.0) * 6.0;
-                        z3 = Math.floor(z3 / 6.0) * 6.0;
+            if (currentRenderMode == RenderMode.GAMIFIED) {
+                // Minecraft-Style Block Terraces (Gradins) System:
+                // Pre-compute uniform flat block top elevations to prevent any sloped quads / contour curves
+                double[][] blockZ = new double[GRID_SIZE][GRID_SIZE];
+                for (int x = 0; x < GRID_SIZE; x += step) {
+                    for (int y = 0; y < GRID_SIZE; y += step) {
+                        double rawZ = heightGrid[x][y] * 40.0;
+                        if (carvedVoxelGrid[x][y]) rawZ -= 15.0;
+                        blockZ[x][y] = Math.floor(rawZ / 6.0) * 6.0;
                     }
+                }
 
-                    if (carvedVoxelGrid[x][y]) z0 -= 15.0;
-                    if (carvedVoxelGrid[x + step][y]) z1 -= 15.0;
-                    if (carvedVoxelGrid[x + step][y + step]) z2 -= 15.0;
-                    if (carvedVoxelGrid[x][y + step]) z3 -= 15.0;
+                int limitX = Math.min(GRID_SIZE - step, cutXLimit);
+                for (int x = 0; x < limitX; x += step) {
+                    for (int y = 0; y < GRID_SIZE - step; y += step) {
+                        double zTop = blockZ[x][y];
 
-                    double[] p0 = project3DPoint(x, y, z0, cx, cy, scale, radAz, radEl);
-                    double[] p1 = project3DPoint(x + step, y, z1, cx, cy, scale, radAz, radEl);
-                    double[] p2 = project3DPoint(x + step, y + step, z2, cx, cy, scale, radAz, radEl);
-                    double[] p3 = project3DPoint(x, y + step, z3, cx, cy, scale, radAz, radEl);
+                        // 1. Top Flat Quad of Block (x, y)
+                        double[] p0 = project3DPoint(x, y, zTop, cx, cy, scale, radAz, radEl);
+                        double[] p1 = project3DPoint(x + step, y, zTop, cx, cy, scale, radAz, radEl);
+                        double[] p2 = project3DPoint(x + step, y + step, zTop, cx, cy, scale, radAz, radEl);
+                        double[] p3 = project3DPoint(x, y + step, zTop, cx, cy, scale, radAz, radEl);
 
-                    double[] pxs = new double[]{p0[0], p1[0], p2[0], p3[0]};
-                    double[] pys = new double[]{p0[1], p1[1], p2[1], p3[1]};
+                        byte mat = soilLayers[x][y][0];
+                        drawVoxelBlockTexture(new double[]{p0[0], p1[0], p2[0], p3[0]}, new double[]{p0[1], p1[1], p2[1], p3[1]}, mat, true, false, false, x, y, (int)zTop);
 
-                    byte mat = soilLayers[x][y][0];
-                    boolean visibleMat = isMaterialVisible(mat);
+                        // 2. Front Vertical Side Wall (Facing +Y) if Front Neighbor is lower
+                        double zFront = (y + step < GRID_SIZE) ? blockZ[x][y + step] : 0;
+                        if (zFront < zTop) {
+                            double[] f2 = project3DPoint(x + step, y + step, zFront, cx, cy, scale, radAz, radEl);
+                            double[] f3 = project3DPoint(x, y + step, zFront, cx, cy, scale, radAz, radEl);
 
-                    Color col;
-                    if (currentRenderMode == RenderMode.GAMIFIED) {
-                        // Minecraft-Style Block Voxel Textures
-                        col = switch (mat) {
-                            case 0 -> Color.web("#15803d"); // Grass Top Block
-                            case 1 -> Color.web("#eab308"); // Sand Block
-                            case 2 -> Color.web("#b45309"); // Clay Block
-                            case 3 -> Color.web("#64748b"); // Stone / Cobblestone Block
-                            case 4 -> Color.web("#78350f"); // Organic Litter / Dirt Block
-                            default -> Color.web("#166534");
-                        };
-                        if (carvedVoxelGrid[x][y]) col = Color.web("#d97706");
-                    } else { // REALISTIC & SCIENTIFIC Mode (100% Identical to World Generator View)
-                        double humFactor = humidityGrid[x][y];
-                        Color baseMatCol = visibleMat ? getMaterialColor(mat) : Color.web("#1e293b", 0.35);
-                        // Soil moisture darkening effect
-                        col = baseMatCol.deriveColor(0, 1.0, 1.0 - humFactor * 0.25, 1.0);
-                        if (carvedVoxelGrid[x][y]) col = Color.web("#d97706");
-                    }
-
-                    gc3D.setFill(col);
-                    gc3D.fillPolygon(pxs, pys, 4);
-
-                    if (currentRenderMode == RenderMode.GAMIFIED) {
-                        // Minecraft Voxel Block Outlines & Top Grass Overhang Fringe
-                        gc3D.setStroke(Color.web("#0f172a", 0.85));
-                        gc3D.setLineWidth(1.4);
-                        if (mat == 0) { // Grass block top fringe
-                            gc3D.setStroke(Color.web("#a3e635", 0.9));
-                            gc3D.setLineWidth(1.8);
+                            drawVoxelBlockTexture(new double[]{p3[0], p2[0], f2[0], f3[0]}, new double[]{p3[1], p2[1], f2[1], f3[1]}, mat, false, true, false, x, y, (int)zTop);
                         }
-                    } else { // REALISTIC & SCIENTIFIC (Clean soil contours, zero blue wireframe)
+
+                        // 3. Right Vertical Side Wall (Facing +X) if Right Neighbor is lower
+                        double zRight = (x + step < cutXLimit) ? blockZ[x + step][y] : 0;
+                        if (zRight < zTop) {
+                            double[] r2 = project3DPoint(x + step, y + step, zRight, cx, cy, scale, radAz, radEl);
+                            double[] r3 = project3DPoint(x + step, y, zRight, cx, cy, scale, radAz, radEl);
+
+                            drawVoxelBlockTexture(new double[]{p1[0], p2[0], r2[0], r3[0]}, new double[]{p1[1], p2[1], r2[1], r3[1]}, mat, false, true, true, x, y, (int)zTop);
+                        }
+                    }
+                }
+            } else {
+                for (int x = 0; x < Math.min(GRID_SIZE - step, cutXLimit); x += step) {
+                    for (int y = 0; y < GRID_SIZE - step; y += step) {
+                        double z0 = heightGrid[x][y] * 40.0;
+                        double z1 = heightGrid[x + step][y] * 40.0;
+                        double z2 = heightGrid[x + step][y + step] * 40.0;
+                        double z3 = heightGrid[x][y + step] * 40.0;
+
+                        if (carvedVoxelGrid[x][y]) z0 -= 15.0;
+                        if (carvedVoxelGrid[x + step][y]) z1 -= 15.0;
+                        if (carvedVoxelGrid[x + step][y + step]) z2 -= 15.0;
+                        if (carvedVoxelGrid[x][y + step]) z3 -= 15.0;
+
+                        double[] p0 = project3DPoint(x, y, z0, cx, cy, scale, radAz, radEl);
+                        double[] p1 = project3DPoint(x + step, y, z1, cx, cy, scale, radAz, radEl);
+                        double[] p2 = project3DPoint(x + step, y + step, z2, cx, cy, scale, radAz, radEl);
+                        double[] p3 = project3DPoint(x, y + step, z3, cx, cy, scale, radAz, radEl);
+
+                        double[] pxs = new double[]{p0[0], p1[0], p2[0], p3[0]};
+                        double[] pys = new double[]{p0[1], p1[1], p2[1], p3[1]};
+
+                        byte mat = soilLayers[x][y][0];
+                        boolean visibleMat = isMaterialVisible(mat);
+
+                        double humFactor = humidityGrid[x][y][0];
+                        Color baseMatCol = visibleMat ? getMaterialColor(mat) : Color.web("#1e293b", 0.35);
+                        Color col = baseMatCol.deriveColor(0, 1.0, 1.0 - humFactor * 0.25, 1.0);
+                        if (carvedVoxelGrid[x][y]) col = Color.web("#d97706");
+
+                        gc3D.setFill(col);
+                        gc3D.fillPolygon(pxs, pys, 4);
+
                         gc3D.setStroke(col.darker());
                         gc3D.setLineWidth(visibleMat ? 0.3 : 0.1);
-                    }
-                    gc3D.strokePolygon(pxs, pys, 4);
+                        gc3D.strokePolygon(pxs, pys, 4);
 
-                    // Render Procedural 3D Grass Blades & Wild Dandelion Flowers popping out of ground in REALISTIC mode
-                    if (currentRenderMode == RenderMode.REALISTIC && mat == 0 && (x + y) % 5 == 0 && (showVegetationCheck == null || showVegetationCheck.isSelected())) {
-                        double zG = z0 + 1.0;
-                        double[] pG = project3DPoint(x, y, zG, cx, cy, scale, radAz, radEl);
-                        double gSc = (zoom / 7.5);
+                        // Render Procedural 3D Grass Blades & Wild Dandelion Flowers popping out of ground in REALISTIC mode
+                        if (currentRenderMode == RenderMode.REALISTIC && mat == 0 && (x + y) % 5 == 0 && (showVegetationCheck == null || showVegetationCheck.isSelected())) {
+                            double zG = z0 + 1.0;
+                            double[] pG = project3DPoint(x, y, zG, cx, cy, scale, radAz, radEl);
+                            double gSc = (zoom / 7.5);
 
-                        gc3D.setStroke(Color.web("#4ade80")); gc3D.setLineWidth(1.2 * gSc);
-                        gc3D.strokeLine(pG[0], pG[1], pG[0] - 2 * gSc, pG[1] - 6 * gSc);
-                        gc3D.strokeLine(pG[0], pG[1], pG[0] + 3 * gSc, pG[1] - 7 * gSc);
-                        gc3D.strokeLine(pG[0], pG[1], pG[0] + 1 * gSc, pG[1] - 9 * gSc);
+                            gc3D.setStroke(Color.web("#4ade80")); gc3D.setLineWidth(1.2 * gSc);
+                            gc3D.strokeLine(pG[0], pG[1], pG[0] - 2 * gSc, pG[1] - 6 * gSc);
+                            gc3D.strokeLine(pG[0], pG[1], pG[0] + 3 * gSc, pG[1] - 7 * gSc);
+                            gc3D.strokeLine(pG[0], pG[1], pG[0] + 1 * gSc, pG[1] - 9 * gSc);
 
-                        // Yellow Dandelion / Red Clover Flowers
-                        if ((x * 7 + y * 13) % 11 == 0) {
-                            gc3D.setFill(Color.web("#facc15")); // Yellow dandelion bloom
-                            gc3D.fillOval(pG[0] + 1 * gSc - 1.5, pG[1] - 9 * gSc - 1.5, 3.0 * gSc, 3.0 * gSc);
+                            // Yellow Dandelion / Red Clover Flowers
+                            if ((x * 7 + y * 13) % 11 == 0) {
+                                gc3D.setFill(Color.web("#facc15")); // Yellow dandelion bloom
+                                gc3D.fillOval(pG[0] + 1 * gSc - 1.5, pG[1] - 9 * gSc - 1.5, 3.0 * gSc, 3.0 * gSc);
+                            }
                         }
                     }
                 }
@@ -2446,9 +2792,14 @@ public class WorldEditorPane extends BorderPane {
             double planarWaterZ = 0.22 * 40.0; // Flat horizontal liquid level elevation
             if (riverCheck != null && riverCheck.isSelected() && riverPath != null && riverPath.size() > 1) {
                 double rWidthPx = Math.max(4.0, (riverWidthSlider != null ? riverWidthSlider.getValue() : 120.0) / 20.0 * (zoom / 7.5));
-                
+                boolean isWinterRiver = simSeason != null && (simSeason.toLowerCase().contains("hiver") || simSeason.toLowerCase().contains("winter"));
+                boolean isDryRiver = simSeason != null && (simSeason.toLowerCase().contains("été") || simSeason.toLowerCase().contains("summer")) && baseHumiditySlider != null && baseHumiditySlider.getValue() < 0.25;
+
+                Color rCol = isWinterRiver ? Color.web("#e0f2fe", 0.95) : (isDryRiver ? Color.web("#78350f", 0.85) : Color.web("#0284c7", 0.90));
+                Color rHighlightCol = isWinterRiver ? Color.web("#ffffff", 0.90) : (isDryRiver ? Color.web("#a16207", 0.70) : Color.web("#7dd3fc", 0.75));
+
                 // Draw horizontal flat planar river surface
-                gc3D.setStroke(Color.web("#0284c7", 0.90));
+                gc3D.setStroke(rCol);
                 gc3D.setLineWidth(rWidthPx);
                 gc3D.beginPath();
                 boolean firstPt = true;
@@ -2462,8 +2813,8 @@ public class WorldEditorPane extends BorderPane {
                 }
                 gc3D.stroke();
 
-                // Specular water sheen highlight
-                gc3D.setStroke(Color.web("#7dd3fc", 0.75));
+                // Specular water sheen highlight / ice sheen / mud crack highlight
+                gc3D.setStroke(rHighlightCol);
                 gc3D.setLineWidth(Math.max(1.5, rWidthPx * 0.45));
                 gc3D.beginPath();
                 firstPt = true;
@@ -2555,53 +2906,95 @@ public class WorldEditorPane extends BorderPane {
                 double[] p = project3DPoint(item.gx, item.gy, z, cx, cy, scale, radAz, radEl);
                 double sc = item.scale * (zoom / 7.5);
 
-                switch (item.type) {
-                    case 0:
-                        gc3D.setStroke(Color.web("#4ade80"));
-                        gc3D.setLineWidth(1.2);
-                        gc3D.strokeLine(p[0], p[1], p[0] - 3 * sc, p[1] - 8 * sc);
-                        gc3D.strokeLine(p[0], p[1], p[0] + 3 * sc, p[1] - 9 * sc);
-                        break;
-                    case 1:
-                        gc3D.setStroke(Color.web("#166534"));
-                        gc3D.setLineWidth(1.5);
-                        gc3D.strokeLine(p[0], p[1], p[0], p[1] - 12 * sc);
-                        gc3D.setFill(Color.web("#a3e635"));
-                        gc3D.fillOval(p[0] - 2 * sc, p[1] - 10 * sc, 4 * sc, 4 * sc);
-                        break;
-                    case 2:
-                        gc3D.setStroke(Color.web("#15803d"));
-                        gc3D.setLineWidth(1.2);
-                        gc3D.strokeLine(p[0], p[1], p[0], p[1] - 10 * sc);
-                        gc3D.setFill(Color.web("#f43f5e"));
-                        gc3D.fillOval(p[0] - 3 * sc, p[1] - 13 * sc, 6 * sc, 6 * sc);
-                        break;
-                    case 3:
-                        gc3D.setFill(Color.web("#15803d", 0.75));
-                        gc3D.fillOval(p[0] - 6 * sc, p[1] - 4 * sc, 12 * sc, 8 * sc);
-                        break;
-                    case 4:
-                        gc3D.setFill(Color.web("#854d0e", 0.85));
-                        gc3D.fillOval(p[0] - 6 * sc, p[1] - 3 * sc, 12 * sc, 6 * sc);
-                        gc3D.setFill(Color.web("#a16207", 0.7));
-                        gc3D.fillOval(p[0] - 3 * sc, p[1] - 4 * sc, 8 * sc, 5 * sc);
-                        gc3D.setStroke(Color.web("#451a03"));
-                        gc3D.setLineWidth(0.8 * sc);
-                        gc3D.strokeLine(p[0] - 5 * sc, p[1], p[0] + 5 * sc, p[1] - 2 * sc);
-                        break;
-                    case 5:
-                        gc3D.setStroke(Color.web("#451a03"));
-                        gc3D.setLineWidth(1.4);
-                        gc3D.strokeLine(p[0] - 5 * sc, p[1], p[0] + 5 * sc, p[1] - 3 * sc);
-                        break;
-                    case 6:
-                        gc3D.setFill(Color.web("#94a3b8"));
-                        gc3D.fillOval(p[0] - 2 * sc, p[1] - 2 * sc, 4 * sc, 4 * sc);
-                        break;
+                if (currentRenderMode == RenderMode.GAMIFIED) {
+                    switch (item.type) {
+                        case 0 -> {
+                            gc3D.setFill(Color.web("#22c55e"));
+                            gc3D.fillRect(p[0] - 2 * sc, p[1] - 8 * sc, 4 * sc, 8 * sc);
+                            gc3D.setFill(Color.web("#86efac"));
+                            gc3D.fillRect(p[0] - 1 * sc, p[1] - 9 * sc, 2 * sc, 2 * sc);
+                        }
+                        case 1, 2 -> {
+                            gc3D.setFill(Color.web("#15803d"));
+                            gc3D.fillRect(p[0] - 1 * sc, p[1] - 10 * sc, 2 * sc, 10 * sc);
+                            gc3D.setFill(item.type == 1 ? Color.web("#facc15") : Color.web("#f43f5e"));
+                            gc3D.fillRect(p[0] - 3 * sc, p[1] - 13 * sc, 6 * sc, 5 * sc);
+                            gc3D.setStroke(Color.web("#0f172a", 0.9)); gc3D.setLineWidth(1.0);
+                            gc3D.strokeRect(p[0] - 3 * sc, p[1] - 13 * sc, 6 * sc, 5 * sc);
+                        }
+                        case 3, 4 -> {
+                            gc3D.setFill(Color.web("#166534"));
+                            gc3D.fillRect(p[0] - 4 * sc, p[1] - 6 * sc, 8 * sc, 6 * sc);
+                            gc3D.setFill(Color.web("#22c55e"));
+                            gc3D.fillRect(p[0] - 3 * sc, p[1] - 8 * sc, 6 * sc, 4 * sc);
+                            gc3D.setStroke(Color.web("#0f172a", 0.9)); gc3D.setLineWidth(1.2);
+                            gc3D.strokeRect(p[0] - 4 * sc, p[1] - 6 * sc, 8 * sc, 6 * sc);
+                        }
+                        default -> {
+                            gc3D.setFill(Color.web("#64748b"));
+                            gc3D.fillRect(p[0] - 3 * sc, p[1] - 3 * sc, 6 * sc, 3 * sc);
+                            gc3D.setStroke(Color.web("#0f172a", 0.9)); gc3D.setLineWidth(1.0);
+                            gc3D.strokeRect(p[0] - 3 * sc, p[1] - 3 * sc, 6 * sc, 3 * sc);
+                        }
+                    }
+                } else if (item.isCharred) {
+                    // Charred / Incinerated flora remnant (ash, burnt carbonized twig)
+                    gc3D.setStroke(Color.web("#1e293b"));
+                    gc3D.setLineWidth(1.4);
+                    gc3D.strokeLine(p[0] - 4 * sc, p[1], p[0] + 4 * sc, p[1] - 2 * sc);
+                    gc3D.setFill(Color.web("#334155", 0.8));
+                    gc3D.fillOval(p[0] - 3 * sc, p[1] - 2 * sc, 6 * sc, 4 * sc);
+                } else {
+                    switch (item.type) {
+                        case 0:
+                            gc3D.setStroke(Color.web("#4ade80"));
+                            gc3D.setLineWidth(1.2);
+                            gc3D.strokeLine(p[0], p[1], p[0] - 3 * sc, p[1] - 8 * sc);
+                            gc3D.strokeLine(p[0], p[1], p[0] + 3 * sc, p[1] - 9 * sc);
+                            break;
+                        case 1:
+                            gc3D.setStroke(Color.web("#166534"));
+                            gc3D.setLineWidth(1.5);
+                            gc3D.strokeLine(p[0], p[1], p[0], p[1] - 12 * sc);
+                            gc3D.setFill(Color.web("#a3e635"));
+                            gc3D.fillOval(p[0] - 2 * sc, p[1] - 10 * sc, 4 * sc, 4 * sc);
+                            break;
+                        case 2:
+                            gc3D.setStroke(Color.web("#15803d"));
+                            gc3D.setLineWidth(1.2);
+                            gc3D.strokeLine(p[0], p[1], p[0], p[1] - 10 * sc);
+                            gc3D.setFill(Color.web("#f43f5e"));
+                            gc3D.fillOval(p[0] - 3 * sc, p[1] - 13 * sc, 6 * sc, 6 * sc);
+                            break;
+                        case 3:
+                            gc3D.setFill(Color.web("#15803d", 0.75));
+                            gc3D.fillOval(p[0] - 6 * sc, p[1] - 4 * sc, 12 * sc, 8 * sc);
+                            break;
+                        case 4:
+                            gc3D.setFill(Color.web("#854d0e", 0.85));
+                            gc3D.fillOval(p[0] - 6 * sc, p[1] - 3 * sc, 12 * sc, 6 * sc);
+                            gc3D.setFill(Color.web("#a16207", 0.7));
+                            gc3D.fillOval(p[0] - 3 * sc, p[1] - 4 * sc, 8 * sc, 5 * sc);
+                            gc3D.setStroke(Color.web("#451a03"));
+                            gc3D.setLineWidth(0.8 * sc);
+                            gc3D.strokeLine(p[0] - 5 * sc, p[1], p[0] + 5 * sc, p[1] - 2 * sc);
+                            break;
+                        case 5:
+                            gc3D.setStroke(Color.web("#451a03"));
+                            gc3D.setLineWidth(1.4);
+                            gc3D.strokeLine(p[0] - 5 * sc, p[1], p[0] + 5 * sc, p[1] - 3 * sc);
+                            break;
+                        case 6:
+                            gc3D.setFill(Color.web("#94a3b8"));
+                            gc3D.fillOval(p[0] - 2 * sc, p[1] - 2 * sc, 4 * sc, 4 * sc);
+                            break;
+                    }
                 }
             }
-        } else {
-            // Render 3D Spatial Reference Bounding Box Grid Frame (when terrain is hidden)
+        }
+
+        // Render 3D Spatial Reference Bounding Box Grid Frame (when terrain is hidden)
+        if (!isTerrainVisible) {
             gc3D.setStroke(Color.web("#38bdf8", 0.45));
             gc3D.setLineWidth(1.2);
             double[] b00 = project3DPoint(0, 0, 0, cx, cy, scale, radAz, radEl);
@@ -2626,14 +3019,11 @@ public class WorldEditorPane extends BorderPane {
             gc3D.strokeLine(b01[0], b01[1], d01[0], d01[1]);
         }
 
-        // Draw Trees in 3D Viewport with Seed, Botanical Matrix & Individual Tree Diversity (Age/Height/Species)
+        // Draw Trees & Sub-surface 3D Roots in 3D Viewport
         if (treeCountSlider != null && (showVegetationCheck == null || showVegetationCheck.isSelected())) {
             int count = (int) treeCountSlider.getValue();
 
-            long tSeed = 555123L;
-            if (structSeedField != null) {
-                try { tSeed = Long.parseLong(structSeedField.getText().trim()); } catch (Exception ignored) {}
-            }
+            long tSeed = parseSeed(structSeedField, 555123L);
             Random rand = new Random(tSeed);
 
             double sideM = surfaceSizeSlider != null ? surfaceSizeSlider.getValue() : 25.0;
@@ -2667,8 +3057,8 @@ public class WorldEditorPane extends BorderPane {
                 trees.add(ti);
             }
 
-            // Sort ascending: back (farther depth) rendered FIRST, front (closer depth) rendered LAST on top!
-            trees.sort((t1, t2) -> Double.compare(t1.depth, t2.depth));
+            // Sort ascending by base Y screen position: back (higher screen Y / background) rendered FIRST, front (lower screen Y / foreground) rendered LAST on top!
+            trees.sort((t1, t2) -> Double.compare(t1.p[1], t2.p[1]));
 
             for (TreeInstance ti : trees) {
                 double[] p = ti.p;
@@ -2744,32 +3134,55 @@ public class WorldEditorPane extends BorderPane {
                     else if (sName.contains("hiver") || sName.contains("winter")) seasonIdx = 3;
                 }
 
+                // Hemisphere check: Southern Hemisphere inverts Northern seasons!
+                if (latField != null && latField.getText() != null) {
+                    String latTxt = latField.getText().trim();
+                    if (latTxt.startsWith("-") || latTxt.toLowerCase().contains("s") || latTxt.toLowerCase().contains("sud")) {
+                        seasonIdx = (seasonIdx + 2) % 4; // Invert seasons for Southern Hemisphere
+                    }
+                }
+
                 if (currentRenderMode == RenderMode.GAMIFIED) {
-                    // Minecraft Voxel Block Tree (Replacing all smooth curves with discrete cubes)
-                    double bSize = Math.max(5.0, canopyR * 0.45);
-                    // Blocky Voxel Trunk Column
+                    // Minecraft Voxel Block Tree with bark & leaf procedural textures
+                    double bSize = Math.max(6.0, canopyR * 0.48);
+
+                    // Blocky Voxel Trunk Column with Bark Texture
                     gc3D.setFill(Color.web("#78350f"));
                     gc3D.fillRect(p[0] - bSize / 2, p[1] - trunkH, bSize, trunkH);
-                    gc3D.setStroke(Color.web("#451a03"));
+                    gc3D.setFill(Color.web("#451a03"));
+                    gc3D.fillRect(p[0] - bSize * 0.2, p[1] - trunkH, bSize * 0.4, trunkH);
+                    gc3D.setStroke(Color.web("#0f172a", 0.9));
                     gc3D.setLineWidth(1.4);
                     gc3D.strokeRect(p[0] - bSize / 2, p[1] - trunkH, bSize, trunkH);
 
-                    // Blocky Voxel Canopy Block Grid (3x3 Leaf Voxel Cubes)
-                    Color leafVoxelCol = switch (speciesIdx) {
+                    // Blocky Voxel Canopy Block Grid (3x3 Leaf Voxel Cubes) with Leaf Textures
+                    Color leafBaseCol = switch (speciesIdx) {
                         case 2 -> Color.web("#86efac"); // Birch
                         case 5 -> Color.web("#14532d"); // Pine
                         case 6 -> Color.web("#a16207"); // Acacia
                         default -> Color.web("#15803d"); // Oak / Default
                     };
-                    gc3D.setFill(leafVoxelCol);
-                    gc3D.setStroke(Color.web("#0f172a", 0.9));
-                    gc3D.setLineWidth(1.5);
+                    Color leafSpeckCol = switch (speciesIdx) {
+                        case 2 -> Color.web("#4ade80");
+                        case 5 -> Color.web("#064e3b");
+                        case 6 -> Color.web("#78350f");
+                        default -> Color.web("#22c55e");
+                    };
 
+                    Random treeRand = new Random((long)(p[0] * 31 + p[1] * 17));
                     for (int bx = -1; bx <= 1; bx++) {
                         for (int by = -2; by <= 0; by++) {
                             double vx = swayX + bx * bSize - bSize / 2;
                             double vy = p[1] - trunkH + by * bSize;
+                            gc3D.setFill(leafBaseCol);
                             gc3D.fillRect(vx, vy, bSize, bSize);
+
+                            // Leaf Texture Specks
+                            gc3D.setFill(leafSpeckCol);
+                            gc3D.fillRect(vx + bSize * 0.2, vy + bSize * 0.2, bSize * 0.35, bSize * 0.35);
+
+                            gc3D.setStroke(Color.web("#0f172a", 0.9));
+                            gc3D.setLineWidth(1.4);
                             gc3D.strokeRect(vx, vy, bSize, bSize);
                         }
                     }
@@ -2801,12 +3214,12 @@ public class WorldEditorPane extends BorderPane {
                         gc3D.setFill(Color.web("#f59e0b"));
                         gc3D.fillOval(p[0] + trunkW * 0.7, p[1] - trunkH * 0.3, trunkW * 0.6, trunkH * 0.12);
                     }
-                    case 2 -> { // Bouleau (Betula - Birch with delicate weeping branches)
-                        gc3D.setFill(Color.web("#f8fafc"));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
+                    case 2 -> { // Bouleau (Betula - Birch with 3D cylindrical trunk)
+                        draw3DCylinderTrunk(p[0], p[1], trunkW, trunkH, Color.web("#f8fafc"), Color.web("#475569"), Color.web("#ffffff"));
+                        // Bark lenticels (Birch black horizontal stripes)
                         gc3D.setFill(Color.web("#0f172a"));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH * 0.7, trunkW, Math.max(2.0, trunkW * 0.15));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH * 0.4, trunkW, Math.max(2.0, trunkW * 0.15));
+                        gc3D.fillRect(p[0] - trunkW * 0.45, p[1] - trunkH * 0.7, trunkW * 0.9, Math.max(2.0, trunkW * 0.15));
+                        gc3D.fillRect(p[0] - trunkW * 0.45, p[1] - trunkH * 0.4, trunkW * 0.9, Math.max(2.0, trunkW * 0.15));
 
                         gc3D.setStroke(Color.web("#334155"));
                         gc3D.setLineWidth(Math.max(1.5, trunkW * 0.3));
@@ -2817,36 +3230,43 @@ public class WorldEditorPane extends BorderPane {
 
                         if (seasonIdx != 3) {
                             Color bCol1 = switch (seasonIdx) {
-                                case 0 -> Color.web("#86efac");
-                                case 2 -> Color.web("#fde047");
-                                default -> Color.web("#4ade80");
+                                case 0 -> Color.web("#86efac"); // Spring fresh green
+                                case 2 -> Color.web("#fde047"); // Autumn golden yellow
+                                default -> Color.web("#4ade80"); // Summer
                             };
                             gc3D.setFill(bCol1);
                             gc3D.fillOval(swayX - canopyR * 0.75, p[1] - trunkH - canopyR * 0.7, canopyR * 1.5, canopyR * 1.2);
+
+                            // Spring Cherry/Birch Blossoms
+                            if (seasonIdx == 0) {
+                                gc3D.setFill(Color.web("#f472b6", 0.9));
+                                gc3D.fillOval(swayX - canopyR * 0.5, p[1] - trunkH - canopyR * 0.8, 5, 5);
+                                gc3D.fillOval(swayX + canopyR * 0.3, p[1] - trunkH - canopyR * 0.4, 4, 4);
+                            }
+                            // Autumn Falling Leaves
+                            if (seasonIdx == 2) {
+                                double fallShift = (System.currentTimeMillis() * 0.002 + p[0]) % 12.0;
+                                gc3D.setFill(Color.web("#eab308", 0.85));
+                                gc3D.fillOval(swayX - canopyR * 0.4 + fallShift * 0.5, p[1] - trunkH * 0.6 + fallShift, 3.5, 2.5);
+                            }
                         } else {
                             gc3D.setFill(Color.web("#f8fafc", 0.9));
                             gc3D.fillOval(swayX - canopyR * 0.4, p[1] - trunkH - 3, canopyR * 0.8, 5);
                         }
                     }
                     case 3 -> { // Cactus Saguaro
-                        gc3D.setFill(Color.web("#15803d"));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
+                        draw3DCylinderTrunk(p[0], p[1], trunkW, trunkH, Color.web("#15803d"), Color.web("#14532d"), Color.web("#4ade80"));
                         gc3D.setFill(Color.web("#166534"));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW * 0.35, trunkH);
                         gc3D.fillRect(p[0] - trunkH * 0.3, p[1] - trunkH * 0.6, trunkH * 0.6, trunkW * 0.7);
                         gc3D.fillRect(p[0] - trunkH * 0.3, p[1] - trunkH * 0.85, trunkW * 0.7, trunkH * 0.3);
                         gc3D.fillRect(p[0] + trunkH * 0.2, p[1] - trunkH * 0.9, trunkW * 0.7, trunkH * 0.35);
-                        if (seasonIdx == 0) {
+                        if (seasonIdx == 0) { // Spring Flowering Saguaro Crown
                             gc3D.setFill(Color.web("#fef08a"));
-                            gc3D.fillOval(p[0] - 2, p[1] - trunkH - 3, 5, 5);
+                            gc3D.fillOval(p[0] - 3, p[1] - trunkH - 4, 6, 6);
                         }
                     }
-                    case 5 -> { // Pin Sylvestre (Scotch Pine - Tiered Whorled Branches starting lower down)
-                        gc3D.setFill(Color.web("#78350f"));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
-                        gc3D.setFill(Color.web("#451a03"));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW * 0.35, trunkH);
-
+                    case 5 -> { // Pin Sylvestre (Scotch Pine - 3D Cylindrical Trunk)
+                        draw3DCylinderTrunk(p[0], p[1], trunkW, trunkH, Color.web("#78350f"), Color.web("#3d1a04"), Color.web("#a16207"));
                         gc3D.setStroke(Color.web("#451a03"));
                         gc3D.setLineWidth(Math.max(1.8, trunkW * 0.35));
                         gc3D.strokeLine(p[0], p[1] - trunkH * 0.35, swayX - canopyR * 0.85, p[1] - trunkH * 0.4);
@@ -2877,12 +3297,8 @@ public class WorldEditorPane extends BorderPane {
                             gc3D.fillPolygon(new double[]{swayX, swayX - canopyR * 0.5, swayX + canopyR * 0.5}, new double[]{p[1] - trunkH - canopyR * 1.45, p[1] - trunkH - canopyR * 1.15, p[1] - trunkH - canopyR * 1.15}, 3);
                         }
                     }
-                    case 6 -> { // Acacia (Savanna Parasol - Flat Umbrella Canopy Scaffold)
-                        gc3D.setFill(Color.web("#78350f"));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
-                        gc3D.setFill(Color.web("#451a03"));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW * 0.35, trunkH);
-
+                    case 6 -> { // Acacia (Savanna Parasol - 3D Cylindrical Trunk)
+                        draw3DCylinderTrunk(p[0], p[1], trunkW, trunkH, Color.web("#78350f"), Color.web("#3d1a04"), Color.web("#a16207"));
                         gc3D.setStroke(Color.web("#451a03"));
                         gc3D.setLineWidth(Math.max(2.0, trunkW * 0.35));
                         gc3D.strokeLine(p[0], p[1] - trunkH * 0.5, swayX - canopyR * 0.85, p[1] - trunkH * 0.95);
@@ -2900,12 +3316,8 @@ public class WorldEditorPane extends BorderPane {
                         gc3D.setFill(Color.web("#84cc16", 0.6));
                         gc3D.fillOval(swayX - canopyR * 1.1, p[1] - trunkH * 1.22 - canopyR * 0.25, canopyR * 2.2, canopyR * 0.4);
                     }
-                    default -> { // Chêne Quercus (Oak Tree - Spreading Gnarled Branches)
-                        gc3D.setFill(Color.web("#78350f"));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW, trunkH);
-                        gc3D.setFill(Color.web("#451a03"));
-                        gc3D.fillRect(p[0] - trunkW / 2, p[1] - trunkH, trunkW * 0.35, trunkH);
-
+                    default -> { // Chêne Quercus (Oak Tree - 3D Cylindrical Trunk)
+                        draw3DCylinderTrunk(p[0], p[1], trunkW, trunkH, Color.web("#78350f"), Color.web("#3d1a04"), Color.web("#a16207"));
                         gc3D.setStroke(Color.web("#451a03"));
                         gc3D.setLineWidth(Math.max(2.0, trunkW * 0.4));
                         gc3D.strokeLine(p[0], p[1] - trunkH * 0.35, swayX - canopyR * 0.75, p[1] - trunkH * 0.7);
@@ -2914,11 +3326,15 @@ public class WorldEditorPane extends BorderPane {
                         gc3D.strokeLine(p[0], p[1] - trunkH * 0.55, swayX + canopyR * 0.45, p[1] - trunkH * 0.95);
                         gc3D.strokeLine(p[0], p[1] - trunkH * 0.7, swayX, p[1] - trunkH * 1.15);
 
-                        if (seasonIdx == 0) { // Spring
+                        if (seasonIdx == 0) { // Spring Blossoms
                             gc3D.setFill(Color.web("#16a34a"));
                             gc3D.fillOval(swayX - canopyR, p[1] - trunkH - canopyR * 0.9, canopyR * 2.0, canopyR * 1.3);
                             gc3D.setFill(Color.web("#4ade80"));
                             gc3D.fillOval(swayX - canopyR * 0.8, p[1] - trunkH - canopyR * 1.15, canopyR * 1.6, canopyR * 1.1);
+                            // Spring Blossom Flecks
+                            gc3D.setFill(Color.web("#f472b6", 0.85));
+                            gc3D.fillOval(swayX - canopyR * 0.4, p[1] - trunkH - canopyR * 1.2, 5, 5);
+                            gc3D.fillOval(swayX + canopyR * 0.2, p[1] - trunkH - canopyR * 0.8, 4, 4);
                         } else if (seasonIdx == 1) { // Summer
                             gc3D.setFill(Color.web("#14532d"));
                             gc3D.fillOval(swayX - canopyR * 1.05, p[1] - trunkH - canopyR * 0.9, canopyR * 2.1, canopyR * 1.3);
@@ -2926,13 +3342,19 @@ public class WorldEditorPane extends BorderPane {
                             gc3D.fillOval(swayX - canopyR * 0.85, p[1] - trunkH - canopyR * 1.15, canopyR * 1.7, canopyR * 1.1);
                             gc3D.setFill(Color.web("#15803d"));
                             gc3D.fillOval(swayX - canopyR * 0.55, p[1] - trunkH - canopyR * 1.3, canopyR * 1.1, canopyR * 0.9);
-                        } else if (seasonIdx == 2) { // Autumn
+                        } else if (seasonIdx == 2) { // Autumn Leaves & Falling Leaves
                             gc3D.setFill(Color.web("#b45309"));
                             gc3D.fillOval(swayX - canopyR * 1.05, p[1] - trunkH - canopyR * 0.9, canopyR * 2.1, canopyR * 1.3);
                             gc3D.setFill(Color.web("#d97706"));
                             gc3D.fillOval(swayX - canopyR * 0.85, p[1] - trunkH - canopyR * 1.15, canopyR * 1.7, canopyR * 1.1);
                             gc3D.setFill(Color.web("#ef4444", 0.85));
                             gc3D.fillOval(swayX - canopyR * 0.55, p[1] - trunkH - canopyR * 1.3, canopyR * 1.1, canopyR * 0.9);
+                            // Falling Autumn Leaf Animation
+                            double fallShift = (System.currentTimeMillis() * 0.0022 + p[0]) % 15.0;
+                            gc3D.setFill(Color.web("#dc2626", 0.9));
+                            gc3D.fillOval(swayX - canopyR * 0.5 + Math.sin(fallShift) * 8.0, p[1] - trunkH * 0.5 + fallShift, 4, 3);
+                            gc3D.setFill(Color.web("#f59e0b", 0.9));
+                            gc3D.fillOval(swayX + canopyR * 0.3 - Math.sin(fallShift) * 6.0, p[1] - trunkH * 0.7 + fallShift, 3.5, 2.5);
                         } else { // Winter
                             gc3D.setFill(Color.web("#f8fafc", 0.9));
                             gc3D.fillOval(swayX - canopyR * 0.6, p[1] - trunkH * 0.7 - 4, canopyR * 0.6, 5);
@@ -2941,7 +3363,7 @@ public class WorldEditorPane extends BorderPane {
                     }
                 }
 
-                if (currentRenderMode == RenderMode.REALISTIC && speciesIdx != 1) {
+                if (isSimulationMode && currentRenderMode == RenderMode.REALISTIC && speciesIdx != 1) {
                     int pTexIdx = (speciesIdx % 6) + 1;
                     Image plantAlphaImg = getPlantTexture("/textures/Plant alpha " + pTexIdx + ".png");
                     if (plantAlphaImg != null) {
@@ -2951,13 +3373,13 @@ public class WorldEditorPane extends BorderPane {
             }
         }
 
-        // Draw 3D Overlays for Underground Galleries, Nests, Colony Insects, Pheromones, and Weather
-        if (isGalleriesVisible || (showGalleriesCheck != null && showGalleriesCheck.isSelected()) || !isTerrainVisible) {
+        // Draw 3D Overlays for Underground Galleries, Nests, Colony Insects, Pheromones, and Weather (Simulation Mode ONLY)
+        if (isSimulationMode && (isGalleriesVisible || !isTerrainVisible)) {
             drawGalleriesOverlay3D(cx, cy, scale, radAz, radEl);
         }
-        if (isColonyVisible || isSimulationMode || !isTerrainVisible) drawColonyOverlay3D(cx, cy, scale, radAz, radEl);
-        if (isPheromonesVisible) drawPheromoneOverlay3D(cx, cy, scale, radAz, radEl);
-        if (isWeatherVisible && isSimulationMode) drawWeatherOverlay3D(w, h);
+        if (isSimulationMode && isColonyVisible) drawColonyOverlay3D(cx, cy, scale, radAz, radEl);
+        if (isSimulationMode && isPheromonesVisible) drawPheromoneOverlay3D(cx, cy, scale, radAz, radEl);
+        if (isSimulationMode && isWeatherVisible) drawWeatherOverlay3D(w, h);
 
         // Draw 3D Hover Info Overlay on top of 3D Canvas
         draw3DHoverOverlay(w, h, cx, cy, scale, radAz, radEl);
@@ -2965,8 +3387,8 @@ public class WorldEditorPane extends BorderPane {
         // Draw Metric Scale Bar in bottom right of 3D Canvas
         drawMetricScaleBar3D(w, h, cx, cy, scale, radAz, radEl);
 
-        // Draw Interactive Nest & Chamber Galleries Legend HUD Overlay (Top-Right)
-        if (isGalleriesVisible || (showGalleriesCheck != null && showGalleriesCheck.isSelected()) || !isTerrainVisible) {
+        // Draw Interactive Nest & Chamber Galleries Legend HUD Overlay (Top-Right, Simulation Mode ONLY)
+        if (isSimulationMode && isGalleriesVisible) {
             drawGalleriesLegendHUD(w, h);
         }
 
@@ -3024,11 +3446,29 @@ public class WorldEditorPane extends BorderPane {
 
                 if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
 
+                double[] pTop0 = project3DPoint(cutXLimit, y, topZ0, cx, cy, scale, radAz, radEl);
+                double[] pTop1 = project3DPoint(cutXLimit, y + (int)stepY, topZ1, cx, cy, scale, radAz, radEl);
+                double[] pBot1 = project3DPoint(cutXLimit, y + (int)stepY, botZ1, cx, cy, scale, radAz, radEl);
+                double[] pBot0 = project3DPoint(cutXLimit, y, botZ0, cx, cy, scale, radAz, radEl);
+
+                double[] pxs = {pTop0[0], pTop1[0], pBot1[0], pBot0[0]};
+                double[] pys = {pTop0[1], pTop1[1], pBot1[1], pBot0[1]};
+
                 byte mat = soilLayers[cutXLimit][y][d];
                 boolean isVoid = voidGrid[cutXLimit][y][d];
-
                 Color matCol;
-                if (isVoid) {
+                if (currentRenderMode == RenderMode.GAMIFIED) {
+                    if (isVoid) {
+                        gc3D.setFill(Color.web("#090d16"));
+                        gc3D.fillPolygon(pxs, pys, 4);
+                        gc3D.setStroke(Color.web("#0f172a", 0.95));
+                        gc3D.setLineWidth(1.4);
+                        gc3D.strokePolygon(pxs, pys, 4);
+                    } else {
+                        drawVoxelBlockTexture(pxs, pys, mat, false, true, false, cutXLimit, y, d);
+                    }
+                    continue;
+                } else if (isVoid) {
                     matCol = Color.web("#090d16");
                 } else if (!isMaterialVisible(mat)) {
                     matCol = Color.web("#1e293b", 0.35);
@@ -3036,26 +3476,29 @@ public class WorldEditorPane extends BorderPane {
                     matCol = getMaterialColor(mat).deriveColor(0, 1.15, 1.1, 1.0);
                 }
 
-                double[] pTop0 = project3DPoint(cutXLimit, y, topZ0, cx, cy, scale, radAz, radEl);
-                double[] pTop1 = project3DPoint(cutXLimit, y + stepY, topZ1, cx, cy, scale, radAz, radEl);
-                double[] pBot1 = project3DPoint(cutXLimit, y + stepY, botZ1, cx, cy, scale, radAz, radEl);
-                double[] pBot0 = project3DPoint(cutXLimit, y, botZ0, cx, cy, scale, radAz, radEl);
-
-                double[] pxs = {pTop0[0], pTop1[0], pBot1[0], pBot0[0]};
-                double[] pys = {pTop0[1], pTop1[1], pBot1[1], pBot0[1]};
-
-                gc3D.setFill(matCol);
-                gc3D.fillPolygon(pxs, pys, 4);
+                if (isVoid) {
+                    if (showGalleriesCheck == null || showGalleriesCheck.isSelected()) {
+                        gc3D.setFill(matCol);
+                        gc3D.fillPolygon(pxs, pys, 4);
+                    }
+                } else {
+                    gc3D.setFill(matCol);
+                    gc3D.fillPolygon(pxs, pys, 4);
+                }
 
                 // Render gravel & pebble inclusions on 3D cutplane
-                if (showInclusions && !isVoid && isMaterialVisible(mat) && (cutXLimit * 13 + y * 7 + d * 19) % 5 == 0) {
+                double cutInclNoise = valueNoise3D(cutXLimit * 0.35, y * 0.35, d * 0.35);
+                if (showInclusions && !isVoid && isMaterialVisible(mat) && cutInclNoise > 0.68) {
                     double midX = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
                     double midY = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[1]) / 4.0;
                     double sz = Math.max(1.5, Math.abs(pTop1[0] - pTop0[0]) * 0.35);
 
                     if (mat == 3) {
                         gc3D.setFill(Color.web("#e2e8f0"));
-                        gc3D.fillOval(midX - sz * 0.5, midY - sz * 0.4, sz, sz * 0.7);
+                        gc3D.fillOval(midX - sz * 0.4, midY - sz * 0.3, sz * 0.8, sz * 0.6);
+                    } else if (mat == 4) {
+                        gc3D.setFill(Color.web("#cbd5e1"));
+                        gc3D.fillOval(midX - sz * 0.3, midY - sz * 0.3, sz * 0.6, sz * 0.5);
                     } else if (mat == 2) {
                         gc3D.setFill(Color.web("#7c2d12"));
                         gc3D.fillRect(midX - sz * 0.4, midY - sz * 0.3, sz * 0.8, sz * 0.5);
@@ -3063,6 +3506,41 @@ public class WorldEditorPane extends BorderPane {
                         gc3D.setFill(Color.web("#fef08a"));
                         gc3D.fillOval(midX - sz * 0.3, midY - sz * 0.3, sz * 0.6, sz * 0.6);
                     }
+                }
+
+                // Render 3D Scanner Humidity Overlay
+                if (showHumidityCheck != null && showHumidityCheck.isSelected() && humidityGrid != null) {
+                    float hum = humidityGrid[cutXLimit][y][d];
+                    gc3D.setFill(Color.web("#0284c7", Math.min(0.70, hum * 0.50 + 0.05)));
+                    gc3D.fillPolygon(pxs, pys, 4);
+                }
+
+                // Render 3D Scanner pH Level Overlay
+                if (showPhCheck != null && showPhCheck.isSelected() && phGrid != null) {
+                    float ph = phGrid[cutXLimit][y][d] > 0 ? phGrid[cutXLimit][y][d] : 6.5f;
+                    Color phColor;
+                    if (ph < 6.5f) {
+                        phColor = Color.web("#eab308", Math.min(0.65, (6.5 - ph) * 0.22 + 0.15));
+                    } else if (ph > 7.5f) {
+                        phColor = Color.web("#1e40af", Math.min(0.65, (ph - 7.5) * 0.22 + 0.15));
+                    } else {
+                        phColor = Color.web("#22c55e", 0.35);
+                    }
+                    gc3D.setFill(phColor);
+                    gc3D.fillPolygon(pxs, pys, 4);
+                }
+
+                // Render 3D Scanner Root System Overlay
+                if (showRootsCheck != null && showRootsCheck.isSelected() && rootGrid != null && rootGrid[cutXLimit][y][d] > 0.15f) {
+                    double midX = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
+                    double midY = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[0]) / 4.0;
+                    double rSc = Math.max(1.0, rootGrid[cutXLimit][y][d] * 2.2 * (zoom / 7.5));
+                    gc3D.setStroke(Color.web("#78350f", Math.min(0.95, rootGrid[cutXLimit][y][d] * 1.3)));
+                    gc3D.setLineWidth(rSc);
+                    gc3D.strokeLine(pTop0[0], pTop0[1], pBot1[0], pBot1[1]);
+                    gc3D.strokeLine(pTop1[0], pTop1[1], pBot0[0], pBot0[1]);
+                    gc3D.setFill(Color.web("#451a03"));
+                    gc3D.fillOval(midX - rSc, midY - rSc, rSc * 2, rSc * 2);
                 }
 
                 gc3D.setStroke(matCol.darker());
@@ -3103,67 +3581,123 @@ public class WorldEditorPane extends BorderPane {
         if (hover3DCell == null) return;
         int gx = hover3DCell[0];
         int gy = hover3DCell[1];
+        int gd = hover3DCell.length > 2 ? hover3DCell[2] : 0;
         if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) return;
 
-        // Highlight quad on terrain surface mesh
-        double z0 = heightGrid[gx][gy] * 40.0;
-        int step = 2;
-        int gx2 = Math.min(GRID_SIZE - 1, gx + step);
-        int gy2 = Math.min(GRID_SIZE - 1, gy + step);
-        double z1 = heightGrid[gx2][gy] * 40.0;
-        double z2 = heightGrid[gx2][gy2] * 40.0;
-        double z3 = heightGrid[gx][gy2] * 40.0;
+        double cutRatio = slicePlaneSlider != null ? (slicePlaneSlider.getValue() / 100.0) : 1.0;
+        int cutXLimit = (int) (GRID_SIZE * cutRatio);
+        double targetDepthVal = depthSlider != null ? depthSlider.getValue() : 1.5;
+        double maxDepthPx = targetDepthVal * 22.0;
 
-        double[] p0 = project3DPoint(gx, gy, z0, cx, cy, scale, radAz, radEl);
-        double[] p1 = project3DPoint(gx2, gy, z1, cx, cy, scale, radAz, radEl);
-        double[] p2 = project3DPoint(gx2, gy2, z2, cx, cy, scale, radAz, radEl);
-        double[] p3 = project3DPoint(gx, gy2, z3, cx, cy, scale, radAz, radEl);
+        // If hovering on subterranean cut plane wall (gx == cutXLimit and cut plane is active)
+        if (gx == cutXLimit && cutXLimit > 0 && cutXLimit < GRID_SIZE) {
+            double stepY = 2;
+            double layerDepthPx = maxDepthPx / SOIL_DEPTH;
+            double surfZ0 = heightGrid[gx][gy] * 40.0;
+            double surfZ1 = heightGrid[gx][Math.min(GRID_SIZE - 1, gy + (int)stepY)] * 40.0;
+            if (carvedVoxelGrid[gx][gy]) surfZ0 -= 15.0;
 
-        gc3D.setFill(Color.web("#f59e0b", 0.45));
-        gc3D.fillPolygon(new double[]{p0[0], p1[0], p2[0], p3[0]}, new double[]{p0[1], p1[1], p2[1], p3[1]}, 4);
-        gc3D.setStroke(Color.web("#fbbf24"));
-        gc3D.setLineWidth(2.0);
-        gc3D.strokePolygon(new double[]{p0[0], p1[0], p2[0], p3[0]}, new double[]{p0[1], p1[1], p2[1], p3[1]}, 4);
+            double refZ0 = 32.0;
+            double refZ1 = 32.0;
+            double topZ0 = Math.min(surfZ0, refZ0 - gd * layerDepthPx);
+            double topZ1 = Math.min(surfZ1, refZ1 - gd * layerDepthPx);
+            double botZ0 = Math.min(surfZ0, refZ0 - (gd + 1) * layerDepthPx);
+            double botZ1 = Math.min(surfZ1, refZ1 - (gd + 1) * layerDepthPx);
+
+            double[] pTop0 = project3DPoint(gx, gy, topZ0, cx, cy, scale, radAz, radEl);
+            double[] pTop1 = project3DPoint(gx, Math.min(GRID_SIZE - 1, gy + (int)stepY), topZ1, cx, cy, scale, radAz, radEl);
+            double[] pBot1 = project3DPoint(gx, Math.min(GRID_SIZE - 1, gy + (int)stepY), botZ1, cx, cy, scale, radAz, radEl);
+            double[] pBot0 = project3DPoint(gx, gy, botZ0, cx, cy, scale, radAz, radEl);
+
+            double[] pxs = {pTop0[0], pTop1[0], pBot1[0], pBot0[0]};
+            double[] pys = {pTop0[1], pTop1[1], pBot1[1], pBot0[1]};
+
+            gc3D.setFill(Color.web("#38bdf8", 0.65));
+            gc3D.fillPolygon(pxs, pys, 4);
+            gc3D.setStroke(Color.web("#7dd3fc"));
+            gc3D.setLineWidth(2.2);
+            gc3D.strokePolygon(pxs, pys, 4);
+        } else {
+            // Highlight quad on terrain surface mesh
+            double z0 = heightGrid[gx][gy] * 40.0;
+            int step = 2;
+            int gx2 = Math.min(GRID_SIZE - 1, gx + step);
+            int gy2 = Math.min(GRID_SIZE - 1, gy + step);
+            double z1 = heightGrid[gx2][gy] * 40.0;
+            double z2 = heightGrid[gx2][gy2] * 40.0;
+            double z3 = heightGrid[gx][gy2] * 40.0;
+
+            double[] p0 = project3DPoint(gx, gy, z0, cx, cy, scale, radAz, radEl);
+            double[] p1 = project3DPoint(gx2, gy, z1, cx, cy, scale, radAz, radEl);
+            double[] p2 = project3DPoint(gx2, gy2, z2, cx, cy, scale, radAz, radEl);
+            double[] p3 = project3DPoint(gx, gy2, z3, cx, cy, scale, radAz, radEl);
+
+            gc3D.setFill(Color.web("#f59e0b", 0.45));
+            gc3D.fillPolygon(new double[]{p0[0], p1[0], p2[0], p3[0]}, new double[]{p0[1], p1[1], p2[1], p3[1]}, 4);
+            gc3D.setStroke(Color.web("#fbbf24"));
+            gc3D.setLineWidth(2.0);
+            gc3D.strokePolygon(new double[]{p0[0], p1[0], p2[0], p3[0]}, new double[]{p0[1], p1[1], p2[1], p3[1]}, 4);
+        }
 
         // Draw HUD Box on 3D Viewport
-        double boxW = 240.0;
-        double boxH = 135.0;
+        double boxW = 270.0;
+        double boxH = 145.0;
         double hx = Math.max(10, Math.min(w - boxW - 10, hoverMX + 15));
         double hy = Math.max(10, Math.min(h - boxH - 10, hoverMY - 20));
 
-        gc3D.setFill(Color.web("rgba(15, 23, 42, 0.94)"));
+        gc3D.setFill(Color.web("rgba(15, 23, 42, 0.95)"));
         gc3D.fillRoundRect(hx, hy, boxW, boxH, 8, 8);
-        gc3D.setStroke(Color.web("#38bdf8", 0.85));
-        gc3D.setLineWidth(1.2);
+        gc3D.setStroke(gd > 0 ? Color.web("#38bdf8", 0.9) : Color.web("#f59e0b", 0.85));
+        gc3D.setLineWidth(1.4);
         gc3D.strokeRoundRect(hx, hy, boxW, boxH, 8, 8);
 
         double sM = surfaceSizeSlider != null ? surfaceSizeSlider.getValue() : 25.0;
         double dM = depthSlider != null ? depthSlider.getValue() : 3.0;
-        double altM = heightGrid[gx][gy] * dM;
-        int humPct = (int) (humidityGrid[gx][gy] * 100);
-        byte mat = soilLayers[gx][gy][0];
-        String matName = switch (mat) {
-            case 0 -> "Humus (Terre Végétale)";
-            case 1 -> "Sable Xérique";
-            case 2 -> "Argile Limoneuse";
-            case 3 -> "Roche / Pierre";
-            case 4 -> "Litière Organique";
-            default -> "Sol Terrestre";
-        };
+        double surfAltM = heightGrid[gx][gy] * dM;
+        double depthM = ((double) gd / (double) (SOIL_DEPTH - 1)) * dM;
+        double voxelAltM = surfAltM - depthM;
+
+        int humPct = (int) (humidityGrid[gx][gy][gd] * 100);
+        byte mat = soilLayers[gx][gy][gd];
+        boolean isVoid = voidGrid[gx][gy][gd] || carvedVoxelGrid[gx][gy];
+
+        String matName;
+        if (isVoid) {
+            matName = "🕳️ Galerie / Cavité Excavée";
+        } else {
+            matName = switch (mat) {
+                case 0 -> "Humus (Terre Végétale)";
+                case 1 -> "Sable Xérique";
+                case 2 -> "Argile Limoneuse";
+                case 3 -> "Roche Mère / Pierre";
+                case 4 -> "Gravier & Cailloutis";
+                case 5 -> "Litière Organique";
+                case 6 -> "Galerie Souterraine";
+                case 7 -> "Chambre de Couvain";
+                case 8 -> "Chambre Royale";
+                default -> "Substrat Terrestre";
+            };
+        }
         boolean isRiver = isNearRiver(gx, gy, 1);
         boolean hasTree = isForestArea(gx, gy);
+        double tempC = tempGrid[gx][gy][gd];
+        if (tempC == 0) {
+            tempC = 20.0 - (((double) (SOIL_DEPTH - 1 - gd) / (double) (SOIL_DEPTH - 1)) * 3.5);
+        }
+        int rootPct = (int) (rootGrid[gx][gy][gd] * 100);
+        float phVal = phGrid[gx][gy][gd] > 0 ? phGrid[gx][gy][gd] : 6.5f;
 
-        gc3D.setFill(Color.web("#38bdf8"));
+        gc3D.setFill(gd > 0 ? Color.web("#38bdf8") : Color.web("#fbbf24"));
         gc3D.setFont(Font.font("System", javafx.scene.text.FontWeight.BOLD, 11));
-        gc3D.fillText(String.format(Locale.US, "📍 Cellule Voxel [%d, %d]", gx, gy), hx + 10, hy + 18);
+        gc3D.fillText(String.format(Locale.US, "📍 Voxel [%d, %d, Profondeur: %d/%d]", gx, gy, gd, SOIL_DEPTH - 1), hx + 10, hy + 18);
 
         gc3D.setFill(Color.web("#f8fafc"));
         gc3D.setFont(Font.font("System", 10));
-        gc3D.fillText(String.format(Locale.US, "📏 Alt: %.2fm (%.0fcm) | Res: %.1fmm/vx", altM, altM * 100, (sM / GRID_SIZE) * 1000), hx + 10, hy + 36);
+        gc3D.fillText(String.format(Locale.US, "📏 Alt: %.2fm | Profondeur: -%.2fm (%dcm)", voxelAltM, depthM, (int)(depthM * 100)), hx + 10, hy + 36);
         gc3D.fillText(String.format(Locale.US, "🟤 Substrat: %s", matName), hx + 10, hy + 52);
-        gc3D.fillText(String.format(Locale.US, "💧 Humidité: %d%% | %s", humPct, isRiver ? "💧 Écoulement Rivière" : "🌱 Terrestre"), hx + 10, hy + 68);
-        gc3D.fillText(String.format(Locale.US, "🌲 Végétation: %s", hasTree ? "🌳 Canopée d'Arbre & Ombrage" : "🌾 Herbe & Flora Surface"), hx + 10, hy + 84);
-        gc3D.fillText(String.format(Locale.US, "🧪 Phéromones: Piste Poussière %d%% | Alarme %d%%", (gx * 7 + gy * 13) % 85, (gx * 3) % 20), hx + 10, hy + 100);
+        gc3D.fillText(String.format(Locale.US, "💧 Humidité: %d%% | 🌡️ Temp: %.1f°C", humPct, tempC), hx + 10, hy + 68);
+        gc3D.fillText(String.format(Locale.US, "🧪 pH: %.1f | 🌿 Densité Racines: %d%%", phVal, rootPct), hx + 10, hy + 84);
+        gc3D.fillText(String.format(Locale.US, "🌲 Environnement: %s", hasTree ? "🌳 Canopée d'Arbre" : (isRiver ? "💧 Écoulement Rivière" : "🌾 Terrestre")), hx + 10, hy + 100);
         gc3D.fillText(String.format(Locale.US, "🐜 Activité Insectes: %s", isSimulationMode ? (followedAnt != null ? "🎯 Suivi Ant en cours..." : "Ouvrières en patrouille (4/m²)") : "Mode Éditeur Pas d'insectes"), hx + 10, hy + 116);
     }
 
@@ -3198,6 +3732,7 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private void drawColonyOverlay3D(double cx, double cy, double scale, double radAz, double radEl) {
+        if (!isSimulationMode) return;
         if (activeSimulation != null && !activeSimulation.getColonies().isEmpty()) {
             for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
                 for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
@@ -3214,32 +3749,32 @@ public class WorldEditorPane extends BorderPane {
                     double[] p = project3DPoint(gx, gy, gz, cx, cy, scale, radAz, radEl);
                     double antR = Math.max(2.0, 3.2 * (zoom / 7.5));
 
-                    Color casteColor = switch (ind.getCaste()) {
-                        case QUEEN -> Color.web("#d946ef");
-                        case SOLDIER -> Color.web("#ef4444");
-                        case WORKER, FORAGER, NURSE -> Color.web("#f59e0b");
-                        case MALE -> Color.web("#06b6d4");
-                    };
+                    Color casteColor;
+                    if (currentRenderMode == RenderMode.REALISTIC) {
+                        casteColor = switch (ind.getCaste()) {
+                            case QUEEN -> Color.web("#1c120c");
+                            case SOLDIER -> Color.web("#422212");
+                            case WORKER, FORAGER, NURSE -> Color.web("#2b1d14");
+                            case MALE -> Color.web("#150f0a");
+                        };
+                    } else {
+                        casteColor = switch (ind.getCaste()) {
+                            case QUEEN -> Color.web("#d946ef");
+                            case SOLDIER -> Color.web("#ef4444");
+                            case WORKER, FORAGER, NURSE -> Color.web("#f59e0b");
+                            case MALE -> Color.web("#06b6d4");
+                        };
+                    }
 
-                    gc3D.setFill(casteColor);
-                    gc3D.fillOval(p[0] - antR, p[1] - antR, antR * 2, antR * 2);
-                    gc3D.setStroke(Color.web("#0f172a"));
-                    gc3D.setLineWidth(1.0);
-                    gc3D.strokeOval(p[0] - antR, p[1] - antR, antR * 2, antR * 2);
-
-                    double hRad = ind.getHeading();
-                    double hLen = antR * 2.2;
-                    gc3D.setStroke(casteColor.brighter());
-                    gc3D.setLineWidth(1.5);
-                    gc3D.strokeLine(p[0], p[1], p[0] + Math.cos(hRad) * hLen, p[1] + Math.sin(hRad) * hLen);
+                    drawRealisticAnt(gc3D, p[0], p[1], ind.getHeading(), ind.getCaste(), casteColor, antR, ind.isCarryingFood());
 
                     if (followedAnt == null) {
                         followedAnt = ind; // Select first ant as default tracked ant
                     }
 
                     if (followedAnt != null && followedAnt.getId().equals(ind.getId())) {
-                        if (antTrailHistory.isEmpty() || Math.hypot(antTrailHistory.getLast()[0] - p[0], antTrailHistory.getLast()[1] - p[1]) > 2.0) {
-                            antTrailHistory.add(new double[]{p[0], p[1], gx, gy});
+                        if (antTrailHistory.isEmpty() || Math.hypot(antTrailHistory.getLast()[0] - gx, antTrailHistory.getLast()[1] - gy) > 0.5) {
+                            antTrailHistory.add(new double[]{gx, gy, gz});
                             if (antTrailHistory.size() > MAX_TRAIL_LENGTH) {
                                 antTrailHistory.removeFirst();
                             }
@@ -3261,15 +3796,188 @@ public class WorldEditorPane extends BorderPane {
                 double z = heightGrid[gx][gy] * 40.0 + 1.5;
                 double[] p = project3DPoint(gx, gy, z, cx, cy, scale, radAz, radEl);
                 double antR = Math.max(1.8, 2.5 * (zoom / 7.5));
+                double heading = rand.nextDouble() * Math.PI * 2;
+                org.swarmforge.core.domain.Individual.Caste caste = (i % 10 == 0) ? org.swarmforge.core.domain.Individual.Caste.QUEEN : ((i % 6 == 0) ? org.swarmforge.core.domain.Individual.Caste.SOLDIER : org.swarmforge.core.domain.Individual.Caste.WORKER);
+                Color casteColor;
+                if (currentRenderMode == RenderMode.REALISTIC) {
+                    casteColor = (caste == org.swarmforge.core.domain.Individual.Caste.QUEEN) ? Color.web("#1c120c") : ((caste == org.swarmforge.core.domain.Individual.Caste.SOLDIER) ? Color.web("#422212") : Color.web("#2b1d14"));
+                } else {
+                    casteColor = (caste == org.swarmforge.core.domain.Individual.Caste.QUEEN) ? Color.web("#d946ef") : ((caste == org.swarmforge.core.domain.Individual.Caste.SOLDIER) ? Color.web("#ef4444") : Color.web("#f59e0b"));
+                }
 
-                gc3D.setFill(i % 6 == 0 ? Color.web("#ef4444") : Color.web("#f59e0b"));
-                gc3D.fillOval(p[0] - antR, p[1] - antR, antR * 2, antR * 2);
-                gc3D.setFill(Color.web("#0f172a"));
-                gc3D.fillOval(p[0] - antR * 0.5, p[1] - antR * 0.5, antR, antR);
+                drawRealisticAnt(gc3D, p[0], p[1], heading, caste, casteColor, antR, i % 4 == 0);
             }
         }
 
         drawTrackedAntFX(cx, cy, scale, radAz, radEl);
+    }
+
+    private void drawRealisticAnt(GraphicsContext gc, double px, double py, double heading,
+                                  org.swarmforge.core.domain.Individual.Caste caste,
+                                  Color baseColor, double baseR, boolean isCarryingFood) {
+        if (caste == null) caste = org.swarmforge.core.domain.Individual.Caste.WORKER;
+
+        double scale = switch (caste) {
+            case QUEEN -> 1.8;
+            case SOLDIER -> 1.4;
+            case MALE -> 1.25;
+            default -> 1.0;
+        };
+        double r = baseR * scale;
+
+        double cosH = Math.cos(heading);
+        double sinH = Math.sin(heading);
+        double pxH = -sinH;
+        double pyH = cosH;
+
+        double headDist = r * 1.6;
+        double petioleDist = -r * 0.8;
+        double gasterDist = -r * 2.3;
+
+        double headX = px + cosH * headDist;
+        double headY = py + sinH * headDist;
+        double petioleX = px + cosH * petioleDist;
+        double petioleY = py + sinH * petioleDist;
+        double gasterX = px + cosH * gasterDist;
+        double gasterY = py + sinH * gasterDist;
+
+        double headR = (caste == org.swarmforge.core.domain.Individual.Caste.SOLDIER) ? r * 1.3 : r * 0.85;
+        double thoraxR = r * 0.75;
+        double gasterR = (caste == org.swarmforge.core.domain.Individual.Caste.QUEEN) ? r * 1.7 : r * 1.25;
+
+        // 1. LEGS (6 Articulated Legs)
+        gc.setLineWidth(Math.max(1.0, r * 0.35));
+        gc.setStroke(baseColor.darker().darker());
+
+        double[][] legOffsets = {
+            {r * 0.5, 0.95, 0.4},
+            {0.0, 1.1, 0.0},
+            {-r * 0.5, 1.0, -0.4}
+        };
+
+        double animTime = (System.currentTimeMillis() % 600) / 600.0;
+        int legIdx = 0;
+
+        for (double[] legDef : legOffsets) {
+            double offFwd = legDef[0];
+            double legLen = r * 1.8 * legDef[1];
+            double fwdAng = legDef[2];
+            double swing = Math.sin(animTime * Math.PI * 2 + legIdx * Math.PI / 3) * 0.25;
+            legIdx++;
+
+            for (int side : new int[]{1, -1}) {
+                double rootX = px + cosH * offFwd + pxH * (thoraxR * 0.6 * side);
+                double rootY = py + sinH * offFwd + pyH * (thoraxR * 0.6 * side);
+
+                double kneeAngle = heading + (fwdAng + swing * side) + (Math.PI / 2.0 * side);
+                double kneeX = rootX + Math.cos(kneeAngle) * (legLen * 0.55);
+                double kneeY = rootY + Math.sin(kneeAngle) * (legLen * 0.55);
+
+                double tipAngle = kneeAngle + (0.4 * side);
+                double tipX = kneeX + Math.cos(tipAngle) * (legLen * 0.5);
+                double tipY = kneeY + Math.sin(tipAngle) * (legLen * 0.5);
+
+                gc.strokeLine(rootX, rootY, kneeX, kneeY);
+                gc.strokeLine(kneeX, kneeY, tipX, tipY);
+            }
+        }
+
+        // 2. GASTER (Abdomen)
+        gc.setFill(baseColor.darker());
+        gc.fillOval(gasterX - gasterR, gasterY - gasterR, gasterR * 2, gasterR * 2);
+        gc.setStroke(Color.web("#0f172a"));
+        gc.setLineWidth(1.0);
+        gc.strokeOval(gasterX - gasterR, gasterY - gasterR, gasterR * 2, gasterR * 2);
+
+        gc.setStroke(baseColor.brighter());
+        gc.setLineWidth(1.2);
+        gc.strokeArc(gasterX - gasterR * 0.7, gasterY - gasterR * 0.7, gasterR * 1.4, gasterR * 1.4, Math.toDegrees(heading) + 120, 120, javafx.scene.shape.ArcType.OPEN);
+
+        // 3. PETIOLE
+        gc.setFill(baseColor.darker().darker());
+        double petR = Math.max(1.2, r * 0.4);
+        gc.fillOval(petioleX - petR, petioleY - petR, petR * 2, petR * 2);
+
+        // 4. THORAX
+        gc.setFill(baseColor);
+        gc.fillOval(px - thoraxR, py - thoraxR, thoraxR * 2, thoraxR * 2);
+        gc.setStroke(Color.web("#0f172a"));
+        gc.setLineWidth(1.0);
+        gc.strokeOval(px - thoraxR, py - thoraxR, thoraxR * 2, thoraxR * 2);
+
+        if (caste == org.swarmforge.core.domain.Individual.Caste.MALE || caste == org.swarmforge.core.domain.Individual.Caste.QUEEN) {
+            gc.setFill(Color.web("rgba(224, 242, 254, 0.55)"));
+            gc.setStroke(Color.web("rgba(255, 255, 255, 0.85)"));
+            gc.setLineWidth(0.8);
+
+            double wingLen = r * 2.6;
+            for (int side : new int[]{1, -1}) {
+                double wAngle = heading - Math.PI * 0.75 * side;
+                double wx = px + Math.cos(wAngle) * wingLen;
+                double wy = py + Math.sin(wAngle) * wingLen;
+                gc.fillOval(px + (wx - px) * 0.5 - r * 0.4, py + (wy - py) * 0.5 - r * 0.4, r * 1.5, r * 0.7);
+                gc.strokeOval(px + (wx - px) * 0.5 - r * 0.4, py + (wy - py) * 0.5 - r * 0.4, r * 1.5, r * 0.7);
+            }
+        }
+
+        // 5. HEAD & EYES
+        gc.setFill(baseColor);
+        gc.fillOval(headX - headR, headY - headR, headR * 2, headR * 2);
+        gc.setStroke(Color.web("#0f172a"));
+        gc.setLineWidth(1.0);
+        gc.strokeOval(headX - headR, headY - headR, headR * 2, headR * 2);
+
+        gc.setFill(Color.web("#090d16"));
+        double eyeR = Math.max(1.0, headR * 0.35);
+        double eyeOffX = pxH * (headR * 0.65);
+        double eyeOffY = pyH * (headR * 0.65);
+        gc.fillOval(headX + eyeOffX - eyeR, headY + eyeOffY - eyeR, eyeR * 2, eyeR * 2);
+        gc.fillOval(headX - eyeOffX - eyeR, headY - eyeOffY - eyeR, eyeR * 2, eyeR * 2);
+
+        // 6. ANTENNAE
+        gc.setStroke(baseColor.brighter().brighter());
+        gc.setLineWidth(Math.max(1.0, r * 0.3));
+
+        double antLen = r * 2.2;
+        for (int side : new int[]{1, -1}) {
+            double scapeAng = heading + (0.35 * side);
+            double jointX = headX + Math.cos(scapeAng) * (antLen * 0.5);
+            double jointY = headY + Math.sin(scapeAng) * (antLen * 0.5);
+
+            double funicleAng = scapeAng + (0.45 * side);
+            double tipX = jointX + Math.cos(funicleAng) * (antLen * 0.5);
+            double tipY = jointY + Math.sin(funicleAng) * (antLen * 0.5);
+
+            gc.strokeLine(headX + Math.cos(scapeAng) * (headR * 0.5), headY + Math.sin(scapeAng) * (headR * 0.5), jointX, jointY);
+            gc.strokeLine(jointX, jointY, tipX, tipY);
+        }
+
+        // 7. MANDIBLES
+        gc.setStroke(caste == org.swarmforge.core.domain.Individual.Caste.SOLDIER ? Color.web("#7f1d1d") : Color.web("#451a03"));
+        gc.setLineWidth(caste == org.swarmforge.core.domain.Individual.Caste.SOLDIER ? Math.max(1.8, r * 0.5) : Math.max(1.0, r * 0.3));
+
+        double mandLen = (caste == org.swarmforge.core.domain.Individual.Caste.SOLDIER) ? r * 1.3 : r * 0.7;
+        for (int side : new int[]{1, -1}) {
+            double mRootX = headX + cosH * (headR * 0.7) + pxH * (headR * 0.4 * side);
+            double mRootY = headY + sinH * (headR * 0.7) + pyH * (headR * 0.4 * side);
+
+            double mTipX = mRootX + cosH * mandLen - pxH * (mandLen * 0.35 * side);
+            double mTipY = mRootY + sinH * mandLen - pyH * (mandLen * 0.35 * side);
+
+            gc.strokeLine(mRootX, mRootY, mTipX, mTipY);
+        }
+
+        // 8. CARRIED ITEM
+        if (isCarryingFood) {
+            double foodX = headX + cosH * (headR * 1.5);
+            double foodY = headY + sinH * (headR * 1.5);
+            double foodR = r * 0.9;
+            gc.setFill(Color.web("#22c55e"));
+            gc.fillOval(foodX - foodR, foodY - foodR * 0.6, foodR * 2, foodR * 1.2);
+            gc.setStroke(Color.web("#15803d"));
+            gc.setLineWidth(1.0);
+            gc.strokeOval(foodX - foodR, foodY - foodR * 0.6, foodR * 2, foodR * 1.2);
+        }
     }
 
     private void drawTrackedAntFX(double cx, double cy, double scale, double radAz, double radEl) {
@@ -3281,9 +3989,11 @@ public class WorldEditorPane extends BorderPane {
             for (int i = 0; i < antTrailHistory.size() - 1; i++) {
                 double[] pt1 = antTrailHistory.get(i);
                 double[] pt2 = antTrailHistory.get(i + 1);
+                double[] s1 = project3DPoint(pt1[0], pt1[1], pt1[2], cx, cy, scale, radAz, radEl);
+                double[] s2 = project3DPoint(pt2[0], pt2[1], pt2[2], cx, cy, scale, radAz, radEl);
                 double alpha = (double) (i + 1) / antTrailHistory.size();
                 gc3D.setStroke(Color.web("#f59e0b", alpha * 0.85));
-                gc3D.strokeLine(pt1[0], pt1[1], pt2[0], pt2[1]);
+                gc3D.strokeLine(s1[0], s1[1], s2[0], s2[1]);
             }
         }
 
@@ -3763,6 +4473,42 @@ public class WorldEditorPane extends BorderPane {
         }
     }
 
+    private void draw3DCylinderTrunk(double baseX, double baseY, double trunkW, double trunkH, Color barkBaseCol, Color shadowCol, Color highlightCol) {
+        double halfW = Math.max(1.5, trunkW / 2.0);
+        double capH = Math.max(3.0, trunkW * 0.35);
+
+        // 1. Root Flare at Ground Level
+        double[] rootXs = {baseX - halfW * 1.6, baseX - halfW, baseX + halfW, baseX + halfW * 1.6};
+        double[] rootYs = {baseY, baseY - capH * 0.5, baseY - capH * 0.5, baseY};
+        gc3D.setFill(shadowCol);
+        gc3D.fillPolygon(rootXs, rootYs, 4);
+
+        // 2. Dark Shadow Core (Left Edge)
+        gc3D.setFill(shadowCol);
+        gc3D.fillRect(baseX - halfW, baseY - trunkH, halfW * 0.7, trunkH);
+
+        // 3. Main Bark Body (Center)
+        gc3D.setFill(barkBaseCol);
+        gc3D.fillRect(baseX - halfW * 0.3, baseY - trunkH, halfW * 0.9, trunkH);
+
+        // 4. Specular Highlight Edge (Right Edge)
+        gc3D.setFill(highlightCol);
+        gc3D.fillRect(baseX + halfW * 0.3, baseY - trunkH, halfW * 0.7, trunkH);
+
+        // 5. Bark Contour Line Strands
+        gc3D.setStroke(shadowCol.darker());
+        gc3D.setLineWidth(1.0);
+        gc3D.strokeLine(baseX - halfW, baseY - trunkH, baseX - halfW, baseY);
+        gc3D.strokeLine(baseX + halfW, baseY - trunkH, baseX + halfW, baseY);
+
+        // 6. Cylindrical Top Cap Ring
+        gc3D.setFill(barkBaseCol.brighter());
+        gc3D.fillOval(baseX - halfW, baseY - trunkH - capH / 2.0, halfW * 2.0, capH);
+        gc3D.setStroke(shadowCol);
+        gc3D.setLineWidth(0.8);
+        gc3D.strokeOval(baseX - halfW, baseY - trunkH - capH / 2.0, halfW * 2.0, capH);
+    }
+
     private void drawPheromoneOverlay3D(double cx, double cy, double scale, double radAz, double radEl) {
         if (!isSimulationMode || activeSimulation == null) return;
         org.swarmforge.core.gpu.SparsePheromoneGrid grid = activeSimulation.getPheromoneGrid();
@@ -3841,55 +4587,110 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private void drawWeatherOverlay3D(double w, double h) {
+        if (activeSimulation == null || activeSimulation.getWeather() == null) {
+            return;
+        }
+
+        org.swarmforge.core.world.WeatherSystem weather = activeSimulation.getWeather();
+        org.swarmforge.core.world.WeatherMarkovChain.WeatherState state = weather.getWeatherState();
+        if (state == null) state = org.swarmforge.core.world.WeatherMarkovChain.WeatherState.SUNNY;
+
         long timeMs = System.currentTimeMillis();
         double timeSec = timeMs / 1000.0;
 
-        // 1. Overcast Sky Dimming & Rolling Cloud Shadows
-        gc3D.setFill(Color.web("#020617", 0.18)); // Dim 3D viewport lighting for overcast sky
-        gc3D.fillRect(0, 0, w, h);
-
-        // Rolling cloud shadow shapes
-        gc3D.setFill(Color.web("#0f172a", 0.25));
-        double cloudX1 = (timeMs * 0.02) % (w + 200) - 100;
-        double cloudX2 = (timeMs * 0.035) % (w + 300) - 150;
-        gc3D.fillOval(cloudX1, 10, 220, 50);
-        gc3D.fillOval(cloudX2, 25, 280, 60);
-
-        // 2. Animated Rain Streaks & Bouncing Hail Impact Particles
-        Random r = new Random(12345);
-        int particleCount = 70;
-
-        // Rain Streaks
-        gc3D.setStroke(Color.web("#38bdf8", 0.55));
-        gc3D.setLineWidth(1.2);
-        for (int i = 0; i < particleCount; i++) {
-            double rx = (r.nextDouble() * w + timeSec * 180.0 + i * 37) % w;
-            double ry = (r.nextDouble() * h + timeSec * 450.0 + i * 53) % h;
-            gc3D.strokeLine(rx, ry, rx - 6, ry + 16);
-        }
-
-        // Bouncing Hail Impact Particles
-        gc3D.setFill(Color.web("#f8fafc", 0.85));
-        for (int i = 0; i < 25; i++) {
-            double hx = (r.nextDouble() * w + i * 67) % w;
-            double hy = (r.nextDouble() * h + timeSec * 320.0 + i * 89) % h;
-            gc3D.fillOval(hx, hy, 2.5, 2.5);
-            // Impact bounce splash ring
-            if (hy > h * 0.5) {
-                gc3D.setStroke(Color.web("#ffffff", 0.40));
-                gc3D.setLineWidth(0.8);
-                gc3D.strokeOval(hx - 2, hy - 1, 4, 2);
+        // 1. Dynamic Atmosphere & Lighting Vignette dimming based on Weather State & Light Level
+        float lightLevel = weather.getLightLevel();
+        if (lightLevel < 0.85f || state != org.swarmforge.core.world.WeatherMarkovChain.WeatherState.SUNNY) {
+            double opacity = Math.max(0.0, Math.min(0.35, (0.85 - lightLevel) * 0.40));
+            if (opacity > 0.01) {
+                gc3D.setFill(Color.web("#020617", opacity));
+                gc3D.fillRect(0, 0, w, h);
             }
         }
 
-        // 3. Forest Fire Flames & Smoke Plumes (Incendie)
-        if (activeSimulation != null || true) {
-            gc3D.setFill(Color.web("#f97316", 0.70));
-            gc3D.fillOval(w * 0.75 - 15, h * 0.4 - 20, 30, 25);
-            gc3D.setFill(Color.web("#ef4444", 0.85));
-            gc3D.fillOval(w * 0.75 - 10, h * 0.4 - 25, 20, 20);
-            gc3D.setFill(Color.web("#fbbf24", 0.90));
-            gc3D.fillOval(w * 0.75 - 5, h * 0.4 - 28, 10, 12);
+        // 2. Rolling Cloud Shadows for Overcast / Storm / Rain
+        if (state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.OVERCAST ||
+            state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.LIGHT_RAIN ||
+            state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.HEAVY_RAIN ||
+            state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.THUNDERSTORM ||
+            state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.FOG) {
+
+            gc3D.setFill(Color.web("#0f172a", 0.15));
+            double cloudX1 = (timeMs * 0.02) % (w + 300) - 150;
+            double cloudX2 = (timeMs * 0.035) % (w + 400) - 200;
+            gc3D.fillOval(cloudX1, 10, 260, 60);
+            gc3D.fillOval(cloudX2, 30, 320, 70);
+        }
+
+        // 3. Fog Effect Overlay
+        if (state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.FOG) {
+            gc3D.setFill(Color.web("#cbd5e1", 0.22));
+            gc3D.fillRect(0, 0, w, h);
+        }
+
+        // 4. Precipitation Effects (Rain / Snow / Hail) aligned with Camera Yaw & Wind Direction
+        float windSpeed = weather.getWindSpeed();
+        double effectiveWindAngleRad = Math.toRadians(weather.getWindDirectionAngle()) - Math.toRadians(azimuth);
+        double windDx = Math.cos(effectiveWindAngleRad) * (windSpeed * 0.35);
+        double windDy = 14.0 + Math.sin(effectiveWindAngleRad) * (windSpeed * 0.15);
+
+        Random r = new Random(54321);
+
+        if (state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.LIGHT_RAIN ||
+            state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.HEAVY_RAIN ||
+            state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.THUNDERSTORM) {
+
+            int particleCount = (state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.HEAVY_RAIN ||
+                                 state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.THUNDERSTORM) ? 80 : 35;
+
+            gc3D.setStroke(Color.web("#38bdf8", 0.50));
+            gc3D.setLineWidth(1.1);
+            for (int i = 0; i < particleCount; i++) {
+                double rx = (r.nextDouble() * w + timeSec * (120.0 + windDx * 10.0) + i * 47) % w;
+                double ry = (r.nextDouble() * h + timeSec * (350.0 + windDy * 10.0) + i * 61) % h;
+                gc3D.strokeLine(rx, ry, rx + windDx, ry + windDy);
+            }
+        }
+
+        // 5. Snow Flakes
+        if (state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.SNOW ||
+            state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.BLIZZARD) {
+
+            int snowCount = (state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.BLIZZARD) ? 90 : 40;
+            gc3D.setFill(Color.web("#f8fafc", 0.80));
+            for (int i = 0; i < snowCount; i++) {
+                double sx = (r.nextDouble() * w + timeSec * (40.0 + windDx * 5.0) + Math.sin(timeSec + i) * 15.0 + i * 31) % w;
+                double sy = (r.nextDouble() * h + timeSec * (80.0 + windDy * 2.0) + i * 53) % h;
+                double size = 1.5 + r.nextDouble() * 2.0;
+                gc3D.fillOval(sx, sy, size, size);
+            }
+        }
+
+        // 6. Hail Impact Particles (ONLY when weather state is HAIL)
+        if (state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.HAIL) {
+            gc3D.setFill(Color.web("#f8fafc", 0.90));
+            for (int i = 0; i < 30; i++) {
+                double hx = (r.nextDouble() * w + timeSec * 60.0 + i * 67) % w;
+                double hy = (r.nextDouble() * h + timeSec * 420.0 + i * 89) % h;
+                gc3D.fillOval(hx, hy, 3.0, 3.0);
+                if (hy > h * 0.6) {
+                    gc3D.setStroke(Color.web("#ffffff", 0.50));
+                    gc3D.setLineWidth(0.9);
+                    gc3D.strokeOval(hx - 3, hy - 1, 6, 2);
+                }
+            }
+        }
+
+        // 7. Thunderstorm Strobe Flash & Speed-of-Sound Delayed Thunder Strike
+        if (state == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.THUNDERSTORM) {
+            if (r.nextDouble() < 0.02) {
+                gc3D.setFill(Color.web("#ffffff", 0.35));
+                gc3D.fillRect(0, 0, w, h);
+
+                // Distance to lightning strike (simulated 3D distance 350m - 1400m)
+                double strikeDistMeters = 350.0 + r.nextDouble() * 1050.0;
+                org.swarmforge.client.audio.SimulationAudioManager.getInstance().triggerLightningThunderStrike(strikeDistMeters);
+            }
         }
     }
 
@@ -3950,7 +4751,7 @@ public class WorldEditorPane extends BorderPane {
 
         boolean isTranslucent = showTranslucentVolumetricModeCheck != null && showTranslucentVolumetricModeCheck.isSelected();
         boolean showInclusions = showGravelInclusionsCheck != null && showGravelInclusionsCheck.isSelected();
-        boolean isAdvMode = useAdvancedVolumetricModeCheck == null || useAdvancedVolumetricModeCheck.isSelected();
+        boolean isAdvMode = true;
 
         double refZ0 = 32.0;
         double refZ1 = 32.0;
@@ -3969,7 +4770,7 @@ public class WorldEditorPane extends BorderPane {
             double[] pBot0 = project3DPoint(x0, y0, botZ0, cx, cy, scale, radAz, radEl);
 
             byte mat = soilLayers[x0][y0][d];
-            boolean isVoid = voidGrid[x0][y0][d];
+            boolean isVoid = voidGrid[x0][y0][d] && (showGalleriesCheck == null || showGalleriesCheck.isSelected());
 
             Color matCol;
             if (isVoid) {
@@ -3978,6 +4779,10 @@ public class WorldEditorPane extends BorderPane {
                 matCol = Color.web("#1e293b", 0.3);
             } else {
                 matCol = getMaterialColor(mat);
+                if (isAdvMode) {
+                    double depthDim = 1.0 - (d / (double) SOIL_DEPTH) * 0.32;
+                    matCol = matCol.deriveColor(0, 1.0, depthDim, 1.0);
+                }
             }
 
             if (isSliceCutaway) {
@@ -3991,26 +4796,79 @@ public class WorldEditorPane extends BorderPane {
             gc3D.setFill(matCol);
             gc3D.fillPolygon(new double[]{pTop0[0], pTop1[0], pBot1[0], pBot0[0]}, new double[]{pTop0[1], pTop1[1], pBot1[1], pBot0[1]}, 4);
 
-            if (isAdvMode && showInclusions && !isVoid && isMaterialVisible(mat)) {
+            double wallInclNoise = valueNoise3D(x0 * 0.35, y0 * 0.35, d * 0.35);
+            if (isAdvMode && showInclusions && !isVoid && isMaterialVisible(mat) && wallInclNoise > 0.68) {
                 double midX = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
-                double midY = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[1]) / 4.0;
-                double voxSize = Math.max(1.5, Math.abs(pTop1[0] - pTop0[0]) * 0.4);
+                double midY = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[0]) / 4.0;
+                double voxSize = Math.max(1.2, Math.abs(pTop1[0] - pTop0[0]) * 0.25);
 
-                if (mat == 3) {
+                if (mat == 4) { // Gravel / Cailloutis pebble inclusions
+                    gc3D.setFill(Color.web("#cbd5e1"));
+                    gc3D.fillOval(midX - voxSize * 0.3, midY - voxSize * 0.2, voxSize * 0.4, voxSize * 0.35);
+                    gc3D.setFill(Color.web("#475569"));
+                    gc3D.fillOval(midX + voxSize * 0.05, midY + voxSize * 0.05, voxSize * 0.25, voxSize * 0.2);
+                } else if (mat == 5) { // Organic Litter / Matière Organique detritus
+                    gc3D.setFill(Color.web("#78350f"));
+                    gc3D.fillOval(midX - voxSize * 0.3, midY - voxSize * 0.2, voxSize * 0.5, voxSize * 0.3);
+                    gc3D.setFill(Color.web("#523219"));
+                    gc3D.fillRect(midX, midY, voxSize * 0.25, voxSize * 0.2);
+                } else if (mat == 3) { // Rock / Stone inclusion
                     gc3D.setFill(Color.web("#e2e8f0"));
-                    gc3D.fillOval(midX - voxSize * 0.5, midY - voxSize * 0.5, voxSize, voxSize * 0.7);
-                } else if (mat == 2) {
+                    gc3D.fillOval(midX - voxSize * 0.35, midY - voxSize * 0.3, voxSize * 0.7, voxSize * 0.5);
+                } else if (mat == 2) { // Clay inclusion
                     gc3D.setFill(Color.web("#7c2d12"));
-                    gc3D.fillRect(midX - voxSize * 0.4, midY - voxSize * 0.3, voxSize * 0.8, voxSize * 0.5);
-                } else if (mat == 1) {
+                    gc3D.fillRect(midX - voxSize * 0.3, midY - voxSize * 0.2, voxSize * 0.6, voxSize * 0.4);
+                } else if (mat == 1) { // Sand grain inclusion
                     gc3D.setFill(Color.web("#fef08a"));
-                    gc3D.fillOval(midX - voxSize * 0.3, midY - voxSize * 0.3, voxSize * 0.6, voxSize * 0.6);
+                    gc3D.fillOval(midX - voxSize * 0.25, midY - voxSize * 0.25, voxSize * 0.5, voxSize * 0.5);
                 }
             }
 
-            if (showHumidityCheck != null && showHumidityCheck.isSelected()) {
-                gc3D.setFill(Color.web("#0284c7", humidityGrid[x0][y0] * 0.45));
+            // Natural Caverns & Subterranean Cavities Rendering (isVoid)
+            if (isVoid) {
+                double midX = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
+                double midY = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[0]) / 4.0;
+                // Cave ambient depth glow
+                gc3D.setFill(Color.web("#0284c7", 0.22));
                 gc3D.fillPolygon(new double[]{pTop0[0], pTop1[0], pBot1[0], pBot0[0]}, new double[]{pTop0[1], pTop1[1], pBot1[1], pBot0[1]}, 4);
+                // Cave Stalactite Spikes
+                gc3D.setFill(Color.web("#334155"));
+                gc3D.fillPolygon(new double[]{midX - 2, midX + 2, midX}, new double[]{pTop0[1], pTop0[1], pTop0[1] + 6}, 3);
+            }
+
+            // Depth-mapped Soil Moisture Tensor Visualization (3D Array Indexing)
+            if (showHumidityCheck != null && showHumidityCheck.isSelected() && humidityGrid != null) {
+                float hum = humidityGrid[x0][y0][d];
+                gc3D.setFill(Color.web("#0284c7", Math.min(0.70, hum * 0.50 + 0.05)));
+                gc3D.fillPolygon(new double[]{pTop0[0], pTop1[0], pBot1[0], pBot0[0]}, new double[]{pTop0[1], pTop1[1], pBot1[1], pBot0[1]}, 4);
+            }
+
+            // Depth-mapped Soil pH Level Tensor Visualization (3D Array Indexing)
+            if (showPhCheck != null && showPhCheck.isSelected() && phGrid != null) {
+                float ph = phGrid[x0][y0][d] > 0 ? phGrid[x0][y0][d] : 6.5f;
+                // Acidic (<6.5): Amber/Yellow #eab308, Neutral (6.5-7.5): Green #22c55e, Alkaline (>7.5): Deep Blue #1e40af
+                Color phColor;
+                if (ph < 6.5f) {
+                    phColor = Color.web("#eab308", Math.min(0.65, (6.5 - ph) * 0.22 + 0.15));
+                } else if (ph > 7.5f) {
+                    phColor = Color.web("#1e40af", Math.min(0.65, (ph - 7.5) * 0.22 + 0.15));
+                } else {
+                    phColor = Color.web("#22c55e", 0.35);
+                }
+                gc3D.setFill(phColor);
+                gc3D.fillPolygon(new double[]{pTop0[0], pTop1[0], pBot1[0], pBot0[0]}, new double[]{pTop0[1], pTop1[1], pBot1[1], pBot0[1]}, 4);
+            }
+
+            if (showRootsCheck != null && showRootsCheck.isSelected() && rootGrid != null && rootGrid[x0][y0][d] > 0.15f) {
+                double midX = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
+                double midY = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[0]) / 4.0;
+                double rSc = Math.max(1.0, rootGrid[x0][y0][d] * 2.2 * (zoom / 7.5));
+                gc3D.setStroke(Color.web("#78350f", Math.min(0.95, rootGrid[x0][y0][d] * 1.3)));
+                gc3D.setLineWidth(rSc);
+                gc3D.strokeLine(pTop0[0], pTop0[1], pBot1[0], pBot1[1]);
+                gc3D.strokeLine(pTop1[0], pTop1[1], pBot0[0], pBot0[1]);
+                gc3D.setFill(Color.web("#451a03"));
+                gc3D.fillOval(midX - rSc, midY - rSc, rSc * 2, rSc * 2);
             }
 
             gc3D.setStroke(matCol.darker());
@@ -4026,14 +4884,6 @@ public class WorldEditorPane extends BorderPane {
             gc3D.setLineWidth(1.6);
             gc3D.strokeLine(pTop0[0], pTop0[1], pTop1[0], pTop1[1]);
         }
-
-        double botBed0 = surfZ0 - maxDepthPx;
-        double botBed1 = surfZ1 - maxDepthPx;
-        double[] pBed0 = project3DPoint(x0, y0, botBed0, cx, cy, scale, radAz, radEl);
-        double[] pBed1 = project3DPoint(x1, y1, botBed1, cx, cy, scale, radAz, radEl);
-        gc3D.setStroke(Color.web("#020617"));
-        gc3D.setLineWidth(1.8);
-        gc3D.strokeLine(pBed0[0], pBed0[1], pBed1[0], pBed1[1]);
     }
 
     private boolean isMaterialVisible(byte mat) {
@@ -4041,6 +4891,8 @@ public class WorldEditorPane extends BorderPane {
         if (mat == 1 && showSandCheck != null && !showSandCheck.isSelected()) return false;
         if (mat == 2 && showClayCheck != null && !showClayCheck.isSelected()) return false;
         if (mat == 3 && showStoneCheck != null && !showStoneCheck.isSelected()) return false;
+        if (mat == 4 && showGravelCheck != null && !showGravelCheck.isSelected()) return false;
+        if (mat == 5 && showOrganicCheck != null && !showOrganicCheck.isSelected()) return false;
         return true;
     }
 
@@ -4057,26 +4909,47 @@ public class WorldEditorPane extends BorderPane {
         gcSide.rect(10, 10, w - 20, h - 20);
         gcSide.clip();
 
+        double cutRatio = slicePlaneSlider != null ? (slicePlaneSlider.getValue() / 100.0) : 1.0;
+        int cutX = Math.max(0, Math.min(GRID_SIZE - 1, (int) (GRID_SIZE * cutRatio)));
+
         double blockW = (w - 20.0) / GRID_SIZE;
         double blockH = (h - 90.0) / SOIL_DEPTH;
-        int midY = GRID_SIZE / 2;
 
-        for (int x = 0; x < GRID_SIZE; x++) {
-            double surfaceH = heightGrid[x][midY] * 25.0;
+        for (int y = 0; y < GRID_SIZE; y++) {
+            int yIdx = GRID_SIZE - 1 - y; // Inverted left-to-right to match 3D viewport orientation
+            double surfaceH = heightGrid[cutX][yIdx] * 25.0;
             for (int d = 0; d < SOIL_DEPTH; d++) {
-                double px = 10 + x * blockW;
+                double px = 10 + y * blockW;
                 double py = 65 - surfaceH + d * blockH;
 
-                byte mat = soilLayers[x][midY][d];
-                if (voidGrid[x][midY][d] || !isMaterialVisible(mat)) {
+                byte mat = soilLayers[cutX][yIdx][d];
+                boolean isVoid = voidGrid[cutX][yIdx][d] && (showGalleriesCheck == null || showGalleriesCheck.isSelected());
+                if (isVoid || !isMaterialVisible(mat)) {
                     gcSide.setFill(Color.web("#0f172a"));
                 } else {
                     gcSide.setFill(getMaterialColor(mat));
                 }
                 gcSide.fillRect(px, py, Math.max(1, blockW + 0.5), Math.max(1, blockH + 0.5));
+
+                if (showHumidityCheck != null && showHumidityCheck.isSelected() && humidityGrid != null) {
+                    float hum = humidityGrid[cutX][yIdx][d];
+                    gcSide.setFill(Color.web("#0284c7", Math.min(0.60, hum * 0.50)));
+                    gcSide.fillRect(px, py, Math.max(1, blockW + 0.5), Math.max(1, blockH + 0.5));
+                }
+                if (showPhCheck != null && showPhCheck.isSelected() && phGrid != null) {
+                    float ph = phGrid[cutX][yIdx][d] > 0 ? phGrid[cutX][yIdx][d] : 6.5f;
+                    Color phColor = ph < 6.5f ? Color.web("#eab308", 0.35) : (ph > 7.5f ? Color.web("#1e40af", 0.35) : Color.web("#22c55e", 0.25));
+                    gcSide.setFill(phColor);
+                    gcSide.fillRect(px, py, Math.max(1, blockW + 0.5), Math.max(1, blockH + 0.5));
+                }
+                if (showRootsCheck != null && showRootsCheck.isSelected() && rootGrid != null && rootGrid[cutX][yIdx][d] > 0.15f) {
+                    gcSide.setStroke(Color.web("#78350f", 0.85));
+                    gcSide.setLineWidth(Math.max(1.0, rootGrid[cutX][yIdx][d] * 2.0));
+                    gcSide.strokeLine(px + blockW/2, py, px + blockW/2, py + blockH);
+                }
             }
 
-            double px = 10 + x * blockW;
+            double px = 10 + y * blockW;
             double pyBase = 65 - surfaceH + SOIL_DEPTH * blockH;
             gcSide.setFill(Color.web("#020617"));
             gcSide.fillRect(px, pyBase, Math.max(1, blockW + 0.5), h - pyBase);
@@ -4093,9 +4966,10 @@ public class WorldEditorPane extends BorderPane {
         gcSide.setGlobalAlpha(1.0);
 
         gcSide.setFill(Color.web("#d97706"));
-        for (int x = 0; x < GRID_SIZE; x += 2) {
-            if (carvedVoxelGrid[x][midY]) {
-                double px = 10 + x * blockW;
+        for (int y = 0; y < GRID_SIZE; y += 2) {
+            int yIdx = GRID_SIZE - 1 - y;
+            if (carvedVoxelGrid[cutX][yIdx]) {
+                double px = 10 + y * blockW;
                 double py = 70;
                 gcSide.fillOval(px, py, 6, 6);
             }
@@ -4108,7 +4982,8 @@ public class WorldEditorPane extends BorderPane {
         gcSide.strokeRect(10, 10, w - 20, h - 20);
 
         gcSide.setFill(Color.WHITE);
-        gcSide.fillText("Profil Stratigraphique & Vides (Coupe 2D — Nappe: " + String.format("%.0f", wtDepth) + "cm)", 20, 30);
+        gcSide.setFont(Font.font("System", javafx.scene.text.FontWeight.BOLD, 10));
+        gcSide.fillText(String.format(Locale.US, "Profil Stratigraphique Scanner 3D (Coupe X=%d — Scanner: %.0f%%)", cutX, cutRatio * 100.0), 20, 30);
     }
 
     private void drawTop() {
@@ -4131,6 +5006,7 @@ public class WorldEditorPane extends BorderPane {
         double side = Math.min((w - 30) / GRID_SIZE, (h - 30) / GRID_SIZE) * tZoom;
         double cellW = side;
         double cellH = side;
+        double cutRatio = slicePlaneSlider != null ? (slicePlaneSlider.getValue() / 100.0) : 1.0;
 
         for (int x = 0; x < GRID_SIZE; x += 2) {
             for (int y = 0; y < GRID_SIZE; y += 2) {
@@ -4144,7 +5020,7 @@ public class WorldEditorPane extends BorderPane {
 
                 if (showHumidityCheck != null && showHumidityCheck.isSelected()) {
                     gcTop.setFill(Color.web("#0284c7"));
-                    gcTop.setGlobalAlpha(humidityGrid[x][y] * 0.6);
+                    gcTop.setGlobalAlpha(humidityGrid[x][y][0] * 0.6);
                     gcTop.fillRect(15 + x * cellW + cx, 15 + y * cellH + cy, cellW * 2, cellH * 2);
                     gcTop.setGlobalAlpha(1.0);
                 }
@@ -4256,6 +5132,18 @@ public class WorldEditorPane extends BorderPane {
             }
         }
 
+        // Draw Scanner 3D Cut Line Overlay on Top View Minimap
+        if (cutRatio < 0.99) {
+            int cutX = Math.max(0, Math.min(GRID_SIZE - 1, (int) (GRID_SIZE * cutRatio)));
+            double scanLineX = 15 + cutX * cellW + cx;
+            gcTop.setStroke(Color.web("#22c55e", 0.95));
+            gcTop.setLineWidth(2.0);
+            gcTop.strokeLine(scanLineX, 10, scanLineX, h - 10);
+            gcTop.setFill(Color.web("#22c55e"));
+            gcTop.setFont(Font.font("System", javafx.scene.text.FontWeight.BOLD, 10));
+            gcTop.fillText(String.format(Locale.US, "📡 Scanner Coupe 3D (%d%%)", (int)(cutRatio * 100)), Math.min(w - 140, scanLineX + 5), 25);
+        }
+
         gcTop.restore();
 
         gcTop.setStroke(Color.web("#38bdf8"));
@@ -4271,9 +5159,10 @@ public class WorldEditorPane extends BorderPane {
         switch (mat) {
             case 1: return Color.web("#eab308"); // Sand
             case 2: return Color.web("#9a3412"); // Clay
-            case 3: return Color.web("#64748b"); // Stone
-            case 4: return Color.web("#523219"); // Organic
-            default: return Color.web("#3d2817"); // Earth
+            case 3: return Color.web("#64748b"); // Stone (Pierre / Roche)
+            case 4: return Color.web("#94a3b8"); // Gravel (Gravier / Cailloutis)
+            case 5: return Color.web("#523219"); // Organic Litter
+            default: return Color.web("#3d2817"); // Earth (Humus)
         }
     }
 
@@ -4295,7 +5184,9 @@ public class WorldEditorPane extends BorderPane {
 
     private void addLsn(Slider... sliders) {
         for (Slider s : sliders) {
-            s.valueProperty().addListener((o, a, b) -> repaintAllViews());
+            if (s != null) {
+                s.valueProperty().addListener((o, a, b) -> repaintAllViews());
+            }
         }
     }
 
@@ -4534,10 +5425,13 @@ public class WorldEditorPane extends BorderPane {
     private HBox sv(Slider s, String unit) {
         HBox b = new HBox(8);
         b.setAlignment(Pos.CENTER_LEFT);
-        Label v = new Label(fmt(s.getValue()) + (unit == null || unit.isEmpty() ? "" : " " + unit));
+        Label v = new Label(fmt(s != null ? s.getValue() : 0.0) + (unit == null || unit.isEmpty() ? "" : " " + unit));
         v.setStyle("-fx-text-fill:#00d4ff;-fx-min-width:36;-fx-font-weight:bold;");
-        s.valueProperty().addListener((o, a, n) -> v.setText(fmt(n.doubleValue()) + (unit == null || unit.isEmpty() ? "" : " " + unit)));
-        b.getChildren().addAll(s, v);
+        if (s != null) {
+            s.valueProperty().addListener((o, a, n) -> v.setText(fmt(n.doubleValue()) + (unit == null || unit.isEmpty() ? "" : " " + unit)));
+            b.getChildren().add(s);
+        }
+        b.getChildren().add(v);
         return b;
     }
 
@@ -4550,6 +5444,66 @@ public class WorldEditorPane extends BorderPane {
 
     private boolean isForestArea(int gx, int gy) {
         return (gx * 17 + gy * 31) % 11 == 0;
+    }
+
+    public void triggerWildfire(int cx, int cy, int radius) {
+        if (surfaceFloraItems != null) {
+            for (SurfaceFloraItem item : surfaceFloraItems) {
+                double distSq = (item.gx - cx) * (item.gx - cx) + (item.gy - cy) * (item.gy - cy);
+                if (distSq <= radius * radius) {
+                    item.isCharred = true;
+                    if (item.type < 4) {
+                        item.type = 5; // Convert green flora to charred twig remnant
+                    }
+                }
+            }
+        }
+        if (tempGrid != null && humidityGrid != null && phGrid != null) {
+            for (int x = Math.max(0, cx - radius); x <= Math.min(GRID_SIZE - 1, cx + radius); x++) {
+                for (int y = Math.max(0, cy - radius); y <= Math.min(GRID_SIZE - 1, cy + radius); y++) {
+                    double distSq = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+                    if (distSq <= radius * radius) {
+                        for (int d = 0; d < SOIL_DEPTH; d++) {
+                            humidityGrid[x][y][d] = 0.0f; // Evaporates all soil moisture
+                            phGrid[x][y][d] = Math.min(10.0f, phGrid[x][y][d] + 1.2f); // Alkaline ash deposit
+                            tempGrid[x][y][d] = Math.min(120.0f, tempGrid[x][y][d] + 85.0f); // Thermal spike
+                        }
+                    }
+                }
+            }
+        }
+        repaintAllViews();
+    }
+
+    public void triggerFlood(int cx, int cy, int radius) {
+        if (tempGrid != null && humidityGrid != null) {
+            for (int x = Math.max(0, cx - radius); x <= Math.min(GRID_SIZE - 1, cx + radius); x++) {
+                for (int y = Math.max(0, cy - radius); y <= Math.min(GRID_SIZE - 1, cy + radius); y++) {
+                    double distSq = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+                    if (distSq <= radius * radius) {
+                        for (int d = 0; d < SOIL_DEPTH; d++) {
+                            humidityGrid[x][y][d] = 1.0f; // Saturate moisture to 100%
+                            tempGrid[x][y][d] = Math.max(5.0f, tempGrid[x][y][d] - 12.0f); // Water cooling effect
+                        }
+                    }
+                }
+            }
+        }
+        repaintAllViews();
+    }
+
+    public void triggerDrought() {
+        if (tempGrid != null && humidityGrid != null) {
+            for (int x = 0; x < GRID_SIZE; x++) {
+                for (int y = 0; y < GRID_SIZE; y++) {
+                    for (int d = 0; d < SOIL_DEPTH; d++) {
+                        humidityGrid[x][y][d] = Math.max(0.02f, humidityGrid[x][y][d] * 0.25f);
+                        tempGrid[x][y][d] = Math.min(45.0f, tempGrid[x][y][d] + 8.0f);
+                    }
+                }
+            }
+        }
+        repaintAllViews();
     }
 
     public double getZoom() {

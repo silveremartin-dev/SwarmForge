@@ -37,6 +37,7 @@ public class Individual implements java.io.Serializable, AgentView {
     private float energy = 100f;
     private float age; // In simulation ticks
     private boolean alive = true;
+    private String causeOfDeath;
 
     // Needs
     private float hunger;
@@ -384,8 +385,12 @@ public class Individual implements java.io.Serializable, AgentView {
         }
 
         // 1. Starvation & Dehydration Mortality (Hunger = 100 or Energy = 0)
-        if (energy <= 0 || hunger >= 100 || thirst >= 100) {
-            die(); // Mortality from starvation / exhaustion
+        if (energy <= 0 || hunger >= 100) {
+            die("Famine / Épuisement énergétique");
+            return;
+        }
+        if (thirst >= 100) {
+            die("Déshydratation sévère");
             return;
         }
 
@@ -408,7 +413,8 @@ public class Individual implements java.io.Serializable, AgentView {
         }
 
         if (age >= maxLifespan) {
-            die(); // Mortality from old age
+            die("Vieillesse (Fin de vie naturelle)");
+            return;
         }
 
         // 3. Species-Specific Mandibular Wear & Age Polyethism Shift
@@ -461,6 +467,28 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public float getAge() {
         return age;
+    }
+
+    public void setAge(float age) {
+        this.age = Math.max(0f, age);
+    }
+
+    public float getMaxLifespan() {
+        if (species != null) {
+            return switch (caste) {
+                case QUEEN -> species.getQueenLifespan();
+                case SOLDIER -> species.getWorkerLifespan() * 1.5f;
+                case MALE -> species.getWorkerLifespan() * 0.4f;
+                case WORKER, FORAGER, NURSE -> species.getWorkerLifespan();
+            };
+        } else {
+            return switch (caste) {
+                case QUEEN -> 250000f;
+                case SOLDIER -> 100000f;
+                case MALE -> 30000f;
+                case WORKER, FORAGER, NURSE -> 75000f;
+            };
+        }
     }
 
     public boolean isAlive() {
@@ -858,18 +886,70 @@ public class Individual implements java.io.Serializable, AgentView {
         }
     }
 
+    public static String formatCasteFr(Caste c) {
+        if (c == null) return "Individu";
+        return switch (c) {
+            case QUEEN -> "Reine";
+            case SOLDIER -> "Soldat";
+            case MALE -> "Mâle";
+            default -> "Ouvrière";
+        };
+    }
+
     // Combat Logic
     public void takeDamage(float amount, Individual attacker) {
         float effectiveDamage = Math.max(0, amount - this.defense);
         this.health -= effectiveDamage;
+
+        if (attacker != null) {
+            String attShort = "#" + attacker.getId().toString().substring(0, 8).toUpperCase();
+            String defShort = "#" + this.getId().toString().substring(0, 8).toUpperCase();
+            String attCaste = formatCasteFr(attacker.getCaste());
+            String defCaste = formatCasteFr(this.caste);
+            int xPos = (int) this.x;
+            int yPos = (int) this.y;
+            int zPos = (int) this.z;
+
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("attackerId", attShort);
+            data.put("attackerCaste", attacker.getCaste().name());
+            data.put("defenderId", defShort);
+            data.put("defenderCaste", this.caste.name());
+            data.put("damage", Math.round(effectiveDamage * 10.0f) / 10.0f);
+            data.put("healthRemaining", Math.max(0, Math.round(this.health * 10.0f) / 10.0f));
+            data.put("x", xPos);
+            data.put("y", yPos);
+            data.put("z", zPos);
+
+            String msg = String.format("Combat : %s %s a infligé %.1f dégâts à %s %s à (%d, %d, %d) [PV restant: %.1f]",
+                    attCaste, attShort, effectiveDamage, defCaste, defShort, xPos, yPos, zPos, Math.max(0, this.health));
+
+            org.swarmforge.core.event.SimulationEvent evt = org.swarmforge.core.event.SimulationEvent.obtain(
+                    org.swarmforge.core.event.SimulationEvent.EventType.COMBAT_OCCURRED,
+                    org.swarmforge.core.event.SimulationEvent.Severity.WARNING,
+                    0, msg, data);
+            org.swarmforge.core.event.EventBus.getInstance().publish(evt);
+        }
+
         if (this.health <= 0) {
-            die();
+            String attackerName = (attacker != null) ? (attacker.getCaste() + " #" + attacker.getId().toString().substring(0, 5)) : "Ennemi";
+            die("Combat contre " + attackerName);
         }
     }
 
     public void die() {
+        die(this.causeOfDeath != null ? this.causeOfDeath : "Inconnue");
+    }
+
+    public void die(String cause) {
         this.alive = false;
-        // Optional: clear references, etc.
+        if (this.causeOfDeath == null) {
+            this.causeOfDeath = cause;
+        }
+    }
+
+    public String getCauseOfDeath() {
+        return causeOfDeath;
     }
 
     public float getMaxHealth() {

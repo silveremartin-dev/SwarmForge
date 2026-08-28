@@ -11,15 +11,39 @@ import org.swarmforge.core.simulation.Simulation;
 
 /**
  * Interface for environmental disasters and events.
- * Can be weather-based (Storm, Snow) or physical (Fire, Earthquake).
+ * Can be weather-based (Storm, Heatwave, Drought) or physical (Fire, Earthquake, Flood).
+ * Supports multi-tick duration and intensity-scaled progressive damage.
  */
 public interface DisasterEvent {
     String getName();
 
     String getSeverity(); // "MINOR", "MAJOR", "CATASTROPHIC"
 
+    default float getIntensity() {
+        return 0.5f;
+    }
+
+    default int getDurationTicks() {
+        return 1;
+    }
+
+    default int getRemainingTicks() {
+        return 0;
+    }
+
+    default boolean isFinished() {
+        return getRemainingTicks() <= 0;
+    }
+
     /**
-     * Apply the disaster's effect to the simulation world.
+     * Initial trigger call when disaster starts.
      */
     void trigger(Simulation simulation, Terrarium terrarium);
+
+    /**
+     * Progressive per-tick execution over disaster duration.
+     */
+    default void tick(Simulation simulation, Terrarium terrarium) {
+        // Default: single-tick instantaneous execution
+    }
 }

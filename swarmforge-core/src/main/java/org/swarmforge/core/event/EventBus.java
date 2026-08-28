@@ -40,7 +40,76 @@ public class EventBus {
     // Async executor
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
+    // Asynchronous Disk Log Streaming
+    private boolean diskLoggingEnabled = true;
+    private String scenarioName = "swarmforge";
+    private java.io.PrintWriter diskWriter = null;
+    private final ExecutorService diskExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "SwarmForge-DiskEventLogger");
+        t.setDaemon(true);
+        return t;
+    });
+
     private EventBus() {
+        startDiskLogging("swarmforge");
+    }
+
+    public synchronized void startDiskLogging(String scenario) {
+        if (scenario != null && !scenario.isBlank()) {
+            this.scenarioName = scenario.replaceAll("[^a-zA-Z0-9_-]", "_");
+        }
+        closeDiskLogging();
+        try {
+            java.io.File logDir = new java.io.File("logs");
+            if (!logDir.exists()) logDir.mkdirs();
+            String timestamp = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
+                    .format(java.time.LocalDateTime.now());
+            java.io.File logFile = new java.io.File(logDir, String.format("events_%s_%s.csv", this.scenarioName, timestamp));
+            diskWriter = new java.io.PrintWriter(new java.io.BufferedWriter(new java.io.FileWriter(logFile, java.nio.charset.StandardCharsets.UTF_8, true)));
+            diskWriter.println("SequenceID,Timestamp,Tick,Type,Severity,Message,Data");
+            diskWriter.flush();
+            LOG.info("Started streaming simulation events to disk: {}", logFile.getAbsolutePath());
+        } catch (Exception e) {
+            LOG.error("Failed to initialize disk event logger", e);
+        }
+    }
+
+    public synchronized void closeDiskLogging() {
+        if (diskWriter != null) {
+            try {
+                diskWriter.flush();
+                diskWriter.close();
+            } catch (Exception ignored) {}
+            diskWriter = null;
+        }
+    }
+
+    public void setDiskLoggingEnabled(boolean enabled) {
+        this.diskLoggingEnabled = enabled;
+    }
+
+    public boolean isDiskLoggingEnabled() {
+        return diskLoggingEnabled;
+    }
+
+    private void writeEventToDiskAsync(SimulationEvent event) {
+        if (!diskLoggingEnabled) return;
+        diskExecutor.submit(() -> {
+            synchronized (this) {
+                if (diskWriter == null) {
+                    startDiskLogging(scenarioName);
+                }
+                if (diskWriter != null) {
+                    String dataStr = event.getData() != null ? event.getData().toString().replace("\"", "'") : "";
+                    diskWriter.printf("%d,%s,%d,%s,%s,\"%s\",\"%s\"%n",
+                            event.getSequenceId(), event.getTimestamp(), event.getTick(),
+                            event.getType(), event.getSeverity(),
+                            event.getMessage() != null ? event.getMessage().replace("\"", "'") : "",
+                            dataStr);
+                    diskWriter.flush();
+                }
+            }
+        });
     }
 
     public static EventBus getInstance() {
@@ -93,6 +162,9 @@ public class EventBus {
      * Publish an event synchronously.
      */
     public void publish(SimulationEvent event) {
+        // Asynchronously stream event to disk log
+        writeEventToDiskAsync(event);
+
         // Record to history
         boolean stored = false;
         // Record to history

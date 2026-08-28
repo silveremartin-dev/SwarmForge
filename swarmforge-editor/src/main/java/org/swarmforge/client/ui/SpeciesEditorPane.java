@@ -38,6 +38,7 @@ import java.util.function.Consumer;
  */
 public class SpeciesEditorPane extends VBox {
 
+    private final I18nManager i18n = I18nManager.getInstance();
     private final SpeciesPresetManager presetManager = new SpeciesPresetManager();
 
     // UI Fields
@@ -306,25 +307,39 @@ public class SpeciesEditorPane extends VBox {
         mainTabPane = new TabPane();
         mainTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        Tab tabTaxonomy = new Tab("Taxonomie", createTaxonomyPane());
+        Tab tabTaxonomy = new Tab();
+        tabTaxonomy.textProperty().bind(i18n.createStringBinding("species.tab.taxonomy"));
+        tabTaxonomy.setContent(createTaxonomyPane());
         tabTaxonomy.setGraphic(new FontIcon(Feather.BOOK));
 
-        Tab tabQueens = new Tab("Colonie & Reines", createQueensPane());
+        Tab tabQueens = new Tab();
+        tabQueens.textProperty().bind(i18n.createStringBinding("species.tab.queens"));
+        tabQueens.setContent(createQueensPane());
         tabQueens.setGraphic(new FontIcon(Feather.AWARD));
 
-        Tab tabCastes = new Tab("Castes & Morphologie", createCastesPane());
+        Tab tabCastes = new Tab();
+        tabCastes.textProperty().bind(i18n.createStringBinding("species.tab.castes"));
+        tabCastes.setContent(createCastesPane());
         tabCastes.setGraphic(new FontIcon(Feather.USERS));
 
-        Tab tabStages = new Tab("Stades de Vie", createStagesPane());
+        Tab tabStages = new Tab();
+        tabStages.textProperty().bind(i18n.createStringBinding("species.tab.stages"));
+        tabStages.setContent(createStagesPane());
         tabStages.setGraphic(new FontIcon(Feather.CLOCK));
 
-        Tab tabDiet = new Tab("Régime & Métabolisme", createDietPane());
+        Tab tabDiet = new Tab();
+        tabDiet.textProperty().bind(i18n.createStringBinding("species.tab.diet"));
+        tabDiet.setContent(createDietPane());
         tabDiet.setGraphic(new FontIcon(Feather.FEATHER));
 
-        Tab tabSensors = new Tab("Capteurs & Perception", createSensorsPane());
+        Tab tabSensors = new Tab();
+        tabSensors.textProperty().bind(i18n.createStringBinding("species.tab.sensors"));
+        tabSensors.setContent(createSensorsPane());
         tabSensors.setGraphic(new FontIcon(Feather.EYE));
 
-        Tab tabNest = new Tab("Nids & Comportements", createNestPane());
+        Tab tabNest = new Tab();
+        tabNest.textProperty().bind(i18n.createStringBinding("species.tab.nest"));
+        tabNest.setContent(createNestPane());
         tabNest.setGraphic(new FontIcon(Feather.HOME));
 
         List<Tab> tabs = List.of(tabTaxonomy, tabQueens, tabCastes, tabStages, tabDiet, tabSensors, tabNest);

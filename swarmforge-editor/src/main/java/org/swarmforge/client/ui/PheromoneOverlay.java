@@ -209,7 +209,7 @@ public class PheromoneOverlay extends VBox {
      * Redraw the overlay with high visual fidelity.
      */
     public void redraw() {
-        if (canvas == null || canvas.getWidth() <= 0 || canvas.getHeight() <= 0) return;
+        if (canvas == null || gc == null || canvas.getWidth() < 10 || canvas.getHeight() < 10) return;
         gc.setFill(Color.rgb(15, 23, 42, 0.9));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
@@ -223,7 +223,9 @@ public class PheromoneOverlay extends VBox {
         Color baseColor = OVERLAY_COLORS[selectedType % OVERLAY_COLORS.length];
 
         for (int x = 0; x < dataWidth; x++) {
+            if (x >= currentData.length || currentData[x] == null) continue;
             for (int y = 0; y < dataHeight; y++) {
+                if (y >= currentData[x].length) continue;
                 float value = currentData[x][y];
 
                 if (value > threshold) {
@@ -288,7 +290,7 @@ public class PheromoneOverlay extends VBox {
      * Clear the overlay.
      */
     public void clear() {
-        if (canvas == null || canvas.getWidth() <= 0 || canvas.getHeight() <= 0) return;
+        if (canvas == null || gc == null || canvas.getWidth() < 10 || canvas.getHeight() < 10) return;
         gc.setFill(Color.rgb(15, 23, 42));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 

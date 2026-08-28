@@ -66,12 +66,27 @@ public class Simulation {
     private final SymbiosisSystem symbiosisSystem;
     private final org.swarmforge.core.world.VegetationSystem vegetationSystem;
     private final java.util.Map<org.swarmforge.core.domain.Colony, org.swarmforge.core.structure.ConstructionManager> constructionManagers = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.List<org.swarmforge.core.simulation.disasters.DisasterEvent> activeDisasters = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public void triggerDisaster(org.swarmforge.core.simulation.disasters.DisasterEvent disaster) {
+        if (disaster != null) {
+            disaster.trigger(this, terrarium);
+            if (!disaster.isFinished()) {
+                activeDisasters.add(disaster);
+            }
+        }
+    }
+
+    public java.util.List<org.swarmforge.core.simulation.disasters.DisasterEvent> getActiveDisasters() {
+        return activeDisasters;
+    }
 
     // Cluster
     private org.swarmforge.core.compute.ComputeCluster computeCluster;
 
     // Environment
     private final org.swarmforge.core.world.DayNightCycle dayNightCycle;
+    private org.swarmforge.core.world.WeatherMarkovChain.WeatherState lastWeatherState = null;
 
     public org.swarmforge.core.world.DayNightCycle getDayNightCycle() {
         return dayNightCycle;
@@ -101,7 +116,7 @@ public class Simulation {
         this.tickDurationNanos = 1_000_000_000L / ticksPerSecond;
 
         this.pathfinder = new org.swarmforge.core.spatial.AStarPathfinder(terrarium);
-        this.history = new SimulationHistory(1000, 60);
+        this.history = new SimulationHistory(1000, 1);
         this.predatorManager = new PredatorManager(this);
         this.territoryManager = new TerritoryManager(this);
         this.diseaseManager = new org.swarmforge.core.simulation.diseases.DiseaseManager(this);
@@ -142,6 +157,10 @@ public class Simulation {
     }
 
     public Colony addColony(String speciesType, int queens, int workers, int soldiers, float x, float y) {
+        return addColony(speciesType, queens, workers, soldiers, 0, x, y);
+    }
+
+    public Colony addColony(String speciesType, int queens, int workers, int soldiers, int brood, float x, float y) {
         org.swarmforge.core.species.Species species;
         switch (speciesType) {
             case "FormicaRufa" -> species = new org.swarmforge.core.species.FormicaRufa();
@@ -155,33 +174,62 @@ public class Simulation {
         if (queens > 0) colony.createQueens(queens);
         if (workers > 0) colony.createWorkers(workers);
         if (soldiers > 0) colony.createSoldiers(soldiers);
+        if (brood > 0) colony.createBrood(brood);
         addColony(colony);
         return colony;
     }
 
     // Inner class to avoid leaking Simulation reference if not careful, though here
     // it's fine.
+    private static String formatCasteFr(Individual.Caste caste) {
+        if (caste == null) return "Individu";
+        return switch (caste) {
+            case QUEEN -> "Reine";
+            case SOLDIER -> "Soldat";
+            case MALE -> "Mâle";
+            case NURSE -> "Nourrice";
+            case FORAGER -> "Forageuse";
+            case WORKER -> "Ouvrière";
+        };
+    }
+
     private class ColonyObserver implements org.swarmforge.core.domain.ColonyListener {
         @Override
         public void onBirth(Colony colony, Individual individual) {
             SimulationEvent.EventType type;
+            String shortId = "#" + individual.getId().toString().substring(0, 8).toUpperCase();
+            String colName = (colony.getSpeciesName() != null && !colony.getSpeciesName().isEmpty()) 
+                ? colony.getSpeciesName() : "Colonie #" + colony.getId().toString().substring(0, 5);
+            String casteFr = formatCasteFr(individual.getCaste());
+            int x = (int) individual.getX();
+            int y = (int) individual.getY();
+            int z = (int) individual.getZ();
+
             String message;
             if (individual.getLifeStage() == Individual.LifeStage.EGG) {
                 type = SimulationEvent.EventType.WORKER_BORN;
-                message = "Ponte : La reine de " + colony.getSpeciesName() + " a pondu un œuf (" + individual.getCaste() + ")";
+                message = String.format("Ponte : La reine de %s a pondu un œuf (%s %s) à (%d, %d, %d)",
+                        colName, casteFr, shortId, x, y, z);
             } else {
                 type = switch (individual.getCaste()) {
                     case QUEEN -> SimulationEvent.EventType.QUEEN_BORN;
                     case SOLDIER -> SimulationEvent.EventType.SOLDIER_BORN;
                     default -> SimulationEvent.EventType.WORKER_BORN;
                 };
-                message = "Naissance : " + individual.getCaste() + " dans la colonie " + colony.getSpeciesName();
+                message = String.format("Naissance : %s %s dans la colonie %s à (%d, %d, %d)",
+                        casteFr, shortId, colName, x, y, z);
             }
 
             java.util.Map<String, Object> data = new java.util.HashMap<>();
-            data.put("colony", colony.getSpeciesName());
+            data.put("colony", colName);
+            data.put("colonyId", colony.getId().toString());
+            data.put("individualId", shortId);
             data.put("caste", individual.getCaste().name());
             data.put("stage", individual.getLifeStage().name());
+            data.put("job", individual.getJob().name());
+            data.put("x", x);
+            data.put("y", y);
+            data.put("z", z);
 
             SimulationEvent event = SimulationEvent.obtain(type, SimulationEvent.Severity.INFO, tickCount.get(), message, data);
             eventQueue.offer(event);
@@ -199,11 +247,30 @@ public class Simulation {
                     ? SimulationEvent.Severity.CRITICAL
                     : SimulationEvent.Severity.WARNING;
 
-            java.util.Map<String, Object> data = new java.util.HashMap<>();
-            data.put("colony", colony.getSpeciesName());
-            data.put("caste", individual.getCaste().name());
+            String shortId = "#" + individual.getId().toString().substring(0, 8).toUpperCase();
+            String colName = (colony.getSpeciesName() != null && !colony.getSpeciesName().isEmpty()) 
+                ? colony.getSpeciesName() : "Colonie #" + colony.getId().toString().substring(0, 5);
+            String casteFr = formatCasteFr(individual.getCaste());
+            String cause = (individual.getCauseOfDeath() != null && !individual.getCauseOfDeath().isEmpty())
+                ? individual.getCauseOfDeath() : "Inconnue";
+            long ageTicks = (long) individual.getAge();
+            int x = (int) individual.getX();
+            int y = (int) individual.getY();
+            int z = (int) individual.getZ();
 
-            String message = "Décès : " + individual.getCaste() + " de la colonie " + colony.getSpeciesName();
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("colony", colName);
+            data.put("colonyId", colony.getId().toString());
+            data.put("individualId", shortId);
+            data.put("caste", individual.getCaste().name());
+            data.put("ageTicks", ageTicks);
+            data.put("cause", cause);
+            data.put("x", x);
+            data.put("y", y);
+            data.put("z", z);
+
+            String message = String.format("Décès : %s %s (Cause: %s, Âge: %d pas) dans la colonie %s à (%d, %d, %d)",
+                    casteFr, shortId, cause, ageTicks, colName, x, y, z);
             SimulationEvent event = SimulationEvent.obtain(type, severity, tickCount.get(), message, data);
             eventQueue.offer(event);
             org.swarmforge.core.event.EventBus.getInstance().publish(event);
@@ -227,16 +294,17 @@ public class Simulation {
     }
 
     public void pause() {
-        state.set(State.PAUSED);
-        org.swarmforge.core.event.EventBus.getInstance().publish(
-            SimulationEvent.obtain(
-                SimulationEvent.EventType.SIMULATION_PAUSED,
-                SimulationEvent.Severity.INFO,
-                getTickCount(),
-                "⏸️ Simulation mise en pause",
-                null
-            )
-        );
+        if (state.compareAndSet(State.RUNNING, State.PAUSED)) {
+            org.swarmforge.core.event.EventBus.getInstance().publish(
+                SimulationEvent.obtain(
+                    SimulationEvent.EventType.SIMULATION_PAUSED,
+                    SimulationEvent.Severity.INFO,
+                    getTickCount(),
+                    "⏸️ Simulation mise en pause",
+                    null
+                )
+            );
+        }
     }
 
     public org.swarmforge.core.gpu.SparsePheromoneGrid getPheromoneGrid() {
@@ -248,19 +316,20 @@ public class Simulation {
     }
 
     public void stop() {
-        state.set(State.STOPPED);
-        if (simulationThread != null) {
-            simulationThread.interrupt();
+        if (state.compareAndSet(State.RUNNING, State.STOPPED) || state.compareAndSet(State.PAUSED, State.STOPPED)) {
+            if (simulationThread != null) {
+                simulationThread.interrupt();
+            }
+            org.swarmforge.core.event.EventBus.getInstance().publish(
+                SimulationEvent.obtain(
+                    SimulationEvent.EventType.SIMULATION_STOPPED,
+                    SimulationEvent.Severity.INFO,
+                    getTickCount(),
+                    "⏹️ Simulation arrêtée",
+                    null
+                )
+            );
         }
-        org.swarmforge.core.event.EventBus.getInstance().publish(
-            SimulationEvent.obtain(
-                SimulationEvent.EventType.SIMULATION_STOPPED,
-                SimulationEvent.Severity.INFO,
-                getTickCount(),
-                "⏹️ Simulation arrêtée",
-                null
-            )
-        );
     }
 
     private void runLoop() {
@@ -272,6 +341,14 @@ public class Simulation {
             if (sleepNanos > 0) {
                 try {
                     Thread.sleep(sleepNanos / 1_000_000, (int) (sleepNanos % 1_000_000));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            } else {
+                // MAX Speed mode: Yield CPU to keep JavaFX UI thread and system fully responsive!
+                try {
+                    Thread.sleep(1);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
@@ -294,7 +371,27 @@ public class Simulation {
 
         // Rebuild food index
         foodIndex.clear();
-        foodSources.removeIf(FoodSource::isDepleted);
+        foodSources.removeIf(food -> {
+            boolean depleted = food.isDepleted();
+            if (depleted) {
+                String resName = (food.getType() != null) ? food.getType().name() : "Nourriture";
+                int xPos = (int) food.getX();
+                int yPos = (int) food.getY();
+                int zPos = (int) food.getZ();
+
+                java.util.Map<String, Object> data = new java.util.HashMap<>();
+                data.put("resource", resName);
+                data.put("x", xPos);
+                data.put("y", yPos);
+                data.put("z", zPos);
+
+                String msg = String.format("🥀 Nourriture Épuisée : Gisement de %s entièrement consommé à (%d, %d, %d)", resName, xPos, yPos, zPos);
+                SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.FOOD_DEPLETED, SimulationEvent.Severity.INFO, currentTick, msg, data);
+                eventQueue.offer(evt);
+                org.swarmforge.core.event.EventBus.getInstance().publish(evt);
+            }
+            return depleted;
+        });
         for (FoodSource food : foodSources) {
             food.tick();
             foodIndex.insert(food, food.getX(), food.getY(), food.getZ());
@@ -488,15 +585,6 @@ public class Simulation {
         pheromoneGrid.tick();
         pathfinder.tick();
 
-        // Update time (assuming 60 TPS, 1 day = 1440 ticks = 24 mins)
-        // 1 tick = 1 minute simulation time?
-        // If 1440 ticks = 24 hours. 1 tick = 24/1440 = 1/60 hours = 1 minute.
-        weather.advanceTime(1f / 60f);
-        dayNightCycle.tick();
-        // seasonManager.tick(); // Already called via update? No, seasonManager.tick()
-        // is correct.
-        seasonManager.tick();
-
         // Process construction
         for (org.swarmforge.core.structure.ConstructionManager cm : constructionManagers.values()) {
             cm.tick();
@@ -506,6 +594,14 @@ public class Simulation {
 
         if (diseaseManager != null)
             diseaseManager.tick();
+
+        // Process active multi-tick disasters
+        if (!activeDisasters.isEmpty()) {
+            activeDisasters.removeIf(disaster -> {
+                disaster.tick(this, terrarium);
+                return disaster.isFinished();
+            });
+        }
 
         // Water Simulation
         if (tickCount.get() % 10 == 0) { // Every 10 ticks is enough for fluid dynamics
@@ -569,6 +665,47 @@ public class Simulation {
             weather.advanceTime(1.0f / 3600.0f);
             if (dayNightCycle != null) {
                 dayNightCycle.setPhase(weather.getTimeOfDay() / 24.0f);
+            }
+
+            org.swarmforge.core.world.WeatherMarkovChain.WeatherState currentWState = weather.getWeatherState();
+            if (currentWState != null && currentWState != lastWeatherState) {
+                boolean isSevere = (currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.THUNDERSTORM ||
+                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.BLIZZARD ||
+                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.TEMPEST ||
+                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.SANDSTORM ||
+                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.HAIL ||
+                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.HEATWAVE ||
+                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.DROUGHT);
+
+                SimulationEvent.EventType evtType = isSevere
+                        ? SimulationEvent.EventType.DISASTER_OCCURRED
+                        : SimulationEvent.EventType.WEATHER_CHANGED;
+
+                SimulationEvent.Severity severity = isSevere
+                        ? SimulationEvent.Severity.WARNING
+                        : SimulationEvent.Severity.INFO;
+
+                java.util.Map<String, Object> data = new java.util.HashMap<>();
+                data.put("weatherState", currentWState.label);
+                data.put("temperature", Math.round(weather.getTemperature() * 10.0f) / 10.0f);
+                data.put("humidity", Math.round(weather.getHumidity() * 10.0f) / 10.0f);
+                data.put("windSpeed", Math.round(weather.getWindSpeed() * 10.0f) / 10.0f);
+                data.put("windDirection", weather.getWindDirection());
+                data.put("rainfall", Math.round(weather.getRainfall() * 10.0f) / 10.0f);
+                data.put("snowfall", Math.round(weather.getSnowfall() * 10.0f) / 10.0f);
+                data.put("pressure", Math.round(weather.getPressure() * 10.0f) / 10.0f);
+                data.put("flightSuitability", Math.round(currentWState.flightSuitability * 100.0f) + "%");
+
+                String msg = String.format("%s : %s (T: %.1f°C, Vent: %.1f km/h %s, Humidité: %.0f%%, Pluie: %.1f mm/h, Pression: %.1f hPa)",
+                        (isSevere ? "🌋 Désastre Écologique" : "🌧️ Changement Climat"),
+                        currentWState.label, weather.getTemperature(), weather.getWindSpeed(), weather.getWindDirection(),
+                        weather.getHumidity(), weather.getRainfall(), weather.getPressure());
+
+                SimulationEvent evt = SimulationEvent.obtain(evtType, severity, currentTick, msg, data);
+                eventQueue.offer(evt);
+                org.swarmforge.core.event.EventBus.getInstance().publish(evt);
+
+                lastWeatherState = currentWState;
             }
         }
     }
@@ -705,6 +842,29 @@ public class Simulation {
         if (this.pheromoneGrid != null) {
             this.pheromoneGrid.clear();
         }
+        if (this.history != null) {
+            this.history.clear();
+        }
+    }
+
+    /**
+     * Record initial snapshot right after setup.
+     */
+    public void recordInitialSnapshot() {
+        if (this.history != null) {
+            this.history.record(SimulationSnapshot.capture(this));
+        }
+    }
+
+    /**
+     * Get highest tick recorded in history or current tick.
+     */
+    public long getHighestRecordedTick() {
+        if (this.history != null) {
+            long hTick = this.history.getHighestRecordedTick();
+            return Math.max(this.tickCount.get(), hTick);
+        }
+        return this.tickCount.get();
     }
 
     // === Speed Control ===

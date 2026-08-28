@@ -266,6 +266,76 @@ public class TunnelNetwork implements java.io.Serializable {
             createEdge(protectedCore, broodCluster);
             createEdge(protectedCore, foodCluster);
 
+        } else if (nestType.contains("SUPERCOLONY") || nestType.contains("SUPERCOLONIE")) {
+            // Complex Polycalic Supercolony Network (Multi-hub nest with polygyne chambers)
+            UUID mainEntrance = createNode(nx, ny, nz - 0.1f, ChamberType.ENTRANCE);
+            UUID subEnt1 = createNode(nx - 8.0f, ny + 4.0f, nz - 0.1f, ChamberType.ENTRANCE);
+            UUID subEnt2 = createNode(nx + 8.0f, ny - 4.0f, nz - 0.1f, ChamberType.ENTRANCE);
+
+            UUID centralShaft = createNode(nx, ny, nz - 6.0f, ChamberType.TUNNEL);
+            UUID leftShaft = createNode(nx - 7.0f, ny + 3.0f, nz - 5.0f, ChamberType.TUNNEL);
+            UUID rightShaft = createNode(nx + 7.0f, ny - 3.0f, nz - 5.0f, ChamberType.TUNNEL);
+
+            createEdge(mainEntrance, centralShaft);
+            createEdge(subEnt1, leftShaft);
+            createEdge(subEnt2, rightShaft);
+            createEdge(centralShaft, leftShaft);
+            createEdge(centralShaft, rightShaft);
+
+            // Polygyne Queen Chambers
+            UUID queen1 = createNode(nx, ny, nz - 12.0f, ChamberType.QUEEN_CHAMBER);
+            UUID queen2 = createNode(nx - 9.0f, ny + 5.0f, nz - 10.0f, ChamberType.QUEEN_CHAMBER);
+            UUID queen3 = createNode(nx + 9.0f, ny - 5.0f, nz - 10.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(centralShaft, queen1);
+            createEdge(leftShaft, queen2);
+            createEdge(rightShaft, queen3);
+
+            // Extensive Brood Vaults
+            UUID brood1 = createNode(nx - 3.0f, ny + 2.0f, nz - 8.0f, ChamberType.BROOD_CHAMBER);
+            UUID brood2 = createNode(nx + 3.0f, ny - 2.0f, nz - 8.0f, ChamberType.BROOD_CHAMBER);
+            UUID brood3 = createNode(nx - 11.0f, ny + 2.0f, nz - 7.0f, ChamberType.BROOD_CHAMBER);
+            UUID brood4 = createNode(nx + 11.0f, ny - 2.0f, nz - 7.0f, ChamberType.BROOD_CHAMBER);
+            createEdge(centralShaft, brood1);
+            createEdge(centralShaft, brood2);
+            createEdge(leftShaft, brood3);
+            createEdge(rightShaft, brood4);
+
+            // Food Storage Vaults
+            UUID food1 = createNode(nx + 4.0f, ny + 4.0f, nz - 7.0f, ChamberType.FOOD_STORAGE);
+            UUID food2 = createNode(nx - 4.0f, ny - 4.0f, nz - 7.0f, ChamberType.FOOD_STORAGE);
+            UUID food3 = createNode(nx, ny, nz - 16.0f, ChamberType.FOOD_STORAGE);
+            createEdge(centralShaft, food1);
+            createEdge(centralShaft, food2);
+            createEdge(queen1, food3);
+
+            // Waste Dump
+            UUID waste = createNode(nx, ny + 8.0f, nz - 18.0f, ChamberType.WASTE_DUMP);
+            createEdge(food3, waste);
+
+        } else if (nestType.contains("OLD")) {
+            // Old Expansive Colony Nest
+            UUID entrance = createNode(nx, ny, nz - 0.1f, ChamberType.ENTRANCE);
+            UUID subEnt = createNode(nx + 5.0f, ny - 3.0f, nz - 0.1f, ChamberType.ENTRANCE);
+            UUID shaft = createNode(nx, ny, nz - 8.0f, ChamberType.TUNNEL);
+            createEdge(entrance, shaft);
+            createEdge(subEnt, shaft);
+
+            UUID queen1 = createNode(nx + 4.0f, ny, nz - 15.0f, ChamberType.QUEEN_CHAMBER);
+            UUID queen2 = createNode(nx - 4.0f, ny, nz - 14.0f, ChamberType.QUEEN_CHAMBER);
+            createEdge(shaft, queen1);
+            createEdge(shaft, queen2);
+
+            UUID brood1 = createNode(nx - 4.0f, ny + 3.0f, nz - 10.0f, ChamberType.BROOD_CHAMBER);
+            UUID brood2 = createNode(nx + 4.0f, ny - 3.0f, nz - 10.0f, ChamberType.BROOD_CHAMBER);
+            createEdge(shaft, brood1);
+            createEdge(shaft, brood2);
+
+            UUID foodStorage = createNode(nx + 3.0f, ny + 4.0f, nz - 8.0f, ChamberType.FOOD_STORAGE);
+            createEdge(shaft, foodStorage);
+
+            UUID wasteDump = createNode(nx - 5.0f, ny - 4.0f, nz - 18.0f, ChamberType.WASTE_DUMP);
+            createEdge(queen1, wasteDump);
+
         } else {
             // Default Subterranean Burrow (Lasius / Solenopsis)
             UUID entrance = createNode(nx, ny, nz - 0.1f, ChamberType.ENTRANCE);
@@ -337,6 +407,19 @@ public class TunnelNetwork implements java.io.Serializable {
 
     public int getNodeCount() {
         return nodes.size();
+    }
+
+    /**
+     * Return all chambers matching a specific type.
+     */
+    public List<TunnelNode> getChambersOfType(ChamberType type) {
+        List<TunnelNode> result = new ArrayList<>();
+        for (TunnelNode node : nodes.values()) {
+            if (node.type() == type) {
+                result.add(node);
+            }
+        }
+        return result;
     }
 
     /**

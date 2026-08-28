@@ -26,10 +26,10 @@ public class AcademicScenarios {
     public static Scenario createLevyVsBrownianScenario(long seed) {
         Scenario scenario = new Scenario(
                 "ACAD_01_LEVY_BROWNIAN",
-                "Évaluation des Stratégies d'Exploration : Vol de Lévy vs Marche Brownienne",
-                "Étude comparative de l'efficacité de récolte de nourriture entre des fourmis guidées par Réseau de Neurones/RL (Vol de Lévy) et des fourmis guidées par FSM (Marche Brownienne) dans un milieu à ressources dispersées."
+                "Exploration Strategy Evaluation: Lévy Flights vs Brownian Walk",
+                "Comparative study of foraging harvesting efficiency between ants guided by Neural Networks/RL (Lévy Flight) and ants guided by FSM (Brownian Walk) in a dispersed resource environment."
         );
-        scenario.setAcademicCategory("Etologie / Optimal Foraging Theory");
+        scenario.setAcademicCategory("Ethology / Optimal Foraging Theory");
         scenario.setMasterSeed(seed);
         scenario.setWidth(300);
         scenario.setHeight(300);
@@ -57,7 +57,7 @@ public class AcademicScenarios {
         scenario.addEvent(new Scenario.ScenarioEvent(
                 20_000L,
                 "RESOURCE_SHIFT",
-                "Déplacement des sources de nourriture pour tester l'adaptativité",
+                "Shift food sources to test adaptability",
                 Map.of("newPatchCount", 15, "radius", 100)
         ));
 
@@ -70,10 +70,10 @@ public class AcademicScenarios {
     public static Scenario createPolyethismScenario(long seed) {
         Scenario scenario = new Scenario(
                 "ACAD_02_POLYETHISM_BDI",
-                "Polyéthisme et Spécialisation Comportementale Symbolique (BDI)",
-                "Analyse de l'émergence de la division du travail (soin du couvain, creusement, fourrage, défense) pilotée par un moteur BDI (Croyances-Désirs-Intentions) adaptatif."
+                "Polyethism and Symbolic Behavioral Specialization (BDI)",
+                "Analysis of the emergence of division of labor (brood care, excavation, foraging, defense) driven by an adaptive Belief-Desire-Intention (BDI) engine."
         );
-        scenario.setAcademicCategory("Sociobiologie / Division du Travail");
+        scenario.setAcademicCategory("Sociobiology / Division of Labor");
         scenario.setMasterSeed(seed);
         scenario.setWidth(200);
         scenario.setHeight(200);
@@ -101,10 +101,10 @@ public class AcademicScenarios {
     public static Scenario createNestMorphogenesisScenario(long seed) {
         Scenario scenario = new Scenario(
                 "ACAD_03_NEST_MORPHOGENESIS",
-                "Morphogenèse du Nid et Thermorégulation Bioclimatique",
-                "Étude de l'architecture émergente des tunnels et galeries sous-terraines et son impact sur le gradient thermique et l'hygrométrie du nid."
+                "Nest Morphogenesis and Bioclimatic Thermoregulation",
+                "Study of emergent underground tunnel and gallery architecture and its impact on the thermal gradient and nest hygrometry."
         );
-        scenario.setAcademicCategory("Biophysique & Architexture Animale");
+        scenario.setAcademicCategory("Biophysics & Animal Architecture");
         scenario.setMasterSeed(seed);
         scenario.setDepth(96); // Deep soil
         scenario.setSoilDensity(0.75f); // Clay/loam soil
@@ -129,10 +129,10 @@ public class AcademicScenarios {
     public static Scenario createInterspecificCompetitionScenario(long seed) {
         Scenario scenario = new Scenario(
                 "ACAD_04_INTERSPECIFIC_COMPETITION",
-                "Compétition Interspécifique et Dynamique Territoriale",
-                "Modélisation du conflit territorial et du monopole des ressources entre Lasius niger (espèce indigène) et Linepithema humile (fourmi d'Argentine invasive)."
+                "Interspecific Competition and Territorial Dynamics",
+                "Modeling territorial conflict and resource monopolization between Lasius niger (native species) and Linepithema humile (invasive Argentine ant)."
         );
-        scenario.setAcademicCategory("Écologie des Populations / Invasions Biologiques");
+        scenario.setAcademicCategory("Population Ecology / Biological Invasions");
         scenario.setMasterSeed(seed);
         scenario.setWidth(400);
         scenario.setHeight(400);
@@ -145,8 +145,8 @@ public class AcademicScenarios {
         argentineEngine.put("WORKER", ArchitectureType.NEURAL_NETWORK);
         argentineEngine.put("SOLDIER", ArchitectureType.NEURAL_NETWORK);
 
-        scenario.addColony(new Scenario.ColonySetup("Lasius niger (Monogyne Native)", "COLONY_LASIUS", 1, 120, 15, 100, lasiusEngine));
-        scenario.addColony(new Scenario.ColonySetup("Linepithema humile (Polygyne Invasive)", "COLONY_ARGENTINE", 3, 250, 30, 150, argentineEngine));
+        scenario.addColony(new Scenario.ColonySetup("Lasius niger (Native Monogyne)", "COLONY_LASIUS", 1, 120, 15, 100, lasiusEngine));
+        scenario.addColony(new Scenario.ColonySetup("Linepithema humile (Invasive Polygyne)", "COLONY_ARGENTINE", 3, 250, 30, 150, argentineEngine));
 
         scenario.addTargetMetric("TERRITORIAL_DOMINANCE_RATIO");
         scenario.addTargetMetric("MORTALITY_CONTEST_RATE");
@@ -162,10 +162,10 @@ public class AcademicScenarios {
     public static Scenario createTrophallaxisScenario(long seed) {
         Scenario scenario = new Scenario(
                 "ACAD_05_TROPHALLAXIS",
-                "Flux Alimentaire & Trophallaxie Coloniale",
-                "Analyse de la distribution trophallactique des nutriments et répercussion de la sous-nutrition sur le couvain et la reine."
+                "Food Flow & Colonial Trophallaxis",
+                "Analysis of trophallactic nutrient distribution and the impact of undernutrition on brood and queen."
         );
-        scenario.setAcademicCategory("Sociobiologie / Métabolisme Colonial");
+        scenario.setAcademicCategory("Sociobiology / Colonial Metabolism");
         scenario.setMasterSeed(seed);
         scenario.setFoodPatchesCount(10);
 
@@ -185,10 +185,10 @@ public class AcademicScenarios {
     public static Scenario createEpidemiologyScenario(long seed) {
         Scenario scenario = new Scenario(
                 "ACAD_06_EPIDEMIOLOGY_QUARANTINE",
-                "Épidémiologie & Auto-Confinement Bio-Comportemental",
-                "Propagation d'un spore fongique entomopathogène (Cordyceps) et observation des comportements de quarantaine et de nécrophores."
+                "Epidemiology & Bio-Behavioral Self-Quarantine",
+                "Spread of an entomopathogenic fungal spore (Cordyceps) and observation of quarantine and necrophoric behaviors."
         );
-        scenario.setAcademicCategory("Éthologie / Immunité Sociale");
+        scenario.setAcademicCategory("Ethology / Social Immunity");
         scenario.setMasterSeed(seed);
 
         Map<String, ArchitectureType> engine = new HashMap<>();
@@ -208,10 +208,10 @@ public class AcademicScenarios {
     public static Scenario createAttineFungiScenario(long seed) {
         Scenario scenario = new Scenario(
                 "ACAD_07_ATTINE_FUNGI",
-                "Symbiose Fongi-Coloniale des Attines",
-                "Culture symbiotique de Leucoagaricus par Atta sexdens via l'apport de feuillage et le désherbage sélectif."
+                "Fungal-Colonial Symbiosis of Attines",
+                "Symbiotic culture of Leucoagaricus by Atta sexdens via foliage input and selective weeding."
         );
-        scenario.setAcademicCategory("Symbiose & Agriculture Animale");
+        scenario.setAcademicCategory("Symbiosis & Animal Agriculture");
         scenario.setMasterSeed(seed);
 
         Map<String, ArchitectureType> engine = new HashMap<>();
@@ -230,10 +230,10 @@ public class AcademicScenarios {
     public static Scenario createStigmergyScenario(long seed) {
         Scenario scenario = new Scenario(
                 "ACAD_08_STIGMERGIC_PHEROMONES",
-                "Stigmergie Phéromonale & Résolution de Mazes",
-                "Optimisation de parcours par d'intenses dépôts stigmergiques de phéromones de piste en milieu labyrinthique."
+                "Pheromonal Stigmergy & Maze Resolution",
+                "Route optimization through intense stigmergic trail pheromone deposition in a labyrinthine environment."
         );
-        scenario.setAcademicCategory("Intelligence Collective & Stigmergie");
+        scenario.setAcademicCategory("Collective Intelligence & Stigmergy");
         scenario.setMasterSeed(seed);
 
         Map<String, ArchitectureType> engine = new HashMap<>();

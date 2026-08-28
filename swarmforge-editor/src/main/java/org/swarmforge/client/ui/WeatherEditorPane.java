@@ -243,7 +243,7 @@ public class WeatherEditorPane extends BorderPane {
         presetsCombo.setEditable(true);
         presetsCombo.setPrefWidth(210);
         presetsCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
-        presetsCombo.setTooltip(new Tooltip("Sélectionnez un profil climatique pré-configuré (Méditerranéen, Tropical, Aride, Tempéré, Boréal, etc.)."));
+        presetsCombo.setTooltip(new Tooltip("Select a pre-configured climate profile (Mediterranean, Tropical, Arid, Boreal, etc.)."));
         presetsCombo.setOnAction(e -> {
             if (isUpdatingFields) return;
             String s = presetsCombo.getValue();
@@ -252,10 +252,10 @@ public class WeatherEditorPane extends BorderPane {
             if (isDirty) {
                 Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
                     Alert.AlertType.CONFIRMATION,
-                    "Attention : Vous avez des modifications non enregistrées sur le profil climatique actuel.\n\nVoulez-vous vraiment charger le preset '" + s + "' et abandonner vos modifications ?"
+                    "Warning: You have unsaved modifications in the current climate profile.\n\nDo you want to load preset '" + s + "' and discard changes?"
                 );
                 alert.setTitle(I18nManager.getInstance().get("common.dialog.unsaved"));
-                alert.setHeaderText("Changement de profil climatique");
+                alert.setHeaderText("Climate Profile Change");
                 java.util.Optional<ButtonType> res = alert.showAndWait();
                 if (res.isEmpty() || res.get() != ButtonType.OK) {
                     isUpdatingFields = true;
@@ -278,7 +278,7 @@ public class WeatherEditorPane extends BorderPane {
         bAdd.setGraphic(new FontIcon(Feather.SAVE));
         bAdd.getStyleClass().add("btn-secondary");
         bAdd.textProperty().bind(i18n.createStringBinding("preset.save"));
-        bAdd.setTooltip(new Tooltip("Enregistrer la configuration climatique actuelle comme nouveau preset."));
+        bAdd.setTooltip(new Tooltip("Save current climate configuration as new preset."));
         bAdd.setOnAction(e -> doSavePreset());
 
         Button bDel = new Button();
@@ -286,21 +286,21 @@ public class WeatherEditorPane extends BorderPane {
         bDel.getStyleClass().add("btn-danger");
         bDel.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
         bDel.textProperty().bind(i18n.createStringBinding("preset.delete"));
-        bDel.setTooltip(new Tooltip("Supprimer le profil climatique sélectionné."));
+        bDel.setTooltip(new Tooltip("Delete selected climate profile."));
         bDel.setOnAction(e -> doDeletePreset());
 
         Button bExp = new Button();
         bExp.setGraphic(new FontIcon(Feather.DOWNLOAD));
         bExp.getStyleClass().add("btn-secondary");
         bExp.textProperty().bind(i18n.createStringBinding("preset.export"));
-        bExp.setTooltip(new Tooltip("Exporter le profil climatique au format JSON."));
+        bExp.setTooltip(new Tooltip("Export climate profile to JSON format."));
         bExp.setOnAction(e -> doExport());
 
         Button bImp = new Button();
         bImp.setGraphic(new FontIcon(Feather.UPLOAD));
         bImp.getStyleClass().add("btn-secondary");
         bImp.textProperty().bind(i18n.createStringBinding("preset.import"));
-        bImp.setTooltip(new Tooltip("Importer un fichier JSON de configuration climatique."));
+        bImp.setTooltip(new Tooltip("Import JSON climate configuration file."));
         bImp.setOnAction(e -> doImport());
 
         r.getChildren().addAll(t, sp, lp, presetsCombo, bAdd, bDel,
@@ -802,14 +802,32 @@ public class WeatherEditorPane extends BorderPane {
 
         StackPane canvasHolder = new StackPane(curveCanvas);
         canvasHolder.getStyleClass().add("chart-holder");
+        canvasHolder.setMinHeight(200);
+        canvasHolder.setPrefHeight(260);
+        canvasHolder.setMaxHeight(260);
+
+        // Bind canvas dimensions and clip to container so it cannot bleed over other elements
+        curveCanvas.widthProperty().bind(canvasHolder.widthProperty());
+        curveCanvas.heightProperty().bind(canvasHolder.heightProperty());
+        curveCanvas.widthProperty().addListener((obs, oldV, newV) -> redrawCurves());
+        curveCanvas.heightProperty().addListener((obs, oldV, newV) -> redrawCurves());
+
+        javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle();
+        clip.widthProperty().bind(canvasHolder.widthProperty());
+        clip.heightProperty().bind(canvasHolder.heightProperty());
+        canvasHolder.setClip(clip);
 
         // Legend bar
         HBox legendBar = buildCurvesLegendBar();
 
-        // Monthly Spinner Table Grid
+        // Monthly Spinner Table Grid inside a scroll pane for responsive fitting
         GridPane spinnerGrid = buildMonthlySpinnersGrid();
+        ScrollPane spinnerScroll = new ScrollPane(spinnerGrid);
+        spinnerScroll.setFitToWidth(true);
+        spinnerScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        spinnerScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent; -fx-padding: 0;");
 
-        container.getChildren().addAll(title, paramBar, canvasHolder, legendBar, spinnerGrid);
+        container.getChildren().addAll(title, paramBar, canvasHolder, legendBar, spinnerScroll);
         return container;
     }
 
@@ -1019,7 +1037,7 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     private void redrawCurves() {
-        if (curveCanvas == null || curveCanvas.getWidth() <= 0 || curveCanvas.getHeight() <= 0) return;
+        if (curveCanvas == null || gc == null || curveCanvas.getWidth() < 10 || curveCanvas.getHeight() < 10) return;
         double w = curveCanvas.getWidth();
         double h = curveCanvas.getHeight();
 

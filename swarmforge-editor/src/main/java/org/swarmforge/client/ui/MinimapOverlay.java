@@ -193,7 +193,7 @@ public class MinimapOverlay extends VBox {
     }
 
     private void redrawTop(List<Colony> colonies) {
-        if (canvasTop == null || canvasTop.getWidth() <= 0 || canvasTop.getHeight() <= 0) return;
+        if (canvasTop == null || gcTop == null || canvasTop.getWidth() < 10 || canvasTop.getHeight() < 10) return;
         double w = canvasTop.getWidth();
         double h = canvasTop.getHeight();
 
@@ -233,22 +233,25 @@ public class MinimapOverlay extends VBox {
         }
 
         // Colony nests
-        for (Colony colony : colonies) {
-            float nx = colony.getNestX() / worldWidth * (float) w;
-            float ny = colony.getNestY() / worldHeight * (float) h;
+        if (colonies != null) {
+            for (Colony colony : colonies) {
+                if (colony == null) continue;
+                float nx = colony.getNestX() / worldWidth * (float) w;
+                float ny = colony.getNestY() / worldHeight * (float) h;
 
-            gcTop.setFill(new RadialGradient(
-                    0, 0, nx, ny, 12,
-                    false, CycleMethod.NO_CYCLE,
-                    new Stop(0, Color.rgb(251, 191, 36, 0.8)),
-                    new Stop(1, Color.TRANSPARENT)));
-            gcTop.fillOval(nx - 12, ny - 12, 24, 24);
+                gcTop.setFill(new RadialGradient(
+                        0, 0, nx, ny, 12,
+                        false, CycleMethod.NO_CYCLE,
+                        new Stop(0, Color.rgb(251, 191, 36, 0.8)),
+                        new Stop(1, Color.TRANSPARENT)));
+                gcTop.fillOval(nx - 12, ny - 12, 24, 24);
 
-            gcTop.setFill(Color.ORANGE);
-            gcTop.fillOval(nx - 3, ny - 3, 6, 6);
-            gcTop.setStroke(Color.WHITE);
-            gcTop.setLineWidth(1);
-            gcTop.strokeOval(nx - 3, ny - 3, 6, 6);
+                gcTop.setFill(Color.ORANGE);
+                gcTop.fillOval(nx - 3, ny - 3, 6, 6);
+                gcTop.setStroke(Color.WHITE);
+                gcTop.setLineWidth(1);
+                gcTop.strokeOval(nx - 3, ny - 3, 6, 6);
+            }
         }
 
         // Camera viewport rectangle
@@ -271,7 +274,7 @@ public class MinimapOverlay extends VBox {
     }
 
     private void redrawSide(List<Colony> colonies) {
-        if (canvasSide == null || canvasSide.getWidth() <= 0 || canvasSide.getHeight() <= 0) return;
+        if (canvasSide == null || gcSide == null || canvasSide.getWidth() < 10 || canvasSide.getHeight() < 10) return;
         double w = canvasSide.getWidth();
         double h = canvasSide.getHeight();
 
@@ -307,15 +310,18 @@ public class MinimapOverlay extends VBox {
         }
 
         // Colony nest depth markers
-        for (Colony colony : colonies) {
-            float nx = colony.getNestX() / worldWidth * (float) w;
-            float nz = colony.getNestZ() / worldDepth * (float) h;
+        if (colonies != null) {
+            for (Colony colony : colonies) {
+                if (colony == null) continue;
+                float nx = colony.getNestX() / worldWidth * (float) w;
+                float nz = colony.getNestZ() / worldDepth * (float) h;
 
-            gcSide.setFill(Color.web("#d97706"));
-            gcSide.fillOval(nx - 4, nz - 4, 8, 8);
-            gcSide.setStroke(Color.WHITE);
-            gcSide.setLineWidth(1);
-            gcSide.strokeOval(nx - 4, nz - 4, 8, 8);
+                gcSide.setFill(Color.web("#d97706"));
+                gcSide.fillOval(nx - 4, nz - 4, 8, 8);
+                gcSide.setStroke(Color.WHITE);
+                gcSide.setLineWidth(1);
+                gcSide.strokeOval(nx - 4, nz - 4, 8, 8);
+            }
         }
 
         // Camera depth indicator
@@ -334,14 +340,14 @@ public class MinimapOverlay extends VBox {
      * Clear the minimaps.
      */
     public void clear() {
-        if (canvasTop != null && canvasTop.getWidth() > 0 && canvasTop.getHeight() > 0) {
+        if (canvasTop != null && gcTop != null && canvasTop.getWidth() >= 10 && canvasTop.getHeight() >= 10) {
             gcTop.setFill(Color.rgb(15, 23, 42));
             gcTop.fillRect(0, 0, canvasTop.getWidth(), canvasTop.getHeight());
             gcTop.setFill(Color.GRAY);
             gcTop.fillText("Vue du Dessus (Top-Down)", canvasTop.getWidth() / 2 - 60, canvasTop.getHeight() / 2);
         }
 
-        if (canvasSide != null && canvasSide.getWidth() > 0 && canvasSide.getHeight() > 0) {
+        if (canvasSide != null && gcSide != null && canvasSide.getWidth() >= 10 && canvasSide.getHeight() >= 10) {
             gcSide.setFill(Color.rgb(15, 23, 42));
             gcSide.fillRect(0, 0, canvasSide.getWidth(), canvasSide.getHeight());
             gcSide.setFill(Color.GRAY);
