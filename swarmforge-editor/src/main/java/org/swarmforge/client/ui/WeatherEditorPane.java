@@ -146,27 +146,50 @@ public class WeatherEditorPane extends BorderPane {
 
     public boolean promptUnsavedChanges() {
         if (!isDirty) return true;
-        I18nManager i18n = I18nManager.getInstance();
+        String currentName = lastSelectedPreset != null ? lastSelectedPreset : "";
+        boolean hasCurrentPreset = !currentName.isEmpty();
+
         Alert alert = ThemeManager.createAlert(
             Alert.AlertType.CONFIRMATION,
-            "Vous avez des modifications non enregistrées dans l'Éditeur Météo & Climat. Voulez-vous enregistrer vos modifications avant de continuer ?"
+            "Vous avez des modifications non enregistrées dans l'Éditeur Météo \u0026 Climat.\n"
+            + (hasCurrentPreset ? "Preset courant : \"" + currentName + "\"" : "Aucun preset sélectionné.")
         );
         alert.setTitle("Modifications non enregistrées");
         alert.setHeaderText("Quitter l'éditeur météo ?");
 
-        ButtonType btnSave = new ButtonType(i18n.get("common.btn.save", "Enregistrer"), ButtonBar.ButtonData.OK_DONE);
-        ButtonType btnDiscard = new ButtonType("Abandonner", ButtonBar.ButtonData.OTHER);
-        ButtonType btnCancel = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType btnUpdate  = hasCurrentPreset
+            ? new ButtonType("💾 Mettre \u00e0 jour \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
+            : null;
+        ButtonType btnSaveAs  = new ButtonType("📝 Enregistrer sous...", ButtonBar.ButtonData.OTHER);
+        ButtonType btnDiscard = new ButtonType("🗑 Abandonner", ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel  = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
 
-        alert.getButtonTypes().setAll(btnSave, btnDiscard, btnCancel);
+        if (btnUpdate != null) {
+            alert.getButtonTypes().setAll(btnUpdate, btnSaveAs, btnDiscard, btnCancel);
+        } else {
+            alert.getButtonTypes().setAll(btnSaveAs, btnDiscard, btnCancel);
+        }
         Optional<ButtonType> result = alert.showAndWait();
 
-        if (result.isPresent() && result.get() == btnSave) {
+        if (!result.isPresent() || result.get() == btnCancel) return false;
+        if (result.get() == btnDiscard) { isDirty = false; return true; }
+        if (btnUpdate != null && result.get() == btnUpdate) {
+            presetMgr.save(currentName, getConfiguration());
+            isUpdatingFields = true;
+            try {
+                refreshPresetsCombo();
+                presetsCombo.setValue(currentName);
+            } finally {
+                isUpdatingFields = false;
+            }
+            lastSelectedPreset = currentName;
+            isDirty = false;
+            NotificationOverlay.show(this, "Preset \"" + currentName + "\" mis \u00e0 jour.", NotificationOverlay.NotificationType.SUCCESS);
+            return true;
+        }
+        if (result.get() == btnSaveAs) {
             doSavePreset();
             return !isDirty;
-        } else if (result.isPresent() && result.get() == btnDiscard) {
-            isDirty = false;
-            return true;
         }
         return false;
     }
@@ -361,14 +384,17 @@ public class WeatherEditorPane extends BorderPane {
         citySearchField = new TextField("Paris");
         citySearchField.promptTextProperty().bind(i18n.createStringBinding("weather.geo.search_prompt"));
         citySearchField.setPrefWidth(220);
+        citySearchField.setTooltip(new Tooltip("Nom de la ville pour importer les données météorologiques Open-Meteo en temps réel."));
         citySearchField.setOnAction(e -> fetchRealWeather(citySearchField.getText()));
 
         Button btnFetch = new Button();
         btnFetch.getStyleClass().add("btn-primary");
         btnFetch.textProperty().bind(i18n.createStringBinding("weather.geo.search_btn"));
+        btnFetch.setTooltip(new Tooltip("Rechercher et télécharger les données climatiques réelles pour la ville spécifiée."));
         btnFetch.setOnAction(e -> fetchRealWeather(citySearchField.getText()));
 
-        geoStatusLabel = new Label(I18nManager.getInstance().get("weather.hint.city"));
+        geoStatusLabel = new Label();
+        geoStatusLabel.textProperty().bind(i18n.createStringBinding("weather.hint.city"));
         geoStatusLabel.setStyle("-fx-text-fill:#aaa;-fx-font-size:11;");
 
         searchRow.getChildren().addAll(lblSearch, citySearchField, btnFetch, geoStatusLabel);
@@ -378,11 +404,13 @@ public class WeatherEditorPane extends BorderPane {
         grid.setHgap(15);
         grid.setVgap(10);
 
-        Label lblLat = new Label(I18nManager.getInstance().get("weather.geo.lat"));
+        Label lblLat = new Label();
+        lblLat.textProperty().bind(i18n.createStringBinding("weather.geo.lat"));
         lblLat.setStyle("-fx-font-weight:bold;");
         latSpinner = new Spinner<>(-90.0, 90.0, 48.8, 0.5);
         latSpinner.setEditable(true);
         latSpinner.setPrefWidth(100);
+        latSpinner.setTooltip(new Tooltip("Latitude géographique (-90° Sud à +90° Nord) pour le calcul du photopériodisme et du climat."));
         latSpinner.valueProperty().addListener((o, a, b) -> {
             updatePhotoperiod();
             updateAltitudeLapseRate();
@@ -390,17 +418,21 @@ public class WeatherEditorPane extends BorderPane {
             updateCoherenceStatus();
         });
 
-        Label lblLon = new Label(I18nManager.getInstance().get("weather.geo.lon"));
+        Label lblLon = new Label();
+        lblLon.textProperty().bind(i18n.createStringBinding("weather.geo.lon"));
         lblLon.setStyle("-fx-font-weight:bold;");
         lonSpinner = new Spinner<>(-180.0, 180.0, 2.35, 0.5);
         lonSpinner.setEditable(true);
         lonSpinner.setPrefWidth(100);
+        lonSpinner.setTooltip(new Tooltip("Longitude géographique (-180° Ouest à +180° Est)."));
 
-        Label lblAlt = new Label(I18nManager.getInstance().get("weather.geo.alt"));
+        Label lblAlt = new Label();
+        lblAlt.textProperty().bind(i18n.createStringBinding("weather.geo.alt"));
         lblAlt.setStyle("-fx-font-weight:bold;");
         altSpinner = new Spinner<>(0.0, 4000.0, 100.0, 50.0);
         altSpinner.setEditable(true);
         altSpinner.setPrefWidth(110);
+        altSpinner.setTooltip(new Tooltip("Altitude par rapport au niveau de la mer (0m à 4000m) affectant la température et la pression."));
         altSpinner.valueProperty().addListener((o, a, b) -> {
             updateAltitudeLapseRate();
             updateCoherenceStatus();
@@ -1382,14 +1414,17 @@ public class WeatherEditorPane extends BorderPane {
             Label label = new Label();
             label.textProperty().bind(i18n.createStringBinding(disaster[0]));
             label.setStyle("-fx-min-width: 140;");
+            Tooltip.install(label, new Tooltip("Probabilité annuelle d'occurrence de la catastrophe naturelle : " + disaster[2]));
 
             Slider slider = new Slider(0, 20, Double.parseDouble(disaster[1]));
             slider.setPrefWidth(200);
             slider.setShowTickLabels(true);
             slider.setMajorTickUnit(5);
+            slider.setTooltip(new Tooltip("Réglez la probabilité annuelle d'occurrence de la catastrophe (0% à 20% par an)."));
 
             Label valueLabel = new Label(disaster[1] + "% /an");
             valueLabel.setStyle("-fx-min-width: 80;");
+            valueLabel.setTooltip(new Tooltip("Probabilité exprimée en pourcentage par an."));
             slider.valueProperty().addListener((obs, old, val) ->
                     valueLabel.setText(String.format("%.1f%% /an", val.doubleValue())));
 

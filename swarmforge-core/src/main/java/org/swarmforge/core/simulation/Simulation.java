@@ -842,9 +842,21 @@ public class Simulation {
         if (this.pheromoneGrid != null) {
             this.pheromoneGrid.clear();
         }
+        if (this.waterGrid != null) {
+            this.waterGrid.clear();
+        }
         if (this.history != null) {
             this.history.clear();
         }
+        if (this.predatorManager != null) {
+            this.predatorManager.clearPredators();
+        }
+        if (this.activeDisasters != null) {
+            this.activeDisasters.clear();
+        }
+        this.interventionJournal.clear();
+        this.checkpoints.clear();
+        this.eventQueue.clear();
     }
 
     /**

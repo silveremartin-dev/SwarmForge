@@ -64,11 +64,19 @@ public class SpeciesEditorPane extends VBox {
     private TextField kingLifespanField;
     private ComboBox<String> nuptialFlightCombo;
 
-    // Development Stages
+    // Development Stages & Caste Determination Matrix
     private TextField eggDurationField;
     private TextField larvaDurationField;
     private ComboBox<String> larvaDietCombo;
     private TextField pupaDurationField;
+    private TextField proteinMinorField;
+    private TextField proteinMajorField;
+    private TextField proteinSoldierField;
+    private TextField proteinQueenField;
+    private Slider pheroInhibSlider;
+    private CheckBox haplodiploidyCheckBox;
+    private Slider pathogenResistanceSlider;
+    private Slider groomingSlider;
 
     // Caste Table
     private TableView<CasteRow> casteTable;
@@ -85,6 +93,8 @@ public class SpeciesEditorPane extends VBox {
     private TextField colonySizeField;
     private CheckBox megaColonyCheckBox;
     private CheckBox flyCheckBox;
+    private TextField metabolismField;
+    private TextField strengthField;
 
     // Nest & Behavior
     private ComboBox<String> nestTypeCombo;
@@ -189,27 +199,56 @@ public class SpeciesEditorPane extends VBox {
 
     public boolean promptUnsavedChanges() {
         if (!isDirty) return true;
+        String currentName = lastSelectedPreset != null ? lastSelectedPreset : "";
+        boolean hasCurrentPreset = !currentName.isEmpty();
+
         I18nManager i18n = I18nManager.getInstance();
         Alert alert = ThemeManager.createAlert(
             Alert.AlertType.CONFIRMATION,
-            "Vous avez des modifications non enregistrées dans l'Éditeur d'Espèces. Voulez-vous enregistrer vos modifications avant de continuer ?"
+            "Vous avez des modifications non enregistrées dans l'Éditeur d'Espèces.\n"
+            + (hasCurrentPreset ? "Preset courant : \"" + currentName + "\"" : "Aucun preset sélectionné.")
         );
         alert.setTitle("Modifications non enregistrées");
         alert.setHeaderText("Quitter l'éditeur d'espèces ?");
 
-        ButtonType btnSave = new ButtonType(i18n.get("common.btn.save", "Enregistrer"), ButtonBar.ButtonData.OK_DONE);
-        ButtonType btnDiscard = new ButtonType("Abandonner", ButtonBar.ButtonData.OTHER);
-        ButtonType btnCancel = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType btnUpdate  = hasCurrentPreset
+            ? new ButtonType("💾 Mettre \u00e0 jour \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
+            : null;
+        ButtonType btnSaveAs  = new ButtonType("📝 Enregistrer sous...", ButtonBar.ButtonData.OTHER);
+        ButtonType btnDiscard = new ButtonType("🗑 Abandonner", ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel  = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
 
-        alert.getButtonTypes().setAll(btnSave, btnDiscard, btnCancel);
+        if (btnUpdate != null) {
+            alert.getButtonTypes().setAll(btnUpdate, btnSaveAs, btnDiscard, btnCancel);
+        } else {
+            alert.getButtonTypes().setAll(btnSaveAs, btnDiscard, btnCancel);
+        }
         Optional<ButtonType> result = alert.showAndWait();
 
-        if (result.isPresent() && result.get() == btnSave) {
+        if (!result.isPresent() || result.get() == btnCancel) return false;
+        if (result.get() == btnDiscard) { isDirty = false; return true; }
+        if (btnUpdate != null && result.get() == btnUpdate) {
+            // Mise à jour directe sans dialogue
+            CustomSpecies species = buildSpeciesFromUI();
+            species.setPresetName(currentName);
+            presetManager.addPreset(currentName, species);
+            isUpdatingFields = true;
+            try {
+                if (!presetCombo.getItems().contains(currentName)) {
+                    presetCombo.getItems().add(currentName);
+                }
+                presetCombo.getSelectionModel().select(currentName);
+            } finally {
+                isUpdatingFields = false;
+            }
+            lastSelectedPreset = currentName;
+            isDirty = false;
+            NotificationOverlay.show(this, "Preset \"" + currentName + "\" mis \u00e0 jour.", NotificationOverlay.NotificationType.SUCCESS);
+            return true;
+        }
+        if (result.get() == btnSaveAs) {
             handleAddPreset();
             return !isDirty;
-        } else if (result.isPresent() && result.get() == btnDiscard) {
-            isDirty = false;
-            return true;
         }
         return false;
     }
@@ -370,10 +409,7 @@ public class SpeciesEditorPane extends VBox {
         insectTypeCombo.getSelectionModel().select("Ants (Formicidae)");
 
         categoryCombo = new ComboBox<>(FXCollections.observableArrayList(
-                org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY,
-                org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_POLYGYNE,
-                org.swarmforge.core.species.SpeciesCategory.PARASITIC_QUEEN,
-                org.swarmforge.core.species.SpeciesCategory.SUBSOCIAL_INCIPIENT
+                org.swarmforge.core.species.SpeciesCategory.values()
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(categoryCombo,
             cat -> cat != null ? cat.label : "",
@@ -544,21 +580,21 @@ public class SpeciesEditorPane extends VBox {
         titleMatrix.getStyleClass().add("card-title");
 
         GridPane gridMatrix = createGrid();
-        TextField proteinMinorF = new TextField("0.35");
-        TextField proteinMajorF = new TextField("0.70");
-        TextField proteinSoldierF = new TextField("0.85");
-        TextField proteinQueenF = new TextField("0.95");
-        Slider pheroInhibSlider = new Slider(0.0, 1.0, 0.8);
+        proteinMinorField = new TextField("0.35");
+        proteinMajorField = new TextField("0.70");
+        proteinSoldierField = new TextField("0.85");
+        proteinQueenField = new TextField("0.95");
+        pheroInhibSlider = new Slider(0.0, 1.0, 0.8);
         pheroInhibSlider.setShowTickLabels(true); pheroInhibSlider.setShowTickMarks(true);
-        CheckBox haplodiploidyCheck = new CheckBox("Arrhénotokie / Haplodiploïdie (Œuf non-fécondé = Mâle)");
-        haplodiploidyCheck.setSelected(true);
+        haplodiploidyCheckBox = new CheckBox("Arrhénotokie / Haplodiploïdie (Œuf non-fécondé = Mâle)");
+        haplodiploidyCheckBox.setSelected(true);
 
-        gridMatrix.addRow(0, createTooltipLabel("Seuil Protéique Ouvrière Minor (%):", "Proportion minimale de protéines dans l'alimentation larvaire nécessaire pour différencier une ouvrière minor.", proteinMinorF), proteinMinorF);
-        gridMatrix.addRow(1, createTooltipLabel("Seuil Protéique Ouvrière Major (%):", "Proportion de protéines requise pour induire la différenciation d'une ouvrière de grande taille (major).", proteinMajorF), proteinMajorF);
-        gridMatrix.addRow(2, createTooltipLabel("Seuil Protéique Soldat (%):", "Proportion de protéines exigeante nécessaire pour la caste des soldats.", proteinSoldierF), proteinSoldierF);
-        gridMatrix.addRow(3, createTooltipLabel("Seuil Protéique Nourriture Royale (%):", "Seuil nutritionnel maximal induisant la différenciation en reine féconde.", proteinQueenF), proteinQueenF);
+        gridMatrix.addRow(0, createTooltipLabel("Seuil Protéique Ouvrière Minor (%):", "Proportion minimale de protéines dans l'alimentation larvaire nécessaire pour différencier une ouvrière minor.", proteinMinorField), proteinMinorField);
+        gridMatrix.addRow(1, createTooltipLabel("Seuil Protéique Ouvrière Major (%):", "Proportion de protéines requise pour induire la différenciation d'une ouvrière de grande taille (major).", proteinMajorField), proteinMajorField);
+        gridMatrix.addRow(2, createTooltipLabel("Seuil Protéique Soldat (%):", "Proportion de protéines exigeante nécessaire pour la caste des soldats.", proteinSoldierField), proteinSoldierField);
+        gridMatrix.addRow(3, createTooltipLabel("Seuil Protéique Nourriture Royale (%):", "Seuil nutritionnel maximal induisant la différenciation en reine féconde.", proteinQueenField), proteinQueenField);
         gridMatrix.addRow(4, createTooltipLabel("Inhibition Phéromonale Reine:", "Effet d'inhibition chimique émis par la reine pour empêcher le développement d'autres reines.", pheroInhibSlider, "Inhibition"), pheroInhibSlider);
-        gridMatrix.addRow(5, createTooltipLabel("Détermination des Mâles (Arrhénotokie):", "Arrhénotokie / Haplodiploïdie : les œufs non-fécondés (haploïdes) donnent des mâles, les œufs fécondés (diploïdes) donnent des femelles.", haplodiploidyCheck, "Haplodiploïdie"), haplodiploidyCheck);
+        gridMatrix.addRow(5, createTooltipLabel("Détermination des Mâles (Arrhénotokie):", "Arrhénotokie / Haplodiploïdie : les œufs non-fécondés (haploïdes) donnent des mâles, les œufs fécondés (diploïdes) donnent des femelles.", haplodiploidyCheckBox, "Haplodiploïdie"), haplodiploidyCheckBox);
         cardMatrix.getChildren().addAll(titleMatrix, gridMatrix);
 
         VBox cardImmunity = new VBox(10);
@@ -567,12 +603,12 @@ public class SpeciesEditorPane extends VBox {
         titleImmunity.getStyleClass().add("card-title");
 
         GridPane gridImmunity = createGrid();
-        Slider pathResistanceSlider = new Slider(0.0, 1.0, 0.5);
-        pathResistanceSlider.setShowTickLabels(true); pathResistanceSlider.setShowTickMarks(true);
-        Slider groomingSlider = new Slider(0.0, 1.0, 0.7);
+        pathogenResistanceSlider = new Slider(0.0, 1.0, 0.5);
+        pathogenResistanceSlider.setShowTickLabels(true); pathogenResistanceSlider.setShowTickMarks(true);
+        groomingSlider = new Slider(0.0, 1.0, 0.7);
         groomingSlider.setShowTickLabels(true); groomingSlider.setShowTickMarks(true);
 
-        gridImmunity.addRow(0, createTooltipLabel("Résistance Immunitaire Pathogènes (%):", "Capacité physiologique de résistance globale aux spores et infections fongiques/bactériennes.", pathResistanceSlider), pathResistanceSlider);
+        gridImmunity.addRow(0, createTooltipLabel("Résistance Immunitaire Pathogènes (%):", "Capacité physiologique de résistance globale aux spores et infections fongiques/bactériennes.", pathogenResistanceSlider), pathogenResistanceSlider);
         gridImmunity.addRow(1, createTooltipLabel("Efficacité Toilette Sociale (Grooming %):", "Efficacité du léchage et déparasitage mutuel entre individus pour réduire la charge de germes.", groomingSlider), groomingSlider);
         cardImmunity.getChildren().addAll(titleImmunity, gridImmunity);
 
@@ -997,10 +1033,13 @@ public class SpeciesEditorPane extends VBox {
         primaryDietCombo.getSelectionModel().select("Honeydew & Aphid Trophobiosis");
 
         secondaryDietCombo = new ComboBox<>(FXCollections.observableArrayList(
+            "Fungus & Cultivated Mycelium",
+            "Honeydew & Aphid Trophobiosis",
             "Insects & Meat Protein",
             "None (No Secondary Diet)",
             "Seeds & Granivory Grains",
-            "Sugars & Plant Nectar"
+            "Sugars & Plant Nectar",
+            "Wood & Cellulose Fibers"
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(secondaryDietCombo, SpeciesEditorPane::getDietTitle, SpeciesEditorPane::getDietDescription);
         secondaryDietCombo.getSelectionModel().select("Insects & Meat Protein");
@@ -1008,15 +1047,24 @@ public class SpeciesEditorPane extends VBox {
         foodConsumptionField = new TextField("0.5");
         waterReqField = new TextField("0.2");
 
-        // Legacy / fallback fields maintained for CustomSpecies model compatibility
+        // Legacy / fallback fields now exposed in the Diet tab
         workerLifespanField = new TextField("6000");
         workerSpeedField = new TextField("0.5");
-        flyCheckBox = new CheckBox("Ouvrières capables de voler");
+        flyCheckBox = new CheckBox("Ouvrières capables de voler (Espèce ailée)");
+        viewDistanceField = new TextField("5.0");
+        metabolismField = new TextField("1.0");
+        strengthField = new TextField("5.0");
 
         grid.addRow(0, createTooltipLabel("Nourriture Principale:", "Source trophique primaire consommée pour l'énergie métabolique de la colonie."), primaryDietCombo);
         grid.addRow(1, createTooltipLabel("Nourriture Secondaire:", "Source trophique complémentaire (ex: apport protéique en période de couvain)."), secondaryDietCombo);
         grid.addRow(2, createTooltipLabel("Consommation Métabolique (g/ind/j):", "Masse de nourriture consommée quotidiennement par un individu adulte."), foodConsumptionField);
         grid.addRow(3, createTooltipLabel("Besoin Hydrique (mL/ind/j):", "Volume d'eau nécessaire quotidiennement pour maintenir l'hydratation et le métabolisme."), waterReqField);
+        grid.addRow(4, createTooltipLabel("Durée de Vie Ouvrière (jours):", "Espérance de vie moyenne d'une ouvrière adulte hors caste (fallback si non défini par caste)."), workerLifespanField);
+        grid.addRow(5, createTooltipLabel("Vitesse de Déplacement (m/s):", "Vitesse de locomotion standard des ouvrières en surface en mètres par seconde."), workerSpeedField);
+        grid.addRow(6, createTooltipLabel("Distance de Détection Visuelle (cm):", "Rayon de perception visuelle des ressources alimentaires et ennemis en centimètres."), viewDistanceField);
+        grid.addRow(7, createTooltipLabel("Vol des Ouvrières:", "Cocher si les ouvrières de cette espèce sont ailées et capables de voler (ex: Abeilles, Guêpes)."), flyCheckBox);
+        grid.addRow(8, createTooltipLabel("Facteur Métabolique Global (0.1-5.0):", "Multiplicateur du taux de dépense énergétique et de combustion des réserves de l'espèce."), metabolismField);
+        grid.addRow(9, createTooltipLabel("Force Physio-Musculaire (N):", "Indice de force physique générale et de résistance aux chocs mécaniques."), strengthField);
 
         return wrapScroll(grid);
     }
@@ -1113,7 +1161,7 @@ public class SpeciesEditorPane extends VBox {
         // 3. Category non-eusocial warning
         org.swarmforge.core.species.SpeciesCategory cat = categoryCombo != null ? categoryCombo.getValue() : null;
         if (cat != null && cat != org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY) {
-            warnings.add("Catégorie " + cat.label + " sélectionnée. Remarque : les proies, prédateurs et commensaux doivent être configurés dans l'onglet dédié 'Proies & Prédateurs'.");
+            warnings.add("Catégorie " + cat.label + " sélectionnée. Remarque : les proies, prédateurs et commensaux sont configurés dans la faune annexe de l'environnement.");
         }
 
         // 4. Temperature consistency
@@ -1249,9 +1297,31 @@ public class SpeciesEditorPane extends VBox {
         gridSensors.addRow(12, createTooltipLabel("Seuil Électrique Atmosphérique (V/m):", "Seuil de détection du champ électrique en Volts par mètre.", electroSensField), electroSensField);
         gridSensors.addRow(13, createTooltipLabel("Boussole Lumière Polarisée UV:", "Utilisation du motif de polarisation UV du ciel pour la navigation spatiale rétrospective.", hasPolarizedLightCheckBox, "UV"), hasPolarizedLightCheckBox);
 
+        // Conditional field disabling: gray out sensitivity fields when the capability is absent
+        magnetoSensField.disableProperty().bind(hasMagnetoreceptionCheckBox.selectedProperty().not());
+        vibrationSensField.disableProperty().bind(hasVibrationSensingCheckBox.selectedProperty().not());
+        hygroSensField.disableProperty().bind(hasHygroreceptionCheckBox.selectedProperty().not());
+        electroSensField.disableProperty().bind(hasElectrosensingCheckBox.selectedProperty().not());
+
         cardSensors.getChildren().addAll(titleSensors, gridSensors);
 
-        // 2. Dynamic Plugin Extensibility Card
+        // 2. Motor & Biomechanical Profile Card
+        VBox cardBiomech = new VBox(10);
+        cardBiomech.getStyleClass().add("card-pane");
+        Label titleBiomech = new Label("⚙️ Profil Biomécanique & Locomotion (Espèce)");
+        titleBiomech.getStyleClass().add("card-title");
+
+        GridPane gridBiomech = createGrid();
+        gridBiomech.addRow(0, createTooltipLabel("Fréquence de Battement des Ailes (Hz):", "Fréquence alaire en Hertz pour le vol des ouvrières et sexués."), wingbeatHzField);
+        gridBiomech.addRow(1, createTooltipLabel("Vol Stationnaire (Hovering):", "Aptitude au vol stationnaire immobile (Abeilles, Guêpes, Syrphes).", hasHoveringCheckBox), hasHoveringCheckBox);
+        gridBiomech.addRow(2, createTooltipLabel("Charge Maximale Transportable (x Masse):", "Ratio maximal du poids corporel transportable par un individu en charge."), maxPayloadRatioField);
+        gridBiomech.addRow(3, createTooltipLabel("Force de Pression Mandibulaire (MPa):", "Pression de morsure mandibulaire maximale exercée par l'appareil buccal."), bitingForceMpaField);
+        gridBiomech.addRow(4, createTooltipLabel("Autothysie / Auto-explosion Dégât:", "Défense kamikaze par rupture de la paroi abdominale sous pression de sécrétions."), hasAutothysisCheckBox);
+        gridBiomech.addRow(5, createTooltipLabel("Adhésion Ventouses Arolia:", "Présence de coussinets adhésifs (Arolia) sous les tarses pour grimper sur surfaces lisses verticalement."), hasAroliaAdhesionCheckBox);
+
+        cardBiomech.getChildren().addAll(titleBiomech, gridBiomech);
+
+        // 3. Dynamic Plugin Extensibility Card
         VBox cardPlugins = new VBox(10);
         cardPlugins.getStyleClass().add("card-pane");
         Label titlePlugins = new Label("🔌 Attributs d'Extension & Plugins (Extensibilité Dynamique)");
@@ -1279,7 +1349,7 @@ public class SpeciesEditorPane extends VBox {
 
         cardPlugins.getChildren().addAll(titlePlugins, gridPlugins);
 
-        box.getChildren().addAll(cardSensors, cardPlugins);
+        box.getChildren().addAll(cardSensors, cardBiomech, cardPlugins);
         return wrapScroll(box);
     }
 
@@ -1414,11 +1484,12 @@ public class SpeciesEditorPane extends VBox {
         TextField[] fields = {
             commonNameField, scientificNameField, genusField, queenLifespanField, queenEggRateField,
             kingLifespanField, eggDurationField, larvaDurationField, pupaDurationField,
+            proteinMinorField, proteinMajorField, proteinSoldierField, proteinQueenField,
             foodConsumptionField, waterReqField, workerLifespanField, workerSpeedField,
             viewDistanceField, colonySizeField, optTempField, minTempField, maxTempField,
             magnetoSensField, thermoSensField, gasSensField, visualAcuityField, minLightField,
             vibrationSensField, hygroSensField, electroSensField, wingbeatHzField,
-            maxPayloadRatioField, bitingForceMpaField
+            maxPayloadRatioField, bitingForceMpaField, metabolismField, strengthField
         };
         for (TextField tf : fields) {
             if (tf != null) tf.textProperty().addListener((obs, oldV, newV) -> onFieldEdited());
@@ -1433,7 +1504,7 @@ public class SpeciesEditorPane extends VBox {
         }
 
         CheckBox[] checkBoxes = {
-            hasKingCheckBox, megaColonyCheckBox, flyCheckBox, hasMagnetoreceptionCheckBox,
+            hasKingCheckBox, haplodiploidyCheckBox, megaColonyCheckBox, flyCheckBox, hasMagnetoreceptionCheckBox,
             hasVibrationSensingCheckBox, hasHygroreceptionCheckBox, hasElectrosensingCheckBox,
             hasPolarizedLightCheckBox, hasHoveringCheckBox, hasAutothysisCheckBox,
             hasAroliaAdhesionCheckBox
@@ -1442,7 +1513,7 @@ public class SpeciesEditorPane extends VBox {
             if (chk != null) chk.selectedProperty().addListener((obs, oldV, newV) -> onFieldEdited());
         }
 
-        Slider[] sliders = { aggressionSlider, territorialitySlider };
+        Slider[] sliders = { aggressionSlider, territorialitySlider, pheroInhibSlider, pathogenResistanceSlider, groomingSlider };
         for (Slider s : sliders) {
             if (s != null) s.valueProperty().addListener((obs, oldV, newV) -> onFieldEdited());
         }
@@ -1478,6 +1549,14 @@ public class SpeciesEditorPane extends VBox {
             larvaDurationField.setText(String.valueOf(s.getLarvaStageDuration()));
             selectComboValue(larvaDietCombo, s.getLarvaDietRequirement());
             pupaDurationField.setText(String.valueOf(s.getPupaStageDuration()));
+            if (proteinMinorField != null) proteinMinorField.setText(String.format(java.util.Locale.US, "%.2f", s.getProteinThresholdMinor()));
+            if (proteinMajorField != null) proteinMajorField.setText(String.format(java.util.Locale.US, "%.2f", s.getProteinThresholdMajor()));
+            if (proteinSoldierField != null) proteinSoldierField.setText(String.format(java.util.Locale.US, "%.2f", s.getProteinThresholdSoldier()));
+            if (proteinQueenField != null) proteinQueenField.setText(String.format(java.util.Locale.US, "%.2f", s.getProteinThresholdQueen()));
+            if (pheroInhibSlider != null) pheroInhibSlider.setValue(s.getQueenPheromoneInhibitionFactor());
+            if (haplodiploidyCheckBox != null) haplodiploidyCheckBox.setSelected(s.isHaplodiploidyEnabled());
+            if (pathogenResistanceSlider != null) pathogenResistanceSlider.setValue(s.getPathogenResistance());
+            if (groomingSlider != null) groomingSlider.setValue(s.getGroomingDefenseEfficacy());
 
             selectComboValue(primaryDietCombo, s.getPrimaryDiet());
             selectComboValue(secondaryDietCombo, s.getSecondaryDiet());
@@ -1489,6 +1568,8 @@ public class SpeciesEditorPane extends VBox {
             colonySizeField.setText(String.valueOf(s.getTypicalColonySize()));
             megaColonyCheckBox.setSelected(s.formsMegaColonies());
             flyCheckBox.setSelected(s.isWorkersCanFly());
+            if (metabolismField != null) metabolismField.setText(String.valueOf(s.getMetabolism()));
+            if (strengthField != null) strengthField.setText(String.valueOf(s.getStrength()));
 
             nestTypeCombo.getSelectionModel().select(s.getNestType());
             optTempField.setText(String.valueOf(s.getOptimalTempCelsius()));
@@ -1565,25 +1646,33 @@ public class SpeciesEditorPane extends VBox {
         s.setCommonName(commonNameField.getText());
         s.setScientificName(scientificNameField.getText());
         s.setGenus(genusField != null ? genusField.getText().trim() : "");
-        s.setInsectType(insectTypeCombo.getValue());
+        s.setInsectType(mapReadableToTechnical(insectTypeCombo.getValue()));
         s.setCategory(categoryCombo.getValue() != null ? categoryCombo.getValue() : org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY);
         s.setDescription(descriptionArea.getText());
 
-        s.setQueenCountMode(queenModeCombo.getValue());
+        s.setQueenCountMode(mapReadableToTechnical(queenModeCombo.getValue()));
         s.setQueenCount(queenCountSpinner.getValue());
         s.setQueenLifespan(parseInt(queenLifespanField.getText(), 25000));
         s.setQueenEggLayingRate(parseFloat(queenEggRateField.getText(), 15.0f));
         s.setHasKing(hasKingCheckBox.isSelected());
         s.setKingLifespan(parseInt(kingLifespanField.getText(), 15000));
-        s.setNuptialFlightType(nuptialFlightCombo.getValue());
+        s.setNuptialFlightType(mapReadableToTechnical(nuptialFlightCombo.getValue()));
 
         s.setEggStageDuration(parseInt(eggDurationField.getText(), 300));
         s.setLarvaStageDuration(parseInt(larvaDurationField.getText(), 600));
-        s.setLarvaDietRequirement(larvaDietCombo.getValue());
+        s.setLarvaDietRequirement(mapReadableToTechnical(larvaDietCombo.getValue()));
         s.setPupaStageDuration(parseInt(pupaDurationField.getText(), 500));
+        if (proteinMinorField != null) s.setProteinThresholdMinor(parseFloat(proteinMinorField.getText(), 0.35f));
+        if (proteinMajorField != null) s.setProteinThresholdMajor(parseFloat(proteinMajorField.getText(), 0.70f));
+        if (proteinSoldierField != null) s.setProteinThresholdSoldier(parseFloat(proteinSoldierField.getText(), 0.85f));
+        if (proteinQueenField != null) s.setProteinThresholdQueen(parseFloat(proteinQueenField.getText(), 0.95f));
+        if (pheroInhibSlider != null) s.setQueenPheromoneInhibitionFactor((float) pheroInhibSlider.getValue());
+        if (haplodiploidyCheckBox != null) s.setHaplodiploidyEnabled(haplodiploidyCheckBox.isSelected());
+        if (pathogenResistanceSlider != null) s.setPathogenResistance((float) pathogenResistanceSlider.getValue());
+        if (groomingSlider != null) s.setGroomingDefenseEfficacy((float) groomingSlider.getValue());
 
-        s.setPrimaryDiet(primaryDietCombo.getValue());
-        s.setSecondaryDiet(secondaryDietCombo.getValue());
+        s.setPrimaryDiet(mapReadableToTechnical(primaryDietCombo.getValue()));
+        s.setSecondaryDiet(mapReadableToTechnical(secondaryDietCombo.getValue()));
         s.setDailyFoodConsumption(parseFloat(foodConsumptionField.getText(), 0.5f));
         s.setWaterRequirement(parseFloat(waterReqField.getText(), 0.2f));
         s.setWorkerLifespan(parseInt(workerLifespanField.getText(), 5000));
@@ -1592,6 +1681,8 @@ public class SpeciesEditorPane extends VBox {
         s.setTypicalColonySize(parseInt(colonySizeField.getText(), 1000));
         s.setFormsMegaColonies(megaColonyCheckBox.isSelected());
         s.setWorkersCanFly(flyCheckBox.isSelected());
+        if (metabolismField != null) s.setMetabolism(parseFloat(metabolismField.getText(), 1.0f));
+        if (strengthField != null) s.setStrength(parseFloat(strengthField.getText(), 5.0f));
 
         s.setNestType(nestTypeCombo.getValue());
         s.setOptimalTempCelsius(parseFloat(optTempField.getText(), 24.0f));
@@ -2188,6 +2279,49 @@ public class SpeciesEditorPane extends VBox {
                 }
             }
         }
+    }
+
+    public static String mapReadableToTechnical(String val) {
+        if (val == null) return "";
+        String v = val.trim();
+        if ("Ants (Formicidae)".equalsIgnoreCase(v)) return "ANT";
+        if ("Bees (Apidae)".equalsIgnoreCase(v)) return "BEE";
+        if ("Wasps (Vespidae)".equalsIgnoreCase(v)) return "WASP";
+        if ("Termites (Termitoidae)".equalsIgnoreCase(v)) return "TERMITE";
+        if ("Other Eusocial Taxa".equalsIgnoreCase(v)) return "OTHER";
+
+        if ("Monogyne (Single Queen)".equalsIgnoreCase(v)) return "MONOGYNE";
+        if ("Polygyne (Multiple Queens)".equalsIgnoreCase(v)) return "POLYGYNE";
+        if ("Gamergates (Reproductive Workers)".equalsIgnoreCase(v)) return "GAMERGATES";
+
+        if ("Aerial Swarm Flight".equalsIgnoreCase(v)) return "AERIAL_SWARM";
+        if ("Swarm Division".equalsIgnoreCase(v)) return "SWARM_DIVISION";
+        if ("Budding / Sociotomy".equalsIgnoreCase(v)) return "BUDDING";
+        if ("In-Nest Mating".equalsIgnoreCase(v)) return "IN_NEST";
+
+        if ("Cellulose & Wood Fibers".equalsIgnoreCase(v)) return "CELLULOSE";
+        if ("Fungus Garden Mycelium".equalsIgnoreCase(v)) return "FUNGUS";
+        if ("High Protein Meat & Insects".equalsIgnoreCase(v)) return "HIGH_PROTEIN_MEAT";
+        if ("Omnivorous Mixed Diet".equalsIgnoreCase(v)) return "OMNIVORE";
+        if ("Seeds & Harvested Grains".equalsIgnoreCase(v)) return "SEEDS";
+        if ("Sugars, Honey & Nectar".equalsIgnoreCase(v)) return "SUGAR_HONEY";
+
+        if ("Honeydew & Aphid Trophobiosis".equalsIgnoreCase(v)) return "HONEYDEW";
+        if ("Insects & Meat Protein".equalsIgnoreCase(v)) return "INSECTS_MEAT";
+        if ("Sugars & Plant Nectar".equalsIgnoreCase(v)) return "SUGARS_NECTAR";
+        if ("Seeds & Granivory Grains".equalsIgnoreCase(v)) return "SEEDS";
+        if ("Fungus & Cultivated Mycelium".equalsIgnoreCase(v)) return "FUNGUS";
+        if ("Wood & Cellulose Fibers".equalsIgnoreCase(v)) return "WOOD_CELLULOSE";
+        if ("Omnivorous Polyphagous".equalsIgnoreCase(v)) return "OMNIVORE";
+        if ("None (No Secondary Diet)".equalsIgnoreCase(v)) return "NONE";
+
+        if ("BDI (Belief-Desire-Intention)".equalsIgnoreCase(v)) return "BDI";
+        if ("Behavior Tree".equalsIgnoreCase(v)) return "BEHAVIOR_TREE";
+        if ("FSM (Finite State Machine)".equalsIgnoreCase(v)) return "FSM";
+        if ("Fuzzy Logic Engine".equalsIgnoreCase(v)) return "FUZZY_LOGIC";
+        if ("Neural Network (ANN)".equalsIgnoreCase(v)) return "NEURAL_NETWORK";
+
+        return val;
     }
 
     public static String mapTechnicalToReadable(String val) {

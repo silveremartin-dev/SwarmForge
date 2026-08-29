@@ -437,6 +437,10 @@ public class JmeGameApp extends SimpleApplication {
             initializeInstancing();
         }
 
+        if (simulation != null && simulation.getTerrarium() != null) {
+            antVisualizer.setTerrainDimensions(10.0f, simulation.getTerrarium().getWidth());
+        }
+
         java.util.Set<String> activeIds = new java.util.HashSet<>();
 
         // Logic to update instanced geometries

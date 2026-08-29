@@ -50,6 +50,8 @@ public class SwarmForgeClient extends Application {
         private MinimapOverlay minimapOverlay;
         private PheromoneOverlay pheromoneOverlay;
         private StatisticsDashboard statisticsDashboard;
+        private org.swarmforge.client.ui.EventLogPane eventLogPane;
+        private org.swarmforge.client.ui.InterventionPanel interventionPanel;
         private org.swarmforge.client.ui.SimulationControlPanel simControlPanel;
         private org.swarmforge.client.ui.WorldEditorPane simWorldViewer;
         private org.swarmforge.client.ui.WorldEditorPane worldEditorPane;
@@ -68,10 +70,12 @@ public class SwarmForgeClient extends Application {
         private final I18nManager i18n = I18nManager.getInstance();
 
         private boolean isVideoRecording = false;
+        private boolean isVideoArmed = false;
         private final java.util.List<java.awt.image.BufferedImage> recordedVideoFrames = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
         private javafx.animation.Timeline videoCaptureTimeline;
         private long videoRecordingStartMs = 0;
         private Runnable stopVideoRecordingAndExport;
+        private Runnable cancelAndResetVideoRecording;
         private Button btnRecVideo;
 
         private final java.util.concurrent.ExecutorService simLoopExecutor = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
@@ -345,7 +349,8 @@ public class SwarmForgeClient extends Application {
                 Tab godTab = this.godTab;
                 godTab.textProperty().bind(i18n.createStringBinding("tab.god_mode"));
                 godTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ZAP));
-                org.swarmforge.client.ui.InterventionPanel interventionPanel = new org.swarmforge.client.ui.InterventionPanel();
+                this.interventionPanel = new org.swarmforge.client.ui.InterventionPanel();
+                org.swarmforge.client.ui.InterventionPanel interventionPanel = this.interventionPanel;
                 interventionPanel.setCallback(new org.swarmforge.client.ui.InterventionPanel.InterventionCallback() {
                     @Override
                     public void spawnAnts(String colonyId, String caste, int count, float x, float y, float z) {
@@ -477,15 +482,29 @@ public class SwarmForgeClient extends Application {
                 Tab eventLogTab = this.eventLogTab;
                 eventLogTab.textProperty().bind(i18n.createStringBinding("tab.log"));
                 eventLogTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.LIST));
-                eventLogTab.setContent(new org.swarmforge.client.ui.EventLogPane());
+                this.eventLogPane = new org.swarmforge.client.ui.EventLogPane();
+                eventLogTab.setContent(this.eventLogPane);
 
                 setSimTabsEnabled(false);
 
                 // Set callback on Apply Presets
                 this.simControlPanel.setOnApplyPresets(seed -> {
                     try {
+                        if (this.cancelAndResetVideoRecording != null) {
+                                this.cancelAndResetVideoRecording.run();
+                        }
                         if (this.localSimulation != null) {
+                                this.localSimulation.stop();
                                 this.localSimulation.recordSnapshot();
+                        }
+                        if (this.eventLogPane != null) {
+                                this.eventLogPane.clearLog();
+                        }
+                        if (this.statisticsDashboard != null) {
+                                this.statisticsDashboard.clear();
+                        }
+                        if (this.interventionPanel != null) {
+                                this.interventionPanel.clearScheduledEvents();
                         }
 
                         System.out.println("[INFO] [SwarmForge Engine] Création du terrarium et de la simulation locale...");
@@ -648,7 +667,8 @@ public class SwarmForgeClient extends Application {
                         if (this.localSimulation != null) {
                             this.localSimulation.recordInitialSnapshot();
                         }
-                        this.simControlPanel.resetTimelineTicks();
+                        // resetTimelineTicks() mutates JavaFX labels — must run on FX thread
+                        javafx.application.Platform.runLater(() -> this.simControlPanel.resetTimelineTicks());
 
                         javafx.application.Platform.runLater(() -> {
                                 try {
@@ -657,6 +677,12 @@ public class SwarmForgeClient extends Application {
                                         }
 
                                         this.simControlPanel.updateCheckpoints(this.localSimulation.getCheckpoints());
+                                        if (this.interventionPanel != null && this.localSimulation != null) {
+                                                List<String> colonyNames = this.localSimulation.getColonies().stream()
+                                                        .map(c -> (c.getSpeciesName() != null && !c.getSpeciesName().isEmpty()) ? c.getSpeciesName() : "Colonie #" + c.getId().toString().substring(0, 5))
+                                                        .collect(java.util.stream.Collectors.toList());
+                                                this.interventionPanel.updateAvailableColonies(colonyNames);
+                                        }
 
                                         // Activer les onglets de dépendance et basculer sur la vue 3D
                                         setSimTabsEnabled(true);
@@ -1083,9 +1109,62 @@ public class SwarmForgeClient extends Application {
                 this.btnRecVideo.setMaxWidth(Double.MAX_VALUE);
                 this.btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
 
+                Runnable startVideoRecordingInternal = () -> {
+                    if (isVideoRecording) return;
+                    isVideoRecording = true;
+                    isVideoArmed = false;
+                    recordedVideoFrames.clear();
+                    videoRecordingStartMs = System.currentTimeMillis();
+                    org.swarmforge.client.audio.SimulationAudioManager.getInstance().startAudioRecording();
+
+                    btnRecVideo.textProperty().unbind();
+                    btnRecVideo.setText("🔴 Arrêter (REC 00:00 / 10:00 - 0 frames)");
+                    btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+
+                    videoCaptureTimeline = new javafx.animation.Timeline(
+                        new javafx.animation.KeyFrame(javafx.util.Duration.millis(100), ev -> {
+                            if (!isVideoRecording) return;
+                            try {
+                                javafx.scene.image.WritableImage snap = simWorldViewer.snapshot(new javafx.scene.SnapshotParameters(), null);
+                                java.awt.image.BufferedImage frame = org.swarmforge.client.util.MediaCaptureUtil.convertToBufferedImage(snap);
+                                recordedVideoFrames.add(frame);
+
+                                long elapsedMs = System.currentTimeMillis() - videoRecordingStartMs;
+                                long elapsedSec = elapsedMs / 1000;
+                                long minutes = elapsedSec / 60;
+                                long seconds = elapsedSec % 60;
+
+                                btnRecVideo.setText(String.format("🔴 Arrêter (REC %02d:%02d / 10:00 - %d frames)", minutes, seconds, recordedVideoFrames.size()));
+
+                                if (elapsedSec >= 600) {
+                                    NotificationOverlay.show(viewportStack, "⏱️ Limite maximale d'enregistrement atteinte (10 minutes). Finalisation du fichier MP4...", NotificationOverlay.NotificationType.WARNING);
+                                    if (stopVideoRecordingAndExport != null) stopVideoRecordingAndExport.run();
+                                }
+                            } catch (Exception err) {
+                                LOG.warning("Failed frame capture: " + err.getMessage());
+                            }
+                        })
+                    );
+                    videoCaptureTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
+                    videoCaptureTimeline.play();
+
+                    NotificationOverlay.show(viewportStack, "🎥 Enregistrement vidéo 3D MP4 avec audio démarré (Limite max: 10 min)", NotificationOverlay.NotificationType.INFO, true);
+                };
+
+                Runnable disarmVideoRecording = () -> {
+                    if (isVideoArmed) {
+                        isVideoArmed = false;
+                        btnRecVideo.textProperty().unbind();
+                        btnRecVideo.textProperty().bind(i18n.createStringBinding("sidebar.btn.video"));
+                        btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                        NotificationOverlay.show(viewportStack, "🎥 Enregistrement vidéo désarmé.", NotificationOverlay.NotificationType.INFO);
+                    }
+                };
+
                 this.stopVideoRecordingAndExport = () -> {
                     if (!isVideoRecording) return;
                     isVideoRecording = false;
+                    isVideoArmed = false;
                     if (videoCaptureTimeline != null) {
                         videoCaptureTimeline.stop();
                         videoCaptureTimeline = null;
@@ -1101,11 +1180,11 @@ public class SwarmForgeClient extends Application {
                     final String scName = (simControlPanel != null) ? simControlPanel.getSelectedScenarioName() : "Scenario";
 
                     if (framesToExport.isEmpty()) {
-                        NotificationOverlay.show(rootPane, "⚠️ Aucune image capturée pendant l'enregistrement.", NotificationOverlay.NotificationType.WARNING);
+                        NotificationOverlay.show(viewportStack, "⚠️ Aucune image capturée pendant l'enregistrement.", NotificationOverlay.NotificationType.WARNING);
                         return;
                     }
 
-                    NotificationOverlay.show(rootPane, "⏳ Encodage de la vidéo 3D MP4 (" + framesToExport.size() + " images avec audio) en cours...", NotificationOverlay.NotificationType.INFO);
+                    NotificationOverlay.show(viewportStack, "⏳ Encodage de la vidéo 3D MP4 (" + framesToExport.size() + " images avec audio) en cours...", NotificationOverlay.NotificationType.INFO);
 
                     java.util.concurrent.CompletableFuture.runAsync(() -> {
                         try {
@@ -1113,7 +1192,7 @@ public class SwarmForgeClient extends Application {
                             Platform.runLater(() -> {
                                 String msg = String.format("🎬 Vidéo 3D MP4 (avec audio) exportée avec succès !\n📁 Fichier: %s\n📍 Emplacement: %s",
                                         videoFile.getName(), videoFile.getAbsolutePath());
-                                NotificationOverlay.show(rootPane, msg, NotificationOverlay.NotificationType.SUCCESS);
+                                NotificationOverlay.show(viewportStack, msg, NotificationOverlay.NotificationType.SUCCESS, true);
                                 LOG.info("[SwarmForge] " + msg);
                             });
                         } catch (Exception ex) {
@@ -1123,28 +1202,54 @@ public class SwarmForgeClient extends Application {
                                 Platform.runLater(() -> {
                                     String msg = String.format("🎬 Vidéo 3D GIF exportée avec succès !\n📁 Fichier: %s\n📍 Emplacement: %s",
                                             videoFile.getName(), videoFile.getAbsolutePath());
-                                    NotificationOverlay.show(rootPane, msg, NotificationOverlay.NotificationType.SUCCESS);
+                                    NotificationOverlay.show(viewportStack, msg, NotificationOverlay.NotificationType.SUCCESS, true);
                                     LOG.info("[SwarmForge] " + msg);
                                 });
                             } catch (Exception gifEx) {
                                 LOG.severe("Error exporting video clip: " + gifEx.getMessage());
                                 Platform.runLater(() -> {
-                                    NotificationOverlay.show(rootPane, "❌ Erreur génération vidéo: " + gifEx.getMessage(), NotificationOverlay.NotificationType.ERROR);
+                                    NotificationOverlay.show(viewportStack, "❌ Erreur génération vidéo: " + gifEx.getMessage(), NotificationOverlay.NotificationType.ERROR);
                                 });
                             }
                         }
                     });
                 };
 
+                this.cancelAndResetVideoRecording = () -> {
+                    isVideoRecording = false;
+                    isVideoArmed = false;
+                    if (videoCaptureTimeline != null) {
+                        videoCaptureTimeline.stop();
+                        videoCaptureTimeline = null;
+                    }
+                    recordedVideoFrames.clear();
+                    try {
+                        org.swarmforge.client.audio.SimulationAudioManager.getInstance().stopAudioRecording();
+                    } catch (Exception ignored) {}
+                    if (btnRecVideo != null) {
+                        Platform.runLater(() -> {
+                            btnRecVideo.textProperty().unbind();
+                            btnRecVideo.textProperty().bind(i18n.createStringBinding("sidebar.btn.video"));
+                            btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                        });
+                    }
+                };
+                Runnable cancelAndResetVideoRecording = this.cancelAndResetVideoRecording;
+
                 if (simControlPanel != null) {
                         simControlPanel.setOnPlay(v -> {
                                 if (simulationInactiveOverlay != null) simulationInactiveOverlay.setVisible(false);
                                 if (localSimulation != null) localSimulation.start();
+                                if (isVideoArmed && !isVideoRecording) {
+                                    startVideoRecordingInternal.run();
+                                }
                         });
                         simControlPanel.setOnPause(v -> {
                                 if (localSimulation != null) localSimulation.pause();
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
                                     stopVideoRecordingAndExport.run();
+                                } else if (isVideoArmed) {
+                                    disarmVideoRecording.run();
                                 }
                         });
                         simControlPanel.setOnStop(v -> {
@@ -1156,6 +1261,8 @@ public class SwarmForgeClient extends Application {
                                 if (simulationInactiveOverlay != null) simulationInactiveOverlay.setVisible(true);
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
                                     stopVideoRecordingAndExport.run();
+                                } else if (isVideoArmed) {
+                                    disarmVideoRecording.run();
                                 }
                         });
                         simControlPanel.setOnRewind(steps -> {
@@ -1167,6 +1274,8 @@ public class SwarmForgeClient extends Application {
                                 }
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
                                     stopVideoRecordingAndExport.run();
+                                } else if (isVideoArmed) {
+                                    disarmVideoRecording.run();
                                 }
                         });
                         simControlPanel.setOnStepForward(v -> {
@@ -1176,8 +1285,19 @@ public class SwarmForgeClient extends Application {
                                         simControlPanel.updateTick(curTick, curTick);
                                         simWorldViewer.repaintAllViews();
                                 }
+                                if (isVideoRecording && stopVideoRecordingAndExport != null) {
+                                    stopVideoRecordingAndExport.run();
+                                } else if (isVideoArmed) {
+                                    disarmVideoRecording.run();
+                                }
                         });
                         simControlPanel.setOnSeek(tick -> {
+                                if (tick == 0) {
+                                        cancelAndResetVideoRecording.run();
+                                        if (interventionPanel != null) {
+                                                interventionPanel.resetEventsState();
+                                        }
+                                }
                                 if (localSimulation != null) {
                                         localSimulation.seekToTick(tick);
                                         long curTick = localSimulation.getTickCount();
@@ -1186,10 +1306,17 @@ public class SwarmForgeClient extends Application {
                                 }
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
                                     stopVideoRecordingAndExport.run();
+                                } else if (isVideoArmed) {
+                                    disarmVideoRecording.run();
                                 }
                         });
                         simControlPanel.setOnSpeedChange(speed -> {
                                 if (localSimulation != null) localSimulation.setSpeedMultiplier(speed);
+                                if (isVideoRecording && stopVideoRecordingAndExport != null) {
+                                    stopVideoRecordingAndExport.run();
+                                } else if (isVideoArmed) {
+                                    disarmVideoRecording.run();
+                                }
                         });
                 }
 
@@ -1214,62 +1341,57 @@ public class SwarmForgeClient extends Application {
                 btnPhoto.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
                 btnPhoto.setOnAction(e -> {
                     try {
+                        // 1. Play shutter sound effect
+                        org.swarmforge.client.util.SoundEffectManager.getInstance().playCaptureSound();
+
+                        // 2. Camera shutter visual flash effect overlay on viewport
+                        javafx.scene.shape.Rectangle flash = new javafx.scene.shape.Rectangle();
+                        flash.widthProperty().bind(viewportStack.widthProperty());
+                        flash.heightProperty().bind(viewportStack.heightProperty());
+                        flash.setFill(javafx.scene.paint.Color.WHITE);
+                        flash.setOpacity(0.75);
+                        flash.setMouseTransparent(true);
+                        viewportStack.getChildren().add(flash);
+
+                        javafx.animation.FadeTransition ft = new javafx.animation.FadeTransition(javafx.util.Duration.millis(350), flash);
+                        ft.setFromValue(0.75);
+                        ft.setToValue(0.0);
+                        ft.setOnFinished(ev -> viewportStack.getChildren().remove(flash));
+                        ft.play();
+
+                        // 3. Take HD screenshot
                         String scName = (simControlPanel != null) ? simControlPanel.getSelectedScenarioName() : "Scenario";
                         java.io.File screenshotFile = org.swarmforge.client.util.MediaCaptureUtil.takeScreenshot(simWorldViewer, scName);
+
+                        // 4. Show prominent toast notification over viewportStack
                         String msg = String.format("📸 Screenshot HD enregistré avec succès !\n📁 Fichier: %s\n📍 Emplacement: %s",
                                 screenshotFile.getName(), screenshotFile.getAbsolutePath());
-                        NotificationOverlay.show(rootPane, msg, NotificationOverlay.NotificationType.SUCCESS);
+                        NotificationOverlay.show(viewportStack, msg, NotificationOverlay.NotificationType.SUCCESS, true);
                         LOG.info("[SwarmForge] " + msg);
                     } catch (Exception ex) {
                         LOG.severe("Error capturing HD screenshot: " + ex.getMessage());
-                        NotificationOverlay.show(rootPane, "❌ Erreur capture photo: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
+                        NotificationOverlay.show(viewportStack, "❌ Erreur capture photo: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR, true);
                     }
                 });
 
                 btnRecVideo.setOnAction(e -> {
-                    if (!isVideoRecording) {
-                        // Start Video & Audio Recording
-                        isVideoRecording = true;
-                        recordedVideoFrames.clear();
-                        videoRecordingStartMs = System.currentTimeMillis();
-                        org.swarmforge.client.audio.SimulationAudioManager.getInstance().startAudioRecording();
-
-                        btnRecVideo.textProperty().unbind();
-                        btnRecVideo.setText("🔴 Arrêter (REC 00:00 / 10:00 - 0 frames)");
-                        btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
-
-                        videoCaptureTimeline = new javafx.animation.Timeline(
-                            new javafx.animation.KeyFrame(javafx.util.Duration.millis(100), ev -> {
-                                if (!isVideoRecording) return;
-                                try {
-                                    javafx.scene.image.WritableImage snap = simWorldViewer.snapshot(new javafx.scene.SnapshotParameters(), null);
-                                    java.awt.image.BufferedImage frame = org.swarmforge.client.util.MediaCaptureUtil.convertToBufferedImage(snap);
-                                    recordedVideoFrames.add(frame);
-
-                                    long elapsedMs = System.currentTimeMillis() - videoRecordingStartMs;
-                                    long elapsedSec = elapsedMs / 1000;
-                                    long minutes = elapsedSec / 60;
-                                    long seconds = elapsedSec % 60;
-
-                                    btnRecVideo.setText(String.format("🔴 Arrêter (REC %02d:%02d / 10:00 - %d frames)", minutes, seconds, recordedVideoFrames.size()));
-
-                                    // Cap video recording at 10 minutes (600s) to prevent memory & disk overflow
-                                    if (elapsedSec >= 600) {
-                                        NotificationOverlay.show(rootPane, "⏱️ Limite maximale d'enregistrement atteint (10 minutes). Finalisation du fichier MP4...", NotificationOverlay.NotificationType.WARNING);
-                                        stopVideoRecordingAndExport.run();
-                                    }
-                                } catch (Exception err) {
-                                    LOG.warning("Failed frame capture: " + err.getMessage());
-                                }
-                            })
-                        );
-                        videoCaptureTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
-                        videoCaptureTimeline.play();
-
-                        NotificationOverlay.show(rootPane, "🎥 Enregistrement vidéo 3D MP4 avec audio démarré (Limite max: 10 min)", NotificationOverlay.NotificationType.INFO);
-                    } else {
+                    boolean isSimRunning = (simControlPanel != null && simControlPanel.isPlaying());
+                    if (isVideoRecording) {
                         // Stop Video Recording & Export Clip
-                        stopVideoRecordingAndExport.run();
+                        if (stopVideoRecordingAndExport != null) stopVideoRecordingAndExport.run();
+                    } else if (isVideoArmed) {
+                        // Cancel armed status
+                        disarmVideoRecording.run();
+                    } else if (!isSimRunning) {
+                        // Arm video recording for when simulation starts
+                        isVideoArmed = true;
+                        btnRecVideo.textProperty().unbind();
+                        btnRecVideo.setText("⏳ REC Armé (Attente démarrage)");
+                        btnRecVideo.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                        NotificationOverlay.show(viewportStack, "🎥 Vidéo prête à démarrer — L'enregistrement commencera automatiquement au lancement de la simulation.", NotificationOverlay.NotificationType.INFO, true);
+                    } else {
+                        // Simulation is running -> Start recording immediately
+                        startVideoRecordingInternal.run();
                     }
                 });
 
@@ -1485,62 +1607,115 @@ public class SwarmForgeClient extends Application {
                 Runnable toggleFullscreen = () -> {
                         javafx.stage.Stage stage = rootPane.getScene() != null ? (javafx.stage.Stage) rootPane.getScene().getWindow() : null;
                         if (stage != null) {
-                                stage.setFullScreen(!stage.isFullScreen());
+                                boolean willBeFS = !stage.isFullScreen();
+                                if (willBeFS) {
+                                        if (mainTabs != null && simTab != null) {
+                                                mainTabs.getSelectionModel().select(simTab);
+                                        }
+                                        if (simSubTabs != null && visualTab != null) {
+                                                simSubTabs.getSelectionModel().select(visualTab);
+                                        }
+                                }
+                                stage.setFullScreen(willBeFS);
                         }
                 };
 
                 btnFullscreenMode.setOnAction(e -> toggleFullscreen.run());
                 btnExitFullscreen.setOnAction(e -> toggleFullscreen.run());
 
-                // Scene & Stage fullScreen listener for reliable UI updates (ESC or button toggle)
-                rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
-                        if (newScene != null) {
-                                newScene.windowProperty().addListener((wObs, oldW, newW) -> {
-                                        if (newW instanceof javafx.stage.Stage stage) {
-                                                stage.fullScreenProperty().addListener((fsObs, oldFS, isFS) -> {
-                                                        if (isFS) {
-                                                                if (mainTabs != null) {
-                                                                        mainTabs.setStyle("-fx-tab-max-height: 0; -fx-tab-min-height: 0; -fx-padding: 0;");
-                                                                }
-                                                                if (simSubTabs != null) {
-                                                                        simSubTabs.setStyle("-fx-tab-max-height: 0; -fx-tab-min-height: 0; -fx-padding: 0;");
-                                                                }
-                                                                if (connectBox != null) {
-                                                                        connectBox.setVisible(false);
-                                                                        connectBox.setManaged(false);
-                                                                }
-                                                                rootPane.setRight(null);
-                                                                if (simWorldViewer != null) {
-                                                                        simWorldViewer.setDualMinimapVisible(false);
-                                                                        simWorldViewer.setHeaderVisible(false);
-                                                                }
-                                                                btnExitFullscreen.setVisible(true);
-                                                        } else {
-                                                                if (mainTabs != null) {
-                                                                        mainTabs.setStyle("");
-                                                                }
-                                                                if (simSubTabs != null) {
-                                                                        simSubTabs.setStyle("");
-                                                                }
-                                                                if (connectBox != null) {
-                                                                        connectBox.setVisible(true);
-                                                                        connectBox.setManaged(true);
-                                                                }
-                                                                rootPane.setRight(sideScroll);
-                                                                if (simWorldViewer != null) {
-                                                                        simWorldViewer.setDualMinimapVisible(chkMinimap.isSelected());
-                                                                        simWorldViewer.setHeaderVisible(true);
-                                                                }
-                                                                btnExitFullscreen.setVisible(false);
-                                                        }
-                                                        if (simWorldViewer != null) {
-                                                                simWorldViewer.repaintAllViews();
-                                                        }
-                                                });
+                // -----------------------------------------------------------------------
+                // Full-screen state handler — extracted so it can be reused safely
+                // regardless of whether scene/window are already attached.
+                // -----------------------------------------------------------------------
+                java.util.function.Consumer<javafx.stage.Stage> registerFsListener = new java.util.function.Consumer<javafx.stage.Stage>() {
+                        // Guard: only register once per stage instance
+                        private final java.util.Set<javafx.stage.Stage> registered = new java.util.HashSet<>();
+
+                        @Override
+                        public void accept(javafx.stage.Stage stage) {
+                                if (stage == null || !registered.add(stage)) return;
+                                stage.fullScreenProperty().addListener((fsObs, oldFS, isFS) -> {
+                                        if (isFS) {
+                                                if (mainTabs != null && simTab != null) {
+                                                        mainTabs.getSelectionModel().select(simTab);
+                                                }
+                                                if (simSubTabs != null && visualTab != null) {
+                                                        simSubTabs.getSelectionModel().select(visualTab);
+                                                }
+                                                if (mainTabs != null) {
+                                                        mainTabs.setStyle("-fx-tab-max-height: 0; -fx-tab-min-height: 0; -fx-padding: 0; -fx-border-width: 0;");
+                                                }
+                                                if (simSubTabs != null) {
+                                                        simSubTabs.setStyle("-fx-tab-max-height: 0; -fx-tab-min-height: 0; -fx-padding: 0; -fx-border-width: 0;");
+                                                }
+                                                if (connectBox != null) {
+                                                        connectBox.setVisible(false);
+                                                        connectBox.setManaged(false);
+                                                }
+                                                rootPane.setRight(null);
+                                                if (simWorldViewer != null) {
+                                                        simWorldViewer.setFullscreenMode(true);
+                                                }
+                                                if (worldEditorPane != null) {
+                                                        worldEditorPane.setFullscreenMode(true);
+                                                }
+                                                btnExitFullscreen.setVisible(true);
+                                        } else {
+                                                if (mainTabs != null) {
+                                                        mainTabs.setStyle("");
+                                                }
+                                                if (simSubTabs != null) {
+                                                        simSubTabs.setStyle("");
+                                                }
+                                                if (connectBox != null) {
+                                                        connectBox.setVisible(true);
+                                                        connectBox.setManaged(true);
+                                                }
+                                                rootPane.setRight(sideScroll);
+                                                if (simWorldViewer != null) {
+                                                        simWorldViewer.setFullscreenMode(false);
+                                                        simWorldViewer.setDualMinimapVisible(chkMinimap.isSelected());
+                                                }
+                                                if (worldEditorPane != null) {
+                                                        worldEditorPane.setFullscreenMode(false);
+                                                }
+                                                btnExitFullscreen.setVisible(false);
+                                        }
+                                        update3DRenderingState();
+                                        if (simWorldViewer != null) {
+                                                simWorldViewer.repaintAllViews();
+                                        }
+                                        if (worldEditorPane != null) {
+                                                worldEditorPane.repaintAllViews();
                                         }
                                 });
                         }
-                });
+                };
+
+                // Wire up: scene → window → stage, handling already-attached values at each level
+                java.util.function.Consumer<javafx.scene.Scene> onSceneAttached = scene -> {
+                        if (scene == null) return;
+                        // F11 shortcut
+                        scene.setOnKeyPressed(ke -> {
+                                if (ke.getCode() == javafx.scene.input.KeyCode.F11) {
+                                        toggleFullscreen.run();
+                                        ke.consume();
+                                }
+                        });
+                        // Register fullscreen listener now if window already known, else wait
+                        java.util.function.Consumer<javafx.stage.Stage> finalRegister = registerFsListener;
+                        scene.windowProperty().addListener((wObs, oldW, newW) -> {
+                                if (newW instanceof javafx.stage.Stage s) finalRegister.accept(s);
+                        });
+                        // Window may already be set at this point
+                        if (scene.getWindow() instanceof javafx.stage.Stage s) {
+                                finalRegister.accept(s);
+                        }
+                };
+
+                rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> onSceneAttached.accept(newScene));
+                // Scene may already be set at this point (e.g. if tab was pre-loaded)
+                onSceneAttached.accept(rootPane.getScene());
 
                 return rootPane;
         }

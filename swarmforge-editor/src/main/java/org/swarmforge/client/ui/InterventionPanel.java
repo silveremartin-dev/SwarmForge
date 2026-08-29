@@ -250,7 +250,8 @@ public class InterventionPanel extends BorderPane {
         subBlocksOuterContainer.setPadding(new Insets(16));
         subBlocksOuterContainer.setStyle("-fx-background-color: rgba(15, 23, 42, 0.6); -fx-border-color: rgba(56, 189, 248, 0.35); -fx-border-width: 1.5; -fx-border-radius: 8; -fx-background-radius: 8;");
 
-        Label subBlocksHeader = new Label("🛠️ Panneau de Configuration des Événements & Interventions");
+        Label subBlocksHeader = new Label();
+        subBlocksHeader.textProperty().bind(i18n.createStringBinding("god.block.header"));
         subBlocksHeader.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
         subBlocksOuterContainer.getChildren().addAll(subBlocksHeader, new Separator());
@@ -259,10 +260,10 @@ public class InterventionPanel extends BorderPane {
         subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.time_colony"), createTimeAndColonyConfigNode()));
 
         // Sub-block 2: Spatial 3D Positioning (Centered on Terrain Surface by Default)
-        subBlocksOuterContainer.getChildren().add(createCardSubBlock("📍 Localisation Spatiale 3D & Altitude du Substrat", createSpatialPositionSubBlockNode()));
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.spatial"), createSpatialPositionSubBlockNode()));
 
         // Sub-block 3: Entities, Castes & Brood (Apparition / Élimination / Couvain)
-        subBlocksOuterContainer.getChildren().add(createCardSubBlock("🐜 Entités, Castes & Gestion du Couvain", createEntitiesSubBlockNode()));
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.entities_manage"), createEntitiesSubBlockNode()));
 
         // Sub-block 4: Resources & Biomass (With Complete Social Insect Food Taxonomy)
         subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.resources"), createResourcesSubBlockNode()));
@@ -271,16 +272,16 @@ public class InterventionPanel extends BorderPane {
         subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.disasters"), createDisastersSubBlockNode()));
 
         // Sub-block 6: Abiotic Physical Drivers (Relative Delta +/- & Duration Mode)
-        subBlocksOuterContainer.getChildren().add(createCardSubBlock("🌡️ Conditions Abiotiques (Variations Relatives Δ & Durée)", createParametersSubBlockNode()));
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.abiotic_delta"), createParametersSubBlockNode()));
 
         // Sub-block 7: Pheromones & Behavioral Disruption (Intensity & Duration)
-        subBlocksOuterContainer.getChildren().add(createCardSubBlock("🌀 Phéromones & Perturbations Comportementales", createPheromoneSubBlockNode()));
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.pheromones"), createPheromoneSubBlockNode()));
 
         // Sub-block 8: Apex Predators & Biological Invasions (Intensity & Duration)
-        subBlocksOuterContainer.getChildren().add(createCardSubBlock("🦎 Invasions Écologiques & Prédateurs Apicaux", createInvasionSubBlockNode()));
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.invasions"), createInvasionSubBlockNode()));
 
         // Sub-block 9: Genetics, Metabolic Boosts & Mutagens (Intensity & Duration)
-        subBlocksOuterContainer.getChildren().add(createCardSubBlock("🧬 Mutagènes, Gelée Royale & Boosts (Intensité & Durée)", createMutationSubBlockNode()));
+        subBlocksOuterContainer.getChildren().add(createCardSubBlock(i18n.get("god.block.mutations"), createMutationSubBlockNode()));
 
         mainContent.getChildren().add(subBlocksOuterContainer);
 
@@ -508,11 +509,13 @@ public class InterventionPanel extends BorderPane {
         // X Slider (Ouest -> Est)
         Label lblX = new Label("Axe X (Ouest ◄► Est) :");
         lblX.setStyle("-fx-font-weight: bold;");
+        lblX.setTooltip(new Tooltip("Coordonnée horizontale X (0 = Ouest, 32 = Centre, 64 = Est)."));
         posXSlider = new Slider(0.0, 64.0, 32.0);
         posXSlider.setPrefWidth(260);
         posXSlider.setMajorTickUnit(16.0);
         posXSlider.setMinorTickCount(3);
         posXSlider.setSnapToTicks(false);
+        posXSlider.setTooltip(new Tooltip("Ajuster la position horizontale X de l'événement sur la grille."));
         posXValLabel = new Label("32.0 m (Centre de la Carte)");
         posXValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
         posXSlider.valueProperty().addListener((o, a, b) -> {
@@ -524,11 +527,13 @@ public class InterventionPanel extends BorderPane {
         // Y Slider (Sud -> Nord)
         Label lblY = new Label("Axe Y (Sud ◄► Nord) :");
         lblY.setStyle("-fx-font-weight: bold;");
+        lblY.setTooltip(new Tooltip("Coordonnée verticale Y sur la carte (0 = Sud, 32 = Centre, 64 = Nord)."));
         posYSlider = new Slider(0.0, 64.0, 32.0);
         posYSlider.setPrefWidth(260);
         posYSlider.setMajorTickUnit(16.0);
         posYSlider.setMinorTickCount(3);
         posYSlider.setSnapToTicks(false);
+        posYSlider.setTooltip(new Tooltip("Ajuster la position verticale Y de l'événement sur la grille."));
         posYValLabel = new Label("32.0 m (Centre de la Carte)");
         posYValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
         posYSlider.valueProperty().addListener((o, a, b) -> {
@@ -540,11 +545,13 @@ public class InterventionPanel extends BorderPane {
         // Z Slider (Profondeur -> Surface -> Altitude)
         Label lblZ = new Label("Altitude Z (Hauteur) :");
         lblZ.setStyle("-fx-font-weight: bold;");
+        lblZ.setTooltip(new Tooltip("Altitude Z (< 0m = Galeries souterraines, 1m = Surface du sol, > 5m = Canopée/Air)."));
         posZSlider = new Slider(-5.0, 25.0, 1.0);
         posZSlider.setPrefWidth(260);
         posZSlider.setMajorTickUnit(5.0);
         posZSlider.setMinorTickCount(4);
         posZSlider.setSnapToTicks(false);
+        posZSlider.setTooltip(new Tooltip("Régler l'altitude ou la profondeur d'impact de l'événement."));
         posZValLabel = new Label("1.0 m (Surface du Terrain)");
         posZValLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold;");
         posZSlider.valueProperty().addListener((o, a, b) -> {
@@ -608,6 +615,7 @@ public class InterventionPanel extends BorderPane {
         );
         colonySelect.getSelectionModel().selectFirst();
         colonySelect.setPrefWidth(240);
+        colonySelect.setTooltip(new Tooltip("Sélectionner la colonie ciblée par l'intervention."));
         colonySelect.setOnAction(e -> updateCastesForSelectedColony(colonySelect.getValue()));
 
         Label lblAction = new Label("Type d'Action :");
@@ -620,11 +628,13 @@ public class InterventionPanel extends BorderPane {
         ));
         entityActionSelect.getSelectionModel().selectFirst();
         entityActionSelect.setPrefWidth(260);
+        entityActionSelect.setTooltip(new Tooltip("Type d'action démographique (Injection, Élimination ciblée, Dépuration du couvain ou Extinction)."));
 
         Label casteLabel = new Label("Caste / Couvain Cible :");
         casteLabel.setStyle("-fx-font-weight: bold;");
         casteSelect = new ComboBox<>();
         casteSelect.setPrefWidth(260);
+        casteSelect.setTooltip(new Tooltip("Caste adulte ou stade de couvain (Œufs, Larves, Nymphes) impacté."));
         updateCastesForSelectedColony(colonySelect.getValue());
 
         Label countLabel = new Label("Quantité / Nombre d'Individus :");
@@ -632,6 +642,7 @@ public class InterventionPanel extends BorderPane {
         antCountSpinner = new Spinner<>(1, 1000, 10);
         antCountSpinner.setEditable(true);
         antCountSpinner.setPrefWidth(120);
+        antCountSpinner.setTooltip(new Tooltip("Nombre d'individus ou d'éléments de couvain concernés."));
 
         grid.add(colLabel, 0, 0); grid.add(colonySelect, 1, 0);
         grid.add(lblAction, 0, 1); grid.add(entityActionSelect, 1, 1);
@@ -668,6 +679,7 @@ public class InterventionPanel extends BorderPane {
         ));
         resourceTypeSelect.getSelectionModel().selectFirst();
         resourceTypeSelect.setPrefWidth(220);
+        resourceTypeSelect.setTooltip(new Tooltip("Emplacement et type de gisement de ressource."));
 
         Label lblNature = new Label();
         lblNature.textProperty().bind(i18n.createStringBinding("god.res.nature"));
@@ -684,11 +696,13 @@ public class InterventionPanel extends BorderPane {
         ));
         foodNatureSelect.getSelectionModel().selectFirst();
         foodNatureSelect.setPrefWidth(330);
+        foodNatureSelect.setTooltip(new Tooltip("Nature trophique précise de la biomasse injectée."));
 
         Label foodLabel = new Label();
         foodLabel.textProperty().bind(i18n.createStringBinding("god.res.qty"));
         foodSlider = new Slider(10, 1000, 100);
         foodSlider.setPrefWidth(180);
+        foodSlider.setTooltip(new Tooltip("Masse de nourriture ou volume d'eau à faire apparaître."));
         Label foodValue = new Label("100 u");
         foodValue.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
         foodSlider.valueProperty().addListener((o,a,b) -> foodValue.setText(String.format("%.0f u", b.doubleValue())));
@@ -730,11 +744,13 @@ public class InterventionPanel extends BorderPane {
         ));
         disasterSelect.getSelectionModel().selectFirst();
         disasterSelect.setPrefWidth(220);
+        disasterSelect.setTooltip(new Tooltip("Nature du sinistre ou de la perturbation climatique extrême."));
 
         Label intLabel = new Label();
         intLabel.textProperty().bind(i18n.createStringBinding("god.disasters.magnitude"));
         intensitySlider = new Slider(0.1, 1.0, 0.5);
         intensitySlider.setPrefWidth(180);
+        intensitySlider.setTooltip(new Tooltip("Intensité et gravité de la catastrophe (0.1 = Faible, 1.0 = Destructrice)."));
         Label intValue = new Label("Moyenne (0.5)");
         intValue.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold;");
         intensitySlider.valueProperty().addListener((o,a,b) -> {
@@ -746,6 +762,7 @@ public class InterventionPanel extends BorderPane {
         durLabel.textProperty().bind(i18n.createStringBinding("god.disasters.duration"));
         durationSlider = new Slider(5, 43200, 1440);
         durationSlider.setPrefWidth(180);
+        durationSlider.setTooltip(new Tooltip("Durée d'application continue de la catastrophe en minutes ou jours."));
         durationValLabel = new Label("24h (1 Jour)");
         durationValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
         durationSlider.valueProperty().addListener((o, a, b) -> {
@@ -1324,6 +1341,30 @@ public class InterventionPanel extends BorderPane {
                 sortScheduledEvents();
                 scheduledEventsListView.refresh();
             });
+        }
+    }
+
+    /**
+     * Completely purges all scheduled God Mode events (used when creating a new simulation).
+     */
+    public void clearScheduledEvents() {
+        scheduledEventsList.clear();
+        currentSimulationTick = 0;
+        if (scheduledEventsListView != null) {
+            javafx.application.Platform.runLater(() -> scheduledEventsListView.refresh());
+        }
+    }
+
+    /**
+     * Resets execution flags on scheduled events so they can trigger again when rewinding to tick 0.
+     */
+    public void resetEventsState() {
+        for (ScheduledEvent ev : scheduledEventsList) {
+            ev.executed = false;
+        }
+        currentSimulationTick = 0;
+        if (scheduledEventsListView != null) {
+            javafx.application.Platform.runLater(() -> scheduledEventsListView.refresh());
         }
     }
 

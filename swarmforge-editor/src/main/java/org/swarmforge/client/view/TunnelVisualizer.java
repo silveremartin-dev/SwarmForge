@@ -82,15 +82,26 @@ public class TunnelVisualizer {
         return null;
     }
 
-    private Geometry createNodeGeometry(TunnelNode node) {
-        float radius = switch (node.type()) {
-            case QUEEN_CHAMBER -> 1.5f;
-            case BROOD_CHAMBER, FOOD_STORAGE -> 1.0f;
-            case ENTRANCE -> 0.8f;
-            default -> 0.4f;
-        };
+    private float terrainSideMeters = 10.0f; // Default terrain side length in meters
+    private int gridWidth = 64; // Default 3D scene grid dimension
 
-        Sphere shape = new Sphere(8, 8, radius);
+    public void setTerrainDimensions(float terrainSideMeters, int gridWidth) {
+        if (terrainSideMeters > 0) this.terrainSideMeters = terrainSideMeters;
+        if (gridWidth > 0) this.gridWidth = gridWidth;
+    }
+
+    private Geometry createNodeGeometry(TunnelNode node) {
+        float mmPerWorldUnit = (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
+        // Queen chamber ~80mm radius, Brood chamber ~50mm radius, Entrance ~35mm
+        float radiusMm = switch (node.type()) {
+            case QUEEN_CHAMBER -> 80.0f;
+            case BROOD_CHAMBER, FOOD_STORAGE -> 50.0f;
+            case ENTRANCE -> 35.0f;
+            default -> 25.0f;
+        };
+        float radius3D = Math.max(0.15f, (radiusMm / mmPerWorldUnit) * 3.5f);
+
+        Sphere shape = new Sphere(8, 8, radius3D);
         Geometry geom = new Geometry("Node_" + node.id(), shape);
         geom.setLocalTranslation(node.x(), node.z(), node.y());
 
@@ -101,14 +112,24 @@ public class TunnelVisualizer {
         return geom;
     }
 
+    private float customGalleryDiameterMm = -1.0f;
+
+    public void setCustomGalleryDiameterMm(float customGalleryDiameterMm) {
+        this.customGalleryDiameterMm = customGalleryDiameterMm;
+    }
+
     private Geometry createEdgeGeometry(TunnelNode n1, TunnelNode n2, String name) {
         Vector3f p1 = new Vector3f(n1.x(), n1.z(), n1.y());
         Vector3f p2 = new Vector3f(n2.x(), n2.z(), n2.y());
         Vector3f diff = p2.subtract(p1);
         float len = diff.length();
 
+        float mmPerWorldUnit = (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
+        float galleryRadiusMm = customGalleryDiameterMm > 0 ? customGalleryDiameterMm / 2.0f : 12.0f;
+        float galleryRadius3D = Math.max(0.08f, (galleryRadiusMm / mmPerWorldUnit) * 3.5f);
+
         // Cylinder aligned Z
-        Cylinder shape = new Cylinder(4, 8, 0.2f, len, true);
+        Cylinder shape = new Cylinder(4, 8, galleryRadius3D, len, true);
         Geometry geom = new Geometry(name, shape);
 
         // Position at midpoint

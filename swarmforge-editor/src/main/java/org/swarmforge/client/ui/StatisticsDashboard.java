@@ -131,6 +131,8 @@ public class StatisticsDashboard extends VBox {
     private final Label lblIndivCasteAge = new Label("Ouvrière (14 jours)");
     private String trackedAntId = "ant_1";
 
+    private final I18nManager i18n = I18nManager.getInstance();
+
     private final VBox individualAntCard = createIndividualAntCard();
 
     private VBox createIndividualAntCard() {
@@ -147,11 +149,13 @@ public class StatisticsDashboard extends VBox {
         Label lblPrompt = new Label("Entrez le Numéro / Identifiant de la Fourmi :");
         lblPrompt.setStyle("-fx-font-weight: bold; -fx-text-fill: #e2e8f0;");
 
-        txtAntSearchId.setPromptText("ex: ant_1, ant_42, queen_1...");
+        txtAntSearchId.promptTextProperty().bind(I18nManager.getInstance().createStringBinding("inspector.prompt.id"));
         txtAntSearchId.setPrefWidth(160);
+        txtAntSearchId.setTooltip(new Tooltip("Entrez l'identifiant exact de la fourmi à suivre (ex: ant_1, ant_42)."));
 
         Button btnTrack = new Button("🎯 Suivre & Tracer");
         btnTrack.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        btnTrack.setTooltip(new Tooltip("Activer le suivi télémétrique et tracer la trajectoire de l'individu."));
         btnTrack.setOnAction(e -> {
             String val = txtAntSearchId.getText() != null ? txtAntSearchId.getText().trim() : "";
             if (!val.isEmpty()) {
@@ -233,7 +237,6 @@ public class StatisticsDashboard extends VBox {
     private double currentSelectedWindowSec = 180.0; // 3 minutes default
 
     public StatisticsDashboard() {
-        org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
         setSpacing(14);
         setPadding(new Insets(14));
 
@@ -250,30 +253,32 @@ public class StatisticsDashboard extends VBox {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         // View Mode Selector
-        Label lblViewMode = new Label("📉 Graphiques :");
+        Label lblViewMode = new Label();
+        lblViewMode.textProperty().bind(i18n.createStringBinding("stats.res_chart"));
         lblViewMode.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-font-weight: bold;");
         comboGraphView.getItems().addAll(
-                "Tous les Graphiques (Vue Globale)",
-                "Démographie Multi-Colonies & Espèces",
-                "Répartition des Castes (Reines, Ouvrières, Soldats)",
-                "Ressources & Biomasse (Nourriture, Eau)",
-                "Écosystème & Climat (Température, Pluie)",
-                "Performances Moteur (TPS)",
-                "🐜 Télémesure Individuelle (Fourmi Spécifique)"
+                i18n.get("stats.view.all"),
+                i18n.get("stats.view.demographics"),
+                i18n.get("stats.view.castes"),
+                i18n.get("stats.view.resources"),
+                i18n.get("stats.view.ecosystem"),
+                i18n.get("stats.view.tps"),
+                i18n.get("stats.view.telemetry")
         );
         comboGraphView.getSelectionModel().selectFirst();
         comboGraphView.setTooltip(new Tooltip("Filtrer l'affichage des graphiques temporels par catégorie d'analyse."));
         comboGraphView.setOnAction(e -> updateVisibleCharts());
 
         // Time Window Selector (3 Minutes default as requested)
-        Label lblTimeWindow = new Label("⏱️ Fenêtre :");
+        Label lblTimeWindow = new Label();
+        lblTimeWindow.textProperty().bind(i18n.createStringBinding("stats.tick_rate"));
         lblTimeWindow.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-font-weight: bold;");
         comboTimeWindow.getItems().addAll(
-                "1 Minute (60 s)",
-                "3 Minutes (180 s) — Recommandé",
-                "5 Minutes (300 s)",
-                "10 Minutes (600 s)",
-                "Tout l'historique"
+                i18n.get("stats.window.1m"),
+                i18n.get("stats.window.3m"),
+                i18n.get("stats.window.5m"),
+                i18n.get("stats.window.10m"),
+                i18n.get("stats.window.all")
         );
         comboTimeWindow.getSelectionModel().select(1); // 3 Minutes default
         comboTimeWindow.setTooltip(new Tooltip("Durée d'observation de la courbe temporelle. Une fenêtre de 3 minutes permet d'observer l'évolution sereinement sans défilement trop rapide."));
@@ -320,14 +325,23 @@ public class StatisticsDashboard extends VBox {
         lblSelect.setTooltip(new Tooltip("Cochez ou décochez les séries à faire apparaître sur les courbes."));
 
         chkTotalPop.textProperty().bind(i18n.createStringBinding("stats.population_total"));
+        chkTotalPop.setTooltip(new Tooltip("Afficher/Masquer la courbe de population totale."));
         chkWorkers.textProperty().bind(i18n.createStringBinding("stats.workers"));
+        chkWorkers.setTooltip(new Tooltip("Afficher/Masquer la courbe de l'effectif des ouvrières."));
         chkSoldiers.textProperty().bind(i18n.createStringBinding("stats.soldiers"));
+        chkSoldiers.setTooltip(new Tooltip("Afficher/Masquer la courbe de l'effectif des soldats."));
         chkQueens.textProperty().bind(i18n.createStringBinding("stats.queens"));
+        chkQueens.setTooltip(new Tooltip("Afficher/Masquer la courbe du nombre de reines."));
         chkFood.textProperty().bind(i18n.createStringBinding("stats.food"));
+        chkFood.setTooltip(new Tooltip("Afficher/Masquer la courbe des stocks de nourriture."));
         chkWater.textProperty().bind(i18n.createStringBinding("stats.water"));
+        chkWater.setTooltip(new Tooltip("Afficher/Masquer la courbe des stocks d'eau/humidité."));
         chkBirths.textProperty().bind(i18n.createStringBinding("stats.births"));
+        chkBirths.setTooltip(new Tooltip("Afficher/Masquer la courbe du cumul des naissances."));
         chkDeaths.textProperty().bind(i18n.createStringBinding("stats.deaths"));
+        chkDeaths.setTooltip(new Tooltip("Afficher/Masquer la courbe du cumul des décès."));
         chkTps.textProperty().bind(i18n.createStringBinding("stats.tps"));
+        chkTps.setTooltip(new Tooltip("Afficher/Masquer la courbe de la vitesse moteur TPS."));
 
         FlowPane checkFlow = new FlowPane(12, 6);
         checkFlow.getChildren().addAll(chkTotalPop, chkWorkers, chkSoldiers, chkQueens, chkFood, chkWater, chkBirths, chkDeaths, chkTps);

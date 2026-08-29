@@ -28,3 +28,6 @@ secrets.json
 
 # Media test outputs
 *.mp4
+captures/
+logs/
+**/logs/

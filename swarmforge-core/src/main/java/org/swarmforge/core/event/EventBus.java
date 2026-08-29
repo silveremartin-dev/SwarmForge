@@ -162,6 +162,12 @@ public class EventBus {
      * Publish an event synchronously.
      */
     public void publish(SimulationEvent event) {
+        if (event == null || event.getType() == null) {
+            // A null-type event is a recycled/uninitialized event that slipped through the
+            // object pool. ConcurrentHashMap.get(null) would throw NPE — drop it safely.
+            LOG.warn("EventBus.publish() called with a null-type event — discarded to prevent NPE.");
+            return;
+        }
         // Asynchronously stream event to disk log
         writeEventToDiskAsync(event);
 

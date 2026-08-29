@@ -104,31 +104,27 @@ public class PheromoneVisualizer {
 
             int[] coords = org.swarmforge.core.spatial.Morton3D.decode(key);
             int x = coords[0];
-            int z = coords[2];
+            int y = coords[1]; // Correct mapping: coords[1] is Y depth (horizontal terrain position)
 
             // Project 3D to 2D map (Top-down view)
-            // We only care about x, z. But since pheromones can be stacked vertically,
-            // we should probably take max or sum?
-            // For now, let's just write to (x, z). Z is depth.
-
-            if (x >= 0 && x < width && z >= 0 && z < depth) {
+            if (x >= 0 && x < width && y >= 0 && y < depth) {
                 // Color mapping:
                 // 0: TO_HOME (Blue)
-                // 1: TO_FOOD (Red)
-                // 2: DANGER (Purple)
+                // 1: TO_FOOD (Green/Red)
+                // 2: DANGER (Red/Purple)
 
-                float homing = pheromones[0];
-                float food = pheromones[1];
-                float danger = pheromones[2];
+                float homing = pheromones.length > 0 ? pheromones[0] : 0f;
+                float food = pheromones.length > 1 ? pheromones[1] : 0f;
+                float danger = pheromones.length > 2 ? pheromones[2] : 0f;
 
-                // Simple additive mixing
-                float r = food + danger;
-                float g = 0f;
-                float b = homing + danger;
-                float a = Math.min(1.0f, (r + b) * 2.0f); // Alpha based on intensity
+                // Heatmap composite intensity and color
+                float r = Math.min(1.0f, danger * 1.5f + food * 0.8f);
+                float g = Math.min(1.0f, food * 1.2f);
+                float b = Math.min(1.0f, homing * 1.2f + danger * 0.5f);
+                float a = Math.min(1.0f, (food + homing + danger) * 2.0f);
 
-                if (a > 0.05f) {
-                    setPixel(x, z, r, g, b, a); // Z maps to texture Y (height)
+                if (a > 0.02f) {
+                    setPixel(x, y, r, g, b, a); // Y maps to texture depth
                 }
             }
         }

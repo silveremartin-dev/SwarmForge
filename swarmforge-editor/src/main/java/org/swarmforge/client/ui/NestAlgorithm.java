@@ -46,7 +46,8 @@ public final class NestAlgorithm {
         int branching = (int) p.getBranching();
         int chamberTarget = (int) p.getChamberCount();
 
-        Random rnd = new Random((long)(maxDepth*31 + entrances*7 + queenCnt*3 + broodCnt*17 + arch.hashCode()));
+        long seed = p.getSeed();
+        Random rnd = new Random(seed);
 
         String archKey = NestRenderer.normalizeArchKey(arch);
         switch (archKey) {
@@ -107,11 +108,11 @@ public final class NestAlgorithm {
 
         // Chambers with lenticular anatomical shapes
         List<String[]> queue = new ArrayList<>();
-        fill(queue, "QUEEN",  queenCnt,  0.80, 0.15, 4.5*scale, 2.2*scale, Color.GOLD);
-        fill(queue, "BROOD",  broodCnt,  0.25, 0.40, 3.2*scale, 1.6*scale, Color.DEEPSKYBLUE);
-        fill(queue, "FOOD",   foodCnt,   0.15, 0.35, 3.5*scale, 1.8*scale, Color.ORANGE);
-        fill(queue, "FUNGUS", fungusCnt, 0.45, 0.30, 4.0*scale, 2.0*scale, Color.MEDIUMPURPLE);
-        fill(queue, "WASTE",  wasteCnt,  0.55, 0.30, 3.0*scale, 1.5*scale, Color.INDIANRED);
+        fill(queue, "QUEEN",  queenCnt,  0.80, 0.15, 4.5*scale, 2.2*scale, Color.GOLD, rnd);
+        fill(queue, "BROOD",  broodCnt,  0.25, 0.40, 3.2*scale, 1.6*scale, Color.DEEPSKYBLUE, rnd);
+        fill(queue, "FOOD",   foodCnt,   0.15, 0.35, 3.5*scale, 1.8*scale, Color.ORANGE, rnd);
+        fill(queue, "FUNGUS", fungusCnt, 0.45, 0.30, 4.0*scale, 2.0*scale, Color.MEDIUMPURPLE, rnd);
+        fill(queue, "WASTE",  wasteCnt,  0.55, 0.30, 3.0*scale, 1.5*scale, Color.INDIANRED, rnd);
 
         for (String[] q : queue) {
             double targetZ = groundZ + Double.parseDouble(q[1]) * maxDepth;
@@ -536,9 +537,9 @@ public final class NestAlgorithm {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private static void fill(List<String[]> q, String type, int count,
-            double baseRatio, double spread, double rx, double rz, Color color) {
+            double baseRatio, double spread, double rx, double rz, Color color, Random rnd) {
         for (int i = 0; i < count; i++)
-            q.add(new String[]{type, String.valueOf(baseRatio + Math.random()*spread),
+            q.add(new String[]{type, String.valueOf(baseRatio + rnd.nextDouble()*spread),
                 String.valueOf(rx), String.valueOf(rz), color.toString()});
     }
 

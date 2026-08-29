@@ -233,29 +233,42 @@ public class AntVisualizer {
         return mesh;
     }
 
+    private float terrainSideMeters = 10.0f; // Default terrain side length in meters
+    private int gridWidth = 64; // Default 3D scene grid dimension
+
+    public void setTerrainDimensions(float terrainSideMeters, int gridWidth) {
+        if (terrainSideMeters > 0) this.terrainSideMeters = terrainSideMeters;
+        if (gridWidth > 0) this.gridWidth = gridWidth;
+    }
+
     private float getScale(Individual.Caste caste, org.swarmforge.core.species.Species species) {
+        float lengthMm = 0.0f;
         if (species != null && species.getCastes() != null) {
             for (org.swarmforge.core.domain.CasteTemplate template : species.getCastes()) {
                 if (template != null && template.getName() != null && 
                     (template.getName().equalsIgnoreCase(caste.name()) || template.getName().toUpperCase().contains(caste.name()))) {
-                    float lengthMm = template.getBodyLengthMm();
-                    if (lengthMm > 0.0f) {
-                        return lengthMm / 6.25f; // Standardized physical MM to 3D world unit ratio
+                    if (template.getBodyLengthMm() > 0.0f) {
+                        lengthMm = template.getBodyLengthMm();
+                        break;
                     }
                 }
             }
         }
-        // Fallback scale if caste template doesn't specify physical measurements
-        switch (caste) {
-            case QUEEN:
-                return 1.5f;
-            case SOLDIER:
-                return 1.2f;
-            case MALE:
-                return 1.1f;
-            default:
-                return 0.8f;
+        if (lengthMm <= 0.0f) {
+            lengthMm = switch (caste) {
+                case QUEEN -> 15.0f;  // 15 mm queen body length
+                case SOLDIER -> 10.0f; // 10 mm soldier body length
+                case MALE -> 8.0f;    // 8 mm male body length
+                default -> 6.0f;      // 6 mm worker body length
+            };
         }
+
+        // Millimeters per 3D scene voxel unit = (terrainSideMeters * 1000 mm) / gridWidth
+        float mmPerWorldUnit = (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
+        float physicalScale = lengthMm / mmPerWorldUnit;
+
+        // Apply a visual contrast multiplier (3.5x) so small insects remain clearly visible at camera zoom while maintaining exact caste ratios
+        return Math.max(0.12f, physicalScale * 3.5f);
     }
 
     private int addBox(java.util.List<Vector3f> pos, java.util.List<Vector3f> norm, java.util.List<Integer> idx,

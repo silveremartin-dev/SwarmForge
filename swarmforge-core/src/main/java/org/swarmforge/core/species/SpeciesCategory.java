@@ -15,16 +15,16 @@ package org.swarmforge.core.species;
  */
 public enum SpeciesCategory {
     /** Primary colony-forming eusocial insects (Monogyne / Standard Colony Builder). */
-    EUSOCIAL_PRIMARY("🐜 Eusociale Principale (Fondatrice de Colonie)"),
+    EUSOCIAL_PRIMARY("🐜 Primary Eusocial (Colony Builder)"),
 
     /** Polygyne supercolony forming species (Formica lugubris, Linepithema humile). */
-    EUSOCIAL_POLYGYNE("👑 Eusociale Polygyne (Supercolonie / Multi-Nids)"),
+    EUSOCIAL_POLYGYNE("👑 Polygyne Eusocial (Supercolony)"),
 
     /** Social parasites or temporary host-nest invading queens (Lasius fuliginosus, Bothriomyrmex). */
-    PARASITIC_QUEEN("🐝 Parasite Sociale / Reine Incitative"),
+    PARASITIC_QUEEN("🐝 Social Parasite / Inquiline Queen"),
 
     /** Subsocial or incipient eusocial insects with primitive worker castes (Halictidae, Polistes). */
-    SUBSOCIAL_INCIPIENT("🐜 Subsociale / Prémices Eusociales"),
+    SUBSOCIAL_INCIPIENT("🐜 Subsocial / Primitive Eusocial"),
 
     /** Commensal species living inside or around host nests (myrmecophiles, beetles). */
     COMMENSAL("🪲 Commensal / Nest Guest"),
@@ -33,13 +33,13 @@ public enum SpeciesCategory {
     HONEYDEW_PRODUCER("🌱 Honeydew Producer (Aphids)"),
 
     /** Prey organisms foraging target for predators (Caterpillars, Flies, Grubs). */
-    PREY_ORGANISM("🐛 Prey / Food Organism"),
+    PREY_ORGANISM("🐛 Prey Organism / Food Source"),
 
     /** Soil-agitating decomposers and burrowers (Earthworms, Woodlice/Isopods, Springtails). */
     SOIL_FAUNA("🪱 Soil Fauna & Decomposer"),
 
     /** Parasites or active predators targeting colonies (Mites, Ant Lions, Parasitic Wasps). */
-    PARASITE_PREDATOR("🦂 Parasite / Predator");
+    PARASITE_PREDATOR("🦂 Parasite / Active Predator");
 
     public final String label;
 

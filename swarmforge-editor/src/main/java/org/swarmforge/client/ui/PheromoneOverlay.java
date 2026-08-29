@@ -86,22 +86,22 @@ public class PheromoneOverlay extends VBox {
     }
 
     public VBox createControlsPane() {
-        VBox box = new VBox(6);
-        box.setPadding(new Insets(8));
-        box.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
+        VBox box = new VBox(8);
+        box.setPadding(new Insets(10));
+        box.setStyle("-fx-background-color: rgba(15,23,42,0.85); -fx-padding: 10; -fx-background-radius: 8; -fx-border-color: rgba(148,163,184,0.2); -fx-border-radius: 8;");
 
-        Label lblHeader = new Label(I18nManager.getInstance().get("pheromone.overlay_title"));
-        lblHeader.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
+        Label lblHeader = new Label("🧪 " + I18nManager.getInstance().get("pheromone.overlay_title", "Visualisation des Phéromones"));
+        lblHeader.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 12px;");
 
-        // Overlay type selector
-        Label lblType = new Label(I18nManager.getInstance().get("pheromone.mode"));
+        // Overlay type selector (Combo Box)
+        Label lblType = new Label("📡 Canal / Type de Phéromone :");
         lblType.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px; -fx-font-weight: bold;");
 
         ComboBox<String> typeCombo = new ComboBox<>();
         typeCombo.getItems().addAll(OVERLAY_NAMES);
-        typeCombo.getSelectionModel().select(0);
+        typeCombo.getSelectionModel().select(selectedType);
         typeCombo.setMaxWidth(Double.MAX_VALUE);
-        typeCombo.setStyle("-fx-font-size: 10px;");
+        typeCombo.setStyle("-fx-font-size: 10px; -fx-background-color: #1e293b; -fx-text-fill: #f8fafc;");
         typeCombo.setOnAction(e -> {
             selectedType = typeCombo.getSelectionModel().getSelectedIndex();
             redraw();
@@ -109,7 +109,7 @@ public class PheromoneOverlay extends VBox {
 
         // Opacity slider
         Label lblOpacityVal = new Label(String.format("Opacité : %d%%", (int)(opacity * 100)));
-        lblOpacityVal.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px; -fx-min-width: 70;");
+        lblOpacityVal.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px; -fx-min-width: 75;");
 
         Slider opacitySlider = new Slider(0.1, 1.0, opacity);
         opacitySlider.setPrefWidth(120);
@@ -119,11 +119,11 @@ public class PheromoneOverlay extends VBox {
             redraw();
         });
 
-        HBox opacityBox = new HBox(6, new Label(I18nManager.getInstance().get("pheromone.opacity")) {{ setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;"); }}, opacitySlider, lblOpacityVal);
+        HBox opacityBox = new HBox(6, new Label(I18nManager.getInstance().get("pheromone.opacity", "Opacité")) {{ setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;"); }}, opacitySlider, lblOpacityVal);
 
         // Threshold slider
         Label lblThresholdVal = new Label(String.format("Seuil : %.2f", threshold));
-        lblThresholdVal.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px; -fx-min-width: 70;");
+        lblThresholdVal.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px; -fx-min-width: 75;");
 
         Slider thresholdSlider = new Slider(0.0, 0.5, threshold);
         thresholdSlider.setPrefWidth(120);
@@ -133,10 +133,10 @@ public class PheromoneOverlay extends VBox {
             redraw();
         });
 
-        HBox thresholdBox = new HBox(6, new Label(I18nManager.getInstance().get("pheromone.threshold")) {{ setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;"); }}, thresholdSlider, lblThresholdVal);
+        HBox thresholdBox = new HBox(6, new Label(I18nManager.getInstance().get("pheromone.threshold", "Seuil")) {{ setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;"); }}, thresholdSlider, lblThresholdVal);
 
         // Grid toggle
-        CheckBox gridCheck = new CheckBox(I18nManager.getInstance().get("pheromone.weather_grid"));
+        CheckBox gridCheck = new CheckBox(I18nManager.getInstance().get("pheromone.weather_grid", "Afficher Grille Voxel"));
         gridCheck.setSelected(showGrid);
         gridCheck.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
         gridCheck.setOnAction(e -> {
@@ -144,46 +144,14 @@ public class PheromoneOverlay extends VBox {
             redraw();
         });
 
-        Label lblRenderMode = new Label("🎨 Mode de Rendu :");
-        lblRenderMode.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px; -fx-font-weight: bold;");
-
-        ComboBox<String> renderModeCombo = new ComboBox<>();
-        renderModeCombo.getItems().addAll(
-                "🌊 Carte de Densité (Heatmap Continu)",
-                "✨ Système Voxel (Points & Lueur)",
-                "🛰️ Hybride SIG (Surface + Cœur Voxel)"
-        );
-        renderModeCombo.getSelectionModel().select(2);
-        renderModeCombo.setMaxWidth(Double.MAX_VALUE);
-        renderModeCombo.setStyle("-fx-font-size: 10px;");
-
-        // Multi-Channel GIS Layer Toggles
-        Label lblChannels = new Label("📡 Couches de Phéromones (Canaux) :");
-        lblChannels.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 10px; -fx-font-weight: bold;");
-
-        CheckBox chkFood = new CheckBox("🟣 Piste Alimentaire (Violet)");
-        chkFood.setSelected(true); chkFood.setStyle("-fx-text-fill: #c084fc; -fx-font-size: 10px;");
-
-        CheckBox chkHome = new CheckBox("🔵 Nid / Exploration (Bleu)");
-        chkHome.setSelected(true); chkHome.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 10px;");
-
-        CheckBox chkAlarm = new CheckBox("🔴 Alarme / Danger (Rouge)");
-        chkAlarm.setSelected(true); chkAlarm.setStyle("-fx-text-fill: #f87171; -fx-font-size: 10px;");
-
-        CheckBox chkRecruit = new CheckBox("🟠 Recrutement (Ambre)");
-        chkRecruit.setSelected(true); chkRecruit.setStyle("-fx-text-fill: #fbbf24; -fx-font-size: 10px;");
-
-        CheckBox chkQueen = new CheckBox("💖 Royale & Couvain (Rose)");
-        chkQueen.setSelected(true); chkQueen.setStyle("-fx-text-fill: #f472b6; -fx-font-size: 10px;");
-
-        VBox layersBox = new VBox(3, chkFood, chkHome, chkAlarm, chkRecruit, chkQueen);
-        layersBox.setStyle("-fx-padding: 4; -fx-background-color: rgba(15,23,42,0.6); -fx-background-radius: 4;");
+        // Heatmap info mode banner (Simplified single mode: Continuous Heatmap)
+        Label lblModeBanner = new Label("🔥 Mode : Carte Thermique Continu (Heatmap)");
+        lblModeBanner.setStyle("-fx-text-fill: #f59e0b; -fx-font-size: 10px; -fx-font-weight: bold; -fx-background-color: rgba(245,158,11,0.1); -fx-padding: 4 8; -fx-background-radius: 4;");
 
         box.getChildren().addAll(
                 lblHeader,
+                lblModeBanner,
                 lblType, typeCombo,
-                lblRenderMode, renderModeCombo,
-                lblChannels, layersBox,
                 opacityBox,
                 thresholdBox,
                 gridCheck);
@@ -210,10 +178,12 @@ public class PheromoneOverlay extends VBox {
      */
     public void redraw() {
         if (canvas == null || gc == null || canvas.getWidth() < 10 || canvas.getHeight() < 10) return;
-        gc.setFill(Color.rgb(15, 23, 42, 0.9));
+        gc.setFill(Color.rgb(15, 23, 42, 0.95));
         gc.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         if (currentData == null || dataWidth == 0 || dataHeight == 0) {
+            gc.setFill(Color.rgb(148, 163, 184, 0.7));
+            gc.fillText("Aucune donnée de heatmap disponible", canvas.getWidth() / 2 - 95, canvas.getHeight() / 2);
             return;
         }
 
@@ -233,7 +203,7 @@ public class PheromoneOverlay extends VBox {
                     if (selectedType == 9) { // Chamber Specialization (Categorical Palette)
                         cellColor = getChamberColor(value, opacity);
                     } else if (selectedType == 8) { // Tunnel Occupancy (Hot Thermal Palette)
-                        cellColor = Color.hsb(Math.max(0, 240 - value * 240), 0.9, 0.9, opacity);
+                        cellColor = Color.hsb(Math.max(0, 240 - value * 240), 0.95, 0.95, opacity);
                     } else {
                         double intensity = Math.min(1.0, value * 1.5);
                         cellColor = Color.color(
@@ -276,14 +246,39 @@ public class PheromoneOverlay extends VBox {
     }
 
     private void drawLegend() {
-        gc.setFill(Color.rgb(30, 41, 59, 0.95));
-        gc.fillRect(10, 10, 220, 30);
+        // Dynamic integrated legend box with color swatch & description
+        gc.setFill(Color.rgb(15, 23, 42, 0.88));
+        gc.fillRoundRect(10, 10, 240, 48, 6, 6);
+        gc.setStroke(Color.rgb(51, 65, 85, 0.9));
+        gc.setLineWidth(1);
+        gc.strokeRoundRect(10, 10, 240, 48, 6, 6);
 
-        gc.setFill(OVERLAY_COLORS[selectedType % OVERLAY_COLORS.length]);
-        gc.fillRect(15, 17, 16, 16);
+        // Color swatch
+        Color col = OVERLAY_COLORS[selectedType % OVERLAY_COLORS.length];
+        gc.setFill(col);
+        gc.fillRect(16, 18, 16, 16);
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(0.8);
+        gc.strokeRect(16, 18, 16, 16);
 
+        // Title
         gc.setFill(Color.WHITE);
-        gc.fillText(OVERLAY_NAMES[selectedType], 38, 29);
+        gc.setFont(javafx.scene.text.Font.font("SansSerif", javafx.scene.text.FontWeight.BOLD, 11));
+        gc.fillText(OVERLAY_NAMES[selectedType], 40, 31);
+
+        // Intensity gradient bar
+        gc.setFont(javafx.scene.text.Font.font("SansSerif", 9));
+        gc.setFill(Color.rgb(203, 213, 225));
+        gc.fillText("Faible", 40, 48);
+
+        for (int i = 0; i < 40; i++) {
+            double frac = i / 40.0;
+            gc.setFill(Color.color(col.getRed(), col.getGreen(), col.getBlue(), Math.max(0.1, frac * opacity)));
+            gc.fillRect(75 + i * 2, 41, 2, 8);
+        }
+
+        gc.setFill(Color.rgb(203, 213, 225));
+        gc.fillText("Élevé", 160, 48);
     }
 
     /**
@@ -309,3 +304,4 @@ public class PheromoneOverlay extends VBox {
         }
     }
 }
+

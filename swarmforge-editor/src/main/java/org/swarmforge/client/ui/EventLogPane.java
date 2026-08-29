@@ -104,13 +104,49 @@ public class EventLogPane extends BorderPane {
         return false;
     }
 
+    /**
+     * Creates a column header graphic with the column title and ↑/↓ reorder buttons.
+     */
+    private <T> TableColumn<SimulationEvent, T> createReorderableColumn(String title, javafx.scene.Node tableRef) {
+        TableColumn<SimulationEvent, T> col = new TableColumn<>();
+        Label lbl = new Label(title);
+        lbl.setStyle("-fx-text-fill: #e4e4e7; -fx-font-size: 11px; -fx-font-weight: bold;");
+        Button btnUp = new Button("↑");
+        Button btnDown = new Button("↓");
+        String btnStyle = "-fx-background-color: #27272a; -fx-text-fill: #a78bfa; -fx-font-size: 10px; -fx-padding: 1 4; -fx-background-radius: 3; -fx-cursor: hand;";
+        btnUp.setStyle(btnStyle);
+        btnDown.setStyle(btnStyle);
+        btnUp.setTooltip(new Tooltip("Déplacer la colonne vers la gauche"));
+        btnDown.setTooltip(new Tooltip("Déplacer la colonne vers la droite"));
+        btnUp.setOnAction(e -> moveColumnLeft(col));
+        btnDown.setOnAction(e -> moveColumnRight(col));
+        HBox header = new HBox(4, lbl, btnUp, btnDown);
+        header.setAlignment(Pos.CENTER_LEFT);
+        col.setGraphic(header);
+        return col;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void moveColumnLeft(TableColumn<SimulationEvent, ?> col) {
+        javafx.collections.ObservableList<TableColumn<SimulationEvent, ?>> cols = eventTable.getColumns();
+        int idx = cols.indexOf(col);
+        if (idx > 0) { cols.remove(idx); cols.add(idx - 1, col); }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void moveColumnRight(TableColumn<SimulationEvent, ?> col) {
+        javafx.collections.ObservableList<TableColumn<SimulationEvent, ?>> cols = eventTable.getColumns();
+        int idx = cols.indexOf(col);
+        if (idx >= 0 && idx < cols.size() - 1) { cols.remove(idx); cols.add(idx + 1, col); }
+    }
+
     private TableView<SimulationEvent> createEventTable() {
         TableView<SimulationEvent> table = new TableView<>(filteredEvents);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setStyle("-fx-background-color: #121215; -fx-control-inner-background: #121215;");
 
         // Column 1: Severity Badge
-        TableColumn<SimulationEvent, SimulationEvent.Severity> colSeverity = new TableColumn<>("Sévérité");
+        TableColumn<SimulationEvent, SimulationEvent.Severity> colSeverity = createReorderableColumn("Sévérité", table);
         colSeverity.setMinWidth(90);
         colSeverity.setMaxWidth(110);
         colSeverity.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getSeverity()));
@@ -144,7 +180,7 @@ public class EventLogPane extends BorderPane {
         });
 
         // Column 2: Event ID (EVT-XXXXXX)
-        TableColumn<SimulationEvent, Long> colId = new TableColumn<>("ID Événement");
+        TableColumn<SimulationEvent, Long> colId = createReorderableColumn("ID Événement", table);
         colId.setMinWidth(110);
         colId.setMaxWidth(130);
         colId.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getSequenceId()));
@@ -163,7 +199,7 @@ public class EventLogPane extends BorderPane {
         });
 
         // Column 3: Timestamp
-        TableColumn<SimulationEvent, Instant> colTime = new TableColumn<>("Horodatage");
+        TableColumn<SimulationEvent, Instant> colTime = createReorderableColumn("Horodatage", table);
         colTime.setMinWidth(100);
         colTime.setMaxWidth(120);
         colTime.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTimestamp()));
@@ -186,7 +222,7 @@ public class EventLogPane extends BorderPane {
         });
 
         // Column 4: Tick
-        TableColumn<SimulationEvent, Long> colTick = new TableColumn<>("Pas (Tick)");
+        TableColumn<SimulationEvent, Long> colTick = createReorderableColumn("Pas (Tick)", table);
         colTick.setMinWidth(90);
         colTick.setMaxWidth(110);
         colTick.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTick()));
@@ -205,7 +241,7 @@ public class EventLogPane extends BorderPane {
         });
 
         // Column 5: Event Type
-        TableColumn<SimulationEvent, String> colType = new TableColumn<>("Type d'Événement");
+        TableColumn<SimulationEvent, String> colType = createReorderableColumn("Type d'Événement", table);
         colType.setMinWidth(160);
         colType.setMaxWidth(200);
         colType.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(formatTypeString(cellData.getValue().getType())));
@@ -223,8 +259,8 @@ public class EventLogPane extends BorderPane {
             }
         });
 
-        // Column 6: Message & Details (Sortable by message text)
-        TableColumn<SimulationEvent, String> colMessage = new TableColumn<>("Détails & Message");
+        // Column 6: Message & Details
+        TableColumn<SimulationEvent, String> colMessage = createReorderableColumn("Détails & Message", table);
         colMessage.setCellValueFactory(cellData -> {
             SimulationEvent ev = cellData.getValue();
             if (ev == null) return new ReadOnlyObjectWrapper<>("");
@@ -307,8 +343,9 @@ public class EventLogPane extends BorderPane {
 
         // Search Field
         searchField = new TextField();
-        searchField.setPromptText("Rechercher dans le journal...");
+        searchField.promptTextProperty().bind(i18n.createStringBinding("log.search.prompt"));
         searchField.setPrefWidth(220);
+        searchField.setTooltip(new Tooltip("Filtrer les événements par mot-clé (message, ID, données)..."));
         searchField.textProperty().addListener((obs, oldV, newV) -> updateFilter());
 
         // Type filter
@@ -316,7 +353,8 @@ public class EventLogPane extends BorderPane {
         typeLabel.textProperty().bind(i18n.createStringBinding("log.filter.type"));
         typeLabel.setStyle("-fx-text-fill: white;");
         typeFilter = new ComboBox<>();
-        typeFilter.getItems().add("Tous");
+        typeFilter.setTooltip(new Tooltip("Filtrer la liste par type d'événement spécifique (Fondation, Naissance, Combat, etc.)."));
+        typeFilter.getItems().add(i18n.get("log.type.all"));
         for (SimulationEvent.EventType type : SimulationEvent.EventType.values()) {
             if (type == SimulationEvent.EventType.INFO ||
                 type == SimulationEvent.EventType.BIRTH ||
@@ -337,7 +375,13 @@ public class EventLogPane extends BorderPane {
         sevLabel.textProperty().bind(i18n.createStringBinding("log.filter.severity"));
         sevLabel.setStyle("-fx-text-fill: white;");
         severityFilter = new ComboBox<>();
-        severityFilter.getItems().addAll("Toutes sévérités", "Critique uniquement", "Info uniquement", "Attention uniquement");
+        severityFilter.setTooltip(new Tooltip("Filtrer la liste par niveau de sévérité (Info, Attention, Critique)."));
+        severityFilter.getItems().addAll(
+            i18n.get("log.severity.all"),
+            i18n.get("log.severity.critical"),
+            i18n.get("log.severity.info"),
+            i18n.get("log.severity.warning")
+        );
         severityFilter.getSelectionModel().selectFirst();
         severityFilter.setOnAction(e -> updateFilter());
 
@@ -346,19 +390,18 @@ public class EventLogPane extends BorderPane {
         autoScrollCheck.textProperty().bind(i18n.createStringBinding("log.filter.auto_scroll"));
         autoScrollCheck.setSelected(true);
         autoScrollCheck.setStyle("-fx-text-fill: white;");
+        autoScrollCheck.setTooltip(new Tooltip("Faire défiler automatiquement la table lors de la réception de nouveaux événements."));
 
         // Clear button
         Button btnClear = new Button();
         btnClear.textProperty().bind(i18n.createStringBinding("log.btn.clear"));
-        btnClear.setOnAction(e -> {
-            events.clear();
-            EventBus.getInstance().clearHistory();
-            updateStats();
-        });
+        btnClear.setTooltip(new Tooltip("Effacer tous les événements enregistrés du journal."));
+        btnClear.setOnAction(e -> clearLog());
 
         // Export button
         Button btnExport = new Button();
         btnExport.textProperty().bind(i18n.createStringBinding("log.btn.export"));
+        btnExport.setTooltip(new Tooltip("Exporter les événements affichés au format CSV ou JSON."));
         btnExport.setOnAction(e -> exportEvents());
 
         Region spacer = new Region();
@@ -441,9 +484,18 @@ public class EventLogPane extends BorderPane {
                                 ev.getMessage() != null ? ev.getMessage().replace("\"", "'") : "", dataStr);
                     }
                 }
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Exportation réussie dans " + file.getName()).show();
+                // Toast notification — no blocking modal
+                org.swarmforge.client.util.NotificationOverlay.show(
+                    this,
+                    "✅ Journal exporté : " + file.getName() + "  (" + filteredEvents.size() + " événements)",
+                    org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS
+                );
             } catch (Exception ex) {
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Échec de l'exportation : " + ex.getMessage()).show();
+                org.swarmforge.client.util.NotificationOverlay.show(
+                    this,
+                    "❌ Échec de l'exportation : " + ex.getMessage(),
+                    org.swarmforge.client.util.NotificationOverlay.NotificationType.ERROR
+                );
             }
         }
     }
@@ -593,6 +645,19 @@ public class EventLogPane extends BorderPane {
             if (autoScrollCheck.isSelected() && !filteredEvents.isEmpty()) {
                 eventTable.scrollTo(filteredEvents.size() - 1);
             }
+            updateStats();
+        });
+    }
+
+    /**
+     * Clear all recorded log events and reset event bus history.
+     */
+    public void clearLog() {
+        Platform.runLater(() -> {
+            events.clear();
+            lastAddedEvent = null;
+            totalRecordedCount = 0;
+            EventBus.getInstance().clearHistory();
             updateStats();
         });
     }

@@ -77,8 +77,10 @@ public class SimulationControlPanel extends VBox {
     private final TextField txtSeed = new TextField("12345");
     private final TextArea areaDescription = new TextArea();
 
-    // Termination Limits
-    private final Spinner<Integer> maxTicksSpinner = new Spinner<>(1000, 1_000_000, 100_000, 5000);
+    // Termination Limits & Duration Controls
+    private final Spinner<Double> maxDurationSpinner = new Spinner<>(1.0, 2_000_000_000.0, 100000.0, 5000.0);
+    private final ComboBox<String> durationUnitCombo = new ComboBox<>();
+    private final Label lblDurationCalculatedInfo = new Label();
     private final Spinner<Integer> minPopStopSpinner = new Spinner<>(0, 1000, 0, 5);
 
     // 3. Multi-Species Scenario Config List
@@ -395,11 +397,14 @@ public class SimulationControlPanel extends VBox {
 
         Label lblSeed = new Label("🎲 Seed :");
         lblSeed.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 10px;");
+        lblSeed.setTooltip(new Tooltip("Graine aléatoire maître contrôlant le déterminisme et la reproductibilité exacte du scénario."));
         txtSeed.setPrefWidth(80);
         txtSeed.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
+        txtSeed.setTooltip(new Tooltip("Valeur numérique de la graine aléatoire."));
 
         Button btnRandSeed = new Button("🎲 Nouveau");
         btnRandSeed.setStyle("-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 10px;");
+        btnRandSeed.setTooltip(new Tooltip("Générer une nouvelle graine aléatoire."));
         btnRandSeed.setOnAction(e -> {
             txtSeed.setText(String.valueOf((long)(Math.random() * 900000 + 100000)));
             updateValidationPanel();
@@ -407,22 +412,54 @@ public class SimulationControlPanel extends VBox {
 
         Label lblMaxTicks = new Label("⏱️ Durée Max :");
         lblMaxTicks.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-weight: bold;");
-        maxTicksSpinner.setPrefWidth(90);
-        maxTicksSpinner.setEditable(true);
-        maxTicksSpinner.valueProperty().addListener((o, oldV, newV) -> updateValidationPanel());
+        lblMaxTicks.setTooltip(new Tooltip("Durée maximale de la simulation. Choisissez la valeur et son unité (ticks, s, min, h, jours, mois, années ou illimité)."));
+
+        maxDurationSpinner.setPrefWidth(100);
+        maxDurationSpinner.setEditable(true);
+        maxDurationSpinner.setTooltip(new Tooltip("Valeur de durée maximale d'exécution de la simulation dans l'unité choisie."));
+        maxDurationSpinner.valueProperty().addListener((o, oldV, newV) -> {
+            updateDurationCalculatedLabel();
+            updateValidationPanel();
+        });
+
+        durationUnitCombo.getItems().setAll(
+            "Pas de calcul (Ticks)",
+            "Secondes (s)",
+            "Minutes (min)",
+            "Heures (h)",
+            "Jours (j)",
+            "Mois (30j)",
+            "Années (365j)",
+            "∞ Illimité"
+        );
+        durationUnitCombo.getSelectionModel().selectFirst();
+        durationUnitCombo.setPrefWidth(140);
+        durationUnitCombo.setStyle("-fx-font-size: 10px;");
+        durationUnitCombo.setTooltip(new Tooltip("Unité de mesure du temps pour la limite de fin de simulation."));
+        durationUnitCombo.valueProperty().addListener((o, oldV, newV) -> {
+            boolean isUnlimited = "∞ Illimité".equals(newV);
+            maxDurationSpinner.setDisable(isUnlimited);
+            updateDurationCalculatedLabel();
+            updateValidationPanel();
+        });
+
+        lblDurationCalculatedInfo.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 9.5px; -fx-font-weight: bold;");
+        updateDurationCalculatedLabel();
 
         Label lblMinPop = new Label("🛑 Arrêt Pop. Min :");
         lblMinPop.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px; -fx-font-weight: bold;");
+        lblMinPop.setTooltip(new Tooltip("Seuil minimal de population totale. Si l'effectif vivant passe en dessous, la simulation s'arrête préventivement."));
         minPopStopSpinner.setPrefWidth(65);
         minPopStopSpinner.setEditable(true);
+        minPopStopSpinner.setTooltip(new Tooltip("Effectif minimal vivant déclenchant l'arrêt d'urgence. (0 = désactivé)"));
         minPopStopSpinner.valueProperty().addListener((o, oldV, newV) -> updateValidationPanel());
 
-        seedAndLimitsRow.getChildren().addAll(lblSeed, txtSeed, btnRandSeed, new Separator(Orientation.VERTICAL), lblMaxTicks, maxTicksSpinner, new Separator(Orientation.VERTICAL), lblMinPop, minPopStopSpinner);
+        seedAndLimitsRow.getChildren().addAll(lblSeed, txtSeed, btnRandSeed, new Separator(Orientation.VERTICAL), lblMaxTicks, maxDurationSpinner, durationUnitCombo, new Separator(Orientation.VERTICAL), lblMinPop, minPopStopSpinner);
 
         Label lblDeterminismLegend = new Label("💡 Note : Pour une graine (Seed) et un pas de calcul (Δt) donnés, la simulation est entièrement déterministe et reproductible.");
         lblDeterminismLegend.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 9.5px; -fx-font-style: italic;");
 
-        VBox physicsAndSeedBox = new VBox(6, scenarioStepCombo, seedAndLimitsRow, lblDeterminismLegend);
+        VBox physicsAndSeedBox = new VBox(6, scenarioStepCombo, seedAndLimitsRow, lblDurationCalculatedInfo, lblDeterminismLegend);
 
         gridWorldWeather.add(lbl1World, 0, 0); gridWorldWeather.add(comboWorld, 1, 0);
         gridWorldWeather.add(lbl2Weather, 0, 1); gridWorldWeather.add(weatherRow, 1, 1);
@@ -648,7 +685,8 @@ public class SimulationControlPanel extends VBox {
         speedSlider.setTooltip(new Tooltip("Ajustez le facteur d'accélération temporelle de la simulation (0.1x à 20x)."));
 
         Button btnMaxSpeed = new Button("🚀 MAX");
-        btnMaxSpeed.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+        btnMaxSpeed.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand; -fx-padding: 4 10 4 10;");
+        btnMaxSpeed.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         btnMaxSpeed.setTooltip(new Tooltip("Activer la vitesse maximale d'exécution (Maximum CPU throughput)"));
 
         speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
@@ -662,12 +700,12 @@ public class SimulationControlPanel extends VBox {
         btnMaxSpeed.setOnAction(e -> {
             if ("MAX".equals(btnMaxSpeed.getUserData())) {
                 btnMaxSpeed.setUserData(null);
-                btnMaxSpeed.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                btnMaxSpeed.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand; -fx-padding: 4 10 4 10;");
                 currentSpeed = (float) speedSlider.getValue();
                 lblSpeed.setText(String.format("%.1fx", currentSpeed));
             } else {
                 btnMaxSpeed.setUserData("MAX");
-                btnMaxSpeed.setStyle("-fx-background-color: #7c3aed; -fx-text-fill: #fef08a; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand; -fx-effect: innershadow(three-pass-box, #d946ef, 5, 0, 0, 0);");
+                btnMaxSpeed.setStyle("-fx-background-color: #7c3aed; -fx-text-fill: #fef08a; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand; -fx-padding: 4 10 4 10; -fx-effect: innershadow(three-pass-box, #d946ef, 5, 0, 0, 0);");
                 currentSpeed = 1000.0f;
                 lblSpeed.setText("MAX 🚀");
             }
@@ -934,8 +972,9 @@ public class SimulationControlPanel extends VBox {
             if (txtSeed != null) {
                 txtSeed.setText(String.valueOf(scenario.getMasterSeed()));
             }
-            if (maxTicksSpinner != null && scenario.getMaxSimulationTicks() > 0) {
-                maxTicksSpinner.getValueFactory().setValue((int) Math.min(Integer.MAX_VALUE, scenario.getMaxSimulationTicks()));
+            if (maxDurationSpinner != null && scenario.getMaxSimulationTicks() > 0) {
+                maxDurationSpinner.getValueFactory().setValue((double) scenario.getMaxSimulationTicks());
+                if (durationUnitCombo != null) durationUnitCombo.getSelectionModel().select(0);
             }
             if (minPopStopSpinner != null && scenario.getMinPopulationStopThreshold() >= 0) {
                 minPopStopSpinner.getValueFactory().setValue(scenario.getMinPopulationStopThreshold());
@@ -1263,7 +1302,31 @@ public class SimulationControlPanel extends VBox {
     }
 
     public long getMaxSimulationTicks() {
-        return maxTicksSpinner != null && maxTicksSpinner.getValue() != null ? maxTicksSpinner.getValue().longValue() : 100_000L;
+        if (durationUnitCombo != null && "∞ Illimité".equals(durationUnitCombo.getValue())) {
+            return Long.MAX_VALUE;
+        }
+        double val = maxDurationSpinner != null && maxDurationSpinner.getValue() != null ? maxDurationSpinner.getValue() : 100_000.0;
+        String unit = durationUnitCombo != null ? durationUnitCombo.getValue() : "Pas de calcul (Ticks)";
+        double dt = getSimulationStepSeconds();
+        if (dt <= 0) dt = 0.016666666666666666;
+
+        double ticks;
+        if (unit != null && unit.startsWith("Secondes")) {
+            ticks = val / dt;
+        } else if (unit != null && unit.startsWith("Minutes")) {
+            ticks = (val * 60.0) / dt;
+        } else if (unit != null && unit.startsWith("Heures")) {
+            ticks = (val * 3600.0) / dt;
+        } else if (unit != null && unit.startsWith("Jours")) {
+            ticks = (val * 86400.0) / dt;
+        } else if (unit != null && unit.startsWith("Mois")) {
+            ticks = (val * 30.0 * 86400.0) / dt;
+        } else if (unit != null && unit.startsWith("Années")) {
+            ticks = (val * 365.25 * 86400.0) / dt;
+        } else {
+            ticks = val;
+        }
+        return (long) Math.min(Long.MAX_VALUE, Math.max(1.0, ticks));
     }
 
     public int getMinPopulationStopThreshold() {
@@ -1646,13 +1709,13 @@ public class SimulationControlPanel extends VBox {
             ));
         }
 
-        // 4. Durée Max (Ticks)
-        if (maxTicksSpinner.getValue() != null && maxTicksSpinner.getValue() < 1000) {
+        // 4. Durée Max
+        if (maxDurationSpinner.getValue() != null && maxDurationSpinner.getValue() < 1000) {
             list.add(new ScenarioWarning(
                 "DURÉE", "INFO",
-                String.format("💡 Durée maximale très courte (%,d ticks). La simulation risque de s'arrêter avant l'émergence des comportements.", maxTicksSpinner.getValue()),
-                "⏱️ Régler à 100 000 Ticks",
-                () -> maxTicksSpinner.getValueFactory().setValue(100000)
+                String.format("💡 Durée maximale très courte (%.0f). La simulation risque de s'arrêter avant l'émergence des comportements.", maxDurationSpinner.getValue()),
+                "⏱️ Régler à 100 000",
+                () -> maxDurationSpinner.getValueFactory().setValue(Double.valueOf(100000.0))
             ));
         }
 
@@ -1721,6 +1784,7 @@ public class SimulationControlPanel extends VBox {
         }
 
         private final ComboBox<String> nestTypeCombo = new ComboBox<>();
+        private final ComboBox<String> nestStageCombo = new ComboBox<>();
         private final ComboBox<String> nestPlacementCombo = new ComboBox<>();
         private final ComboBox<String> nestRelationCombo = new ComboBox<>();
         private final Spinner<Double> posXSpinner = new Spinner<>(-500.0, 500.0, 0.0, 10.0);
@@ -1763,12 +1827,24 @@ public class SimulationControlPanel extends VBox {
             HBox nestRow = new HBox(8);
             nestRow.setAlignment(Pos.CENTER_LEFT);
 
-            Label lblNest = new Label("🏰 Nest Type (Filtered for " + getShortSpeciesName(speciesName) + ") :");
+            Label lblNest = new Label("🏰 Nest Architecture :");
             lblNest.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 10px;");
 
-            nestTypeCombo.getItems().setAll(getCompatibleNestTypes(speciesName));
+            nestTypeCombo.getItems().setAll(getCompatibleNestArchitectures(speciesName));
             if (!nestTypeCombo.getItems().isEmpty()) nestTypeCombo.getSelectionModel().selectFirst();
-            nestTypeCombo.setTooltip(new Tooltip("Nest architectures suited to the ecological needs and capabilities of this species. The nest is pre-generated from these parameters."));
+            nestTypeCombo.setTooltip(new Tooltip("Nest physical shape and architectural typology suited to this species."));
+
+            Label lblStage = new Label("🌱 Stade / Âge du Nid :");
+            lblStage.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 10px;");
+
+            nestStageCombo.getItems().addAll(
+                "👑 Fondation Claustrale (1 Reine, 0 Ouvrière, 10 Couvain)",
+                "🌱 Jeune Colonie (1 Reine, 100 Ouvrières, 50 Couvain)",
+                "🏰 Colonie Mature (1 Reine, 5 000 Ouvrières, 2 500 Couvain)",
+                "🌐 Supercolonie Complexe (50 Reines, 500 000 Ouvrières, 200 000 Couvain)"
+            );
+            nestStageCombo.getSelectionModel().select(1); // Young colony by default
+            nestStageCombo.setTooltip(new Tooltip("Stade de maturité démographique de la colonie. Ajuste automatiquement l'effectif des castes."));
 
             Label lblPlacement = new Label("📍 Placement :");
             lblPlacement.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 10px;");
@@ -1789,7 +1865,7 @@ public class SimulationControlPanel extends VBox {
             initialFoodSpinner.setEditable(true);
             initialFoodSpinner.setTooltip(new Tooltip("Initial food resource reserve allocated to the nest."));
 
-            nestRow.getChildren().addAll(lblNest, nestTypeCombo, lblPlacement, nestPlacementCombo, lblInitialFood, initialFoodSpinner);
+            nestRow.getChildren().addAll(lblNest, nestTypeCombo, lblStage, nestStageCombo, lblPlacement, nestPlacementCombo, lblInitialFood, initialFoodSpinner);
 
             // Manual Position Box (Visible when manual placement is chosen)
             HBox manualPosBox = new HBox(8);
@@ -1848,7 +1924,7 @@ public class SimulationControlPanel extends VBox {
             Label lblDemoTitle = new Label("🧠 Demographics & Castes (Queens, Workers, Soldiers & Unified AI Engine)");
             lblDemoTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
 
-            Label lblSpatialInfo = new Label("ℹ️ Demographics & AI Note: Population sizes (Queens, Workers, Soldiers) are calculated automatically based on the selected nest size, customizable via counters.");
+            Label lblSpatialInfo = new Label("ℹ️ Demographics & AI Note: Population sizes (Queens, Workers, Soldiers, Brood) are automatically proportioned to the selected nest development stage.");
             lblSpatialInfo.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 9.5px; -fx-wrap-text: true;");
 
             GridPane demoGrid = new GridPane();
@@ -1878,14 +1954,14 @@ public class SimulationControlPanel extends VBox {
             broodSpinner.setPrefWidth(90); broodSpinner.setEditable(true);
 
             // Set higher default ranges for realistic biological scale (up to millions for supercolonies)
-            workerSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 5000000, 50000, 1000));
-            soldierSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 500000, 5000, 500));
-            queenSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 1000, 5, 1));
-            broodSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 2000000, 20000, 1000));
+            workerSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 5000000, 100, 100));
+            soldierSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 500000, 10, 10));
+            queenSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 1000, 1, 1));
+            broodSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 2000000, 50, 50));
 
-            // Auto-adjust demographics when nest architecture type changes
-            nestTypeCombo.valueProperty().addListener((o, oldV, newV) -> {
-                applyDemographicsFromNest(newV);
+            // Auto-adjust demographics when nest stage changes
+            nestStageCombo.valueProperty().addListener((o, oldV, newV) -> {
+                applyDemographicsFromStage(nestStageCombo.getSelectionModel().getSelectedIndex());
                 triggerChange();
             });
 
@@ -1895,8 +1971,8 @@ public class SimulationControlPanel extends VBox {
             broodSpinner.valueProperty().addListener((o, oldV, newV) -> triggerChange());
             initialFoodSpinner.valueProperty().addListener((o, oldV, newV) -> triggerChange());
 
-            // Trigger initial population calculation to match selected nest preset
-            applyDemographicsFromNest(nestTypeCombo.getValue());
+            // Trigger initial population calculation for default Stage 1 (Young Colony)
+            applyDemographicsFromStage(1);
 
             Label lblQ = new Label("👑 Reines :"); lblQ.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
             Label lblQEngine = new Label("Moteur IA :"); lblQEngine.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
@@ -2009,52 +2085,54 @@ public class SimulationControlPanel extends VBox {
             return idx > 0 ? full.substring(0, idx).trim() : full;
         }
 
-        private void applyDemographicsFromNest(String nestType) {
-            if (nestType == null || queenSpinner == null || workerSpinner == null || soldierSpinner == null || broodSpinner == null) return;
-            String lower = nestType.toLowerCase();
-            if (lower.contains("jeune") || lower.contains("young") || lower.contains("joven") || lower.contains("jung") || lower.contains("幼") ||
-                lower.contains("tige") || lower.contains("stem") || lower.contains("tallo") || lower.contains("stängel") || lower.contains("茎") ||
-                lower.contains("galle") || lower.contains("gall") || lower.contains("agalla") || lower.contains("瘿") || lower.contains("初")) {
-                queenSpinner.getValueFactory().setValue(1);
-                workerSpinner.getValueFactory().setValue(100);
-                soldierSpinner.getValueFactory().setValue(0);
-                broodSpinner.getValueFactory().setValue(50);
-            } 
-            else if (lower.contains("mature") || lower.contains("maduro") || lower.contains("reif") || lower.contains("成熟") ||
-                     lower.contains("carton") || lower.contains("cartón") || lower.contains("karton") || lower.contains("纸") ||
-                     lower.contains("bivouac") || lower.contains("biwak") || lower.contains("露营") ||
-                     lower.contains("pot") || lower.contains("vaseta") || lower.contains("topf") || lower.contains("壶")) {
-                queenSpinner.getValueFactory().setValue(1);
-                workerSpinner.getValueFactory().setValue(5000);
-                soldierSpinner.getValueFactory().setValue(500);
-                broodSpinner.getValueFactory().setValue(2500);
-            } 
-            else if (lower.contains("supercolonie") || lower.contains("supercolony") || lower.contains("supercolonia") || lower.contains("superkolonie") || lower.contains("超级") ||
-                     lower.contains("champignon") || lower.contains("fungus") || lower.contains("hongo") || lower.contains("pilz") || lower.contains("真菌") ||
-                     lower.contains("mégapole") || lower.contains("megacity") || lower.contains("megaciudad") || lower.contains("megastadt") || lower.contains("巨城") ||
-                     lower.contains("voûte") || lower.contains("vault") || lower.contains("bóveda") || lower.contains("gewölbe") || lower.contains("拱")) {
-                queenSpinner.getValueFactory().setValue(50);
-                workerSpinner.getValueFactory().setValue(500000);
-                soldierSpinner.getValueFactory().setValue(50000);
-                broodSpinner.getValueFactory().setValue(200000);
-            } 
-            else {
-                queenSpinner.getValueFactory().setValue(5);
-                workerSpinner.getValueFactory().setValue(50000);
-                soldierSpinner.getValueFactory().setValue(5000);
-                broodSpinner.getValueFactory().setValue(20000);
+        private void applyDemographicsFromStage(int stageIndex) {
+            if (queenSpinner == null || workerSpinner == null || soldierSpinner == null || broodSpinner == null) return;
+            switch (stageIndex) {
+                case 0 -> { // Claustral Founding Cell
+                    queenSpinner.getValueFactory().setValue(1);
+                    workerSpinner.getValueFactory().setValue(0);
+                    soldierSpinner.getValueFactory().setValue(0);
+                    broodSpinner.getValueFactory().setValue(10);
+                }
+                case 1 -> { // Incipient / Young Nest
+                    queenSpinner.getValueFactory().setValue(1);
+                    workerSpinner.getValueFactory().setValue(100);
+                    soldierSpinner.getValueFactory().setValue(10);
+                    broodSpinner.getValueFactory().setValue(50);
+                }
+                case 3 -> { // Complex Supercolony Network
+                    queenSpinner.getValueFactory().setValue(50);
+                    workerSpinner.getValueFactory().setValue(500000);
+                    soldierSpinner.getValueFactory().setValue(50000);
+                    broodSpinner.getValueFactory().setValue(200000);
+                }
+                default -> { // Established / Mature Colony (Stage 2)
+                    queenSpinner.getValueFactory().setValue(1);
+                    workerSpinner.getValueFactory().setValue(5000);
+                    soldierSpinner.getValueFactory().setValue(500);
+                    broodSpinner.getValueFactory().setValue(2500);
+                }
             }
         }
 
         public VBox getCardPane() { return cardPane; }
         public String getSpeciesName() { return speciesName; }
         public String getNestType() { return nestTypeCombo.getValue(); }
+        public String getNestStage() { return nestStageCombo.getValue(); }
+        public int getNestStageIndex() { return nestStageCombo.getSelectionModel().getSelectedIndex(); }
         public void setNestType(String nestType) {
             if (nestTypeCombo.getItems().contains(nestType)) {
                 nestTypeCombo.getSelectionModel().select(nestType);
             } else if (nestType != null) {
                 nestTypeCombo.getItems().add(nestType);
                 nestTypeCombo.getSelectionModel().select(nestType);
+            }
+            triggerChange();
+        }
+        public void setNestStageIndex(int index) {
+            if (index >= 0 && index < nestStageCombo.getItems().size()) {
+                nestStageCombo.getSelectionModel().select(index);
+                applyDemographicsFromStage(index);
             }
             triggerChange();
         }
@@ -2166,15 +2244,12 @@ public class SimulationControlPanel extends VBox {
     }
 
     /**
-     * Helper method to filter nest types based on biological species capability.
-     * Guaranteed exact biological match without invalid cross-species fallbacks.
+     * Helper method to filter physical nest architectures based on biological species capability.
+     * Guaranteed exact biological match returning pure physical nest typologies.
      */
-    public static List<String> getCompatibleNestTypes(String speciesName) {
+    public static List<String> getCompatibleNestArchitectures(String speciesName) {
         List<String> nests = new ArrayList<>();
-        nests.add("Young Subterranean Burrow");
-        nests.add("Mature Subterranean Galleries");
-        nests.add("Old Expansive Nest");
-        nests.add("Complex Supercolony");
+        nests.add("Subterranean Burrows & Galleries");
 
         if (speciesName != null) {
             String lower = speciesName.toLowerCase();
@@ -2205,6 +2280,10 @@ public class SimulationControlPanel extends VBox {
         }
         Collections.sort(nests);
         return nests;
+    }
+
+    public static List<String> getCompatibleNestTypes(String speciesName) {
+        return getCompatibleNestArchitectures(speciesName);
     }
 
     /**
@@ -2296,5 +2375,20 @@ public class SimulationControlPanel extends VBox {
         if (lblStepDt != null) {
             lblStepDt.setText(String.format("Δt = %.3f s", simulationStepSeconds));
         }
+        updateDurationCalculatedLabel();
+    }
+
+    public void updateDurationCalculatedLabel() {
+        if (lblDurationCalculatedInfo == null) return;
+        if (durationUnitCombo != null && "∞ Illimité".equals(durationUnitCombo.getValue())) {
+            lblDurationCalculatedInfo.setText("⏱️ Durée théorique : Calcul continu sans limite (Mode Illimité ∞)");
+            return;
+        }
+        long totalTicks = getMaxSimulationTicks();
+        double dt = getSimulationStepSeconds();
+        if (dt <= 0) dt = 0.016666666666666666;
+
+        String formatted = formatSimulationTime(totalTicks, dt);
+        lblDurationCalculatedInfo.setText(String.format("⏱️ Durée équivalente : %s (%,d pas à Δt = %.3fs)", formatted, totalTicks, dt));
     }
 }

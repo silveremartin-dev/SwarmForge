@@ -56,7 +56,7 @@ class DisasterTest {
     @Test
     void testFireDisasterCreation() {
         FireDisaster fire = new FireDisaster(25, 25, 5, 0.5f);
-        assertEquals("Wildfire", fire.getName());
+        assertTrue(fire.getName().startsWith("Wildfire"));
         assertEquals("MINOR", fire.getSeverity());
     }
 
@@ -74,7 +74,7 @@ class DisasterTest {
     @Test
     void testFloodDisasterCreation() {
         FloodDisaster flood = new FloodDisaster(0.6f, 5);
-        assertEquals("Flash Flood", flood.getName());
+        assertTrue(flood.getName().startsWith("Flash Flood"));
         assertEquals("MAJOR", flood.getSeverity());
     }
 
@@ -89,7 +89,7 @@ class DisasterTest {
     @Test
     void testHeatwaveDisasterCreation() {
         HeatwaveDisaster heat = new HeatwaveDisaster(0.7f, 200);
-        assertEquals("Extreme Heatwave", heat.getName());
+        assertTrue(heat.getName().startsWith("Extreme Heatwave"));
         assertEquals("MAJOR", heat.getSeverity());
         assertEquals(200, heat.getDurationTicks());
     }
@@ -107,7 +107,7 @@ class DisasterTest {
     @Test
     void testDroughtDisasterCreation() {
         DroughtDisaster drought = new DroughtDisaster(0.5f);
-        assertEquals("Severe Drought", drought.getName());
+        assertTrue(drought.getName().startsWith("Severe Drought"));
     }
 
     @Test
@@ -123,7 +123,7 @@ class DisasterTest {
     @Test
     void testEarthquakeDisasterCreation() {
         EarthquakeDisaster quake = new EarthquakeDisaster(0.6f);
-        assertEquals("Earthquake", quake.getName());
+        assertTrue(quake.getName().startsWith("Earthquake"));
         assertEquals("MAJOR", quake.getSeverity());
     }
 

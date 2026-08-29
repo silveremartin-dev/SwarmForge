@@ -34,6 +34,14 @@ public class WaterGrid {
     }
 
     /**
+     * Clear all water (surface and subterranean tunnels).
+     */
+    public void clear() {
+        java.util.Arrays.fill(surfaceWater, 0f);
+        tunnelWaterLevels.clear();
+    }
+
+    /**
      * Add rain to the surface.
      * 
      * @param amount Amount of water to add uniformly.
