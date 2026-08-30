@@ -498,9 +498,9 @@ public class SwarmForgeClient extends Application {
                             int index = org.swarmforge.core.domain.PheromoneType.HOME_TRAIL.getIndex();
                             if (type != null) {
                                 String u = type.toUpperCase();
-                                if (u.contains("ALARM") || u.contains("ALERTE")) index = org.swarmforge.core.domain.PheromoneType.ALARM_DANGER.getIndex();
+                                if (u.contains("ALARM") || u.contains("ALERTE")) index = org.swarmforge.core.domain.PheromoneType.ALARM.getIndex();
                                 else if (u.contains("FOOD") || u.contains("ATTRACTANT") || u.contains("BIOMASS")) index = org.swarmforge.core.domain.PheromoneType.FOOD_TRAIL.getIndex();
-                                else if (u.contains("QUEEN") || u.contains("REINE")) index = org.swarmforge.core.domain.PheromoneType.QUEEN_ATTRACTANT.getIndex();
+                                else if (u.contains("QUEEN") || u.contains("REINE")) index = org.swarmforge.core.domain.PheromoneType.QUEEN_SCENT.getIndex();
                                 else if (u.contains("RECRUIT") || u.contains("RECRUTEMENT")) index = org.swarmforge.core.domain.PheromoneType.RECRUITMENT.getIndex();
                                 else if (u.contains("ERASER") || u.contains("DISPERSION")) {
                                     int r = Math.max(1, (int) radius);

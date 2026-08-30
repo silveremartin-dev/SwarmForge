@@ -37,6 +37,11 @@ public class CrowdSimulator {
 
     private int capacity;
     private int count;
+    private long stepCounter = 0;
+    private float simulationStepSeconds = 0.016666667f;
+
+    public float getSimulationStepSeconds() { return simulationStepSeconds; }
+    public void setSimulationStepSeconds(float stepSeconds) { this.simulationStepSeconds = Math.max(0.0001f, stepSeconds); }
 
     // Primitive Spatial Hash Grid for O(N) neighbor lookup
     private static final float CELL_SIZE = 10.0f; // Matches NEIGHBOR_RADIUS
@@ -125,6 +130,10 @@ public class CrowdSimulator {
      */
     public void step(float[] pheromones, SparsePheromoneGrid pheromoneGrid, int width, int height, int depth) {
         if (count == 0) return;
+
+        stepCounter++;
+        int sampleInterval = Math.max(1, count > 10000 ? 5 : (count > 2000 ? 3 : 1));
+        float depositAmount = 0.5f * (simulationStepSeconds / 0.016666667f) * sampleInterval;
 
         // Boids parameters tuned for realistic ant behavior
         final float NEIGHBOR_RADIUS = 10.0f;
@@ -285,14 +294,14 @@ public class CrowdSimulator {
                 velocitiesY[i] = -Math.abs(velocitiesY[i]) * 0.5f;
             }
 
-            // Deposit trail pheromone into grid if active
-            if (pheromoneGrid != null && i % 3 == 0) {
-                pheromoneGrid.deposit((int) positionsX[i], (int) positionsY[i], (int) positionsZ[i], org.swarmforge.core.domain.PheromoneType.HOME_TRAIL.getIndex(), 0.5f); // HOME_TRAIL
+            // Deposit trail pheromone into grid if active using rotational interleaving (all ants deposit equally over time)
+            if (pheromoneGrid != null && (stepCounter + i) % sampleInterval == 0) {
+                pheromoneGrid.deposit((int) positionsX[i], (int) positionsY[i], (int) positionsZ[i], org.swarmforge.core.domain.PheromoneType.HOME_TRAIL.getIndex(), depositAmount);
             }
 
-            // Realistic metabolic energy consumption per tick (scaled per individual)
+            // Realistic metabolic energy consumption per tick (scaled per individual and dt in seconds)
             float individualMetabolism = metabolisms[i] > 0.001f ? metabolisms[i] : 1.0f;
-            energies[i] -= 0.0001f * individualMetabolism;
+            energies[i] -= 0.0001f * individualMetabolism * (simulationStepSeconds / 0.016666667f);
             if (energies[i] <= 0f) {
                 energies[i] = 0f;
                 alive[i] = false;

@@ -34,18 +34,17 @@ public class SparsePheromoneGrid {
     private static final float PRUNE_THRESHOLD = 0.001f;
     public static final int PHEROMONE_TYPES = 8;
 
-    // Default Pheromone Properties (Index mapping: 0=HOME, 1=FOOD, 2=DANGER/ALARM,
+    // Default Pheromone Properties in real-world seconds (Index mapping: 0=HOME, 1=FOOD, 2=DANGER/ALARM,
     // 3=RECRUIT, 4=MARK, 5=GATHER, 6=ATTACK, 7=UNKNOWN)
-    // Adjusted for 60 TPS simulation
-    private static final int[] DEFAULT_HALF_LIFE = {
-            100, // HOME_TRAIL
-            200, // FOOD_TRAIL
-            30, // DANGER
-            80, // RECRUIT
-            500, // MARK
-            300, // GATHER
-            20, // ATTACK
-            150 // UNKNOWN
+    private static final float[] DEFAULT_HALF_LIFE_SECONDS = {
+            1.6667f, // HOME_TRAIL (1.67s)
+            3.3333f, // FOOD_TRAIL (3.33s)
+            0.5000f, // DANGER (0.5s)
+            1.3333f, // RECRUIT (1.33s)
+            8.3333f, // MARK (8.33s)
+            5.0000f, // GATHER (5.0s)
+            0.3333f, // ATTACK (0.33s)
+            2.5000f  // UNKNOWN (2.5s)
     };
 
     private static final float[] DEFAULT_DIFFUSION_RATE = {
@@ -56,15 +55,19 @@ public class SparsePheromoneGrid {
             0.02f, // MARK
             0.03f, // GATHER
             0.10f, // ATTACK
-            0.04f // UNKNOWN
+            0.04f  // UNKNOWN
     };
 
-    private final int[] halfLife;
+    private final float[] halfLifeSeconds;
     private final float[] diffusionRate;
     private final ConcurrentHashMap<Long, PheromoneEntry> grid;
     private volatile long currentTick = 0;
+    private volatile float simulationStepSeconds = 0.016666667f; // Default 60 TPS dt
     private volatile float evaporationMultiplier = 1.0f;
     private final int width, height, depth;
+
+    public float getSimulationStepSeconds() { return simulationStepSeconds; }
+    public void setSimulationStepSeconds(float stepSeconds) { this.simulationStepSeconds = Math.max(0.0001f, stepSeconds); }
 
     public void setEvaporationMultiplier(float multiplier) {
         this.evaporationMultiplier = Math.max(0.1f, Math.min(5.0f, multiplier));
@@ -99,7 +102,7 @@ public class SparsePheromoneGrid {
         this.depth = depth;
         this.grid = new ConcurrentHashMap<>();
 
-        this.halfLife = DEFAULT_HALF_LIFE.clone();
+        this.halfLifeSeconds = DEFAULT_HALF_LIFE_SECONDS.clone();
         this.diffusionRate = DEFAULT_DIFFUSION_RATE.clone();
         this.passabilityChecker = (type, cell) -> cell.isPassable();
     }
@@ -213,6 +216,12 @@ public class SparsePheromoneGrid {
         return computeDecay(entry.getConcentration(type), entry.getLastUpdatedTick(type), type);
     }
 
+    public void clearAt(int x, int y, int z) {
+        if (!inBounds(x, y, z)) return;
+        long key = Morton3D.encode(x, y, z);
+        grid.remove(key);
+    }
+
     public float getIntensity(int x, int y, int z, int type) {
         return read(x, y, z, type);
     }
@@ -235,11 +244,12 @@ public class SparsePheromoneGrid {
     private float computeDecay(float original, long depositTick, int type) {
         if (original <= 0)
             return 0f;
-        long elapsed = currentTick - depositTick;
-        if (elapsed <= 0)
+        long elapsedTicks = currentTick - depositTick;
+        if (elapsedTicks <= 0)
             return original;
-        double effectiveHalfLife = halfLife[type] / evaporationMultiplier;
-        return (float) (original * Math.pow(0.5, (double) elapsed / effectiveHalfLife));
+        double elapsedSeconds = elapsedTicks * (double) simulationStepSeconds;
+        double effectiveHalfLifeSec = (double) halfLifeSeconds[type] / (double) evaporationMultiplier;
+        return (float) (original * Math.pow(0.5, elapsedSeconds / effectiveHalfLifeSec));
     }
 
     public void tick() {
@@ -382,10 +392,9 @@ public class SparsePheromoneGrid {
     public long getCurrentTick() {
         return currentTick;
     }
-
-    public void setHalfLife(int type, int ticks) {
+    public void setHalfLifeSeconds(int type, float seconds) {
         if (type >= 0 && type < PHEROMONE_TYPES)
-            halfLife[type] = ticks;
+            halfLifeSeconds[type] = Math.max(0.01f, seconds);
     }
 
     public void setDiffusionRate(int type, float rate) {
@@ -398,17 +407,7 @@ public class SparsePheromoneGrid {
     public Map<Long, float[]> getAllEntries() {
         Map<Long, float[]> snapshot = new java.util.HashMap<>();
         for (Map.Entry<Long, PheromoneEntry> e : grid.entrySet()) {
-            PheromoneEntry entry = e.getValue();
-            float[] values = new float[PHEROMONE_TYPES];
-            boolean hasData = false;
-            for (int t = 0; t < PHEROMONE_TYPES; t++) {
-                values[t] = computeDecay(entry.concentrations[t], entry.lastUpdatedTick[t], t);
-                if (values[t] >= PRUNE_THRESHOLD)
-                    hasData = true;
-            }
-            if (hasData) {
-                snapshot.put(e.getKey(), values);
-            }
+            snapshot.put(e.getKey(), readAll(e.getKey()));
         }
         return snapshot;
     }

@@ -30,7 +30,8 @@ public class NestMicroclimateSystem {
 
     public void tick() {
         long currentTick = simulation.getTickCount();
-        if (currentTick - lastMicroclimateTick < 100) return; // Every ~1.5s
+        float deltaSeconds = (currentTick - lastMicroclimateTick) * simulation.getSimulationStepSeconds();
+        if (deltaSeconds < 1.5f) return; // Evaluate every 1.5 real seconds
         lastMicroclimateTick = currentTick;
 
         Terrarium terrarium = simulation.getTerrarium();
@@ -40,8 +41,8 @@ public class NestMicroclimateSystem {
             int antCount = colony.getPopulation();
             if (antCount == 0) continue;
 
-            // Compute respiration CO2 rate (each worker produces ~0.05 ul CO2/h)
-            float co2ProductionRate = antCount * 0.002f; // % per tick
+            // Compute respiration CO2 rate (each worker produces ~0.05 ul CO2/h, scaled per second dt)
+            float co2ProductionRate = antCount * 0.0012f * deltaSeconds;
 
             // Sample nest chambers
             int nestX = (int) colony.getNestX();

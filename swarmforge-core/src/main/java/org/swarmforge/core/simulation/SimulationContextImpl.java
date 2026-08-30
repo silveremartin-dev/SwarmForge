@@ -188,10 +188,10 @@ public class SimulationContextImpl implements SimulationContext {
 
     @Override
     public float getLightLevel() {
-        // Simple day/cycle approximation based on tick count assuming 14400 ticks per
-        // day
-        long timeOfDay = simulation.getTickCount() % 14400;
-        if (timeOfDay > 3600 && timeOfDay < 10800)
+        // Day/night cycle calculated in real elapsed seconds (240s full cycle)
+        double totalSeconds = simulation.getTickCount() * (double) simulation.getSimulationStepSeconds();
+        double timeOfDaySec = totalSeconds % 240.0;
+        if (timeOfDaySec > 60.0 && timeOfDaySec < 180.0)
             return 1.0f; // Day
         return 0.1f; // Night
     }

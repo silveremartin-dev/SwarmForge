@@ -99,6 +99,7 @@ public class Simulation {
         this.pheromoneGrid = new SparsePheromoneGrid(
                 terrarium.getWidth(), terrarium.getHeight(), terrarium.getDepth());
         this.pheromoneGrid.setTerrarium(terrarium);
+        this.pheromoneGrid.setSimulationStepSeconds(this.simulationStepSeconds);
 
         this.waterGrid = new org.swarmforge.core.ecology.WaterGrid(terrarium);
 
@@ -1098,6 +1099,9 @@ public class Simulation {
 
     public void setSimulationStepSeconds(float stepSeconds) {
         this.simulationStepSeconds = Math.max(0.001f, stepSeconds);
+        if (this.pheromoneGrid != null) {
+            this.pheromoneGrid.setSimulationStepSeconds(this.simulationStepSeconds);
+        }
     }
 
     /**
