@@ -39,11 +39,19 @@ public class ClientApp extends Application {
     public void start(Stage primaryStage) {
         LOG.info("Starting SwarmForge Client...");
 
-        // Load Application Icon
+        // Load Application Icon (multi-resolution for Windows taskbar and titlebar)
         try {
-            java.io.InputStream iconStream = getClass().getResourceAsStream("/icons/icon.png");
-            if (iconStream != null) {
-                primaryStage.getIcons().add(new javafx.scene.image.Image(iconStream));
+            java.net.URL iconUrl = getClass().getResource("/icons/icon.png");
+            if (iconUrl != null) {
+                String urlStr = iconUrl.toExternalForm();
+                primaryStage.getIcons().clear();
+                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 16, 16, true, true));
+                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 32, 32, true, true));
+                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 48, 48, true, true));
+                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 64, 64, true, true));
+                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 128, 128, true, true));
+                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 256, 256, true, true));
+                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr));
             }
         } catch (Exception e) {
             LOG.warning("Could not load application icon: " + e.getMessage());

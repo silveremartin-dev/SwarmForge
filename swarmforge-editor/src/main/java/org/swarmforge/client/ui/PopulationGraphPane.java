@@ -54,42 +54,42 @@ public class PopulationGraphPane extends VBox {
         header.setAlignment(Pos.CENTER_LEFT);
         Label titleLabel = new Label(I18nManager.getInstance().get("graph.pop_title"));
         titleLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
-        titleLabel.setTooltip(new Tooltip("Graphique d'analyse temporelle des effectifs par caste et par colonie en secondes réelles."));
+        titleLabel.setTooltip(new Tooltip(I18nManager.getInstance().get("graph.pop_title.tt")));
         header.getChildren().add(titleLabel);
 
         // Population Chart
         NumberAxis xAxis1 = new NumberAxis();
-        xAxis1.setLabel("Temps Réel Écoulé (secondes)");
+        xAxis1.setLabel(I18nManager.getInstance().get("graph.axis.time"));
         xAxis1.setAutoRanging(true);
 
         NumberAxis yAxis1 = new NumberAxis();
-        yAxis1.setLabel("Effectif (Individus)");
+        yAxis1.setLabel(I18nManager.getInstance().get("graph.axis.population"));
 
         populationChart = new LineChart<>(xAxis1, yAxis1);
         populationChart.setTitle(I18nManager.getInstance().get("graph.demographics"));
         populationChart.setCreateSymbols(false);
         populationChart.setAnimated(false);
         populationChart.setPrefHeight(240);
-        Tooltip.install(populationChart, new Tooltip("Évolution dynamique des effectifs par caste pour toutes les colonies résidant dans la simulation."));
+        Tooltip.install(populationChart, new Tooltip(I18nManager.getInstance().get("graph.demographics.tt")));
 
         // Resources Chart
         NumberAxis xAxis2 = new NumberAxis();
-        xAxis2.setLabel("Temps Réel Écoulé (secondes)");
+        xAxis2.setLabel(I18nManager.getInstance().get("graph.axis.time"));
         xAxis2.setAutoRanging(true);
 
         NumberAxis yAxis2 = new NumberAxis();
-        yAxis2.setLabel("Quantité / Événements");
+        yAxis2.setLabel(I18nManager.getInstance().get("graph.axis.resources"));
 
         resourcesChart = new LineChart<>(xAxis2, yAxis2);
         resourcesChart.setTitle(I18nManager.getInstance().get("graph.resources_events"));
         resourcesChart.setCreateSymbols(false);
         resourcesChart.setAnimated(false);
         resourcesChart.setPrefHeight(220);
-        Tooltip.install(resourcesChart, new Tooltip("Suivi temporel des réserves de nourriture libres, cumuls de naissances et de décès."));
+        Tooltip.install(resourcesChart, new Tooltip(I18nManager.getInstance().get("graph.resources.tt")));
 
-        foodSeries.setName("Nourriture Libre");
-        birthsSeries.setName("Cumul Naissances");
-        deathsSeries.setName("Cumul Décès");
+        foodSeries.setName(I18nManager.getInstance().get("graph.series.food"));
+        birthsSeries.setName(I18nManager.getInstance().get("graph.series.births"));
+        deathsSeries.setName(I18nManager.getInstance().get("graph.series.deaths"));
 
         resourcesChart.getData().addAll(java.util.Arrays.asList(foodSeries, birthsSeries, deathsSeries));
 
@@ -110,11 +110,11 @@ public class PopulationGraphPane extends VBox {
     public void addDataPoint(int totalPop, int workers, int queens, int soldiers, int food, int births, int deaths) {
         Map<String, Map<String, Integer>> map = new HashMap<>();
         Map<String, Integer> castes = new HashMap<>();
-        castes.put("Reines", queens);
-        castes.put("Ouvrières", workers);
-        if (soldiers > 0) castes.put("Soldats", soldiers);
-        castes.put("Total Colonie", totalPop);
-        map.put("Colonie #1", castes);
+        castes.put("Queens", queens);
+        castes.put("Workers", workers);
+        if (soldiers > 0) castes.put("Soldiers", soldiers);
+        castes.put("Total Colony", totalPop);
+        map.put("Colony #1", castes);
 
         long timeSec = (long) (System.currentTimeMillis() / 1000);
         addDataPointMultiColony(timeSec, map, food, births, deaths);

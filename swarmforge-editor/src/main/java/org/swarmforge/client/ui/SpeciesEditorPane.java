@@ -19,6 +19,7 @@ import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.core.domain.CasteTemplate;
 import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
 
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.NotificationOverlay;
@@ -205,18 +206,18 @@ public class SpeciesEditorPane extends VBox {
         I18nManager i18n = I18nManager.getInstance();
         Alert alert = ThemeManager.createAlert(
             Alert.AlertType.CONFIRMATION,
-            "Vous avez des modifications non enregistrées dans l'Éditeur d'Espèces.\n"
-            + (hasCurrentPreset ? "Preset courant : \"" + currentName + "\"" : "Aucun preset sélectionné.")
+            "You have unsaved changes in the Species Editor.\n"
+            + (hasCurrentPreset ? "Current preset: \"" + currentName + "\"" : "No preset selected.")
         );
-        alert.setTitle("Modifications non enregistrées");
-        alert.setHeaderText("Quitter l'éditeur d'espèces ?");
+        alert.setTitle("Unsaved Changes");
+        alert.setHeaderText("Exit Species Editor?");
 
         ButtonType btnUpdate  = hasCurrentPreset
-            ? new ButtonType("💾 Mettre \u00e0 jour \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
+            ? new ButtonType("💾 Update \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
             : null;
-        ButtonType btnSaveAs  = new ButtonType("📝 Enregistrer sous...", ButtonBar.ButtonData.OTHER);
-        ButtonType btnDiscard = new ButtonType("🗑 Abandonner", ButtonBar.ButtonData.OTHER);
-        ButtonType btnCancel  = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType btnSaveAs  = new ButtonType("📝 Save As...", ButtonBar.ButtonData.OTHER);
+        ButtonType btnDiscard = new ButtonType("🗑 Discard", ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel  = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
 
         if (btnUpdate != null) {
             alert.getButtonTypes().setAll(btnUpdate, btnSaveAs, btnDiscard, btnCancel);
@@ -243,7 +244,7 @@ public class SpeciesEditorPane extends VBox {
             }
             lastSelectedPreset = currentName;
             isDirty = false;
-            NotificationOverlay.show(this, "Preset \"" + currentName + "\" mis \u00e0 jour.", NotificationOverlay.NotificationType.SUCCESS);
+            NotificationOverlay.show(this, "Preset \"" + currentName + "\" updated.", NotificationOverlay.NotificationType.SUCCESS);
             return true;
         }
         if (result.get() == btnSaveAs) {
@@ -275,7 +276,7 @@ public class SpeciesEditorPane extends VBox {
         presetCombo = new ComboBox<>();
         presetCombo.setEditable(true);
         presetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
-        presetCombo.setTooltip(new Tooltip("Sélectionnez une espèce d'insecte eusocial pré-configurée (Lasius, Atta, Apis, Bombus, Vespula, Macrotermes, etc.)."));
+        presetCombo.setTooltip(new Tooltip("Select a pre-configured eusocial insect species (Lasius, Atta, Apis, Bombus, Vespula, Macrotermes, etc.)."));
         presetCombo.getItems().setAll(presetManager.getPresetNames());
         FXCollections.sort(presetCombo.getItems());
         presetCombo.setPrefWidth(240);
@@ -287,10 +288,10 @@ public class SpeciesEditorPane extends VBox {
             if (isDirty) {
                 Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
                     Alert.AlertType.CONFIRMATION,
-                    "Attention : Vous avez des modifications non enregistrées sur l'espèce actuelle.\n\nVoulez-vous vraiment charger le preset '" + sel + "' et abandonner vos modifications ?"
+                    "Warning: You have unsaved changes on the current species.\n\nDo you really want to load preset '" + sel + "' and discard your changes?"
                 );
                 alert.setTitle(I18nManager.getInstance().get("common.dialog.unsaved"));
-                alert.setHeaderText("Changement de preset d'espèce");
+                alert.setHeaderText("Species Preset Change");
                 java.util.Optional<ButtonType> res = alert.showAndWait();
                 if (res.isEmpty() || res.get() != ButtonType.OK) {
                     isUpdatingFields = true;
@@ -313,7 +314,7 @@ public class SpeciesEditorPane extends VBox {
         btnSave.setGraphic(new FontIcon(Feather.SAVE));
         btnSave.textProperty().bind(i18n.createStringBinding("preset.save"));
         btnSave.getStyleClass().add("btn-secondary");
-        btnSave.setTooltip(new Tooltip("Enregistrer la configuration actuelle de l'espèce comme nouveau preset."));
+        btnSave.setTooltip(new Tooltip("Save current species configuration as a new preset."));
         btnSave.setOnAction(e -> handleAddPreset());
 
         Button btnDelete = new Button();
@@ -321,21 +322,21 @@ public class SpeciesEditorPane extends VBox {
         btnDelete.textProperty().bind(i18n.createStringBinding("preset.delete"));
         btnDelete.getStyleClass().add("btn-danger");
         btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnDelete.setTooltip(new Tooltip("Supprimer le preset d'espèce sélectionné."));
+        btnDelete.setTooltip(new Tooltip("Delete selected species preset."));
         btnDelete.setOnAction(e -> handleDeletePreset());
 
         Button btnExport = new Button();
         btnExport.setGraphic(new FontIcon(Feather.DOWNLOAD));
         btnExport.textProperty().bind(i18n.createStringBinding("preset.export"));
         btnExport.getStyleClass().add("btn-secondary");
-        btnExport.setTooltip(new Tooltip("Exporter les paramètres de l'espèce au format JSON."));
+        btnExport.setTooltip(new Tooltip("Export species parameters to JSON format."));
         btnExport.setOnAction(e -> handleSaveDisk());
 
         Button btnImport = new Button();
         btnImport.setGraphic(new FontIcon(Feather.UPLOAD));
         btnImport.textProperty().bind(i18n.createStringBinding("preset.import"));
         btnImport.getStyleClass().add("btn-secondary");
-        btnImport.setTooltip(new Tooltip("Importer un fichier JSON de configuration d'espèce."));
+        btnImport.setTooltip(new Tooltip("Import species JSON configuration file."));
         btnImport.setOnAction(e -> handleLoadDisk());
 
         bar.getChildren().addAll(lblPreset, presetCombo, btnSave, btnDelete, new Separator(Orientation.VERTICAL), btnExport, btnImport);
@@ -391,7 +392,7 @@ public class SpeciesEditorPane extends VBox {
     private ScrollPane createTaxonomyPane() {
         GridPane grid = createGrid();
 
-        commonNameField = new TextField("Fourmi Noire des Jardins");
+        commonNameField = new TextField("Black Garden Ant");
         scientificNameField = new TextField("Lasius niger");
         genusField = new TextField("Lasius");
 
@@ -418,7 +419,7 @@ public class SpeciesEditorPane extends VBox {
         categoryCombo.getSelectionModel().select(org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY);
         categoryCombo.setOnAction(e -> validateParameters());
 
-        Label categoryHintLabel = new Label("ℹ️ Cet éditeur gère les espèces eusociales (Fourmis, Abeilles, Guêpes, Termites). Les proies, prédateurs et commensaux sont gérés dans l'onglet dédié 'Espèces Associées & Commensaux'.");
+        Label categoryHintLabel = new Label("ℹ️ This editor manages eusocial species (Ants, Bees, Wasps, Termites). Prey, predators, and commensals are managed in the dedicated 'Associated Species & Commensals' panel.");
         categoryHintLabel.getStyleClass().add("help-entry-desc");
         categoryHintLabel.setStyle("-fx-font-size: 11px; -fx-wrap-text: true;");
 
@@ -428,13 +429,13 @@ public class SpeciesEditorPane extends VBox {
         Label lblLinksTitle = new Label(I18nManager.getInstance().get("species.taxonomy_sheet"));
         lblLinksTitle.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
 
-        Hyperlink linkFormicidae = new Hyperlink("🐜 Formicidae (Fourmis)");
+        Hyperlink linkFormicidae = new Hyperlink("🐜 Formicidae (Ants)");
         linkFormicidae.setOnAction(e -> openWiki("https://fr.wikipedia.org/wiki/Formicidae"));
 
-        Hyperlink linkApidae = new Hyperlink("🐝 Apidae (Abeilles)");
+        Hyperlink linkApidae = new Hyperlink("🐝 Apidae (Bees)");
         linkApidae.setOnAction(e -> openWiki("https://fr.wikipedia.org/wiki/Apidae"));
 
-        Hyperlink linkVespidae = new Hyperlink("🐝 Vespidae (Guêpes)");
+        Hyperlink linkVespidae = new Hyperlink("🐝 Vespidae (Wasps)");
         linkVespidae.setOnAction(e -> openWiki("https://fr.wikipedia.org/wiki/Vespidae"));
 
         Hyperlink linkTermitoidae = new Hyperlink("🐜 Termitoidae (Termites)");
@@ -442,17 +443,17 @@ public class SpeciesEditorPane extends VBox {
 
         taxonLinks.getChildren().addAll(lblLinksTitle, linkFormicidae, linkApidae, linkVespidae, linkTermitoidae);
 
-        descriptionArea = new TextArea("Description de l'espèce...");
+        descriptionArea = new TextArea("Species description and ecological notes...");
         descriptionArea.setPrefRowCount(4);
 
-        grid.addRow(0, createTooltipLabel("Nom Commun (fr/en):", "Nom vernaculaire de l'espèce dans le langage courant.", commonNameField), commonNameField);
-        grid.addRow(1, createTooltipLabel("Nom Scientifique (Binomial):", "Nomenclature binomiale latine officielle (ex: Lasius niger, Formica rufa, Atta cephalotes).", scientificNameField), scientificNameField);
-        grid.addRow(2, createTooltipLabel("Genre Taxonomique (Genus):", "Genre auquel appartient l'espèce (ex: Lasius, Formica, Atta, Apis, Solenopsis, Vespula, Reticulitermes).", genusField), genusField);
-        grid.addRow(3, createTooltipLabel("Ordre Taxonomique / Famille:", "Grand groupe taxonomique d'insectes eusociaux (Fourmi, Abeille, Guêpe, Termite).", insectTypeCombo), insectTypeCombo);
+        grid.addRow(0, createTooltipLabel("Common Name:", "Vernacular name of the species in common language.", commonNameField), commonNameField);
+        grid.addRow(1, createTooltipLabel("Scientific Name (Binomial):", "Official Latin binomial nomenclature (e.g., Lasius niger, Formica rufa, Atta cephalotes).", scientificNameField), scientificNameField);
+        grid.addRow(2, createTooltipLabel("Taxonomic Genus:", "Genus to which the species belongs (e.g., Lasius, Formica, Atta, Apis, Solenopsis, Vespula, Reticulitermes).", genusField), genusField);
+        grid.addRow(3, createTooltipLabel("Taxonomic Order / Family:", "Major taxonomic group of eusocial insects (Ant, Bee, Wasp, Termite).", insectTypeCombo), insectTypeCombo);
         grid.addRow(4, new Label(""), taxonLinks);
-        grid.addRow(5, createTooltipLabel("Rôle Écologique / Catégorie:", "Statut trophique et rôle fonctionnel dans l'écosystème de simulation.", categoryCombo), categoryCombo);
+        grid.addRow(5, createTooltipLabel("Ecological Role / Category:", "Trophic status and functional role in simulation ecosystem.", categoryCombo), categoryCombo);
         grid.addRow(6, new Label(""), categoryHintLabel);
-        grid.addRow(7, createTooltipLabel("Description & Notes Écologiques:", "Résumé descriptif de la biologie, de l'habitat et du comportement de l'espèce.", descriptionArea), descriptionArea);
+        grid.addRow(7, createTooltipLabel("Description & Ecological Notes:", "Summary of species biology, habitat, and behavior.", descriptionArea), descriptionArea);
 
         return wrapScroll(grid);
     }
@@ -498,7 +499,7 @@ public class SpeciesEditorPane extends VBox {
         queenLifespanField = new TextField("25000");
         queenEggRateField = new TextField("25.0");
 
-        hasKingCheckBox = new CheckBox("Présence d'un Roi Reproducteur (Termites)");
+        hasKingCheckBox = new CheckBox("Presence of Reproductive King (Termites)");
         hasKingCheckBox.setOnAction(e -> validateParameters());
 
         kingLifespanField = new TextField("15000");
@@ -517,17 +518,17 @@ public class SpeciesEditorPane extends VBox {
         nuptialFlightCombo.getSelectionModel().select("AERIAL_SWARM");
 
         colonySizeField = new TextField("15000");
-        megaColonyCheckBox = new CheckBox("Forme des Supercolonies (Agglomération de nids / Unicolonialité)");
+        megaColonyCheckBox = new CheckBox("Forms Supercolonies (Unicoloniality / Multi-nest Network)");
 
-        grid.addRow(0, createTooltipLabel("Structure Gynique (Mode Reine):", "Mode d'organisation des reines reproductrices : Monogyne (1 reine), Polygyne (plusieurs reines), ou Gamergates (ouvrières pondeuses).", queenModeCombo, "Monogyne"), queenModeCombo);
-        grid.addRow(1, createTooltipLabel("Effectif de Reines Fondatrices (ind):", "Nombre initial ou maximum de reines reproductrices fertiles résidant dans la colonie.", queenCountSpinner), queenCountSpinner);
-        grid.addRow(2, createTooltipLabel("Durée de Vie Reine (jours):", "Longévité maximale de la reine avant sénescence naturelle et fin de fertilité.", queenLifespanField), queenLifespanField);
-        grid.addRow(3, createTooltipLabel("Taux de Ponte Royale (œufs/j):", "Nombre d'œufs pondus par reine par jour dans des conditions environnementales optimales.", queenEggRateField), queenEggRateField);
-        grid.addRow(4, createTooltipLabel("Roi Reproducteur (Isoptera):", "Présence d'un mâle reproducteur permanent (roi) vivant aux côtés de la reine, caractéristique des Termites.", hasKingCheckBox, "King"), hasKingCheckBox);
-        grid.addRow(5, createTooltipLabel("Durée de Vie Roi (jours):", "Longévité du roi reproducteur chez les espèces isoptères.", kingLifespanField), kingLifespanField);
-        grid.addRow(6, createTooltipLabel("Vol Nuptial / Mode d'Essaimage:", "Stratégie de dispersion et d'accouplement : Essaimage aérien, division d'essaim, bouturage de nid ou accouplement intranidale.", nuptialFlightCombo, "Nuptial"), nuptialFlightCombo);
-        grid.addRow(7, createTooltipLabel("Population Colonie Mature (ind):", "Taille moyenne de la population d'une colonie mature à l'équilibre écologique.", colonySizeField), colonySizeField);
-        grid.addRow(8, createTooltipLabel("Supercolonies (Unicolonialité):", "Capacité à former un réseau de nids inter-connectés sans agressivité intra-spécifique.", megaColonyCheckBox), megaColonyCheckBox);
+        grid.addRow(0, createTooltipLabel("Gynic Structure (Queen Mode):", "Reproductive queen organization mode: Monogyne (1 queen), Polygyne (multiple queens), or Gamergates (reproductive workers).", queenModeCombo, "Monogyne"), queenModeCombo);
+        grid.addRow(1, createTooltipLabel("Founding Queens Count (ind):", "Initial or maximum fertile reproductive queens residing in colony.", queenCountSpinner), queenCountSpinner);
+        grid.addRow(2, createTooltipLabel("Queen Lifespan (days):", "Maximum queen lifespan before natural senescence.", queenLifespanField), queenLifespanField);
+        grid.addRow(3, createTooltipLabel("Queen Egg Laying Rate (eggs/day):", "Daily eggs laid per queen under optimal conditions.", queenEggRateField), queenEggRateField);
+        grid.addRow(4, createTooltipLabel("Reproductive King (Isoptera):", "Presence of a permanent reproductive male (king) living alongside the queen (termites).", hasKingCheckBox, "King"), hasKingCheckBox);
+        grid.addRow(5, createTooltipLabel("King Lifespan (days):", "Reproductive king lifespan in isopteran species.", kingLifespanField), kingLifespanField);
+        grid.addRow(6, createTooltipLabel("Nuptial Flight / Swarming Mode:", "Dispersal and mating strategy: Aerial swarm, swarm division, budding, or in-nest mating.", nuptialFlightCombo, "Nuptial"), nuptialFlightCombo);
+        grid.addRow(7, createTooltipLabel("Mature Colony Population (ind):", "Average population size of a mature colony at ecological equilibrium.", colonySizeField), colonySizeField);
+        grid.addRow(8, createTooltipLabel("Supercolonies (Unicoloniality):", "Ability to form interconnected nest networks without intraspecific aggression.", megaColonyCheckBox), megaColonyCheckBox);
 
         return wrapScroll(grid);
     }
@@ -539,7 +540,7 @@ public class SpeciesEditorPane extends VBox {
 
         VBox cardDurations = new VBox(10);
         cardDurations.getStyleClass().add("card-pane");
-        Label titleDurations = new Label("⏱ Durées de Métamorphose par Stade");
+        Label titleDurations = new Label("⏱ Metamorphosis Stage Durations");
         titleDurations.getStyleClass().add("card-title");
 
         GridPane gridDurations = createGrid();
@@ -568,15 +569,15 @@ public class SpeciesEditorPane extends VBox {
         larvaDietCombo.getSelectionModel().select("High Protein Meat & Insects");
         pupaDurationField = new TextField("500");
 
-        gridDurations.addRow(0, createTooltipLabel("Durée Stade Œuf (jours):", "Période d'incubation requise avant le premier stade larvaire.", eggDurationField), eggDurationField);
-        gridDurations.addRow(1, createTooltipLabel("Durée Stade Larvaire (jours):", "Période de développement et d'alimentation intensive de la larve.", larvaDurationField), larvaDurationField);
-        gridDurations.addRow(2, createTooltipLabel("Régime Alimentaire Larvaire:", "Nourriture spécifique apportée par les ouvrières nourrices aux larves en croissance.", larvaDietCombo), larvaDietCombo);
-        gridDurations.addRow(3, createTooltipLabel("Durée Stade Nymphal / Cocon (jours):", "Durée de métamorphose au cours de laquelle se forme l'imago adulte.", pupaDurationField), pupaDurationField);
+        gridDurations.addRow(0, createTooltipLabel("Egg Stage Duration (days):", "Incubation period required before first larval instar.", eggDurationField), eggDurationField);
+        gridDurations.addRow(1, createTooltipLabel("Larval Stage Duration (days):", "Period of intensive larval growth and feeding.", larvaDurationField), larvaDurationField);
+        gridDurations.addRow(2, createTooltipLabel("Larval Diet Requirement:", "Specific food provided by nurse workers to developing larvae.", larvaDietCombo), larvaDietCombo);
+        gridDurations.addRow(3, createTooltipLabel("Pupal Stage / Cocoon Duration (days):", "Metamorphosis duration required to form adult imago.", pupaDurationField), pupaDurationField);
         cardDurations.getChildren().addAll(titleDurations, gridDurations);
 
         VBox cardMatrix = new VBox(10);
         cardMatrix.getStyleClass().add("card-pane");
-        Label titleMatrix = new Label("📊 Matrice de Détermination des Castes (Nutrition & Phéromones)");
+        Label titleMatrix = new Label("📊 Caste Determination Matrix (Nutrition & Pheromones)");
         titleMatrix.getStyleClass().add("card-title");
 
         GridPane gridMatrix = createGrid();
@@ -586,20 +587,20 @@ public class SpeciesEditorPane extends VBox {
         proteinQueenField = new TextField("0.95");
         pheroInhibSlider = new Slider(0.0, 1.0, 0.8);
         pheroInhibSlider.setShowTickLabels(true); pheroInhibSlider.setShowTickMarks(true);
-        haplodiploidyCheckBox = new CheckBox("Arrhénotokie / Haplodiploïdie (Œuf non-fécondé = Mâle)");
+        haplodiploidyCheckBox = new CheckBox("Arrhenotoky / Haplodiploidy (Unfertilized egg = Male)");
         haplodiploidyCheckBox.setSelected(true);
 
-        gridMatrix.addRow(0, createTooltipLabel("Seuil Protéique Ouvrière Minor (%):", "Proportion minimale de protéines dans l'alimentation larvaire nécessaire pour différencier une ouvrière minor.", proteinMinorField), proteinMinorField);
-        gridMatrix.addRow(1, createTooltipLabel("Seuil Protéique Ouvrière Major (%):", "Proportion de protéines requise pour induire la différenciation d'une ouvrière de grande taille (major).", proteinMajorField), proteinMajorField);
-        gridMatrix.addRow(2, createTooltipLabel("Seuil Protéique Soldat (%):", "Proportion de protéines exigeante nécessaire pour la caste des soldats.", proteinSoldierField), proteinSoldierField);
-        gridMatrix.addRow(3, createTooltipLabel("Seuil Protéique Nourriture Royale (%):", "Seuil nutritionnel maximal induisant la différenciation en reine féconde.", proteinQueenField), proteinQueenField);
-        gridMatrix.addRow(4, createTooltipLabel("Inhibition Phéromonale Reine:", "Effet d'inhibition chimique émis par la reine pour empêcher le développement d'autres reines.", pheroInhibSlider, "Inhibition"), pheroInhibSlider);
-        gridMatrix.addRow(5, createTooltipLabel("Détermination des Mâles (Arrhénotokie):", "Arrhénotokie / Haplodiploïdie : les œufs non-fécondés (haploïdes) donnent des mâles, les œufs fécondés (diploïdes) donnent des femelles.", haplodiploidyCheckBox, "Haplodiploïdie"), haplodiploidyCheckBox);
+        gridMatrix.addRow(0, createTooltipLabel("Minor Worker Protein Threshold (%):", "Minimum larval protein fraction required to differentiate a minor worker.", proteinMinorField), proteinMinorField);
+        gridMatrix.addRow(1, createTooltipLabel("Major Worker Protein Threshold (%):", "Protein fraction required to differentiate a major worker.", proteinMajorField), proteinMajorField);
+        gridMatrix.addRow(2, createTooltipLabel("Soldier Protein Threshold (%):", "Protein threshold required for soldier caste differentiation.", proteinSoldierField), proteinSoldierField);
+        gridMatrix.addRow(3, createTooltipLabel("Royal Food Protein Threshold (%):", "Maximum nutritional threshold inducing fertile queen differentiation.", proteinQueenField), proteinQueenField);
+        gridMatrix.addRow(4, createTooltipLabel("Queen Pheromonal Inhibition:", "Chemical inhibition emitted by queen to suppress queen rearing.", pheroInhibSlider, "Inhibition"), pheroInhibSlider);
+        gridMatrix.addRow(5, createTooltipLabel("Male Determination (Arrhenotoky):", "Arrhenotoky / Haplodiploidy: unfertilized eggs produce males, fertilized eggs produce females.", haplodiploidyCheckBox, "Haplodiploidy"), haplodiploidyCheckBox);
         cardMatrix.getChildren().addAll(titleMatrix, gridMatrix);
 
         VBox cardImmunity = new VBox(10);
         cardImmunity.getStyleClass().add("card-pane");
-        Label titleImmunity = new Label("🦠 Immunité & Défense Sanitaire (Allogrooming & Hygiène)");
+        Label titleImmunity = new Label("🦠 Immunity & Health Defense (Allogrooming & Hygiene)");
         titleImmunity.getStyleClass().add("card-title");
 
         GridPane gridImmunity = createGrid();
@@ -608,8 +609,8 @@ public class SpeciesEditorPane extends VBox {
         groomingSlider = new Slider(0.0, 1.0, 0.7);
         groomingSlider.setShowTickLabels(true); groomingSlider.setShowTickMarks(true);
 
-        gridImmunity.addRow(0, createTooltipLabel("Résistance Immunitaire Pathogènes (%):", "Capacité physiologique de résistance globale aux spores et infections fongiques/bactériennes.", pathogenResistanceSlider), pathogenResistanceSlider);
-        gridImmunity.addRow(1, createTooltipLabel("Efficacité Toilette Sociale (Grooming %):", "Efficacité du léchage et déparasitage mutuel entre individus pour réduire la charge de germes.", groomingSlider), groomingSlider);
+        gridImmunity.addRow(0, createTooltipLabel("Pathogen Immune Resistance (%):", "Physiological resistance to fungal/bacterial pathogens and spores.", pathogenResistanceSlider), pathogenResistanceSlider);
+        gridImmunity.addRow(1, createTooltipLabel("Social Grooming Efficacy (%):", "Efficacy of mutual grooming and de-parasitism in reducing spore load.", groomingSlider), groomingSlider);
         cardImmunity.getChildren().addAll(titleImmunity, gridImmunity);
 
         box.getChildren().addAll(cardDurations, cardMatrix, cardImmunity);
@@ -621,7 +622,7 @@ public class SpeciesEditorPane extends VBox {
         VBox box = new VBox(12);
         box.setPadding(new Insets(15));
 
-        Label infoLabel = new Label("💡 Tableau récapitulatif des castes. Cliquez sur une ligne pour inspecter ou modifier l'intégralité de ses paramètres ci-dessous.");
+        Label infoLabel = new Label("💡 Caste summary table. Click a row to inspect or modify all parameters in the inspector below.");
         infoLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-style: italic;");
 
         casteTable = new TableView<>(casteRows);
@@ -634,7 +635,7 @@ public class SpeciesEditorPane extends VBox {
         nameCol.setOnEditCommit(e -> e.getRowValue().setName(e.getNewValue()));
         nameCol.setPrefWidth(130);
 
-        TableColumn<CasteRow, Double> bodyCol = new TableColumn<>("Longueur (mm)");
+        TableColumn<CasteRow, Double> bodyCol = new TableColumn<>("Length (mm)");
         bodyCol.setCellValueFactory(new PropertyValueFactory<>("bodyLengthMm"));
         bodyCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedDoubleStringConverter()));
         bodyCol.setOnEditCommit(e -> {
@@ -643,7 +644,7 @@ public class SpeciesEditorPane extends VBox {
         });
         bodyCol.setPrefWidth(95);
 
-        TableColumn<CasteRow, Double> headCol = new TableColumn<>("Tête (mm)");
+        TableColumn<CasteRow, Double> headCol = new TableColumn<>("Head (mm)");
         headCol.setCellValueFactory(new PropertyValueFactory<>("headWidthMm"));
         headCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedDoubleStringConverter()));
         headCol.setOnEditCommit(e -> {
@@ -663,25 +664,25 @@ public class SpeciesEditorPane extends VBox {
         });
         tunnelCol.setPrefWidth(125);
 
-        TableColumn<CasteRow, Integer> lifeCol = new TableColumn<>("Vie (jours)");
+        TableColumn<CasteRow, Integer> lifeCol = new TableColumn<>("Lifespan (d)");
         lifeCol.setCellValueFactory(new PropertyValueFactory<>("lifespan"));
         lifeCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new javafx.util.converter.IntegerStringConverter()));
         lifeCol.setOnEditCommit(e -> e.getRowValue().setLifespan(e.getNewValue()));
         lifeCol.setPrefWidth(85);
 
-        TableColumn<CasteRow, Float> healthCol = new TableColumn<>("Santé");
+        TableColumn<CasteRow, Float> healthCol = new TableColumn<>("Health");
         healthCol.setCellValueFactory(new PropertyValueFactory<>("health"));
         healthCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         healthCol.setOnEditCommit(e -> e.getRowValue().setHealth(e.getNewValue()));
         healthCol.setPrefWidth(65);
 
-        TableColumn<CasteRow, Float> dmgCol = new TableColumn<>("Attaque");
+        TableColumn<CasteRow, Float> dmgCol = new TableColumn<>("Attack");
         dmgCol.setCellValueFactory(new PropertyValueFactory<>("damage"));
         dmgCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         dmgCol.setOnEditCommit(e -> e.getRowValue().setDamage(e.getNewValue()));
         dmgCol.setPrefWidth(65);
 
-        TableColumn<CasteRow, Boolean> flyCol = new TableColumn<>("Volant");
+        TableColumn<CasteRow, Boolean> flyCol = new TableColumn<>("Flying");
         flyCol.setCellValueFactory(new PropertyValueFactory<>("canFly"));
         flyCol.setCellFactory(col -> new TableCell<CasteRow, Boolean>() {
             private final CheckBox cb = new CheckBox();
@@ -707,43 +708,43 @@ public class SpeciesEditorPane extends VBox {
         });
         flyCol.setPrefWidth(65);
 
-        TableColumn<CasteRow, Float> ratioCol = new TableColumn<>("Ratio Cible");
+        TableColumn<CasteRow, Float> ratioCol = new TableColumn<>("Target Ratio");
         ratioCol.setCellValueFactory(new PropertyValueFactory<>("targetRatio"));
         ratioCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         ratioCol.setOnEditCommit(e -> e.getRowValue().setTargetRatio(e.getNewValue()));
         ratioCol.setPrefWidth(75);
 
-        TableColumn<CasteRow, String> archCol = new TableColumn<>("Modèle Décision");
+        TableColumn<CasteRow, String> archCol = new TableColumn<>("Decision Model");
         archCol.setCellValueFactory(new PropertyValueFactory<>("decisionArch"));
         archCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn());
         archCol.setOnEditCommit(e -> e.getRowValue().setDecisionArch(e.getNewValue()));
         archCol.setPrefWidth(110);
 
-        TableColumn<CasteRow, Float> forageCol = new TableColumn<>("Poids Récolte");
+        TableColumn<CasteRow, Float> forageCol = new TableColumn<>("Foraging Weight");
         forageCol.setCellValueFactory(new PropertyValueFactory<>("foragingWeight"));
         forageCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         forageCol.setOnEditCommit(e -> e.getRowValue().setForagingWeight(e.getNewValue()));
         forageCol.setPrefWidth(85);
 
-        TableColumn<CasteRow, Float> defCol = new TableColumn<>("Poids Défense");
+        TableColumn<CasteRow, Float> defCol = new TableColumn<>("Defense Weight");
         defCol.setCellValueFactory(new PropertyValueFactory<>("defenseWeight"));
         defCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         defCol.setOnEditCommit(e -> e.getRowValue().setDefenseWeight(e.getNewValue()));
         defCol.setPrefWidth(85);
 
-        TableColumn<CasteRow, Float> excCol = new TableColumn<>("Poids Excavation");
+        TableColumn<CasteRow, Float> excCol = new TableColumn<>("Excavation Weight");
         excCol.setCellValueFactory(new PropertyValueFactory<>("excavationWeight"));
         excCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         excCol.setOnEditCommit(e -> e.getRowValue().setExcavationWeight(e.getNewValue()));
         excCol.setPrefWidth(95);
 
-        TableColumn<CasteRow, Float> nurseCol = new TableColumn<>("Poids Soins");
+        TableColumn<CasteRow, Float> nurseCol = new TableColumn<>("Nursing Weight");
         nurseCol.setCellValueFactory(new PropertyValueFactory<>("nursingWeight"));
         nurseCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         nurseCol.setOnEditCommit(e -> e.getRowValue().setNursingWeight(e.getNewValue()));
         nurseCol.setPrefWidth(75);
 
-        TableColumn<CasteRow, String> venomTypeCol = new TableColumn<>("Armes / Venin");
+        TableColumn<CasteRow, String> venomTypeCol = new TableColumn<>("Weapons / Venom");
         venomTypeCol.setCellValueFactory(new PropertyValueFactory<>("venomType"));
         venomTypeCol.setCellFactory(col -> new TableCell<CasteRow, String>() {
             @Override
@@ -758,25 +759,25 @@ public class SpeciesEditorPane extends VBox {
         });
         venomTypeCol.setPrefWidth(140);
 
-        TableColumn<CasteRow, Float> venomToxCol = new TableColumn<>("Toxicité Venin");
+        TableColumn<CasteRow, Float> venomToxCol = new TableColumn<>("Venom Toxicity");
         venomToxCol.setCellValueFactory(new PropertyValueFactory<>("venomToxicity"));
         venomToxCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         venomToxCol.setOnEditCommit(e -> e.getRowValue().setVenomToxicity(e.getNewValue()));
         venomToxCol.setPrefWidth(90);
 
-        TableColumn<CasteRow, Float> biteCol = new TableColumn<>("Morsure (MPa)");
+        TableColumn<CasteRow, Float> biteCol = new TableColumn<>("Bite Force (MPa)");
         biteCol.setCellValueFactory(new PropertyValueFactory<>("bitingForceMpa"));
         biteCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         biteCol.setOnEditCommit(e -> e.getRowValue().setBitingForceMpa(e.getNewValue()));
         biteCol.setPrefWidth(95);
 
-        TableColumn<CasteRow, Float> loadCol = new TableColumn<>("Portance (g/g)");
+        TableColumn<CasteRow, Float> loadCol = new TableColumn<>("Payload (g/g)");
         loadCol.setCellValueFactory(new PropertyValueFactory<>("maxPayloadRatio"));
         loadCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         loadCol.setOnEditCommit(e -> e.getRowValue().setMaxPayloadRatio(e.getNewValue()));
         loadCol.setPrefWidth(90);
 
-        TableColumn<CasteRow, Float> hzCol = new TableColumn<>("Ailes (Hz)");
+        TableColumn<CasteRow, Float> hzCol = new TableColumn<>("Wings (Hz)");
         hzCol.setCellValueFactory(new PropertyValueFactory<>("wingbeatFrequencyHz"));
         hzCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         hzCol.setOnEditCommit(e -> e.getRowValue().setWingbeatFrequencyHz(e.getNewValue()));
@@ -797,23 +798,25 @@ public class SpeciesEditorPane extends VBox {
         // Controls to add/edit caste (Inspector Panel by Columns)
         VBox casteInspectorCard = new VBox(10);
         casteInspectorCard.getStyleClass().add("card-pane");
-        Label titleInspector = new Label("🔍 Inspecteur & Éditeur de la Caste sélectionnée (Mode Colonnes)");
+        Label titleInspector = new Label("🔍 Selected Caste Inspector & Editor (Column Mode)");
         titleInspector.getStyleClass().add("card-title");
 
-        TextField casteNameF = new TextField("Soldat");
+        TextField casteNameF = new TextField("Soldier");
         TextField casteBodyF = new TextField("6.0");
         TextField casteHeadF = new TextField("1.8");
         TextField casteLifeF = new TextField("5000");
         TextField casteHealthF = new TextField("120");
         TextField casteDmgF = new TextField("15");
-        CheckBox casteFlyCheck = new CheckBox("Volant");
+        CheckBox casteFlyCheck = new CheckBox("Flying");
 
         // Advanced Caste Parameters
         TextField targetRatioF = new TextField("0.25");
         ComboBox<String> decisionArchCombo = new ComboBox<>();
-        decisionArchCombo.getItems().addAll("BDI (Belief-Desire-Intention)", "Behavior Tree", "FSM (Finite State Machine)", "Fuzzy Logic Engine", "Neural Network (ANN)");
+        for (ArchitectureType type : ArchitectureType.values()) {
+            decisionArchCombo.getItems().add(type.getDisplayName());
+        }
         ComboBoxTooltipHelper.setupDescriptiveComboBox(decisionArchCombo, SpeciesEditorPane::getDecisionArchTitle, SpeciesEditorPane::getDecisionArchDescription);
-        decisionArchCombo.setValue("BDI (Belief-Desire-Intention)");
+        decisionArchCombo.setValue(ArchitectureType.BDI.getDisplayName());
 
         TextField foragingWField = new TextField("0.30");
         TextField defenseWField = new TextField("0.20");
@@ -822,14 +825,14 @@ public class SpeciesEditorPane extends VBox {
 
         // Motor & Biomechanical Caste Parameters
         TextField casteWingbeatHzF = new TextField("0.0");
-        CheckBox casteHoverCheck = new CheckBox("Vol Stationnaire");
+        CheckBox casteHoverCheck = new CheckBox("Hovering Flight");
         TextField castePayloadRatioF = new TextField("5.0");
         TextField casteBitingForceMpaF = new TextField("15.0");
-        CheckBox casteAutothysisCheck = new CheckBox("Défense Autothysie Explosive");
-        CheckBox casteAroliaCheck = new CheckBox("Adhésion Ventouses Arolia");
+        CheckBox casteAutothysisCheck = new CheckBox("Explosive Autothysis Defense");
+        CheckBox casteAroliaCheck = new CheckBox("Arolia Adhesive Pads");
         casteAroliaCheck.setSelected(true);
 
-        MenuButton casteVenomMenuButton = new MenuButton("🚫 Sans Venin (Attaque Physique)");
+        MenuButton casteVenomMenuButton = new MenuButton("🚫 No Venom (Physical Attack)");
         casteVenomMenuButton.setPrefWidth(220);
         casteVenomMenuButton.getStyleClass().add("btn-secondary");
 
@@ -890,45 +893,45 @@ public class SpeciesEditorPane extends VBox {
 
         // Column 1: 👤 Identité & Morphologie
         GridPane col1Grid = createColumnGrid();
-        col1Grid.addRow(0, createTooltipLabel("Nom Caste:", "Appellation fonctionnelle de la caste au sein de la colonie.", casteNameF), casteNameF);
-        col1Grid.addRow(1, createTooltipLabel("Longueur Corps (mm):", "Longueur totale du corps du sommet de la tête à l'apex de l'abdomen en mm.", casteBodyF), casteBodyF);
-        col1Grid.addRow(2, createTooltipLabel("Largeur Tête (mm):", "Largeur maximale de la capsule céphalique déterminant le diamètre minimal des galeries.", casteHeadF), casteHeadF);
-        col1Grid.addRow(3, createTooltipLabel("Santé de base:", "Points de vie initiaux de la caste.", casteHealthF), casteHealthF);
-        col1Grid.addRow(4, createTooltipLabel("Dégâts Attaque:", "Valeur des dégâts physiques infligés par coup ou morsure.", casteDmgF), casteDmgF);
-        col1Grid.addRow(5, createTooltipLabel("Durée de vie (j):", "Espérance de vie moyenne des membres de cette caste en jours.", casteLifeF), casteLifeF);
-        VBox col1Box = createInspectorColumnBox("👤 Identité & Morphologie", col1Grid);
+        col1Grid.addRow(0, createTooltipLabel("Caste Name:", "Functional caste name within the colony.", casteNameF), casteNameF);
+        col1Grid.addRow(1, createTooltipLabel("Body Length (mm):", "Total body length from head to abdominal apex in mm.", casteBodyF), casteBodyF);
+        col1Grid.addRow(2, createTooltipLabel("Head Width (mm):", "Maximum head capsule width determining minimum gallery diameter.", casteHeadF), casteHeadF);
+        col1Grid.addRow(3, createTooltipLabel("Base Health:", "Initial health points of the caste.", casteHealthF), casteHealthF);
+        col1Grid.addRow(4, createTooltipLabel("Attack Damage:", "Physical damage dealt per bite/attack.", casteDmgF), casteDmgF);
+        col1Grid.addRow(5, createTooltipLabel("Lifespan (days):", "Average lifespan of caste members in days.", casteLifeF), casteLifeF);
+        VBox col1Box = createInspectorColumnBox("👤 Identity & Morphology", col1Grid);
 
         // Column 2: ⚡ Biomécanique & Vol
         GridPane col2Grid = createColumnGrid();
-        col2Grid.addRow(0, createTooltipLabel("Capacité Vol:", "Indique si les individus de cette caste sont munis d'ailes et capables de piloter le vol.", casteFlyCheck), casteFlyCheck);
-        col2Grid.addRow(1, createTooltipLabel("Battement Ailes (Hz):", "Fréquence d'oscillation alaire spécifique si cette caste vole (0Hz si aptère).", casteWingbeatHzF), casteWingbeatHzF);
-        col2Grid.addRow(2, createTooltipLabel("Vol Stationnaire:", "Capacité à maintenir une position immobile en vol battu.", casteHoverCheck), casteHoverCheck);
-        col2Grid.addRow(3, createTooltipLabel("Force Morsure (MPa):", "Force mandibulaire de cisaillement développée par la musculature céphalique.", casteBitingForceMpaF, "Mandibule"), casteBitingForceMpaF);
-        col2Grid.addRow(4, createTooltipLabel("Portance (g/g):", "Multiplicateur de charge transportable rapporté au propre poids du corps.", castePayloadRatioF), castePayloadRatioF);
-        col2Grid.addRow(5, createTooltipLabel("Adhésion Arolia:", "Présence de ventouses tarsiennes arolia pour marcher sur parois verticales & plafonds.", casteAroliaCheck, "Arolia"), casteAroliaCheck);
-        VBox col2Box = createInspectorColumnBox("⚡ Biomécanique & Vol", col2Grid);
+        col2Grid.addRow(0, createTooltipLabel("Flight Capability:", "Indicates if caste members possess wings and flight capability.", casteFlyCheck), casteFlyCheck);
+        col2Grid.addRow(1, createTooltipLabel("Wingbeat Frequency (Hz):", "Wingbeat frequency if caste flies (0 Hz if wingless).", casteWingbeatHzF), casteWingbeatHzF);
+        col2Grid.addRow(2, createTooltipLabel("Hovering Flight:", "Ability to maintain stationary position in flight.", casteHoverCheck), casteHoverCheck);
+        col2Grid.addRow(3, createTooltipLabel("Biting Force (MPa):", "Mandibular biting force exerted by cephalic muscles.", casteBitingForceMpaF, "Mandibule"), casteBitingForceMpaF);
+        col2Grid.addRow(4, createTooltipLabel("Payload Ratio (g/g):", "Maximum carrying load ratio relative to body weight.", castePayloadRatioF), castePayloadRatioF);
+        col2Grid.addRow(5, createTooltipLabel("Arolia Adhesion:", "Presence of tarsal arolia pads for walking on vertical walls & ceilings.", casteAroliaCheck, "Arolia"), casteAroliaCheck);
+        VBox col2Box = createInspectorColumnBox("⚡ Biomechanics & Flight", col2Grid);
 
         // Column 3: 🧠 IA & Allocation Tâches
         GridPane col3Grid = createColumnGrid();
-        col3Grid.addRow(0, createTooltipLabel("Modèle Décision:", "Architecture cognitive (BDI, Réseau de Neurones, FSM, Arbre de Comportement, Logique Floue)", decisionArchCombo, "FSM"), decisionArchCombo);
-        col3Grid.addRow(1, createTooltipLabel("Ratio Cible (%):", "Pourcentage cible de cette caste parmi les ouvrières de la colonie.", targetRatioF), targetRatioF);
-        col3Grid.addRow(2, createTooltipLabel("Poids Récolte:", "Poids d'allocation pour le forage", foragingWField), foragingWField);
-        col3Grid.addRow(3, createTooltipLabel("Poids Défense:", "Poids de la défense/garde", defenseWField), defenseWField);
-        col3Grid.addRow(4, createTooltipLabel("Poids Excavation:", "Poids d'allocation pour l'excavation", excavationWField), excavationWField);
-        col3Grid.addRow(5, createTooltipLabel("Poids Soins:", "Poids d'allocation pour le couvain", nursingWField), nursingWField);
-        VBox col3Box = createInspectorColumnBox("🧠 IA & Allocation Tâches", col3Grid);
+        col3Grid.addRow(0, createTooltipLabel("Decision Model:", "Cognitive architecture (BDI, Neural Network, FSM, Behavior Tree, Fuzzy Logic)", decisionArchCombo, "FSM"), decisionArchCombo);
+        col3Grid.addRow(1, createTooltipLabel("Target Ratio (%):", "Target percentage of this caste among workers.", targetRatioF), targetRatioF);
+        col3Grid.addRow(2, createTooltipLabel("Foraging Weight:", "Task allocation weight for foraging", foragingWField), foragingWField);
+        col3Grid.addRow(3, createTooltipLabel("Defense Weight:", "Task allocation weight for defense", defenseWField), defenseWField);
+        col3Grid.addRow(4, createTooltipLabel("Excavation Weight:", "Task allocation weight for excavation", excavationWField), excavationWField);
+        col3Grid.addRow(5, createTooltipLabel("Nursing Weight:", "Task allocation weight for nursing", nursingWField), nursingWField);
+        VBox col3Box = createInspectorColumnBox("🧠 AI & Task Allocation", col3Grid);
 
         // Column 4: 🛡️ Armes & Venin
         GridPane col4Grid = createColumnGrid();
-        col4Grid.addRow(0, createTooltipLabel("Armes & Venin:", "Armes défensives et toxines chimiques équipées par cette caste (sélection multiple possible)", casteVenomMenuButton), casteVenomMenuButton);
-        col4Grid.addRow(1, createTooltipLabel("Toxicité Venin:", "Dégâts ou effet toxique par action de venin", casteVenomToxField), casteVenomToxField);
-        col4Grid.addRow(2, createTooltipLabel("Autothysie Explosive:", "Défense suicidaire par rupture abdominale propre à cette caste.", casteAutothysisCheck, "Autothysie"), casteAutothysisCheck);
-        VBox col4Box = createInspectorColumnBox("🛡️ Armes & Toxines", col4Grid);
+        col4Grid.addRow(0, createTooltipLabel("Weapons & Venom:", "Defensive weapons and chemical toxins equipped by caste (multiple selection supported)", casteVenomMenuButton), casteVenomMenuButton);
+        col4Grid.addRow(1, createTooltipLabel("Venom Toxicity:", "Toxicity damage or effect per venom strike", casteVenomToxField), casteVenomToxField);
+        col4Grid.addRow(2, createTooltipLabel("Explosive Autothysis:", "Suicidal explosive abdominal defense unique to this caste.", casteAutothysisCheck, "Autothysie"), casteAutothysisCheck);
+        VBox col4Box = createInspectorColumnBox("🛡️ Weapons & Toxins", col4Grid);
 
         casteInspectorColumns.getChildren().addAll(col1Box, col2Box, col3Box, col4Box);
 
         HBox casteBtns = new HBox(10);
-        Button btnAddCaste = new Button("Ajouter / Mettre à jour Caste", new FontIcon(Feather.PLUS_CIRCLE));
+        Button btnAddCaste = new Button("Add / Update Caste", new FontIcon(Feather.PLUS_CIRCLE));
         btnAddCaste.getStyleClass().add("btn-primary");
         btnAddCaste.setOnAction(e -> {
             try {
@@ -987,21 +990,21 @@ public class SpeciesEditorPane extends VBox {
                     casteRows.add(row);
                 }
             } catch (Exception ex) {
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Format de nombre invalide.").show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Invalid number format.").show();
             }
         });
 
-        Button btnDelCaste = new Button("Supprimer la caste sélectionnée", new FontIcon(Feather.TRASH_2));
+        Button btnDelCaste = new Button("Delete Selected Caste", new FontIcon(Feather.TRASH_2));
         btnDelCaste.getStyleClass().add("btn-danger");
         btnDelCaste.setOnAction(e -> {
             CasteRow sel = casteTable.getSelectionModel().getSelectedItem();
             if (sel == null) {
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.WARNING, "Veuillez sélectionner une caste dans le tableau avant de la supprimer.").show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.WARNING, "Please select a caste from the table before deleting.").show();
                 return;
             }
-            Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, "Êtes-vous sûr de vouloir supprimer cette caste ? Cette action est irréversible.");
-            confirmAlert.setTitle("Confirmation de suppression");
-            confirmAlert.setHeaderText("Supprimer la caste : " + sel.getName());
+            Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, "Are you sure you want to delete this caste? This action cannot be undone.");
+            confirmAlert.setTitle("Delete Caste Confirmation");
+            confirmAlert.setHeaderText("Delete caste: " + sel.getName());
             confirmAlert.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.OK) {
                     casteRows.remove(sel);
@@ -1050,21 +1053,21 @@ public class SpeciesEditorPane extends VBox {
         // Legacy / fallback fields now exposed in the Diet tab
         workerLifespanField = new TextField("6000");
         workerSpeedField = new TextField("0.5");
-        flyCheckBox = new CheckBox("Ouvrières capables de voler (Espèce ailée)");
+        flyCheckBox = new CheckBox("Workers capable of flight (Winged species)");
         viewDistanceField = new TextField("5.0");
         metabolismField = new TextField("1.0");
         strengthField = new TextField("5.0");
 
-        grid.addRow(0, createTooltipLabel("Nourriture Principale:", "Source trophique primaire consommée pour l'énergie métabolique de la colonie."), primaryDietCombo);
-        grid.addRow(1, createTooltipLabel("Nourriture Secondaire:", "Source trophique complémentaire (ex: apport protéique en période de couvain)."), secondaryDietCombo);
-        grid.addRow(2, createTooltipLabel("Consommation Métabolique (g/ind/j):", "Masse de nourriture consommée quotidiennement par un individu adulte."), foodConsumptionField);
-        grid.addRow(3, createTooltipLabel("Besoin Hydrique (mL/ind/j):", "Volume d'eau nécessaire quotidiennement pour maintenir l'hydratation et le métabolisme."), waterReqField);
-        grid.addRow(4, createTooltipLabel("Durée de Vie Ouvrière (jours):", "Espérance de vie moyenne d'une ouvrière adulte hors caste (fallback si non défini par caste)."), workerLifespanField);
-        grid.addRow(5, createTooltipLabel("Vitesse de Déplacement (m/s):", "Vitesse de locomotion standard des ouvrières en surface en mètres par seconde."), workerSpeedField);
-        grid.addRow(6, createTooltipLabel("Distance de Détection Visuelle (cm):", "Rayon de perception visuelle des ressources alimentaires et ennemis en centimètres."), viewDistanceField);
-        grid.addRow(7, createTooltipLabel("Vol des Ouvrières:", "Cocher si les ouvrières de cette espèce sont ailées et capables de voler (ex: Abeilles, Guêpes)."), flyCheckBox);
-        grid.addRow(8, createTooltipLabel("Facteur Métabolique Global (0.1-5.0):", "Multiplicateur du taux de dépense énergétique et de combustion des réserves de l'espèce."), metabolismField);
-        grid.addRow(9, createTooltipLabel("Force Physio-Musculaire (N):", "Indice de force physique générale et de résistance aux chocs mécaniques."), strengthField);
+        grid.addRow(0, createTooltipLabel("Primary Diet Source:", "Primary trophic source consumed for metabolic energy of the colony.", primaryDietCombo, "trophallaxis"), primaryDietCombo);
+        grid.addRow(1, createTooltipLabel("Secondary Diet Source:", "Complementary trophic source (e.g., protein intake during brood rearing).", secondaryDietCombo, "trophallaxis"), secondaryDietCombo);
+        grid.addRow(2, createTooltipLabel("Metabolic Consumption (g/ind/day):", "Daily food mass consumed per adult individual.", foodConsumptionField, "metabolism"), foodConsumptionField);
+        grid.addRow(3, createTooltipLabel("Water Requirement (mL/ind/day):", "Daily water volume needed for hydration and metabolism.", waterReqField, "water"), waterReqField);
+        grid.addRow(4, createTooltipLabel("Worker Lifespan (days):", "Average lifespan of an adult worker outside caste-specific overrides.", workerLifespanField, "polymorphism"), workerLifespanField);
+        grid.addRow(5, createTooltipLabel("Locomotion Speed (m/s):", "Standard surface movement speed of workers in meters per second.", workerSpeedField), workerSpeedField);
+        grid.addRow(6, createTooltipLabel("Visual Detection Distance (cm):", "Visual perception radius for food resources and enemies in centimeters.", viewDistanceField), viewDistanceField);
+        grid.addRow(7, createTooltipLabel("Worker Flight Capability:", "Check if workers of this species are winged and capable of flight (e.g. Honeybees, Wasps).", flyCheckBox, "flight"), flyCheckBox);
+        grid.addRow(8, createTooltipLabel("Global Metabolic Factor (0.1-5.0):", "Multiplier for energy expenditure rate and reserve consumption.", metabolismField, "metabolism"), metabolismField);
+        grid.addRow(9, createTooltipLabel("Physio-Muscular Strength (N):", "General physical strength index and mechanical resistance.", strengthField, "mandibule"), strengthField);
 
         return wrapScroll(grid);
     }
@@ -1107,24 +1110,24 @@ public class SpeciesEditorPane extends VBox {
         minTempField.textProperty().addListener((obs, o, n) -> validateParameters());
         maxTempField.textProperty().addListener((obs, o, n) -> validateParameters());
 
-        Button btnGenerateSpeciesNest = new Button("📐 Générer & Prévisualiser le Nid pour cette Espèce", new FontIcon(Feather.HOME));
+        Button btnGenerateSpeciesNest = new Button("📐 Generate & Preview Nest for this Species", new FontIcon(Feather.HOME));
         btnGenerateSpeciesNest.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;");
         btnGenerateSpeciesNest.setOnAction(e -> {
             CustomSpecies s = buildSpeciesFromUI();
             if (onGenerateNestForSpeciesListener != null) {
                 onGenerateNestForSpeciesListener.accept(s);
             } else {
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Espèce active configurée pour la génération de nid : " + s.getCommonName()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Active species configured for nest generation: " + s.getCommonName()).show();
             }
         });
 
-        grid.addRow(0, createTooltipLabel("Type de Nid Spécifique (NestType):", "Sélectionne l'architecture géométrique préférentielle construite par cette espèce (ex: cire hexagonale, cathédrale, dôme, soie)."), nestTypeCombo);
-        grid.addRow(1, createTooltipLabel("Température Optimale (°C):", "Température interne idéale du nid pour l'incubation du couvain."), optTempField);
-        grid.addRow(2, createTooltipLabel("Température Minima (°C):", "Seuil de température au-dessous duquel les individus tombent en léthargie/engourdissement."), minTempField);
-        grid.addRow(3, createTooltipLabel("Température Maxima (°C):", "Température critique au-dessus de laquelle survient le choc thermique et la mortalité."), maxTempField);
-        grid.addRow(4, createTooltipLabel("Niveau d'Agressivité:", "Propension comportementale à engager le combat contre d'autres colonies."), aggressionSlider);
-        grid.addRow(5, createTooltipLabel("Territorialité:", "Intensité de patrouille et défense exclusive de la zone d'influence autour du nid."), territorialitySlider);
-        grid.addRow(6, createTooltipLabel("Génération de Nid Synchronisée:", "Ouvre le Générateur de Nids et pré-configure l'architecture, le matériau et la distribution des chambres pour cette espèce."), btnGenerateSpeciesNest);
+        grid.addRow(0, createTooltipLabel("Specific Nest Type (NestType):", "Selects the preferred geometric architecture constructed by this species (e.g. wax comb, cathedral, mound, silk)."), nestTypeCombo);
+        grid.addRow(1, createTooltipLabel("Optimal Temperature (°C):", "Ideal internal nest temperature for brood incubation."), optTempField);
+        grid.addRow(2, createTooltipLabel("Minimum Temperature (°C):", "Threshold below which individuals enter lethargy/torpor."), minTempField);
+        grid.addRow(3, createTooltipLabel("Maximum Temperature (°C):", "Critical temperature threshold above which thermal shock and mortality occur."), maxTempField);
+        grid.addRow(4, createTooltipLabel("Aggression Level:", "Behavioral propensity to engage in combat against other colonies."), aggressionSlider);
+        grid.addRow(5, createTooltipLabel("Territoriality:", "Intensity of patrolling and exclusive defense of territory around the nest."), territorialitySlider);
+        grid.addRow(6, createTooltipLabel("Synchronized Nest Generation:", "Opens the Nest Generator and pre-configures architecture, substrate, and chamber distribution for this species."), btnGenerateSpeciesNest);
 
         return wrapScroll(grid);
     }
@@ -1141,7 +1144,7 @@ public class SpeciesEditorPane extends VBox {
         String qMode = queenModeCombo != null ? queenModeCombo.getValue() : "MONOGYNE";
         int qCount = queenCountSpinner != null ? queenCountSpinner.getValue() : 1;
         if ("MONOGYNE".equals(qMode) && qCount > 1) {
-            warnings.add("Structure Gynique Monogyne : une seule reine reproductrice est autorisée par colonie (valeur actuelle : " + qCount + ").");
+            warnings.add("Monogyne Gynic Structure: only 1 reproductive queen is permitted per colony (current value: " + qCount + ").");
         }
 
         // 2. Has King vs King Caste in caste table
@@ -1154,14 +1157,14 @@ public class SpeciesEditorPane extends VBox {
                 r.getName().toLowerCase().contains("king")
             );
             if (!hasKingCaste) {
-                warnings.add("Roi Reproducteur activé (Isoptera), mais aucune caste 'Roi' n'est définie dans le tableau des castes.");
+                warnings.add("Reproductive King enabled (Isoptera), but no 'King' caste is defined in the caste table.");
             }
         }
 
         // 3. Category non-eusocial warning
         org.swarmforge.core.species.SpeciesCategory cat = categoryCombo != null ? categoryCombo.getValue() : null;
         if (cat != null && cat != org.swarmforge.core.species.SpeciesCategory.EUSOCIAL_PRIMARY) {
-            warnings.add("Catégorie " + cat.label + " sélectionnée. Remarque : les proies, prédateurs et commensaux sont configurés dans la faune annexe de l'environnement.");
+            warnings.add("Catégorie " + cat.label + " selected. Note: prey, predators, and commensals are configured in the environment accessory fauna.");
         }
 
         // 4. Temperature consistency
@@ -1170,9 +1173,9 @@ public class SpeciesEditorPane extends VBox {
             float minT = parseFloat(minTempField.getText(), 10.0f);
             float maxT = parseFloat(maxTempField.getText(), 38.0f);
             if (minT >= maxT) {
-                warnings.add("Plage thermique invalide : la température minimale (" + minT + "°C) doit être inférieure à la maximale (" + maxT + "°C).");
+                warnings.add("Invalid thermal range: minimum temperature (" + minT + "°C) must be lower than maximum (" + maxT + "°C).");
             } else if (optT < minT || optT > maxT) {
-                warnings.add("Température optimale (" + optT + "°C) hors des limites [Min: " + minT + "°C, Max: " + maxT + "°C].");
+                warnings.add("Optimal temperature (" + optT + "°C) outside bounds [Min: " + minT + "°C, Max: " + maxT + "°C].");
             }
         } catch (Exception ignored) {}
 
@@ -1186,7 +1189,7 @@ public class SpeciesEditorPane extends VBox {
                 r.getName().toLowerCase().contains("bourdon")
             );
             if (!hasMaleCaste) {
-                warnings.add("Accouplement & Vol Nuptial : Aucune caste 'Mâle Reproducteur' (Alé / Faux-bourdon) n'est actuellement définie dans le tableau des castes.");
+                warnings.add("Nuptial Flight & Mating: No 'Reproductive Male' caste (Alate / Drone) is defined in the caste table.");
             }
         }
 
@@ -1199,7 +1202,7 @@ public class SpeciesEditorPane extends VBox {
             warningBannerBox.setVisible(true);
             warningBannerBox.setManaged(true);
 
-            Label titleLabel = new Label("⚠️ Avertissements de cohérence des paramètres :");
+            Label titleLabel = new Label("⚠️ Parameter Consistency Warnings:");
             titleLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #f59e0b; -fx-font-size: 13px;");
             warningBannerBox.getChildren().add(titleLabel);
 
@@ -1212,25 +1215,25 @@ public class SpeciesEditorPane extends VBox {
                 wLbl.setWrapText(true);
 
                 if (w.contains("caste 'Roi'")) {
-                    Button btnAddKing = new Button("➕ Ajouter la caste 'Roi' (Isoptera)", new FontIcon(Feather.PLUS_CIRCLE));
+                    Button btnAddKing = new Button("➕ Add 'King' Caste (Isoptera)", new FontIcon(Feather.PLUS_CIRCLE));
                     btnAddKing.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
                     btnAddKing.setOnAction(e -> {
-                        CasteRow roiRow = new CasteRow("Roi Reproducteur", 8.0, 2.2, 15000, 150, 5, false);
+                        CasteRow roiRow = new CasteRow("Reproductive King", 8.0, 2.2, 15000, 150, 5, false);
                         casteRows.add(roiRow);
                         validateParameters();
                     });
                     row.getChildren().addAll(wLbl, btnAddKing);
                 } else if (w.contains("caste 'Mâle Reproducteur'")) {
-                    Button btnAddMale = new Button("➕ Ajouter la caste 'Mâle Reproducteur'", new FontIcon(Feather.PLUS_CIRCLE));
+                    Button btnAddMale = new Button("➕ Add 'Reproductive Male' Caste", new FontIcon(Feather.PLUS_CIRCLE));
                     btnAddMale.setStyle("-fx-background-color: #2563eb; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
                     btnAddMale.setOnAction(e -> {
-                        CasteRow maleRow = new CasteRow("Mâle Reproducteur (Alé)", 4.5, 1.1, 500, 45, 0, true);
+                        CasteRow maleRow = new CasteRow("Reproductive Male (Alate)", 4.5, 1.1, 500, 45, 0, true);
                         casteRows.add(maleRow);
                         validateParameters();
                     });
                     row.getChildren().addAll(wLbl, btnAddMale);
                 } else if (w.contains("Monogyne")) {
-                    Button btnFixMonogyne = new Button("🔧 Ajuster à 1 reine", new FontIcon(Feather.CHECK));
+                    Button btnFixMonogyne = new Button("🔧 Set to 1 Queen", new FontIcon(Feather.CHECK));
                     btnFixMonogyne.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
                     btnFixMonogyne.setOnAction(e -> {
                         queenCountSpinner.getValueFactory().setValue(1);
@@ -1256,12 +1259,12 @@ public class SpeciesEditorPane extends VBox {
         // 1. Sensory Card
         VBox cardSensors = new VBox(10);
         cardSensors.getStyleClass().add("card-pane");
-        Label titleSensors = new Label("📡 Systèmes Sensoriels & Perception Environnementale (SI)");
+        Label titleSensors = new Label("📡 Sensory Systems & Environmental Perception (SI)");
         titleSensors.getStyleClass().add("card-title");
 
         GridPane gridSensors = createGrid();
 
-        hasMagnetoreceptionCheckBox = new CheckBox("Magnétoréception (Champ magnétique terrestre - Termites / Fourmi boussole)");
+        hasMagnetoreceptionCheckBox = new CheckBox("Magnetoreception (Earth Magnetic Field - Termites / Compass Ant)");
         magnetoSensField = new TextField("5.0");
         thermoSensField = new TextField("0.5");
         gasSensField = new TextField("400.0");
@@ -1269,33 +1272,33 @@ public class SpeciesEditorPane extends VBox {
         viewDistanceField = new TextField("5.0");
         minLightField = new TextField("0.05");
 
-        hasVibrationSensingCheckBox = new CheckBox("Perception Vibrations du Substrat (Organe de Johnston / Tambourinage alerte)");
+        hasVibrationSensingCheckBox = new CheckBox("Substrate Vibration Perception (Johnston Organ / Alarm Drumming)");
         hasVibrationSensingCheckBox.setSelected(true);
         vibrationSensField = new TextField("10.0");
 
-        hasHygroreceptionCheckBox = new CheckBox("Hygroréception (Détection gradient d'humidité relative)");
+        hasHygroreceptionCheckBox = new CheckBox("Hygroreception (Relative Humidity Gradient Sensing)");
         hasHygroreceptionCheckBox.setSelected(true);
         hygroSensField = new TextField("2.0");
 
-        hasElectrosensingCheckBox = new CheckBox("Électroréception (Charges électrostatiques atmosphériques & fleurs - Abeilles / Guêpes)");
+        hasElectrosensingCheckBox = new CheckBox("Electroreception (Atmospheric & Floral Electrostatic Charges - Bees / Wasps)");
         electroSensField = new TextField("50.0");
 
-        hasPolarizedLightCheckBox = new CheckBox("Orientation Lumière Polarisée UV (Boussole céleste - Abeilles / Cataglyphis)");
+        hasPolarizedLightCheckBox = new CheckBox("UV Polarized Light Navigation (Celestial Compass - Bees / Cataglyphis)");
 
-        gridSensors.addRow(0, createTooltipLabel("Magnétoréception (Champ Terrestre):", "Capacité à percevoir les lignes du champ magnétique terrestre pour l'orientation.", hasMagnetoreceptionCheckBox, "Magnétoréception"), hasMagnetoreceptionCheckBox);
-        gridSensors.addRow(1, createTooltipLabel("Seuil Détection Champ Magnétique (µT):", "Sensibilité minimale du récepteur magnétique en micro-Teslas.", magnetoSensField), magnetoSensField);
-        gridSensors.addRow(2, createTooltipLabel("Sensibilité Thermique (Δ°C/mm):", "Capacité à détecter des gradients de température pour la thermorégulation.", thermoSensField), thermoSensField);
-        gridSensors.addRow(3, createTooltipLabel("Seuil Détection CO₂ Nodal (ppm):", "Seuil de détection du dioxyde de carbone pour la ventilation du nid en parties par million.", gasSensField), gasSensField);
-        gridSensors.addRow(4, createTooltipLabel("Acuité Visuelle Ommatediale (0-1):", "Résolution visuelle relative fournie par les ommatidies des yeux composés.", visualAcuityField), visualAcuityField);
-        gridSensors.addRow(5, createTooltipLabel("Rayon Détection Visuelle (cm):", "Distance maximale de perception visuelle des objets, ennemis et nourriture.", viewDistanceField), viewDistanceField);
-        gridSensors.addRow(6, createTooltipLabel("Seuil Luminosité Minimale (lux):", "Niveau de lumière minimal permettant la vision nocturne ou crépusculaire.", minLightField), minLightField);
-        gridSensors.addRow(7, createTooltipLabel("Perception Vibrations Substrat (Subgenual):", "Sensibilité aux vibrations sismiques et mécaniques transmises par le sol.", hasVibrationSensingCheckBox, "Subgenual"), hasVibrationSensingCheckBox);
-        gridSensors.addRow(8, createTooltipLabel("Seuil Vibration Substrat (dB):", "Intensité minimale des vibrations mesurable par l'organe subgénual en décibels.", vibrationSensField), vibrationSensField);
-        gridSensors.addRow(9, createTooltipLabel("Hygroréception (Humidité Relative):", "Capacité à percevoir les gradients d'humidité atmosphérique et du sol.", hasHygroreceptionCheckBox), hasHygroreceptionCheckBox);
-        gridSensors.addRow(10, createTooltipLabel("Sensibilité Humidité Relative (%):", "Gradient d'humidité minimum détectable par les récepteurs antennaires en pourcentage.", hygroSensField), hygroSensField);
-        gridSensors.addRow(11, createTooltipLabel("Champ Électrostatique Mimétique:", "Sensibilité aux charges électrostatiques atmosphériques et florales.", hasElectrosensingCheckBox), hasElectrosensingCheckBox);
-        gridSensors.addRow(12, createTooltipLabel("Seuil Électrique Atmosphérique (V/m):", "Seuil de détection du champ électrique en Volts par mètre.", electroSensField), electroSensField);
-        gridSensors.addRow(13, createTooltipLabel("Boussole Lumière Polarisée UV:", "Utilisation du motif de polarisation UV du ciel pour la navigation spatiale rétrospective.", hasPolarizedLightCheckBox, "UV"), hasPolarizedLightCheckBox);
+        gridSensors.addRow(0, createTooltipLabel("Magnetoreception (Earth Field):", "Ability to perceive Earth's magnetic field lines for navigation.", hasMagnetoreceptionCheckBox, "Magnetoreception"), hasMagnetoreceptionCheckBox);
+        gridSensors.addRow(1, createTooltipLabel("Magnetic Field Threshold (µT):", "Minimum sensitivity of magnetic perception in micro-Teslas.", magnetoSensField), magnetoSensField);
+        gridSensors.addRow(2, createTooltipLabel("Thermal Sensitivity (Δ°C/mm):", "Ability to detect temperature gradients for thermoregulation.", thermoSensField), thermoSensField);
+        gridSensors.addRow(3, createTooltipLabel("CO₂ Threshold (ppm):", "CO₂ perception threshold for nest ventilation control in ppm.", gasSensField), gasSensField);
+        gridSensors.addRow(4, createTooltipLabel("Visual Acuity (0-1):", "Relative visual resolution provided by compound eye ommatidia.", visualAcuityField), visualAcuityField);
+        gridSensors.addRow(5, createTooltipLabel("Visual Perception Radius (cm):", "Maximum visual perception range for objects, threats, and food.", viewDistanceField), viewDistanceField);
+        gridSensors.addRow(6, createTooltipLabel("Minimum Light Threshold (lux):", "Minimum light level enabling nocturnal or crepuscular vision.", minLightField), minLightField);
+        gridSensors.addRow(7, createTooltipLabel("Substrate Vibration Sensing (Subgenual):", "Sensitivity to seismic and mechanical vibrations transmitted through soil.", hasVibrationSensingCheckBox, "Subgenual"), hasVibrationSensingCheckBox);
+        gridSensors.addRow(8, createTooltipLabel("Substrate Vibration Threshold (dB):", "Minimum vibration intensity measurable by subgenual organ in decibels.", vibrationSensField), vibrationSensField);
+        gridSensors.addRow(9, createTooltipLabel("Hygroreception (Relative Humidity):", "Ability to perceive atmospheric and soil moisture gradients.", hasHygroreceptionCheckBox), hasHygroreceptionCheckBox);
+        gridSensors.addRow(10, createTooltipLabel("Humidity Sensitivity (%):", "Minimum humidity gradient detectable by antennal receptors in %.", hygroSensField), hygroSensField);
+        gridSensors.addRow(11, createTooltipLabel("Electrostatic Field Perception:", "Sensitivity to atmospheric and floral electrostatic charges.", hasElectrosensingCheckBox), hasElectrosensingCheckBox);
+        gridSensors.addRow(12, createTooltipLabel("Atmospheric Electric Threshold (V/m):", "Electric field perception threshold in Volts per meter.", electroSensField), electroSensField);
+        gridSensors.addRow(13, createTooltipLabel("UV Polarized Light Compass:", "Use of skylight UV polarization patterns for path integration navigation.", hasPolarizedLightCheckBox, "UV"), hasPolarizedLightCheckBox);
 
         // Conditional field disabling: gray out sensitivity fields when the capability is absent
         magnetoSensField.disableProperty().bind(hasMagnetoreceptionCheckBox.selectedProperty().not());
@@ -1305,51 +1308,35 @@ public class SpeciesEditorPane extends VBox {
 
         cardSensors.getChildren().addAll(titleSensors, gridSensors);
 
-        // 2. Motor & Biomechanical Profile Card
-        VBox cardBiomech = new VBox(10);
-        cardBiomech.getStyleClass().add("card-pane");
-        Label titleBiomech = new Label("⚙️ Profil Biomécanique & Locomotion (Espèce)");
-        titleBiomech.getStyleClass().add("card-title");
-
-        GridPane gridBiomech = createGrid();
-        gridBiomech.addRow(0, createTooltipLabel("Fréquence de Battement des Ailes (Hz):", "Fréquence alaire en Hertz pour le vol des ouvrières et sexués."), wingbeatHzField);
-        gridBiomech.addRow(1, createTooltipLabel("Vol Stationnaire (Hovering):", "Aptitude au vol stationnaire immobile (Abeilles, Guêpes, Syrphes).", hasHoveringCheckBox), hasHoveringCheckBox);
-        gridBiomech.addRow(2, createTooltipLabel("Charge Maximale Transportable (x Masse):", "Ratio maximal du poids corporel transportable par un individu en charge."), maxPayloadRatioField);
-        gridBiomech.addRow(3, createTooltipLabel("Force de Pression Mandibulaire (MPa):", "Pression de morsure mandibulaire maximale exercée par l'appareil buccal."), bitingForceMpaField);
-        gridBiomech.addRow(4, createTooltipLabel("Autothysie / Auto-explosion Dégât:", "Défense kamikaze par rupture de la paroi abdominale sous pression de sécrétions."), hasAutothysisCheckBox);
-        gridBiomech.addRow(5, createTooltipLabel("Adhésion Ventouses Arolia:", "Présence de coussinets adhésifs (Arolia) sous les tarses pour grimper sur surfaces lisses verticalement."), hasAroliaAdhesionCheckBox);
-
-        cardBiomech.getChildren().addAll(titleBiomech, gridBiomech);
-
-        // 3. Dynamic Plugin Extensibility Card
+        // Dynamic Plugin Extensibility Card
         VBox cardPlugins = new VBox(10);
         cardPlugins.getStyleClass().add("card-pane");
-        Label titlePlugins = new Label("🔌 Attributs d'Extension & Plugins (Extensibilité Dynamique)");
+        Label titlePlugins = new Label("🔌 Extension Attributes & Plugins (Dynamic Extensibility)");
         titlePlugins.getStyleClass().add("card-title");
 
         GridPane gridPlugins = createGrid();
         TextField customKeyField = new TextField();
-        customKeyField.setPromptText("Clé du paramètre (ex: bioluminescence)");
+        customKeyField.setPromptText("Parameter Key (e.g. bioluminescence)");
         TextField customValueField = new TextField();
-        customValueField.setPromptText("Valeur (ex: 1.5 ou true)");
+        customValueField.setPromptText("Value (e.g. 1.5 or true)");
 
-        Button btnAddCustomAttr = new Button("Ajouter Attribut Plugin");
+        Button btnAddCustomAttr = new Button("Add Plugin Attribute");
         btnAddCustomAttr.getStyleClass().add("btn-secondary");
         btnAddCustomAttr.setOnAction(e -> {
             String k = customKeyField.getText().trim();
             String v = customValueField.getText().trim();
             if (!k.isEmpty()) {
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Attribut d'extension '" + k + "' enregistrable pour l'espèce active.").show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Extension attribute '" + k + "' registered for active species.").show();
             }
         });
 
-        gridPlugins.addRow(0, createWhiteLabel("Clé Paramètre Plugin:"), customKeyField);
-        gridPlugins.addRow(1, createWhiteLabel("Valeur:"), customValueField);
+        gridPlugins.addRow(0, createWhiteLabel("Plugin Parameter Key:"), customKeyField);
+        gridPlugins.addRow(1, createWhiteLabel("Value:"), customValueField);
         gridPlugins.addRow(2, new Label(), btnAddCustomAttr);
 
         cardPlugins.getChildren().addAll(titlePlugins, gridPlugins);
 
-        box.getChildren().addAll(cardSensors, cardBiomech, cardPlugins);
+        box.getChildren().addAll(cardSensors, cardPlugins);
         return wrapScroll(box);
     }
 
@@ -1372,17 +1359,17 @@ public class SpeciesEditorPane extends VBox {
         }
 
         if (name.isEmpty()) {
-            org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.WARNING, "Veuillez spécifier un nom commun, un nom scientifique ou un nom de preset.").show();
+            org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.WARNING, "Please specify a common name, scientific name, or preset name.").show();
             return;
         }
 
         if (presetManager.contains(name)) {
             Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
                 Alert.AlertType.CONFIRMATION,
-                "Le preset d'espèce '" + name + "' existe déjà.\n\nVoulez-vous le remplacer par la configuration actuelle ?"
+                "Species preset '" + name + "' already exists.\n\nDo you want to replace it with current configuration?"
             );
-            confirmAlert.setTitle("Remplacer le Preset Existant");
-            confirmAlert.setHeaderText("Confirmation de remplacement");
+            confirmAlert.setTitle("Replace Existing Preset");
+            confirmAlert.setHeaderText("Replacement Confirmation");
             java.util.Optional<ButtonType> res = confirmAlert.showAndWait();
             if (res.isEmpty() || res.get() != ButtonType.OK) {
                 return;
@@ -1406,7 +1393,7 @@ public class SpeciesEditorPane extends VBox {
         lastSelectedPreset = name;
         isDirty = false;
 
-        NotificationOverlay.show(this, "Preset espèce '" + name + "' sauvegardé.", NotificationOverlay.NotificationType.SUCCESS);
+        NotificationOverlay.show(this, "Species preset '" + name + "' saved.", NotificationOverlay.NotificationType.SUCCESS);
     }
 
     private void handleDeletePreset() {
@@ -1416,7 +1403,7 @@ public class SpeciesEditorPane extends VBox {
         I18nManager i18n = I18nManager.getInstance();
         Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, String.format(i18n.get("preset.delete.confirm"), selected));
         confirmAlert.setTitle(i18n.get("preset.delete.title"));
-        confirmAlert.setHeaderText("Supprimer l'Espèce");
+        confirmAlert.setHeaderText("Delete Species");
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -1427,14 +1414,14 @@ public class SpeciesEditorPane extends VBox {
                 } else {
                     presetCombo.getSelectionModel().clearSelection();
                 }
-                NotificationOverlay.show(this, "Preset espèce supprimé.", NotificationOverlay.NotificationType.INFO);
+                NotificationOverlay.show(this, "Species preset deleted.", NotificationOverlay.NotificationType.INFO);
             }
         });
     }
 
     private void handleSaveDisk() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Sauvegarder l'espèce");
+        chooser.setTitle("Save Species");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
         chooser.setInitialFileName("species_" + commonNameField.getText().replaceAll("\\s+", "_") + ".json");
 
@@ -1443,16 +1430,16 @@ public class SpeciesEditorPane extends VBox {
             try {
                 CustomSpecies species = buildSpeciesFromUI();
                 presetManager.saveToFile(f, species);
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Espèce enregistrée avec succès sous " + f.getName()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Species successfully saved as " + f.getName()).show();
             } catch (Exception ex) {
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Erreur de sauvegarde: " + ex.getMessage()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Save Error: " + ex.getMessage()).show();
             }
         }
     }
 
     private void handleLoadDisk() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Charger une espèce");
+        chooser.setTitle("Load Species");
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
 
         File f = chooser.showOpenDialog(getScene().getWindow());
@@ -1462,7 +1449,7 @@ public class SpeciesEditorPane extends VBox {
                 loadPresetToUI(species);
                 org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Espèce '" + species.getCommonName() + "' chargée avec succès!").show();
             } catch (Exception ex) {
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Erreur de chargement: " + ex.getMessage()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Load Error: " + ex.getMessage()).show();
             }
         }
     }
@@ -2052,14 +2039,14 @@ public class SpeciesEditorPane extends VBox {
     public static String getDietTitle(String diet) {
         if (diet == null) return "";
         return switch (diet) {
-            case "SUGARS_NECTAR" -> "🍯 Nectar & Liquides Sucrés";
-            case "INSECTS_MEAT" -> "🥩 Proies Protéiques / Insectes";
-            case "SEEDS" -> "🌾 Graines (Granivorie / Pain de Fourmi)";
-            case "FUNGUS" -> "🍄 Champignons Symbiotiques";
-            case "WOOD_CELLULOSE" -> "🪵 Cellulose & Fibres de Bois";
-            case "HONEYDEW" -> "💧 Miellat d'Homoptères (Pucerons)";
-            case "OMNIVORE" -> "🥗 Omnivore Polyphage";
-            case "NONE" -> "🚫 Aucun Régime Secondaire";
+            case "SUGARS_NECTAR" -> "🍯 Nectar & Sugary Liquids";
+            case "INSECTS_MEAT" -> "🥩 Protein Prey / Insects";
+            case "SEEDS" -> "🌾 Seeds (Granivory / Ant Bread)";
+            case "FUNGUS" -> "🍄 Symbiotic Fungi";
+            case "WOOD_CELLULOSE" -> "🪵 Cellulose & Wood Fibers";
+            case "HONEYDEW" -> "💧 Homopteran Honeydew (Aphids)";
+            case "OMNIVORE" -> "🥗 Polyphagous Omnivore";
+            case "NONE" -> "🚫 No Secondary Diet";
             default -> diet;
         };
     }
@@ -2067,14 +2054,14 @@ public class SpeciesEditorPane extends VBox {
     public static String getDietDescription(String diet) {
         if (diet == null) return "";
         return switch (diet) {
-            case "SUGARS_NECTAR" -> "Apport en glucides simples fournissant l'énergie métabolique directe pour l'activité quotidienne des adultes.";
-            case "INSECTS_MEAT" -> "Protéines animales indispensables au développement des larves en croissance et à la ponte de la reine.";
-            case "SEEDS" -> "Stockage et broyage de graines végétales riches en amidon pour la constitution de réserves sur-saisonnières.";
-            case "FUNGUS" -> "Culture de champignons basidiomycètes sur compost de matière végétale mâchée dans des chambres dédiées.";
-            case "WOOD_CELLULOSE" -> "Digestion de fibres de bois grâce aux protozoaires et bactéries symbiotiques digestives (Termites).";
-            case "HONEYDEW" -> "Exploitation de pucerons et cochenilles en trophobiose pour la récolte régulière d'excrétions sucrées.";
-            case "OMNIVORE" -> "Alimentation opportuniste s'adaptant à toutes les ressources trophiques disponibles sans spécialisation.";
-            case "NONE" -> "Aucune source trophique complémentaire ou secondaire nécessaire.";
+            case "SUGARS_NECTAR" -> "Simple carbohydrate intake providing direct metabolic energy for adult daily activity.";
+            case "INSECTS_MEAT" -> "Animal proteins essential for developing larvae and queen egg production.";
+            case "SEEDS" -> "Storage and crushing of starch-rich plant seeds for seasonal reserves.";
+            case "FUNGUS" -> "Cultivation of basidiomycete fungi on chewed plant material in dedicated chambers.";
+            case "WOOD_CELLULOSE" -> "Digestion of wood fibers via symbiotic gut protozoa and bacteria (Termites).";
+            case "HONEYDEW" -> "Trophobiotic farming of aphids and scale insects for regular honeydew harvesting.";
+            case "OMNIVORE" -> "Opportunistic feeding adapting to all available trophic resources without specialization.";
+            case "NONE" -> "No complementary or secondary trophic source required.";
             default -> "";
         };
     }
@@ -2082,19 +2069,19 @@ public class SpeciesEditorPane extends VBox {
     public static String getNestTypeTitle(String type) {
         if (type == null) return "";
         return switch (type) {
-            case "WAX_COMB_HEXAGONAL" -> "🐝 Rayons de Cire Hexagonaux";
-            case "WAX_POTS_CLUSTER" -> "🍯 Grappes de Pots de Cire";
-            case "PAPER_PEDUNCULATE" -> "🐝 Nid en Papier Mâché Suspendu";
-            case "CATHEDRAL_MOUND" -> "🏰 Termitière Cathédrale";
-            case "ARBOREAL_SILK_LEAF" -> "🍃 Nid Arboricole en Feuilles Tissées";
-            case "SUBTERRANEAN_FUNGI_VAULT" -> "🍄 Nid Souterrain à Champignonnières";
-            case "CARTON_NEST" -> "📦 Nid Arboricole en Carton Mâché";
-            case "BAMBOO_STEM_NEST" -> "🎋 Nid Cavitaire dans Tiges & Trous";
-            case "BIVOUAC_LIVING_NEST" -> "🐜 Bivouac Vivant Structuré";
-            case "MOUND" -> "🏔️ Dôme de Terre / Aiguilles";
-            case "TREE" -> "🪵 Troncs Creux & Bois Mort";
-            case "MATURE" -> "🏛️ Nid Établi / Structuré";
-            case "SIMPLE" -> "🕳️ Galeries Souterraines Simples";
+            case "WAX_COMB_HEXAGONAL" -> "🐝 Hexagonal Wax Combs";
+            case "WAX_POTS_CLUSTER" -> "🍯 Wax Pot Clusters";
+            case "PAPER_PEDUNCULATE" -> "🐝 Suspended Paper Nest";
+            case "CATHEDRAL_MOUND" -> "🏰 Cathedral Termite Mound";
+            case "ARBOREAL_SILK_LEAF" -> "🍃 Arboreal Woven Silk Nest";
+            case "SUBTERRANEAN_FUNGI_VAULT" -> "🍄 Subterranean Fungi Vault";
+            case "CARTON_NEST" -> "📦 Carton Wood Nest";
+            case "BAMBOO_STEM_NEST" -> "🎋 Hollow Stem & Cavity Nest";
+            case "BIVOUAC_LIVING_NEST" -> "🐜 Living Bivouac Nest";
+            case "MOUND" -> "🏔️ Earth / Needle Mound";
+            case "TREE" -> "🪵 Tree Trunk Cavity Nest";
+            case "MATURE" -> "🏛️ Established Subterranean Nest";
+            case "SIMPLE" -> "🕳️ Simple Subterranean Burrows";
             default -> type;
         };
     }
@@ -2102,19 +2089,19 @@ public class SpeciesEditorPane extends VBox {
     public static String getNestTypeDescription(String type) {
         if (type == null) return "";
         return switch (type) {
-            case "WAX_COMB_HEXAGONAL" -> "Structure alvéolée suspendue bâtie en cire sécrétée par les glandes abdominales des ouvrières (Abeilles).";
-            case "WAX_POTS_CLUSTER" -> "Alvéoles sphériques et pots de stockage de miel et de pollen organisés en grappes irrégulières (Bourdons).";
-            case "PAPER_PEDUNCULATE" -> "Alvéoles ouvertes en papier cartonné fabriqué à partir de fibres de bois mâchées et salivées (Vespides).";
-            case "CATHEDRAL_MOUND" -> "Edifice imposant en terre maçonnée doté de cheminées d'aération régulant la température et le CO2 (Termites).";
-            case "ARBOREAL_SILK_LEAF" -> "Feuilles vivantes cousues entre elles au moyen de fils de soie sécrétés par les larves tenues par les ouvrières (Oecophylla).";
-            case "SUBTERRANEAN_FUNGI_VAULT" -> "Vaste réseau de cavités souterraines abritant des meules de champignon symbiotique (Fourmis coupe-feuille).";
-            case "CARTON_NEST" -> "Structure sphérique arboricole ou cavitaire en carton mâché à base de sciure et de salive sucrée (Lasius fuliginosus).";
-            case "BAMBOO_STEM_NEST" -> "Nid opportuniste aménagé dans des cavités préexistantes (tiges creuses de bambou, galles, bois foré).";
-            case "BIVOUAC_LIVING_NEST" -> "Nid temporaire constitué exclusivement des corps entrelacés de milliers d'ouvrières (Fourmis Légionnaires).";
-            case "MOUND" -> "Monticule souterrain surmonté d'un dôme isolant de terre et d'aiguilles de pin accumulées (Formica rufa).";
-            case "TREE" -> "Galeries forées directement dans le bois mort ou l'écorce des troncs d'arbres en décomposition (Camponotus).";
-            case "MATURE" -> "Nid souterrain très développé avec multiples réseaux de chambres à couvain, reines et greniers.";
-            case "SIMPLE" -> "Nid souterrain rudimentaire composé de quelques galeries sous des pierres ou touffes d'herbe.";
+            case "WAX_COMB_HEXAGONAL" -> "Suspended honeycomb structure built from wax secreted by worker abdominal glands (Bees).";
+            case "WAX_POTS_CLUSTER" -> "Spherical wax cells and honey/pollen storage pots organized in irregular clusters (Bumblebees).";
+            case "PAPER_PEDUNCULATE" -> "Open paper cells constructed from chewed wood fibers mixed with saliva (Wasps).";
+            case "CATHEDRAL_MOUND" -> "Imposing soil structure with ventilation shafts regulating temperature and CO2 (Termites).";
+            case "ARBOREAL_SILK_LEAF" -> "Living leaves bound together using silk threads secreted by larvae held by workers (Weaver ants).";
+            case "SUBTERRANEAN_FUNGI_VAULT" -> "Vast subterranean chamber network housing symbiotic fungal gardens (Leafcutter ants).";
+            case "CARTON_NEST" -> "Spherical arboreal or cavity nest constructed from chewed wood paste and saliva.";
+            case "BAMBOO_STEM_NEST" -> "Opportunistic nest constructed inside pre-existing cavities (hollow stems, plant galls, wood boreholes).";
+            case "BIVOUAC_LIVING_NEST" -> "Temporary nest formed exclusively by the intertwined bodies of thousands of workers (Army ants).";
+            case "MOUND" -> "Subterranean mound topped with an insulating dome of soil and pine needles (Wood ants).";
+            case "TREE" -> "Galleries excavated directly into dead wood or decaying tree trunks (Carpenter ants).";
+            case "MATURE" -> "Highly developed subterranean nest with extensive brood chambers, queen chambers, and granaries.";
+            case "SIMPLE" -> "Rudimentary subterranean nest composed of a few galleries beneath stones or grass tufts.";
             default -> "";
         };
     }
@@ -2163,17 +2150,17 @@ public class SpeciesEditorPane extends VBox {
             return String.join(", ", titles);
         }
         return switch (v.trim()) {
-            case "NONE" -> "🚫 Sans Venin (Attaque Physique)";
-            case "FORMIC_ACID" -> "🧪 Acide Formique (Projection)";
-            case "VENOMOUS_STING" -> "🗡️ Aiguillon Venimeux (Dard)";
-            case "CHEMICAL_SPRAY" -> "💨 Spray Chimique Répulsif";
-            case "ACID_SPRAY" -> "💨 Projection Acide Répulsive";
-            case "POWERFUL_MANDIBLES" -> "✂️ Mandibules Puissantes (Cisaille)";
-            case "SOLENOPSIN" -> "🔥 Solénopsine (Alcaloïde Brûlant)";
-            case "NEUROTOXIN" -> "🧠 Neurotoxine Paralysante";
-            case "CYTOTOXIN" -> "🧫 Cytotoxine Nécrotique";
-            case "TERPENE_RESIN" -> "🌲 Résine Terpénique Collante";
-            case "AUTOTHYSIS_BOMB" -> "💥 Autothyse (Explosion Suicidaire)";
+            case "NONE" -> "🚫 No Venom (Physical Attack)";
+            case "FORMIC_ACID" -> "🧪 Formic Acid (Spray)";
+            case "VENOMOUS_STING" -> "🗡️ Venomous Sting (Stinger)";
+            case "CHEMICAL_SPRAY" -> "💨 Repellent Chemical Spray";
+            case "ACID_SPRAY" -> "💨 Acid Repellent Spray";
+            case "POWERFUL_MANDIBLES" -> "✂️ Powerful Mandibles (Shear)";
+            case "SOLENOPSIN" -> "🔥 Solenopsin (Stinging Alkaloid)";
+            case "NEUROTOXIN" -> "🧠 Paralytic Neurotoxin";
+            case "CYTOTOXIN" -> "🧫 Necrotic Cytotoxin";
+            case "TERPENE_RESIN" -> "🌲 Sticky Terpene Resin";
+            case "AUTOTHYSIS_BOMB" -> "💥 Autothysis (Suicidal Bomb)";
             default -> v.trim();
         };
     }
@@ -2190,41 +2177,37 @@ public class SpeciesEditorPane extends VBox {
             return String.join(" | ", descs);
         }
         return switch (v.trim()) {
-            case "NONE" -> "Pas de venin chimique. Combat exclusivement par morsures de mandibles et lutte mécanique.";
-            case "FORMIC_ACID" -> "Projection à distance ou application d'acide formique concentré provoquant des brûlures chimiques corrosives.";
-            case "VENOMOUS_STING" -> "Injection directe de venin protéique au moyen d'un dard abdominal rétractile provoquant douleur intense et paralysie.";
-            case "CHEMICAL_SPRAY", "ACID_SPRAY" -> "Pulvérisation ou projection d'un spray répulsif ou corrosif provoquant des brûlures et la désorientation des assaillants.";
-            case "POWERFUL_MANDIBLES" -> "Mandibles hypertrophiées capables d'exercer une pression mécanique létale ou de décapiter les proies.";
-            case "SOLENOPSIN" -> "Alcaloïde toxique nécrotique provoquant une douleur de brûlure vive et une pustule locale (Solenopsis invicta).";
-            case "NEUROTOXIN" -> "Substance ciblant le système nerveux central des arthropodes pour bloquer la transmission neuromusculaire.";
-            case "CYTOTOXIN" -> "Toxine nécrotique détruisant les membranes cellulaires de l'adversaire lors de la piqûre.";
-            case "TERPENE_RESIN" -> "Liquide visqueux terpénique expulsé sous pression par la tête des soldats nasutes pour engluer l'ennemi.";
-            case "AUTOTHYSIS_BOMB" -> "Contraction musculaire extrême provoquant la rupture de la paroi abdominale et l'explosion d'une colle toxique.";
+            case "NONE" -> "No chemical venom. Fights exclusively via mandibular bites and mechanical force.";
+            case "FORMIC_ACID" -> "Ranged spray or contact application of concentrated formic acid causing chemical burns.";
+            case "VENOMOUS_STING" -> "Direct injection of protein venom using a retractable abdominal stinger causing pain and paralysis.";
+            case "CHEMICAL_SPRAY", "ACID_SPRAY" -> "Spraying of repellent or corrosive chemicals causing disorientation and chemical irritation.";
+            case "POWERFUL_MANDIBLES" -> "Hypertrophied mandibles capable of exerting lethal pressure or decapitating prey.";
+            case "SOLENOPSIN" -> "Necrotic alkaloid toxin causing sharp burning pain and localized pustules (Solenopsis invicta).";
+            case "NEUROTOXIN" -> "Substance targeting arthropod central nervous system to block neuromuscular transmission.";
+            case "CYTOTOXIN" -> "Necrotic toxin destroying opponent cell membranes upon envenomation.";
+            case "TERPENE_RESIN" -> "Viscous terpene liquid expelled under pressure from nasute soldier heads to entangle enemies.";
+            case "AUTOTHYSIS_BOMB" -> "Extreme muscle contraction breaking abdominal wall and bursting sticky toxic glue.";
             default -> "";
         };
     }
 
     public static String getDecisionArchTitle(String arch) {
         if (arch == null) return "";
-        return switch (arch) {
-            case "BDI" -> "🧠 Modèle BDI (Belief-Desire-Intention)";
-            case "NEURAL_NETWORK" -> "⚡ Réseau de Neurones Artificiels";
-            case "FSM" -> "🔄 Automate à États Finis (FSM)";
-            case "BEHAVIOR_TREE" -> "🌳 Arbre de Comportements";
-            case "FUZZY_LOGIC" -> "🌫️ Logique Floue (Fuzzy Logic)";
-            default -> arch;
-        };
+        ArchitectureType t = ArchitectureType.parse(arch);
+        return "🧠 " + t.getDisplayName();
     }
 
     public static String getDecisionArchDescription(String arch) {
         if (arch == null) return "";
-        return switch (arch) {
-            case "BDI" -> "Architecture cognitive avancée gérant des Croyances, Désirs et Intentions pour des stratégies à long terme.";
-            case "NEURAL_NETWORK" -> "Réseau de neurones récurrent ou feed-forward transformant les entrées sensorielles en décisions motrices.";
-            case "FSM" -> "Machine à états déterministe basculant instantanément entre Récolte, Défense, Soins du couvain et Repos.";
-            case "BEHAVIOR_TREE" -> "Arbre hiérarchique de sélecteurs et de séquences très lisible et modulaire.";
-            case "FUZZY_LOGIC" -> "Évaluation de conditions floues (ex: 'Faim élevée' AND 'Danger moyen') pour nuancer les comportements.";
-            default -> "";
+        ArchitectureType t = ArchitectureType.parse(arch);
+        return switch (t) {
+            case BDI -> "Cognitive architecture based on Beliefs, Desires, and Intentions for complex reasoning.";
+            case BEHAVIOR_TREE -> "Recursive hierarchical tree of selectors and sequences for modular behavior.";
+            case BLACKBOARD -> "Centralized shared memory system where agents query and modify common knowledge.";
+            case FINITE_STATE_MACHINE -> "Deterministic state machine with rapid state transitions (Foraging, Defense, Nursing, Resting).";
+            case FUZZY_LOGIC -> "Fuzzy inference engine allowing nuanced handling of ambiguous and gradual conditions.";
+            case HYBRID -> "Hybrid combination associating reactive FSM/Tree with BDI cognitive planning.";
+            case NEURAL_NETWORK -> "Artificial neural network (SNN/ANN) processing continuous sensory signals.";
         };
     }
 

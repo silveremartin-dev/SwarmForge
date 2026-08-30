@@ -89,6 +89,12 @@ public class FSMArchitecture implements ReasoningArchitecture {
 
     @Override
     public Action decide(AgentView agent, SimulationContext context) {
+        // High-Priority Safety Interruption: mandatory nest return if hungry or low energy outside nest
+        if (agent != null && !agent.isAtNest() && (agent.getEnergyLevel() < 0.25f || agent.getHunger() > 70.0f)) {
+            transitionTo(State.RETURNING_HOME);
+            return Action.abortAndReturn();
+        }
+
         StateHandler handler = stateHandlers.get(currentState);
         if (handler != null) {
             return handler.handle(agent, context, this);
@@ -148,7 +154,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
 
         // Default: start exploring
         transitionTo(State.EXPLORING);
-        return randomMove();
+        return randomMove(agent);
     }
 
     private Action handleExploring(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
@@ -173,7 +179,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
             }
         }
 
-        return randomMove();
+        return randomMove(agent);
     }
 
     private Action handleForaging(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
@@ -218,7 +224,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
             }
         }
 
-        return randomMove();
+        return randomMove(agent);
     }
 
     private Action handleReturningHome(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
@@ -243,7 +249,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
     private Action handleAttacking(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
         if (ctx == null || !ctx.hasEnemyNearby(agent)) {
             transitionTo(State.EXPLORING);
-            return randomMove();
+            return randomMove(agent);
         }
         return Action.attack(ctx.getNearestEnemy(agent));
     }
@@ -311,8 +317,11 @@ public class FSMArchitecture implements ReasoningArchitecture {
         return Action.returnHome();
     }
 
-    private Action randomMove() {
-        float angle = (float) (Math.random() * Math.PI * 2);
+    private Action randomMove(AgentView agent) {
+        java.util.Random rng = (agent instanceof Individual ind && ind.getRandom() != null) 
+                ? ind.getRandom() 
+                : java.util.concurrent.ThreadLocalRandom.current();
+        float angle = rng.nextFloat() * (float) (Math.PI * 2);
         return Action.move((float) Math.cos(angle), (float) Math.sin(angle), 0);
     }
 

@@ -20,11 +20,11 @@ import java.util.List;
 public class LasiusNiger extends CustomSpecies {
 
     public LasiusNiger() {
-        setPresetName("Fourmi Noire des Jardins (Lasius niger)");
+        setPresetName("Black Garden Ant (Lasius niger)");
         setCommonName("Black Garden Ant");
         setScientificName("Lasius niger");
         setInsectType("ANT");
-        setDescription("Espèce monogyne très répandue en Europe. Élevage de pucerons et récolte de miellat.");
+        setDescription("Widespread European monogyne ant species. Tends aphids and harvests honeydew.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365 * 15);

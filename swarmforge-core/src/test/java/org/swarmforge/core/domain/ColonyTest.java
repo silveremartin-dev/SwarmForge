@@ -61,6 +61,7 @@ class ColonyTest {
 
     @Test
     void testFoodStorage() {
+        colony.setFoodStored(0f);
         assertEquals(0f, colony.getFoodStored());
 
         colony.setFoodStored(50f);

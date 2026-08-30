@@ -20,11 +20,11 @@ import java.util.List;
 public class FormicaRufa extends CustomSpecies {
 
     public FormicaRufa() {
-        setPresetName("Fourmi Rousse des Bois (Formica rufa)");
+        setPresetName("Red Wood Ant (Formica rufa)");
         setCommonName("Wood Ant");
         setScientificName("Formica rufa");
         setInsectType("ANT");
-        setDescription("Grande fourmi des forêts résineuses construisant de grands dômes d'aiguilles de pin.");
+        setDescription("Large coniferous forest ant constructing large mounds of pine needles.");
         setQueenCountMode("POLYGYNE");
         setQueenCount(5);
         setQueenLifespan(365 * 20);

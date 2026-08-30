@@ -67,7 +67,7 @@ public class FireDisaster implements DisasterEvent {
 
     @Override
     public String getName() {
-        return "Wildfire (Incendie de Forêt)";
+        return "Wildfire";
     }
 
     @Override

@@ -716,12 +716,14 @@ public class CustomSpecies implements Species {
     @Override
     public InsectOrder getInsectOrder() {
         if (insectType == null) return InsectOrder.ANT;
-        return switch (insectType.toUpperCase()) {
-            case "BEE" -> InsectOrder.BEE;
-            case "WASP" -> InsectOrder.WASP;
-            case "TERMITE" -> InsectOrder.TERMITE;
-            default -> InsectOrder.ANT;
-        };
+        String type = insectType.toUpperCase().trim();
+        if (type.contains("BEE") || type.contains("APIDAE")) return InsectOrder.BEE;
+        if (type.contains("WASP") || type.contains("VESPIDAE")) return InsectOrder.WASP;
+        if (type.contains("TERMITE") || type.contains("ISOPTERA") || type.contains("TERMITOIDAE")) return InsectOrder.TERMITE;
+        if (type.contains("APHID") || type.contains("APHIDIDAE")) return InsectOrder.APHID;
+        if (type.contains("THRIPS") || type.contains("THYSANOPTERA")) return InsectOrder.THRIPS;
+        if (type.contains("BEETLE") || type.contains("COLEOPTERA")) return InsectOrder.BEETLE;
+        return InsectOrder.ANT;
     }
 
     @Override

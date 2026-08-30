@@ -53,7 +53,7 @@ public class HeatwaveDisaster implements DisasterEvent {
 
     @Override
     public String getName() {
-        return "Extreme Heatwave (Vague de Chaleur)";
+        return "Extreme Heatwave";
     }
 
     @Override

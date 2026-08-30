@@ -58,9 +58,6 @@ public class NotificationOverlay {
         if (parent == null || message == null || message.isBlank()) return;
 
         Platform.runLater(() -> {
-            if (playSound) {
-                SoundEffectManager.getInstance().playClickSound();
-            }
             HBox toast = new HBox(10);
             toast.setAlignment(Pos.CENTER_LEFT);
             toast.setPadding(new Insets(10, 16, 10, 16));

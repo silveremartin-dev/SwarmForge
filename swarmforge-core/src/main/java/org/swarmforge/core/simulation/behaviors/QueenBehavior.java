@@ -232,7 +232,9 @@ public class QueenBehavior {
         }
 
         queen.setEnergy(queen.getEnergy() - 2); // Laying costs energy
-        layingCooldown = 30 + random.nextInt(30); // Cooldown between eggs
+        float rate = queen.getSpecies() != null ? queen.getSpecies().getQueenEggLayingRate() : 25.0f;
+        int baseCooldown = Math.max(1, (int) (1440.0f / Math.max(0.1f, rate)));
+        layingCooldown = baseCooldown + random.nextInt(Math.max(1, baseCooldown / 2)); // Dynamic species laying cooldown
     }
 
     /**

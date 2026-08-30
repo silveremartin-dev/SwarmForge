@@ -101,6 +101,11 @@ public class SimulationAutoTestRunner {
         runTest(report, "Surface Vegetation & Tree Climbing", this::testSurfaceVegetationAndInteraction);
         runTest(report, "Accessory Species & Aphid Symbiosis", this::testAccessorySpeciesAndDiseases);
         runTest(report, "Simulation Rewind & Checkpointing", this::testSimulationStateAndCheckpointing);
+        runTest(report, "Trophallaxis & Liquid Food Exchange", this::testTrophallaxisExchange);
+        runTest(report, "Fungus Agriculture & Escovopsis Weeding", this::testFungusAgriculture);
+        runTest(report, "Inter-Colony Warfare & Diplomacy", this::testWarfareAndDiplomacy);
+        runTest(report, "Social Thermoregulation & Bioclimatic Heating", this::testThermoregulation);
+        runTest(report, "Seasonal Cycle Modulation & Diapause", this::testSeasonalCycles);
 
         report.setTotalTimeMs(System.currentTimeMillis() - start);
         return report;
@@ -371,5 +376,106 @@ public class SimulationAutoTestRunner {
         }
 
         return String.format("Checkpointing verified: Advanced to tick %d, successfully restored to tick %d.", tickAfter, sim.getTickCount());
+    }
+
+    // ── Test 11: Trophallaxis Exchange ─────────────────────────────────────────
+    private String testTrophallaxisExchange() throws Exception {
+        Terrarium terrarium = new Terrarium(40, 40, 20);
+        Simulation sim = new Simulation(terrarium);
+        Colony colony = sim.addColony("FormicaRufa", 0, 2, 0);
+
+        Individual donor = colony.getLivingIndividuals().get(0);
+        Individual recipient = colony.getLivingIndividuals().get(1);
+        donor.setEnergy(95.0f);
+        recipient.setEnergy(15.0f);
+
+        TrophallaxisSystem.TrophallaxisResult result = TrophallaxisSystem.performTrophallaxis(donor, recipient, 1.0f, 0.1f);
+        if (!result.occurred || result.foodTransferred <= 0.0f) {
+            throw new IllegalStateException("Trophallaxis food transfer failed to execute");
+        }
+
+        return String.format("Trophallaxis verified: Transferred %.2f food, recipient energy rose to %.2f.",
+            result.foodTransferred, recipient.getEnergy());
+    }
+
+    // ── Test 12: Fungus Agriculture ───────────────────────────────────────────
+    private String testFungusAgriculture() throws Exception {
+        Terrarium terrarium = new Terrarium(40, 40, 20);
+        Simulation sim = new Simulation(terrarium);
+        Colony colony = sim.addColony("AttaCephalotes", 1, 5, 0);
+
+        colony.addResource(ResourceType.LEAF, 10.0f);
+        FungusGarden garden = colony.getFungusGarden();
+        if (garden == null) {
+            throw new IllegalStateException("Atta colony missing FungusGarden instance");
+        }
+
+        float initialFungus = colony.getResourceAmount(ResourceType.FUNGUS);
+        for (int i = 0; i < 15; i++) {
+            garden.tick();
+        }
+
+        float finalFungus = colony.getResourceAmount(ResourceType.FUNGUS);
+        if (finalFungus <= initialFungus) {
+            throw new IllegalStateException("Fungus garden failed to produce fungal biomass from leaf substrate");
+        }
+
+        return String.format("Fungus agriculture verified: Initial fungus %.1f, Final fungus %.1f.",
+            initialFungus, finalFungus);
+    }
+
+    // ── Test 13: Warfare & Diplomacy ──────────────────────────────────────────
+    private String testWarfareAndDiplomacy() throws Exception {
+        Terrarium terrarium = new Terrarium(50, 50, 20);
+        Simulation sim = new Simulation(terrarium);
+        Colony colA = sim.addColony("FormicaRufa", 0, 5, 2);
+        Colony colB = sim.addColony("LasiusNiger", 0, 5, 2);
+
+        colA.getDiplomacyManager().setStatus(colB.getId(), org.swarmforge.core.diplomacy.RelationshipStatus.ENEMY);
+        if (!colA.getDiplomacyManager().isEnemy(colB.getId())) {
+            throw new IllegalStateException("Diplomacy relationship failed to register ENEMY status");
+        }
+
+        Individual antA = colA.getLivingIndividuals().get(0);
+        Individual antB = colB.getLivingIndividuals().get(0);
+        antB.takeDamage(antA.getAttackDamage());
+
+        return String.format("Inter-colony warfare verified: Colony B registered as ENEMY, Ant B took %.1f damage.",
+            antA.getAttackDamage());
+    }
+
+    // ── Test 14: Social Thermoregulation ──────────────────────────────────────
+    private String testThermoregulation() throws Exception {
+        Terrarium terrarium = new Terrarium(40, 40, 20);
+        Simulation sim = new Simulation(terrarium);
+
+        float heatOutput = SocialThermoregulationSystem.calculateEndothermicHeatOutput(20, 10.0f);
+        float coolingOutput = SocialThermoregulationSystem.calculateFanningCoolingOutput(15, 38.0f);
+
+        if (heatOutput <= 0.0f || coolingOutput <= 0.0f) {
+            throw new IllegalStateException("Social thermoregulation heating/cooling calculations returned zero");
+        }
+
+        return String.format("Social thermoregulation verified: Heat output +%.2f°C, Cooling output -%.2f°C.",
+            heatOutput, coolingOutput);
+    }
+
+    // ── Test 15: Seasonal Cycles ──────────────────────────────────────────────
+    private String testSeasonalCycles() throws Exception {
+        Terrarium terrarium = new Terrarium(40, 40, 20);
+        Simulation sim = new Simulation(terrarium);
+        SeasonManager sm = sim.getSeasonManager();
+
+        sm.skipToSeason(Season.WINTER);
+        float winterActivity = sm.getActivityMultiplier();
+        sm.skipToSeason(Season.SPRING);
+        float springActivity = sm.getActivityMultiplier();
+
+        if (winterActivity >= springActivity) {
+            throw new IllegalStateException("Winter activity multiplier should be lower than Spring activity multiplier");
+        }
+
+        return String.format("Seasonal cycles verified: Winter activity %.2f vs Spring activity %.2f.",
+            winterActivity, springActivity);
     }
 }

@@ -31,7 +31,11 @@ import java.util.Random;
  */
 public class BacterialGutInfection implements Disease {
 
-    private static final Random random = new Random();
+    private Random getRng(Individual individual, Simulation simulation) {
+        if (simulation != null && simulation.getRandom() != null) return simulation.getRandom();
+        if (individual != null && individual.getRandom() != null) return individual.getRandom();
+        return java.util.concurrent.ThreadLocalRandom.current();
+    }
 
     @Override
     public String getName() {
@@ -79,6 +83,7 @@ public class BacterialGutInfection implements Disease {
             return false;
         }
 
+        Random random = getRng(individual, simulation);
         // Check for recovery
         if (random.nextFloat() < getRecoveryRate()) {
             simulation.queueEvent(new SimulationEvent(SimulationEvent.EventType.INFO,
@@ -120,6 +125,7 @@ public class BacterialGutInfection implements Disease {
             return false;
         }
 
+        Random random = target.getRandom() != null ? target.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
         return random.nextFloat() < getInfectionRate();
     }
 

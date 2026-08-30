@@ -22,7 +22,7 @@ public class AcademicScenariosTest {
     public void testAcademicScenariosCreation() {
         List<Scenario> scenarios = AcademicScenarios.getAllAcademicScenarios(12345L);
         assertNotNull(scenarios);
-        assertEquals(8, scenarios.size());
+        assertEquals(9, scenarios.size());
 
         Scenario s1 = scenarios.get(0);
         assertEquals("ACAD_01_LEVY_BROWNIAN", s1.getId());
@@ -41,6 +41,10 @@ public class AcademicScenariosTest {
         Scenario s4 = scenarios.get(3);
         assertEquals("ACAD_04_INTERSPECIFIC_COMPETITION", s4.getId());
         assertEquals(2, s4.getColonies().size());
+
+        Scenario s9 = scenarios.get(8);
+        assertEquals("ACAD_09_DULOSIS_RAID", s9.getId());
+        assertEquals(2, s9.getColonies().size());
     }
 
     @Test

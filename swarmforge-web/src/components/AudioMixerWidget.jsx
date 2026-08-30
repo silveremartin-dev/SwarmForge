@@ -12,19 +12,31 @@ export default function AudioMixerWidget() {
     const [diggingVol, setDiggingVol] = useState(0.50);
     const [collapsed, setCollapsed] = useState(false);
 
-    const { environment, weatherToggles } = useSimulationStore();
+    const { environment, weatherToggles, isSimulating, playbackSpeed } = useSimulationStore();
 
     useEffect(() => {
         // Initialize WebAudio context on user interaction or mount
         soundEngine.init();
     }, []);
 
+    // Sync sound engine state (simulation pause, day/night light level)
+    useEffect(() => {
+        soundEngine.updateSimulationState({
+            isDay: environment ? environment.isDaytime : true,
+            lightLevel: environment ? environment.lightLevel : 1.0,
+            simRunning: isSimulating,
+            speed: playbackSpeed,
+        });
+    }, [isSimulating, playbackSpeed, environment?.isDaytime, environment?.lightLevel]);
+
     // Update procedural rain sound dynamically as weather intensity changes
     useEffect(() => {
-        if (environment) {
+        if (environment && isSimulating && playbackSpeed > 0) {
             soundEngine.updateRainSound(environment.rainIntensity || (environment.weatherState === 'THUNDERSTORM' ? 15 : 0));
+        } else {
+            soundEngine.updateRainSound(0);
         }
-    }, [environment?.rainIntensity, environment?.weatherState]);
+    }, [environment?.rainIntensity, environment?.weatherState, isSimulating, playbackSpeed]);
 
     // Trigger thunder audio synthesis when storm occurs or lightning is triggered
     useEffect(() => {

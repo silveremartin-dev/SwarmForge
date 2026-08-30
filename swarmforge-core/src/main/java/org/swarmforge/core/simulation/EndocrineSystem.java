@@ -47,10 +47,15 @@ public class EndocrineSystem {
      * Evaluates worker ovarian activation in queenless colonies (Gamergate / laying workers).
      * Returns true if worker ovaries activate due to absence of Queen Primer Pheromone.
      */
-    public static boolean checkWorkerOvarianActivation(float queenPheromoneLevel, int daysQueenless) {
+    public static boolean checkWorkerOvarianActivation(float queenPheromoneLevel, int daysQueenless, java.util.Random random) {
         if (queenPheromoneLevel < 0.05f && daysQueenless >= 3) {
-            return Math.random() < 0.25; // 25% chance per tick to become laying worker
+            java.util.Random rng = random != null ? random : java.util.concurrent.ThreadLocalRandom.current();
+            return rng.nextFloat() < 0.25f; // 25% chance per tick to become laying worker
         }
         return false;
+    }
+
+    public static boolean checkWorkerOvarianActivation(float queenPheromoneLevel, int daysQueenless) {
+        return checkWorkerOvarianActivation(queenPheromoneLevel, daysQueenless, null);
     }
 }

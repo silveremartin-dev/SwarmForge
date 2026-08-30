@@ -105,18 +105,18 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
             Alert.AlertType.CONFIRMATION,
-            "Vous avez des modifications non enregistrées dans l'Éditeur d'Espèces Associées.\n"
-            + (hasCurrentPreset ? "Preset courant : \"" + currentName + "\"" : "Aucun preset sélectionné.")
+            "You have unsaved changes in the Accessory Species Editor.\n"
+            + (hasCurrentPreset ? "Current preset: \"" + currentName + "\"" : "No preset selected.")
         );
-        alert.setTitle("Modifications non enregistrées");
-        alert.setHeaderText("Quitter l'éditeur d'espèces associées ?");
+        alert.setTitle("Unsaved Changes");
+        alert.setHeaderText("Exit Accessory Species Editor?");
 
         ButtonType btnUpdate   = hasCurrentPreset
-            ? new ButtonType("💾 Mettre à jour \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
+            ? new ButtonType("💾 Update \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
             : null;
-        ButtonType btnSaveAs   = new ButtonType("📝 Enregistrer sous...", ButtonBar.ButtonData.OTHER);
-        ButtonType btnDiscard  = new ButtonType("🗑 Abandonner", ButtonBar.ButtonData.OTHER);
-        ButtonType btnCancel   = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType btnSaveAs   = new ButtonType("📝 Save As...", ButtonBar.ButtonData.OTHER);
+        ButtonType btnDiscard  = new ButtonType("🗑 Discard", ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel   = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
 
         if (btnUpdate != null) {
             alert.getButtonTypes().setAll(btnUpdate, btnSaveAs, btnDiscard, btnCancel);
@@ -140,9 +140,9 @@ public class AccessorySpeciesEditorPane extends VBox {
         if (result.get() == btnSaveAs) {
             // Saisie d'un nouveau nom
             TextInputDialog dlg = new TextInputDialog(currentName.isEmpty() ? "nouveau-preset" : currentName + " (copie)");
-            dlg.setTitle("Enregistrer sous");
-            dlg.setHeaderText("Nom du nouveau preset d'espèce associée");
-            dlg.setContentText("Nom :");
+            dlg.setTitle("Save As");
+            dlg.setHeaderText("New accessory species preset name:");
+            dlg.setContentText("Name:");
             org.swarmforge.client.util.ThemeManager.getInstance().applyTheme(dlg.getDialogPane().getScene());
             java.util.Optional<String> nameResult = dlg.showAndWait();
             if (nameResult.isPresent() && !nameResult.get().trim().isEmpty()) {
@@ -158,7 +158,7 @@ public class AccessorySpeciesEditorPane extends VBox {
                 }
                 lastSelectedPreset = newName;
                 isDirty = false;
-                NotificationOverlay.show(this, "Preset espèce accessoire enregistré sous : " + newName, NotificationOverlay.NotificationType.SUCCESS);
+                NotificationOverlay.show(this, "Accessory species preset saved as: " + newName, NotificationOverlay.NotificationType.SUCCESS);
                 return true;
             }
             return false;
@@ -174,16 +174,13 @@ public class AccessorySpeciesEditorPane extends VBox {
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         VBox.setVgrow(tabPane, Priority.ALWAYS);
 
-        tabTaxonomy = new Tab();
-        tabTaxonomy.textProperty().bind(i18n.createStringBinding("accessory.tab.taxonomy"));
+        tabTaxonomy = new Tab(i18n.get("accessory.tab.taxonomy"));
         tabTaxonomy.setContent(new ScrollPane(createTaxonomyCard()));
 
-        tabSeasonal = new Tab();
-        tabSeasonal.textProperty().bind(i18n.createStringBinding("accessory.tab.seasonal"));
+        tabSeasonal = new Tab(i18n.get("accessory.tab.seasonal"));
         tabSeasonal.setContent(new ScrollPane(createSeasonalCard()));
 
-        tabPredators = new Tab();
-        tabPredators.textProperty().bind(i18n.createStringBinding("accessory.tab.predators"));
+        tabPredators = new Tab(i18n.get("accessory.tab.predators"));
         tabPredators.setContent(new ScrollPane(createPredatorPathogenCard()));
 
         tabPane.getTabs().addAll(tabTaxonomy, tabSeasonal, tabPredators);
@@ -256,7 +253,9 @@ public class AccessorySpeciesEditorPane extends VBox {
         FXCollections.sort(accessoryPresetCombo.getItems());
         accessoryPresetCombo.setEditable(true);
         accessoryPresetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
-        accessoryPresetCombo.setTooltip(new Tooltip("Sélectionnez une espèce accessoire pré-configurée (Plantes, Pucerons, Proies, Prédateurs, Pathogènes, Champignons, Détritivores)."));
+        Tooltip presetTt = new Tooltip(i18n.get("accessory.preset.label.tt"));
+        presetTt.setShowDelay(Duration.millis(100));
+        accessoryPresetCombo.setTooltip(presetTt);
         accessoryPresetCombo.getSelectionModel().selectFirst();
         accessoryPresetCombo.setPrefWidth(300);
 
@@ -268,10 +267,10 @@ public class AccessorySpeciesEditorPane extends VBox {
             if (isDirty) {
                 Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
                     Alert.AlertType.CONFIRMATION,
-                    "Attention : Vous avez des modifications non enregistrées sur l'espèce accessoire actuelle.\n\nVoulez-vous vraiment charger le preset '" + sel + "' et abandonner vos modifications ?"
+                    "Warning: You have unsaved changes in the current accessory species.\n\nDo you really want to load preset '" + sel + "' and discard changes?"
                 );
-                alert.setTitle("Modifications non enregistrées");
-                alert.setHeaderText("Changement de preset d'espèce accessoire");
+                alert.setTitle("Unsaved Changes");
+                alert.setHeaderText("Accessory Preset Change");
                 java.util.Optional<ButtonType> res = alert.showAndWait();
                 if (res.isEmpty() || res.get() != ButtonType.OK) {
                     isUpdatingFields = true;
@@ -294,7 +293,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         btnSave.setGraphic(new FontIcon(Feather.SAVE));
         btnSave.textProperty().bind(i18n.createStringBinding("preset.save"));
         btnSave.getStyleClass().add("btn-secondary");
-        btnSave.setTooltip(new Tooltip("Enregistrer la configuration de l'espèce accessoire."));
+        btnSave.tooltipProperty().bind(i18n.createTooltipBinding("preset.save.tt"));
         btnSave.setOnAction(e -> handleAddPreset());
 
         btnDelete = new Button();
@@ -302,21 +301,21 @@ public class AccessorySpeciesEditorPane extends VBox {
         btnDelete.textProperty().bind(i18n.createStringBinding("preset.delete"));
         btnDelete.getStyleClass().add("btn-danger");
         btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
-        btnDelete.setTooltip(new Tooltip("Supprimer l'espèce accessoire sélectionnée."));
+        btnDelete.tooltipProperty().bind(i18n.createTooltipBinding("preset.delete.tt"));
         btnDelete.setOnAction(e -> handleDeletePreset());
 
         btnExport = new Button();
         btnExport.setGraphic(new FontIcon(Feather.DOWNLOAD));
         btnExport.textProperty().bind(i18n.createStringBinding("preset.export"));
         btnExport.getStyleClass().add("btn-secondary");
-        btnExport.setTooltip(new Tooltip("Exporter l'espèce accessoire au format JSON."));
+        btnExport.tooltipProperty().bind(i18n.createTooltipBinding("preset.export.tt"));
         btnExport.setOnAction(e -> handleSave());
 
         btnImport = new Button();
         btnImport.setGraphic(new FontIcon(Feather.UPLOAD));
         btnImport.textProperty().bind(i18n.createStringBinding("preset.import"));
         btnImport.getStyleClass().add("btn-secondary");
-        btnImport.setTooltip(new Tooltip("Importer un fichier JSON d'espèce accessoire."));
+        btnImport.tooltipProperty().bind(i18n.createTooltipBinding("preset.import.tt"));
         btnImport.setOnAction(e -> handleLoad());
 
         bar.getChildren().addAll(lblPreset, accessoryPresetCombo, btnSave, btnDelete, new Separator(Orientation.VERTICAL), btnExport, btnImport);
@@ -346,7 +345,7 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         grid.getColumnConstraints().addAll(col1, col2);
 
-        accessoryNameField = new TextField("Graminées à Graines (Messor)");
+        accessoryNameField = new TextField("Seed-Bearing Grasses (Messor)");
         categoryCombo = new ComboBox<>(FXCollections.observableArrayList(
                 "APHID_MUTUALIST",
                 "DETRITIVORE",
@@ -358,23 +357,23 @@ public class AccessorySpeciesEditorPane extends VBox {
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(categoryCombo,
             val -> switch (val) {
-                case "FLORA" -> "🌿 FLORA (Plantes & Graines)";
-                case "APHID_MUTUALIST" -> "🐄 APHID_MUTUALIST (Pucerons & Miellat)";
-                case "PREY_INSECT" -> "🐛 PREY_INSECT (Insectes Proies)";
-                case "PREDATOR" -> "🕷️ PREDATOR (Araignées, Fourmilions, Oiseaux)";
-                case "PATHOGEN_PARASITE" -> "🦠 PATHOGEN_PARASITE (Cordyceps, Acariens)";
-                case "FUNGI" -> "🍄 FUNGI (Champignons Symbiotiques)";
-                case "DETRITIVORE" -> "🍂 DETRITIVORE (Collemboles & Cloportes)";
+                case "FLORA" -> "🌿 FLORA (Plants & Seeds)";
+                case "APHID_MUTUALIST" -> "🐄 APHID_MUTUALIST (Aphids & Honeydew)";
+                case "PREY_INSECT" -> "🐛 PREY_INSECT (Prey Insects)";
+                case "PREDATOR" -> "🕷️ PREDATOR (Spiders, Antlions, Birds)";
+                case "PATHOGEN_PARASITE" -> "🦠 PATHOGEN_PARASITE (Cordyceps, Mites)";
+                case "FUNGI" -> "🍄 FUNGI (Symbiotic Fungi)";
+                case "DETRITIVORE" -> "🍂 DETRITIVORE (Springtails & Woodlice)";
                 default -> val;
             },
             val -> switch (val) {
-                case "FLORA" -> "Végétation, plantes nectarifères et graminées fournissant des graines et du nectar à la colonie.";
-                case "APHID_MUTUALIST" -> "Pucerons et cochenilles exploités en trophobiose pour la récolte de miellat sucré.";
-                case "PREY_INSECT" -> "Proies Arthropodes (chenilles, grillons, mouches) chassées pour l'apport en protéines.";
-                case "PREDATOR" -> "Prédateurs naturels régulant la population de la colonie (araignées, fourmilions, reptiles).";
-                case "PATHOGEN_PARASITE" -> "Parasites et champignons entomopathogènes provoquant des épidémies et altérant la santé de la colonie.";
-                case "FUNGI" -> "Basidiomycètes ou ascomycètes cultivés par les insectes attines ou termites champignonnistes.";
-                case "DETRITIVORE" -> "Organismes détritivores nettoyant les dépotoirs de la colonie et recyclant la matière organique.";
+                case "FLORA" -> "Vegetation, nectar-producing plants, and seed-bearing grasses supplying food reserves.";
+                case "APHID_MUTUALIST" -> "Aphids and scale insects farmed in trophobiosis for sweet honeydew harvesting.";
+                case "PREY_INSECT" -> "Arthropod prey (caterpillars, crickets, flies) hunted for essential protein intake.";
+                case "PREDATOR" -> "Natural predators regulating colony populations (spiders, antlions, reptiles, birds).";
+                case "PATHOGEN_PARASITE" -> "Parasites and entomopathogenic fungi inducing epidemics and impairing colony health.";
+                case "FUNGI" -> "Symbiotic basidiomycete or ascomycete fungi cultivated by leafcutter ants or termites.";
+                case "DETRITIVORE" -> "Detritivorous organisms cleaning colony refuse dumps and recycling organic matter.";
                 default -> "";
             }
         );
@@ -389,19 +388,19 @@ public class AccessorySpeciesEditorPane extends VBox {
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(biomeCombo,
             val -> switch (val) {
-                case "TEMPERATE_DECIDUOUS" -> "🌳 Forêt Tempérée Décidue (4 Saisons)";
-                case "MEDITERRANEAN" -> "🌿 Maquis Méditerranéen (Été Sec / Hiver Doux)";
-                case "TROPICAL_RAINFOREST" -> "🌴 Forêt Tropicale Humide";
-                case "ARID_DESERT" -> "🏜️ Désert Aride (Pluies Épisodiques)";
-                case "TAIGA_BOREAL" -> "🌲 Taïga Boréale (Saison Végétative Courte)";
+                case "TEMPERATE_DECIDUOUS" -> "🌳 Temperate Deciduous Forest (4 Seasons)";
+                case "MEDITERRANEAN" -> "🌿 Mediterranean Maquis (Dry Summer / Mild Winter)";
+                case "TROPICAL_RAINFOREST" -> "🌴 Tropical Rainforest";
+                case "ARID_DESERT" -> "🏜️ Arid Desert (Episodic Rain)";
+                case "TAIGA_BOREAL" -> "🌲 Boreal Taiga (Short Growing Season)";
                 default -> val;
             },
             val -> switch (val) {
-                case "TEMPERATE_DECIDUOUS" -> "Climat tempéré avec 4 saisons bien marquées, diapause hivernale et floraison printanière.";
-                case "MEDITERRANEAN" -> "Étés chauds et arides, hivers doux et pluvieux favorisant les espèces granivores et thermophiles.";
-                case "TROPICAL_RAINFOREST" -> "Température et hygrométrie élevées constantes avec biodiversité et compétition intenses.";
-                case "ARID_DESERT" -> "Conditions extrêmes de chaleur et de sécheresse avec activité nocturne ou crépusculaire.";
-                case "TAIGA_BOREAL" -> "Hivers longs et glacials, saison végétative très courte nécessitant une forte accumulation de réserves.";
+                case "TEMPERATE_DECIDUOUS" -> "Temperate climate with 4 distinct seasons, winter diapause, and spring bloom.";
+                case "MEDITERRANEAN" -> "Hot arid summers and mild rainy winters favoring granivorous and thermophilic species.";
+                case "TROPICAL_RAINFOREST" -> "Consistently high temperature and humidity with intense biodiversity and competition.";
+                case "ARID_DESERT" -> "Extreme heat and arid conditions with nocturnal or crepuscular activity patterns.";
+                case "TAIGA_BOREAL" -> "Long freezing winters and very short growing season requiring high food reserve storage.";
                 default -> "";
             }
         );
@@ -417,7 +416,7 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         individualCountSpinner = new Spinner<>(0, 10000, 50, 10);
         individualCountSpinner.setEditable(true);
-        individualCountSpinner.setTooltip(new Tooltip("Nombre total d'individus de cette espèce accessoire introduits initialement."));
+        individualCountSpinner.tooltipProperty().bind(i18n.createTooltipBinding("accessory.field.individual_count.tt"));
 
         nestDispatchCombo = new ComboBox<>(FXCollections.observableArrayList(
                 "All Compatible Host Nests (Biological Filtering)",
@@ -428,7 +427,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         ));
         FXCollections.sort(nestDispatchCombo.getItems());
         nestDispatchCombo.getSelectionModel().selectFirst();
-        nestDispatchCombo.setTooltip(new Tooltip("Règle de répartition des individus entre les nids : affecte les organismes uniquement dans les nids qui les acceptent et exclut ceux qui les réfutent."));
+        nestDispatchCombo.tooltipProperty().bind(i18n.createTooltipBinding("accessory.field.nest_dispatch.tt"));
 
         diapauseCheck = new CheckBox(i18n.get("accessory.field.diapause.check"));
         diapauseCheck.setSelected(true);
@@ -446,8 +445,8 @@ public class AccessorySpeciesEditorPane extends VBox {
         grid.addRow(7, createLabelKey("accessory.field.growth_rate", "accessory.field.growth_rate.tt"), growthRateField);
         grid.addRow(8, createLabelKey("accessory.field.biomass_density", "accessory.field.biomass_density.tt"), initialBiomassDensityField);
         grid.addRow(9, createLabelKey("accessory.field.pop_density", "accessory.field.pop_density.tt"), initialPopulationDensityField);
-        grid.addRow(10, new Label("Nombre d'Individus à Introduire :"), individualCountSpinner);
-        grid.addRow(11, new Label("Règle de Répartition dans les Nids :"), nestDispatchCombo);
+        grid.addRow(10, new Label("Number of Individuals to Introduce:"), individualCountSpinner);
+        grid.addRow(11, new Label("Nest Distribution Rule:"), nestDispatchCombo);
         grid.addRow(12, createLabelKey("accessory.field.diapause", "accessory.field.diapause.tt"), diapauseCheck);
 
         card.getChildren().addAll(title, grid);
@@ -464,12 +463,12 @@ public class AccessorySpeciesEditorPane extends VBox {
         title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
 
         hemisphereCombo = new ComboBox<>(FXCollections.observableArrayList(
-                "Hémisphère Nord (Printemps = Mars-Mai, Hiver = Déc-Fév)",
-                "Hémisphère Sud (Printemps = Sept-Nov, Hiver = Juin-Août)",
-                "Zone Équatoriale / Intertropicale (Saisons des Pluies & Sèches)"
+                "Northern Hemisphere (Spring = Mar-May, Winter = Dec-Feb)",
+                "Southern Hemisphere (Spring = Sep-Nov, Winter = Jun-Aug)",
+                "Equatorial / Tropical Zone (Rainy & Dry Seasons)"
         ));
         hemisphereCombo.getSelectionModel().selectFirst();
-        hemisphereCombo.setTooltip(new Tooltip("Hémisphère géographique régissant le calendrier des saisons."));
+        hemisphereCombo.tooltipProperty().bind(i18n.createTooltipBinding("accessory.field.hemisphere.tt"));
         hemisphereCombo.setOnAction(e -> updateSeasonLabels());
 
         seasonSlider1 = createSlider(0.8);
@@ -548,7 +547,9 @@ public class AccessorySpeciesEditorPane extends VBox {
         targetCasteCombo = new ComboBox<>(FXCollections.observableArrayList("All Castes", "Brood / Pupae", "Queens / Alates", "Workers"));
         FXCollections.sort(targetCasteCombo.getItems());
         targetCasteCombo.getSelectionModel().selectFirst();
-        targetCasteCombo.setTooltip(new Tooltip("Caste ou stade biologique ciblé préférentiellement par ce prédateur ou parasite."));
+        Tooltip tcTt = new Tooltip(i18n.get("accessory.field.target_caste.tt"));
+        tcTt.setShowDelay(Duration.millis(100));
+        targetCasteCombo.setTooltip(tcTt);
 
         huntModeCombo = new ComboBox<>(FXCollections.observableArrayList(
                 "Ambush / Stalking (Spider)",
@@ -558,7 +559,9 @@ public class AccessorySpeciesEditorPane extends VBox {
         ));
         FXCollections.sort(huntModeCombo.getItems());
         huntModeCombo.getSelectionModel().selectFirst();
-        huntModeCombo.setTooltip(new Tooltip("Mode d'attaque ou tactique de prédation employée."));
+        Tooltip hmTt = new Tooltip(i18n.get("accessory.field.hunt_mode.tt"));
+        hmTt.setShowDelay(Duration.millis(100));
+        huntModeCombo.setTooltip(hmTt);
 
         killRateField = new TextField("3.5");
 
@@ -570,7 +573,9 @@ public class AccessorySpeciesEditorPane extends VBox {
         ));
         FXCollections.sort(pathogenVectorCombo.getItems());
         pathogenVectorCombo.getSelectionModel().selectFirst();
-        pathogenVectorCombo.setTooltip(new Tooltip("Vecteur de transmission de l'agent pathogène au sein de la colonie."));
+        Tooltip pvTt = new Tooltip(i18n.get("accessory.field.pathogen_vector.tt"));
+        pvTt.setShowDelay(Duration.millis(100));
+        pathogenVectorCombo.setTooltip(pvTt);
 
         transmissionR0Field = new TextField("2.4");
         incubationDaysField = new TextField("4.0");
@@ -593,7 +598,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         s.setShowTickLabels(true);
         s.setShowTickMarks(true);
         s.setMajorTickUnit(0.25);
-        Tooltip t = new Tooltip("Coefficient multiplicateur d'activité biologique (0.0 = inactif, 1.0 = activité maximale)");
+        Tooltip t = new Tooltip(i18n.get("accessory.season.multiplier.tt"));
         t.setShowDelay(Duration.millis(100));
         Tooltip.install(s, t);
         return s;
@@ -623,10 +628,10 @@ public class AccessorySpeciesEditorPane extends VBox {
         if (accessoryPresetCombo.getItems().contains(name)) {
             Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
                 Alert.AlertType.CONFIRMATION,
-                "Le preset d'espèce accessoire '" + name + "' existe déjà.\n\nVoulez-vous le remplacer par la configuration actuelle ?"
+                String.format(i18n.get("preset.delete.confirm"), name)
             );
-            confirmAlert.setTitle("Remplacer le Preset Existant");
-            confirmAlert.setHeaderText("Confirmation de remplacement");
+            confirmAlert.setTitle(i18n.get("preset.delete.title"));
+            confirmAlert.setHeaderText(i18n.get("accessory.delete.confirm_header"));
             java.util.Optional<ButtonType> res = confirmAlert.showAndWait();
             if (res.isEmpty() || res.get() != ButtonType.OK) {
                 return;
@@ -644,29 +649,29 @@ public class AccessorySpeciesEditorPane extends VBox {
         }
         lastSelectedPreset = name;
         isDirty = false;
-        NotificationOverlay.show(this, "Preset espèce accessoire enregistré : " + name, NotificationOverlay.NotificationType.SUCCESS);
+        NotificationOverlay.show(this, i18n.get("accessory.preset.save") + " : " + name, NotificationOverlay.NotificationType.SUCCESS);
     }
 
     private void handleLoad() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Charger une espèce accessoire");
+        chooser.setTitle(i18n.get("nest.preset.import"));
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
 
         File f = chooser.showOpenDialog(getScene().getWindow());
         if (f != null) {
-            NotificationOverlay.show(this, "Espèce accessoire chargée depuis " + f.getName(), NotificationOverlay.NotificationType.INFO);
+            NotificationOverlay.show(this, i18n.get("nest.preset.import") + " : " + f.getName(), NotificationOverlay.NotificationType.INFO);
         }
     }
 
     private void handleSave() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Sauvegarder l'espèce accessoire");
+        chooser.setTitle(i18n.get("nest.preset.export"));
         chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
         chooser.setInitialFileName("swarmforge-accessory-" + (accessoryNameField != null ? accessoryNameField.getText().toLowerCase().replaceAll("[^a-z0-9]+", "-") : "custom") + ".json");
 
         File f = chooser.showSaveDialog(getScene().getWindow());
         if (f != null) {
-            NotificationOverlay.show(this, "Espèce accessoire sauvegardée sous " + f.getName(), NotificationOverlay.NotificationType.SUCCESS);
+            NotificationOverlay.show(this, i18n.get("nest.preset.export") + " : " + f.getName(), NotificationOverlay.NotificationType.SUCCESS);
         }
     }
 
@@ -676,7 +681,7 @@ public class AccessorySpeciesEditorPane extends VBox {
             String.format(i18n.get("preset.delete.confirm"), accessoryPresetCombo.getValue())
         );
         confirmAlert.setTitle(i18n.get("preset.delete.title"));
-        confirmAlert.setHeaderText("Supprimer l'Espèce Accessoire");
+        confirmAlert.setHeaderText(i18n.get("accessory.delete.confirm_header"));
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -687,7 +692,7 @@ public class AccessorySpeciesEditorPane extends VBox {
                         accessoryPresetCombo.getSelectionModel().selectFirst();
                     }
                 }
-                NotificationOverlay.show(this, "Preset espèce accessoire supprimé.", NotificationOverlay.NotificationType.INFO);
+                NotificationOverlay.show(this, i18n.get("preset.delete.title"), NotificationOverlay.NotificationType.INFO);
             }
         });
     }

@@ -91,20 +91,24 @@ public class Predator {
      * Process one simulation tick.
      */
     public void tick() {
+        tick(0.016666667f);
+    }
+
+    public void tick(float deltaSeconds) {
         if (!alive)
             return;
 
         age++;
 
-        // Natural energy drain
-        energy -= 0.02f;
+        // Natural energy drain per second
+        energy -= 1.2f * deltaSeconds;
 
         // Hunger increases over time
-        hunger += 0.05f;
+        hunger += 3.0f * deltaSeconds;
 
         // Starve if too hungry
         if (hunger >= 100f) {
-            health -= 0.5f;
+            health -= 30.0f * deltaSeconds;
         }
 
         // Die from health loss
@@ -197,7 +201,8 @@ public class Predator {
         float dy = ant.getY() - trapY;
         float dist = (float) Math.sqrt(dx * dx + dy * dy);
 
-        return dist <= trapRadius && Math.random() < type.getTrapChance();
+        java.util.Random rng = (ant != null && ant.getRandom() != null) ? ant.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
+        return dist <= trapRadius && rng.nextFloat() < type.getTrapChance();
     }
 
     /**

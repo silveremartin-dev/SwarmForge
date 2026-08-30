@@ -51,7 +51,7 @@ public class HivePlacementEvaluatorDialog extends Stage {
         if (owner != null) initOwner(owner);
 
         I18nManager i18n = I18nManager.getInstance();
-        setTitle(i18n.get("nest.eval.title", "🧪 Évaluateur de Placement de Ruche & Nid"));
+        setTitle(i18n.get("nest.eval.title", "🧪 Hive & Nest Placement Evaluator"));
 
         this.architecture = nestConfig != null && nestConfig.containsKey("architecture") 
                 ? (String) nestConfig.get("architecture") : "BURROW_UNDERGROUND";
@@ -69,12 +69,12 @@ public class HivePlacementEvaluatorDialog extends Stage {
         icon.setIconSize(24);
         icon.setIconColor(Color.web("#38bdf8"));
 
-        Label title = new Label(i18n.get("nest.eval.header", "🧪 Évaluation & Validation du Placement Spatiale"));
+        Label title = new Label(i18n.get("nest.eval.header", "🧪 Spatial Placement Evaluation & Validation"));
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #f4f4f5;");
 
         header.getChildren().addAll(icon, title);
 
-        Label subTitle = new Label("Architecture: " + architecture + " | Matériau: " + material);
+        Label subTitle = new Label("Architecture: " + architecture + " | Material: " + material);
         subTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
 
         // Left Panel: Environmental Controls
@@ -83,7 +83,7 @@ public class HivePlacementEvaluatorDialog extends Stage {
         controlsCard.getStyleClass().add("card-pane");
         controlsCard.setStyle("-fx-background-color: #27272a; -fx-background-radius: 8; -fx-border-color: #3f3f46; -fx-border-radius: 8;");
 
-        Label ctrlTitle = new Label("📍 Conditions Environnementales du Terrarium :");
+        Label ctrlTitle = new Label("📍 Terrarium Environmental Conditions:");
         ctrlTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #a1a1aa;");
 
         // 1. Height / Elevation
@@ -91,7 +91,7 @@ public class HivePlacementEvaluatorDialog extends Stage {
                             : architecture.contains("PAPER_PEDUNCULATE") ? 4.5 
                             : architecture.contains("ARBOREAL") ? 6.0 : 0.0;
         heightSlider = createSlider(-2.0, 15.0, defaultHeight);
-        HBox heightBox = createSliderRow(i18n.get("nest.eval.height", "Hauteur & Élévation (m) :"), heightSlider, "m");
+        HBox heightBox = createSliderRow(i18n.get("nest.eval.height", "Height & Elevation (m):"), heightSlider, "m");
 
         // 2. Solar Orientation
         orientationCombo = new ComboBox<>();
@@ -106,24 +106,24 @@ public class HivePlacementEvaluatorDialog extends Stage {
         orientationCombo.setPrefWidth(220);
         orientationCombo.setOnAction(e -> calculateScore());
 
-        HBox orientRow = new HBox(8, new Label("Exposition Solaire :"), orientationCombo);
+        HBox orientRow = new HBox(8, new Label("Solar Exposure:"), orientationCombo);
         orientRow.setAlignment(Pos.CENTER_LEFT);
 
         // 3. Ambient Microclimate Temp
         tempSlider = createSlider(5.0, 42.0, 22.0);
-        HBox tempBox = createSliderRow(i18n.get("nest.eval.thermal", "Température Ambiante (°C) :"), tempSlider, "°C");
+        HBox tempBox = createSliderRow(i18n.get("nest.eval.thermal", "Ambient Temperature (°C):"), tempSlider, "°C");
 
         // 4. Substrate Moisture
         moistureSlider = createSlider(0.0, 100.0, 45.0);
-        HBox moistureBox = createSliderRow(i18n.get("nest.eval.moisture", "Humidité Substrat (%) :"), moistureSlider, "%");
+        HBox moistureBox = createSliderRow(i18n.get("nest.eval.moisture", "Substrate Moisture (%):"), moistureSlider, "%");
 
         // 5. Floral Foraging Radius
         foragingSlider = createSlider(5.0, 300.0, 35.0);
-        HBox foragingBox = createSliderRow(i18n.get("nest.eval.foraging", "Distance Fleurs / Eau (m) :"), foragingSlider, "m");
+        HBox foragingBox = createSliderRow(i18n.get("nest.eval.foraging", "Distance to Flowers / Water (m):"), foragingSlider, "m");
 
         // 6. Structural Anchor / Soil Compaction
         compactionSlider = createSlider(10.0, 150.0, 65.0);
-        HBox compactionBox = createSliderRow(i18n.get("nest.eval.structural", "Compacité Support (kPa) :"), compactionSlider, "kPa");
+        HBox compactionBox = createSliderRow(i18n.get("nest.eval.structural", "Support Compaction (kPa):"), compactionSlider, "kPa");
 
         controlsCard.getChildren().addAll(ctrlTitle, new Separator(), heightBox, orientRow, tempBox, moistureBox, foragingBox, compactionBox);
 
@@ -132,7 +132,7 @@ public class HivePlacementEvaluatorDialog extends Stage {
         resultCard.setPadding(new Insets(12));
         resultCard.setStyle("-fx-background-color: #27272a; -fx-background-radius: 8; -fx-border-color: #3f3f46; -fx-border-radius: 8;");
 
-        Label resTitle = new Label("📊 Score de Viabilité & Diagnostic :");
+        Label resTitle = new Label("📊 Viability Score & Diagnostic:");
         resTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #a1a1aa;");
 
         scoreProgressBar = new ProgressBar(0.85);
@@ -143,7 +143,7 @@ public class HivePlacementEvaluatorDialog extends Stage {
         scoreLabel = new Label("85%");
         scoreLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #22c55e;");
 
-        badgeLabel = new Label("🟢 EMPLACEMENT OPTIMAL");
+        badgeLabel = new Label("🟢 OPTIMAL PLACEMENT");
         badgeLabel.setStyle("-fx-background-color: #15803d; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 4 10; -fx-background-radius: 12;");
 
         HBox scoreHeaderBox = new HBox(12, scoreLabel, badgeLabel);
@@ -153,7 +153,7 @@ public class HivePlacementEvaluatorDialog extends Stage {
         recommendationsBox.setPadding(new Insets(8));
         recommendationsBox.setStyle("-fx-background-color: #18181b; -fx-background-radius: 6;");
 
-        resultCard.getChildren().addAll(resTitle, new Separator(), scoreProgressBar, scoreHeaderBox, new Label("💡 Recommandations & Alertes :"), recommendationsBox);
+        resultCard.getChildren().addAll(resTitle, new Separator(), scoreProgressBar, scoreHeaderBox, new Label("💡 Recommendations & Alerts:"), recommendationsBox);
 
         HBox contentBox = new HBox(12, controlsCard, resultCard);
         HBox.setHgrow(controlsCard, Priority.ALWAYS);
@@ -163,11 +163,11 @@ public class HivePlacementEvaluatorDialog extends Stage {
         HBox footer = new HBox(10);
         footer.setAlignment(Pos.CENTER_RIGHT);
 
-        Button btnClose = new Button("Fermer");
+        Button btnClose = new Button("Close");
         btnClose.getStyleClass().add("btn-secondary");
         btnClose.setOnAction(e -> close());
 
-        Button btnApply = new Button("✓ Appliquer les Ajustements");
+        Button btnApply = new Button("✓ Apply Adjustments");
         btnApply.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
         btnApply.setOnAction(e -> close());
 
@@ -221,67 +221,67 @@ public class HivePlacementEvaluatorDialog extends Stage {
         if (architecture.contains("WOODEN_BEEHIVE")) {
             if (height < 0.4) {
                 score -= 25.0;
-                addRec("⚠️ Ruche en Bois : Risque d'humidité et d'attaque par les prédateurs de sol. Élevez la ruche à au moins 0.5m du sol.");
+                addRec("⚠️ Wooden Beehive: Moisture risk and ground predator attacks. Elevate hive to at least 0.5m above ground.");
             } else if (height > 2.5) {
                 score -= 15.0;
-                addRec("ℹ️ Hauteur élevée : Exposition au vent fort susceptible de perturber la planche d'envol des abeilles.");
+                addRec("ℹ️ Elevated Height: Strong wind exposure may disrupt worker flight landings.");
             } else {
-                addRec("✅ Élévation idéale (0.5m - 2.0m) : Isolation du sol mouillé et accès aisé.");
+                addRec("✅ Ideal Elevation (0.5m - 2.0m): Protection from wet soil and easy foraging access.");
             }
         } else if (architecture.contains("PAPER_PEDUNCULATE")) {
             if (height < 2.5) {
                 score -= 35.0;
-                addRec("🚨 Guêpier Suspendu : Hauteur sous 2.5m vulnérable aux prédateurs terrestres et au passage mammifère.");
+                addRec("🚨 Suspended Nest: Height under 2.5m is vulnerable to terrestrial predators and mammal traffic.");
             } else {
-                addRec("✅ Ancrage aérien optimal : Pédoncule fixé en hauteur à l'abri du sol.");
+                addRec("✅ Optimal Aerial Anchorage: Peduncle anchored high above ground hazards.");
             }
         } else if (architecture.contains("BURROW_UNDERGROUND")) {
             if (height > 0.5) {
                 score -= 30.0;
-                addRec("⚠️ Galerie souterraine placée au-dessus de la surface du sol.");
+                addRec("⚠️ Underground burrow placed above ground surface.");
             } else {
-                addRec("✅ Profondeur idéale : Protection thermique naturelle de la terre.");
+                addRec("✅ Ideal Depth: Natural thermal insulation from subterranean soil.");
             }
         }
 
         // 2. Thermal Microclimate
         if (temp < 15.0) {
             score -= 20.0;
-            addRec("🥶 Température froide (< 15°C) : Ralentissement du métabolisme du couvain.");
+            addRec("🥶 Cold Temperature (< 15°C): Brood metabolism and activity slowed.");
         } else if (temp > 35.0) {
             score -= 25.0;
-            addRec("🔥 Stress thermique (> 35°C) : Risque de fonte de la cire ou de déshydratation des larves.");
+            addRec("🔥 Thermal Stress (> 35°C): Risk of wax comb melting or larval dehydration.");
         } else {
-            addRec("✅ Température idéale (18°C - 28°C) pour l'incubation du couvain.");
+            addRec("✅ Ideal Temperature (18°C - 28°C) for brood incubation.");
         }
 
         // 3. Solar Orientation
         if (orient.contains("Sud-Est") || orient.contains("South-East")) {
-            addRec("☀️ Orientation Sud-Est optimale : Le soleil du matin réchauffe l'entrée et stimule le départ au foraging.");
+            addRec("☀️ Optimal South-East Orientation: Morning sun warms the entrance and stimulates early foraging trips.");
         } else if (orient.contains("Nord") || orient.contains("North")) {
             score -= 10.0;
-            addRec("☁️ Orientation Nord : Ombrage permanent ralentissant le démarrage matinal.");
+            addRec("☁️ Northern Orientation: Permanent shade delays morning colony activity.");
         }
 
         // 4. Substrate Moisture
         if (material.contains("WOOD") || material.contains("BEESWAX")) {
             if (moisture > 75.0) {
                 score -= 20.0;
-                addRec("💧 Humidité trop élevée (> 75%) : Risque de moisissure du bois et dégradation de la propolis.");
+                addRec("💧 High Moisture (> 75%): Risk of wood decay, mold, and propolis breakdown.");
             }
         } else if (architecture.contains("SUBTERRANEAN_FUNGI_VAULT")) {
             if (moisture < 80.0) {
                 score -= 30.0;
-                addRec("🍄 Jardins à Champignons : Déshydratation critique du mycélium (exige > 85% d'humidité).");
+                addRec("🍄 Fungus Gardens: Critical mycelium dehydration (requires > 85% humidity).");
             }
         }
 
         // 5. Foraging Proximity
         if (foraging > 150.0) {
             score -= 15.0;
-            addRec("🌻 Distance florale / eau élevée (> 150m) : Augmentation du coût métabolique des allers-retours.");
+            addRec("🌻 High Floral / Water Distance (> 150m): Increased metabolic cost for foraging trips.");
         } else {
-            addRec("🌻 Proximité florale excellente (< 50m).");
+            addRec("🌻 Excellent Floral Proximity (< 50m).");
         }
 
         // Final Score Bounding
@@ -293,22 +293,22 @@ public class HivePlacementEvaluatorDialog extends Stage {
         if (score >= 85) {
             scoreProgressBar.setStyle("-fx-accent: #22c55e;");
             scoreLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #22c55e;");
-            badgeLabel.setText("🟢 EMPLACEMENT OPTIMAL");
+            badgeLabel.setText("🟢 OPTIMAL PLACEMENT");
             badgeLabel.setStyle("-fx-background-color: #15803d; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 4 10; -fx-background-radius: 12;");
         } else if (score >= 65) {
             scoreProgressBar.setStyle("-fx-accent: #eab308;");
             scoreLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #eab308;");
-            badgeLabel.setText("🟡 EMPLACEMENT ACCEPTABLE");
+            badgeLabel.setText("🟡 ACCEPTABLE PLACEMENT");
             badgeLabel.setStyle("-fx-background-color: #a16207; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 4 10; -fx-background-radius: 12;");
         } else if (score >= 40) {
             scoreProgressBar.setStyle("-fx-accent: #f97316;");
             scoreLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #f97316;");
-            badgeLabel.setText("🟠 EMPLACEMENT SOUS-OPTIMAL");
+            badgeLabel.setText("🟠 SUBOPTIMAL PLACEMENT");
             badgeLabel.setStyle("-fx-background-color: #c2410c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 4 10; -fx-background-radius: 12;");
         } else {
             scoreProgressBar.setStyle("-fx-accent: #ef4444;");
             scoreLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #ef4444;");
-            badgeLabel.setText("🔴 EMPLACEMENT DANGEREUX");
+            badgeLabel.setText("🔴 HAZARDOUS PLACEMENT");
             badgeLabel.setStyle("-fx-background-color: #b91c1c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 4 10; -fx-background-radius: 12;");
         }
     }

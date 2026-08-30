@@ -101,8 +101,12 @@ public record TerrariumCell(
         CHAMBER, // Nest chamber interior
         ICE, // Frozen water
         SNOW, // Crystallized snow accumulation
-        MUD, // Wet earth
-        CLAY, // Dense diggable material
+        MUD, // Deprecated: Water-saturated clay/earth (retained for backward binary compatibility)
+        CLAY, // Dense diggable clay substrate
+        SILT, // Fine mineral silt substrate (limon)
+        PEAT, // Organic-rich peat substrate (tourbe)
+        GRAVEL, // Mineral gravel and pebble aggregate
+        CAVITY, // Pre-existing natural cavity / void shaft
         LEAF_LITTER, // Surface organic layer
         ROOT, // Plant root material
         WOOD_PULP_PAPER, // Wasp/Hornet paper nest material
@@ -119,7 +123,11 @@ public record TerrariumCell(
         TREE_TRUNK, // Living tree trunk wood for arboreal & bark-nesting species
         TREE_BRANCH, // Living tree branch support for hanging nests
         TREE_LEAF, // Living foliage leaf substrate for silk weaver nests
-        WOODEN_HIVE_BOX // Modular wooden hive box wall (Dadant/Langstroth)
+        WOODEN_HIVE_BOX; // Modular wooden hive box wall (Dadant/Langstroth)
+
+        public boolean isSolid() {
+            return this != AIR && this != CHAMBER && this != CAVITY && this != TREE_LEAF && this != LEAF_LITTER;
+        }
     }
 
     /**
@@ -185,6 +193,38 @@ public record TerrariumCell(
     }
 
     /**
+     * Create silt cell (Limon).
+     */
+    public static TerrariumCell silt(int x, int y, int z) {
+        return new TerrariumCell(x, y, z, Material.SILT, new float[PHEROMONE_TYPES],
+                17f, 65f, DEFAULT_CO2 * 1.4f, DEFAULT_O2 * 0.92f, 0.1f, 0f, 0f, DEFAULT_PRESSURE);
+    }
+
+    /**
+     * Create peat cell (Tourbe).
+     */
+    public static TerrariumCell peat(int x, int y, int z) {
+        return new TerrariumCell(x, y, z, Material.PEAT, new float[PHEROMONE_TYPES],
+                16f, 85f, DEFAULT_CO2 * 1.8f, DEFAULT_O2 * 0.88f, 0.2f, 0f, 0f, DEFAULT_PRESSURE);
+    }
+
+    /**
+     * Create gravel cell (Grave/Gravier).
+     */
+    public static TerrariumCell gravel(int x, int y, int z) {
+        return new TerrariumCell(x, y, z, Material.GRAVEL, new float[PHEROMONE_TYPES],
+                14f, 40f, DEFAULT_CO2 * 1.1f, DEFAULT_O2 * 0.95f, 0.3f, 0f, 0f, DEFAULT_PRESSURE);
+    }
+
+    /**
+     * Create a pre-existing natural cavity cell.
+     */
+    public static TerrariumCell cavity(int x, int y, int z) {
+        return new TerrariumCell(x, y, z, Material.CAVITY, new float[PHEROMONE_TYPES],
+                19f, 75f, DEFAULT_CO2 * 1.6f, DEFAULT_O2 * 0.90f, 0.05f, 0f, 0f, DEFAULT_PRESSURE);
+    }
+
+    /**
      * Create organic matter cell.
      */
     public static TerrariumCell organic(int x, int y, int z) {
@@ -221,7 +261,7 @@ public record TerrariumCell(
      * Check if this cell is passable for ants.
      */
     public boolean isPassable() {
-        return material == Material.AIR || material == Material.CHAMBER ||
+        return material == Material.AIR || material == Material.CHAMBER || material == Material.CAVITY ||
                 material == Material.LEAF_LITTER || material == Material.TREE_LEAF;
     }
 
@@ -231,6 +271,8 @@ public record TerrariumCell(
     public boolean isDiggable() {
         return material == Material.EARTH || material == Material.SAND ||
                 material == Material.MUD || material == Material.CLAY ||
+                material == Material.SILT || material == Material.PEAT ||
+                material == Material.GRAVEL || material == Material.ORGANIC ||
                 material == Material.LEAF_LITTER || material == Material.DEAD_WOOD ||
                 material == Material.PLANT_GALL || material == Material.BAMBOO_STEM ||
                 material == Material.FUNGUS_GARDEN || material == Material.TREE_TRUNK ||

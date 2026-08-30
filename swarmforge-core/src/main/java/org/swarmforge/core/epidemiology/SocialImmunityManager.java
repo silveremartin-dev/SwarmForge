@@ -62,8 +62,8 @@ public class SocialImmunityManager implements Serializable {
             return false;
         }
 
-        // Groomer scrapes off spores
-        targetInfection.groomSporeLoad(0.85f);
+        // Groomer scrapes off spores (90% spore removal)
+        targetInfection.groomSporeLoad(0.90f);
         totalAllogroomingEvents++;
 
         // Groomer gains low-level spore exposure building social immunity
@@ -117,19 +117,28 @@ public class SocialImmunityManager implements Serializable {
             List<Individual> livingIndividuals,
             NestVoxelGrid grid,
             Random rng) {
+        return simulateEpidemiologyStep(infectionRegistry, livingIndividuals, grid, rng, 0.016666667f);
+    }
+
+    public EpizooticReport simulateEpidemiologyStep(
+            Map<UUID, IndividualInfection> infectionRegistry,
+            List<Individual> livingIndividuals,
+            NestVoxelGrid grid,
+            Random rng,
+            float deltaSeconds) {
 
         int susceptible = 0, exposed = 0, infected = 0, sporulatingDead = 0, immune = 0;
 
         for (Individual ind : livingIndividuals) {
             IndividualInfection inf = infectionRegistry.computeIfAbsent(ind.getId(), k -> new IndividualInfection(k));
 
-            // Tick infection lifecycle
+            // Tick infection lifecycle in seconds
             float pathogenResistance = (ind.getHaplodiploidGenome() != null) ? ind.getHaplodiploidGenome().getPathogenResistance() : 1.0f;
-            inf.tick(pathogenResistance);
+            inf.tick(pathogenResistance, deltaSeconds);
 
-            // Apply pathogen damage to ant health if infected
+            // Apply pathogen damage to ant health if infected (scaled in seconds)
             if (inf.getState() == InfectionState.INFECTED) {
-                boolean died = ind.takeDamage(inf.getActivePathogen().getBaseLethality() * 100.0f);
+                boolean died = ind.takeDamage(inf.getActivePathogen().getBaseLethality() * deltaSeconds);
                 if (died) {
                     inf.setState(InfectionState.SPORULATING_DEAD);
                 }

@@ -8,31 +8,42 @@ package org.swarmforge.core.simulation;
 
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
+import org.swarmforge.core.gpu.SparsePheromoneGrid;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * Crowd/flocking simulation using Structure of Arrays (SoA) layout.
- * Optimized for GPU execution with bulk updates.
+ * Optimized for high-performance CPU mass simulation with spatial hash grid.
  * 
- * Implements Boids-like behavior for efficient mass simulation.
+ * Implements Reynolds Boids rules (Separation, Alignment, Cohesion) and Pheromone gradient navigation.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
 public class CrowdSimulator {
 
-    // Structure of Arrays (CPU)
+    // Structure of Arrays (SoA)
     private float[] positionsX;
     private float[] positionsY;
     private float[] positionsZ;
     private float[] headings;
     private float[] speeds;
+    private float[] maxSpeeds;
     private float[] energies;
+    private float[] metabolisms;
     private boolean[] alive;
 
     private int capacity;
     private int count;
+
+    // Primitive Spatial Hash Grid for O(N) neighbor lookup
+    private static final float CELL_SIZE = 10.0f; // Matches NEIGHBOR_RADIUS
+    private int gridWidth;
+    private int gridHeight;
+    private int[] head = new int[0];
+    private int[] next = new int[0];
 
     public CrowdSimulator(int initialCapacity) {
         this.capacity = initialCapacity;
@@ -45,14 +56,18 @@ public class CrowdSimulator {
         positionsZ = new float[size];
         headings = new float[size];
         speeds = new float[size];
+        maxSpeeds = new float[size];
         energies = new float[size];
+        metabolisms = new float[size];
         alive = new boolean[size];
+        next = new int[size];
     }
 
     /**
      * Load individuals from a colony into SoA format.
      */
     public void loadFromColony(Colony colony) {
+        if (colony == null) return;
         List<Individual> individuals = colony.getLivingIndividuals();
         count = individuals.size();
 
@@ -67,47 +82,78 @@ public class CrowdSimulator {
             positionsY[i] = ind.getY();
             positionsZ[i] = ind.getZ();
             headings[i] = ind.getHeading();
-            speeds[i] = 0.5f; // Default speed
+            maxSpeeds[i] = Math.max(0.02f, ind.getCurrentMovementSpeed() * 0.1f);
+            speeds[i] = Math.max(0.01f, maxSpeeds[i] * 0.5f);
             energies[i] = ind.getEnergy();
+            metabolisms[i] = ind.getEffectiveMetabolismRate();
             alive[i] = ind.isAlive();
         }
     }
 
     /**
-     * Execute one simulation step using CPU updates with full Boids algorithm.
-     * Implements Reynolds rules: Separation, Alignment, Cohesion.
-     * 
-     * Algorithm credit: Craig Reynolds (1986) - "Flocks, Herds, and Schools"
+     * Build primitive spatial grid for O(1) cell lookup and O(N) neighbor search.
+     */
+    private void buildSpatialGrid(int worldWidth, int worldHeight) {
+        gridWidth = (int) Math.ceil(worldWidth / CELL_SIZE) + 1;
+        gridHeight = (int) Math.ceil(worldHeight / CELL_SIZE) + 1;
+        int totalCells = gridWidth * gridHeight;
+
+        if (head.length < totalCells) {
+            head = new int[totalCells];
+        }
+        Arrays.fill(head, 0, totalCells, -1);
+
+        for (int i = 0; i < count; i++) {
+            if (!alive[i]) continue;
+            int cx = Math.max(0, Math.min(gridWidth - 1, (int) (positionsX[i] / CELL_SIZE)));
+            int cy = Math.max(0, Math.min(gridHeight - 1, (int) (positionsY[i] / CELL_SIZE)));
+            int cellIdx = cx + cy * gridWidth;
+            next[i] = head[cellIdx];
+            head[cellIdx] = i;
+        }
+    }
+
+    /**
+     * Execute one simulation step using CPU updates with Boids & Spatial Hash Grid.
      */
     public void step(float[] pheromones, int width, int height, int depth) {
-        if (count == 0)
-            return;
+        step(pheromones, null, width, height, depth);
+    }
 
-        // Boids parameters
+    /**
+     * Overloaded step method supporting optional SparsePheromoneGrid reference for trail depositing.
+     */
+    public void step(float[] pheromones, SparsePheromoneGrid pheromoneGrid, int width, int height, int depth) {
+        if (count == 0) return;
+
+        // Boids parameters tuned for realistic ant behavior
         final float NEIGHBOR_RADIUS = 10.0f;
-        final float SEPARATION_RADIUS = 3.0f;
-        final float SEPARATION_WEIGHT = 1.5f;
-        final float ALIGNMENT_WEIGHT = 1.0f;
-        final float COHESION_WEIGHT = 1.0f;
+        final float NEIGHBOR_RADIUS_SQ = NEIGHBOR_RADIUS * NEIGHBOR_RADIUS;
+        final float SEPARATION_RADIUS = 2.5f;
+        final float SEPARATION_WEIGHT = 1.2f;
+        final float ALIGNMENT_WEIGHT = 0.8f;
+        final float COHESION_WEIGHT = 0.8f;
         final float PHEROMONE_WEIGHT = 0.8f;
-        final float WANDER_WEIGHT = 0.3f;
-        final float MAX_SPEED = 0.8f;
-        final float MAX_FORCE = 0.05f;
+        final float WANDER_WEIGHT = 0.2f;
+        final float MAX_SPEED = 0.12f;   // Realistic maximum speed (metres per tick)
+        final float MAX_FORCE = 0.02f;   // Maximum steering force per tick
 
-        // Velocity arrays
+        // Build spatial partition
+        buildSpatialGrid(width, height);
+
+        // Compute velocity vectors
         float[] velocitiesX = new float[count];
         float[] velocitiesY = new float[count];
 
-        // Compute current velocities from heading and speed
         for (int i = 0; i < count; i++) {
+            if (!alive[i]) continue;
             velocitiesX[i] = (float) Math.cos(headings[i]) * speeds[i];
             velocitiesY[i] = (float) Math.sin(headings[i]) * speeds[i];
         }
 
-        // Calculate Boids forces for each individual
+        // Calculate Boids forces using spatial grid
         for (int i = 0; i < count; i++) {
-            if (!alive[i])
-                continue;
+            if (!alive[i]) continue;
 
             float separationX = 0, separationY = 0;
             float alignmentX = 0, alignmentY = 0;
@@ -115,69 +161,68 @@ public class CrowdSimulator {
             int separationCount = 0;
             int flockCount = 0;
 
-            // Check all neighbors (O(n²) - could optimize with spatial hash)
-            for (int j = 0; j < count; j++) {
-                if (i == j || !alive[j])
-                    continue;
+            int cx = Math.max(0, Math.min(gridWidth - 1, (int) (positionsX[i] / CELL_SIZE)));
+            int cy = Math.max(0, Math.min(gridHeight - 1, (int) (positionsY[i] / CELL_SIZE)));
 
-                float dx = positionsX[j] - positionsX[i];
-                float dy = positionsY[j] - positionsY[i];
-                float dist = (float) Math.sqrt(dx * dx + dy * dy);
+            // Query 3x3 adjacent spatial cells
+            for (int nx = Math.max(0, cx - 1); nx <= Math.min(gridWidth - 1, cx + 1); nx++) {
+                for (int ny = Math.max(0, cy - 1); ny <= Math.min(gridHeight - 1, cy + 1); ny++) {
+                    int j = head[nx + ny * gridWidth];
+                    while (j != -1) {
+                        if (i != j && alive[j]) {
+                            float dx = positionsX[j] - positionsX[i];
+                            float dy = positionsY[j] - positionsY[i];
+                            float distSq = dx * dx + dy * dy;
 
-                if (dist < NEIGHBOR_RADIUS && dist > 0.001f) {
-                    flockCount++;
+                            if (distSq < NEIGHBOR_RADIUS_SQ && distSq > 0.0001f) {
+                                float dist = (float) Math.sqrt(distSq);
+                                flockCount++;
 
-                    // Alignment: average velocity of neighbors
-                    alignmentX += velocitiesX[j];
-                    alignmentY += velocitiesY[j];
+                                alignmentX += velocitiesX[j];
+                                alignmentY += velocitiesY[j];
 
-                    // Cohesion: average position of neighbors
-                    cohesionX += positionsX[j];
-                    cohesionY += positionsY[j];
+                                cohesionX += positionsX[j];
+                                cohesionY += positionsY[j];
 
-                    // Separation: steer away from close neighbors
-                    if (dist < SEPARATION_RADIUS) {
-                        float factor = (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS;
-                        separationX -= (dx / dist) * factor;
-                        separationY -= (dy / dist) * factor;
-                        separationCount++;
+                                if (dist < SEPARATION_RADIUS) {
+                                    float factor = (SEPARATION_RADIUS - dist) / SEPARATION_RADIUS;
+                                    separationX -= (dx / dist) * factor;
+                                    separationY -= (dy / dist) * factor;
+                                    separationCount++;
+                                }
+                            }
+                        }
+                        j = next[j];
                     }
                 }
             }
 
-            // Normalize forces
+            // Combine forces
             float forceX = 0, forceY = 0;
 
-            // Separation force
             if (separationCount > 0) {
                 forceX += (separationX / separationCount) * SEPARATION_WEIGHT;
                 forceY += (separationY / separationCount) * SEPARATION_WEIGHT;
             }
 
-            // Alignment force
             if (flockCount > 0) {
                 alignmentX /= flockCount;
                 alignmentY /= flockCount;
-                // Steer towards average velocity
                 forceX += (alignmentX - velocitiesX[i]) * ALIGNMENT_WEIGHT;
                 forceY += (alignmentY - velocitiesY[i]) * ALIGNMENT_WEIGHT;
-            }
 
-            // Cohesion force
-            if (flockCount > 0) {
-                cohesionX = cohesionX / flockCount - positionsX[i];
-                cohesionY = cohesionY / flockCount - positionsY[i];
+                cohesionX = (cohesionX / flockCount) - positionsX[i];
+                cohesionY = (cohesionY / flockCount) - positionsY[i];
                 forceX += cohesionX * COHESION_WEIGHT * 0.01f;
                 forceY += cohesionY * COHESION_WEIGHT * 0.01f;
             }
 
-            // Pheromone attraction (gradient following)
+            // Pheromone gradient attraction
             if (pheromones != null) {
                 int px = (int) positionsX[i];
                 int py = (int) positionsY[i];
                 int pz = (int) positionsZ[i];
 
-                // Sample gradient - only need directional samples
                 float left = getPheromone(pheromones, px - 1, py, pz, width, height, depth);
                 float right = getPheromone(pheromones, px + 1, py, pz, width, height, depth);
                 float up = getPheromone(pheromones, px, py - 1, pz, width, height, depth);
@@ -189,12 +234,13 @@ public class CrowdSimulator {
                 forceY += gradY * PHEROMONE_WEIGHT;
             }
 
-            // Random wandering
-            forceX += (Math.random() - 0.5) * WANDER_WEIGHT;
-            forceY += (Math.random() - 0.5) * WANDER_WEIGHT;
+            // Wandering force
+            java.util.Random rng = java.util.concurrent.ThreadLocalRandom.current();
+            forceX += (rng.nextFloat() - 0.5f) * WANDER_WEIGHT;
+            forceY += (rng.nextFloat() - 0.5f) * WANDER_WEIGHT;
 
-            // Limit force magnitude
-            float forceMag = (float) Math.sqrt(forceX * forceX + forceY * forceY);
+            // Clamp force
+            float forceMag = (float) Math.hypot(forceX, forceY);
             if (forceMag > MAX_FORCE) {
                 forceX = (forceX / forceMag) * MAX_FORCE;
                 forceY = (forceY / forceMag) * MAX_FORCE;
@@ -204,52 +250,56 @@ public class CrowdSimulator {
             velocitiesX[i] += forceX;
             velocitiesY[i] += forceY;
 
-            // Limit speed
-            float speed = (float) Math.sqrt(velocitiesX[i] * velocitiesX[i] + velocitiesY[i] * velocitiesY[i]);
-            if (speed > MAX_SPEED) {
-                velocitiesX[i] = (velocitiesX[i] / speed) * MAX_SPEED;
-                velocitiesY[i] = (velocitiesY[i] / speed) * MAX_SPEED;
+            // Clamp speed to individual's species/caste max speed
+            float speed = (float) Math.hypot(velocitiesX[i], velocitiesY[i]);
+            float individualMaxSpeed = maxSpeeds[i] > 0.001f ? maxSpeeds[i] : 0.12f;
+            if (speed > individualMaxSpeed) {
+                velocitiesX[i] = (velocitiesX[i] / speed) * individualMaxSpeed;
+                velocitiesY[i] = (velocitiesY[i] / speed) * individualMaxSpeed;
+                speed = individualMaxSpeed;
             }
-            speeds[i] = Math.max(0.1f, speed);
+            speeds[i] = Math.max(0.005f, speed);
 
             // Update position
             positionsX[i] += velocitiesX[i];
             positionsY[i] += velocitiesY[i];
 
-            // Update heading from velocity
-            if (speed > 0.01f) {
+            if (speed > 0.001f) {
                 headings[i] = (float) Math.atan2(velocitiesY[i], velocitiesX[i]);
             }
 
-            // Bounds check (soft bounce)
-            if (positionsX[i] < 2) {
-                positionsX[i] = 2;
+            // Soft & hard boundary clamping to prevent leaving map
+            if (positionsX[i] < 2.0f) {
+                positionsX[i] = 2.0f;
                 velocitiesX[i] = Math.abs(velocitiesX[i]) * 0.5f;
-            }
-            if (positionsX[i] >= width - 2) {
-                positionsX[i] = width - 3;
+            } else if (positionsX[i] >= width - 2.0f) {
+                positionsX[i] = width - 3.0f;
                 velocitiesX[i] = -Math.abs(velocitiesX[i]) * 0.5f;
             }
-            if (positionsY[i] < 2) {
-                positionsY[i] = 2;
+
+            if (positionsY[i] < 2.0f) {
+                positionsY[i] = 2.0f;
                 velocitiesY[i] = Math.abs(velocitiesY[i]) * 0.5f;
-            }
-            if (positionsY[i] >= height - 2) {
-                positionsY[i] = height - 3;
+            } else if (positionsY[i] >= height - 2.0f) {
+                positionsY[i] = height - 3.0f;
                 velocitiesY[i] = -Math.abs(velocitiesY[i]) * 0.5f;
             }
 
-            // Update Energy
-            energies[i] -= 0.01f;
-            if (energies[i] <= 0) {
+            // Deposit trail pheromone into grid if active
+            if (pheromoneGrid != null && i % 3 == 0) {
+                pheromoneGrid.deposit((int) positionsX[i], (int) positionsY[i], (int) positionsZ[i], org.swarmforge.core.domain.PheromoneType.HOME_TRAIL.getIndex(), 0.5f); // HOME_TRAIL
+            }
+
+            // Realistic metabolic energy consumption per tick (scaled per individual)
+            float individualMetabolism = metabolisms[i] > 0.001f ? metabolisms[i] : 1.0f;
+            energies[i] -= 0.0001f * individualMetabolism;
+            if (energies[i] <= 0f) {
+                energies[i] = 0f;
                 alive[i] = false;
             }
         }
     }
 
-    /**
-     * Get pheromone value at position with bounds checking.
-     */
     private float getPheromone(float[] pheromones, int x, int y, int z, int width, int height, int depth) {
         if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= depth) {
             return 0f;
@@ -261,10 +311,8 @@ public class CrowdSimulator {
         return pheromones[index];
     }
 
-    /**
-     * Write SoA data back to Individual objects.
-     */
     public void syncToColony(Colony colony) {
+        if (colony == null) return;
         List<Individual> individuals = colony.getLivingIndividuals();
         int syncCount = Math.min(count, individuals.size());
 
@@ -273,6 +321,9 @@ public class CrowdSimulator {
             ind.setPosition(positionsX[i], positionsY[i], positionsZ[i]);
             ind.setHeading(headings[i]);
             ind.setEnergy(energies[i]);
+            if (!alive[i]) {
+                ind.takeDamage(1000.0f); // Kill dead individuals in colony domain
+            }
         }
     }
 
@@ -283,9 +334,9 @@ public class CrowdSimulator {
     public int getLivingCount() {
         int living = 0;
         for (int i = 0; i < count; i++) {
-            if (alive[i])
-                living++;
+            if (alive[i]) living++;
         }
         return living;
     }
 }
+

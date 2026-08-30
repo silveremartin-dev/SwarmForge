@@ -73,8 +73,15 @@ public class MiteInfestation implements Disease {
         return 60; // ~1 minute
     }
 
+    private Random getRng(Individual individual, Simulation simulation) {
+        if (simulation != null && simulation.getRandom() != null) return simulation.getRandom();
+        if (individual != null && individual.getRandom() != null) return individual.getRandom();
+        return java.util.concurrent.ThreadLocalRandom.current();
+    }
+
     @Override
     public boolean processTick(Individual individual, Simulation simulation, int ticksInfected) {
+        Random random = getRng(individual, simulation);
         // Check for grooming/natural recovery
         if (random.nextFloat() < getRecoveryRate()) {
             return true; // Cured
@@ -115,6 +122,7 @@ public class MiteInfestation implements Disease {
             probability *= 1.5f;
         }
 
+        Random random = target.getRandom() != null ? target.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
         return random.nextFloat() < probability;
     }
 

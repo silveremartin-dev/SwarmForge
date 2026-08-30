@@ -63,8 +63,9 @@ public class SimulationContextImpl implements SimulationContext {
         // Query spatial index for enemies within radius 5
         var neighbors = simulation.getSpatialIndex().queryRadius(agent.getX(), agent.getY(),
                 agent.getZ(), 5.0f);
+        org.swarmforge.core.domain.Colony agentColony = simulation.getColony(agent.getColonyId());
         for (Individual neighbor : neighbors) {
-            if (!neighbor.getColonyId().equals(agent.getColonyId()) && neighbor.isAlive()) {
+            if (isEnemy(agentColony, agent, neighbor)) {
                 return true;
             }
         }
@@ -77,9 +78,10 @@ public class SimulationContextImpl implements SimulationContext {
                 agent.getZ(), 10.0f);
         Individual nearest = null;
         float minDistSq = Float.MAX_VALUE;
+        org.swarmforge.core.domain.Colony agentColony = simulation.getColony(agent.getColonyId());
 
         for (Individual neighbor : neighbors) {
-            if (!neighbor.getColonyId().equals(agent.getColonyId()) && neighbor.isAlive()) {
+            if (isEnemy(agentColony, agent, neighbor)) {
                 float dx = neighbor.getX() - agent.getX();
                 float dy = neighbor.getY() - agent.getY();
                 float distSq = dx * dx + dy * dy;
@@ -90,6 +92,15 @@ public class SimulationContextImpl implements SimulationContext {
             }
         }
         return nearest;
+    }
+
+    private boolean isEnemy(org.swarmforge.core.domain.Colony agentColony, AgentView agent, Individual neighbor) {
+        if (neighbor == null || !neighbor.isAlive()) return false;
+        if (neighbor.getColonyId().equals(agent.getColonyId())) return false;
+        if (agentColony != null) {
+            return agentColony.getDiplomacyManager().isEnemy(neighbor.getColonyId());
+        }
+        return false;
     }
 
     @Override
@@ -223,5 +234,10 @@ public class SimulationContextImpl implements SimulationContext {
     public float getThermalGradientY(float x, float y, float z) {
         // Surface is exposed to solar warming, subterranean is insulated
         return (z < 0) ? -0.1f : 0.1f;
+    }
+
+    @Override
+    public float[] getFlowVector(float x, float y, float z, int targetX, int targetY, int targetZ) {
+        return simulation.getFlowVector(x, y, z, targetX, targetY, targetZ);
     }
 }

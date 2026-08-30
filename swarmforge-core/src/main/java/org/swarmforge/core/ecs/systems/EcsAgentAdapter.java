@@ -71,6 +71,14 @@ public class EcsAgentAdapter implements AgentView {
     }
 
     @Override
+    public float getHunger() {
+        if (mMeta != null && mMeta.has(entityId)) {
+            return mMeta.get(entityId).hunger;
+        }
+        return 0.0f;
+    }
+
+    @Override
     public boolean isSoldier() {
         return false; // Mock for now
     }

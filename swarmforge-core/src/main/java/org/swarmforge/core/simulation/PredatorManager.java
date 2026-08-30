@@ -33,6 +33,7 @@ public class PredatorManager {
     private int spawnCooldown = 0;
     private int spawnInterval = 1000; // Ticks between spawn attempts
     private float spawnChance = 0.3f;
+    private int suppressionTicksRemaining = 0;
 
     // Statistics
     private int totalSpawned = 0;
@@ -50,27 +51,64 @@ public class PredatorManager {
     }
 
     /**
+     * Activates predator suppression / sanctuary protection for the given duration in ticks.
+     * Clears existing predators and prevents new predator spawns.
+     *
+     * @param durationTicks Duration of protection in ticks
+     */
+    public void suppressPredators(int durationTicks) {
+        this.suppressionTicksRemaining = Math.max(this.suppressionTicksRemaining, durationTicks);
+        clearPredators();
+        if (simulation != null) {
+            simulation.queueEvent(new SimulationEvent(
+                    SimulationEvent.EventType.INFO,
+                    simulation.getTickCount(),
+                    "🛡️ Predator Suppression Active: Sanctuary protection established (" + Math.max(1, durationTicks / 60) + " min)."));
+        }
+    }
+
+    public boolean isSuppressionActive() {
+        return suppressionTicksRemaining > 0;
+    }
+
+    public int getSuppressionTicksRemaining() {
+        return suppressionTicksRemaining;
+    }
+
+    /**
      * Process all predators for one tick.
      */
     public void tick() {
-        // Handle spawning
-        if (spawnCooldown > 0) {
-            spawnCooldown--;
-        } else {
-            // Tiny chance for Boss
-            if (random.nextFloat() < 0.001f) { // 0.1% chance per spawn interval
-                spawnBoss(BossPredator.BossType.values()[random.nextInt(BossPredator.BossType.values().length)]);
-            } else {
-                attemptSpawn();
+        tick(0.016666667f);
+    }
+
+    public void tick(float deltaSeconds) {
+        // Handle predator suppression & sanctuary protection
+        if (suppressionTicksRemaining > 0) {
+            suppressionTicksRemaining--;
+            if (!predators.isEmpty()) {
+                clearPredators();
             }
-            spawnCooldown = spawnInterval;
+        } else {
+            // Handle spawning
+            if (spawnCooldown > 0) {
+                spawnCooldown--;
+            } else {
+                // Tiny chance for Boss
+                if (random.nextFloat() < 0.001f) { // 0.1% chance per spawn interval
+                    spawnBoss(BossPredator.BossType.values()[random.nextInt(BossPredator.BossType.values().length)]);
+                } else {
+                    attemptSpawn();
+                }
+                spawnCooldown = spawnInterval;
+            }
         }
 
         // Update each predator
         List<Predator> dead = new ArrayList<>();
 
         for (Predator predator : predators) {
-            predator.tick();
+            predator.tick(deltaSeconds);
 
             if (!predator.isAlive()) {
                 dead.add(predator);
@@ -130,7 +168,7 @@ public class PredatorManager {
      * Attempt to spawn a new predator.
      */
     private void attemptSpawn() {
-        if (predators.size() >= maxPredators)
+        if (suppressionTicksRemaining > 0 || predators.size() >= maxPredators)
             return;
         if (random.nextFloat() > spawnChance)
             return;

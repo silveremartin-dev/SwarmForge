@@ -24,7 +24,7 @@ public class ApisMellifera extends CustomSpecies {
         setCommonName("Western Honey Bee");
         setScientificName("Apis mellifera");
         setInsectType("BEE");
-        setDescription("Insecte eusocial volant construisant des rayons de cire. Butine nectar et pollen.");
+        setDescription("Eusocial flying insect constructing wax combs. Forages nectar and pollen.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365 * 4);
@@ -61,7 +61,7 @@ public class ApisMellifera extends CustomSpecies {
         worker.setBodyLengthMm(14.0f);
         worker.setHeadWidthMm(3.5f);
 
-        CasteTemplate drone = new CasteTemplate("Faux-Bourdon (Mâle)", 120f, 0f);
+        CasteTemplate drone = new CasteTemplate("Drone (Male)", 120f, 0f);
         drone.setLifespan(30 * 24);
         drone.setCanFly(true);
         drone.setBodyLengthMm(16.0f);

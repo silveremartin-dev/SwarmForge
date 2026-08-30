@@ -91,6 +91,13 @@ public interface Disease {
     boolean processTick(Individual individual, Simulation simulation, int ticksInfected);
 
     /**
+     * Process disease effects on an infected individual using step duration deltaSeconds.
+     */
+    default boolean processTick(Individual individual, Simulation simulation, int ticksInfected, float deltaSeconds) {
+        return processTick(individual, simulation, ticksInfected);
+    }
+
+    /**
      * Attempt to infect a nearby individual.
      * 
      * @param source   Infected source

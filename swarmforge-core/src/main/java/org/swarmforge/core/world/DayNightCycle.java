@@ -63,11 +63,24 @@ public class DayNightCycle {
         return TimeOfDay.NIGHT; // Wrap around
     }
 
+    private WeatherSystem weatherSystem;
+
+    public void setWeatherSystem(WeatherSystem weatherSystem) {
+        this.weatherSystem = weatherSystem;
+    }
+
+    public WeatherSystem getWeatherSystem() {
+        return weatherSystem;
+    }
+
     /**
-     * Get light level (0-1) for rendering.
+     * Get light level (0-1) for rendering, synchronized with WeatherSystem.
      */
     public float getLightLevel() {
-        // Smooth interpolation between time periods
+        if (weatherSystem != null) {
+            return weatherSystem.getLightLevel();
+        }
+        // Fallback interpolation between time periods
         TimeOfDay current = getTimeOfDay();
         TimeOfDay next = TimeOfDay.values()[(current.ordinal() + 1) % TimeOfDay.values().length];
 
@@ -79,7 +92,9 @@ public class DayNightCycle {
      * Get sun angle for shadows (0 = sunrise, 0.5 = noon, 1 = sunset).
      */
     public float getSunAngle() {
-        // Sun rises at phase 0.0, peaks at 0.5, sets at 0.75
+        if (weatherSystem != null) {
+            return weatherSystem.getSunAngle();
+        }
         if (currentPhase < 0.75f) {
             return currentPhase / 0.75f;
         }
@@ -103,9 +118,12 @@ public class DayNightCycle {
 
     /**
      * Activity modifier for surface activities (foraging, etc).
-     * Nocturnal species use inverse.
+     * Synchronized with WeatherSystem foraging suitability.
      */
     public float getSurfaceActivityModifier() {
+        if (weatherSystem != null) {
+            return weatherSystem.getForagingMultiplier();
+        }
         return switch (getTimeOfDay()) {
             case DAY -> 1.0f;
             case DAWN, DUSK -> 0.7f;

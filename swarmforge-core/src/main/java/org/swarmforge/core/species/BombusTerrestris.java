@@ -26,7 +26,7 @@ public class BombusTerrestris extends CustomSpecies {
         setCommonName("Buff-Tailed Bumblebee");
         setScientificName("Bombus terrestris");
         setInsectType("BEE");
-        setDescription("Bourdon eusocial robuste capable de thermorégulation et de pollinisation vibratile.");
+        setDescription("Robust eusocial bumblebee capable of endothermic thermoregulation and buzz pollination.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365);
@@ -58,7 +58,7 @@ public class BombusTerrestris extends CustomSpecies {
         worker.setHeadWidthMm(3.2f);
 
         // Male / Drone
-        CasteTemplate male = new CasteTemplate("Mâle Bourdon", 100f, 2f);
+        CasteTemplate male = new CasteTemplate("Male Bumblebee", 100f, 2f);
         male.setCanFly(true);
         male.setCanDig(false);
         male.setCanCarry(false);

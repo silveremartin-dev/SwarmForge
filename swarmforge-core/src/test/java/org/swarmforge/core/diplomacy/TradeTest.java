@@ -15,22 +15,22 @@ public class TradeTest {
         Colony receiver = new Colony(s, 10, 10, 0);
 
         // Setup initial resources
-        sender.setFoodStored(100f); // Default to SEED=100
-        receiver.setFoodStored(0f);
+        sender.setResourceAmount(ResourceType.SEED, 100f);
+        receiver.setResourceAmount(ResourceType.SEED, 0f);
 
         // Test Failure (Insufficient funds)
         assertFalse(sender.sendResource(receiver, ResourceType.SEED, 200f));
-        assertEquals(100f, sender.getFoodStored());
-        assertEquals(0f, receiver.getFoodStored());
+        assertEquals(100f, sender.getResourceAmount(ResourceType.SEED));
+        assertEquals(0f, receiver.getResourceAmount(ResourceType.SEED));
 
         // Test Success
         assertTrue(sender.sendResource(receiver, ResourceType.SEED, 50f));
-        assertEquals(50f, sender.getFoodStored());
-        assertEquals(50f, receiver.getFoodStored());
+        assertEquals(50f, sender.getResourceAmount(ResourceType.SEED));
+        assertEquals(50f, receiver.getResourceAmount(ResourceType.SEED));
 
         // Test Tribute loop (Reciprocal)
         receiver.sendResource(sender, ResourceType.SEED, 10f);
-        assertEquals(60f, sender.getFoodStored());
-        assertEquals(40f, receiver.getFoodStored());
+        assertEquals(60f, sender.getResourceAmount(ResourceType.SEED));
+        assertEquals(40f, receiver.getResourceAmount(ResourceType.SEED));
     }
 }

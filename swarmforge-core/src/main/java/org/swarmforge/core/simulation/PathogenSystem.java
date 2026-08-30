@@ -50,10 +50,15 @@ public class PathogenSystem {
     /**
      * Evaluates fungal spore transmission risk during grooming or physical contact.
      */
-    public static boolean checkSporeTransmission(float sporeDensity, float relativeHumidity) {
+    public static boolean checkSporeTransmission(float sporeDensity, float relativeHumidity, java.util.Random random) {
         if (relativeHumidity < 65.0f) return false; // Fungi require high humidity to germinate
         float transmissionProb = sporeDensity * (relativeHumidity / 100.0f) * 0.05f;
-        return Math.random() < transmissionProb;
+        java.util.Random rng = random != null ? random : java.util.concurrent.ThreadLocalRandom.current();
+        return rng.nextFloat() < transmissionProb;
+    }
+
+    public static boolean checkSporeTransmission(float sporeDensity, float relativeHumidity) {
+        return checkSporeTransmission(sporeDensity, relativeHumidity, null);
     }
 
     /**

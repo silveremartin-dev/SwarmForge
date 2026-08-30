@@ -23,7 +23,7 @@ public class AustroplatypusIncompertus extends CustomSpecies {
         setCommonName("Ambrosia Wood Beetle");
         setScientificName("Austroplatypus incompertus");
         setInsectType("BEETLE");
-        setDescription("Seul coléoptère eusocial connu. Creuse des galeries dans les eucalyptus et cultive des champignons ambroisie.");
+        setDescription("Only known eusocial beetle species. Excavates galleries in eucalyptus trees and cultivates ambrosia fungi.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365 * 3);

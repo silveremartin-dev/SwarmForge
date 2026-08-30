@@ -22,7 +22,7 @@ export const useSimulationStore = create((set, get) => ({
         { id: 'food_init_2', x: 60, y: 40, quantity: 150, type: 'SEEDS' },
     ],
     // Look and Feel Themes ('GAMING', 'SCIENTIFIC', 'REALISTIC')
-    lookAndFeel: 'GAMING',
+    lookAndFeel: 'SCIENTIFIC',
     setLookAndFeel: (mode) => {
         const themeAttr = mode === 'SCIENTIFIC' ? 'scientific' : mode === 'REALISTIC' ? 'realistic' : 'gaming'
         document.documentElement.setAttribute('data-theme', themeAttr)
@@ -122,6 +122,7 @@ export const useSimulationStore = create((set, get) => ({
     // Multi-Variable Astro-Atmospheric Climate & Seasonal Engine
     climateEngine: {
         latitudeDeg: 45.0,         // Latitude (0° = Equator, 45° = Temperate, 65° = Boreal)
+        hemisphere: 'NORTHERN',    // 'NORTHERN' | 'SOUTHERN' (Flips seasons when SOUTHERN)
         climateType: 'OCEANIC',    // 'OCEANIC' | 'CONTINENTAL' | 'MEDITERRANEAN' | 'ALPINE' | 'TROPICAL'
         season: 'SUMMER',          // 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER'
         dayOfYear: 200,            // 1 to 365
@@ -132,6 +133,20 @@ export const useSimulationStore = create((set, get) => ({
         windDirectionDeg: 225,     // SW Wind direction
         soilMoisture: 0.45,        // 0.0 (dry dust) to 1.0 (saturated mud)
     },
+
+    // 3D Terrain Configuration (Slopes, Base Altitude Y=0 / Y=10 / Y=-5)
+    terrainConfig: {
+        baseElevation: 0,          // Base ground altitude (Y=0, Y=10, Y=-5, etc.)
+        slopeX: 0.0,               // Ground slope incline along X axis (m/m)
+        slopeZ: 0.0,               // Ground slope incline along Z axis (m/m)
+        roughness: 0.45,           // Relief roughness index
+        hasRiver: true,
+        riverX: 25,
+        riverWidth: 10,
+        riverDepth: 0.6
+    },
+    updateTerrainConfig: (config) => set(state => ({ terrainConfig: { ...state.terrainConfig, ...config } })),
+    setHemisphere: (hemisphere) => set(state => ({ climateEngine: { ...state.climateEngine, hemisphere } })),
 
     environmentLighting: {
         sunAzimuthDeg: 145,       // Solar direction angle (0° = North, 180° = South)

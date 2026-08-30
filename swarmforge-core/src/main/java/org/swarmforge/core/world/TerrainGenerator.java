@@ -73,15 +73,37 @@ public class TerrainGenerator {
                     if (z > surfaceZ) {
                         material = TerrariumCell.Material.AIR;
                     } else if (z == surfaceZ) {
-                        material = TerrariumCell.Material.EARTH; // Topsoil
-                    } else if (z > surfaceZ - 3) {
-                        material = TerrariumCell.Material.EARTH;
-                    } else if (z > surfaceZ - 10) {
-                        material = random.nextFloat() < 0.7f ? TerrariumCell.Material.EARTH
-                                : TerrariumCell.Material.SAND;
+                        // Horizon O/A: Topsoil, Peat & Organic leaf litter
+                        float nVal = noise(x * 0.1f, y * 0.1f);
+                        material = (nVal > 0.3f) ? TerrariumCell.Material.PEAT : TerrariumCell.Material.EARTH;
+                    } else if (z > surfaceZ - 4) {
+                        // Horizon A: Earth & Silt (Limon)
+                        float nVal = noise((x + 100) * 0.08f, (y + 100) * 0.08f);
+                        material = (nVal > 0.2f) ? TerrariumCell.Material.SILT : TerrariumCell.Material.EARTH;
+                    } else if (z > surfaceZ - 12) {
+                        // Horizon B: Subsoil Clay, Sand lenses, Gravel deposits & Natural Cavities
+                        float nVal = noise((x + 50) * 0.05f, (y + 50) * 0.05f + z * 0.1f);
+                        if (nVal > 0.45f) {
+                            material = TerrariumCell.Material.CLAY;
+                        } else if (nVal > 0.15f) {
+                            material = TerrariumCell.Material.SAND;
+                        } else if (nVal < -0.4f) {
+                            material = TerrariumCell.Material.CAVITY; // Pre-existing natural cavity / void
+                        } else if (nVal < -0.2f) {
+                            material = TerrariumCell.Material.GRAVEL;
+                        } else {
+                            material = TerrariumCell.Material.EARTH;
+                        }
                     } else {
-                        material = random.nextFloat() < 0.3f ? TerrariumCell.Material.ROCK
-                                : TerrariumCell.Material.EARTH;
+                        // Horizon C/R: Bedrock, Deep Gravel, Dense Clay & Rock
+                        float nVal = noise((x + 200) * 0.04f, (y + 200) * 0.04f);
+                        if (nVal > 0.1f) {
+                            material = TerrariumCell.Material.ROCK;
+                        } else if (nVal < -0.3f) {
+                            material = TerrariumCell.Material.GRAVEL;
+                        } else {
+                            material = TerrariumCell.Material.CLAY;
+                        }
                     }
 
                     if (material != TerrariumCell.Material.AIR) {

@@ -55,7 +55,10 @@ public class Terrarium {
     }
 
     public void addColony(Colony colony) {
-        colonies.put(colony.getId(), colony);
+        if (colony != null) {
+            colony.setTerrarium(this);
+            colonies.put(colony.getId(), colony);
+        }
     }
 
     public java.util.Collection<Colony> getColonies() {
@@ -114,6 +117,87 @@ public class Terrarium {
     public void clear() {
         cells.clear();
         colonies.clear();
+    }
+
+    /**
+     * Computes the exact ground surface elevation Z at coordinates (x, y).
+     * Scans downwards from the sky to locate the topmost non-AIR solid voxel.
+     */
+    public float getSurfaceElevation(float x, float y) {
+        int ix = Math.max(0, Math.min(width - 1, Math.round(x)));
+        int iy = Math.max(0, Math.min(height - 1, Math.round(y)));
+        for (int z = depth - 1; z >= 0; z--) {
+            TerrariumCell cell = getCell(ix, iy, z);
+            if (cell != null && cell.material() != TerrariumCell.Material.AIR) {
+                return z + 0.5f; // Top surface boundary of highest solid cell
+            }
+        }
+        return 0.0f; // Default planar ground elevation
+    }
+
+    // === Continuous Physical Field Trilinear Interpolation ===
+
+    /**
+     * Samples temperature at continuous floating coordinates (x, y, z) via 3D trilinear interpolation.
+     */
+    public float getInterpolatedTemperature(float x, float y, float z) {
+        return sampleTrilinearScalar(x, y, z, TerrariumCell::temperature);
+    }
+
+    /**
+     * Samples relative humidity (%) at continuous floating coordinates (x, y, z) via 3D trilinear interpolation.
+     */
+    public float getInterpolatedHumidity(float x, float y, float z) {
+        return sampleTrilinearScalar(x, y, z, TerrariumCell::humidity);
+    }
+
+    /**
+     * Samples CO2 concentration (ppm) at continuous floating coordinates (x, y, z) via 3D trilinear interpolation.
+     */
+    public float getInterpolatedCO2(float x, float y, float z) {
+        return sampleTrilinearScalar(x, y, z, TerrariumCell::co2);
+    }
+
+    /**
+     * Samples atmospheric pressure (hPa) at continuous floating coordinates (x, y, z) via 3D trilinear interpolation.
+     */
+    public float getInterpolatedPressure(float x, float y, float z) {
+        return sampleTrilinearScalar(x, y, z, TerrariumCell::pressure);
+    }
+
+    /**
+     * Trilinear interpolation engine for scalar physical fields across 8 neighboring voxel centers.
+     */
+    public float sampleTrilinearScalar(float x, float y, float z, java.util.function.Function<TerrariumCell, Float> getter) {
+        int x0 = (int) Math.floor(x);
+        int y0 = (int) Math.floor(y);
+        int z0 = (int) Math.floor(z);
+        int x1 = x0 + 1;
+        int y1 = y0 + 1;
+        int z1 = z0 + 1;
+
+        float fx = x - x0;
+        float fy = y - y0;
+        float fz = z - z0;
+
+        float c000 = getter.apply(getCell(x0, y0, z0));
+        float c100 = getter.apply(getCell(x1, y0, z0));
+        float c010 = getter.apply(getCell(x0, y1, z0));
+        float c110 = getter.apply(getCell(x1, y1, z0));
+        float c001 = getter.apply(getCell(x0, y0, z1));
+        float c101 = getter.apply(getCell(x1, y0, z1));
+        float c011 = getter.apply(getCell(x0, y1, z1));
+        float c111 = getter.apply(getCell(x1, y1, z1));
+
+        float c00 = c000 * (1f - fx) + c100 * fx;
+        float c01 = c001 * (1f - fx) + c101 * fx;
+        float c10 = c010 * (1f - fx) + c110 * fx;
+        float c11 = c011 * (1f - fx) + c111 * fx;
+
+        float c0 = c00 * (1f - fy) + c10 * fy;
+        float c1 = c01 * (1f - fy) + c11 * fy;
+
+        return c0 * (1f - fz) + c1 * fz;
     }
 
     // Getters

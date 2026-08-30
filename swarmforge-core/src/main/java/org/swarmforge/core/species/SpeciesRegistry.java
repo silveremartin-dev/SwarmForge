@@ -103,6 +103,8 @@ public class SpeciesRegistry {
         register(new PseudoregmaBambucicola());
         register(new KladothripsHarteri());
         register(new AustroplatypusIncompertus());
+        register(new PolyergusRufescens());
+        register(new FormicaFusca());
 
         // Load custom user JSON files from ~/.swarmforge/presets/species/
         try {

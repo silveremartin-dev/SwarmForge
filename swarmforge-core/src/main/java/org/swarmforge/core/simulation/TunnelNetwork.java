@@ -52,25 +52,77 @@ public class TunnelNetwork implements java.io.Serializable {
     private final float maxDepth = 50.0f;
 
     public TunnelNetwork(Colony colony) {
-        float nx = colony.getNestX();
-        float ny = colony.getNestY();
-        float nz = colony.getNestZ();
+        float nx = colony != null ? colony.getNestX() : 40.0f;
+        float ny = colony != null ? colony.getNestY() : 40.0f;
+        float nz = colony != null ? colony.getNestZ() : 0.0f;
 
-        String nestType = (colony.getSpecies() != null && colony.getSpecies().getNestType() != null)
+        String nestType = (colony != null && colony.getSpecies() != null && colony.getSpecies().getNestType() != null)
                 ? colony.getSpecies().getNestType().toUpperCase()
                 : "BURROW_UNDERGROUND";
 
-        buildNetworkForArchitecture(nx, ny, nz, nestType);
+        rebuildForArchitecture(nx, ny, nz, nestType, colony);
     }
 
     public void rebuildForArchitecture(float nx, float ny, float nz, String architectureType) {
+        rebuildForArchitecture(nx, ny, nz, architectureType, (org.swarmforge.core.structure.Nest) null);
+    }
+
+    public void rebuildForArchitecture(float nx, float ny, float nz, String architectureType, Colony colony) {
+        rebuildForArchitecture(nx, ny, nz, architectureType, colony != null ? colony.getNest() : null);
+    }
+
+    public void rebuildForArchitecture(float nx, float ny, float nz, String architectureType, org.swarmforge.core.structure.Nest nest) {
         nodes.clear();
         edges.clear();
-        buildNetworkForArchitecture(nx, ny, nz, architectureType);
+        buildNetworkForArchitecture(nx, ny, nz, architectureType != null ? architectureType : "BURROW_UNDERGROUND");
+        if (nest != null) {
+            syncToNest(nest);
+        }
+    }
+
+    public void syncToNest(org.swarmforge.core.structure.Nest nest) {
+        if (nest == null) return;
+        nest.clear();
+
+        Map<UUID, org.swarmforge.core.structure.Chamber> chamberMap = new HashMap<>();
+
+        for (TunnelNode node : nodes.values()) {
+            org.swarmforge.core.structure.Chamber.Type cType = switch (node.type()) {
+                case ENTRANCE -> org.swarmforge.core.structure.Chamber.Type.ENTRANCE;
+                case QUEEN_CHAMBER -> org.swarmforge.core.structure.Chamber.Type.QUEEN_QUARTERS;
+                case BROOD_CHAMBER -> org.swarmforge.core.structure.Chamber.Type.NURSERY;
+                case FOOD_STORAGE -> org.swarmforge.core.structure.Chamber.Type.FOOD_STORAGE;
+                case WASTE_DUMP -> org.swarmforge.core.structure.Chamber.Type.WASTE_DUMP;
+                case TUNNEL -> org.swarmforge.core.structure.Chamber.Type.NURSERY;
+            };
+
+            float capacity = switch (node.type()) {
+                case QUEEN_CHAMBER -> 150.0f;
+                case BROOD_CHAMBER -> 250.0f;
+                case FOOD_STORAGE -> 400.0f;
+                case WASTE_DUMP -> 200.0f;
+                case ENTRANCE -> 80.0f;
+                case TUNNEL -> 40.0f;
+            };
+
+            org.swarmforge.core.structure.Chamber chamber = new org.swarmforge.core.structure.Chamber(
+                    node.id().toString(), cType, node.x(), node.y(), node.z(), capacity);
+            chamberMap.put(node.id(), chamber);
+            nest.addChamber(chamber);
+        }
+
+        for (TunnelEdge edge : edges) {
+            org.swarmforge.core.structure.Chamber start = chamberMap.get(edge.fromNode());
+            org.swarmforge.core.structure.Chamber end = chamberMap.get(edge.toNode());
+            if (start != null && end != null) {
+                nest.addTunnel(new org.swarmforge.core.structure.Tunnel(start, end));
+            }
+        }
     }
 
     private void buildNetworkForArchitecture(float nx, float ny, float nz, String nestType) {
-        if (nestType.contains("WOOD") || nestType.contains("TREE") || nestType.contains("TRUNK") || nestType.contains("HOLLOW")) {
+        String arch = nestType.toUpperCase();
+        if (arch.contains("WOOD") || arch.contains("TREE") || arch.contains("TRUNK") || arch.contains("HOLLOW")) {
             // Arboreal / Hollow Tree Cavity (Camponotus / Carpenter ants)
             UUID entrance = createNode(nx, ny - 1.5f, nz + 1.5f, ChamberType.ENTRANCE);
             UUID shaft1 = createNode(nx, ny, nz + 4.0f, ChamberType.TUNNEL);
@@ -92,7 +144,7 @@ public class TunnelNetwork implements java.io.Serializable {
             UUID wasteDump = createNode(nx, ny, nz + 0.5f, ChamberType.WASTE_DUMP);
             createEdge(entrance, wasteDump);
 
-        } else if (nestType.contains("WAX_COMB") || nestType.contains("BEEHIVE") || nestType.contains("HEXAGONAL")) {
+        } else if (arch.contains("WAX_COMB") || arch.contains("BEEHIVE") || arch.contains("HEXAGONAL")) {
             // Honeybee Hexagonal Comb / Beehive (Apis)
             UUID entrance = createNode(nx, ny, nz + 0.5f, ChamberType.ENTRANCE);
             UUID frameShaft = createNode(nx, ny, nz + 3.5f, ChamberType.TUNNEL);
@@ -109,7 +161,7 @@ public class TunnelNetwork implements java.io.Serializable {
             UUID honeyVault = createNode(nx, ny, nz + 7.5f, ChamberType.FOOD_STORAGE);
             createEdge(frameShaft, honeyVault);
 
-        } else if (nestType.contains("WAX_POTS") || nestType.contains("POTS_CLUSTER") || nestType.contains("BOMBUS")) {
+        } else if (arch.contains("WAX_POTS") || arch.contains("POTS_CLUSTER") || arch.contains("BOMBUS")) {
             // Bumblebee Pot Cluster (Bombus)
             UUID entrance = createNode(nx, ny, nz + 0.2f, ChamberType.ENTRANCE);
             UUID hub = createNode(nx, ny, nz - 0.5f, ChamberType.TUNNEL);
@@ -129,7 +181,7 @@ public class TunnelNetwork implements java.io.Serializable {
             UUID wastePot = createNode(nx - 1.0f, ny + 1.5f, nz - 1.5f, ChamberType.WASTE_DUMP);
             createEdge(queenChamber, wastePot);
 
-        } else if (nestType.contains("PAPER") || nestType.contains("PEDUNCULATE") || nestType.contains("VESPA")) {
+        } else if (arch.contains("PAPER") || arch.contains("PEDUNCULATE") || arch.contains("VESPA")) {
             // Paper Wasp Hanging Nest (Vespidae)
             UUID peduncle = createNode(nx, ny, nz + 7.5f, ChamberType.TUNNEL);
             UUID entrance = createNode(nx, ny, nz + 1.5f, ChamberType.ENTRANCE);
@@ -148,7 +200,7 @@ public class TunnelNetwork implements java.io.Serializable {
             UUID foodVault = createNode(nx, ny + 2.0f, nz + 5.0f, ChamberType.FOOD_STORAGE);
             createEdge(centralSpire, foodVault);
 
-        } else if (nestType.contains("CATHEDRAL") || nestType.contains("TERMITE") || nestType.contains("STERCORAL")) {
+        } else if (arch.contains("CATHEDRAL") || arch.contains("TERMITE") || arch.contains("STERCORAL")) {
             // Termite Cathedral Mound (Isoptera)
             UUID entrance = createNode(nx, ny, nz + 0.5f, ChamberType.ENTRANCE);
             UUID spire = createNode(nx, ny, nz + 9.0f, ChamberType.TUNNEL);
@@ -168,7 +220,7 @@ public class TunnelNetwork implements java.io.Serializable {
             UUID wasteVault = createNode(nx, ny + 3.0f, nz - 12.0f, ChamberType.WASTE_DUMP);
             createEdge(royalCell, wasteVault);
 
-        } else if (nestType.contains("FUNGI") || nestType.contains("VAULT") || nestType.contains("ATTA")) {
+        } else if (arch.contains("FUNGI") || arch.contains("VAULT") || arch.contains("ATTA")) {
             // Leafcutter Ant Subterranean Fungi Vault (Atta)
             UUID entrance1 = createNode(nx - 3.0f, ny, nz + 0.1f, ChamberType.ENTRANCE);
             UUID entrance2 = createNode(nx + 3.0f, ny, nz + 0.1f, ChamberType.ENTRANCE);
@@ -187,7 +239,7 @@ public class TunnelNetwork implements java.io.Serializable {
             UUID wastePit = createNode(nx, ny, nz - 20.0f, ChamberType.WASTE_DUMP);
             createEdge(royalVault, wastePit);
 
-        } else if (nestType.contains("MOUND") || nestType.contains("SURFACE_MOUND") || nestType.contains("FORMICA")) {
+        } else if (arch.contains("MOUND") || arch.contains("SURFACE_MOUND") || arch.contains("FORMICA") || arch.contains("DÔME") || arch.contains("SOLAR")) {
             // Thatch Mound & Galleries (Formica rufa)
             UUID ent1 = createNode(nx - 2.0f, ny, nz + 0.5f, ChamberType.ENTRANCE);
             UUID ent2 = createNode(nx + 2.0f, ny, nz + 0.5f, ChamberType.ENTRANCE);
@@ -209,7 +261,7 @@ public class TunnelNetwork implements java.io.Serializable {
             UUID wastePit = createNode(nx - 2.0f, ny - 3.0f, nz - 12.0f, ChamberType.WASTE_DUMP);
             createEdge(queenWinter, wastePit);
 
-        } else if (nestType.contains("SILK") || nestType.contains("LEAF") || nestType.contains("OECOPHYLLA")) {
+        } else if (arch.contains("SILK") || arch.contains("LEAF") || arch.contains("OECOPHYLLA")) {
             // Arboreal Weaver Ant Leaf Nest (Oecophylla)
             UUID branch = createNode(nx, ny, nz + 6.0f, ChamberType.ENTRANCE);
             UUID canopyHub = createNode(nx, ny, nz + 10.0f, ChamberType.TUNNEL);
@@ -223,7 +275,7 @@ public class TunnelNetwork implements java.io.Serializable {
             createEdge(canopyHub, broodLeaf);
             createEdge(canopyHub, foodLeaf);
 
-        } else if (nestType.contains("CARTON")) {
+        } else if (arch.contains("CARTON")) {
             // Carton Wood Nest (Crematogaster)
             UUID entrance = createNode(nx, ny, nz + 4.0f, ChamberType.ENTRANCE);
             UUID core = createNode(nx, ny, nz + 6.0f, ChamberType.TUNNEL);
@@ -237,7 +289,7 @@ public class TunnelNetwork implements java.io.Serializable {
             createEdge(core, broodG);
             createEdge(core, foodG);
 
-        } else if (nestType.contains("BAMBOO") || nestType.contains("STEM")) {
+        } else if (arch.contains("BAMBOO") || arch.contains("STEM")) {
             // Bamboo / Plant Stem Nest (Colobopsis)
             UUID entrance = createNode(nx - 6.0f, ny, nz + 2.0f, ChamberType.ENTRANCE);
             UUID stemTunnel = createNode(nx, ny, nz + 2.0f, ChamberType.TUNNEL);
@@ -252,7 +304,7 @@ public class TunnelNetwork implements java.io.Serializable {
             UUID foodStorage = createNode(nx - 2.0f, ny, nz + 2.0f, ChamberType.FOOD_STORAGE);
             createEdge(stemTunnel, foodStorage);
 
-        } else if (nestType.contains("BIVOUAC")) {
+        } else if (arch.contains("BIVOUAC")) {
             // Living Army Ant Bivouac (Eciton)
             UUID anchor = createNode(nx, ny, nz + 3.0f, ChamberType.TUNNEL);
             UUID entrance = createNode(nx, ny, nz + 1.5f, ChamberType.ENTRANCE);
@@ -266,7 +318,7 @@ public class TunnelNetwork implements java.io.Serializable {
             createEdge(protectedCore, broodCluster);
             createEdge(protectedCore, foodCluster);
 
-        } else if (nestType.contains("SUPERCOLONY") || nestType.contains("SUPERCOLONIE")) {
+        } else if (arch.contains("SUPERCOLONY") || arch.contains("SUPERCOLONIE")) {
             // Complex Polycalic Supercolony Network (Multi-hub nest with polygyne chambers)
             UUID mainEntrance = createNode(nx, ny, nz - 0.1f, ChamberType.ENTRANCE);
             UUID subEnt1 = createNode(nx - 8.0f, ny + 4.0f, nz - 0.1f, ChamberType.ENTRANCE);
@@ -312,7 +364,7 @@ public class TunnelNetwork implements java.io.Serializable {
             UUID waste = createNode(nx, ny + 8.0f, nz - 18.0f, ChamberType.WASTE_DUMP);
             createEdge(food3, waste);
 
-        } else if (nestType.contains("OLD")) {
+        } else if (arch.contains("OLD")) {
             // Old Expansive Colony Nest
             UUID entrance = createNode(nx, ny, nz - 0.1f, ChamberType.ENTRANCE);
             UUID subEnt = createNode(nx + 5.0f, ny - 3.0f, nz - 0.1f, ChamberType.ENTRANCE);

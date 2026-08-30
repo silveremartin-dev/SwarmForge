@@ -20,11 +20,11 @@ import java.util.List;
 public class AttaCephalotes extends CustomSpecies {
 
     public AttaCephalotes() {
-        setPresetName("Fourmi Coupeuse de Feuilles (Atta cephalotes)");
+        setPresetName("Leafcutter Ant (Atta cephalotes)");
         setCommonName("Leafcutter Ant");
         setScientificName("Atta cephalotes");
         setInsectType("ANT");
-        setDescription("Récolte du feuillage pour cultiver un champignon symbiotique au sein d'immenses nids souterrains.");
+        setDescription("Harvests foliage to cultivate a symbiotic fungus garden inside immense subterranean nests.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365 * 20);

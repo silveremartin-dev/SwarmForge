@@ -53,11 +53,11 @@ public class WeatherEditorPane extends BorderPane {
 
     // Parameter Tabs
     public enum ParameterType {
-        TEMPERATURE("🌡 Température (°C)", -40, 50, "°C", 10),
-        WIND("💨 Vent (km/h)", 0, 150, " km/h", 25),
-        RAIN("🌧 Précipitations (mm)", 0, 500, " mm", 100),
-        HUMIDITY("💧 Humidité Relative (%)", 0, 100, "%", 20),
-        OVERVIEW("📊 Vue d'Ensemble", 0, 100, "", 20);
+        TEMPERATURE("🌡 Temperature (°C)", -40, 50, "°C", 10),
+        WIND("💨 Wind (km/h)", 0, 150, " km/h", 25),
+        RAIN("🌧 Precipitation (mm)", 0, 500, " mm", 100),
+        HUMIDITY("💧 Relative Humidity (%)", 0, 100, "%", 20),
+        OVERVIEW("📊 Global Overview", 0, 100, "", 20);
 
         public final String title;
         public final double minVal;
@@ -151,18 +151,18 @@ public class WeatherEditorPane extends BorderPane {
 
         Alert alert = ThemeManager.createAlert(
             Alert.AlertType.CONFIRMATION,
-            "Vous avez des modifications non enregistrées dans l'Éditeur Météo \u0026 Climat.\n"
-            + (hasCurrentPreset ? "Preset courant : \"" + currentName + "\"" : "Aucun preset sélectionné.")
+            "You have unsaved changes in the Weather & Climate Editor.\n"
+            + (hasCurrentPreset ? "Current preset: \"" + currentName + "\"" : "No preset selected.")
         );
-        alert.setTitle("Modifications non enregistrées");
-        alert.setHeaderText("Quitter l'éditeur météo ?");
+        alert.setTitle("Unsaved Changes");
+        alert.setHeaderText("Exit Weather Editor?");
 
         ButtonType btnUpdate  = hasCurrentPreset
-            ? new ButtonType("💾 Mettre \u00e0 jour \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
+            ? new ButtonType("💾 Update \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
             : null;
-        ButtonType btnSaveAs  = new ButtonType("📝 Enregistrer sous...", ButtonBar.ButtonData.OTHER);
-        ButtonType btnDiscard = new ButtonType("🗑 Abandonner", ButtonBar.ButtonData.OTHER);
-        ButtonType btnCancel  = new ButtonType("Annuler", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType btnSaveAs  = new ButtonType("📝 Save As...", ButtonBar.ButtonData.OTHER);
+        ButtonType btnDiscard = new ButtonType("🗑 Discard", ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel  = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
 
         if (btnUpdate != null) {
             alert.getButtonTypes().setAll(btnUpdate, btnSaveAs, btnDiscard, btnCancel);
@@ -184,7 +184,7 @@ public class WeatherEditorPane extends BorderPane {
             }
             lastSelectedPreset = currentName;
             isDirty = false;
-            NotificationOverlay.show(this, "Preset \"" + currentName + "\" mis \u00e0 jour.", NotificationOverlay.NotificationType.SUCCESS);
+            NotificationOverlay.show(this, "Preset \"" + currentName + "\" updated.", NotificationOverlay.NotificationType.SUCCESS);
             return true;
         }
         if (result.get() == btnSaveAs) {
@@ -202,19 +202,19 @@ public class WeatherEditorPane extends BorderPane {
         mainContent.setPadding(new Insets(10, 15, 15, 15));
 
         // Section 1: Geographic & Real Weather Fetcher (City Search, Open-Meteo, Latitude, Longitude, Altitude, Daylight, Vegetation)
-        TitledPane geoSection = buildGeographicSection();
+        VBox geoSection = buildGeographicSection();
 
         // Section 2: Atmosphere & Soil Microclimate (Pressure, Wind Direction, Soil Thermal Inertia)
-        TitledPane atmoSection = buildAtmosphereSoilSection();
+        VBox atmoSection = buildAtmosphereSoilSection();
 
         // Section 3: Monthly Interactive Curves Chart & Editor
         VBox curvesSection = buildCurvesSection();
 
         // Section 4: Physical Coherence Checks
-        TitledPane coherenceSection = buildCoherenceSection();
+        VBox coherenceSection = buildCoherenceSection();
 
         // Section 5: Natural Disasters (Fire, Lightning, Sandstorm flight impairment, Flood, Tornado, Freeze)
-        TitledPane disasterPane = createDisastersSection();
+        VBox disasterPane = createDisastersSection();
 
         mainContent.getChildren().addAll(geoSection, atmoSection, curvesSection, coherenceSection, disasterPane);
 
@@ -340,7 +340,7 @@ public class WeatherEditorPane extends BorderPane {
         I18nManager i18n = I18nManager.getInstance();
         Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, String.format(i18n.get("preset.delete.confirm"), sel));
         confirmAlert.setTitle(i18n.get("preset.delete.title"));
-        confirmAlert.setHeaderText("Supprimer le Profil Climat");
+        confirmAlert.setHeaderText("Delete Climate Profile");
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -351,7 +351,7 @@ public class WeatherEditorPane extends BorderPane {
                 } else {
                     presetsCombo.getSelectionModel().clearSelection();
                 }
-                NotificationOverlay.show(this, "Preset climat supprimé.", NotificationOverlay.NotificationType.INFO);
+                NotificationOverlay.show(this, "Climate profile deleted.", NotificationOverlay.NotificationType.INFO);
             }
         });
     }
@@ -368,10 +368,16 @@ public class WeatherEditorPane extends BorderPane {
 
     // ── Geographic & Real Weather Search Section ───────────────────────────────
 
-    private TitledPane buildGeographicSection() {
+    private VBox buildGeographicSection() {
         I18nManager i18n = I18nManager.getInstance();
         VBox container = new VBox(10);
         container.setPadding(new Insets(10));
+        container.getStyleClass().add("card-pane");
+
+        Label title = new Label();
+        title.textProperty().bind(i18n.createStringBinding("weather.geo.title"));
+        title.getStyleClass().add("card-title");
+        title.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
         // Row 1: Real-World Open-Meteo Geocoding Search Bar
         HBox searchRow = new HBox(10);
@@ -384,17 +390,16 @@ public class WeatherEditorPane extends BorderPane {
         citySearchField = new TextField("Paris");
         citySearchField.promptTextProperty().bind(i18n.createStringBinding("weather.geo.search_prompt"));
         citySearchField.setPrefWidth(220);
-        citySearchField.setTooltip(new Tooltip("Nom de la ville pour importer les données météorologiques Open-Meteo en temps réel."));
+        citySearchField.tooltipProperty().bind(i18n.createTooltipBinding("weather.geo.city.tt"));
         citySearchField.setOnAction(e -> fetchRealWeather(citySearchField.getText()));
 
         Button btnFetch = new Button();
         btnFetch.getStyleClass().add("btn-primary");
         btnFetch.textProperty().bind(i18n.createStringBinding("weather.geo.search_btn"));
-        btnFetch.setTooltip(new Tooltip("Rechercher et télécharger les données climatiques réelles pour la ville spécifiée."));
+        btnFetch.tooltipProperty().bind(i18n.createTooltipBinding("weather.geo.fetch.tt"));
         btnFetch.setOnAction(e -> fetchRealWeather(citySearchField.getText()));
 
-        geoStatusLabel = new Label();
-        geoStatusLabel.textProperty().bind(i18n.createStringBinding("weather.hint.city"));
+        geoStatusLabel = new Label(i18n.get("weather.hint.city"));
         geoStatusLabel.setStyle("-fx-text-fill:#aaa;-fx-font-size:11;");
 
         searchRow.getChildren().addAll(lblSearch, citySearchField, btnFetch, geoStatusLabel);
@@ -410,7 +415,7 @@ public class WeatherEditorPane extends BorderPane {
         latSpinner = new Spinner<>(-90.0, 90.0, 48.8, 0.5);
         latSpinner.setEditable(true);
         latSpinner.setPrefWidth(100);
-        latSpinner.setTooltip(new Tooltip("Latitude géographique (-90° Sud à +90° Nord) pour le calcul du photopériodisme et du climat."));
+        latSpinner.tooltipProperty().bind(i18n.createTooltipBinding("weather.geo.lat.tt"));
         latSpinner.valueProperty().addListener((o, a, b) -> {
             updatePhotoperiod();
             updateAltitudeLapseRate();
@@ -424,7 +429,7 @@ public class WeatherEditorPane extends BorderPane {
         lonSpinner = new Spinner<>(-180.0, 180.0, 2.35, 0.5);
         lonSpinner.setEditable(true);
         lonSpinner.setPrefWidth(100);
-        lonSpinner.setTooltip(new Tooltip("Longitude géographique (-180° Ouest à +180° Est)."));
+        lonSpinner.tooltipProperty().bind(i18n.createTooltipBinding("weather.geo.lon.tt"));
 
         Label lblAlt = new Label();
         lblAlt.textProperty().bind(i18n.createStringBinding("weather.geo.alt"));
@@ -432,7 +437,7 @@ public class WeatherEditorPane extends BorderPane {
         altSpinner = new Spinner<>(0.0, 4000.0, 100.0, 50.0);
         altSpinner.setEditable(true);
         altSpinner.setPrefWidth(110);
-        altSpinner.setTooltip(new Tooltip("Altitude par rapport au niveau de la mer (0m à 4000m) affectant la température et la pression."));
+        altSpinner.tooltipProperty().bind(i18n.createTooltipBinding("weather.geo.alt.tt"));
         altSpinner.valueProperty().addListener((o, a, b) -> {
             updateAltitudeLapseRate();
             updateCoherenceStatus();
@@ -442,7 +447,7 @@ public class WeatherEditorPane extends BorderPane {
         lblVegTitle.textProperty().bind(i18n.createStringBinding("weather.geo.veg_label"));
         lblVegTitle.setStyle("-fx-font-weight:bold;");
 
-        vegCoverLabel = new Label("🌳 Forêt Tempérée Décidue (Temperate Deciduous Forest)");
+        vegCoverLabel = new Label("🌳 Temperate Deciduous Forest");
         vegCoverLabel.setStyle("-fx-text-fill:#28a745;-fx-font-weight:bold;");
 
         grid.add(lblLat, 0, 0);
@@ -460,7 +465,7 @@ public class WeatherEditorPane extends BorderPane {
         photoBox.setPadding(new Insets(8));
         photoBox.getStyleClass().add("card-pane");
 
-        Label photoTitle = new Label("☀️ Photopériodisme Calculé (Heures d'ensoleillement théoriques / jour) :");
+        Label photoTitle = new Label("☀️ Calculated Photoperiod (Theoretical daylight hours / day):");
         photoTitle.getStyleClass().add("card-title");
         photoTitle.setStyle("-fx-font-size: 11px;");
 
@@ -480,16 +485,10 @@ public class WeatherEditorPane extends BorderPane {
 
         photoBox.getChildren().addAll(photoTitle, hoursBox);
 
-        container.getChildren().addAll(searchRow, new Separator(), grid, photoBox);
-
-        TitledPane pane = new TitledPane();
-        pane.textProperty().bind(i18n.createStringBinding("weather.geo.title"));
-        pane.setContent(container);
-        styleTitledPane(pane);
-        pane.setExpanded(true);
+        container.getChildren().addAll(title, searchRow, new Separator(), grid, photoBox);
 
         updatePhotoperiod();
-        return pane;
+        return container;
     }
 
     private void fetchRealWeather(String cityQuery) {
@@ -511,9 +510,9 @@ public class WeatherEditorPane extends BorderPane {
 
                 if (!root.has("results") || root.get("results").isEmpty()) {
                     Platform.runLater(() -> {
-                        geoStatusLabel.setText(i18n.get("weather.geo.status_error", "Lieu introuvable"));
+                        geoStatusLabel.setText(i18n.get("weather.geo.status_error", "Location not found"));
                         geoStatusLabel.setStyle("-fx-text-fill:#ff4757;-fx-font-size:11;");
-                        NotificationOverlay.show(this, "Lieu \"" + cityQuery + "\" introuvable.", NotificationOverlay.NotificationType.WARNING);
+                        NotificationOverlay.show(this, "Location \"" + cityQuery + "\" not found.", NotificationOverlay.NotificationType.WARNING);
                     });
                     return;
                 }
@@ -601,14 +600,14 @@ public class WeatherEditorPane extends BorderPane {
                     geoStatusLabel.setText(i18n.get("weather.geo.status_success", name, String.format(Locale.US, "%.2f", lat), String.format(Locale.US, "%.2f", lon), (int) alt));
                     geoStatusLabel.setStyle("-fx-text-fill:#28a745;-fx-font-weight:bold;-fx-font-size:11;");
 
-                    NotificationOverlay.show(this, "Climat réel de " + name + " (" + String.format(Locale.US, "%.2f°N, %.2f°E", lat, lon) + ") chargé avec succès !", NotificationOverlay.NotificationType.SUCCESS);
+                    NotificationOverlay.show(this, "Real climate of " + name + " (" + String.format(Locale.US, "%.2f°N, %.2f°E", lat, lon) + ") successfully loaded!", NotificationOverlay.NotificationType.SUCCESS);
                 });
 
             } catch (Exception ex) {
                 Platform.runLater(() -> {
                     geoStatusLabel.setText(i18n.get("weather.geo.status_error", ex.getMessage()));
                     geoStatusLabel.setStyle("-fx-text-fill:#ff4757;-fx-font-size:11;");
-                    NotificationOverlay.show(this, "Erreur météo: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
+                    NotificationOverlay.show(this, "Weather error: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
                 });
             }
         }).start();
@@ -643,7 +642,7 @@ public class WeatherEditorPane extends BorderPane {
         double annualRain = getSum(rainAvg);
 
         org.swarmforge.core.domain.BioclimaticZone zone = org.swarmforge.core.domain.BioclimaticZone.classify(lat, annualTemp, annualRain);
-        vegCoverLabel.setText(zone.getDisplayName() + " — Adéquation: " + zone.getRecommendedInsectSpecies());
+        vegCoverLabel.setText(zone.getDisplayName() + " — Suitability: " + zone.getRecommendedInsectSpecies());
     }
 
     private void updatePhotoperiod() {
@@ -680,11 +679,19 @@ public class WeatherEditorPane extends BorderPane {
 
     // ── Atmosphere & Soil Microclimate Card ────────────────────────────────────
 
-    private TitledPane buildAtmosphereSoilSection() {
+    private VBox buildAtmosphereSoilSection() {
+        VBox container = new VBox(10);
+        container.setPadding(new Insets(10));
+        container.getStyleClass().add("card-pane");
+
+        Label title = new Label("🌫️ Atmosphere, Winds & Subterranean Soil Microclimate");
+        title.getStyleClass().add("card-title");
+        title.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+
         GridPane grid = new GridPane();
         grid.setHgap(15);
         grid.setVgap(10);
-        grid.setPadding(new Insets(10));
+        grid.setPadding(new Insets(5, 0, 0, 0));
         ColumnConstraints c1 = new ColumnConstraints();
         c1.setMinWidth(240);
         c1.setPrefWidth(260);
@@ -697,47 +704,47 @@ public class WeatherEditorPane extends BorderPane {
         pressureSpinner = new Spinner<>(800.0, 1100.0, 1013.2, 1.0);
         pressureSpinner.setEditable(true);
         pressureSpinner.setPrefWidth(100);
-        Label lblPress = createTooltipLabel("🎚️ Pression Atmosphérique (hPa) :", "Pression barométrique de base calculée selon le modèle OACI de l'atmosphère standard en hectopascals (hPa).", pressureSpinner, "Pression Atmosphérique");
+        Label lblPress = createTooltipLabel("🎚️ Barometric Pressure (hPa):", "Base barometric pressure calculated according to ICAO standard atmosphere model in hPa.", pressureSpinner, "Atmospheric Pressure");
 
         windDirCombo = new ComboBox<>();
         windDirCombo.getItems().addAll("E", "N", "NE", "NW", "S", "SE", "SW", "W");
         ComboBoxTooltipHelper.setupDescriptiveComboBox(windDirCombo,
             val -> switch (val) {
-                case "N" -> "⬆️ Nord (N)";
-                case "NE" -> "↗️ Nord-Est (NE)";
-                case "E" -> "➡️ Est (E)";
-                case "SE" -> "↘️ Sud-Est (SE)";
-                case "S" -> "⬇️ Sud (S)";
-                case "SW" -> "↙️ Sud-Ouest (SW)";
-                case "W" -> "⬅️ Ouest (W)";
-                case "NW" -> "↖️ Nord-Ouest (NW)";
+                case "N" -> "⬆️ North (N)";
+                case "NE" -> "↗️ North-East (NE)";
+                case "E" -> "➡️ East (E)";
+                case "SE" -> "↘️ South-East (SE)";
+                case "S" -> "⬇️ South (S)";
+                case "SW" -> "↙️ South-West (SW)";
+                case "W" -> "⬅️ West (W)";
+                case "NW" -> "↖️ North-West (NW)";
                 default -> val;
             },
             val -> switch (val) {
-                case "N" -> "Vent venant du Nord (0°). Air généralement froid et sec.";
-                case "NE" -> "Vent venant du Nord-Est (45°). Flux continental froid/frais.";
-                case "E" -> "Vent venant de l'Est (90°). Vent d'Est sec.";
-                case "SE" -> "Vent venant du Sud-Est (135°). Vent chaud et continental.";
-                case "S" -> "Vent venant du Sud (180°). Masse d'air chaude et tropicale.";
-                case "SW" -> "Vent venant du Sud-Ouest (225°). Flux océanique doux et humide.";
-                case "W" -> "Vent venant de l'Ouest (270°). Vent d'Ouest maritime instable.";
-                case "NW" -> "Vent venant du Nord-Ouest (315°). Air maritime frais et pluvieux.";
+                case "N" -> "Wind coming from the North (0°). Generally cold and dry air.";
+                case "NE" -> "Wind coming from North-East (45°). Cool/cold continental flow.";
+                case "E" -> "Wind coming from the East (90°). Dry easterly wind.";
+                case "SE" -> "Wind coming from South-East (135°). Warm continental wind.";
+                case "S" -> "Wind coming from South (180°). Warm tropical air mass.";
+                case "SW" -> "Wind coming from South-West (225°). Mild and humid oceanic flow.";
+                case "W" -> "Wind coming from West (270°). Unstable maritime westerly wind.";
+                case "NW" -> "Wind coming from North-West (315°). Cool and rainy maritime air.";
                 default -> "";
             }
         );
         windDirCombo.setValue("SW");
         windDirCombo.setPrefWidth(80);
-        Label lblWindDir = createTooltipLabel("🧭 Direction du Vent Dominant :", "Direction dominante des masses d'air agissant sur la dispersion des plumes phéromonales et l'envol des sexués.", windDirCombo);
+        Label lblWindDir = createTooltipLabel("🧭 Dominant Wind Direction:", "Dominant air mass direction affecting pheromone plume dispersion and nuptial flight.", windDirCombo);
 
         soilInertiaSpinner = new Spinner<>(0.5, 14.0, 3.0, 0.5);
         soilInertiaSpinner.setEditable(true);
         soilInertiaSpinner.setPrefWidth(90);
-        Label lblSoilInertia = createTooltipLabel("🧱 Inertie Thermique du Sol (Jours) :", "Déphasage thermique en jours de retard entre la température moyenne de l'air et la température du sol.", soilInertiaSpinner, "Sol & Microclimat");
+        Label lblSoilInertia = createTooltipLabel("🧱 Soil Thermal Inertia (Days):", "Thermal lag in days between mean air temperature and subterranean soil temperature.", soilInertiaSpinner, "Soil & Microclimate");
 
         depthAttenSpinner = new Spinner<>(0.0, 1.0, 0.85, 0.05);
         depthAttenSpinner.setEditable(true);
         depthAttenSpinner.setPrefWidth(90);
-        Label lblAtten = createTooltipLabel("🕳️ Atténuation en Profondeur (0-1) :", "Facteur d'atténuation de l'amplitude thermique quotidienne/annuelle dans les galeries souterraines du nid.", depthAttenSpinner);
+        Label lblAtten = createTooltipLabel("🕳️ Depth Attenuation (0-1):", "Attenuation factor for daily/annual thermal fluctuation in subterranean nest galleries.", depthAttenSpinner);
 
         grid.add(lblPress, 0, 0);
         grid.add(pressureSpinner, 1, 0);
@@ -748,10 +755,8 @@ public class WeatherEditorPane extends BorderPane {
         grid.add(lblAtten, 2, 1);
         grid.add(depthAttenSpinner, 3, 1);
 
-        TitledPane pane = new TitledPane("🌫️ Atmosphère, Vents & Microclimat Souterrain du Sol", grid);
-        styleTitledPane(pane);
-        pane.setExpanded(true);
-        return pane;
+        container.getChildren().addAll(title, grid);
+        return container;
     }
 
     private Label createTooltipLabel(String text, String tooltipText) {
@@ -876,7 +881,7 @@ public class WeatherEditorPane extends BorderPane {
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
-        Label hint = new Label("💡 Cliquez et glissez sur les points du graphique pour modifier les courbes");
+        Label hint = new Label("💡 Click and drag graph data points to modify monthly curves");
         hint.setStyle("-fx-text-fill:#888;-fx-font-size:10;-fx-font-style:italic;");
 
         bar.getChildren().addAll(minLbl, avgLbl, maxLbl, sp, hint);
@@ -1057,10 +1062,10 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     private String getPrecipitationType(int month) {
-        if (tempMax[month] < 0) return "❄️ Neige";
-        if (tempAvg[month] > 28 && rainAvg[month] > 150) return "🧊 Orages / Grêle";
-        if (rainAvg[month] > 5) return "🌧 Pluie";
-        return "☀️ Dégagé";
+        if (tempMax[month] < 0) return "❄️ Snow";
+        if (tempAvg[month] > 28 && rainAvg[month] > 150) return "🧊 Storms / Hail";
+        if (rainAvg[month] > 5) return "🌧 Rain";
+        return "☀️ Clear";
     }
 
     private void syncAndValidate() {
@@ -1255,10 +1260,16 @@ public class WeatherEditorPane extends BorderPane {
 
     // ── Physical Coherence Engine ─────────────────────────────────────────────
 
-    private TitledPane buildCoherenceSection() {
+    private VBox buildCoherenceSection() {
         I18nManager i18n = I18nManager.getInstance();
         VBox box = new VBox(8);
         box.setPadding(new Insets(10));
+        box.getStyleClass().add("card-pane");
+
+        Label title = new Label();
+        title.textProperty().bind(i18n.createStringBinding("weather.coherence.title"));
+        title.getStyleClass().add("card-title");
+        title.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
         HBox banner = new HBox(12);
         banner.setAlignment(Pos.CENTER_LEFT);
@@ -1278,16 +1289,10 @@ public class WeatherEditorPane extends BorderPane {
         coherenceDetailsBox = new VBox(4);
         coherenceDetailsBox.setPadding(new Insets(4, 0, 0, 0));
 
-        box.getChildren().addAll(banner, new Separator(), coherenceDetailsBox);
-
-        TitledPane pane = new TitledPane();
-        pane.textProperty().bind(i18n.createStringBinding("weather.coherence.title"));
-        pane.setContent(box);
-        pane.setExpanded(true);
-        styleTitledPane(pane);
+        box.getChildren().addAll(title, banner, new Separator(), coherenceDetailsBox);
 
         updateCoherenceStatus();
-        return pane;
+        return box;
     }
 
     private void updateCoherenceStatus() {
@@ -1300,29 +1305,29 @@ public class WeatherEditorPane extends BorderPane {
         for (int m = 0; m < 12; m++) {
             String mName = MONTH_KEYS[m];
 
-            checkOrder("Température", mName, tempMin[m], tempAvg[m], tempMax[m], errors);
+            checkOrder("Temperature", mName, tempMin[m], tempAvg[m], tempMax[m], errors);
             checkOrder("Vent", mName, windMin[m], windAvg[m], windMax[m], errors);
-            checkOrder("Pluviométrie", mName, rainMin[m], rainAvg[m], rainMax[m], errors);
-            checkOrder("Humidité", mName, humidityMin[m], humidityAvg[m], humidityMax[m], errors);
+            checkOrder("Precipitation", mName, rainMin[m], rainAvg[m], rainMax[m], errors);
+            checkOrder("Humidity", mName, humidityMin[m], humidityAvg[m], humidityMax[m], errors);
 
             if (rainAvg[m] > 120 && humidityAvg[m] < 35) {
-                warnings.add(String.format("⚠️ %s : Forte pluie (%.0f mm) mais air très sec (%.0f%% HR). Risque d'évaporation (Virga).",
+                warnings.add(String.format("⚠️ %s: Heavy rain (%.0f mm) but very dry air (%.0f%% RH). Evaporation risk (Virga).",
                         mName, rainAvg[m], humidityAvg[m]));
             }
 
             if (tempMax[m] < 0 && rainAvg[m] > 10) {
-                warnings.add(String.format("❄️ %s : Pluies sous 0°C (Max %.1f°C). Converti en précipitation neigeuse (Neige).",
+                warnings.add(String.format("❄️ %s: Rainfall below 0°C (Max %.1f°C). Converted to snowfall.",
                         mName, tempMax[m]));
             }
 
             if (tempAvg[m] > 38 && humidityAvg[m] > 80) {
-                warnings.add(String.format("🔥 %s : Température extrême (%.1f°C) et forte humidité (%.0f%% HR). Indice de chaleur critique.",
+                warnings.add(String.format("🔥 %s: Extreme temperature (%.1f°C) and high humidity (%.0f%% RH). Critical heat index.",
                         mName, tempAvg[m], humidityAvg[m]));
             }
 
             // Sandstorm warning (High wind + drought)
             if (windAvg[m] > 40 && rainAvg[m] < 10 && humidityAvg[m] < 25) {
-                warnings.add(String.format("🏜️ %s : Vent fort (%.0f km/h) & sécheresse extrême. Tempête de sable/poussière (Vol d'insectes impossible).",
+                warnings.add(String.format("🏜️ %s: Strong wind (%.0f km/h) & extreme drought. Sandstorm / Dust storm (Flight prohibited).",
                         mName, windAvg[m]));
             }
         }
@@ -1376,7 +1381,7 @@ public class WeatherEditorPane extends BorderPane {
         updateSpinnersForActiveParam();
         syncAndValidate();
         redrawCurves();
-        NotificationOverlay.show(this, "Courbes réharmonisées avec succès selon les règles de cohérence physique !", NotificationOverlay.NotificationType.SUCCESS);
+        NotificationOverlay.show(this, "Curves successfully harmonized according to physical coherence rules!", NotificationOverlay.NotificationType.SUCCESS);
     }
 
     private void harmonizeTriplet(double[] min, double[] avg, double[] max, int m) {
@@ -1386,10 +1391,16 @@ public class WeatherEditorPane extends BorderPane {
 
     // ── Natural Disasters Section ─────────────────────────────────────────────
 
-    private TitledPane createDisastersSection() {
+    private VBox createDisastersSection() {
         I18nManager i18n = I18nManager.getInstance();
         VBox content = new VBox(10);
         content.setPadding(new Insets(10));
+        content.getStyleClass().add("card-pane");
+
+        Label title = new Label();
+        title.textProperty().bind(i18n.createStringBinding("weather.disasters.title"));
+        title.getStyleClass().add("card-title");
+        title.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
         Label warning = new Label();
         warning.textProperty().bind(i18n.createStringBinding("weather.disasters.warning"));
@@ -1414,17 +1425,17 @@ public class WeatherEditorPane extends BorderPane {
             Label label = new Label();
             label.textProperty().bind(i18n.createStringBinding(disaster[0]));
             label.setStyle("-fx-min-width: 140;");
-            Tooltip.install(label, new Tooltip("Probabilité annuelle d'occurrence de la catastrophe naturelle : " + disaster[2]));
+            label.tooltipProperty().bind(i18n.createTooltipBinding("weather.disasters.slider.tt"));
 
             Slider slider = new Slider(0, 20, Double.parseDouble(disaster[1]));
             slider.setPrefWidth(200);
             slider.setShowTickLabels(true);
             slider.setMajorTickUnit(5);
-            slider.setTooltip(new Tooltip("Réglez la probabilité annuelle d'occurrence de la catastrophe (0% à 20% par an)."));
+            slider.tooltipProperty().bind(i18n.createTooltipBinding("weather.disasters.slider.tt"));
 
             Label valueLabel = new Label(disaster[1] + "% /an");
             valueLabel.setStyle("-fx-min-width: 80;");
-            valueLabel.setTooltip(new Tooltip("Probabilité exprimée en pourcentage par an."));
+            valueLabel.tooltipProperty().bind(i18n.createTooltipBinding("weather.disasters.val.tt"));
             slider.valueProperty().addListener((obs, old, val) ->
                     valueLabel.setText(String.format("%.1f%% /an", val.doubleValue())));
 
@@ -1436,14 +1447,8 @@ public class WeatherEditorPane extends BorderPane {
             row++;
         }
 
-        content.getChildren().addAll(warning, grid);
-
-        TitledPane pane = new TitledPane();
-        pane.textProperty().bind(i18n.createStringBinding("weather.disasters.title"));
-        pane.setContent(content);
-        styleTitledPane(pane);
-        pane.setExpanded(false);
-        return pane;
+        content.getChildren().addAll(title, warning, grid);
+        return content;
     }
 
     private void styleTitledPane(TitledPane pane) {
@@ -1565,19 +1570,19 @@ public class WeatherEditorPane extends BorderPane {
                 ? presetsCombo.getEditor().getText().trim()
                 : (presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom Climate Profile");
         TextInputDialog d = org.swarmforge.client.util.ThemeManager.createTextInputDialog(defaultName);
-        d.setTitle("Enregistrer Preset Climat");
-        d.setHeaderText("Nom du profil climatique :");
-        d.setContentText("Nom :");
+        d.setTitle("Save Climate Preset");
+        d.setHeaderText("Climate profile name:");
+        d.setContentText("Name:");
         d.showAndWait().ifPresent(name -> {
             if (name == null || name.isBlank()) return;
             String clean = name.trim();
             if (presetMgr.contains(clean)) {
                 Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
                     Alert.AlertType.CONFIRMATION,
-                    "Le preset climatique '" + clean + "' existe déjà.\n\nVoulez-vous le remplacer par la configuration actuelle ?"
+                    "Climate preset '" + clean + "' already exists.\n\nDo you want to replace it with current configuration?"
                 );
-                confirmAlert.setTitle("Remplacer le Preset Existant");
-                confirmAlert.setHeaderText("Confirmation de remplacement");
+                confirmAlert.setTitle("Replace Existing Preset");
+                confirmAlert.setHeaderText("Replacement Confirmation");
                 java.util.Optional<ButtonType> res = confirmAlert.showAndWait();
                 if (res.isEmpty() || res.get() != ButtonType.OK) {
                     return;
@@ -1593,28 +1598,28 @@ public class WeatherEditorPane extends BorderPane {
             }
             lastSelectedPreset = clean;
             isDirty = false;
-            NotificationOverlay.show(this, "Preset \"" + clean + "\" sauvegardé avec succès.", NotificationOverlay.NotificationType.SUCCESS);
+            NotificationOverlay.show(this, "Preset \"" + clean + "\" successfully saved.", NotificationOverlay.NotificationType.SUCCESS);
         });
     }
 
     private void doExport() {
         FileChooser fc = new FileChooser();
-        fc.setTitle("Exporter Profil Climat");
+        fc.setTitle("Export Climate Profile");
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON", "*.json"));
         fc.setInitialFileName("weather_climate.json");
         File f = fc.showSaveDialog(getScene().getWindow());
         if (f == null) return;
         try {
             new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(f, getConfiguration());
-            NotificationOverlay.show(this, "Profil exporté avec succès !", NotificationOverlay.NotificationType.SUCCESS);
+            NotificationOverlay.show(this, "Profile exported successfully!", NotificationOverlay.NotificationType.SUCCESS);
         } catch (Exception ex) {
-            NotificationOverlay.show(this, "Erreur d'exportation : " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
+            NotificationOverlay.show(this, "Export error: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
         }
     }
 
     private void doImport() {
         FileChooser fc = new FileChooser();
-        fc.setTitle("Importer Profil Climat");
+        fc.setTitle("Import Climate Profile");
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON", "*.json"));
         File f = fc.showOpenDialog(getScene().getWindow());
         if (f == null) return;
@@ -1622,18 +1627,18 @@ public class WeatherEditorPane extends BorderPane {
             @SuppressWarnings("unchecked")
             Map<String, Object> cfg = new com.fasterxml.jackson.databind.ObjectMapper().readValue(f, Map.class);
             applyPresetConfig(cfg);
-            NotificationOverlay.show(this, "Profil importé avec succès !", NotificationOverlay.NotificationType.SUCCESS);
+            NotificationOverlay.show(this, "Profile imported successfully!", NotificationOverlay.NotificationType.SUCCESS);
         } catch (Exception ex) {
-            NotificationOverlay.show(this, "Erreur d'importation : " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
+            NotificationOverlay.show(this, "Import error: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
         }
     }
 
     private void applyToWorld() {
         if (onApplyCallback != null) {
             onApplyCallback.accept(getConfiguration());
-            NotificationOverlay.show(this, "Profil climatique appliqué au monde de simulation.", NotificationOverlay.NotificationType.SUCCESS);
+            NotificationOverlay.show(this, "Climate profile applied to simulation world.", NotificationOverlay.NotificationType.SUCCESS);
         } else {
-            NotificationOverlay.show(this, "Aucun éditeur de monde connecté.", NotificationOverlay.NotificationType.WARNING);
+            NotificationOverlay.show(this, "No world editor connected.", NotificationOverlay.NotificationType.WARNING);
         }
     }
 

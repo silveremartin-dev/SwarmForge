@@ -8,6 +8,8 @@ package org.swarmforge.core;
 
 import org.junit.jupiter.api.*;
 import org.swarmforge.core.domain.*;
+import org.swarmforge.core.domain.Individual;
+import org.swarmforge.core.domain.Individual.Caste;
 import org.swarmforge.core.simulation.*;
 
 import static org.junit.jupiter.api.Assertions.*;

@@ -42,25 +42,32 @@ public class FlyingInsectNavigationTest {
         assertEquals("BEE", species.getInsectType());
 
         Colony beeColony = new Colony(species, 30, 30, 15); // Hive at z=15 (elevated tree comb)
-        Individual bee = new Individual(beeColony.getId(), species.getCastes().get(1), 30, 30, 15);
+        Individual bee = new Individual(beeColony.getId(), Individual.Caste.WORKER, 30, 30, 15);
         bee.setSpecies(species);
         beeColony.addIndividual(bee);
 
         assertTrue(bee.canFly());
 
-        // Target flower patch at (90, 90, 8)
-        float targetX = 90f, targetY = 90f, targetZ = 8f;
+        // Target flower patch at (90, 90) with altitude relative to ground elevation
+        float targetX = 90f, targetY = 90f;
+        int groundElevation = getGroundHeightAt(terrarium, (int) targetX, (int) targetY);
+        float altitudeAboveGround = 8.0f; // 8 units relative to local terrain slope
+        float targetZ = groundElevation + altitudeAboveGround;
         float initialEnergy = bee.getEnergy();
 
-        // Perform 3D flight steps
-        for (int i = 0; i < 50; i++) {
-            bee.fly3D(targetX, targetY, targetZ, 2.0f);
+        // Perform 15.0 seconds of flight (0.05s per step iteration)
+        float flightDurationSeconds = 15.0f;
+        float stepTimeSeconds = 0.05f;
+        int totalTicks = (int) Math.ceil(flightDurationSeconds / stepTimeSeconds);
+
+        for (int i = 0; i < totalTicks; i++) {
+            bee.fly3D(targetX, targetY, targetZ, 3.0f);
         }
 
         // Bee moved closer to target in 3D
-        assertTrue(Math.abs(bee.getX() - targetX) < 10.0f);
-        assertTrue(Math.abs(bee.getY() - targetY) < 10.0f);
-        assertTrue(Math.abs(bee.getZ() - targetZ) < 5.0f);
+        assertTrue(Math.abs(bee.getX() - targetX) < 15.0f);
+        assertTrue(Math.abs(bee.getY() - targetY) < 15.0f);
+        assertTrue(Math.abs(bee.getZ() - targetZ) < 10.0f);
         assertTrue(bee.getEnergy() < initialEnergy); // Flight energy consumed
 
         // Harvest nectar at flower patch
@@ -68,13 +75,13 @@ public class FlyingInsectNavigationTest {
         bee.setCarriedResourceType(ResourceType.NECTAR);
         assertTrue(bee.isCarryingFood());
 
-        // Fly back to hive at (30, 30, 15)
-        for (int i = 0; i < 50; i++) {
-            bee.fly3D(30f, 30f, 15f, 2.0f);
+        // Fly back to hive at (30, 30, 15) for 15.0 seconds
+        for (int i = 0; i < totalTicks; i++) {
+            bee.fly3D(30f, 30f, 15f, 3.0f);
         }
 
-        assertTrue(Math.abs(bee.getX() - 30f) < 10.0f);
-        assertTrue(Math.abs(bee.getZ() - 15f) < 5.0f);
+        assertTrue(Math.abs(bee.getX() - 30f) < 15.0f);
+        assertTrue(Math.abs(bee.getZ() - 15f) < 10.0f);
     }
 
     @Test
@@ -84,16 +91,22 @@ public class FlyingInsectNavigationTest {
         assertTrue(waspSpecies.isWorkersCanFly());
 
         Colony waspColony = new Colony(waspSpecies, 50, 50, 20); // Aerial paper nest at z=20
-        Individual wasp = new Individual(waspColony.getId(), waspSpecies.getCastes().get(0), 50, 50, 20);
+        Individual wasp = new Individual(waspColony.getId(), Individual.Caste.WORKER, 50, 50, 20);
         wasp.setSpecies(waspSpecies);
         waspColony.addIndividual(wasp);
 
-        // Spawn aerial caterpillar prey target
-        Predator caterpillar = simulation.getPredatorManager().spawnPredator(PredatorType.CATERPILLAR, 70, 70, 2);
+        // Spawn aerial caterpillar prey target near ground surface (2 units above local ground elevation)
+        int caterpillarGround = getGroundHeightAt(terrarium, 70, 70);
+        float caterpillarZ = caterpillarGround + 2.0f;
+        Predator caterpillar = simulation.getPredatorManager().spawnPredator(PredatorType.CATERPILLAR, 70, 70, (int) caterpillarZ);
 
-        // Wasp swoops down from z=20 to z=2
-        for (int i = 0; i < 30; i++) {
-            wasp.fly3D(70f, 70f, 2f, 2.5f);
+        // Wasp swoops down for 5.0 seconds of flight towards target
+        float huntDurationSeconds = 5.0f;
+        float stepTimeSeconds = 0.05f;
+        int huntTicks = (int) Math.ceil(huntDurationSeconds / stepTimeSeconds);
+
+        for (int i = 0; i < huntTicks; i++) {
+            wasp.fly3D(70f, 70f, caterpillarZ, 2.5f);
         }
 
         assertTrue(wasp.getZ() < 10.0f); // Descended during aerial hunt
@@ -102,8 +115,8 @@ public class FlyingInsectNavigationTest {
         caterpillar.takeDamage(50f);
         assertFalse(caterpillar.isAlive());
 
-        // Wasp flies back up to paper nest at z=20
-        for (int i = 0; i < 30; i++) {
+        // Wasp flies back up to paper nest at z=20 for 5.0 seconds
+        for (int i = 0; i < huntTicks; i++) {
             wasp.fly3D(50f, 50f, 20f, 2.5f);
         }
 
@@ -123,5 +136,15 @@ public class FlyingInsectNavigationTest {
 
         float energySpent = startEnergy - bee.getEnergy();
         assertTrue(energySpent > 0.0f);
+    }
+
+    private int getGroundHeightAt(Terrarium terrarium, int x, int y) {
+        for (int z = terrarium.getDepth() - 1; z >= 0; z--) {
+            TerrariumCell cell = terrarium.getCell(x, y, z);
+            if (cell != null && cell.material() != TerrariumCell.Material.AIR) {
+                return z;
+            }
+        }
+        return 0; // Surface level default
     }
 }

@@ -16,13 +16,13 @@ package org.swarmforge.core.domain;
  */
 public enum TreeSpecies {
 
-    OAK("Chêne (Quercus robur)", "Fagaceae", 0.85f, 0.90f, 0.40f, 0.60f, 0.70f, 0.95f),
-    PINE("Pin Sylvestre (Pinus sylvestris)", "Pinaceae", 0.40f, 0.30f, 0.95f, 0.90f, 0.85f, 0.40f),
-    ACACIA("Acacia à Épines (Vachellia)", "Fabaceae", 0.60f, 0.95f, 0.20f, 0.30f, 0.50f, 1.00f),
-    BIRCH("Bouleau (Betula pendula)", "Betulaceae", 0.75f, 0.60f, 0.50f, 0.75f, 0.60f, 0.80f),
-    BAMBOO("Bambou Géant (Phyllostachys)", "Poaceae", 0.30f, 0.20f, 0.10f, 0.20f, 0.90f, 0.30f),
-    CACTUS("Cactus Saguaro / Raquette (Opuntia)", "Cactaceae", 0.05f, 0.85f, 0.10f, 0.15f, 0.95f, 0.40f),
-    DEAD_LOG("Souche / Tronc Mort En Décomposition", "Cellulose Decay", 0.10f, 0.05f, 0.15f, 0.40f, 1.00f, 0.10f);
+    OAK("Oak Tree (Quercus robur)", "Fagaceae", 0.85f, 0.90f, 0.40f, 0.60f, 0.70f, 0.95f),
+    PINE("Scots Pine (Pinus sylvestris)", "Pinaceae", 0.40f, 0.30f, 0.95f, 0.90f, 0.85f, 0.40f),
+    ACACIA("Thorn Acacia (Vachellia)", "Fabaceae", 0.60f, 0.95f, 0.20f, 0.30f, 0.50f, 1.00f),
+    BIRCH("Silver Birch (Betula pendula)", "Betulaceae", 0.75f, 0.60f, 0.50f, 0.75f, 0.60f, 0.80f),
+    BAMBOO("Giant Bamboo (Phyllostachys)", "Poaceae", 0.30f, 0.20f, 0.10f, 0.20f, 0.90f, 0.30f),
+    CACTUS("Saguaro / Prickly Pear Cactus (Opuntia)", "Cactaceae", 0.05f, 0.85f, 0.10f, 0.15f, 0.95f, 0.40f),
+    DEAD_LOG("Decaying Stump / Dead Trunk", "Cellulose Decay", 0.10f, 0.05f, 0.15f, 0.40f, 1.00f, 0.10f);
 
     private final String displayName;
     private final String family;

@@ -50,7 +50,10 @@ class EcologyTest {
         // - Deposit LEAF
 
         // Initial State
-        assertEquals(0f, colony.getResourceAmount(ResourceType.LEAF));
+        colony.setResourceAmount(ResourceType.LEAF, 10f);
+        colony.setResourceAmount(ResourceType.MULCH, 0f);
+        colony.setResourceAmount(ResourceType.FUNGUS, 0f);
+        assertEquals(10f, colony.getResourceAmount(ResourceType.LEAF));
         assertEquals(0f, colony.getResourceAmount(ResourceType.MULCH));
         assertEquals(0f, colony.getResourceAmount(ResourceType.FUNGUS));
 

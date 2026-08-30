@@ -24,7 +24,7 @@ public class CamponotusPennsylvanicus extends CustomSpecies {
         setCommonName("Black Carpenter Ant");
         setScientificName("Camponotus pennsylvanicus");
         setInsectType("ANT");
-        setDescription("Espèce nord-américaine de grande taille nichant dans le bois mort.");
+        setDescription("Large North American species nesting in decaying wood.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365 * 25);

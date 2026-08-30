@@ -11,6 +11,7 @@ import org.swarmforge.client.util.NotificationOverlay;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -62,6 +63,9 @@ public class SwarmForgeClient extends Application {
         private Tab godTab;
         private Tab statsTab;
         private Tab eventLogTab;
+        private Tab glossaryTab;
+        private TextField glossarySearchField;
+        private TabPane glossaryCategoryTabPane;
         private TabPane simSubTabs;
         private HBox connectBox;
         private VBox simulationInactiveOverlay;
@@ -89,21 +93,14 @@ public class SwarmForgeClient extends Application {
     public void start(Stage primaryStage) {
         LOG.info("Starting SwarmForge Editor...");
 
-        // Show Splash Screen on startup with progress bar
-        org.swarmforge.client.ui.SplashScreen splashScreen = new org.swarmforge.client.ui.SplashScreen();
+        // 1. Immediately bind window icons to primary stage for OS taskbar registration
+        org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage);
+
+        // 2. Show Splash Screen on startup with progress bar, bound to primary stage owner
+        org.swarmforge.client.ui.SplashScreen splashScreen = new org.swarmforge.client.ui.SplashScreen(primaryStage);
         splashScreen.show();
 
         org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
-        
-        // Window Icon
-        try {
-            java.io.InputStream iconStream = getClass().getResourceAsStream("/icons/icon.png");
-            if (iconStream != null) {
-                primaryStage.getIcons().add(new javafx.scene.image.Image(iconStream));
-            }
-        } catch (Exception e) {
-            LOG.warning("Could not load application icon: " + e.getMessage());
-        }
 
         // title binding
         primaryStage.titleProperty().bind(I18nManager.getInstance().createStringBinding("app.title"));
@@ -182,12 +179,14 @@ public class SwarmForgeClient extends Application {
         settingsTab.setContent(createSettingsPane());
 
         // --- TAB 8: GLOSSARY ---
-        Tab glossaryTab = new Tab();
-        glossaryTab.textProperty().bind(i18n.createStringBinding("tab.glossary"));
-        glossaryTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.BOOK_OPEN));
-        glossaryTab.setContent(createGlossaryPaneView());
+        this.glossaryTab = new Tab();
+        this.glossaryTab.textProperty().bind(i18n.createStringBinding("tab.glossary"));
+        this.glossaryTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.BOOK_OPEN));
+        this.glossaryTab.setContent(createGlossaryPaneView());
 
-        mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, accessoryTab, weatherTab, nestTab, settingsTab, glossaryTab);
+        mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, accessoryTab, weatherTab, nestTab, settingsTab, this.glossaryTab);
+
+        org.swarmforge.client.ui.GlossaryDialog.setNavigationHandler(this::navigateToGlossaryTab);
 
         final boolean[] isProgrammaticTabSwitch = { false };
         mainTabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
@@ -277,41 +276,42 @@ public class SwarmForgeClient extends Application {
                 HBox connectBox = new HBox(12);
                 this.connectBox = connectBox;
                 connectBox.setAlignment(Pos.CENTER_LEFT);
-                connectBox.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8 12; -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.08); -fx-border-radius: 6;");
+                connectBox.getStyleClass().add("header-banner");
 
                 Label hostLabel = new Label();
                 hostLabel.textProperty().bind(i18n.createStringBinding("label.host"));
-                hostLabel.setStyle("-fx-text-fill: #94a3b8;");
-                hostLabel.setTooltip(new Tooltip("Adresse réseau IP ou nom d'hôte du serveur gRPC SwarmForge"));
+                hostLabel.tooltipProperty().bind(i18n.createTooltipBinding("label.host.tt"));
                 TextField hostField = new TextField("localhost");
                 hostField.setPrefWidth(110);
-                hostField.setTooltip(new Tooltip("Hôte gRPC (ex: localhost ou IP distante)"));
+                hostField.tooltipProperty().bind(i18n.createTooltipBinding("label.host.input.tt"));
 
                 Label portLabel = new Label();
                 portLabel.textProperty().bind(i18n.createStringBinding("label.port"));
-                portLabel.setStyle("-fx-text-fill: #94a3b8;");
-                portLabel.setTooltip(new Tooltip("Port gRPC de communication (par défaut 50051)"));
+                portLabel.tooltipProperty().bind(i18n.createTooltipBinding("label.port.tt"));
                 TextField portField = new TextField("50051");
                 portField.setPrefWidth(70);
-                portField.setTooltip(new Tooltip("Port d'écoute gRPC"));
+                portField.tooltipProperty().bind(i18n.createTooltipBinding("label.port.input.tt"));
 
                 Button btnConnect = new Button();
                 btnConnect.textProperty().bind(i18n.createStringBinding("btn.connect"));
-                btnConnect.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4;");
-                btnConnect.setTooltip(new Tooltip("Établir la connexion gRPC avec le serveur de simulation distant"));
+                btnConnect.getStyleClass().add("btn-primary");
+                btnConnect.tooltipProperty().bind(i18n.createTooltipBinding("btn.connect.tt"));
 
                 Label statusLabel = new Label();
-                statusLabel.setText(networkClient.isConnected() ? "● Connecté" : "○ Hors ligne");
+                statusLabel.textProperty().bind(Bindings.createStringBinding(
+                    () -> networkClient.isConnected() ? i18n.get("label.status.connected") : i18n.get("label.status.offline"),
+                    i18n.localeProperty()
+                ));
                 statusLabel.setStyle(networkClient.isConnected() ? "-fx-text-fill: #4ade80; -fx-font-weight: bold;" : "-fx-text-fill: #f87171;");
-                statusLabel.setTooltip(new Tooltip("État actuel de la connexion au moteur gRPC"));
+                statusLabel.tooltipProperty().bind(i18n.createTooltipBinding("label.status.tt"));
 
-                this.statsLabel = new Label("🌐 Moteur de Simulation : Mode Local Autonome (Standalone) | Avancement : Pas n° 0");
-                this.statsLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 11px; -fx-font-weight: bold;");
-                this.statsLabel.setTooltip(new Tooltip("Statut dynamique de la simulation et compteur de pas"));
+                this.statsLabel = new Label();
+                this.statsLabel.getStyleClass().add("stats-status-label");
+                this.statsLabel.tooltipProperty().bind(i18n.createTooltipBinding("label.stats.tt"));
 
-                this.syncLabel = new Label("● Persistance Locale Active (Base SQLite & Sauvegarde autonome)");
-                this.syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
-                this.syncLabel.setTooltip(new Tooltip("Indicateur de persistance des données (SQLite locale en mode standalone, PostgreSQL distante en mode connecté)"));
+                this.syncLabel = new Label();
+                this.syncLabel.getStyleClass().add("sync-status-label");
+                this.syncLabel.tooltipProperty().bind(i18n.createTooltipBinding("label.sync.tt"));
 
                 Region bannerSpacer = new Region();
                 HBox.setHgrow(bannerSpacer, Priority.ALWAYS);
@@ -465,6 +465,67 @@ public class SwarmForgeClient extends Application {
                             }
                         }
                     }
+
+                    @Override
+                    public void triggerInvasionEvent(String type, float x, float y, float z, int count, float durationMinutes) {
+                        if (localSimulation != null && localSimulation.getPredatorManager() != null) {
+                            boolean isSuppression = count == 0 || (type != null && (type.contains("Protection") || type.contains("Absence") || type.contains("Sanctuary")));
+                            if (isSuppression) {
+                                int durationTicks = (int) (durationMinutes * 60.0 * 60.0);
+                                localSimulation.getPredatorManager().suppressPredators(durationTicks);
+                            } else {
+                                org.swarmforge.core.domain.PredatorType pType = org.swarmforge.core.domain.PredatorType.AARDVARK_MOUND_BREAKER;
+                                if (type != null) {
+                                    String u = type.toUpperCase();
+                                    if (u.contains("ARMY") || u.contains("LEGION")) pType = org.swarmforge.core.domain.PredatorType.MEGAPONERA_RAIDER;
+                                    else if (u.contains("MITE") || u.contains("ACARIEN")) pType = org.swarmforge.core.domain.PredatorType.VARROA_MITE;
+                                    else if (u.contains("LOCUST") || u.contains("SAUTERELLE")) pType = org.swarmforge.core.domain.PredatorType.BEETLE;
+                                    else if (u.contains("WASP") || u.contains("GUEPE")) pType = org.swarmforge.core.domain.PredatorType.WASP;
+                                    else if (u.contains("SPIDER") || u.contains("ARAIGNEE")) pType = org.swarmforge.core.domain.PredatorType.SPIDER;
+                                    else if (u.contains("MANTIS") || u.contains("MANTE")) pType = org.swarmforge.core.domain.PredatorType.BEETLE;
+                                }
+                                int spawnCount = Math.max(1, count);
+                                for (int i = 0; i < spawnCount; i++) {
+                                    localSimulation.getPredatorManager().spawnPredator(pType, x, y, z);
+                                }
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void triggerPheromoneEvent(String type, float x, float y, float z, float intensity, float radius, float durationMinutes) {
+                        if (localSimulation != null && localSimulation.getPheromoneGrid() != null) {
+                            int index = org.swarmforge.core.domain.PheromoneType.HOME_TRAIL.getIndex();
+                            if (type != null) {
+                                String u = type.toUpperCase();
+                                if (u.contains("ALARM") || u.contains("ALERTE")) index = org.swarmforge.core.domain.PheromoneType.ALARM_DANGER.getIndex();
+                                else if (u.contains("FOOD") || u.contains("ATTRACTANT") || u.contains("BIOMASS")) index = org.swarmforge.core.domain.PheromoneType.FOOD_TRAIL.getIndex();
+                                else if (u.contains("QUEEN") || u.contains("REINE")) index = org.swarmforge.core.domain.PheromoneType.QUEEN_ATTRACTANT.getIndex();
+                                else if (u.contains("RECRUIT") || u.contains("RECRUTEMENT")) index = org.swarmforge.core.domain.PheromoneType.RECRUITMENT.getIndex();
+                                else if (u.contains("ERASER") || u.contains("DISPERSION")) {
+                                    int r = Math.max(1, (int) radius);
+                                    for (int dx = (int)(x - r); dx <= (int)(x + r); dx++) {
+                                        for (int dy = (int)(y - r); dy <= (int)(y + r); dy++) {
+                                            for (int dz = (int)(z - r); dz <= (int)(z + r); dz++) {
+                                                localSimulation.getPheromoneGrid().clearAt(dx, dy, dz);
+                                            }
+                                        }
+                                    }
+                                    return;
+                                }
+                            }
+                            int r = Math.max(1, (int) radius);
+                            for (int dx = (int)(x - r); dx <= (int)(x + r); dx++) {
+                                for (int dy = (int)(y - r); dy <= (int)(y + r); dy++) {
+                                    double dist = Math.hypot(dx - x, dy - y);
+                                    if (dist <= radius) {
+                                        float conc = (float) (intensity * (1.0 - dist / (radius + 0.1)));
+                                        localSimulation.getPheromoneGrid().deposit(dx, dy, (int)z, index, conc);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 });
                 godTab.setContent(interventionPanel);
                 godTab.setDisable(true);
@@ -510,6 +571,13 @@ public class SwarmForgeClient extends Application {
                         System.out.println("[INFO] [SwarmForge Engine] Création du terrarium et de la simulation locale...");
                         if (this.lastGeneratedTerrarium == null) {
                                 this.lastGeneratedTerrarium = new org.swarmforge.core.domain.Terrarium(64, 32, 64);
+                        }
+                        if (this.interventionPanel != null && this.lastGeneratedTerrarium != null) {
+                                this.interventionPanel.setTerrainDimensions(
+                                        this.lastGeneratedTerrarium.getWidth(),
+                                        this.lastGeneratedTerrarium.getDepth(),
+                                        5.0, 25.0
+                                );
                         }
                         this.localSimulation = new org.swarmforge.core.simulation.Simulation(this.lastGeneratedTerrarium);
                         this.localSimulation.reset(0);
@@ -563,22 +631,13 @@ public class SwarmForgeClient extends Application {
 
                                         if (rawNestType != null) {
                                                 String ntl = rawNestType.toLowerCase();
-                                                if (ntl.contains("jeune") || ntl.contains("young")) {
-                                                        genType = org.swarmforge.core.world.NestGenerator.NestType.SIMPLE;
-                                                        scaleFactor = 0.8f;
-                                                } else if (ntl.contains("supercolony") || ntl.contains("supercolonie")) {
-                                                        genType = org.swarmforge.core.world.NestGenerator.NestType.MATURE;
-                                                        scaleFactor = 3.5f;
-                                                } else if (ntl.contains("old") || ntl.contains("âgé")) {
-                                                        genType = org.swarmforge.core.world.NestGenerator.NestType.MATURE;
-                                                        scaleFactor = 2.2f;
-                                                } else if (ntl.contains("mound") || ntl.contains("dôme") || ntl.contains("solar")) {
+                                                if (ntl.contains("mound") || ntl.contains("dôme") || ntl.contains("solar")) {
                                                         genType = org.swarmforge.core.world.NestGenerator.NestType.MOUND;
                                                         scaleFactor = 1.6f;
-                                                } else if (ntl.contains("tree") || ntl.contains("arbre") || ntl.contains("trunk")) {
+                                                } else if (ntl.contains("tree") || ntl.contains("arbre") || ntl.contains("trunk") || ntl.contains("hollow")) {
                                                         genType = org.swarmforge.core.world.NestGenerator.NestType.TREE;
                                                         scaleFactor = 1.4f;
-                                                } else if (ntl.contains("fungi") || ntl.contains("champignon") || ntl.contains("fungal")) {
+                                                } else if (ntl.contains("fungi") || ntl.contains("champignon") || ntl.contains("fungal") || ntl.contains("vault")) {
                                                         genType = org.swarmforge.core.world.NestGenerator.NestType.SUBTERRANEAN_FUNGI_VAULT;
                                                         scaleFactor = 1.8f;
                                                 } else if (ntl.contains("cathedral") || ntl.contains("cathédrale") || ntl.contains("termite")) {
@@ -605,13 +664,29 @@ public class SwarmForgeClient extends Application {
                                                 } else if (ntl.contains("bivouac") || ntl.contains("army")) {
                                                         genType = org.swarmforge.core.world.NestGenerator.NestType.BIVOUAC_LIVING_NEST;
                                                         scaleFactor = 1.6f;
+                                                } else if (ntl.contains("jeune") || ntl.contains("young")) {
+                                                        genType = org.swarmforge.core.world.NestGenerator.NestType.SIMPLE;
+                                                        scaleFactor = 0.8f;
+                                                } else if (ntl.contains("supercolony") || ntl.contains("supercolonie")) {
+                                                        genType = org.swarmforge.core.world.NestGenerator.NestType.MATURE;
+                                                        scaleFactor = 3.5f;
+                                                } else if (ntl.contains("old") || ntl.contains("âgé")) {
+                                                        genType = org.swarmforge.core.world.NestGenerator.NestType.MATURE;
+                                                        scaleFactor = 2.2f;
+                                                }
+
+                                                // Stage scale modifications
+                                                if (ntl.contains("jeune") || ntl.contains("young")) {
+                                                        scaleFactor *= 0.7f;
+                                                } else if (ntl.contains("supercolony") || ntl.contains("supercolonie")) {
+                                                        scaleFactor *= 2.0f;
                                                 }
                                         }
 
                                         org.swarmforge.core.world.NestGenerator nestGen = new org.swarmforge.core.world.NestGenerator(this.lastGeneratedTerrarium, seed + colIdx);
                                         nestGen.generate((int) pos.x(), (int) pos.y(), (int) pos.z(), genType, scaleFactor);
 
-                                        colony.getTunnelNetwork().rebuildForArchitecture(pos.x(), pos.y(), pos.z(), rawNestType != null ? rawNestType : "BURROW_UNDERGROUND");
+                                        colony.getTunnelNetwork().rebuildForArchitecture(pos.x(), pos.y(), pos.z(), rawNestType != null ? rawNestType.toString() : "BURROW_UNDERGROUND", colony);
 
                                         if (initialFood > 0) {
                                                 colony.setFoodStored(initialFood);
@@ -752,6 +827,7 @@ public class SwarmForgeClient extends Application {
 
                 this.simControlPanel.setOnRewind(steps -> {
                     if (this.localSimulation != null) {
+                        this.localSimulation.pause();
                         boolean ok = this.localSimulation.rewind(steps);
                         if (ok) {
                             this.simControlPanel.updateTick(this.localSimulation.getTickCount(), this.localSimulation.getHighestRecordedTick());
@@ -793,7 +869,7 @@ public class SwarmForgeClient extends Application {
                 btnConnect.setOnAction(e -> {
                         try {
                                 networkClient.connect(hostField.getText(), Integer.parseInt(portField.getText()));
-                                statusLabel.setText("● Connecté");
+                                statusLabel.setText(i18n.get("label.status.connected"));
                                 statusLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold;");
                                 networkClient.startStreaming();
 
@@ -801,7 +877,7 @@ public class SwarmForgeClient extends Application {
                                         gameView.getGameApp().setNetworkClient(networkClient);
                                 }
                         } catch (Exception ex) {
-                                statusLabel.setText("○ Erreur: " + ex.getMessage());
+                                statusLabel.setText(i18n.get("label.status.offline") + ": " + ex.getMessage());
                                 statusLabel.setStyle("-fx-text-fill: #f87171;");
                                 ex.printStackTrace();
                         }
@@ -837,23 +913,23 @@ public class SwarmForgeClient extends Application {
                                     java.util.List<String> colonyNames = new java.util.ArrayList<>();
                                     for (org.swarmforge.core.domain.Colony c : localSimulation.getColonies()) {
                                         String speciesName = c.getSpeciesName();
-                                        colonyNames.add(speciesName != null && !speciesName.isEmpty() ? speciesName : "Colonie #" + c.getId().toString().substring(0, 5));
+                                        colonyNames.add(speciesName != null && !speciesName.isEmpty() ? speciesName : "Colony #" + c.getId().toString().substring(0, 5));
                                     }
                                     interventionPanel.updateAvailableColonies(colonyNames);
                                 }
 
                                 long tick = isConnected ? networkClient.getLatestTick() : (localSimulation != null ? localSimulation.getTickCount() : 0);
-                                String modeStr = isConnected ? "Serveur Dédié (Connecté & Synchronisé)" : "Mode Local Autonome (Standalone)";
+                                String modeStr = isConnected ? "Dedicated Server (Connected & Synced)" : "Standalone Local Mode";
                                 double stepDt = simControlPanel != null ? simControlPanel.getSimulationStepSeconds() : 0.05;
                                 String formattedTime = org.swarmforge.client.ui.SimulationControlPanel.formatSimulationTime(tick, stepDt);
-                                statsLabel.setText("🌐 Moteur de Simulation : " + modeStr + " | Temps Écoule : " + formattedTime + " (Pas #" + tick + ")");
+                                statsLabel.setText(String.format("🌐 Simulation Engine: %s | Elapsed Time: %s (Step #%d)", modeStr, formattedTime, tick));
 
                                 if (syncLabel != null) {
                                     if (isConnected) {
-                                        syncLabel.setText("● Persistance Serveur Active (PostgreSQL Distant)");
+                                        syncLabel.setText("● Active Remote Persistence (PostgreSQL Server)");
                                         syncLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-size: 11px;");
                                     } else {
-                                        syncLabel.setText("● Persistance Locale Active (Base SQLite Autonome)");
+                                        syncLabel.setText("● Active Local Persistence (Autonomous SQLite)");
                                         syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
                                     }
                                 }
@@ -879,6 +955,15 @@ public class SwarmForgeClient extends Application {
                                     }
 
                                     org.swarmforge.client.audio.SimulationAudioManager.getInstance().setWindAndPrecipitation(windSpeed, rainRate);
+                                    if (localSimulation != null && localSimulation.getWeather() != null) {
+                                        org.swarmforge.core.world.WeatherSystem wSys = localSimulation.getWeather();
+                                        org.swarmforge.client.audio.SimulationAudioManager.getInstance().setEnvironmentPhysics(
+                                            wSys.getLatitude(),
+                                            wSys.getDayOfYear(),
+                                            wSys.getTimeOfDay(),
+                                            wSys.getLightLevel()
+                                        );
+                                    }
                                     org.swarmforge.client.audio.SimulationAudioManager.getInstance().updateState(
                                         simControlPanel.getSelectedWorld(),
                                         weatherStr,
@@ -1060,7 +1145,7 @@ public class SwarmForgeClient extends Application {
                 simulationInactiveOverlay.setStyle("-fx-background-color: rgba(15, 23, 42, 0.75); -fx-padding: 8 16; -fx-background-radius: 20; -fx-border-color: rgba(56, 189, 248, 0.3); -fx-border-width: 1; -fx-border-radius: 20;");
                 simulationInactiveOverlay.setMaxSize(360, 50);
 
-                Label lblInactiveTitle = new Label("🎬 Vue 3D Prête — Attente du Lancement");
+                Label lblInactiveTitle = new Label("🎬 3D View Ready — Waiting for Launch");
                 lblInactiveTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 12px; -fx-font-weight: bold;");
 
                 simulationInactiveOverlay.setMouseTransparent(true);
@@ -1071,9 +1156,10 @@ public class SwarmForgeClient extends Application {
                 simulationInactiveOverlay.getChildren().addAll(lblInactiveTitle);
 
                 // Full Screen Floating Exit Button
-                Button btnExitFullscreen = new Button("❌ Quitter Plein Écran (ESC)");
+                Button btnExitFullscreen = new Button("❌ Exit Fullscreen (ESC)");
                 btnExitFullscreen.setStyle("-fx-background-color: rgba(239, 68, 68, 0.9); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 20; -fx-padding: 6 14; -fx-cursor: hand;");
                 btnExitFullscreen.setVisible(false);
+                btnExitFullscreen.setManaged(false);
 
                 StackPane viewportStack = new StackPane(simWorldViewer, simulationInactiveOverlay, btnExitFullscreen);
                 StackPane.setAlignment(simulationInactiveOverlay, Pos.TOP_CENTER);
@@ -1104,10 +1190,12 @@ public class SwarmForgeClient extends Application {
                 // 2. Moved Controls from Simulation Manager: Date & Time, VCR Playback (Rewind/FastForward), Speed & Multipliers
                 Node playbackAndSpeedNode = (this.simControlPanel != null) ? this.simControlPanel.getPlaybackAndSpeedPanel() : new VBox();
 
-                this.btnRecVideo = new Button();
-                this.btnRecVideo.textProperty().bind(i18n.createStringBinding("sidebar.btn.video"));
+                this.btnRecVideo = new Button(i18n.get("sidebar.btn.video"));
                 this.btnRecVideo.setMaxWidth(Double.MAX_VALUE);
                 this.btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                java.io.File videoDir = new java.io.File("captures/videos");
+                Tooltip ttRecVideo = new Tooltip("🎥 Enregistrement Vidéo 3D (MP4 / GIF)\n📍 Emplacement: " + videoDir.getAbsolutePath());
+                this.btnRecVideo.setTooltip(ttRecVideo);
 
                 Runnable startVideoRecordingInternal = () -> {
                     if (isVideoRecording) return;
@@ -1117,8 +1205,7 @@ public class SwarmForgeClient extends Application {
                     videoRecordingStartMs = System.currentTimeMillis();
                     org.swarmforge.client.audio.SimulationAudioManager.getInstance().startAudioRecording();
 
-                    btnRecVideo.textProperty().unbind();
-                    btnRecVideo.setText("🔴 Arrêter (REC 00:00 / 10:00 - 0 frames)");
+                    btnRecVideo.setText(i18n.get("sidebar.btn.video_recording", "🔴 Stop (REC 00:00 / 10:00 - 0 frames)"));
                     btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
 
                     videoCaptureTimeline = new javafx.animation.Timeline(
@@ -1134,10 +1221,9 @@ public class SwarmForgeClient extends Application {
                                 long minutes = elapsedSec / 60;
                                 long seconds = elapsedSec % 60;
 
-                                btnRecVideo.setText(String.format("🔴 Arrêter (REC %02d:%02d / 10:00 - %d frames)", minutes, seconds, recordedVideoFrames.size()));
+                                btnRecVideo.setText(String.format("🔴 Stop (REC %02d:%02d / 10:00 - %d frames)", minutes, seconds, recordedVideoFrames.size()));
 
                                 if (elapsedSec >= 600) {
-                                    NotificationOverlay.show(viewportStack, "⏱️ Limite maximale d'enregistrement atteinte (10 minutes). Finalisation du fichier MP4...", NotificationOverlay.NotificationType.WARNING);
                                     if (stopVideoRecordingAndExport != null) stopVideoRecordingAndExport.run();
                                 }
                             } catch (Exception err) {
@@ -1147,17 +1233,13 @@ public class SwarmForgeClient extends Application {
                     );
                     videoCaptureTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
                     videoCaptureTimeline.play();
-
-                    NotificationOverlay.show(viewportStack, "🎥 Enregistrement vidéo 3D MP4 avec audio démarré (Limite max: 10 min)", NotificationOverlay.NotificationType.INFO, true);
                 };
 
                 Runnable disarmVideoRecording = () -> {
                     if (isVideoArmed) {
                         isVideoArmed = false;
-                        btnRecVideo.textProperty().unbind();
-                        btnRecVideo.textProperty().bind(i18n.createStringBinding("sidebar.btn.video"));
+                        btnRecVideo.setText(i18n.get("sidebar.btn.video"));
                         btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
-                        NotificationOverlay.show(viewportStack, "🎥 Enregistrement vidéo désarmé.", NotificationOverlay.NotificationType.INFO);
                     }
                 };
 
@@ -1172,44 +1254,49 @@ public class SwarmForgeClient extends Application {
 
                     final byte[] pcmAudioData = org.swarmforge.client.audio.SimulationAudioManager.getInstance().stopAudioRecording();
 
-                    btnRecVideo.textProperty().unbind();
-                    btnRecVideo.textProperty().bind(i18n.createStringBinding("sidebar.btn.video"));
+                    btnRecVideo.setText(i18n.get("sidebar.btn.video"));
                     btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
 
                     final java.util.List<java.awt.image.BufferedImage> framesToExport = new java.util.ArrayList<>(recordedVideoFrames);
                     final String scName = (simControlPanel != null) ? simControlPanel.getSelectedScenarioName() : "Scenario";
 
                     if (framesToExport.isEmpty()) {
-                        NotificationOverlay.show(viewportStack, "⚠️ Aucune image capturée pendant l'enregistrement.", NotificationOverlay.NotificationType.WARNING);
                         return;
                     }
-
-                    NotificationOverlay.show(viewportStack, "⏳ Encodage de la vidéo 3D MP4 (" + framesToExport.size() + " images avec audio) en cours...", NotificationOverlay.NotificationType.INFO);
 
                     java.util.concurrent.CompletableFuture.runAsync(() -> {
                         try {
                             java.io.File videoFile = org.swarmforge.client.util.MediaCaptureUtil.exportMp4VideoClip(framesToExport, pcmAudioData, scName, 10);
                             Platform.runLater(() -> {
-                                String msg = String.format("🎬 Vidéo 3D MP4 (avec audio) exportée avec succès !\n📁 Fichier: %s\n📍 Emplacement: %s",
-                                        videoFile.getName(), videoFile.getAbsolutePath());
-                                NotificationOverlay.show(viewportStack, msg, NotificationOverlay.NotificationType.SUCCESS, true);
-                                LOG.info("[SwarmForge] " + msg);
+                                LOG.info("[SwarmForge] Vidéo 3D MP4 exportée: " + videoFile.getAbsolutePath());
+                                btnRecVideo.setText("✓ Video Recorded!");
+                                btnRecVideo.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+
+                                javafx.animation.PauseTransition pt = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(3));
+                                pt.setOnFinished(ev -> {
+                                    btnRecVideo.setText(i18n.get("sidebar.btn.video"));
+                                    btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                                });
+                                pt.play();
                             });
                         } catch (Exception ex) {
                             LOG.warning("MP4 encoding failed, falling back to Animated GIF: " + ex.getMessage());
                             try {
                                 java.io.File videoFile = org.swarmforge.client.util.MediaCaptureUtil.exportGifVideoClip(framesToExport, scName, 100);
                                 Platform.runLater(() -> {
-                                    String msg = String.format("🎬 Vidéo 3D GIF exportée avec succès !\n📁 Fichier: %s\n📍 Emplacement: %s",
-                                            videoFile.getName(), videoFile.getAbsolutePath());
-                                    NotificationOverlay.show(viewportStack, msg, NotificationOverlay.NotificationType.SUCCESS, true);
-                                    LOG.info("[SwarmForge] " + msg);
+                                    LOG.info("[SwarmForge] Vidéo 3D GIF exportée: " + videoFile.getAbsolutePath());
+                                    btnRecVideo.setText("✓ Video Recorded!");
+                                    btnRecVideo.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+
+                                    javafx.animation.PauseTransition pt = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(3));
+                                    pt.setOnFinished(ev -> {
+                                        btnRecVideo.setText(i18n.get("sidebar.btn.video"));
+                                        btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                                    });
+                                    pt.play();
                                 });
                             } catch (Exception gifEx) {
                                 LOG.severe("Error exporting video clip: " + gifEx.getMessage());
-                                Platform.runLater(() -> {
-                                    NotificationOverlay.show(viewportStack, "❌ Erreur génération vidéo: " + gifEx.getMessage(), NotificationOverlay.NotificationType.ERROR);
-                                });
                             }
                         }
                     });
@@ -1228,8 +1315,7 @@ public class SwarmForgeClient extends Application {
                     } catch (Exception ignored) {}
                     if (btnRecVideo != null) {
                         Platform.runLater(() -> {
-                            btnRecVideo.textProperty().unbind();
-                            btnRecVideo.textProperty().bind(i18n.createStringBinding("sidebar.btn.video"));
+                            btnRecVideo.setText(i18n.get("sidebar.btn.video"));
                             btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
                         });
                     }
@@ -1267,9 +1353,10 @@ public class SwarmForgeClient extends Application {
                         });
                         simControlPanel.setOnRewind(steps -> {
                                 if (localSimulation != null) {
+                                        localSimulation.pause();
                                         localSimulation.rewind(steps);
                                         long curTick = localSimulation.getTickCount();
-                                        simControlPanel.updateTick(curTick, curTick);
+                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
                                         simWorldViewer.repaintAllViews();
                                 }
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
@@ -1280,9 +1367,10 @@ public class SwarmForgeClient extends Application {
                         });
                         simControlPanel.setOnStepForward(v -> {
                                 if (localSimulation != null) {
+                                        localSimulation.pause();
                                         localSimulation.tick();
                                         long curTick = localSimulation.getTickCount();
-                                        simControlPanel.updateTick(curTick, curTick);
+                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
                                         simWorldViewer.repaintAllViews();
                                 }
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
@@ -1299,9 +1387,10 @@ public class SwarmForgeClient extends Application {
                                         }
                                 }
                                 if (localSimulation != null) {
+                                        localSimulation.pause();
                                         localSimulation.seekToTick(tick);
                                         long curTick = localSimulation.getTickCount();
-                                        simControlPanel.updateTick(curTick, curTick);
+                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
                                         simWorldViewer.repaintAllViews();
                                 }
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
@@ -1335,16 +1424,16 @@ public class SwarmForgeClient extends Application {
                 ttFS.textProperty().bind(i18n.createStringBinding("sidebar.btn.fullscreen.tt"));
                 btnFullscreenMode.setTooltip(ttFS);
 
-                Button btnPhoto = new Button();
-                btnPhoto.textProperty().bind(i18n.createStringBinding("sidebar.btn.photo"));
+                Button btnPhoto = new Button(i18n.get("sidebar.btn.photo"));
                 btnPhoto.setMaxWidth(Double.MAX_VALUE);
                 btnPhoto.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                java.io.File screenshotDir = new java.io.File("captures/screenshots");
+                Tooltip ttPhoto = new Tooltip("📸 Capture d'écran HD (PNG)\n📍 Emplacement: " + screenshotDir.getAbsolutePath());
+                btnPhoto.setTooltip(ttPhoto);
+
                 btnPhoto.setOnAction(e -> {
                     try {
-                        // 1. Play shutter sound effect
-                        org.swarmforge.client.util.SoundEffectManager.getInstance().playCaptureSound();
-
-                        // 2. Camera shutter visual flash effect overlay on viewport
+                        // 1. Camera shutter visual flash effect overlay on viewport
                         javafx.scene.shape.Rectangle flash = new javafx.scene.shape.Rectangle();
                         flash.widthProperty().bind(viewportStack.widthProperty());
                         flash.heightProperty().bind(viewportStack.heightProperty());
@@ -1359,18 +1448,23 @@ public class SwarmForgeClient extends Application {
                         ft.setOnFinished(ev -> viewportStack.getChildren().remove(flash));
                         ft.play();
 
-                        // 3. Take HD screenshot
+                        // 2. Take HD screenshot
                         String scName = (simControlPanel != null) ? simControlPanel.getSelectedScenarioName() : "Scenario";
                         java.io.File screenshotFile = org.swarmforge.client.util.MediaCaptureUtil.takeScreenshot(simWorldViewer, scName);
+                        LOG.info("[SwarmForge] Screenshot HD enregistré: " + screenshotFile.getAbsolutePath());
 
-                        // 4. Show prominent toast notification over viewportStack
-                        String msg = String.format("📸 Screenshot HD enregistré avec succès !\n📁 Fichier: %s\n📍 Emplacement: %s",
-                                screenshotFile.getName(), screenshotFile.getAbsolutePath());
-                        NotificationOverlay.show(viewportStack, msg, NotificationOverlay.NotificationType.SUCCESS, true);
-                        LOG.info("[SwarmForge] " + msg);
+                        // 3. Green checkmark indicator directly on button for 3 seconds
+                        btnPhoto.setText("✓ Screenshot Saved!");
+                        btnPhoto.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+
+                        javafx.animation.PauseTransition pt = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(3));
+                        pt.setOnFinished(ev -> {
+                            btnPhoto.setText(i18n.get("sidebar.btn.photo"));
+                            btnPhoto.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                        });
+                        pt.play();
                     } catch (Exception ex) {
                         LOG.severe("Error capturing HD screenshot: " + ex.getMessage());
-                        NotificationOverlay.show(viewportStack, "❌ Erreur capture photo: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR, true);
                     }
                 });
 
@@ -1386,9 +1480,8 @@ public class SwarmForgeClient extends Application {
                         // Arm video recording for when simulation starts
                         isVideoArmed = true;
                         btnRecVideo.textProperty().unbind();
-                        btnRecVideo.setText("⏳ REC Armé (Attente démarrage)");
+                        btnRecVideo.setText("⏳ REC Armé (En attente)");
                         btnRecVideo.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
-                        NotificationOverlay.show(viewportStack, "🎥 Vidéo prête à démarrer — L'enregistrement commencera automatiquement au lancement de la simulation.", NotificationOverlay.NotificationType.INFO, true);
                     } else {
                         // Simulation is running -> Start recording immediately
                         startVideoRecordingInternal.run();
@@ -1492,25 +1585,25 @@ public class SwarmForgeClient extends Application {
                         simWorldViewer.setPheromonesVisible(b);
                 });
 
-                ComboBox<String> comboPheromoneMode = new ComboBox<>();
-                comboPheromoneMode.getItems().addAll(
-                    "🔥 Mode Heatmap (Gradient Continuel)",
-                    "✨ Mode Particules / Voxels",
-                    "🛰️ Mode Hybride SIG (Multi-Couches)"
+                ComboBox<String> comboPheromoneType = new ComboBox<>();
+                comboPheromoneType.getItems().addAll(
+                    "🌐 Toutes les Phéromones",
+                    "🚨 Phéromone d'Alarme",
+                    "🍃 Phéromone de Nourriture",
+                    "🏠 Phéromone de Nid / Homing",
+                    "📢 Phéromone de Recrutement",
+                    "👑 Phéromone de Reine",
+                    "💀 Phéromone de Cadavre (Nécrophorèse)"
                 );
-                comboPheromoneMode.getSelectionModel().select(2);
-                comboPheromoneMode.setMaxWidth(Double.MAX_VALUE);
-                comboPheromoneMode.setStyle("-fx-font-size: 10px;");
-                comboPheromoneMode.getSelectionModel().selectedIndexProperty().addListener((o, oldV, newV) -> {
+                comboPheromoneType.getSelectionModel().selectFirst();
+                comboPheromoneType.setMaxWidth(Double.MAX_VALUE);
+                comboPheromoneType.setStyle("-fx-font-size: 10px;");
+                comboPheromoneType.getSelectionModel().selectedIndexProperty().addListener((o, oldV, newV) -> {
                     if (newV == null) return;
                     int idx = newV.intValue();
-                    org.swarmforge.client.ui.WorldEditorPane.PheromoneRenderMode pMode = switch (idx) {
-                        case 0 -> org.swarmforge.client.ui.WorldEditorPane.PheromoneRenderMode.HEATMAP_GRADIENT;
-                        case 1 -> org.swarmforge.client.ui.WorldEditorPane.PheromoneRenderMode.VOXEL_PARTICLES;
-                        default -> org.swarmforge.client.ui.WorldEditorPane.PheromoneRenderMode.HYBRID_GIS;
-                    };
                     if (simWorldViewer != null) {
-                        simWorldViewer.setPheromoneRenderMode(pMode);
+                        simWorldViewer.setPheromoneChannelFilter(idx);
+                        simWorldViewer.setPheromoneRenderMode(org.swarmforge.client.ui.WorldEditorPane.PheromoneRenderMode.HEATMAP_GRADIENT);
                     }
                 });
 
@@ -1532,7 +1625,7 @@ public class SwarmForgeClient extends Application {
                         simWorldViewer.setWeatherVisible(b);
                 });
 
-                renderSection.getChildren().addAll(lblRenderMode, comboRenderMode, chkMinimap, chkTerrain, chkTrees, chkSkirt, sliceBox, chkNid, chkPheromonesLayer, comboPheromoneMode, chkAntsLayer, chkWeatherLayer);
+                renderSection.getChildren().addAll(lblRenderMode, comboRenderMode, chkMinimap, chkTerrain, chkTrees, chkSkirt, sliceBox, chkNid, chkPheromonesLayer, comboPheromoneType, chkAntsLayer, chkWeatherLayer);
 
                 // Audio Controls Section
                 VBox audioSection = new VBox(6);
@@ -1643,10 +1736,20 @@ public class SwarmForgeClient extends Application {
                                                         simSubTabs.getSelectionModel().select(visualTab);
                                                 }
                                                 if (mainTabs != null) {
+                                                        if (!mainTabs.getStyleClass().contains("tab-pane-fullscreen")) {
+                                                                mainTabs.getStyleClass().add("tab-pane-fullscreen");
+                                                        }
                                                         mainTabs.setStyle("-fx-tab-max-height: 0; -fx-tab-min-height: 0; -fx-padding: 0; -fx-border-width: 0;");
+                                                        Node hdr = mainTabs.lookup(".tab-header-area");
+                                                        if (hdr != null) { hdr.setVisible(false); hdr.setManaged(false); }
                                                 }
                                                 if (simSubTabs != null) {
+                                                        if (!simSubTabs.getStyleClass().contains("tab-pane-fullscreen")) {
+                                                                simSubTabs.getStyleClass().add("tab-pane-fullscreen");
+                                                        }
                                                         simSubTabs.setStyle("-fx-tab-max-height: 0; -fx-tab-min-height: 0; -fx-padding: 0; -fx-border-width: 0;");
+                                                        Node hdr = simSubTabs.lookup(".tab-header-area");
+                                                        if (hdr != null) { hdr.setVisible(false); hdr.setManaged(false); }
                                                 }
                                                 if (connectBox != null) {
                                                         connectBox.setVisible(false);
@@ -1659,13 +1762,19 @@ public class SwarmForgeClient extends Application {
                                                 if (worldEditorPane != null) {
                                                         worldEditorPane.setFullscreenMode(true);
                                                 }
-                                                btnExitFullscreen.setVisible(true);
+                                                btnExitFullscreen.setVisible(false);
                                         } else {
                                                 if (mainTabs != null) {
+                                                        mainTabs.getStyleClass().remove("tab-pane-fullscreen");
                                                         mainTabs.setStyle("");
+                                                        Node hdr = mainTabs.lookup(".tab-header-area");
+                                                        if (hdr != null) { hdr.setVisible(true); hdr.setManaged(true); }
                                                 }
                                                 if (simSubTabs != null) {
+                                                        simSubTabs.getStyleClass().remove("tab-pane-fullscreen");
                                                         simSubTabs.setStyle("");
+                                                        Node hdr = simSubTabs.lookup(".tab-header-area");
+                                                        if (hdr != null) { hdr.setVisible(true); hdr.setManaged(true); }
                                                 }
                                                 if (connectBox != null) {
                                                         connectBox.setVisible(true);
@@ -1807,11 +1916,11 @@ public class SwarmForgeClient extends Application {
                 Label langLabel = new Label();
                 langLabel.textProperty().bind(i18n.createStringBinding("settings.language"));
                 langLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
-                langLabel.setTooltip(new Tooltip("Sélectionnez la langue d'affichage de l'interface utilisateur."));
+                langLabel.tooltipProperty().bind(i18n.createTooltipBinding("settings.language.tt"));
 
                 ComboBox<String> langCombo = new ComboBox<>();
                 langCombo.getItems().addAll("English", "Français", "Español", "Deutsch", "中文");
-                langCombo.setTooltip(new Tooltip("Langues supportées : Français, English, Español, Deutsch, 中文"));
+                langCombo.tooltipProperty().bind(i18n.createTooltipBinding("settings.language.combo.tt"));
 
                 java.util.Locale currentLoc = i18n.getLocale();
                 String langStr = currentLoc.getLanguage();
@@ -1834,11 +1943,11 @@ public class SwarmForgeClient extends Application {
                 Label themeLabel = new Label();
                 themeLabel.textProperty().bind(i18n.createStringBinding("settings.theme"));
                 themeLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
-                themeLabel.setTooltip(new Tooltip("Basculer dynamiquement entre le thème Sombre (Dark) et le thème Clair (Light)."));
+                themeLabel.tooltipProperty().bind(i18n.createTooltipBinding("settings.theme.tt"));
 
                 ComboBox<String> themeCombo = new ComboBox<>();
                 themeCombo.getItems().addAll("Dark Theme", "Light Theme");
-                themeCombo.setTooltip(new Tooltip("Thèmes graphiques pour l'ensemble de l'interface SwarmForge."));
+                themeCombo.tooltipProperty().bind(i18n.createTooltipBinding("settings.theme.combo.tt"));
                 if (org.swarmforge.client.util.ThemeManager.getInstance().getCurrentTheme() == org.swarmforge.client.util.ThemeManager.Theme.DARK) {
                         themeCombo.setValue("Dark Theme");
                 } else {
@@ -2092,6 +2201,35 @@ public class SwarmForgeClient extends Application {
                 }
         }
 
+        public void navigateToGlossaryTab(String searchTerm) {
+                if (this.glossaryTab != null && this.mainTabs != null) {
+                        this.mainTabs.getSelectionModel().select(this.glossaryTab);
+                        if (searchTerm != null && !searchTerm.isBlank()) {
+                                if (this.glossarySearchField != null) {
+                                        this.glossarySearchField.setText(searchTerm);
+                                }
+                                if (this.glossaryCategoryTabPane != null) {
+                                        String lowerTerm = searchTerm.toLowerCase();
+                                        if (lowerTerm.contains("nest") || lowerTerm.contains("nid") || lowerTerm.contains("wax") || lowerTerm.contains("cire") || lowerTerm.contains("mound") || lowerTerm.contains("arch")) {
+                                                this.glossaryCategoryTabPane.getSelectionModel().select(0);
+                                        } else if (lowerTerm.contains("queen") || lowerTerm.contains("reine") || lowerTerm.contains("social") || lowerTerm.contains("king") || lowerTerm.contains("roi") || lowerTerm.contains("nuptial") || lowerTerm.contains("troph") || lowerTerm.contains("stig")) {
+                                                this.glossaryCategoryTabPane.getSelectionModel().select(1);
+                                        } else if (lowerTerm.contains("env") || lowerTerm.contains("temp") || lowerTerm.contains("press") || lowerTerm.contains("sol") || lowerTerm.contains("micro") || lowerTerm.contains("phero") || lowerTerm.contains("moist") || lowerTerm.contains("humid")) {
+                                                this.glossaryCategoryTabPane.getSelectionModel().select(2);
+                                        } else if (lowerTerm.contains("fsm") || lowerTerm.contains("bdi") || lowerTerm.contains("décision") || lowerTerm.contains("reason") || lowerTerm.contains("quorum") || lowerTerm.contains("bt") || lowerTerm.contains("fuzzy")) {
+                                                this.glossaryCategoryTabPane.getSelectionModel().select(3);
+                                        } else if (lowerTerm.contains("subgenual") || lowerTerm.contains("vibration") || lowerTerm.contains("uv") || lowerTerm.contains("autothys") || lowerTerm.contains("arolia") || lowerTerm.contains("mandib") || lowerTerm.contains("olfac") || lowerTerm.contains("hydrocarbon") || lowerTerm.contains("formic") || lowerTerm.contains("metabol") || lowerTerm.contains("polymorph") || lowerTerm.contains("desiccat")) {
+                                                this.glossaryCategoryTabPane.getSelectionModel().select(4);
+                                        } else if (lowerTerm.contains("flora") || lowerTerm.contains("aphid") || lowerTerm.contains("prey") || lowerTerm.contains("predat") || lowerTerm.contains("pathogen") || lowerTerm.contains("diapause")) {
+                                                this.glossaryCategoryTabPane.getSelectionModel().select(5);
+                                        } else if (lowerTerm.contains("seed") || lowerTerm.contains("moteur") || lowerTerm.contains("divin") || lowerTerm.contains("audio") || lowerTerm.contains("coloni") || lowerTerm.contains("god") || lowerTerm.contains("dt")) {
+                                                this.glossaryCategoryTabPane.getSelectionModel().select(6);
+                                        }
+                                }
+                        }
+                }
+        }
+
         private Node createGlossaryPaneView() {
                 org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
                 VBox mainBox = new VBox(10);
@@ -2120,12 +2258,12 @@ public class SwarmForgeClient extends Application {
                 subtitle.textProperty().bind(i18n.createStringBinding("glossary.subtitle"));
                 subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #64748b; -fx-wrap-text: true;");
 
-                TextField searchField = new TextField();
-                searchField.promptTextProperty().bind(i18n.createStringBinding("glossary.search_prompt"));
-                searchField.setStyle("-fx-font-size: 13px;");
+                this.glossarySearchField = new TextField();
+                this.glossarySearchField.promptTextProperty().bind(i18n.createStringBinding("glossary.search_prompt"));
+                this.glossarySearchField.setStyle("-fx-font-size: 13px;");
 
-                TabPane tabPane = new TabPane();
-                tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+                this.glossaryCategoryTabPane = new TabPane();
+                this.glossaryCategoryTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
                 // Section 1: Architectures de Nids
                 VBox vNest = new VBox(10); vNest.setPadding(new Insets(15));
@@ -2139,6 +2277,12 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRowKey(vNest, "glossary.entry.nest.bivouac.title", "glossary.entry.nest.bivouac.desc", "https://fr.wikipedia.org/wiki/Fourmi_l%C3%A9gionnaire");
                 addGlossaryRowKey(vNest, "glossary.entry.nest.mound.title", "glossary.entry.nest.mound.desc", "https://fr.wikipedia.org/wiki/Formica_rufa");
                 addGlossaryRowKey(vNest, "glossary.entry.nest.wood.title", "glossary.entry.nest.wood.desc", "https://fr.wikipedia.org/wiki/Camponotus");
+                addGlossaryRowKey(vNest, "glossary.nest.bamboo.title", "glossary.nest.bamboo.desc");
+                addGlossaryRowKey(vNest, "glossary.nest.subterranean.title", "glossary.nest.subterranean.desc");
+                addGlossaryRowKey(vNest, "glossary.nest.subterranean_lime.title", "glossary.nest.subterranean_lime.desc");
+                addGlossaryRowKey(vNest, "glossary.nest.arboreal_carton.title", "glossary.nest.arboreal_carton.desc");
+                addGlossaryRowKey(vNest, "glossary.nest.materials.title", "glossary.nest.materials.desc");
+                addGlossaryRowKey(vNest, "glossary.nest.stages.title", "glossary.nest.stages.desc");
 
                 // Section 2: Structure Sociale & Reines
                 VBox vSocial = new VBox(10); vSocial.setPadding(new Insets(15));
@@ -2146,6 +2290,10 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRowKey(vSocial, "glossary.entry.social.king.title", "glossary.entry.social.king.desc", "https://fr.wikipedia.org/wiki/Termite");
                 addGlossaryRowKey(vSocial, "glossary.entry.social.flight.title", "glossary.entry.social.flight.desc", "https://fr.wikipedia.org/wiki/Vol_nuptial");
                 addGlossaryRowKey(vSocial, "glossary.entry.social.inhibition.title", "glossary.entry.social.inhibition.desc", "https://fr.wikipedia.org/wiki/Ph%C3%A9romone");
+                addGlossaryRowKey(vSocial, "glossary.social.queen_mode.title", "glossary.social.queen_mode.desc");
+                addGlossaryRowKey(vSocial, "glossary.social.trophallaxis.title", "glossary.social.trophallaxis.desc");
+                addGlossaryRowKey(vSocial, "glossary.social.polyethism.title", "glossary.social.polyethism.desc");
+                addGlossaryRowKey(vSocial, "glossary.social.stigmergy.title", "glossary.social.stigmergy.desc");
 
                 // Section 3: Sol & Géologie SIG
                 VBox vEnv = new VBox(10); vEnv.setPadding(new Insets(15));
@@ -2154,6 +2302,14 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRowKey(vEnv, "glossary.entry.env.res.title", "glossary.entry.env.res.desc", "https://fr.wikipedia.org/wiki/Voxel");
                 addGlossaryRowKey(vEnv, "glossary.entry.env.sig.title", "glossary.entry.env.sig.desc", "https://fr.wikipedia.org/wiki/Shuttle_Radar_Topography_Mission");
                 addGlossaryRowKey(vEnv, "glossary.entry.env.water.title", "glossary.entry.env.water.desc", "https://fr.wikipedia.org/wiki/Nappe_phr%C3%A9atique");
+                addGlossaryRowKey(vEnv, "glossary.env.moisture.title", "glossary.env.moisture.desc");
+                addGlossaryRowKey(vEnv, "glossary.env.temperature.title", "glossary.env.temperature.desc");
+                addGlossaryRowKey(vEnv, "glossary.env.co2.title", "glossary.env.co2.desc");
+                addGlossaryRowKey(vEnv, "glossary.env.solar.title", "glossary.env.solar.desc");
+                addGlossaryRowKey(vEnv, "glossary.env.magnetic.title", "glossary.env.magnetic.desc");
+                addGlossaryRowKey(vEnv, "glossary.env.soil_layers.title", "glossary.env.soil_layers.desc");
+                addGlossaryRowKey(vEnv, "glossary.env.pressure.title", "glossary.env.pressure.desc");
+                addGlossaryRowKey(vEnv, "glossary.env.trail_pheromones.title", "glossary.env.trail_pheromones.desc");
 
                 // Section 4: Moteurs de Raisonnement & Cognition
                 VBox vReasoning = new VBox(10); vReasoning.setPadding(new Insets(15));
@@ -2164,6 +2320,9 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRowKey(vReasoning, "glossary.entry.reasoning.fuzzy.title", "glossary.entry.reasoning.fuzzy.desc", "https://fr.wikipedia.org/wiki/Logique_floue");
                 addGlossaryRowKey(vReasoning, "glossary.entry.reasoning.hybrid.title", "glossary.entry.reasoning.hybrid.desc", "https://fr.wikipedia.org/wiki/Syst%C3%A8me_hybride");
                 addGlossaryRowKey(vReasoning, "glossary.entry.reasoning.snn.title", "glossary.entry.reasoning.snn.desc", "https://fr.wikipedia.org/wiki/R%C3%A9seau_de_neurones_artificiels");
+                addGlossaryRowKey(vReasoning, "glossary.reasoning.nn.title", "glossary.reasoning.nn.desc");
+                addGlossaryRowKey(vReasoning, "glossary.reasoning.bulk.title", "glossary.reasoning.bulk.desc");
+                addGlossaryRowKey(vReasoning, "glossary.reasoning.quorum.title", "glossary.reasoning.quorum.desc");
 
                 // Section 5: Capteurs & Biomécanique
                 VBox vSensors = new VBox(10); vSensors.setPadding(new Insets(15));
@@ -2172,6 +2331,12 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRowKey(vSensors, "glossary.entry.sensors.mandible.title", "glossary.entry.sensors.mandible.desc", "https://fr.wikipedia.org/wiki/Mandibule_(arthropode)");
                 addGlossaryRowKey(vSensors, "glossary.entry.sensors.autothysis.title", "glossary.entry.sensors.autothysis.desc", "https://fr.wikipedia.org/wiki/Colobopsis_explodens");
                 addGlossaryRowKey(vSensors, "glossary.entry.sensors.arolia.title", "glossary.entry.sensors.arolia.desc", "https://fr.wikipedia.org/wiki/Tarse_(anatomie)");
+                addGlossaryRowKey(vSensors, "glossary.biomech.antennal_olfaction.title", "glossary.biomech.antennal_olfaction.desc");
+                addGlossaryRowKey(vSensors, "glossary.species.hydrocarbons.title", "glossary.species.hydrocarbons.desc");
+                addGlossaryRowKey(vSensors, "glossary.species.formic_acid.title", "glossary.species.formic_acid.desc");
+                addGlossaryRowKey(vSensors, "glossary.species.metabolism.title", "glossary.species.metabolism.desc");
+                addGlossaryRowKey(vSensors, "glossary.species.polymorphism.title", "glossary.species.polymorphism.desc");
+                addGlossaryRowKey(vSensors, "glossary.species.desiccation.title", "glossary.species.desiccation.desc");
 
                 // Section 6: Espèces Associées, Proies & Pathogènes
                 VBox vAccessory = new VBox(10); vAccessory.setPadding(new Insets(15));
@@ -2184,6 +2349,15 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRowKey(vAccessory, "glossary.entry.accessory.r0.title", "glossary.entry.accessory.r0.desc", "https://fr.wikipedia.org/wiki/Nombre_reproductif_de_base");
                 addGlossaryRowKey(vAccessory, "glossary.entry.accessory.lat.title", "glossary.entry.accessory.lat.desc", "https://fr.wikipedia.org/wiki/Dur%C3%A9e_du_jour");
 
+                // Section 7: Moteur & Contrôles Temps Réel
+                VBox vEngine = new VBox(10); vEngine.setPadding(new Insets(15));
+                addGlossaryRowKey(vEngine, "glossary.engine.god_mode.title", "glossary.engine.god_mode.desc");
+                addGlossaryRowKey(vEngine, "glossary.engine.dt.title", "glossary.engine.dt.desc");
+                addGlossaryRowKey(vEngine, "glossary.engine.multi_colony.title", "glossary.engine.multi_colony.desc");
+                addGlossaryRowKey(vEngine, "glossary.engine.seed.title", "glossary.engine.seed.desc");
+                addGlossaryRowKey(vEngine, "glossary.engine.audio_synth.title", "glossary.engine.audio_synth.desc");
+                addGlossaryRowKey(vEngine, "glossary.engine.time_scale.title", "glossary.engine.time_scale.desc");
+
                 // Sort each section alphabetically by localized entry title
                 sortGlossaryVBox(vNest);
                 sortGlossaryVBox(vSocial);
@@ -2191,6 +2365,7 @@ public class SwarmForgeClient extends Application {
                 sortGlossaryVBox(vReasoning);
                 sortGlossaryVBox(vSensors);
                 sortGlossaryVBox(vAccessory);
+                sortGlossaryVBox(vEngine);
 
                 Tab tNest = new Tab();
                 tNest.textProperty().bind(i18n.createStringBinding("glossary.cat.nest"));
@@ -2216,11 +2391,15 @@ public class SwarmForgeClient extends Application {
                 tAccessory.textProperty().bind(i18n.createStringBinding("glossary.cat.accessory"));
                 tAccessory.setContent(new ScrollPane(vAccessory));
 
-                tabPane.getTabs().addAll(tNest, tSocial, tEnv, tReasoning, tSensors, tAccessory);
-                VBox.setVgrow(tabPane, Priority.ALWAYS);
+                Tab tEngine = new Tab();
+                tEngine.textProperty().bind(i18n.createStringBinding("glossary.tab.engine", "Engine & Controls"));
+                tEngine.setContent(new ScrollPane(vEngine));
+
+                this.glossaryCategoryTabPane.getTabs().addAll(tNest, tSocial, tEnv, tReasoning, tSensors, tAccessory, tEngine);
+                VBox.setVgrow(this.glossaryCategoryTabPane, Priority.ALWAYS);
 
                 // Add live search filter listener
-                searchField.textProperty().addListener((obs, oldV, newV) -> {
+                this.glossarySearchField.textProperty().addListener((obs, oldV, newV) -> {
                         String query = newV == null ? "" : newV.toLowerCase().trim();
                         filterVBoxRows(vNest, query);
                         filterVBoxRows(vSocial, query);
@@ -2228,9 +2407,10 @@ public class SwarmForgeClient extends Application {
                         filterVBoxRows(vReasoning, query);
                         filterVBoxRows(vSensors, query);
                         filterVBoxRows(vAccessory, query);
+                        filterVBoxRows(vEngine, query);
                 });
 
-                contentBox.getChildren().addAll(subtitle, searchField, tabPane);
+                contentBox.getChildren().addAll(subtitle, this.glossarySearchField, this.glossaryCategoryTabPane);
                 VBox.setVgrow(contentBox, Priority.ALWAYS);
                 mainBox.getChildren().addAll(headerVBox, contentBox);
                 return mainBox;
@@ -2279,6 +2459,10 @@ public class SwarmForgeClient extends Application {
                 return "";
         }
 
+        private void addGlossaryRowKey(VBox box, String titleKey, String descKey) {
+                addGlossaryRowKey(box, titleKey, descKey, null);
+        }
+
         private void addGlossaryRowKey(VBox box, String titleKey, String descKey, String wikiUrl) {
                 org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
                 Label t = new Label();
@@ -2291,18 +2475,20 @@ public class SwarmForgeClient extends Application {
                 d.getStyleClass().add("help-entry-desc");
                 d.setWrapText(true);
 
-                Hyperlink wikiLink = new Hyperlink();
-                wikiLink.textProperty().bind(i18n.createStringBinding("glossary.link.wikipedia"));
-                wikiLink.setStyle("-fx-font-size: 11px; -fx-text-fill: #0284c7;");
-                wikiLink.setOnAction(e -> {
-                        try {
-                                java.awt.Desktop.getDesktop().browse(new java.net.URI(wikiUrl));
-                        } catch (Exception ex) {
-                                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Wikipédia : " + wikiUrl).show();
-                        }
-                });
-
-                HBox row = new HBox(8, t, d, wikiLink);
+                HBox row = new HBox(8, t, d);
+                if (wikiUrl != null && !wikiUrl.isBlank()) {
+                        Hyperlink wikiLink = new Hyperlink();
+                        wikiLink.textProperty().bind(i18n.createStringBinding("glossary.link.wikipedia"));
+                        wikiLink.setStyle("-fx-font-size: 11px; -fx-text-fill: #0284c7;");
+                        wikiLink.setOnAction(e -> {
+                                try {
+                                        java.awt.Desktop.getDesktop().browse(new java.net.URI(wikiUrl));
+                                } catch (Exception ex) {
+                                        org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Wikipédia : " + wikiUrl).show();
+                                }
+                        });
+                        row.getChildren().add(wikiLink);
+                }
                 row.getStyleClass().add("card-pane");
                 row.setPadding(new Insets(8));
                 HBox.setHgrow(d, Priority.ALWAYS);

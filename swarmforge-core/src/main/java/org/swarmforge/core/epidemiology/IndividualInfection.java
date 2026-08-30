@@ -60,18 +60,24 @@ public class IndividualInfection implements Serializable {
         }
     }
 
-    public void tick(float geneticPathogenResistance) {
+    private float incubationProgressSeconds = 0.0f;
+
+    public void tick(float geneticPathogenResistance, float deltaSeconds) {
         if (state == InfectionState.EXPOSED && activePathogen != null) {
-            incubationProgressTicks++;
-            // Check germination
-            float germinationChance = activePathogen.getBaseInfectivity() / Math.max(0.1f, geneticPathogenResistance);
-            if (incubationProgressTicks >= activePathogen.getIncubationTicks() || Math.random() < germinationChance) {
+            incubationProgressSeconds += deltaSeconds;
+            // Check germination after incubation period in seconds (adjusted by genetic resistance)
+            float effectiveIncubationSeconds = activePathogen.getIncubationTicks() * Math.max(0.1f, geneticPathogenResistance);
+            if (incubationProgressSeconds >= effectiveIncubationSeconds) {
                 this.state = InfectionState.INFECTED;
                 this.internalInfectionLoad = 0.1f;
             }
         } else if (state == InfectionState.INFECTED && activePathogen != null) {
-            this.internalInfectionLoad = Math.min(1.0f, this.internalInfectionLoad + activePathogen.getBaseLethality());
+            this.internalInfectionLoad = Math.min(1.0f, this.internalInfectionLoad + activePathogen.getBaseLethality() * deltaSeconds);
         }
+    }
+
+    public void tick(float geneticPathogenResistance) {
+        tick(geneticPathogenResistance, 1.0f);
     }
 
     public UUID getIndividualId() {

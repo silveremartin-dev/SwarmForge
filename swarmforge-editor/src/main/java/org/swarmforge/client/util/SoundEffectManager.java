@@ -203,20 +203,20 @@ public class SoundEffectManager {
      */
     public String[] getSoundBankSuggestions() {
         return new String[]{
-            "ant_colony_activity.mp3 (Activités & stridulations collectives de la colonie)",
-            "anthill_nest_sounds.mp3 (Sons internes de la fourmilière & galeries souterraines)",
-            "sand_soil_digging.mp3 (Bruitage de creusement dans le sol & grattage de sable)",
-            "dry_leaves_rustling.mp3 (Bruissement de feuilles sèches & litière forestière)",
-            "soft_wind_leaves.mp3 (Brise légère traversant le feuillage)",
-            "wind_gust_leaves.mp3 (Rafales de vent & bruissement d'arbres)",
-            "strong_howling_wind.mp3 (Vent violent & bourrasques de tempête)",
-            "desert_wind_ambient.mp3 (Vent chaud & aride du désert)",
-            "water_splash2.ogg (Clapotis d'eau & éclaboussures de cours d'eau)",
-            "river_stream.wav (Bruit d'eau de rivière fluide)",
-            "rainforest_day.wav (Ambiance jungle tropicale & oiseaux néotropicaux)",
-            "crickets_night.wav (Ambiance nocturne & grillons)",
-            "rain_heavy.wav (Averse de pluie sur la canopée)",
-            "thunder_strike.wav (Gondlement du tonnerre distant)"
+            "ant_colony_activity.mp3 (Colony activity & collective stridulations)",
+            "anthill_nest_sounds.mp3 (Anthill internal sounds & subterranean tunnels)",
+            "sand_soil_digging.mp3 (Soil digging & sand scraping)",
+            "dry_leaves_rustling.mp3 (Dry leaves rustling & forest litter)",
+            "soft_wind_leaves.mp3 (Gentle breeze through foliage)",
+            "wind_gust_leaves.mp3 (Wind gusts & tree rustling)",
+            "strong_howling_wind.mp3 (Strong howling wind & storm gusts)",
+            "desert_wind_ambient.mp3 (Warm & arid desert wind)",
+            "water_splash2.ogg (Water splashing & stream ripples)",
+            "river_stream.wav (Smooth flowing river water)",
+            "rainforest_day.wav (Tropical rainforest ambience & neotropical birds)",
+            "crickets_night.wav (Night ambience & crickets)",
+            "rain_heavy.wav (Heavy rain on canopy)",
+            "thunder_strike.wav (Distant thunder rumble)"
         };
     }
 

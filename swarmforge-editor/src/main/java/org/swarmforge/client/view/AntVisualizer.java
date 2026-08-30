@@ -189,22 +189,78 @@ public class AntVisualizer {
                 offset = addBox(pos, norm, idx, offset, new Vector3f(-0.08f * scale, 0.15f * scale, 0.48f * scale),
                         new Vector3f(0.03f * scale, 0.03f * scale, 0.12f * scale));
             }
-        } else if (order == org.swarmforge.core.species.Species.InsectOrder.BEE || order == org.swarmforge.core.species.Species.InsectOrder.WASP) {
-            // Bee/Wasp Morphology: Compact thorax, striped abdomen, dual wings
-            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.12f * scale, 0),
-                    new Vector3f(0.18f * scale, 0.15f * scale, 0.22f * scale));
-            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.15f * scale, 0.3f * scale),
-                    new Vector3f(0.14f * scale, 0.14f * scale, 0.14f * scale));
+        } else if (order == org.swarmforge.core.species.Species.InsectOrder.BEE) {
+            // Bee Morphology: Plump fuzzy thorax, ovate abdomen, wide dual wings
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.14f * scale, 0),
+                    new Vector3f(0.24f * scale, 0.20f * scale, 0.24f * scale));
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.15f * scale, 0.28f * scale),
+                    new Vector3f(0.16f * scale, 0.16f * scale, 0.16f * scale));
             offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.16f * scale, -0.38f * scale),
-                    new Vector3f(0.22f * scale, 0.22f * scale, 0.28f * scale));
+                    new Vector3f(0.26f * scale, 0.24f * scale, 0.32f * scale));
 
-            // Translucent Wings
-            offset = addBox(pos, norm, idx, offset, new Vector3f(0.25f * scale, 0.28f * scale, -0.05f * scale),
-                    new Vector3f(0.25f * scale, 0.01f, 0.12f * scale));
-            offset = addBox(pos, norm, idx, offset, new Vector3f(-0.25f * scale, 0.28f * scale, -0.05f * scale),
-                    new Vector3f(0.25f * scale, 0.01f, 0.12f * scale));
+            // Wide Translucent Wings
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0.28f * scale, 0.30f * scale, -0.05f * scale),
+                    new Vector3f(0.28f * scale, 0.01f, 0.15f * scale));
+            offset = addBox(pos, norm, idx, offset, new Vector3f(-0.28f * scale, 0.30f * scale, -0.05f * scale),
+                    new Vector3f(0.28f * scale, 0.01f, 0.15f * scale));
+        } else if (order == org.swarmforge.core.species.Species.InsectOrder.WASP) {
+            // Wasp Morphology: Slender waist (petiole), pointed abdomen with sting, elongated wings
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.12f * scale, 0),
+                    new Vector3f(0.16f * scale, 0.14f * scale, 0.20f * scale));
+            // Thin petiole waist
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.12f * scale, -0.16f * scale),
+                    new Vector3f(0.05f * scale, 0.05f * scale, 0.10f * scale));
+            // Head
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.15f * scale, 0.26f * scale),
+                    new Vector3f(0.14f * scale, 0.14f * scale, 0.14f * scale));
+            // Pointed Abdomen
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.16f * scale, -0.42f * scale),
+                    new Vector3f(0.18f * scale, 0.18f * scale, 0.36f * scale));
+
+            // Long Wings
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0.30f * scale, 0.28f * scale, -0.05f * scale),
+                    new Vector3f(0.32f * scale, 0.01f, 0.12f * scale));
+            offset = addBox(pos, norm, idx, offset, new Vector3f(-0.30f * scale, 0.28f * scale, -0.05f * scale),
+                    new Vector3f(0.32f * scale, 0.01f, 0.12f * scale));
+        } else if (order == org.swarmforge.core.species.Species.InsectOrder.APHID) {
+            // Aphid Morphology: Pear-shaped soft body with twin rear cornicles (siphunculi)
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.10f * scale, 0.14f * scale),
+                    new Vector3f(0.12f * scale, 0.10f * scale, 0.14f * scale));
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.12f * scale, 0.24f * scale),
+                    new Vector3f(0.08f * scale, 0.08f * scale, 0.08f * scale));
+            // Large rounded abdomen
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.15f * scale, -0.22f * scale),
+                    new Vector3f(0.26f * scale, 0.24f * scale, 0.32f * scale));
+            // Cornicles / Siphunculi
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0.10f * scale, 0.30f * scale, -0.32f * scale),
+                    new Vector3f(0.02f * scale, 0.12f * scale, 0.02f * scale));
+            offset = addBox(pos, norm, idx, offset, new Vector3f(-0.10f * scale, 0.30f * scale, -0.32f * scale),
+                    new Vector3f(0.02f * scale, 0.12f * scale, 0.02f * scale));
+        } else if (order == org.swarmforge.core.species.Species.InsectOrder.BEETLE) {
+            // Beetle Morphology: Broad pronotum thorax shield, hard chitin elytra wing covers
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.12f * scale, 0.20f * scale),
+                    new Vector3f(0.14f * scale, 0.10f * scale, 0.12f * scale));
+            // Pronotum
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.14f * scale, 0.06f * scale),
+                    new Vector3f(0.24f * scale, 0.14f * scale, 0.16f * scale));
+            // Elytra Carapace
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.16f * scale, -0.26f * scale),
+                    new Vector3f(0.28f * scale, 0.18f * scale, 0.38f * scale));
+        } else if (order == org.swarmforge.core.species.Species.InsectOrder.THRIPS) {
+            // Thrips Morphology: Elongated narrow body, fringed micro-wings
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.08f * scale, 0.25f * scale),
+                    new Vector3f(0.08f * scale, 0.08f * scale, 0.10f * scale));
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.08f * scale, 0.10f * scale),
+                    new Vector3f(0.09f * scale, 0.08f * scale, 0.16f * scale));
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.09f * scale, -0.25f * scale),
+                    new Vector3f(0.10f * scale, 0.09f * scale, 0.42f * scale));
+            // Fringed micro-wings
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0.08f * scale, 0.16f * scale, -0.15f * scale),
+                    new Vector3f(0.06f * scale, 0.01f, 0.35f * scale));
+            offset = addBox(pos, norm, idx, offset, new Vector3f(-0.08f * scale, 0.16f * scale, -0.15f * scale),
+                    new Vector3f(0.06f * scale, 0.01f, 0.35f * scale));
         } else {
-            // Standard Ant / Generic Eusocial insect morphology
+            // Standard Ant / Formicidae morphology (Default Fallback)
             offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.1f * scale, 0),
                     new Vector3f(0.15f * scale, 0.1f * scale, 0.2f * scale));
             offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.15f * scale, 0.3f * scale),

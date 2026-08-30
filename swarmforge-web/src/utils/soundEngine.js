@@ -178,7 +178,30 @@ class ProceduralSoundEngine {
         }, delay);
     }
 
-    // --- 3. BIRD CHIRPS & FOREST SONG SYNTHESIS ---
+    // --- 3. BIRD CHIRPS & FOREST SONG SYNTHESIS (Day Birds & Night Crickets) ---
+    triggerNightCricket() {
+        if (!this.ctx || !this.gains.ambiance || this.muted) return;
+        const now = this.ctx.currentTime;
+        // High frequency cricket chirp pulse train (4.5 kHz pulse bursts)
+        for (let i = 0; i < 4; i++) {
+            const noteTime = now + i * 0.03;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(4500 + Math.random() * 300, noteTime);
+
+            gain.gain.setValueAtTime(0.001, noteTime);
+            gain.gain.linearRampToValueAtTime(0.08, noteTime + 0.005);
+            gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.02);
+
+            osc.connect(gain);
+            gain.connect(this.gains.ambiance);
+            osc.start(noteTime);
+            osc.stop(noteTime + 0.025);
+        }
+    }
+
     triggerBirdChirp() {
         if (!this.ctx || !this.gains.ambiance || this.muted) return;
 
@@ -229,9 +252,14 @@ class ProceduralSoundEngine {
 
     scheduleNextBirdChirp() {
         if (this.birdTimer) clearTimeout(this.birdTimer);
+        if (this.simRunning === false) return;
         const delay = 2000 + Math.random() * 5000;
         this.birdTimer = setTimeout(() => {
-            this.triggerBirdChirp();
+            if (this.isDay === false || (this.lightLevel !== undefined && this.lightLevel < 0.2)) {
+                this.triggerNightCricket();
+            } else {
+                this.triggerBirdChirp();
+            }
             this.scheduleNextBirdChirp();
         }, delay);
     }
@@ -544,6 +572,29 @@ class ProceduralSoundEngine {
             listener.positionZ.setTargetAtTime(cameraZ, this.ctx.currentTime, 0.1);
         } else if (listener.setPosition) {
             listener.setPosition(cameraX, cameraY, cameraZ);
+        }
+    }
+
+    updateSimulationState({ isDay = true, lightLevel = 1.0, simRunning = true, speed = 1.0 } = {}) {
+        this.isDay = isDay;
+        this.lightLevel = lightLevel;
+        this.simRunning = simRunning && speed > 0;
+
+        if (!this.simRunning) {
+            if (this.birdTimer) clearTimeout(this.birdTimer);
+            if (this.leavesTimer) clearTimeout(this.leavesTimer);
+            if (this.gains.ambiance && this.ctx) {
+                this.gains.ambiance.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+            }
+            if (this.gains.weather && this.ctx) {
+                this.gains.weather.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+            }
+        } else {
+            if (this.gains.ambiance && this.ctx) {
+                this.gains.ambiance.gain.setTargetAtTime(this.volumes.ambiance, this.ctx.currentTime, 0.2);
+            }
+            this.scheduleNextBirdChirp();
+            this.scheduleNextLeavesRustle();
         }
     }
 

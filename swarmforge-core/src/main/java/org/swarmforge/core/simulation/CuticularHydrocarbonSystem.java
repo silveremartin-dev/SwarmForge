@@ -24,17 +24,22 @@ public class CuticularHydrocarbonSystem {
     /**
      * Generates a colony-specific baseline Cuticular Hydrocarbon (CHC) profile.
      */
-    public static float[] generateColonyProfile() {
+    public static float[] generateColonyProfile(java.util.Random random) {
         float[] profile = new float[CHC_FRACTIONS];
         float sum = 0f;
+        java.util.Random rng = random != null ? random : java.util.concurrent.ThreadLocalRandom.current();
         for (int i = 0; i < CHC_FRACTIONS; i++) {
-            profile[i] = (float) (0.2 + Math.random() * 0.8);
+            profile[i] = (float) (0.2 + rng.nextFloat() * 0.8);
             sum += profile[i];
         }
         for (int i = 0; i < CHC_FRACTIONS; i++) {
             profile[i] /= sum; // Normalize fractions to sum to 1.0
         }
         return profile;
+    }
+
+    public static float[] generateColonyProfile() {
+        return generateColonyProfile(null);
     }
 
     /**

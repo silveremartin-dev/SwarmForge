@@ -24,7 +24,7 @@ public class ReticulitermesFlavipes extends CustomSpecies {
         setCommonName("Eastern Subterranean Termite");
         setScientificName("Reticulitermes flavipes");
         setInsectType("TERMITE");
-        setDescription("Eusocial de l'ordre des Isoptères. Reine et Roi présents dans la cellule royale, nutrition cellulosique.");
+        setDescription("Eusocial insect of the order Isoptera. Queen and King present in royal chamber, feeding on cellulose.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setHasKing(true);

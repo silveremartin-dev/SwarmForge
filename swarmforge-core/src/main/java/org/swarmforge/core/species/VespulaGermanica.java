@@ -24,7 +24,7 @@ public class VespulaGermanica extends CustomSpecies {
         setCommonName("European Yellowjacket Wasp");
         setScientificName("Vespula germanica");
         setInsectType("WASP");
-        setDescription("Chasseresse carnivore volante construisant des nids en papier d'origine ligneuse.");
+        setDescription("Flying carnivorous hunter constructing paper nests from woody pulp.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365);

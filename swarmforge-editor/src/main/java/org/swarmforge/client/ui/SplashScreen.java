@@ -35,16 +35,18 @@ public class SplashScreen {
     private final Label percentLabel;
 
     public SplashScreen() {
+        this(null);
+    }
+
+    public SplashScreen(Stage owner) {
         splashStage = new Stage();
         splashStage.initStyle(StageStyle.TRANSPARENT);
+        if (owner != null) {
+            splashStage.initOwner(owner);
+        }
 
         // Window Icon registration for taskbar appearance
-        try {
-            java.io.InputStream iconStream = getClass().getResourceAsStream("/icons/icon.png");
-            if (iconStream != null) {
-                splashStage.getIcons().add(new javafx.scene.image.Image(iconStream));
-            }
-        } catch (Exception ignored) {}
+        org.swarmforge.client.util.IconUtils.applyWindowIcons(splashStage);
 
         // Header Title & Eusocial Insect Icon Banner
         FontIcon logoIcon = new FontIcon(Feather.DISC);
@@ -54,7 +56,7 @@ public class SplashScreen {
         Label titleLabel = new Label("SwarmForge Studio");
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
-        Label subtitleLabel = new Label("Simulateur de Sociétés d'Insectes (Fourmis, Termites, Guêpes & Abeilles)");
+        Label subtitleLabel = new Label("Eusocial Insect Society Simulator (Ants, Termites, Wasps & Bees)");
         subtitleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
 
         VBox titleBox = new VBox(2, titleLabel, subtitleLabel);
@@ -63,7 +65,7 @@ public class SplashScreen {
         headerBox.setAlignment(Pos.CENTER_LEFT);
 
         // Status & Progress Bar Controls
-        statusLabel = new Label("Initialisation du moteur de simulation eusociale...");
+        statusLabel = new Label("Initializing eusocial simulation engine...");
         statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #e2e8f0;");
 
         percentLabel = new Label("0 %");
@@ -113,13 +115,13 @@ public class SplashScreen {
      */
     public void startProgressAndLaunch(Runnable onFinished) {
         String[] steps = {
-            "Initialisation des modules SwarmForge...",
-            "Chargement des dictionnaires d'internationalisation (I18n)...",
-            "Chargement des presets d'espèces & génétique...",
-            "Initialisation du moteur audio & synthétiseur procédural...",
-            "Préparation du viewport 3D (jMonkeyEngine & JavaFX)...",
-            "Connexion à la base de persistance SQLite...",
-            "Démarrage du studio..."
+            "Initializing SwarmForge core modules...",
+            "Loading internationalization (I18n) bundles...",
+            "Loading species presets & genetics...",
+            "Initializing audio engine & procedural synthesizer...",
+            "Preparing 3D viewport (jMonkeyEngine & JavaFX)...",
+            "Connecting to SQLite persistence database...",
+            "Launching SwarmForge Studio..."
         };
 
         Timeline timeline = new Timeline();

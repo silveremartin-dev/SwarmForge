@@ -19,20 +19,20 @@ import java.util.Random;
 public class WeatherMarkovChain {
 
     public enum WeatherState {
-        SUNNY("☀️ Ensoleillé", 1.0f),
-        PARTLY_CLOUDY("⛅ Partiellement Nuageux", 0.95f),
-        OVERCAST("☁️ Couvert", 0.85f),
-        FOG("🌫 Brouillard", 0.60f),
-        LIGHT_RAIN("🌧 Pluie Légère", 0.40f),
-        HEAVY_RAIN("⛈ Pluie Forte", 0.10f),
-        THUNDERSTORM("⚡ Orage Convectif", 0.05f),
-        SANDSTORM("🏜️ Tempête de Sable", 0.0f),
-        HAIL("🧊 Grêle", 0.02f),
-        BLIZZARD("❄️ Blizzard / Tempête de Neige", 0.0f),
-        TEMPEST("🌪️ Tempête / Tempest", 0.0f),
-        HEATWAVE("🔥 Canicule", 0.20f),
-        DROUGHT("🌵 Sécheresse", 0.70f),
-        SNOW("❄️ Neige", 0.30f);
+        SUNNY("☀️ Sunny", 1.0f),
+        PARTLY_CLOUDY("⛅ Partly Cloudy", 0.95f),
+        OVERCAST("☁️ Overcast", 0.85f),
+        FOG("🌫 Fog", 0.60f),
+        LIGHT_RAIN("🌧 Light Rain", 0.40f),
+        HEAVY_RAIN("⛈ Heavy Rain", 0.10f),
+        THUNDERSTORM("⚡ Convective Thunderstorm", 0.05f),
+        SANDSTORM("🏜️ Sandstorm", 0.0f),
+        HAIL("🧊 Hailstorm", 0.02f),
+        BLIZZARD("❄️ Blizzard / Snowstorm", 0.0f),
+        TEMPEST("🌪️ Tempest / Gale", 0.0f),
+        HEATWAVE("🔥 Heatwave", 0.20f),
+        DROUGHT("🌵 Drought", 0.70f),
+        SNOW("❄️ Snowfall", 0.30f);
 
         public final String label;
         public final float flightSuitability; // 0.0 to 1.0 multiplier for insect flight

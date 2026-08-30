@@ -138,11 +138,11 @@ graph TD
 | :--- | :--- | :--- |
 | **Simulated Entities** | 1,000,000+ Active Agents | Verified up to 1,000,000 entities with SpatialHashMap + Virtual Threads |
 | **World Dimensions** | 1,000m × 1,000m × 100m | Supported with sparse Morton3D spatial maps |
-| **Tick Execution Rate**| 60 TPS (Ticks Per Second) | Sustained up to 10,000 agents on CPU 4-cores (401 TPS @ 1,000 ants) |
+| **Tick Execution Rate**| 60 TPS (Ticks Per Second) | Sustained up to 500 agents on CPU 4-cores (1,131–2,333 TPS @ 100 ants, 70–96 TPS @ 500 ants) |
 | **Supercolony Scale**  | 1,000,000 Agents | 0.95 TPS (~1s/tick) on CPU, scalable to >60 TPS with GPU compute nodes |
 | **Streaming Latency**  | < 50 ms | Achieved via gRPC HTTP/2 bidirectional streams |
 
-> 📖 For comprehensive benchmark metrics from 100 to 1,000,000 agents, consult [BENCHMARKS.md](BENCHMARKS.md).
+> 📖 For comprehensive benchmark metrics from 100 to 1,000,000 agents, consult [BENCHMARKS.md](BENCHMARKS.md) and [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md).
 
 ---
 

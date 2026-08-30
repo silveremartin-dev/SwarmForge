@@ -66,7 +66,7 @@ public class TrackedAntPane extends VBox {
         HBox headerBox = new HBox(8);
         headerBox.setAlignment(Pos.CENTER_LEFT);
 
-        titleLabel = new Label("🎯 FOURMI SUIVIE");
+        titleLabel = new Label("🎯 TRACKED ANT");
         titleLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;");
 
         Region spacer = new Region();
@@ -74,7 +74,7 @@ public class TrackedAntPane extends VBox {
 
         btnClose = new Button("✕");
         btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: hand;");
-        btnClose.setTooltip(new Tooltip("Fermer le panneau de suivi"));
+        btnClose.setTooltip(new Tooltip("Close tracking panel"));
         btnClose.setOnAction(e -> {
             if (onStopFollowHandler != null) {
                 onStopFollowHandler.run();
@@ -93,7 +93,7 @@ public class TrackedAntPane extends VBox {
         // 1. Health Row
         HBox healthRow = new HBox(8);
         healthRow.setAlignment(Pos.CENTER_LEFT);
-        lblHealthText = new Label("💓 Santé : -- / 100");
+        lblHealthText = new Label("💓 Health: -- / 100");
         lblHealthText.setStyle("-fx-font-size: 11px; -fx-text-fill: #cbd5e1;");
 
         Region healthSpacer = new Region();
@@ -106,27 +106,27 @@ public class TrackedAntPane extends VBox {
         healthRow.getChildren().addAll(lblHealthText, healthSpacer, healthBar);
 
         // 2. Energy / Hunger / Thirst
-        lblEnergyHungerThirst = new Label("⚡ Énergie: --% | 🍗 Faim: --% | 💧 Soif: --%");
+        lblEnergyHungerThirst = new Label("⚡ Energy: --% | 🍗 Hunger: --% | 💧 Thirst: --%");
         lblEnergyHungerThirst.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
 
         // 3. Age / Stage / Job
-        lblAgeStageJob = new Label("🎂 Âge: -- jours | Stade: -- | Tâche: --");
+        lblAgeStageJob = new Label("🎂 Age: -- days | Stage: -- | Task: --");
         lblAgeStageJob.setStyle("-fx-font-size: 11px; -fx-text-fill: #e2e8f0;");
 
         // 4. AI State
-        lblAiState = new Label("🧠 IA: IDLE");
+        lblAiState = new Label("🧠 AI: IDLE");
         lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #a78bfa;");
 
         // 5. 3D Position
-        lblPos3D = new Label("📍 Pos 3D: (X: --, Y: --, Z: --)");
+        lblPos3D = new Label("📍 3D Pos: (X: --, Y: --, Z: --)");
         lblPos3D.setStyle("-fx-font-size: 11px; -fx-text-fill: #cbd5e1;");
 
         // 6. Heading & Cargo
-        lblHeadingCargo = new Label("🚀 Cap (Heading): --° | 📦 Cargo: Aucun");
+        lblHeadingCargo = new Label("🚀 Heading: --° | 📦 Cargo: None");
         lblHeadingCargo.setStyle("-fx-font-size: 11px; -fx-text-fill: #cbd5e1;");
 
         // 7. CHC Gestalt Status
-        lblChcGestalt = new Label("🧪 Gestalt Hydrocarbonée Cuticulaire (CHC): Authentifiée");
+        lblChcGestalt = new Label("🧪 Cuticular Hydrocarbon Gestalt (CHC): Authenticated");
         lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #4ade80;");
 
         telemetryBox.getChildren().addAll(
@@ -156,7 +156,7 @@ public class TrackedAntPane extends VBox {
             }
         });
 
-        btnStopFollow = new Button("🛑 Arrêter le suivi");
+        btnStopFollow = new Button("🛑 Stop Tracking");
         btnStopFollow.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand;");
         btnStopFollow.setOnAction(e -> {
             if (onStopFollowHandler != null) {
@@ -171,7 +171,7 @@ public class TrackedAntPane extends VBox {
         searchRow.setAlignment(Pos.CENTER_LEFT);
 
         txtAntId = new TextField();
-        txtAntId.setPromptText("ID Fourmi (ex: ant_1)");
+        txtAntId.setPromptText("Ant ID (e.g. ant_1)");
         txtAntId.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 11px;");
         HBox.setHgrow(txtAntId, Priority.ALWAYS);
         txtAntId.setOnAction(e -> triggerSearch());
@@ -211,15 +211,15 @@ public class TrackedAntPane extends VBox {
     public void setNoAntSelectedState() {
         this.currentAnt = null;
         this.isFollowing = false;
-        titleLabel.setText("🎯 SUIVI DE FOURMI");
-        lblHealthText.setText("💓 Santé : -- / 100");
+        titleLabel.setText("🎯 ANT TRACKING");
+        lblHealthText.setText("💓 Health: -- / 100");
         healthBar.setProgress(0);
-        lblEnergyHungerThirst.setText("⚡ Énergie: --% | 🍗 Faim: --% | 💧 Soif: --%");
-        lblAgeStageJob.setText("🎂 Âge: -- jours | Stade: -- | Tâche: --");
-        lblAiState.setText("🧠 IA: Aucune fourmi sélectionnée");
-        lblPos3D.setText("📍 Pos 3D: (X: --, Y: --, Z: --)");
-        lblHeadingCargo.setText("🚀 Cap (Heading): --° | 📦 Cargo: Aucun");
-        lblChcGestalt.setText("🧪 Gestalt (CHC): Attente de sélection");
+        lblEnergyHungerThirst.setText("⚡ Energy: --% | 🍗 Hunger: --% | 💧 Thirst: --%");
+        lblAgeStageJob.setText("🎂 Age: -- days | Stage: -- | Task: --");
+        lblAiState.setText("🧠 AI: No Ant Selected");
+        lblPos3D.setText("📍 3D Pos: (X: --, Y: --, Z: --)");
+        lblHeadingCargo.setText("🚀 Heading: --° | 📦 Cargo: None");
+        lblChcGestalt.setText("🧪 Gestalt (CHC): Awaiting Selection");
         lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
 
         btnFollowThisAnt.setDisable(true);
@@ -239,26 +239,26 @@ public class TrackedAntPane extends VBox {
 
         String idStr = ant.getId() != null ? ant.getId().toString() : "N/A";
         String shortId = idStr.length() > 8 ? idStr.substring(0, 8) : idStr;
-        titleLabel.setText(String.format("🎯 FOURMI %s : %s #%s", following ? "SUIVIE" : "SÉLECTIONNÉE", ant.getCaste(), shortId));
+        titleLabel.setText(String.format("🎯 ANT %s: %s #%s", following ? "TRACKED" : "SELECTED", ant.getCaste(), shortId));
 
         // Health
         double health = ant.getHealth();
-        lblHealthText.setText(String.format(Locale.US, "💓 Santé : %.0f / 100", health));
+        lblHealthText.setText(String.format(Locale.US, "💓 Health: %.0f / 100", health));
         healthBar.setProgress(Math.max(0, Math.min(1.0, health / 100.0)));
         healthBar.setStyle(health > 50 ? "-fx-accent: #22c55e;" : "-fx-accent: #ef4444;");
 
         // Energy / Hunger / Thirst
-        lblEnergyHungerThirst.setText(String.format(Locale.US, "⚡ Énergie: %.0f%% | 🍗 Faim: %.0f%% | 💧 Soif: %.0f%%",
+        lblEnergyHungerThirst.setText(String.format(Locale.US, "⚡ Energy: %.0f%% | 🍗 Hunger: %.0f%% | 💧 Thirst: %.0f%%",
                 ant.getEnergy(), ant.getHunger(), ant.getThirst()));
 
         // Age / Stage / Job
         double ageDays = ant.getAge() / 600.0;
-        lblAgeStageJob.setText(String.format(Locale.US, "🎂 Âge: %.1f jours | Stade: %s | Tâche: %s",
+        lblAgeStageJob.setText(String.format(Locale.US, "🎂 Age: %.1f days | Stage: %s | Task: %s",
                 ageDays, ant.getLifeStage(), ant.getJob()));
 
         // AI State & Behaviors
         String behaviorsStr = ant.getActiveBehaviorsSummary();
-        String stateStr = String.format("🧠 IA: %s [%s]",
+        String stateStr = String.format("🧠 AI: %s [%s]",
                 ant.getState() != null ? ant.getState() : "IDLE",
                 behaviorsStr != null ? behaviorsStr : "");
         if (stateStr.length() > 46) {
@@ -267,14 +267,14 @@ public class TrackedAntPane extends VBox {
         lblAiState.setText(stateStr);
 
         // 3D Position
-        lblPos3D.setText(String.format(Locale.US, "📍 Pos 3D: (X: %.1f, Y: %.1f, Z: %.1f)", ant.getX(), ant.getY(), ant.getZ()));
+        lblPos3D.setText(String.format(Locale.US, "📍 3D Pos: (X: %.1f, Y: %.1f, Z: %.1f)", ant.getX(), ant.getY(), ant.getZ()));
 
         // Heading & Cargo
-        String cargo = ant.getCarriedItem() != Individual.CarriedItem.NONE ? ant.getCarriedItem().name() : "Aucun";
-        lblHeadingCargo.setText(String.format(Locale.US, "🚀 Cap (Heading): %.0f° | 📦 Cargo: %s", Math.toDegrees(ant.getHeading()), cargo));
+        String cargo = ant.getCarriedItem() != Individual.CarriedItem.NONE ? ant.getCarriedItem().name() : "None";
+        lblHeadingCargo.setText(String.format(Locale.US, "🚀 Heading: %.0f° | 📦 Cargo: %s", Math.toDegrees(ant.getHeading()), cargo));
 
         // CHC Gestalt
-        lblChcGestalt.setText("🧪 Gestalt Hydrocarbonée Cuticulaire (CHC): Authentifiée");
+        lblChcGestalt.setText("🧪 Cuticular Hydrocarbon Gestalt (CHC): Authenticated");
         lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #4ade80;");
 
         btnFollowThisAnt.setDisable(false);

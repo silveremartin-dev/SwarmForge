@@ -17,6 +17,7 @@ public interface AgentView {
     boolean isCarryingFood();
     boolean isAtNest();
     float getEnergyLevel();
+    float getHunger();
     UUID getColonyId();
     boolean isSoldier();
     java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes();

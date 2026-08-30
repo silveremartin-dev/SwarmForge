@@ -59,6 +59,7 @@ public class SimulationSnapshot implements Serializable {
             float hunger,
             boolean alive,
             Individual.Caste caste,
+            Individual.LifeStage lifeStage,
             Individual.AiState state,
             Individual.CarriedItem carriedItem) implements Serializable {
     }
@@ -90,6 +91,7 @@ public class SimulationSnapshot implements Serializable {
                         ind.getHunger(),
                         ind.isAlive(),
                         ind.getCaste(),
+                        ind.getLifeStage(),
                         ind.getState(),
                         ind.getCarriedItem()));
             }
@@ -172,6 +174,9 @@ public class SimulationSnapshot implements Serializable {
                 ind.setHealth(is.health);
                 ind.setEnergy(is.energy);
                 ind.setHunger(is.hunger);
+                if (is.lifeStage != null) {
+                    ind.setLifeStage(is.lifeStage);
+                }
                 ind.setState(is.state);
                 ind.setCarriedItem(is.carriedItem);
 

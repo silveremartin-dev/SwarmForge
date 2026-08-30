@@ -24,7 +24,7 @@ public class LinepithemaHumile extends CustomSpecies {
         setCommonName("Argentine Ant");
         setScientificName("Linepithema humile");
         setInsectType("ANT");
-        setDescription("Espèce invasive formant d'immenses supercolonies sans agressivité inter-nids.");
+        setDescription("Invasive species forming massive supercolonies with zero inter-nest aggression.");
         setQueenCountMode("POLYGYNE");
         setQueenCount(20);
         setQueenLifespan(365 * 10);

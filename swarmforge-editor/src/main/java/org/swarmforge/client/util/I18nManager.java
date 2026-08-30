@@ -1,9 +1,11 @@
 package org.swarmforge.client.util;
 
 import javafx.beans.binding.Bindings;
+import javafx.beans.binding.ObjectBinding;
 import javafx.beans.binding.StringBinding;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.scene.control.Tooltip;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -110,6 +112,19 @@ public class I18nManager {
      */
     public StringBinding createStringBinding(String key, Object... args) {
         return Bindings.createStringBinding(() -> get(key, args), locale);
+    }
+
+    /**
+     * Creates an ObjectBinding&lt;Tooltip&gt; that automatically updates its text
+     * when the locale changes. Useful for binding tooltipProperty() on controls.
+     */
+    public ObjectBinding<Tooltip> createTooltipBinding(String key, Object... args) {
+        return Bindings.createObjectBinding(() -> {
+            Tooltip tt = new Tooltip(get(key, args));
+            tt.setWrapText(true);
+            tt.setMaxWidth(420);
+            return tt;
+        }, locale);
     }
 
     public List<Locale> getSupportedLocales() {

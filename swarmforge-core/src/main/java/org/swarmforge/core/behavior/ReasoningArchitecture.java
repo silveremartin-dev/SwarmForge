@@ -22,13 +22,13 @@ public interface ReasoningArchitecture extends java.io.Serializable {
      * Architecture type identifier.
      */
     enum ArchitectureType {
-        BEHAVIOR_TREE("Arbre de Comportements (Behavior Tree)"),
-        BLACKBOARD("Architecture à Tableau Blanc (Blackboard)"),
-        FINITE_STATE_MACHINE("Automate à États Finis (FSM)"),
-        BDI("BDI (Croyances - Désirs - Intentions)"),
-        FUZZY_LOGIC("Logique Floue (Fuzzy Logic)"),
-        HYBRID("Moteur Hybride Combiné (Hybrid)"),
-        NEURAL_NETWORK("Réseau de Neurones Spikant (SNN / Neural Network)");
+        BEHAVIOR_TREE("Behavior Tree (Tree-based AI)"),
+        BLACKBOARD("Blackboard System (Shared Knowledge Base)"),
+        FINITE_STATE_MACHINE("Finite State Machine (FSM)"),
+        BDI("BDI (Belief-Desire-Intention)"),
+        FUZZY_LOGIC("Fuzzy Logic Engine"),
+        HYBRID("Hybrid Architecture (Combined)"),
+        NEURAL_NETWORK("Spiking Neural Network (SNN / ANN)");
 
         private final String displayName;
 
@@ -38,6 +38,24 @@ public interface ReasoningArchitecture extends java.io.Serializable {
 
         public String getDisplayName() {
             return displayName;
+        }
+
+        public static ArchitectureType parse(String val) {
+            if (val == null || val.trim().isEmpty()) return BEHAVIOR_TREE;
+            String s = val.toUpperCase().trim();
+            if (s.contains("BDI")) return BDI;
+            if (s.contains("BLACKBOARD") || s.contains("TABLEAU")) return BLACKBOARD;
+            if (s.contains("FINITE") || s.contains("FSM") || s.contains("AUTOMATE")) return FINITE_STATE_MACHINE;
+            if (s.contains("FUZZY") || s.contains("FLOU")) return FUZZY_LOGIC;
+            if (s.contains("NEURAL") || s.contains("SNN") || s.contains("ANN") || s.contains("NEURONE")) return NEURAL_NETWORK;
+            if (s.contains("HYBRID") || s.contains("HYBRIDE")) return HYBRID;
+            if (s.contains("BEHAVIOR") || s.contains("TREE") || s.contains("ARBRE")) return BEHAVIOR_TREE;
+            for (ArchitectureType t : values()) {
+                if (t.name().equalsIgnoreCase(val) || t.getDisplayName().equalsIgnoreCase(val)) {
+                    return t;
+                }
+            }
+            return BEHAVIOR_TREE;
         }
 
         @Override
@@ -108,7 +126,8 @@ public interface ReasoningArchitecture extends java.io.Serializable {
             REST,
             EXPLORE,
             FOLLOW_TRAIL,
-            COMMUNICATE
+            COMMUNICATE,
+            ABORT_AND_RETURN
         }
 
         public static Action move(float dx, float dy, float dz) {
@@ -125,6 +144,10 @@ public interface ReasoningArchitecture extends java.io.Serializable {
 
         public static Action returnHome() {
             return new Action(ActionType.RETURN_HOME, 0, 0, 0, 1.0f, null);
+        }
+
+        public static Action abortAndReturn() {
+            return new Action(ActionType.ABORT_AND_RETURN, 0, 0, 0, 1.0f, null);
         }
 
         public static Action rest() {

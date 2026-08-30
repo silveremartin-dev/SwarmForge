@@ -61,23 +61,44 @@ public final class Morton3D {
         return new int[] { decodeX(morton), decodeY(morton), decodeZ(morton) };
     }
 
+    private static final long[] LUT_256 = new long[256];
+    private static final int[] DECODE_LUT_512 = new int[512];
+
+    static {
+        for (int i = 0; i < 256; i++) {
+            long r = 0;
+            for (int b = 0; b < 8; b++) {
+                if ((i & (1 << b)) != 0) {
+                    r |= (1L << (b * 3));
+                }
+            }
+            LUT_256[i] = r;
+        }
+
+        for (int i = 0; i < 512; i++) {
+            int res = 0;
+            if ((i & 1) != 0) res |= 1;
+            if ((i & 8) != 0) res |= 2;
+            if ((i & 64) != 0) res |= 4;
+            DECODE_LUT_512[i] = res;
+        }
+    }
+
     private static long splitBy3(int a) {
         long x = a & MAX_COORD;
-        x = (x | x << 32) & 0x1f00000000ffffL;
-        x = (x | x << 16) & 0x1f0000ff0000ffL;
-        x = (x | x << 8) & 0x100f00f00f00f00fL;
-        x = (x | x << 4) & 0x10c30c30c30c30c3L;
-        x = (x | x << 2) & 0x1249249249249249L;
-        return x;
+        return LUT_256[(int) (x & 0xFF)]
+                | (LUT_256[(int) ((x >> 8) & 0xFF)] << 24)
+                | (LUT_256[(int) ((x >> 16) & 0xFF)] << 48);
     }
 
     private static int compact3(long m) {
         long x = m & 0x1249249249249249L;
-        x = (x ^ (x >> 2)) & 0x10c30c30c30c30c3L;
-        x = (x ^ (x >> 4)) & 0x100f00f00f00f00fL;
-        x = (x ^ (x >> 8)) & 0x1f0000ff0000ffL;
-        x = (x ^ (x >> 16)) & 0x1f00000000ffffL;
-        x = (x ^ (x >> 32)) & MAX_COORD;
-        return (int) x;
+        return (DECODE_LUT_512[(int) (x & 0x1FF)])
+                | (DECODE_LUT_512[(int) ((x >> 9) & 0x1FF)] << 3)
+                | (DECODE_LUT_512[(int) ((x >> 18) & 0x1FF)] << 6)
+                | (DECODE_LUT_512[(int) ((x >> 27) & 0x1FF)] << 9)
+                | (DECODE_LUT_512[(int) ((x >> 36) & 0x1FF)] << 12)
+                | (DECODE_LUT_512[(int) ((x >> 45) & 0x1FF)] << 15)
+                | (DECODE_LUT_512[(int) ((x >> 54) & 0x1FF)] << 18);
     }
 }

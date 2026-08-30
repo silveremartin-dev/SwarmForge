@@ -144,6 +144,8 @@ public class SparsePheromoneGrid {
         return 0;
     }
 
+    public record PheromoneDeposit(int x, int y, int z, int type, float amount) {}
+
     public void deposit(int x, int y, int z, int type, float amount) {
         if (!inBounds(x, y, z) || type < 0 || type >= PHEROMONE_TYPES)
             return;
@@ -158,6 +160,47 @@ public class SparsePheromoneGrid {
             entry.update(type, Math.min(1.0f, decayed + amount), currentTick);
             return entry;
         });
+
+        if (terrarium != null) {
+            TerrariumCell cell = terrarium.getCell(x, y, z);
+            if (cell != null) {
+                float[] p = cell.pheromones();
+                if (p != null && type >= 0 && type < p.length) {
+                    p[type] = Math.min(1.0f, p[type] + amount);
+                    terrarium.setCell(cell);
+                }
+            }
+        }
+    }
+
+    public void depositBatch(java.util.Collection<PheromoneDeposit> deposits) {
+        if (deposits == null || deposits.isEmpty())
+            return;
+
+        java.util.Map<Long, java.util.Map<Integer, Float>> grouped = new java.util.HashMap<>();
+        for (PheromoneDeposit d : deposits) {
+            if (!inBounds(d.x(), d.y(), d.z()) || d.type() < 0 || d.type() >= PHEROMONE_TYPES)
+                continue;
+            if (!isPassable(d.x(), d.y(), d.z(), d.type()))
+                continue;
+
+            long key = Morton3D.encode(d.x(), d.y(), d.z());
+            grouped.computeIfAbsent(key, k -> new java.util.HashMap<>())
+                    .merge(d.type(), d.amount(), Float::sum);
+        }
+
+        grouped.forEach((key, typeMap) -> {
+            grid.compute(key, (k, entry) -> {
+                if (entry == null)
+                    entry = new PheromoneEntry();
+                for (java.util.Map.Entry<Integer, Float> e : typeMap.entrySet()) {
+                    int type = e.getKey();
+                    float decayed = computeDecay(entry.getConcentration(type), entry.getLastUpdatedTick(type), type);
+                    entry.update(type, Math.min(1.0f, decayed + e.getValue()), currentTick);
+                }
+                return entry;
+            });
+        });
     }
 
     public float read(int x, int y, int z, int type) {
@@ -168,6 +211,10 @@ public class SparsePheromoneGrid {
         if (entry == null)
             return 0f;
         return computeDecay(entry.getConcentration(type), entry.getLastUpdatedTick(type), type);
+    }
+
+    public float getIntensity(int x, int y, int z, int type) {
+        return read(x, y, z, type);
     }
 
     public float[] readAll(int x, int y, int z) {
@@ -199,6 +246,25 @@ public class SparsePheromoneGrid {
         currentTick++;
         if (currentTick % 100 == 0)
             prune();
+        syncToTerrarium();
+    }
+
+    public void syncToTerrarium() {
+        if (terrarium == null) return;
+        grid.forEach((key, entry) -> {
+            int[] pos = Morton3D.decode(key);
+            int x = pos[0], y = pos[1], z = pos[2];
+            TerrariumCell cell = terrarium.getCell(x, y, z);
+            if (cell != null) {
+                float[] p = cell.pheromones();
+                if (p != null) {
+                    for (int t = 0; t < PHEROMONE_TYPES; t++) {
+                        p[t] = computeDecay(entry.getConcentration(t), entry.getLastUpdatedTick(t), t);
+                    }
+                    terrarium.setCell(cell);
+                }
+            }
+        });
     }
 
     public void prune() {

@@ -20,11 +20,11 @@ import java.util.List;
 public class SolenopsisInvicta extends CustomSpecies {
 
     public SolenopsisInvicta() {
-        setPresetName("Fourmi de Feu (Solenopsis invicta)");
+        setPresetName("Red Imported Fire Ant (Solenopsis invicta)");
         setCommonName("Fire Ant");
         setScientificName("Solenopsis invicta");
         setInsectType("ANT");
-        setDescription("Espèce très agressive à piqure venimeuse, colonies souvent polygynes formant des dômes élevés.");
+        setDescription("Highly aggressive species with venomous stings, often polygyne colonies forming raised mounds.");
         setQueenCountMode("POLYGYNE");
         setQueenCount(12);
         setQueenLifespan(365 * 7);

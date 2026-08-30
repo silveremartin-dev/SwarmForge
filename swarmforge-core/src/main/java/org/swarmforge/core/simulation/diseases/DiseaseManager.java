@@ -59,6 +59,10 @@ public class DiseaseManager {
      * Process all infections for one tick.
      */
     public void tick() {
+        tick(0.016666667f);
+    }
+
+    public void tick(float deltaSeconds) {
         List<String> cured = new ArrayList<>();
         List<String> died = new ArrayList<>();
 
@@ -74,9 +78,9 @@ public class DiseaseManager {
                 continue;
             }
 
-            // Process disease effects
+            // Process disease effects in seconds
             boolean recovered = record.disease.processTick(
-                    individual, simulation, record.ticksInfected);
+                    individual, simulation, record.ticksInfected, deltaSeconds);
 
             if (recovered) {
                 cured.add(individualId);

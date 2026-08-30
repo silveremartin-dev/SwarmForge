@@ -36,6 +36,7 @@ public class Individual implements java.io.Serializable, AgentView {
     private float maxEnergy = 100f;
     private float energy = 100f;
     private float age; // In simulation ticks
+    private float ageInSeconds = 0.0f;
     private boolean alive = true;
     private String causeOfDeath;
 
@@ -70,6 +71,40 @@ public class Individual implements java.io.Serializable, AgentView {
     // Memory optimization: Removed per-instance Random
     private AiState state = AiState.IDLE;
     private ResourceType carriedResourceType = null;
+
+    // Cognitive LOD & Decision Caching Optimization
+    private Action cachedAction = null;
+    private long lastDecisionTick = -100;
+    private int decisionInterval = 6; // Evaluate brain cognitive decision every 6 ticks (10 Hz decision rate at 60 TPS)
+
+    public Action getCachedAction() { return cachedAction; }
+    public void setCachedAction(Action action) { this.cachedAction = action; }
+    public long getLastDecisionTick() { return lastDecisionTick; }
+    public void setLastDecisionTick(long tick) { this.lastDecisionTick = tick; }
+    public int getDecisionInterval() { return decisionInterval; }
+    public void setDecisionInterval(int interval) { this.decisionInterval = Math.max(1, interval); }
+
+    public int getDynamicDecisionInterval() {
+        if (health < maxHealth * 0.5f || state == AiState.ATTACKING || state == AiState.FLEEING) {
+            return 1; // Real-time high-priority decision frequency for combat / emergency (60 Hz)
+        }
+        if (state == AiState.RESTING || state == AiState.IDLE) {
+            return 20; // Reduced decision frequency for idle / resting ants inside nest (3 Hz)
+        }
+        return decisionInterval; // Default standard frequency (10 Hz)
+    }
+
+    /**
+     * Compact bitfield state packing for cache-friendly fast state checks.
+     * bit 0: alive, bit 1: carryingFood, bit 2: climbingTree, bit 3: hasDisease
+     */
+    public int getPackedStateFlags() {
+        int flags = 0;
+        if (alive) flags |= 1;
+        if (carriedResourceType != null) flags |= 2;
+        if (climbingTree) flags |= 4;
+        return flags;
+    }
 
     // Combat Stats
     private float maxHealth = 100f;
@@ -141,6 +176,9 @@ public class Individual implements java.io.Serializable, AgentView {
         FORAGE,
         RETURN_HOME,
         FLEE,
+        FLEEING,
+        ATTACKING,
+        RESTING,
         TEND_BROOD,
         PATROL,
         DIG
@@ -189,7 +227,27 @@ public class Individual implements java.io.Serializable, AgentView {
         BUILDER,
         FORAGER,
         GUARD,
-        IDLE // Added for compatibility with tests
+        IDLE
+    }
+
+    public Job getJob() {
+        return job;
+    }
+
+    public void setJob(Job job) {
+        this.job = job;
+    }
+
+    public void updateJobByAge() {
+        if (caste == Caste.WORKER) {
+            if (age < 200f) {
+                this.job = Job.NURSE;
+            } else if (age < 1000f) {
+                this.job = Job.GUARD;
+            } else {
+                this.job = Job.FORAGER;
+            }
+        }
     }
 
     private CasteTemplate casteTemplate;
@@ -237,6 +295,7 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     // Getter for hunger needed by brain
+    @Override
     public float getHunger() {
         return hunger;
     }
@@ -252,10 +311,119 @@ public class Individual implements java.io.Serializable, AgentView {
     public boolean canFly() {
         if (casteTemplate != null && (casteTemplate.isCanFly() || casteTemplate.canFly())) return true;
         if (species != null && species.isWorkersCanFly()) return true;
+        if (caste == Caste.QUEEN || caste == Caste.MALE) return true;
         return false;
     }
 
-    public void fly3D(float targetX, float targetY, float targetZ, float speed) {
+    /**
+     * Get ground walking/running speed based on species, caste, genome, Q10 thermal factor, and health state.
+     */
+    public float getWalkingSpeed() {
+        float baseWorkerSpeed = species != null ? species.getWorkerSpeed() : 0.5f; // m/s scale
+        float casteMult = 1.0f;
+        if (casteTemplate != null && casteTemplate.getBodyLengthMm() > 0) {
+            casteMult = (float) Math.pow(casteTemplate.getBodyLengthMm() / 4.0f, 0.4);
+        } else {
+            casteMult = switch (caste) {
+                case QUEEN -> 0.75f;
+                case MALE -> 0.90f;
+                case SOLDIER -> 1.10f;
+                case FORAGER -> 1.05f;
+                case NURSE -> 0.85f;
+                case WORKER -> 1.00f;
+            };
+        }
+        float speed = baseWorkerSpeed * casteMult * getQ10ThermalFactor();
+        if (genome != null) {
+            speed *= genome.getSpeedMultiplier();
+        }
+        if (health < maxHealth && maxHealth > 0f) {
+            speed *= (0.5f + 0.5f * (health / maxHealth));
+        }
+        return Math.max(0.02f, speed);
+    }
+
+    /**
+     * Get 3D flying speed based on species wingbeat frequency, caste alate status, hovering capability, and individual state.
+     */
+    public float getFlyingSpeed() {
+        if (!canFly()) return getWalkingSpeed();
+        
+        float wingbeatHz = species != null ? species.getWingbeatFrequencyHz() : 180.0f;
+        if (casteTemplate != null && casteTemplate.getWingbeatFrequencyHz() > 0) {
+            wingbeatHz = casteTemplate.getWingbeatFrequencyHz();
+        }
+        
+        float baseFlySpeed = getWalkingSpeed() * 2.5f * (Math.max(50.0f, wingbeatHz) / 180.0f);
+        if (species != null && species.hasHoveringCapability()) {
+            baseFlySpeed *= 1.2f;
+        }
+        return Math.max(0.08f, baseFlySpeed);
+    }
+
+    /**
+     * Get current active movement speed depending on flight status (walking vs 3D flight).
+     */
+    public float getCurrentMovementSpeed() {
+        if (canFly() && z > 0.1f) {
+            return getFlyingSpeed();
+        }
+        return getWalkingSpeed();
+    }
+
+    /**
+     * Get dynamic effective metabolic consumption multiplier based on species, daily food requirement, caste, activity, and temperature.
+     */
+    public float getEffectiveMetabolismRate() {
+        float speciesMetabolism = species != null ? species.getMetabolism() : 1.0f;
+        float dailyConsumption = species != null ? species.getDailyFoodConsumption() : 0.3f;
+
+        float casteMetabolicFactor = switch (caste) {
+            case QUEEN -> 2.2f;
+            case SOLDIER -> 1.3f;
+            case MALE -> 0.8f;
+            case FORAGER -> 1.1f;
+            case NURSE, WORKER -> 1.0f;
+        };
+
+        float activityFactor = 1.0f;
+        if (canFly() && z > 0.1f) {
+            activityFactor = 3.5f;
+        } else if (job == Job.BUILDER || job == Job.GUARD) {
+            activityFactor = 1.3f;
+        } else if (state == AiState.IDLE || state == AiState.TEND_BROOD) {
+            activityFactor = 0.6f;
+        }
+
+        float effectiveMetabolism = speciesMetabolism * dailyConsumption * casteMetabolicFactor * activityFactor * getQ10ThermalFactor();
+        if (genome != null) {
+            effectiveMetabolism *= genome.getMetabolismRate();
+        }
+        return Math.max(0.1f, effectiveMetabolism);
+    }
+
+    /**
+     * Get payload carrying capacity ratio based on species payload ratio, strength, and caste.
+     */
+    public float getPayloadCapacity() {
+        float basePayload = species != null ? species.getMaxCarryingPayloadRatio() : 5.0f;
+        if (casteTemplate != null && casteTemplate.getMaxCarryingPayloadRatio() > 0) {
+            basePayload = casteTemplate.getMaxCarryingPayloadRatio();
+        }
+        float strength = species != null ? species.getStrength() : 5.0f;
+        return basePayload * (strength / 5.0f);
+    }
+
+    /**
+     * Get visual perception distance based on species view distance, visual acuity, and light levels.
+     */
+    public float getVisionDistance() {
+        float baseView = species != null ? species.getViewDistance() : 6.0f;
+        float acuity = species != null ? species.getVisualAcuity() : 1.0f;
+        return baseView * Math.max(0.5f, acuity);
+    }
+
+    public void fly3D(float targetX, float targetY, float targetZ, float speedParam) {
         if (!alive) return;
         float dx = targetX - x;
         float dy = targetY - y;
@@ -263,18 +431,21 @@ public class Individual implements java.io.Serializable, AgentView {
         float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (dist < 0.001f) return;
 
-        float effectiveSpeed = speed;
-        if (genome != null) {
-            effectiveSpeed *= genome.getSpeedMultiplier();
+        float effectiveSpeed = getFlyingSpeed();
+        if (speedParam > 0) {
+            effectiveSpeed = Math.min(effectiveSpeed, speedParam);
         }
-        float step = Math.min(dist, effectiveSpeed);
+        float step = Math.min(dist, effectiveSpeed * 0.1f);
         x += (dx / dist) * step;
         y += (dy / dist) * step;
         z += (dz / dist) * step;
         heading = (float) Math.atan2(dy, dx);
 
-        float wingbeatHz = species != null ? species.getWingbeatFrequencyHz() : 200.0f;
-        energy -= 0.15f * (wingbeatHz / 200.0f) * step;
+        float wingbeatHz = species != null ? species.getWingbeatFrequencyHz() : 180.0f;
+        if (casteTemplate != null && casteTemplate.getWingbeatFrequencyHz() > 0) {
+            wingbeatHz = casteTemplate.getWingbeatFrequencyHz();
+        }
+        energy -= 0.0003f * (wingbeatHz / 180.0f) * getEffectiveMetabolismRate() * step;
     }
 
     private float ambientTemperatureC = 24.0f;
@@ -298,14 +469,12 @@ public class Individual implements java.io.Serializable, AgentView {
         
         float diff = ambientTemperatureC - optTemp;
         if (diff <= 0) {
-            // Below optimal: gradual exponentialArrhenius deceleration
             float sigmaLow = Math.max(1.0f, 0.4f * (optTemp - minTemp));
             return Math.max(0.05f, (float) Math.exp(-(diff * diff) / (2.0f * sigmaLow * sigmaLow)));
         } else {
-            // Above optimal: sharp asymmetric denaturation drop-off towards CTmax
             float sigmaHigh = Math.max(0.5f, 0.2f * (maxTemp - optTemp));
             float q10 = (float) Math.exp(-(diff * diff) / (2.0f * sigmaHigh * sigmaHigh));
-            if (ambientTemperatureC >= maxTemp) return 0.05f; // Heat torpor / thermal collapse
+            if (ambientTemperatureC >= maxTemp) return 0.05f;
             return Math.max(0.05f, Math.min(1.2f, q10));
         }
     }
@@ -315,23 +484,22 @@ public class Individual implements java.io.Serializable, AgentView {
      */
     public float getAttackDamage() {
         float mandibularForce = species != null ? species.getMandibularBitingForceMPa() : 15.0f;
+        if (casteTemplate != null && casteTemplate.getMandibularBitingForceMPa() > 0) {
+            mandibularForce = casteTemplate.getMandibularBitingForceMPa();
+        }
         float strength = species != null ? species.getStrength() : 5.0f;
         float casteMult = (caste == Caste.SOLDIER) ? 2.5f : ((caste == Caste.QUEEN) ? 1.5f : 1.0f);
         return casteMult * (mandibularForce / 15.0f) * (strength / 5.0f) * attackDamage;
     }
 
     /**
-     * Update position based on heading and speed (modulated by thermodynamic Q10 kinetics).
+     * Update position based on heading and current dynamic movement speed.
      */
-    public void move(float speed) {
-        float effectiveSpeed = speed * getQ10ThermalFactor();
-        if (genome != null) {
-            effectiveSpeed *= genome.getSpeedMultiplier();
-        }
+    public void move(float speedMult) {
+        float effectiveSpeed = getCurrentMovementSpeed() * 0.1f * Math.max(0.1f, speedMult);
         x += Math.cos(heading) * effectiveSpeed;
         y += Math.sin(heading) * effectiveSpeed;
         if (canFly() && z > 0.0f) {
-            // Keep subtle hovering bobbing in 3D air
             z += (float) (Math.sin(age * 0.2f) * 0.05f);
         }
     }
@@ -341,7 +509,6 @@ public class Individual implements java.io.Serializable, AgentView {
      */
     public void turnTowards(float targetHeading, float turnRate) {
         float diff = targetHeading - heading;
-        // Normalize to -PI to PI
         while (diff > Math.PI)
             diff -= 2 * Math.PI;
         while (diff < -Math.PI)
@@ -357,69 +524,50 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     /**
-     * Consume energy and update needs.
+     * Consume energy and update needs based dynamically on species, caste, and activity metabolism.
      */
     public void tick() {
+        tick(0.016666667f);
+    }
+
+    public void tick(float deltaSeconds) {
         if (!alive)
             return;
         age++;
+        ageInSeconds += deltaSeconds;
 
-        float metabolism = species != null ? species.getMetabolism() : 1.0f;
-        if (genome != null) {
-            metabolism *= genome.getMetabolismRate();
-        }
+        float effectiveMetabolism = getEffectiveMetabolismRate();
+        float waterReq = species != null ? species.getWaterRequirement() : 0.15f;
 
-        // Thermodynamic metabolism scaling: warmer ambient temp slightly increases energy burn
-        metabolism *= getQ10ThermalFactor();
+        energy -= 0.006f * effectiveMetabolism * deltaSeconds;
+        hunger += 0.0048f * effectiveMetabolism * deltaSeconds;
+        thirst += 0.0024f * effectiveMetabolism * (waterReq / 0.15f) * deltaSeconds;
 
-        // Realistic energy decay rates (days to weeks of survival on full tank)
-        energy -= 0.0001f * metabolism;
-        hunger += 0.00005f * metabolism;
-        thirst += 0.000025f * metabolism;
-
-        // Thermal Stress Health Damage (if temperature exceeds biological tolerance bounds)
         float minTemp = species != null ? species.getMinTempCelsius() : 10.0f;
         float maxTemp = species != null ? species.getMaxTempCelsius() : 40.0f;
         if (ambientTemperatureC < minTemp - 5.0f || ambientTemperatureC > maxTemp + 5.0f) {
-            takeDamage(0.2f);
+            takeDamage(12.0f * deltaSeconds);
         }
 
-        // 1. Starvation & Dehydration Mortality (Hunger = 100 or Energy = 0)
         if (energy <= 0 || hunger >= 100) {
-            die("Famine / Épuisement énergétique");
+            die("Starvation / Energy Exhaustion");
             return;
         }
         if (thirst >= 100) {
-            die("Déshydratation sévère");
+            die("Severe Dehydration");
             return;
         }
 
-        // 2. Biological Aging Mortality Across Castes (Lifespan in ticks)
-        float maxLifespan = 50000f; // Default worker lifespan
-        if (species != null) {
-            maxLifespan = switch (caste) {
-                case QUEEN -> species.getQueenLifespan();
-                case SOLDIER -> species.getWorkerLifespan() * 1.5f;
-                case MALE -> species.getWorkerLifespan() * 0.4f;
-                case WORKER, FORAGER, NURSE -> species.getWorkerLifespan();
-            };
-        } else {
-            maxLifespan = switch (caste) {
-                case QUEEN -> 250000f;
-                case SOLDIER -> 100000f;
-                case MALE -> 30000f;
-                case WORKER, FORAGER, NURSE -> 75000f;
-            };
-        }
+        float maxLifespanDays = getMaxLifespan();
+        float maxLifespanSeconds = maxLifespanDays * 86400.0f;
 
-        if (age >= maxLifespan) {
-            die("Vieillesse (Fin de vie naturelle)");
+        if (ageInSeconds >= maxLifespanSeconds || age >= maxLifespanDays * 1440.0f) {
+            die("Old Age (Natural end of life)");
             return;
         }
 
-        // 3. Species-Specific Mandibular Wear & Age Polyethism Shift
         if (species != null && species.hasMandibularWearPolyethism() && (job == Job.BUILDER || caste == Caste.FORAGER)) {
-            mandibleWear = org.swarmforge.core.simulation.MandibularBiomechanicsSystem.applyMandibleWear(mandibleWear, 1.0f);
+            mandibleWear = org.swarmforge.core.simulation.MandibularBiomechanicsSystem.applyMandibleWear(mandibleWear, deltaSeconds);
             if (org.swarmforge.core.simulation.MandibularBiomechanicsSystem.requiresRetirementToNurse(mandibleWear)) {
                 this.job = Job.NURSE;
             }
@@ -474,21 +622,23 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     public float getMaxLifespan() {
+        if (casteTemplate != null && casteTemplate.getLifespan() > 0) {
+            return casteTemplate.getLifespan();
+        }
         if (species != null) {
             return switch (caste) {
                 case QUEEN -> species.getQueenLifespan();
-                case SOLDIER -> species.getWorkerLifespan() * 1.5f;
-                case MALE -> species.getWorkerLifespan() * 0.4f;
+                case SOLDIER -> (float) Math.round(species.getWorkerLifespan() * 1.4f);
+                case MALE -> (float) Math.round(species.getWorkerLifespan() * 0.35f);
                 case WORKER, FORAGER, NURSE -> species.getWorkerLifespan();
             };
-        } else {
-            return switch (caste) {
-                case QUEEN -> 250000f;
-                case SOLDIER -> 100000f;
-                case MALE -> 30000f;
-                case WORKER, FORAGER, NURSE -> 75000f;
-            };
         }
+        return switch (caste) {
+            case QUEEN -> 5475f; // ~15 years default
+            case SOLDIER -> 1000f;
+            case MALE -> 30f;
+            case WORKER, FORAGER, NURSE -> 730f; // ~2 years default
+        };
     }
 
     public boolean isAlive() {
@@ -634,8 +784,18 @@ public class Individual implements java.io.Serializable, AgentView {
         this.state = state;
     }
 
+    private java.util.Random random;
+
+    public void setRandom(java.util.Random random) {
+        this.random = random;
+    }
+
     public java.util.Random getRandom() {
-        return java.util.concurrent.ThreadLocalRandom.current();
+        if (random != null) {
+            return random;
+        }
+        long seed = id != null ? id.getLeastSignificantBits() : 1337L;
+        return new java.util.Random(seed);
     }
 
     public org.swarmforge.core.species.Species getSpecies() {
@@ -652,14 +812,6 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public void setLifeStage(LifeStage lifeStage) {
         this.lifeStage = lifeStage;
-    }
-
-    public Job getJob() {
-        return job;
-    }
-
-    public void setJob(Job job) {
-        this.job = job;
     }
 
     public float getMaturationThreshold() {
@@ -720,21 +872,37 @@ public class Individual implements java.io.Serializable, AgentView {
 
         switch (action.type()) {
             case MOVE -> {
-                // Directional move
-                this.x += action.directionX() * action.intensity();
-                this.y += action.directionY() * action.intensity();
-                // update heading
-                if (action.intensity() > 0) {
-                    this.heading = (float) Math.atan2(action.directionY(), action.directionX());
+                // Normalized & speed-scaled directional move
+                float dx = action.directionX();
+                float dy = action.directionY();
+                float len = (float) Math.hypot(dx, dy);
+                if (len > 0.0001f) {
+                    float moveSpeed = getCurrentMovementSpeed();
+                    float baseStep = Math.max(0.02f, moveSpeed * 0.1f);
+                    float step = Math.min(baseStep * Math.max(0.1f, action.intensity()), 0.25f);
+                    this.x += (dx / len) * step;
+                    this.y += (dy / len) * step;
+                    this.heading = (float) Math.atan2(dy, dx);
                 }
                 return ActionResult.ok();
             }
             case FORAGE -> {
                 return ActionResult.ok(); // Intent registered
             }
-            case RETURN_HOME -> {
+            case RETURN_HOME, ABORT_AND_RETURN -> {
                 turnTowards(getHomeX(), getHomeY(), 0.1f);
                 move(1.0f);
+                if (isAtNest() && colony != null) {
+                    if (colony.getFoodStored() > 0.1f) {
+                        colony.consumeResource(ResourceType.SEED, 0.05f);
+                        this.hunger = Math.max(0f, this.hunger - 10.0f);
+                        this.energy = Math.min(this.maxEnergy, this.energy + 10.0f);
+                    }
+                    if (colony.getResourceAmount(ResourceType.WATER) > 0.1f) {
+                        colony.consumeResource(ResourceType.WATER, 0.05f);
+                        this.thirst = Math.max(0f, this.thirst - 10.0f);
+                    }
+                }
                 return ActionResult.ok();
             }
             case REST -> {
@@ -765,8 +933,17 @@ public class Individual implements java.io.Serializable, AgentView {
                 return ActionResult.failure("Invalid Target");
             }
             case FOLLOW_TRAIL -> {
-                this.x += action.directionX() * action.intensity();
-                this.y += action.directionY() * action.intensity();
+                float dx = action.directionX();
+                float dy = action.directionY();
+                float len = (float) Math.hypot(dx, dy);
+                if (len > 0.0001f) {
+                    float workerSpeed = species != null ? species.getWorkerSpeed() : 0.5f;
+                    float baseStep = Math.max(0.02f, workerSpeed * 0.1f) * getQ10ThermalFactor();
+                    float step = Math.min(baseStep * Math.max(0.1f, action.intensity()), 0.15f);
+                    this.x += (dx / len) * step;
+                    this.y += (dy / len) * step;
+                    this.heading = (float) Math.atan2(dy, dx);
+                }
                 return ActionResult.ok();
             }
             case DEPOSIT_FOOD -> {
@@ -850,14 +1027,18 @@ public class Individual implements java.io.Serializable, AgentView {
         }
     }
 
-    public void update(org.swarmforge.core.structure.ConstructionManager constructionManager) {
+    public void update(org.swarmforge.core.structure.ConstructionManager constructionManager, float deltaSeconds) {
         if (!alive || lifeStage != LifeStage.ADULT)
             return;
 
         jobUpdate(constructionManager);
 
         // Energy consumption
-        tick();
+        tick(deltaSeconds);
+    }
+
+    public void update(org.swarmforge.core.structure.ConstructionManager constructionManager) {
+        update(constructionManager, 0.016666667f);
     }
 
     private void jobUpdate(org.swarmforge.core.structure.ConstructionManager constructionManager) {

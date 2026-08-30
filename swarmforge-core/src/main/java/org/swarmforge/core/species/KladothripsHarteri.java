@@ -23,7 +23,7 @@ public class KladothripsHarteri extends CustomSpecies {
         setCommonName("Acacia Gall Thrips");
         setScientificName("Kladothrips harteri");
         setInsectType("THRIPS");
-        setDescription("Thrips gallicole australien présentant une caste de soldats aptères défendant la galle d'acacia contre les parasites.");
+        setDescription("Australian gall thrips featuring a wingless soldier caste defending acacia galls against parasites.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(200);
@@ -39,7 +39,7 @@ public class KladothripsHarteri extends CustomSpecies {
         setVenomType("POWERFUL_FORELEGS");
         setAggression(0.7f);
 
-        CasteTemplate foundress = new CasteTemplate("Fondatrice de Galle", 180f, 3f);
+        CasteTemplate foundress = new CasteTemplate("Gall Foundress", 180f, 3f);
         foundress.setCanFly(true);
         foundress.setBodyLengthMm(3.0f);
         foundress.setHeadWidthMm(0.8f);
@@ -49,7 +49,7 @@ public class KladothripsHarteri extends CustomSpecies {
         wingedWorker.setBodyLengthMm(2.5f);
         wingedWorker.setHeadWidthMm(0.7f);
 
-        CasteTemplate soldier = new CasteTemplate("Soldat Aptère de Galle", 120f, 18f);
+        CasteTemplate soldier = new CasteTemplate("Wingless Gall Soldier", 120f, 18f);
         soldier.setCanFly(false);
         soldier.setBaseDefense(5f);
         soldier.setBodyLengthMm(2.2f);

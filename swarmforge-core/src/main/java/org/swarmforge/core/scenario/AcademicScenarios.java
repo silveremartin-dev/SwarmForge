@@ -246,6 +246,52 @@ public class AcademicScenarios {
     }
 
     /**
+     * Scenario 9: Dulosis & Slave-Making Raids (Polyergus rufescens vs Formica fusca).
+     */
+    public static Scenario createDulosisRaidScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_09_DULOSIS_RAID",
+                "Dulosis & Slave-Making Raids (Polyergus rufescens vs Formica fusca)",
+                "Simulation of obligate dulotic raids: Polyergus rufescens raiding column launching a targeted assault on a Formica fusca nest to capture pupae/cocoons and repatriate them as slave labor."
+        );
+        scenario.setAcademicCategory("Sociobiology / Dulosis & Parasitism");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(350);
+        scenario.setHeight(350);
+        scenario.setDepth(48);
+        scenario.setBiomeName("TEMPERATE_FOREST");
+
+        Map<String, ArchitectureType> raidingEngine = new HashMap<>();
+        raidingEngine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
+        raidingEngine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
+        raidingEngine.put("QUEEN", ArchitectureType.BDI);
+
+        Map<String, ArchitectureType> hostEngine = new HashMap<>();
+        hostEngine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
+        hostEngine.put("QUEEN", ArchitectureType.BDI);
+
+        // Polyergus rufescens (Amazon/Slave-maker ants - Raiders)
+        scenario.addColony(new Scenario.ColonySetup("Polyergus rufescens (Amazon Raiding Party)", "COLONY_POLYERGUS", 1, 80, 40, 150, raidingEngine));
+        // Formica fusca (Host/Target Species - Slave Target)
+        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Target Host Colony)", "COLONY_FORMICA", 1, 150, 0, 100, hostEngine));
+
+        scenario.addTargetMetric("PUPAE_CAPTURED_COUNT");
+        scenario.addTargetMetric("RAID_COLUMN_COHESION");
+        scenario.addTargetMetric("REPATRIATION_SUCCESS_RATE");
+        scenario.addTargetMetric("HOST_DEFENSE_CASUALTIES");
+
+        // Scheduled Event: Launch Slave-making Raid at Tick 5,000
+        scenario.addEvent(new Scenario.ScenarioEvent(
+                5_000L,
+                "DULOTIC_RAID_TRIGGER",
+                "Polyergus scout detects host nest and recruits raiding column",
+                Map.of("targetColonyId", "COLONY_FORMICA", "raidForceSize", 60)
+        ));
+
+        return scenario;
+    }
+
+    /**
      * List all available academic scenarios.
      */
     public static List<Scenario> getAllAcademicScenarios(long seed) {
@@ -257,7 +303,8 @@ public class AcademicScenarios {
                 createTrophallaxisScenario(seed),
                 createEpidemiologyScenario(seed),
                 createAttineFungiScenario(seed),
-                createStigmergyScenario(seed)
+                createStigmergyScenario(seed),
+                createDulosisRaidScenario(seed)
         );
     }
 }

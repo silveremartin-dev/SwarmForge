@@ -85,18 +85,22 @@ public final class NestRenderer {
                 if (edge == null || edge.pts == null || edge.pts.isEmpty()) continue;
                 List<double[]> sp = new ArrayList<>();
                 double avg = 0;
+                boolean isSubterraneanEdge = false;
                 for (double[] wp : edge.pts) {
                     if (wp == null) continue;
                     double[] p = proj.apply(wp);
                     sp.add(p);
                     avg += p[2];
+                    if (wp.length >= 3 && wp[2] > 0) isSubterraneanEdge = true;
                 }
                 if (sp.isEmpty()) continue;
                 avg /= sp.size();
                 final List<double[]> fsp = sp;
                 final double fa = avg;
+                final boolean fSubEdge = isSubterraneanEdge;
                 items.add(new Item(fa-1000, () -> {
-                    gc.setStroke(edgeColor.darker()); gc.setLineWidth(tw);
+                    Color drawEdgeCol = (showGhost && fSubEdge) ? Color.color(edgeColor.darker().getRed(), edgeColor.darker().getGreen(), edgeColor.darker().getBlue(), 0.75) : edgeColor.darker();
+                    gc.setStroke(drawEdgeCol); gc.setLineWidth(tw);
                     gc.beginPath();
                     for (int i=0;i<fsp.size();i++) {
                         double[] p=fsp.get(i);
@@ -114,16 +118,18 @@ public final class NestRenderer {
                 Color nodeColor = n.color != null ? n.color : Color.GRAY;
                 double[] p = proj.apply(new double[]{n.x, n.y, n.z});
                 double rx = n.rx * 2.2, rz = n.rz * 2.2, depth = p[2];
+                final boolean isSubterraneanNode = n.z > 0;
                 items.add(new Item(depth, () -> {
                     if ("ENTRANCE".equals(n.type)) {
                         gc.setFill(Color.LIMEGREEN);
                         gc.fillOval(p[0]-6, p[1]-4, 12, 8);
                     } else if (!"JUNCTION".equals(n.type)) {
+                        Color baseNodeCol = (showGhost && isSubterraneanNode) ? Color.color(nodeColor.getRed(), nodeColor.getGreen(), nodeColor.getBlue(), 0.80) : nodeColor;
                         RadialGradient rg = new RadialGradient(0,0,p[0]-rx*0.3,p[1]-rz*0.3,Math.max(rx,rz)*1.2,false,
                             CycleMethod.NO_CYCLE,
-                            new Stop(0, nodeColor.brighter()),
-                            new Stop(0.75, nodeColor),
-                            new Stop(1, nodeColor.darker().darker()));
+                            new Stop(0, baseNodeCol.brighter()),
+                            new Stop(0.75, baseNodeCol),
+                            new Stop(1, baseNodeCol.darker().darker()));
                         gc.setFill(rg);
                         // Render anatomical lenticular dome shape (flattened Z height)
                         gc.fillOval(p[0]-rx, p[1]-rz, rx*2, rz*2);
@@ -158,14 +164,50 @@ public final class NestRenderer {
         gc.clearRect(0,0,w,h);
         gc.setFill(ThemeManager.getInstance().getViewportBackgroundColor()); gc.fillRect(0,0,w,h);
 
+        boolean aerial = isAerialOrArboreal(nest.architecture);
+
         double skyH = 28 * zoom + panY;
         double groundY = Math.max(10, skyH) + 7 * zoom;
-        gc.setFill(isDark ? Color.rgb(30,42,58) : Color.rgb(224,242,254)); gc.fillRect(0,0,w,Math.max(10, skyH));
-        gc.setFill(isDark ? Color.rgb(55,85,40) : Color.rgb(134,239,172)); gc.fillRect(0,Math.max(10, skyH),w,7*zoom);
-        gc.setFill(isDark ? Color.rgb(52,36,22) : Color.rgb(217,119,6)); gc.fillRect(0,groundY,w,h);
 
-        gc.setStroke(isDark ? Color.rgb(70,48,30,0.35) : Color.rgb(180,140,100,0.45)); gc.setLineWidth(1);
-        for (double y=groundY + 25*zoom; y<h; y+=35*zoom) gc.strokeLine(0,y,w,y);
+        if (aerial) {
+            // Fill entire view with atmospheric open sky backdrop (no ground or soil layers)
+            gc.setFill(isDark ? Color.rgb(25, 35, 48) : Color.rgb(224, 242, 254));
+            gc.fillRect(0, 0, w, h);
+
+            // Subtle atmospheric altitude grid lines
+            gc.setStroke(isDark ? Color.rgb(255, 255, 255, 0.08) : Color.rgb(2, 132, 199, 0.12));
+            gc.setLineWidth(1);
+            for (double y = 30 * zoom; y < h; y += 35 * zoom) {
+                gc.strokeLine(0, y, w, y);
+            }
+
+            // Render structural support cue for arboreal / aerial nest types
+            String key = normalizeArchKey(nest.architecture);
+            double cx = w / 2 + panX;
+            if ("PAPER_PEDUNCULATE".equals(key) || "WAX_COMB_HEXAGONAL".equals(key) || "WAX_POTS_CLUSTER".equals(key)) {
+                // Top hanging peduncle / branch beam
+                gc.setFill(isDark ? Color.rgb(85, 55, 30) : Color.rgb(139, 90, 43));
+                gc.fillRect(cx - 60 * zoom, Math.max(5, groundY - 15 * zoom), 120 * zoom, 8 * zoom);
+            } else if ("HOLLOW_TRUNK_NEST".equals(key) || "CARTON_NEST".equals(key) || "BAMBOO_STEM_NEST".equals(key)) {
+                // Vertical trunk / stem contour
+                gc.setStroke(isDark ? Color.rgb(100, 70, 40, 0.4) : Color.rgb(160, 110, 60, 0.4));
+                gc.setLineWidth(4 * zoom);
+                gc.strokeLine(cx - 45 * zoom, 0, cx - 45 * zoom, h);
+            } else if ("WOODEN_BEEHIVE".equals(key)) {
+                // Wooden hive stand frame at bottom
+                gc.setStroke(isDark ? Color.rgb(120, 80, 40, 0.5) : Color.rgb(180, 120, 60, 0.5));
+                gc.setLineWidth(3 * zoom);
+                gc.strokeRect(cx - 50 * zoom, groundY + 40 * zoom, 100 * zoom, 30 * zoom);
+            }
+        } else {
+            // Subterranean & Terrestrial nests: draw sky, vegetation line, and soil stratigraphy
+            gc.setFill(isDark ? Color.rgb(30,42,58) : Color.rgb(224,242,254)); gc.fillRect(0,0,w,Math.max(10, skyH));
+            gc.setFill(isDark ? Color.rgb(55,85,40) : Color.rgb(134,239,172)); gc.fillRect(0,Math.max(10, skyH),w,7*zoom);
+            gc.setFill(isDark ? Color.rgb(52,36,22) : Color.rgb(217,119,6)); gc.fillRect(0,groundY,w,h);
+
+            gc.setStroke(isDark ? Color.rgb(70,48,30,0.35) : Color.rgb(180,140,100,0.45)); gc.setLineWidth(1);
+            for (double y=groundY + 25*zoom; y<h; y+=35*zoom) gc.strokeLine(0,y,w,y);
+        }
 
         double maxD = nest.maxDepth;
         double sY = ((h-55)/Math.max(1,maxD)) * zoom;
@@ -296,6 +338,22 @@ public final class NestRenderer {
         if (s.contains("SURFACE") || s.contains("MOUND")) return "SURFACE_MOUND";
         if (s.contains("BEEHIVE") || s.contains("WOODEN")) return "WOODEN_BEEHIVE";
         return "BURROW_UNDERGROUND";
+    }
+
+    public static boolean isAerialOrArboreal(String arch) {
+        String key = normalizeArchKey(arch);
+        return switch (key) {
+            case "PAPER_PEDUNCULATE",
+                 "ARBOREAL_SILK_LEAF",
+                 "CARTON_NEST",
+                 "BAMBOO_STEM_NEST",
+                 "WOODEN_BEEHIVE",
+                 "WAX_COMB_HEXAGONAL",
+                 "WAX_POTS_CLUSTER",
+                 "HOLLOW_TRUNK_NEST",
+                 "BIVOUAC_LIVING_NEST" -> true;
+            default -> false;
+        };
     }
 
     public static String normalizeMatKey(String mat) {
@@ -688,16 +746,16 @@ public final class NestRenderer {
 
         gc.setFill(isDark ? Color.rgb(0, 212, 255) : Color.rgb(2, 132, 199));
         gc.setFont(Font.font("SansSerif", 11));
-        gc.fillText("Légende / Color Key", x + 10, y + 16);
+        gc.fillText("Color Key", x + 10, y + 16);
 
         String[][] items = {
-            {"Entrée / Entrance", "#32CD32"},
-            {"Loge Royale / Queen", "#FFD700"},
-            {"Couvain / Brood", "#00BFFF"},
-            {"Réserve / Food", "#FFA500"},
-            {"Champignon / Pollen", "#9370DB"},
-            {"Dépotoir / Waste", "#CD5C5C"},
-            {"Tunnel / Galeries", "#708090"}
+            {"Entrance", "#32CD32"},
+            {"Queen Chamber", "#FFD700"},
+            {"Brood Nursery", "#00BFFF"},
+            {"Food Storage", "#FFA500"},
+            {"Fungus / Pollen", "#9370DB"},
+            {"Waste / Cemetery", "#CD5C5C"},
+            {"Tunnels & Galleries", "#708090"}
         };
 
         double ly = y + 32;

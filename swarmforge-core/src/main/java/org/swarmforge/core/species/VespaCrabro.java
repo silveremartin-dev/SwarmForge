@@ -22,11 +22,11 @@ public class VespaCrabro extends CustomSpecies {
     private static final long serialVersionUID = 1L;
 
     public VespaCrabro() {
-        setPresetName("Frelon Européen (Vespa crabro)");
+        setPresetName("European Hornet (Vespa crabro)");
         setCommonName("European Hornet");
         setScientificName("Vespa crabro");
         setInsectType("WASP");
-        setDescription("Grand vespidé eusocial prédateur apex aérien construisant des nids en papier.");
+        setDescription("Large eusocial vespid, apex aerial predator constructing paper nests.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365);
@@ -62,7 +62,7 @@ public class VespaCrabro extends CustomSpecies {
         worker.setVenomToxicity(20.0f);
 
         // Mâle / Faux-bourdon
-        CasteTemplate male = new CasteTemplate("Mâle Frelon", 150f, 5f);
+        CasteTemplate male = new CasteTemplate("Male Hornet", 150f, 5f);
         male.setCanFly(true);
         male.setCanDig(false);
         male.setCanCarry(false);

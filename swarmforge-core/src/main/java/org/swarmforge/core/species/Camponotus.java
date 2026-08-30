@@ -24,7 +24,7 @@ public class Camponotus extends CustomSpecies {
         setCommonName("Carpenter Ant");
         setScientificName("Camponotus");
         setInsectType("ANT");
-        setDescription("Grandes fourmis nichant dans le bois mort, principalement nocturnes.");
+        setDescription("Large ants nesting in dead wood, primarily nocturnal.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365 * 25);

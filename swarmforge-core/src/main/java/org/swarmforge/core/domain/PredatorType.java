@@ -87,7 +87,7 @@ public enum PredatorType {
             HuntingStyle.CHASE),
 
     SYRPHID_LARVA(
-            "Larve de Syrphe (Prédateur de Pucerons)",
+            "Hoverfly Larva (Aphid Predator)",
             0.4f,
             8f,
             6f,
@@ -95,7 +95,7 @@ public enum PredatorType {
             HuntingStyle.CHASE),
 
     LADYBUG_LARVA(
-            "Larve de Coccinelle (Vorace)",
+            "Ladybug Larva (Voracious)",
             0.6f,
             10f,
             7f,
@@ -103,7 +103,7 @@ public enum PredatorType {
             HuntingStyle.CHASE),
 
     KLEPTOPARASITE_THRIPS(
-            "Thrips Kleptoparasite (Envahisseur de Galle)",
+            "Kleptoparasite Thrips (Gall Invader)",
             0.8f,
             6f,
             5f,
@@ -111,7 +111,7 @@ public enum PredatorType {
             HuntingStyle.CHASE),
 
     CATERPILLAR(
-            "Chenille (Proie pour Guêpes)",
+            "Caterpillar (Prey for Wasps)",
             0.2f,
             2f,
             4f,
@@ -119,7 +119,7 @@ public enum PredatorType {
             HuntingStyle.AMBUSH),
 
     MYRMECOPHILE_BEETLE(
-            "Staphylin Myrmécophile (Commensal/Parasite du Nid)",
+            "Myrmecophilous Beetle (Nest Commensal/Parasite)",
             0.5f,
             4f,
             5f,
@@ -127,7 +127,7 @@ public enum PredatorType {
             HuntingStyle.AMBUSH),
 
     ASIAN_HORNET(
-            "Frelon Asiatique (Prédateur spécialisé d'Abeilles)",
+            "Asian Hornet (Bee Specialist Predator)",
             4.2f,
             18f,
             20f,
@@ -135,7 +135,7 @@ public enum PredatorType {
             HuntingStyle.SWOOP),
 
     BEE_WOLF(
-            "Philanthe Apivore (Guêpe chasseuse d'Abeilles)",
+            "Bee Wolf (Apian Hunter Wasp)",
             3.5f,
             14f,
             16f,
@@ -143,7 +143,7 @@ public enum PredatorType {
             HuntingStyle.CHASE),
 
     VARROA_MITE(
-            "Mite Varroa (Ectoparasite des Nymphes d'Abeilles)",
+            "Varroa Mite (Bee Pupa Ectoparasite)",
             0.2f,
             5f,
             3f,
@@ -151,7 +151,7 @@ public enum PredatorType {
             HuntingStyle.AMBUSH),
 
     HONEY_BUZZARD(
-            "Bondrée Apivore (Oiseau rapace de Nids de Guêpes/Abeilles)",
+            "Honey Buzzard (Raptor Bird)",
             5.5f,
             45f,
             35f,
@@ -159,7 +159,7 @@ public enum PredatorType {
             HuntingStyle.SWOOP),
 
     MEGAPONERA_RAIDER(
-            "Fourmi Raideuse Megaponera (Raid spécialisé sur Termites)",
+            "Megaponera Raider Ant (Termite Raid Specialist)",
             2.2f,
             16f,
             14f,
@@ -167,7 +167,7 @@ public enum PredatorType {
             HuntingStyle.CHASE),
 
     AARDVARK_MOUND_BREAKER(
-            "Oryctérope / Tamanoir (Destructeur de Termitières)",
+            "Aardvark / Anteater (Mound Destroyer)",
             1.0f,
             50f,
             25f,
@@ -175,7 +175,7 @@ public enum PredatorType {
             HuntingStyle.CHASE),
 
     WOODPECKER(
-            "Pic Noir (Prédateur de Scolytes & Fourmis Bois)",
+            "Black Woodpecker (Bark Beetle & Wood Ant Hunter)",
             4.8f,
             30f,
             28f,

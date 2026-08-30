@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
+import org.swarmforge.core.domain.Individual.Caste;
 import org.swarmforge.core.domain.ResourceType;
 import org.swarmforge.core.species.Species;
 import org.swarmforge.core.structure.physics.NestType;
@@ -20,6 +21,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+
+import org.swarmforge.core.epidemiology.IndividualInfection;
+import org.swarmforge.core.epidemiology.InfectionState;
+import org.swarmforge.core.epidemiology.PathogenType;
+import org.swarmforge.core.epidemiology.SocialImmunityManager;
 
 import static org.junit.jupiter.api.Assertions.*;
 

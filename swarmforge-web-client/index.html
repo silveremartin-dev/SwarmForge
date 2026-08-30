@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="favicon.png">
-    <title>SwarmForge Web Viewer</title>
+    <title>SwarmForge Web Client - High Performance 3D Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <script type="importmap">
         {
@@ -16,17 +19,167 @@
     </script>
 </head>
 <body>
-    <div id="ui-container">
-        <div id="header">
-            <h1>SwarmForge Web</h1>
-            <div id="status">Disconnected</div>
-        </div>
-        <div id="controls">
-            <button id="btn-connect">Connect</button>
-            <button id="btn-camera">Reset Camera</button>
-        </div>
+    <div id="app">
+        <!-- Header Overlay -->
+        <header id="header-panel" class="glass-panel">
+            <div class="brand">
+                <div class="logo-icon">🐜</div>
+                <div class="brand-text">
+                    <span class="title">SWARMFORGE</span>
+                    <span class="subtitle">WEB SIMULATION CLIENT v2.0</span>
+                </div>
+            </div>
+
+            <div class="header-center">
+                <div class="status-badge" id="connection-status">
+                    <span class="pulse-dot"></span>
+                    <span id="status-text">Standalone Simulation Mode</span>
+                </div>
+                <div class="metrics-chip">
+                    <span class="chip-label">TPS</span>
+                    <span class="chip-val" id="tps-val">60</span>
+                </div>
+                <div class="metrics-chip">
+                    <span class="chip-label">FPS</span>
+                    <span class="chip-val" id="fps-val">60</span>
+                </div>
+                <div class="metrics-chip">
+                    <span class="chip-label">CYCLE</span>
+                    <span class="chip-val" id="time-val">12:00 PM</span>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="species-picker">
+                    <label for="species-select">SPECIES:</label>
+                    <select id="species-select">
+                        <option value="lasius">Lasius niger (Black Garden Ant)</option>
+                        <option value="atta">Atta cephalotes (Leafcutter Ant)</option>
+                        <option value="solenopsis">Solenopsis invicta (Fire Ant)</option>
+                        <option value="formica">Formica rufa (Red Wood Ant)</option>
+                        <option value="camponotus">Camponotus vagus (Carpenter Ant)</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Viewport Canvas -->
+        <div id="canvas-container"></div>
+
+        <!-- Left Controls Bar -->
+        <aside id="toolbar" class="glass-panel">
+            <div class="tool-group">
+                <div class="tool-title">SIMULATION CONTROLS</div>
+                <button id="btn-toggle-sim" class="btn btn-primary">
+                    <span class="icon">⏸</span> <span class="label">Pause</span>
+                </button>
+                <div class="btn-row">
+                    <button id="btn-speed-1" class="btn btn-sm active">1x</button>
+                    <button id="btn-speed-2" class="btn btn-sm">2x</button>
+                    <button id="btn-speed-5" class="btn btn-sm">5x</button>
+                </div>
+            </div>
+
+            <div class="tool-group">
+                <div class="tool-title">VIEW MODES</div>
+                <button id="btn-view-surface" class="btn active">🌱 Surface Terrain</button>
+                <button id="btn-view-nest" class="btn">🕳 Subterranean Nest</button>
+                <button id="btn-view-split" class="btn">🌗 Dual Perspective</button>
+            </div>
+
+            <div class="tool-group">
+                <div class="tool-title">ECOLOGICAL ACTIONS</div>
+                <button id="btn-spawn-food" class="btn btn-accent">🍬 Spawn Food Source</button>
+                <button id="btn-trigger-alarm" class="btn btn-warning">⚠️ Alarm Pheromone</button>
+                <button id="btn-nuptial-flight" class="btn btn-purple">👑 Nuptial Flight</button>
+                <button id="btn-toggle-rain" class="btn">🌧 Weather: Clear</button>
+            </div>
+
+            <div class="tool-group">
+                <div class="tool-title">CAMERA PRESETS</div>
+                <div class="btn-row">
+                    <button id="btn-cam-iso" class="btn btn-sm">Isometric</button>
+                    <button id="btn-cam-top" class="btn btn-sm">Top</button>
+                    <button id="btn-cam-close" class="btn btn-sm">Macro</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Side Diagnostic Panel -->
+        <aside id="diag-panel" class="glass-panel">
+            <div class="panel-header">COLONY MONITORING</div>
+
+            <div class="stat-card">
+                <div class="card-title">TOTAL POPULATION</div>
+                <div class="card-hero" id="pop-total">2,500</div>
+                <div class="caste-bar">
+                    <div class="caste-seg seg-worker" id="bar-worker" style="width: 70%" title="Workers"></div>
+                    <div class="caste-seg seg-soldier" id="bar-soldier" style="width: 18%" title="Soldiers"></div>
+                    <div class="caste-seg seg-queen" id="bar-queen" style="width: 5%" title="Queens"></div>
+                    <div class="caste-seg seg-brood" id="bar-brood" style="width: 7%" title="Brood"></div>
+                </div>
+                <div class="caste-legend">
+                    <span><i class="dot dot-worker"></i> W: <b id="val-worker">1,750</b></span>
+                    <span><i class="dot dot-soldier"></i> S: <b id="val-soldier">450</b></span>
+                    <span><i class="dot dot-queen"></i> Q: <b id="val-queen">5</b></span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="card-title">RESOURCE GRANARY</div>
+                <div class="res-grid">
+                    <div class="res-item">
+                        <span class="res-icon">🍯</span>
+                        <span class="res-name">Sugar / Honey</span>
+                        <span class="res-val" id="res-sugar">1,240</span>
+                    </div>
+                    <div class="res-item">
+                        <span class="res-icon">🍃</span>
+                        <span class="res-name">Leaf / Fungus</span>
+                        <span class="res-val" id="res-fungus">890</span>
+                    </div>
+                    <div class="res-item">
+                        <span class="res-icon">💧</span>
+                        <span class="res-name">Water Reserves</span>
+                        <span class="res-val" id="res-water">650</span>
+                    </div>
+                    <div class="res-item">
+                        <span class="res-icon">🥚</span>
+                        <span class="res-name">Brood Care</span>
+                        <span class="res-val" id="res-brood">410</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="card-title">PHEROMONE GRID INTENSITY</div>
+                <div class="phero-bar-wrap">
+                    <div class="phero-label">Trail Pheromone (Food)</div>
+                    <div class="meter-bar"><div class="meter-fill fill-food" id="phero-food-bar" style="width: 82%;"></div></div>
+                </div>
+                <div class="phero-bar-wrap">
+                    <div class="phero-label">Alarm Pheromone (Danger)</div>
+                    <div class="meter-bar"><div class="meter-fill fill-alarm" id="phero-alarm-bar" style="width: 15%;"></div></div>
+                </div>
+            </div>
+
+            <div class="stat-card inspector-card" id="inspector-card">
+                <div class="card-title">ENTITY INSPECTOR</div>
+                <div class="inspector-content" id="inspector-content">
+                    <div class="placeholder">Click on any ant or nest chamber in 3D view to inspect parameters.</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Bottom Log Stream -->
+        <footer id="log-panel" class="glass-panel">
+            <div class="log-tag">SIMULATION EVENT STREAM</div>
+            <div class="log-scroll" id="log-stream">
+                <div class="log-entry info"><span class="time">[00:00:01]</span> SwarmForge High-Performance Instanced Engine Initialized.</div>
+                <div class="log-entry success"><span class="time">[00:00:02]</span> Colony Lasius niger bootstrapped with 2,500 active agents.</div>
+            </div>
+        </footer>
     </div>
-    <div id="canvas-container"></div>
 
     <script type="module" src="main.js"></script>
 </body>

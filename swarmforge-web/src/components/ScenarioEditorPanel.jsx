@@ -64,6 +64,22 @@ const PRESET_SCENARIOS = [
       { id: 'COLONY_INVASIVE', species: 'Linepithema humile (Invasive)', queenCount: 3, workerCount: 250, workerEngine: 'NEURAL_NETWORK' }
     ],
     targetMetrics: ['TERRITORIAL_DOMINANCE_RATIO', 'MORTALITY_CONTEST_RATE', 'RESOURCE_MONOPOLIZATION_SPEED']
+  },
+  {
+    id: 'ACAD_09_DULOSIS_RAID',
+    title: 'Raid Duloce & Esclavage (Polyergus vs Formica)',
+    academicCategory: 'Sociobiologie & Parasitisme Social',
+    masterSeed: 555123,
+    description: 'Raid d\'esclavage obligatoire : colonne d\'assaut de Polyergus rufescens infiltrant un nid de Formica fusca pour capturer le couvain (cocons) et le rapatrier au nid.',
+    biome: 'TEMPERATE_FOREST',
+    width: 350, height: 350, depth: 48,
+    soilDensity: 0.65,
+    initialTemp: 23, initialHumidity: 0.70,
+    colonies: [
+      { id: 'COLONY_POLYERGUS', species: 'Polyergus rufescens (Amazones)', queenCount: 1, workerCount: 80, soldierCount: 40, workerEngine: 'BEHAVIOR_TREE' },
+      { id: 'COLONY_FORMICA', species: 'Formica fusca (Hôte)', queenCount: 1, workerCount: 150, workerEngine: 'BEHAVIOR_TREE' }
+    ],
+    targetMetrics: ['PUPAE_CAPTURED_COUNT', 'RAID_COLUMN_COHESION', 'REPATRIATION_SUCCESS_RATE', 'HOST_DEFENSE_CASUALTIES']
   }
 ];
 

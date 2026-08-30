@@ -75,10 +75,11 @@ public class SoilStructureSystem {
         int h = terrarium.getHeight();
         int d = terrarium.getDepth();
 
+        java.util.Random rng = simulation != null ? simulation.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
         // Sample top surface voxels for snowfall accumulation
         for (int i = 0; i < 30; i++) {
-            int x = (int) (Math.random() * w);
-            int y = (int) (Math.random() * h);
+            int x = (int) (rng.nextFloat() * w);
+            int y = (int) (rng.nextFloat() * h);
 
             // Find top solid ground voxel
             for (int z = d - 2; z >= 0; z--) {
@@ -139,11 +140,12 @@ public class SoilStructureSystem {
         int h = terrarium.getHeight();
         int d = terrarium.getDepth();
 
+        java.util.Random rng = simulation != null ? simulation.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
         // Sample random voxels for performance efficiency
         for (int i = 0; i < 50; i++) {
-            int x = 1 + (int) (Math.random() * Math.max(1, w - 2));
-            int y = 1 + (int) (Math.random() * Math.max(1, h - 2));
-            int z = 1 + (int) (Math.random() * Math.max(1, d - 2));
+            int x = 1 + (int) (rng.nextFloat() * Math.max(1, w - 2));
+            int y = 1 + (int) (rng.nextFloat() * Math.max(1, h - 2));
+            int z = 1 + (int) (rng.nextFloat() * Math.max(1, d - 2));
 
             TerrariumCell cell = terrarium.getCell(x, y, z);
             if (cell.material() == TerrariumCell.Material.SAND) { // Sand Voxel: gravity fall check

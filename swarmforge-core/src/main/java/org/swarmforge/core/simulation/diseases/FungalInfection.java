@@ -35,8 +35,6 @@ import java.util.Random;
  */
 public class FungalInfection implements Disease {
 
-    private static final Random random = new Random();
-
     private static final String NAME = "Cordyceps Fungal Infection";
     private static final String SCIENTIFIC_NAME = "Ophiocordyceps swarmforgei";
 
@@ -92,6 +90,7 @@ public class FungalInfection implements Disease {
             return false;
         }
 
+        Random random = getRng(individual, simulation);
         // Check for natural recovery (rare)
         if (random.nextFloat() < getRecoveryRate()) {
             simulation.queueEvent(new SimulationEvent(SimulationEvent.EventType.INFO,
@@ -102,7 +101,7 @@ public class FungalInfection implements Disease {
 
         if (ticksInfected < EARLY_PHASE) {
             // Early phase - mild symptoms
-            processEarlyPhase(individual);
+            processEarlyPhase(individual, simulation);
         } else if (ticksInfected < ADVANCED_PHASE) {
             // Advanced phase - severe symptoms
             processAdvancedPhase(individual, simulation);
@@ -117,10 +116,17 @@ public class FungalInfection implements Disease {
         return false;
     }
 
-    private void processEarlyPhase(Individual individual) {
+    private Random getRng(Individual individual, Simulation simulation) {
+        if (simulation != null && simulation.getRandom() != null) return simulation.getRandom();
+        if (individual != null && individual.getRandom() != null) return individual.getRandom();
+        return java.util.concurrent.ThreadLocalRandom.current();
+    }
+
+    private void processEarlyPhase(Individual individual, Simulation simulation) {
         // Slight energy drain
         individual.setEnergy(individual.getEnergy() - 0.1f);
 
+        Random random = getRng(individual, simulation);
         // Occasional erratic movement
         if (random.nextFloat() < 0.1f) {
             individual.setHeading(individual.getHeading() + (random.nextFloat() - 0.5f) * 2f);
@@ -134,6 +140,7 @@ public class FungalInfection implements Disease {
         // Health deterioration
         individual.setHealth(individual.getHealth() - 0.2f);
 
+        Random random = getRng(individual, simulation);
         // Erratic "zombie" behavior - wander aimlessly
         if (random.nextFloat() < 0.3f) {
             individual.setHeading(individual.getHeading() + (random.nextFloat() - 0.5f) * 3f);
@@ -186,6 +193,7 @@ public class FungalInfection implements Disease {
                 // Higher infection chance for spores
                 float sporeProbability = 0.4f * (1 - dist / sporeRadius);
 
+                Random random = getRng(source, simulation);
                 if (random.nextFloat() < sporeProbability) {
                     // Mark as infected (would need infection tracking)
                     simulation.queueEvent(new SimulationEvent(SimulationEvent.EventType.INFO,
@@ -210,6 +218,7 @@ public class FungalInfection implements Disease {
             probability *= 0.3f;
         }
 
+        Random random = getRng(source, null);
         return random.nextFloat() < probability;
     }
 

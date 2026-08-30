@@ -108,7 +108,7 @@ public class RemoteRLArchitecture implements ReasoningArchitecture {
             // e.g. MOVE takes 500ms, FORAGE takes 2000ms
             this.lastDecisionTime = now;
             this.currentAction = newAction;
-            this.actionDuration = (long) (500 + Math.random() * 500); // Randomize slightly
+            this.actionDuration = (long) (500 + java.util.concurrent.ThreadLocalRandom.current().nextFloat() * 500); // Randomize slightly
 
             return newAction;
 

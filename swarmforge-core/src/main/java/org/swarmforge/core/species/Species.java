@@ -15,7 +15,7 @@ package org.swarmforge.core.species;
  * @author Gemini AI Assistant
  */
 @com.fasterxml.jackson.annotation.JsonTypeInfo(use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.CLASS, include = com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY, property = "@class")
-public interface Species {
+public interface Species extends java.io.Serializable {
 
     /**
      * @return Scientific name of the species
@@ -111,13 +111,13 @@ public interface Species {
     }
 
     enum InsectOrder {
-        ANT("🐜 Formicidae (Fourmi)"),
-        BEE("🐝 Apidae (Abeille)"),
-        WASP("🐝 Vespidae (Guêpe/Frelon)"),
+        ANT("🐜 Formicidae (Ant)"),
+        BEE("🐝 Apidae (Bee)"),
+        WASP("🐝 Vespidae (Wasp/Hornet)"),
         TERMITE("🪲 Isoptera (Termite)"),
-        APHID("🌿 Aphididae (Puceron à soldats)"),
-        THRIPS("🌾 Thysanoptera (Thrips gallicole)"),
-        BEETLE("🌲 Coleoptera (Scolyte du bois)");
+        APHID("🌿 Aphididae (Soldier Aphid)"),
+        THRIPS("🌾 Thysanoptera (Gall Thrips)"),
+        BEETLE("🌲 Coleoptera (Bark Beetle)");
 
         public final String label;
         InsectOrder(String label) { this.label = label; }

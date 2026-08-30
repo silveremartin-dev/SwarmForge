@@ -19,7 +19,7 @@ public class AiComponent extends Component {
     // Timer/Cooldown for decision making to avoid CPU overload
     public float decisionTimer = 0f;
     // Seconds between major brain updates, randomized to reduce spikes
-    public float decisionInterval = 0.5f + (float)(Math.random() * 1.0f); 
+    public float decisionInterval = 0.5f + java.util.concurrent.ThreadLocalRandom.current().nextFloat() * 1.0f; 
     
     // Runtime storage for the actual AI object (RLArchitecture, etc.)
     // We use Object to avoid circular deps or complex generics for now.

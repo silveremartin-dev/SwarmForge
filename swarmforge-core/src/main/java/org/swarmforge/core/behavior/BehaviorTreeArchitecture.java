@@ -32,6 +32,12 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
         // Root Selector: Priority list
         Selector rootSelector = new Selector();
 
+        // 0. Emergency Safety Return (Mandatory home return when hungry/fatigued outside nest)
+        Sequence emergencyReturn = new Sequence();
+        emergencyReturn.addChild(new Condition((agent, ctx) -> agent != null && !agent.isAtNest() && (agent.getEnergyLevel() < 0.25f || agent.getHunger() > 70.0f)));
+        emergencyReturn.addChild(new Task(Action.ActionType.ABORT_AND_RETURN));
+        rootSelector.addChild(emergencyReturn);
+
         // 1. Survival Sequence
         Sequence survival = new Sequence();
         survival.addChild(new Condition((agent, ctx) -> agent.getEnergyLevel() < 0.2f));
@@ -173,7 +179,7 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
         @Override
         public NodeStatus tick(AgentView agent, SimulationContext ctx) {
             Action action = switch (type) {
-                case MOVE, EXPLORE -> randomMove();
+                case MOVE, EXPLORE -> randomMove(agent);
                 case ATTACK -> Action.attack(ctx != null ? ctx.getNearestEnemy(agent) : null);
                 case FOLLOW_TRAIL -> followTrail(agent, ctx);
                 case FORAGE -> Action.forage();
@@ -185,14 +191,17 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
             return new NodeStatus.Success(action);
         }
 
-        private Action randomMove() {
-            float angle = (float) (Math.random() * Math.PI * 2);
+        private Action randomMove(AgentView agent) {
+            java.util.Random rng = (agent instanceof org.swarmforge.core.domain.Individual ind && ind.getRandom() != null)
+                    ? ind.getRandom()
+                    : java.util.concurrent.ThreadLocalRandom.current();
+            float angle = rng.nextFloat() * (float) (Math.PI * 2);
             return Action.move((float) Math.cos(angle), (float) Math.sin(angle), 0);
         }
 
         private Action followTrail(AgentView agent, SimulationContext ctx) {
             if (ctx == null)
-                return randomMove();
+                return randomMove(agent);
             return Action.followTrail(ctx.getFoodPheromoneGradientX(agent.getX(), agent.getY(), agent.getZ()),
                     ctx.getFoodPheromoneGradientY(agent.getX(), agent.getY(), agent.getZ()), 0);
         }

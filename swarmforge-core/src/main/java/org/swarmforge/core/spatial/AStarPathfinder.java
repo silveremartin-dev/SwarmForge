@@ -193,9 +193,10 @@ public class AStarPathfinder {
                     neighbor.fScore = tentativeG +
                             heuristicWeight * heuristicDistance(nx, ny, nz, goalX, goalY, goalZ);
 
-                    if (!openSet.contains(neighbor)) {
-                        openSet.add(neighbor);
+                    if (openSet.contains(neighbor)) {
+                        openSet.remove(neighbor);
                     }
+                    openSet.add(neighbor);
                 }
             }
         }

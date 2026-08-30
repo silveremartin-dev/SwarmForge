@@ -28,18 +28,18 @@ import java.util.List;
 public class HeatmapEngine {
 
     public enum HeatmapType {
-        PHEROMONE_FOOD("Pheromone: Nourriture"),
-        PHEROMONE_HOME("Pheromone: Nid / Homing"),
-        PHEROMONE_ALARM("Pheromone: Alarme"),
-        PHEROMONE_TRAIL("Pheromone: Piste"),
-        PHEROMONE_QUEEN("Pheromone: Reine"),
-        PHEROMONE_BROOD("Pheromone: Couvain"),
-        PHEROMONE_DEATH("Pheromone: Cadavre / Nécrophorèse"),
-        PHEROMONE_TERRITORY("Pheromone: Territoire"),
-        TUNNEL_OCCUPANCY("Occupation & Trafic des Tunnels"),
-        CHAMBER_SPECIALIZATION("Spécialisation des Chambres"),
-        SOIL_STABILITY("Stabilité du Sol (Mohr-Coulomb)"),
-        SOIL_MOISTURE("Humidité du Sol");
+        PHEROMONE_FOOD("Pheromone: Food"),
+        PHEROMONE_HOME("Pheromone: Nest / Homing"),
+        PHEROMONE_ALARM("Pheromone: Alarm"),
+        PHEROMONE_TRAIL("Pheromone: Trail"),
+        PHEROMONE_QUEEN("Pheromone: Queen"),
+        PHEROMONE_BROOD("Pheromone: Brood"),
+        PHEROMONE_DEATH("Pheromone: Death / Necrophoresis"),
+        PHEROMONE_TERRITORY("Pheromone: Territory"),
+        TUNNEL_OCCUPANCY("Tunnel Occupancy & Traffic"),
+        CHAMBER_SPECIALIZATION("Chamber Specialization"),
+        SOIL_STABILITY("Soil Stability (Mohr-Coulomb)"),
+        SOIL_MOISTURE("Soil Moisture");
 
         public final String label;
         HeatmapType(String label) { this.label = label; }

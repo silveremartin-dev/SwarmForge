@@ -575,6 +575,8 @@ public class NestGenerator {
         }
     }
 
+
+
     // Turtle state for L-system execution
     private static class TurtleState {
         float x, y, z;

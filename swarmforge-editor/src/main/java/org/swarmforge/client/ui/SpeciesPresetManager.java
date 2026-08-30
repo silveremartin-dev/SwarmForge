@@ -64,10 +64,10 @@ public class SpeciesPresetManager {
         lasius.setDescription("Widespread monogynous species in Europe. Tends aphids and harvests honeydew.");
         lasius.setQueenCountMode("MONOGYNE");
         lasius.setQueenCount(1);
-        lasius.setQueenLifespan(30000);
+        lasius.setQueenLifespan(5475);
         lasius.setQueenEggLayingRate(25.0f);
         lasius.setNuptialFlightType("AERIAL_SWARM");
-        lasius.setWorkerLifespan(6000);
+        lasius.setWorkerLifespan(1095);
         lasius.setWorkerSpeed(0.5f);
         lasius.setTypicalColonySize(15000);
         lasius.setFormsMegaColonies(false);
@@ -117,7 +117,7 @@ public class SpeciesPresetManager {
 
         CasteTemplate lasiusQueen = new CasteTemplate("Queen", 500f, 10f);
         lasiusQueen.setDescription("Founding Queen / Gyne (9mm)");
-        lasiusQueen.setLifespan(30000);
+        lasiusQueen.setLifespan(5475);
         lasiusQueen.setCanFly(true);
         lasiusQueen.setBodyLengthMm(9.0f);
         lasiusQueen.setHeadWidthMm(2.4f);
@@ -129,7 +129,7 @@ public class SpeciesPresetManager {
 
         CasteTemplate lasiusWorker = new CasteTemplate("Worker", 80f, 4f);
         lasiusWorker.setDescription("Generalist Worker (4mm)");
-        lasiusWorker.setLifespan(6000);
+        lasiusWorker.setLifespan(1095);
         lasiusWorker.setCanDig(true);
         lasiusWorker.setCanCarry(true);
         lasiusWorker.setBodyLengthMm(4.0f);
@@ -141,7 +141,7 @@ public class SpeciesPresetManager {
 
         CasteTemplate lasiusMale = new CasteTemplate("Reproductive Male (Alate)", 45f, 0f);
         lasiusMale.setDescription("Haploid winged male for nuptial flight (4.5mm)");
-        lasiusMale.setLifespan(500);
+        lasiusMale.setLifespan(21);
         lasiusMale.setCanFly(true);
         lasiusMale.setBodyLengthMm(4.5f);
         lasiusMale.setHeadWidthMm(1.1f);
@@ -162,10 +162,10 @@ public class SpeciesPresetManager {
         solenopsis.setDescription("Highly aggressive species with venomous sting, forming polygynous colonies and tall mounds.");
         solenopsis.setQueenCountMode("POLYGYNE");
         solenopsis.setQueenCount(12);
-        solenopsis.setQueenLifespan(20000);
+        solenopsis.setQueenLifespan(2555);
         solenopsis.setQueenEggLayingRate(80.0f);
         solenopsis.setNuptialFlightType("AERIAL_SWARM");
-        solenopsis.setWorkerLifespan(4000);
+        solenopsis.setWorkerLifespan(180);
         solenopsis.setWorkerSpeed(0.75f);
         solenopsis.setTypicalColonySize(250000);
         solenopsis.setFormsMegaColonies(true);
@@ -215,7 +215,7 @@ public class SpeciesPresetManager {
         solenopsis.setStrength(8.0f);
 
         CasteTemplate fireQueen = new CasteTemplate("Queen", 450f, 15f);
-        fireQueen.setLifespan(20000);
+        fireQueen.setLifespan(2555);
         fireQueen.setCanFly(true);
         fireQueen.setBodyLengthMm(8.0f);
         fireQueen.setHeadWidthMm(2.0f);
@@ -225,7 +225,7 @@ public class SpeciesPresetManager {
         fireQueen.setTargetRatio(0.00f);
 
         CasteTemplate fireMinor = new CasteTemplate("Minor Worker", 60f, 8f);
-        fireMinor.setLifespan(3500);
+        fireMinor.setLifespan(60);
         fireMinor.setCanDig(true);
         fireMinor.setBodyLengthMm(3.0f);
         fireMinor.setHeadWidthMm(0.8f);
@@ -235,7 +235,7 @@ public class SpeciesPresetManager {
         fireMinor.setTargetRatio(0.85f);
 
         CasteTemplate fireMajor = new CasteTemplate("Major Worker / Soldier", 150f, 25f);
-        fireMajor.setLifespan(5000);
+        fireMajor.setLifespan(180);
         fireMajor.setBaseDefense(5f);
         fireMajor.setBodyLengthMm(6.0f);
         fireMajor.setHeadWidthMm(1.8f);
@@ -256,10 +256,10 @@ public class SpeciesPresetManager {
         atta.setDescription("Harvests foliage to cultivate a symbiotic fungus garden inside massive underground vaults.");
         atta.setQueenCountMode("MONOGYNE");
         atta.setQueenCount(1);
-        atta.setQueenLifespan(35000);
+        atta.setQueenLifespan(5475);
         atta.setQueenEggLayingRate(100.0f);
         atta.setNuptialFlightType("AERIAL_SWARM");
-        atta.setWorkerLifespan(7000);
+        atta.setWorkerLifespan(500);
         atta.setWorkerSpeed(0.6f);
         atta.setTypicalColonySize(500000);
         atta.setFormsMegaColonies(false);
@@ -309,7 +309,7 @@ public class SpeciesPresetManager {
         atta.setStrength(20.0f);
 
         CasteTemplate attaQueen = new CasteTemplate("Giant Queen", 1000f, 20f);
-        attaQueen.setLifespan(35000);
+        attaQueen.setLifespan(5475);
         attaQueen.setCanFly(true);
         attaQueen.setBodyLengthMm(30.0f);
         attaQueen.setHeadWidthMm(7.0f);
@@ -356,10 +356,10 @@ public class SpeciesPresetManager {
         apis.setDescription("Flying eusocial insect building hexagonal wax combs. Forages nectar and pollen.");
         apis.setQueenCountMode("MONOGYNE");
         apis.setQueenCount(1);
-        apis.setQueenLifespan(18000);
+        apis.setQueenLifespan(1460);
         apis.setQueenEggLayingRate(150.0f);
         apis.setNuptialFlightType("SWARM_DIVISION");
-        apis.setWorkerLifespan(3000);
+        apis.setWorkerLifespan(60);
         apis.setWorkerSpeed(1.2f);
         apis.setWorkersCanFly(true);
         apis.setTypicalColonySize(50000);
@@ -411,7 +411,7 @@ public class SpeciesPresetManager {
         apis.setStrength(6.0f);
 
         CasteTemplate apisQueen = new CasteTemplate("Queen Bee", 400f, 5f);
-        apisQueen.setLifespan(18000);
+        apisQueen.setLifespan(1460);
         apisQueen.setCanFly(true);
         apisQueen.setBodyLengthMm(20.0f);
         apisQueen.setHeadWidthMm(4.0f);
@@ -422,7 +422,7 @@ public class SpeciesPresetManager {
         apisQueen.setTargetRatio(0.00f);
 
         CasteTemplate apisWorker = new CasteTemplate("Forager Worker", 90f, 12f);
-        apisWorker.setLifespan(3000);
+        apisWorker.setLifespan(60);
         apisWorker.setCanFly(true);
         apisWorker.setCanCarry(true);
         apisWorker.setBodyLengthMm(14.0f);
@@ -434,7 +434,7 @@ public class SpeciesPresetManager {
         apisWorker.setTargetRatio(1.00f);
 
         CasteTemplate apisDrone = new CasteTemplate("Drone (Male)", 120f, 0f);
-        apisDrone.setLifespan(2500);
+        apisDrone.setLifespan(40);
         apisDrone.setCanFly(true);
         apisDrone.setBodyLengthMm(16.0f);
         apisDrone.setHeadWidthMm(4.2f);
@@ -456,10 +456,10 @@ public class SpeciesPresetManager {
         vespula.setDescription("Carnivorous flying hunter building paper nests from wood pulp.");
         vespula.setQueenCountMode("MONOGYNE");
         vespula.setQueenCount(1);
-        vespula.setQueenLifespan(12000);
+        vespula.setQueenLifespan(365);
         vespula.setQueenEggLayingRate(40.0f);
         vespula.setNuptialFlightType("AERIAL_SWARM");
-        vespula.setWorkerLifespan(2500);
+        vespula.setWorkerLifespan(30);
         vespula.setWorkerSpeed(1.4f);
         vespula.setWorkersCanFly(true);
         vespula.setTypicalColonySize(8000);
@@ -509,6 +509,7 @@ public class SpeciesPresetManager {
         vespula.setStrength(7.0f);
 
         CasteTemplate vespulaQueen = new CasteTemplate("Foundress (Queen)", 450f, 20f);
+        vespulaQueen.setLifespan(365);
         vespulaQueen.setCanFly(true);
         vespulaQueen.setBodyLengthMm(19.0f);
         vespulaQueen.setHeadWidthMm(4.5f);
@@ -519,7 +520,7 @@ public class SpeciesPresetManager {
         vespulaQueen.setTargetRatio(0.00f);
 
         CasteTemplate vespulaWorker = new CasteTemplate("Hunter Worker", 100f, 22f);
-        vespulaWorker.setLifespan(2500);
+        vespulaWorker.setLifespan(30);
         vespulaWorker.setCanFly(true);
         vespulaWorker.setBodyLengthMm(13.0f);
         vespulaWorker.setHeadWidthMm(3.2f);
@@ -532,6 +533,92 @@ public class SpeciesPresetManager {
         vespula.setCasteTemplates(List.of(vespulaQueen, vespulaWorker));
         map.put(vespula.getPresetName(), vespula);
 
+        // 5b. European Hornet (Vespa crabro)
+        CustomSpecies vespa = new CustomSpecies();
+        vespa.setPresetName("European Hornet (Vespa crabro)");
+        vespa.setCommonName("European Hornet");
+        vespa.setScientificName("Vespa crabro");
+        vespa.setInsectType("WASP");
+        vespa.setDescription("Large apex predatory vespid. Constructs expansive multi-tiered paper nests in hollow trees or sheltered cavities.");
+        vespa.setQueenCountMode("MONOGYNE");
+        vespa.setQueenCount(1);
+        vespa.setQueenLifespan(365);
+        vespa.setQueenEggLayingRate(50.0f);
+        vespa.setNuptialFlightType("AERIAL_SWARM");
+        vespa.setWorkerLifespan(35);
+        vespa.setWorkerSpeed(1.6f);
+        vespa.setWorkersCanFly(true);
+        vespa.setTypicalColonySize(5000);
+        vespa.setFormsMegaColonies(false);
+        vespa.setPrimaryDiet("INSECTS_MEAT");
+        vespa.setSecondaryDiet("SUGARS_NECTAR");
+        vespa.setDailyFoodConsumption(0.65f);
+        vespa.setWaterRequirement(0.25f);
+        vespa.setNestType("PAPER_PEDUNCULATE");
+        vespa.setVenomType("VENOMOUS_STING");
+        vespa.setAggression(0.75f);
+        vespa.setTerritoriality(0.80f);
+        vespa.setOptimalTempCelsius(26.0f);
+        vespa.setMinTempCelsius(10.0f);
+        vespa.setMaxTempCelsius(38.0f);
+        vespa.setEggStageDuration(6);
+        vespa.setLarvaStageDuration(10);
+        vespa.setPupaStageDuration(14);
+        vespa.setLarvaDietRequirement("High Protein Meat & Large Insects");
+        vespa.setProteinThresholdMinor(0.30f);
+        vespa.setProteinThresholdMajor(0.60f);
+        vespa.setProteinThresholdSoldier(0.99f);
+        vespa.setProteinThresholdQueen(0.95f);
+        vespa.setQueenPheromoneInhibitionFactor(0.85f);
+        vespa.setHaplodiploidyEnabled(true);
+        vespa.setPathogenResistance(0.70f);
+        vespa.setGroomingDefenseEfficacy(0.75f);
+        vespa.setHasMagnetoreception(false);
+        vespa.setThermoreceptionSensitivity(0.25f);
+        vespa.setGasSensitivityCo2Ppm(350.0f);
+        vespa.setVisualAcuity(4.5f);
+        vespa.setMinLightLevelThreshold(0.02f); // Hunts day & night
+        vespa.setHasSubstrateVibrationSensing(true);
+        vespa.setVibrationSensitivityDb(5.0f);
+        vespa.setHasHygroreception(true);
+        vespa.setHygroreceptionSensitivityPercent(1.5f);
+        vespa.setHasElectrosensing(false);
+        vespa.setHasPolarizedLightNavigation(true);
+        vespa.setWingbeatFrequencyHz(170.0f);
+        vespa.setHasHoveringCapability(true);
+        vespa.setMaxCarryingPayloadRatio(8.0f);
+        vespa.setMandibularBitingForceMPa(45.0f);
+        vespa.setHasAutothysis(false);
+        vespa.setHasSubstrateAdhesionArolia(true);
+        vespa.setViewDistance(35.0f);
+        vespa.setMetabolism(2.2f);
+        vespa.setStrength(12.0f);
+
+        CasteTemplate vespaQueen = new CasteTemplate("Queen Hornet", 600f, 30f);
+        vespaQueen.setLifespan(365);
+        vespaQueen.setCanFly(true);
+        vespaQueen.setBodyLengthMm(30.0f);
+        vespaQueen.setHeadWidthMm(6.5f);
+        vespaQueen.setWingbeatFrequencyHz(140.0f);
+        vespaQueen.setHasHoveringCapability(true);
+        vespaQueen.setMaxCarryingPayloadRatio(4.0f);
+        vespaQueen.setMandibularBitingForceMPa(35.0f);
+        vespaQueen.setTargetRatio(0.00f);
+
+        CasteTemplate vespaWorker = new CasteTemplate("Hornet Worker", 160f, 35f);
+        vespaWorker.setLifespan(35);
+        vespaWorker.setCanFly(true);
+        vespaWorker.setBodyLengthMm(22.0f);
+        vespaWorker.setHeadWidthMm(4.8f);
+        vespaWorker.setWingbeatFrequencyHz(170.0f);
+        vespaWorker.setHasHoveringCapability(true);
+        vespaWorker.setMaxCarryingPayloadRatio(8.0f);
+        vespaWorker.setMandibularBitingForceMPa(45.0f);
+        vespaWorker.setTargetRatio(1.00f);
+
+        vespa.setCasteTemplates(List.of(vespaQueen, vespaWorker));
+        map.put(vespa.getPresetName(), vespa);
+
         // 6. Subterranean Termite (Reticulitermes flavipes)
         CustomSpecies termite = new CustomSpecies();
         termite.setPresetName("Subterranean Termite (Reticulitermes flavipes)");
@@ -542,11 +629,11 @@ public class SpeciesPresetManager {
         termite.setQueenCountMode("MONOGYNE");
         termite.setQueenCount(1);
         termite.setHasKing(true);
-        termite.setKingLifespan(20000);
-        termite.setQueenLifespan(30000);
+        termite.setKingLifespan(5475);
+        termite.setQueenLifespan(7300);
         termite.setQueenEggLayingRate(60.0f);
         termite.setNuptialFlightType("AERIAL_SWARM");
-        termite.setWorkerLifespan(5000);
+        termite.setWorkerLifespan(500);
         termite.setWorkerSpeed(0.4f);
         termite.setTypicalColonySize(100000);
         termite.setFormsMegaColonies(false);
@@ -595,6 +682,7 @@ public class SpeciesPresetManager {
         termite.setStrength(6.0f);
 
         CasteTemplate termiteQueen = new CasteTemplate("Physogastric Queen", 600f, 2f);
+        termiteQueen.setLifespan(7300);
         termiteQueen.setBodyLengthMm(22.0f);
         termiteQueen.setHeadWidthMm(3.0f);
         termiteQueen.setWingbeatFrequencyHz(0.0f);
@@ -603,6 +691,7 @@ public class SpeciesPresetManager {
         termiteQueen.setTargetRatio(0.00f);
 
         CasteTemplate termiteKing = new CasteTemplate("Reproductive King", 300f, 5f);
+        termiteKing.setLifespan(5475);
         termiteKing.setBodyLengthMm(10.0f);
         termiteKing.setHeadWidthMm(2.0f);
         termiteKing.setWingbeatFrequencyHz(0.0f);
@@ -611,6 +700,7 @@ public class SpeciesPresetManager {
         termiteKing.setTargetRatio(0.00f);
 
         CasteTemplate termiteWorker = new CasteTemplate("Termite Worker", 50f, 3f);
+        termiteWorker.setLifespan(500);
         termiteWorker.setCanDig(true);
         termiteWorker.setBodyLengthMm(5.0f);
         termiteWorker.setHeadWidthMm(1.2f);
@@ -620,6 +710,7 @@ public class SpeciesPresetManager {
         termiteWorker.setTargetRatio(0.85f);
 
         CasteTemplate termiteSoldier = new CasteTemplate("Mandibulate Soldier", 200f, 35f);
+        termiteSoldier.setLifespan(730);
         termiteSoldier.setBaseDefense(6f);
         termiteSoldier.setBodyLengthMm(7.0f);
         termiteSoldier.setHeadWidthMm(2.5f);
@@ -640,10 +731,10 @@ public class SpeciesPresetManager {
         harvester.setDescription("Granivorous species collecting seeds and storing them in underground granaries.");
         harvester.setQueenCountMode("MONOGYNE");
         harvester.setQueenCount(1);
-        harvester.setQueenLifespan(22000);
+        harvester.setQueenLifespan(7300);
         harvester.setQueenEggLayingRate(20.0f);
         harvester.setNuptialFlightType("AERIAL_SWARM");
-        harvester.setWorkerLifespan(5500);
+        harvester.setWorkerLifespan(500);
         harvester.setWorkerSpeed(0.55f);
         harvester.setTypicalColonySize(12000);
         harvester.setFormsMegaColonies(false);
@@ -693,6 +784,7 @@ public class SpeciesPresetManager {
         harvester.setStrength(12.0f);
 
         CasteTemplate harvestQueen = new CasteTemplate("Queen", 450f, 10f);
+        harvestQueen.setLifespan(7300);
         harvestQueen.setBodyLengthMm(12.0f);
         harvestQueen.setHeadWidthMm(3.0f);
         harvestQueen.setWingbeatFrequencyHz(170.0f);
@@ -701,6 +793,7 @@ public class SpeciesPresetManager {
         harvestQueen.setTargetRatio(0.00f);
 
         CasteTemplate harvestWorker = new CasteTemplate("Harvester Worker", 90f, 14f);
+        harvestWorker.setLifespan(500);
         harvestWorker.setCanCarry(true);
         harvestWorker.setCanDig(true);
         harvestWorker.setBodyLengthMm(7.0f);
@@ -723,7 +816,7 @@ public class SpeciesPresetManager {
         aphid.setDescription("Sap-sucking homopteran forming dense colonies. Excretes honeydew harvested by ants.");
         aphid.setQueenCountMode("GAMERGATES");
         aphid.setQueenCount(0);
-        aphid.setWorkerLifespan(1200);
+        aphid.setWorkerLifespan(25);
         aphid.setWorkerSpeed(0.05f);
         aphid.setViewDistance(1.5f);
         aphid.setTypicalColonySize(500);
@@ -745,7 +838,7 @@ public class SpeciesPresetManager {
         CasteTemplate aphidWorker = new CasteTemplate("Wingless Aphid (Honeydew Producer)", 15f, 0f);
         aphidWorker.setBodyLengthMm(2.0f);
         aphidWorker.setHeadWidthMm(0.5f);
-        aphidWorker.setLifespan(1200);
+        aphidWorker.setLifespan(25);
         aphidWorker.setTargetRatio(1.00f);
         aphid.setCasteTemplates(List.of(aphidWorker));
         map.put(aphid.getPresetName(), aphid);
@@ -760,7 +853,7 @@ public class SpeciesPresetManager {
         caterpillar.setDescription("Phytophagous larva serving as protein-rich prey for carnivorous colonies.");
         caterpillar.setQueenCountMode("GAMERGATES");
         caterpillar.setQueenCount(0);
-        caterpillar.setWorkerLifespan(800);
+        caterpillar.setWorkerLifespan(25);
         caterpillar.setWorkerSpeed(0.10f);
         caterpillar.setViewDistance(2.0f);
         caterpillar.setTypicalColonySize(50);
@@ -782,7 +875,7 @@ public class SpeciesPresetManager {
         CasteTemplate caterpillarPrey = new CasteTemplate("Herbivorous Caterpillar (Protein Prey)", 80f, 2f);
         caterpillarPrey.setBodyLengthMm(25.0f);
         caterpillarPrey.setHeadWidthMm(2.5f);
-        caterpillarPrey.setLifespan(800);
+        caterpillarPrey.setLifespan(25);
         caterpillarPrey.setTargetRatio(1.00f);
         caterpillar.setCasteTemplates(List.of(caterpillarPrey));
         map.put(caterpillar.getPresetName(), caterpillar);
@@ -790,20 +883,14 @@ public class SpeciesPresetManager {
         // 10. European Antlion (Myrmeleon formicarius)
         CustomSpecies antlion = new CustomSpecies();
         antlion.setPresetName("European Antlion (Myrmeleon formicarius)");
-        antlion.setCommonName("Trap-Jaw Antlion");
+        antlion.setCommonName("Pitfall Antlion");
         antlion.setScientificName("Myrmeleon formicarius");
         antlion.setInsectType("OTHER");
         antlion.setCategory(org.swarmforge.core.species.SpeciesCategory.PARASITE_PREDATOR);
-        antlion.setDescription("Ambush predator digging sand funnels to capture passing workers.");
-        antlion.setQueenCountMode("GAMERGATES");
-        antlion.setCommonName("Fourmilion Piégeur");
-        antlion.setScientificName("Myrmeleon formicarius");
-        antlion.setInsectType("OTHER");
-        antlion.setCategory(org.swarmforge.core.species.SpeciesCategory.PARASITE_PREDATOR);
-        antlion.setDescription("Prédateur embusqué creusant des entonnoirs dans le sable pour capturer les ouvrières de passage.");
+        antlion.setDescription("Ambush predator digging funnels in sand to capture passing workers.");
         antlion.setQueenCountMode("GAMERGATES");
         antlion.setQueenCount(0);
-        antlion.setWorkerLifespan(3000);
+        antlion.setWorkerLifespan(500);
         antlion.setWorkerSpeed(0.20f);
         antlion.setViewDistance(5.0f);
         antlion.setTypicalColonySize(10);
@@ -826,7 +913,7 @@ public class SpeciesPresetManager {
         CasteTemplate antlionPredator = new CasteTemplate("Antlion Larva (Trap Predator)", 180f, 35f);
         antlionPredator.setBodyLengthMm(12.0f);
         antlionPredator.setHeadWidthMm(3.5f);
-        antlionPredator.setLifespan(3000);
+        antlionPredator.setLifespan(500);
         antlionPredator.setVenomType("NEUROTOXIN");
         antlionPredator.setVenomToxicity(25.0f);
         antlionPredator.setMandibularBitingForceMPa(85.0f);
@@ -844,7 +931,7 @@ public class SpeciesPresetManager {
         isopod.setDescription("Terrestrial crustacean decomposer participating in leaf litter recycling and soil aeration.");
         isopod.setQueenCountMode("GAMERGATES");
         isopod.setQueenCount(0);
-        isopod.setWorkerLifespan(4000);
+        isopod.setWorkerLifespan(730);
         isopod.setWorkerSpeed(0.30f);
         isopod.setViewDistance(3.0f);
         isopod.setTypicalColonySize(200);
@@ -866,10 +953,103 @@ public class SpeciesPresetManager {
         CasteTemplate isopodWorker = new CasteTemplate("Decomposer Woodlouse (Soil Fauna)", 60f, 0f);
         isopodWorker.setBodyLengthMm(14.0f);
         isopodWorker.setHeadWidthMm(2.0f);
-        isopodWorker.setLifespan(4000);
+        isopodWorker.setLifespan(730);
         isopodWorker.setTargetRatio(1.00f);
         isopod.setCasteTemplates(List.of(isopodWorker));
         map.put(isopod.getPresetName(), isopod);
+
+        // 12. Black Wood Ant (Formica fusca)
+        CustomSpecies formicaFusca = new CustomSpecies();
+        formicaFusca.setPresetName("Formica fusca (Black Wood Ant)");
+        formicaFusca.setCommonName("Black Wood Ant");
+        formicaFusca.setScientificName("Formica fusca");
+        formicaFusca.setInsectType("ANT");
+        formicaFusca.setDescription("Fast-moving, timid wood ant common in Europe. Excellent vision and honeydew harvester.");
+        formicaFusca.setQueenCountMode("FACULTATIVE_POLYGYNE");
+        formicaFusca.setQueenCount(3);
+        formicaFusca.setQueenLifespan(4000);
+        formicaFusca.setQueenEggLayingRate(35.0f);
+        formicaFusca.setNuptialFlightType("AERIAL_SWARM");
+        formicaFusca.setWorkerLifespan(730);
+        formicaFusca.setWorkerSpeed(0.85f);
+        formicaFusca.setTypicalColonySize(2000);
+        formicaFusca.setFormsMegaColonies(false);
+        formicaFusca.setPrimaryDiet("HONEYDEW");
+        formicaFusca.setSecondaryDiet("INSECTS_MEAT");
+        formicaFusca.setDailyFoodConsumption(0.35f);
+        formicaFusca.setWaterRequirement(0.20f);
+        formicaFusca.setNestType("MATURE");
+        formicaFusca.setVenomType("FORMIC_ACID");
+        formicaFusca.setAggression(0.35f);
+        formicaFusca.setTerritoriality(0.40f);
+        formicaFusca.setOptimalTempCelsius(22.0f);
+        formicaFusca.setMinTempCelsius(4.0f);
+        formicaFusca.setMaxTempCelsius(34.0f);
+        formicaFusca.setEggStageDuration(14);
+        formicaFusca.setLarvaStageDuration(12);
+        formicaFusca.setPupaStageDuration(14);
+        formicaFusca.setLarvaDietRequirement("Protein & Honeydew");
+        formicaFusca.setProteinThresholdMinor(0.30f);
+        formicaFusca.setProteinThresholdMajor(0.65f);
+        formicaFusca.setProteinThresholdSoldier(0.80f);
+        formicaFusca.setProteinThresholdQueen(0.88f);
+        formicaFusca.setQueenPheromoneInhibitionFactor(0.75f);
+        formicaFusca.setHaplodiploidyEnabled(true);
+        formicaFusca.setPathogenResistance(0.65f);
+        formicaFusca.setGroomingDefenseEfficacy(0.80f);
+        formicaFusca.setHasMagnetoreception(false);
+        formicaFusca.setThermoreceptionSensitivity(0.35f);
+        formicaFusca.setGasSensitivityCo2Ppm(480.0f);
+        formicaFusca.setVisualAcuity(2.2f);
+        formicaFusca.setMinLightLevelThreshold(0.02f);
+        formicaFusca.setHasSubstrateVibrationSensing(true);
+        formicaFusca.setVibrationSensitivityDb(7.5f);
+        formicaFusca.setHasHygroreception(true);
+        formicaFusca.setHygroreceptionSensitivityPercent(1.2f);
+        formicaFusca.setHasElectrosensing(false);
+        formicaFusca.setHasPolarizedLightNavigation(true);
+        formicaFusca.setWingbeatFrequencyHz(190.0f);
+        formicaFusca.setHasHoveringCapability(false);
+        formicaFusca.setMaxCarryingPayloadRatio(6.0f);
+        formicaFusca.setMandibularBitingForceMPa(14.0f);
+        formicaFusca.setHasAutothysis(false);
+        formicaFusca.setHasSubstrateAdhesionArolia(true);
+        formicaFusca.setViewDistance(8.5f);
+        formicaFusca.setMetabolism(1.1f);
+        formicaFusca.setStrength(6.0f);
+
+        CasteTemplate ffQueen = new CasteTemplate("Queen", 450f, 8f);
+        ffQueen.setDescription("Gyne (8-10mm)");
+        ffQueen.setLifespan(4000);
+        ffQueen.setCanFly(true);
+        ffQueen.setBodyLengthMm(9.5f);
+        ffQueen.setHeadWidthMm(2.3f);
+        ffQueen.setWingbeatFrequencyHz(190.0f);
+        ffQueen.setTargetRatio(0.00f);
+
+        CasteTemplate ffWorker = new CasteTemplate("Worker", 90f, 5f);
+        ffWorker.setDescription("Agile Forager Worker (5-7mm)");
+        ffWorker.setLifespan(730);
+        ffWorker.setCanDig(true);
+        ffWorker.setCanCarry(true);
+        ffWorker.setBodyLengthMm(5.5f);
+        ffWorker.setHeadWidthMm(1.3f);
+        ffWorker.setWingbeatFrequencyHz(0.0f);
+        ffWorker.setMaxCarryingPayloadRatio(6.0f);
+        ffWorker.setMandibularBitingForceMPa(14.0f);
+        ffWorker.setTargetRatio(1.00f);
+
+        CasteTemplate ffMale = new CasteTemplate("Reproductive Male (Alate)", 40f, 0f);
+        ffMale.setDescription("Alate male (5-6mm)");
+        ffMale.setLifespan(30);
+        ffMale.setCanFly(true);
+        ffMale.setBodyLengthMm(5.5f);
+        ffMale.setHeadWidthMm(1.2f);
+        ffMale.setWingbeatFrequencyHz(220.0f);
+        ffMale.setTargetRatio(0.00f);
+
+        formicaFusca.setCasteTemplates(List.of(ffQueen, ffWorker, ffMale));
+        map.put(formicaFusca.getPresetName(), formicaFusca);
 
         return map;
     }
@@ -922,5 +1102,30 @@ public class SpeciesPresetManager {
     public CustomSpecies loadFromFile(File file) throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         return mapper.readValue(file, CustomSpecies.class);
+    }
+
+    public CustomSpecies getPresetOrFallback(String name) {
+        if (name == null || name.isBlank()) {
+            return presets.isEmpty() ? null : presets.values().iterator().next();
+        }
+        CustomSpecies sp = presets.get(name);
+        if (sp != null) return sp;
+        for (CustomSpecies s : presets.values()) {
+            if (s.getPresetName().equalsIgnoreCase(name) ||
+                (s.getCommonName() != null && s.getCommonName().equalsIgnoreCase(name)) ||
+                (s.getScientificName() != null && s.getScientificName().equalsIgnoreCase(name))) {
+                return s;
+            }
+        }
+        CustomSpecies fallback = new CustomSpecies();
+        fallback.setPresetName(name);
+        fallback.setCommonName(name);
+        fallback.setScientificName(name);
+        fallback.setInsectType("ANT");
+        fallback.setNestType("MATURE");
+        fallback.setDescription("Dynamically synthesized fallback species.");
+        presets.put(name, fallback);
+        org.swarmforge.core.species.SpeciesRegistry.getInstance().register(fallback);
+        return fallback;
     }
 }

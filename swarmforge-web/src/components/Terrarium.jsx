@@ -9,6 +9,7 @@ import Predator from './Predator'
 import NestRenderer from './NestRenderer'
 import VegetationRenderer from './VegetationRenderer'
 import { soundEngine } from '../utils/soundEngine'
+import { getTerrainHeight } from '../utils/terrainUtils'
 
 /**
  * Creates a procedural Gaussian-splatted ground texture for Realistic Mode.
@@ -56,8 +57,56 @@ function createSplattingGroundTexture() {
     return texture
 }
 
+/**
+ * Dedicated Voxel Terrain Generator for Gamified Mode
+ * Creates solid voxel column blocks anchored to getTerrainHeight with no clipping holes.
+ */
+function VoxelTerrain({ terrainConfig }) {
+    const voxelGrid = useMemo(() => {
+        const blocks = []
+        // Grid step 2m across 100m x 100m terrarium
+        for (let x = 1; x <= 99; x += 2) {
+            for (let z = 1; z <= 99; z += 2) {
+                const heightY = getTerrainHeight(x, z, terrainConfig)
+                const isRiverChannel = x >= 18 && x <= 32
+                const blockHeight = Math.max(0.4, heightY + 0.6)
+                const posY = (heightY - 0.2) / 2
+                
+                blocks.push({
+                    id: `v_${x}_${z}`,
+                    x,
+                    y: posY,
+                    z,
+                    height: blockHeight,
+                    isRiver: isRiverChannel,
+                    topColor: isRiverChannel ? '#0284c7' : ((x + z) % 4 === 0 ? '#3f6212' : '#22c55e'),
+                    sideColor: isRiverChannel ? '#0369a1' : '#5c3a21'
+                })
+            }
+        }
+        return blocks
+    }, [terrainConfig])
+
+    return (
+        <group>
+            {voxelGrid.map((b) => (
+                <mesh key={b.id} position={[b.x, b.y, b.z]} receiveShadow castShadow frustumCulled={false}>
+                    <boxGeometry args={[1.98, b.height, 1.98]} />
+                    <meshStandardMaterial
+                        color={b.topColor}
+                        roughness={b.isRiver ? 0.2 : 0.85}
+                        metalness={b.isRiver ? 0.6 : 0.05}
+                        transparent={b.isRiver}
+                        opacity={b.isRiver ? 0.85 : 1.0}
+                    />
+                </mesh>
+            ))}
+        </group>
+    )
+}
+
 export default function Terrarium() {
-    const { ants, foodSources, predators, environment, lookAndFeel, environmentLighting, disasterState } = useSimulationStore()
+    const { ants, foodSources, predators, environment, terrainConfig, lookAndFeel, environmentLighting, disasterState } = useSimulationStore()
     const groupRef = useRef()
     const riverMeshRef = useRef()
     const floodMeshRef = useRef()
@@ -87,28 +136,67 @@ export default function Terrarium() {
         return '#87ceeb'
     }, [environmentLighting?.isNight, lookAndFeel])
 
-    // Procedural Splatting Ground Texture for Realistic Mode
+    // Real Textures loaded for Mode 3D Naturel (REALISTIC mode)
+    const realisticTextures = useMemo(() => {
+        if (lookAndFeel !== 'REALISTIC') return null
+        const loader = new THREE.TextureLoader()
+        const loadTex = (url, rx = 8, ry = 8) => {
+            const t = loader.load(url)
+            t.wrapS = THREE.RepeatWrapping
+            t.wrapT = THREE.RepeatWrapping
+            t.repeat.set(rx, ry)
+            return t
+        }
+
+        return {
+            groundMap: loadTex('/3d/textures/3td_AfricaGrass_Dry.png', 10, 10),
+            groundNormalMap: loadTex('/3d/textures/3td_AfricaGrass_Dry_NRM.png', 10, 10),
+            topsoilMap: loadTex('/3d/textures/3td_RedDirt_01.png', 8, 8),
+            topsoilNormalMap: loadTex('/3d/textures/3td_RedDirt_01_NRM.png', 8, 8),
+            subsoilMap: loadTex('/3d/textures/3td_YellowDirt_01_1024.jpg', 6, 6),
+            bedrockMap: loadTex('/3d/textures/3td_RedRock_01.jpg', 6, 6),
+            bedrockNormalMap: loadTex('/3d/textures/3td_RedRock_01_NRM.png', 6, 6),
+            riverCobbleMap: loadTex('/3d/textures/3td_RiverCobble_01.png', 4, 12),
+            riverCobbleNormalMap: loadTex('/3d/textures/3td_RiverCobble_01_NRM.png', 4, 12),
+        }
+    }, [lookAndFeel])
+
+    // Procedural Splatting Ground Texture fallback for Realistic Mode
     const splattingTexture = useMemo(() => {
-        if (lookAndFeel === 'REALISTIC') {
+        if (lookAndFeel === 'REALISTIC' && !realisticTextures?.groundMap) {
             return createSplattingGroundTexture()
         }
         return null
-    }, [lookAndFeel])
+    }, [lookAndFeel, realisticTextures])
 
     // Ground Surface color adapted by Look & Feel theme
     const groundColor = useMemo(() => {
         if (lookAndFeel === 'SCIENTIFIC') return '#1e293b'
-        if (lookAndFeel === 'REALISTIC') return '#ffffff' // texture tinted
+        if (lookAndFeel === 'REALISTIC') return '#ffffff'
         return '#3d2817'
     }, [lookAndFeel])
 
-    // Ground Surface plane (100m x 100m, centered at [50, 0, 50])
-    const groundGeometry = useMemo(() => new THREE.PlaneGeometry(100, 100), [])
+    // Displaced Ground Surface mesh matching terrain elevation relief
+    const groundGeometry = useMemo(() => {
+        const geo = new THREE.PlaneGeometry(100, 100, 50, 50)
+        geo.rotateX(-Math.PI / 2)
+        const pos = geo.attributes.position
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i) + 50
+            const z = pos.getZ(i) + 50
+            const y = getTerrainHeight(x, z, terrainConfig)
+            pos.setY(i, y)
+        }
+        geo.computeVertexNormals()
+        return geo
+    }, [terrainConfig])
+
     const groundMaterial = useMemo(() => {
-        if (lookAndFeel === 'REALISTIC' && splattingTexture) {
+        if (lookAndFeel === 'REALISTIC') {
             return new THREE.MeshStandardMaterial({
-                map: splattingTexture,
-                roughness: 0.88,
+                map: realisticTextures?.groundMap || splattingTexture,
+                normalMap: realisticTextures?.groundNormalMap || null,
+                roughness: 0.85,
                 metalness: 0.05,
                 side: THREE.FrontSide,
             })
@@ -119,34 +207,39 @@ export default function Terrarium() {
             metalness: lookAndFeel === 'SCIENTIFIC' ? 0.3 : 0.1,
             side: THREE.FrontSide,
         })
-    }, [groundColor, lookAndFeel, splattingTexture])
+    }, [groundColor, lookAndFeel, realisticTextures, splattingTexture])
 
     // Geological Stratum 1: Topsoil / Humus (Fully opaque solid BoxGeometry)
     const topsoilGeo = useMemo(() => new THREE.BoxGeometry(100, 0.8, 100), [])
     const topsoilMat = useMemo(() => new THREE.MeshStandardMaterial({
-        color: lookAndFeel === 'REALISTIC' ? '#352417' : '#4a321f',
+        color: lookAndFeel === 'REALISTIC' ? '#ffffff' : '#4a321f',
+        map: lookAndFeel === 'REALISTIC' ? realisticTextures?.topsoilMap : null,
+        normalMap: lookAndFeel === 'REALISTIC' ? realisticTextures?.topsoilNormalMap : null,
         roughness: 0.9,
         metalness: 0.05,
         side: THREE.FrontSide,
-    }), [lookAndFeel])
+    }), [lookAndFeel, realisticTextures])
 
     // Geological Stratum 2: Subsoil / Clay & Sand
     const subsoilGeo = useMemo(() => new THREE.BoxGeometry(100, 2.0, 100), [])
     const subsoilMat = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#6b4c33',
+        color: lookAndFeel === 'REALISTIC' ? '#ffffff' : '#6b4c33',
+        map: lookAndFeel === 'REALISTIC' ? realisticTextures?.subsoilMap : null,
         roughness: 0.95,
         metalness: 0.05,
         side: THREE.FrontSide,
-    }), [])
+    }), [lookAndFeel, realisticTextures])
 
     // Geological Stratum 3: Bedrock & Deep Stone
     const bedrockGeo = useMemo(() => new THREE.BoxGeometry(100, 2.2, 100), [])
     const bedrockMat = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#2c2825',
+        color: lookAndFeel === 'REALISTIC' ? '#ffffff' : '#2c2825',
+        map: lookAndFeel === 'REALISTIC' ? realisticTextures?.bedrockMap : null,
+        normalMap: lookAndFeel === 'REALISTIC' ? realisticTextures?.bedrockNormalMap : null,
         roughness: 0.98,
         metalness: 0.2,
         side: THREE.FrontSide,
-    }), [])
+    }), [lookAndFeel, realisticTextures])
 
     // Subterranean Water Table Horizon
     const waterTableGeo = useMemo(() => new THREE.BoxGeometry(100, 0.15, 100), [])
@@ -221,43 +314,41 @@ export default function Terrarium() {
             {/* Atmospheric Fog Effect */}
             <fogExp2 attach="fog" args={[fogColor, 0.008]} />
 
-            {/* Ground Surface */}
-            <mesh
-                geometry={groundGeometry}
-                material={groundMaterial}
-                rotation={[-Math.PI / 2, 0, 0]}
-                position={[50, 0, 50]}
-                receiveShadow
-            />
-
-            {/* River Stream: Aligned Voxel Cubes in Gamified mode vs Liquid Surface in Realistic mode */}
+            {/* Ground Surface: Solid Voxel Block Grid in Gamified mode vs Smooth Displaced Mesh in Realistic mode */}
             {isGamified ? (
+                <VoxelTerrain terrainConfig={terrainConfig} />
+            ) : (
                 <group>
-                    {voxelRiverCubes.map((c) => (
-                        <mesh key={c.id} position={[c.x, 0.05, c.z]} receiveShadow>
-                            <boxGeometry args={[1.9, 0.25, 1.9]} />
+                    <mesh
+                        geometry={groundGeometry}
+                        material={groundMaterial}
+                        position={[0, 0, 0]}
+                        receiveShadow
+                    />
+                    {/* River Pebble & Cobble Bed underneath water */}
+                    {realisticTextures?.riverCobbleMap && (
+                        <mesh
+                            rotation={[-Math.PI / 2, 0, 0]}
+                            position={[25, -0.1, 50]}
+                            receiveShadow
+                        >
+                            <planeGeometry args={[12, 100]} />
                             <meshStandardMaterial
-                                color="#0284c7"
-                                roughness={0.15}
-                                metalness={0.7}
-                                transparent
-                                opacity={0.9}
-                                emissive="#0369a1"
-                                emissiveIntensity={0.25}
-                                side={THREE.DoubleSide}
+                                map={realisticTextures.riverCobbleMap}
+                                normalMap={realisticTextures.riverCobbleNormalMap}
+                                roughness={0.9}
                             />
                         </mesh>
-                    ))}
+                    )}
+                    <mesh
+                        ref={riverMeshRef}
+                        geometry={riverGeometry}
+                        material={riverMaterial}
+                        rotation={[-Math.PI / 2, 0, 0]}
+                        position={[25, 0.02, 50]}
+                        receiveShadow
+                    />
                 </group>
-            ) : (
-                <mesh
-                    ref={riverMeshRef}
-                    geometry={riverGeometry}
-                    material={riverMaterial}
-                    rotation={[-Math.PI / 2, 0, 0]}
-                    position={[25, 0.02, 50]}
-                    receiveShadow
-                />
             )}
 
             {/* Natural Disaster: Flash Flood Water Level Layer */}

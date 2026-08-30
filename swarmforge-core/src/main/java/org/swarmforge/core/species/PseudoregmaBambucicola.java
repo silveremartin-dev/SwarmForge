@@ -19,11 +19,11 @@ import java.util.List;
 public class PseudoregmaBambucicola extends CustomSpecies {
 
     public PseudoregmaBambucicola() {
-        setPresetName("Puceron du Bambou (Pseudoregma bambucicola)");
+        setPresetName("Bamboo Aphid (Pseudoregma bambucicola)");
         setCommonName("Social Bamboo Aphid");
         setScientificName("Pseudoregma bambucicola");
         setInsectType("APHID");
-        setDescription("Puceron gallicole produisant une caste de soldats 1er stade stériles dotés de cornes frontales pour percer les prédateurs.");
+        setDescription("Gall aphid producing sterile 1st-instar soldiers equipped with frontal horns to pierce predators.");
         setQueenCountMode("PARTHENOGENETIC_COLONY");
         setQueenCount(1);
         setQueenLifespan(180);
@@ -43,7 +43,7 @@ public class PseudoregmaBambucicola extends CustomSpecies {
         matriarch.setBodyLengthMm(3.5f);
         matriarch.setHeadWidthMm(1.0f);
 
-        CasteTemplate worker = new CasteTemplate("Puceron Succeur de Sève", 30f, 0f);
+        CasteTemplate worker = new CasteTemplate("Sap-Sucking Aphid", 30f, 0f);
         worker.setLifespan(45 * 24);
         worker.setBodyLengthMm(2.2f);
         worker.setHeadWidthMm(0.7f);

@@ -128,4 +128,9 @@ public interface SimulationContext {
      * Get local thermal gradient Y component for thermoreception navigation.
      */
     float getThermalGradientY(float x, float y, float z);
+
+    /**
+     * Get deterministic navigation flow vector components [dx, dy, dz] towards a target cell.
+     */
+    float[] getFlowVector(float x, float y, float z, int targetX, int targetY, int targetZ);
 }
