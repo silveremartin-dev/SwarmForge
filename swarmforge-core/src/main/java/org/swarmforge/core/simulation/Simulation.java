@@ -69,6 +69,7 @@ public class Simulation {
     private final java.util.Map<org.swarmforge.core.domain.Colony, org.swarmforge.core.structure.ConstructionManager> constructionManagers = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.List<org.swarmforge.core.simulation.disasters.DisasterEvent> activeDisasters = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final java.util.Map<Long, org.swarmforge.core.navigation.FlowFieldGrid> flowFieldCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final org.swarmforge.core.ecs.EcsWorldManager ecsWorldManager;
 
     public void triggerDisaster(org.swarmforge.core.simulation.disasters.DisasterEvent disaster) {
         if (disaster != null) {
@@ -134,6 +135,11 @@ public class Simulation {
                 terrarium != null ? terrarium.getDepth() : 100);
 
         this.dayNightCycle = new org.swarmforge.core.world.DayNightCycle();
+        this.ecsWorldManager = new org.swarmforge.core.ecs.EcsWorldManager(this.pheromoneGrid);
+    }
+
+    public org.swarmforge.core.ecs.EcsWorldManager getEcsWorldManager() {
+        return ecsWorldManager;
     }
 
     public void setClusterManager(org.swarmforge.core.compute.ComputeCluster clusterManager) {
@@ -405,6 +411,7 @@ public class Simulation {
     public void tick() {
         long currentTick = tickCount.incrementAndGet();
         updateEnvironment(currentTick);
+        ecsWorldManager.step(this.simulationStepSeconds);
 
         // Pre-populate spatial index for individuals before brain decision processing
         spatialIndex.clear();

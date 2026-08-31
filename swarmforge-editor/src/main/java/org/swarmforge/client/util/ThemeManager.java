@@ -141,6 +141,7 @@ public class ThemeManager {
                 dialogPane.getStylesheets().add(cssUrl.toExternalForm());
             }
             dialogPane.getStyleClass().add("custom-dialog");
+            IconUtils.applyWindowIcons(dialog);
         }
     }
 

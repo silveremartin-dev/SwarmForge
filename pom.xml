@@ -206,6 +206,17 @@
                 <version>5.2.0</version>
                 <scope>test</scope>
             </dependency>
+            <!-- Native OS Integration (JNA) -->
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>5.14.0</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna-platform</artifactId>
+                <version>5.14.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
