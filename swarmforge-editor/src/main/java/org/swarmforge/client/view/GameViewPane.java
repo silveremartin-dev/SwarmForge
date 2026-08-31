@@ -57,6 +57,12 @@ public class GameViewPane extends Pane {
         }
     }
 
+    public void setRenderMode(org.swarmforge.client.ui.WorldEditorPane.RenderMode mode) {
+        if (gameApp != null) {
+            gameApp.setRenderMode(mode);
+        }
+    }
+
     public void stop() {
         gameApp.stop();
     }

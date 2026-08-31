@@ -337,9 +337,49 @@ function GamifiedVoxelFlora({ terrainConfig }) {
     )
 }
 
+/**
+ * 3D Volumetric Tree Stump Component
+ * Renders an authentic 3D tree stump with bark cylinder, top growth ring disk, and root flares.
+ */
+function Stump3D({ position, scale = 1.0, terrainConfig }) {
+    const [x, _, z] = position
+    const groundY = getTerrainHeight(x, z, terrainConfig)
+    const trunkHeight = 0.9 * scale
+    const topRadius = 0.5 * scale
+    const baseRadius = 0.65 * scale
+
+    return (
+        <group position={[x, groundY, z]}>
+            {/* Main 3D Stump Trunk */}
+            <mesh position={[0, trunkHeight / 2, 0]} castShadow receiveShadow>
+                <cylinderGeometry args={[topRadius, baseRadius, trunkHeight, 12]} />
+                <meshStandardMaterial color="#5c3a21" roughness={0.9} metalness={0.05} depthTest={true} depthWrite={true} />
+            </mesh>
+            {/* Top Cut Wood Disk with Growth Ring Tone */}
+            <mesh position={[0, trunkHeight + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+                <circleGeometry args={[topRadius * 0.95, 12]} />
+                <meshStandardMaterial color="#d4a373" roughness={0.8} depthTest={true} depthWrite={true} />
+            </mesh>
+            {/* 3D Root Buttresses Flare at Base */}
+            {[0, 1.2, 2.4, 3.6, 4.8].map((angle, idx) => (
+                <mesh
+                    key={`root-${idx}`}
+                    position={[Math.cos(angle) * baseRadius * 0.7, trunkHeight * 0.25, Math.sin(angle) * baseRadius * 0.7]}
+                    rotation={[0.3, -angle, 0]}
+                    castShadow
+                    receiveShadow
+                >
+                    <boxGeometry args={[0.25 * scale, trunkHeight * 0.6, 0.6 * scale]} />
+                    <meshStandardMaterial color="#4a2e19" roughness={0.95} depthTest={true} depthWrite={true} />
+                </mesh>
+            ))}
+        </group>
+    )
+}
+
 export default function VegetationRenderer() {
     const { lookAndFeel, climateEngine, terrainConfig } = useSimulationStore()
-    const isGamified = lookAndFeel === 'GAMING' || lookAndFeel === 'SCIENTIFIC'
+    const isGamified = lookAndFeel === 'GAMING'
     const windSpeed = climateEngine?.windSpeedMs ?? 2.4
     
     // Effective season flipped for Southern Hemisphere
@@ -354,9 +394,16 @@ export default function VegetationRenderer() {
         { id: 4, pos: [18, getTerrainHeight(18, 80, terrainConfig), 80], scale: 1.3, modelUrl: '/3d/LOW_POLY_set.glb' },
     ], [terrainConfig])
 
+    // Volumetric 3D Tree Stump positions across terrarium
+    const stumpPositions = useMemo(() => [
+        { id: 'stump_1', pos: [32, getTerrainHeight(32, 60, terrainConfig), 60], scale: 1.2 },
+        { id: 'stump_2', pos: [68, getTerrainHeight(68, 42, terrainConfig), 42], scale: 1.4 },
+        { id: 'stump_3', pos: [22, getTerrainHeight(22, 18, terrainConfig), 18], scale: 1.0 },
+    ], [terrainConfig])
+
     return (
         <group>
-            {/* Render Voxel Trees in Gamified Mode, or Low Poly 3D Trees in Realistic/Naturel Mode */}
+            {/* Render Voxel Trees in Gamified Mode, or Low Poly 3D Trees in Scientific/Realistic Mode */}
             {treePositions.map((tree) => (
                 isGamified ? (
                     <VoxelTree key={tree.id} position={tree.pos} scale={tree.scale} terrainConfig={terrainConfig} />
@@ -365,7 +412,12 @@ export default function VegetationRenderer() {
                 )
             ))}
 
-            {/* Flora Floor: Voxel Plants in Gamified mode vs Low Poly Vegetation Floor in Realistic mode */}
+            {/* Render 3D Volumetric Tree Stumps */}
+            {stumpPositions.map((stump) => (
+                <Stump3D key={stump.id} position={stump.pos} scale={stump.scale} terrainConfig={terrainConfig} />
+            ))}
+
+            {/* Flora Floor: Voxel Plants in Gamified mode vs Low Poly Vegetation Floor in Realistic/Scientific mode */}
             {isGamified ? (
                 <GamifiedVoxelFlora terrainConfig={terrainConfig} />
             ) : (

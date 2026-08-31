@@ -236,8 +236,8 @@ public class SimulationControlPanel extends VBox {
 
     public SimulationControlPanel() {
         setSpacing(10);
-        setMaxWidth(820);
-        setPrefWidth(820);
+        setMaxWidth(Double.MAX_VALUE);
+        setPrefWidth(Region.USE_COMPUTED_SIZE);
 
         org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
 
@@ -1106,13 +1106,10 @@ public class SimulationControlPanel extends VBox {
                 txtSeed.setText(String.valueOf(scenario.getMasterSeed()));
             }
             if (maxDurationSpinner != null) {
-                if (scenario.getMaxSimulationTicks() > 0) {
-                    if (durationUnitCombo != null) durationUnitCombo.getSelectionModel().select("Ticks");
-                    maxDurationSpinner.getValueFactory().setValue((double) scenario.getMaxSimulationTicks());
-                } else {
-                    if (durationUnitCombo != null) durationUnitCombo.getSelectionModel().select("Days (d)");
-                    maxDurationSpinner.getValueFactory().setValue(100.0);
-                }
+                String unit = scenario.getMaxDurationUnit() != null ? scenario.getMaxDurationUnit() : "Days (d)";
+                double val = scenario.getMaxDurationValue() > 0 ? scenario.getMaxDurationValue() : 100.0;
+                if (durationUnitCombo != null) selectComboIfPresent(durationUnitCombo, unit);
+                maxDurationSpinner.getValueFactory().setValue(val);
             }
             if (minPopStopSpinner != null && scenario.getMinPopulationStopThreshold() >= 0) {
                 minPopStopSpinner.getValueFactory().setValue(scenario.getMinPopulationStopThreshold());
@@ -1556,12 +1553,21 @@ public class SimulationControlPanel extends VBox {
         dialog.showAndWait().ifPresent(scenarioName -> {
             if (!scenarioName.trim().isEmpty()) {
                 String clean = scenarioName.trim();
+                if ((scenarioPresetManager != null && scenarioPresetManager.getPresetNames().contains(clean)) || comboMeta.getItems().contains(clean)) {
+                    Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
+                        Alert.AlertType.CONFIRMATION,
+                        "Scenario preset '" + clean + "' already exists.\n\nDo you want to overwrite it with current configuration?"
+                    );
+                    confirmAlert.setTitle("Overwrite Existing Scenario");
+                    confirmAlert.setHeaderText("Overwrite Confirmation");
+                    java.util.Optional<ButtonType> res = confirmAlert.showAndWait();
+                    if (res.isEmpty() || res.get() != ButtonType.OK) {
+                        return;
+                    }
+                }
                 if (!comboMeta.getItems().contains(clean)) comboMeta.getItems().add(clean);
                 comboMeta.getSelectionModel().select(clean);
-                org.swarmforge.client.util.ThemeManager.createAlert(
-                    Alert.AlertType.INFORMATION,
-                    "Scenario preset saved with description: " + clean
-                ).show();
+                org.swarmforge.client.util.NotificationOverlay.show(this, "Scenario preset saved: " + clean, org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS);
             }
         });
     }
@@ -1764,6 +1770,10 @@ public class SimulationControlPanel extends VBox {
     }
 
     public void updateValidationPanel() {
+        if (!javafx.application.Platform.isFxApplicationThread()) {
+            javafx.application.Platform.runLater(this::updateValidationPanel);
+            return;
+        }
         if (warningsContainer == null) return;
         warningsContainer.getChildren().clear();
 
@@ -1810,6 +1820,8 @@ public class SimulationControlPanel extends VBox {
 
     public List<ScenarioWarning> evaluateScenarioWarnings() {
         List<ScenarioWarning> list = new ArrayList<>();
+
+        if (speciesCardList == null) return list;
 
         // 1. Population & Espèces
         if (speciesCardList.isEmpty()) {
@@ -1900,8 +1912,8 @@ public class SimulationControlPanel extends VBox {
         }
 
         // 2. Climat vs Biotope Alignment
-        String world = comboWorld.getValue();
-        String weather = comboWeather.getValue();
+        String world = comboWorld != null ? comboWorld.getValue() : null;
+        String weather = comboWeather != null ? comboWeather.getValue() : null;
         if (world != null && weather != null) {
             String wLower = world.toLowerCase();
             String weatherLower = weather.toLowerCase();
@@ -1939,17 +1951,21 @@ public class SimulationControlPanel extends VBox {
             float estimatedTemp = estimateAmbientTemperature(world, weather);
             for (SpeciesConfigCard card : speciesCardList) {
                 String speciesName = card.getSpeciesName();
-                org.swarmforge.core.species.Species sp = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies(speciesName);
+                org.swarmforge.core.species.Species sp = speciesPresetManager.getPresetOrFallback(speciesName);
+                if (sp == null) {
+                    sp = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies(speciesName);
+                }
                 if (sp != null) {
                     float minT = sp.getMinTempCelsius();
                     float maxT = sp.getMaxTempCelsius();
                     if (estimatedTemp < minT || estimatedTemp > maxT) {
+                        final org.swarmforge.core.species.Species targetSp = sp;
                         list.add(new ScenarioWarning(
                             "STRESS THERMIQUE", "HIGH",
                             String.format("⚠️ Risque de Stress Thermique : Température estimée (%.1f°C) hors des tolérances de '%s' [%.1f°C - %.1f°C].",
                                 estimatedTemp, card.getSpeciesName(), minT, maxT),
                             "🌡️ Adjust Compatible Climate",
-                            () -> autoSelectCompatibleEnvironmentForSpecies(sp)
+                            () -> autoSelectCompatibleEnvironmentForSpecies(targetSp)
                         ));
                     }
                 }
@@ -1967,7 +1983,7 @@ public class SimulationControlPanel extends VBox {
                 String.format("💡 Pas de calcul Δt très élevé (5.0 s) pour %,d individus. Des imprécisions d'intégration éthologique peuvent se produire.", grandTotalAnts),
                 "⏱️ Set Δt to 50 ms",
                 () -> {
-                    scenarioStepCombo.getSelectionModel().select(1);
+                    if (scenarioStepCombo != null) scenarioStepCombo.getSelectionModel().select(1);
                     simulationStepSeconds = 0.05f;
                     updateStepDtLabel();
                 }
@@ -1976,42 +1992,52 @@ public class SimulationControlPanel extends VBox {
 
         // 4. Durée Max
         String dUnit = durationUnitCombo != null ? durationUnitCombo.getValue() : "Days (d)";
-        if ("Days (d)".equals(dUnit) && maxDurationSpinner.getValue() != null && maxDurationSpinner.getValue() > 365) {
+        if ("Days (d)".equals(dUnit) && maxDurationSpinner != null && maxDurationSpinner.getValue() != null && maxDurationSpinner.getValue() > 365) {
             list.add(new ScenarioWarning(
                 "DURÉE", "INFO",
                 String.format("💡 Durée maximale très élevée (%.0f jours). Une durée de 30 à 100 jours est généralement recommandée.", maxDurationSpinner.getValue()),
                 "⏱️ Set to 100 days",
-                () -> maxDurationSpinner.getValueFactory().setValue(100.0)
+                () -> {
+                    if (maxDurationSpinner != null) maxDurationSpinner.getValueFactory().setValue(100.0);
+                }
             ));
-        } else if ("Ticks".equals(dUnit) && maxDurationSpinner.getValue() != null && maxDurationSpinner.getValue() < 1000) {
+        } else if ("Ticks".equals(dUnit) && maxDurationSpinner != null && maxDurationSpinner.getValue() != null && maxDurationSpinner.getValue() < 1000) {
             list.add(new ScenarioWarning(
                 "DURÉE", "INFO",
                 String.format("💡 Nombre de ticks très court (%.0f). La simulation risque de s'arrêter prématurément.", maxDurationSpinner.getValue()),
                 "⏱️ Set to 100,000 ticks",
-                () -> maxDurationSpinner.getValueFactory().setValue(100000.0)
+                () -> {
+                    if (maxDurationSpinner != null) maxDurationSpinner.getValueFactory().setValue(100000.0);
+                }
             ));
         }
 
         // 5. Seuil Arrêt Population Min
-        if (minPopStopSpinner.getValue() != null && minPopStopSpinner.getValue() > 0 && minPopStopSpinner.getValue() >= grandTotalAnts && grandTotalAnts > 0) {
+        if (minPopStopSpinner != null && minPopStopSpinner.getValue() != null && minPopStopSpinner.getValue() > 0 && minPopStopSpinner.getValue() >= grandTotalAnts && grandTotalAnts > 0) {
             list.add(new ScenarioWarning(
                 "ARRÊT", "MEDIUM",
                 String.format("🟠 Seuil d'arrêt de population (%,d ind.) >= population initiale (%,d ind.). La simulation s'arrêtera immédiatement.", minPopStopSpinner.getValue(), grandTotalAnts),
                 "🛑 Disable Threshold (0)",
-                () -> minPopStopSpinner.getValueFactory().setValue(0)
+                () -> {
+                    if (minPopStopSpinner != null) minPopStopSpinner.getValueFactory().setValue(0);
+                }
             ));
         }
 
         // 6. Seed Validity
-        try {
-            Long.parseLong(txtSeed.getText().trim());
-        } catch (Exception e) {
-            list.add(new ScenarioWarning(
-                "SEED", "INFO",
-                "💡 Graine aléatoire (Seed) non numérique ou vide. Un seed par défaut sera attribué.",
-                "🎲 New Seed",
-                () -> txtSeed.setText(String.valueOf((long)(Math.random() * 900000 + 100000)))
-            ));
+        if (txtSeed != null) {
+            try {
+                Long.parseLong(txtSeed.getText().trim());
+            } catch (Exception e) {
+                list.add(new ScenarioWarning(
+                    "SEED", "INFO",
+                    "💡 Graine aléatoire (Seed) non numérique ou vide. Un seed par défaut sera attribué.",
+                    "🎲 New Seed",
+                    () -> {
+                        if (txtSeed != null) txtSeed.setText(String.valueOf((long)(Math.random() * 900000 + 100000)));
+                    }
+                ));
+            }
         }
 
         // 7. Dynamic Trophic & Food Web Checks (Predator vs Prey availability)

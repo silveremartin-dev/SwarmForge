@@ -20,7 +20,7 @@ export default function LODAnts({ ants }) {
 
     // Reuse geometry/materials
     const geometry = useMemo(() => new THREE.SphereGeometry(0.3, 8, 6), [])
-    const material = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true }), [])
+    const material = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, depthTest: true, depthWrite: true }), [])
 
     useFrame(({ clock }) => {
         if (!meshRef.current) return

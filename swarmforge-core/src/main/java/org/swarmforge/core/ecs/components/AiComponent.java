@@ -14,7 +14,19 @@ public class AiComponent extends Component {
         MANUAL          // Controlled by user/god mode
     }
     
+    public enum State {
+        IDLE,
+        FORAGING,
+        RETREATING,
+        NURSING,
+        PATROLLING,
+        DEFENDING,
+        EXCAVATING,
+        GROOMING
+    }
+    
     public AiType type = AiType.SIMPLE_FORAGER;
+    public State state = State.IDLE;
     
     // Timer/Cooldown for decision making to avoid CPU overload
     public float decisionTimer = 0f;

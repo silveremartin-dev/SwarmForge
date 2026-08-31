@@ -114,7 +114,7 @@ public class Individual implements java.io.Serializable, AgentView {
     private float defense = 0f;
 
     // Cuticular Hydrocarbon (CHC) Gestalt Odor Profile
-    private float[] chcProfile = org.swarmforge.core.simulation.CuticularHydrocarbonSystem.generateColonyProfile();
+    private float[] chcProfile = new float[]{0.5f, 0.5f, 0.5f, 0.5f};
 
     public float[] getChcProfile() {
         return chcProfile;
@@ -569,8 +569,8 @@ public class Individual implements java.io.Serializable, AgentView {
         }
 
         if (species != null && species.hasMandibularWearPolyethism() && (job == Job.BUILDER || caste == Caste.FORAGER)) {
-            mandibleWear = org.swarmforge.core.simulation.MandibularBiomechanicsSystem.applyMandibleWear(mandibleWear, deltaSeconds);
-            if (org.swarmforge.core.simulation.MandibularBiomechanicsSystem.requiresRetirementToNurse(mandibleWear)) {
+            mandibleWear = Math.min(1.0f, mandibleWear + 0.0001f * deltaSeconds);
+            if (mandibleWear >= 0.8f) {
                 this.job = Job.NURSE;
             }
         }

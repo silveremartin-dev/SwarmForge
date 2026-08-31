@@ -58,8 +58,10 @@ public class Scenario implements Serializable {
     // Academic & Scientific Metrics
     private final List<String> targetMetrics = new ArrayList<>();
 
-    // Termination Limits
-    private long maxSimulationTicks = 100_000L;
+    // Termination Limits & Duration
+    private double maxDurationValue = 100.0;
+    private String maxDurationUnit = "Days (d)";
+    private long maxSimulationTicks = 520_481_927L; // 100 days at dt=0.0166s
     private int minPopulationStopThreshold = 0;
 
     // Numerical Integration Step Size (dt)
@@ -169,6 +171,12 @@ public class Scenario implements Serializable {
 
     public List<String> getTargetMetrics() { return targetMetrics; }
     public void addTargetMetric(String metric) { this.targetMetrics.add(metric); }
+
+    public double getMaxDurationValue() { return maxDurationValue; }
+    public void setMaxDurationValue(double maxDurationValue) { this.maxDurationValue = maxDurationValue; }
+
+    public String getMaxDurationUnit() { return maxDurationUnit; }
+    public void setMaxDurationUnit(String maxDurationUnit) { this.maxDurationUnit = maxDurationUnit; }
 
     public long getMaxSimulationTicks() { return maxSimulationTicks; }
     public void setMaxSimulationTicks(long maxSimulationTicks) { this.maxSimulationTicks = maxSimulationTicks; }

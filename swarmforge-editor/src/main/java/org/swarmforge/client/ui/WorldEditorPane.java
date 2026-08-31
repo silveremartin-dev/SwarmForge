@@ -1444,10 +1444,24 @@ public class WorldEditorPane extends BorderPane {
         dialog.showAndWait().ifPresent(name -> {
             if (!name.trim().isEmpty()) {
                 String cleanName = name.trim();
+                if (presetManager.contains(cleanName)) {
+                    Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
+                        Alert.AlertType.CONFIRMATION,
+                        "World preset '" + cleanName + "' already exists.\n\nDo you want to overwrite it with current configuration?"
+                    );
+                    confirmAlert.setTitle("Overwrite Existing Preset");
+                    confirmAlert.setHeaderText("Overwrite Confirmation");
+                    java.util.Optional<ButtonType> res = confirmAlert.showAndWait();
+                    if (res.isEmpty() || res.get() != ButtonType.OK) {
+                        return;
+                    }
+                }
                 presetManager.save(cleanName, getConfiguration());
                 presetsCombo.getItems().setAll(presetManager.names());
                 presetsCombo.getSelectionModel().select(cleanName);
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "World preset saved: " + cleanName).show();
+                lastSelectedPreset = cleanName;
+                isDirty = false;
+                NotificationOverlay.show(this, "World preset saved: " + cleanName, NotificationOverlay.NotificationType.SUCCESS);
             }
         });
     }
@@ -3826,6 +3840,35 @@ public class WorldEditorPane extends BorderPane {
                     continue;
                 }
 
+                if (currentRenderMode == RenderMode.SCIENTIFIC) {
+                    // SCIENTIFIC MODE: Minimalist structural schematic tree representation
+                    gc3D.setStroke(Color.web("#38bdf8", 0.85));
+                    gc3D.setLineWidth(Math.max(1.2, trunkW * 0.35));
+                    gc3D.strokeLine(p[0], p[1], p[0], p[1] - trunkH);
+                    gc3D.setFill(Color.web("#0284c7", 0.7));
+                    gc3D.fillOval(p[0] - canopyR * 0.45, p[1] - trunkH - canopyR * 0.45, canopyR * 0.9, canopyR * 0.9);
+                    gc3D.setStroke(Color.web("#7dd3fc", 0.9));
+                    gc3D.strokeOval(p[0] - canopyR * 0.45, p[1] - trunkH - canopyR * 0.45, canopyR * 0.9, canopyR * 0.9);
+                    continue;
+                } else if (currentRenderMode == RenderMode.REALISTIC) {
+                    // REALISTIC NATURALIST MODE: Maximizing 3D OBJ model asset utilization!
+                    loadObjMeshesIfNeeded();
+                    double worldX = ti.gx;
+                    double worldY = ti.gy;
+                    double worldZ = heightGrid[ti.gx][ti.gy] * 40.0;
+
+                    if (speciesIdx == 0 && bambooObjMeshes != null && !bambooObjMeshes.isEmpty()) {
+                        drawObjMesh3D(bambooObjMeshes, worldX, worldY, worldZ, 2.5, Color.web("#84cc16"), cx, cy, scale, radAz, radEl);
+                        continue;
+                    } else if (speciesIdx == 3 && cactusObjMeshes != null && !cactusObjMeshes.isEmpty()) {
+                        drawObjMesh3D(cactusObjMeshes, worldX, worldY, worldZ, 0.4, Color.web("#15803d"), cx, cy, scale, radAz, radEl);
+                        continue;
+                    } else if (speciesIdx == 6 && tropicalObjMeshes != null && !tropicalObjMeshes.isEmpty()) {
+                        drawObjMesh3D(tropicalObjMeshes, worldX, worldY, worldZ, 1.8, Color.web("#65a30d"), cx, cy, scale, radAz, radEl);
+                        continue;
+                    }
+                }
+
                 switch (speciesIdx) {
                     case 0 -> { // Bambouseraie (Bamboo Cluster)
                         gc3D.setStroke(Color.web("#84cc16")); gc3D.setLineWidth(Math.max(2.0, trunkW * 0.35));
@@ -4027,6 +4070,71 @@ public class WorldEditorPane extends BorderPane {
         drawMetricScaleBar3D(w, h, cx, cy, scale, radAz, radEl);
 
         // Nest interior legend is displayed in the sidebar legend panel under substrates
+    }
+
+    private List<org.swarmforge.client.util.ObjModelLoader.ObjMesh> bambooObjMeshes;
+    private List<org.swarmforge.client.util.ObjModelLoader.ObjMesh> cactusObjMeshes;
+    private List<org.swarmforge.client.util.ObjModelLoader.ObjMesh> tropicalObjMeshes;
+
+    private void loadObjMeshesIfNeeded() {
+        if (bambooObjMeshes == null) {
+            bambooObjMeshes = org.swarmforge.client.util.ObjModelLoader.loadObjModel("/models/bamboo_set.obj");
+            cactusObjMeshes = org.swarmforge.client.util.ObjModelLoader.loadObjModel("/models/cactus.obj");
+            tropicalObjMeshes = org.swarmforge.client.util.ObjModelLoader.loadObjModel("/models/tropical_plants.obj");
+        }
+    }
+
+    private void drawObjMesh3D(List<org.swarmforge.client.util.ObjModelLoader.ObjMesh> objMeshes, double wx, double wy, double wz, double scaleObj, Color baseColor, double cx, double cy, double scale, double radAz, double radEl) {
+        if (objMeshes == null || objMeshes.isEmpty()) return;
+
+        for (org.swarmforge.client.util.ObjModelLoader.ObjMesh mesh : objMeshes) {
+            if (mesh.vertices == null || mesh.vertices.isEmpty() || mesh.faces == null || mesh.faces.isEmpty()) continue;
+
+            Color meshCol = baseColor;
+            if (mesh.name != null) {
+                String nameLower = mesh.name.toLowerCase();
+                if (nameLower.contains("shrub") || nameLower.contains("plant") || nameLower.contains("leaf")) {
+                    meshCol = baseColor.brighter();
+                } else if (nameLower.contains("stick") || nameLower.contains("trunk") || nameLower.contains("wood")) {
+                    meshCol = Color.web("#78350f");
+                }
+            }
+
+            gc3D.setFill(meshCol);
+            gc3D.setStroke(meshCol.darker());
+            gc3D.setLineWidth(0.35);
+
+            int maxFaces = Math.min(160, mesh.faces.size());
+            int step = Math.max(1, mesh.faces.size() / maxFaces);
+
+            for (int i = 0; i < mesh.faces.size(); i += step) {
+                int[] face = mesh.faces.get(i);
+                if (face.length < 3) continue;
+
+                double[] xPts = new double[face.length];
+                double[] yPts = new double[face.length];
+                boolean valid = true;
+
+                for (int k = 0; k < face.length; k++) {
+                    int vIdx = face[k];
+                    if (vIdx >= mesh.vertices.size()) { valid = false; break; }
+                    float[] v = mesh.vertices.get(vIdx);
+
+                    double vx = wx + v[0] * scaleObj;
+                    double vy = wy + v[1] * scaleObj;
+                    double vz = wz + v[2] * scaleObj;
+
+                    double[] p = project3DPoint(vx, vy, vz, cx, cy, scale, radAz, radEl);
+                    xPts[k] = p[0];
+                    yPts[k] = p[1];
+                }
+
+                if (valid) {
+                    gc3D.fillPolygon(xPts, yPts, face.length);
+                    gc3D.strokePolygon(xPts, yPts, face.length);
+                }
+            }
+        }
     }
 
     private void draw3DCylinderTrunk(double px, double py, double trunkW, double trunkH, Color mainCol, Color shadowCol, Color highlightCol) {

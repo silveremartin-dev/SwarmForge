@@ -1051,6 +1051,208 @@ public class SpeciesPresetManager {
         formicaFusca.setCasteTemplates(List.of(ffQueen, ffWorker, ffMale));
         map.put(formicaFusca.getPresetName(), formicaFusca);
 
+        // 13. European Amazon Ant (Polyergus rufescens - Obligate Dulosis Slave-Maker)
+        CustomSpecies polyergus = new CustomSpecies();
+        polyergus.setPresetName("Fourmi Amazone Duloce (Polyergus rufescens)");
+        polyergus.setCommonName("Amazon Slave-Making Ant");
+        polyergus.setScientificName("Polyergus rufescens");
+        polyergus.setInsectType("ANT");
+        polyergus.setDescription("Obligate dulotic slave-making ant with sickle mandibles, conducting summer raids to capture Formica brood.");
+        polyergus.setQueenCountMode("MONOGYNE");
+        polyergus.setQueenCount(1);
+        polyergus.setQueenLifespan(5475);
+        polyergus.setQueenEggLayingRate(30.0f);
+        polyergus.setNuptialFlightType("AERIAL_SWARM");
+        polyergus.setWorkerLifespan(730);
+        polyergus.setWorkerSpeed(0.85f);
+        polyergus.setTypicalColonySize(5000);
+        polyergus.setFormsMegaColonies(false);
+        polyergus.setPrimaryDiet("HONEYDEW");
+        polyergus.setSecondaryDiet("INSECTS_MEAT");
+        polyergus.setDailyFoodConsumption(0.4f);
+        polyergus.setWaterRequirement(0.2f);
+        polyergus.setNestType("MATURE");
+        polyergus.setVenomType("POWERFUL_MANDIBLES");
+        polyergus.setAggression(0.95f);
+        polyergus.setTerritoriality(0.85f);
+        polyergus.setOptimalTempCelsius(25.0f);
+        polyergus.setMinTempCelsius(12.0f);
+        polyergus.setMaxTempCelsius(36.0f);
+        polyergus.setMetabolism(1.2f);
+        polyergus.setStrength(10.0f);
+
+        CasteTemplate polyergusQueen = new CasteTemplate("Reine Amazone", 550f, 20f);
+        polyergusQueen.setLifespan(5475);
+        polyergusQueen.setCanFly(true);
+        polyergusQueen.setBodyLengthMm(9.5f);
+        polyergusQueen.setHeadWidthMm(2.8f);
+        polyergusQueen.setTargetRatio(0.00f);
+
+        CasteTemplate polyergusRaider = new CasteTemplate("Guerrière Amazone", 180f, 18f);
+        polyergusRaider.setDescription("Highly specialized warrior armed with falcate mandibles for raids.");
+        polyergusRaider.setLifespan(730);
+        polyergusRaider.setCanCarry(true);
+        polyergusRaider.setBodyLengthMm(7.0f);
+        polyergusRaider.setHeadWidthMm(2.1f);
+        polyergusRaider.setTargetRatio(1.00f);
+
+        polyergus.setCasteTemplates(List.of(polyergusQueen, polyergusRaider));
+        map.put(polyergus.getPresetName(), polyergus);
+
+        // 14. Argentine Ant (Linepithema humile - Invasive Supercolony)
+        CustomSpecies linepithema = new CustomSpecies();
+        linepithema.setPresetName("Fourmi d'Argentine (Linepithema humile)");
+        linepithema.setCommonName("Argentine Ant");
+        linepithema.setScientificName("Linepithema humile");
+        linepithema.setInsectType("ANT");
+        linepithema.setDescription("Highly invasive super-colonial ant forming massive multi-queen unicolonial networks.");
+        linepithema.setQueenCountMode("POLYGYNE");
+        linepithema.setQueenCount(10);
+        linepithema.setQueenLifespan(365);
+        linepithema.setQueenEggLayingRate(60.0f);
+        linepithema.setNuptialFlightType("BUDDING");
+        linepithema.setWorkerLifespan(180);
+        linepithema.setWorkerSpeed(0.9f);
+        linepithema.setTypicalColonySize(1000000);
+        linepithema.setFormsMegaColonies(true);
+        linepithema.setPrimaryDiet("HONEYDEW");
+        linepithema.setSecondaryDiet("INSECTS_MEAT");
+        linepithema.setDailyFoodConsumption(0.25f);
+        linepithema.setWaterRequirement(0.15f);
+        linepithema.setNestType("MATURE");
+        linepithema.setVenomType("FORMIC_ACID");
+        linepithema.setAggression(0.8f);
+        linepithema.setTerritoriality(0.2f);
+        linepithema.setOptimalTempCelsius(25.0f);
+        linepithema.setMinTempCelsius(10.0f);
+        linepithema.setMaxTempCelsius(38.0f);
+        linepithema.setMetabolism(1.3f);
+        linepithema.setStrength(4.0f);
+
+        CasteTemplate linepithemaQueen = new CasteTemplate("Queen", 300f, 5f);
+        linepithemaQueen.setLifespan(365);
+        linepithemaQueen.setBodyLengthMm(5.0f);
+        linepithemaQueen.setHeadWidthMm(1.4f);
+        linepithemaQueen.setTargetRatio(0.00f);
+
+        CasteTemplate linepithemaWorker = new CasteTemplate("Worker", 50f, 3f);
+        linepithemaWorker.setLifespan(180);
+        linepithemaWorker.setCanDig(true);
+        linepithemaWorker.setCanCarry(true);
+        linepithemaWorker.setBodyLengthMm(2.8f);
+        linepithemaWorker.setHeadWidthMm(0.7f);
+        linepithemaWorker.setTargetRatio(1.00f);
+
+        linepithema.setCasteTemplates(List.of(linepithemaQueen, linepithemaWorker));
+        map.put(linepithema.getPresetName(), linepithema);
+
+        // 15. European Harvester Ant (Messor barbarus - Granivore)
+        CustomSpecies messor = new CustomSpecies();
+        messor.setPresetName("Fourmi Moissonneuse (Messor barbarus)");
+        messor.setCommonName("European Harvester Ant");
+        messor.setScientificName("Messor barbarus");
+        messor.setInsectType("ANT");
+        messor.setDescription("Polymorphic granivorous ant collecting seeds and processing ant bread in underground granaries.");
+        messor.setQueenCountMode("MONOGYNE");
+        messor.setQueenCount(1);
+        messor.setQueenLifespan(7300);
+        messor.setQueenEggLayingRate(35.0f);
+        messor.setNuptialFlightType("AERIAL_SWARM");
+        messor.setWorkerLifespan(1095);
+        messor.setWorkerSpeed(0.5f);
+        messor.setTypicalColonySize(10000);
+        messor.setFormsMegaColonies(false);
+        messor.setPrimaryDiet("SEEDS");
+        messor.setSecondaryDiet("HONEYDEW");
+        messor.setDailyFoodConsumption(0.45f);
+        messor.setWaterRequirement(0.1f);
+        messor.setNestType("MATURE");
+        messor.setVenomType("POWERFUL_MANDIBLES");
+        messor.setAggression(0.5f);
+        messor.setTerritoriality(0.6f);
+        messor.setOptimalTempCelsius(28.0f);
+        messor.setMinTempCelsius(10.0f);
+        messor.setMaxTempCelsius(40.0f);
+        messor.setMetabolism(1.0f);
+        messor.setStrength(10.0f);
+
+        CasteTemplate messorQueen = new CasteTemplate("Queen", 600f, 15f);
+        messorQueen.setLifespan(7300);
+        messorQueen.setBodyLengthMm(15.0f);
+        messorQueen.setHeadWidthMm(3.5f);
+        messorQueen.setTargetRatio(0.00f);
+
+        CasteTemplate messorMinor = new CasteTemplate("Minor Worker", 60f, 4f);
+        messorMinor.setLifespan(1095);
+        messorMinor.setCanDig(true);
+        messorMinor.setBodyLengthMm(4.0f);
+        messorMinor.setHeadWidthMm(1.0f);
+        messorMinor.setTargetRatio(0.60f);
+
+        CasteTemplate messorMajor = new CasteTemplate("Major Worker (Seed Crusher)", 220f, 30f);
+        messorMajor.setLifespan(1095);
+        messorMajor.setCanCarry(true);
+        messorMajor.setBodyLengthMm(11.0f);
+        messorMajor.setHeadWidthMm(3.2f);
+        messorMajor.setTargetRatio(0.40f);
+
+        messor.setCasteTemplates(List.of(messorQueen, messorMinor, messorMajor));
+        map.put(messor.getPresetName(), messor);
+
+        // 16. Giant Carpenter Ant (Camponotus ligniperda - Wood Nesting)
+        CustomSpecies camponotus = new CustomSpecies();
+        camponotus.setPresetName("Fourmi Charpentière (Camponotus ligniperda)");
+        camponotus.setCommonName("Giant Carpenter Ant");
+        camponotus.setScientificName("Camponotus ligniperda");
+        camponotus.setInsectType("ANT");
+        camponotus.setDescription("One of the largest European ant species, nesting in decaying wood and exhibits active trophallaxis.");
+        camponotus.setQueenCountMode("MONOGYNE");
+        camponotus.setQueenCount(1);
+        camponotus.setQueenLifespan(5475);
+        camponotus.setQueenEggLayingRate(20.0f);
+        camponotus.setNuptialFlightType("AERIAL_SWARM");
+        camponotus.setWorkerLifespan(1460);
+        camponotus.setWorkerSpeed(0.6f);
+        camponotus.setTypicalColonySize(8000);
+        camponotus.setFormsMegaColonies(false);
+        camponotus.setPrimaryDiet("HONEYDEW");
+        camponotus.setSecondaryDiet("INSECTS_MEAT");
+        camponotus.setDailyFoodConsumption(0.5f);
+        camponotus.setWaterRequirement(0.2f);
+        camponotus.setNestType("MATURE");
+        camponotus.setVenomType("FORMIC_ACID");
+        camponotus.setAggression(0.6f);
+        camponotus.setTerritoriality(0.7f);
+        camponotus.setOptimalTempCelsius(22.0f);
+        camponotus.setMinTempCelsius(5.0f);
+        camponotus.setMaxTempCelsius(32.0f);
+        camponotus.setMetabolism(1.0f);
+        camponotus.setStrength(15.0f);
+
+        CasteTemplate campQueen = new CasteTemplate("Queen", 700f, 25f);
+        campQueen.setLifespan(5475);
+        campQueen.setBodyLengthMm(18.0f);
+        campQueen.setHeadWidthMm(4.0f);
+        campQueen.setTargetRatio(0.00f);
+
+        CasteTemplate campMinor = new CasteTemplate("Minor Worker", 100f, 8f);
+        campMinor.setLifespan(1460);
+        campMinor.setCanDig(true);
+        campMinor.setCanCarry(true);
+        campMinor.setBodyLengthMm(7.0f);
+        campMinor.setHeadWidthMm(1.8f);
+        campMinor.setTargetRatio(0.70f);
+
+        CasteTemplate campMajor = new CasteTemplate("Major Worker", 250f, 35f);
+        campMajor.setLifespan(1460);
+        campMajor.setCanCarry(true);
+        campMajor.setBodyLengthMm(14.0f);
+        campMajor.setHeadWidthMm(3.8f);
+        campMajor.setTargetRatio(0.30f);
+
+        camponotus.setCasteTemplates(List.of(campQueen, campMinor, campMajor));
+        map.put(camponotus.getPresetName(), camponotus);
+
         return map;
     }
 
@@ -1110,19 +1312,26 @@ public class SpeciesPresetManager {
         }
         CustomSpecies sp = presets.get(name);
         if (sp != null) return sp;
+        String cleanName = name.replaceAll("\\s*\\([^)]*\\)", "").trim();
         for (CustomSpecies s : presets.values()) {
             if (s.getPresetName().equalsIgnoreCase(name) ||
-                (s.getCommonName() != null && s.getCommonName().equalsIgnoreCase(name)) ||
-                (s.getScientificName() != null && s.getScientificName().equalsIgnoreCase(name))) {
+                s.getPresetName().equalsIgnoreCase(cleanName) ||
+                (s.getCommonName() != null && (s.getCommonName().equalsIgnoreCase(name) || s.getCommonName().equalsIgnoreCase(cleanName))) ||
+                (s.getScientificName() != null && (s.getScientificName().equalsIgnoreCase(name) || s.getScientificName().equalsIgnoreCase(cleanName))) ||
+                (s.getScientificName() != null && !cleanName.isBlank() && (cleanName.toLowerCase().contains(s.getScientificName().toLowerCase()) || s.getScientificName().toLowerCase().contains(cleanName.toLowerCase()))) ||
+                (s.getPresetName() != null && !cleanName.isBlank() && (cleanName.toLowerCase().contains(s.getPresetName().toLowerCase()) || s.getPresetName().toLowerCase().contains(cleanName.toLowerCase())))) {
                 return s;
             }
         }
         CustomSpecies fallback = new CustomSpecies();
         fallback.setPresetName(name);
-        fallback.setCommonName(name);
-        fallback.setScientificName(name);
+        fallback.setCommonName(cleanName.isEmpty() ? name : cleanName);
+        fallback.setScientificName(cleanName.isEmpty() ? name : cleanName);
         fallback.setInsectType("ANT");
         fallback.setNestType("MATURE");
+        fallback.setOptimalTempCelsius(24.0f);
+        fallback.setMinTempCelsius(5.0f);
+        fallback.setMaxTempCelsius(38.0f);
         fallback.setDescription("Dynamically synthesized fallback species.");
         presets.put(name, fallback);
         org.swarmforge.core.species.SpeciesRegistry.getInstance().register(fallback);

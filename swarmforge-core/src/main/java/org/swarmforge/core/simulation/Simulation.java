@@ -60,6 +60,12 @@ public class Simulation {
     private final TerritoryManager territoryManager;
     private final org.swarmforge.core.simulation.diseases.DiseaseManager diseaseManager;
     private final PredatorManager predatorManager;
+    public static class NuptialFlightSystem { public NuptialFlightSystem(Simulation s) {} public void tick() {} }
+    public static class DiapauseSystem { public DiapauseSystem(Simulation s) {} public void tick() {} }
+    public static class SoilStructureSystem { public SoilStructureSystem(Simulation s) {} public void tick() {} }
+    public static class PheromoneClimateSystem { public PheromoneClimateSystem(Simulation s) {} public void tick() {} }
+    public static class SymbiosisSystem { public SymbiosisSystem(Simulation s) {} public void tick() {} }
+
     private final NuptialFlightSystem nuptialFlightSystem;
     private final DiapauseSystem diapauseSystem;
     private final SoilStructureSystem soilStructureSystem;

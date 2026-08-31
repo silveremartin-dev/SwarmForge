@@ -93,6 +93,8 @@ export default function LowPolyModel({
                                 map: tex,
                                 roughness: 0.8,
                                 metalness: 0.05,
+                                depthWrite: true,
+                                depthTest: true
                             })
                             if (season && season !== 'SUMMER') {
                                 child.material = applySeasonalTint(child.material, season)
@@ -109,6 +111,8 @@ export default function LowPolyModel({
                         child.receiveShadow = true
                         if (child.material) {
                             child.material = applySeasonalTint(child.material, season)
+                            child.material.depthWrite = true
+                            child.material.depthTest = true
                         }
                     }
                 })

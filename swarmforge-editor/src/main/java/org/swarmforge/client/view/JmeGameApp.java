@@ -59,6 +59,7 @@ public class JmeGameApp extends SimpleApplication {
     private TerrainModificationListener terrainListener;
     private PheromoneVisualizer pheromoneVisualizer;
     private WeatherVisualizer weatherVisualizer;
+    private VegetationVisualizer vegetationVisualizer;
     private DirectionalLight sunLight;
 
     public interface TerrainModificationListener {
@@ -700,6 +701,14 @@ public class JmeGameApp extends SimpleApplication {
             weatherVisualizer = new WeatherVisualizer(assetManager, sunLight);
             rootNode.attachChild(weatherVisualizer.getRootNode());
         }
+        if (vegetationVisualizer == null) {
+            vegetationVisualizer = new VegetationVisualizer(assetManager);
+            vegetationVisualizer.rebuildVegetation(
+                simulation != null && simulation.getTerrarium() != null ? simulation.getTerrarium().getWidth() : 64,
+                simulation != null && simulation.getTerrarium() != null ? simulation.getTerrarium().getDepth() : 64
+            );
+            rootNode.attachChild(vegetationVisualizer.getRootNode());
+        }
 
         if (simulation != null) {
             for (org.swarmforge.core.domain.Colony colony : simulation.getColonies()) {
@@ -733,6 +742,9 @@ public class JmeGameApp extends SimpleApplication {
                     }
                 }
             }
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.setRenderMode(gamified ? org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED : org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC);
+            }
         });
     }
 
@@ -744,6 +756,25 @@ public class JmeGameApp extends SimpleApplication {
                 } else {
                     viewPort.setBackgroundColor(new ColorRGBA(0.06f, 0.09f, 0.16f, 1.0f));
                 }
+            }
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.setRenderMode(scientific ? org.swarmforge.client.ui.WorldEditorPane.RenderMode.SCIENTIFIC : org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC);
+            }
+        });
+    }
+
+    public void setRenderMode(org.swarmforge.client.ui.WorldEditorPane.RenderMode mode) {
+        enqueueTask(() -> {
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.setRenderMode(mode);
+            }
+            if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
+                setGamifiedVoxelMode(true);
+            } else if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.SCIENTIFIC) {
+                setScientificMode(true);
+            } else {
+                setGamifiedVoxelMode(false);
+                setScientificMode(false);
             }
         });
     }
