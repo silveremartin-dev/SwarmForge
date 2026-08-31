@@ -407,7 +407,8 @@ public class SparsePheromoneGrid {
     public Map<Long, float[]> getAllEntries() {
         Map<Long, float[]> snapshot = new java.util.HashMap<>();
         for (Map.Entry<Long, PheromoneEntry> e : grid.entrySet()) {
-            snapshot.put(e.getKey(), readAll(e.getKey()));
+            int[] pos = Morton3D.decode(e.getKey());
+            snapshot.put(e.getKey(), readAll(pos[0], pos[1], pos[2]));
         }
         return snapshot;
     }
@@ -449,14 +450,9 @@ public class SparsePheromoneGrid {
     private float[] decay(PheromoneEntry entry, long time) {
         float[] result = new float[PHEROMONE_TYPES];
         for (int i = 0; i < PHEROMONE_TYPES; i++) {
-            long elapsed = time - entry.lastUpdatedTick[i];
-            if (elapsed <= 0) {
-                result[i] = entry.concentrations[i];
-            } else {
-                result[i] = entry.concentrations[i] * (float) Math.pow(0.5, (double) elapsed / halfLife[i]);
-                if (result[i] < PRUNE_THRESHOLD)
-                    result[i] = 0;
-            }
+            result[i] = computeDecay(entry.concentrations[i], entry.lastUpdatedTick[i], i);
+            if (result[i] < PRUNE_THRESHOLD)
+                result[i] = 0f;
         }
         return result;
     }
