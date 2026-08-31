@@ -76,6 +76,12 @@ public class EcsColonyFactory {
         InventoryComponent inv = edit.create(InventoryComponent.class);
         inv.carriedItem = InventoryComponent.ItemType.NONE;
 
+        // Ethology & Behavioral Capabilities
+        EthologyComponent eth = edit.create(EthologyComponent.class);
+
+        // Pathogen & Epidemiological State
+        PathogenComponent path = edit.create(PathogenComponent.class);
+
         // AI / FSM
         AiComponent ai = edit.create(AiComponent.class);
         ai.type = AiComponent.AiType.FSM_WORKER;

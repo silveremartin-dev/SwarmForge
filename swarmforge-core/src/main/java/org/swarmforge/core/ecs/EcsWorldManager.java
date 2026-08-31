@@ -31,6 +31,7 @@ public class EcsWorldManager {
     private final ParasiteSystem parasiteSystem;
     private final RlBridgeSystem rlBridgeSystem;
     private final SubterraneanHydrologySystem subterraneanHydrologySystem;
+    private final EthologyEcsSystem ethologyEcsSystem;
     private final org.swarmforge.core.spatial.SpatialChunkManager chunkManager;
 
     public EcsWorldManager() {
@@ -51,6 +52,7 @@ public class EcsWorldManager {
         this.parasiteSystem = new ParasiteSystem();
         this.rlBridgeSystem = new RlBridgeSystem();
         this.subterraneanHydrologySystem = new SubterraneanHydrologySystem();
+        this.ethologyEcsSystem = new EthologyEcsSystem();
         this.chunkManager = new org.swarmforge.core.spatial.SpatialChunkManager();
 
         if (pheromoneGrid != null) {
@@ -71,7 +73,8 @@ public class EcsWorldManager {
                         soilSystem,
                         parasiteSystem,
                         rlBridgeSystem,
-                        subterraneanHydrologySystem
+                        subterraneanHydrologySystem,
+                        ethologyEcsSystem
                 );
 
         this.world = new World(config.build());
@@ -82,6 +85,12 @@ public class EcsWorldManager {
         this.pheromoneDepositionSystem.setPheromoneGrid(grid);
     }
 
+    private boolean enableRenderYieldGuard = false;
+
+    public void setEnableRenderYieldGuard(boolean enable) {
+        this.enableRenderYieldGuard = enable;
+    }
+
     /**
      * Ticks the entire unified ECS simulation pipeline with delta time scaling.
      */
@@ -89,7 +98,9 @@ public class EcsWorldManager {
         world.setDelta(deltaSeconds);
         pheromoneDepositionSystem.setSimulationStepSeconds(deltaSeconds);
         world.process();
-        chunkManager.enforceRenderYieldGuard();
+        if (enableRenderYieldGuard) {
+            chunkManager.enforceRenderYieldGuard();
+        }
     }
 
     public World getWorld() {

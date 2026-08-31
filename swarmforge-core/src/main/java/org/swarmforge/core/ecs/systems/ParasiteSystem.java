@@ -27,6 +27,13 @@ public class ParasiteSystem extends IteratingSystem {
         super(Aspect.all(PositionComponent.class, PathogenComponent.class, MetabolismComponent.class));
     }
 
+    private int tickCounter = 0;
+
+    @Override
+    protected void begin() {
+        tickCounter++;
+    }
+
     @Override
     protected void process(int entityId) {
         PathogenComponent pathogen = mPathogen.get(entityId);
@@ -47,7 +54,9 @@ public class ParasiteSystem extends IteratingSystem {
             }
         }
 
-        // Spatial transmission to nearby nestmates
+        // Spatial transmission sampling (every 5 ticks) to maintain high TPS
+        if (tickCounter % 5 != 0) return;
+
         if (spatialSystem == null) {
             spatialSystem = world.getSystem(SpatialPartitioningSystem.class);
         }

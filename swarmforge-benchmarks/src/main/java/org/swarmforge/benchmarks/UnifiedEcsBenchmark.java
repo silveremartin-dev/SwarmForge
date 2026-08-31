@@ -20,8 +20,8 @@ public class UnifiedEcsBenchmark {
         System.out.println("=================================================");
 
         int[] testPopulations = {1_000, 10_000, 50_000, 100_000, 500_000};
-        int warmupTicks = 100;
-        int benchmarkTicks = 500;
+        int warmupTicks = 20;
+        int benchmarkTicks = 100;
         float dt = 0.016666667f; // 60 Hz step
 
         for (int popSize : testPopulations) {

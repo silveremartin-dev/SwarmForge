@@ -2306,19 +2306,19 @@ public class SimulationControlPanel extends VBox {
             // Trigger initial population calculation for default Stage 1 (Young Colony)
             applyDemographicsFromStage(1);
 
-            Label lblQ = new Label("👑 Queens :"); lblQ.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
-            Label lblQEngine = new Label("AI Engine :"); lblQEngine.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+            Label lblQ = new Label("👑 Queens :"); lblQ.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblQ.getStyleClass().add("bold-label");
+            Label lblQEngine = new Label("AI Engine :"); lblQEngine.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblQEngine.getStyleClass().add("bold-label");
             demoGrid.add(lblQ, 0, 0); demoGrid.add(queenSpinner, 1, 0); demoGrid.add(lblQEngine, 2, 0); demoGrid.add(queenEngineCombo, 3, 0);
 
-            Label lblW = new Label("🐜 Workers :"); lblW.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
-            Label lblWEngine = new Label("AI Engine :"); lblWEngine.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+            Label lblW = new Label("🐜 Workers :"); lblW.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblW.getStyleClass().add("bold-label");
+            Label lblWEngine = new Label("AI Engine :"); lblWEngine.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblWEngine.getStyleClass().add("bold-label");
             demoGrid.add(lblW, 0, 1); demoGrid.add(workerSpinner, 1, 1); demoGrid.add(lblWEngine, 2, 1); demoGrid.add(workerEngineCombo, 3, 1);
 
-            Label lblS = new Label("⚔️ Soldiers :"); lblS.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
-            Label lblSEngine = new Label("AI Engine :"); lblSEngine.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+            Label lblS = new Label("⚔️ Soldiers :"); lblS.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblS.getStyleClass().add("bold-label");
+            Label lblSEngine = new Label("AI Engine :"); lblSEngine.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblSEngine.getStyleClass().add("bold-label");
             demoGrid.add(lblS, 0, 2); demoGrid.add(soldierSpinner, 1, 2); demoGrid.add(lblSEngine, 2, 2); demoGrid.add(soldierEngineCombo, 3, 2);
 
-            Label lblB = new Label("🥚 Brood :"); lblB.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+            Label lblB = new Label("🥚 Brood :"); lblB.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblB.getStyleClass().add("bold-label");
             demoGrid.add(lblB, 0, 3); demoGrid.add(broodSpinner, 1, 3);
 
             demoBox.getChildren().addAll(lblDemoTitle, lblSpatialInfo, demoGrid);
@@ -2326,6 +2326,7 @@ public class SimulationControlPanel extends VBox {
             // 3. Filtered Accessory Species Section (Proies, Prédateurs & Commensaux)
             Label lblAccessoryTitle = new Label("🦗 Accessory Species & Ecological Roles (Filtered for " + getShortSpeciesName(speciesName) + ") :");
             lblAccessoryTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px;");
+            lblAccessoryTitle.getStyleClass().add("accent-title");
 
             setupAccessoryRows(speciesName);
 
@@ -2362,24 +2363,28 @@ public class SimulationControlPanel extends VBox {
 
                 CheckBox chk = new CheckBox(info.name());
                 chk.setSelected(true);
-                chk.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px; -fx-font-weight: bold;");
+                chk.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;");
+                chk.getStyleClass().add("bold-label");
                 chk.setTooltip(new Tooltip(info.description()));
                 chk.setPrefWidth(220);
                 chk.selectedProperty().addListener((o, oldV, newV) -> triggerChange());
 
                 Label lblRole = new Label("[" + info.role() + "]");
                 lblRole.setStyle(getRoleStyle(info.role()));
-                lblRole.setPrefWidth(90);
+                lblRole.getStyleClass().add("bold-label");
+                lblRole.setPrefWidth(95);
 
                 Label lblCount = new Label("Initial Count :");
-                lblCount.setStyle("-fx-text-fill: #aaa; -fx-font-size: 9px;");
+                lblCount.setStyle("-fx-font-size: 9.5px; -fx-font-weight: bold;");
+                lblCount.getStyleClass().add("bold-label");
 
                 Spinner<Integer> countSpinner = new Spinner<>(5, 1000, info.defaultCount(), 10);
                 countSpinner.setPrefWidth(70); countSpinner.setEditable(true);
                 countSpinner.valueProperty().addListener((o, oldV, newV) -> triggerChange());
 
                 Label lblStrategy = new Label("Replenishment Strategy :");
-                lblStrategy.setStyle("-fx-text-fill: #aaa; -fx-font-size: 9px;");
+                lblStrategy.setStyle("-fx-font-size: 9.5px; -fx-font-weight: bold;");
+                lblStrategy.getStyleClass().add("bold-label");
 
                 ComboBox<String> strategyCombo = new ComboBox<>();
                 strategyCombo.getItems().addAll(
@@ -2402,13 +2407,18 @@ public class SimulationControlPanel extends VBox {
         }
 
         private String getRoleStyle(String role) {
-            return switch (role) {
-                case "PROIE" -> "-fx-text-fill: #22c55e; -fx-font-weight: bold; -fx-font-size: 9px;";
-                case "PRÉDATEUR" -> "-fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-font-size: 9px;";
-                case "COMMENSAL" -> "-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 9px;";
-                case "PATHOGÈNE" -> "-fx-text-fill: #eab308; -fx-font-weight: bold; -fx-font-size: 9px;";
-                default -> "-fx-text-fill: #94a3b8; -fx-font-size: 9px;";
-            };
+            if (role == null) return "-fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 9.5px;";
+            String r = role.toUpperCase().trim();
+            if (r.contains("PROIE") || r.contains("PREY")) {
+                return "-fx-text-fill: #22c55e; -fx-font-weight: bold; -fx-font-size: 9.5px;";
+            } else if (r.contains("PRED") || r.contains("PRÉD")) {
+                return "-fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-font-size: 9.5px;";
+            } else if (r.contains("COMMENSAL") || r.contains("SYMBIOT") || r.contains("FLORA")) {
+                return "-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 9.5px;";
+            } else if (r.contains("PATHOG") || r.contains("PARASIT")) {
+                return "-fx-text-fill: #eab308; -fx-font-weight: bold; -fx-font-size: 9.5px;";
+            }
+            return "-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 9.5px;";
         }
 
         private String getShortSpeciesName(String full) {

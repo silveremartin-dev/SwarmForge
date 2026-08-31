@@ -2290,6 +2290,7 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRowKey(vSocial, "glossary.entry.social.king.title", "glossary.entry.social.king.desc", "https://fr.wikipedia.org/wiki/Termite");
                 addGlossaryRowKey(vSocial, "glossary.entry.social.flight.title", "glossary.entry.social.flight.desc", "https://fr.wikipedia.org/wiki/Vol_nuptial");
                 addGlossaryRowKey(vSocial, "glossary.entry.social.inhibition.title", "glossary.entry.social.inhibition.desc", "https://fr.wikipedia.org/wiki/Ph%C3%A9romone");
+                addGlossaryRowKey(vSocial, "glossary.entry.social.polycalism.title", "glossary.entry.social.polycalism.desc", "https://fr.wikipedia.org/wiki/Supercolonie");
                 addGlossaryRowKey(vSocial, "glossary.social.queen_mode.title", "glossary.social.queen_mode.desc");
                 addGlossaryRowKey(vSocial, "glossary.social.trophallaxis.title", "glossary.social.trophallaxis.desc");
                 addGlossaryRowKey(vSocial, "glossary.social.polyethism.title", "glossary.social.polyethism.desc");
@@ -2302,6 +2303,7 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRowKey(vEnv, "glossary.entry.env.res.title", "glossary.entry.env.res.desc", "https://fr.wikipedia.org/wiki/Voxel");
                 addGlossaryRowKey(vEnv, "glossary.entry.env.sig.title", "glossary.entry.env.sig.desc", "https://fr.wikipedia.org/wiki/Shuttle_Radar_Topography_Mission");
                 addGlossaryRowKey(vEnv, "glossary.entry.env.water.title", "glossary.entry.env.water.desc", "https://fr.wikipedia.org/wiki/Nappe_phr%C3%A9atique");
+                addGlossaryRowKey(vEnv, "glossary.entry.env.microclimate.title", "glossary.entry.env.microclimate.desc", "https://fr.wikipedia.org/wiki/Microclimat");
                 addGlossaryRowKey(vEnv, "glossary.env.moisture.title", "glossary.env.moisture.desc");
                 addGlossaryRowKey(vEnv, "glossary.env.temperature.title", "glossary.env.temperature.desc");
                 addGlossaryRowKey(vEnv, "glossary.env.co2.title", "glossary.env.co2.desc");
@@ -2345,6 +2347,10 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRowKey(vAccessory, "glossary.entry.accessory.prey.title", "glossary.entry.accessory.prey.desc", "https://fr.wikipedia.org/wiki/Insecte");
                 addGlossaryRowKey(vAccessory, "glossary.entry.accessory.predator.title", "glossary.entry.accessory.predator.desc", "https://fr.wikipedia.org/wiki/Fourmilion");
                 addGlossaryRowKey(vAccessory, "glossary.entry.accessory.pathogen.title", "glossary.entry.accessory.pathogen.desc", "https://fr.wikipedia.org/wiki/Ophiocordyceps_unilateralis");
+                addGlossaryRowKey(vAccessory, "glossary.entry.accessory.trophic_web.title", "glossary.entry.accessory.trophic_web.desc", "https://fr.wikipedia.org/wiki/R%C3%A9seau_trophique");
+                addGlossaryRowKey(vAccessory, "glossary.entry.accessory.commensalism.title", "glossary.entry.accessory.commensalism.desc", "https://fr.wikipedia.org/wiki/Myrm%C3%A9cophilie");
+                addGlossaryRowKey(vAccessory, "glossary.entry.accessory.myrmecochory.title", "glossary.entry.accessory.myrmecochory.desc", "https://fr.wikipedia.org/wiki/Myrm%C3%A9cochorie");
+                addGlossaryRowKey(vAccessory, "glossary.entry.accessory.parasitoidism.title", "glossary.entry.accessory.parasitoidism.desc", "https://fr.wikipedia.org/wiki/Parasito%C3%AFde");
                 addGlossaryRowKey(vAccessory, "glossary.entry.accessory.diapause.title", "glossary.entry.accessory.diapause.desc", "https://fr.wikipedia.org/wiki/Diapause");
                 addGlossaryRowKey(vAccessory, "glossary.entry.accessory.r0.title", "glossary.entry.accessory.r0.desc", "https://fr.wikipedia.org/wiki/Nombre_reproductif_de_base");
                 addGlossaryRowKey(vAccessory, "glossary.entry.accessory.lat.title", "glossary.entry.accessory.lat.desc", "https://fr.wikipedia.org/wiki/Dur%C3%A9e_du_jour");
