@@ -17,7 +17,7 @@ import java.util.List;
  */
 public class EthologyEcsSystem extends IteratingSystem {
 
-    private static final int SPATIAL_SAMPLE_INTERVAL = 5;
+    private static final float SPATIAL_SAMPLE_INTERVAL_SEC = 0.0833333f; // Fixed 83.3ms time interval (~12 Hz)
 
     private ComponentMapper<PositionComponent>   mPosition;
     private ComponentMapper<MetabolismComponent> mMetabolism;
@@ -25,7 +25,8 @@ public class EthologyEcsSystem extends IteratingSystem {
     private ComponentMapper<VelocityComponent>   mVelocity;
 
     private SpatialPartitioningSystem spatialSystem;
-    private int tickCounter = 0;
+    private float sampleAccumulatorSec = 0f;
+    private boolean samplingFrame = false;
 
     public EthologyEcsSystem() {
         super(Aspect.all(PositionComponent.class, MetabolismComponent.class, EthologyComponent.class));
@@ -33,7 +34,14 @@ public class EthologyEcsSystem extends IteratingSystem {
 
     @Override
     protected void begin() {
-        tickCounter++;
+        sampleAccumulatorSec += world.getDelta();
+        if (sampleAccumulatorSec >= SPATIAL_SAMPLE_INTERVAL_SEC) {
+            sampleAccumulatorSec -= SPATIAL_SAMPLE_INTERVAL_SEC;
+            samplingFrame = true;
+        } else {
+            samplingFrame = false;
+        }
+
         if (spatialSystem == null) {
             spatialSystem = world.getSystem(SpatialPartitioningSystem.class);
         }
@@ -173,7 +181,7 @@ public class EthologyEcsSystem extends IteratingSystem {
     }
 
     private boolean doSpatialSample() {
-        return tickCounter % SPATIAL_SAMPLE_INTERVAL == 0;
+        return samplingFrame;
     }
 
     private List<Integer> queryNearby(PositionComponent pos) {

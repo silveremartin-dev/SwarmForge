@@ -36,24 +36,33 @@ public class PheromoneDepositionSystem extends IteratingSystem {
         this.simulationStepSeconds = Math.max(0.001f, dt);
     }
 
+    private static final float SAMPLE_INTERVAL_SEC = 0.1666667f; // Fixed 166.7ms interval (~6 Hz)
+    private float sampleAccumulatorSec = 0f;
+    private boolean samplingFrame = false;
+
     @Override
     protected void begin() {
-        stepCounter++;
+        sampleAccumulatorSec += world.getDelta();
+        if (sampleAccumulatorSec >= SAMPLE_INTERVAL_SEC) {
+            sampleAccumulatorSec -= SAMPLE_INTERVAL_SEC;
+            samplingFrame = true;
+        } else {
+            samplingFrame = false;
+        }
     }
 
     @Override
     protected void process(int entityId) {
-        if (pheromoneGrid == null) return;
+        if (pheromoneGrid == null || !samplingFrame) return;
 
         PositionComponent pos = mPosition.get(entityId);
         boolean isCarryingFood = mInventory != null && mInventory.has(entityId) &&
                 mInventory.get(entityId).carriedItem == InventoryComponent.ItemType.FOOD;
 
-        // Rotational Interleaving: 1/10 of entities deposit per tick, scaled by dt
-        // At 10,000 agents: 1,000 grid writes/tick (was 3,333). Biologically still realistic.
-        int sampleInterval = 10;
-        if ((stepCounter + entityId) % sampleInterval == 0) {
-            float depositAmount = 0.5f * (simulationStepSeconds / 0.016666667f) * sampleInterval;
+        // Rotational Interleaving: entities deposit at fixed time interval
+        int sampleModulo = 4;
+        if (entityId % sampleModulo == 0) {
+            float depositAmount = 0.5f * (world.getDelta() / 0.016666667f) * sampleModulo;
             int pType = isCarryingFood ? PheromoneType.FOOD_TRAIL.getIndex() : PheromoneType.HOME_TRAIL.getIndex();
             pheromoneGrid.deposit((int) pos.x, (int) pos.y, (int) pos.z, pType, depositAmount);
         }

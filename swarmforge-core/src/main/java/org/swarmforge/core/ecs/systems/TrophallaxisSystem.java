@@ -28,16 +28,24 @@ public class TrophallaxisSystem extends IteratingSystem {
         super(Aspect.all(PositionComponent.class, MetabolismComponent.class));
     }
 
-    private int tickCounter = 0;
+    private static final float SAMPLE_INTERVAL_SEC = 0.0833333f; // Fixed 83.3ms interval (~12 Hz)
+    private float sampleAccumulatorSec = 0f;
+    private boolean samplingFrame = false;
 
     @Override
     protected void begin() {
-        tickCounter++;
+        sampleAccumulatorSec += world.getDelta();
+        if (sampleAccumulatorSec >= SAMPLE_INTERVAL_SEC) {
+            sampleAccumulatorSec -= SAMPLE_INTERVAL_SEC;
+            samplingFrame = true;
+        } else {
+            samplingFrame = false;
+        }
     }
 
     @Override
     protected void process(int donorId) {
-        if (tickCounter % 5 != 0) return; // Process spatial exchange every 5 ticks
+        if (!samplingFrame) return; // Process spatial exchange at fixed time intervals
 
         MetabolismComponent donorMeta = mMetabolism.get(donorId);
         if (!donorMeta.alive || donorMeta.energy < 60.0f) return; // Donor must have spare energy

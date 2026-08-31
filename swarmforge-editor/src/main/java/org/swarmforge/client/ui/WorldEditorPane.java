@@ -3130,13 +3130,13 @@ public class WorldEditorPane extends BorderPane {
 
         // 4. Back face (-Y)
         gc3D.setFill(sideCol.darker());
-        gc3D.fillPolygon(new double[]{p0[0], p1[0], b1[0], b0[0]}, new double[]{p0[1], p1[1], b1[1], b0[0]}, 4);
-        gc3D.strokePolygon(new double[]{p0[0], p1[0], b1[0], b0[0]}, new double[]{p0[1], p1[1], b1[1], b0[0]}, 4);
+        gc3D.fillPolygon(new double[]{p0[0], p1[0], b1[0], b0[0]}, new double[]{p0[1], p1[1], b1[1], b0[1]}, 4);
+        gc3D.strokePolygon(new double[]{p0[0], p1[0], b1[0], b0[0]}, new double[]{p0[1], p1[1], b1[1], b0[1]}, 4);
 
         // 5. Left face (-X)
         gc3D.setFill(sideCol);
-        gc3D.fillPolygon(new double[]{p0[0], p3[0], b3[0], b0[0]}, new double[]{p0[1], p3[1], b3[1], b0[0]}, 4);
-        gc3D.strokePolygon(new double[]{p0[0], p3[0], b3[0], b0[0]}, new double[]{p0[1], p3[1], b3[1], b0[0]}, 4);
+        gc3D.fillPolygon(new double[]{p0[0], p3[0], b3[0], b0[0]}, new double[]{p0[1], p3[1], b3[1], b0[1]}, 4);
+        gc3D.strokePolygon(new double[]{p0[0], p3[0], b3[0], b0[0]}, new double[]{p0[1], p3[1], b3[1], b0[1]}, 4);
     }
 
     private void draw3DTechnical() {
@@ -4105,11 +4105,13 @@ public class WorldEditorPane extends BorderPane {
             if (carvedVoxelGrid[cutXLimit][y]) surfZ0 -= 15.0;
             if (carvedVoxelGrid[cutXLimit][y + (int)stepY]) surfZ1 -= 15.0;
 
+            double refZ0 = 32.0;
+            double refZ1 = 32.0;
             for (int d = 0; d < SOIL_DEPTH; d++) {
-                double topZ0 = surfZ0 - (d / (double) SOIL_DEPTH) * maxDepthPx;
-                double topZ1 = surfZ1 - (d / (double) SOIL_DEPTH) * maxDepthPx;
-                double botZ0 = surfZ0 - ((d + 1) / (double) SOIL_DEPTH) * maxDepthPx;
-                double botZ1 = surfZ1 - ((d + 1) / (double) SOIL_DEPTH) * maxDepthPx;
+                double topZ0 = Math.min(surfZ0, refZ0 - d * layerDepthPx);
+                double topZ1 = Math.min(surfZ1, refZ1 - d * layerDepthPx);
+                double botZ0 = Math.min(surfZ0, refZ0 - (d + 1) * layerDepthPx);
+                double botZ1 = Math.min(surfZ1, refZ1 - (d + 1) * layerDepthPx);
 
                 if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
 
@@ -5412,11 +5414,13 @@ public class WorldEditorPane extends BorderPane {
         boolean showInclusions = showGravelInclusionsCheck != null && showGravelInclusionsCheck.isSelected();
         boolean isAdvMode = true;
 
+        double refZ0 = 32.0;
+        double refZ1 = 32.0;
         for (int d = 0; d < SOIL_DEPTH; d++) {
-            double topZ0 = surfZ0 - (d / (double) SOIL_DEPTH) * maxDepthPx;
-            double topZ1 = surfZ1 - (d / (double) SOIL_DEPTH) * maxDepthPx;
-            double botZ0 = surfZ0 - ((d + 1) / (double) SOIL_DEPTH) * maxDepthPx;
-            double botZ1 = surfZ1 - ((d + 1) / (double) SOIL_DEPTH) * maxDepthPx;
+            double topZ0 = Math.min(surfZ0, refZ0 - d * layerDepthPx);
+            double topZ1 = Math.min(surfZ1, refZ1 - d * layerDepthPx);
+            double botZ0 = Math.min(surfZ0, refZ0 - (d + 1) * layerDepthPx);
+            double botZ1 = Math.min(surfZ1, refZ1 - (d + 1) * layerDepthPx);
 
             if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
 
@@ -5571,12 +5575,21 @@ public class WorldEditorPane extends BorderPane {
         double blockW = (w - 20.0) / GRID_SIZE;
         double blockH = (h - 90.0) / SOIL_DEPTH;
 
+        double refSurfaceH = 0.50 * 25.0;
         for (int y = 0; y < GRID_SIZE; y++) {
             int yIdx = GRID_SIZE - 1 - y; // Inverted left-to-right to match 3D viewport orientation
             double surfaceH = heightGrid[cutX][yIdx] * 25.0;
+            double pySurf = 65 - surfaceH;
+
             for (int d = 0; d < SOIL_DEPTH; d++) {
                 double px = 10 + y * blockW;
-                double py = 65 - surfaceH + d * blockH;
+                double topY = 65 - refSurfaceH + d * blockH;
+                double botY = 65 - refSurfaceH + (d + 1) * blockH;
+
+                if (botY <= pySurf) continue; // Upper soil layer excavated by river bed cut
+
+                double pyDraw = Math.max(topY, pySurf);
+                double hDraw = botY - pyDraw;
 
                 byte mat = soilLayers[cutX][yIdx][d];
                 boolean isVoid = voidGrid[cutX][yIdx][d] && (showGalleriesCheck == null || showGalleriesCheck.isSelected());
@@ -5585,23 +5598,23 @@ public class WorldEditorPane extends BorderPane {
                 } else {
                     gcSide.setFill(getMaterialColor(mat));
                 }
-                gcSide.fillRect(px, py, Math.max(1, blockW + 0.5), Math.max(1, blockH + 0.5));
+                gcSide.fillRect(px, pyDraw, Math.max(1, blockW + 0.5), Math.max(1, hDraw));
 
                 if (showHumidityCheck != null && showHumidityCheck.isSelected() && humidityGrid != null) {
                     float hum = humidityGrid[cutX][yIdx][d];
                     gcSide.setFill(Color.web("#0284c7", Math.min(0.60, hum * 0.50)));
-                    gcSide.fillRect(px, py, Math.max(1, blockW + 0.5), Math.max(1, blockH + 0.5));
+                    gcSide.fillRect(px, pyDraw, Math.max(1, blockW + 0.5), Math.max(1, hDraw));
                 }
                 if (showPhCheck != null && showPhCheck.isSelected() && phGrid != null) {
                     float ph = phGrid[cutX][yIdx][d] > 0 ? phGrid[cutX][yIdx][d] : 6.5f;
                     Color phColor = ph < 6.5f ? Color.web("#eab308", 0.35) : (ph > 7.5f ? Color.web("#1e40af", 0.35) : Color.web("#22c55e", 0.25));
                     gcSide.setFill(phColor);
-                    gcSide.fillRect(px, py, Math.max(1, blockW + 0.5), Math.max(1, blockH + 0.5));
+                    gcSide.fillRect(px, pyDraw, Math.max(1, blockW + 0.5), Math.max(1, hDraw));
                 }
                 if (showRootsCheck != null && showRootsCheck.isSelected() && rootGrid != null && rootGrid[cutX][yIdx][d] > 0.15f) {
                     gcSide.setStroke(Color.web("#78350f", 0.85));
                     gcSide.setLineWidth(Math.max(1.0, rootGrid[cutX][yIdx][d] * 2.0));
-                    gcSide.strokeLine(px + blockW/2, py, px + blockW/2, py + blockH);
+                    gcSide.strokeLine(px + blockW/2, pyDraw, px + blockW/2, pyDraw + hDraw);
                 }
             }
 

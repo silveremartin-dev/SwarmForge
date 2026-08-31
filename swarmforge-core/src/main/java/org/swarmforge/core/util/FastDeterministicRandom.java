@@ -64,5 +64,38 @@ public final class FastDeterministicRandom {
 
     public void setSeed(long seed) {
         this.state = seed == 0 ? 0x9E3779B97F4A7C15L : seed;
+        this.haveNextNextGaussian = false;
+    }
+
+    private double nextNextGaussian;
+    private boolean haveNextNextGaussian = false;
+
+    /**
+     * Generate 100% deterministic Gaussian (normal) distributed double (mean = 0.0, stdDev = 1.0)
+     * using the Box-Muller transformation over SplitMix64.
+     */
+    public double nextGaussian() {
+        if (haveNextNextGaussian) {
+            haveNextNextGaussian = false;
+            return nextNextGaussian;
+        } else {
+            double v1, v2, s;
+            do {
+                v1 = 2.0 * nextDouble() - 1.0;
+                v2 = 2.0 * nextDouble() - 1.0;
+                s = v1 * v1 + v2 * v2;
+            } while (s >= 1.0 || s == 0.0);
+            double multiplier = Math.sqrt(-2.0 * Math.log(s) / s);
+            nextNextGaussian = v2 * multiplier;
+            haveNextNextGaussian = true;
+            return v1 * multiplier;
+        }
+    }
+
+    /**
+     * Generate 100% deterministic Gaussian double scaled to specified mean and standard deviation.
+     */
+    public double nextGaussian(double mean, double stdDev) {
+        return mean + nextGaussian() * stdDev;
     }
 }

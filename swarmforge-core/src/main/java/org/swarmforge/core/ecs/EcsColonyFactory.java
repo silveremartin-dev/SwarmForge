@@ -82,10 +82,10 @@ public class EcsColonyFactory {
         // Pathogen & Epidemiological State
         PathogenComponent path = edit.create(PathogenComponent.class);
 
-        // Life Cycle & Gaussian Normal Distribution of Lifespan
+        // Life Cycle & 100% Deterministic Gaussian Lifespan in SECONDS
         LifeCycleComponent life = edit.create(LifeCycleComponent.class);
         life.casteName = (caste != null) ? caste.name() : "WORKER";
-        int meanLifespan = 5000;
+        float meanLifespanSeconds = 300.0f; // Default 300 seconds
         if (species != null) {
             CasteTemplate casteTemplate = null;
             if (species.getCastes() != null) {
@@ -96,19 +96,25 @@ public class EcsColonyFactory {
                     }
                 }
             }
+            int rawVal = 300;
             if (casteTemplate != null && casteTemplate.getLifespan() > 0) {
-                meanLifespan = casteTemplate.getLifespan();
+                rawVal = casteTemplate.getLifespan();
             } else if (caste == Individual.Caste.QUEEN) {
-                meanLifespan = species.getQueenLifespan();
+                rawVal = species.getQueenLifespan();
             } else if (caste == Individual.Caste.SOLDIER) {
-                meanLifespan = (int) Math.round(species.getWorkerLifespan() * 1.4);
+                rawVal = (int) Math.round(species.getWorkerLifespan() * 1.4);
             } else if (caste == Individual.Caste.MALE) {
-                meanLifespan = (int) Math.round(species.getWorkerLifespan() * 0.35);
+                rawVal = (int) Math.round(species.getWorkerLifespan() * 0.35);
             } else {
-                meanLifespan = species.getWorkerLifespan();
+                rawVal = species.getWorkerLifespan();
             }
+            // If rawVal > 2000, treat as ticks (divide by 60 TPS), otherwise treat as seconds directly
+            meanLifespanSeconds = (rawVal > 2000) ? (rawVal / 60.0f) : (float) rawVal;
         }
-        life.setGaussianLifespan(meanLifespan, 0.15);
+        // Compute 100% deterministic seed based on colony UUID and entityId
+        long entitySeed = (colonyId != null ? colonyId.getLeastSignificantBits() : 1337L) ^ ((long) entityId * 0x9E3779B97F4A7C15L);
+        org.swarmforge.core.util.FastDeterministicRandom entityRng = new org.swarmforge.core.util.FastDeterministicRandom(entitySeed);
+        life.setGaussianLifespan(meanLifespanSeconds, 0.15, entityRng);
 
         // AI / FSM
         AiComponent ai = edit.create(AiComponent.class);

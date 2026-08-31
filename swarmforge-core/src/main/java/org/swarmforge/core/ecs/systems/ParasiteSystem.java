@@ -27,11 +27,20 @@ public class ParasiteSystem extends IteratingSystem {
         super(Aspect.all(PositionComponent.class, PathogenComponent.class, MetabolismComponent.class));
     }
 
-    private int tickCounter = 0;
+    private static final float SAMPLE_INTERVAL_SEC = 0.0833333f; // Fixed 83.3ms time interval (~12 Hz)
+    private float sampleAccumulatorSec = 0f;
+    private boolean samplingFrame = false;
 
     @Override
     protected void begin() {
-        tickCounter++;
+        sampleAccumulatorSec += world.getDelta();
+        if (sampleAccumulatorSec >= SAMPLE_INTERVAL_SEC) {
+            sampleAccumulatorSec -= SAMPLE_INTERVAL_SEC;
+            samplingFrame = true;
+        } else {
+            samplingFrame = false;
+        }
+
         if (spatialSystem == null) {
             spatialSystem = world.getSystem(SpatialPartitioningSystem.class);
         }
@@ -57,8 +66,8 @@ public class ParasiteSystem extends IteratingSystem {
             }
         }
 
-        // Spatial transmission sampling (every 5 ticks) to maintain high TPS
-        if (tickCounter % 5 != 0) return;
+        // Spatial transmission sampling at fixed time interval
+        if (!samplingFrame) return;
 
         if (spatialSystem == null) {
             spatialSystem = world.getSystem(SpatialPartitioningSystem.class);
