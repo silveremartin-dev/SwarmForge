@@ -130,6 +130,17 @@ public class StatisticsDashboard extends VBox {
     private final Label lblIndivTask = new Label("Foraging (Nectar)");
     private final Label lblIndivCasteAge = new Label("Worker (14 days)");
     private String trackedAntId = "ant_1";
+    private String scenarioName = "swarmforge";
+
+    public String getScenarioName() {
+        return scenarioName;
+    }
+
+    public void setScenarioName(String scenarioName) {
+        if (scenarioName != null && !scenarioName.isBlank()) {
+            this.scenarioName = scenarioName;
+        }
+    }
 
     private final I18nManager i18n = I18nManager.getInstance();
 
@@ -698,8 +709,11 @@ public class StatisticsDashboard extends VBox {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Export Detailed Statistical Analysis (CSV / Excel)");
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files (*.csv)", "*.csv"));
+        String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
+                ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
+                : "swarmforge";
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        fileChooser.setInitialFileName("swarmforge_analytics_" + timestamp + ".csv");
+        fileChooser.setInitialFileName(sanitizedScenario + "_analytics_" + timestamp + ".csv");
 
         File file = fileChooser.showSaveDialog(getScene().getWindow());
         if (file != null) {

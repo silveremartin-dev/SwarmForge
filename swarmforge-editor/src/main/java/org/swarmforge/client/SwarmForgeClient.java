@@ -558,10 +558,13 @@ public class SwarmForgeClient extends Application {
                                 this.localSimulation.stop();
                                 this.localSimulation.recordSnapshot();
                         }
+                        String scName = (simControlPanel != null) ? simControlPanel.getSelectedScenarioName() : "Scenario";
                         if (this.eventLogPane != null) {
+                                this.eventLogPane.setScenarioName(scName);
                                 this.eventLogPane.clearLog();
                         }
                         if (this.statisticsDashboard != null) {
+                                this.statisticsDashboard.setScenarioName(scName);
                                 this.statisticsDashboard.clear();
                         }
                         if (this.interventionPanel != null) {
