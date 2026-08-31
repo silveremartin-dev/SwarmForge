@@ -27,10 +27,10 @@ public class AgingSystem extends IteratingSystem {
         if (life.ageTicks > life.maxLifespan) {
             if (mMeta.has(entityId)) {
                 MetabolismComponent meta = mMeta.get(entityId);
+                if (meta.causeOfDeath == null) {
+                    meta.causeOfDeath = "Old Age (Natural end of life)";
+                }
                 meta.alive = false;
-            } else {
-                // If it has no metabolism component, we might want to delete it directly
-                // world.delete(entityId);
             }
         }
     }

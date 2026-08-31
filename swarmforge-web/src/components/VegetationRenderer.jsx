@@ -346,13 +346,13 @@ export default function VegetationRenderer() {
     const rawSeason = climateEngine?.currentSeason || climateEngine?.season || 'SUMMER'
     const season = getEffectiveSeason(rawSeason, climateEngine?.hemisphere || 'NORTHERN')
 
-    // Tree positions (Snapping to grid coords for voxel trees)
+    // Tree positions (Dynamically compute Y elevation with terrainConfig)
     const treePositions = useMemo(() => [
-        { id: 1, pos: [15, 0, 30], scale: 1.2, modelUrl: '/3d/LOW_POLY_set.glb' },
-        { id: 2, pos: [78, 0, 25], scale: 1.4, modelUrl: '/3d/tree.obj' },
-        { id: 3, pos: [82, 0, 75], scale: 1.1, modelUrl: '/3d/forest_nature_set_all_in.obj' },
-        { id: 4, pos: [18, 0, 80], scale: 1.3, modelUrl: '/3d/LOW_POLY_set.glb' },
-    ], [])
+        { id: 1, pos: [15, getTerrainHeight(15, 30, terrainConfig), 30], scale: 1.2, modelUrl: '/3d/LOW_POLY_set.glb' },
+        { id: 2, pos: [78, getTerrainHeight(78, 25, terrainConfig), 25], scale: 1.4, modelUrl: '/3d/tree.obj' },
+        { id: 3, pos: [82, getTerrainHeight(82, 75, terrainConfig), 75], scale: 1.1, modelUrl: '/3d/forest_nature_set_all_in.obj' },
+        { id: 4, pos: [18, getTerrainHeight(18, 80, terrainConfig), 80], scale: 1.3, modelUrl: '/3d/LOW_POLY_set.glb' },
+    ], [terrainConfig])
 
     return (
         <group>

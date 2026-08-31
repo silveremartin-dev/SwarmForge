@@ -662,19 +662,21 @@
 .legend-item {
     -fx-background-color: #e2e8f0;
     -fx-background-radius: 4px;
+    -fx-border-color: #cbd5e1;
+    -fx-border-radius: 4px;
     -fx-cursor: hand;
 }
 
 .legend-item .label {
-    -fx-text-fill: #000000;
+    -fx-text-fill: #0f172a;
     -fx-font-size: 10px;
     -fx-font-weight: bold;
 }
 
 .legend-card-pane {
-    -fx-background-color: rgba(255, 255, 255, 0.90);
+    -fx-background-color: rgba(255, 255, 255, 0.95);
     -fx-background-radius: 6px;
-    -fx-border-color: rgba(2, 132, 199, 0.3);
+    -fx-border-color: rgba(2, 132, 199, 0.4);
     -fx-border-radius: 6px;
     -fx-border-width: 1px;
 }
@@ -682,18 +684,25 @@
 .legend-title {
     -fx-font-size: 11px;
     -fx-font-weight: bold;
-    -fx-text-fill: #000000;
+    -fx-text-fill: #0284c7;
 }
 
 .legend-hover-info {
-    -fx-font-size: 9px;
+    -fx-font-size: 9.5px;
     -fx-font-style: italic;
-    -fx-text-fill: #000000;
+    -fx-text-fill: #334155;
 }
 
 .legend-checkbox {
-    -fx-font-size: 10px;
-    -fx-text-fill: #000000;
+    -fx-font-size: 10.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0284c7;
+}
+
+.legend-checkbox .label {
+    -fx-font-size: 10.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0284c7;
 }
 
 .viewport-toolbar {

@@ -2501,7 +2501,6 @@ public class WorldEditorPane extends BorderPane {
         // 2. Nest Interior & Chamber Galleries Full Multi-Species Legend (Visible in Simulation mode)
         Label titleNestInterior = new Label("🏰 Nest & Multi-Species Chambers Legend:");
         titleNestInterior.getStyleClass().add("legend-title");
-        titleNestInterior.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
 
         VBox nestItemsBox = new VBox(3);
         nestItemsBox.setPadding(new Insets(2, 0, 2, 0));
@@ -2522,7 +2521,7 @@ public class WorldEditorPane extends BorderPane {
             HBox item = new HBox(6);
             item.setAlignment(Pos.CENTER_LEFT);
             item.setPadding(new Insets(2, 4, 2, 4));
-            item.setStyle("-fx-background-color: rgba(56, 189, 248, 0.06); -fx-background-radius: 4; -fx-border-color: rgba(56, 189, 248, 0.15); -fx-border-radius: 4;");
+            item.getStyleClass().add("legend-item");
 
             javafx.scene.Node symbolNode;
             if ("line".equals(it[2])) {
@@ -2550,7 +2549,6 @@ public class WorldEditorPane extends BorderPane {
             }
 
             Label lbl = new Label(it[0]);
-            lbl.setStyle("-fx-text-fill: #f8fafc; -fx-font-size: 9.5px;");
             lbl.setTooltip(new Tooltip(it[3]));
             item.getChildren().addAll(symbolNode, lbl);
             nestItemsBox.getChildren().add(item);

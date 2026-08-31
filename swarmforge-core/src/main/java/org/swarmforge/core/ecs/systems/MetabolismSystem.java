@@ -33,10 +33,15 @@ public class MetabolismSystem extends IteratingSystem {
         meta.thirst += 0.03f * rate;
 
         // Check survival conditions
-        if (meta.energy <= 0 || meta.hunger >= 100 || meta.thirst >= 100) {
+        if (meta.energy <= 0 || meta.hunger >= 100) {
             meta.alive = false;
-            // Ideally we would emit a generic "DeathEvent" or handle cleanup
-            // For now, we just mark flag.
+            meta.causeOfDeath = "Starvation / Energy Exhaustion";
+        } else if (meta.thirst >= 100) {
+            meta.alive = false;
+            meta.causeOfDeath = "Severe Dehydration";
+        } else if (meta.health <= 0) {
+            meta.alive = false;
+            meta.causeOfDeath = "Lethal Injuries / Physical Trauma";
         }
     }
 }

@@ -28,8 +28,17 @@ public class TrophallaxisSystem extends IteratingSystem {
         super(Aspect.all(PositionComponent.class, MetabolismComponent.class));
     }
 
+    private int tickCounter = 0;
+
+    @Override
+    protected void begin() {
+        tickCounter++;
+    }
+
     @Override
     protected void process(int donorId) {
+        if (tickCounter % 5 != 0) return; // Process spatial exchange every 5 ticks
+
         MetabolismComponent donorMeta = mMetabolism.get(donorId);
         if (!donorMeta.alive || donorMeta.energy < 60.0f) return; // Donor must have spare energy
 

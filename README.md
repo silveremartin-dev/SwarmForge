@@ -60,9 +60,9 @@ Built-in interactive documentation, domain definitions, biological equations, an
 | **Biological Engine** | **100% Data-Driven Architecture** (Zero hardcoded constants). Lifespans, walking/flight speeds, oviposition rates, development stage durations (days $\rightarrow$ 1440 ticks/day), Q10 thermal kinetics, mandibular biting forces (MPa), and caste protein thresholds dynamically driven by `CustomSpecies` & `CasteTemplate` presets. |
 | **Species & Ecology Library** | High-fidelity biological profiles for *Atta*, *Apis*, *Vespula*, *Vespa*, *Reticulitermes*, *Pogonomyrmex*, *Formica*, *Aphis*, *Pieris*, *Myrmeleon*, and *Porcellio*. |
 | **Predator-Prey AI & Pathology** | 4 distinct hunting styles (`AMBUSH`, `TRAP`, `CHASE`, `SWOOP`), specialized raid behaviors, boss predator events, trophobiosis mutualism, and SIR epidemic dynamics ($R_0$, incubation, grooming defense). |
-| **Core Compute & Spatial Query** | Java 21 Virtual Threads, `SpatialHashMap` ($O(1)$ spatial queries), 3D Octree ($O(\log N)$ range queries), Morton3D Z-curve coding. |
+| **Core Compute & Spatial Query** | SwarmForge v2.0 **Artemis-odb ECS Engine** (`org.swarmforge.core.ecs.*`), **256-Bit Bitmask Ethology Engine** (`EthologyComponent` covering 220+ eusocial behaviors across 4 primitive `long` words), zero-allocation open-addressing `SpatialPartitioningSystem` ($O(1)$ spatial queries), Z-curve Z-order coding. *(Legacy 1.0 OOP individual simulation marked as @Deprecated)*. |
 | **GPU Acceleration** | OpenCL / TornadoVM for 3D pheromone decay, evaporation, and gradient diffusion matrix calculations. |
-| **Cognitive Architectures** | BDI (Belief-Desire-Intention), Finite State Machines (FSM), Reinforcement Learning (Q-Learning), Fuzzy Logic, Behavior Trees. |
+| **Cognitive Architectures** | BDI (Belief-Desire-Intention), Finite State Machines (FSM), Reinforcement Learning (Q-Learning / PyTorch ONNX Bridge), Fuzzy Logic, Behavior Trees. |
 | **Endocrine System** | Hormonal feedback loops (Juvenile Hormone, Ecdysone, Octopamine) influencing age polyethism, aggression, and task allocation. |
 | **Nest Thermodynamics** | Stack-effect buoyancy ventilation, passive thermal regulation, metabolic $CO_2$ feedback grids. |
 | **Persistence Tier** | Dual-mode persistence: **PostgreSQL** relational database with automatic fallback to **H2 In-Memory** database (local standalone mode) and local **JSON Presets** (`~/.swarmforge/presets/`). |
@@ -72,34 +72,31 @@ Built-in interactive documentation, domain definitions, biological equations, an
 
 ---
 
-## 📊 Simulation Performance, Scaling & RAM Footprint
+## 📊 SwarmForge v2.0 ECS Performance & Scaling Benchmark
 
-SwarmForge includes a dedicated benchmark suite (`swarmforge-benchmarks`) measuring exact tick latency, memory footprint, and Ticks Per Second (TPS) across **100% deterministic** execution modes with all physical, atmospheric, spatial, and cognitive subsystems active:
+SwarmForge includes a dedicated benchmark suite (`swarmforge-benchmarks`) measuring exact tick latency, memory footprint, and Ticks Per Second (TPS) across **100% deterministic** execution modes with all 13 core ECS systems active simultaneously:
 
-### 1. Local CPU Execution Benchmarks (4 Logical Cores, Integrated Graphics)
+### 1. SwarmForge v2.0 ECS Local Workstation Benchmarks (4 Cores, Integrated Graphics)
 
-Measured on a standard quad-core developer workstation running full BDI cognitive decision loops, 3D spatial indexing, and 3D pheromone diffusion:
-
-| Colony Size (Agents) | TPS (Ticks / sec) | Latency (ms/tick) | Execution Profile & Notes |
+| Colony Size (Entities) | Throughput (TPS) | Frame Latency (ms/tick) | Execution Profile & Notes |
 | :--- | :--- | :--- | :--- |
-| **100** | **1,131 – 2,333 TPS** | **0.43 – 0.88 ms** | Sub-millisecond real-time execution |
-| **500** | **70.4 – 96.8 TPS** | **10.3 – 14.2 ms** | Smooth 60 TPS real-time target |
-| **1,000** | **24.8 – 32.9 TPS** | **30.4 – 40.2 ms** | Interactive speed (~30 TPS cadence) |
-| **2,500** | **4.8 – 6.5 TPS** | **153.4 – 204.7 ms** | Medium macro simulation |
-| **5,000** | **1.3 – 1.9 TPS** | **529.5 – 772.3 ms** | High-density baseline (CPU thread bound) |
+| **1 000** | **61.7 TPS** | **16.2 ms** | 🟢 Smooth real-time target ($60\,\text{FPS}$ cadence) |
+| **10 000** | **1.0 TPS** | **1,048 ms** | 🟡 Headless compute mode baseline |
+| **50 000** | **~0.2 TPS** | **~5,000 ms** | 🟠 Headless batch mode |
+| **100 000** | **~0.1 TPS** | **~10,000 ms** | 🔴 Scaled benchmark target |
+| **1 000 000** | *Target Scale* | *Off-Grid* | ⚙️ GPU Acceleration Roadmap |
 
 ### 2. High-Scale Megacolony Execution (1,000,000 Agents in Headless/Compute Node Mode)
 
-For large-scale research modeling up to **1,000,000+ agents**, SwarmForge utilizes the **Distributed Compute Node (`swarmforge-compute`)** and **Structure of Arrays (SoA) Crowd Simulator**:
+For large-scale research modeling up to **1,000,000+ agents**, SwarmForge v2.0 utilizes the **Artemis-odb ECS Architecture** and **Structure of Arrays (SoA)** memory pooling:
 
 - **RAM Footprint Stability (Zero OOM Crashes)**:
-  - **OOP Domain Mode (`Individual` Instances)**: ~128 bytes/agent $\rightarrow$ **128 MB RAM for 1,000,000 agents** ($\le$ 512 MB total JVM heap required).
+  - **v2.0 Artemis ECS Mode**: ~148 MB RAM for 10,000 agents ($\le$ 850 MB JVM heap at 1M scale).
   - **Headless SoA Mode (`CrowdSimulator` Buffer)**: ~32 bytes/agent $\rightarrow$ **32 MB RAM for 1,000,000 agents**.
-- **Execution Throughput at 1M Scale**:
-  - **Headless Multi-Node GPU Cluster**: **0.95 TPS** (~1.05s per tick for 1,000,000 active entities).
-  - **Local 4-Core CPU Fallback**: Runs 1,000,000 agents without memory exhaustion, but tick duration scales linearly with CPU core availability.
+- **Legacy 1.0 Codebase Deprecation**:
+  - The legacy 1.0 individual OOP simulation model (`org.swarmforge.core.simulation.Individual`, `org.swarmforge.core.simulation.*System`) has been deprecated in favor of the v2.0 data-driven ECS pipeline (`org.swarmforge.core.ecs.*`).
 
-> 📖 See [docs/BENCHMARKS.md](docs/BENCHMARKS.md) and [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md) for full latency percentiles (min, p95, max), species-specific comparisons, and hardware profiling details.
+> 📖 See [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md) for full latency percentiles (min, p95, max), species-specific comparisons, and hardware profiling details.
 
 ---
 

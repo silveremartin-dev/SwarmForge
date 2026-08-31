@@ -49,8 +49,9 @@ public class PheromoneDepositionSystem extends IteratingSystem {
         boolean isCarryingFood = mInventory != null && mInventory.has(entityId) &&
                 mInventory.get(entityId).carriedItem == InventoryComponent.ItemType.FOOD;
 
-        // Rotational Interleaving: 1/3 of entities deposit each tick, scaled by dt
-        int sampleInterval = 3;
+        // Rotational Interleaving: 1/10 of entities deposit per tick, scaled by dt
+        // At 10,000 agents: 1,000 grid writes/tick (was 3,333). Biologically still realistic.
+        int sampleInterval = 10;
         if ((stepCounter + entityId) % sampleInterval == 0) {
             float depositAmount = 0.5f * (simulationStepSeconds / 0.016666667f) * sampleInterval;
             int pType = isCarryingFood ? PheromoneType.FOOD_TRAIL.getIndex() : PheromoneType.HOME_TRAIL.getIndex();

@@ -609,27 +609,29 @@
 
 .legend-bar {
     -fx-background-color: #141824;
-    -fx-border-color: #333;
+    -fx-border-color: #334155;
     -fx-border-width: 1px 0 0 0;
     -fx-padding: 4px 10px 6px 10px;
 }
 
 .legend-item {
-    -fx-background-color: rgba(255, 255, 255, 0.04);
+    -fx-background-color: rgba(255, 255, 255, 0.08);
     -fx-background-radius: 4px;
+    -fx-border-color: rgba(255, 255, 255, 0.12);
+    -fx-border-radius: 4px;
     -fx-cursor: hand;
 }
 
 .legend-item .label {
-    -fx-text-fill: #e2e8f0;
+    -fx-text-fill: #f8fafc;
     -fx-font-size: 10px;
     -fx-font-weight: bold;
 }
 
 .legend-card-pane {
-    -fx-background-color: rgba(15, 23, 42, 0.75);
+    -fx-background-color: rgba(15, 23, 42, 0.85);
     -fx-background-radius: 6px;
-    -fx-border-color: rgba(56, 189, 248, 0.25);
+    -fx-border-color: rgba(56, 189, 248, 0.35);
     -fx-border-radius: 6px;
     -fx-border-width: 1px;
 }
@@ -641,14 +643,21 @@
 }
 
 .legend-hover-info {
-    -fx-font-size: 9px;
+    -fx-font-size: 9.5px;
     -fx-font-style: italic;
-    -fx-text-fill: #94a3b8;
+    -fx-text-fill: #cbd5e1;
 }
 
 .legend-checkbox {
-    -fx-font-size: 10px;
-    -fx-text-fill: #cbd5e1;
+    -fx-font-size: 10.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #38bdf8;
+}
+
+.legend-checkbox .label {
+    -fx-font-size: 10.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #38bdf8;
 }
 
 .viewport-toolbar {

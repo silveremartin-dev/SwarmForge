@@ -41,27 +41,19 @@ public class ForagingSystem extends IteratingSystem {
         // If not carrying -> Wander randomly looking for food
         
         if (inv.carriedItem == InventoryComponent.ItemType.FOOD) {
-            // Return Home Logic
-            float targetX = 50f; // Mock Nest X
-            float targetZ = 50f; // Mock Nest Z
-            
-            float dx = targetX - pos.x;
-            float dz = targetZ - pos.z;
-            float dist = (float) Math.sqrt(dx*dx + dz*dz);
-            
-            if (dist < 1.0f) {
-                // Arrived at nest -> Drop food
+            float dx = 50f - pos.x;
+            float dz = 50f - pos.z;
+            float distSq = dx*dx + dz*dz;
+            if (distSq < 1.0f) {
                 inv.carriedItem = InventoryComponent.ItemType.NONE;
-                // Add to Colony resource stock
                 java.util.UUID colonyId = mColony.get(entityId).colonyId;
                 org.swarmforge.core.domain.Colony colony = org.swarmforge.core.ecs.ColonyRegistry.getColony(colonyId);
-                if (colony != null) {
-                    colony.addResource(org.swarmforge.core.domain.ResourceType.SEED, 1.0f);
-                }
+                if (colony != null) colony.addResource(org.swarmforge.core.domain.ResourceType.SEED, 1.0f);
             } else {
-                // Move towards nest
-                vel.dx = (dx / dist) * vel.speed;
-                vel.dz = (dz / dist) * vel.speed;
+                // Fast inverse sqrt approximation via rsqrt
+                float invDist = (float) (1.0 / Math.sqrt(distSq));
+                vel.dx = dx * invDist * vel.speed;
+                vel.dz = dz * invDist * vel.speed;
             }
         } else {
             // Wander Logic (Random Walk)

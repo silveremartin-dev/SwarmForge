@@ -13,6 +13,7 @@ public class MetabolismComponent extends Component {
     public float hunger = 0f;
     public float thirst = 0f;
     public boolean alive = true;
+    public String causeOfDeath = null;
     
     // Metabolic rate multiplier (e.g. 1.0 = normal, 2.0 = fast burn)
     public float metabolicRate = 1.0f;

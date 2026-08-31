@@ -19,7 +19,9 @@ import org.swarmforge.core.behavior.AgentView;
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
+ * @deprecated Use org.swarmforge.core.ecs.components.* and org.swarmforge.core.ecs.systems.* instead.
  */
+@Deprecated
 public class Individual implements java.io.Serializable, AgentView {
     private static final long serialVersionUID = 1L;
 
@@ -716,8 +718,8 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public void setHealth(float health) {
         this.health = Math.max(0, Math.min(100, health));
-        if (this.health <= 0) {
-            this.alive = false;
+        if (this.health <= 0 && alive) {
+            die("Lethal Injuries / Physical Trauma");
         }
     }
 
@@ -1119,17 +1121,20 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     public void die() {
-        die(this.causeOfDeath != null ? this.causeOfDeath : "Inconnue");
+        die(this.causeOfDeath != null && !"Inconnue".equals(this.causeOfDeath) ? this.causeOfDeath : "Old Age / Natural Exhaustion");
     }
 
     public void die(String cause) {
         this.alive = false;
-        if (this.causeOfDeath == null) {
-            this.causeOfDeath = cause;
+        if (this.causeOfDeath == null || "Inconnue".equals(this.causeOfDeath) || "UNKNOWN".equalsIgnoreCase(this.causeOfDeath)) {
+            this.causeOfDeath = (cause != null && !cause.isBlank()) ? cause : "Old Age / Natural Exhaustion";
         }
     }
 
     public String getCauseOfDeath() {
+        if (this.causeOfDeath == null || "Inconnue".equals(this.causeOfDeath) || "UNKNOWN".equalsIgnoreCase(this.causeOfDeath)) {
+            return "Old Age / Natural Exhaustion";
+        }
         return causeOfDeath;
     }
 

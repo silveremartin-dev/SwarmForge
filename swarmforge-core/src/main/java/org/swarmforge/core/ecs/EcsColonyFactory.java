@@ -82,6 +82,34 @@ public class EcsColonyFactory {
         // Pathogen & Epidemiological State
         PathogenComponent path = edit.create(PathogenComponent.class);
 
+        // Life Cycle & Gaussian Normal Distribution of Lifespan
+        LifeCycleComponent life = edit.create(LifeCycleComponent.class);
+        life.casteName = (caste != null) ? caste.name() : "WORKER";
+        int meanLifespan = 5000;
+        if (species != null) {
+            CasteTemplate casteTemplate = null;
+            if (species.getCastes() != null) {
+                for (CasteTemplate ct : species.getCastes()) {
+                    if (ct != null && ct.getName() != null && ct.getName().equalsIgnoreCase(life.casteName)) {
+                        casteTemplate = ct;
+                        break;
+                    }
+                }
+            }
+            if (casteTemplate != null && casteTemplate.getLifespan() > 0) {
+                meanLifespan = casteTemplate.getLifespan();
+            } else if (caste == Individual.Caste.QUEEN) {
+                meanLifespan = species.getQueenLifespan();
+            } else if (caste == Individual.Caste.SOLDIER) {
+                meanLifespan = (int) Math.round(species.getWorkerLifespan() * 1.4);
+            } else if (caste == Individual.Caste.MALE) {
+                meanLifespan = (int) Math.round(species.getWorkerLifespan() * 0.35);
+            } else {
+                meanLifespan = species.getWorkerLifespan();
+            }
+        }
+        life.setGaussianLifespan(meanLifespan, 0.15);
+
         // AI / FSM
         AiComponent ai = edit.create(AiComponent.class);
         ai.type = AiComponent.AiType.FSM_WORKER;

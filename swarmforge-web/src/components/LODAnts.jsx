@@ -10,7 +10,7 @@ const MAX_HIGH_RES = 50 // Limit high res to nearest 50 to prevent freezing
 export default function LODAnts({ ants }) {
     const meshRef = useRef()
     const { camera } = useThree()
-    const { setSelectedEntity } = useSimulationStore()
+    const { setSelectedEntity, terrainConfig } = useSimulationStore()
 
     // Track which ants are high-res
     const [highResIndices, setHighResIndices] = useState([])
@@ -31,8 +31,10 @@ export default function LODAnts({ ants }) {
 
         // Update instances
         ants.forEach((ant, i) => {
-            const dx = ant.x - camPos.x
-            const dz = ant.y - camPos.z // Ants are on X/Z (y is up)
+            const antX = ant.x <= 5 ? ant.x * 50 : ant.x
+            const antZ = ant.y <= 5 ? ant.y * 50 : ant.y
+            const dx = antX - camPos.x
+            const dz = antZ - camPos.z
 
             const distSq = dx * dx + dz * dz
             const isHighRes = distSq < LOD_DISTANCE_SQ && count < MAX_HIGH_RES
@@ -43,8 +45,13 @@ export default function LODAnts({ ants }) {
                 // Hide instance
                 tempObject.scale.setScalar(0)
             } else {
-                // Show instance
-                tempObject.position.set(ant.x, 0.3, ant.y)
+                // Show instance on terrain & trees
+                const groundY = getTerrainHeight(antX, antZ, terrainConfig)
+                const isClimbing = ant.isClimbingTree || ant.climbingTree || (ant.treeClimbHeight && ant.treeClimbHeight > 0)
+                const treeOffset = isClimbing ? (ant.treeClimbHeight || 2.2) : 0
+                const antY = groundY + 0.3 + treeOffset
+
+                tempObject.position.set(antX, antY, antZ)
                 const scale = ant.bodyLengthMm ? (ant.bodyLengthMm / 6.0) : (ant.caste === 'QUEEN' ? 2.2 : ant.caste === 'SOLDIER' ? 1.4 : ant.caste === 'MALE' ? 1.2 : 1.0)
                 tempObject.scale.setScalar(scale)
                 if (ant.heading !== undefined) {
@@ -101,11 +108,17 @@ export default function LODAnts({ ants }) {
             {highResIndices.map(i => {
                 const ant = ants[i]
                 if (!ant) return null
+                const antX = ant.x <= 5 ? ant.x * 50 : ant.x
+                const antZ = ant.y <= 5 ? ant.y * 50 : ant.y
+                const groundY = getTerrainHeight(antX, antZ, terrainConfig)
+                const isClimbing = ant.isClimbingTree || ant.climbingTree || (ant.treeClimbHeight && ant.treeClimbHeight > 0)
+                const treeOffset = isClimbing ? (ant.treeClimbHeight || 2.2) : 0
+                const antY = groundY + 0.3 + treeOffset
                 const antScale = ant.bodyLengthMm ? (ant.bodyLengthMm / 6.0) : (ant.caste === 'QUEEN' ? 2.2 : ant.caste === 'SOLDIER' ? 1.4 : ant.caste === 'MALE' ? 1.2 : 1.0)
                 return (
                     <AntMesh
-                        key={ant.id}
-                        position={[ant.x, 0.3, ant.y]}
+                        key={ant.id || i}
+                        position={[antX, antY, antZ]}
                         caste={ant.caste}
                         scale={antScale}
                         diseaseState={ant.diseaseState || 'HEALTHY'}

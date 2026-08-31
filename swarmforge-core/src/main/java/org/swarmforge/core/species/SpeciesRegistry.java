@@ -75,8 +75,34 @@ public class SpeciesRegistry {
     }
 
     public CustomSpecies getSpecies(String id) {
-        if (id == null) return getFallbackSpecies();
-        return speciesMap.getOrDefault(id.toLowerCase(), getFallbackSpecies());
+        if (id == null || id.isBlank()) return getFallbackSpecies();
+        // 1. Direct match with lowercased key
+        String rawKey = id.toLowerCase().replaceAll("[^a-z0-9]+", "-");
+        CustomSpecies found = speciesMap.get(rawKey);
+        if (found != null) return found;
+
+        // 2. Strip parenthetical descriptors (e.g. "Polyergus rufescens (Amazon Raiding Party)" -> "Polyergus rufescens")
+        String cleaned = id.replaceAll("\\s*\\([^)]*\\)", "").trim();
+        String cleanedKey = cleaned.toLowerCase().replaceAll("[^a-z0-9]+", "-");
+        found = speciesMap.get(cleanedKey);
+        if (found != null) return found;
+
+        // 3. Search by scientific name, common name, or preset name matching
+        for (CustomSpecies s : speciesMap.values()) {
+            if (s.getScientificName() != null) {
+                String sc = s.getScientificName().toLowerCase();
+                if (cleaned.toLowerCase().contains(sc) || sc.contains(cleaned.toLowerCase())) return s;
+            }
+            if (s.getCommonName() != null) {
+                String cn = s.getCommonName().toLowerCase();
+                if (cleaned.toLowerCase().contains(cn) || cn.contains(cleaned.toLowerCase())) return s;
+            }
+            if (s.getPresetName() != null) {
+                String pn = s.getPresetName().toLowerCase();
+                if (cleaned.toLowerCase().contains(pn) || pn.contains(cleaned.toLowerCase())) return s;
+            }
+        }
+        return getFallbackSpecies();
     }
 
     public Collection<CustomSpecies> getAllSpecies() {

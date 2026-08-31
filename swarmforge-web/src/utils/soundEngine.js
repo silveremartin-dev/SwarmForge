@@ -512,7 +512,16 @@ class ProceduralSoundEngine {
     }
 
     updateRiverSound(cameraPos, riverPos = { x: 25, y: 0, z: 50 }) {
+        this.ensureContext();
         if (!this.ctx || !this.gains.river || !cameraPos) return;
+
+        if (!this.riverNode) {
+            this.startRiverAmbiance();
+        }
+
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => {});
+        }
 
         // Distance-based attenuation (Spatialization for river)
         const dx = cameraPos.x - riverPos.x;
@@ -520,10 +529,10 @@ class ProceduralSoundEngine {
         const dz = cameraPos.z - riverPos.z;
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-        // Max hearable distance = 100 meters
-        const maxDist = 100;
+        // Max hearable distance = 120 meters
+        const maxDist = 120;
         const proximity = Math.max(0, 1 - dist / maxDist);
-        const targetVol = Math.pow(proximity, 1.8) * this.volumes.river;
+        const targetVol = Math.pow(proximity, 1.5) * (this.volumes.river || 0.4);
 
         this.gains.river.gain.setTargetAtTime(targetVol, this.ctx.currentTime, 0.15);
     }

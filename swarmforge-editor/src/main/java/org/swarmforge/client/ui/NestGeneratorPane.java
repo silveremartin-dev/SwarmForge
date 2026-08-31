@@ -1125,24 +1125,24 @@ public class NestGeneratorPane extends BorderPane {
         HBox bar = new HBox(10);
         bar.setPadding(new Insets(4, 10, 6, 10));
         bar.setAlignment(Pos.CENTER_LEFT);
-        bar.setStyle("-fx-border-color:#3f3f46;-fx-border-width:1 0 0 0;");
+        bar.getStyleClass().add("legend-bar");
 
         syncViewsCheckBox = new CheckBox();
         syncViewsCheckBox.textProperty().bind(i18n.createStringBinding("nest.chk.sync_views"));
         syncViewsCheckBox.setSelected(true);
-        syncViewsCheckBox.setStyle("-fx-text-fill:#00d4ff;-fx-font-weight:bold;-fx-font-size:11;");
+        syncViewsCheckBox.getStyleClass().add("legend-checkbox");
 
         showGhostMeshCheckBox = new CheckBox();
         showGhostMeshCheckBox.textProperty().bind(i18n.createStringBinding("nest.chk.ghost_mesh"));
         showGhostMeshCheckBox.setSelected(true);
-        showGhostMeshCheckBox.setStyle("-fx-text-fill:#38bdf8;-fx-font-weight:bold;-fx-font-size:11;");
+        showGhostMeshCheckBox.getStyleClass().add("legend-checkbox");
         showGhostMeshCheckBox.setTooltip(new Tooltip());
         showGhostMeshCheckBox.getTooltip().textProperty().bind(i18n.createStringBinding("nest.chk.ghost_mesh.tt"));
         showGhostMeshCheckBox.setOnAction(e -> repaint());
 
         Label title = new Label();
         title.textProperty().bind(i18n.createStringBinding("nest.legend.title"));
-        title.setStyle("-fx-font-weight:bold;-fx-text-fill:#aaa;-fx-font-size:11;");
+        title.getStyleClass().add("legend-title");
 
         bar.getChildren().addAll(syncViewsCheckBox, showGhostMeshCheckBox, new Separator(Orientation.VERTICAL), title);
 
@@ -1159,6 +1159,7 @@ public class NestGeneratorPane extends BorderPane {
         for (String[] it : items) {
             HBox item = new HBox(4);
             item.setAlignment(Pos.CENTER_LEFT);
+            item.getStyleClass().add("legend-item");
             Canvas dot = new Canvas(9, 9);
             GraphicsContext g = dot.getGraphicsContext2D();
             g.setFill(Color.web(it[1]));
@@ -1169,7 +1170,6 @@ public class NestGeneratorPane extends BorderPane {
 
             Label lbl = new Label();
             lbl.textProperty().bind(i18n.createStringBinding(it[0]));
-            lbl.setStyle("-fx-text-fill:#ccc;-fx-font-size:10;");
             item.getChildren().addAll(dot, lbl);
             bar.getChildren().add(item);
         }
@@ -1177,7 +1177,7 @@ public class NestGeneratorPane extends BorderPane {
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
         Label hint = new Label();
         hint.textProperty().bind(i18n.createStringBinding("nest.legend.hint"));
-        hint.setStyle("-fx-text-fill:#888;-fx-font-size:10;-fx-font-style:italic;");
+        hint.getStyleClass().add("legend-hover-info");
 
         bar.getChildren().addAll(sp, hint);
         return bar;

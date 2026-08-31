@@ -32,6 +32,9 @@ public class ParasiteSystem extends IteratingSystem {
     @Override
     protected void begin() {
         tickCounter++;
+        if (spatialSystem == null) {
+            spatialSystem = world.getSystem(SpatialPartitioningSystem.class);
+        }
     }
 
     @Override

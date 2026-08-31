@@ -79,6 +79,9 @@ public class AiSystem extends IteratingSystem {
     // Hack for prototype: We instantiate a new one if not present, but we lose state between ticks if not careful.
     // Solution: AiComponent should hold the instance.
     
+    /** Shared stateless brain singletons — safe because FSM/Fuzzy state is stored in AiComponent, not the brain. */
+    private static final org.swarmforge.core.behavior.FSMArchitecture       SHARED_FSM   = new org.swarmforge.core.behavior.FSMArchitecture();
+    private static final org.swarmforge.core.behavior.FuzzyLogicArchitecture SHARED_FUZZY = new org.swarmforge.core.behavior.FuzzyLogicArchitecture();
     private final EcsAgentAdapter agentAdapter = new EcsAgentAdapter();
 
     @Override
@@ -167,28 +170,14 @@ public class AiSystem extends IteratingSystem {
     }
 
     private void runFsmworker(int entityId) {
-        AiComponent ai = mAi.get(entityId);
-        if (ai.brainInstance == null) {
-            ai.brainInstance = new org.swarmforge.core.behavior.FSMArchitecture();
-            ((org.swarmforge.core.behavior.FSMArchitecture) ai.brainInstance).initialize(null);
-        }
-
-        org.swarmforge.core.behavior.FSMArchitecture brain = (org.swarmforge.core.behavior.FSMArchitecture) ai.brainInstance;
         agentAdapter.setEntityId(entityId);
-        org.swarmforge.core.behavior.ReasoningArchitecture.Action action = brain.decide(agentAdapter, null);
+        org.swarmforge.core.behavior.ReasoningArchitecture.Action action = SHARED_FSM.decide(agentAdapter, null);
         applyAction(entityId, action);
     }
 
     private void runFuzzyLogic(int entityId) {
-        AiComponent ai = mAi.get(entityId);
-        if (ai.brainInstance == null) {
-            ai.brainInstance = new org.swarmforge.core.behavior.FuzzyLogicArchitecture();
-            ((org.swarmforge.core.behavior.FuzzyLogicArchitecture)ai.brainInstance).initialize(null);
-        }
-        
-        org.swarmforge.core.behavior.FuzzyLogicArchitecture brain = (org.swarmforge.core.behavior.FuzzyLogicArchitecture) ai.brainInstance;
         agentAdapter.setEntityId(entityId);
-        org.swarmforge.core.behavior.ReasoningArchitecture.Action action = brain.decide(agentAdapter, null);
+        org.swarmforge.core.behavior.ReasoningArchitecture.Action action = SHARED_FUZZY.decide(agentAdapter, null);
         applyAction(entityId, action);
     }
 }

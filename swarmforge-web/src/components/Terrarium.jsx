@@ -421,25 +421,35 @@ export default function Terrarium() {
             {/* Ants (LOD System) */}
             <LODAnts ants={ants} />
 
-            {/* Food Sources */}
-            {foodSources.map((food, i) => (
-                <FoodSource
-                    key={food.id || i}
-                    position={[food.x, 0.5, food.y]}
-                    quantity={food.quantity}
-                    type={food.type}
-                />
-            ))}
+            {/* Food Sources (Aligned to Terrain Height) */}
+            {foodSources.map((food, i) => {
+                const foodX = food.x <= 5 ? food.x * 50 : food.x
+                const foodZ = food.y <= 5 ? food.y * 50 : food.y
+                const foodY = getTerrainHeight(foodX, foodZ, terrainConfig) + 0.3
+                return (
+                    <FoodSource
+                        key={food.id || i}
+                        position={[foodX, foodY, foodZ]}
+                        quantity={food.quantity}
+                        type={food.type}
+                    />
+                )
+            })}
 
-            {/* Predators */}
-            {predators.map((pred, i) => (
-                <Predator
-                    key={pred.id || i}
-                    position={[pred.x, 0.5, pred.y]}
-                    type={pred.type}
-                    state={pred.state}
-                />
-            ))}
+            {/* Predators (Aligned to Terrain Height) */}
+            {predators.map((pred, i) => {
+                const predX = pred.x <= 5 ? pred.x * 50 : pred.x
+                const predZ = pred.y <= 5 ? pred.y * 50 : pred.y
+                const predY = getTerrainHeight(predX, predZ, terrainConfig) + 0.3
+                return (
+                    <Predator
+                        key={pred.id || i}
+                        position={[predX, predY, predZ]}
+                        type={pred.type}
+                        state={pred.state}
+                    />
+                )
+            })}
         </group>
     )
 }

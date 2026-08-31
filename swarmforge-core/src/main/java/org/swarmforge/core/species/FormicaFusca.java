@@ -35,6 +35,9 @@ public class FormicaFusca extends CustomSpecies {
         setFormsMegaColonies(false);
         setPrimaryDiet("HONEYDEW");
         setSecondaryDiet("INSECTS_MEAT");
+        setOptimalTempCelsius(22.0f);
+        setMinTempCelsius(0.0f);
+        setMaxTempCelsius(40.0f);
         setNestType("SUBTERRANEAN");
         setVenomType("FORMIC_ACID");
         setAggression(0.35f);

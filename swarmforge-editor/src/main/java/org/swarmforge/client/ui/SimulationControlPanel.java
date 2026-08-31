@@ -151,7 +151,7 @@ public class SimulationControlPanel extends VBox {
             int broodCount,
             List<SpeciesConfigSnapshot> speciesSnapshots
         ) {
-            this(seed, null, 0.0166f, 30.0, "Jours (j)", 0, "", selectedWorld, selectedWeather, selectedSpecies, selectedNestType, queenCount, workerCount, soldierCount, broodCount, speciesSnapshots);
+            this(seed, null, 0.0166f, 100.0, "Days (d)", 0, "", selectedWorld, selectedWeather, selectedSpecies, selectedNestType, queenCount, workerCount, soldierCount, broodCount, speciesSnapshots);
         }
     }
 
@@ -166,7 +166,7 @@ public class SimulationControlPanel extends VBox {
         }
         String dtIso = startDateTime != null ? startDateTime.toString() : LocalDateTime.now().toString();
         double maxVal = maxDurationSpinner != null && maxDurationSpinner.getValue() != null ? maxDurationSpinner.getValue() : 100.0;
-        String maxUnit = durationUnitCombo != null && durationUnitCombo.getValue() != null ? durationUnitCombo.getValue() : "Jours (j)";
+        String maxUnit = durationUnitCombo != null && durationUnitCombo.getValue() != null ? durationUnitCombo.getValue() : "Days (d)";
         int minPop = minPopStopSpinner != null && minPopStopSpinner.getValue() != null ? minPopStopSpinner.getValue() : 0;
         String desc = areaDescription != null ? areaDescription.getText() : "";
 
@@ -1056,8 +1056,8 @@ public class SimulationControlPanel extends VBox {
             targetWeather = "Tropical";
         } else if (world.contains("Aride") || world.contains("Desert") || world.contains("Savane")) {
             targetWeather = "Arid";
-        } else if (world.contains("Alpin") || world.contains("Toundra") || world.contains("Montagne")) {
-            targetWeather = "Polar";
+        } else if (world.contains("Alpin") || world.contains("Toundra") || world.contains("Montagne") || world.contains("Boreal") || world.contains("Taiga")) {
+            targetWeather = "Arctic";
         } else {
             targetWeather = "Temperate";
         }
@@ -1105,9 +1105,14 @@ public class SimulationControlPanel extends VBox {
             if (txtSeed != null) {
                 txtSeed.setText(String.valueOf(scenario.getMasterSeed()));
             }
-            if (maxDurationSpinner != null && scenario.getMaxSimulationTicks() > 0) {
-                if (durationUnitCombo != null) durationUnitCombo.getSelectionModel().select("Ticks");
-                maxDurationSpinner.getValueFactory().setValue((double) scenario.getMaxSimulationTicks());
+            if (maxDurationSpinner != null) {
+                if (scenario.getMaxSimulationTicks() > 0) {
+                    if (durationUnitCombo != null) durationUnitCombo.getSelectionModel().select("Ticks");
+                    maxDurationSpinner.getValueFactory().setValue((double) scenario.getMaxSimulationTicks());
+                } else {
+                    if (durationUnitCombo != null) durationUnitCombo.getSelectionModel().select("Days (d)");
+                    maxDurationSpinner.getValueFactory().setValue(100.0);
+                }
             }
             if (minPopStopSpinner != null && scenario.getMinPopulationStopThreshold() >= 0) {
                 minPopStopSpinner.getValueFactory().setValue(scenario.getMinPopulationStopThreshold());
@@ -1975,8 +1980,8 @@ public class SimulationControlPanel extends VBox {
             list.add(new ScenarioWarning(
                 "DURÉE", "INFO",
                 String.format("💡 Durée maximale très élevée (%.0f jours). Une durée de 30 à 100 jours est généralement recommandée.", maxDurationSpinner.getValue()),
-                "⏱️ Set to 30 days",
-                () -> maxDurationSpinner.getValueFactory().setValue(30.0)
+                "⏱️ Set to 100 days",
+                () -> maxDurationSpinner.getValueFactory().setValue(100.0)
             ));
         } else if ("Ticks".equals(dUnit) && maxDurationSpinner.getValue() != null && maxDurationSpinner.getValue() < 1000) {
             list.add(new ScenarioWarning(
