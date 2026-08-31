@@ -1775,17 +1775,18 @@ public class SpeciesEditorPane extends VBox {
             }
         }
         if (glossaryTerm != null && !glossaryTerm.isEmpty()) {
-            l.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-underline: true; -fx-cursor: hand;");
+            l.getStyleClass().add("glossary-link");
+            l.setCursor(javafx.scene.Cursor.HAND);
             l.setOnMouseClicked(e -> GlossaryDialog.show(glossaryTerm));
         } else {
-            l.setStyle("-fx-font-weight: bold;");
+            l.getStyleClass().add("bold-label");
         }
         return l;
     }
 
     private Label createWhiteLabel(String text) {
         Label l = new Label(text);
-        l.setStyle("-fx-font-weight: bold;");
+        l.getStyleClass().add("bold-label");
         return l;
     }
 
@@ -1861,7 +1862,8 @@ public class SpeciesEditorPane extends VBox {
 
     private void addGlossaryEntry(VBox box, String title, String description) {
         Label t = new Label("• " + title + " : ");
-        t.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-min-width: 200px;");
+        t.getStyleClass().add("accent-text");
+        t.setMinWidth(200);
         Label d = new Label(description);
         d.setWrapText(true);
         HBox row = new HBox(5, t, d);
@@ -1886,9 +1888,9 @@ public class SpeciesEditorPane extends VBox {
 
     private VBox createInspectorColumnBox(String title, GridPane grid) {
         VBox box = new VBox(8);
-        box.setStyle("-fx-background-color: rgba(255, 255, 255, 0.02); -fx-border-color: rgba(255, 255, 255, 0.08); -fx-border-radius: 6px; -fx-background-radius: 6px; -fx-padding: 10px;");
+        box.getStyleClass().add("render-options-panel");
         Label lblTitle = new Label(title);
-        lblTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #38bdf8;");
+        lblTitle.getStyleClass().add("accent-text");
         box.getChildren().addAll(lblTitle, new Separator(), grid);
         HBox.setHgrow(box, Priority.ALWAYS);
         return box;

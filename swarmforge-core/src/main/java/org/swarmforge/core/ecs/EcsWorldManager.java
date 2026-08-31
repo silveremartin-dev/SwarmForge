@@ -28,6 +28,10 @@ public class EcsWorldManager {
     private final AiSystem aiSystem;
     private final ForagingSystem foragingSystem;
     private final SoilSystem soilSystem;
+    private final ParasiteSystem parasiteSystem;
+    private final RlBridgeSystem rlBridgeSystem;
+    private final SubterraneanHydrologySystem subterraneanHydrologySystem;
+    private final org.swarmforge.core.spatial.SpatialChunkManager chunkManager;
 
     public EcsWorldManager() {
         this(null);
@@ -44,6 +48,10 @@ public class EcsWorldManager {
         this.aiSystem = new AiSystem();
         this.foragingSystem = new ForagingSystem();
         this.soilSystem = new SoilSystem();
+        this.parasiteSystem = new ParasiteSystem();
+        this.rlBridgeSystem = new RlBridgeSystem();
+        this.subterraneanHydrologySystem = new SubterraneanHydrologySystem();
+        this.chunkManager = new org.swarmforge.core.spatial.SpatialChunkManager();
 
         if (pheromoneGrid != null) {
             this.pheromoneDepositionSystem.setPheromoneGrid(pheromoneGrid);
@@ -60,7 +68,10 @@ public class EcsWorldManager {
                         agingSystem,
                         aiSystem,
                         foragingSystem,
-                        soilSystem
+                        soilSystem,
+                        parasiteSystem,
+                        rlBridgeSystem,
+                        subterraneanHydrologySystem
                 );
 
         this.world = new World(config.build());
@@ -78,6 +89,7 @@ public class EcsWorldManager {
         world.setDelta(deltaSeconds);
         pheromoneDepositionSystem.setSimulationStepSeconds(deltaSeconds);
         world.process();
+        chunkManager.enforceRenderYieldGuard();
     }
 
     public World getWorld() {

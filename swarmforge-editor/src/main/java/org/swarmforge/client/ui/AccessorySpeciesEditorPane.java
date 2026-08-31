@@ -204,7 +204,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         r.setAlignment(Pos.CENTER_LEFT);
 
         headerLabel = new Label(i18n.get("accessory.title"));
-        headerLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        headerLabel.getStyleClass().add("title-header-label");
 
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
@@ -222,7 +222,7 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         lblPreset = new Label();
         lblPreset.textProperty().bind(i18n.createStringBinding("preset.label"));
-        lblPreset.setStyle("-fx-font-weight: bold;");
+        lblPreset.getStyleClass().add("bold-label");
         lblPreset.setGraphic(new FontIcon(Feather.SLIDERS));
 
         accessoryPresetCombo = new ComboBox<>(FXCollections.observableArrayList(
@@ -300,7 +300,6 @@ public class AccessorySpeciesEditorPane extends VBox {
         btnDelete.setGraphic(new FontIcon(Feather.TRASH_2));
         btnDelete.textProperty().bind(i18n.createStringBinding("preset.delete"));
         btnDelete.getStyleClass().add("btn-danger");
-        btnDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
         btnDelete.tooltipProperty().bind(i18n.createTooltipBinding("preset.delete.tt"));
         btnDelete.setOnAction(e -> handleDeletePreset());
 
@@ -328,8 +327,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         card.getStyleClass().add("card-pane");
 
         Label title = new Label(i18n.get("accessory.card.taxonomy.title"));
-        title.getStyleClass().add("card-title");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
+        title.getStyleClass().add("card-title-label");
 
         GridPane grid = new GridPane();
         grid.setHgap(12);
@@ -445,8 +443,8 @@ public class AccessorySpeciesEditorPane extends VBox {
         grid.addRow(7, createLabelKey("accessory.field.growth_rate", "accessory.field.growth_rate.tt"), growthRateField);
         grid.addRow(8, createLabelKey("accessory.field.biomass_density", "accessory.field.biomass_density.tt"), initialBiomassDensityField);
         grid.addRow(9, createLabelKey("accessory.field.pop_density", "accessory.field.pop_density.tt"), initialPopulationDensityField);
-        grid.addRow(10, new Label("Number of Individuals to Introduce:"), individualCountSpinner);
-        grid.addRow(11, new Label("Nest Distribution Rule:"), nestDispatchCombo);
+        grid.addRow(10, createLabelKey("accessory.field.individual_count", "accessory.field.individual_count.tt"), individualCountSpinner);
+        grid.addRow(11, createLabelKey("accessory.field.nest_dispatch", "accessory.field.nest_dispatch.tt"), nestDispatchCombo);
         grid.addRow(12, createLabelKey("accessory.field.diapause", "accessory.field.diapause.tt"), diapauseCheck);
 
         card.getChildren().addAll(title, grid);
@@ -459,8 +457,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         card.getStyleClass().add("card-pane");
 
         Label title = new Label(i18n.get("accessory.card.seasonal.title"));
-        title.getStyleClass().add("card-title");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
+        title.getStyleClass().add("card-title-label");
 
         hemisphereCombo = new ComboBox<>(FXCollections.observableArrayList(
                 "Northern Hemisphere (Spring = Mar-May, Winter = Dec-Feb)",
@@ -492,7 +489,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         );
 
         seasonHintLabel = new Label(i18n.get("accessory.season.hint"));
-        seasonHintLabel.setStyle("-fx-font-size: 11px; -fx-wrap-text: true;");
+        seasonHintLabel.getStyleClass().add("header-subtitle");
 
         card.getChildren().addAll(title, slidersBox, new Separator(), seasonHintLabel);
         return card;
@@ -527,8 +524,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         card.getStyleClass().add("card-pane");
 
         Label title = new Label(i18n.get("accessory.card.predators.title"));
-        title.getStyleClass().add("card-title");
-        title.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: -fx-accent;");
+        title.getStyleClass().add("card-title-label");
 
         GridPane grid = new GridPane();
         grid.setHgap(12);
@@ -605,8 +601,12 @@ public class AccessorySpeciesEditorPane extends VBox {
     }
 
     private Label createLabelKey(String keyText, String keyTooltip) {
+        return createLabelKey(keyText, keyTooltip, null);
+    }
+
+    private Label createLabelKey(String keyText, String keyTooltip, String glossaryTerm) {
         Label l = new Label(i18n.get(keyText));
-        l.setStyle("-fx-font-weight: bold;");
+        l.getStyleClass().add("bold-label");
         l.setWrapText(true);
         l.setMinHeight(Region.USE_PREF_SIZE);
         l.setMinWidth(Region.USE_PREF_SIZE);
@@ -616,6 +616,11 @@ public class AccessorySpeciesEditorPane extends VBox {
             t.setMaxWidth(320);
             t.setWrapText(true);
             l.setTooltip(t);
+        }
+        if (glossaryTerm != null && !glossaryTerm.isEmpty()) {
+            l.getStyleClass().add("glossary-link");
+            l.setCursor(javafx.scene.Cursor.HAND);
+            l.setOnMouseClicked(e -> org.swarmforge.client.ui.GlossaryDialog.show(glossaryTerm));
         }
         return l;
     }

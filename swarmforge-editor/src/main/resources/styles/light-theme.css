@@ -805,6 +805,51 @@
     -fx-wrap-text: true;
 }
 
+/* Helper Label Classes & Themes */
+.bold-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #1e293b;
+}
+
+.title-header-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0284c7;
+}
+
+.card-title-label {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0284c7;
+}
+
+.accent-text {
+    -fx-font-weight: bold;
+    -fx-text-fill: #0284c7;
+}
+
+.glossary-link {
+    -fx-font-weight: bold;
+    -fx-text-fill: #0284c7;
+    -fx-underline: true;
+}
+
+.glossary-link:hover {
+    -fx-text-fill: #0369a1;
+}
+
+.danger-button {
+    -fx-background-color: #dc2626;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4px;
+}
+
+.danger-button:hover {
+    -fx-background-color: #b91c1c;
+}
+
+
 
 
 

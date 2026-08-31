@@ -265,6 +265,7 @@ public class SimulationControlPanel extends VBox {
         bSaveScenario.textProperty().bind(i18n.createStringBinding("common.btn.save"));
         bSaveScenario.setGraphic(new FontIcon(Feather.SAVE));
         bSaveScenario.getStyleClass().add("btn-secondary");
+        bSaveScenario.setMinWidth(Region.USE_PREF_SIZE);
         bSaveScenario.setTooltip(new Tooltip("Save current scenario configuration"));
         bSaveScenario.setOnAction(e -> handleSaveScenario());
 
@@ -272,18 +273,21 @@ public class SimulationControlPanel extends VBox {
         bDeleteScenario.setGraphic(new FontIcon(Feather.TRASH_2));
         bDeleteScenario.getStyleClass().add("btn-danger");
         bDeleteScenario.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
+        bDeleteScenario.setMinWidth(Region.USE_PREF_SIZE);
         bDeleteScenario.setTooltip(new Tooltip("Delete selected scenario"));
         bDeleteScenario.setOnAction(e -> handleDeleteScenario());
 
         Button bExportScenario = new Button(I18nManager.getInstance().get("common.btn.export"));
         bExportScenario.setGraphic(new FontIcon(Feather.DOWNLOAD));
         bExportScenario.getStyleClass().add("btn-secondary");
+        bExportScenario.setMinWidth(Region.USE_PREF_SIZE);
         bExportScenario.setTooltip(new Tooltip("Export scenario configuration to JSON"));
         bExportScenario.setOnAction(e -> handleExportScenario());
 
         Button bImportScenario = new Button(I18nManager.getInstance().get("common.btn.import"));
         bImportScenario.setGraphic(new FontIcon(Feather.UPLOAD));
         bImportScenario.getStyleClass().add("btn-secondary");
+        bImportScenario.setMinWidth(Region.USE_PREF_SIZE);
         bImportScenario.setTooltip(new Tooltip("Import a scenario JSON file."));
         bImportScenario.setOnAction(e -> handleImportScenario());
 
@@ -292,6 +296,7 @@ public class SimulationControlPanel extends VBox {
         Label lblMeta = new Label("★ Global Scenario Preset :");
         lblMeta.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lblMeta.getStyleClass().add("purple-accent-title");
+        lblMeta.setMinWidth(Region.USE_PREF_SIZE);
 
         Set<String> scenarioSet = new TreeSet<>(scenarioPresetManager.getPresetNames());
         for (org.swarmforge.core.scenario.Scenario sc : org.swarmforge.core.scenario.AcademicScenarios.getAllAcademicScenarios(12345L)) {
@@ -312,12 +317,17 @@ public class SimulationControlPanel extends VBox {
         comboMeta.setTooltip(new Tooltip("Select or create a global scenario preset combining biotope, climate, and fauna."));
         HBox.setHgrow(comboMeta, Priority.ALWAYS);
         comboMeta.setOnAction(e -> applyMetaPreset(comboMeta.getValue()));
+
+        metaRow.getChildren().addAll(lblMeta, comboMeta);
+
+        HBox presetActionsRow = new HBox(8);
+        presetActionsRow.setAlignment(Pos.CENTER_LEFT);
+        presetActionsRow.getChildren().addAll(bSaveScenario, bDeleteScenario, bExportScenario, bImportScenario);
+
         if (!comboMeta.getItems().isEmpty()) {
             comboMeta.getSelectionModel().selectFirst();
             applyMetaPreset(comboMeta.getValue());
         }
-
-        metaRow.getChildren().addAll(lblMeta, comboMeta, bSaveScenario, bDeleteScenario, bExportScenario, bImportScenario);
 
         VBox descBox = new VBox(4);
         Label lblDesc = new Label("📝 Scientific Scenario Description :");
@@ -639,6 +649,7 @@ public class SimulationControlPanel extends VBox {
 
         scenarioCard.getChildren().addAll(
             metaRow,
+            presetActionsRow,
             descBox,
             new Separator(),
             gridWorldWeather,
@@ -1161,42 +1172,109 @@ public class SimulationControlPanel extends VBox {
                 card.setQueenCount(1);
                 card.setWorkerCount(0);
                 card.setSoldierCount(0);
+                card.setBroodCount(50);
+                card.setInitialFood(200);
             }
         } else if (mLower.contains("amazon") || mLower.contains("atta") || mLower.contains("attine") || mLower.contains("neotropical")) {
             selectComboIfPresent(comboWorld, "Tropical Rainforest (Manaus, BR)");
             selectComboIfPresent(comboWeather, "Tropical");
             areaDescription.setText(I18nManager.getInstance().get("sim.preset.desc.amazon"));
             addSpeciesCard("Fourmi Coupeuse de Feuilles (Atta sexdens)");
+            if (!speciesCardList.isEmpty()) {
+                SpeciesConfigCard card = speciesCardList.get(0);
+                card.setQueenCount(1);
+                card.setWorkerCount(200);
+                card.setSoldierCount(30);
+                card.setBroodCount(250);
+                card.setInitialFood(500);
+            }
         } else if (mLower.contains("granivore") || mLower.contains("messor") || mLower.contains("steppe") || mLower.contains("xeric")) {
             selectComboIfPresent(comboWorld, "Arid Desert (Erg Chebbi, MA)");
             selectComboIfPresent(comboWeather, "Arid");
             areaDescription.setText(I18nManager.getInstance().get("sim.preset.desc.granivore"));
             addSpeciesCard("Fourmi Moissonneuse (Pogonomyrmex barbatus)");
+            if (!speciesCardList.isEmpty()) {
+                SpeciesConfigCard card = speciesCardList.get(0);
+                card.setQueenCount(1);
+                card.setWorkerCount(150);
+                card.setSoldierCount(20);
+                card.setBroodCount(200);
+                card.setInitialFood(500);
+            }
         } else if (mLower.contains("guerre") || mLower.contains("war") || mLower.contains("territoriale") || mLower.contains("competition") || mLower.contains("solenopsis")) {
             selectComboIfPresent(comboWorld, "Temperate Deciduous (Fontainebleau, FR)");
             selectComboIfPresent(comboWeather, "Temperate");
             areaDescription.setText(I18nManager.getInstance().get("sim.preset.desc.war"));
             addSpeciesCard("Fourmi de Feu (Solenopsis invicta)");
+            if (!speciesCardList.isEmpty()) {
+                SpeciesConfigCard card = speciesCardList.get(0);
+                card.setQueenCount(1);
+                card.setWorkerCount(200);
+                card.setSoldierCount(30);
+                card.setBroodCount(200);
+                card.setInitialFood(500);
+            }
             addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
+            if (speciesCardList.size() > 1) {
+                SpeciesConfigCard card2 = speciesCardList.get(1);
+                card2.setQueenCount(1);
+                card2.setWorkerCount(200);
+                card2.setSoldierCount(0);
+                card2.setBroodCount(200);
+                card2.setInitialFood(500);
+            }
         } else if (mLower.contains("rucher") || mLower.contains("beehive") || mLower.contains("apis") || mLower.contains("bee")) {
             selectComboIfPresent(comboWorld, "Temperate Deciduous (Fontainebleau, FR)");
             selectComboIfPresent(comboWeather, "Temperate");
             areaDescription.setText(I18nManager.getInstance().get("sim.preset.desc.beehive"));
             addSpeciesCard("Abeille à Miel (Apis mellifera)");
+            if (!speciesCardList.isEmpty()) {
+                SpeciesConfigCard card = speciesCardList.get(0);
+                card.setQueenCount(1);
+                card.setWorkerCount(500);
+                card.setSoldierCount(0);
+                card.setBroodCount(200);
+                card.setInitialFood(500);
+            }
         } else if (mLower.contains("termite") || mLower.contains("macrotermes") || mLower.contains("cathédrale") || mLower.contains("cathedral")) {
             selectComboIfPresent(comboWorld, "Tropical Rainforest (Manaus, BR)");
             selectComboIfPresent(comboWeather, "Tropical");
             areaDescription.setText(I18nManager.getInstance().get("sim.preset.desc.termites"));
             addSpeciesCard("Termite Souterrain (Reticulitermes flavipes)");
+            if (!speciesCardList.isEmpty()) {
+                SpeciesConfigCard card = speciesCardList.get(0);
+                card.setQueenCount(1);
+                card.setWorkerCount(300);
+                card.setSoldierCount(50);
+                card.setBroodCount(200);
+                card.setInitialFood(500);
+            }
         } else if (mLower.contains("taïga") || mLower.contains("taiga") || mLower.contains("boréale") || mLower.contains("boreal") || mLower.contains("formica")) {
             selectComboIfPresent(comboWorld, "Boreal Taiga (Rovaniemi, FI)");
-            selectComboIfPresent(comboWeather, "Arctic");
+            selectComboIfPresent(comboWeather, "Temperate");
             areaDescription.setText(I18nManager.getInstance().get("sim.preset.desc.taiga"));
             addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
+            if (!speciesCardList.isEmpty()) {
+                SpeciesConfigCard card = speciesCardList.get(0);
+                card.setQueenCount(1);
+                card.setWorkerCount(150);
+                card.setSoldierCount(0);
+                card.setBroodCount(100);
+                card.setInitialFood(500);
+            }
         } else if (mLower.contains("supercolonie") || mLower.contains("supercolony") || mLower.contains("polycalique") || mLower.contains("linepithema")) {
             selectComboIfPresent(comboWorld, "Temperate Deciduous (Fontainebleau, FR)");
             selectComboIfPresent(comboWeather, "Temperate");
             areaDescription.setText(I18nManager.getInstance().get("sim.preset.desc.supercolony"));
+            addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
+            if (!speciesCardList.isEmpty()) {
+                SpeciesConfigCard card = speciesCardList.get(0);
+                card.setQueenCount(5);
+                card.setWorkerCount(1000);
+                card.setSoldierCount(0);
+                card.setBroodCount(500);
+                card.setInitialFood(1000);
+            }
             addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
         }
     }
@@ -2479,16 +2557,20 @@ public class SimulationControlPanel extends VBox {
     }
 
     private int estimateNestCapacity(String nestType) {
-        if (nestType == null) return 350;
+        if (nestType == null) return 25000;
         String lower = nestType.toLowerCase();
-        if (lower.contains("jeune") || lower.contains("young") || lower.contains("tige") || lower.contains("stem") || lower.contains("galle")) {
-            return 150;
-        } else if (lower.contains("mature") || lower.contains("carton") || lower.contains("bivouac") || lower.contains("pot") || lower.contains("cavité") || lower.contains("dôme")) {
+        if (lower.contains("stem") || lower.contains("gall") || lower.contains("galle") || lower.contains("tige") || lower.contains("founding") || lower.contains("claustral")) {
             return 500;
-        } else if (lower.contains("supercolonie") || lower.contains("supercolony") || lower.contains("champignon") || lower.contains("vault") || lower.contains("cathédrale")) {
-            return 2500;
+        } else if (lower.contains("bivouac") || lower.contains("pot") || lower.contains("silk") || lower.contains("paper") || lower.contains("guêpe")) {
+            return 5000;
+        } else if (lower.contains("tree") || lower.contains("cavity") || lower.contains("carton") || lower.contains("comb") || lower.contains("beehive") || lower.contains("ruche")) {
+            return 20000;
+        } else if (lower.contains("subterranean") || lower.contains("burrow") || lower.contains("galerie") || lower.contains("souterrain") || lower.contains("needle") || lower.contains("dôme")) {
+            return 50000;
+        } else if (lower.contains("supercolonie") || lower.contains("supercolony") || lower.contains("fungi") || lower.contains("vault") || lower.contains("cathédrale") || lower.contains("cathedral")) {
+            return 500000;
         }
-        return 350;
+        return 25000;
     }
 
     public record AccessorySpeciesInfo(String name, String role, String description, int defaultCount) {

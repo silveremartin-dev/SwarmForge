@@ -34,7 +34,7 @@ public class AcademicScenarios {
         scenario.setWidth(300);
         scenario.setHeight(300);
         scenario.setDepth(32);
-        scenario.setBiomeName("ARID_SAVANNA");
+        scenario.setBiomeName("TEMPERATE_FOREST");
         scenario.setFoodPatchesCount(25); // Dispersed sparse patches
 
         Map<String, ArchitectureType> neuralEngine = new HashMap<>();
@@ -45,8 +45,8 @@ public class AcademicScenarios {
         fsmEngine.put("WORKER", ArchitectureType.FINITE_STATE_MACHINE);
         fsmEngine.put("QUEEN", ArchitectureType.BDI);
 
-        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Lévy RL)", "COLONY_LEVY", 1, 100, 0, 50, neuralEngine));
-        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Brownian FSM)", "COLONY_BROWNIAN", 1, 100, 0, 50, fsmEngine));
+        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Lévy RL)", "COLONY_LEVY", 1, 100, 0, 500, neuralEngine));
+        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Brownian FSM)", "COLONY_BROWNIAN", 1, 100, 0, 500, fsmEngine));
 
         scenario.addTargetMetric("FORAGING_EFFICIENCY_INDEX");
         scenario.addTargetMetric("MEAN_SEARCH_TIME_PER_ITEM");
@@ -85,15 +85,15 @@ public class AcademicScenarios {
         bdiEngine.put("SOLDIER", ArchitectureType.BDI);
         bdiEngine.put("QUEEN", ArchitectureType.BDI);
 
-        scenario.addColony(new Scenario.ColonySetup("Messor barbarus (BDI Colony)", "COLONY_BDI", 1, 150, 20, 200, bdiEngine));
-
-        scenario.addTargetMetric("TASK_ALLOCATION_ENTROPY");
-        scenario.addTargetMetric("SPECIALIZATION_INDEX");
-        scenario.addTargetMetric("BROOD_SURVIVAL_RATE");
-        scenario.addTargetMetric("QUEEN_HEALTH_INDEX");
-
-        return scenario;
-    }
+        scenario.addColony(new Scenario.ColonySetup("Messor barbarus (BDI Colony)", "COLONY_BDI", 1, 150, 20, 500, bdiEngine));
+ 
+         scenario.addTargetMetric("TASK_ALLOCATION_ENTROPY");
+         scenario.addTargetMetric("SPECIALIZATION_INDEX");
+         scenario.addTargetMetric("BROOD_SURVIVAL_RATE");
+         scenario.addTargetMetric("QUEEN_HEALTH_INDEX");
+ 
+         return scenario;
+     }
 
     /**
      * Scenario 3: Nest Morphogenesis & Subterranean Microclimate.
@@ -113,7 +113,7 @@ public class AcademicScenarios {
         btEngine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
         btEngine.put("QUEEN", ArchitectureType.BDI);
 
-        scenario.addColony(new Scenario.ColonySetup("Lasius niger (Excavators)", "COLONY_DIGGERS", 1, 200, 0, 100, btEngine));
+        scenario.addColony(new Scenario.ColonySetup("Lasius niger (Excavators)", "COLONY_DIGGERS", 1, 200, 0, 500, btEngine));
 
         scenario.addTargetMetric("TUNNEL_FRACTAL_DIMENSION");
         scenario.addTargetMetric("CHAMBER_DEPTH_DISTRIBUTION");
@@ -145,8 +145,8 @@ public class AcademicScenarios {
         argentineEngine.put("WORKER", ArchitectureType.NEURAL_NETWORK);
         argentineEngine.put("SOLDIER", ArchitectureType.NEURAL_NETWORK);
 
-        scenario.addColony(new Scenario.ColonySetup("Lasius niger (Native Monogyne)", "COLONY_LASIUS", 1, 120, 15, 100, lasiusEngine));
-        scenario.addColony(new Scenario.ColonySetup("Linepithema humile (Invasive Polygyne)", "COLONY_ARGENTINE", 3, 250, 30, 150, argentineEngine));
+        scenario.addColony(new Scenario.ColonySetup("Lasius niger (Native Monogyne)", "COLONY_LASIUS", 1, 120, 15, 500, lasiusEngine));
+        scenario.addColony(new Scenario.ColonySetup("Linepithema humile (Invasive Polygyne)", "COLONY_ARGENTINE", 3, 250, 30, 500, argentineEngine));
 
         scenario.addTargetMetric("TERRITORIAL_DOMINANCE_RATIO");
         scenario.addTargetMetric("MORTALITY_CONTEST_RATE");
@@ -173,7 +173,7 @@ public class AcademicScenarios {
         engine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
         engine.put("QUEEN", ArchitectureType.BDI);
 
-        scenario.addColony(new Scenario.ColonySetup("Camponotus ligniperda (Trophallaxis)", "COLONY_TROPH", 1, 100, 0, 100, engine));
+        scenario.addColony(new Scenario.ColonySetup("Camponotus ligniperda (Trophallaxis)", "COLONY_TROPH", 1, 100, 0, 500, engine));
         scenario.addTargetMetric("NUTRIENT_SPREAD_VELOCITY");
         scenario.addTargetMetric("REPRODUCTIVE_CASTING_FEEDING_INDEX");
         return scenario;
@@ -196,7 +196,7 @@ public class AcademicScenarios {
         engine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
         engine.put("QUEEN", ArchitectureType.BDI);
 
-        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Quarantine Group)", "COLONY_EPIDEM", 1, 150, 20, 100, engine));
+        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Quarantine Group)", "COLONY_EPIDEM", 1, 150, 20, 500, engine));
         scenario.addTargetMetric("CONTAGION_RO");
         scenario.addTargetMetric("NECROPHORIC_REMOVAL_EFFICIENCY");
         return scenario;
@@ -218,7 +218,7 @@ public class AcademicScenarios {
         engine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
         engine.put("QUEEN", ArchitectureType.BDI);
 
-        scenario.addColony(new Scenario.ColonySetup("Atta sexdens (Fungi Cultivators)", "COLONY_ATTA", 1, 200, 30, 250, engine));
+        scenario.addColony(new Scenario.ColonySetup("Atta sexdens (Fungi Cultivators)", "COLONY_ATTA", 1, 200, 30, 500, engine));
         scenario.addTargetMetric("FUNGI_BIOMASS_YIELD");
         scenario.addTargetMetric("LEAF_HARVEST_RATE");
         return scenario;
@@ -239,7 +239,7 @@ public class AcademicScenarios {
         Map<String, ArchitectureType> engine = new HashMap<>();
         engine.put("WORKER", ArchitectureType.NEURAL_NETWORK);
 
-        scenario.addColony(new Scenario.ColonySetup("Lasius niger (Stigmergy Team)", "COLONY_STIGMERGY", 1, 180, 0, 50, engine));
+        scenario.addColony(new Scenario.ColonySetup("Lasius niger (Stigmergy Team)", "COLONY_STIGMERGY", 1, 180, 0, 500, engine));
         scenario.addTargetMetric("PATH_SHORTEST_RATIO");
         scenario.addTargetMetric("PHEROMONE_CONCENTRIC_PEAK");
         return scenario;
@@ -271,9 +271,9 @@ public class AcademicScenarios {
         hostEngine.put("QUEEN", ArchitectureType.BDI);
 
         // Polyergus rufescens (Amazon/Slave-maker ants - Raiders)
-        scenario.addColony(new Scenario.ColonySetup("Polyergus rufescens (Amazon Raiding Party)", "COLONY_POLYERGUS", 1, 80, 40, 150, raidingEngine));
+        scenario.addColony(new Scenario.ColonySetup("Polyergus rufescens (Amazon Raiding Party)", "COLONY_POLYERGUS", 1, 80, 40, 500, raidingEngine));
         // Formica fusca (Host/Target Species - Slave Target)
-        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Target Host Colony)", "COLONY_FORMICA", 1, 150, 0, 100, hostEngine));
+        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Target Host Colony)", "COLONY_FORMICA", 1, 150, 0, 500, hostEngine));
 
         scenario.addTargetMetric("PUPAE_CAPTURED_COUNT");
         scenario.addTargetMetric("RAID_COLUMN_COHESION");

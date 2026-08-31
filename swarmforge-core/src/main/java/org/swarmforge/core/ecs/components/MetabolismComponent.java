@@ -8,6 +8,8 @@ import com.artemis.Component;
 public class MetabolismComponent extends Component {
     public float energy = 100f;
     public float maxEnergy = 100f;
+    public float health = 100f;
+    public float maxHealth = 100f;
     public float hunger = 0f;
     public float thirst = 0f;
     public boolean alive = true;
