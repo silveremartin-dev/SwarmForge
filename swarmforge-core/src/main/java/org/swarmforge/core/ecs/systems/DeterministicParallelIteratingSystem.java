@@ -1,7 +1,8 @@
 package org.swarmforge.core.ecs.systems;
 
 import com.artemis.Aspect;
-import com.artemis.systems.EntityProcessingSystem;
+import com.artemis.systems.IteratingSystem;
+import com.artemis.utils.IntBag;
 import java.util.concurrent.ForkJoinPool;
 
 /**
@@ -14,7 +15,7 @@ import java.util.concurrent.ForkJoinPool;
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant (Google DeepMind)
  */
-public abstract class DeterministicParallelIteratingSystem extends EntityProcessingSystem {
+public abstract class DeterministicParallelIteratingSystem extends IteratingSystem {
 
     private static final int PARALLEL_THRESHOLD = 500;
     private final ForkJoinPool pool = ForkJoinPool.commonPool();
@@ -24,7 +25,8 @@ public abstract class DeterministicParallelIteratingSystem extends EntityProcess
     }
 
     @Override
-    protected void processEntities(com.artemis.utils.IntBag entities) {
+    protected void processSystem() {
+        IntBag entities = getEntityIds();
         int size = entities.size();
         if (size < PARALLEL_THRESHOLD) {
             // Single-threaded fast path
@@ -50,3 +52,4 @@ public abstract class DeterministicParallelIteratingSystem extends EntityProcess
         }
     }
 }
+
