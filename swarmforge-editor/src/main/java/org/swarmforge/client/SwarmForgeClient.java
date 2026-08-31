@@ -586,8 +586,8 @@ public class SwarmForgeClient extends Application {
                         this.localSimulation.reset(0);
                         this.localSimulation.setMasterSeed(seed);
 
-                        org.swarmforge.client.ui.SimulationControlPanel.ScenarioSetupSnapshot setupSnap = simControlPanel.getLastSetupSnapshot();
-                        List<org.swarmforge.client.ui.SimulationControlPanel.SpeciesConfigSnapshot> speciesSnapshots = 
+                        org.swarmforge.client.ui.ScenarioSetupSnapshot setupSnap = simControlPanel.getLastSetupSnapshot();
+                        List<org.swarmforge.client.ui.SpeciesConfigSnapshot> speciesSnapshots = 
                             (setupSnap != null) ? setupSnap.speciesSnapshots() : List.of();
 
                         int totalCols = speciesSnapshots.isEmpty() ? 1 : speciesSnapshots.size();
@@ -595,7 +595,7 @@ public class SwarmForgeClient extends Application {
                         System.out.println("[INFO] [SwarmForge Engine] Instanciation de " + totalCols + " colonie(s)...");
 
                         for (int colIdx = 0; colIdx < totalCols; colIdx++) {
-                                org.swarmforge.client.ui.SimulationControlPanel.SpeciesConfigSnapshot card = 
+                                org.swarmforge.client.ui.SpeciesConfigSnapshot card = 
                                     (!speciesSnapshots.isEmpty()) ? speciesSnapshots.get(colIdx) : null;
 
                                 String selSpecies = (card != null) ? card.speciesName() : (setupSnap != null ? setupSnap.selectedSpecies() : "Lasius niger");

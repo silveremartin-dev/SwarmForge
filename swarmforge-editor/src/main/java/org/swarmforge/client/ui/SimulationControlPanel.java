@@ -96,64 +96,7 @@ public class SimulationControlPanel extends VBox {
     private final List<SpeciesConfigCard> speciesCardList = new ArrayList<>();
     private volatile ScenarioSetupSnapshot lastSetupSnapshot;
 
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
-    public record AccessoryConfigSnapshot(
-        String name,
-        String role,
-        boolean enabled,
-        int initialCount,
-        String renewalStrategy
-    ) {}
 
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
-    public record SpeciesConfigSnapshot(
-        String speciesName,
-        String nestType,
-        int queenCount,
-        int workerCount,
-        int soldierCount,
-        int broodCount,
-        int initialFood,
-        ArchitectureType workerEngine,
-        ArchitectureType soldierEngine,
-        ArchitectureType queenEngine,
-        List<AccessoryConfigSnapshot> accessorySnapshots
-    ) {}
-
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
-    public record ScenarioSetupSnapshot(
-        long seed,
-        String startDateTimeIso,
-        float simulationStepSeconds,
-        double maxDurationValue,
-        String maxDurationUnit,
-        int minPopStopThreshold,
-        String description,
-        String selectedWorld,
-        String selectedWeather,
-        String selectedSpecies,
-        String selectedNestType,
-        int queenCount,
-        int workerCount,
-        int soldierCount,
-        int broodCount,
-        List<SpeciesConfigSnapshot> speciesSnapshots
-    ) {
-        public ScenarioSetupSnapshot(
-            long seed,
-            String selectedWorld,
-            String selectedWeather,
-            String selectedSpecies,
-            String selectedNestType,
-            int queenCount,
-            int workerCount,
-            int soldierCount,
-            int broodCount,
-            List<SpeciesConfigSnapshot> speciesSnapshots
-        ) {
-            this(seed, null, 0.0166f, 100.0, "Days (d)", 0, "", selectedWorld, selectedWeather, selectedSpecies, selectedNestType, queenCount, workerCount, soldierCount, broodCount, speciesSnapshots);
-        }
-    }
 
     public boolean isCreatingScenario() {
         return isCreatingScenario;

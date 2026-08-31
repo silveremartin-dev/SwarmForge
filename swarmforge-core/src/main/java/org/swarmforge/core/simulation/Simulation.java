@@ -803,6 +803,14 @@ public class Simulation {
         return tickCount.get();
     }
 
+    public void setTickCount(long ticks) {
+        this.tickCount.set(ticks);
+    }
+
+    public float getElapsedSeconds() {
+        return tickCount.get() * simulationStepSeconds;
+    }
+
     public State getState() {
         return state.get();
     }
