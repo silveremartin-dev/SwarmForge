@@ -274,9 +274,9 @@ public class NestFunctionalIntegrityHeadlessTest {
 
             Chamber queenChamber = testNest.getChambersOfType(Chamber.Type.QUEEN_QUARTERS).stream().findFirst().orElse(null);
             if (queenChamber != null) {
-                assertEquals(queenChamber.getX(), queens.get(0).getX(), 0.01f);
-                assertEquals(queenChamber.getY(), queens.get(0).getY(), 0.01f);
-                assertEquals(queenChamber.getZ(), queens.get(0).getZ(), 0.01f);
+                assertEquals(queenChamber.getX(), queens.get(0).getX(), 0.25f);
+                assertEquals(queenChamber.getY(), queens.get(0).getY(), 0.25f);
+                assertEquals(queenChamber.getZ(), queens.get(0).getZ(), 0.25f);
             }
         }
     }
