@@ -698,7 +698,8 @@ public class StatisticsDashboard extends VBox {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Export Detailed Statistical Analysis (CSV / Excel)");
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files (*.csv)", "*.csv"));
-        fileChooser.setInitialFileName("swarmforge_analytics_" + System.currentTimeMillis() + ".csv");
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        fileChooser.setInitialFileName("swarmforge_analytics_" + timestamp + ".csv");
 
         File file = fileChooser.showSaveDialog(getScene().getWindow());
         if (file != null) {

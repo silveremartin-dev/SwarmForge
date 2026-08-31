@@ -21,6 +21,7 @@ import org.swarmforge.core.event.SimulationEvent;
 import javafx.collections.transformation.SortedList;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
@@ -532,6 +533,8 @@ public class EventLogPane extends BorderPane {
     private void exportEvents() {
         javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
         fileChooser.setTitle("Export Event Log");
+        String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(LocalDateTime.now());
+        fileChooser.setInitialFileName("swarmforge_event_log_" + timestamp + ".csv");
         fileChooser.getExtensionFilters().addAll(
                 new javafx.stage.FileChooser.ExtensionFilter("Fichiers CSV (*.csv)", "*.csv"),
                 new javafx.stage.FileChooser.ExtensionFilter("Fichiers JSON (*.json)", "*.json"));
