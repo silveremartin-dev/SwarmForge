@@ -81,9 +81,9 @@ public class PheromoneVisualizer {
         // and we want 0 to D)
         // Actually, usually Quad is 0,0 bottom left.
         // Let's set translation to (0, 0.2f, 0) and verify orientation later.
-        this.overlayGeom.setLocalTranslation(0, 0.2f, 0);
-        // We probably need to flip Z or something if it renders backward, but texture
-        // map handles U,V.
+        // Correct rotation for XZ plane: +90 deg around X maps (x, y) to (x, 0, z)
+        this.overlayGeom.rotate(1.5708f, 0, 0); // Rotate +90 deg around X
+        this.overlayGeom.setLocalTranslation(0, 0.15f, 0); // Offset slightly above terrain (y=0.15)
 
         rootNode.attachChild(overlayGeom);
         initialized = true;
@@ -104,10 +104,10 @@ public class PheromoneVisualizer {
 
             int[] coords = org.swarmforge.core.spatial.Morton3D.decode(key);
             int x = coords[0];
-            int y = coords[1]; // Correct mapping: coords[1] is Y depth (horizontal terrain position)
+            int z = coords[2]; // Correct mapping: coords[2] is Z depth (horizontal ground plane)
 
-            // Project 3D to 2D map (Top-down view)
-            if (x >= 0 && x < width && y >= 0 && y < depth) {
+            // Project 3D to 2D map (Top-down ground view)
+            if (x >= 0 && x < width && z >= 0 && z < depth) {
                 // Color mapping:
                 // 0: TO_HOME (Blue)
                 // 1: TO_FOOD (Green/Red)
@@ -124,7 +124,7 @@ public class PheromoneVisualizer {
                 float a = Math.min(1.0f, (food + homing + danger) * 2.0f);
 
                 if (a > 0.02f) {
-                    setPixel(x, y, r, g, b, a); // Y maps to texture depth
+                    setPixel(x, z, r, g, b, a); // Z maps to texture depth
                 }
             }
         }

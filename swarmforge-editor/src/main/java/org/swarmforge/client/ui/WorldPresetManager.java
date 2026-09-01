@@ -38,11 +38,11 @@ public class WorldPresetManager {
                 "Fontainebleau, FR",
                 25.0, 3.0, 0.5, 48.4047, 2.7016, "FOREST",
                 0.45, 0.45, 65.0, 0.7, 0.3, 0.08,
-                50, 20, 20, 10, 20,
+                40, 20, 15, 15, 5, 0, 5, 0,
                 0, 70, 10, 0, 0, 10, 0, 10,
                 "774829", 40.0, 60.0, 50.0, 40.0,
                 true, true, true, false, true, true, true,
-                true, 120.0, 0.3, 2.0, 15.0,
+                true, 120.0, 0.3, 2.0, 1500.0,
                 8, 3, 3
         ));
 
@@ -51,11 +51,11 @@ public class WorldPresetManager {
                 "Erg Chebbi, MA",
                 25.0, 3.0, 0.8, 31.1444, -3.9708, "DESERT",
                 0.65, 0.12, 70.0, 0.3, 0.5, 0.02,
-                5, 80, 0, 15, 0,
+                0, 75, 5, 0, 5, 0, 15, 0,
                 3, 0, 0, 15, 75, 0, 0, 10,
                 "284910", 10.0, 20.0, 5.0, 20.0,
                 false, false, true, false, false, false, false,
-                false, 60.0, 0.0, 0.0, 45.0,
+                false, 60.0, 0.0, 0.0, 3500.0,
                 3, 1, 6
         ));
 
@@ -64,11 +64,11 @@ public class WorldPresetManager {
                 "Manaus, BR",
                 25.0, 3.0, 0.4, -3.1190, -60.0217, "TROPICAL",
                 0.40, 0.85, 50.0, 0.6, 0.4, 0.12,
-                45, 5, 40, 10, 35,
+                35, 10, 20, 25, 0, 0, 0, 10,
                 2, 0, 5, 80, 0, 0, 5, 10,
                 "918273", 80.0, 70.0, 80.0, 60.0,
                 true, true, true, true, true, false, true,
-                true, 250.0, 0.8, 4.0, 8.0,
+                true, 250.0, 0.8, 4.0, 600.0,
                 12, 5, 2
         ));
 
@@ -77,11 +77,11 @@ public class WorldPresetManager {
                 "Mont Blanc, FR",
                 25.0, 3.0, 0.6, 45.8326, 6.8652, "ALPINE",
                 0.90, 0.40, 85.0, 0.8, 0.2, 0.15,
-                15, 15, 10, 60, 5,
+                10, 10, 10, 10, 15, 0, 45, 0,
                 1, 10, 75, 0, 0, 10, 0, 5,
                 "551928", 25.0, 50.0, 40.0, 50.0,
                 false, true, true, false, true, true, true,
-                true, 90.0, 1.2, 1.0, 25.0,
+                true, 90.0, 1.2, 1.0, 2500.0,
                 5, 2, 8
         ));
 
@@ -90,11 +90,11 @@ public class WorldPresetManager {
                 "Svalbard, NO",
                 25.0, 3.0, 0.5, 78.2232, 15.6469, "ARCTIC",
                 0.25, 0.30, 90.0, 0.9, 0.1, 0.04,
-                35, 10, 15, 40, 15,
+                15, 10, 15, 10, 10, 25, 15, 0,
                 4, 15, 15, 0, 0, 60, 0, 10,
                 "109283", 15.0, 30.0, 15.0, 25.0,
                 false, false, true, false, true, false, false,
-                false, 50.0, 0.1, 3.0, 5.0,
+                false, 50.0, 0.1, 3.0, 1000.0,
                 2, 1, 5
         ));
 
@@ -103,11 +103,11 @@ public class WorldPresetManager {
                 "Serengeti, TZ",
                 25.0, 3.0, 0.5, -2.3333, 34.8333, "SAVANNA",
                 0.35, 0.28, 60.0, 0.5, 0.4, 0.05,
-                30, 35, 25, 10, 10,
+                15, 45, 15, 15, 5, 0, 5, 0,
                 6, 0, 0, 90, 0, 0, 0, 10,
                 "381920", 50.0, 40.0, 30.0, 30.0,
                 false, true, true, false, false, false, false,
-                true, 150.0, 0.4, 1.0, 30.0,
+                true, 150.0, 0.4, 1.0, 2500.0,
                 6, 4, 3
         ));
 
@@ -116,11 +116,11 @@ public class WorldPresetManager {
                 "Corsica, FR",
                 25.0, 3.0, 0.5, 42.1500, 9.1500, "MEDITERRANEAN",
                 0.55, 0.35, 70.0, 0.6, 0.3, 0.06,
-                35, 25, 15, 25, 15,
+                25, 25, 15, 15, 10, 0, 10, 0,
                 1, 15, 70, 0, 0, 0, 0, 15,
                 "492810", 35.0, 50.0, 45.0, 45.0,
                 true, true, true, false, true, true, true,
-                true, 80.0, 0.3, 1.0, 20.0,
+                true, 80.0, 0.3, 1.0, 2000.0,
                 7, 3, 5
         ));
 
@@ -129,11 +129,11 @@ public class WorldPresetManager {
                 "Rovaniemi, FI",
                 25.0, 3.0, 0.5, 66.5039, 25.7294, "TAIGA",
                 0.40, 0.55, 65.0, 0.75, 0.25, 0.07,
-                40, 20, 15, 25, 25,
+                30, 15, 15, 15, 5, 10, 10, 0,
                 1, 10, 80, 0, 0, 10, 0, 10,
                 "618293", 30.0, 70.0, 70.0, 60.0,
                 true, false, true, true, true, true, true,
-                true, 140.0, 0.4, 3.0, 10.0,
+                true, 140.0, 0.4, 3.0, 1200.0,
                 9, 4, 3
         ));
 
@@ -142,11 +142,11 @@ public class WorldPresetManager {
                 "Everglades, US",
                 25.0, 3.0, 0.4, 25.2866, -80.8987, "WETLAND",
                 0.20, 0.90, 40.0, 0.4, 0.5, 0.10,
-                55, 10, 30, 5, 40,
+                30, 5, 25, 20, 0, 15, 0, 5,
                 2, 0, 10, 70, 0, 0, 10, 10,
                 "829104", 75.0, 65.0, 60.0, 50.0,
                 true, true, true, true, true, false, true,
-                true, 300.0, 0.2, 5.0, 2.0,
+                true, 300.0, 0.2, 5.0, 150.0,
                 8, 6, 2
         ));
 
@@ -155,11 +155,11 @@ public class WorldPresetManager {
                 "Astana, KZ",
                 25.0, 3.0, 0.6, 51.1694, 71.4491, "STEPPE",
                 0.30, 0.30, 75.0, 0.65, 0.35, 0.04,
-                50, 25, 20, 5, 15,
+                35, 25, 15, 15, 5, 0, 5, 0,
                 4, 20, 10, 0, 0, 50, 0, 20,
                 "501928", 65.0, 30.0, 20.0, 25.0,
                 false, true, true, false, false, false, false,
-                true, 70.0, 0.3, 1.0, 25.0,
+                true, 70.0, 0.3, 1.0, 2500.0,
                 4, 2, 4
         ));
 
@@ -170,7 +170,7 @@ public class WorldPresetManager {
                                            double lat, double lon, String biome,
                                            double roughness, double baseHumidity, double compaction,
                                            double stratification, double mixingRate, double voidDensity,
-                                           int earth, int sand, int clay, int stone, int organic,
+                                           int earth, int sand, int silt, int clay, int gravel, int peat, int stone, int organic,
                                            int treeSpeciesIdx, int oak, int pine, int acacia, int cactus, int birch, int bamboo, int deadWood,
                                            String floraSeed, double edibleDensity, double nonEdibleDensity, double leafLitter, double twigDebris,
                                            boolean aphidPlant, boolean nectarFlowers, boolean seedGrass, boolean fungusFoliage, boolean moss, boolean pineLitter, boolean fernObstacle,
@@ -193,7 +193,10 @@ public class WorldPresetManager {
         cfg.put("soilComposition", Map.of(
                 "earth", earth,
                 "sand", sand,
+                "silt", silt,
                 "clay", clay,
+                "gravel", gravel,
+                "peat", peat,
                 "stone", stone,
                 "organic", organic
         ));

@@ -322,6 +322,7 @@ public class SwarmForgeClient extends Application {
 
                 // 2. Content Area Sub-Tabs
                 this.simSubTabs = new TabPane();
+                this.simSubTabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> update3DRenderingState());
                 TabPane subTabs = this.simSubTabs;
 
                 // --- Controls Tab ---
@@ -586,6 +587,14 @@ public class SwarmForgeClient extends Application {
                         this.localSimulation.reset(0);
                         this.localSimulation.setMasterSeed(seed);
 
+                        String selWeatherName = (simControlPanel != null) ? simControlPanel.getSelectedWeather() : "Temperate";
+                        org.swarmforge.client.ui.WeatherPresetManager wPresetMgr = new org.swarmforge.client.ui.WeatherPresetManager();
+                        Map<String, Object> wProfile = wPresetMgr.get(selWeatherName);
+                        if (wProfile == null) wProfile = wPresetMgr.get("Temperate");
+                        if (wProfile != null && this.localSimulation.getWeather() != null) {
+                            this.localSimulation.getWeather().applyClimateProfile(wProfile);
+                        }
+
                         org.swarmforge.client.ui.ScenarioSetupSnapshot setupSnap = simControlPanel.getLastSetupSnapshot();
                         List<org.swarmforge.client.ui.SpeciesConfigSnapshot> speciesSnapshots = 
                             (setupSnap != null) ? setupSnap.speciesSnapshots() : List.of();
@@ -616,10 +625,23 @@ public class SwarmForgeClient extends Application {
                                         else if (selSpecies.contains("Termite") || selSpecies.contains("Macrotermes")) speciesKey = "Macrotermes";
                                 }
 
-                                org.swarmforge.core.spatial.OptimalColonyPlacementEngine.PlacementResult pos =
-                                        org.swarmforge.core.spatial.OptimalColonyPlacementEngine.calculateOptimalPosition(
-                                                this.lastGeneratedTerrarium, speciesKey, colIdx, totalCols, "Optimal Multi-Territory Cluster"
-                                        );
+                                String placementStrategy = (card != null && card.placementStrategy() != null) ? card.placementStrategy() : "Optimal Multi-Territory Cluster";
+                                double customX = (card != null) ? card.customX() : 0.0;
+                                double customZ = (card != null) ? card.customZ() : 0.0;
+
+                                org.swarmforge.core.spatial.OptimalColonyPlacementEngine.PlacementResult pos;
+                                if (placementStrategy.contains("Manual") || placementStrategy.contains("Manuel")) {
+                                    int w = this.lastGeneratedTerrarium != null ? this.lastGeneratedTerrarium.getWidth() : 64;
+                                    int h = this.lastGeneratedTerrarium != null ? this.lastGeneratedTerrarium.getHeight() : 64;
+                                    float targetX = (float) Math.max(2, Math.min(w - 2, (w / 2.0) + customX));
+                                    float targetY = (float) Math.max(2, Math.min(h - 2, (h / 2.0) + customZ));
+                                    float surfZ = this.lastGeneratedTerrarium != null ? this.lastGeneratedTerrarium.getSurfaceElevation(targetX, targetY) : 0f;
+                                    pos = new org.swarmforge.core.spatial.OptimalColonyPlacementEngine.PlacementResult(targetX, targetY, surfZ, "Manual Placement");
+                                } else {
+                                    pos = org.swarmforge.core.spatial.OptimalColonyPlacementEngine.calculateOptimalPosition(
+                                            this.lastGeneratedTerrarium, speciesKey, colIdx, totalCols, placementStrategy
+                                    );
+                                }
 
                                 System.out.println("[INFO] [SwarmForge Engine]   -> Colonie #" + (colIdx + 1) + ": " + speciesKey +
                                         " [X=" + String.format("%.1f", pos.x()) + ", Y=" + String.format("%.1f", pos.y()) + "] | Reines: " + queens +
@@ -974,7 +996,7 @@ public class SwarmForgeClient extends Application {
                                         hasRiverInWorld,
                                         popCount,
                                         gameView != null && gameView.getGameApp() != null ? gameView.getGameApp().getCameraDepth() : 0.0,
-                                        isSimRunning
+                                        isSimRunning && isSim3DFocused()
                                     );
                                 }
 
@@ -1060,7 +1082,7 @@ public class SwarmForgeClient extends Application {
 
                 String disabledMsg = i18n.get("tab.disabled.requires_simulation");
                 if (disabledMsg == null || disabledMsg.startsWith("!")) {
-                        disabledMsg = "⚠️ Veuillez d'abord appliquer et créer un scénario pour accéder à cet onglet.";
+                        disabledMsg = "⚠ Veuillez d'abord appliquer et créer un scénario pour accéder à cet onglet.";
                 }
 
                 Tooltip disabledTooltip = !enabled ? createWarningTooltip(disabledMsg) : null;
@@ -1529,7 +1551,7 @@ public class SwarmForgeClient extends Application {
                 CheckBox chkMinimap = new CheckBox();
                 chkMinimap.textProperty().bind(i18n.createStringBinding("sidebar.chk.minimap"));
                 chkMinimap.setSelected(true);
-                chkMinimap.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkMinimap.setStyle("-fx-font-size: 11px;");
                 Tooltip ttMinimap = new Tooltip();
                 ttMinimap.textProperty().bind(i18n.createStringBinding("sidebar.chk.minimap.tt"));
                 chkMinimap.setTooltip(ttMinimap);
@@ -1538,7 +1560,7 @@ public class SwarmForgeClient extends Application {
                 CheckBox chkTerrain = new CheckBox();
                 chkTerrain.textProperty().bind(i18n.createStringBinding("sidebar.chk.terrain"));
                 chkTerrain.setSelected(true);
-                chkTerrain.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkTerrain.setStyle("-fx-font-size: 11px;");
                 chkTerrain.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setTerrainVisible(b);
                         simWorldViewer.setTerrainVisible(b);
@@ -1547,7 +1569,7 @@ public class SwarmForgeClient extends Application {
                 CheckBox chkTrees = new CheckBox();
                 chkTrees.textProperty().bind(i18n.createStringBinding("sidebar.chk.trees"));
                 chkTrees.setSelected(true);
-                chkTrees.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkTrees.setStyle("-fx-font-size: 11px;");
                 Tooltip ttTrees = new Tooltip();
                 ttTrees.textProperty().bind(i18n.createStringBinding("sidebar.chk.trees.tt"));
                 chkTrees.setTooltip(ttTrees);
@@ -1556,7 +1578,7 @@ public class SwarmForgeClient extends Application {
                 CheckBox chkSkirt = new CheckBox();
                 chkSkirt.textProperty().bind(i18n.createStringBinding("sidebar.chk.skirt"));
                 chkSkirt.setSelected(true);
-                chkSkirt.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkSkirt.setStyle("-fx-font-size: 11px;");
                 Tooltip ttSkirt = new Tooltip();
                 ttSkirt.textProperty().bind(i18n.createStringBinding("sidebar.chk.skirt.tt"));
                 chkSkirt.setTooltip(ttSkirt);
@@ -1567,13 +1589,13 @@ public class SwarmForgeClient extends Application {
                 sliceSlider.valueProperty().addListener((o, a, b) -> simWorldViewer.setSlicePlane(b.doubleValue()));
                 Label sliceLbl = new Label();
                 sliceLbl.textProperty().bind(i18n.createStringBinding("sidebar.lbl.slice"));
-                sliceLbl.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+                sliceLbl.setStyle("-fx-font-size: 10px;");
                 HBox sliceBox = new HBox(6, sliceLbl, sliceSlider);
 
                 CheckBox chkNid = new CheckBox();
                 chkNid.textProperty().bind(i18n.createStringBinding("sidebar.chk.nest"));
                 chkNid.setSelected(true);
-                chkNid.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkNid.setStyle("-fx-font-size: 11px;");
                 chkNid.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setTunnelsVisible(b);
                         simWorldViewer.setGalleriesVisible(b);
@@ -1582,7 +1604,7 @@ public class SwarmForgeClient extends Application {
                 CheckBox chkPheromonesLayer = new CheckBox();
                 chkPheromonesLayer.textProperty().bind(i18n.createStringBinding("sidebar.chk.pheromones"));
                 chkPheromonesLayer.setSelected(true);
-                chkPheromonesLayer.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkPheromonesLayer.setStyle("-fx-font-size: 11px;");
                 chkPheromonesLayer.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setPheromonesVisible(b);
                         simWorldViewer.setPheromonesVisible(b);
@@ -1613,7 +1635,7 @@ public class SwarmForgeClient extends Application {
                 CheckBox chkAntsLayer = new CheckBox();
                 chkAntsLayer.textProperty().bind(i18n.createStringBinding("sidebar.chk.ants"));
                 chkAntsLayer.setSelected(true);
-                chkAntsLayer.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkAntsLayer.setStyle("-fx-font-size: 11px;");
                 chkAntsLayer.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setAntsVisible(b);
                         simWorldViewer.setColonyVisible(b);
@@ -1622,7 +1644,7 @@ public class SwarmForgeClient extends Application {
                 CheckBox chkWeatherLayer = new CheckBox();
                 chkWeatherLayer.textProperty().bind(i18n.createStringBinding("sidebar.chk.weather"));
                 chkWeatherLayer.setSelected(true);
-                chkWeatherLayer.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 11px;");
+                chkWeatherLayer.setStyle("-fx-font-size: 11px;");
                 chkWeatherLayer.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setWeatherVisible(b);
                         simWorldViewer.setWeatherVisible(b);
@@ -1646,13 +1668,13 @@ public class SwarmForgeClient extends Application {
                 });
                 Label volLbl = new Label();
                 volLbl.textProperty().bind(i18n.createStringBinding("sidebar.audio.volume"));
-                volLbl.setStyle("-fx-text-fill: #aaa; -fx-font-size: 10px;");
+                volLbl.setStyle("-fx-font-size: 10px;");
                 HBox volBox = new HBox(6, volLbl, masterVolSlider);
 
                 CheckBox chkAmbientSound = new CheckBox();
                 chkAmbientSound.textProperty().bind(i18n.createStringBinding("sidebar.audio.ambient"));
                 chkAmbientSound.setSelected(audioMgr.isAmbientEnabled());
-                chkAmbientSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkAmbientSound.setStyle("-fx-font-size: 10px;");
                 Tooltip ttAmb = new Tooltip();
                 ttAmb.textProperty().bind(i18n.createStringBinding("sidebar.audio.ambient.tt"));
                 chkAmbientSound.setTooltip(ttAmb);
@@ -1661,7 +1683,7 @@ public class SwarmForgeClient extends Application {
                 CheckBox chkRiverSound = new CheckBox();
                 chkRiverSound.textProperty().bind(i18n.createStringBinding("sidebar.audio.river"));
                 chkRiverSound.setSelected(audioMgr.isRiverEnabled());
-                chkRiverSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkRiverSound.setStyle("-fx-font-size: 10px;");
                 Tooltip ttRiv = new Tooltip();
                 ttRiv.textProperty().bind(i18n.createStringBinding("sidebar.audio.river.tt"));
                 chkRiverSound.setTooltip(ttRiv);
@@ -1670,7 +1692,7 @@ public class SwarmForgeClient extends Application {
                 CheckBox chkWeatherSound = new CheckBox();
                 chkWeatherSound.textProperty().bind(i18n.createStringBinding("sidebar.audio.weather"));
                 chkWeatherSound.setSelected(audioMgr.isWeatherEnabled());
-                chkWeatherSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkWeatherSound.setStyle("-fx-font-size: 10px;");
                 Tooltip ttWea = new Tooltip();
                 ttWea.textProperty().bind(i18n.createStringBinding("sidebar.audio.weather.tt"));
                 chkWeatherSound.setTooltip(ttWea);
@@ -1679,7 +1701,7 @@ public class SwarmForgeClient extends Application {
                 CheckBox chkInsectSound = new CheckBox();
                 chkInsectSound.textProperty().bind(i18n.createStringBinding("sidebar.audio.insect"));
                 chkInsectSound.setSelected(audioMgr.isInsectEnabled());
-                chkInsectSound.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+                chkInsectSound.setStyle("-fx-font-size: 10px;");
                 Tooltip ttIns = new Tooltip();
                 ttIns.textProperty().bind(i18n.createStringBinding("sidebar.audio.insect.tt"));
                 chkInsectSound.setTooltip(ttIns);
@@ -1832,10 +1854,14 @@ public class SwarmForgeClient extends Application {
                 return rootPane;
         }
 
-        private void update3DRenderingState() {
+        private boolean isSim3DFocused() {
                 boolean isSimTabSelected = (mainTabs != null && mainTabs.getSelectionModel().getSelectedItem() == simTab);
                 boolean isVisualSubTabSelected = (simSubTabs == null || simSubTabs.getSelectionModel().getSelectedItem() == visualTab);
-                boolean sim3DFocused = isSimTabSelected && isVisualSubTabSelected;
+                return isSimTabSelected && isVisualSubTabSelected;
+        }
+
+        private void update3DRenderingState() {
+                boolean sim3DFocused = isSim3DFocused();
 
                 if (simWorldViewer != null) {
                         simWorldViewer.setActive(sim3DFocused);
@@ -1845,6 +1871,17 @@ public class SwarmForgeClient extends Application {
                 if (worldEditorPane != null) {
                         worldEditorPane.setActive(isWorldTabSelected);
                 }
+
+                boolean isSimRunning = (localSimulation != null && localSimulation.isRunning());
+                org.swarmforge.client.audio.SimulationAudioManager.getInstance().updateState(
+                        simControlPanel != null ? simControlPanel.getSelectedWorld() : "Forest",
+                        "Clear",
+                        "SUMMER",
+                        false,
+                        0,
+                        simWorldViewer != null ? simWorldViewer.getZoom() : 7.5,
+                        isSimRunning && sim3DFocused
+                );
         }
 
         private Node createWorldEditor() {
@@ -2103,7 +2140,7 @@ public class SwarmForgeClient extends Application {
 
                                         org.swarmforge.client.audio.SimulationAudioManager.getInstance().setWindAndPrecipitation(windSpd, rainRate);
                                         org.swarmforge.client.audio.SimulationAudioManager.getInstance().updateState(
-                                                "Forest", weather, season, hasRiver, popCount, zoom, isPlaying
+                                                "Forest", weather, season, hasRiver, popCount, zoom, isPlaying && isSim3DFocused()
                                         );
                                 }
 
@@ -2144,18 +2181,22 @@ public class SwarmForgeClient extends Application {
                         int h = lastGeneratedTerrarium.getHeight();
 
                         org.swarmforge.core.world.NestGenerator.NestType type = org.swarmforge.core.world.NestGenerator.NestType.SIMPLE;
-                        String typeStr = (String) config.get("nestType");
+                        String typeStr = config.get("architecture") != null ? (String) config.get("architecture") : (String) config.get("nestType");
                         if (typeStr != null) {
-                                if (typeStr.contains("Mature"))
-                                        type = org.swarmforge.core.world.NestGenerator.NestType.MATURE;
-                                else if (typeStr.contains("Complex"))
-                                        type = org.swarmforge.core.world.NestGenerator.NestType.MOUND; // Map Complex ->
-                                                                                                       // Mound for
-                                                                                                       // L-system
-                                                                                                       // variety
-                                else if (typeStr.contains("Leafcutter"))
-                                        type = org.swarmforge.core.world.NestGenerator.NestType.TREE; // Just for visual
-                                                                                                      // difference
+                                String u = typeStr.toUpperCase();
+                                if (u.contains("CATHEDRAL") || u.contains("TERMITE")) type = org.swarmforge.core.world.NestGenerator.NestType.CATHEDRAL_MOUND;
+                                else if (u.contains("WAX_COMB") || u.contains("HEXAGONAL") || u.contains("BEEHIVE")) type = org.swarmforge.core.world.NestGenerator.NestType.WAX_COMB_HEXAGONAL;
+                                else if (u.contains("WAX_POTS") || u.contains("CLUSTER") || u.contains("BOMBUS")) type = org.swarmforge.core.world.NestGenerator.NestType.WAX_POTS_CLUSTER;
+                                else if (u.contains("PAPER") || u.contains("PEDUNCULATE") || u.contains("WASPS")) type = org.swarmforge.core.world.NestGenerator.NestType.PAPER_PEDUNCULATE;
+                                else if (u.contains("SILK") || u.contains("LEAF") || u.contains("WEAVER")) type = org.swarmforge.core.world.NestGenerator.NestType.ARBOREAL_SILK_LEAF;
+                                else if (u.contains("FUNGI") || u.contains("VAULT") || u.contains("LEAFCUTTER") || u.contains("ATTA")) type = org.swarmforge.core.world.NestGenerator.NestType.SUBTERRANEAN_FUNGI_VAULT;
+                                else if (u.contains("CARTON")) type = org.swarmforge.core.world.NestGenerator.NestType.CARTON_NEST;
+                                else if (u.contains("BAMBOO") || u.contains("STEM")) type = org.swarmforge.core.world.NestGenerator.NestType.BAMBOO_STEM_NEST;
+                                else if (u.contains("BIVOUAC")) type = org.swarmforge.core.world.NestGenerator.NestType.BIVOUAC_LIVING_NEST;
+                                else if (u.contains("HOLLOW") || u.contains("TRUNK") || u.contains("TREE")) type = org.swarmforge.core.world.NestGenerator.NestType.TREE;
+                                else if (u.contains("MOUND") || u.contains("SURFACE_MOUND")) type = org.swarmforge.core.world.NestGenerator.NestType.MOUND;
+                                else if (u.contains("MATURE")) type = org.swarmforge.core.world.NestGenerator.NestType.MATURE;
+                                else type = org.swarmforge.core.world.NestGenerator.NestType.SIMPLE;
                         }
 
                         org.swarmforge.core.world.NestGenerator generator = new org.swarmforge.core.world.NestGenerator(
@@ -2177,22 +2218,34 @@ public class SwarmForgeClient extends Application {
                         }
 
                         // Generate in center
-                        int chambers = generator.generate(w / 2, h / 2, 32, type, 1.0f); // Assuming z=32 surface
-                                                                                         // roughly
+                        int chambers = generator.generate(w / 2, h / 2, 32, type, 1.0f);
+
+                        // Update live simulation colonies' TunnelNetworks & Terrarium carving
+                        if (localSimulation != null) {
+                                float maxDepthVal = config.containsKey("depth") ? ((Number) config.get("depth")).floatValue() : 50.0f;
+                                float tunnelWidthVal = config.containsKey("tunnelWidth") ? ((Number) config.get("tunnelWidth")).floatValue() : 2.0f;
+                                String archName = typeStr != null ? typeStr : "BURROW_UNDERGROUND";
+
+                                if (!localSimulation.getColonies().isEmpty()) {
+                                        for (org.swarmforge.core.domain.Colony colony : localSimulation.getColonies()) {
+                                                if (colony.getTunnelNetwork() != null) {
+                                                        colony.getTunnelNetwork().rebuildForArchitecture(
+                                                                colony.getNestX(), colony.getNestY(), colony.getNestZ(),
+                                                                archName, colony, maxDepthVal, tunnelWidthVal, 1.0f
+                                                        );
+                                                }
+                                        }
+                                }
+                        }
 
                         // Refresh view
                         if (gameView != null) {
                                 gameView.getGameApp().renderTerrarium(lastGeneratedTerrarium);
                         }
 
-                        // Update local sim if running
-                        if (localSimulation != null) {
-                                // Harder to update live sim geometry on the fly without reset, but for preview
-                                // it's okay
-                                // Ideally we restart sim
-                                localSimulation = new org.swarmforge.core.simulation.Simulation(lastGeneratedTerrarium);
-                                localSimulation.setTicksPerSecond(20);
-                                startLocalSimulationUpdates();
+                        if (worldEditorPane != null && localSimulation != null) {
+                                worldEditorPane.setSimulation(localSimulation);
+                                worldEditorPane.repaintAllViews();
                         }
 
                         org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Nest generated! (" + chambers + " chambers created)")
@@ -2366,6 +2419,8 @@ public class SwarmForgeClient extends Application {
                 addGlossaryRowKey(vEngine, "glossary.engine.seed.title", "glossary.engine.seed.desc");
                 addGlossaryRowKey(vEngine, "glossary.engine.audio_synth.title", "glossary.engine.audio_synth.desc");
                 addGlossaryRowKey(vEngine, "glossary.engine.time_scale.title", "glossary.engine.time_scale.desc");
+                addGlossaryRowKey(vEngine, "glossary.engine.view_focus.title", "glossary.engine.view_focus.desc");
+                addGlossaryRowKey(vEngine, "glossary.engine.checkpoint.title", "glossary.engine.checkpoint.desc");
 
                 // Sort each section alphabetically by localized entry title
                 sortGlossaryVBox(vNest);

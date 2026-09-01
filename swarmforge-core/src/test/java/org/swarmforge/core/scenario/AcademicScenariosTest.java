@@ -24,6 +24,11 @@ public class AcademicScenariosTest {
         assertNotNull(scenarios);
         assertEquals(9, scenarios.size());
 
+        for (Scenario sc : scenarios) {
+            assertNotNull(sc.getBiomeName(), "Scenario " + sc.getId() + " must have a non-null biome name!");
+            assertFalse(sc.getBiomeName().isEmpty(), "Scenario " + sc.getId() + " biome name must not be empty!");
+        }
+
         Scenario s1 = scenarios.get(0);
         assertEquals("ACAD_01_LEVY_BROWNIAN", s1.getId());
         assertEquals(12345L, s1.getMasterSeed());
@@ -45,6 +50,7 @@ public class AcademicScenariosTest {
         Scenario s9 = scenarios.get(8);
         assertEquals("ACAD_09_DULOSIS_RAID", s9.getId());
         assertEquals(2, s9.getColonies().size());
+        assertEquals("TEMPERATE_FOREST", s9.getBiomeName());
     }
 
     @Test

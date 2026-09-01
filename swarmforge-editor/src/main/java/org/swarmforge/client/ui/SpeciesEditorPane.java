@@ -1202,7 +1202,7 @@ public class SpeciesEditorPane extends VBox {
             warningBannerBox.setVisible(true);
             warningBannerBox.setManaged(true);
 
-            Label titleLabel = new Label("⚠️ Parameter Consistency Warnings:");
+            Label titleLabel = new Label("⚠ Parameter Consistency Warnings:");
             titleLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #f59e0b; -fx-font-size: 13px;");
             warningBannerBox.getChildren().add(titleLabel);
 

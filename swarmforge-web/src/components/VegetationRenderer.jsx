@@ -8,73 +8,152 @@ import { getTerrainHeight, getEffectiveSeason } from '../utils/terrainUtils'
 /**
  * Single Voxel Tree Component (Gamified Mode)
  * Built strictly out of stacked 3D cubes snapped to integer grid coords.
+ * Supports multiple species variants (Oak, Pine, Birch) with dense multi-tiered voxel foliage.
  */
-function VoxelTree({ position, scale = 1.0, terrainConfig }) {
+function VoxelTree({ position, scale = 1.0, variant = 0, terrainConfig }) {
     const [posX, _, posZ] = position
     const gridX = Math.round(posX)
     const gridZ = Math.round(posZ)
     const posY = getTerrainHeight(gridX, gridZ, terrainConfig)
 
-    // Generate voxel blocks for trunk and foliage
+    // Generate dense voxel blocks for trunk and foliage
     const { trunkVoxels, foliageVoxels } = useMemo(() => {
         const trunk = []
         const foliage = []
 
-        const trunkHeight = Math.max(4, Math.round(5 * scale))
+        const trunkHeight = Math.max(6, Math.round(7 * scale))
 
-        // 1. Trunk Cubes (Brown Voxel Column resting on ground)
-        for (let y = 0; y < trunkHeight; y++) {
-            trunk.push({ x: 0, y: y + 0.5, z: 0 })
-        }
-        // Voxel Root Base blocks at ground level
-        trunk.push({ x: 1, y: 0.5, z: 0 })
-        trunk.push({ x: -1, y: 0.5, z: 0 })
-        trunk.push({ x: 0, y: 0.5, z: 1 })
-        trunk.push({ x: 0, y: 0.5, z: -1 })
+        // Variant 0: Voxel Oak Tree (Massive dense canopy with 80+ voxel cubes)
+        if (variant % 3 === 0) {
+            // 1. Trunk Cubes (2x2 Column resting on ground + root flares)
+            for (let y = 0; y < trunkHeight; y++) {
+                trunk.push({ x: 0, y: y + 0.5, z: 0, color: '#5c3a21' })
+                if (y < trunkHeight - 2) {
+                    trunk.push({ x: 1, y: y + 0.5, z: 0, color: '#4a2e19' })
+                }
+            }
+            // Root flares spreading on ground
+            trunk.push({ x: 2, y: 0.5, z: 0, color: '#3d2514' })
+            trunk.push({ x: -1, y: 0.5, z: 0, color: '#3d2514' })
+            trunk.push({ x: 0, y: 0.5, z: 1, color: '#3d2514' })
+            trunk.push({ x: 0, y: 0.5, z: -1, color: '#3d2514' })
+            trunk.push({ x: 1, y: 0.5, z: 1, color: '#3d2514' })
 
-        // 2. Foliage Cubes (Layered green voxel canopy)
-        const canopyBaseY = trunkHeight - 2
-        for (let dx = -2; dx <= 2; dx++) {
-            for (let dz = -2; dz <= 2; dz++) {
-                if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue
-                foliage.push({
-                    x: dx,
-                    y: canopyBaseY + 0.5,
-                    z: dz,
-                    color: (dx + dz) % 2 === 0 ? '#15803d' : '#166534'
+            // 2. Foliage Canopy (Multi-tiered 7x7, 5x5, 3x3 layers)
+            const canopyBaseY = trunkHeight - 2
+
+            // Tier 1: 7x7 wide base foliage layer
+            for (let dx = -3; dx <= 3; dx++) {
+                for (let dz = -3; dz <= 3; dz++) {
+                    if (Math.abs(dx) === 3 && Math.abs(dz) === 3) continue
+                    if (Math.abs(dx) + Math.abs(dz) > 5) continue
+                    foliage.push({
+                        x: dx,
+                        y: canopyBaseY + 0.5,
+                        z: dz,
+                        color: (dx + dz) % 2 === 0 ? '#14532d' : '#15803d'
+                    })
+                }
+            }
+
+            // Tier 2: 5x5 mid-level foliage layer
+            for (let dx = -2; dx <= 2; dx++) {
+                for (let dz = -2; dz <= 2; dz++) {
+                    if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue
+                    foliage.push({
+                        x: dx,
+                        y: canopyBaseY + 1.5,
+                        z: dz,
+                        color: (dx + dz) % 2 === 0 ? '#166534' : '#22c55e'
+                    })
+                }
+            }
+
+            // Tier 3: 3x3 upper foliage layer
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dz = -1; dz <= 1; dz++) {
+                    foliage.push({
+                        x: dx,
+                        y: canopyBaseY + 2.5,
+                        z: dz,
+                        color: '#4ade80'
+                    })
+                }
+            }
+
+            // Tier 4: Crown peak voxels
+            foliage.push({ x: 0, y: canopyBaseY + 3.5, z: 0, color: '#86efac' })
+            foliage.push({ x: 1, y: canopyBaseY + 2.5, z: 0, color: '#86efac' })
+
+        // Variant 1: Voxel Pine / Spruce Tree (Tall conical pyramid structure)
+        } else if (variant % 3 === 1) {
+            // Slender tall trunk
+            for (let y = 0; y < trunkHeight + 2; y++) {
+                trunk.push({ x: 0, y: y + 0.5, z: 0, color: '#451a03' })
+            }
+            trunk.push({ x: 1, y: 0.5, z: 0, color: '#3b1402' })
+            trunk.push({ x: -1, y: 0.5, z: 0, color: '#3b1402' })
+
+            // Conical foliage skirts
+            const pHeight = trunkHeight + 1
+            // Skirt 1 (Bottom 5x5)
+            for (let dx = -2; dx <= 2; dx++) {
+                for (let dz = -2; dz <= 2; dz++) {
+                    if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue
+                    foliage.push({ x: dx, y: pHeight - 4 + 0.5, z: dz, color: '#064e3b' })
+                }
+            }
+            // Skirt 2 (Mid 3x3)
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dz = -1; dz <= 1; dz++) {
+                    foliage.push({ x: dx, y: pHeight - 2 + 0.5, z: dz, color: '#047857' })
+                }
+            }
+            // Skirt 3 (Top 1x1 peak)
+            foliage.push({ x: 0, y: pHeight + 0.5, z: 0, color: '#10b981' })
+            foliage.push({ x: 0, y: pHeight + 1.5, z: 0, color: '#34d399' })
+
+        // Variant 2: Voxel Birch Tree (White/gray bark + bright lime canopy)
+        } else {
+            for (let y = 0; y < trunkHeight; y++) {
+                trunk.push({
+                    x: 0,
+                    y: y + 0.5,
+                    z: 0,
+                    color: y % 2 === 0 ? '#f8fafc' : '#cbd5e1'
                 })
             }
-        }
-
-        for (let dx = -1; dx <= 1; dx++) {
-            for (let dz = -1; dz <= 1; dz++) {
-                foliage.push({
-                    x: dx,
-                    y: canopyBaseY + 1.5,
-                    z: dz,
-                    color: '#22c55e'
-                })
+            const bY = trunkHeight - 2
+            for (let dx = -2; dx <= 2; dx++) {
+                for (let dz = -2; dz <= 2; dz++) {
+                    if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue
+                    foliage.push({ x: dx, y: bY + 0.5, z: dz, color: '#4d7c0f' })
+                }
             }
+            for (let dx = -1; dx <= 1; dx++) {
+                for (let dz = -1; dz <= 1; dz++) {
+                    foliage.push({ x: dx, y: bY + 1.5, z: dz, color: '#65a30d' })
+                }
+            }
+            foliage.push({ x: 0, y: bY + 2.5, z: 0, color: '#84cc16' })
         }
-
-        foliage.push({ x: 0, y: canopyBaseY + 2.5, z: 0, color: '#4ade80' })
 
         return { trunkVoxels: trunk, foliageVoxels: foliage }
-    }, [scale])
+    }, [scale, variant])
 
     return (
-        <group position={[gridX, posY, gridZ]}>
+        <group position={[gridX, posY, gridZ]} frustumCulled={false}>
             {trunkVoxels.map((v, i) => (
-                <mesh key={`trunk-${i}`} position={[v.x, v.y, v.z]} castShadow receiveShadow>
+                <mesh key={`trunk-${i}`} position={[v.x, v.y, v.z]} castShadow receiveShadow frustumCulled={false}>
                     <boxGeometry args={[1, 1, 1]} />
-                    <meshStandardMaterial color="#5c3a21" roughness={0.9} metalness={0.05} />
+                    <meshStandardMaterial color={v.color} roughness={0.9} metalness={0.05} side={THREE.FrontSide} depthWrite depthTest />
                 </mesh>
             ))}
 
             {foliageVoxels.map((v, i) => (
-                <mesh key={`foliage-${i}`} position={[v.x, v.y, v.z]} castShadow receiveShadow>
+                <mesh key={`foliage-${i}`} position={[v.x, v.y, v.z]} castShadow receiveShadow frustumCulled={false}>
                     <boxGeometry args={[1, 1, 1]} />
-                    <meshStandardMaterial color={v.color} roughness={0.85} metalness={0.05} />
+                    <meshStandardMaterial color={v.color} roughness={0.8} metalness={0.05} side={THREE.FrontSide} depthWrite depthTest />
                 </mesh>
             ))}
         </group>
@@ -82,11 +161,11 @@ function VoxelTree({ position, scale = 1.0, terrainConfig }) {
 }
 
 /**
- * Single Realistic Tree Component (Realistic Mode)
- * Uses downloaded Low Poly 3D models (/3d/LOW_POLY_set.glb & /3d/tree.obj)
+ * Single Realistic / Scientific Tree Component
+ * Systematically uses downloaded 3D .obj models (/3d/tree.obj, /3d/LOW_POLY_set.obj, /3d/forest_nature_set_all_in.obj)
  * anchored to ground elevation Y = getTerrainHeight(x, z).
  */
-function RealisticTree({ position, scale = 1.0, windSpeed = 2.4, season = 'SUMMER', modelUrl = '/3d/LOW_POLY_set.glb', terrainConfig }) {
+function RealisticTree({ position, scale = 1.0, windSpeed = 2.4, season = 'SUMMER', modelUrl = '/3d/tree.obj', terrainConfig }) {
     const [x, _, z] = position
     const groundY = getTerrainHeight(x, z, terrainConfig)
 
@@ -108,7 +187,7 @@ function RealisticTree({ position, scale = 1.0, windSpeed = 2.4, season = 'SUMME
 }
 
 /**
- * Realistic Ground Vegetation & Low Poly Plant Sets (Ferns, Bamboo, Cactus, Tropical Flora)
+ * Ground Vegetation & Low Poly Plant Sets systematically using 3D .obj models
  */
 function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfig }) {
     const floraItems = useMemo(() => {
@@ -144,7 +223,7 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
         if (groupRef.current) {
             const t = state.clock.getElapsedTime()
             groupRef.current.children.forEach((child, idx) => {
-                if (child.userData.type === 'GRASS' || child.userData.type === 'FERN') {
+                if (child.userData?.type === 'GRASS' || child.userData?.type === 'FERN') {
                     child.rotation.z = Math.sin(t * 2 + idx) * 0.05
                 }
             })
@@ -152,8 +231,8 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
     })
 
     return (
-        <group ref={groupRef}>
-            {/* Downloaded Low Poly Bamboo Clusters */}
+        <group ref={groupRef} frustumCulled={false}>
+            {/* Systematically loaded 3D .obj Bamboo Clusters */}
             <LowPolyModel
                 url="/3d/bamboo_set.obj"
                 position={[65, getTerrainHeight(65, 85, terrainConfig), 85]}
@@ -176,7 +255,7 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
                 fallbackColor="#4ade80"
             />
 
-            {/* Downloaded Low Poly Cacti */}
+            {/* Systematically loaded 3D .obj Cacti */}
             <LowPolyModel
                 url="/3d/cactus.obj"
                 position={[88, getTerrainHeight(88, 18, terrainConfig), 18]}
@@ -187,7 +266,7 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
                 fallbackColor="#15803d"
             />
 
-            {/* Downloaded Low Poly Tropical Plant Sets & FBX Pack */}
+            {/* Systematically loaded 3D .obj Tropical Plant Sets */}
             <LowPolyModel
                 url="/3d/tropical_plants.obj"
                 position={[45, getTerrainHeight(45, 82, terrainConfig), 82]}
@@ -199,9 +278,9 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
                 fallbackColor="#166534"
             />
             <LowPolyModel
-                url="/3d/stylized_tropical_pack.fbx"
+                url="/3d/tropical_plants.obj"
                 position={[28, getTerrainHeight(28, 22, terrainConfig), 22]}
-                scale={0.015}
+                scale={0.5}
                 rotation={[0, 2.1, 0]}
                 sway={true}
                 windSpeed={windSpeed}
@@ -210,7 +289,7 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
                 fallbackColor="#15803d"
             />
 
-            {/* Downloaded Low Poly Forest Nature Set */}
+            {/* Systematically loaded 3D .obj Forest Nature Set */}
             <LowPolyModel
                 url="/3d/forest_nature_set_all_in.obj"
                 textureUrl="/3d/texture_gradient.png"
@@ -230,20 +309,20 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
 
                 if (item.type === 'MOSS') {
                     return (
-                        <mesh key={item.id} position={[item.x, item.y + 0.08 * item.scale, item.z]} rotation={[0, item.rotY, 0]} receiveShadow>
+                        <mesh key={item.id} position={[item.x, item.y + 0.08 * item.scale, item.z]} rotation={[0, item.rotY, 0]} receiveShadow frustumCulled={false}>
                             <dodecahedronGeometry args={[0.6 * item.scale, 1]} />
-                            <meshStandardMaterial color={mossColor} roughness={0.95} />
+                            <meshStandardMaterial color={mossColor} roughness={0.95} side={THREE.FrontSide} depthWrite depthTest />
                         </mesh>
                     )
                 }
 
                 if (item.type === 'FERN') {
                     return (
-                        <group key={item.id} position={[item.x, item.y, item.z]} rotation={[0, item.rotY, 0]} userData={{ type: 'FERN' }}>
+                        <group key={item.id} position={[item.x, item.y, item.z]} rotation={[0, item.rotY, 0]} userData={{ type: 'FERN' }} frustumCulled={false}>
                             {[0, 1.05, 2.1, 3.15, 4.2, 5.25].map((angle, fIdx) => (
-                                <mesh key={fIdx} position={[0, 0.3 * item.scale, 0]} rotation={[0.4, angle, 0.1]} castShadow>
+                                <mesh key={fIdx} position={[0, 0.3 * item.scale, 0]} rotation={[0.4, angle, 0.1]} castShadow frustumCulled={false}>
                                     <boxGeometry args={[0.35 * item.scale, 0.05 * item.scale, 1.1 * item.scale]} />
-                                    <meshStandardMaterial color={fernColor} roughness={0.85} />
+                                    <meshStandardMaterial color={fernColor} roughness={0.85} side={THREE.FrontSide} depthWrite depthTest />
                                 </mesh>
                             ))}
                         </group>
@@ -252,11 +331,11 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
 
                 if (item.type === 'GRASS') {
                     return (
-                        <group key={item.id} position={[item.x, item.y, item.z]} rotation={[0, item.rotY, 0]} userData={{ type: 'GRASS' }}>
+                        <group key={item.id} position={[item.x, item.y, item.z]} rotation={[0, item.rotY, 0]} userData={{ type: 'GRASS' }} frustumCulled={false}>
                             {[-0.15, 0, 0.15].map((offset, gIdx) => (
-                                <mesh key={gIdx} position={[offset, 0.4 * item.scale, offset]} rotation={[0.15 * gIdx, gIdx * 0.8, 0.1]} castShadow>
+                                <mesh key={gIdx} position={[offset, 0.4 * item.scale, offset]} rotation={[0.15 * gIdx, gIdx * 0.8, 0.1]} castShadow frustumCulled={false}>
                                     <boxGeometry args={[0.08 * item.scale, 0.8 * item.scale, 0.15 * item.scale]} />
-                                    <meshStandardMaterial color={grassColor} roughness={0.85} />
+                                    <meshStandardMaterial color={grassColor} roughness={0.85} side={THREE.FrontSide} depthWrite depthTest />
                                 </mesh>
                             ))}
                         </group>
@@ -265,14 +344,14 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
 
                 // Wildflower / Mushroom cluster
                 return (
-                    <group key={item.id} position={[item.x, item.y, item.z]} rotation={[0, item.rotY, 0]}>
-                        <mesh position={[0, 0.3 * item.scale, 0]} castShadow>
+                    <group key={item.id} position={[item.x, item.y, item.z]} rotation={[0, item.rotY, 0]} frustumCulled={false}>
+                        <mesh position={[0, 0.3 * item.scale, 0]} castShadow frustumCulled={false}>
                             <cylinderGeometry args={[0.04 * item.scale, 0.06 * item.scale, 0.6 * item.scale, 8]} />
-                            <meshStandardMaterial color="#f8fafc" roughness={0.9} />
+                            <meshStandardMaterial color="#f8fafc" roughness={0.9} side={THREE.FrontSide} depthWrite depthTest />
                         </mesh>
-                        <mesh position={[0, 0.6 * item.scale, 0]} castShadow>
+                        <mesh position={[0, 0.6 * item.scale, 0]} castShadow frustumCulled={false}>
                             <sphereGeometry args={[0.22 * item.scale, 12, 12]} />
-                            <meshStandardMaterial color={item.id % 2 === 0 ? '#f43f5e' : '#fbbf24'} roughness={0.5} />
+                            <meshStandardMaterial color={item.id % 2 === 0 ? '#f43f5e' : '#fbbf24'} roughness={0.5} side={THREE.FrontSide} depthWrite depthTest />
                         </mesh>
                     </group>
                 )
@@ -304,30 +383,30 @@ function GamifiedVoxelFlora({ terrainConfig }) {
     }, [terrainConfig])
 
     return (
-        <group>
+        <group frustumCulled={false}>
             {voxelPlants.map((item) => (
-                <group key={item.id} position={[item.x, item.y, item.z]}>
+                <group key={item.id} position={[item.x, item.y, item.z]} frustumCulled={false}>
                     {item.type === 0 ? (
                         <mesh position={[0, 0.5, 0]} castShadow frustumCulled={false}>
                             <boxGeometry args={[1, 1, 1]} />
-                            <meshStandardMaterial color="#166534" roughness={0.9} />
+                            <meshStandardMaterial color="#166534" roughness={0.9} side={THREE.FrontSide} depthWrite depthTest />
                         </mesh>
                     ) : item.type === 1 ? (
-                        <group>
+                        <group frustumCulled={false}>
                             <mesh position={[0, 0.5, 0]} castShadow frustumCulled={false}>
                                 <boxGeometry args={[0.3, 1, 0.3]} />
-                                <meshStandardMaterial color="#15803d" roughness={0.9} />
+                                <meshStandardMaterial color="#15803d" roughness={0.9} side={THREE.FrontSide} depthWrite depthTest />
                             </mesh>
                             <mesh position={[0, 1.1, 0]} castShadow frustumCulled={false}>
                                 <boxGeometry args={[0.5, 0.5, 0.5]} />
-                                <meshStandardMaterial color={item.id % 2 === 0 ? '#ef4444' : '#eab308'} roughness={0.6} />
+                                <meshStandardMaterial color={item.id % 2 === 0 ? '#ef4444' : '#eab308'} roughness={0.6} side={THREE.FrontSide} depthWrite depthTest />
                             </mesh>
                         </group>
                     ) : (
-                        <group>
+                        <group frustumCulled={false}>
                             <mesh position={[0, 1.0, 0]} castShadow frustumCulled={false}>
                                 <boxGeometry args={[0.8, 2.0, 0.8]} />
-                                <meshStandardMaterial color="#4d7c0f" roughness={0.8} />
+                                <meshStandardMaterial color="#4d7c0f" roughness={0.8} side={THREE.FrontSide} depthWrite depthTest />
                             </mesh>
                         </group>
                     )}
@@ -349,16 +428,16 @@ function Stump3D({ position, scale = 1.0, terrainConfig }) {
     const baseRadius = 0.65 * scale
 
     return (
-        <group position={[x, groundY, z]}>
+        <group position={[x, groundY, z]} frustumCulled={false}>
             {/* Main 3D Stump Trunk */}
-            <mesh position={[0, trunkHeight / 2, 0]} castShadow receiveShadow>
+            <mesh position={[0, trunkHeight / 2, 0]} castShadow receiveShadow frustumCulled={false}>
                 <cylinderGeometry args={[topRadius, baseRadius, trunkHeight, 12]} />
-                <meshStandardMaterial color="#5c3a21" roughness={0.9} metalness={0.05} depthTest={true} depthWrite={true} />
+                <meshStandardMaterial color="#5c3a21" roughness={0.9} metalness={0.05} depthTest={true} depthWrite={true} side={THREE.FrontSide} />
             </mesh>
             {/* Top Cut Wood Disk with Growth Ring Tone */}
-            <mesh position={[0, trunkHeight + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <mesh position={[0, trunkHeight + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow frustumCulled={false}>
                 <circleGeometry args={[topRadius * 0.95, 12]} />
-                <meshStandardMaterial color="#d4a373" roughness={0.8} depthTest={true} depthWrite={true} />
+                <meshStandardMaterial color="#d4a373" roughness={0.8} depthTest={true} depthWrite={true} side={THREE.FrontSide} />
             </mesh>
             {/* 3D Root Buttresses Flare at Base */}
             {[0, 1.2, 2.4, 3.6, 4.8].map((angle, idx) => (
@@ -368,9 +447,10 @@ function Stump3D({ position, scale = 1.0, terrainConfig }) {
                     rotation={[0.3, -angle, 0]}
                     castShadow
                     receiveShadow
+                    frustumCulled={false}
                 >
                     <boxGeometry args={[0.25 * scale, trunkHeight * 0.6, 0.6 * scale]} />
-                    <meshStandardMaterial color="#4a2e19" roughness={0.95} depthTest={true} depthWrite={true} />
+                    <meshStandardMaterial color="#4a2e19" roughness={0.95} depthTest={true} depthWrite={true} side={THREE.FrontSide} />
                 </mesh>
             ))}
         </group>
@@ -379,6 +459,7 @@ function Stump3D({ position, scale = 1.0, terrainConfig }) {
 
 export default function VegetationRenderer() {
     const { lookAndFeel, climateEngine, terrainConfig } = useSimulationStore()
+    // Gamified mode is strictly 'GAMING'. Scientific mode uses standard 3D rendering.
     const isGamified = lookAndFeel === 'GAMING'
     const windSpeed = climateEngine?.windSpeedMs ?? 2.4
     
@@ -386,12 +467,14 @@ export default function VegetationRenderer() {
     const rawSeason = climateEngine?.currentSeason || climateEngine?.season || 'SUMMER'
     const season = getEffectiveSeason(rawSeason, climateEngine?.hemisphere || 'NORTHERN')
 
-    // Tree positions (Dynamically compute Y elevation with terrainConfig)
+    // Tree positions systematically using 3D .obj model files for Realistic & Scientific modes
     const treePositions = useMemo(() => [
-        { id: 1, pos: [15, getTerrainHeight(15, 30, terrainConfig), 30], scale: 1.2, modelUrl: '/3d/LOW_POLY_set.glb' },
-        { id: 2, pos: [78, getTerrainHeight(78, 25, terrainConfig), 25], scale: 1.4, modelUrl: '/3d/tree.obj' },
-        { id: 3, pos: [82, getTerrainHeight(82, 75, terrainConfig), 75], scale: 1.1, modelUrl: '/3d/forest_nature_set_all_in.obj' },
-        { id: 4, pos: [18, getTerrainHeight(18, 80, terrainConfig), 80], scale: 1.3, modelUrl: '/3d/LOW_POLY_set.glb' },
+        { id: 1, pos: [15, getTerrainHeight(15, 30, terrainConfig), 30], scale: 1.3, variant: 0, modelUrl: '/3d/LOW_POLY_set.obj' },
+        { id: 2, pos: [78, getTerrainHeight(78, 25, terrainConfig), 25], scale: 1.5, variant: 1, modelUrl: '/3d/tree.obj' },
+        { id: 3, pos: [82, getTerrainHeight(82, 75, terrainConfig), 75], scale: 1.2, variant: 2, modelUrl: '/3d/forest_nature_set_all_in.obj' },
+        { id: 4, pos: [18, getTerrainHeight(18, 80, terrainConfig), 80], scale: 1.4, variant: 0, modelUrl: '/3d/tree.obj' },
+        { id: 5, pos: [55, getTerrainHeight(55, 15, terrainConfig), 15], scale: 1.1, variant: 1, modelUrl: '/3d/LOW_POLY_set.obj' },
+        { id: 6, pos: [88, getTerrainHeight(88, 88, terrainConfig), 88], scale: 1.3, variant: 2, modelUrl: '/3d/forest_nature_set_all_in.obj' },
     ], [terrainConfig])
 
     // Volumetric 3D Tree Stump positions across terrarium
@@ -402,11 +485,11 @@ export default function VegetationRenderer() {
     ], [terrainConfig])
 
     return (
-        <group>
-            {/* Render Voxel Trees in Gamified Mode, or Low Poly 3D Trees in Scientific/Realistic Mode */}
+        <group frustumCulled={false}>
+            {/* Render Dense Multi-Variant Voxel Trees in Gamified Mode, or Systematic 3D .OBJ Trees in Scientific/Realistic Mode */}
             {treePositions.map((tree) => (
                 isGamified ? (
-                    <VoxelTree key={tree.id} position={tree.pos} scale={tree.scale} terrainConfig={terrainConfig} />
+                    <VoxelTree key={tree.id} position={tree.pos} scale={tree.scale} variant={tree.variant} terrainConfig={terrainConfig} />
                 ) : (
                     <RealisticTree key={tree.id} position={tree.pos} scale={tree.scale} windSpeed={windSpeed} season={season} modelUrl={tree.modelUrl} terrainConfig={terrainConfig} />
                 )
@@ -417,7 +500,7 @@ export default function VegetationRenderer() {
                 <Stump3D key={stump.id} position={stump.pos} scale={stump.scale} terrainConfig={terrainConfig} />
             ))}
 
-            {/* Flora Floor: Voxel Plants in Gamified mode vs Low Poly Vegetation Floor in Realistic/Scientific mode */}
+            {/* Flora Floor: Voxel Plants in Gamified mode vs Systematic 3D .OBJ Flora Floor in Realistic/Scientific mode */}
             {isGamified ? (
                 <GamifiedVoxelFlora terrainConfig={terrainConfig} />
             ) : (
@@ -426,5 +509,6 @@ export default function VegetationRenderer() {
         </group>
     )
 }
+
 
 

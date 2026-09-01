@@ -73,14 +73,16 @@ public class SwarmViewerApp extends SimpleApplication {
         cam.lookAt(new Vector3f(50, 0, 50), Vector3f.UNIT_Y);
 
         // 3. Setup Materials
-        // Use Lighting definition for proper shading if available, but Unshaded is faster for tests
         antMaterial = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         antMaterial.setColor("Color", ColorRGBA.Red);
-        // ENABLE INSTANCING
         antMaterial.setBoolean("UseInstancing", true);
+        antMaterial.getAdditionalRenderState().setDepthWrite(true);
+        antMaterial.getAdditionalRenderState().setDepthTest(true);
 
         floorMaterial = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         floorMaterial.setColor("Color", ColorRGBA.DarkGray);
+        floorMaterial.getAdditionalRenderState().setDepthWrite(true);
+        floorMaterial.getAdditionalRenderState().setDepthTest(true);
 
         // 4. Create Floor
         Box floorMesh = new Box(100f, 0.1f, 100f);

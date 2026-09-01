@@ -66,8 +66,24 @@ public class WeatherMarkovChain {
                                float monthlyRainAvg, double pressureTrend, double lat) {
         stateDurationHours += deltaHours;
 
-        // Minimum duration before state transition (at least 0.5 hours per state)
-        if (stateDurationHours < 0.5f && random.nextFloat() > 0.1f) {
+        // Dynamic transition rate scaled by step duration (deltaHours)
+        // Atmospheric stability factor: high pressure trend stabilizes current state,
+        // while rapid pressure drops accelerate weather transitions.
+        float stabilityFactor = (float) Math.exp(-Math.abs(pressureTrend) * 0.15);
+        
+        // Base transition probability per hour (varies by weather state volatility)
+        float hourlyTransitionChance = switch (currentState) {
+            case THUNDERSTORM, HAIL -> 0.85f;    // Highly volatile short-lived events (~0.5-1h)
+            case FOG, LIGHT_RAIN -> 0.45f;        // Medium volatility (~0.5-2h, e.g. passing showers)
+            case PARTLY_CLOUDY, HEAVY_RAIN -> 0.30f;
+            case SUNNY, OVERCAST, DROUGHT -> 0.12f; // Stable conditions that can persist for hours/days
+            default -> 0.25f;
+        };
+
+        // Modulate transition chance with step duration & stability factor
+        float transitionProb = (1.0f - (float) Math.exp(-hourlyTransitionChance * deltaHours)) * (1.0f - 0.5f * stabilityFactor);
+
+        if (random.nextFloat() > transitionProb) {
             return currentState;
         }
 

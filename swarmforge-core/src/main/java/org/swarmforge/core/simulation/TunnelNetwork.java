@@ -49,7 +49,22 @@ public class TunnelNetwork implements java.io.Serializable {
 
     private final Map<UUID, TunnelNode> nodes = new HashMap<>();
     private final List<TunnelEdge> edges = new ArrayList<>();
-    private final float maxDepth = 50.0f;
+    private float maxDepthSetting = 50.0f;
+    private float tunnelWidthSetting = 2.0f;
+    private float scaleFactorSetting = 1.0f;
+    private float waterTableDepth = 18.0f;
+    private float bedrockDepth = 25.0f;
+
+    public float getMaxDepthSetting() { return maxDepthSetting; }
+    public void setMaxDepthSetting(float maxDepth) { this.maxDepthSetting = Math.max(2.0f, maxDepth); }
+    public float getTunnelWidthSetting() { return tunnelWidthSetting; }
+    public void setTunnelWidthSetting(float width) { this.tunnelWidthSetting = Math.max(1.0f, width); }
+    public float getScaleFactorSetting() { return scaleFactorSetting; }
+    public void setScaleFactorSetting(float scale) { this.scaleFactorSetting = Math.max(0.1f, scale); }
+    public float getWaterTableDepth() { return waterTableDepth; }
+    public void setWaterTableDepth(float depth) { this.waterTableDepth = Math.max(2.0f, depth); }
+    public float getBedrockDepth() { return bedrockDepth; }
+    public void setBedrockDepth(float depth) { this.bedrockDepth = Math.max(3.0f, depth); }
 
     public TunnelNetwork(Colony colony) {
         float nx = colony != null ? colony.getNestX() : 40.0f;
@@ -68,7 +83,20 @@ public class TunnelNetwork implements java.io.Serializable {
     }
 
     public void rebuildForArchitecture(float nx, float ny, float nz, String architectureType, Colony colony) {
+        rebuildForArchitecture(nx, ny, nz, architectureType, colony, maxDepthSetting, tunnelWidthSetting, scaleFactorSetting);
+    }
+
+    public void rebuildForArchitecture(float nx, float ny, float nz, String architectureType, Colony colony, float maxDepth, float tunnelWidth, float scaleFactor) {
+        this.maxDepthSetting = maxDepth;
+        this.tunnelWidthSetting = tunnelWidth;
+        this.scaleFactorSetting = scaleFactor;
+        if (colony != null) {
+            colony.setNestPosition(nx, ny, nz);
+        }
         rebuildForArchitecture(nx, ny, nz, architectureType, colony != null ? colony.getNest() : null);
+        if (colony != null && colony.getTerrarium() != null) {
+            carveIntoTerrarium(colony.getTerrarium());
+        }
     }
 
     public void rebuildForArchitecture(float nx, float ny, float nz, String architectureType, org.swarmforge.core.structure.Nest nest) {
@@ -85,6 +113,7 @@ public class TunnelNetwork implements java.io.Serializable {
         nest.clear();
 
         Map<UUID, org.swarmforge.core.structure.Chamber> chamberMap = new HashMap<>();
+        float popScale = 1.0f;
 
         for (TunnelNode node : nodes.values()) {
             org.swarmforge.core.structure.Chamber.Type cType = switch (node.type()) {
@@ -97,12 +126,12 @@ public class TunnelNetwork implements java.io.Serializable {
             };
 
             float capacity = switch (node.type()) {
-                case QUEEN_CHAMBER -> 150.0f;
-                case BROOD_CHAMBER -> 250.0f;
-                case FOOD_STORAGE -> 400.0f;
-                case WASTE_DUMP -> 200.0f;
-                case ENTRANCE -> 80.0f;
-                case TUNNEL -> 40.0f;
+                case QUEEN_CHAMBER -> 1500.0f * popScale;
+                case BROOD_CHAMBER -> 2500.0f * popScale;
+                case FOOD_STORAGE -> 5000.0f * popScale;
+                case WASTE_DUMP -> 2000.0f * popScale;
+                case ENTRANCE -> 1000.0f * popScale;
+                case TUNNEL -> 500.0f * popScale;
             };
 
             org.swarmforge.core.structure.Chamber chamber = new org.swarmforge.core.structure.Chamber(
@@ -116,6 +145,94 @@ public class TunnelNetwork implements java.io.Serializable {
             org.swarmforge.core.structure.Chamber end = chamberMap.get(edge.toNode());
             if (start != null && end != null) {
                 nest.addTunnel(new org.swarmforge.core.structure.Tunnel(start, end));
+            }
+        }
+    }
+
+    /**
+     * Synchronizes physical Terrarium cells with this TunnelNetwork.
+     * Carves CHAMBER or AIR cells at each node location and open AIR along tunnel edges,
+     * guaranteeing that spawned ants are never stuck in solid earth.
+     */
+    public void carveIntoTerrarium(org.swarmforge.core.domain.Terrarium terrarium) {
+        if (terrarium == null) return;
+
+        int tunnelRadius = Math.max(1, Math.round(tunnelWidthSetting / 2.0f));
+
+        // 1. Carve node chambers with radii proportional to gallery diameter and chamber type
+        for (TunnelNode node : nodes.values()) {
+            int cx = Math.round(node.x());
+            int cy = Math.round(node.y());
+            int cz = Math.round(node.z());
+
+            int radius = switch (node.type()) {
+                case QUEEN_CHAMBER -> Math.max(tunnelRadius + 2, Math.round(tunnelRadius * 2.5f * scaleFactorSetting));
+                case BROOD_CHAMBER -> Math.max(tunnelRadius + 1, Math.round(tunnelRadius * 2.0f * scaleFactorSetting));
+                case FOOD_STORAGE -> Math.max(tunnelRadius + 1, Math.round(tunnelRadius * 2.2f * scaleFactorSetting));
+                case WASTE_DUMP -> Math.max(tunnelRadius + 1, Math.round(tunnelRadius * 1.8f * scaleFactorSetting));
+                case ENTRANCE -> Math.max(1, tunnelRadius);
+                case TUNNEL -> tunnelRadius;
+            };
+
+            org.swarmforge.core.domain.TerrariumCell.Material mat = (node.type() == ChamberType.ENTRANCE || node.z() >= 0)
+                    ? org.swarmforge.core.domain.TerrariumCell.Material.AIR
+                    : org.swarmforge.core.domain.TerrariumCell.Material.CHAMBER;
+
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dy = -radius; dy <= radius; dy++) {
+                    for (int dz = -radius; dz <= radius; dz++) {
+                        if (dx * dx + dy * dy + dz * dz <= radius * radius + 1) {
+                            int rx = cx + dx;
+                            int ry = cy + dy;
+                            int rz = cz + dz;
+                            if (terrarium.inBounds(rx, ry, rz)) {
+                                var existing = terrarium.getCell(rx, ry, rz);
+                                if (existing == null || existing.material() != org.swarmforge.core.domain.TerrariumCell.Material.ROCK) {
+                                    terrarium.setCell(new org.swarmforge.core.domain.TerrariumCell(rx, ry, rz, mat,
+                                            new float[org.swarmforge.core.domain.TerrariumCell.PHEROMONE_TYPES], 20.0f, 60.0f));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Carve connecting tunnel edges with exact gallery diameter
+        for (TunnelEdge edge : edges) {
+            TunnelNode n1 = nodes.get(edge.fromNode());
+            TunnelNode n2 = nodes.get(edge.toNode());
+            if (n1 == null || n2 == null) continue;
+
+            float dx = n2.x() - n1.x();
+            float dy = n2.y() - n1.y();
+            float dz = n2.z() - n1.z();
+            float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+            int steps = Math.max(1, (int) (dist * 2));
+
+            for (int i = 0; i <= steps; i++) {
+                float t = (float) i / steps;
+                int tx = Math.round(n1.x() + dx * t);
+                int ty = Math.round(n1.y() + dy * t);
+                int tz = Math.round(n1.z() + dz * t);
+
+                for (int rx = tx - tunnelRadius; rx <= tx + tunnelRadius; rx++) {
+                    for (int ry = ty - tunnelRadius; ry <= ty + tunnelRadius; ry++) {
+                        for (int rz = tz - tunnelRadius; rz <= tz + tunnelRadius; rz++) {
+                            if ((rx - tx) * (rx - tx) + (ry - ty) * (ry - ty) + (rz - tz) * (rz - tz) <= tunnelRadius * tunnelRadius + 1) {
+                                if (terrarium.inBounds(rx, ry, rz)) {
+                                    var existing = terrarium.getCell(rx, ry, rz);
+                                    if (existing == null || existing.material() == org.swarmforge.core.domain.TerrariumCell.Material.EARTH
+                                            || existing.material() == org.swarmforge.core.domain.TerrariumCell.Material.ROCK) {
+                                        terrarium.setCell(new org.swarmforge.core.domain.TerrariumCell(rx, ry, rz,
+                                                org.swarmforge.core.domain.TerrariumCell.Material.AIR,
+                                                new float[org.swarmforge.core.domain.TerrariumCell.PHEROMONE_TYPES], 20.0f, 60.0f));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -428,19 +545,53 @@ public class TunnelNetwork implements java.io.Serializable {
 
     private UUID createNode(float x, float y, float z, ChamberType type) {
         UUID id = UUID.randomUUID();
+        // Bedrock & Water Table safety constraints:
+        // Queen and Brood chambers must strictly stay ABOVE water table & bedrock
+        if (type == ChamberType.QUEEN_CHAMBER || type == ChamberType.BROOD_CHAMBER) {
+            float minZ = Math.max(-waterTableDepth + 1.5f, -bedrockDepth + 1.5f);
+            if (z < minZ) {
+                z = minZ;
+            }
+        }
+
         // Calculate microclimate based on depth
-        float depthFactor = Math.abs(z) / maxDepth;
+        float depthFactor = Math.abs(z) / Math.max(1.0f, maxDepthSetting);
         float temp = 20f - (5f * depthFactor); // Cooler deeper
-        float hum = 50f + (30f * depthFactor); // More humid deeper
+        float hum = (z < -waterTableDepth) ? 100.0f : (50f + (30f * depthFactor)); // Flooded if below water table
 
         TunnelNode node = new TunnelNode(id, x, y, z, type, temp, hum);
         nodes.put(id, node);
         return id;
     }
 
+    /**
+     * Connects two nearby TunnelNetworks if their nodes pass within proximity threshold (e.g. 4m).
+     * If hostile, marks junction nodes with high humidity / defensive state as a chokepoint.
+     */
+    public static void bridgeNearbyNetworks(TunnelNetwork netA, TunnelNetwork netB, boolean isHostile) {
+        if (netA == null || netB == null || netA == netB) return;
+
+        for (TunnelNode nA : netA.nodes.values()) {
+            for (TunnelNode nB : netB.nodes.values()) {
+                float dx = nA.x() - nB.x();
+                float dy = nA.y() - nB.y();
+                float dz = nA.z() - nB.z();
+                float distSq = dx * dx + dy * dy + dz * dz;
+
+                if (distSq <= 16.0f) { // Within 4.0 meters
+                    float dist = (float) Math.sqrt(distSq);
+                    netA.edges.add(new TunnelEdge(nA.id(), nB.id(), dist));
+                    netB.edges.add(new TunnelEdge(nB.id(), nA.id(), dist));
+                    return; // Bridge closest junction
+                }
+            }
+        }
+    }
+
     private void createEdge(UUID from, UUID to) {
         TunnelNode n1 = nodes.get(from);
         TunnelNode n2 = nodes.get(to);
+        if (n1 == null || n2 == null) return;
         float dist = (float) Math.sqrt(
                 Math.pow(n1.x() - n2.x(), 2) +
                         Math.pow(n1.y() - n2.y(), 2) +

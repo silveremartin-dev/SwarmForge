@@ -37,7 +37,7 @@ public class Individual implements java.io.Serializable, AgentView {
     private float health = 100f;
     private float maxEnergy = 100f;
     private float energy = 100f;
-    private float age; // In simulation ticks
+    private float age; // Synced in seconds
     private float ageInSeconds = 0.0f;
     private boolean alive = true;
     private String causeOfDeath;
@@ -55,7 +55,7 @@ public class Individual implements java.io.Serializable, AgentView {
     // Life Cycle
     private LifeStage lifeStage = LifeStage.ADULT; // Default for now
     private Job job = Job.IDLE; // Default
-    private float maturationThreshold = 2000f; // Ticks between stages
+    private float maturationThreshold = 172800.0f; // Seconds between stages (2 days)
 
     // Tree Climbing & Vegetation Interactivity
     private boolean climbingTree = false;
@@ -241,10 +241,10 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     public void updateJobByAge() {
-        if (caste == Caste.WORKER) {
-            if (age < 200f) {
+        if (caste == Caste.WORKER || caste == Caste.FORAGER || caste == Caste.NURSE) {
+            if (ageInSeconds < 300.0f) {
                 this.job = Job.NURSE;
-            } else if (age < 1000f) {
+            } else if (ageInSeconds < 1000.0f) {
                 this.job = Job.GUARD;
             } else {
                 this.job = Job.FORAGER;
@@ -451,6 +451,7 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     private float ambientTemperatureC = 24.0f;
+    private float ambientHumidityPercent = 80.0f;
 
     public float getAmbientTemperatureC() {
         return ambientTemperatureC;
@@ -458,6 +459,14 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public void setAmbientTemperatureC(float tempC) {
         this.ambientTemperatureC = tempC;
+    }
+
+    public float getAmbientHumidityPercent() {
+        return ambientHumidityPercent;
+    }
+
+    public void setAmbientHumidityPercent(float humidity) {
+        this.ambientHumidityPercent = humidity;
     }
 
     /**
@@ -522,7 +531,8 @@ public class Individual implements java.io.Serializable, AgentView {
      * Increment age by 1 tick.
      */
     public void incrementAge() {
-        age++;
+        this.ageInSeconds += 1.0f;
+        this.age = this.ageInSeconds;
     }
 
     /**
@@ -541,14 +551,49 @@ public class Individual implements java.io.Serializable, AgentView {
         float effectiveMetabolism = getEffectiveMetabolismRate();
         float waterReq = species != null ? species.getWaterRequirement() : 0.15f;
 
+        // Humidity factor on thirst accumulation (high ambient moisture reduces transpiration/thirst)
+        float humidityThirstMult = Math.max(0.2f, 1.8f - (ambientHumidityPercent / 100.0f) * 1.6f);
+
         energy -= 0.006f * effectiveMetabolism * deltaSeconds;
         hunger += 0.0048f * effectiveMetabolism * deltaSeconds;
-        thirst += 0.0024f * effectiveMetabolism * (waterReq / 0.15f) * deltaSeconds;
+        thirst += 0.0024f * effectiveMetabolism * (waterReq / 0.15f) * humidityThirstMult * deltaSeconds;
 
         float minTemp = species != null ? species.getMinTempCelsius() : 10.0f;
         float maxTemp = species != null ? species.getMaxTempCelsius() : 40.0f;
-        if (ambientTemperatureC < minTemp - 5.0f || ambientTemperatureC > maxTemp + 5.0f) {
-            takeDamage(12.0f * deltaSeconds);
+        float thermalExcess = 0.0f;
+        if (ambientTemperatureC < minTemp - 5.0f) {
+            thermalExcess = (minTemp - 5.0f) - ambientTemperatureC;
+        } else if (ambientTemperatureC > maxTemp + 5.0f) {
+            thermalExcess = ambientTemperatureC - (maxTemp + 5.0f);
+        }
+        if (thermalExcess > 0.0f) {
+            float damageRate = Math.min(8.0f, thermalExcess * 0.4f);
+            takeDamage(damageRate * deltaSeconds, "Thermal Extremes (Extreme Heat/Cold)");
+        }
+
+        float minHum = species != null ? species.getMinHumidityPercent() : 25.0f;
+        float maxHum = species != null ? species.getMaxHumidityPercent() : 95.0f;
+        float humidityExcess = 0.0f;
+        if (ambientHumidityPercent < minHum - 10.0f) {
+            humidityExcess = (minHum - 10.0f) - ambientHumidityPercent;
+        } else if (ambientHumidityPercent > maxHum + 5.0f) {
+            humidityExcess = ambientHumidityPercent - (maxHum + 5.0f);
+        }
+        if (humidityExcess > 0.0f) {
+            float desiccationDamageRate = Math.min(4.0f, humidityExcess * 0.15f);
+            takeDamage(desiccationDamageRate * deltaSeconds, "Desiccation (Extreme Dryness/Humidity)");
+        }
+
+        // Gas hypercapnia (CO2 > 25,000 ppm) or Hypoxia (O2 < 12%) in unventilated subterranean galleries
+        float co2Ppm = 400.0f;
+        float o2Percent = 21.0f;
+        if (co2Ppm > 25000.0f) {
+            float gasDamage = Math.min(3.0f, (co2Ppm - 25000.0f) / 10000.0f);
+            takeDamage(gasDamage * deltaSeconds, "Hypercapnia / Gas Asphyxiation");
+        }
+        if (o2Percent < 12.0f) {
+            float hypoxiaDamage = Math.min(3.0f, (12.0f - o2Percent) * 0.5f);
+            takeDamage(hypoxiaDamage * deltaSeconds, "Hypoxia / Oxygen Depletion");
         }
 
         if (energy <= 0 || hunger >= 100) {
@@ -563,7 +608,7 @@ public class Individual implements java.io.Serializable, AgentView {
         float maxLifespanDays = getMaxLifespan();
         float maxLifespanSeconds = maxLifespanDays * 86400.0f;
 
-        if (ageInSeconds >= maxLifespanSeconds || age >= maxLifespanDays * 1440.0f) {
+        if (ageInSeconds >= maxLifespanSeconds) {
             die("Old Age (Natural end of life)");
             return;
         }
@@ -616,11 +661,21 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     public float getAge() {
-        return age;
+        return ageInSeconds;
     }
 
-    public void setAge(float age) {
-        this.age = Math.max(0f, age);
+    public void setAge(float ageInSeconds) {
+        this.ageInSeconds = Math.max(0f, ageInSeconds);
+        this.age = this.ageInSeconds;
+    }
+
+    public float getAgeInSeconds() {
+        return ageInSeconds;
+    }
+
+    public void setAgeInSeconds(float ageInSeconds) {
+        this.ageInSeconds = Math.max(0f, ageInSeconds);
+        this.age = this.ageInSeconds;
     }
 
     public float getMaxLifespan() {
@@ -839,12 +894,16 @@ public class Individual implements java.io.Serializable, AgentView {
      * @return true if the individual died from this damage
      */
     public boolean takeDamage(float amount) {
+        return takeDamage(amount, "Physical Trauma / Damage");
+    }
+
+    public boolean takeDamage(float amount, String cause) {
         if (!alive)
             return false;
         health -= amount;
         if (health <= 0) {
             health = 0;
-            alive = false;
+            die(cause != null ? cause : "Physical Trauma / Damage");
             return true;
         }
         return false;
@@ -896,13 +955,19 @@ public class Individual implements java.io.Serializable, AgentView {
                 move(1.0f);
                 if (isAtNest() && colony != null) {
                     if (colony.getFoodStored() > 0.1f) {
-                        colony.consumeResource(ResourceType.SEED, 0.05f);
-                        this.hunger = Math.max(0f, this.hunger - 10.0f);
-                        this.energy = Math.min(this.maxEnergy, this.energy + 10.0f);
+                        if (colony.getCarbohydrateStored() > 0.05f) {
+                            colony.setCarbohydrateStored(colony.getCarbohydrateStored() - 0.05f);
+                        } else if (colony.getProteinStored() > 0.05f) {
+                            colony.setProteinStored(colony.getProteinStored() - 0.05f);
+                        } else {
+                            colony.consumeResource(ResourceType.SEED, 0.05f);
+                        }
+                        this.hunger = Math.max(0f, this.hunger - 15.0f);
+                        this.energy = Math.min(this.maxEnergy, this.energy + 15.0f);
                     }
                     if (colony.getResourceAmount(ResourceType.WATER) > 0.1f) {
                         colony.consumeResource(ResourceType.WATER, 0.05f);
-                        this.thirst = Math.max(0f, this.thirst - 10.0f);
+                        this.thirst = Math.max(0f, this.thirst - 15.0f);
                     }
                 }
                 return ActionResult.ok();

@@ -45,7 +45,7 @@ public class DatabaseManager {
             h2Fallback = false;
             LOG.info("✓ Connected to PostgreSQL: " + pgJdbcUrl);
         } catch (SQLException e) {
-            LOG.warning("⚠️ PostgreSQL unreachable (" + e.getMessage() + "). Falling back to H2 In-Memory database...");
+            LOG.warning("⚠ PostgreSQL unreachable (" + e.getMessage() + "). Falling back to H2 In-Memory database...");
             connectH2InMemory();
         }
         initSchema();

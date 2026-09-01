@@ -245,11 +245,11 @@ public class SimulationAudioManager {
         boolean isDay = (ambientLightLevel > 0.15) || (isAstronomicalDay && isSunAboveHorizon);
 
         // 1. River Water Sound
-        if (riverEnabled && hasRiver) {
+        if (riverEnabled) {
             File riverFile = findSoundFile("mixkit-river-water-flow-and-surroundings-2452.wav");
             if (riverFile == null) riverFile = findSoundFile("WATRFlow_Small stream 4 (ID 1354)_BigSoundBank.com.mp3");
             if (riverFile == null) riverFile = findSoundFile("AMB_Nature Pack Vol 1_Water Enviroments_Mountain Stream.mp3");
-            channels.get("RIVER").playTrack(riverFile, 0.65, masterVolume);
+            channels.get("RIVER").playTrack(riverFile, 0.90, masterVolume);
         } else {
             channels.get("RIVER").stopWithFade();
         }
@@ -257,32 +257,32 @@ public class SimulationAudioManager {
         // 2. Weather Rain / Hail Sound
         boolean isHail = wUpper.contains("HAIL") || wUpper.contains("GRÊLE");
         boolean isRain = isRainType(wUpper) || rainRateMmHr > 0.1;
+        boolean heavyRain = wUpper.contains("HEAVY") || wUpper.contains("FORTE") || wUpper.contains("THUNDER") || wUpper.contains("ORAGE") || rainRateMmHr > 10.0;
 
         if (weatherEnabled && isHail) {
             File hailFile = findSoundFile("saturn-3-music-strong-hail-falling-against-the-window-116182.mp3");
             if (hailFile == null) hailFile = findSoundFile("freesound_community-hail-74904.mp3");
             channels.get("WEATHER_RAIN").playTrack(hailFile, 0.70, masterVolume);
         } else if (weatherEnabled && isRain) {
-            boolean heavy = wUpper.contains("HEAVY") || wUpper.contains("FORTE") || wUpper.contains("THUNDER") || wUpper.contains("ORAGE") || rainRateMmHr > 10.0;
-            File rainFile = heavy ? findSoundFile("mixkit-heavy-rain-2403.wav") : findSoundFile("mixkit-light-rain-loop-2393.wav");
+            File rainFile = heavyRain ? findSoundFile("mixkit-heavy-rain-2403.wav") : findSoundFile("mixkit-light-rain-loop-2393.wav");
             if (rainFile == null) rainFile = findSoundFile("Sound_of_rain.ogg");
             channels.get("WEATHER_RAIN").playTrack(rainFile, 0.75, masterVolume);
         } else {
             channels.get("WEATHER_RAIN").stopWithFade();
         }
 
-        // 3. Weather Wind Sound
+        // 3. Weather Wind Sound (Reduced dominance so ambient biome & river streams are distinct)
         boolean isTornado = wUpper.contains("TEMPEST") || wUpper.contains("TORNADO") || wUpper.contains("TORNADE");
         boolean isWindy = isStormType(wUpper) || windSpeedMps > 8.0 || isTornado;
 
         if (weatherEnabled && isTornado) {
             File tornadoFile = findSoundFile("April_19,_2011_-_Tornado_at_Girard_Illinois.ogg");
             if (tornadoFile == null) tornadoFile = findSoundFile("strong_howling_wind.mp3");
-            channels.get("WEATHER_WIND").playTrack(tornadoFile, 0.75, masterVolume);
+            channels.get("WEATHER_WIND").playTrack(tornadoFile, 0.35, masterVolume);
         } else if (weatherEnabled && isWindy) {
             File windFile = (windSpeedMps > 15.0) ? findSoundFile("strong_howling_wind.mp3") : findSoundFile("mixkit-wind-blowing-ambience-2658.wav");
             if (windFile == null) windFile = findSoundFile("Bourne_woods_windy_2020-05-05_0753.mp3");
-            channels.get("WEATHER_WIND").playTrack(windFile, 0.60, masterVolume);
+            channels.get("WEATHER_WIND").playTrack(windFile, 0.15, masterVolume);
         } else {
             channels.get("WEATHER_WIND").stopWithFade();
         }
@@ -296,12 +296,12 @@ public class SimulationAudioManager {
             channels.get("WEATHER_FIRE").stopWithFade();
         }
 
-        // 5. Biome Ambient Sound Loop
-        if (ambientEnabled && !isRain && !isWindy) {
+        // 5. Biome Ambient Sound Loop (Fauna, Birds & Vegetation - boosted volume)
+        if (ambientEnabled && !heavyRain) {
             File biomeFile = null;
             if (bUpper.contains("DESERT") || bUpper.contains("DÉSERT") || bUpper.contains("ARID")) {
-                biomeFile = findSoundFile("AMB_Nature Pack Vol 1_Weather_Desert Wind.mp3");
-                if (biomeFile == null) biomeFile = findSoundFile("desert_wind_ambient.mp3");
+                biomeFile = findSoundFile("AMBRurl_Nocturnal insects 4 (ID 1470)_BigSoundBank.com.mp3");
+                if (biomeFile == null) biomeFile = findSoundFile("desert_fauna_ambient.mp3");
             } else if (bUpper.contains("JUNGLE") || bUpper.contains("TROPICAL")) {
                 biomeFile = findSoundFile("mixkit-birds-in-the-jungle-2434.wav");
                 if (biomeFile == null) biomeFile = findSoundFile("Sound_of_the_jungle_in_Thailand.flac");
@@ -317,7 +317,7 @@ public class SimulationAudioManager {
                 if (biomeFile == null) biomeFile = findSoundFile("AMB_Nature Pack Vol 1_Forest Enviroments_Forest Night.mp3");
                 if (biomeFile == null) biomeFile = findSoundFile("AMBRurl_Nocturnal insects 4 (ID 1470)_BigSoundBank.com.mp3");
             }
-            channels.get("BIOME").playTrack(biomeFile, 0.50, masterVolume);
+            channels.get("BIOME").playTrack(biomeFile, 0.85, masterVolume);
         } else {
             channels.get("BIOME").stopWithFade();
         }

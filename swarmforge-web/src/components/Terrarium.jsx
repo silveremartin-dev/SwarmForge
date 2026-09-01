@@ -58,20 +58,31 @@ function createSplattingGroundTexture() {
 }
 
 /**
- * Dedicated Voxel Terrain Generator for Gamified Mode
- * Creates solid voxel column blocks anchored to getTerrainHeight with no clipping holes.
+ * Dedicated Voxel Terrain Generator for Gamified Mode (Gaming Mode)
+ * Creates solid voxel column blocks anchored from Y_BASE=-5.0 up to exact getTerrainHeight with no gaps or clipping holes.
  */
 function VoxelTerrain({ terrainConfig }) {
+    const Y_BASE = -5.0
+
     const voxelGrid = useMemo(() => {
         const blocks = []
+        const hasRiver = terrainConfig?.hasRiver ?? true
+        const riverX = terrainConfig?.riverX ?? 25
+        const riverWidth = terrainConfig?.riverWidth ?? 10
+
         // Grid step 2m across 100m x 100m terrarium
         for (let x = 1; x <= 99; x += 2) {
             for (let z = 1; z <= 99; z += 2) {
                 const heightY = getTerrainHeight(x, z, terrainConfig)
-                const isRiverChannel = x >= 18 && x <= 32
-                const blockHeight = Math.max(0.4, heightY + 0.6)
-                const posY = (heightY - 0.2) / 2
+                const isRiverChannel = hasRiver && Math.abs(x - riverX) < riverWidth / 2
                 
+                // Height from bottom floor (-5.0m) up to exact surface altitude (heightY)
+                const blockHeight = Math.max(0.5, heightY - Y_BASE)
+                // Center Y = (Y_BASE + heightY) / 2 -> Top face is ALWAYS exactly at heightY
+                const posY = Y_BASE + blockHeight / 2
+
+                const checker = (Math.floor(x / 2) + Math.floor(z / 2)) % 2 === 0
+
                 blocks.push({
                     id: `v_${x}_${z}`,
                     x,
@@ -79,7 +90,7 @@ function VoxelTerrain({ terrainConfig }) {
                     z,
                     height: blockHeight,
                     isRiver: isRiverChannel,
-                    topColor: isRiverChannel ? '#0284c7' : ((x + z) % 4 === 0 ? '#3f6212' : '#22c55e'),
+                    topColor: isRiverChannel ? '#0284c7' : (checker ? '#22c55e' : '#15803d'),
                     sideColor: isRiverChannel ? '#0369a1' : '#5c3a21'
                 })
             }
@@ -88,7 +99,7 @@ function VoxelTerrain({ terrainConfig }) {
     }, [terrainConfig])
 
     return (
-        <group>
+        <group frustumCulled={false}>
             {voxelGrid.map((b) => (
                 <mesh key={b.id} position={[b.x, b.y, b.z]} receiveShadow castShadow frustumCulled={false}>
                     <boxGeometry args={[1.98, b.height, 1.98]} />
@@ -98,6 +109,9 @@ function VoxelTerrain({ terrainConfig }) {
                         metalness={b.isRiver ? 0.6 : 0.05}
                         transparent={b.isRiver}
                         opacity={b.isRiver ? 0.85 : 1.0}
+                        side={THREE.FrontSide}
+                        depthWrite={true}
+                        depthTest={true}
                     />
                 </mesh>
             ))}
@@ -112,7 +126,8 @@ export default function Terrarium() {
     const floodMeshRef = useRef()
     const { camera } = useThree()
 
-    const isGamified = lookAndFeel === 'GAMING' || lookAndFeel === 'SCIENTIFIC'
+    // Gamified mode is strictly 'GAMING'. Scientific mode uses standard realistic 3D mesh rendering.
+    const isGamified = lookAndFeel === 'GAMING'
 
     // Realtime spatial listener & river audio update based on 3D camera distance
     useFrame((state) => {
@@ -132,7 +147,7 @@ export default function Terrarium() {
     // Dynamic Fog Color based on Day/Night & Climate
     const fogColor = useMemo(() => {
         if (environmentLighting?.isNight) return '#0f172a'
-        if (lookAndFeel === 'SCIENTIFIC') return '#090d16'
+        if (lookAndFeel === 'SCIENTIFIC') return '#64748b'
         return '#87ceeb'
     }, [environmentLighting?.isNight, lookAndFeel])
 
@@ -171,7 +186,7 @@ export default function Terrarium() {
 
     // Ground Surface color adapted by Look & Feel theme
     const groundColor = useMemo(() => {
-        if (lookAndFeel === 'SCIENTIFIC') return '#1e293b'
+        if (lookAndFeel === 'SCIENTIFIC') return '#2e4a23'
         if (lookAndFeel === 'REALISTIC') return '#ffffff'
         return '#3d2817'
     }, [lookAndFeel])
@@ -188,6 +203,8 @@ export default function Terrarium() {
             pos.setY(i, y)
         }
         geo.computeVertexNormals()
+        geo.computeBoundingBox()
+        geo.computeBoundingSphere()
         return geo
     }, [terrainConfig])
 
@@ -204,15 +221,20 @@ export default function Terrarium() {
         return new THREE.MeshStandardMaterial({
             color: groundColor,
             roughness: 0.85,
-            metalness: lookAndFeel === 'SCIENTIFIC' ? 0.3 : 0.1,
+            metalness: 0.05,
             side: THREE.FrontSide,
         })
     }, [groundColor, lookAndFeel, realisticTextures, splattingTexture])
 
     // Geological Stratum 1: Topsoil / Humus (Fully opaque solid BoxGeometry)
-    const topsoilGeo = useMemo(() => new THREE.BoxGeometry(100, 0.8, 100), [])
+    const topsoilGeo = useMemo(() => {
+        const geo = new THREE.BoxGeometry(100, 0.8, 100)
+        geo.computeBoundingBox()
+        geo.computeBoundingSphere()
+        return geo
+    }, [])
     const topsoilMat = useMemo(() => new THREE.MeshStandardMaterial({
-        color: lookAndFeel === 'REALISTIC' ? '#ffffff' : '#4a321f',
+        color: lookAndFeel === 'REALISTIC' ? '#ffffff' : (lookAndFeel === 'SCIENTIFIC' ? '#334155' : '#4a321f'),
         map: lookAndFeel === 'REALISTIC' ? realisticTextures?.topsoilMap : null,
         normalMap: lookAndFeel === 'REALISTIC' ? realisticTextures?.topsoilNormalMap : null,
         roughness: 0.9,
@@ -221,9 +243,14 @@ export default function Terrarium() {
     }), [lookAndFeel, realisticTextures])
 
     // Geological Stratum 2: Subsoil / Clay & Sand
-    const subsoilGeo = useMemo(() => new THREE.BoxGeometry(100, 2.0, 100), [])
+    const subsoilGeo = useMemo(() => {
+        const geo = new THREE.BoxGeometry(100, 2.0, 100)
+        geo.computeBoundingBox()
+        geo.computeBoundingSphere()
+        return geo
+    }, [])
     const subsoilMat = useMemo(() => new THREE.MeshStandardMaterial({
-        color: lookAndFeel === 'REALISTIC' ? '#ffffff' : '#6b4c33',
+        color: lookAndFeel === 'REALISTIC' ? '#ffffff' : (lookAndFeel === 'SCIENTIFIC' ? '#1e293b' : '#6b4c33'),
         map: lookAndFeel === 'REALISTIC' ? realisticTextures?.subsoilMap : null,
         roughness: 0.95,
         metalness: 0.05,
@@ -231,9 +258,14 @@ export default function Terrarium() {
     }), [lookAndFeel, realisticTextures])
 
     // Geological Stratum 3: Bedrock & Deep Stone
-    const bedrockGeo = useMemo(() => new THREE.BoxGeometry(100, 2.2, 100), [])
+    const bedrockGeo = useMemo(() => {
+        const geo = new THREE.BoxGeometry(100, 2.2, 100)
+        geo.computeBoundingBox()
+        geo.computeBoundingSphere()
+        return geo
+    }, [])
     const bedrockMat = useMemo(() => new THREE.MeshStandardMaterial({
-        color: lookAndFeel === 'REALISTIC' ? '#ffffff' : '#2c2825',
+        color: lookAndFeel === 'REALISTIC' ? '#ffffff' : (lookAndFeel === 'SCIENTIFIC' ? '#0f172a' : '#2c2825'),
         map: lookAndFeel === 'REALISTIC' ? realisticTextures?.bedrockMap : null,
         normalMap: lookAndFeel === 'REALISTIC' ? realisticTextures?.bedrockNormalMap : null,
         roughness: 0.98,
@@ -278,7 +310,7 @@ export default function Terrarium() {
     // ── CUBIC OUTER BORDER / VOXEL RIM (Bordure cubique en empilement de blocs) ──
     const voxelRimBlocks = useMemo(() => {
         const blocks = []
-        const rimColor = lookAndFeel === 'SCIENTIFIC' ? '#2563eb' : (lookAndFeel === 'REALISTIC' ? '#84cc16' : '#0284c7')
+        const rimColor = lookAndFeel === 'SCIENTIFIC' ? '#475569' : (lookAndFeel === 'REALISTIC' ? '#84cc16' : '#0284c7')
 
         // Generate stepped cubic rim voxel blocks along all 4 outer edges of the 100m x 100m terrarium
         for (let i = 0; i <= 100; i += 2) {

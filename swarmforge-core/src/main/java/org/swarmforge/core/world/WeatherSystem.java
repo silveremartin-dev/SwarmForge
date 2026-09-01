@@ -293,6 +293,9 @@ public class WeatherSystem {
     }
     public float getRainfall() { return currentRainfall; }
     public float getSnowfall() { return currentSnowfall; }
+    public float getSnowDepthMm() { return hydricCoupling != null ? hydricCoupling.getSnowDepthMm() : 0.0f; }
+    public float getIceThicknessMm() { return hydricCoupling != null ? hydricCoupling.getIceThicknessMm() : 0.0f; }
+    public float getFrostDepthCells() { return hydricCoupling != null ? hydricCoupling.getFrostDepthCells() : 0.0f; }
     public float getPressure() { return currentPressure; }
     /** SI Pascal pressure */
     public float getPressurePa() { return currentPressure * 100.0f; }
@@ -386,6 +389,9 @@ public class WeatherSystem {
     public double getLatitude() { return latitude; }
     public double getLongitude() { return longitude; }
     public double getAltitude() { return altitude; }
+
+    public void setTimeOfDay(float hours) { this.timeOfDayHours = Math.max(0.0f, Math.min(24.0f, hours)); }
+    public void setDayOfYear(int day) { this.dayOfYear = Math.max(1, Math.min(365, day)); }
 
     public void setTemperatureOffset(float offset) { this.tempOffset = offset; }
     public void setRainMultiplier(float mult) { this.rainMultiplier = mult; }

@@ -163,8 +163,11 @@ public interface Species extends java.io.Serializable {
     default float getWaterRequirement() { return 0.2f; }
     default String getNestType() { return "UNDERGROUND_BURROW"; }
     default float getOptimalTempCelsius() { return 24.0f; }
-    default float getMinTempCelsius() { return 10.0f; }
-    default float getMaxTempCelsius() { return 38.0f; }
+    default float getMinTempCelsius() { return 0.0f; }
+    default float getMaxTempCelsius() { return 45.0f; }
+    default float getOptimalHumidityPercent() { return 80.0f; }
+    default float getMinHumidityPercent() { return 25.0f; }
+    default float getMaxHumidityPercent() { return 95.0f; }
     default float getTerritoriality() { return 0.5f; }
     default String getVenomType() { return "NONE"; }
 

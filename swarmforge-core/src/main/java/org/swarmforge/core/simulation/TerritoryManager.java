@@ -193,10 +193,14 @@ public class TerritoryManager {
 
         // Apply casualties
         for (int i = 0; i < attackerCasualties && i < attackerSoldiers.size(); i++) {
-            attackerSoldiers.get(i).setHealth(0);
+            Individual ind = attackerSoldiers.get(i);
+            ind.die("Territorial Warfare Casualties");
+            ind.setHealth(0);
         }
         for (int i = 0; i < defenderCasualties && i < defenderSoldiers.size(); i++) {
-            defenderSoldiers.get(i).setHealth(0);
+            Individual ind = defenderSoldiers.get(i);
+            ind.die("Territorial Warfare Casualties");
+            ind.setHealth(0);
         }
 
         // Nest Raid Logic
@@ -219,6 +223,7 @@ public class TerritoryManager {
                             .filter(i -> i.getCaste() == Individual.Caste.QUEEN)
                             .findFirst()
                             .ifPresent(queen -> {
+                                queen.die("Regicide / Nest Raid Assassination");
                                 queen.takeDamage(1000f); // Assassinate
                                 simulation.queueEvent(new SimulationEvent(
                                         SimulationEvent.EventType.DEATH,

@@ -29,11 +29,11 @@ class ProceduralSoundEngine {
         // Volumes (0.0 to 1.0)
         this.volumes = {
             master: 0.85,
-            ambiance: 0.65,
-            weather: 0.60,
-            insects: 0.45,
+            ambiance: 0.90,
+            weather: 0.15,
+            insects: 0.55,
             digging: 0.50,
-            river: 0.70,
+            river: 0.95,
             disease: 0.80,
         };
 
@@ -129,7 +129,7 @@ class ProceduralSoundEngine {
         this.windLfo.start();
 
         whiteNoise.connect(this.windFilter);
-        this.windFilter.connect(this.gains.ambiance);
+        this.windFilter.connect(this.gains.weather);
         whiteNoise.start();
         this.windNode = whiteNoise;
     }
@@ -529,12 +529,12 @@ class ProceduralSoundEngine {
         const dz = cameraPos.z - riverPos.z;
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-        // Max hearable distance = 120 meters
-        const maxDist = 120;
-        const proximity = Math.max(0, 1 - dist / maxDist);
-        const targetVol = Math.pow(proximity, 1.5) * (this.volumes.river || 0.4);
+        // Max hearable distance = 450 meters
+        const maxDist = 450;
+        const proximity = Math.max(0.40, 1 - dist / maxDist);
+        const targetVol = Math.pow(proximity, 1.1) * (this.volumes.river || 0.95);
 
-        this.gains.river.gain.setTargetAtTime(targetVol, this.ctx.currentTime, 0.15);
+        this.gains.river.gain.setTargetAtTime(targetVol, this.ctx.currentTime, 0.25);
     }
 
     // --- 9. DISEASE & EPIDEMIC OUTBREAK ALERT SOUND (Alerte maladie/épidémie) ---

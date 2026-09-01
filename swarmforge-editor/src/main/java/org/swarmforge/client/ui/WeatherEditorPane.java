@@ -492,36 +492,62 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     private void fetchRealWeather(String cityQuery) {
-        if (cityQuery == null || cityQuery.isBlank()) return;
         I18nManager i18n = I18nManager.getInstance();
+        String query = cityQuery != null ? cityQuery.trim() : "";
 
-        geoStatusLabel.setText(i18n.get("weather.geo.status_fetching", cityQuery));
+        geoStatusLabel.setText(i18n.get("weather.geo.status_fetching", query.isEmpty() ? "GPS Coords" : query));
         geoStatusLabel.setStyle("-fx-text-fill:#ffc107;-fx-font-size:11;");
 
         new Thread(() -> {
             try {
-                // 1. Open-Meteo Geocoding API
-                String geoUrlStr = "https://geocoding-api.open-meteo.com/v1/search?name="
-                        + java.net.URLEncoder.encode(cityQuery, StandardCharsets.UTF_8)
-                        + "&count=1&language=fr";
+                String name;
+                double lat;
+                double lon;
+                double alt;
 
-                String geoJson = readHttpUrl(geoUrlStr);
-                com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(geoJson);
+                if (query.isEmpty()) {
+                    if (latSpinner == null || lonSpinner == null) return;
+                    lat = latSpinner.getValue();
+                    lon = lonSpinner.getValue();
+                    name = String.format(Locale.US, "GPS (%.2f°, %.2f°)", lat, lon);
 
-                if (!root.has("results") || root.get("results").isEmpty()) {
-                    Platform.runLater(() -> {
-                        geoStatusLabel.setText(i18n.get("weather.geo.status_error", "Location not found"));
-                        geoStatusLabel.setStyle("-fx-text-fill:#ff4757;-fx-font-size:11;");
-                        NotificationOverlay.show(this, "Location \"" + cityQuery + "\" not found.", NotificationOverlay.NotificationType.WARNING);
-                    });
-                    return;
+                    // Fetch elevation for exact coordinates
+                    try {
+                        String elevUrlStr = String.format(Locale.US, "https://api.open-meteo.com/v1/elevation?latitude=%.4f&longitude=%.4f", lat, lon);
+                        String elevJson = readHttpUrl(elevUrlStr);
+                        com.fasterxml.jackson.databind.JsonNode elevRoot = new com.fasterxml.jackson.databind.ObjectMapper().readTree(elevJson);
+                        if (elevRoot.has("elevation") && elevRoot.get("elevation").isArray() && !elevRoot.get("elevation").isEmpty()) {
+                            alt = elevRoot.get("elevation").get(0).asDouble();
+                        } else {
+                            alt = altSpinner != null ? altSpinner.getValue() : 100.0;
+                        }
+                    } catch (Exception ex) {
+                        alt = altSpinner != null ? altSpinner.getValue() : 100.0;
+                    }
+                } else {
+                    // 1. Open-Meteo Geocoding API
+                    String geoUrlStr = "https://geocoding-api.open-meteo.com/v1/search?name="
+                            + java.net.URLEncoder.encode(query, StandardCharsets.UTF_8)
+                            + "&count=1&language=fr";
+
+                    String geoJson = readHttpUrl(geoUrlStr);
+                    com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(geoJson);
+
+                    if (!root.has("results") || root.get("results").isEmpty()) {
+                        Platform.runLater(() -> {
+                            geoStatusLabel.setText(i18n.get("weather.geo.status_error", "Location not found"));
+                            geoStatusLabel.setStyle("-fx-text-fill:#ff4757;-fx-font-size:11;");
+                            NotificationOverlay.show(this, "Location \"" + query + "\" not found.", NotificationOverlay.NotificationType.WARNING);
+                        });
+                        return;
+                    }
+
+                    com.fasterxml.jackson.databind.JsonNode loc = root.get("results").get(0);
+                    name = loc.get("name").asText();
+                    lat = loc.get("latitude").asDouble();
+                    lon = loc.get("longitude").asDouble();
+                    alt = loc.has("elevation") && !loc.get("elevation").isNull() ? loc.get("elevation").asDouble() : 100.0;
                 }
-
-                com.fasterxml.jackson.databind.JsonNode loc = root.get("results").get(0);
-                String name = loc.get("name").asText();
-                double lat = loc.get("latitude").asDouble();
-                double lon = loc.get("longitude").asDouble();
-                double alt = loc.has("elevation") ? loc.get("elevation").asDouble() : 100.0;
 
                 // 2. Fetch Open-Meteo Archive Climate Data (Daily parameters aggregated over 2023)
                 String climateUrlStr = String.format(Locale.US,
@@ -585,10 +611,16 @@ public class WeatherEditorPane extends BorderPane {
                     }
                 }
 
+                final String finalName = name;
+                final double finalLat = lat;
+                final double finalLon = lon;
+                final double finalAlt = alt;
+
                 Platform.runLater(() -> {
-                    latSpinner.getValueFactory().setValue(lat);
-                    lonSpinner.getValueFactory().setValue(lon);
-                    altSpinner.getValueFactory().setValue(alt);
+                    if (citySearchField != null) citySearchField.setText(finalName);
+                    latSpinner.getValueFactory().setValue(finalLat);
+                    lonSpinner.getValueFactory().setValue(finalLon);
+                    altSpinner.getValueFactory().setValue(finalAlt);
 
                     updatePhotoperiod();
                     updateAltitudeLapseRate();
@@ -597,10 +629,10 @@ public class WeatherEditorPane extends BorderPane {
                     syncAndValidate();
                     redrawCurves();
 
-                    geoStatusLabel.setText(i18n.get("weather.geo.status_success", name, String.format(Locale.US, "%.2f", lat), String.format(Locale.US, "%.2f", lon), (int) alt));
+                    geoStatusLabel.setText(i18n.get("weather.geo.status_success", finalName, String.format(Locale.US, "%.2f", finalLat), String.format(Locale.US, "%.2f", finalLon), (int) finalAlt));
                     geoStatusLabel.setStyle("-fx-text-fill:#28a745;-fx-font-weight:bold;-fx-font-size:11;");
 
-                    NotificationOverlay.show(this, "Real climate of " + name + " (" + String.format(Locale.US, "%.2f°N, %.2f°E", lat, lon) + ") successfully loaded!", NotificationOverlay.NotificationType.SUCCESS);
+                    NotificationOverlay.show(this, "Real climate of " + finalName + " (" + String.format(Locale.US, "%.2f°N, %.2f°E, %dm", finalLat, finalLon, (int)finalAlt) + ") successfully loaded!", NotificationOverlay.NotificationType.SUCCESS);
                 });
 
             } catch (Exception ex) {
@@ -638,11 +670,15 @@ public class WeatherEditorPane extends BorderPane {
     private void updateVegetationEstimate() {
         if (vegCoverLabel == null || latSpinner == null) return;
         double lat = latSpinner.getValue();
-        double annualTemp = getAvg(tempAvg);
+        double alt = altSpinner != null ? altSpinner.getValue() : 0.0;
+
+        // Apply environmental temperature lapse rate (~0.65°C drop per 100m) for bioclimatic classification
+        double baseAnnualTemp = getAvg(tempAvg);
+        double adjustedAnnualTemp = baseAnnualTemp - (alt * 0.0065);
         double annualRain = getSum(rainAvg);
 
-        org.swarmforge.core.domain.BioclimaticZone zone = org.swarmforge.core.domain.BioclimaticZone.classify(lat, annualTemp, annualRain);
-        vegCoverLabel.setText(zone.getDisplayName() + " — Suitability: " + zone.getRecommendedInsectSpecies());
+        org.swarmforge.core.domain.BioclimaticZone zone = org.swarmforge.core.domain.BioclimaticZone.classify(lat, adjustedAnnualTemp, annualRain);
+        vegCoverLabel.setText(zone.getDisplayName() + String.format(Locale.US, " (%dm)", (int)alt) + " — Suitability: " + zone.getRecommendedInsectSpecies());
     }
 
     private void updatePhotoperiod() {
@@ -1311,7 +1347,7 @@ public class WeatherEditorPane extends BorderPane {
             checkOrder("Humidity", mName, humidityMin[m], humidityAvg[m], humidityMax[m], errors);
 
             if (rainAvg[m] > 120 && humidityAvg[m] < 35) {
-                warnings.add(String.format("⚠️ %s: Heavy rain (%.0f mm) but very dry air (%.0f%% RH). Evaporation risk (Virga).",
+                warnings.add(String.format("⚠ %s: Heavy rain (%.0f mm) but very dry air (%.0f%% RH). Evaporation risk (Virga).",
                         mName, rainAvg[m], humidityAvg[m]));
             }
 
@@ -1433,11 +1469,14 @@ public class WeatherEditorPane extends BorderPane {
             slider.setMajorTickUnit(5);
             slider.tooltipProperty().bind(i18n.createTooltipBinding("weather.disasters.slider.tt"));
 
-            Label valueLabel = new Label(disaster[1] + "% /an");
-            valueLabel.setStyle("-fx-min-width: 80;");
+            Label valueLabel = new Label();
+            valueLabel.setStyle("-fx-min-width: 90;");
             valueLabel.tooltipProperty().bind(i18n.createTooltipBinding("weather.disasters.val.tt"));
-            slider.valueProperty().addListener((obs, old, val) ->
-                    valueLabel.setText(String.format("%.1f%% /an", val.doubleValue())));
+            valueLabel.textProperty().bind(javafx.beans.binding.Bindings.createStringBinding(
+                    () -> String.format(java.util.Locale.US, "%.1f %s", slider.getValue(), i18n.get("weather.disasters.unit")),
+                    slider.valueProperty(),
+                    i18n.localeProperty()
+            ));
 
             disasterProbabilities.put(disaster[2], slider);
 

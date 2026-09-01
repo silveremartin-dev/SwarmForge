@@ -572,10 +572,10 @@ public class NestGeneratorPane extends BorderPane {
         workerSizeSlider  = mkSlider(2.0, 30.0, 5.0);
         workerSizeSlider.tooltipProperty().bind(i18n.createTooltipBinding("nest.worker.size.tt"));
 
-        depthSlider       = mkSlider(4,  60, 20);
+        depthSlider       = mkSlider(0.5, 8.0, 2.5);
         depthSlider.tooltipProperty().bind(i18n.createTooltipBinding("nest.depth.tt"));
 
-        tunnelWidthSlider = mkSlider(1,   5,  2);
+        tunnelWidthSlider = mkSlider(2.0, 25.0, 4.0);
         tunnelWidthSlider.tooltipProperty().bind(i18n.createTooltipBinding("nest.tunnel.width.tt"));
 
         branchingSlider   = mkSlider(1,   5,  3);
@@ -654,11 +654,11 @@ public class NestGeneratorPane extends BorderPane {
             new Separator(),
             lblSeed, seedRow,
             btnAutoAdapt,
-            lblWorkerAuto, sv(workerSizeSlider),
-            lblTunnelAuto, sv(tunnelWidthSlider),
+            lblWorkerAuto, sv(workerSizeSlider, "mm"),
+            lblTunnelAuto, sv(tunnelWidthSlider, "mm"),
             passageCheckLabel,
-            lblMaxDepth,   sv(depthSlider),
-            lblBranching,  sv(branchingSlider)
+            lblMaxDepth,   sv(depthSlider, "m"),
+            lblBranching,  sv(branchingSlider, "")
         );
         masterBlock.getStyleClass().add("card-pane");
 
@@ -862,7 +862,7 @@ public class NestGeneratorPane extends BorderPane {
         if (arch.contains("BEEHIVE") || arch.contains("WAX_COMB")) {
             if (height < 0.4) {
                 score -= 25.0;
-                addEvalRec("⚠️ Wooden Beehive: Risk of ground moisture and ground predators. Elevate to >= 0.5m.");
+                addEvalRec("⚠ Wooden Beehive: Risk of ground moisture and ground predators. Elevate to >= 0.5m.");
             } else if (height > 2.5) {
                 score -= 15.0;
                 addEvalRec("ℹ️ High Elevation: Strong wind exposure may perturb take-off and landing.");
@@ -879,39 +879,39 @@ public class NestGeneratorPane extends BorderPane {
         } else if (arch.contains("BURROW") || arch.contains("FUNGI_VAULT")) {
             if (height > 0.5) {
                 score -= 30.0;
-                addEvalRec("⚠️ Subterranean gallery placed above soil surface.");
+                addEvalRec("⚠ Subterranean gallery placed above soil surface.");
             } else {
                 addEvalRec("✅ Ideal Depth: Natural thermal soil protection.");
             }
         }
 
         // 2. Thermal Microclimate
-        if (temp < 15.0) { score -= 20.0; addEvalRec("⚠️ Cool ambient temperature (<15°C): Brood development slowed."); }
+        if (temp < 15.0) { score -= 20.0; addEvalRec("⚠ Cool ambient temperature (<15°C): Brood development slowed."); }
         else if (temp > 35.0) { score -= 25.0; addEvalRec("🚨 Thermal Overheating (>35°C): Risk of wax melting or mortality."); }
         else { addEvalRec("✅ Optimal thermal microclimate (18°C - 30°C)."); }
 
         // 3. Moisture
-        if (moisture < 20.0) { score -= 20.0; addEvalRec("⚠️ Substrate Desiccation (<20%): Risk of brood dehydration."); }
-        else if (moisture > 80.0) { score -= 20.0; addEvalRec("⚠️ Water Saturation (>80%): Risk of fungal mold development."); }
+        if (moisture < 20.0) { score -= 20.0; addEvalRec("⚠ Substrate Desiccation (<20%): Risk of brood dehydration."); }
+        else if (moisture > 80.0) { score -= 20.0; addEvalRec("⚠ Water Saturation (>80%): Risk of fungal mold development."); }
         else { addEvalRec("✅ Balanced substrate moisture level."); }
 
         // 4. Foraging
-        if (foraging > 150.0) { score -= 20.0; addEvalRec("⚠️ High Foraging Distance (>150m): High flight energy expenditure."); }
+        if (foraging > 150.0) { score -= 20.0; addEvalRec("⚠ High Foraging Distance (>150m): High flight energy expenditure."); }
         else { addEvalRec("✅ Immediate proximity to floral and water resources."); }
 
         // 5. Compaction
-        if (compaction < 30.0) { score -= 15.0; addEvalRec("⚠️ Unstable Loose Substrate (<30 kPa): Collapse risk."); }
+        if (compaction < 30.0) { score -= 15.0; addEvalRec("⚠ Unstable Loose Substrate (<30 kPa): Collapse risk."); }
 
         // 6. Colony Population vs Nest Capacity Validation & Spillover Diagnostics
         int totalChambers = (int) getChamberCount();
-        int estNestCap = Math.max(40, totalChambers * 25);
+        int estNestCap = Math.max(100, totalChambers * 100);
         int estPop = activeCustomSpecies != null ? activeCustomSpecies.getTypicalColonySize() : 300;
         int queenChambers = getSp("👑 Queen Chamber");
         int foodChambers = getSp("🍖 Food Storage");
 
         if (estPop > estNestCap) {
             score -= 15.0;
-            addEvalRec(String.format("⚠️ Nest Capacity (~%d ind.) < Population (%d ind.). The %d overflow individuals will emerge on the surface around the crater.", estNestCap, estPop, estPop - estNestCap));
+            addEvalRec(String.format("⚠ Nest Capacity (~%d ind.) < Population (%d ind.). The %d overflow individuals will emerge on the surface around the crater.", estNestCap, estPop, estPop - estNestCap));
         } else {
             addEvalRec(String.format("✅ Nest capacity (~%d ind.) sufficient for initial population (%d ind.).", estNestCap, estPop));
         }
@@ -922,7 +922,7 @@ public class NestGeneratorPane extends BorderPane {
         }
         if (foodChambers == 0) {
             score -= 10.0;
-            addEvalRec("⚠️ Absence of Storage Granaries: Risk of starvation or brood cluttering.");
+            addEvalRec("⚠ Absence of Storage Granaries: Risk of starvation or brood cluttering.");
         }
 
         score = Math.max(0.0, Math.min(100.0, score));
@@ -1053,13 +1053,18 @@ public class NestGeneratorPane extends BorderPane {
         return s;
     }
 
-    private HBox sv(Slider s) {
+    private HBox sv(Slider s, String unit) {
         HBox b = new HBox(8); b.setAlignment(Pos.CENTER_LEFT);
-        Label v = new Label(fmt(s.getValue()));
-        v.setStyle("-fx-text-fill:#00d4ff;-fx-min-width:32;-fx-font-weight:bold;");
-        s.valueProperty().addListener((o,a,n) -> v.setText(fmt(n.doubleValue())));
+        String unitSuffix = (unit != null && !unit.isEmpty()) ? " " + unit : "";
+        Label v = new Label(fmt(s.getValue()) + unitSuffix);
+        v.setStyle("-fx-text-fill:#00d4ff;-fx-min-width:48;-fx-font-weight:bold;");
+        s.valueProperty().addListener((o,a,n) -> v.setText(fmt(n.doubleValue()) + unitSuffix));
         b.getChildren().addAll(s, v);
         return b;
+    }
+
+    private HBox sv(Slider s) {
+        return sv(s, "");
     }
 
     private String fmt(double d) { return String.format("%.1f", d); }
@@ -1120,17 +1125,14 @@ public class NestGeneratorPane extends BorderPane {
         return new VBox(4, area, legendBar);
     }
 
+    private CheckBox showLegendCheckBox;
+
     private HBox buildLegendBar() {
         I18nManager i18n = I18nManager.getInstance();
         HBox bar = new HBox(10);
         bar.setPadding(new Insets(4, 10, 6, 10));
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.getStyleClass().add("legend-bar");
-
-        syncViewsCheckBox = new CheckBox();
-        syncViewsCheckBox.textProperty().bind(i18n.createStringBinding("nest.chk.sync_views"));
-        syncViewsCheckBox.setSelected(true);
-        syncViewsCheckBox.getStyleClass().add("legend-checkbox");
 
         showGhostMeshCheckBox = new CheckBox();
         showGhostMeshCheckBox.textProperty().bind(i18n.createStringBinding("nest.chk.ghost_mesh"));
@@ -1140,11 +1142,29 @@ public class NestGeneratorPane extends BorderPane {
         showGhostMeshCheckBox.getTooltip().textProperty().bind(i18n.createStringBinding("nest.chk.ghost_mesh.tt"));
         showGhostMeshCheckBox.setOnAction(e -> repaint());
 
+        syncViewsCheckBox = new CheckBox();
+        syncViewsCheckBox.textProperty().bind(i18n.createStringBinding("nest.chk.sync_views"));
+        syncViewsCheckBox.setSelected(true);
+        syncViewsCheckBox.getStyleClass().add("legend-checkbox");
+
+        HBox legendItemsContainer = new HBox(10);
+        legendItemsContainer.setAlignment(Pos.CENTER_LEFT);
+
+        showLegendCheckBox = new CheckBox();
+        showLegendCheckBox.textProperty().bind(i18n.createStringBinding("legend.show"));
+        showLegendCheckBox.setSelected(true);
+        showLegendCheckBox.getStyleClass().add("legend-checkbox");
+        showLegendCheckBox.setOnAction(e -> {
+            boolean sel = showLegendCheckBox.isSelected();
+            legendItemsContainer.setVisible(sel);
+            legendItemsContainer.setManaged(sel);
+        });
+
         Label title = new Label();
         title.textProperty().bind(i18n.createStringBinding("nest.legend.title"));
         title.getStyleClass().add("legend-title");
 
-        bar.getChildren().addAll(syncViewsCheckBox, showGhostMeshCheckBox, new Separator(Orientation.VERTICAL), title);
+        legendItemsContainer.getChildren().addAll(new Separator(Orientation.VERTICAL), title);
 
         String[][] items = {
             {"nest.legend.entrance", "#32CD32"},
@@ -1171,15 +1191,10 @@ public class NestGeneratorPane extends BorderPane {
             Label lbl = new Label();
             lbl.textProperty().bind(i18n.createStringBinding(it[0]));
             item.getChildren().addAll(dot, lbl);
-            bar.getChildren().add(item);
+            legendItemsContainer.getChildren().add(item);
         }
 
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Label hint = new Label();
-        hint.textProperty().bind(i18n.createStringBinding("nest.legend.hint"));
-        hint.getStyleClass().add("legend-hover-info");
-
-        bar.getChildren().addAll(sp, hint);
+        bar.getChildren().addAll(showGhostMeshCheckBox, syncViewsCheckBox, showLegendCheckBox, legendItemsContainer);
         return bar;
     }
 
@@ -1477,7 +1492,7 @@ public class NestGeneratorPane extends BorderPane {
             branchingSlider.setValue(branchingVal);
 
             int popSize = Math.max(10, (int) (species.getTypicalColonySize() * popMultiplier));
-            double depth = Math.max(4, Math.min(60, Math.log10(popSize + 10) * 10 * depthMultiplier));
+            double depth = Math.max(0.5, Math.min(8.0, Math.log10(popSize + 10) * 0.8 * depthMultiplier));
             depthSlider.setValue(depth);
 
             // 4. Chamber distribution according to species biology and nest stage
@@ -1553,7 +1568,7 @@ public class NestGeneratorPane extends BorderPane {
         double effectiveWidthMm = Math.max(tunnelScale * 3.0, (tunnelScale / 2.0) * wMm * 1.25);
 
         if (effectiveWidthMm < wMm * 0.95) {
-            passageCheckLabel.setText("⚠️ Tunnel too narrow for workers (" + String.format("%.1f", wMm) + "mm)! Risk of blockage.");
+            passageCheckLabel.setText("⚠ Tunnel too narrow for workers (" + String.format("%.1f", wMm) + "mm)! Risk of blockage.");
             passageCheckLabel.setStyle("-fx-font-size:10px;-fx-text-fill:#ef4444;-fx-font-weight:bold;");
         } else if (effectiveWidthMm < wMm * 1.2) {
             passageCheckLabel.setText("⚡ Narrow passage (Single file movement - Workers " + String.format("%.1f", wMm) + "mm)");

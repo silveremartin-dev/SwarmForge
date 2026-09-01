@@ -89,12 +89,16 @@ export default function LowPolyModel({
                     tex.wrapT = THREE.RepeatWrapping
                     sceneObj.traverse((child) => {
                         if (child.isMesh) {
+                            child.frustumCulled = false
                             child.material = new THREE.MeshStandardMaterial({
                                 map: tex,
                                 roughness: 0.8,
                                 metalness: 0.05,
                                 depthWrite: true,
-                                depthTest: true
+                                depthTest: true,
+                                side: THREE.FrontSide,
+                                transparent: false,
+                                opacity: 1.0
                             })
                             if (season && season !== 'SUMMER') {
                                 child.material = applySeasonalTint(child.material, season)
@@ -109,10 +113,15 @@ export default function LowPolyModel({
                     if (child.isMesh) {
                         child.castShadow = true
                         child.receiveShadow = true
+                        child.frustumCulled = false
                         if (child.material) {
-                            child.material = applySeasonalTint(child.material, season)
+                            child.material = child.material.clone ? child.material.clone() : child.material
                             child.material.depthWrite = true
                             child.material.depthTest = true
+                            child.material.side = THREE.FrontSide
+                            child.material.transparent = false
+                            child.material.opacity = 1.0
+                            child.material = applySeasonalTint(child.material, season)
                         }
                     }
                 })
@@ -194,26 +203,26 @@ export default function LowPolyModel({
         const seasonalFoliageColor = season === 'WINTER' ? '#e2e8f0' : season === 'AUTUMN' ? '#d97706' : fallbackColor
 
         return (
-            <group position={position} rotation={rotation} scale={typeof scale === 'number' ? [scale, scale, scale] : scale}>
-                <group ref={swayRef}>
+            <group position={position} rotation={rotation} scale={typeof scale === 'number' ? [scale, scale, scale] : scale} frustumCulled={false}>
+                <group ref={swayRef} frustumCulled={false}>
                     {/* 3D Trunk */}
-                    <mesh position={[0, scaleVal * 1.5, 0]} castShadow receiveShadow>
+                    <mesh position={[0, scaleVal * 1.5, 0]} castShadow receiveShadow frustumCulled={false}>
                         <cylinderGeometry args={[scaleVal * 0.25, scaleVal * 0.45, scaleVal * 3.0, 8]} />
-                        <meshStandardMaterial color="#4a2f1b" roughness={0.9} metalness={0.05} />
+                        <meshStandardMaterial color="#4a2f1b" roughness={0.9} metalness={0.05} side={THREE.FrontSide} depthWrite depthTest />
                     </mesh>
                     {/* 3D Main Canopy Blob */}
-                    <mesh position={[0, scaleVal * 3.4, 0]} castShadow receiveShadow>
+                    <mesh position={[0, scaleVal * 3.4, 0]} castShadow receiveShadow frustumCulled={false}>
                         <dodecahedronGeometry args={[scaleVal * 1.6, 1]} />
-                        <meshStandardMaterial color={seasonalFoliageColor} roughness={0.8} metalness={0.05} />
+                        <meshStandardMaterial color={seasonalFoliageColor} roughness={0.8} metalness={0.05} side={THREE.FrontSide} depthWrite depthTest />
                     </mesh>
                     {/* 3D Secondary Foliage Clusters */}
-                    <mesh position={[scaleVal * 0.9, scaleVal * 2.8, scaleVal * 0.5]} castShadow receiveShadow>
+                    <mesh position={[scaleVal * 0.9, scaleVal * 2.8, scaleVal * 0.5]} castShadow receiveShadow frustumCulled={false}>
                         <dodecahedronGeometry args={[scaleVal * 1.1, 1]} />
-                        <meshStandardMaterial color={seasonalFoliageColor} roughness={0.8} metalness={0.05} />
+                        <meshStandardMaterial color={seasonalFoliageColor} roughness={0.8} metalness={0.05} side={THREE.FrontSide} depthWrite depthTest />
                     </mesh>
-                    <mesh position={[-scaleVal * 0.8, scaleVal * 3.1, -scaleVal * 0.6]} castShadow receiveShadow>
+                    <mesh position={[-scaleVal * 0.8, scaleVal * 3.1, -scaleVal * 0.6]} castShadow receiveShadow frustumCulled={false}>
                         <dodecahedronGeometry args={[scaleVal * 1.2, 1]} />
-                        <meshStandardMaterial color={seasonalFoliageColor} roughness={0.8} metalness={0.05} />
+                        <meshStandardMaterial color={seasonalFoliageColor} roughness={0.8} metalness={0.05} side={THREE.FrontSide} depthWrite depthTest />
                     </mesh>
                 </group>
             </group>
@@ -221,10 +230,11 @@ export default function LowPolyModel({
     }
 
     return (
-        <group position={position} rotation={rotation} scale={typeof scale === 'number' ? [scale, scale, scale] : scale}>
-            <group ref={swayRef}>
+        <group position={position} rotation={rotation} scale={typeof scale === 'number' ? [scale, scale, scale] : scale} frustumCulled={false}>
+            <group ref={swayRef} frustumCulled={false}>
                 <primitive object={modelScene} />
             </group>
         </group>
     )
 }
+

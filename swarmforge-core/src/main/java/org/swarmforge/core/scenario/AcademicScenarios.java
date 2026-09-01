@@ -108,6 +108,7 @@ public class AcademicScenarios {
         scenario.setMasterSeed(seed);
         scenario.setDepth(96); // Deep soil
         scenario.setSoilDensity(0.75f); // Clay/loam soil
+        scenario.setBiomeName("TEMPERATE_FOREST");
 
         Map<String, ArchitectureType> btEngine = new HashMap<>();
         btEngine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
@@ -136,6 +137,7 @@ public class AcademicScenarios {
         scenario.setMasterSeed(seed);
         scenario.setWidth(400);
         scenario.setHeight(400);
+        scenario.setBiomeName("TEMPERATE_FOREST");
 
         Map<String, ArchitectureType> lasiusEngine = new HashMap<>();
         lasiusEngine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
@@ -168,6 +170,7 @@ public class AcademicScenarios {
         scenario.setAcademicCategory("Sociobiology / Colonial Metabolism");
         scenario.setMasterSeed(seed);
         scenario.setFoodPatchesCount(10);
+        scenario.setBiomeName("TEMPERATE_FOREST");
 
         Map<String, ArchitectureType> engine = new HashMap<>();
         engine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
@@ -190,6 +193,7 @@ public class AcademicScenarios {
         );
         scenario.setAcademicCategory("Ethology / Social Immunity");
         scenario.setMasterSeed(seed);
+        scenario.setBiomeName("TEMPERATE_FOREST");
 
         Map<String, ArchitectureType> engine = new HashMap<>();
         engine.put("WORKER", ArchitectureType.FUZZY_LOGIC);
@@ -213,6 +217,7 @@ public class AcademicScenarios {
         );
         scenario.setAcademicCategory("Symbiosis & Animal Agriculture");
         scenario.setMasterSeed(seed);
+        scenario.setBiomeName("TROPICAL_RAINFOREST");
 
         Map<String, ArchitectureType> engine = new HashMap<>();
         engine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
@@ -235,6 +240,7 @@ public class AcademicScenarios {
         );
         scenario.setAcademicCategory("Collective Intelligence & Stigmergy");
         scenario.setMasterSeed(seed);
+        scenario.setBiomeName("TEMPERATE_FOREST");
 
         Map<String, ArchitectureType> engine = new HashMap<>();
         engine.put("WORKER", ArchitectureType.NEURAL_NETWORK);

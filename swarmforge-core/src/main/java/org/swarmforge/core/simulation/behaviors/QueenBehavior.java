@@ -53,9 +53,9 @@ public class QueenBehavior {
     private QueenState state = QueenState.VIRGIN;
     private int storedSperm = 0;
     private int maxSperm = 10_000_000; // Typical ant queen storage
-    private int layingCooldown = 0;
+    private float layingCooldownSeconds = 0.0f;
     private int eggsLaidTotal = 0;
-    private int matingFlightAge = 500; // Ticks until mating flight
+    private float matingFlightAgeSeconds = 300.0f; // Seconds until mating flight (5 minutes)
     private float fertilityRate = 1.0f;
 
     // Mating flight parameters
@@ -74,6 +74,10 @@ public class QueenBehavior {
      * @param queen The queen individual
      */
     public void tick(Individual queen) {
+        tick(queen, 0.016666667f);
+    }
+
+    public void tick(Individual queen, float deltaSeconds) {
         if (queen == null || queen.getCaste() != Caste.QUEEN || !queen.isAlive()) {
             return;
         }
@@ -91,13 +95,14 @@ public class QueenBehavior {
                 /* No action */ }
         }
 
-        // Decrement cooldowns
-        if (layingCooldown > 0)
-            layingCooldown--;
+        // Decrement cooldowns in seconds
+        if (layingCooldownSeconds > 0.0f) {
+            layingCooldownSeconds -= deltaSeconds;
+        }
     }
 
     private void updateState(Individual queen) {
-        float age = queen.getAge();
+        float ageSec = queen.getAgeInSeconds();
 
         if (!queen.isAlive()) {
             state = QueenState.DEAD;
@@ -115,9 +120,10 @@ public class QueenBehavior {
             state = QueenState.LAYING;
         }
 
-        // Check for decline based on age or sperm depletion
-        float maxAge = queen.getSpecies() != null ? queen.getSpecies().getQueenLifespan() : 50000;
-        if (age > maxAge * 0.8f || storedSperm < maxSperm * 0.1f) {
+        // Check for decline based on age (in seconds) or sperm depletion
+        float maxAgeDays = queen.getSpecies() != null ? queen.getSpecies().getQueenLifespan() : 365.0f;
+        float maxAgeSec = maxAgeDays * 86400.0f;
+        if (ageSec > maxAgeSec * 0.8f || storedSperm < maxSperm * 0.1f) {
             if (state == QueenState.LAYING) {
                 state = QueenState.DECLINING;
                 fertilityRate = 0.3f;
@@ -130,7 +136,7 @@ public class QueenBehavior {
 
     private void processVirginState(Individual queen) {
         // Check if it's time for mating flight
-        if (queen.getAge() >= matingFlightAge && !matingFlightComplete) {
+        if (queen.getAgeInSeconds() >= matingFlightAgeSeconds && !matingFlightComplete) {
             attemptMatingFlight(queen);
         }
     }
@@ -190,7 +196,7 @@ public class QueenBehavior {
     }
 
     private void processLayingState(Individual queen) {
-        if (layingCooldown > 0)
+        if (layingCooldownSeconds > 0.0f)
             return;
         if (storedSperm <= 0)
             return;
@@ -198,12 +204,12 @@ public class QueenBehavior {
             return; // Need energy to lay
 
         // Check colony needs
-        int currentPop = colony.getPopulation();
-        int targetPop = 100; // Base target
+        int currentPop = colony != null ? colony.getPopulation() : 0;
+        int targetPop = 1000; // Base target capacity
 
         if (currentPop >= targetPop * 1.5f) {
-            // Colony is full, slow down
-            layingCooldown = 200;
+            // Colony is full, slow down laying for 120 seconds
+            layingCooldownSeconds = 120.0f;
             return;
         }
 
@@ -233,8 +239,8 @@ public class QueenBehavior {
 
         queen.setEnergy(queen.getEnergy() - 2); // Laying costs energy
         float rate = queen.getSpecies() != null ? queen.getSpecies().getQueenEggLayingRate() : 25.0f;
-        int baseCooldown = Math.max(1, (int) (1440.0f / Math.max(0.1f, rate)));
-        layingCooldown = baseCooldown + random.nextInt(Math.max(1, baseCooldown / 2)); // Dynamic species laying cooldown
+        float baseIntervalSec = Math.max(2.0f, 86400.0f / Math.max(0.1f, rate) / 100.0f);
+        layingCooldownSeconds = baseIntervalSec + random.nextFloat() * (baseIntervalSec * 0.5f);
     }
 
     /**
@@ -274,10 +280,10 @@ public class QueenBehavior {
 
     private void processDecliningState(Individual queen) {
         // Reduced egg production
-        if (layingCooldown <= 0 && random.nextFloat() < 0.3f) {
+        if (layingCooldownSeconds <= 0.0f && random.nextFloat() < 0.3f) {
             layEgg(queen);
         }
-        layingCooldown = 100; // Slower laying
+        layingCooldownSeconds = 60.0f; // Slower laying (60 seconds)
 
         // Check if succession needed
         checkSuccession(queen);

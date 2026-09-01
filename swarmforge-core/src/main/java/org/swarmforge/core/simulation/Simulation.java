@@ -55,6 +55,8 @@ public class Simulation {
     private final CopyOnWriteArrayList<FoodSource> foodSources;
     private final org.swarmforge.core.spatial.SpatialPartition<FoodSource> foodIndex;
     private final org.swarmforge.core.world.WeatherSystem weather;
+    private final org.swarmforge.core.world.SoilHydricCoupling soilHydricCoupling;
+    private final org.swarmforge.core.world.WaterTable waterTable;
     private final org.swarmforge.core.spatial.AStarPathfinder pathfinder;
     private final org.swarmforge.core.world.SeasonManager seasonManager;
     private final TerritoryManager territoryManager;
@@ -113,6 +115,8 @@ public class Simulation {
         this.state = new AtomicReference<>(State.STOPPED);
         // Default to Equator for neutral weather
         this.weather = new org.swarmforge.core.world.WeatherSystem(0.0, 0.0);
+        this.soilHydricCoupling = new org.swarmforge.core.world.SoilHydricCoupling(terrarium != null ? terrarium.getDepth() : 64);
+        this.waterTable = new org.swarmforge.core.world.WaterTable(terrarium != null ? terrarium.getWidth() : 100, terrarium != null ? terrarium.getDepth() : 64);
         this.seasonManager = new org.swarmforge.core.world.SeasonManager(this);
 
         // Initialize spatial indices
@@ -232,6 +236,14 @@ public class Simulation {
                 float qty = 300.0f + rng.nextFloat() * 700.0f;
                 foodSources.add(new org.swarmforge.core.domain.FoodSource(fx, fy, 0.0f, qty, rType));
             }
+        }
+
+        if (predatorManager != null && predatorManager.getPredatorCount() == 0) {
+            // Seed initial accessory prey / predator species in the environment
+            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.CATERPILLAR, width * 0.35f, depth * 0.35f, 0.0f);
+            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.BEETLE, width * 0.65f, depth * 0.40f, 0.0f);
+            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.SPIDER, width * 0.50f, depth * 0.70f, 0.0f);
+            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.LADYBUG_LARVA, width * 0.25f, depth * 0.60f, 0.0f);
         }
     }
 
@@ -366,6 +378,18 @@ public class Simulation {
 
     public org.swarmforge.core.gpu.SparsePheromoneGrid getPheromoneGrid() {
         return pheromoneGrid;
+    }
+
+    public org.swarmforge.core.world.WeatherSystem getWeather() {
+        return weather;
+    }
+
+    public org.swarmforge.core.world.SoilHydricCoupling getSoilHydricCoupling() {
+        return soilHydricCoupling;
+    }
+
+    public org.swarmforge.core.world.WaterTable getWaterTable() {
+        return waterTable;
     }
 
     public org.swarmforge.core.ecology.WaterGrid getWaterGrid() {
@@ -552,8 +576,18 @@ public class Simulation {
                 // Inject master simulation deterministic PRNG
                 individual.setRandom(this.random);
 
-                // Update thermodynamic ambient temperature from weather context
-                individual.setAmbientTemperatureC(context.getTemperature());
+                // Update thermodynamic ambient temperature and humidity from weather context (with subterranean microclimate buffering)
+                float ambTemp = context.getTemperature();
+                float ambHum = context.getRelativeHumidity(individual.getX(), individual.getY(), individual.getZ());
+                if (individual.getZ() < -0.5f) {
+                    float optT = individual.getSpecies() != null ? individual.getSpecies().getOptimalTempCelsius() : 20.0f;
+                    float optH = individual.getSpecies() != null ? individual.getSpecies().getOptimalHumidityPercent() : 85.0f;
+                    float depthFactor = Math.min(1.0f, Math.abs(individual.getZ()) / 4.0f);
+                    ambTemp = ambTemp * (1.0f - depthFactor) + optT * depthFactor;
+                    ambHum = ambHum * (1.0f - depthFactor) + optH * depthFactor;
+                }
+                individual.setAmbientTemperatureC(ambTemp);
+                individual.setAmbientHumidityPercent(ambHum);
 
                 // Process growth and lifecycle stage progression
                 processGrowth(individual);
@@ -573,7 +607,11 @@ public class Simulation {
                     // Check environmental hazards (Floods, damage per second scaled by simulationStepSeconds)
                     float waterLevel = context.getWaterLevel(individual.getX(), individual.getY(), individual.getZ());
                     if (waterLevel > 0.5f) {
-                        individual.setHealth(individual.getHealth() - 300.0f * simulationStepSeconds);
+                        float drownDamage = 40.0f * simulationStepSeconds;
+                        if (individual.getHealth() <= drownDamage) {
+                            individual.die("Drowning / Flash Flood");
+                        }
+                        individual.setHealth(individual.getHealth() - drownDamage);
                         if (!individual.isAlive()) {
                             eventQueue.offer(new SimulationEvent(SimulationEvent.EventType.DEATH,
                                     tickCount.get(), "Drowned in flood"));
@@ -601,13 +639,13 @@ public class Simulation {
         if (!ind.isAlive() || ind.getLifeStage() == Individual.LifeStage.ADULT)
             return;
 
-        if (ind.getAge() > ind.getMaturationThreshold()) {
+        if (ind.getAgeInSeconds() >= ind.getMaturationThreshold()) {
             var sp = ind.getSpecies();
             switch (ind.getLifeStage()) {
                 case EGG -> {
                     ind.setLifeStage(Individual.LifeStage.LARVA);
                     float larvaDays = sp != null ? sp.getLarvaStageDuration() : 14f;
-                    ind.setMaturationThreshold(ind.getAge() + larvaDays * 1440.0f);
+                    ind.setMaturationThreshold(ind.getAgeInSeconds() + larvaDays * 86400.0f);
                     SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.WORKER_BORN, SimulationEvent.Severity.INFO, tickCount.get(), "Hatching: Egg hatched into Larva", null);
                     eventQueue.offer(evt);
                     org.swarmforge.core.event.EventBus.getInstance().publish(evt);
@@ -616,7 +654,7 @@ public class Simulation {
                     if (ind.getEnergy() > 50) {
                         ind.setLifeStage(Individual.LifeStage.PUPA);
                         float pupaDays = sp != null ? sp.getPupaStageDuration() : 14f;
-                        ind.setMaturationThreshold(ind.getAge() + pupaDays * 1440.0f);
+                        ind.setMaturationThreshold(ind.getAgeInSeconds() + pupaDays * 86400.0f);
                         SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.WORKER_BORN, SimulationEvent.Severity.INFO, tickCount.get(), "Pupation: Larva pupated into Pupa", null);
                         eventQueue.offer(evt);
                         org.swarmforge.core.event.EventBus.getInstance().publish(evt);
@@ -680,9 +718,20 @@ public class Simulation {
                     .toList();
 
             if (weather.isRaining()) {
-                waterGrid.addRain(0.1f); // Arbitrary rain amount per 10 ticks
+                float rainAmount = Math.max(0.1f, weather.getRainfall()) * 0.001f * simulationStepSeconds * 10.0f;
+                waterGrid.addRain(rainAmount);
             }
-            waterGrid.tick(tunnels);
+            waterGrid.tick(tunnels, simulationStepSeconds * 10.0f);
+        }
+
+        if (soilHydricCoupling != null && weather != null) {
+            float sTemp = weather.getTemperature();
+            float rain = weather.getRainfall();
+            float evap = weather.isRaining() ? 0.0f : 0.5f;
+            soilHydricCoupling.tick(sTemp, rain, evap, simulationStepSeconds);
+        }
+        if (waterTable != null && weather != null) {
+            waterTable.tick(weather.getRainfall(), weather.isRaining() ? 0.0f : 0.5f);
         }
 
         // Distributed Pheromone Logic

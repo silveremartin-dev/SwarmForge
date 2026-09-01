@@ -77,8 +77,11 @@ public class CustomSpecies implements Species {
     // --- Nest & Environment ---
     private String nestType = "UNDERGROUND_BURROW"; // UNDERGROUND_BURROW, MOUND, WOOD_TUNNELS, PAPER_NEST, WAX_COMB, ARBOREAL_LEAF
     private float optimalTempCelsius = 24.0f;
-    private float minTempCelsius = 10.0f;
-    private float maxTempCelsius = 38.0f;
+    private float minTempCelsius = 0.0f;
+    private float maxTempCelsius = 45.0f;
+    private float optimalHumidityPercent = 80.0f;
+    private float minHumidityPercent = 20.0f;
+    private float maxHumidityPercent = 100.0f;
     private float territoriality = 0.5f;
     private String venomType = "NONE"; // NONE, FORMIC_ACID, VENOMOUS_STING, CHEMICAL_SPRAY, POWERFUL_MANDIBLES
 
@@ -651,6 +654,33 @@ public class CustomSpecies implements Species {
 
     public void setMaxTempCelsius(float maxTempCelsius) {
         this.maxTempCelsius = maxTempCelsius;
+    }
+
+    @Override
+    public float getOptimalHumidityPercent() {
+        return optimalHumidityPercent;
+    }
+
+    public void setOptimalHumidityPercent(float optimalHumidityPercent) {
+        this.optimalHumidityPercent = optimalHumidityPercent;
+    }
+
+    @Override
+    public float getMinHumidityPercent() {
+        return minHumidityPercent;
+    }
+
+    public void setMinHumidityPercent(float minHumidityPercent) {
+        this.minHumidityPercent = minHumidityPercent;
+    }
+
+    @Override
+    public float getMaxHumidityPercent() {
+        return maxHumidityPercent;
+    }
+
+    public void setMaxHumidityPercent(float maxHumidityPercent) {
+        this.maxHumidityPercent = maxHumidityPercent;
     }
 
     public float getTerritoriality() {

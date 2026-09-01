@@ -265,12 +265,13 @@
                 <configuration>
                     <outputDirectory>${project.basedir}/javadoc</outputDirectory>
                     <reportOutputDirectory>${project.basedir}/javadoc</reportOutputDirectory>
+                    <destDir>.</destDir>
                     <doclint>none</doclint>
                     <failOnError>false</failOnError>
                     <show>protected</show>
                     <windowtitle>SwarmForge API Documentation</windowtitle>
                     <doctitle>SwarmForge ${project.version} API</doctitle>
-                    <bottom>Copyright © 2022-2025 Silvère Martin-Michiellot. AI Assistant: Gemini. MIT License.</bottom>
+                    <bottom>Copyright © 2022-2026 Silvère Martin-Michiellot. AI Assistant: Gemini. MIT License.</bottom>
                 </configuration>
                 <executions>
                     <execution>

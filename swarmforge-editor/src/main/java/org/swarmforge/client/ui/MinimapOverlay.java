@@ -344,14 +344,14 @@ public class MinimapOverlay extends VBox {
             gcTop.setFill(Color.rgb(15, 23, 42));
             gcTop.fillRect(0, 0, canvasTop.getWidth(), canvasTop.getHeight());
             gcTop.setFill(Color.GRAY);
-            gcTop.fillText("Vue du Dessus (Top-Down)", canvasTop.getWidth() / 2 - 60, canvasTop.getHeight() / 2);
+            gcTop.fillText(I18nManager.getInstance().get("minimap.topdown"), canvasTop.getWidth() / 2 - 60, canvasTop.getHeight() / 2);
         }
 
         if (canvasSide != null && gcSide != null && canvasSide.getWidth() >= 10 && canvasSide.getHeight() >= 10) {
             gcSide.setFill(Color.rgb(15, 23, 42));
             gcSide.fillRect(0, 0, canvasSide.getWidth(), canvasSide.getHeight());
             gcSide.setFill(Color.GRAY);
-            gcSide.fillText("Vue de Profil (Side View)", canvasSide.getWidth() / 2 - 60, canvasSide.getHeight() / 2);
+            gcSide.fillText(I18nManager.getInstance().get("minimap.sideview"), canvasSide.getWidth() / 2 - 60, canvasSide.getHeight() / 2);
         }
     }
 

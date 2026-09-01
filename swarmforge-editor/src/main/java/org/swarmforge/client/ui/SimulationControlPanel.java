@@ -952,7 +952,7 @@ public class SimulationControlPanel extends VBox {
                         ex.printStackTrace();
                         if (inlineProgressBar != null) {
                             inlineProgressBar.setProgress(1.0);
-                            inlineProgressLabel.setText("⚠️ Initialization completed with warnings: " + ex.getMessage());
+                            inlineProgressLabel.setText("⚠ Initialization completed with warnings: " + ex.getMessage());
                         }
                     } else {
                         org.swarmforge.core.event.EventBus.getInstance().publish(
@@ -1620,6 +1620,10 @@ public class SimulationControlPanel extends VBox {
                                 card.setWorkerCount(sSnap.workerCount());
                                 card.setSoldierCount(sSnap.soldierCount());
                                 card.setInitialFood(sSnap.initialFood());
+                                if (sSnap.placementStrategy() != null) card.setNestPlacement(sSnap.placementStrategy());
+                                card.setCustomX(sSnap.customX());
+                                card.setCustomZ(sSnap.customZ());
+                                if (sSnap.nestRelation() != null) card.setNestRelation(sSnap.nestRelation());
                                 if (sSnap.accessorySnapshots() != null) {
                                     card.setAccessorySnapshots(sSnap.accessorySnapshots());
                                 }
@@ -1675,11 +1679,20 @@ public class SimulationControlPanel extends VBox {
         return box;
     }
 
-    private void selectComboIfPresent(ComboBox<String> combo, String val) {
+    private static void selectComboIfPresent(ComboBox<String> combo, String val) {
+        if (val == null) return;
         if (combo.getItems().contains(val)) {
             combo.getSelectionModel().select(val);
-        } else if (!combo.getItems().isEmpty()) {
-            combo.getSelectionModel().selectFirst();
+        } else {
+            for (String item : combo.getItems()) {
+                if (item.toLowerCase().contains(val.toLowerCase())) {
+                    combo.getSelectionModel().select(item);
+                    return;
+                }
+            }
+            if (!combo.getItems().isEmpty()) {
+                combo.getSelectionModel().selectFirst();
+            }
         }
     }
 
@@ -1852,6 +1865,45 @@ public class SimulationControlPanel extends VBox {
                     }
                 ));
             }
+
+            // Geotechnical, Hydrological, and Multi-Nest Diagnostics
+            String selWorld = comboWorld != null ? comboWorld.getValue() : null;
+            float wtDepth = estimateWaterTableDepth(selWorld);
+            float bedrockDepth = 25.0f;
+            for (SpeciesConfigCard card : speciesCardList) {
+                float estDepth = 20.0f;
+                if (estDepth > wtDepth) {
+                    list.add(new ScenarioWarning(
+                        "HYDROLOGIE", "MEDIUM",
+                        String.format("🟠 Colonie '%s' : Le nid (~%.0fm) croise la Nappe Phréatique (%.1fm dans '%s'). Chambres profondes inondées.", card.getSpeciesName(), estDepth, wtDepth, (selWorld != null ? selWorld : "Monde")),
+                        "💧 Adapt Depth",
+                        () -> this.updateValidationPanel()
+                    ));
+                }
+                if (estDepth > bedrockDepth) {
+                    list.add(new ScenarioWarning(
+                        "GÉOLOGIE", "MEDIUM",
+                        String.format("🟠 Colonie '%s' : Le nid (~%.0fm) croise la Roche Mère (%.0fm). Galeries défléchies latéralement.", card.getSpeciesName(), estDepth, bedrockDepth),
+                        "⛰️ Cap to Bedrock",
+                        () -> this.updateValidationPanel()
+                    ));
+                }
+            }
+
+            if (speciesCardList.size() >= 2) {
+                for (int i = 0; i < speciesCardList.size(); i++) {
+                    for (int j = i + 1; j < speciesCardList.size(); j++) {
+                        SpeciesConfigCard c1 = speciesCardList.get(i);
+                        SpeciesConfigCard c2 = speciesCardList.get(j);
+                        list.add(new ScenarioWarning(
+                            "TERRITOIRE", "INFO",
+                            String.format("💡 Proximité Nids : '%s' et '%s'. Galeries souterraines interconnectées à l'instanciation.", c1.getSpeciesName(), c2.getSpeciesName()),
+                            "🛡️ Chokepoint",
+                            () -> this.updateValidationPanel()
+                        ));
+                    }
+                }
+            }
         }
 
         // 2. Climat vs Biotope Alignment
@@ -1889,9 +1941,10 @@ public class SimulationControlPanel extends VBox {
             }
         }
 
-        // 2b. Species Thermal Tolerance vs Biome Temperature Cross-Reference
+        // 2b. Species Thermal & Hygrometric Tolerance vs Biome Climate Cross-Reference
         if (world != null || weather != null) {
             float estimatedTemp = estimateAmbientTemperature(world, weather);
+            float estimatedHum = estimateAmbientHumidity(world, weather);
             for (SpeciesConfigCard card : speciesCardList) {
                 String speciesName = card.getSpeciesName();
                 org.swarmforge.core.species.Species sp = speciesPresetManager.getPresetOrFallback(speciesName);
@@ -1905,9 +1958,22 @@ public class SimulationControlPanel extends VBox {
                         final org.swarmforge.core.species.Species targetSp = sp;
                         list.add(new ScenarioWarning(
                             "STRESS THERMIQUE", "HIGH",
-                            String.format("⚠️ Risque de Stress Thermique : Température estimée (%.1f°C) hors des tolérances de '%s' [%.1f°C - %.1f°C].",
+                            String.format("⚠ Risque de Stress Thermique : Température estimée (%.1f°C) hors des tolérances de '%s' [%.1f°C - %.1f°C].",
                                 estimatedTemp, card.getSpeciesName(), minT, maxT),
                             "🌡️ Adjust Compatible Climate",
+                            () -> autoSelectCompatibleEnvironmentForSpecies(targetSp)
+                        ));
+                    }
+
+                    float minH = sp.getMinHumidityPercent();
+                    float maxH = sp.getMaxHumidityPercent();
+                    if (estimatedHum < minH || estimatedHum > maxH) {
+                        final org.swarmforge.core.species.Species targetSp = sp;
+                        list.add(new ScenarioWarning(
+                            "STRESS HYGROMÉTRIQUE", "MEDIUM",
+                            String.format("💧 Risque de Stress Hygrométrique : Humidité estimée (%.0f%%) hors des tolérances de '%s' [%.0f%% - %.0f%%].",
+                                estimatedHum, card.getSpeciesName(), minH, maxH),
+                            "💧 Adjust Compatible Humidity",
                             () -> autoSelectCompatibleEnvironmentForSpecies(targetSp)
                         ));
                     }
@@ -2001,17 +2067,66 @@ public class SimulationControlPanel extends VBox {
         return list;
     }
 
+    private float estimateWaterTableDepth(String world) {
+        if (world == null) return 15.0f;
+        String s = world.toLowerCase();
+        if (s.contains("marécage") || s.contains("swamp") || s.contains("wetland") || s.contains("mangrove")) {
+            return 4.0f;
+        } else if (s.contains("tropical") || s.contains("jungle") || s.contains("rainforest") || s.contains("amazon")) {
+            return 8.0f;
+        } else if (s.contains("arid") || s.contains("desert") || s.contains("désert") || s.contains("savanna")) {
+            return 35.0f;
+        } else if (s.contains("alpin") || s.contains("toundra") || s.contains("taïga")) {
+            return 10.0f;
+        }
+        return 15.0f;
+    }
+
     private float estimateAmbientTemperature(String world, String weather) {
         String wStr = (world != null ? world : "") + " " + (weather != null ? weather : "");
         String s = wStr.toLowerCase();
-        if (s.contains("arctic") || s.contains("polar") || s.contains("toundra") || s.contains("alpin") || s.contains("rovaniemi")) {
-            return -5.0f;
+
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(-?\\d+(?:\\.\\d+)?)\\s*°?C").matcher(wStr);
+        if (matcher.find()) {
+            try {
+                return Float.parseFloat(matcher.group(1));
+            } catch (NumberFormatException ignored) {}
+        }
+
+        if (s.contains("arctic") || s.contains("polar") || s.contains("toundra") || s.contains("alpin") || s.contains("taïga") || s.contains("taiga")) {
+            return 8.0f;
         } else if (s.contains("arid") || s.contains("desert") || s.contains("désert") || s.contains("chebbi") || s.contains("savanna")) {
-            return 38.0f;
-        } else if (s.contains("tropical") || s.contains("manaus") || s.contains("rainforest") || s.contains("jungle")) {
+            return 32.0f;
+        } else if (s.contains("tropical") || s.contains("manaus") || s.contains("rainforest") || s.contains("jungle") || s.contains("amazon")) {
             return 28.0f;
+        } else if (s.contains("mediterran") || s.contains("garrigue")) {
+            return 25.0f;
         } else {
-            return 20.0f; // Temperate default
+            return 20.0f;
+        }
+    }
+
+    private float estimateAmbientHumidity(String world, String weather) {
+        String wStr = (world != null ? world : "") + " " + (weather != null ? weather : "");
+        String s = wStr.toLowerCase();
+
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d+)\\s*%").matcher(wStr);
+        if (matcher.find()) {
+            try {
+                return Float.parseFloat(matcher.group(1));
+            } catch (NumberFormatException ignored) {}
+        }
+
+        if (s.contains("arid") || s.contains("desert") || s.contains("désert") || s.contains("chebbi")) {
+            return 25.0f;
+        } else if (s.contains("tropical") || s.contains("manaus") || s.contains("rainforest") || s.contains("jungle") || s.contains("amazon") || s.contains("humid")) {
+            return 85.0f;
+        } else if (s.contains("savanna") || s.contains("mediterran") || s.contains("garrigue")) {
+            return 45.0f;
+        } else if (s.contains("arctic") || s.contains("polar") || s.contains("toundra") || s.contains("taïga") || s.contains("taiga")) {
+            return 50.0f;
+        } else {
+            return 65.0f;
         }
     }
 
@@ -2019,12 +2134,17 @@ public class SimulationControlPanel extends VBox {
         if (sp == null) return;
         float minT = sp.getMinTempCelsius();
         float maxT = sp.getMaxTempCelsius();
-        if (minT >= 22.0f) {
+        float minH = sp.getMinHumidityPercent();
+
+        if (minT >= 26.0f || minH <= 25.0f) {
             selectComboIfPresent(comboWorld, "Arid Savanna (Serengeti, TZ)");
             selectComboIfPresent(comboWeather, "Sunny Warm (28°C)");
         } else if (maxT <= 18.0f) {
             selectComboIfPresent(comboWorld, "Boreal Taiga (Rovaniemi, FI)");
             selectComboIfPresent(comboWeather, "Cold Polar (-5°C)");
+        } else if (minH >= 65.0f || minT >= 22.0f) {
+            selectComboIfPresent(comboWorld, "Tropical Rainforest (Manaus, BR)");
+            selectComboIfPresent(comboWeather, "Tropical Humid (26°C)");
         } else {
             selectComboIfPresent(comboWorld, "Temperate Deciduous (Fontainebleau, FR)");
             selectComboIfPresent(comboWeather, "Temperate Mild (20°C)");
@@ -2062,11 +2182,12 @@ public class SimulationControlPanel extends VBox {
         private final Spinner<Double> posXSpinner = new Spinner<>(-500.0, 500.0, 0.0, 10.0);
         private final Spinner<Double> posZSpinner = new Spinner<>(-500.0, 500.0, 0.0, 10.0);
         private final Spinner<Integer> initialFoodSpinner = new Spinner<>(0, 50000, 500, 50);
+        private HBox manualPosBox;
 
         private final Spinner<Integer> queenSpinner = new Spinner<>(0, 50, 1);
         private final Spinner<Integer> workerSpinner = new Spinner<>(0, 10000, 500, 50);
         private final Spinner<Integer> soldierSpinner = new Spinner<>(0, 2000, 50, 10);
-        private final Spinner<Integer> broodSpinner = new Spinner<>(0, 2000000, 20000, 1000);
+        private final Spinner<Integer> broodSpinner = new Spinner<>(0, 2000000, 200, 50);
 
         private final ComboBox<ArchitectureType> workerEngineCombo = new ComboBox<>();
         private final ComboBox<ArchitectureType> soldierEngineCombo = new ComboBox<>();
@@ -2097,6 +2218,8 @@ public class SimulationControlPanel extends VBox {
             header.getChildren().addAll(lblTitle, sp, btnRemove);
 
             // 1. Filtered Nest, Placement & Inter-Nest Strategy
+            VBox nestConfigBox = new VBox(6);
+
             HBox nestRow = new HBox(8);
             nestRow.setAlignment(Pos.CENTER_LEFT);
 
@@ -2106,6 +2229,10 @@ public class SimulationControlPanel extends VBox {
 
             selectDefaultNestArchitectureForSpecies(speciesName, nestTypeCombo);
             nestTypeCombo.setTooltip(new Tooltip("Nest physical shape and architectural typology suited to this species."));
+            nestRow.getChildren().addAll(lblNest, nestTypeCombo);
+
+            HBox stageRow = new HBox(8);
+            stageRow.setAlignment(Pos.CENTER_LEFT);
 
             Label lblStage = new Label("🌱 Nest Stage / Age :");
             lblStage.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
@@ -2119,6 +2246,10 @@ public class SimulationControlPanel extends VBox {
             );
             nestStageCombo.getSelectionModel().select(1); // Young colony by default
             nestStageCombo.setTooltip(new Tooltip("Colony demographic maturity stage. Automatically adjusts caste counts."));
+            stageRow.getChildren().addAll(lblStage, nestStageCombo);
+
+            HBox placementRow = new HBox(8);
+            placementRow.setAlignment(Pos.CENTER_LEFT);
 
             Label lblPlacement = new Label("📍 Placement :");
             lblPlacement.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
@@ -2132,6 +2263,10 @@ public class SimulationControlPanel extends VBox {
             );
             nestPlacementCombo.getSelectionModel().selectFirst();
             nestPlacementCombo.setTooltip(new Tooltip("Spatial placement strategy of the nest in the 3D grid."));
+            placementRow.getChildren().addAll(lblPlacement, nestPlacementCombo);
+
+            HBox foodRow = new HBox(8);
+            foodRow.setAlignment(Pos.CENTER_LEFT);
 
             Label lblInitialFood = new Label("🍖 Food :");
             lblInitialFood.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
@@ -2140,11 +2275,12 @@ public class SimulationControlPanel extends VBox {
             initialFoodSpinner.setPrefWidth(75);
             initialFoodSpinner.setEditable(true);
             initialFoodSpinner.setTooltip(new Tooltip("Initial food resource reserve allocated to the nest."));
+            foodRow.getChildren().addAll(lblInitialFood, initialFoodSpinner);
 
-            nestRow.getChildren().addAll(lblNest, nestTypeCombo, lblStage, nestStageCombo, lblPlacement, nestPlacementCombo, lblInitialFood, initialFoodSpinner);
+            nestConfigBox.getChildren().addAll(nestRow, stageRow, placementRow, foodRow);
 
             // Manual Position Box (Visible when manual placement is chosen)
-            HBox manualPosBox = new HBox(8);
+            manualPosBox = new HBox(8);
             manualPosBox.setAlignment(Pos.CENTER_LEFT);
             manualPosBox.setStyle("-fx-padding: 4 0 0 0;");
 
@@ -2162,30 +2298,29 @@ public class SimulationControlPanel extends VBox {
             manualPosBox.setVisible(false);
             manualPosBox.setManaged(false);
 
-            nestPlacementCombo.valueProperty().addListener((o, oldV, newV) -> {
-                boolean isManual = newV != null && (newV.contains("Manual") || newV.contains("Manuel"));
-                manualPosBox.setVisible(isManual);
-                manualPosBox.setManaged(isManual);
+            nestPlacementCombo.setOnAction(e -> {
+                boolean manual = nestPlacementCombo.getSelectionModel().getSelectedIndex() == 1;
+                manualPosBox.setVisible(manual);
+                manualPosBox.setManaged(manual);
             });
 
-            // Inter-Nest Relationship Strategy & Supercolony Checkbox Row
-            VBox relationBox = new VBox(4);
+            // Nest Relationship & Supercolony Membership Row
+            VBox relationBox = new VBox(6);
 
             HBox relationRow = new HBox(8);
             relationRow.setAlignment(Pos.CENTER_LEFT);
 
-            Label lblRelation = new Label("⚔️ Inter-Nest Strategy (Same Species) :");
+            Label lblRelation = new Label("⚔️ Inter-Nest Relationship :");
             lblRelation.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
-            lblRelation.getStyleClass().add("sub-title");
+            lblRelation.getStyleClass().add("purple-accent-title");
 
             nestRelationCombo.getItems().addAll(
-                "⚔️ Monocolonial Competition (Inter-nest Warfare - Cuticular Hydrocarbons)",
-                "🤝 Supercolony Unicolonial (Tolerance, Mutual Cooperation & Shared Workers/Brood)",
-                "🛡️ Territorial Neutrality (Passive Avoidance without Direct Combat)"
+                "⚔️ Hostile / Enemy Nest (Territorial Competition & Warfare)",
+                "🤝 Allied Nest (Supercolony Member / Resource Sharing)",
+                "🕊️ Neutral / Peaceful Coexistence (Ignore / Non-Aggressive)"
             );
             nestRelationCombo.getSelectionModel().selectFirst();
-            nestRelationCombo.setPrefWidth(270);
-            nestRelationCombo.setTooltip(new Tooltip("Configures behavioral interactions if multiple nests of the same species are instantiated in the simulation."));
+            nestRelationCombo.setTooltip(new Tooltip("Diplomatic relationship towards other nests of the same or different species."));
 
             relationRow.getChildren().addAll(lblRelation, nestRelationCombo);
 
@@ -2218,28 +2353,19 @@ public class SimulationControlPanel extends VBox {
                 queenEngineCombo.getItems().add(type);
             }
 
-            SpeciesPresetManager spm = new SpeciesPresetManager();
-            CustomSpecies speciesObj = spm.getPreset(speciesName);
             ArchitectureType workerArch = ArchitectureType.BEHAVIOR_TREE;
             ArchitectureType soldierArch = ArchitectureType.BEHAVIOR_TREE;
             ArchitectureType queenArch = ArchitectureType.BEHAVIOR_TREE;
 
-            if (speciesObj != null && speciesObj.getCasteTemplates() != null && !speciesObj.getCasteTemplates().isEmpty()) {
-                for (CasteTemplate ct : speciesObj.getCasteTemplates()) {
-                    String cName = ct.getName() != null ? ct.getName().toLowerCase() : "";
-                    ArchitectureType parsed = ArchitectureType.parse(ct.getDecisionArchitectureType());
-                    if (cName.contains("worker") || cName.contains("ouvrier")) {
-                        workerArch = parsed;
-                    } else if (cName.contains("soldier") || cName.contains("soldat") || cName.contains("major")) {
-                        soldierArch = parsed;
-                    } else if (cName.contains("queen") || cName.contains("reine")) {
-                        queenArch = parsed;
-                    } else {
-                        workerArch = parsed;
-                        soldierArch = parsed;
-                        queenArch = parsed;
-                    }
-                }
+            NestPresetManager npm = new NestPresetManager();
+            Map<String, Object> nP = npm.get(nestTypeCombo.getValue());
+            if (nP != null && nP.get("preferredBrainArchitecture") != null) {
+                try {
+                    ArchitectureType parsed = ArchitectureType.valueOf(nP.get("preferredBrainArchitecture").toString().toUpperCase());
+                    workerArch = parsed;
+                    soldierArch = parsed;
+                    queenArch = parsed;
+                } catch (Exception ignored) {}
             }
 
             workerEngineCombo.getSelectionModel().select(workerArch);
@@ -2304,7 +2430,7 @@ public class SimulationControlPanel extends VBox {
 
             setupAccessoryRows(speciesName);
 
-            cardPane.getChildren().addAll(header, nestRow, manualPosBox, relationBox, new Separator(), demoBox, new Separator(), lblAccessoryTitle, accessoryBoxPane);
+            cardPane.getChildren().addAll(header, nestConfigBox, manualPosBox, relationBox, new Separator(), demoBox, new Separator(), lblAccessoryTitle, accessoryBoxPane);
         }
 
         private final List<AccessoryRowControls> accessoryControlsList = new ArrayList<>();
@@ -2523,6 +2649,26 @@ public class SimulationControlPanel extends VBox {
             triggerChange();
         }
 
+        public String getNestPlacement() { return nestPlacementCombo.getValue(); }
+        public void setNestPlacement(String placement) {
+            selectComboIfPresent(nestPlacementCombo, placement);
+            boolean manual = nestPlacementCombo.getSelectionModel().getSelectedIndex() == 1;
+            if (manualPosBox != null) {
+                manualPosBox.setVisible(manual);
+                manualPosBox.setManaged(manual);
+            }
+            triggerChange();
+        }
+        public double getCustomX() { return posXSpinner.getValue(); }
+        public void setCustomX(double x) { posXSpinner.getValueFactory().setValue(x); triggerChange(); }
+        public double getCustomZ() { return posZSpinner.getValue(); }
+        public void setCustomZ(double z) { posZSpinner.getValueFactory().setValue(z); triggerChange(); }
+        public String getNestRelation() { return nestRelationCombo.getValue(); }
+        public void setNestRelation(String relation) {
+            selectComboIfPresent(nestRelationCombo, relation);
+            triggerChange();
+        }
+
         public SpeciesConfigSnapshot getSnapshot() {
             return new SpeciesConfigSnapshot(
                 speciesName,
@@ -2535,7 +2681,11 @@ public class SimulationControlPanel extends VBox {
                 getWorkerEngine(),
                 getSoldierEngine(),
                 getQueenEngine(),
-                getAccessorySnapshots()
+                getAccessorySnapshots(),
+                getNestPlacement(),
+                getCustomX(),
+                getCustomZ(),
+                getNestRelation()
             );
         }
     }

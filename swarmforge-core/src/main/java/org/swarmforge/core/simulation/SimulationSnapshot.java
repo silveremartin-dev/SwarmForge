@@ -33,14 +33,20 @@ public class SimulationSnapshot implements Serializable {
     private final List<ColonySnapshot> colonies;
     private final byte[] pheromoneData;
     private final int dayOfYear;
-    // Environment
-    // Environment
+    // Weather System Snapshot State
+    private final String weatherStateName;
+    private final float timeOfDay;
+    private final float temperature;
+    private final float humidity;
+    private final float rainfall;
 
     /**
      * Colony state snapshot.
      */
     public record ColonySnapshot(
             String id,
+            String speciesName,
+            float nestX, float nestY, float nestZ,
             float foodStored,
             float waterStored,
             int population,
@@ -64,12 +70,18 @@ public class SimulationSnapshot implements Serializable {
             Individual.CarriedItem carriedItem) implements Serializable {
     }
 
-    private SimulationSnapshot(long tick, List<ColonySnapshot> colonies, byte[] pheromoneData, int dayOfYear) {
+    private SimulationSnapshot(long tick, List<ColonySnapshot> colonies, byte[] pheromoneData, int dayOfYear,
+                               String weatherStateName, float timeOfDay, float temperature, float humidity, float rainfall) {
         this.tick = tick;
         this.timestamp = System.currentTimeMillis();
         this.colonies = colonies;
         this.pheromoneData = pheromoneData;
         this.dayOfYear = dayOfYear;
+        this.weatherStateName = weatherStateName;
+        this.timeOfDay = timeOfDay;
+        this.temperature = temperature;
+        this.humidity = humidity;
+        this.rainfall = rainfall;
     }
 
     /**
@@ -96,24 +108,39 @@ public class SimulationSnapshot implements Serializable {
                         ind.getCarriedItem()));
             }
 
+            String spName = colony.getSpeciesName();
+            if (spName == null && colony.getSpecies() != null) {
+                spName = colony.getSpecies().getScientificName();
+            }
+            if (spName == null) spName = "Lasius niger";
+
             colonySnapshots.add(new ColonySnapshot(
                     colony.getId().toString(),
+                    spName,
+                    colony.getNestX(),
+                    colony.getNestY(),
+                    colony.getNestZ(),
                     colony.getFoodStored(),
                     colony.getWaterStored(),
                     colony.getPopulation(),
                     indSnapshots));
         }
 
+        org.swarmforge.core.world.WeatherSystem weather = simulation.getWeather();
+        String wStateName = (weather != null && weather.getWeatherState() != null) ? weather.getWeatherState().name() : "SUNNY";
+        float tOfDay = weather != null ? weather.getTimeOfDay() : 12.0f;
+        float temp = weather != null ? weather.getTemperature() : 20.0f;
+        float hum = weather != null ? weather.getHumidity() : 50.0f;
+        float rain = weather != null ? weather.getRainfall() : 0.0f;
+
         return new SimulationSnapshot(
                 simulation.getTickCount(),
                 colonySnapshots,
-                simulation.getPheromoneGrid().serialize(),
-                simulation.getSeasonManager() != null ? simulation.getSeasonManager().getDayOfYear() : 0);
+                simulation.getPheromoneGrid() != null ? simulation.getPheromoneGrid().serialize() : new byte[0],
+                simulation.getSeasonManager() != null ? simulation.getSeasonManager().getDayOfYear() : 0,
+                wStateName, tOfDay, temp, hum, rain);
     }
 
-    /**
-     * Restore simulation to this snapshot state.
-     */
     /**
      * Restore simulation to this snapshot state.
      */
@@ -121,64 +148,39 @@ public class SimulationSnapshot implements Serializable {
         simulation.reset(tick);
 
         for (ColonySnapshot cs : colonies) {
-            // Need a species to creating a colony.
-            // Since snapshot doesn't store species data in detail, we might need a default
-            // or lookup.
-            // For now, let's assume a default "Generic Ant" or try to preserve species info
-            // in snapshot if possible.
-            // But Species is complex. Let's create a placeholder Species or reuse one if
-            // possible.
-            // Better yet, let's make Species serializable or store speciesID.
+            String spName = cs.speciesName() != null ? cs.speciesName() : "Lasius niger";
+            org.swarmforge.core.species.Species species = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies(spName);
 
-            // For this implementation, we will use a "Snapshot Species".
-            org.swarmforge.core.species.CustomSpecies species = new org.swarmforge.core.species.CustomSpecies();
-            species.setCommonName("Restored Species");
-            species.setScientificName("Genericus preservedus");
+            Colony colony = new Colony(species, cs.nestX(), cs.nestY(), cs.nestZ());
+            if (cs.id() != null && !cs.id().isEmpty()) {
+                try {
+                    java.lang.reflect.Field idField = Colony.class.getDeclaredField("id");
+                    idField.setAccessible(true);
+                    idField.set(colony, java.util.UUID.fromString(cs.id()));
+                } catch (Exception ignored) {}
+            }
 
-            Colony colony = new Colony(species, 0, 0, 0); // Position will be overwritten by individuals usually?
-            // Actually Colony has a nest position. We didn't save it in snapshot!
-            // Ideally ColonySnapshot should have nest X/Y/Z.
-            // Let's assume nest is at average of individuals or 0,0 for now, or update
-            // ColonySnapshot.
-            // Updating ColonySnapshot record effectively requires changing the record
-            // definition which is immutable.
-            // Let's rely on setters if available or reflection? No, let's use what we have.
-
-            // Wait, Colony class has no generic setters for ID.
-            // We need to match ID to keep consistency?
-            // Actually, if we reset simulation, we can just create new objects.
-            // But if we want to keep same IDs for clients to know, we might need to set ID
-            // via reflection or constructor.
-            // Colony constructor generates random ID.
-
-            // Let's modify Colony to allow ID injection or just ignore ID persistence for
-            // now
-            // (clients will see "new" colony).
-            // Persistence requires ID preservation usually.
-
-            colony.setFoodStored(cs.foodStored);
-            colony.setWaterStored(cs.waterStored);
+            colony.setFoodStored(cs.foodStored());
+            colony.setWaterStored(cs.waterStored());
+            if (simulation.getTerrarium() != null) {
+                colony.setTerrarium(simulation.getTerrarium());
+                colony.setMapBounds(simulation.getTerrarium().getWidth(), simulation.getTerrarium().getHeight());
+            }
 
             // recreate individuals
-            for (IndividualSnapshot is : cs.individuals) {
-                Individual ind = new Individual(colony.getId(), is.caste, is.x, is.y, is.z);
-                // We'd need to set the ID to match 'is.id' but Individual ID is final random
-                // UUID.
-                // This is a limitation of current architecture.
-                // For a "Rewind", we usually want exact identity.
-                // For "Save/Load", typically we deserialize the whole object graph.
-
-                // Since this is "Snapshot" based on manual copying properties:
-                ind.setPosition(is.x, is.y, is.z);
-                ind.setHeading(is.heading);
-                ind.setHealth(is.health);
-                ind.setEnergy(is.energy);
-                ind.setHunger(is.hunger);
-                if (is.lifeStage != null) {
-                    ind.setLifeStage(is.lifeStage);
+            for (IndividualSnapshot is : cs.individuals()) {
+                Individual ind = new Individual(colony.getId(), is.caste(), is.x(), is.y(), is.z());
+                ind.setSpecies(species);
+                ind.setPosition(is.x(), is.y(), is.z());
+                ind.setHeading(is.heading());
+                ind.setHealth(is.health());
+                ind.setEnergy(is.energy());
+                ind.setHunger(is.hunger());
+                if (is.lifeStage() != null) {
+                    ind.setLifeStage(is.lifeStage());
                 }
-                ind.setState(is.state);
-                ind.setCarriedItem(is.carriedItem);
+                ind.setState(is.state());
+                ind.setCarriedItem(is.carriedItem());
 
                 colony.addIndividual(ind);
             }
@@ -207,6 +209,23 @@ public class SimulationSnapshot implements Serializable {
             } catch (IOException e) {
                 LOG.error("Failed to restore pheromones: ", e);
             }
+        }
+
+        // Restore Weather System State
+        org.swarmforge.core.world.WeatherSystem weather = simulation.getWeather();
+        if (weather != null) {
+            if (weatherStateName != null) {
+                try {
+                    org.swarmforge.core.world.WeatherMarkovChain.WeatherState state =
+                            org.swarmforge.core.world.WeatherMarkovChain.WeatherState.valueOf(weatherStateName);
+                    weather.triggerClimateEvent(state);
+                } catch (Exception ignored) {}
+            }
+            weather.setTimeOfDay(timeOfDay);
+            weather.setTemperature(temperature);
+            weather.setHumidity(humidity);
+            weather.setRainfall(rainfall);
+            weather.setDayOfYear(dayOfYear);
         }
 
         // Restore Season

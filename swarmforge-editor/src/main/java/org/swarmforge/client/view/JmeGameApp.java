@@ -125,12 +125,12 @@ public class JmeGameApp extends SimpleApplication {
 
             DirectionalLight sun = new DirectionalLight();
             sun.setDirection(new Vector3f(-0.5f, -0.5f, -0.5f).normalizeLocal());
-            sun.setColor(ColorRGBA.White);
+            sun.setColor(new ColorRGBA(1.35f, 1.30f, 1.18f, 1.0f));
             rootNode.addLight(sun);
             this.sunLight = sun;
 
             com.jme3.light.AmbientLight al = new com.jme3.light.AmbientLight();
-            al.setColor(ColorRGBA.White.mult(0.3f));
+            al.setColor(new ColorRGBA(0.55f, 0.58f, 0.65f, 1.0f));
             rootNode.addLight(al);
 
             // Shadows
@@ -767,6 +767,9 @@ public class JmeGameApp extends SimpleApplication {
         enqueueTask(() -> {
             if (vegetationVisualizer != null) {
                 vegetationVisualizer.setRenderMode(mode);
+            }
+            if (weatherVisualizer != null) {
+                weatherVisualizer.setRenderMode(mode);
             }
             if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
                 setGamifiedVoxelMode(true);

@@ -133,7 +133,7 @@ public class SplashScreen {
             int percentage = (int) Math.round(progress * 100);
 
             KeyFrame kf = new KeyFrame(
-                Duration.millis(220 * (i + 1)),
+                Duration.millis(380 * (i + 1)),
                 e -> {
                     statusLabel.setText(steps[stepIdx]);
                     progressBar.setProgress(progress);

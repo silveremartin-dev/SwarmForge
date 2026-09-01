@@ -64,8 +64,9 @@ public class Colony implements java.io.Serializable {
         // Seed Initial Nest
         var entrance = new org.swarmforge.core.structure.Chamber(id + "-ent",
                 org.swarmforge.core.structure.Chamber.Type.ENTRANCE, nestX, nestY, nestZ, 10);
+        float queenZ = getDynamicQueenChamberDepth();
         var queenChamber = new org.swarmforge.core.structure.Chamber(id + "-qc",
-                org.swarmforge.core.structure.Chamber.Type.QUEEN_QUARTERS, nestX, nestY - 20, nestZ, 50);
+                org.swarmforge.core.structure.Chamber.Type.QUEEN_QUARTERS, nestX, nestY - 2, queenZ, 50);
         var tunnel = new org.swarmforge.core.structure.Tunnel(entrance, queenChamber);
 
         this.nest.addChamber(entrance);
@@ -73,13 +74,27 @@ public class Colony implements java.io.Serializable {
         this.nest.addTunnel(tunnel);
 
         // Initialize Fungus Garden if this is a leafcutter species
-        if (speciesName.contains("Atta")) {
+        if (speciesName != null && speciesName.contains("Atta")) {
             this.fungusGarden = new org.swarmforge.core.simulation.FungusGarden(this);
         } else {
             this.fungusGarden = null;
         }
 
         bootstrapDefaultResources();
+    }
+
+    public float getDynamicQueenChamberDepth() {
+        String arch = species != null ? species.getNestType() : (speciesName != null ? speciesName : "MATURE");
+        if (arch != null) {
+            String u = arch.toUpperCase();
+            if (u.contains("FUNGI") || u.contains("ATTA")) return nestZ - 14.0f;
+            if (u.contains("MOUND") || u.contains("FORMICA")) return nestZ - 10.0f;
+            if (u.contains("CATHEDRAL") || u.contains("TERMITE")) return nestZ - 8.0f;
+            if (u.contains("TREE") || u.contains("WOOD") || u.contains("ARBOREAL")) return nestZ + 6.0f;
+            if (u.contains("PAPER") || u.contains("VESPA")) return nestZ + 4.0f;
+            if (u.contains("WAX")) return nestZ + 2.0f;
+        }
+        return nestZ - 6.0f; // Safe default subterranean depth well below surface frost line
     }
 
     private int age = 0;
@@ -118,18 +133,19 @@ public class Colony implements java.io.Serializable {
 
     public void applyGaussianAge(Individual ind, boolean isFoundingQueen) {
         if (ind == null) return;
-        float maxLifespan = ind.getMaxLifespan();
+        float maxLifespanDays = ind.getMaxLifespan();
+        float maxLifespanSec = maxLifespanDays * 86400.0f;
         if (isFoundingQueen) {
             // Young founding queen: age between 0 and 0.05 * maxLifespan
-            float youngAge = (float) (java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.0, 0.05) * maxLifespan);
-            ind.setAge(youngAge);
+            float youngAgeSec = (float) (java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.0, 0.05) * maxLifespanSec);
+            ind.setAgeInSeconds(youngAgeSec);
         } else {
-            // Gaussian distribution across adult workforce (mean = 35%, stdDev = 15%)
-            double mean = 0.35 * maxLifespan;
-            double stdDev = 0.15 * maxLifespan;
+            // Gaussian distribution across adult workforce (mean = 30%, stdDev = 12%)
+            double mean = 0.30 * maxLifespanSec;
+            double stdDev = 0.12 * maxLifespanSec;
             double sample = mean + stdDev * java.util.concurrent.ThreadLocalRandom.current().nextGaussian();
-            float age = (float) Math.max(0.0, Math.min(0.85 * maxLifespan, sample));
-            ind.setAge(age);
+            float ageSec = (float) Math.max(0.0, Math.min(0.65 * maxLifespanSec, sample));
+            ind.setAgeInSeconds(ageSec);
         }
     }
 
@@ -230,6 +246,7 @@ public class Colony implements java.io.Serializable {
 
         List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
         List<org.swarmforge.core.structure.Chamber> entranceChambers = (nest != null) ? nest.getChambersOfType(org.swarmforge.core.structure.Chamber.Type.ENTRANCE) : List.of();
+        List<org.swarmforge.core.structure.Chamber> nurseryChambers = (nest != null) ? nest.getChambersOfType(org.swarmforge.core.structure.Chamber.Type.NURSERY) : List.of();
 
         double surfaceActivityRatio = calculateSurfaceActivityRatio(dayOfYear, hourOfDay, ambientTemp);
 
@@ -246,10 +263,10 @@ public class Colony implements java.io.Serializable {
                     var ch = nestChambers.get(index % nestChambers.size());
                     sx = (float) ch.getX(); sy = (float) ch.getY(); sz = (float) ch.getZ();
                 } else {
-                    sz = nestZ - 5.0f;
+                    sz = getDynamicQueenChamberDepth();
                 }
             } else {
-                sz = nestZ - 5.0f;
+                sz = getDynamicQueenChamberDepth();
             }
 
             // Queen center placement with micro-jitter (<= 0.2m) to guarantee 100% inside chamber air cavity
@@ -258,6 +275,43 @@ public class Colony implements java.io.Serializable {
             sx += (float) Math.cos(rAngle) * rDist;
             sy += (float) Math.sin(rAngle) * rDist;
 
+        } else if (caste == Individual.Caste.NURSE) {
+            // Nurses stay deep inside the nest in nursery / brood chambers
+            if (!nurseryChambers.isEmpty()) {
+                var ch = nurseryChambers.get(index % nurseryChambers.size());
+                float maxR = Math.min(1.2f, Math.max(0.3f, (float) Math.cbrt(ch.getCapacity()) * 0.3f));
+                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR * 0.7);
+                sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
+                sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
+                sz = (float) ch.getZ();
+            } else if (!nestChambers.isEmpty()) {
+                var ch = nestChambers.get(index % nestChambers.size());
+                sx = (float) ch.getX(); sy = (float) ch.getY(); sz = (float) ch.getZ();
+            } else {
+                sz = nestZ - 4.0f;
+            }
+        } else if (caste == Individual.Caste.FORAGER) {
+            boolean spawnOnSurface = (index % 100 < surfaceActivityRatio * 100);
+            if (spawnOnSurface) {
+                float refX = nestX;
+                float refY = nestY;
+                if (!entranceChambers.isEmpty()) {
+                    var ent = entranceChambers.get(index % entranceChambers.size());
+                    refX = (float) ent.getX();
+                    refY = (float) ent.getY();
+                }
+                float rAngle = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0f, (float) (Math.PI * 2));
+                float rDist = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0.5f, 3.5f);
+                sx = refX + (float) Math.cos(rAngle) * rDist;
+                sy = refY + (float) Math.sin(rAngle) * rDist;
+                sz = getSurfaceZAt(sx, sy);
+            } else if (!nestChambers.isEmpty()) {
+                var ch = nestChambers.get(index % nestChambers.size());
+                sx = (float) ch.getX(); sy = (float) ch.getY(); sz = (float) ch.getZ();
+            } else {
+                sz = nestZ - 1.5f;
+            }
         } else if (caste == Individual.Caste.WORKER) {
             boolean spawnOnSurface = (job == Individual.Job.FORAGER && (index % 100 < surfaceActivityRatio * 100));
             if (spawnOnSurface) {
@@ -332,7 +386,51 @@ public class Colony implements java.io.Serializable {
         sx = Math.max(1.0f, Math.min(mapWidth - 1.0f, sx));
         sy = Math.max(1.0f, Math.min(mapHeight - 1.0f, sy));
 
-        return new float[]{sx, sy, sz};
+        return ensureValidWalkablePos(sx, sy, sz);
+    }
+
+    private float[] ensureValidWalkablePos(float sx, float sy, float sz) {
+        if (terrarium == null) return new float[]{sx, sy, sz};
+
+        int cx = Math.round(sx);
+        int cy = Math.round(sy);
+        int cz = Math.round(sz);
+
+        if (!terrarium.inBounds(cx, cy, cz)) {
+            cx = Math.max(0, Math.min(terrarium.getWidth() - 1, cx));
+            cy = Math.max(0, Math.min(terrarium.getHeight() - 1, cy));
+            cz = Math.max(0, Math.min(terrarium.getDepth() - 1, cz));
+        }
+
+        var cell = terrarium.getCell(cx, cy, cz);
+        if (cell == null || cell.isPassable()) {
+            return new float[]{sx, sy, sz};
+        }
+
+        // Search in expanding cubic shell (radius 1 to 5) for the nearest passable cell
+        for (int r = 1; r <= 5; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dy = -r; dy <= r; dy++) {
+                    for (int dz = -r; dz <= r; dz++) {
+                        if (Math.abs(dx) == r || Math.abs(dy) == r || Math.abs(dz) == r) {
+                            int tx = cx + dx;
+                            int ty = cy + dy;
+                            int tz = cz + dz;
+                            if (terrarium.inBounds(tx, ty, tz)) {
+                                var tCell = terrarium.getCell(tx, ty, tz);
+                                if (tCell != null && tCell.isPassable()) {
+                                    return new float[]{(float) tx, (float) ty, (float) tz};
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback to surface elevation if no open subterranean cell was found
+        float surfZ = getSurfaceZAt(sx, sy);
+        return new float[]{sx, sy, surfZ};
     }
 
     public int calculateSubterraneanCapacity() {
@@ -462,27 +560,27 @@ public class Colony implements java.io.Serializable {
 
             // Brood breakdown: 35% Eggs, 40% Larvae, 25% Pupae
             double r = java.util.concurrent.ThreadLocalRandom.current().nextDouble();
-            float eggDur = (species != null ? species.getEggStageDuration() : 15f) * 1440.0f;
-            float larvaDur = (species != null ? species.getLarvaStageDuration() : 14f) * 1440.0f;
-            float pupaDur = (species != null ? species.getPupaStageDuration() : 14f) * 1440.0f;
+            float eggDur = (species != null ? species.getEggStageDuration() : 15f) * 86400.0f;
+            float larvaDur = (species != null ? species.getLarvaStageDuration() : 14f) * 86400.0f;
+            float pupaDur = (species != null ? species.getPupaStageDuration() : 14f) * 86400.0f;
 
             if (r < 0.35) {
                 ind.setLifeStage(Individual.LifeStage.EGG);
                 ind.setMaturationThreshold(eggDur);
                 if (applyAgeDistribution) {
-                    ind.setAge((float) (java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, eggDur * 0.9)));
+                    ind.setAgeInSeconds((float) (java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, eggDur * 0.9)));
                 }
             } else if (r < 0.75) {
                 ind.setLifeStage(Individual.LifeStage.LARVA);
                 ind.setMaturationThreshold(eggDur + larvaDur);
                 if (applyAgeDistribution) {
-                    ind.setAge((float) (eggDur + java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, larvaDur * 0.9)));
+                    ind.setAgeInSeconds((float) (eggDur + java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, larvaDur * 0.9)));
                 }
             } else {
                 ind.setLifeStage(Individual.LifeStage.PUPA);
                 ind.setMaturationThreshold(eggDur + larvaDur + pupaDur);
                 if (applyAgeDistribution) {
-                    ind.setAge((float) (eggDur + larvaDur + java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, pupaDur * 0.9)));
+                    ind.setAgeInSeconds((float) (eggDur + larvaDur + java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, pupaDur * 0.9)));
                 }
             }
             batch.add(ind);
@@ -762,6 +860,12 @@ public class Colony implements java.io.Serializable {
 
     public float getNestZ() {
         return nestZ;
+    }
+
+    public void setNestPosition(float x, float y, float z) {
+        this.nestX = x;
+        this.nestY = y;
+        this.nestZ = z;
     }
 
     // === Resource Management ===

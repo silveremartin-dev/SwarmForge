@@ -153,27 +153,37 @@ public class VegetationVisualizer {
 
         Material trunkMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         trunkMat.setBoolean("UseMaterialColors", true);
-        trunkMat.setColor("Diffuse", new ColorRGBA(0.4f, 0.22f, 0.08f, 1f));
-        trunkMat.setColor("Ambient", new ColorRGBA(0.4f, 0.22f, 0.08f, 1f));
+        trunkMat.setColor("Diffuse", new ColorRGBA(0.45f, 0.25f, 0.12f, 1f));
+        trunkMat.setColor("Ambient", new ColorRGBA(0.45f, 0.25f, 0.12f, 1f));
 
-        Cylinder trunkMesh = new Cylinder(8, 12, 0.2f, 0.25f, 3.5f, true, false);
-        Geometry trunkGeom = new Geometry("Trunk", trunkMesh);
-        trunkGeom.setMaterial(trunkMat);
-        trunkGeom.setLocalTranslation(0, 1.75f, 0);
-        trunkGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
-        treeNode.attachChild(trunkGeom);
+        if (speciesType == 1) {
+            // Species 1 = Stump / Dead Wood (Short cylinder, no leaf crown)
+            Cylinder stumpMesh = new Cylinder(8, 12, 0.35f, 0.4f, 0.8f, true, false);
+            Geometry stumpGeom = new Geometry("Stump", stumpMesh);
+            stumpGeom.setMaterial(trunkMat);
+            stumpGeom.setLocalTranslation(0, 0.4f, 0);
+            stumpGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
+            treeNode.attachChild(stumpGeom);
+        } else {
+            Cylinder trunkMesh = new Cylinder(8, 12, 0.2f, 0.25f, 3.5f, true, false);
+            Geometry trunkGeom = new Geometry("Trunk", trunkMesh);
+            trunkGeom.setMaterial(trunkMat);
+            trunkGeom.setLocalTranslation(0, 1.75f, 0);
+            trunkGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
+            treeNode.attachChild(trunkGeom);
 
-        Material leafMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
-        leafMat.setBoolean("UseMaterialColors", true);
-        ColorRGBA leafCol = speciesType == 4 ? new ColorRGBA(0.08f, 0.35f, 0.15f, 1f) : new ColorRGBA(0.15f, 0.55f, 0.2f, 1f);
-        leafMat.setColor("Diffuse", leafCol);
-        leafMat.setColor("Ambient", leafCol);
+            Material leafMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            leafMat.setBoolean("UseMaterialColors", true);
+            ColorRGBA leafCol = speciesType == 4 ? new ColorRGBA(0.08f, 0.35f, 0.15f, 1f) : new ColorRGBA(0.15f, 0.55f, 0.2f, 1f);
+            leafMat.setColor("Diffuse", leafCol);
+            leafMat.setColor("Ambient", leafCol);
 
-        com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(12, 12, 1.2f);
-        Geometry crownGeom = new Geometry("Crown", crownMesh);
-        crownGeom.setMaterial(leafMat);
-        crownGeom.setLocalTranslation(0, 3.8f, 0);
-        treeNode.attachChild(crownGeom);
+            com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(12, 12, 1.2f);
+            Geometry crownGeom = new Geometry("Crown", crownMesh);
+            crownGeom.setMaterial(leafMat);
+            crownGeom.setLocalTranslation(0, 3.8f, 0);
+            treeNode.attachChild(crownGeom);
+        }
 
         rootNode.attachChild(treeNode);
     }
@@ -183,23 +193,33 @@ public class VegetationVisualizer {
         treeNode.setLocalTranslation(x, y, z);
 
         Material trunkMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        trunkMat.setColor("Color", new ColorRGBA(0.3f, 0.6f, 0.9f, 0.8f));
+        trunkMat.setColor("Color", new ColorRGBA(0.40f, 0.25f, 0.12f, 1.0f)); // Realistic wood brown
 
-        Cylinder trunkMesh = new Cylinder(4, 8, 0.08f, 0.08f, 3.0f, true, false);
-        Geometry trunkGeom = new Geometry("SciTrunk", trunkMesh);
-        trunkGeom.setMaterial(trunkMat);
-        trunkGeom.setLocalTranslation(0, 1.5f, 0);
-        trunkGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
-        treeNode.attachChild(trunkGeom);
+        if (speciesType == 1) {
+            // Species 1 = Stump / Dead Wood (Minimalist wood block)
+            Cylinder stumpMesh = new Cylinder(6, 8, 0.30f, 0.35f, 0.7f, true, false);
+            Geometry stumpGeom = new Geometry("SciStump", stumpMesh);
+            stumpGeom.setMaterial(trunkMat);
+            stumpGeom.setLocalTranslation(0, 0.35f, 0);
+            stumpGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
+            treeNode.attachChild(stumpGeom);
+        } else {
+            Cylinder trunkMesh = new Cylinder(4, 8, 0.08f, 0.08f, 3.0f, true, false);
+            Geometry trunkGeom = new Geometry("SciTrunk", trunkMesh);
+            trunkGeom.setMaterial(trunkMat);
+            trunkGeom.setLocalTranslation(0, 1.5f, 0);
+            trunkGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
+            treeNode.attachChild(trunkGeom);
 
-        Material leafMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        leafMat.setColor("Color", new ColorRGBA(0.2f, 0.8f, 0.6f, 0.7f));
+            Material leafMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+            leafMat.setColor("Color", new ColorRGBA(0.12f, 0.55f, 0.22f, 0.85f)); // Natural emerald green
 
-        com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(8, 8, 0.9f);
-        Geometry crownGeom = new Geometry("SciCrown", crownMesh);
-        crownGeom.setMaterial(leafMat);
-        crownGeom.setLocalTranslation(0, 3.2f, 0);
-        treeNode.attachChild(crownGeom);
+            com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(8, 8, 0.9f);
+            Geometry crownGeom = new Geometry("SciCrown", crownMesh);
+            crownGeom.setMaterial(leafMat);
+            crownGeom.setLocalTranslation(0, 3.2f, 0);
+            treeNode.attachChild(crownGeom);
+        }
 
         rootNode.attachChild(treeNode);
     }
@@ -211,30 +231,39 @@ public class VegetationVisualizer {
         Material woodMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         woodMat.setColor("Color", new ColorRGBA(0.45f, 0.25f, 0.1f, 1f));
 
-        Material leafMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        leafMat.setColor("Color", new ColorRGBA(0.15f, 0.75f, 0.25f, 1f));
-
-        float cubeSize = 0.6f;
-        int trunkHeightCubes = 4;
-
-        for (int h = 0; h < trunkHeightCubes; h++) {
-            Box box = new Box(cubeSize / 2, cubeSize / 2, cubeSize / 2);
-            Geometry g = new Geometry("LogCube", box);
+        if (speciesType == 1) {
+            // Species 1 = Stump / Dead Wood (1-2 low voxel blocks)
+            Box box = new Box(0.35f, 0.3f, 0.35f);
+            Geometry g = new Geometry("StumpCube", box);
             g.setMaterial(woodMat);
-            g.setLocalTranslation(0, h * cubeSize + cubeSize / 2, 0);
+            g.setLocalTranslation(0, 0.3f, 0);
             treeNode.attachChild(g);
-        }
+        } else {
+            Material leafMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+            leafMat.setColor("Color", new ColorRGBA(0.15f, 0.75f, 0.25f, 1f));
 
-        float canopyBaseY = trunkHeightCubes * cubeSize;
-        for (int bx = -1; bx <= 1; bx++) {
-            for (int bz = -1; bz <= 1; bz++) {
-                for (int by = 0; by <= 1; by++) {
-                    if (bx != 0 && bz != 0 && by == 1) continue;
-                    Box box = new Box(cubeSize / 2, cubeSize / 2, cubeSize / 2);
-                    Geometry g = new Geometry("LeafCube", box);
-                    g.setMaterial(leafMat);
-                    g.setLocalTranslation(bx * cubeSize, canopyBaseY + by * cubeSize + cubeSize / 2, bz * cubeSize);
-                    treeNode.attachChild(g);
+            float cubeSize = 0.6f;
+            int trunkHeightCubes = 4;
+
+            for (int h = 0; h < trunkHeightCubes; h++) {
+                Box box = new Box(cubeSize / 2, cubeSize / 2, cubeSize / 2);
+                Geometry g = new Geometry("LogCube", box);
+                g.setMaterial(woodMat);
+                g.setLocalTranslation(0, h * cubeSize + cubeSize / 2, 0);
+                treeNode.attachChild(g);
+            }
+
+            float canopyBaseY = trunkHeightCubes * cubeSize;
+            for (int bx = -1; bx <= 1; bx++) {
+                for (int bz = -1; bz <= 1; bz++) {
+                    for (int by = 0; by <= 1; by++) {
+                        if (bx != 0 && bz != 0 && by == 1) continue;
+                        Box box = new Box(cubeSize / 2, cubeSize / 2, cubeSize / 2);
+                        Geometry g = new Geometry("LeafCube", box);
+                        g.setMaterial(leafMat);
+                        g.setLocalTranslation(bx * cubeSize, canopyBaseY + by * cubeSize + cubeSize / 2, bz * cubeSize);
+                        treeNode.attachChild(g);
+                    }
                 }
             }
         }

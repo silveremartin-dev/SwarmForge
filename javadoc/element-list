@@ -1,6 +1,7 @@
 org.swarmforge.benchmarks
 org.swarmforge.benchmarks.jmh_generated
 org.swarmforge.client
+org.swarmforge.client.audio
 org.swarmforge.client.ecs
 org.swarmforge.client.network
 org.swarmforge.client.ui
@@ -17,12 +18,17 @@ org.swarmforge.core.domain
 org.swarmforge.core.ecology
 org.swarmforge.core.ecology.ai
 org.swarmforge.core.ecs
+org.swarmforge.core.ecs.compiler
 org.swarmforge.core.ecs.components
+org.swarmforge.core.ecs.events
+org.swarmforge.core.ecs.storage
 org.swarmforge.core.ecs.systems
+org.swarmforge.core.epidemiology
 org.swarmforge.core.event
 org.swarmforge.core.evolution
 org.swarmforge.core.genetics
 org.swarmforge.core.gpu
+org.swarmforge.core.navigation
 org.swarmforge.core.plugin
 org.swarmforge.core.scenario
 org.swarmforge.core.simulation
@@ -33,6 +39,7 @@ org.swarmforge.core.simulation.gpu
 org.swarmforge.core.spatial
 org.swarmforge.core.species
 org.swarmforge.core.structure
+org.swarmforge.core.structure.physics
 org.swarmforge.core.util
 org.swarmforge.core.world
 org.swarmforge.core.world.providers

@@ -56,6 +56,12 @@ public class WaterGrid {
      * Update water physics (flow and infiltration).
      */
     public void tick(Iterable<TunnelNetwork> tunnelNetworks) {
+        tick(tunnelNetworks, 0.05f); // 20 FPS default tick duration (0.05s)
+    }
+
+    public void tick(Iterable<TunnelNetwork> tunnelNetworks, float deltaSeconds) {
+        float effectiveDelta = Math.max(0.001f, Math.min(1.0f, deltaSeconds));
+
         // 1. Surface Flow (Simplified Diffusion)
         // In a real sim, we'd check terrain height, but for now just diffuse
 
@@ -70,8 +76,8 @@ public class WaterGrid {
                         if (isValid(gx, gy)) {
                             int idx = gx + gy * width;
                             if (surfaceWater[idx] > 0.1f) {
-                                // Water enters tunnel
-                                float inflow = Math.min(surfaceWater[idx], 0.5f);
+                                // Water enters tunnel scaled by time
+                                float inflow = Math.min(surfaceWater[idx], 10.0f * effectiveDelta);
                                 surfaceWater[idx] -= inflow;
                                 addTunnelWater(node.id(), inflow);
                             }
@@ -84,12 +90,14 @@ public class WaterGrid {
             }
         }
 
-        // 4. Tunnel Evaporation (once per tick across all tunnel nodes)
-        tunnelWaterLevels.replaceAll((k, v) -> Math.max(0, v - 0.005f));
+        // 4. Tunnel Evaporation (time-based rate per second = 0.10f)
+        float tunnelEvapRate = 0.10f * effectiveDelta;
+        tunnelWaterLevels.replaceAll((k, v) -> Math.max(0, v - tunnelEvapRate));
 
-        // 5. Surface Evaporation
+        // 5. Surface Evaporation & Soil Infiltration/Drainage (time-based rate per second = 0.04f)
+        float surfaceDrainRate = 0.04f * effectiveDelta;
         for (int i = 0; i < surfaceWater.length; i++) {
-            surfaceWater[i] = Math.max(0, surfaceWater[i] - 0.001f);
+            surfaceWater[i] = Math.max(0, surfaceWater[i] - surfaceDrainRate);
         }
     }
 

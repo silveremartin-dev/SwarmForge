@@ -48,6 +48,7 @@ public class EventLogPane extends BorderPane {
     private TextField searchField;
     private CheckBox autoScrollCheck;
     private Label eventCountLabel;
+    private Label logPathLabel;
 
     private SimulationEvent lastAddedEvent = null;
     private long totalRecordedCount = 0;
@@ -60,7 +61,21 @@ public class EventLogPane extends BorderPane {
     public void setScenarioName(String scenarioName) {
         if (scenarioName != null && !scenarioName.isBlank()) {
             this.scenarioName = scenarioName;
+            updateLogPathDisplay();
+            updateStats();
         }
+    }
+
+    private void updateLogPathDisplay() {
+        if (logPathLabel == null) return;
+        String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
+                ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
+                : "swarmforge";
+        java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
+        java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
+        String pathStr = logFile.getAbsolutePath();
+        logPathLabel.setText("📁 Log Path: " + pathStr);
+        logPathLabel.setTooltip(new Tooltip("Full simulation log storage path: " + pathStr + "\n(Click to copy path to clipboard)"));
     }
 
     public EventLogPane() {
@@ -484,11 +499,31 @@ public class EventLogPane extends BorderPane {
         btnExport.setTooltip(new Tooltip("Export displayed events to CSV or JSON format."));
         btnExport.setOnAction(e -> exportEvents());
 
+        // Full Simulation Log Path Indicator (User Request #5)
+        logPathLabel = new Label();
+        logPathLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-background-color: #1e293b; -fx-padding: 4 8; -fx-background-radius: 4; -fx-border-color: #334155; -fx-border-radius: 4; -fx-cursor: hand;");
+        logPathLabel.setOnMouseClicked(e -> {
+            String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
+                    ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
+                    : "swarmforge";
+            java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
+            java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
+            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+            content.putString(logFile.getAbsolutePath());
+            javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
+            org.swarmforge.client.util.NotificationOverlay.show(
+                this,
+                "📋 Log path copied to clipboard:\n" + logFile.getAbsolutePath(),
+                org.swarmforge.client.util.NotificationOverlay.NotificationType.INFO
+            );
+        });
+        updateLogPathDisplay();
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         filters.getChildren().addAll(searchField, typeLabel, typeFilter, sevLabel, severityFilter, autoScrollCheck,
-                spacer, btnClear, btnExport);
+                spacer, btnClear, btnExport, logPathLabel);
 
         toolbar.getChildren().addAll(title, filters);
         return toolbar;
@@ -536,9 +571,14 @@ public class EventLogPane extends BorderPane {
     }
 
     private void updateStats() {
+        String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
+                ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
+                : "swarmforge";
+        java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
+        java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
         eventCountLabel.setText(String.format(
-            "Total captured: %,d events | Memory buffer: %,d latest (10,000 max rolling buffer) | Filtered/Sorted: %,d | Disk stream: Active (logs/)",
-            totalRecordedCount, events.size(), sortedEvents.size()));
+            "Total captured: %,d events | Memory buffer: %,d latest (10,000 max rolling buffer) | Filtered/Sorted: %,d | Full log file: %s",
+            totalRecordedCount, events.size(), sortedEvents.size(), logFile.getAbsolutePath()));
     }
 
     private void exportEvents() {

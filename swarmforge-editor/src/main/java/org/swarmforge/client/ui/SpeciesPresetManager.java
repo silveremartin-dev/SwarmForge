@@ -80,8 +80,11 @@ public class SpeciesPresetManager {
         lasius.setAggression(0.3f);
         lasius.setTerritoriality(0.45f);
         lasius.setOptimalTempCelsius(24.0f);
-        lasius.setMinTempCelsius(5.0f);
-        lasius.setMaxTempCelsius(35.0f);
+        lasius.setMinTempCelsius(0.0f);
+        lasius.setMaxTempCelsius(42.0f);
+        lasius.setOptimalHumidityPercent(75.0f);
+        lasius.setMinHumidityPercent(25.0f);
+        lasius.setMaxHumidityPercent(95.0f);
         lasius.setEggStageDuration(15);
         lasius.setLarvaStageDuration(14);
         lasius.setPupaStageDuration(14);
@@ -180,6 +183,9 @@ public class SpeciesPresetManager {
         solenopsis.setOptimalTempCelsius(27.0f);
         solenopsis.setMinTempCelsius(12.0f);
         solenopsis.setMaxTempCelsius(42.0f);
+        solenopsis.setOptimalHumidityPercent(75.0f);
+        solenopsis.setMinHumidityPercent(20.0f);
+        solenopsis.setMaxHumidityPercent(95.0f);
         solenopsis.setEggStageDuration(8);
         solenopsis.setLarvaStageDuration(10);
         solenopsis.setPupaStageDuration(12);
@@ -274,6 +280,9 @@ public class SpeciesPresetManager {
         atta.setOptimalTempCelsius(26.0f);
         atta.setMinTempCelsius(15.0f);
         atta.setMaxTempCelsius(38.0f);
+        atta.setOptimalHumidityPercent(90.0f);
+        atta.setMinHumidityPercent(60.0f);
+        atta.setMaxHumidityPercent(100.0f);
         atta.setEggStageDuration(20);
         atta.setLarvaStageDuration(25);
         atta.setPupaStageDuration(25);
@@ -983,8 +992,11 @@ public class SpeciesPresetManager {
         formicaFusca.setAggression(0.35f);
         formicaFusca.setTerritoriality(0.40f);
         formicaFusca.setOptimalTempCelsius(22.0f);
-        formicaFusca.setMinTempCelsius(4.0f);
-        formicaFusca.setMaxTempCelsius(34.0f);
+        formicaFusca.setMinTempCelsius(0.0f);
+        formicaFusca.setMaxTempCelsius(42.0f);
+        formicaFusca.setOptimalHumidityPercent(75.0f);
+        formicaFusca.setMinHumidityPercent(25.0f);
+        formicaFusca.setMaxHumidityPercent(95.0f);
         formicaFusca.setEggStageDuration(14);
         formicaFusca.setLarvaStageDuration(12);
         formicaFusca.setPupaStageDuration(14);
@@ -1075,9 +1087,12 @@ public class SpeciesPresetManager {
         polyergus.setVenomType("POWERFUL_MANDIBLES");
         polyergus.setAggression(0.95f);
         polyergus.setTerritoriality(0.85f);
-        polyergus.setOptimalTempCelsius(25.0f);
-        polyergus.setMinTempCelsius(12.0f);
-        polyergus.setMaxTempCelsius(36.0f);
+        polyergus.setOptimalTempCelsius(22.0f);
+        polyergus.setMinTempCelsius(0.0f);
+        polyergus.setMaxTempCelsius(42.0f);
+        polyergus.setOptimalHumidityPercent(65.0f);
+        polyergus.setMinHumidityPercent(20.0f);
+        polyergus.setMaxHumidityPercent(90.0f);
         polyergus.setMetabolism(1.2f);
         polyergus.setStrength(10.0f);
 
@@ -1126,6 +1141,9 @@ public class SpeciesPresetManager {
         linepithema.setOptimalTempCelsius(25.0f);
         linepithema.setMinTempCelsius(10.0f);
         linepithema.setMaxTempCelsius(38.0f);
+        linepithema.setOptimalHumidityPercent(75.0f);
+        linepithema.setMinHumidityPercent(30.0f);
+        linepithema.setMaxHumidityPercent(95.0f);
         linepithema.setMetabolism(1.3f);
         linepithema.setStrength(4.0f);
 
@@ -1173,6 +1191,9 @@ public class SpeciesPresetManager {
         messor.setOptimalTempCelsius(28.0f);
         messor.setMinTempCelsius(10.0f);
         messor.setMaxTempCelsius(40.0f);
+        messor.setOptimalHumidityPercent(55.0f);
+        messor.setMinHumidityPercent(15.0f);
+        messor.setMaxHumidityPercent(85.0f);
         messor.setMetabolism(1.0f);
         messor.setStrength(10.0f);
 
@@ -1224,8 +1245,11 @@ public class SpeciesPresetManager {
         camponotus.setAggression(0.6f);
         camponotus.setTerritoriality(0.7f);
         camponotus.setOptimalTempCelsius(22.0f);
-        camponotus.setMinTempCelsius(5.0f);
-        camponotus.setMaxTempCelsius(32.0f);
+        camponotus.setMinTempCelsius(0.0f);
+        camponotus.setMaxTempCelsius(42.0f);
+        camponotus.setOptimalHumidityPercent(70.0f);
+        camponotus.setMinHumidityPercent(30.0f);
+        camponotus.setMaxHumidityPercent(95.0f);
         camponotus.setMetabolism(1.0f);
         camponotus.setStrength(15.0f);
 
@@ -1330,8 +1354,11 @@ public class SpeciesPresetManager {
         fallback.setInsectType("ANT");
         fallback.setNestType("MATURE");
         fallback.setOptimalTempCelsius(24.0f);
-        fallback.setMinTempCelsius(5.0f);
-        fallback.setMaxTempCelsius(38.0f);
+        fallback.setMinTempCelsius(0.0f);
+        fallback.setMaxTempCelsius(45.0f);
+        fallback.setOptimalHumidityPercent(75.0f);
+        fallback.setMinHumidityPercent(15.0f);
+        fallback.setMaxHumidityPercent(100.0f);
         fallback.setDescription("Dynamically synthesized fallback species.");
         presets.put(name, fallback);
         org.swarmforge.core.species.SpeciesRegistry.getInstance().register(fallback);

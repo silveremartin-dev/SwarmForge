@@ -179,8 +179,8 @@ export default function AudioMixerWidget() {
                     {/* Channel 1: Biome & Tree Canopy */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <div style={styles.channelRow}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, width: 120, fontSize: 11, color: '#38bdf8' }}>
-                                <Bird size={12} /> Oiseaux & Feuilles
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, width: 130, fontSize: 11, color: '#38bdf8' }}>
+                                <Bird size={12} /> Biome & Faune
                             </span>
                             <input
                                 type="range" min="0" max="1" step="0.05"
@@ -195,11 +195,11 @@ export default function AudioMixerWidget() {
                         </div>
                     </div>
 
-                    {/* Channel 2: Weather & Storm */}
+                    {/* Channel 2: Weather & Wind */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <div style={styles.channelRow}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, width: 120, fontSize: 11, color: '#60a5fa' }}>
-                                <CloudRain size={12} /> Pluie & Orage
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, width: 130, fontSize: 11, color: '#60a5fa' }}>
+                                <CloudRain size={12} /> Météo & Vent
                             </span>
                             <input
                                 type="range" min="0" max="1" step="0.05"
@@ -211,7 +211,7 @@ export default function AudioMixerWidget() {
                         <div style={styles.btnGroup}>
                             <button style={styles.testBtn} onClick={() => handleTestSound('RAIN')}>🌧️ Pluie</button>
                             <button style={styles.testBtn} onClick={() => handleTestSound('THUNDER')}>⚡ Tonnerre</button>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('STORM')}>🌪️ Tempête</button>
+                            <button style={styles.testBtn} onClick={() => handleTestSound('STORM')}>💨 Vent & Tempête</button>
                         </div>
                     </div>
 

@@ -229,13 +229,7 @@ public class InterventionPanel extends BorderPane {
         simStateWarningLabel.getStyleClass().add("notice-warn");
         simStateWarningLabel.setMaxWidth(Double.MAX_VALUE);
 
-        Label persistenceNoticeLabel = new Label();
-        persistenceNoticeLabel.textProperty().bind(i18n.createStringBinding("god.notice.physics"));
-        persistenceNoticeLabel.getStyleClass().add("notice-info");
-        persistenceNoticeLabel.setWrapText(true);
-        persistenceNoticeLabel.setMaxWidth(Double.MAX_VALUE);
-
-        VBox header = new VBox(5, title, simStateWarningLabel, persistenceNoticeLabel);
+        VBox header = new VBox(5, title, simStateWarningLabel);
         setTop(header);
 
         // Main scrollable content

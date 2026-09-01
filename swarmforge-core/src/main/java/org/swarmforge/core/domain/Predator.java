@@ -48,7 +48,7 @@ public class Predator {
 
     // Hunting
     private Individual currentTarget;
-    private int attackCooldown = 0;
+    private float attackCooldownSeconds = 0.0f;
     private int killCount = 0;
 
     // Trap (for AMBUSH/TRAP predators)
@@ -116,9 +116,9 @@ public class Predator {
             die();
         }
 
-        // Cooldown management
-        if (attackCooldown > 0)
-            attackCooldown--;
+        // Cooldown management in seconds
+        if (attackCooldownSeconds > 0.0f)
+            attackCooldownSeconds -= deltaSeconds;
     }
 
     /**
@@ -144,13 +144,13 @@ public class Predator {
     public boolean attack(Individual target) {
         if (target == null || !target.isAlive())
             return false;
-        if (attackCooldown > 0)
+        if (attackCooldownSeconds > 0.0f)
             return false;
 
         float damage = type.getBaseDamage();
         boolean killed = target.takeDamage(damage);
 
-        attackCooldown = 30; // Cooldown between attacks
+        attackCooldownSeconds = 1.0f; // 1 second cooldown between attacks
 
         if (killed) {
             killCount++;

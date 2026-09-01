@@ -221,7 +221,7 @@ public class HivePlacementEvaluatorDialog extends Stage {
         if (architecture.contains("WOODEN_BEEHIVE")) {
             if (height < 0.4) {
                 score -= 25.0;
-                addRec("⚠️ Wooden Beehive: Moisture risk and ground predator attacks. Elevate hive to at least 0.5m above ground.");
+                addRec("⚠ Wooden Beehive: Moisture risk and ground predator attacks. Elevate hive to at least 0.5m above ground.");
             } else if (height > 2.5) {
                 score -= 15.0;
                 addRec("ℹ️ Elevated Height: Strong wind exposure may disrupt worker flight landings.");
@@ -238,7 +238,7 @@ public class HivePlacementEvaluatorDialog extends Stage {
         } else if (architecture.contains("BURROW_UNDERGROUND")) {
             if (height > 0.5) {
                 score -= 30.0;
-                addRec("⚠️ Underground burrow placed above ground surface.");
+                addRec("⚠ Underground burrow placed above ground surface.");
             } else {
                 addRec("✅ Ideal Depth: Natural thermal insulation from subterranean soil.");
             }

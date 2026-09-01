@@ -30,9 +30,9 @@ public class PredatorManager {
 
     // Configuration
     private int maxPredators = 10;
-    private int spawnCooldown = 0;
-    private int spawnInterval = 1000; // Ticks between spawn attempts
-    private float spawnChance = 0.3f;
+    private float spawnCooldownSeconds = 0.0f;
+    private float spawnIntervalSeconds = 60.0f; // Seconds between spawn evaluations
+    private float spawnChance = 0.35f;
     private int suppressionTicksRemaining = 0;
 
     // Statistics
@@ -90,17 +90,17 @@ public class PredatorManager {
                 clearPredators();
             }
         } else {
-            // Handle spawning
-            if (spawnCooldown > 0) {
-                spawnCooldown--;
+            // Handle spawning interval in SECONDS
+            if (spawnCooldownSeconds > 0.0f) {
+                spawnCooldownSeconds -= deltaSeconds;
             } else {
                 // Tiny chance for Boss
-                if (random.nextFloat() < 0.001f) { // 0.1% chance per spawn interval
+                if (random.nextFloat() < 0.001f) { // 0.1% chance per spawn evaluation
                     spawnBoss(BossPredator.BossType.values()[random.nextInt(BossPredator.BossType.values().length)]);
                 } else {
                     attemptSpawn();
                 }
-                spawnCooldown = spawnInterval;
+                spawnCooldownSeconds = spawnIntervalSeconds;
             }
         }
 
@@ -161,11 +161,8 @@ public class PredatorManager {
         }
     }
 
-    // Old monolithic AI methods removed in favor of HuntingStrategy
-    // implementations.
-
     /**
-     * Attempt to spawn a new predator.
+     * Attempt to spawn a new predator or accessory prey species.
      */
     private void attemptSpawn() {
         if (suppressionTicksRemaining > 0 || predators.size() >= maxPredators)
@@ -173,7 +170,53 @@ public class PredatorManager {
         if (random.nextFloat() > spawnChance)
             return;
 
-        // Spawn at random edge of terrarium
+        int totalColonyAnts = 0;
+        if (simulation != null && simulation.getColonies() != null) {
+            for (var col : simulation.getColonies()) {
+                if (col != null) totalColonyAnts += col.getPopulation();
+            }
+        }
+
+        // Count current active dangerous predators
+        long dangerousCount = predators.stream().filter(p -> isDangerousPredator(p.getType())).count();
+
+        // 70% chance to select a harmless prey / accessory organism vs 30% for a dangerous hunter
+        boolean spawnDangerous = (random.nextFloat() < 0.30f) && (totalColonyAnts >= 50) && (dangerousCount < 3);
+
+        PredatorType type;
+        if (spawnDangerous) {
+            List<PredatorType> dangerousCandidates = new ArrayList<>();
+            for (PredatorType candidate : new PredatorType[]{
+                PredatorType.SPIDER, PredatorType.ANTLION, PredatorType.BEETLE, PredatorType.BIRD,
+                PredatorType.LIZARD, PredatorType.WASP, PredatorType.ASIAN_HORNET, PredatorType.BEE_WOLF
+            }) {
+                if (isSeasonAndHabitatCompatible(candidate)) {
+                    dangerousCandidates.add(candidate);
+                }
+            }
+            if (!dangerousCandidates.isEmpty()) {
+                type = dangerousCandidates.get(random.nextInt(dangerousCandidates.size()));
+            } else {
+                type = PredatorType.BEETLE;
+            }
+        } else {
+            List<PredatorType> preyCandidates = new ArrayList<>();
+            for (PredatorType candidate : new PredatorType[]{
+                PredatorType.CATERPILLAR, PredatorType.SYRPHID_LARVA, PredatorType.LADYBUG_LARVA,
+                PredatorType.MYRMECOPHILE_BEETLE, PredatorType.KLEPTOPARASITE_THRIPS
+            }) {
+                if (isSeasonAndHabitatCompatible(candidate)) {
+                    preyCandidates.add(candidate);
+                }
+            }
+            if (!preyCandidates.isEmpty()) {
+                type = preyCandidates.get(random.nextInt(preyCandidates.size()));
+            } else {
+                type = PredatorType.MYRMECOPHILE_BEETLE;
+            }
+        }
+
+        // Spawn at random edge of terrarium surface
         var terrarium = simulation.getTerrarium();
         float x, y, z;
 
@@ -186,15 +229,6 @@ public class PredatorManager {
         }
         z = terrarium.getDepth() - 1; // Surface level
 
-        // Choose random type
-        PredatorType[] types = PredatorType.values();
-        PredatorType type = types[random.nextInt(types.length)];
-
-        // Skip antlion if not sandy terrain
-        if (type == PredatorType.ANTLION) {
-            // Could check terrain here
-        }
-
         Predator predator = new Predator(type, x, y, z);
         predators.add(predator);
         totalSpawned++;
@@ -202,6 +236,66 @@ public class PredatorManager {
         simulation.queueEvent(new SimulationEvent(SimulationEvent.EventType.INFO,
                 simulation.getTickCount(),
                 type.getDisplayName() + " appeared at (" + (int) x + ", " + (int) y + ")"));
+    }
+
+    private boolean isSeasonAndHabitatCompatible(PredatorType type) {
+        if (simulation == null) return true;
+        var seasonMgr = simulation.getSeasonManager();
+        org.swarmforge.core.world.Season season = seasonMgr != null ? seasonMgr.getCurrentSeason() : org.swarmforge.core.world.Season.SPRING;
+
+        // Winter diapause: most active insects & reptiles enter dormancy
+        if (season == org.swarmforge.core.world.Season.WINTER) {
+            if (type == PredatorType.CATERPILLAR || type == PredatorType.LADYBUG_LARVA ||
+                type == PredatorType.SYRPHID_LARVA || type == PredatorType.LIZARD ||
+                type == PredatorType.ASIAN_HORNET || type == PredatorType.BEE_WOLF ||
+                type == PredatorType.HONEY_BUZZARD || type == PredatorType.WASP) {
+                return false;
+            }
+        }
+
+        // Summer / Fall specific insects
+        if (type == PredatorType.ASIAN_HORNET || type == PredatorType.BEE_WOLF) {
+            if (season != org.swarmforge.core.world.Season.SUMMER && season != org.swarmforge.core.world.Season.FALL) {
+                return false;
+            }
+        }
+
+        // Honey Buzzard raptor active in Spring and Summer
+        if (type == PredatorType.HONEY_BUZZARD) {
+            if (season != org.swarmforge.core.world.Season.SPRING && season != org.swarmforge.core.world.Season.SUMMER) {
+                return false;
+            }
+        }
+
+        // Terrain checks: Antlions strictly require Sand
+        if (type == PredatorType.ANTLION) {
+            var terrarium = simulation.getTerrarium();
+            if (terrarium == null) return false;
+            boolean hasSand = false;
+            int w = terrarium.getWidth();
+            int h = terrarium.getHeight();
+            int z = terrarium.getDepth() - 1;
+            for (int i = 0; i < 15; i++) {
+                int rx = random.nextInt(w);
+                int ry = random.nextInt(h);
+                var cell = terrarium.getCell(rx, ry, z);
+                if (cell != null && cell.material() == org.swarmforge.core.domain.TerrariumCell.Material.SAND) {
+                    hasSand = true;
+                    break;
+                }
+            }
+            if (!hasSand) return false;
+        }
+
+        return true;
+    }
+
+    private boolean isDangerousPredator(PredatorType type) {
+        return switch (type) {
+            case SPIDER, ANTLION, BIRD, LIZARD, WASP, ASIAN_HORNET, BEE_WOLF, VARROA_MITE,
+                 HONEY_BUZZARD, MEGAPONERA_RAIDER, AARDVARK_MOUND_BREAKER, WOODPECKER -> true;
+            default -> false;
+        };
     }
 
     // === Helper Methods ===
@@ -235,7 +329,15 @@ public class PredatorManager {
     }
 
     public void setSpawnInterval(int ticks) {
-        this.spawnInterval = ticks;
+        this.spawnIntervalSeconds = ticks * 0.016666667f;
+    }
+
+    public float getSpawnIntervalSeconds() {
+        return spawnIntervalSeconds;
+    }
+
+    public void setSpawnIntervalSeconds(float seconds) {
+        this.spawnIntervalSeconds = seconds;
     }
 
     public void setSpawnChance(float chance) {
