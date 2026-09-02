@@ -68,14 +68,21 @@ public class EventLogPane extends BorderPane {
 
     private void updateLogPathDisplay() {
         if (logPathLabel == null) return;
-        String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
-                ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
-                : "swarmforge";
-        java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
-        java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
-        String pathStr = logFile.getAbsolutePath();
-        logPathLabel.setText("📁 Log Path: " + pathStr);
-        logPathLabel.setTooltip(new Tooltip("Full simulation log storage path: " + pathStr + "\n(Click to copy path to clipboard)"));
+        Runnable action = () -> {
+            String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
+                    ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
+                    : "swarmforge";
+            java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
+            java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
+            String pathStr = logFile.getAbsolutePath();
+            logPathLabel.setText("📁 Log Path: " + pathStr);
+            logPathLabel.setTooltip(new Tooltip("Full simulation log storage path: " + pathStr + "\n(Click to copy path to clipboard)"));
+        };
+        if (Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            Platform.runLater(action);
+        }
     }
 
     public EventLogPane() {
@@ -571,14 +578,22 @@ public class EventLogPane extends BorderPane {
     }
 
     private void updateStats() {
-        String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
-                ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
-                : "swarmforge";
-        java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
-        java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
-        eventCountLabel.setText(String.format(
-            "Total captured: %,d events | Memory buffer: %,d latest (10,000 max rolling buffer) | Filtered/Sorted: %,d | Full log file: %s",
-            totalRecordedCount, events.size(), sortedEvents.size(), logFile.getAbsolutePath()));
+        if (eventCountLabel == null) return;
+        Runnable action = () -> {
+            String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
+                    ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
+                    : "swarmforge";
+            java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
+            java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
+            eventCountLabel.setText(String.format(
+                "Total captured: %,d events | Memory buffer: %,d latest (10,000 max rolling buffer) | Filtered/Sorted: %,d | Full log file: %s",
+                totalRecordedCount, events.size(), sortedEvents.size(), logFile.getAbsolutePath()));
+        };
+        if (Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            Platform.runLater(action);
+        }
     }
 
     private void exportEvents() {

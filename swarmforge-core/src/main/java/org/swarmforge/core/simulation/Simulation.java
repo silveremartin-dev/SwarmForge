@@ -727,8 +727,9 @@ public class Simulation {
         if (soilHydricCoupling != null && weather != null) {
             float sTemp = weather.getTemperature();
             float rain = weather.getRainfall();
-            float evap = weather.isRaining() ? 0.0f : 0.5f;
-            soilHydricCoupling.tick(sTemp, rain, evap, simulationStepSeconds);
+            float snow = weather.getSnowfall();
+            float wind = weather.getWindSpeed();
+            soilHydricCoupling.updateHydricAndThermalState(rain, snow, sTemp, wind, simulationStepSeconds / 3600.0f);
         }
         if (waterTable != null && weather != null) {
             waterTable.tick(weather.getRainfall(), weather.isRaining() ? 0.0f : 0.5f);
@@ -862,10 +863,6 @@ public class Simulation {
 
     public State getState() {
         return state.get();
-    }
-
-    public org.swarmforge.core.world.WeatherSystem getWeather() {
-        return weather;
     }
 
     public org.swarmforge.core.world.SeasonManager getSeasonManager() {

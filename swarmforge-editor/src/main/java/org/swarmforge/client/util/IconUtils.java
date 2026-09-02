@@ -33,7 +33,6 @@ public class IconUtils {
      * @param stage Target JavaFX stage
      */
     public static void applyWindowIcons(Stage stage) {
-        if (stage == null) return;
         try {
             // 1. Register Windows AppUserModelID once per process for taskbar icon separation & grouping
             if (!appUserModelIdSet) {
@@ -41,7 +40,28 @@ public class IconUtils {
                 appUserModelIdSet = true;
             }
 
-            // 2. Load & Cache JavaFX Icons (Original + Multi-Resolution) once
+            // 2. Apply native OS Taskbar icon via java.awt.Taskbar once
+            if (!taskbarIconSet && !java.awt.GraphicsEnvironment.isHeadless() && java.awt.Taskbar.isTaskbarSupported()) {
+                java.awt.Taskbar taskbar = java.awt.Taskbar.getTaskbar();
+                if (taskbar.isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
+                    try (java.io.InputStream is = IconUtils.class.getResourceAsStream(ICON_PATH)) {
+                        if (is != null) {
+                            java.awt.image.BufferedImage awtImg = javax.imageio.ImageIO.read(is);
+                            if (awtImg != null) {
+                                taskbar.setIconImage(awtImg);
+                                taskbarIconSet = true;
+                                LOG.info("AWT Taskbar icon updated successfully.");
+                            }
+                        }
+                    } catch (Exception ex) {
+                        LOG.fine("Could not set AWT Taskbar icon: " + ex.getMessage());
+                    }
+                }
+            }
+
+            if (stage == null) return;
+
+            // 3. Load & Cache JavaFX Icons (Original + Multi-Resolution) once
             if (CACHED_ICONS.isEmpty()) {
                 URL iconUrl = IconUtils.class.getResource(ICON_PATH);
                 if (iconUrl != null) {
@@ -70,25 +90,9 @@ public class IconUtils {
                 }
             }
 
-            // 3. Bind cached multi-resolution icons to stage
+            // 4. Bind cached multi-resolution icons to stage
             if (!CACHED_ICONS.isEmpty()) {
                 stage.getIcons().setAll(CACHED_ICONS);
-            }
-
-            // 4. Apply native OS Taskbar icon via java.awt.Taskbar once
-            if (!taskbarIconSet && !java.awt.GraphicsEnvironment.isHeadless() && java.awt.Taskbar.isTaskbarSupported()) {
-                java.awt.Taskbar taskbar = java.awt.Taskbar.getTaskbar();
-                if (taskbar.isSupported(java.awt.Taskbar.Feature.ICON_IMAGE)) {
-                    URL iconUrl = IconUtils.class.getResource(ICON_PATH);
-                    if (iconUrl != null) {
-                        java.awt.image.BufferedImage awtImg = javax.imageio.ImageIO.read(iconUrl);
-                        if (awtImg != null) {
-                            taskbar.setIconImage(awtImg);
-                            taskbarIconSet = true;
-                            LOG.info("AWT Taskbar icon updated successfully.");
-                        }
-                    }
-                }
             }
         } catch (Exception e) {
             LOG.warning("Failed to apply stage icons: " + e.getMessage());

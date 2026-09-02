@@ -246,9 +246,11 @@ public class SimulationAudioManager {
 
         // 1. River Water Sound
         if (riverEnabled) {
-            File riverFile = findSoundFile("mixkit-river-water-flow-and-surroundings-2452.wav");
-            if (riverFile == null) riverFile = findSoundFile("WATRFlow_Small stream 4 (ID 1354)_BigSoundBank.com.mp3");
+            File riverFile = findSoundFile("WATRFlow_Small stream 4 (ID 1354)_BigSoundBank.com.mp3");
             if (riverFile == null) riverFile = findSoundFile("AMB_Nature Pack Vol 1_Water Enviroments_Mountain Stream.mp3");
+            if (riverFile == null) riverFile = findSoundFile("WATRFlow_Watercourse 5 2 (ID 3137)_BigSoundBank.com.mp3");
+            if (riverFile == null) riverFile = findSoundFile("mixkit-river-water-flow-and-surroundings-2452.wav");
+            if (riverFile == null) riverFile = findSoundFile("mixkit-water-flowing-ambience-loop-3126.wav");
             channels.get("RIVER").playTrack(riverFile, 0.90, masterVolume);
         } else {
             channels.get("RIVER").stopWithFade();
@@ -502,7 +504,13 @@ public class SimulationAudioManager {
                 runOnFx(() -> {
                     try {
                         Media media = new Media(uriStr);
+                        media.setOnError(() -> {
+                            createJavaClipFallback(file, initialVol * masterVolume);
+                        });
                         MediaPlayer player = new MediaPlayer(media);
+                        player.setOnError(() -> {
+                            createJavaClipFallback(file, initialVol * masterVolume);
+                        });
                         player.setCycleCount(MediaPlayer.INDEFINITE);
                         player.setVolume(initialVol * masterVolume);
                         player.play();

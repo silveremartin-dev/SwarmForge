@@ -38,6 +38,31 @@ public class SoilHydricCoupling {
      * @param rainfallMm Rainfall rate in mm/hour
      * @param snowfallMm Snowfall rate in mm/hour
      * @param surfaceTemp Current surface air temperature (°C)
+     * @param deltaHours Time step in hours
+     */
+    public void tick(float rainfallMm, float snowfallMm, float surfaceTemp, float deltaHours) {
+        updateHydricAndThermalState(rainfallMm, snowfallMm, surfaceTemp, 0.0f, deltaHours);
+    }
+
+    /**
+     * Update soil moisture, snow compaction, thaw/melt, and thermal frost front with wind speed.
+     *
+     * @param rainfallMm Rainfall rate in mm/hour
+     * @param snowfallMm Snowfall rate in mm/hour
+     * @param surfaceTemp Current surface air temperature (°C)
+     * @param windSpeed Current wind speed (km/h)
+     * @param deltaHours Time step in hours
+     */
+    public void tick(float rainfallMm, float snowfallMm, float surfaceTemp, float windSpeed, float deltaHours) {
+        updateHydricAndThermalState(rainfallMm, snowfallMm, surfaceTemp, windSpeed, deltaHours);
+    }
+
+    /**
+     * Update soil moisture, snow compaction, thaw/melt, and thermal frost front.
+     *
+     * @param rainfallMm Rainfall rate in mm/hour
+     * @param snowfallMm Snowfall rate in mm/hour
+     * @param surfaceTemp Current surface air temperature (°C)
      * @param windSpeed Current wind speed (km/h)
      * @param deltaHours Time step in hours
      */

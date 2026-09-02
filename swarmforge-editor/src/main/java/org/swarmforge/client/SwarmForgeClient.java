@@ -1528,7 +1528,6 @@ public class SwarmForgeClient extends Application {
                     "🔬 Mode Scientifique (Minimaliste Structural)",
                     "🎮 Mode Gamifié (Voxel / Minecraft)"
                 );
-                comboRenderMode.getSelectionModel().selectFirst();
                 comboRenderMode.setMaxWidth(Double.MAX_VALUE);
                 comboRenderMode.setStyle("-fx-font-size: 11px;");
                 comboRenderMode.getSelectionModel().selectedItemProperty().addListener((o, oldV, newV) -> {
@@ -1547,6 +1546,10 @@ public class SwarmForgeClient extends Application {
                         }
                     }
                 });
+                comboRenderMode.getSelectionModel().select(1);
+                if (simWorldViewer != null) {
+                    simWorldViewer.setRenderMode(org.swarmforge.client.ui.WorldEditorPane.RenderMode.SCIENTIFIC);
+                }
 
                 CheckBox chkMinimap = new CheckBox();
                 chkMinimap.textProperty().bind(i18n.createStringBinding("sidebar.chk.minimap"));
@@ -1556,6 +1559,23 @@ public class SwarmForgeClient extends Application {
                 ttMinimap.textProperty().bind(i18n.createStringBinding("sidebar.chk.minimap.tt"));
                 chkMinimap.setTooltip(ttMinimap);
                 chkMinimap.selectedProperty().addListener((o, a, b) -> simWorldViewer.setDualMinimapVisible(b));
+
+                CheckBox chkSyncMinimap = new CheckBox();
+                chkSyncMinimap.textProperty().bind(i18n.createStringBinding("minimap.sync"));
+                chkSyncMinimap.setSelected(true);
+                chkSyncMinimap.setStyle("-fx-font-size: 10.5px;");
+                VBox.setMargin(chkSyncMinimap, new Insets(0, 0, 0, 16)); // Indented to the right
+                chkSyncMinimap.selectedProperty().addListener((o, a, b) -> {
+                    if (simWorldViewer != null) simWorldViewer.setSyncViews(b);
+                });
+
+                CheckBox chkShowLegend = new CheckBox();
+                chkShowLegend.textProperty().bind(i18n.createStringBinding("legend.show"));
+                chkShowLegend.setSelected(true);
+                chkShowLegend.setStyle("-fx-font-size: 11px;");
+                chkShowLegend.selectedProperty().addListener((o, a, b) -> {
+                    if (simWorldViewer != null) simWorldViewer.setShowLegend(b);
+                });
 
                 CheckBox chkTerrain = new CheckBox();
                 chkTerrain.textProperty().bind(i18n.createStringBinding("sidebar.chk.terrain"));
@@ -1650,7 +1670,32 @@ public class SwarmForgeClient extends Application {
                         simWorldViewer.setWeatherVisible(b);
                 });
 
-                renderSection.getChildren().addAll(lblRenderMode, comboRenderMode, chkMinimap, chkTerrain, chkTrees, chkSkirt, sliceBox, chkNid, chkPheromonesLayer, comboPheromoneType, chkAntsLayer, chkWeatherLayer);
+                CheckBox chkVoxelInfo = new CheckBox();
+                chkVoxelInfo.textProperty().bind(i18n.createStringBinding("world.render.voxel_info"));
+                chkVoxelInfo.setSelected(true);
+                chkVoxelInfo.setStyle("-fx-font-size: 11px;");
+                Tooltip ttVoxelInfo = new Tooltip();
+                ttVoxelInfo.textProperty().bind(i18n.createStringBinding("world.render.voxel_info.tt"));
+                chkVoxelInfo.setTooltip(ttVoxelInfo);
+                chkVoxelInfo.selectedProperty().addListener((o, a, b) -> simWorldViewer.setVoxelInfoVisible(b));
+
+                CheckBox chkAntTracking = new CheckBox();
+                chkAntTracking.textProperty().bind(i18n.createStringBinding("world.render.ant_tracking"));
+                chkAntTracking.setSelected(true);
+                chkAntTracking.setStyle("-fx-font-size: 11px;");
+                Tooltip ttAntTracking = new Tooltip();
+                ttAntTracking.textProperty().bind(i18n.createStringBinding("world.render.ant_tracking.tt"));
+                chkAntTracking.setTooltip(ttAntTracking);
+                chkAntTracking.selectedProperty().addListener((o, a, b) -> simWorldViewer.setAntTrackingEnabled(b));
+
+                renderSection.getChildren().addAll(
+                    lblRenderMode, comboRenderMode,
+                    chkMinimap, chkSyncMinimap, chkShowLegend,
+                    new Separator(),
+                    chkTerrain, chkTrees, chkSkirt, sliceBox, chkNid, chkPheromonesLayer, comboPheromoneType, chkAntsLayer, chkWeatherLayer,
+                    new Separator(),
+                    chkVoxelInfo, chkAntTracking
+                );
 
                 // Audio Controls Section
                 VBox audioSection = new VBox(6);
@@ -1873,11 +1918,14 @@ public class SwarmForgeClient extends Application {
                 }
 
                 boolean isSimRunning = (localSimulation != null && localSimulation.isRunning());
+                boolean hasRiverInWorld = (lastGeneratedTerrarium != null && lastGeneratedTerrarium.hasRiver())
+                        || (localSimulation != null && localSimulation.getTerrarium() != null && (localSimulation.getTerrarium().hasRiver() || localSimulation.getTerrarium().hasWater()));
+
                 org.swarmforge.client.audio.SimulationAudioManager.getInstance().updateState(
                         simControlPanel != null ? simControlPanel.getSelectedWorld() : "Forest",
                         "Clear",
                         "SUMMER",
-                        false,
+                        hasRiverInWorld,
                         0,
                         simWorldViewer != null ? simWorldViewer.getZoom() : 7.5,
                         isSimRunning && sim3DFocused

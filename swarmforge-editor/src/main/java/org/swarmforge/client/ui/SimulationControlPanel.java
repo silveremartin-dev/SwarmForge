@@ -236,7 +236,8 @@ public class SimulationControlPanel extends VBox {
 
         HBox metaRow = new HBox(8);
         metaRow.setAlignment(Pos.CENTER_LEFT);
-        Label lblMeta = new Label("★ Global Scenario Preset :");
+        Label lblMeta = new Label();
+        lblMeta.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.preset.meta"));
         lblMeta.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lblMeta.getStyleClass().add("purple-accent-title");
         lblMeta.setMinWidth(Region.USE_PREF_SIZE);
@@ -273,7 +274,8 @@ public class SimulationControlPanel extends VBox {
         }
 
         VBox descBox = new VBox(4);
-        Label lblDesc = new Label("📝 Scientific Scenario Description :");
+        Label lblDesc = new Label();
+        lblDesc.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.desc.title"));
         lblDesc.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;");
         lblDesc.getStyleClass().add("sub-title-gray");
         areaDescription.setPrefRowCount(2);
@@ -297,12 +299,14 @@ public class SimulationControlPanel extends VBox {
         GridPane gridWorldWeather = new GridPane();
         gridWorldWeather.setHgap(10); gridWorldWeather.setVgap(8);
 
-        Label lbl1World = new Label("1. 🌍 World Preset (Biotope) :");
+        Label lbl1World = new Label();
+        lbl1World.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.step1.world"));
         lbl1World.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lbl1World.getStyleClass().add("accent-title");
         lbl1World.setTooltip(new Tooltip("3D biotope and terrain relief type loaded from WorldPresetManager."));
 
-        Label lbl2Weather = new Label("2. 🌤️ Weather & Climate Preset :");
+        Label lbl2Weather = new Label();
+        lbl2Weather.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.step2.weather"));
         lbl2Weather.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lbl2Weather.getStyleClass().add("accent-title");
         lbl2Weather.setTooltip(new Tooltip("Climate profile and seasonal weather from WeatherPresetManager."));
@@ -320,7 +324,8 @@ public class SimulationControlPanel extends VBox {
         GridPane gridDateTimeSeed = new GridPane();
         gridDateTimeSeed.setHgap(10); gridDateTimeSeed.setVgap(8);
 
-        Label lbl3DateTime = new Label("3. 📅 Start Date & Time :");
+        Label lbl3DateTime = new Label();
+        lbl3DateTime.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.step3.datetime"));
         lbl3DateTime.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lbl3DateTime.getStyleClass().add("accent-title");
         startDatePicker = new DatePicker(startDateTime.toLocalDate());
@@ -328,17 +333,17 @@ public class SimulationControlPanel extends VBox {
         startDatePicker.setStyle("-fx-font-size: 11px;");
 
         startTimeHourSpinner = new Spinner<>(0, 23, startDateTime.getHour());
-        startTimeHourSpinner.setPrefWidth(54);
+        startTimeHourSpinner.setPrefWidth(55);
         startTimeHourSpinner.setEditable(true);
         startTimeHourSpinner.setStyle("-fx-font-size: 10px;");
 
         startTimeMinuteSpinner = new Spinner<>(0, 59, startDateTime.getMinute());
-        startTimeMinuteSpinner.setPrefWidth(54);
+        startTimeMinuteSpinner.setPrefWidth(55);
         startTimeMinuteSpinner.setEditable(true);
         startTimeMinuteSpinner.setStyle("-fx-font-size: 10px;");
 
         startTimeSecondSpinner = new Spinner<>(0, 59, startDateTime.getSecond());
-        startTimeSecondSpinner.setPrefWidth(54);
+        startTimeSecondSpinner.setPrefWidth(55);
         startTimeSecondSpinner.setEditable(true);
         startTimeSecondSpinner.setStyle("-fx-font-size: 10px;");
 
@@ -375,7 +380,8 @@ public class SimulationControlPanel extends VBox {
         );
         startDateTimeBox.setAlignment(Pos.CENTER_LEFT);
 
-        Label lblSeedTitle = new Label("4. 🎲 Master Random Seed :");
+        Label lblSeedTitle = new Label();
+        lblSeedTitle.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.step4.seed"));
         lblSeedTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lblSeedTitle.getStyleClass().add("accent-title");
         lblSeedTitle.setTooltip(new Tooltip("Master random seed controlling exact scenario determinism and reproducibility."));
@@ -402,7 +408,8 @@ public class SimulationControlPanel extends VBox {
         GridPane gridPhysics = new GridPane();
         gridPhysics.setHgap(10); gridPhysics.setVgap(8);
 
-        Label lbl4Step = new Label("5. ⏱️ Physics Step (Integration Δt) :");
+        Label lbl4Step = new Label();
+        lbl4Step.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.step5.step"));
         lbl4Step.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lbl4Step.getStyleClass().add("accent-title");
         lbl4Step.setTooltip(new Tooltip("Defines the Δt numerical integration fidelity for physics and ethology equations."));
@@ -432,7 +439,8 @@ public class SimulationControlPanel extends VBox {
             if (onStepChange != null) onStepChange.accept(simulationStepSeconds);
         });
 
-        Label lblDeterminismLegend = new Label("💡 Note: For a given Seed and Δt step, simulation execution is fully deterministic and reproducible.");
+        Label lblDeterminismLegend = new Label();
+        lblDeterminismLegend.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.step5.determinism_legend"));
         lblDeterminismLegend.setStyle("-fx-font-size: 9.5px; -fx-font-style: italic;");
         lblDeterminismLegend.getStyleClass().add("sub-title-gray");
 
@@ -443,7 +451,8 @@ public class SimulationControlPanel extends VBox {
         GridPane gridLimits = new GridPane();
         gridLimits.setHgap(10); gridLimits.setVgap(8);
 
-        Label lblMaxTicks = new Label("6. ⌛ Maximum Simulation Duration :");
+        Label lblMaxTicks = new Label();
+        lblMaxTicks.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.step6.duration"));
         lblMaxTicks.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lblMaxTicks.getStyleClass().add("accent-title");
         lblMaxTicks.setTooltip(new Tooltip("Maximum simulation duration. Select value and unit (Days by default, s, min, h, months, years, ticks, or unlimited)."));
@@ -485,7 +494,8 @@ public class SimulationControlPanel extends VBox {
         durationBox.setAlignment(Pos.CENTER_LEFT);
         VBox durationFullBox = new VBox(4, durationBox, lblDurationCalculatedInfo);
 
-        Label lblMinPop = new Label("7. 🛑 Min Population Stop Threshold :");
+        Label lblMinPop = new Label();
+        lblMinPop.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.step7.minpop"));
         lblMinPop.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lblMinPop.getStyleClass().add("accent-title");
         lblMinPop.setTooltip(new Tooltip("Minimum total living population threshold. If living count drops below this, simulation stops automatically."));
@@ -505,7 +515,8 @@ public class SimulationControlPanel extends VBox {
         HBox speciesAddBar = new HBox(8);
         speciesAddBar.setAlignment(Pos.CENTER_LEFT);
 
-        Label lbl5SpeciesHeader = new Label("8. 🐜 Species & Ecosystem Scenario :");
+        Label lbl5SpeciesHeader = new Label();
+        lbl5SpeciesHeader.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.step8.species"));
         lbl5SpeciesHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
         lbl5SpeciesHeader.getStyleClass().add("accent-title");
 

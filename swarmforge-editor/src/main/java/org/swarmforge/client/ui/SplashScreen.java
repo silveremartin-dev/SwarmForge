@@ -18,8 +18,12 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
-import org.kordamp.ikonli.feather.Feather;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import java.net.URL;
+import org.swarmforge.client.util.I18nManager;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.kordamp.ikonli.feather.Feather;
 
 /**
  * Modern Splash Screen with animated loading progress bar displayed during SwarmForge application startup.
@@ -45,27 +49,41 @@ public class SplashScreen {
             splashStage.initOwner(owner);
         }
 
-        // Window Icon registration for taskbar appearance
+        // Window Icon registration for taskbar appearance right on startup
         org.swarmforge.client.util.IconUtils.applyWindowIcons(splashStage);
 
-        // Header Title & Eusocial Insect Icon Banner
-        FontIcon logoIcon = new FontIcon(Feather.DISC);
-        logoIcon.setIconSize(42);
-        logoIcon.setStyle("-fx-icon-color: #f59e0b;");
+        I18nManager i18n = I18nManager.getInstance();
 
-        Label titleLabel = new Label("SwarmForge Studio");
+        // Header Title & Application Logo Icon Banner
+        javafx.scene.Node logoNode;
+        URL iconUrl = SplashScreen.class.getResource("/icons/icon.png");
+        if (iconUrl != null) {
+            Image appIconImg = new Image(iconUrl.toExternalForm(), 48, 48, true, true);
+            ImageView iconView = new ImageView(appIconImg);
+            iconView.setFitWidth(48);
+            iconView.setFitHeight(48);
+            iconView.setPreserveRatio(true);
+            logoNode = iconView;
+        } else {
+            FontIcon logoIcon = new FontIcon(Feather.DISC);
+            logoIcon.setIconSize(42);
+            logoIcon.setStyle("-fx-icon-color: #f59e0b;");
+            logoNode = logoIcon;
+        }
+
+        Label titleLabel = new Label(i18n.get("splash.title"));
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
-        Label subtitleLabel = new Label("Eusocial Insect Society Simulator (Ants, Termites, Wasps & Bees)");
+        Label subtitleLabel = new Label(i18n.get("splash.subtitle"));
         subtitleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
 
         VBox titleBox = new VBox(2, titleLabel, subtitleLabel);
 
-        HBox headerBox = new HBox(14, logoIcon, titleBox);
+        HBox headerBox = new HBox(14, logoNode, titleBox);
         headerBox.setAlignment(Pos.CENTER_LEFT);
 
         // Status & Progress Bar Controls
-        statusLabel = new Label("Initializing eusocial simulation engine...");
+        statusLabel = new Label(i18n.get("splash.status.init"));
         statusLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #e2e8f0;");
 
         percentLabel = new Label("0 %");
@@ -80,7 +98,7 @@ public class SplashScreen {
         progressBar.setStyle("-fx-accent: #0284c7; -fx-control-inner-background: #1e293b;");
 
         // Footer Metadata
-        Label footerLabel = new Label("v2.5.0 • Silvère Martin-Michiellot & Gemini AI (Google DeepMind)");
+        Label footerLabel = new Label(i18n.get("splash.footer"));
         footerLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #64748b;");
 
         VBox contentBox = new VBox(16, headerBox, statusBox, progressBar, footerLabel);
@@ -114,14 +132,15 @@ public class SplashScreen {
      * @param onFinished Action to execute when loading reaches 100%
      */
     public void startProgressAndLaunch(Runnable onFinished) {
+        I18nManager i18n = I18nManager.getInstance();
         String[] steps = {
-            "Initializing SwarmForge core modules...",
-            "Loading internationalization (I18n) bundles...",
-            "Loading species presets & genetics...",
-            "Initializing audio engine & procedural synthesizer...",
-            "Preparing 3D viewport (jMonkeyEngine & JavaFX)...",
-            "Connecting to SQLite persistence database...",
-            "Launching SwarmForge Studio..."
+            i18n.get("splash.step.1"),
+            i18n.get("splash.step.2"),
+            i18n.get("splash.step.3"),
+            i18n.get("splash.step.4"),
+            i18n.get("splash.step.5"),
+            i18n.get("splash.step.6"),
+            i18n.get("splash.step.7")
         };
 
         Timeline timeline = new Timeline();
@@ -160,3 +179,4 @@ public class SplashScreen {
         splashStage.close();
     }
 }
+

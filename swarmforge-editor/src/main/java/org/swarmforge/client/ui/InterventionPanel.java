@@ -1747,10 +1747,17 @@ public class InterventionPanel extends BorderPane {
      * Completely purges all scheduled God Mode events (used when creating a new simulation).
      */
     public void clearScheduledEvents() {
-        scheduledEventsList.clear();
-        currentSimulationTick = 0;
-        if (scheduledEventsListView != null) {
-            javafx.application.Platform.runLater(() -> scheduledEventsListView.refresh());
+        Runnable action = () -> {
+            scheduledEventsList.clear();
+            currentSimulationTick = 0;
+            if (scheduledEventsListView != null) {
+                scheduledEventsListView.refresh();
+            }
+        };
+        if (javafx.application.Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            javafx.application.Platform.runLater(action);
         }
     }
 

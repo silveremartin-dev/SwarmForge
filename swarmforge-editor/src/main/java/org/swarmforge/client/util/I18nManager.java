@@ -42,14 +42,62 @@ public class I18nManager {
         } catch (Exception e) {
             LOG.warning("Could not load fallback bundle: " + e.getMessage());
         }
-        locale = new SimpleObjectProperty<>(Locale.ENGLISH);
+
+        Locale initialLocale = determineInitialLocale();
+
+        locale = new SimpleObjectProperty<>(initialLocale);
         locale.addListener((observable, oldValue, newValue) -> {
             if (newValue != null) {
                 loadBundle(newValue);
+                saveUserLocalePreference(newValue);
             }
         });
-        loadBundle(Locale.ENGLISH);
+        loadBundle(initialLocale);
     }
+
+    private Locale determineInitialLocale() {
+        try {
+            java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(I18nManager.class);
+            String savedLang = prefs.get("user_language", null);
+            if (savedLang != null && !savedLang.trim().isEmpty()) {
+                for (Locale loc : supportedLocales) {
+                    if (loc.getLanguage().equalsIgnoreCase(savedLang.trim())) {
+                        LOG.info("Loaded user language preference: " + loc.getLanguage());
+                        return loc;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOG.warning("Could not read user language preference: " + e.getMessage());
+        }
+
+        Locale sysLocale = Locale.getDefault();
+        if (sysLocale != null) {
+            String sysLang = sysLocale.getLanguage();
+            for (Locale loc : supportedLocales) {
+                if (loc.getLanguage().equalsIgnoreCase(sysLang)) {
+                    LOG.info("Detected system language fallback: " + loc.getLanguage());
+                    return loc;
+                }
+            }
+        }
+
+        LOG.info("Defaulting initial locale to English");
+        return Locale.ENGLISH;
+    }
+
+    private void saveUserLocalePreference(Locale targetLocale) {
+        if (targetLocale == null) return;
+        try {
+            java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(I18nManager.class);
+            prefs.put("user_language", targetLocale.getLanguage());
+            prefs.flush();
+            LOG.info("Saved user language preference: " + targetLocale.getLanguage());
+        } catch (Exception e) {
+            LOG.warning("Could not save user language preference: " + e.getMessage());
+        }
+    }
+
 
     public static I18nManager getInstance() {
         return INSTANCE;
@@ -97,13 +145,18 @@ public class I18nManager {
             } catch (MissingResourceException ignored) {}
         }
         if (pattern == null) {
-            return "!" + key + "!";
+            return key != null ? key : "";
         }
         try {
             return MessageFormat.format(pattern, args);
         } catch (Exception e) {
             return pattern;
         }
+    }
+
+    public boolean containsKey(String key) {
+        if (key == null) return false;
+        return (bundle != null && bundle.containsKey(key)) || (fallbackBundle != null && fallbackBundle.containsKey(key));
     }
 
     /**

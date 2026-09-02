@@ -396,18 +396,24 @@ public class SpeciesEditorPane extends VBox {
         scientificNameField = new TextField("Lasius niger");
         genusField = new TextField("Lasius");
 
-        insectTypeCombo = new ComboBox<>(FXCollections.observableArrayList("Ants (Formicidae)", "Bees (Apidae)", "Other Eusocial Taxa", "Termites (Termitoidae)", "Wasps (Vespidae)"));
+        insectTypeCombo = new ComboBox<>(FXCollections.observableArrayList("ANT", "BEE", "OTHER", "TERMITE", "WASP"));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(insectTypeCombo,
-            val -> val,
             val -> switch (val != null ? val : "") {
-                case "Ants (Formicidae)" -> "Eusocial insects forming large subterranean colonies with specialized castes.";
-                case "Bees (Apidae)" -> "Hymenopteran insects producing honey, practicing bee dances, and building wax combs.";
-                case "Wasps (Vespidae)" -> "Predatory hymenopterans constructing paper/carton nests from wood fibers.";
-                case "Termites (Termitoidae)" -> "Isoptera consuming cellulose, organized into blind worker/soldier castes under a royal couple.";
-                default -> "Other subsocial or eusocial arthropod taxa (e.g. Thrips, Gall aphids, Eusocial shrimp).";
+                case "ANT" -> I18nManager.getInstance().get("species.type.ant");
+                case "BEE" -> I18nManager.getInstance().get("species.type.bee");
+                case "WASP" -> I18nManager.getInstance().get("species.type.wasp");
+                case "TERMITE" -> I18nManager.getInstance().get("species.type.termite");
+                default -> I18nManager.getInstance().get("species.type.other");
+            },
+            val -> switch (val != null ? val : "") {
+                case "ANT" -> I18nManager.getInstance().get("species.type.ant.desc");
+                case "BEE" -> I18nManager.getInstance().get("species.type.bee.desc");
+                case "WASP" -> I18nManager.getInstance().get("species.type.wasp.desc");
+                case "TERMITE" -> I18nManager.getInstance().get("species.type.termite.desc");
+                default -> I18nManager.getInstance().get("species.type.other.desc");
             }
         );
-        insectTypeCombo.getSelectionModel().select("Ants (Formicidae)");
+        insectTypeCombo.getSelectionModel().select("ANT");
 
         categoryCombo = new ComboBox<>(FXCollections.observableArrayList(
                 org.swarmforge.core.species.SpeciesCategory.values()
@@ -470,19 +476,24 @@ public class SpeciesEditorPane extends VBox {
     private ScrollPane createQueensPane() {
         GridPane grid = createGrid();
 
-        queenModeCombo = new ComboBox<>(FXCollections.observableArrayList("Gamergates (Reproductive Workers)", "Monogyne (Single Queen)", "Polygyne (Multiple Queens)"));
+        queenModeCombo = new ComboBox<>(FXCollections.observableArrayList("GAMERGATES", "MONOGYNE", "POLYGYNE"));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(queenModeCombo,
-            val -> val,
             val -> switch (val != null ? val : "") {
-                case "Monogyne (Single Queen)" -> "Strictly one egg-laying queen tolerated per colony. Her death triggers colony decline.";
-                case "Polygyne (Multiple Queens)" -> "Multiple fertile queens cohabit peacefully, ensuring high egg laying and resilience.";
-                case "Gamergates (Reproductive Workers)" -> "No distinct queen caste; specialized workers (gamergates) mate and lay eggs.";
+                case "MONOGYNE" -> I18nManager.getInstance().get("species.queen_mode.monogyne");
+                case "POLYGYNE" -> I18nManager.getInstance().get("species.queen_mode.polygyne");
+                case "GAMERGATES" -> I18nManager.getInstance().get("species.queen_mode.gamergates");
+                default -> "";
+            },
+            val -> switch (val != null ? val : "") {
+                case "MONOGYNE" -> I18nManager.getInstance().get("species.queen_mode.monogyne.desc");
+                case "POLYGYNE" -> I18nManager.getInstance().get("species.queen_mode.polygyne.desc");
+                case "GAMERGATES" -> I18nManager.getInstance().get("species.queen_mode.gamergates.desc");
                 default -> "";
             }
         );
-        queenModeCombo.getSelectionModel().select("Monogyne (Single Queen)");
+        queenModeCombo.getSelectionModel().select("MONOGYNE");
         queenModeCombo.setOnAction(e -> {
-            if (queenModeCombo.getValue() != null && queenModeCombo.getValue().contains("Monogyne")) {
+            if (queenModeCombo.getValue() != null && queenModeCombo.getValue().equals("MONOGYNE")) {
                 queenCountSpinner.getValueFactory().setValue(1);
             }
             validateParameters();
@@ -490,7 +501,7 @@ public class SpeciesEditorPane extends VBox {
 
         queenCountSpinner = new Spinner<>(1, 500, 1);
         queenCountSpinner.valueProperty().addListener((obs, oldV, newV) -> {
-            if (queenModeCombo.getValue() != null && queenModeCombo.getValue().contains("Monogyne") && newV > 1) {
+            if (queenModeCombo.getValue() != null && queenModeCombo.getValue().equals("MONOGYNE") && newV > 1) {
                 queenCountSpinner.getValueFactory().setValue(1);
             }
             validateParameters();
@@ -503,18 +514,23 @@ public class SpeciesEditorPane extends VBox {
         hasKingCheckBox.setOnAction(e -> validateParameters());
 
         kingLifespanField = new TextField("15000");
-        nuptialFlightCombo = new ComboBox<>(FXCollections.observableArrayList("Aerial Swarm Flight", "Budding / Sociotomy", "In-Nest Mating", "Swarm Division"));
+        nuptialFlightCombo = new ComboBox<>(FXCollections.observableArrayList("AERIAL_SWARM", "BUDDING", "IN_NEST", "SWARM_DIVISION"));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(nuptialFlightCombo,
-            val -> val,
             val -> switch (val != null ? val : "") {
-                case "Aerial Swarm Flight" -> "Mass synchronized flight of alate alates and males in warm, humid weather.";
-                case "Budding / Sociotomy" -> "Progressive separation of workers with fertile queens to a nearby satellite nest.";
-                case "In-Nest Mating" -> "Alates mate inside the parent nest without risky flight.";
-                case "Swarm Division" -> "Mother queen leaves with a worker cohort to establish a new colony.";
+                case "AERIAL_SWARM" -> I18nManager.getInstance().get("species.nuptial.aerial_swarm");
+                case "BUDDING" -> I18nManager.getInstance().get("species.nuptial.budding");
+                case "IN_NEST" -> I18nManager.getInstance().get("species.nuptial.in_nest");
+                case "SWARM_DIVISION" -> I18nManager.getInstance().get("species.nuptial.swarm_division");
+                default -> "";
+            },
+            val -> switch (val != null ? val : "") {
+                case "AERIAL_SWARM" -> I18nManager.getInstance().get("species.nuptial.aerial_swarm.desc");
+                case "BUDDING" -> I18nManager.getInstance().get("species.nuptial.budding.desc");
+                case "IN_NEST" -> I18nManager.getInstance().get("species.nuptial.in_nest.desc");
+                case "SWARM_DIVISION" -> I18nManager.getInstance().get("species.nuptial.swarm_division.desc");
                 default -> "";
             }
         );
-        nuptialFlightCombo.getSelectionModel().select("Aerial Swarm Flight");
         nuptialFlightCombo.getSelectionModel().select("AERIAL_SWARM");
 
         colonySizeField = new TextField("15000");
@@ -547,26 +563,29 @@ public class SpeciesEditorPane extends VBox {
         eggDurationField = new TextField("300");
         larvaDurationField = new TextField("600");
         larvaDietCombo = new ComboBox<>(FXCollections.observableArrayList(
-            "Cellulose & Wood Fibers",
-            "Fungus Garden Mycelium",
-            "High Protein Meat & Insects",
-            "Omnivorous Mixed Diet",
-            "Seeds & Harvested Grains",
-            "Sugars, Honey & Nectar"
+            "CELLULOSE", "FUNGUS", "HIGH_PROTEIN_MEAT", "OMNIVORE", "SEEDS", "SUGAR_HONEY"
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(larvaDietCombo,
-            val -> val,
             val -> switch (val != null ? val : "") {
-                case "Cellulose & Wood Fibers" -> "Wood digests and plant fibers broken down by intestinal symbionts (Termites).";
-                case "Fungus Garden Mycelium" -> "Mycelial food cultivated by the colony on chewed leaf substrate (Atta).";
-                case "High Protein Meat & Insects" -> "High protein diet from crushed prey insects, essential for brood and soldier development.";
-                case "Omnivorous Mixed Diet" -> "Varied diet combining honeydew, arthropod remains, seeds, and sugary liquids.";
-                case "Seeds & Harvested Grains" -> "Harvested, shelled, and crushed seeds forming 'ant bread' (Messor).";
-                case "Sugars, Honey & Nectar" -> "Carbohydrate-rich liquid diet (nectar, aphid honeydew, fruit juices) providing metabolic energy.";
+                case "CELLULOSE" -> I18nManager.getInstance().get("species.larva_diet.cellulose");
+                case "FUNGUS" -> I18nManager.getInstance().get("species.larva_diet.fungus");
+                case "HIGH_PROTEIN_MEAT" -> I18nManager.getInstance().get("species.larva_diet.high_protein_meat");
+                case "OMNIVORE" -> I18nManager.getInstance().get("species.larva_diet.omnivore");
+                case "SEEDS" -> I18nManager.getInstance().get("species.larva_diet.seeds");
+                case "SUGAR_HONEY" -> I18nManager.getInstance().get("species.larva_diet.sugar_honey");
+                default -> "";
+            },
+            val -> switch (val != null ? val : "") {
+                case "CELLULOSE" -> I18nManager.getInstance().get("species.larva_diet.cellulose.desc");
+                case "FUNGUS" -> I18nManager.getInstance().get("species.larva_diet.fungus.desc");
+                case "HIGH_PROTEIN_MEAT" -> I18nManager.getInstance().get("species.larva_diet.high_protein_meat.desc");
+                case "OMNIVORE" -> I18nManager.getInstance().get("species.larva_diet.omnivore.desc");
+                case "SEEDS" -> I18nManager.getInstance().get("species.larva_diet.seeds.desc");
+                case "SUGAR_HONEY" -> I18nManager.getInstance().get("species.larva_diet.sugar_honey.desc");
                 default -> "";
             }
         );
-        larvaDietCombo.getSelectionModel().select("High Protein Meat & Insects");
+        larvaDietCombo.getSelectionModel().select("HIGH_PROTEIN_MEAT");
         pupaDurationField = new TextField("500");
 
         gridDurations.addRow(0, createTooltipLabel("Egg Stage Duration (days):", "Incubation period required before first larval instar.", eggDurationField), eggDurationField);
@@ -1024,28 +1043,16 @@ public class SpeciesEditorPane extends VBox {
         GridPane grid = createGrid();
 
         primaryDietCombo = new ComboBox<>(FXCollections.observableArrayList(
-            "Fungus & Cultivated Mycelium",
-            "Honeydew & Aphid Trophobiosis",
-            "Insects & Meat Protein",
-            "Omnivorous Polyphagous",
-            "Seeds & Granivory Grains",
-            "Sugars & Plant Nectar",
-            "Wood & Cellulose Fibers"
+            "FUNGUS", "HONEYDEW", "INSECTS_MEAT", "OMNIVORE", "SEEDS", "SUGARS_NECTAR", "WOOD_CELLULOSE"
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(primaryDietCombo, SpeciesEditorPane::getDietTitle, SpeciesEditorPane::getDietDescription);
-        primaryDietCombo.getSelectionModel().select("Honeydew & Aphid Trophobiosis");
+        primaryDietCombo.getSelectionModel().select("HONEYDEW");
 
         secondaryDietCombo = new ComboBox<>(FXCollections.observableArrayList(
-            "Fungus & Cultivated Mycelium",
-            "Honeydew & Aphid Trophobiosis",
-            "Insects & Meat Protein",
-            "None (No Secondary Diet)",
-            "Seeds & Granivory Grains",
-            "Sugars & Plant Nectar",
-            "Wood & Cellulose Fibers"
+            "FUNGUS", "HONEYDEW", "INSECTS_MEAT", "NONE", "SEEDS", "SUGARS_NECTAR", "WOOD_CELLULOSE"
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(secondaryDietCombo, SpeciesEditorPane::getDietTitle, SpeciesEditorPane::getDietDescription);
-        secondaryDietCombo.getSelectionModel().select("Insects & Meat Protein");
+        secondaryDietCombo.getSelectionModel().select("INSECTS_MEAT");
 
         foodConsumptionField = new TextField("0.5");
         waterReqField = new TextField("0.2");
@@ -1759,11 +1766,33 @@ public class SpeciesEditorPane extends VBox {
         return createTooltipLabel(text, tooltipText, null, glossaryTerm);
     }
 
+    private String lookupKeyForLabel(String textOrKey) {
+        if (textOrKey == null) return "";
+        if (I18nManager.getInstance().containsKey(textOrKey)) return textOrKey;
+        return switch (textOrKey.trim()) {
+            case "Common Name:" -> "species.taxonomy.common_name";
+            case "Scientific Name (Binomial):" -> "species.taxonomy.scientific_name";
+            case "Taxonomic Genus:" -> "species.taxonomy.genus";
+            case "Taxonomic Order / Family:" -> "species.taxonomy.group";
+            case "Ecological Role / Category:" -> "species.taxonomy.category";
+            case "Description & Ecological Notes:" -> "species.taxonomy.description";
+            case "Queen Reproduction System:" -> "species.queen_mode";
+            case "Number of Queens:" -> "species.queens_count";
+            case "Queen Lifespan (Days):" -> "species.queen_lifespan";
+            case "Queen Oviposition Rate (eggs/day):" -> "species.queen_egg_rate";
+            case "Nuptial Flight & Swarming Mode:" -> "species.nuptial_mode";
+            default -> textOrKey;
+        };
+    }
+
     private Label createTooltipLabel(String text, String tooltipText, javafx.scene.Node targetControl, String glossaryTerm) {
-        Label l = new Label(text);
+        Label l = new Label();
+        String labelKey = lookupKeyForLabel(text);
+        l.textProperty().bind(I18nManager.getInstance().createStringBinding(labelKey));
         l.setStyle("-fx-font-weight: bold;");
         if (tooltipText != null && !tooltipText.isEmpty()) {
-            Tooltip tt = new Tooltip(tooltipText);
+            Tooltip tt = new Tooltip();
+            tt.textProperty().bind(I18nManager.getInstance().createStringBinding(tooltipText));
             tt.setStyle("-fx-font-size: 12px; -fx-max-width: 380px; -fx-wrap-text: true;");
             l.setTooltip(tt);
             if (targetControl != null) {
@@ -2040,70 +2069,74 @@ public class SpeciesEditorPane extends VBox {
 
     public static String getDietTitle(String diet) {
         if (diet == null) return "";
+        I18nManager i18n = I18nManager.getInstance();
         return switch (diet) {
-            case "SUGARS_NECTAR" -> "🍯 Nectar & Sugary Liquids";
-            case "INSECTS_MEAT" -> "🥩 Protein Prey / Insects";
-            case "SEEDS" -> "🌾 Seeds (Granivory / Ant Bread)";
-            case "FUNGUS" -> "🍄 Symbiotic Fungi";
-            case "WOOD_CELLULOSE" -> "🪵 Cellulose & Wood Fibers";
-            case "HONEYDEW" -> "💧 Homopteran Honeydew (Aphids)";
-            case "OMNIVORE" -> "🥗 Polyphagous Omnivore";
-            case "NONE" -> "🚫 No Secondary Diet";
+            case "SUGARS_NECTAR" -> i18n.get("species.diet.sugars_nectar");
+            case "INSECTS_MEAT" -> i18n.get("species.diet.insects_meat");
+            case "SEEDS" -> i18n.get("species.diet.seeds");
+            case "FUNGUS" -> i18n.get("species.diet.fungus");
+            case "WOOD_CELLULOSE" -> i18n.get("species.diet.wood_cellulose");
+            case "HONEYDEW" -> i18n.get("species.diet.honeydew");
+            case "OMNIVORE" -> i18n.get("species.diet.omnivore");
+            case "NONE" -> i18n.get("species.diet.none");
             default -> diet;
         };
     }
 
     public static String getDietDescription(String diet) {
         if (diet == null) return "";
+        I18nManager i18n = I18nManager.getInstance();
         return switch (diet) {
-            case "SUGARS_NECTAR" -> "Simple carbohydrate intake providing direct metabolic energy for adult daily activity.";
-            case "INSECTS_MEAT" -> "Animal proteins essential for developing larvae and queen egg production.";
-            case "SEEDS" -> "Storage and crushing of starch-rich plant seeds for seasonal reserves.";
-            case "FUNGUS" -> "Cultivation of basidiomycete fungi on chewed plant material in dedicated chambers.";
-            case "WOOD_CELLULOSE" -> "Digestion of wood fibers via symbiotic gut protozoa and bacteria (Termites).";
-            case "HONEYDEW" -> "Trophobiotic farming of aphids and scale insects for regular honeydew harvesting.";
-            case "OMNIVORE" -> "Opportunistic feeding adapting to all available trophic resources without specialization.";
-            case "NONE" -> "No complementary or secondary trophic source required.";
+            case "SUGARS_NECTAR" -> i18n.get("species.diet.sugars_nectar.desc");
+            case "INSECTS_MEAT" -> i18n.get("species.diet.insects_meat.desc");
+            case "SEEDS" -> i18n.get("species.diet.seeds.desc");
+            case "FUNGUS" -> i18n.get("species.diet.fungus.desc");
+            case "WOOD_CELLULOSE" -> i18n.get("species.diet.wood_cellulose.desc");
+            case "HONEYDEW" -> i18n.get("species.diet.honeydew.desc");
+            case "OMNIVORE" -> i18n.get("species.diet.omnivore.desc");
+            case "NONE" -> i18n.get("species.diet.none.desc");
             default -> "";
         };
     }
 
     public static String getNestTypeTitle(String type) {
         if (type == null) return "";
+        I18nManager i18n = I18nManager.getInstance();
         return switch (type) {
-            case "WAX_COMB_HEXAGONAL" -> "🐝 Hexagonal Wax Combs";
-            case "WAX_POTS_CLUSTER" -> "🍯 Wax Pot Clusters";
-            case "PAPER_PEDUNCULATE" -> "🐝 Suspended Paper Nest";
-            case "CATHEDRAL_MOUND" -> "🏰 Cathedral Termite Mound";
-            case "ARBOREAL_SILK_LEAF" -> "🍃 Arboreal Woven Silk Nest";
-            case "SUBTERRANEAN_FUNGI_VAULT" -> "🍄 Subterranean Fungi Vault";
-            case "CARTON_NEST" -> "📦 Carton Wood Nest";
-            case "BAMBOO_STEM_NEST" -> "🎋 Hollow Stem & Cavity Nest";
-            case "BIVOUAC_LIVING_NEST" -> "🐜 Living Bivouac Nest";
-            case "MOUND" -> "🏔️ Earth / Needle Mound";
-            case "TREE" -> "🪵 Tree Trunk Cavity Nest";
-            case "MATURE" -> "🏛️ Established Subterranean Nest";
-            case "SIMPLE" -> "🕳️ Simple Subterranean Burrows";
+            case "WAX_COMB_HEXAGONAL" -> i18n.get("species.nest.wax_comb_hexagonal");
+            case "WAX_POTS_CLUSTER" -> i18n.get("species.nest.wax_pots_cluster");
+            case "PAPER_PEDUNCULATE" -> i18n.get("species.nest.paper_pedunculate");
+            case "CATHEDRAL_MOUND" -> i18n.get("species.nest.cathedral_mound");
+            case "ARBOREAL_SILK_LEAF" -> i18n.get("species.nest.arboreal_silk_leaf");
+            case "SUBTERRANEAN_FUNGI_VAULT" -> i18n.get("species.nest.subterranean_fungi_vault");
+            case "CARTON_NEST" -> i18n.get("species.nest.carton_nest");
+            case "BAMBOO_STEM_NEST" -> i18n.get("species.nest.bamboo_stem_nest");
+            case "BIVOUAC_LIVING_NEST" -> i18n.get("species.nest.bivouac_living_nest");
+            case "MOUND" -> i18n.get("species.nest.mound");
+            case "TREE" -> i18n.get("species.nest.tree");
+            case "MATURE" -> i18n.get("species.nest.mature");
+            case "SIMPLE" -> i18n.get("species.nest.simple");
             default -> type;
         };
     }
 
     public static String getNestTypeDescription(String type) {
         if (type == null) return "";
+        I18nManager i18n = I18nManager.getInstance();
         return switch (type) {
-            case "WAX_COMB_HEXAGONAL" -> "Suspended honeycomb structure built from wax secreted by worker abdominal glands (Bees).";
-            case "WAX_POTS_CLUSTER" -> "Spherical wax cells and honey/pollen storage pots organized in irregular clusters (Bumblebees).";
-            case "PAPER_PEDUNCULATE" -> "Open paper cells constructed from chewed wood fibers mixed with saliva (Wasps).";
-            case "CATHEDRAL_MOUND" -> "Imposing soil structure with ventilation shafts regulating temperature and CO2 (Termites).";
-            case "ARBOREAL_SILK_LEAF" -> "Living leaves bound together using silk threads secreted by larvae held by workers (Weaver ants).";
-            case "SUBTERRANEAN_FUNGI_VAULT" -> "Vast subterranean chamber network housing symbiotic fungal gardens (Leafcutter ants).";
-            case "CARTON_NEST" -> "Spherical arboreal or cavity nest constructed from chewed wood paste and saliva.";
-            case "BAMBOO_STEM_NEST" -> "Opportunistic nest constructed inside pre-existing cavities (hollow stems, plant galls, wood boreholes).";
-            case "BIVOUAC_LIVING_NEST" -> "Temporary nest formed exclusively by the intertwined bodies of thousands of workers (Army ants).";
-            case "MOUND" -> "Subterranean mound topped with an insulating dome of soil and pine needles (Wood ants).";
-            case "TREE" -> "Galleries excavated directly into dead wood or decaying tree trunks (Carpenter ants).";
-            case "MATURE" -> "Highly developed subterranean nest with extensive brood chambers, queen chambers, and granaries.";
-            case "SIMPLE" -> "Rudimentary subterranean nest composed of a few galleries beneath stones or grass tufts.";
+            case "WAX_COMB_HEXAGONAL" -> i18n.get("species.nest.wax_comb_hexagonal.desc");
+            case "WAX_POTS_CLUSTER" -> i18n.get("species.nest.wax_pots_cluster.desc");
+            case "PAPER_PEDUNCULATE" -> i18n.get("species.nest.paper_pedunculate.desc");
+            case "CATHEDRAL_MOUND" -> i18n.get("species.nest.cathedral_mound.desc");
+            case "ARBOREAL_SILK_LEAF" -> i18n.get("species.nest.arboreal_silk_leaf.desc");
+            case "SUBTERRANEAN_FUNGI_VAULT" -> i18n.get("species.nest.subterranean_fungi_vault.desc");
+            case "CARTON_NEST" -> i18n.get("species.nest.carton_nest.desc");
+            case "BAMBOO_STEM_NEST" -> i18n.get("species.nest.bamboo_stem_nest.desc");
+            case "BIVOUAC_LIVING_NEST" -> i18n.get("species.nest.bivouac_living_nest.desc");
+            case "MOUND" -> i18n.get("species.nest.mound.desc");
+            case "TREE" -> i18n.get("species.nest.tree.desc");
+            case "MATURE" -> i18n.get("species.nest.mature.desc");
+            case "SIMPLE" -> i18n.get("species.nest.simple.desc");
             default -> "";
         };
     }
@@ -2151,18 +2184,19 @@ public class SpeciesEditorPane extends VBox {
             }
             return String.join(", ", titles);
         }
+        I18nManager i18n = I18nManager.getInstance();
         return switch (v.trim()) {
-            case "NONE" -> "🚫 No Venom (Physical Attack)";
-            case "FORMIC_ACID" -> "🧪 Formic Acid (Spray)";
-            case "VENOMOUS_STING" -> "🗡️ Venomous Sting (Stinger)";
-            case "CHEMICAL_SPRAY" -> "💨 Repellent Chemical Spray";
-            case "ACID_SPRAY" -> "💨 Acid Repellent Spray";
-            case "POWERFUL_MANDIBLES" -> "✂️ Powerful Mandibles (Shear)";
-            case "SOLENOPSIN" -> "🔥 Solenopsin (Stinging Alkaloid)";
-            case "NEUROTOXIN" -> "🧠 Paralytic Neurotoxin";
-            case "CYTOTOXIN" -> "🧫 Necrotic Cytotoxin";
-            case "TERPENE_RESIN" -> "🌲 Sticky Terpene Resin";
-            case "AUTOTHYSIS_BOMB" -> "💥 Autothysis (Suicidal Bomb)";
+            case "NONE" -> i18n.get("species.venom.none");
+            case "FORMIC_ACID" -> i18n.get("species.venom.formic_acid");
+            case "VENOMOUS_STING" -> i18n.get("species.venom.venomous_sting");
+            case "CHEMICAL_SPRAY" -> i18n.get("species.venom.chemical_spray");
+            case "ACID_SPRAY" -> i18n.get("species.venom.acid_spray");
+            case "POWERFUL_MANDIBLES" -> i18n.get("species.venom.powerful_mandibles");
+            case "SOLENOPSIN" -> i18n.get("species.venom.solenopsin");
+            case "NEUROTOXIN" -> i18n.get("species.venom.neurotoxin");
+            case "CYTOTOXIN" -> i18n.get("species.venom.cytotoxin");
+            case "TERPENE_RESIN" -> i18n.get("species.venom.terpene_resin");
+            case "AUTOTHYSIS_BOMB" -> i18n.get("species.venom.autothysis_bomb");
             default -> v.trim();
         };
     }
@@ -2178,17 +2212,18 @@ public class SpeciesEditorPane extends VBox {
             }
             return String.join(" | ", descs);
         }
+        I18nManager i18n = I18nManager.getInstance();
         return switch (v.trim()) {
-            case "NONE" -> "No chemical venom. Fights exclusively via mandibular bites and mechanical force.";
-            case "FORMIC_ACID" -> "Ranged spray or contact application of concentrated formic acid causing chemical burns.";
-            case "VENOMOUS_STING" -> "Direct injection of protein venom using a retractable abdominal stinger causing pain and paralysis.";
-            case "CHEMICAL_SPRAY", "ACID_SPRAY" -> "Spraying of repellent or corrosive chemicals causing disorientation and chemical irritation.";
-            case "POWERFUL_MANDIBLES" -> "Hypertrophied mandibles capable of exerting lethal pressure or decapitating prey.";
-            case "SOLENOPSIN" -> "Necrotic alkaloid toxin causing sharp burning pain and localized pustules (Solenopsis invicta).";
-            case "NEUROTOXIN" -> "Substance targeting arthropod central nervous system to block neuromuscular transmission.";
-            case "CYTOTOXIN" -> "Necrotic toxin destroying opponent cell membranes upon envenomation.";
-            case "TERPENE_RESIN" -> "Viscous terpene liquid expelled under pressure from nasute soldier heads to entangle enemies.";
-            case "AUTOTHYSIS_BOMB" -> "Extreme muscle contraction breaking abdominal wall and bursting sticky toxic glue.";
+            case "NONE" -> i18n.get("species.venom.none.desc");
+            case "FORMIC_ACID" -> i18n.get("species.venom.formic_acid.desc");
+            case "VENOMOUS_STING" -> i18n.get("species.venom.venomous_sting.desc");
+            case "CHEMICAL_SPRAY", "ACID_SPRAY" -> i18n.get("species.venom.chemical_spray.desc");
+            case "POWERFUL_MANDIBLES" -> i18n.get("species.venom.powerful_mandibles.desc");
+            case "SOLENOPSIN" -> i18n.get("species.venom.solenopsin.desc");
+            case "NEUROTOXIN" -> i18n.get("species.venom.neurotoxin.desc");
+            case "CYTOTOXIN" -> i18n.get("species.venom.cytotoxin.desc");
+            case "TERPENE_RESIN" -> i18n.get("species.venom.terpene_resin.desc");
+            case "AUTOTHYSIS_BOMB" -> i18n.get("species.venom.autothysis_bomb.desc");
             default -> "";
         };
     }
@@ -2196,20 +2231,30 @@ public class SpeciesEditorPane extends VBox {
     public static String getDecisionArchTitle(String arch) {
         if (arch == null) return "";
         ArchitectureType t = ArchitectureType.parse(arch);
-        return "🧠 " + t.getDisplayName();
+        I18nManager i18n = I18nManager.getInstance();
+        return switch (t) {
+            case BDI -> i18n.get("species.arch.bdi");
+            case BEHAVIOR_TREE -> i18n.get("species.arch.behavior_tree");
+            case BLACKBOARD -> i18n.get("species.arch.blackboard");
+            case FINITE_STATE_MACHINE -> i18n.get("species.arch.fsm");
+            case FUZZY_LOGIC -> i18n.get("species.arch.fuzzy_logic");
+            case HYBRID -> i18n.get("species.arch.hybrid");
+            case NEURAL_NETWORK -> i18n.get("species.arch.neural_network");
+        };
     }
 
     public static String getDecisionArchDescription(String arch) {
         if (arch == null) return "";
         ArchitectureType t = ArchitectureType.parse(arch);
+        I18nManager i18n = I18nManager.getInstance();
         return switch (t) {
-            case BDI -> "Cognitive architecture based on Beliefs, Desires, and Intentions for complex reasoning.";
-            case BEHAVIOR_TREE -> "Recursive hierarchical tree of selectors and sequences for modular behavior.";
-            case BLACKBOARD -> "Centralized shared memory system where agents query and modify common knowledge.";
-            case FINITE_STATE_MACHINE -> "Deterministic state machine with rapid state transitions (Foraging, Defense, Nursing, Resting).";
-            case FUZZY_LOGIC -> "Fuzzy inference engine allowing nuanced handling of ambiguous and gradual conditions.";
-            case HYBRID -> "Hybrid combination associating reactive FSM/Tree with BDI cognitive planning.";
-            case NEURAL_NETWORK -> "Artificial neural network (SNN/ANN) processing continuous sensory signals.";
+            case BDI -> i18n.get("species.arch.bdi.desc");
+            case BEHAVIOR_TREE -> i18n.get("species.arch.behavior_tree.desc");
+            case BLACKBOARD -> i18n.get("species.arch.blackboard.desc");
+            case FINITE_STATE_MACHINE -> i18n.get("species.arch.fsm.desc");
+            case FUZZY_LOGIC -> i18n.get("species.arch.fuzzy_logic.desc");
+            case HYBRID -> i18n.get("species.arch.hybrid.desc");
+            case NEURAL_NETWORK -> i18n.get("species.arch.neural_network.desc");
         };
     }
 
@@ -2312,48 +2357,40 @@ public class SpeciesEditorPane extends VBox {
     public static String mapTechnicalToReadable(String val) {
         if (val == null) return "";
         return switch (val.toUpperCase().trim()) {
-            case "ANT" -> "Ants (Formicidae)";
-            case "BEE" -> "Bees (Apidae)";
-            case "OTHER" -> "Other Eusocial Taxa";
-            case "TERMITE" -> "Termites (Termitoidae)";
-            case "WASP" -> "Wasps (Vespidae)";
+            case "ANT" -> I18nManager.getInstance().get("species.type.ant");
+            case "BEE" -> I18nManager.getInstance().get("species.type.bee");
+            case "OTHER" -> I18nManager.getInstance().get("species.type.other");
+            case "TERMITE" -> I18nManager.getInstance().get("species.type.termite");
+            case "WASP" -> I18nManager.getInstance().get("species.type.wasp");
 
-            case "GAMERGATES" -> "Gamergates (Reproductive Workers)";
-            case "MONOGYNE" -> "Monogyne (Single Queen)";
-            case "POLYGYNE" -> "Polygyne (Multiple Queens)";
+            case "GAMERGATES" -> I18nManager.getInstance().get("species.queen_mode.gamergates");
+            case "MONOGYNE" -> I18nManager.getInstance().get("species.queen_mode.monogyne");
+            case "POLYGYNE" -> I18nManager.getInstance().get("species.queen_mode.polygyne");
 
-            case "AERIAL_SWARM" -> "Aerial Swarm Flight";
-            case "BUDDING" -> "Budding / Sociotomy";
-            case "IN_NEST" -> "In-Nest Mating";
-            case "SWARM_DIVISION" -> "Swarm Division";
+            case "AERIAL_SWARM" -> I18nManager.getInstance().get("species.nuptial.aerial_swarm");
+            case "BUDDING" -> I18nManager.getInstance().get("species.nuptial.budding");
+            case "IN_NEST" -> I18nManager.getInstance().get("species.nuptial.in_nest");
+            case "SWARM_DIVISION" -> I18nManager.getInstance().get("species.nuptial.swarm_division");
 
-            case "CELLULOSE" -> "Cellulose & Wood Fibers";
-            case "FUNGUS" -> "Fungus Garden Mycelium";
-            case "HIGH_PROTEIN_MEAT" -> "High Protein Meat & Insects";
-            case "OMNIVORE" -> "Omnivorous Mixed Diet";
-            case "SEEDS" -> "Seeds & Harvested Grains";
-            case "SUGAR_HONEY" -> "Sugars, Honey & Nectar";
+            case "CELLULOSE" -> I18nManager.getInstance().get("species.larva_diet.cellulose");
+            case "FUNGUS" -> I18nManager.getInstance().get("species.larva_diet.fungus");
+            case "HIGH_PROTEIN_MEAT" -> I18nManager.getInstance().get("species.larva_diet.high_protein_meat");
+            case "OMNIVORE" -> I18nManager.getInstance().get("species.larva_diet.omnivore");
+            case "SEEDS" -> I18nManager.getInstance().get("species.larva_diet.seeds");
+            case "SUGAR_HONEY" -> I18nManager.getInstance().get("species.larva_diet.sugar_honey");
 
-            case "HONEYDEW" -> "Honeydew & Aphid Trophobiosis";
-            case "INSECTS_MEAT" -> "Insects & Meat Protein";
-            case "SUGARS_NECTAR" -> "Sugars & Plant Nectar";
-            case "WOOD_CELLULOSE" -> "Wood & Cellulose Fibers";
-            case "NONE" -> "None (No Secondary Diet)";
+            case "HONEYDEW" -> I18nManager.getInstance().get("species.diet.honeydew");
+            case "INSECTS_MEAT" -> I18nManager.getInstance().get("species.diet.insects_meat");
+            case "SUGARS_NECTAR" -> I18nManager.getInstance().get("species.diet.sugars_nectar");
+            case "WOOD_CELLULOSE" -> I18nManager.getInstance().get("species.diet.wood_cellulose");
+            case "NONE" -> I18nManager.getInstance().get("species.diet.none");
 
-            case "BDI" -> "BDI (Belief-Desire-Intention)";
-            case "BEHAVIOR_TREE" -> "Behavior Tree";
-            case "FSM" -> "FSM (Finite State Machine)";
-            case "FUZZY_LOGIC" -> "Fuzzy Logic Engine";
-            case "NEURAL_NETWORK" -> "Neural Network (ANN)";
+            case "BDI" -> I18nManager.getInstance().get("species.arch.bdi");
+            case "BEHAVIOR_TREE" -> I18nManager.getInstance().get("species.arch.behavior_tree");
+            case "FSM" -> I18nManager.getInstance().get("species.arch.fsm");
+            case "FUZZY_LOGIC" -> I18nManager.getInstance().get("species.arch.fuzzy_logic");
+            case "NEURAL_NETWORK" -> I18nManager.getInstance().get("species.arch.neural_network");
 
-            case "LOWER_ELEVATION" -> "Lower Elevation";
-            case "RAISE_ELEVATION" -> "Raise Elevation";
-            case "SMOOTH" -> "Smooth Relief";
-
-            case "CLAY" -> "Clay Substrate";
-            case "EARTH" -> "Earth Substrate";
-            case "SAND" -> "Sand Substrate";
-            case "STONE" -> "Stone Substrate";
             default -> val;
         };
     }
