@@ -8,23 +8,39 @@ package org.swarmforge.client.ui;
 
 import org.swarmforge.client.util.I18nManager;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.PauseTransition;
+import javafx.animation.Timeline;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
+import javafx.util.Duration;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
 import org.swarmforge.core.domain.CasteTemplate;
 import org.swarmforge.core.species.CustomSpecies;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Consumer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Advanced Simulation Control and Scenario Manager Panel.
@@ -77,6 +93,11 @@ public class SimulationControlPanel extends VBox {
     private final ComboBox<String> comboWeather = new ComboBox<>();
     private final TextField txtSeed = new TextField("12345");
     private final TextArea areaDescription = new TextArea();
+
+    // Weather Mode Fields (Simulated vs Real Open-Meteo)
+    private final Label lblRealWeatherStatus = new Label();
+    private Map<String, Object> cachedRealWeatherData = null;
+    private boolean isRealWeatherMode = false;
 
     // Start Date & Time Controls
     private DatePicker startDatePicker;
@@ -159,7 +180,7 @@ public class SimulationControlPanel extends VBox {
     private Consumer<Float> onSpeedChange;
     private Consumer<Long> onSeek;
     private Consumer<Integer> onRewind;
-    private Consumer<Void> onStepForward;
+    private Consumer<Integer> onStepForward;
     private Consumer<Float> onStepChange;
     private Consumer<String> onCreateCheckpoint;
     private Consumer<org.swarmforge.core.simulation.SimulationCheckpoint> onRestoreCheckpoint;
@@ -319,10 +340,72 @@ public class SimulationControlPanel extends VBox {
         btnAlignWeather.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
         btnAlignWeather.tooltipProperty().bind(i18n.createTooltipBinding("sim.btn.align_weather.tt"));
         btnAlignWeather.setOnAction(e -> alignWeatherWithWorld(true));
-        HBox weatherRow = new HBox(6, comboWeather, btnAlignWeather);
+
+        ToggleButton btnWeatherSim = new ToggleButton("Simulée");
+        btnWeatherSim.setSelected(true);
+        btnWeatherSim.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
+        ToggleButton btnWeatherReal = new ToggleButton("Réelle");
+        btnWeatherReal.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
+        ToggleGroup weatherToggleGroup = new ToggleGroup();
+        btnWeatherSim.setToggleGroup(weatherToggleGroup);
+        btnWeatherReal.setToggleGroup(weatherToggleGroup);
+
+        HBox modeSwitcher = new HBox(4, btnWeatherSim, btnWeatherReal);
+        modeSwitcher.setAlignment(Pos.CENTER_LEFT);
+
+        HBox simulatedWeatherRow = new HBox(6, comboWeather, btnAlignWeather);
+        simulatedWeatherRow.setAlignment(Pos.CENTER_LEFT);
+
+        TextField txtRealCity = new TextField("Paris");
+        txtRealCity.setPrefWidth(125);
+        txtRealCity.setStyle("-fx-font-size: 10px;");
+        txtRealCity.setPromptText("Ville ou Lat, Lon...");
+        Button btnFetchReal = new Button("Obtenir");
+        btnFetchReal.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-size: 10px; -fx-font-weight: bold;");
+        btnFetchReal.setOnAction(e -> fetchRealWeather(txtRealCity.getText()));
+        txtRealCity.setOnAction(e -> fetchRealWeather(txtRealCity.getText()));
+
+        Button btnSyncFromWorld = new Button();
+        btnSyncFromWorld.setGraphic(new FontIcon(Feather.MAP_PIN));
+        btnSyncFromWorld.setStyle("-fx-background-color: #334155; -fx-text-fill: #38bdf8; -fx-font-size: 10px;");
+        btnSyncFromWorld.setTooltip(new Tooltip("Synchroniser avec les coordonnées (Lat/Lon/Alt) du Monde actuel"));
+        btnSyncFromWorld.setOnAction(e -> {
+            fetchRealWeatherFromWorld(txtRealCity);
+        });
+
+        lblRealWeatherStatus.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
+        lblRealWeatherStatus.setText("Cliquez pour charger Open-Meteo");
+
+        HBox realWeatherRow = new HBox(5, txtRealCity, btnFetchReal, btnSyncFromWorld, lblRealWeatherStatus);
+        realWeatherRow.setAlignment(Pos.CENTER_LEFT);
+        realWeatherRow.setVisible(false);
+        realWeatherRow.setManaged(false);
+
+        btnWeatherSim.setOnAction(e -> {
+            btnWeatherSim.setSelected(true);
+            isRealWeatherMode = false;
+            simulatedWeatherRow.setVisible(true);
+            simulatedWeatherRow.setManaged(true);
+            realWeatherRow.setVisible(false);
+            realWeatherRow.setManaged(false);
+        });
+
+        btnWeatherReal.setOnAction(e -> {
+            btnWeatherReal.setSelected(true);
+            isRealWeatherMode = true;
+            simulatedWeatherRow.setVisible(false);
+            simulatedWeatherRow.setManaged(false);
+            realWeatherRow.setVisible(true);
+            realWeatherRow.setManaged(true);
+            if (cachedRealWeatherData == null) {
+                fetchRealWeatherFromWorld(txtRealCity);
+            }
+        });
+
+        VBox weatherControlsBox = new VBox(4, modeSwitcher, simulatedWeatherRow, realWeatherRow);
 
         gridWorldWeather.add(lbl1World, 0, 0); gridWorldWeather.add(comboWorld, 1, 0);
-        gridWorldWeather.add(lbl2Weather, 0, 1); gridWorldWeather.add(weatherRow, 1, 1);
+        gridWorldWeather.add(lbl2Weather, 0, 1); gridWorldWeather.add(weatherControlsBox, 1, 1);
 
         // Section 2: Start Date, Time & Master Seed
         GridPane gridDateTimeSeed = new GridPane();
@@ -642,96 +725,23 @@ public class SimulationControlPanel extends VBox {
         HBox playbackRow1 = new HBox(4);
         playbackRow1.setAlignment(Pos.CENTER);
 
-        btnGoToBeginning = createIconButton(Feather.SKIP_BACK, "Beginning of simulation (Return to step #0)");
-        btnRewind = createIconButton(Feather.REWIND, "Rewind (-100 steps)");
-        btnStepBack = createIconButton(Feather.CHEVRON_LEFT, "Step backward (-1 step)");
-        btnPlay = createIconButton(Feather.PLAY, "Start / Resume simulation");
-        btnPause = createIconButton(Feather.PAUSE, "Pause simulation");
-        btnStepForward = createIconButton(Feather.CHEVRON_RIGHT, "Step forward (+1 step)");
-        btnFastForward = createIconButton(Feather.FAST_FORWARD, "Fast forward (+100 steps)");
-        btnGoToEnd = createIconButton(Feather.SKIP_FORWARD, "Jump to end of simulation (Last recorded step)");
+        btnGoToBeginning = createIconButton(Feather.SKIP_BACK, "sim.btn.beginning.tt");
+        btnRewind = createIconButton(Feather.REWIND, "sim.btn.rewind.tt");
+        btnStepBack = createIconButton(Feather.CHEVRON_LEFT, "sim.btn.stepback.tt");
+        btnPlay = createIconButton(Feather.PLAY, "sim.btn.play.tt");
+        btnPause = createIconButton(Feather.PAUSE, "sim.btn.pause.tt");
+        btnStepForward = createIconButton(Feather.CHEVRON_RIGHT, "sim.btn.stepforward.tt");
+        btnFastForward = createIconButton(Feather.FAST_FORWARD, "sim.btn.fastforward.tt");
+        btnGoToEnd = createIconButton(Feather.SKIP_FORWARD, "sim.btn.gotoend.tt");
 
-        btnGoToBeginning.setOnAction(e -> {
-            isPlaying = false;
-            isPaused = true;
-            isStopped = false;
-            currentTick = 0;
-            updateTick(0, highestRecordedTick);
-            updateButtonStates();
-            if (onPause != null) onPause.accept(null);
-            if (onSeek != null) onSeek.accept(0L);
-        });
-
-        btnRewind.setOnAction(e -> {
-            isPlaying = false;
-            isPaused = true;
-            isStopped = false;
-            currentTick = Math.max(0, currentTick - 100);
-            updateTick(currentTick, highestRecordedTick);
-            updateButtonStates();
-            if (onPause != null) onPause.accept(null);
-            if (onRewind != null) onRewind.accept(100);
-        });
-
-        btnStepBack.setOnAction(e -> {
-            isPlaying = false;
-            isPaused = true;
-            isStopped = false;
-            currentTick = Math.max(0, currentTick - 1);
-            updateTick(currentTick, highestRecordedTick);
-            updateButtonStates();
-            if (onPause != null) onPause.accept(null);
-            if (onRewind != null) onRewind.accept(1);
-        });
-
-        btnPlay.setOnAction(e -> {
-            isPlaying = true;
-            isPaused = false;
-            isStopped = false;
-            updateButtonStates();
-            if (onPlay != null) onPlay.accept(null);
-        });
-
-        btnPause.setOnAction(e -> {
-            isPlaying = false;
-            isPaused = true;
-            isStopped = false;
-            updateButtonStates();
-            if (onPause != null) onPause.accept(null);
-        });
-
-        btnStepForward.setOnAction(e -> {
-            if (!isPlaying) {
-                isPaused = true;
-                isStopped = false;
-                updateButtonStates();
-                if (onPause != null) onPause.accept(null);
-                if (onStepForward != null) onStepForward.accept(null);
-            }
-        });
-
-        btnFastForward.setOnAction(e -> {
-            if (!isPlaying) {
-                isPaused = true;
-                isStopped = false;
-                long target = Math.min(highestRecordedTick, currentTick + 100);
-                updateTick(target, highestRecordedTick);
-                updateButtonStates();
-                if (onPause != null) onPause.accept(null);
-                if (onSeek != null) onSeek.accept(target);
-            }
-        });
-
-        btnGoToEnd.setOnAction(e -> {
-            isPlaying = false;
-            isPaused = true;
-            isStopped = false;
-            currentTick = highestRecordedTick;
-            updateTick(highestRecordedTick, highestRecordedTick);
-            updateButtonStates();
-            if (onPause != null) onPause.accept(null);
-            if (onSeek != null) onSeek.accept(highestRecordedTick);
-        });
+        setupAutoRepeat(btnGoToBeginning, this::doGoToBeginning);
+        setupAutoRepeat(btnRewind, this::doRewind);
+        setupAutoRepeat(btnStepBack, this::doStepBack);
+        setupAutoRepeat(btnPlay, this::doPlay);
+        setupAutoRepeat(btnPause, this::doPause);
+        setupAutoRepeat(btnStepForward, this::doStepForward);
+        setupAutoRepeat(btnFastForward, this::doFastForward);
+        setupAutoRepeat(btnGoToEnd, this::doGoToEnd);
 
         playbackRow1.getChildren().addAll(btnGoToBeginning, btnRewind, btnStepBack, btnPlay, btnPause, btnStepForward, btnFastForward, btnGoToEnd);
 
@@ -739,7 +749,8 @@ public class SimulationControlPanel extends VBox {
         HBox speedSliderRow = new HBox(8);
         speedSliderRow.setAlignment(Pos.CENTER);
 
-        Label lblSpeedLabel = new Label("🚀 Speed :");
+        Label lblSpeedLabel = new Label();
+        lblSpeedLabel.textProperty().bind(i18n.createStringBinding("sim.speed.label"));
         lblSpeedLabel.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;");
         lblSpeedLabel.getStyleClass().add("sub-title-gray");
 
@@ -747,18 +758,18 @@ public class SimulationControlPanel extends VBox {
         lblSpeed.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lblSpeed.getStyleClass().add("accent-title");
         lblSpeed.setPrefWidth(55);
-        lblSpeed.setPrefWidth(55);
 
         speedSlider = new Slider(0.1, 20.0, 1.0);
         speedSlider.setShowTickLabels(false);
         speedSlider.setShowTickMarks(false);
         speedSlider.setPrefWidth(120);
-        speedSlider.setTooltip(new Tooltip("Adjust temporal acceleration factor (0.1x to 20x)."));
+        speedSlider.tooltipProperty().bind(i18n.createTooltipBinding("sim.speed.slider.tt"));
 
-        Button btnMaxSpeed = new Button("🚀 MAX");
+        Button btnMaxSpeed = new Button();
+        btnMaxSpeed.textProperty().bind(i18n.createStringBinding("sim.btn.max_speed"));
         btnMaxSpeed.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand; -fx-padding: 4 10 4 10;");
         btnMaxSpeed.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
-        btnMaxSpeed.setTooltip(new Tooltip("Enable maximum execution speed (Maximum CPU throughput)"));
+        btnMaxSpeed.tooltipProperty().bind(i18n.createTooltipBinding("sim.speed.max.tt"));
 
         final boolean[] isProgrammaticSpeedChange = { false };
 
@@ -799,7 +810,8 @@ public class SimulationControlPanel extends VBox {
         playbackAndSpeedPanel.setPadding(new Insets(8));
         playbackAndSpeedPanel.getStyleClass().add("card-pane");
 
-        Label lblPlaybackHeader = new Label("⏱️ Time, Speed & Playback Controls");
+        Label lblPlaybackHeader = new Label();
+        lblPlaybackHeader.textProperty().bind(i18n.createStringBinding("sim.playback.header"));
         lblPlaybackHeader.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
 
         playbackAndSpeedPanel.getChildren().addAll(lblPlaybackHeader, dateTimeRow, playbackRow1, speedSliderRow);
@@ -1017,12 +1029,27 @@ public class SimulationControlPanel extends VBox {
     private void alignWeatherWithWorld(boolean showNotification) {
         String world = comboWorld.getValue();
         if (world == null) return;
+        String wUpper = world.toUpperCase();
         String targetWeather = "Temperate";
-        if (world.contains("Tropical") || world.contains("Amazon")) {
+        if (wUpper.contains("TROPICAL") || wUpper.contains("MANAUS") || wUpper.contains("AMAZON") || wUpper.contains("RAINFOREST")) {
             targetWeather = "Tropical";
-        } else if (world.contains("Aride") || world.contains("Desert") || world.contains("Savane")) {
+        } else if (wUpper.contains("SAVANNA") || wUpper.contains("SAVANE") || wUpper.contains("SERENGETI") || wUpper.contains("ACACIA")) {
+            targetWeather = "Savanna";
+        } else if (wUpper.contains("DESERT") || wUpper.contains("ERG CHEBBI") || wUpper.contains("ARID") || wUpper.contains("ARIDE") || wUpper.contains("SAHARA")) {
             targetWeather = "Arid";
-        } else if (world.contains("Alpin") || world.contains("Toundra") || world.contains("Montagne") || world.contains("Boreal") || world.contains("Taiga")) {
+        } else if (wUpper.contains("MEDITERRANEAN") || wUpper.contains("MÉDITERRAN") || wUpper.contains("CORSICA") || wUpper.contains("CORSE") || wUpper.contains("MARSEILLE")) {
+            targetWeather = "Mediterranean";
+        } else if (wUpper.contains("ALPINE") || wUpper.contains("ALPIN") || wUpper.contains("MONT BLANC") || wUpper.contains("VALAIS") || wUpper.contains("MOUNTAIN") || wUpper.contains("MONTAGNE")) {
+            targetWeather = "Alpine";
+        } else if (wUpper.contains("TAIGA") || wUpper.contains("TAÏGA") || wUpper.contains("BOREAL") || wUpper.contains("BORÉAL") || wUpper.contains("ROVANIEMI")) {
+            targetWeather = "Taiga";
+        } else if (wUpper.contains("STEPPE") || wUpper.contains("ASTANA") || wUpper.contains("KAZAKHSTAN")) {
+            targetWeather = "Steppe";
+        } else if (wUpper.contains("OCEANIC") || wUpper.contains("OCÉANIQUE") || wUpper.contains("BREST") || wUpper.contains("BRITTANY") || wUpper.contains("BRETAGNE") || wUpper.contains("HEATHLAND")) {
+            targetWeather = "Oceanic";
+        } else if (wUpper.contains("WETLAND") || wUpper.contains("SWAMP") || wUpper.contains("MANGROVE") || wUpper.contains("EVERGLADES") || wUpper.contains("MARAIS")) {
+            targetWeather = "Wetland";
+        } else if (wUpper.contains("ARCTIC") || wUpper.contains("ARCTIQUE") || wUpper.contains("POLAR") || wUpper.contains("POLAIRE") || wUpper.contains("SVALBARD") || wUpper.contains("LONGYEARBYEN") || wUpper.contains("PERMAFROST") || wUpper.contains("TUNDRA") || wUpper.contains("TOUNDRA")) {
             targetWeather = "Arctic";
         } else {
             targetWeather = "Temperate";
@@ -1102,10 +1129,17 @@ public class SimulationControlPanel extends VBox {
             String biome = scenario.getBiomeName();
             if (biome != null) {
                 switch (biome.toUpperCase()) {
-                    case "ARID_SAVANNA", "DESERT", "ARID" -> selectComboIfPresent(comboWorld, "Arid Savanna (Serengeti, TZ)");
-                    case "TROPICAL_RAINFOREST", "TROPICAL" -> selectComboIfPresent(comboWorld, "Tropical Rainforest (Manaus, BR)");
-                    case "ALPINE_TUNDRA", "POLAR", "TUNDRA" -> selectComboIfPresent(comboWorld, "Alpine Tundra (Valais, CH)");
+                    case "SAVANNA", "ARID_SAVANNA", "ACACIA_SAVANNA" -> selectComboIfPresent(comboWorld, "Acacia Savanna (Serengeti, TZ)");
+                    case "DESERT", "ARID", "ERG_CHEBBI" -> selectComboIfPresent(comboWorld, "Arid Desert (Erg Chebbi, MA)");
+                    case "TROPICAL_RAINFOREST", "TROPICAL", "AMAZON" -> selectComboIfPresent(comboWorld, "Tropical Rainforest (Manaus, BR)");
+                    case "ALPINE_TUNDRA", "ALPINE", "ROCKY_MOUNTAIN" -> selectComboIfPresent(comboWorld, "Rocky Mountain (Mont Blanc, FR)");
+                    case "ALPINE_MEADOW" -> selectComboIfPresent(comboWorld, "Alpine Meadow (Valais, CH)");
                     case "BOREAL_TAIGA", "TAIGA" -> selectComboIfPresent(comboWorld, "Boreal Taiga (Rovaniemi, FI)");
+                    case "MEDITERRANEAN", "SHRUBLAND" -> selectComboIfPresent(comboWorld, "Mediterranean Shrubland (Corsica, FR)");
+                    case "SWAMP", "MANGROVE", "WETLAND" -> selectComboIfPresent(comboWorld, "Swamp & Mangrove (Everglades, US)");
+                    case "STEPPE", "SEMI_ARID_STEPPE" -> selectComboIfPresent(comboWorld, "Semi-Arid Steppe (Astana, KZ)");
+                    case "OCEANIC", "HEATHLAND" -> selectComboIfPresent(comboWorld, "Oceanic Heathland (Brittany, FR)");
+                    case "PERMAFROST", "POLAR", "TUNDRA", "ARCTIC" -> selectComboIfPresent(comboWorld, "Permafrost Tundra (Svalbard, NO)");
                     default -> selectComboIfPresent(comboWorld, "Temperate Deciduous (Fontainebleau, FR)");
                 }
             }
@@ -1247,14 +1281,175 @@ public class SimulationControlPanel extends VBox {
         }
     }
 
-    private Button createIconButton(Feather icon, String tooltip) {
+    private void doGoToBeginning() {
+        isPlaying = false;
+        isPaused = true;
+        isStopped = false;
+        currentTick = 0;
+        updateTick(0, highestRecordedTick);
+        updateButtonStates();
+        if (onPause != null) onPause.accept(null);
+        if (onSeek != null) onSeek.accept(0L);
+    }
+
+    private void doRewind() {
+        isPlaying = false;
+        isPaused = true;
+        isStopped = false;
+        long target = Math.max(0, currentTick - 1000);
+        currentTick = target;
+        updateTick(currentTick, highestRecordedTick);
+        updateButtonStates();
+        if (onPause != null) onPause.accept(null);
+        if (onRewind != null) onRewind.accept(1000);
+    }
+
+    private void doStepBack() {
+        isPlaying = false;
+        isPaused = true;
+        isStopped = false;
+        long target = Math.max(0, currentTick - 100);
+        currentTick = target;
+        updateTick(currentTick, highestRecordedTick);
+        updateButtonStates();
+        if (onPause != null) onPause.accept(null);
+        if (onRewind != null) onRewind.accept(100);
+    }
+
+    private void doPlay() {
+        if (!isPlaying) {
+            isPlaying = true;
+            isPaused = false;
+            isStopped = false;
+            updateButtonStates();
+            if (onPlay != null) onPlay.accept(null);
+        }
+    }
+
+    private void doPause() {
+        isPlaying = false;
+        isPaused = true;
+        isStopped = false;
+        updateButtonStates();
+        if (onPause != null) onPause.accept(null);
+    }
+
+    private void doStepForward() {
+        isPlaying = false;
+        isPaused = true;
+        isStopped = false;
+        long target = currentTick + 100;
+        if (target <= highestRecordedTick) {
+            currentTick = target;
+            updateTick(currentTick, highestRecordedTick);
+            updateButtonStates();
+            if (onPause != null) onPause.accept(null);
+            if (onSeek != null) onSeek.accept(target);
+        } else {
+            updateButtonStates();
+            if (onPause != null) onPause.accept(null);
+            if (onStepForward != null) onStepForward.accept(100);
+        }
+    }
+
+    private void doFastForward() {
+        isPlaying = false;
+        isPaused = true;
+        isStopped = false;
+        long target = currentTick + 1000;
+        if (target <= highestRecordedTick) {
+            currentTick = target;
+            updateTick(target, highestRecordedTick);
+            updateButtonStates();
+            if (onPause != null) onPause.accept(null);
+            if (onSeek != null) onSeek.accept(target);
+        } else {
+            updateButtonStates();
+            if (onPause != null) onPause.accept(null);
+            if (onStepForward != null) onStepForward.accept(1000);
+        }
+    }
+
+    private void doGoToEnd() {
+        isPlaying = false;
+        isPaused = true;
+        isStopped = false;
+        currentTick = highestRecordedTick;
+        updateTick(highestRecordedTick, highestRecordedTick);
+        updateButtonStates();
+        if (onPause != null) onPause.accept(null);
+        if (onSeek != null) onSeek.accept(highestRecordedTick);
+    }
+
+    private void setupAutoRepeat(Button button, Runnable action) {
+        final boolean[] isExecuting = { false };
+        Timeline repeatTimeline = new Timeline();
+        repeatTimeline.setCycleCount(Timeline.INDEFINITE);
+        KeyFrame keyFrame = new KeyFrame(Duration.millis(120), e -> {
+            if (!button.isDisabled() && !isExecuting[0]) {
+                isExecuting[0] = true;
+                try {
+                    action.run();
+                } finally {
+                    isExecuting[0] = false;
+                }
+            }
+        });
+        repeatTimeline.getKeyFrames().add(keyFrame);
+
+        PauseTransition initialDelay = new PauseTransition(Duration.millis(350));
+        initialDelay.setOnFinished(e -> {
+            if (!button.isDisabled()) {
+                repeatTimeline.playFromStart();
+            }
+        });
+
+        button.addEventHandler(MouseEvent.MOUSE_PRESSED, e -> {
+            if (e.getButton() == MouseButton.PRIMARY && !button.isDisabled() && !isExecuting[0]) {
+                isExecuting[0] = true;
+                try {
+                    action.run();
+                } finally {
+                    isExecuting[0] = false;
+                }
+                initialDelay.playFromStart();
+            }
+        });
+
+        EventHandler<MouseEvent> stopRepeat = e -> {
+            initialDelay.stop();
+            repeatTimeline.stop();
+            isExecuting[0] = false;
+        };
+
+        button.addEventHandler(MouseEvent.MOUSE_RELEASED, stopRepeat);
+        button.addEventHandler(MouseEvent.MOUSE_EXITED, stopRepeat);
+        button.disabledProperty().addListener((obs, oldV, newV) -> {
+            if (newV) {
+                initialDelay.stop();
+                repeatTimeline.stop();
+                isExecuting[0] = false;
+            }
+        });
+        button.setOnAction(null);
+    }
+
+    private Button createIconButton(Feather icon, String tooltipKey) {
         FontIcon fontIcon = new FontIcon(icon);
         fontIcon.setIconSize(13);
 
         Button btn = new Button();
         btn.setGraphic(fontIcon);
         btn.getStyleClass().add("ctrl-btn");
-        if (tooltip != null && !tooltip.isEmpty()) btn.setTooltip(new Tooltip(tooltip));
+        if (tooltipKey != null && !tooltipKey.isEmpty()) {
+            Tooltip tt = new Tooltip();
+            if (tooltipKey.contains(".")) {
+                tt.textProperty().bind(I18nManager.getInstance().createStringBinding(tooltipKey));
+            } else {
+                tt.setText(tooltipKey);
+            }
+            btn.setTooltip(tt);
+        }
         btn.disabledProperty().addListener((obs, oldV, newV) -> btn.setOpacity(newV ? 0.35 : 1.0));
         return btn;
     }
@@ -1299,10 +1494,12 @@ public class SimulationControlPanel extends VBox {
 
         if (btnRewind != null) btnRewind.setDisable(false);
         if (btnStepBack != null) btnStepBack.setDisable(false);
-        if (btnStepForward != null) btnStepForward.setDisable(isPlaying);
-        if (btnFastForward != null) btnFastForward.setDisable(isPlaying);
+        if (btnStepForward != null) btnStepForward.setDisable(false);
+        if (btnFastForward != null) btnFastForward.setDisable(false);
         if (btnGoToBeginning != null) btnGoToBeginning.setDisable(false);
-        if (btnGoToEnd != null) btnGoToEnd.setDisable(isPlaying);
+        if (btnGoToEnd != null) btnGoToEnd.setDisable(false);
+        if (btnPlay != null) btnPlay.setDisable(false);
+        if (btnPause != null) btnPause.setDisable(false);
     }
 
     public void updateTick(long tick, long maxTick) {
@@ -1316,7 +1513,7 @@ public class SimulationControlPanel extends VBox {
         currentDateTime = startDateTime.plusSeconds(totalSecondsElapsed);
 
         String timeStr = formatSimulationTime(tick, simulationStepSeconds);
-        lblDateTime.setText("📅 Date & Heure : " + currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + String.format(" (Jour %d)", 1 + (totalSecondsElapsed / 86400)));
+        lblDateTime.setText("📅 " + currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + String.format(" (Jour %d)", 1 + (totalSecondsElapsed / 86400)) + "  |  ⏱️ " + timeStr + String.format(" (Pas #%d)", tick));
         if (lblTick != null) {
             lblTick.setText(timeStr + String.format(" (Pas #%d)", tick));
         }
@@ -1358,13 +1555,28 @@ public class SimulationControlPanel extends VBox {
         return currentSpeed;
     }
 
+    public LocalDateTime getStartDateTime() {
+        if (startDatePicker != null && startDatePicker.getValue() != null &&
+            startTimeHourSpinner != null && startTimeMinuteSpinner != null && startTimeSecondSpinner != null) {
+            return LocalDateTime.of(
+                startDatePicker.getValue(),
+                LocalTime.of(
+                    startTimeHourSpinner.getValue(),
+                    startTimeMinuteSpinner.getValue(),
+                    startTimeSecondSpinner.getValue()
+                )
+            );
+        }
+        return startDateTime != null ? startDateTime : LocalDateTime.of(2026, 3, 20, 8, 0, 0);
+    }
+
     public void setOnPlay(Consumer<Void> callback) { this.onPlay = callback; }
     public void setOnPause(Consumer<Void> callback) { this.onPause = callback; }
     public void setOnStop(Consumer<Void> callback) { this.onStop = callback; }
     public void setOnSpeedChange(Consumer<Float> callback) { this.onSpeedChange = callback; }
     public void setOnSeek(Consumer<Long> callback) { this.onSeek = callback; }
     public void setOnRewind(Consumer<Integer> callback) { this.onRewind = callback; }
-    public void setOnStepForward(Consumer<Void> callback) { this.onStepForward = callback; }
+    public void setOnStepForward(Consumer<Integer> callback) { this.onStepForward = callback; }
     public void setOnStepChange(Consumer<Float> callback) { this.onStepChange = callback; }
     public void setOnCreateCheckpoint(Consumer<String> cb) { this.onCreateCheckpoint = cb; }
     public void setOnRestoreCheckpoint(Consumer<org.swarmforge.core.simulation.SimulationCheckpoint> cb) { this.onRestoreCheckpoint = cb; }
@@ -1414,6 +1626,212 @@ public class SimulationControlPanel extends VBox {
 
     public String getSelectedWeather() {
         return comboWeather.getValue() != null ? comboWeather.getValue() : "Temperate";
+    }
+
+    private java.util.function.Supplier<Map<String, Object>> worldConfigSupplier;
+
+    public void setWorldConfigSupplier(java.util.function.Supplier<Map<String, Object>> supplier) {
+        this.worldConfigSupplier = supplier;
+    }
+
+    public boolean isRealWeatherMode() {
+        return isRealWeatherMode;
+    }
+
+    public Map<String, Object> getRealWeatherData() {
+        return cachedRealWeatherData;
+    }
+
+    public void fetchRealWeatherFromWorld(TextField targetField) {
+        double lat = 48.4047;
+        double lon = 2.7016;
+        double alt = 35.0;
+        String name = "Monde Actuel";
+
+        if (worldConfigSupplier != null) {
+            Map<String, Object> cfg = worldConfigSupplier.get();
+            if (cfg != null) {
+                if (cfg.containsKey("cityName") && cfg.get("cityName") != null) {
+                    name = String.valueOf(cfg.get("cityName"));
+                }
+                if (cfg.containsKey("latitude") && cfg.get("latitude") != null) {
+                    try { lat = Double.parseDouble(String.valueOf(cfg.get("latitude"))); } catch (Exception ignored) {}
+                }
+                if (cfg.containsKey("longitude") && cfg.get("longitude") != null) {
+                    try { lon = Double.parseDouble(String.valueOf(cfg.get("longitude"))); } catch (Exception ignored) {}
+                }
+                if (cfg.containsKey("elevation") && cfg.get("elevation") != null) {
+                    try { alt = Double.parseDouble(String.valueOf(cfg.get("elevation"))); } catch (Exception ignored) {}
+                }
+            }
+        } else {
+            // Check selected world preset
+            String worldPreset = comboWorld != null ? comboWorld.getValue() : null;
+            if (worldPreset != null) {
+                name = worldPreset;
+                WorldPresetManager wpm = new WorldPresetManager();
+                Map<String, Object> pCfg = wpm.getPreset(worldPreset);
+                if (pCfg != null) {
+                    if (pCfg.containsKey("cityName") && pCfg.get("cityName") != null) name = String.valueOf(pCfg.get("cityName"));
+                    if (pCfg.containsKey("latitude") && pCfg.get("latitude") != null) {
+                        try { lat = Double.parseDouble(String.valueOf(pCfg.get("latitude"))); } catch (Exception ignored) {}
+                    }
+                    if (pCfg.containsKey("longitude") && pCfg.get("longitude") != null) {
+                        try { lon = Double.parseDouble(String.valueOf(pCfg.get("longitude"))); } catch (Exception ignored) {}
+                    }
+                    if (pCfg.containsKey("elevation") && pCfg.get("elevation") != null) {
+                        try { alt = Double.parseDouble(String.valueOf(pCfg.get("elevation"))); } catch (Exception ignored) {}
+                    }
+                }
+            }
+        }
+
+        if (targetField != null) {
+            targetField.setText(name != null && !name.isBlank() ? name : String.format(Locale.US, "%.4f, %.4f", lat, lon));
+        }
+
+        fetchRealWeatherByCoordinates(lat, lon, alt, name);
+    }
+
+    public void fetchRealWeather(String cityQuery) {
+        if (cityQuery == null || cityQuery.trim().isEmpty()) {
+            fetchRealWeatherFromWorld(null);
+            return;
+        }
+        final String query = cityQuery.trim();
+
+        // 1. Check if query is GPS coordinates: "lat, lon" or "lat, lon, alt"
+        java.util.regex.Pattern coordPattern = java.util.regex.Pattern.compile("^([+-]?\\d+(?:\\.\\d+)?)[,\\s/]+([+-]?\\d+(?:\\.\\d+)?)(?:[,\\s/]+([+-]?\\d+(?:\\.\\d+)?)(?:\\s*m)?)?$");
+        java.util.regex.Matcher m = coordPattern.matcher(query);
+        if (m.matches()) {
+            try {
+                double lat = Double.parseDouble(m.group(1));
+                double lon = Double.parseDouble(m.group(2));
+                double alt = (m.group(3) != null && !m.group(3).isEmpty()) ? Double.parseDouble(m.group(3)) : 50.0;
+                fetchRealWeatherByCoordinates(lat, lon, alt, "GPS " + String.format(Locale.US, "%.2f, %.2f", lat, lon));
+                return;
+            } catch (Exception ignored) {}
+        }
+
+        lblRealWeatherStatus.setText("⌛ Recherche Open-Meteo pour \"" + query + "\"...");
+        lblRealWeatherStatus.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px;");
+
+        Thread t = new Thread(() -> {
+            try {
+                String geoUrlStr = "https://geocoding-api.open-meteo.com/v1/search?name="
+                        + URLEncoder.encode(query, StandardCharsets.UTF_8)
+                        + "&count=1&language=fr";
+                String geoJson = fetchHttp(geoUrlStr);
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode geoRoot = mapper.readTree(geoJson);
+                if (!geoRoot.has("results") || geoRoot.get("results").isEmpty()) {
+                    javafx.application.Platform.runLater(() -> {
+                        lblRealWeatherStatus.setText("⚠ Ville introuvable : \"" + query + "\"");
+                        lblRealWeatherStatus.setStyle("-fx-text-fill: #f87171; -fx-font-size: 10px;");
+                    });
+                    return;
+                }
+                JsonNode loc = geoRoot.get("results").get(0);
+                String cityName = loc.get("name").asText();
+                double lat = loc.get("latitude").asDouble();
+                double lon = loc.get("longitude").asDouble();
+                double alt = loc.has("elevation") && !loc.get("elevation").isNull() ? loc.get("elevation").asDouble() : 50.0;
+
+                fetchRealWeatherByCoordinates(lat, lon, alt, cityName);
+            } catch (Exception ex) {
+                javafx.application.Platform.runLater(() -> {
+                    lblRealWeatherStatus.setText("⚠ Erreur recherche : " + query);
+                    lblRealWeatherStatus.setStyle("-fx-text-fill: #f87171; -fx-font-size: 10px;");
+                });
+            }
+        }, "OpenMeteoGeoThread");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    public void fetchRealWeatherByCoordinates(double lat, double lon, double alt, String name) {
+        final String locationName = (name != null && !name.isBlank()) ? name : String.format(Locale.US, "%.2f°N, %.2f°E", lat, lon);
+        lblRealWeatherStatus.setText("⌛ Chargement Open-Meteo pour " + locationName + "...");
+        lblRealWeatherStatus.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px;");
+
+        Thread t = new Thread(() -> {
+            try {
+                String liveUrlStr = String.format(Locale.US,
+                        "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&elevation=%.1f&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure",
+                        lat, lon, alt);
+                String liveJson = fetchHttp(liveUrlStr);
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode liveRoot = mapper.readTree(liveJson);
+                if (liveRoot.has("current")) {
+                    JsonNode cur = liveRoot.get("current");
+                    double temp = cur.has("temperature_2m") ? cur.get("temperature_2m").asDouble() : 18.0;
+                    double hum = cur.has("relative_humidity_2m") ? cur.get("relative_humidity_2m").asDouble() : 60.0;
+                    double wind = cur.has("wind_speed_10m") ? cur.get("wind_speed_10m").asDouble() : 15.0;
+                    double rain = cur.has("precipitation") ? cur.get("precipitation").asDouble() : 0.0;
+                    double press = cur.has("surface_pressure") ? cur.get("surface_pressure").asDouble() : 1013.25;
+
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("name", locationName);
+                    map.put("latitude", lat);
+                    map.put("longitude", lon);
+                    map.put("altitude", alt);
+                    map.put("basePressure", press);
+
+                    double[] tAvg = new double[12];
+                    double[] tMin = new double[12];
+                    double[] tMax = new double[12];
+                    double[] wAvg = new double[12];
+                    double[] rAvg = new double[12];
+                    double[] hAvg = new double[12];
+                    for (int m = 0; m < 12; m++) {
+                        tAvg[m] = temp;
+                        tMin[m] = temp - 4.0;
+                        tMax[m] = temp + 4.0;
+                        wAvg[m] = wind;
+                        rAvg[m] = rain * 24.0;
+                        hAvg[m] = hum;
+                    }
+                    map.put("tempAvg", tAvg);
+                    map.put("tempMin", tMin);
+                    map.put("tempMax", tMax);
+                    map.put("windAvg", wAvg);
+                    map.put("rainAvg", rAvg);
+                    map.put("humidityAvg", hAvg);
+
+                    cachedRealWeatherData = map;
+
+                    javafx.application.Platform.runLater(() -> {
+                        lblRealWeatherStatus.setText(String.format(Locale.US, "🟢 %s (%.2f°N, %.2f°E, %.0fm) : %.1f°C, Vent %.0f km/h, Hum. %.0f%%", locationName, lat, lon, alt, temp, wind, hum));
+                        lblRealWeatherStatus.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold; -fx-font-size: 10px;");
+                    });
+                }
+            } catch (Exception ex) {
+                javafx.application.Platform.runLater(() -> {
+                    lblRealWeatherStatus.setText("⚠ Hors-ligne / Erreur Open-Meteo (" + locationName + ")");
+                    lblRealWeatherStatus.setStyle("-fx-text-fill: #f87171; -fx-font-size: 10px;");
+                });
+            }
+        }, "OpenMeteoFetchCoordsThread");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private String fetchHttp(String urlStr) throws Exception {
+        URL url = new URL(urlStr);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setConnectTimeout(6000);
+        conn.setReadTimeout(6000);
+        conn.setRequestProperty("User-Agent", "SwarmForge-Simulation/1.0");
+        int status = conn.getResponseCode();
+        InputStream stream = (status >= 400) ? conn.getErrorStream() : conn.getInputStream();
+        if (stream == null) throw new java.io.IOException("HTTP stream empty (" + status + ")");
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            return sb.toString();
+        }
     }
 
     public List<String> getSelectedSpeciesList() {
@@ -2160,17 +2578,17 @@ public class SimulationControlPanel extends VBox {
         float minH = sp.getMinHumidityPercent();
 
         if (minT >= 26.0f || minH <= 25.0f) {
-            selectComboIfPresent(comboWorld, "Arid Savanna (Serengeti, TZ)");
-            selectComboIfPresent(comboWeather, "Sunny Warm (28°C)");
+            selectComboIfPresent(comboWorld, "Acacia Savanna (Serengeti, TZ)");
+            selectComboIfPresent(comboWeather, "Savanna");
         } else if (maxT <= 18.0f) {
             selectComboIfPresent(comboWorld, "Boreal Taiga (Rovaniemi, FI)");
-            selectComboIfPresent(comboWeather, "Cold Polar (-5°C)");
+            selectComboIfPresent(comboWeather, "Taiga");
         } else if (minH >= 65.0f || minT >= 22.0f) {
             selectComboIfPresent(comboWorld, "Tropical Rainforest (Manaus, BR)");
-            selectComboIfPresent(comboWeather, "Tropical Humid (26°C)");
+            selectComboIfPresent(comboWeather, "Tropical");
         } else {
             selectComboIfPresent(comboWorld, "Temperate Deciduous (Fontainebleau, FR)");
-            selectComboIfPresent(comboWeather, "Temperate Mild (20°C)");
+            selectComboIfPresent(comboWeather, "Temperate");
         }
     }
 

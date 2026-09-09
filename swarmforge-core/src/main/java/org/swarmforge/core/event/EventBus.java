@@ -271,6 +271,13 @@ public class EventBus {
     }
 
     /**
+     * Truncate events occurring after the specified tick.
+     */
+    public void truncateAfter(long targetTick) {
+        eventHistory.removeIf(e -> e.getTick() > targetTick);
+    }
+
+    /**
      * Enable/disable event recording.
      */
     public void setRecordingEnabled(boolean enabled) {

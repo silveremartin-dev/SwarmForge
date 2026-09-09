@@ -26,7 +26,8 @@ public class CasteTemplate implements java.io.Serializable {
     private float baseHealth;
     private float baseDamage;
     private float baseDefense;
-    private float baseSpeed;
+    private float walkSpeedMps = 0.5f;
+    private float flySpeedMps = 0.0f;
 
     // Life
     private int lifespan; // ticks
@@ -86,7 +87,7 @@ public class CasteTemplate implements java.io.Serializable {
         this.name = name;
         this.baseHealth = health;
         this.baseDamage = damage;
-        this.baseSpeed = 1.0f;
+        this.walkSpeedMps = 1.0f;
     }
 
     // Getters and Setters
@@ -131,12 +132,32 @@ public class CasteTemplate implements java.io.Serializable {
         this.baseDefense = baseDefense;
     }
 
-    public float getBaseSpeed() {
-        return baseSpeed;
+    public float getWalkSpeedMps() {
+        return walkSpeedMps;
     }
 
-    public void setBaseSpeed(float baseSpeed) {
-        this.baseSpeed = baseSpeed;
+    public void setWalkSpeedMps(float walkSpeedMps) {
+        this.walkSpeedMps = walkSpeedMps;
+    }
+
+    public float getFlySpeedMps() {
+        return flySpeedMps;
+    }
+
+    public void setFlySpeedMps(float flySpeedMps) {
+        this.flySpeedMps = flySpeedMps;
+    }
+
+    public float getWalkingSpeed() {
+        return walkSpeedMps > 0 ? walkSpeedMps : 0.45f;
+    }
+
+    public float getRunningSpeed() {
+        return walkSpeedMps > 0 ? walkSpeedMps * 1.65f : 0.85f;
+    }
+
+    public float getFlyingSpeed() {
+        return flySpeedMps > 0 ? flySpeedMps : (walkSpeedMps > 0 ? walkSpeedMps * 3.5f : 4.5f);
     }
 
     public int getLifespan() {

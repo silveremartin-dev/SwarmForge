@@ -52,6 +52,9 @@ public class EcsColonyFactory {
         MetabolismComponent meta = edit.create(MetabolismComponent.class);
         meta.energy = 100.0f;
         meta.maxEnergy = 100.0f;
+        meta.maxHealth = 100.0f;
+        double healthGaussian = (caste == Individual.Caste.QUEEN) ? 100.0 : (94.0 + 5.0 * java.util.concurrent.ThreadLocalRandom.current().nextGaussian());
+        meta.health = (float) Math.max(65.0, Math.min(100.0, healthGaussian));
         meta.hunger = 0.0f;
         meta.thirst = 0.0f;
         meta.alive = true;
@@ -108,13 +111,13 @@ public class EcsColonyFactory {
             } else {
                 rawVal = species.getWorkerLifespan();
             }
-            // If rawVal > 2000, treat as ticks (divide by 60 TPS), otherwise treat as seconds directly
-            meanLifespanSeconds = (rawVal > 2000) ? (rawVal / 60.0f) : (float) rawVal;
+            // Ensure lifespan in seconds is at least 300s (5 minutes) to avoid premature death
+            meanLifespanSeconds = Math.max(300.0f, (rawVal > 2000) ? (rawVal / 60.0f) : (float) rawVal);
         }
         // Compute 100% deterministic seed based on colony UUID and entityId
         long entitySeed = (colonyId != null ? colonyId.getLeastSignificantBits() : 1337L) ^ ((long) entityId * 0x9E3779B97F4A7C15L);
         org.swarmforge.core.util.FastDeterministicRandom entityRng = new org.swarmforge.core.util.FastDeterministicRandom(entitySeed);
-        life.setGaussianLifespan(meanLifespanSeconds, 0.15, entityRng);
+        life.setGaussianLifespan(meanLifespanSeconds, 0.10, entityRng);
 
         // AI / FSM
         AiComponent ai = edit.create(AiComponent.class);

@@ -175,12 +175,15 @@ public class AccessorySpeciesEditorPane extends VBox {
         VBox.setVgrow(tabPane, Priority.ALWAYS);
 
         tabTaxonomy = new Tab(i18n.get("accessory.tab.taxonomy"));
+        tabTaxonomy.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.LIST));
         tabTaxonomy.setContent(new ScrollPane(createTaxonomyCard()));
 
         tabSeasonal = new Tab(i18n.get("accessory.tab.seasonal"));
+        tabSeasonal.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SUN));
         tabSeasonal.setContent(new ScrollPane(createSeasonalCard()));
 
         tabPredators = new Tab(i18n.get("accessory.tab.predators"));
+        tabPredators.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SHIELD));
         tabPredators.setContent(new ScrollPane(createPredatorPathogenCard()));
 
         tabPane.getTabs().addAll(tabTaxonomy, tabSeasonal, tabPredators);

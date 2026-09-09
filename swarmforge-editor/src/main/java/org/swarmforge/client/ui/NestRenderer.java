@@ -16,6 +16,14 @@ import java.util.*;
 
 /** Static rendering methods for NestGeneratorPane multi-species views. */
 public final class NestRenderer {
+    // ── Shared Chamber Color Constants (synchronized with simulation legend) ──────
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_ENTRANCE = javafx.scene.paint.Color.web("#32CD32"); // LimeGreen
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_QUEEN    = javafx.scene.paint.Color.web("#FFD700"); // Gold
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_BROOD    = javafx.scene.paint.Color.web("#00BFFF"); // DeepSkyBlue
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_STORAGE  = javafx.scene.paint.Color.web("#FFA500"); // Orange
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_FUNGUS   = javafx.scene.paint.Color.web("#9370DB"); // MediumPurple
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_WASTE    = javafx.scene.paint.Color.web("#CD5C5C"); // IndianRed
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_TUNNEL   = javafx.scene.paint.Color.web("#708090"); // SlateGray
 
     private NestRenderer() {}
 
@@ -326,17 +334,18 @@ public final class NestRenderer {
         if (arch == null) return "BURROW_UNDERGROUND";
         String s = arch.toUpperCase();
         if (s.contains("CARTON")) return "CARTON_NEST";
-        if (s.contains("HEXAGONAL") || s.contains("WAX_COMB")) return "WAX_COMB_HEXAGONAL";
-        if (s.contains("POTS") || s.contains("WAX_POTS")) return "WAX_POTS_CLUSTER";
-        if (s.contains("PAPER") || s.contains("PEDUNCULATE")) return "PAPER_PEDUNCULATE";
-        if (s.contains("CATHEDRAL")) return "CATHEDRAL_MOUND";
-        if (s.contains("SILK") || s.contains("LEAF")) return "ARBOREAL_SILK_LEAF";
-        if (s.contains("FUNGI") || s.contains("VAULT")) return "SUBTERRANEAN_FUNGI_VAULT";
-        if (s.contains("BAMBOO") || s.contains("STEM")) return "BAMBOO_STEM_NEST";
-        if (s.contains("BIVOUAC")) return "BIVOUAC_LIVING_NEST";
-        if (s.contains("HOLLOW") || s.contains("TRUNK")) return "HOLLOW_TRUNK_NEST";
-        if (s.contains("SURFACE") || s.contains("MOUND")) return "SURFACE_MOUND";
-        if (s.contains("BEEHIVE") || s.contains("WOODEN")) return "WOODEN_BEEHIVE";
+        if (s.contains("HEXAGONAL") || s.contains("WAX_COMB") || s.contains("RAYON") || s.contains("ALVÉOLE") || s.contains("ALVEOLE")) return "WAX_COMB_HEXAGONAL";
+        if (s.contains("POTS") || s.contains("WAX_POTS") || s.contains("POT")) return "WAX_POTS_CLUSTER";
+        if (s.contains("PAPER") || s.contains("PEDUNCULATE") || s.contains("PAPIER") || s.contains("PÉDONCULÉ") || s.contains("PEDONCULE") || s.contains("SUSPENDU")) return "PAPER_PEDUNCULATE";
+        if (s.contains("CATHEDRAL") || s.contains("CATHÉDRALE") || s.contains("CATHEDRALE")) return "CATHEDRAL_MOUND";
+        if (s.contains("SILK") || s.contains("SOIE") || s.contains("FEUILLE") || s.contains("TISSERANDE")) return "ARBOREAL_SILK_LEAF";
+        if (s.contains("FUNGI") || s.contains("VAULT") || s.contains("CHAMPIGNON") || s.contains("CHAMPIGNONNIERE") || s.contains("CHAMPIGNONNIÈRE")) return "SUBTERRANEAN_FUNGI_VAULT";
+        if (s.contains("BAMBOO") || s.contains("BAMBOU") || s.contains("STEM") || s.contains("TIGE") || s.contains("GALL") || s.contains("GALLE") || s.contains("GLAND")) return "BAMBOO_STEM_NEST";
+        if (s.contains("BIVOUAC") || s.contains("VIVANT") || s.contains("LIVING") || s.contains("LÉGIONNAIRE") || s.contains("LEGIONNAIRE") || s.contains("ECITON")) return "BIVOUAC_LIVING_NEST";
+        if (s.contains("TRUNK") || s.contains("TRONC") || s.contains("HOLLOW") || s.contains("CREUX") || s.contains("BOIS")) return "HOLLOW_TRUNK_NEST";
+        if (s.contains("SURFACE") || s.contains("DÔME") || s.contains("DOME") || s.contains("MOUND") || s.contains("TÉTRÔME") || s.contains("AIGUILLE")) return "SURFACE_MOUND";
+        if (s.contains("BEEHIVE") || s.contains("RUCHE") || s.contains("WOODEN")) return "WOODEN_BEEHIVE";
+        if (s.contains("SOUTERRAIN") || s.contains("BURROW") || s.contains("TERRIER") || s.contains("SIMPLE")) return "BURROW_UNDERGROUND";
         return "BURROW_UNDERGROUND";
     }
 
@@ -360,17 +369,17 @@ public final class NestRenderer {
         if (mat == null) return "EARTH";
         String s = mat.toUpperCase();
         if (s.contains("CARTON")) return "CARTON_PULP";
-        if (s.contains("BEESWAX")) return "BEESWAX";
-        if (s.contains("LIVING") || s.contains("BODIES") || s.contains("BIVOUAC")) return "LIVING_INSECT_BODIES";
-        if (s.contains("PROPOLIS")) return "PROPOLIS";
-        if (s.contains("SILK")) return "SILK_WEAVE";
-        if (s.contains("STERCORAL") || s.contains("CEMENT")) return "STERCORAL_CEMENT";
-        if (s.contains("BRANCH")) return "TREE_BRANCH";
-        if (s.contains("LEAF")) return "TREE_LEAF";
-        if (s.contains("TRUNK")) return "TREE_TRUNK";
-        if (s.contains("PLANK")) return "WOOD_PLANK";
-        if (s.contains("PAPER") || s.contains("WOOD_PULP_PAPER")) return "WOOD_PULP_PAPER";
-        if (s.contains("EARTH") || s.contains("SOIL") || s.contains("CLAY")) return "EARTH";
+        if (s.contains("BEESWAX") || s.contains("CIRE")) return "BEESWAX";
+        if (s.contains("LIVING") || s.contains("BODIES") || s.contains("BIVOUAC") || s.contains("CORPS") || s.contains("INSECTES")) return "LIVING_INSECT_BODIES";
+        if (s.contains("PROPOLIS") || s.contains("RÉSINE") || s.contains("RESINE") || s.contains("RESIN")) return "PROPOLIS";
+        if (s.contains("SILK") || s.contains("SOIE")) return "SILK_WEAVE";
+        if (s.contains("STERCORAL") || s.contains("CEMENT") || s.contains("CIMENT") || s.contains("FECES")) return "STERCORAL_CEMENT";
+        if (s.contains("BRANCH") || s.contains("BRANCHE") || s.contains("ECORCE") || s.contains("ÉCORCE") || s.contains("BARK")) return "TREE_BRANCH";
+        if (s.contains("LEAF") || s.contains("FEUILLE")) return "TREE_LEAF";
+        if (s.contains("TRUNK") || s.contains("TRONC") || s.contains("BOIS_CREUX")) return "TREE_TRUNK";
+        if (s.contains("PLANK") || s.contains("PLANCHE")) return "WOOD_PLANK";
+        if (s.contains("PAPER") || s.contains("PAPIER") || s.contains("WOOD_PULP_PAPER")) return "WOOD_PULP_PAPER";
+        if (s.contains("EARTH") || s.contains("SOIL") || s.contains("CLAY") || s.contains("TERRE") || s.contains("ARGILE") || s.contains("SOL")) return "EARTH";
         return "EARTH";
     }
 
@@ -748,27 +757,28 @@ public final class NestRenderer {
         gc.setFont(Font.font("SansSerif", 11));
         gc.fillText("Color Key", x + 10, y + 16);
 
-        String[][] items = {
-            {"Entrance", "#32CD32"},
-            {"Queen Chamber", "#FFD700"},
-            {"Brood Nursery", "#00BFFF"},
-            {"Food Storage", "#FFA500"},
-            {"Fungus / Pollen", "#9370DB"},
-            {"Waste / Cemetery", "#CD5C5C"},
-            {"Tunnels & Galleries", "#708090"}
+        record LegendItem(String label, Color color) {}
+        LegendItem[] items = {
+            new LegendItem("Entrance", CHAMBER_COLOR_ENTRANCE),
+            new LegendItem("Queen Chamber", CHAMBER_COLOR_QUEEN),
+            new LegendItem("Brood Nursery", CHAMBER_COLOR_BROOD),
+            new LegendItem("Food Storage", CHAMBER_COLOR_STORAGE),
+            new LegendItem("Fungus / Pollen", CHAMBER_COLOR_FUNGUS),
+            new LegendItem("Waste / Cemetery", CHAMBER_COLOR_WASTE),
+            new LegendItem("Tunnels & Galleries", CHAMBER_COLOR_TUNNEL)
         };
 
         double ly = y + 32;
         gc.setFont(Font.font("SansSerif", 10));
-        for (String[] it : items) {
-            gc.setFill(Color.web(it[1]));
+        for (LegendItem it : items) {
+            gc.setFill(it.color());
             gc.fillOval(x + 10, ly - 7, 9, 9);
             gc.setStroke(isDark ? Color.WHITE : Color.rgb(100, 116, 139));
             gc.setLineWidth(0.5);
             gc.strokeOval(x + 10, ly - 7, 9, 9);
 
             gc.setFill(ThemeManager.getInstance().getViewportTextColor());
-            gc.fillText(it[0], x + 24, ly);
+            gc.fillText(it.label(), x + 24, ly);
             ly += 15;
         }
     }

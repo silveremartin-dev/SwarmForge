@@ -22,7 +22,7 @@ public class AcademicScenariosTest {
     public void testAcademicScenariosCreation() {
         List<Scenario> scenarios = AcademicScenarios.getAllAcademicScenarios(12345L);
         assertNotNull(scenarios);
-        assertEquals(9, scenarios.size());
+        assertEquals(14, scenarios.size());
 
         for (Scenario sc : scenarios) {
             assertNotNull(sc.getBiomeName(), "Scenario " + sc.getId() + " must have a non-null biome name!");
@@ -51,6 +51,26 @@ public class AcademicScenariosTest {
         assertEquals("ACAD_09_DULOSIS_RAID", s9.getId());
         assertEquals(2, s9.getColonies().size());
         assertEquals("TEMPERATE_FOREST", s9.getBiomeName());
+
+        Scenario s10 = scenarios.get(9);
+        assertEquals("ACAD_10_SAVANNA_COEVOLUTION", s10.getId());
+        assertEquals("SAVANNA", s10.getBiomeName());
+
+        Scenario s11 = scenarios.get(10);
+        assertEquals("ACAD_11_ALPINE_THERMOREGULATION", s11.getId());
+        assertEquals("ALPINE_TUNDRA", s11.getBiomeName());
+
+        Scenario s12 = scenarios.get(11);
+        assertEquals("ACAD_12_BOREAL_SOLAR_DOMES", s12.getId());
+        assertEquals("BOREAL_TAIGA", s12.getBiomeName());
+
+        Scenario s13 = scenarios.get(12);
+        assertEquals("ACAD_13_STEPPE_HARVESTING", s13.getId());
+        assertEquals("STEPPE", s13.getBiomeName());
+
+        Scenario s14 = scenarios.get(13);
+        assertEquals("ACAD_14_WETLAND_FLOOD_RAFTING", s14.getId());
+        assertEquals("WETLAND", s14.getBiomeName());
     }
 
     @Test

@@ -3,9 +3,12 @@ import { useSimulationStore } from '../store/simulationStore'
 import { usePresetStore } from '../store/presetStore'
 import { showToast } from '../store/toastStore'
 import PopulationGraph from './PopulationGraph'
-import { Globe, Bug, Home, ShieldAlert, Sun, Bookmark, Save, FolderOpen, Plus, Play, Pause, Dices, CheckCircle, RefreshCw } from 'lucide-react'
+import {
+    Globe, Bug, Home, ShieldAlert, Sun, Bookmark, Save, FolderOpen, Plus, Play, Pause, Dices,
+    CheckCircle, RefreshCw, CloudSun, RotateCcw, Database, Trash2, Camera, MapPin
+} from 'lucide-react'
 
-export default function ControlPanel() {
+export default function ControlPanel({ inline = false }) {
     const {
         tick,
         running,
@@ -17,9 +20,28 @@ export default function ControlPanel() {
         resetSimulation,
         simulationParams,
         setSimulationParam,
+        weatherMode,
+        setWeatherMode,
+        realWeatherData,
+        realWeatherLoading,
+        fetchRealWorldWeather,
+        checkpoints,
+        createCheckpoint,
+        restoreCheckpoint,
+        deleteCheckpoint,
+        triggerCameraReset,
+        stepSingleTick,
+        showChamberOverlay,
+        toggleChamberOverlay,
     } = useSimulationStore()
 
     const [paramCategoryTab, setParamCategoryTab] = useState('pheromones')
+    const [checkpointInputLabel, setCheckpointInputLabel] = useState('')
+    const [showCheckpointModal, setShowCheckpointModal] = useState(false)
+    const [isLongPressing, setIsLongPressing] = useState(false)
+    const pressTimerRef = React.useRef(null)
+    const stepIntervalRef = React.useRef(null)
+    const longPressTriggeredRef = React.useRef(false)
 
     const {
         worldPresets,
@@ -53,7 +75,6 @@ export default function ControlPanel() {
     const [newScenarioName, setNewScenarioName] = useState('')
     const [showSaveModal, setShowSaveModal] = useState(false)
 
-    // Helper: Preset selection prepares changes (marked as pending)
     const handlePresetChange = (changeFn, val) => {
         changeFn(val)
     }
@@ -64,7 +85,6 @@ export default function ControlPanel() {
         showToast("Scénario sélectionné", "info")
     }
 
-    // APPLY ACTION: Applies changes to active simulation and interrupts if running
     const handleApply = () => {
         if (running) {
             pause()
@@ -73,7 +93,7 @@ export default function ControlPanel() {
         if (resetSimulation) {
             resetSimulation(session)
         }
-        showToast("⚡ Presets & Graine Aléatoire (Seed) appliqués à la simulation avec succès !", "success")
+        showToast("⚡ Presets & Graine Aléatoire appliqués à la simulation avec succès !", "success")
     }
 
     const handleSaveScenario = () => {
@@ -102,12 +122,27 @@ export default function ControlPanel() {
         reader.onload = (evt) => {
             const success = importPresetsJSON(evt.target.result)
             if (success) {
-                showToast("Presets & Graine Aléatoire (Seed) JSON importés avec succès !", "success")
+                showToast("Presets & Graine Aléatoire JSON importés avec succès !", "success")
             } else {
                 showToast("Format de fichier JSON invalide.", "error")
             }
         }
         reader.readAsText(file)
+    }
+
+    const handleCreateCheckpoint = () => {
+        const label = checkpointInputLabel.trim() || `Checkpoint Tick #${tick}`
+        createCheckpoint(label)
+        setCheckpointInputLabel('')
+        setShowCheckpointModal(false)
+        showToast(`💾 Checkpoint "${label}" créé avec succès !`, "success")
+    }
+
+    const handleRestoreCheckpoint = (id, label) => {
+        const ok = restoreCheckpoint(id)
+        if (ok) {
+            showToast(`⏮️ Simulation restaurée au checkpoint "${label}"`, "info")
+        }
     }
 
     const styles = {
@@ -116,7 +151,7 @@ export default function ControlPanel() {
             top: inline ? 0 : 60,
             right: inline ? 'auto' : 20,
             left: inline ? 0 : 'auto',
-            width: inline ? '100%' : 340,
+            width: inline ? '100%' : 350,
             maxHeight: inline ? 'none' : 'calc(100vh - 80px)',
             overflowY: 'auto',
             background: 'rgba(15, 23, 42, 0.94)',
@@ -294,7 +329,7 @@ export default function ControlPanel() {
                 {running && <span style={{ fontSize: 10, background: '#16a34a', color: '#fff', padding: '2px 6px', borderRadius: 4 }}>EN COURS</span>}
             </div>
 
-            {/* SECTION 1: PRESET & MASTER SEED SELECTORS (ABOVE SIMULATION CONTROLS) */}
+            {/* SECTION 1: PRESET & MASTER SEED SELECTORS */}
             <div style={styles.selectGroup}>
                 <div style={styles.sectionHeader}>
                     <Bookmark size={14} className="text-sky-400" />
@@ -313,7 +348,7 @@ export default function ControlPanel() {
                     ))}
                 </select>
 
-                {/* MASTER SEED FOR DETERMINISTIC REPLAY INTEGRITY */}
+                {/* MASTER SEED */}
                 <div>
                     <label style={{ ...styles.label, marginBottom: 4 }}>
                         <Dices size={13} style={{ color: '#f59e0b' }} />
@@ -354,7 +389,7 @@ export default function ControlPanel() {
                 </div>
             </div>
 
-            {/* DOMAIN PRESETS SELECTORS */}
+            {/* DOMAIN PRESETS SELECTORS & REAL WEATHER TOGGLE */}
             <div style={styles.selectGroup}>
                 <div style={styles.sectionHeader}>
                     <span>Sélecteurs de Presets d'Onglets</span>
@@ -428,24 +463,92 @@ export default function ControlPanel() {
                     </select>
                 </div>
 
-                {/* 5. Weather & Climate Preset */}
-                <div>
-                    <label style={styles.label}>
-                        <Sun size={13} style={{ color: '#eab308' }} />
-                        <span>Météo & Climat :</span>
-                    </label>
-                    <select
-                        value={selectedWeatherId}
-                        onChange={(e) => handlePresetChange(setSelectedWeather, e.target.value)}
-                        style={styles.select}
-                    >
-                        {weatherPresets.map(w => (
-                            <option key={w.id} value={w.id}>{w.name}</option>
-                        ))}
-                    </select>
+                {/* 5. Weather: Real-World vs Simulated Toggle */}
+                <div style={{ background: 'rgba(0,0,0,0.25)', padding: 8, borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <label style={styles.label}>
+                            <Sun size={13} style={{ color: '#eab308' }} />
+                            <span>Météo :</span>
+                        </label>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            <button
+                                onClick={() => setWeatherMode('SIMULATED')}
+                                style={{
+                                    padding: '3px 7px',
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    borderRadius: 4,
+                                    border: weatherMode === 'SIMULATED' ? '1px solid #38bdf8' : '1px solid #334155',
+                                    background: weatherMode === 'SIMULATED' ? '#0284c7' : '#1e293b',
+                                    color: '#fff',
+                                    cursor: 'pointer'
+                                }}
+                                title="Utiliser les presets météo simulés"
+                            >
+                                🔵 Simulée
+                            </button>
+                            <button
+                                onClick={() => setWeatherMode('REAL_WORLD')}
+                                style={{
+                                    padding: '3px 7px',
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    borderRadius: 4,
+                                    border: weatherMode === 'REAL_WORLD' ? '1px solid #22c55e' : '1px solid #334155',
+                                    background: weatherMode === 'REAL_WORLD' ? '#16a34a' : '#1e293b',
+                                    color: '#fff',
+                                    cursor: 'pointer'
+                                }}
+                                title="Synchroniser la météo en direct avec Open-Meteo API"
+                            >
+                                🟢 Météo Réelle
+                            </button>
+                        </div>
+                    </div>
+
+                    {weatherMode === 'SIMULATED' ? (
+                        <select
+                            value={selectedWeatherId}
+                            onChange={(e) => handlePresetChange(setSelectedWeather, e.target.value)}
+                            style={styles.select}
+                        >
+                            {weatherPresets.map(w => (
+                                <option key={w.id} value={w.id}>{w.name}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <div style={{ background: 'rgba(22, 163, 74, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: 6, padding: 8, fontSize: 11 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontWeight: 700, color: '#4ade80', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <MapPin size={12} />
+                                    {realWeatherData?.cityName || 'Position en direct'}
+                                </span>
+                                <button
+                                    onClick={() => fetchRealWorldWeather()}
+                                    disabled={realWeatherLoading}
+                                    style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: 2 }}
+                                    title="Rafraîchir les données météo Open-Meteo"
+                                >
+                                    <RefreshCw size={12} className={realWeatherLoading ? "animate-spin" : ""} />
+                                </button>
+                            </div>
+                            {realWeatherData ? (
+                                <div style={{ marginTop: 4, color: '#cbd5e1', lineHeight: 1.4 }}>
+                                    <div><strong>{realWeatherData.temp}°C</strong> — {realWeatherData.condition} {realWeatherData.icon}</div>
+                                    <div style={{ fontSize: 10, color: '#94a3b8' }}>
+                                        Pluie: {realWeatherData.precipitation} mm | Vent: {realWeatherData.windSpeed} km/h | Humidité: {realWeatherData.humidity}%
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ color: '#94a3b8', fontStyle: 'italic', marginTop: 4 }}>
+                                    {realWeatherLoading ? 'Chargement Open-Meteo...' : 'Cliquez pour récupérer la météo locale'}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
-                {/* APPLY BUTTON (PROMINENT BUTTON TO APPLY PRESETS & MASTER SEED TO SIMULATION) */}
+                {/* APPLY BUTTON */}
                 <button
                     onClick={handleApply}
                     style={styles.applyBtn}
@@ -456,13 +559,220 @@ export default function ControlPanel() {
                 </button>
             </div>
 
-            {/* SECTION 2: CATEGORIZED SIMULATION PARAMETERS WITH EXPLICIT SCALES & UNITS */}
+            {/* SECTION 2: CHECKPOINTS & RESTORATION */}
             <div style={styles.selectGroup}>
-                <div style={styles.sectionHeader}>
-                    <span>🧪 Paramètres & Échelles de Simulation</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={styles.sectionHeader}>
+                        <Database size={13} className="text-amber-400" />
+                        <span>Checkpoints ({checkpoints.length})</span>
+                    </div>
+                    <button
+                        onClick={() => setShowCheckpointModal(true)}
+                        style={{ ...styles.iconBtn, flex: 'none', padding: '3px 8px', fontSize: 10, background: '#0284c7', color: '#fff', borderColor: '#0284c7' }}
+                        title="Créer un instantané manuel de la simulation"
+                    >
+                        <Plus size={11} />
+                        <span>Nouveau</span>
+                    </button>
                 </div>
 
-                {/* Parameter Sub-Category Tabs */}
+                {checkpoints.length === 0 ? (
+                    <div style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '6px 0' }}>
+                        Aucun checkpoint enregistré. Sauvegardes auto toutes les 25 000 ticks.
+                    </div>
+                ) : (
+                    <div style={{ maxHeight: 150, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {checkpoints.map(c => (
+                            <div
+                                key={c.id}
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '1px solid rgba(255,255,255,0.05)',
+                                    borderRadius: 6,
+                                    padding: '5px 8px',
+                                    fontSize: 10
+                                }}
+                            >
+                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 170 }}>
+                                    <div style={{ fontWeight: 700, color: '#f59e0b' }}>{c.label}</div>
+                                    <div style={{ color: '#64748b', fontSize: 9 }}>Tick #{c.tick} • Pop: {c.antsCount || c.stats?.totalPopulation || 0}</div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                    <button
+                                        onClick={() => handleRestoreCheckpoint(c.id, c.label)}
+                                        style={{ background: '#1e293b', border: '1px solid #334155', color: '#38bdf8', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', fontSize: 10, fontWeight: 700 }}
+                                        title="Restaurer la simulation à cet instant"
+                                    >
+                                        ⏮️
+                                    </button>
+                                    <button
+                                        onClick={() => deleteCheckpoint(c.id)}
+                                        style={{ background: 'transparent', border: 'none', color: '#ef4444', padding: '2px 4px', cursor: 'pointer' }}
+                                        title="Supprimer ce checkpoint"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* SECTION 3: SIMULATION EXECUTION CONTROLS */}
+            <div style={styles.selectGroup}>
+                <div style={styles.sectionHeader}>
+                    <span>Contrôles de Simulation & Vitesse 1:1</span>
+                </div>
+
+                {/* Main Play / Step Button with Long-Press Detection */}
+                <div style={{ position: 'relative' }}>
+                    <button
+                        style={{
+                            ...styles.button,
+                            ...styles.playBtn,
+                            outline: isLongPressing ? '2px solid #38bdf8' : 'none',
+                            transform: isLongPressing ? 'scale(0.98)' : 'scale(1.0)',
+                            boxShadow: isLongPressing ? '0 0 16px rgba(56, 189, 248, 0.6)' : undefined
+                        }}
+                        onMouseDown={() => {
+                            longPressTriggeredRef.current = false
+                            pressTimerRef.current = setTimeout(() => {
+                                longPressTriggeredRef.current = true
+                                setIsLongPressing(true)
+                                if (running) pause()
+                                stepSingleTick()
+                                showToast("⏭️ Pas-à-Pas (Step-by-Step) : Tick exécuté", "info")
+                                stepIntervalRef.current = setInterval(() => {
+                                    stepSingleTick()
+                                }, 150)
+                            }, 350)
+                        }}
+                        onMouseUp={() => {
+                            if (pressTimerRef.current) clearTimeout(pressTimerRef.current)
+                            if (stepIntervalRef.current) clearInterval(stepIntervalRef.current)
+                            setIsLongPressing(false)
+                            if (!longPressTriggeredRef.current) {
+                                if (running) {
+                                    pause()
+                                } else {
+                                    play()
+                                }
+                            }
+                        }}
+                        onMouseLeave={() => {
+                            if (pressTimerRef.current) clearTimeout(pressTimerRef.current)
+                            if (stepIntervalRef.current) clearInterval(stepIntervalRef.current)
+                            setIsLongPressing(false)
+                        }}
+                        title="Clic simple : Lancer / Pause • Clic long maintenu : Mode Pas-à-Pas (Step-by-Step)"
+                    >
+                        {isLongPressing ? (
+                            <>
+                                <RefreshCw size={16} className="animate-spin text-sky-300" />
+                                <span>PAS-À-PAS (STEPPING...)</span>
+                            </>
+                        ) : running ? (
+                            <>
+                                <Pause size={16} />
+                                <span>PAUSE / INTERROMPRE</span>
+                            </>
+                        ) : (
+                            <>
+                                <Play size={16} />
+                                <span>LANCER SIMULATION</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+
+                {/* Explanatory Overlay Banner on Button Behavior */}
+                <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 6, padding: '5px 8px', fontSize: 10, color: '#94a3b8', lineHeight: 1.35 }}>
+                    <span style={{ color: '#38bdf8', fontWeight: 700 }}>💡 Utilisation Bouton :</span><br/>
+                    • <strong>Clic simple :</strong> Lancer / Mettre en Pause la simulation<br/>
+                    • <strong>Clic long appuyé (maintenu) :</strong> Mode Pas-à-Pas (1 tick à la fois)
+                </div>
+
+                {/* Reset Button */}
+                <div style={{ marginTop: 2 }}>
+                    <button
+                        onClick={() => {
+                            if (resetSimulation) resetSimulation()
+                            showToast("Nouvelle simulation initialisée (Tick #0)", "info")
+                        }}
+                        style={{ ...styles.iconBtn, width: '100%', padding: '7px' }}
+                        title="Réinitialiser la simulation à Tick #0 et remettre la vue 3D à zéro"
+                    >
+                        <RotateCcw size={12} />
+                        <span>Réinitialiser la Simulation (Tick #0)</span>
+                    </button>
+                </div>
+
+                {/* Chamber View & Overlay Checkbox */}
+                <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label style={{ ...styles.label, cursor: 'pointer', margin: 0 }}>
+                        <Home size={13} style={{ color: '#a855f7' }} />
+                        <span>Overlay Chambres de Nid</span>
+                    </label>
+                    <input
+                        type="checkbox"
+                        checked={showChamberOverlay}
+                        onChange={toggleChamberOverlay}
+                        style={{ accentColor: '#38bdf8', cursor: 'pointer', width: 15, height: 15 }}
+                        title="Activer ou désactiver l'affichage 3D et les overlays d'informations des chambres souterraines"
+                    />
+                </div>
+
+                {/* Speed Controls: 1:1 Real-Time Seconds Calibrated */}
+                <div style={{ marginTop: 4 }}>
+                    <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Vitesse (1:1 Réel)</span>
+                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+                            {speed.toFixed(1)}x {speed === 1.0 ? '(1s réelle = 1s sim)' : `(1s réelle = ${speed.toFixed(1)}s sim)`}
+                        </span>
+                    </div>
+                    <input
+                        type="range"
+                        min="0.1"
+                        max="20"
+                        step="0.1"
+                        value={speed}
+                        onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                        style={styles.slider}
+                    />
+                    <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                        {[0.5, 1.0, 2.0, 5.0, 10.0].map(sVal => (
+                            <button
+                                key={sVal}
+                                onClick={() => setSpeed(sVal)}
+                                style={{
+                                    flex: 1,
+                                    padding: '3px 0',
+                                    fontSize: 9,
+                                    fontWeight: 700,
+                                    borderRadius: 4,
+                                    border: speed === sVal ? '1px solid #38bdf8' : '1px solid #334155',
+                                    background: speed === sVal ? '#0284c7' : '#1e293b',
+                                    color: '#fff',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {sVal}x
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* PARAMETERS TABS */}
+            <div style={styles.selectGroup}>
+                <div style={styles.sectionHeader}>
+                    <span>🧪 Paramètres & Échelles</span>
+                </div>
+
                 <div style={{ display: 'flex', gap: 2, background: 'rgba(0,0,0,0.3)', padding: 3, borderRadius: 6, marginBottom: 8 }}>
                     {[
                         { id: 'pheromones', label: '🧪 Phéromones' },
@@ -492,7 +802,6 @@ export default function ControlPanel() {
                     ))}
                 </div>
 
-                {/* Render Parameters for Selected Category */}
                 {paramCategoryTab !== 'glossary' && simulationParams && simulationParams[paramCategoryTab] && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {Object.entries(simulationParams[paramCategoryTab]).map(([key, param]) => (
@@ -521,106 +830,21 @@ export default function ControlPanel() {
                     </div>
                 )}
 
-                {/* CONSOLIDATED SCIENTIFIC GLOSSARY (INLINE, ALPHABETICALLY SORTED A-Z) */}
                 {paramCategoryTab === 'glossary' && (
-                    <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 4 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', borderBottom: '1px solid rgba(56, 189, 248, 0.2)', paddingBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span>📖 Glossaire Scientifique Unifié</span>
-                            <span style={{ fontSize: 9, color: '#a78bfa', background: 'rgba(167, 139, 250, 0.15)', padding: '2px 6px', borderRadius: 4 }}>Ordre Alphabétique (A - Z)</span>
-                        </div>
-
-                        {/* A-Z Sorted List of Scientific & Simulation Terms */}
+                    <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 4 }}>
                         {[
-                            {
-                                term: "🏛️ Bio-Architecture & Terrarium (m, mm)",
-                                color: "#38bdf8",
-                                definition: "Géométrie des galeries sous-terraines et découpe des 3 couches géologiques du terrarium (couche arable, substrat d'argile, roche mère, nappe phréatique à -3.1m)."
-                            },
-                            {
-                                term: "📐 Correspondance Métrique SI (s, m, mW)",
-                                color: "#38bdf8",
-                                definition: "1 Tick de simulation = 0.1s de temps réel. 1 Mètre linéaire = 1000 millimètres sous-millimétriques de résolution spatiale du terrain."
-                            },
-                            {
-                                term: "👥 Démographie & Castes (œufs/jour, jours)",
-                                color: "#fbbf24",
-                                definition: "Taux de ponte réel de la reine fondatrice (œufs/jour) et espérance de vie naturelle des castes d'ouvrières et de soldats (en jours)."
-                            },
-                            {
-                                term: "🧠 Moteur BDI (Beliefs-Desires-Intentions)",
-                                color: "#a855f7",
-                                definition: "Modèle d'agent cognitif autonome basé sur l'articulation dynamique des croyances sur l'environnement, des désirs de la colonie et des intentions de travail."
-                            },
-                            {
-                                term: "💼 Métabolisme & Puissance (mW)",
-                                color: "#f87171",
-                                definition: "Puissance métabolique de repos consommée par individu (en milliwatts) pondérée par le rendement de récolte énergétique (%)."
-                            },
-                            {
-                                term: "🧪 Phéromones & Diffusion (%/s, m)",
-                                color: "#c084fc",
-                                definition: "Décroissance temporelle (% par seconde) et rayon d'évaporation spatiale (mètres) des signaux d'attraction ou d'alarme de la colonie."
-                            },
-                            {
-                                term: "🐜 Polyéthisme & Spécialisation",
-                                color: "#fbbf24",
-                                definition: "Division du travail au sein de la supercolonie selon l'âge (polyéthisme d'âge) ou la morphologie/caste (polyéthisme morphologique)."
-                            },
-                            {
-                                term: "🍎 Ressources & Trophobiose (g/min, mg/h)",
-                                color: "#4ade80",
-                                definition: "Débit massique de création de nourriture (sucres, graines) et taux de sécrétion de miellat par les insectes trophobiontes (pucerons)."
-                            },
-                            {
-                                term: "🌀 Stigmergie & Auto-Organisation",
-                                color: "#38bdf8",
-                                definition: "Mécanisme d'auto-organisation où les traces laissées dans l'environnement (dépôts phéromonaux, tunnels) guident et stimulent les actions ultérieures."
-                            },
-                            {
-                                term: "📈 Vol de Lévy & Marche Brownienne",
-                                color: "#f59e0b",
-                                definition: "Modèles stochastiques de recherche de nourriture combinant petits pas exploratoires locaux et grands sauts d'exploration à longue distance."
-                            }
+                            { term: "🏛️ Bio-Architecture", color: "#38bdf8", definition: "Géométrie des galeries souterraines et strates du terrarium." },
+                            { term: "👥 Démographie", color: "#fbbf24", definition: "Espérance de vie naturelle (en jours) et taux de ponte de la reine." },
+                            { term: "🧪 Phéromones", color: "#c084fc", definition: "Pistes d'attraction et gradients de diffusion/évaporation des signaux chimiques." },
+                            { term: "🌀 Stigmergie", color: "#38bdf8", definition: "Coordination collective via les modifications persistantes de l'environnement." }
                         ].map((item, idx) => (
                             <div key={idx} style={{ background: 'rgba(255,255,255,0.03)', padding: 6, borderRadius: 6, fontSize: 10 }}>
                                 <span style={{ color: item.color, fontWeight: 700 }}>{item.term} :</span>
-                                <div style={{ color: '#94a3b8', marginTop: 2, lineHeight: 1.35 }}>
-                                    {item.definition}
-                                </div>
+                                <div style={{ color: '#94a3b8', marginTop: 2 }}>{item.definition}</div>
                             </div>
                         ))}
                     </div>
                 )}
-            </div>
-
-            {/* SECTION 2: SIMULATION EXECUTION CONTROLS (START / PAUSE / STOP) */}
-            <div style={styles.selectGroup}>
-                <div style={styles.sectionHeader}>
-                    <span>Contrôles de Simulation</span>
-                </div>
-                <button
-                    style={{ ...styles.button, ...styles.playBtn }}
-                    onClick={() => running ? pause() : play()}
-                >
-                    {running ? <Pause size={16} /> : <Play size={16} />}
-                    <span>{running ? 'PAUSE / INTERROMPRE' : 'LANCER SIMULATION'}</span>
-                </button>
-
-                <div style={{ marginTop: 4 }}>
-                    <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>Vitesse d'Exécution</span>
-                        <span style={{ color: '#38bdf8', fontWeight: 700 }}>{speed.toFixed(1)}x</span>
-                    </div>
-                    <input
-                        type="range"
-                        min="0.1"
-                        max="10"
-                        step="0.1"
-                        value={speed}
-                        onChange={(e) => setSpeed(parseFloat(e.target.value))}
-                        style={styles.slider}
-                    />
-                </div>
             </div>
 
             {/* Ticks & Real-Time Metrics */}
@@ -673,9 +897,6 @@ export default function ControlPanel() {
                         gap: 12
                     }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#38bdf8' }}>Nouveau Scénario (Méta-Preset)</div>
-                        <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                            Sauvegarde la combinaison actuelle (Monde, Espèce, Nid, Proies/Prédateurs, Climat) avec la Master Seed <span style={{ color: '#f59e0b', fontWeight: 700 }}>#{masterSeed}</span>.
-                        </div>
                         <input
                             type="text"
                             placeholder="Nom du Scénario (ex: Mon Terrarium N°1)"
@@ -686,6 +907,43 @@ export default function ControlPanel() {
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                             <button onClick={() => setShowSaveModal(false)} style={{ padding: '6px 12px', background: '#334155', border: 'none', color: '#fff', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Annuler</button>
                             <button onClick={handleSaveScenario} style={{ padding: '6px 12px', background: '#0284c7', border: 'none', color: '#fff', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Enregistrer</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal for saving new Checkpoint */}
+            {showCheckpointModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.7)',
+                    zIndex: 2000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    <div style={{
+                        background: '#0f172a',
+                        border: '1px solid #334155',
+                        borderRadius: 12,
+                        padding: 20,
+                        width: 320,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12
+                    }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b' }}>💾 Créer un Checkpoint (Tick #{tick})</div>
+                        <input
+                            type="text"
+                            placeholder={`Nom du Checkpoint (ex: Avant Attaque)`}
+                            value={checkpointInputLabel}
+                            onChange={(e) => setCheckpointInputLabel(e.target.value)}
+                            style={{ width: '100%', background: '#1e293b', border: '1px solid #475569', color: '#fff', padding: 8, borderRadius: 6, fontSize: 12 }}
+                        />
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                            <button onClick={() => setShowCheckpointModal(false)} style={{ padding: '6px 12px', background: '#334155', border: 'none', color: '#fff', borderRadius: 6, fontSize: 12, cursor: 'pointer' }}>Annuler</button>
+                            <button onClick={handleCreateCheckpoint} style={{ padding: '6px 12px', background: '#f59e0b', border: 'none', color: '#0f172a', borderRadius: 6, fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>Sauvegarder</button>
                         </div>
                     </div>
                 </div>

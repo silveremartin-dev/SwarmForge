@@ -60,6 +60,9 @@ public class CustomSpecies implements Species {
     // --- Worker Traits & Physical Characteristics ---
     private int workerLifespan = 5000;
     private float workerSpeed = 0.5f;
+    private float walkingSpeed = 0.45f;
+    private float runningSpeed = 0.85f;
+    private float flyingSpeed = 4.5f;
     private float viewDistance = 5.0f;
     private int typicalColonySize = 1000;
     private boolean formsMegaColonies = false;
@@ -528,6 +531,36 @@ public class CustomSpecies implements Species {
 
     public void setWorkerSpeed(float workerSpeed) {
         this.workerSpeed = workerSpeed;
+        if (this.walkingSpeed <= 0) this.walkingSpeed = workerSpeed;
+        if (this.runningSpeed <= 0) this.runningSpeed = workerSpeed * 1.65f;
+    }
+
+    @Override
+    public float getWalkingSpeed() {
+        return walkingSpeed > 0 ? walkingSpeed : workerSpeed;
+    }
+
+    public void setWalkingSpeed(float walkingSpeed) {
+        this.walkingSpeed = walkingSpeed;
+        this.workerSpeed = walkingSpeed;
+    }
+
+    @Override
+    public float getRunningSpeed() {
+        return runningSpeed > 0 ? runningSpeed : (getWalkingSpeed() * 1.65f);
+    }
+
+    public void setRunningSpeed(float runningSpeed) {
+        this.runningSpeed = runningSpeed;
+    }
+
+    @Override
+    public float getFlyingSpeed() {
+        return flyingSpeed > 0 ? flyingSpeed : (isWorkersCanFly() ? 4.5f : getWalkingSpeed() * 2.5f);
+    }
+
+    public void setFlyingSpeed(float flyingSpeed) {
+        this.flyingSpeed = flyingSpeed;
     }
 
     @Override

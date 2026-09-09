@@ -20,7 +20,7 @@ import org.swarmforge.core.event.SimulationEvent;
 /**
  * Unit tests for Simulation class.
  */
-class SimulationTest {
+public class SimulationTest {
 
     private Simulation simulation;
     private Terrarium terrarium;
@@ -124,12 +124,73 @@ class SimulationTest {
     }
 
     @Test
-    void testSpatialIndex() {
-        assertNotNull(simulation.getSpatialIndex());
-    }
-
-    @Test
     void testFoodIndex() {
         assertNotNull(simulation.getFoodIndex());
     }
+
+    @Test
+    void testRewindAndSnapshotRestorePreservesHistory() {
+        Colony colony = simulation.addColony("Lasius niger", 1, 10, 2, 25f, 25f);
+        assertNotNull(colony);
+
+        // Run 50 ticks
+        for (int i = 0; i < 50; i++) {
+            simulation.tick();
+        }
+        assertEquals(50, simulation.getTickCount());
+        assertTrue(simulation.getHistory().getCount() > 0);
+        int historyCountBeforeRewind = simulation.getHistory().getCount();
+
+        // Rewind 20 steps
+        boolean rewindOk = simulation.rewind(20);
+        assertTrue(rewindOk);
+        assertEquals(30, simulation.getTickCount());
+
+        // History buffer must NOT be wiped after rewind!
+        assertTrue(simulation.getHistory().getCount() >= historyCountBeforeRewind);
+
+        // Rewind again 10 steps
+        boolean secondRewindOk = simulation.rewind(10);
+        assertTrue(secondRewindOk);
+        assertEquals(20, simulation.getTickCount());
+
+        // Seek forward back to tick 40
+        boolean seekOk = simulation.seekToTick(40);
+        assertTrue(seekOk);
+        assertEquals(40, simulation.getTickCount());
+    }
+
+    @Test
+    void testColonyStatisticsTruncateAfter() {
+        org.swarmforge.core.domain.ColonyStatistics stats = new org.swarmforge.core.domain.ColonyStatistics();
+        stats.record(10, 100, 50f, 50f, 0, 0);
+        stats.record(20, 120, 60f, 55f, 1, 2);
+        stats.record(30, 140, 70f, 60f, 2, 4);
+        stats.record(40, 160, 80f, 65f, 3, 6);
+
+        assertEquals(4, stats.getHistory().size());
+
+        // Truncate after tick 25
+        stats.truncateAfter(25);
+        assertEquals(2, stats.getHistory().size());
+        assertEquals(20, stats.getHistory().get(1).tick());
+    }
+
+    @Test
+    void testEventBusTruncateAfter() {
+        org.swarmforge.core.event.EventBus bus = org.swarmforge.core.event.EventBus.getInstance();
+        bus.clearHistory();
+
+        bus.publish(new SimulationEvent(SimulationEvent.EventType.INFO, 10, "Event 1"));
+        bus.publish(new SimulationEvent(SimulationEvent.EventType.INFO, 20, "Event 2"));
+        bus.publish(new SimulationEvent(SimulationEvent.EventType.INFO, 30, "Event 3"));
+
+        assertEquals(3, bus.getHistory(0, 100).size());
+
+        bus.truncateAfter(20);
+        var remaining = bus.getHistory(0, 100);
+        assertEquals(2, remaining.size());
+        assertEquals(20, remaining.get(1).getTick());
+    }
 }
+

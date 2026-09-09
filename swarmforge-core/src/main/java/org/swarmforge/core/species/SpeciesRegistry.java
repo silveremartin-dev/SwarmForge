@@ -31,6 +31,7 @@ public class SpeciesRegistry {
 
     private final Map<String, CustomSpecies> speciesMap = new ConcurrentHashMap<>();
     private final ObjectMapper mapper = new ObjectMapper();
+    private final java.util.concurrent.atomic.AtomicBoolean defaultsLoaded = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     private SpeciesRegistry() {
         loadDefaultPresets();
@@ -42,8 +43,14 @@ public class SpeciesRegistry {
 
     public void registerSpecies(String id, CustomSpecies species) {
         if (id != null && species != null) {
-            speciesMap.put(id.toLowerCase(), species);
-            log.info("Registered species JSON preset [{}] -> {}", id, species.getCommonName());
+            String key = id.toLowerCase();
+            boolean isNew = !speciesMap.containsKey(key);
+            speciesMap.put(key, species);
+            if (isNew) {
+                log.info("Registered species preset [{}] -> {}", id, species.getCommonName());
+            } else {
+                log.debug("Updated existing species preset [{}] -> {}", id, species.getCommonName());
+            }
         }
     }
 
@@ -114,6 +121,9 @@ public class SpeciesRegistry {
     }
 
     private void loadDefaultPresets() {
+        if (!defaultsLoaded.compareAndSet(false, true)) {
+            return;
+        }
         // Builtin eusocial species registry
         register(new AttaCephalotes());
         register(new ApisMellifera());

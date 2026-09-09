@@ -51,9 +51,10 @@ public class PheromoneVisualizer {
         this.imageBuffer = BufferUtils.createByteBuffer(width * depth * 4);
         Image img = new Image(Image.Format.RGBA8, width, depth, imageBuffer, ColorSpace.Linear);
         this.texture = new Texture2D(img);
+        this.texture.setMinFilter(com.jme3.texture.Texture.MinFilter.BilinearNearestMipMap);
+        this.texture.setMagFilter(com.jme3.texture.Texture.MagFilter.Bilinear);
 
-        // Create overlay geometry
-        // We use a Quad rotated to lie flat on XZ plane
+        // Create overlay geometry flat on XZ ground plane
         Quad quad = new Quad(width, depth);
         this.overlayGeom = new Geometry("PheromoneOverlay", quad);
 
@@ -63,26 +64,8 @@ public class PheromoneVisualizer {
         mat.getAdditionalRenderState().setDepthWrite(false); // Don't write depth, transparent
 
         this.overlayGeom.setMaterial(mat);
-        this.overlayGeom.rotate(-1.5708f, 0, 0); // Rotate -90 deg around X to face up
-        this.overlayGeom.setLocalTranslation(0, 0.1f, depth); // Offset slightly above terrain (y=0.1), fix orientation
-        // JME Quad is (width, height) in XY plane. Rotated -90deg X -> XZ plane.
-        // (0,0,0) -> (W, 0, -D) ?
-        // Standard JME Quad: (0,0) to (W, H).
-        // Rotate -90 X: Y becomes Z (towards camera? away?).
-        // Need to check coordinates. Assuming standard orientation for now.
-        // Actually, let's reset rotation and use custom mesh if needed, but Quad is
-        // easiest.
-
-        // Correct rotation for XZ plane:
-        // Quad is XY. Rotate -90 on X means +Y becomes +Z (towards viewer usually) or
-        // -Z.
-        // Let's assume standard mapping: X->X, Y->Z.
-        // Position: X=0, Y=0.2 (above ground), Z=depth (since quad goes from 0 to H,
-        // and we want 0 to D)
-        // Actually, usually Quad is 0,0 bottom left.
-        // Let's set translation to (0, 0.2f, 0) and verify orientation later.
-        // Correct rotation for XZ plane: +90 deg around X maps (x, y) to (x, 0, z)
-        this.overlayGeom.rotate(1.5708f, 0, 0); // Rotate +90 deg around X
+        // Rotate -90 deg on X so (X, Y) quad becomes (X, Z) ground plane with normal pointing UP (0, 1, 0)
+        this.overlayGeom.rotate(-1.5707963f, 0, 0);
         this.overlayGeom.setLocalTranslation(0, 0.15f, 0); // Offset slightly above terrain (y=0.15)
 
         rootNode.attachChild(overlayGeom);

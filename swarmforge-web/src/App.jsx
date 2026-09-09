@@ -1,6 +1,6 @@
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Stats, Grid } from '@react-three/drei'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { VRButton, XR, Controllers, Hands } from '@react-three/xr'
 import Terrarium from './components/Terrarium'
 import ControlPanel from './components/ControlPanel'
@@ -25,11 +25,38 @@ const ErrorBoundary = ({ children }) => {
     return <>{children}</>
 }
 
+function ResponsiveOrbitControls() {
+    const { cameraResetTrigger } = useSimulationStore()
+    const { camera } = useThree()
+    const controlsRef = useRef()
+
+    useEffect(() => {
+        if (cameraResetTrigger > 0) {
+            camera.position.set(50, 65, 125)
+            camera.lookAt(50, 0, 50)
+            if (controlsRef.current) {
+                controlsRef.current.target.set(50, 0, 50)
+                controlsRef.current.update()
+            }
+        }
+    }, [cameraResetTrigger, camera])
+
+    return (
+        <OrbitControls
+            ref={controlsRef}
+            enableDamping
+            dampingFactor={0.05}
+            target={[50, 0, 50]}
+            maxPolarAngle={Math.PI / 2 - 0.02}
+            minDistance={5}
+            maxDistance={250}
+        />
+    )
+}
+
 export default function App() {
-    const { connected, connect, disconnect, running, tick } = useSimulationStore()
-    const { environment } = useSimulationStore()
-    const [showUnderground, setShowUnderground] = useState(true)
-    const [activeMode, setActiveMode] = useState('SIMULATION') // Default to 'SIMULATION' mode for quick access to Simulation Manager
+    const { connected, connect, disconnect, running, tick, simTimeFormatted, speed, environment, showChamberOverlay } = useSimulationStore()
+    const [activeMode, setActiveMode] = useState('SIMULATION')
 
     useEffect(() => {
         connect()
@@ -56,25 +83,33 @@ export default function App() {
             <ToastContainer />
 
             <ErrorBoundary>
-                {/* Status Indicator */}
-                <div style={{ position: 'absolute', top: 60, left: activeMode === 'SIMULATION' || activeMode === 'WORLD_EDITOR' ? 450 : 20, zIndex: 100, color: '#fff', background: 'rgba(15, 23, 42, 0.85)', padding: '8px 14px', borderRadius: 8, backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.1)', fontSize: 11, transition: 'all 0.2s ease' }}>
+                {/* Status Indicator with Synchronized Real-Time Simulation Clock */}
+                <div style={{ position: 'absolute', top: 60, left: activeMode === 'SIMULATION' || activeMode === 'WORLD_EDITOR' ? 420 : 20, zIndex: 100, color: '#fff', background: 'rgba(15, 23, 42, 0.88)', padding: '8px 14px', borderRadius: 8, backdropFilter: 'blur(8px)', border: '1px solid rgba(56, 189, 248, 0.3)', fontSize: 11, transition: 'all 0.2s ease', boxShadow: '0 4px 14px rgba(0,0,0,0.5)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span>Statut:</span>
                         <span style={{ color: connected ? '#4ade80' : '#38bdf8', fontWeight: 'bold' }}>
-                            {connected ? '● Connecté (Serveur)' : '● Mode Local'}
+                            {connected ? '● Connecté (Serveur)' : '● Mode 1:1 Autonome'}
+                        </span>
+                        <span style={{ color: '#64748b' }}>•</span>
+                        <span style={{ color: '#38bdf8', fontWeight: 800 }}>
+                            ⏱️ {simTimeFormatted || 'J+0 00:00:00'}
+                        </span>
+                        <span style={{ color: '#94a3b8', fontSize: 10 }}>
+                            ({speed.toFixed(1)}x)
                         </span>
                     </div>
-                    <div style={{ opacity: 0.85, marginTop: 3 }}>
-                        Temps: {environment.timeOfDay} | Lum: {environment.lightLevel.toFixed(2)} | {environment.season} ({environment.temperature?.toFixed(1)}°C)
+                    <div style={{ opacity: 0.9, marginTop: 3, color: '#cbd5e1' }}>
+                        Ciel: {environment.timeOfDay} | Lum: {environment.lightLevel.toFixed(2)} | Temp: {environment.temperature?.toFixed(1)}°C ({environment.weatherState || 'Dégagé'})
                     </div>
                 </div>
 
                 {!running && tick === 0 && (
                     <div style={{ position: 'absolute', top: '40%', left: '55%', transform: 'translate(-50%, -50%)', zIndex: 80, background: 'rgba(15, 23, 42, 0.92)', border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: 12, padding: '24px 32px', textAlign: 'center', color: '#fff', boxShadow: '0 20px 40px rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)', maxWidth: 480 }}>
-                        <h3 style={{ fontSize: 16, fontWeight: 800, color: '#38bdf8', marginBottom: 8, marginTop: 0 }}>🎬 Vue 3D en Attente de Simulation</h3>
+                        <h3 style={{ fontSize: 16, fontWeight: 800, color: '#38bdf8', marginBottom: 8, marginTop: 0 }}>🎬 Vue 3D Prête (Horloge 1:1)</h3>
                         <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, margin: 0 }}>
-                            La vue 3D s'active automatiquement dès le démarrage de la simulation.<br/>
-                            Veuillez configurer / peupler un monde puis cliquer sur <strong style={{ color: '#10b981' }}>"▶ LANCER SIMULATION"</strong> dans le Panneau de Contrôle à gauche.
+                            La simulation et le monde sont initialisés.<br/>
+                            Cliquez sur <strong style={{ color: '#10b981' }}>"▶ LANCER SIMULATION"</strong> dans le Panneau de Contrôle pour démarrer,<br/>
+                            ou <strong>maintenez le clic</strong> pour le mode <em>Pas-à-Pas (Step-by-Step)</em>.
                         </p>
                     </div>
                 )}
@@ -106,7 +141,7 @@ export default function App() {
                         <Terrarium />
                         <PheromoneCloud />
                         <WeatherRenderer />
-                        {showUnderground && <UndergroundView />}
+                        {showChamberOverlay && <UndergroundView />}
 
                         <Grid
                             args={[100, 100]}
@@ -119,19 +154,12 @@ export default function App() {
                             sectionColor="#2a2a4e"
                         />
 
-                        <OrbitControls
-                            enableDamping
-                            dampingFactor={0.05}
-                            target={[50, 0, 50]}
-                            maxPolarAngle={Math.PI / 2 - 0.02}
-                            minDistance={5}
-                            maxDistance={250}
-                        />
+                        <ResponsiveOrbitControls />
                         <Stats />
                     </XR>
                 </Canvas>
 
-                {/* 3D Visual View Media Capture Toolbar (Photo HD & Video Recorder with MP4 export) */}
+                {/* 3D Visual View Media Capture Toolbar */}
                 <ViewportToolbar />
             </ErrorBoundary>
 

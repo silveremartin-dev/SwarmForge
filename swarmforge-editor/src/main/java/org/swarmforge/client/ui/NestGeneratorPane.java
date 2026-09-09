@@ -28,6 +28,7 @@ import org.swarmforge.client.util.ThemeManager;
 
 public class NestGeneratorPane extends BorderPane {
     private final I18nManager i18n = I18nManager.getInstance();
+    private final org.swarmforge.client.ui.SpeciesPresetManager speciesPresetMgr = new org.swarmforge.client.ui.SpeciesPresetManager();
 
     // Canvases
     private ResizableCanvas canvas3D, canvasSide, canvasTop;
@@ -102,20 +103,20 @@ public class NestGeneratorPane extends BorderPane {
 
         Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
             Alert.AlertType.CONFIRMATION,
-            "You have unsaved changes in the Nest Generator.\n"
-            + (hasCurrentPreset ? "Current preset: \"" + currentName + "\"" : "No preset selected.")
+            i18n.get("dialog.unsaved.nest_editor") + "\n"
+            + (hasCurrentPreset ? i18n.get("preset.current") + ": \"" + currentName + "\"" : "")
         );
-        alert.setTitle("Unsaved Changes");
-        alert.setHeaderText("Quit or change nest preset?");
+        alert.setTitle(i18n.get("common.dialog.unsaved_title"));
+        alert.setHeaderText(i18n.get("dialog.exit.nest_editor"));
         alert.getDialogPane().setPrefWidth(480);
         alert.getDialogPane().setMaxWidth(500);
 
         ButtonType btnUpdate  = hasCurrentPreset
-            ? new ButtonType("💾 Update \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
+            ? new ButtonType("💾 " + i18n.get("preset.update") + " \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
             : null;
-        ButtonType btnSaveAs  = new ButtonType("📝 Save As...", ButtonBar.ButtonData.OTHER);
-        ButtonType btnDiscard = new ButtonType("🗑 Discard", ButtonBar.ButtonData.OTHER);
-        ButtonType btnCancel  = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType btnSaveAs  = new ButtonType("📝 " + i18n.get("preset.save_as"), ButtonBar.ButtonData.OTHER);
+        ButtonType btnDiscard = new ButtonType("🗑 " + i18n.get("preset.discard"), ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel  = new ButtonType(i18n.get("common.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
 
         if (btnUpdate != null) {
             alert.getButtonTypes().setAll(btnUpdate, btnSaveAs, btnDiscard, btnCancel);
@@ -262,7 +263,7 @@ public class NestGeneratorPane extends BorderPane {
         I18nManager i18n = I18nManager.getInstance();
         Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, String.format(i18n.get("preset.delete.confirm"), sel));
         confirmAlert.setTitle(i18n.get("preset.delete.title"));
-        confirmAlert.setHeaderText("Delete Nest Preset");
+        confirmAlert.setHeaderText(i18n.get("preset.delete.header.nest"));
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -379,6 +380,24 @@ public class NestGeneratorPane extends BorderPane {
         }
     }
 
+    private String getCategoryType(String category) {
+        if (category == null) return null;
+        I18nManager i18n = I18nManager.getInstance();
+        if (category.equals(i18n.get("nest.category.ants")) || category.contains("Formicidae") || category.toLowerCase().contains("ant") || category.toLowerCase().contains("fourmi") || category.toLowerCase().contains("ameise") || category.toLowerCase().contains("hormiga") || category.contains("蚁")) {
+            return "ANT";
+        }
+        if (category.equals(i18n.get("nest.category.bees")) || category.contains("Apidae") || category.toLowerCase().contains("bee") || category.toLowerCase().contains("abeille") || category.toLowerCase().contains("biene") || category.toLowerCase().contains("abeja") || category.contains("蜂")) {
+            return "BEE";
+        }
+        if (category.equals(i18n.get("nest.category.wasps")) || category.contains("Vespidae") || category.toLowerCase().contains("wasp") || category.toLowerCase().contains("guêpe") || category.toLowerCase().contains("wespe") || category.toLowerCase().contains("avispa") || category.contains("黄蜂")) {
+            return "WASP";
+        }
+        if (category.equals(i18n.get("nest.category.termites")) || category.contains("Termit") || category.contains("Isoptera") || category.toLowerCase().contains("termite") || category.toLowerCase().contains("termiten") || category.toLowerCase().contains("termita") || category.contains("白蚁")) {
+            return "TERMITE";
+        }
+        return null;
+    }
+
     private void populateGenusCombo() {
         if (genusSelect == null) return;
         String cat = categorySelect != null ? categorySelect.getValue() : null;
@@ -386,25 +405,24 @@ public class NestGeneratorPane extends BorderPane {
         genusSelect.getItems().clear();
         genusSelect.getItems().add("🔬 All Genera");
 
-        if (cat != null) {
-            if (cat.contains("Ants")) {
-                genusSelect.getItems().addAll(
-                    "Atta (Leafcutter Ants)",
-                    "Camponotus (Carpenter Ants)",
-                    "Lasius (Black Garden Ants)",
-                    "Pogonomyrmex (Harvester Ants)",
-                    "Solenopsis (Fire Ants)",
-                    "Crematogaster (Carton Ants)",
-                    "Temnothorax (Twig Ants)",
-                    "Eciton (Army Ants)"
-                );
-            } else if (cat.contains("Honeybees") || cat.contains("Bumblebees")) {
-                genusSelect.getItems().addAll("Apis (Honeybees)", "Bombus (Bumblebees)");
-            } else if (cat.contains("Wasps")) {
-                genusSelect.getItems().addAll("Vespula (Common Wasps)", "Vespa (Hornets)");
-            } else if (cat.contains("Termites")) {
-                genusSelect.getItems().addAll("Macrotermes (Cathedral Termites)", "Reticulitermes (Subterranean Termites)");
-            }
+        String type = getCategoryType(cat);
+        if ("ANT".equals(type)) {
+            genusSelect.getItems().addAll(
+                "Atta (Leafcutter Ants)",
+                "Camponotus (Carpenter Ants)",
+                "Lasius (Black Garden Ants)",
+                "Pogonomyrmex (Harvester Ants)",
+                "Solenopsis (Fire Ants)",
+                "Crematogaster (Carton Ants)",
+                "Temnothorax (Twig Ants)",
+                "Eciton (Army Ants)"
+            );
+        } else if ("BEE".equals(type)) {
+            genusSelect.getItems().addAll("Apis (Honeybees)", "Bombus (Bumblebees)");
+        } else if ("WASP".equals(type)) {
+            genusSelect.getItems().addAll("Vespula (Common Wasps)", "Vespa (Hornets)");
+        } else if ("TERMITE".equals(type)) {
+            genusSelect.getItems().addAll("Macrotermes (Cathedral Termites)", "Reticulitermes (Subterranean Termites)");
         }
         if (curVal != null && genusSelect.getItems().contains(curVal)) {
             genusSelect.setValue(curVal);
@@ -419,13 +437,7 @@ public class NestGeneratorPane extends BorderPane {
 
     private void filterSpeciesModelComboByCategory(String category) {
         if (speciesModelCombo == null) return;
-        String targetType = null;
-        if (category != null) {
-            if (category.contains("Ants")) targetType = "ANT";
-            else if (category.contains("Honeybees") || category.contains("Bumblebees")) targetType = "BEE";
-            else if (category.contains("Wasps")) targetType = "WASP";
-            else if (category.contains("Termites")) targetType = "TERMITE";
-        }
+        String targetType = getCategoryType(category);
 
         String targetGenus = null;
         if (genusSelect != null && genusSelect.getValue() != null && !genusSelect.getValue().contains("All Genera")) {
@@ -437,7 +449,7 @@ public class NestGeneratorPane extends BorderPane {
         isUpdatingSpeciesCombo = true;
         try {
             speciesModelCombo.getItems().clear();
-            org.swarmforge.client.ui.SpeciesPresetManager mgr = new org.swarmforge.client.ui.SpeciesPresetManager();
+            org.swarmforge.client.ui.SpeciesPresetManager mgr = speciesPresetMgr;
             for (String pName : mgr.getPresetNames()) {
                 org.swarmforge.core.species.CustomSpecies sp = mgr.getPreset(pName);
                 String icon = "🐜";
@@ -959,50 +971,76 @@ public class NestGeneratorPane extends BorderPane {
     private void onCategoryChanged() {
         String cat = categorySelect.getValue();
         if (cat == null) return;
-        if (cat.contains("Honeybees")) {
-            setArchSelectValue("Hexagonal Wax Comb");
-            setMatSelectValue("Beeswax (Apidae)");
-        } else if (cat.contains("Bumblebees")) {
-            setArchSelectValue("Wax Pots Cluster");
-            setMatSelectValue("Propolis & Tree Resin");
-        } else if (cat.contains("Wasps")) {
-            setArchSelectValue("Hanging Paper Nest");
-            setMatSelectValue("Wood Pulp Paper (Vespidae)");
-        } else if (cat.contains("Termites")) {
-            setArchSelectValue("Cathedral Mound");
-            setMatSelectValue("Stercoral Cement (Termite Feces/Mud)");
-        } else if (cat.contains("Ants")) {
-            if (archSelect.getValue() != null && !archSelect.getValue().contains("Silk") && !archSelect.getValue().contains("Dome")) {
-                setArchSelectValue("Subterranean Burrow");
+        String s = cat.toUpperCase();
+        if (s.contains("HONEY") || s.contains("ABEILLE") || s.contains("APIS")) {
+            setArchSelectValue("WAX_COMB_HEXAGONAL");
+            setMatSelectValue("BEESWAX");
+        } else if (s.contains("BUMBLE") || s.contains("BOURDON") || s.contains("BOMBUS")) {
+            setArchSelectValue("WAX_POTS_CLUSTER");
+            setMatSelectValue("PROPOLIS");
+        } else if (s.contains("WASP") || s.contains("GUÊPE") || s.contains("GUEPE") || s.contains("VESPIDAE")) {
+            setArchSelectValue("PAPER_PEDUNCULATE");
+            setMatSelectValue("WOOD_PULP_PAPER");
+        } else if (s.contains("TERMITE") || s.contains("ISOPTERA")) {
+            setArchSelectValue("CATHEDRAL_MOUND");
+            setMatSelectValue("STERCORAL_CEMENT");
+        } else {
+            String curArchNorm = NestRenderer.normalizeArchKey(archSelect.getValue());
+            if (!curArchNorm.equals("ARBOREAL_SILK_LEAF") && !curArchNorm.equals("SURFACE_MOUND")) {
+                setArchSelectValue("BURROW_UNDERGROUND");
             }
-            setMatSelectValue("Earth & Clay Soil");
+            setMatSelectValue("EARTH");
         }
         regen(); repaint();
     }
 
+    private void setCategorySelectValue(String val) {
+        if (categorySelect == null || val == null) return;
+        String s = val.toUpperCase();
+        I18nManager i18n = I18nManager.getInstance();
+        String target;
+        if (s.contains("TERMITE") || s.contains("ISOPTERA")) target = i18n.get("nest.category.termites");
+        else if (s.contains("BEE") || s.contains("ABEILLE") || s.contains("BOURDON") || s.contains("APIS") || s.contains("BOMBUS")) target = i18n.get("nest.category.bees");
+        else if (s.contains("WASP") || s.contains("GUÊPE") || s.contains("GUEPE") || s.contains("VESPIDAE")) target = i18n.get("nest.category.wasps");
+        else target = i18n.get("nest.category.ants");
+
+        if (categorySelect.getItems().contains(target)) {
+            categorySelect.setValue(target);
+        } else {
+            for (String item : categorySelect.getItems()) {
+                if (item.equalsIgnoreCase(val)) {
+                    categorySelect.setValue(item);
+                    return;
+                }
+            }
+        }
+    }
+
     private void setArchSelectValue(String val) {
         if (archSelect == null || val == null) return;
-        String mapped = switch (val.toUpperCase()) {
-            case "WAX_COMB_HEXAGONAL", "HEXAGONAL WAX COMB" -> "Hexagonal Wax Comb";
-            case "WAX_POTS_CLUSTER", "WAX POTS CLUSTER" -> "Wax Pots Cluster";
-            case "PAPER_PEDUNCULATE", "HANGING PAPER NEST" -> "Hanging Paper Nest";
-            case "CATHEDRAL_MOUND", "CATHEDRAL MOUND" -> "Cathedral Mound";
-            case "SUBTERRANEAN_FUNGI_VAULT", "SUBTERRANEAN FUNGI VAULT" -> "Subterranean Fungi Vault";
-            case "CARTON_NEST", "ARBOREAL CARTON NEST", "ARBOREAL_CARTON_NEST" -> "Arboreal Carton Nest";
-            case "BAMBOO_STEM_NEST", "BAMBOO STEM & GALL", "BAMBOO_STEM_GALL" -> "Bamboo Stem & Gall";
-            case "BIVOUAC_LIVING_NEST", "BIVOUAC LIVING NEST" -> "Bivouac Living Nest";
-            case "ARBOREAL_SILK_LEAF", "ARBOREAL SILK LEAF" -> "Arboreal Silk Leaf";
-            case "MOUND", "SURFACE_MOUND", "SURFACE DOME MOUND" -> "Surface Dome Mound";
-            case "BURROW_UNDERGROUND", "SUBTERRANEAN BURROW", "SUBTERRANEAN_BURROW", "SIMPLE" -> "Subterranean Burrow";
-            case "HOLLOW TRUNK CAVITY", "HOLLOW_TRUNK_CAVITY", "HOLLOW_TRUNK_NEST", "TREE" -> "Hollow Trunk Cavity";
-            case "WOODEN BEEHIVE", "WOODEN_BEEHIVE" -> "Wooden Beehive";
-            default -> val;
+        String normKey = NestRenderer.normalizeArchKey(val);
+        I18nManager i18n = I18nManager.getInstance();
+        String i18nKey = switch (normKey) {
+            case "WAX_COMB_HEXAGONAL" -> "nest.arch.wax_comb";
+            case "WAX_POTS_CLUSTER" -> "nest.arch.wax_pots";
+            case "PAPER_PEDUNCULATE" -> "nest.arch.hanging_paper";
+            case "CATHEDRAL_MOUND" -> "nest.arch.cathedral";
+            case "SUBTERRANEAN_FUNGI_VAULT" -> "nest.arch.fungi_vault";
+            case "CARTON_NEST" -> "nest.arch.arboreal_carton";
+            case "BAMBOO_STEM_NEST" -> "nest.arch.bamboo";
+            case "BIVOUAC_LIVING_NEST" -> "nest.arch.bivouac";
+            case "ARBOREAL_SILK_LEAF" -> "nest.arch.arboreal_silk";
+            case "SURFACE_MOUND" -> "nest.arch.surface_dome";
+            case "HOLLOW_TRUNK_NEST" -> "nest.arch.hollow_trunk";
+            case "WOODEN_BEEHIVE" -> "nest.arch.wooden_beehive";
+            default -> "nest.arch.subterranean";
         };
-        if (archSelect.getItems().contains(mapped)) {
-            archSelect.setValue(mapped);
+        String target = i18n.get(i18nKey);
+        if (archSelect.getItems().contains(target)) {
+            archSelect.setValue(target);
         } else {
             for (String item : archSelect.getItems()) {
-                if (item.equalsIgnoreCase(val)) {
+                if (NestRenderer.normalizeArchKey(item).equals(normKey) || item.equalsIgnoreCase(val)) {
                     archSelect.setValue(item);
                     return;
                 }
@@ -1012,26 +1050,28 @@ public class NestGeneratorPane extends BorderPane {
 
     private void setMatSelectValue(String val) {
         if (matSelect == null || val == null) return;
-        String mapped = switch (val.toUpperCase()) {
-            case "BEESWAX" -> "Beeswax (Apidae)";
-            case "CARTON_PULP" -> "Carton & Wood Pulp";
-            case "EARTH" -> "Earth & Clay Soil";
-            case "LIVING_INSECT_BODIES" -> "Living Insect Bodies (Bivouac)";
-            case "PROPOLIS" -> "Propolis & Tree Resin";
-            case "SILK_WEAVE" -> "Silk Weave (Oecophylla Larvae)";
-            case "STERCORAL_CEMENT" -> "Stercoral Cement (Termite Feces/Mud)";
-            case "TREE_BRANCH" -> "Tree Branch & Bark";
-            case "TREE_LEAF" -> "Tree Leaf Tissue";
-            case "TREE_TRUNK" -> "Tree Trunk & Hollow Wood";
-            case "WOOD_PLANK" -> "Wood Plank Construction";
-            case "WOOD_PULP_PAPER" -> "Wood Pulp Paper (Vespidae)";
-            default -> val;
+        String normKey = NestRenderer.normalizeMatKey(val);
+        I18nManager i18n = I18nManager.getInstance();
+        String i18nKey = switch (normKey) {
+            case "BEESWAX" -> "nest.mat.beeswax";
+            case "CARTON_PULP" -> "nest.mat.carton";
+            case "LIVING_INSECT_BODIES" -> "nest.mat.bivouac";
+            case "PROPOLIS" -> "nest.mat.propolis";
+            case "SILK_WEAVE" -> "nest.mat.silk";
+            case "STERCORAL_CEMENT" -> "nest.mat.stercoral";
+            case "TREE_BRANCH" -> "nest.mat.bark";
+            case "TREE_LEAF" -> "nest.mat.leaf";
+            case "TREE_TRUNK" -> "nest.mat.hollow_wood";
+            case "WOOD_PLANK" -> "nest.mat.planks";
+            case "WOOD_PULP_PAPER" -> "nest.mat.paper";
+            default -> "nest.mat.earth";
         };
-        if (matSelect.getItems().contains(mapped)) {
-            matSelect.setValue(mapped);
+        String target = i18n.get(i18nKey);
+        if (matSelect.getItems().contains(target)) {
+            matSelect.setValue(target);
         } else {
             for (String item : matSelect.getItems()) {
-                if (item.equalsIgnoreCase(val)) {
+                if (NestRenderer.normalizeMatKey(item).equals(normKey) || item.equalsIgnoreCase(val)) {
                     matSelect.setValue(item);
                     return;
                 }
@@ -1125,8 +1165,6 @@ public class NestGeneratorPane extends BorderPane {
         return new VBox(4, area, legendBar);
     }
 
-    private CheckBox showLegendCheckBox;
-
     private HBox buildLegendBar() {
         I18nManager i18n = I18nManager.getInstance();
         HBox bar = new HBox(10);
@@ -1150,51 +1188,41 @@ public class NestGeneratorPane extends BorderPane {
         HBox legendItemsContainer = new HBox(10);
         legendItemsContainer.setAlignment(Pos.CENTER_LEFT);
 
-        showLegendCheckBox = new CheckBox();
-        showLegendCheckBox.textProperty().bind(i18n.createStringBinding("legend.show"));
-        showLegendCheckBox.setSelected(true);
-        showLegendCheckBox.getStyleClass().add("legend-checkbox");
-        showLegendCheckBox.setOnAction(e -> {
-            boolean sel = showLegendCheckBox.isSelected();
-            legendItemsContainer.setVisible(sel);
-            legendItemsContainer.setManaged(sel);
-        });
-
         Label title = new Label();
         title.textProperty().bind(i18n.createStringBinding("nest.legend.title"));
         title.getStyleClass().add("legend-title");
 
         legendItemsContainer.getChildren().addAll(new Separator(Orientation.VERTICAL), title);
 
-        String[][] items = {
-            {"nest.legend.entrance", "#32CD32"},
-            {"nest.legend.queen", "#FFD700"},
-            {"nest.legend.brood", "#00BFFF"},
-            {"nest.legend.storage", "#FFA500"},
-            {"nest.legend.fungus", "#9370DB"},
-            {"nest.legend.waste", "#CD5C5C"},
-            {"nest.legend.tunnel", "#708090"}
+        Object[][] items = {
+            {"nest.legend.entrance", NestRenderer.CHAMBER_COLOR_ENTRANCE},
+            {"nest.legend.queen",    NestRenderer.CHAMBER_COLOR_QUEEN},
+            {"nest.legend.brood",    NestRenderer.CHAMBER_COLOR_BROOD},
+            {"nest.legend.storage",  NestRenderer.CHAMBER_COLOR_STORAGE},
+            {"nest.legend.fungus",   NestRenderer.CHAMBER_COLOR_FUNGUS},
+            {"nest.legend.waste",    NestRenderer.CHAMBER_COLOR_WASTE},
+            {"nest.legend.tunnel",   NestRenderer.CHAMBER_COLOR_TUNNEL}
         };
 
-        for (String[] it : items) {
+        for (Object[] it : items) {
             HBox item = new HBox(4);
             item.setAlignment(Pos.CENTER_LEFT);
             item.getStyleClass().add("legend-item");
             Canvas dot = new Canvas(9, 9);
             GraphicsContext g = dot.getGraphicsContext2D();
-            g.setFill(Color.web(it[1]));
+            g.setFill((Color) it[1]);
             g.fillOval(0, 0, 9, 9);
             g.setStroke(Color.WHITE);
             g.setLineWidth(0.5);
             g.strokeOval(0, 0, 9, 9);
 
             Label lbl = new Label();
-            lbl.textProperty().bind(i18n.createStringBinding(it[0]));
+            lbl.textProperty().bind(i18n.createStringBinding((String) it[0]));
             item.getChildren().addAll(dot, lbl);
             legendItemsContainer.getChildren().add(item);
         }
 
-        bar.getChildren().addAll(showGhostMeshCheckBox, syncViewsCheckBox, showLegendCheckBox, legendItemsContainer);
+        bar.getChildren().addAll(showGhostMeshCheckBox, syncViewsCheckBox, legendItemsContainer);
         return bar;
     }
 
@@ -1214,7 +1242,7 @@ public class NestGeneratorPane extends BorderPane {
                 }
             } else {
                 // Orbit 3D camera
-                azimuth = (azimuth + dx * 0.65) % 360;
+                azimuth = (azimuth - dx * 0.55) % 360;
                 if (azimuth < 0) azimuth += 360;
                 elevation = Math.max(5, Math.min(85, elevation - dy * 0.35));
             }
@@ -1223,7 +1251,7 @@ public class NestGeneratorPane extends BorderPane {
         });
         canvas3D.setOnScroll(e -> {
             double oldZoom = zoom;
-            zoom = Math.max(2.5, Math.min(22.0, zoom + e.getDeltaY() * 0.025));
+            zoom = Math.max(1.0, Math.min(100.0, zoom + e.getDeltaY() * 0.04 * (zoom / 10.0 + 0.5)));
             if (zoom != oldZoom) {
                 double scaleRatio = zoom / oldZoom;
                 double cx = canvas3D.getWidth() / 2.0;
@@ -1231,7 +1259,7 @@ public class NestGeneratorPane extends BorderPane {
                 pan3DX = org.swarmforge.client.util.CanvasInteractionHandler.calculatePointerAnchoredPan(pan3DX, e.getX(), cx, scaleRatio);
                 pan3DY = org.swarmforge.client.util.CanvasInteractionHandler.calculatePointerAnchoredPan(pan3DY, e.getY(), cy, scaleRatio);
                 if (isSync()) {
-                    sideZoom = Math.max(0.3, Math.min(6.0, zoom / 7.5));
+                    sideZoom = Math.max(0.1, Math.min(25.0, zoom / 7.5));
                     topZoom = sideZoom;
                     sidePanX = pan3DX; sidePanY = pan3DY;
                     topPanX = pan3DX; topPanY = pan3DY;
@@ -1626,7 +1654,7 @@ public class NestGeneratorPane extends BorderPane {
             return;
         }
 
-        org.swarmforge.client.ui.SpeciesPresetManager presetManager = new org.swarmforge.client.ui.SpeciesPresetManager();
+        org.swarmforge.client.ui.SpeciesPresetManager presetManager = speciesPresetMgr;
         String cleanSel = sel.replaceAll("^[🐜🐝✨]\\s*", "").trim();
         for (String presetName : presetManager.getPresetNames()) {
             if (cleanSel.equalsIgnoreCase(presetName) || cleanSel.toLowerCase().contains(presetName.toLowerCase()) || presetName.toLowerCase().contains(cleanSel.toLowerCase())) {
@@ -1637,14 +1665,84 @@ public class NestGeneratorPane extends BorderPane {
     }
 
     private void onNestStageChanged() {
+        // Stage change only affects depth, branching, and chamber distribution
+        // Architecture, material, category and genus remain unchanged
         if (activeCustomSpecies != null) {
-            configureFromSpecies(activeCustomSpecies);
+            applyStageScaling(activeCustomSpecies, nestStageCombo.getSelectionModel().getSelectedIndex());
         } else {
-            String sel = speciesModelCombo.getValue();
-            if (sel != null && !sel.contains("Active Custom Species")) {
-                onSpeciesModelSelected();
+            String sel = speciesModelCombo != null ? speciesModelCombo.getValue() : null;
+            if (sel != null && !sel.contains("Custom")) {
+                org.swarmforge.client.ui.SpeciesPresetManager mgr = speciesPresetMgr;
+                String cleanSel = sel.replaceAll("^[🐜🐝✨]\\s*", "").trim();
+                for (String presetName : mgr.getPresetNames()) {
+                    if (cleanSel.equalsIgnoreCase(presetName) || cleanSel.toLowerCase().contains(presetName.toLowerCase()) || presetName.toLowerCase().contains(cleanSel.toLowerCase())) {
+                        applyStageScaling(mgr.getPreset(presetName), nestStageCombo.getSelectionModel().getSelectedIndex());
+                        return;
+                    }
+                }
             }
         }
+    }
+
+    private void applyStageScaling(org.swarmforge.core.species.CustomSpecies species, int stageIndex) {
+        if (species == null) return;
+        if (stageIndex < 0) stageIndex = 2;
+
+        double popMultiplier = 1.0;
+        double depthMultiplier = 1.0;
+        int branchingVal = 3;
+
+        switch (stageIndex) {
+            case 0: popMultiplier = 0.05; depthMultiplier = 0.45; branchingVal = 1; break;
+            case 1: popMultiplier = 0.25; depthMultiplier = 0.75; branchingVal = 2; break;
+            case 2: default: popMultiplier = 1.0; depthMultiplier = 1.0; branchingVal = 3; break;
+            case 3: popMultiplier = 2.5; depthMultiplier = 1.35; branchingVal = 4; break;
+        }
+
+        branchingSlider.setValue(branchingVal);
+
+        int popSize = Math.max(10, (int)(species.getTypicalColonySize() * popMultiplier));
+        double depth = Math.max(0.5, Math.min(8.0, Math.log10(popSize + 10) * 0.8 * depthMultiplier));
+        depthSlider.setValue(depth);
+
+        // Chamber distribution
+        int queenCount = species.getQueenCount();
+        setSp("👑 Queen Chamber", Math.max(1, Math.min(25, stageIndex == 0 ? 1 : queenCount)));
+
+        boolean isFungusGrower = "FUNGUS".equalsIgnoreCase(species.getPrimaryDiet()) ||
+                                 "FUNGUS".equalsIgnoreCase(species.getSecondaryDiet()) ||
+                                 (species.getCommonName() != null && (
+                                     species.getCommonName().toLowerCase().contains("fungus") ||
+                                     species.getCommonName().toLowerCase().contains("leafcutter") ||
+                                     species.getCommonName().toLowerCase().contains("champignonniste") ||
+                                     species.getCommonName().toLowerCase().contains("atta")));
+
+        int fungusCount = 0;
+        if (isFungusGrower) {
+            if (stageIndex == 0) fungusCount = 1;
+            else if (stageIndex == 1) fungusCount = 3;
+            else if (stageIndex == 2) fungusCount = 6;
+            else fungusCount = 12;
+        }
+        setSp("🍄 Fungus Gardens", fungusCount);
+
+        int broodCount = Math.max(1, (int)(Math.sqrt(popSize / 200.0) * (stageIndex == 0 ? 0.5 : stageIndex == 3 ? 1.8 : 1.0)));
+        if (stageIndex == 0) broodCount = 1;
+        setSp("🥚 Brood Chambers", Math.max(1, Math.min(25, broodCount)));
+
+        int foodCount = Math.max(1, (int)(Math.sqrt(popSize / 300.0) * (stageIndex == 0 ? 0.5 : stageIndex == 3 ? 1.8 : 1.0)));
+        if (stageIndex == 0) foodCount = 1;
+        setSp("🍖 Food Storage", Math.max(1, Math.min(25, foodCount)));
+
+        int entranceCount = stageIndex == 0 ? 1 : stageIndex == 1 ? 2 : stageIndex == 2 ? 2 : 4;
+        setSp("🚪 Entrances", entranceCount);
+
+        int wasteCount = stageIndex == 0 ? 1 : stageIndex == 1 ? 1 : stageIndex == 2 ? 2 : 4;
+        setSp("🗑 Waste Dumps", wasteCount);
+
+        updateTotalChambers();
+        regen();
+        repaint();
     }
 
     private double num(Map<String,Object> m, String k) { return ((Number)m.get(k)).doubleValue(); }
@@ -1715,7 +1813,25 @@ public class NestGeneratorPane extends BorderPane {
                     presetsCombo.setValue(pName);
                 }
             }
-            if (cfg.containsKey("taxonCategory") && categorySelect != null) categorySelect.setValue(String.valueOf(cfg.get("taxonCategory")));
+            if (cfg.containsKey("taxonCategory") && categorySelect != null) {
+                setCategorySelectValue(String.valueOf(cfg.get("taxonCategory")));
+                populateGenusCombo();
+            }
+            if (cfg.containsKey("genus") && genusSelect != null) {
+                String savedGenus = String.valueOf(cfg.get("genus"));
+                if (!savedGenus.isEmpty()) {
+                    if (genusSelect.getItems().contains(savedGenus)) {
+                        genusSelect.setValue(savedGenus);
+                    } else {
+                        for (String item : genusSelect.getItems()) {
+                            if (item.toLowerCase().startsWith(savedGenus.toLowerCase()) || item.toLowerCase().contains(savedGenus.toLowerCase())) {
+                                genusSelect.setValue(item);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
             if (cfg.containsKey("architecture") && archSelect != null) setArchSelectValue(String.valueOf(cfg.get("architecture")));
             if (cfg.containsKey("material") && matSelect != null) setMatSelectValue(String.valueOf(cfg.get("material")));
             if (cfg.containsKey("workerSizeMm") && workerSizeSlider != null) workerSizeSlider.setValue(num(cfg, "workerSizeMm"));
@@ -1756,8 +1872,9 @@ public class NestGeneratorPane extends BorderPane {
         c.put("presetName",   presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom");
         c.put("seed",         nestSeed);
         c.put("taxonCategory",categorySelect.getValue());
-        c.put("architecture", archSelect.getValue());
-        c.put("material",     matSelect.getValue());
+        c.put("genus",        genusSelect != null && genusSelect.getValue() != null ? genusSelect.getValue() : "");
+        c.put("architecture", getArchitecture());
+        c.put("material",     getMaterial());
         c.put("workerSizeMm", workerSizeSlider.getValue());
         c.put("depth",        (int) depthSlider.getValue());
         c.put("chamberCount", (int) getChamberCount());
@@ -1778,8 +1895,8 @@ public class NestGeneratorPane extends BorderPane {
 
     // ── Expose params for NestAlgorithm ──────────────────────────────────────
 
-    String getArchitecture() { return archSelect.getValue() != null ? archSelect.getValue() : "BURROW_UNDERGROUND"; }
-    String getMaterial()     { return matSelect.getValue() != null ? matSelect.getValue() : "EARTH"; }
+    String getArchitecture() { return NestRenderer.normalizeArchKey(archSelect.getValue()); }
+    String getMaterial()     { return NestRenderer.normalizeMatKey(matSelect.getValue()); }
     double getWorkerSizeMm() { return workerSizeSlider.getValue(); }
     double getDepth()        { return depthSlider.getValue(); }
     double getTunnelWidth()  { return tunnelWidthSlider.getValue(); }

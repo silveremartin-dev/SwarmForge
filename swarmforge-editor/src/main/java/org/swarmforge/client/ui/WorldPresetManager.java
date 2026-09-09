@@ -253,6 +253,10 @@ public class WorldPresetManager {
         return presets.get(name);
     }
 
+    public Map<String, Object> getPreset(String name) {
+        return get(name);
+    }
+
     public boolean contains(String name) {
         return presets.containsKey(name);
     }

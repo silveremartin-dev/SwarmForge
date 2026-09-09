@@ -55,7 +55,7 @@ public class SolenopsisInvicta extends CustomSpecies {
         CasteTemplate tank = new CasteTemplate("Major (Tank)", 300f, 25f);
         tank.setDescription("Heavily armored major worker built for combat.");
         tank.setBaseDefense(10f);
-        tank.setBaseSpeed(0.5f);
+        tank.setWalkSpeedMps(0.5f);
         tank.setProteinCost(80f);
         tank.setCarbohydrateCost(60f);
         tank.setWaterCost(30f);

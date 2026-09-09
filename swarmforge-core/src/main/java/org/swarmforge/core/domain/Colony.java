@@ -140,12 +140,28 @@ public class Colony implements java.io.Serializable {
             float youngAgeSec = (float) (java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.0, 0.05) * maxLifespanSec);
             ind.setAgeInSeconds(youngAgeSec);
         } else {
-            // Gaussian distribution across adult workforce (mean = 30%, stdDev = 12%)
-            double mean = 0.30 * maxLifespanSec;
-            double stdDev = 0.12 * maxLifespanSec;
+            // Gaussian distribution across young adult workforce (mean = 15%, stdDev = 6%)
+            // Guarantees all starting workers are in their prime youth with ample lifespan remaining
+            double mean = 0.15 * maxLifespanSec;
+            double stdDev = 0.06 * maxLifespanSec;
             double sample = mean + stdDev * java.util.concurrent.ThreadLocalRandom.current().nextGaussian();
-            float ageSec = (float) Math.max(0.0, Math.min(0.65 * maxLifespanSec, sample));
+            float ageSec = (float) Math.max(0.01 * maxLifespanSec, Math.min(0.35 * maxLifespanSec, sample));
             ind.setAgeInSeconds(ageSec);
+        }
+    }
+
+    public void applyGaussianHealth(Individual ind, boolean isFoundingQueen) {
+        if (ind == null) return;
+        float maxH = ind.getMaxHealth() > 0 ? ind.getMaxHealth() : 100f;
+        if (isFoundingQueen) {
+            ind.setHealth(maxH);
+        } else {
+            // Normal / Gaussian distribution for startup health (mean = 94% maxH, stdDev = 5% maxH)
+            double mean = 0.94 * maxH;
+            double stdDev = 0.05 * maxH;
+            double sample = mean + stdDev * java.util.concurrent.ThreadLocalRandom.current().nextGaussian();
+            float h = (float) Math.max(0.65 * maxH, Math.min(maxH, sample));
+            ind.setHealth(h);
         }
     }
 
@@ -163,6 +179,7 @@ public class Colony implements java.io.Serializable {
             Individual ind = new Individual(this.id, Individual.Caste.QUEEN, pos[0], pos[1], pos[2]);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            applyGaussianHealth(ind, isFoundingQueen);
             if (applyAgeDistribution) {
                 applyGaussianAge(ind, isFoundingQueen);
             }
@@ -463,6 +480,7 @@ public class Colony implements java.io.Serializable {
             ind.setSpecies(this.species);
             ind.setJob(job);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            applyGaussianHealth(ind, false);
             if (applyAgeDistribution) {
                 applyGaussianAge(ind, false);
             }
@@ -486,6 +504,7 @@ public class Colony implements java.io.Serializable {
             Individual ind = new Individual(this.id, Individual.Caste.SOLDIER, pos[0], pos[1], pos[2]);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            applyGaussianHealth(ind, false);
             if (applyAgeDistribution) {
                 applyGaussianAge(ind, false);
             }
@@ -509,6 +528,7 @@ public class Colony implements java.io.Serializable {
             Individual ind = new Individual(this.id, Individual.Caste.MALE, pos[0], pos[1], pos[2]);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            applyGaussianHealth(ind, false);
             if (applyAgeDistribution) {
                 applyGaussianAge(ind, false);
             }
@@ -557,6 +577,7 @@ public class Colony implements java.io.Serializable {
             Individual ind = new Individual(this.id, Individual.Caste.WORKER, sx, sy, sz);
             ind.setSpecies(this.species);
             ind.setJob(Individual.Job.NONE);
+            applyGaussianHealth(ind, false);
 
             // Brood breakdown: 35% Eggs, 40% Larvae, 25% Pupae
             double r = java.util.concurrent.ThreadLocalRandom.current().nextDouble();
@@ -605,6 +626,7 @@ public class Colony implements java.io.Serializable {
             Individual ind = new Individual(this.id, template, nestX, nestY, nestZ);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            applyGaussianHealth(ind, false);
             addIndividual(ind);
             return ind;
         }

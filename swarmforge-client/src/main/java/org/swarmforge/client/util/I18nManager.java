@@ -89,10 +89,26 @@ public class I18nManager {
         if (pattern == null) {
             return "!" + key + "!";
         }
-        try {
-            return MessageFormat.format(pattern, args);
-        } catch (Exception e) {
+        if (args == null || args.length == 0) {
             return pattern;
+        }
+        if (pattern.contains("%s") || pattern.contains("%d") || pattern.contains("%.") || pattern.contains("%f")) {
+            try {
+                return String.format(locale.get(), pattern, args);
+            } catch (Exception ignored) {}
+        }
+        try {
+            String msgPattern = pattern;
+            if (msgPattern.contains("'") && !msgPattern.contains("''")) {
+                msgPattern = msgPattern.replace("'", "''");
+            }
+            return MessageFormat.format(msgPattern, args);
+        } catch (Exception e) {
+            String result = pattern;
+            for (int i = 0; i < args.length; i++) {
+                result = result.replace("{" + i + "}", String.valueOf(args[i]));
+            }
+            return result;
         }
     }
 

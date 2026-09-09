@@ -57,6 +57,7 @@ public class SwarmForgeClient extends Application {
         private org.swarmforge.client.ui.SimulationControlPanel simControlPanel;
         private org.swarmforge.client.ui.WorldEditorPane simWorldViewer;
         private org.swarmforge.client.ui.WorldEditorPane worldEditorPane;
+        private org.swarmforge.client.ui.NestGeneratorPane nestPane;
         private Slider sliceSlider;
         private TabPane mainTabs;
         private Tab simTab;
@@ -155,7 +156,7 @@ public class SwarmForgeClient extends Application {
         Tab nestTab = new Tab();
         nestTab.textProperty().bind(i18n.createStringBinding("tab.nest"));
         nestTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.HOME));
-        org.swarmforge.client.ui.NestGeneratorPane nestPane = new org.swarmforge.client.ui.NestGeneratorPane();
+        this.nestPane = new org.swarmforge.client.ui.NestGeneratorPane();
         nestPane.setOnApply(config -> {
              if (this.lastGeneratedTerrarium == null) {
                   new Alert(Alert.AlertType.WARNING, "No world generated.").show();
@@ -241,11 +242,17 @@ public class SwarmForgeClient extends Application {
             System.exit(0);
         });
 
-        // Start loading progress on splash screen and reveal main window upon completion
-        splashScreen.startProgressAndLaunch(() -> {
+        boolean isTestMode = Boolean.getBoolean("testfx.headless") || Boolean.getBoolean("headless") || "true".equals(System.getProperty("swarmforge.test")) || "true".equals(System.getProperty("testfx.robot"));
+        if (isTestMode) {
             org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage);
             primaryStage.show();
-        });
+        } else {
+            // Start loading progress on splash screen and reveal main window upon completion
+            splashScreen.startProgressAndLaunch(() -> {
+                org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage);
+                primaryStage.show();
+            });
+        }
 
         // Auto-connect to server at launch (localhost:50051)
         Platform.runLater(() -> {
@@ -330,11 +337,13 @@ public class SwarmForgeClient extends Application {
                 // --- Controls Tab ---
                 Tab controlsTab = new Tab();
                 controlsTab.textProperty().bind(i18n.createStringBinding("sim.title"));
+                controlsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SLIDERS));
                 VBox controlsInner = new VBox(12);
                 controlsInner.setPadding(new Insets(10));
 
                 // Embedded SimulationControlPanel (Contains Preset Selectors ABOVE Start/Pause/Stop controls)
                 this.simControlPanel = new org.swarmforge.client.ui.SimulationControlPanel();
+                this.simControlPanel.setWorldConfigSupplier(() -> (this.worldEditorPane != null) ? this.worldEditorPane.getConfiguration() : null);
                 controlsInner.getChildren().add(this.simControlPanel);
 
                 controlsTab.setContent(new ScrollPane(controlsInner));
@@ -539,6 +548,15 @@ public class SwarmForgeClient extends Application {
                 statsTab.textProperty().bind(i18n.createStringBinding("tab.stats"));
                 statsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.BAR_CHART_2));
                 this.statisticsDashboard = new org.swarmforge.client.ui.StatisticsDashboard();
+                this.statisticsDashboard.setOnTrackAnt(antId -> {
+                    if (this.simWorldViewer != null) {
+                        this.simWorldViewer.setFollowedAntById(antId);
+                        this.simWorldViewer.setFollowAntCameraEnabled(true);
+                        if (this.simSubTabs != null && this.visualTab != null) {
+                            this.simSubTabs.getSelectionModel().select(this.visualTab);
+                        }
+                    }
+                });
                 statsTab.setContent(this.statisticsDashboard);
 
                 // --- Event Log Sub-Tab ---
@@ -573,6 +591,10 @@ public class SwarmForgeClient extends Application {
                         if (this.interventionPanel != null) {
                                 this.interventionPanel.clearScheduledEvents();
                         }
+                        if (this.simWorldViewer != null) {
+                                this.simWorldViewer.resetAntTracking();
+                        }
+                        org.swarmforge.core.domain.Individual.resetAntNumberGenerator();
 
                         System.out.println("[INFO] [SwarmForge Engine] Création du terrarium et de la simulation locale...");
                         if (this.lastGeneratedTerrarium == null) {
@@ -589,12 +611,22 @@ public class SwarmForgeClient extends Application {
                         this.localSimulation.reset(0);
                         this.localSimulation.setMasterSeed(seed);
 
-                        String selWeatherName = (simControlPanel != null) ? simControlPanel.getSelectedWeather() : "Temperate";
-                        org.swarmforge.client.ui.WeatherPresetManager wPresetMgr = new org.swarmforge.client.ui.WeatherPresetManager();
-                        Map<String, Object> wProfile = wPresetMgr.get(selWeatherName);
-                        if (wProfile == null) wProfile = wPresetMgr.get("Temperate");
-                        if (wProfile != null && this.localSimulation.getWeather() != null) {
-                            this.localSimulation.getWeather().applyClimateProfile(wProfile);
+                        if (simControlPanel != null && simControlPanel.isRealWeatherMode() && simControlPanel.getRealWeatherData() != null) {
+                            if (this.localSimulation.getWeather() != null) {
+                                this.localSimulation.getWeather().applyClimateProfile(simControlPanel.getRealWeatherData());
+                            }
+                        } else {
+                            String selWeatherName = (simControlPanel != null) ? simControlPanel.getSelectedWeather() : "Temperate";
+                            org.swarmforge.client.ui.WeatherPresetManager wPresetMgr = new org.swarmforge.client.ui.WeatherPresetManager();
+                            Map<String, Object> wProfile = wPresetMgr.get(selWeatherName);
+                            if (wProfile == null) wProfile = wPresetMgr.get("Temperate");
+                            if (wProfile != null && this.localSimulation.getWeather() != null) {
+                                this.localSimulation.getWeather().applyClimateProfile(wProfile);
+                            }
+                        }
+
+                        if (this.eventLogPane != null && this.simControlPanel != null) {
+                            this.eventLogPane.setStartDateTime(this.simControlPanel.getStartDateTime());
                         }
 
                         org.swarmforge.client.ui.ScenarioSetupSnapshot setupSnap = simControlPanel.getLastSetupSnapshot();
@@ -710,10 +742,35 @@ public class SwarmForgeClient extends Application {
                                                 }
                                         }
 
-                                        org.swarmforge.core.world.NestGenerator nestGen = new org.swarmforge.core.world.NestGenerator(this.lastGeneratedTerrarium, seed + colIdx);
-                                        nestGen.generate((int) pos.x(), (int) pos.y(), (int) pos.z(), genType, scaleFactor);
+                                        Map<String, Object> nestConfig = null;
+                                        if (rawNestType != null) {
+                                                String typeKey = rawNestType.toString().trim();
+                                                org.swarmforge.client.ui.NestPresetManager presetMgr = new org.swarmforge.client.ui.NestPresetManager();
+                                                if (presetMgr.contains(typeKey)) {
+                                                        nestConfig = presetMgr.get(typeKey);
+                                                } else {
+                                                        for (String pName : presetMgr.names()) {
+                                                                if (pName.equalsIgnoreCase(typeKey) || pName.toLowerCase().contains(typeKey.toLowerCase())) {
+                                                                        nestConfig = presetMgr.get(pName);
+                                                                        break;
+                                                                }
+                                                        }
+                                                }
+                                        }
 
-                                        colony.getTunnelNetwork().rebuildForArchitecture(pos.x(), pos.y(), pos.z(), rawNestType != null ? rawNestType.toString() : "BURROW_UNDERGROUND", colony);
+                                        if (nestConfig == null) {
+                                                nestConfig = new java.util.LinkedHashMap<>();
+                                                nestConfig.put("architecture", rawNestType != null ? rawNestType.toString() : "BURROW_UNDERGROUND");
+                                                nestConfig.put("depth", 25.0);
+                                                nestConfig.put("workerSizeMm", 5.0 * scaleFactor);
+                                        }
+
+                                        org.swarmforge.client.ui.NestGeneratorPane.GeneratedNest genNest =
+                                                org.swarmforge.client.ui.NestAlgorithm.generate(nestConfig, seed + colIdx);
+
+                                        org.swarmforge.client.ui.NestAlgorithm.applyToTunnelNetwork(
+                                                genNest, pos.x(), pos.y(), pos.z(), colony.getTunnelNetwork(), colony
+                                        );
 
                                         if (initialFood > 0) {
                                                 colony.setFoodStored(initialFood);
@@ -844,10 +901,39 @@ public class SwarmForgeClient extends Application {
                 });
 
                 this.simControlPanel.setOnSeek(targetTick -> {
+                    if (targetTick == 0) {
+                        if (this.interventionPanel != null) {
+                            this.interventionPanel.resetEventsState();
+                        }
+                        if (this.statisticsDashboard != null) {
+                            this.statisticsDashboard.clear();
+                        }
+                        if (this.eventLogPane != null) {
+                            this.eventLogPane.clearLog();
+                        }
+                        if (this.simWorldViewer != null) {
+                            this.simWorldViewer.resetAntTracking();
+                        }
+                    }
                     if (this.localSimulation != null) {
+                        this.localSimulation.pause();
                         boolean ok = this.localSimulation.seekToTick(targetTick);
                         if (ok) {
-                            this.simControlPanel.updateTick(this.localSimulation.getTickCount(), this.localSimulation.getHighestRecordedTick());
+                            long curTick = this.localSimulation.getTickCount();
+                            this.simControlPanel.updateTick(curTick, this.localSimulation.getHighestRecordedTick());
+                            double stepSec = this.simControlPanel.getSimulationStepSeconds();
+                            if (this.interventionPanel != null) {
+                                this.interventionPanel.processScheduledEvents(curTick);
+                            }
+                            if (this.statisticsDashboard != null && targetTick > 0) {
+                                this.statisticsDashboard.truncateAfter(curTick * stepSec);
+                            }
+                            if (this.eventLogPane != null && targetTick > 0) {
+                                this.eventLogPane.truncateAfterTick(curTick);
+                            }
+                            if (this.simWorldViewer != null) {
+                                this.simWorldViewer.repaintAllViews();
+                            }
                         }
                     }
                 });
@@ -856,16 +942,39 @@ public class SwarmForgeClient extends Application {
                     if (this.localSimulation != null) {
                         this.localSimulation.pause();
                         boolean ok = this.localSimulation.rewind(steps);
-                        if (ok) {
-                            this.simControlPanel.updateTick(this.localSimulation.getTickCount(), this.localSimulation.getHighestRecordedTick());
+                        long curTick = this.localSimulation.getTickCount();
+                        this.simControlPanel.updateTick(curTick, this.localSimulation.getHighestRecordedTick());
+                        double stepSec = this.simControlPanel.getSimulationStepSeconds();
+                        if (this.interventionPanel != null) {
+                            this.interventionPanel.processScheduledEvents(curTick);
+                        }
+                        if (this.statisticsDashboard != null) {
+                            this.statisticsDashboard.truncateAfter(curTick * stepSec);
+                        }
+                        if (this.eventLogPane != null) {
+                            this.eventLogPane.truncateAfterTick(curTick);
+                        }
+                        if (this.simWorldViewer != null) {
+                            this.simWorldViewer.repaintAllViews();
                         }
                     }
                 });
 
-                this.simControlPanel.setOnStepForward(v -> {
-                    if (this.localSimulation != null && !this.localSimulation.isRunning()) {
-                        this.localSimulation.tick();
-                        this.simControlPanel.updateTick(this.localSimulation.getTickCount(), this.localSimulation.getHighestRecordedTick());
+                this.simControlPanel.setOnStepForward(steps -> {
+                    if (this.localSimulation != null) {
+                        this.localSimulation.pause();
+                        int count = steps != null ? steps : 100;
+                        for (int i = 0; i < count; i++) {
+                            this.localSimulation.tick();
+                        }
+                        long curTick = this.localSimulation.getTickCount();
+                        this.simControlPanel.updateTick(curTick, this.localSimulation.getHighestRecordedTick());
+                        if (this.interventionPanel != null) {
+                            this.interventionPanel.processScheduledEvents(curTick);
+                        }
+                        if (this.simWorldViewer != null) {
+                            this.simWorldViewer.repaintAllViews();
+                        }
                     }
                 });
 
@@ -914,11 +1023,38 @@ public class SwarmForgeClient extends Application {
 
                 // HUD Loop, Audio Sync, God Mode & Statistics Updates
                 javafx.animation.AnimationTimer timer = new javafx.animation.AnimationTimer() {
+                        private long lastSimRenderNano = 0L;
+                        private long lastCpuSampleNano = 0L;
+                        private long targetIntervalNano = 50_000_000L; // 50ms baseline = 20 FPS
+
                         @Override
                         public void handle(long now) {
                                 boolean isConnected = networkClient != null && networkClient.isConnected();
                                 boolean isPlaying = simControlPanel != null && simControlPanel.isPlaying();
                                 boolean isSimRunning = isPlaying;
+
+                                // Dynamically evaluate CPU headroom every 500ms
+                                if (now - lastCpuSampleNano >= 500_000_000L) {
+                                    lastCpuSampleNano = now;
+                                    double cpuLoad = getSystemCpuLoad();
+                                    if (cpuLoad >= 0.0 && cpuLoad < 0.50) {
+                                        // CPU is free (< 50% load): scale up dynamically to 60 FPS (16.6ms)
+                                        double freeFactor = Math.max(0.0, Math.min(1.0, (0.50 - cpuLoad) / 0.35));
+                                        double targetFps = 20.0 + freeFactor * 40.0;
+                                        targetIntervalNano = (long) (1_000_000_000L / targetFps);
+                                    } else {
+                                        // Under normal/heavy CPU load, lock strictly to 20 FPS (50ms) to prioritize simulation engine
+                                        targetIntervalNano = 50_000_000L;
+                                    }
+                                }
+
+                                // Adaptive UI Refresh: 20 FPS baseline, up to 60 FPS only if CPU headroom is available
+                                if (isSimRunning && isSim3DFocused() && simWorldViewer != null) {
+                                    if (now - lastSimRenderNano >= targetIntervalNano) {
+                                        lastSimRenderNano = now;
+                                        simWorldViewer.repaintAllViews();
+                                    }
+                                }
 
                                 if (localSimulation != null) {
                                     long curTick = localSimulation.getTickCount();
@@ -991,13 +1127,16 @@ public class SwarmForgeClient extends Application {
                                             wSys.getLightLevel()
                                         );
                                     }
+                                    double currentZoom = (simWorldViewer != null) ? simWorldViewer.getZoom() : 7.5;
+                                    double currentDepth = (simWorldViewer != null && simWorldViewer.isSubterraneanExposed()) ? 1.0 : (gameView != null && gameView.getGameApp() != null ? gameView.getGameApp().getCameraDepth() : 0.0);
+                                    org.swarmforge.client.audio.SimulationAudioManager.getInstance().setCameraDepth(currentDepth);
                                     org.swarmforge.client.audio.SimulationAudioManager.getInstance().updateState(
                                         simControlPanel.getSelectedWorld(),
                                         weatherStr,
                                         "SUMMER",
                                         hasRiverInWorld,
                                         popCount,
-                                        gameView != null && gameView.getGameApp() != null ? gameView.getGameApp().getCameraDepth() : 0.0,
+                                        currentZoom,
                                         isSimRunning && isSim3DFocused()
                                     );
                                 }
@@ -1069,6 +1208,9 @@ public class SwarmForgeClient extends Application {
                                         stats.water = waterAmt;
                                         stats.tickRate = isPlaying ? (float) (1.0 / stats.stepTimeSeconds) : 0.0f;
                                         statisticsDashboard.update(stats);
+                                        if (simWorldViewer != null && simWorldViewer.getFollowedAnt() != null) {
+                                            statisticsDashboard.updateIndividualTelemetryFromEntity(simWorldViewer.getFollowedAnt());
+                                        }
                                 }
                         }
                 };
@@ -1165,6 +1307,22 @@ public class SwarmForgeClient extends Application {
                 // Center Viewport: WorldEditorPane 3-View System (3D View + Mouse Orbit/Pan/Zoom Controls + 2D Minimaps)
                 this.simWorldViewer = new org.swarmforge.client.ui.WorldEditorPane();
                 this.simWorldViewer.setSimulationMode(true);
+                this.simWorldViewer.setOnAntSelected(ant -> {
+                    if (this.statisticsDashboard != null && ant != null) {
+                        this.statisticsDashboard.setTrackedAnt(ant);
+                    }
+                });
+                if (this.statisticsDashboard != null) {
+                    this.statisticsDashboard.setOnTrackAnt(antId -> {
+                        if (this.simWorldViewer != null) {
+                            this.simWorldViewer.setFollowedAntById(antId);
+                            this.simWorldViewer.setFollowAntCameraEnabled(true);
+                            if (this.simSubTabs != null && this.visualTab != null) {
+                                this.simSubTabs.getSelectionModel().select(this.visualTab);
+                            }
+                        }
+                    });
+                }
                 
                 // 3D Inactive Overlay Placeholder (Sleek Top Bar - Hidden)
                 this.simulationInactiveOverlay = new VBox(4);
@@ -1330,21 +1488,26 @@ public class SwarmForgeClient extends Application {
                 };
 
                 this.cancelAndResetVideoRecording = () -> {
-                    isVideoRecording = false;
-                    isVideoArmed = false;
-                    if (videoCaptureTimeline != null) {
-                        videoCaptureTimeline.stop();
-                        videoCaptureTimeline = null;
-                    }
-                    recordedVideoFrames.clear();
-                    try {
-                        org.swarmforge.client.audio.SimulationAudioManager.getInstance().stopAudioRecording();
-                    } catch (Exception ignored) {}
-                    if (btnRecVideo != null) {
-                        Platform.runLater(() -> {
+                    Runnable action = () -> {
+                        isVideoRecording = false;
+                        isVideoArmed = false;
+                        if (videoCaptureTimeline != null) {
+                            videoCaptureTimeline.stop();
+                            videoCaptureTimeline = null;
+                        }
+                        recordedVideoFrames.clear();
+                        try {
+                            org.swarmforge.client.audio.SimulationAudioManager.getInstance().stopAudioRecording();
+                        } catch (Exception ignored) {}
+                        if (btnRecVideo != null) {
                             btnRecVideo.setText(i18n.get("sidebar.btn.video"));
                             btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
-                        });
+                        }
+                    };
+                    if (Platform.isFxApplicationThread()) {
+                        action.run();
+                    } else {
+                        Platform.runLater(action);
                     }
                 };
                 Runnable cancelAndResetVideoRecording = this.cancelAndResetVideoRecording;
@@ -1371,6 +1534,18 @@ public class SwarmForgeClient extends Application {
                                         localSimulation.reset(0);
                                         simControlPanel.updateTick(0, 0);
                                 }
+                                if (simWorldViewer != null) {
+                                    simWorldViewer.resetAntTracking();
+                                }
+                                if (interventionPanel != null) {
+                                    interventionPanel.resetEventsState();
+                                }
+                                if (statisticsDashboard != null) {
+                                    statisticsDashboard.clear();
+                                }
+                                if (eventLogPane != null) {
+                                    eventLogPane.clearLog();
+                                }
                                 if (simulationInactiveOverlay != null) simulationInactiveOverlay.setVisible(true);
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
                                     stopVideoRecordingAndExport.run();
@@ -1384,6 +1559,16 @@ public class SwarmForgeClient extends Application {
                                         localSimulation.rewind(steps);
                                         long curTick = localSimulation.getTickCount();
                                         simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
+                                        double stepSec = simControlPanel.getSimulationStepSeconds();
+                                        if (interventionPanel != null) {
+                                            interventionPanel.processScheduledEvents(curTick);
+                                        }
+                                        if (statisticsDashboard != null) {
+                                            statisticsDashboard.truncateAfter(curTick * stepSec);
+                                        }
+                                        if (eventLogPane != null) {
+                                            eventLogPane.truncateAfterTick(curTick);
+                                        }
                                         simWorldViewer.repaintAllViews();
                                 }
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
@@ -1392,12 +1577,18 @@ public class SwarmForgeClient extends Application {
                                     disarmVideoRecording.run();
                                 }
                         });
-                        simControlPanel.setOnStepForward(v -> {
+                        simControlPanel.setOnStepForward(steps -> {
                                 if (localSimulation != null) {
                                         localSimulation.pause();
-                                        localSimulation.tick();
+                                        int count = steps != null ? steps : 100;
+                                        for (int i = 0; i < count; i++) {
+                                            localSimulation.tick();
+                                        }
                                         long curTick = localSimulation.getTickCount();
                                         simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
+                                        if (interventionPanel != null) {
+                                            interventionPanel.processScheduledEvents(curTick);
+                                        }
                                         simWorldViewer.repaintAllViews();
                                 }
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
@@ -1412,12 +1603,31 @@ public class SwarmForgeClient extends Application {
                                         if (interventionPanel != null) {
                                                 interventionPanel.resetEventsState();
                                         }
+                                        if (statisticsDashboard != null) {
+                                                statisticsDashboard.clear();
+                                        }
+                                        if (eventLogPane != null) {
+                                                eventLogPane.clearLog();
+                                        }
+                                        if (simWorldViewer != null) {
+                                                simWorldViewer.resetAntTracking();
+                                        }
                                 }
                                 if (localSimulation != null) {
                                         localSimulation.pause();
                                         localSimulation.seekToTick(tick);
                                         long curTick = localSimulation.getTickCount();
                                         simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
+                                        double stepSec = simControlPanel.getSimulationStepSeconds();
+                                        if (interventionPanel != null) {
+                                            interventionPanel.processScheduledEvents(curTick);
+                                        }
+                                        if (statisticsDashboard != null && tick > 0) {
+                                            statisticsDashboard.truncateAfter(curTick * stepSec);
+                                        }
+                                        if (eventLogPane != null && tick > 0) {
+                                            eventLogPane.truncateAfterTick(curTick);
+                                        }
                                         simWorldViewer.repaintAllViews();
                                 }
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
@@ -2312,23 +2522,21 @@ public class SwarmForgeClient extends Application {
                                 generator.setChamberCounts(dist);
                         }
 
-                        // Generate in center
-                        int chambers = generator.generate(w / 2, h / 2, 32, type, 1.0f);
+                        long nestSeed = config.containsKey("seed") && config.get("seed") instanceof Number n
+                                        ? n.longValue() : 123456L;
+                        org.swarmforge.client.ui.NestGeneratorPane.GeneratedNest genNest =
+                                        org.swarmforge.client.ui.NestAlgorithm.generate(config, nestSeed);
+
+                        int chambers = genNest.nodes.size();
 
                         // Update live simulation colonies' TunnelNetworks & Terrarium carving
-                        if (localSimulation != null) {
-                                float maxDepthVal = config.containsKey("depth") ? ((Number) config.get("depth")).floatValue() : 50.0f;
-                                float tunnelWidthVal = config.containsKey("tunnelWidth") ? ((Number) config.get("tunnelWidth")).floatValue() : 2.0f;
-                                String archName = typeStr != null ? typeStr : "BURROW_UNDERGROUND";
-
-                                if (!localSimulation.getColonies().isEmpty()) {
-                                        for (org.swarmforge.core.domain.Colony colony : localSimulation.getColonies()) {
-                                                if (colony.getTunnelNetwork() != null) {
-                                                        colony.getTunnelNetwork().rebuildForArchitecture(
-                                                                colony.getNestX(), colony.getNestY(), colony.getNestZ(),
-                                                                archName, colony, maxDepthVal, tunnelWidthVal, 1.0f
-                                                        );
-                                                }
+                        if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
+                                for (org.swarmforge.core.domain.Colony colony : localSimulation.getColonies()) {
+                                        if (colony.getTunnelNetwork() != null) {
+                                                org.swarmforge.client.ui.NestAlgorithm.applyToTunnelNetwork(
+                                                                genNest, colony.getNestX(), colony.getNestY(), colony.getNestZ(),
+                                                                colony.getTunnelNetwork(), colony
+                                                );
                                         }
                                 }
                         }
@@ -2528,30 +2736,37 @@ public class SwarmForgeClient extends Application {
 
                 Tab tNest = new Tab();
                 tNest.textProperty().bind(i18n.createStringBinding("glossary.cat.nest"));
+                tNest.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.HOME));
                 tNest.setContent(new ScrollPane(vNest));
 
                 Tab tSocial = new Tab();
                 tSocial.textProperty().bind(i18n.createStringBinding("glossary.cat.social"));
+                tSocial.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.USERS));
                 tSocial.setContent(new ScrollPane(vSocial));
 
                 Tab tEnv = new Tab();
                 tEnv.textProperty().bind(i18n.createStringBinding("glossary.cat.env"));
+                tEnv.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.GLOBE));
                 tEnv.setContent(new ScrollPane(vEnv));
 
                 Tab tReasoning = new Tab();
                 tReasoning.textProperty().bind(i18n.createStringBinding("glossary.cat.reasoning"));
+                tReasoning.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CPU));
                 tReasoning.setContent(new ScrollPane(vReasoning));
 
                 Tab tSensors = new Tab();
                 tSensors.textProperty().bind(i18n.createStringBinding("glossary.cat.sensors"));
+                tSensors.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.EYE));
                 tSensors.setContent(new ScrollPane(vSensors));
 
                 Tab tAccessory = new Tab();
                 tAccessory.textProperty().bind(i18n.createStringBinding("glossary.cat.accessory"));
+                tAccessory.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.FEATHER));
                 tAccessory.setContent(new ScrollPane(vAccessory));
 
                 Tab tEngine = new Tab();
                 tEngine.textProperty().bind(i18n.createStringBinding("glossary.tab.engine", "Engine & Controls"));
+                tEngine.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.ACTIVITY));
                 tEngine.setContent(new ScrollPane(vEngine));
 
                 this.glossaryCategoryTabPane.getTabs().addAll(tNest, tSocial, tEnv, tReasoning, tSensors, tAccessory, tEngine);
@@ -2680,22 +2895,13 @@ public class SwarmForgeClient extends Application {
                                                 });
                                         }
                                         float speed = simControlPanel != null ? simControlPanel.getSpeedMultiplier() : 1.0f;
+                                        localSimulation.tick();
+
                                         if (speed >= 100.0f) {
-                                                // Ultra-Fast MAX Speed Mode: batch multiple ticks with micro-sleeps to keep UI 100% smooth
-                                                int ticksPerBatch = 20;
-                                                for (int b = 0; b < ticksPerBatch && isPlaying && !isConnected; b++) {
-                                                        localSimulation.tick();
-                                                }
-                                                try {
-                                                        Thread.sleep(1);
-                                                } catch (InterruptedException e) {
-                                                        Thread.currentThread().interrupt();
-                                                        break;
-                                                }
+                                                // Ultra-Fast MAX Speed Mode: run tick-by-tick without blocking UI threads
+                                                Thread.onSpinWait();
                                                 lastTime = System.nanoTime();
                                         } else {
-                                                localSimulation.tick();
-
                                                 double targetFps = 60.0 * Math.max(0.1, Math.min(20.0, speed));
                                                 long targetNanos = (long) (1_000_000_000L / targetFps);
 
@@ -2765,7 +2971,22 @@ public class SwarmForgeClient extends Application {
                 });
         }
 
+        private static double getSystemCpuLoad() {
+                try {
+                        java.lang.management.OperatingSystemMXBean bean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+                        if (bean instanceof com.sun.management.OperatingSystemMXBean sunBean) {
+                                double load = sunBean.getCpuLoad();
+                                if (load >= 0.0) return load;
+                                double procLoad = sunBean.getProcessCpuLoad();
+                                if (procLoad >= 0.0) return procLoad;
+                        }
+                } catch (Throwable ignored) {
+                }
+                return -1.0;
+        }
+
         public static void main(String[] args) {
+                org.swarmforge.client.util.IconUtils.initEarlyTaskbarAppId();
                 launch(args);
         }
 }

@@ -92,9 +92,11 @@ public class TunnelVisualizer {
 
     private Geometry createNodeGeometry(TunnelNode node) {
         float mmPerWorldUnit = (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
-        // Queen chamber ~80mm radius, Brood chamber ~50mm radius, Entrance ~35mm
+        // Queen chamber ~80mm radius, Brood chamber ~50mm radius, Entrance ~35mm, Fungus ~70mm, Hibernation ~60mm
         float radiusMm = switch (node.type()) {
             case QUEEN_CHAMBER -> 80.0f;
+            case FUNGUS_GARDEN -> 70.0f;
+            case HIBERNATION -> 60.0f;
             case BROOD_CHAMBER, FOOD_STORAGE -> 50.0f;
             case ENTRANCE -> 35.0f;
             default -> 25.0f;
@@ -150,6 +152,8 @@ public class TunnelVisualizer {
             case QUEEN_CHAMBER -> ColorRGBA.Magenta;
             case BROOD_CHAMBER -> ColorRGBA.White; // Eggs/Larvae
             case FOOD_STORAGE -> ColorRGBA.Green;
+            case FUNGUS_GARDEN -> new ColorRGBA(0.66f, 0.33f, 0.97f, 1.0f); // Purple
+            case HIBERNATION -> new ColorRGBA(0.22f, 0.74f, 0.97f, 1.0f); // Cyan
             case WASTE_DUMP -> ColorRGBA.DarkGray;
             case ENTRANCE -> ColorRGBA.Yellow;
             default -> ColorRGBA.Brown;

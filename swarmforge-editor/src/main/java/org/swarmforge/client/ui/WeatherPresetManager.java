@@ -127,6 +127,102 @@ public class WeatherPresetManager {
             new double[]{ 90, 89, 88, 91, 94, 92, 90, 92, 95, 96, 94, 90}  // Hum Max
         ));
 
+        // 6. Savanna (Serengeti, Tanzania) - Tropical Savanna / Alternating Wet & Dry
+        m.put("Savanna", makePreset("Savanna", "Serengeti", -2.33, 34.83, 1500.0, 1012.0, "E", 4.0, 0.85,
+            new double[]{ 15, 16, 16, 16, 15, 13, 13, 14, 15, 16, 16, 15}, // Temp Min
+            new double[]{ 22, 23, 23, 22, 21, 20, 20, 21, 22, 23, 22, 22}, // Temp Avg
+            new double[]{ 28, 29, 28, 27, 26, 26, 26, 27, 29, 30, 28, 28}, // Temp Max
+            new double[]{  8,  8,  9,  8,  7,  8,  9, 10, 10,  9,  8,  8}, // Wind Min
+            new double[]{ 16, 16, 17, 15, 14, 16, 18, 20, 19, 17, 16, 16}, // Wind Avg
+            new double[]{ 35, 35, 38, 35, 30, 35, 40, 42, 40, 38, 35, 35}, // Wind Max
+            new double[]{ 50, 45, 90, 120, 70, 10,  5,  5, 10, 30, 60, 60}, // Rain Min
+            new double[]{ 85, 80, 140, 190, 110, 25, 12, 15, 25, 65, 110, 100}, // Rain Avg
+            new double[]{140, 130, 220, 280, 180, 50, 25, 30, 50, 110, 180, 160}, // Rain Max
+            new double[]{ 45, 42, 50, 58, 52, 38, 32, 32, 35, 40, 48, 48}, // Hum Min
+            new double[]{ 62, 60, 68, 76, 70, 55, 48, 48, 52, 58, 66, 65}, // Hum Avg
+            new double[]{ 80, 78, 85, 90, 85, 72, 65, 65, 70, 76, 82, 82}  // Hum Max
+        ));
+
+        // 7. Alpine / Mountain (Mont Blanc / Valais)
+        m.put("Alpine", makePreset("Alpine", "Valais", 45.83, 6.86, 2500.0, 750.0, "W", 5.0, 0.90,
+            new double[]{-14,-13,-10, -6, -1,  3,  6,  6,  2, -2, -8,-12}, // Temp Min
+            new double[]{ -9, -8, -5, -1,  4,  8, 11, 11,  7,  2, -4, -8}, // Temp Avg
+            new double[]{ -4, -3,  0,  4,  9, 13, 16, 16, 12,  7,  0, -4}, // Temp Max
+            new double[]{ 12, 14, 15, 14, 12, 10,  9,  9, 11, 13, 14, 13}, // Wind Min
+            new double[]{ 25, 28, 30, 26, 22, 18, 16, 17, 22, 26, 28, 27}, // Wind Avg
+            new double[]{ 65, 70, 75, 65, 55, 45, 40, 45, 55, 65, 70, 68}, // Wind Max
+            new double[]{ 60, 55, 60, 70, 80, 75, 70, 75, 65, 60, 70, 65}, // Rain Min
+            new double[]{100, 95, 110, 125, 140, 130, 120, 130, 110, 100, 115, 110}, // Rain Avg
+            new double[]{160, 150, 175, 190, 210, 200, 185, 200, 170, 160, 180, 170}, // Rain Max
+            new double[]{ 55, 52, 50, 48, 50, 52, 48, 50, 52, 54, 56, 56}, // Hum Min
+            new double[]{ 72, 70, 68, 66, 68, 70, 66, 68, 70, 72, 74, 74}, // Hum Avg
+            new double[]{ 88, 86, 85, 84, 86, 88, 84, 86, 88, 89, 90, 90}  // Hum Max
+        ));
+
+        // 8. Boreal Taiga (Rovaniemi, Finland)
+        m.put("Taiga", makePreset("Taiga", "Rovaniemi", 66.50, 25.73, 140.0, 1005.0, "SW", 6.0, 0.88,
+            new double[]{-17,-17,-12, -5,  2,  8, 11,  9,  4, -2, -9,-14}, // Temp Min
+            new double[]{-12,-12, -7,  0,  7, 13, 16, 13,  8,  1, -5, -9}, // Temp Avg
+            new double[]{ -7, -6, -1,  5, 12, 18, 21, 18, 12,  4, -2, -5}, // Temp Max
+            new double[]{  8,  9, 10,  9,  8,  8,  7,  7,  8,  9, 10,  9}, // Wind Min
+            new double[]{ 16, 17, 18, 16, 15, 14, 13, 13, 15, 17, 18, 17}, // Wind Avg
+            new double[]{ 38, 40, 42, 38, 34, 32, 30, 30, 35, 40, 42, 40}, // Wind Max
+            new double[]{ 20, 18, 20, 22, 28, 38, 45, 42, 35, 30, 26, 22}, // Rain Min
+            new double[]{ 38, 32, 35, 38, 48, 65, 78, 72, 58, 50, 45, 40}, // Rain Avg
+            new double[]{ 60, 52, 55, 60, 75, 100, 120, 110, 90, 80, 70, 65}, // Rain Max
+            new double[]{ 72, 70, 62, 52, 46, 48, 52, 56, 64, 74, 80, 78}, // Hum Min
+            new double[]{ 84, 82, 75, 66, 60, 62, 66, 72, 78, 86, 90, 88}, // Hum Avg
+            new double[]{ 94, 92, 88, 80, 75, 78, 82, 86, 90, 95, 97, 96}  // Hum Max
+        ));
+
+        // 9. Semi-Arid Steppe (Astana, Kazakhstan)
+        m.put("Steppe", makePreset("Steppe", "Astana", 51.17, 71.45, 350.0, 1018.0, "N", 4.5, 0.80,
+            new double[]{-20,-20,-13, -1,  7, 12, 15, 13,  6, -1,-10,-17}, // Temp Min
+            new double[]{-15,-14, -7,  6, 15, 20, 22, 20, 13,  5, -5,-12}, // Temp Avg
+            new double[]{-10, -8, -1, 13, 22, 27, 29, 27, 20, 11,  0, -7}, // Temp Max
+            new double[]{ 12, 13, 14, 14, 13, 12, 11, 11, 12, 13, 14, 13}, // Wind Min
+            new double[]{ 22, 24, 25, 24, 22, 20, 18, 18, 20, 23, 25, 24}, // Wind Avg
+            new double[]{ 50, 55, 58, 52, 48, 45, 40, 40, 45, 50, 55, 52}, // Wind Max
+            new double[]{  8,  7,  8, 10, 15, 18, 22, 16, 10, 12, 10,  9}, // Rain Min
+            new double[]{ 16, 15, 18, 22, 32, 38, 48, 34, 24, 26, 22, 19}, // Rain Avg
+            new double[]{ 30, 28, 32, 40, 55, 65, 80, 60, 45, 48, 40, 35}, // Rain Max
+            new double[]{ 68, 66, 64, 45, 36, 38, 40, 38, 42, 54, 68, 70}, // Hum Min
+            new double[]{ 80, 78, 76, 58, 48, 50, 54, 50, 55, 68, 80, 82}, // Hum Avg
+            new double[]{ 90, 88, 86, 72, 62, 64, 68, 64, 70, 82, 90, 92}  // Hum Max
+        ));
+
+        // 10. Oceanic (Brittany, Brest, France)
+        m.put("Oceanic", makePreset("Oceanic", "Brest", 48.39, -4.48, 50.0, 1014.0, "W", 2.5, 0.82,
+            new double[]{  4,  4,  5,  6,  9, 11, 13, 13, 11,  9,  6,  4}, // Temp Min
+            new double[]{  7,  7,  9, 10, 13, 16, 18, 18, 16, 13, 10,  7}, // Temp Avg
+            new double[]{ 10, 10, 12, 14, 17, 20, 22, 22, 20, 16, 13, 10}, // Temp Max
+            new double[]{ 15, 16, 16, 14, 12, 10,  9,  9, 11, 14, 16, 16}, // Wind Min
+            new double[]{ 26, 28, 27, 24, 20, 18, 16, 16, 19, 24, 27, 28}, // Wind Avg
+            new double[]{ 60, 65, 62, 55, 45, 40, 35, 35, 45, 58, 65, 68}, // Wind Max
+            new double[]{ 70, 60, 50, 40, 40, 30, 25, 30, 45, 75, 85, 80}, // Rain Min
+            new double[]{120, 100, 85, 70, 65, 52, 45, 55, 78, 125, 140, 135}, // Rain Avg
+            new double[]{180, 160, 135, 115, 105, 85, 75, 90, 125, 190, 210, 200}, // Rain Max
+            new double[]{ 74, 70, 66, 62, 62, 62, 64, 64, 66, 72, 76, 76}, // Hum Min
+            new double[]{ 85, 83, 80, 76, 76, 76, 78, 78, 80, 84, 87, 87}, // Hum Avg
+            new double[]{ 94, 93, 91, 88, 88, 88, 90, 90, 92, 95, 96, 96}  // Hum Max
+        ));
+
+        // 11. Subtropical Wetland (Everglades, Florida, USA)
+        m.put("Wetland", makePreset("Wetland", "Everglades", 25.28, -80.90, 5.0, 1015.0, "SE", 1.5, 0.92,
+            new double[]{ 15, 16, 18, 20, 22, 24, 25, 25, 24, 22, 19, 16}, // Temp Min
+            new double[]{ 20, 21, 23, 25, 27, 29, 30, 30, 29, 27, 24, 21}, // Temp Avg
+            new double[]{ 26, 27, 29, 31, 32, 33, 34, 34, 33, 31, 29, 27}, // Temp Max
+            new double[]{  6,  7,  8,  8,  7,  6,  5,  5,  6,  7,  7,  6}, // Wind Min
+            new double[]{ 14, 15, 16, 17, 15, 13, 12, 12, 14, 15, 15, 14}, // Wind Avg
+            new double[]{ 32, 35, 38, 40, 36, 32, 30, 30, 38, 40, 36, 34}, // Wind Max
+            new double[]{ 20, 25, 30, 40, 90, 140, 130, 140, 150, 80, 35, 25}, // Rain Min
+            new double[]{ 45, 52, 65, 80, 165, 240, 210, 230, 250, 145, 70, 50}, // Rain Avg
+            new double[]{ 80, 95, 110, 140, 260, 360, 320, 350, 380, 230, 120, 90}, // Rain Max
+            new double[]{ 58, 55, 54, 52, 56, 64, 65, 66, 68, 64, 60, 59}, // Hum Min
+            new double[]{ 72, 70, 68, 66, 72, 80, 81, 82, 83, 78, 74, 73}, // Hum Avg
+            new double[]{ 88, 86, 84, 82, 88, 94, 95, 95, 96, 92, 89, 88}  // Hum Max
+        ));
+
         return m;
     }
 

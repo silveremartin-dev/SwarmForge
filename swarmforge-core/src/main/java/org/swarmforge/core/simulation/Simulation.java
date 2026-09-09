@@ -13,6 +13,7 @@ import org.swarmforge.core.domain.FoodSource;
 import org.swarmforge.core.gpu.SparsePheromoneGrid;
 import org.swarmforge.core.event.SimulationEvent;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -130,7 +131,7 @@ public class Simulation {
         this.tickDurationNanos = 1_000_000_000L / ticksPerSecond;
 
         this.pathfinder = new org.swarmforge.core.spatial.AStarPathfinder(terrarium);
-        this.history = new SimulationHistory(1000, 1);
+        this.history = new SimulationHistory(10000, 1);
         this.predatorManager = new PredatorManager(this);
         this.territoryManager = new TerritoryManager(this);
         this.diseaseManager = new org.swarmforge.core.simulation.diseases.DiseaseManager(this);
@@ -321,7 +322,7 @@ public class Simulation {
             String casteStr = formatCaste(individual.getCaste());
             String cause = (individual.getCauseOfDeath() != null && !individual.getCauseOfDeath().isEmpty())
                 ? individual.getCauseOfDeath() : "Unknown";
-            long ageTicks = (long) individual.getAge();
+            double ageDays = individual.getAge() / 86400.0;
             int x = (int) individual.getX();
             int y = (int) individual.getY();
             int z = (int) individual.getZ();
@@ -331,14 +332,15 @@ public class Simulation {
             data.put("colonyId", colony.getId().toString());
             data.put("individualId", shortId);
             data.put("caste", individual.getCaste().name());
-            data.put("ageTicks", ageTicks);
+            data.put("ageDays", String.format(Locale.US, "%.1f j", ageDays));
+            data.put("age", String.format(Locale.US, "%.1f jours", ageDays));
             data.put("cause", cause);
             data.put("x", x);
             data.put("y", y);
             data.put("z", z);
 
-            String message = String.format("Death: %s %s (Cause: %s, Age: %d ticks) in colony %s at (%d, %d, %d)",
-                    casteStr, shortId, cause, ageTicks, colName, x, y, z);
+            String message = String.format(Locale.US, "Death: %s %s (Cause: %s, Age: %.1f jours) in colony %s at (%d, %d, %d)",
+                    casteStr, shortId, cause, ageDays, colName, x, y, z);
             SimulationEvent event = SimulationEvent.obtain(type, severity, tickCount.get(), message, data);
             eventQueue.offer(event);
             org.swarmforge.core.event.EventBus.getInstance().publish(event);
@@ -965,23 +967,19 @@ public class Simulation {
     }
 
     /**
-     * Reset the simulation state.
+     * Resets runtime entities for snapshot restoration WITHOUT clearing history, checkpoints, or journal.
      */
-    public void reset(long tick) {
+    public void restoreState(long tick) {
         this.tickCount.set(tick);
         this.colonies.clear();
         this.foodSources.clear();
         this.spatialIndex.clear();
         this.foodIndex.clear();
-        this.random = new java.util.Random(this.masterSeed);
         if (this.pheromoneGrid != null) {
             this.pheromoneGrid.clear();
         }
         if (this.waterGrid != null) {
             this.waterGrid.clear();
-        }
-        if (this.history != null) {
-            this.history.clear();
         }
         if (this.predatorManager != null) {
             this.predatorManager.clearPredators();
@@ -989,9 +987,20 @@ public class Simulation {
         if (this.activeDisasters != null) {
             this.activeDisasters.clear();
         }
+        this.eventQueue.clear();
+    }
+
+    /**
+     * Reset the simulation state completely (clearing history, checkpoints, journal, and random state).
+     */
+    public void reset(long tick) {
+        restoreState(tick);
+        this.random = new java.util.Random(this.masterSeed);
+        if (this.history != null) {
+            this.history.clear();
+        }
         this.interventionJournal.clear();
         this.checkpoints.clear();
-        this.eventQueue.clear();
     }
 
     /**

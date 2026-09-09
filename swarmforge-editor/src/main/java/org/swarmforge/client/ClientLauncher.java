@@ -11,6 +11,7 @@ package org.swarmforge.client;
  */
 public class ClientLauncher {
     public static void main(String[] args) {
+        org.swarmforge.client.util.IconUtils.initEarlyTaskbarAppId();
         SwarmForgeClient.main(args);
     }
 }

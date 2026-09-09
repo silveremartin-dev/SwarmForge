@@ -63,6 +63,17 @@ public class JmeGameApp extends SimpleApplication {
     private DirectionalLight sunLight;
     private float antVisualScaleMultiplier = 1.0f;
 
+    public enum CameraFollowMode { FREE, TPS, FPS }
+    private CameraFollowMode cameraFollowMode = CameraFollowMode.FREE;
+
+    public void setCameraFollowMode(CameraFollowMode mode) {
+        this.cameraFollowMode = mode != null ? mode : CameraFollowMode.FREE;
+    }
+
+    public CameraFollowMode getCameraFollowMode() {
+        return cameraFollowMode;
+    }
+
     public interface TerrainModificationListener {
         void onBlockChanged(int x, int y, int z, boolean added);
     }
@@ -138,6 +149,7 @@ public class JmeGameApp extends SimpleApplication {
             com.jme3.shadow.DirectionalLightShadowRenderer dlsr = new com.jme3.shadow.DirectionalLightShadowRenderer(
                     assetManager, 1024, 3);
             dlsr.setLight(sun);
+            dlsr.setShadowIntensity(0.30f);
             viewPort.addProcessor(dlsr);
 
             // Disable standard flyCam to use custom mouse control
@@ -368,10 +380,10 @@ public class JmeGameApp extends SimpleApplication {
             terrainNode.attachChild(terrainGeom);
             rootNode.attachChild(terrainNode);
 
-            // Initialize Pheromone Visualizer
+            // Initialize Pheromone Visualizer with full world dimensions (width, height)
             if (pheromoneVisualizer == null) {
                 pheromoneVisualizer = new PheromoneVisualizer(assetManager);
-                pheromoneVisualizer.initialize(w, d);
+                pheromoneVisualizer.initialize(w, h);
                 rootNode.attachChild(pheromoneVisualizer.getRootNode());
             }
 
@@ -408,24 +420,33 @@ public class JmeGameApp extends SimpleApplication {
                 pheromoneVisualizer.update(simulation.getPheromoneGrid());
             }
 
-            // Camera Follow
+            // Camera Follow (FREE, TPS, FPS)
             if (followedAntId != null) {
                 com.jme3.scene.Spatial ant = antVisuals.get(followedAntId);
                 if (ant != null) {
                     Vector3f target = ant.getLocalTranslation();
-                    // Maintain current offset
-                    // Or impose standard follow offset? Let's smoothly interpolate.
-                    // Simple snap for now:
-                    Vector3f offset = new Vector3f(0, 20, 20); // Default offset
-                    // Better: Keep current relative offset but center X, Z
-                    // cam.setLocation(target.add(offset));
-                    // cam.lookAt(target, Vector3f.UNIT_Y);
+                    com.jme3.math.Quaternion rot = ant.getLocalRotation();
+                    Vector3f fwd = rot.mult(Vector3f.UNIT_Z);
 
-                    // Smooth follow
-                    Vector3f camPos = cam.getLocation();
-                    Vector3f desiredPos = target.add(offset);
-                    cam.setLocation(camPos.interpolateLocal(desiredPos, tpf * 5.0f));
-                    cam.lookAt(target, Vector3f.UNIT_Y);
+                    if (cameraFollowMode == CameraFollowMode.FPS) {
+                        // First-Person ground perspective directly above ant head
+                        Vector3f eyePos = target.add(new Vector3f(0, 0.35f, 0));
+                        cam.setLocation(eyePos);
+                        cam.lookAt(eyePos.add(fwd.mult(15.0f)), Vector3f.UNIT_Y);
+                    } else if (cameraFollowMode == CameraFollowMode.TPS) {
+                        // Third-Person chase cam positioned behind and above ant
+                        Vector3f chasePos = target.subtract(fwd.mult(5.0f)).add(new Vector3f(0, 2.8f, 0));
+                        Vector3f camPos = cam.getLocation();
+                        cam.setLocation(camPos.interpolateLocal(chasePos, tpf * 7.0f));
+                        cam.lookAt(target.add(new Vector3f(0, 0.4f, 0)), Vector3f.UNIT_Y);
+                    } else {
+                        // Smooth overhead free follow
+                        Vector3f offset = new Vector3f(0, 18, 18);
+                        Vector3f camPos = cam.getLocation();
+                        Vector3f desiredPos = target.add(offset);
+                        cam.setLocation(camPos.interpolateLocal(desiredPos, tpf * 5.0f));
+                        cam.lookAt(target, Vector3f.UNIT_Y);
+                    }
                 } else {
                     followedAntId = null; // Lost (died/despawned)
                 }
@@ -537,25 +558,47 @@ public class JmeGameApp extends SimpleApplication {
         }
     }
 
-    // Camera Controls
+    private final Vector3f cameraTarget = new Vector3f(32, 10, 32);
+
+    // Camera Controls (Orbit around camera target)
     public void rotateCamera(float x, float y) {
         enqueueTask(() -> {
-            cam.getRotation().multLocal(new com.jme3.math.Quaternion().fromAngles(y * 0.01f, x * 0.01f, 0));
+            Vector3f offset = cam.getLocation().subtract(cameraTarget);
+            float dist = Math.max(1.5f, offset.length());
+
+            com.jme3.math.Quaternion qYaw = new com.jme3.math.Quaternion().fromAngleAxis(-x * 0.006f, Vector3f.UNIT_Y);
+            Vector3f camLeft = cam.getLeft();
+            com.jme3.math.Quaternion qPitch = new com.jme3.math.Quaternion().fromAngleAxis(-y * 0.006f, camLeft);
+
+            Vector3f newOffset = qYaw.mult(qPitch.mult(offset));
+            // Prevent camera from flipping under ground or passing straight overhead
+            if (newOffset.y < 1.0f) newOffset.y = 1.0f;
+            cam.setLocation(cameraTarget.add(newOffset));
+            cam.lookAt(cameraTarget, Vector3f.UNIT_Y);
         });
     }
 
     public void panCamera(float dx, float dy) {
         enqueueTask(() -> {
-            Vector3f left = cam.getLeft().mult(dx * 0.1f);
-            Vector3f up = cam.getUp().mult(dy * 0.1f);
+            Vector3f left = cam.getLeft().mult(dx * 0.08f);
+            Vector3f up = cam.getUp().mult(dy * 0.08f);
+            cameraTarget.addLocal(left).addLocal(up);
             cam.setLocation(cam.getLocation().add(left).add(up));
         });
     }
 
     public void zoomCamera(float delta) {
         enqueueTask(() -> {
-            Vector3f dir = cam.getDirection().mult(delta * 0.5f);
-            cam.setLocation(cam.getLocation().add(dir));
+            Vector3f toTarget = cameraTarget.subtract(cam.getLocation());
+            float dist = toTarget.length();
+            float move = delta * (dist * 0.08f + 0.5f);
+            Vector3f dir = cam.getDirection().mult(move);
+            if (delta > 0 && dist - move < 1.5f) {
+                // Minimum distance clamp so user doesn't jump past target
+                cam.setLocation(cameraTarget.subtract(cam.getDirection().mult(1.5f)));
+            } else {
+                cam.setLocation(cam.getLocation().add(dir));
+            }
         });
     }
 
@@ -564,12 +607,12 @@ public class JmeGameApp extends SimpleApplication {
      */
     public void panCameraTo(float x, float y, float z) {
         enqueueTask(() -> {
-            Vector3f target = new Vector3f(x, y, z);
-            float distance = cam.getLocation().distance(target);
+            cameraTarget.set(x, y, z);
+            float distance = Math.max(10.0f, cam.getLocation().distance(cameraTarget));
             // Keep roughly the same viewing distance
-            Vector3f newPos = target.add(new Vector3f(0, distance * 0.6f, distance * 0.6f));
+            Vector3f newPos = cameraTarget.add(new Vector3f(0, distance * 0.6f, distance * 0.6f));
             cam.setLocation(newPos);
-            cam.lookAt(target, Vector3f.UNIT_Y);
+            cam.lookAt(cameraTarget, Vector3f.UNIT_Y);
         });
     }
 
@@ -594,11 +637,13 @@ public class JmeGameApp extends SimpleApplication {
                 int w = simulation.getTerrarium().getWidth();
                 int d = simulation.getTerrarium().getDepth();
                 int h = simulation.getTerrarium().getHeight();
+                cameraTarget.set(w / 2f, d / 2f, h / 2f);
                 cam.setLocation(new Vector3f(w / 2f, d + 25, h + 25));
-                cam.lookAt(new Vector3f(w / 2f, d / 2f, h / 2f), Vector3f.UNIT_Y);
+                cam.lookAt(cameraTarget, Vector3f.UNIT_Y);
             } else {
+                cameraTarget.set(32, 10, 32);
                 cam.setLocation(new Vector3f(32, 45, 65));
-                cam.lookAt(new Vector3f(32, 10, 32), Vector3f.UNIT_Y);
+                cam.lookAt(cameraTarget, Vector3f.UNIT_Y);
             }
         });
     }

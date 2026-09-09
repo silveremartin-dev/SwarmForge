@@ -78,7 +78,7 @@ public class AcademicScenarios {
         scenario.setWidth(200);
         scenario.setHeight(200);
         scenario.setDepth(48);
-        scenario.setBiomeName("TEMPERATE_FOREST");
+        scenario.setBiomeName("MEDITERRANEAN");
 
         Map<String, ArchitectureType> bdiEngine = new HashMap<>();
         bdiEngine.put("WORKER", ArchitectureType.BDI);
@@ -298,6 +298,152 @@ public class AcademicScenarios {
     }
 
     /**
+     * Scenario 10: Savanna Bioclimatic Adaptation & Acacia-Ant Mutualism (Serengeti Savanna).
+     */
+    public static Scenario createSavannaCoevolutionScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_10_SAVANNA_COEVOLUTION",
+                "Savanna Bioclimatic Adaptation & Acacia-Ant Mutualism (Serengeti)",
+                "Ecological dynamics under alternating wet/dry tropical seasons: acacia tree nesting, herbivore deterrence, and subterranean termite competition in the Serengeti savanna."
+        );
+        scenario.setAcademicCategory("Tropical Ecology / Mutualism & Drought Cycles");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(400);
+        scenario.setHeight(400);
+        scenario.setDepth(48);
+        scenario.setBiomeName("SAVANNA");
+
+        Map<String, ArchitectureType> antEngine = new HashMap<>();
+        antEngine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
+        antEngine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
+        antEngine.put("QUEEN", ArchitectureType.BDI);
+
+        Map<String, ArchitectureType> termiteEngine = new HashMap<>();
+        termiteEngine.put("WORKER", ArchitectureType.FINITE_STATE_MACHINE);
+        termiteEngine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
+        termiteEngine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Camponotus ligniperda (Savanna Defenders)", "COLONY_SAVANNA_ANTS", 1, 150, 30, 500, antEngine));
+        scenario.addColony(new Scenario.ColonySetup("Reticulitermes flavipes (Savanna Termites)", "COLONY_SAVANNA_TERMITES", 1, 250, 40, 500, termiteEngine));
+
+        scenario.addTargetMetric("HERBIVORE_DEFENSE_INDEX");
+        scenario.addTargetMetric("DROUGHT_RESILIENCE_RATIO");
+        scenario.addTargetMetric("INTERSPECIFIC_COMPETITION_SCORE");
+        return scenario;
+    }
+
+    /**
+     * Scenario 11: High-Altitude Cryo-Tolerance & Alpine Thermoregulation.
+     */
+    public static Scenario createAlpineThermoregulationScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_11_ALPINE_THERMOREGULATION",
+                "High-Altitude Cryo-Tolerance & Alpine Thermoregulation (Mont Blanc / Valais)",
+                "Study of colonial thermal budgeting, sub-zero freeze avoidance, and metabolic suppression during extreme alpine freeze-thaw diurnal cycles."
+        );
+        scenario.setAcademicCategory("Eco-Physiology / Cryo-Biology");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(250);
+        scenario.setHeight(250);
+        scenario.setDepth(64);
+        scenario.setBiomeName("ALPINE_TUNDRA");
+
+        Map<String, ArchitectureType> alpineEngine = new HashMap<>();
+        alpineEngine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
+        alpineEngine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Formica fusca (Alpine Cryo-Colony)", "COLONY_ALPINE", 1, 180, 0, 500, alpineEngine));
+        scenario.addTargetMetric("THERMAL_GRADIENT_EFFICIENCY");
+        scenario.addTargetMetric("METABOLIC_CONSERVATION_INDEX");
+        scenario.addTargetMetric("FREEZE_SURVIVAL_PERCENT");
+        return scenario;
+    }
+
+    /**
+     * Scenario 12: Boreal Pine Needle Domes & Solar Heat Storage (Rovaniemi Taiga).
+     */
+    public static Scenario createBorealSolarDomesScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_12_BOREAL_SOLAR_DOMES",
+                "Boreal Pine Needle Domes & Solar Heat Storage (Rovaniemi Taiga)",
+                "Investigation of mound solar orientation, infrared thatch heat capacitance, and active collective sun-basking heat carriage by wood ants (Formica rufa)."
+        );
+        scenario.setAcademicCategory("Thermoregulation & Biophysics");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(300);
+        scenario.setHeight(300);
+        scenario.setDepth(48);
+        scenario.setBiomeName("BOREAL_TAIGA");
+
+        Map<String, ArchitectureType> taigaEngine = new HashMap<>();
+        taigaEngine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
+        taigaEngine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
+        taigaEngine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Formica rufa (Taiga Mound Builders)", "COLONY_TAIGA_RUFA", 1, 200, 25, 500, taigaEngine));
+        scenario.addTargetMetric("MOUND_CORE_TEMPERATURE_DELTA");
+        scenario.addTargetMetric("SOLAR_CALORIE_HARVEST_RATE");
+        scenario.addTargetMetric("NEEDLE_STRUCTURE_STABILITY");
+        return scenario;
+    }
+
+    /**
+     * Scenario 13: Semi-Arid Steppe Granivory & Desiccation Resistance (Astana Steppe).
+     */
+    public static Scenario createSteppeHarvestingScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_13_STEPPE_HARVESTING",
+                "Semi-Arid Steppe Granivory & Desiccation Resistance (Astana)",
+                "Analysis of long-distance seed harvesting corridors, subterranean granary dehydration prevention, and high wind foraging thresholds."
+        );
+        scenario.setAcademicCategory("Desert Ecology / Hydric Stress");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(350);
+        scenario.setHeight(350);
+        scenario.setDepth(60);
+        scenario.setBiomeName("STEPPE");
+
+        Map<String, ArchitectureType> steppeEngine = new HashMap<>();
+        steppeEngine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
+        steppeEngine.put("SOLDIER", ArchitectureType.BDI);
+        steppeEngine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Pogonomyrmex barbatus (Steppe Harvesters)", "COLONY_STEPPE", 1, 160, 20, 500, steppeEngine));
+        scenario.addTargetMetric("SEED_STORAGE_HYGROMETRY_STABILITY");
+        scenario.addTargetMetric("WIND_FORAGING_CUTOFF_EFFICIENCY");
+        scenario.addTargetMetric("WATER_LOSS_PER_KM_FORAGED");
+        return scenario;
+    }
+
+    /**
+     * Scenario 14: Hydrodynamic Self-Assembled Rafting in Subtropical Wetlands (Everglades).
+     */
+    public static Scenario createWetlandFloodRaftingScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_14_WETLAND_FLOOD_RAFTING",
+                "Hydrodynamic Self-Assembled Rafting in Subtropical Wetlands (Everglades)",
+                "Emergent multi-agent structural raft construction by Solenopsis invicta under heavy rainfall and rising floodwaters to safeguard the queen and brood."
+        );
+        scenario.setAcademicCategory("Biomechanics & Self-Assembly");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(300);
+        scenario.setHeight(300);
+        scenario.setDepth(32);
+        scenario.setBiomeName("WETLAND");
+
+        Map<String, ArchitectureType> fireAntEngine = new HashMap<>();
+        fireAntEngine.put("WORKER", ArchitectureType.NEURAL_NETWORK);
+        fireAntEngine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
+        fireAntEngine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Solenopsis invicta (Wetland Raft Colony)", "COLONY_WETLAND_RAFT", 1, 300, 40, 500, fireAntEngine));
+        scenario.addTargetMetric("RAFT_STRUCTURAL_COHESION");
+        scenario.addTargetMetric("BROOD_IMMERSION_AVOIDANCE_RATE");
+        scenario.addTargetMetric("FLOOD_DISPERSAL_SUCCESS");
+        return scenario;
+    }
+
+    /**
      * List all available academic scenarios.
      */
     public static List<Scenario> getAllAcademicScenarios(long seed) {
@@ -310,7 +456,12 @@ public class AcademicScenarios {
                 createEpidemiologyScenario(seed),
                 createAttineFungiScenario(seed),
                 createStigmergyScenario(seed),
-                createDulosisRaidScenario(seed)
+                createDulosisRaidScenario(seed),
+                createSavannaCoevolutionScenario(seed),
+                createAlpineThermoregulationScenario(seed),
+                createBorealSolarDomesScenario(seed),
+                createSteppeHarvestingScenario(seed),
+                createWetlandFloodRaftingScenario(seed)
         );
     }
 }

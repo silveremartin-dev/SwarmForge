@@ -123,14 +123,22 @@ public class StatisticsDashboard extends VBox {
     private final LineChart<Number, Number> chartIndividualAnt;
 
     private final TextField txtAntSearchId = new TextField("ant_1");
+    private final Label lblTrackedIdDisplay = new Label("ant_1");
     private final Label lblIndivHealth = new Label("100.0%");
     private final Label lblIndivEnergy = new Label("95.0%");
     private final Label lblIndivDistance = new Label("0.0 m");
     private final Label lblIndivPayload = new Label("0.0 mg");
     private final Label lblIndivTask = new Label("Foraging (Nectar)");
     private final Label lblIndivCasteAge = new Label("Worker (14 days)");
+    private final Label lblIndivSpecies = new Label("Formica fusca");
+    private final Label lblIndivColony = new Label("Colonie #1");
     private String trackedAntId = "ant_1";
     private String scenarioName = "swarmforge";
+    private java.util.function.Consumer<String> onTrackAntListener;
+
+    public void setOnTrackAnt(java.util.function.Consumer<String> listener) {
+        this.onTrackAntListener = listener;
+    }
 
     public String getScenarioName() {
         return scenarioName;
@@ -151,68 +159,187 @@ public class StatisticsDashboard extends VBox {
         box.setPadding(new Insets(10));
         box.getStyleClass().add("card-pane");
 
-        Label title = new Label("🐜 Individual Telemetry & Tracking");
+        Label title = new Label();
+        title.textProperty().bind(i18n.createStringBinding("stats.indiv.title"));
         title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #38bdf8;");
 
         HBox inputRow = new HBox(8);
         inputRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label lblPrompt = new Label("Enter Ant Number / Identifier:");
-        lblPrompt.setStyle("-fx-font-weight: bold; -fx-text-fill: #e2e8f0;");
+        Label lblPrompt = new Label();
+        lblPrompt.textProperty().bind(i18n.createStringBinding("stats.indiv.prompt"));
+        lblPrompt.getStyleClass().add("field-label");
 
         txtAntSearchId.promptTextProperty().bind(I18nManager.getInstance().createStringBinding("inspector.prompt.id"));
-        txtAntSearchId.setPrefWidth(160);
+        txtAntSearchId.setPrefWidth(140);
         txtAntSearchId.tooltipProperty().bind(i18n.createTooltipBinding("stats.ant_search.tt"));
+        txtAntSearchId.setOnAction(e -> triggerTrackAndTrace());
 
-        Button btnTrack = new Button("🎯 Track & Trace");
-        btnTrack.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        Button btnPrevAnt = new Button();
+        btnPrevAnt.textProperty().bind(i18n.createStringBinding("inspector.btn.prev"));
+        btnPrevAnt.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CHEVRON_LEFT));
+        btnPrevAnt.getStyleClass().add("btn-secondary");
+        btnPrevAnt.setOnAction(e -> cycleAnt(-1));
+
+        Button btnNextAnt = new Button();
+        btnNextAnt.textProperty().bind(i18n.createStringBinding("inspector.btn.next"));
+        btnNextAnt.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CHEVRON_RIGHT));
+        btnNextAnt.getStyleClass().add("btn-secondary");
+        btnNextAnt.setOnAction(e -> cycleAnt(1));
+
+        Button btnTrack = new Button();
+        btnTrack.textProperty().bind(i18n.createStringBinding("stats.track_btn"));
+        btnTrack.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.TARGET));
+        btnTrack.getStyleClass().add("btn-primary");
         btnTrack.tooltipProperty().bind(i18n.createTooltipBinding("stats.track_btn.tt"));
-        btnTrack.setOnAction(e -> {
-            String val = txtAntSearchId.getText() != null ? txtAntSearchId.getText().trim() : "";
-            if (!val.isEmpty()) {
-                this.trackedAntId = val;
-                antHealthSeries.getData().clear();
-                antEnergySeries.getData().clear();
-                antDistanceSeries.getData().clear();
-            }
-        });
+        btnTrack.setOnAction(e -> triggerTrackAndTrace());
 
-        inputRow.getChildren().addAll(lblPrompt, txtAntSearchId, btnTrack);
+        inputRow.getChildren().addAll(lblPrompt, txtAntSearchId, btnPrevAnt, btnNextAnt, btnTrack);
 
         GridPane grid = new GridPane();
         grid.setHgap(16);
         grid.setVgap(8);
 
-        grid.add(new Label("Tracked Identifier:"), 0, 0);
-        grid.add(new Label(trackedAntId), 1, 0);
-        grid.add(new Label("Caste & Age:"), 2, 0);
+        Label lblIdTitle = new Label();
+        lblIdTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.id"));
+        lblIdTitle.getStyleClass().add("field-label");
+        lblTrackedIdDisplay.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+
+        Label lblCasteAgeTitle = new Label();
+        lblCasteAgeTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.caste_age"));
+        lblCasteAgeTitle.getStyleClass().add("field-label");
+
+        Label lblSpeciesTitle = new Label();
+        lblSpeciesTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.species"));
+        lblSpeciesTitle.getStyleClass().add("field-label");
+
+        Label lblColonyTitle = new Label();
+        lblColonyTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.colony"));
+        lblColonyTitle.getStyleClass().add("field-label");
+
+        Label lblHealthTitle = new Label();
+        lblHealthTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.health"));
+        lblHealthTitle.getStyleClass().add("field-label");
+
+        Label lblEnergyTitle = new Label();
+        lblEnergyTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.energy"));
+        lblEnergyTitle.getStyleClass().add("field-label");
+
+        Label lblDistTitle = new Label();
+        lblDistTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.distance"));
+        lblDistTitle.getStyleClass().add("field-label");
+
+        Label lblPayloadTitle = new Label();
+        lblPayloadTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.payload"));
+        lblPayloadTitle.getStyleClass().add("field-label");
+
+        Label lblTaskTitle = new Label();
+        lblTaskTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.task"));
+        lblTaskTitle.getStyleClass().add("field-label");
+
+        grid.add(lblIdTitle, 0, 0);
+        grid.add(lblTrackedIdDisplay, 1, 0);
+        grid.add(lblCasteAgeTitle, 2, 0);
         grid.add(lblIndivCasteAge, 3, 0);
 
-        grid.add(new Label("Health (%):"), 0, 1);
-        grid.add(lblIndivHealth, 1, 1);
-        grid.add(new Label("Energy Reserves (%):"), 2, 1);
-        grid.add(lblIndivEnergy, 3, 1);
+        grid.add(lblSpeciesTitle, 0, 1);
+        grid.add(lblIndivSpecies, 1, 1);
+        grid.add(lblColonyTitle, 2, 1);
+        grid.add(lblIndivColony, 3, 1);
 
-        grid.add(new Label("Traveled Distance (m):"), 0, 2);
-        grid.add(lblIndivDistance, 1, 2);
-        grid.add(new Label("Carried Payload (mg):"), 2, 2);
-        grid.add(lblIndivPayload, 3, 2);
+        grid.add(lblHealthTitle, 0, 2);
+        grid.add(lblIndivHealth, 1, 2);
+        grid.add(lblEnergyTitle, 2, 2);
+        grid.add(lblIndivEnergy, 3, 2);
 
-        grid.add(new Label("Task / Behavior:"), 0, 3);
-        grid.add(lblIndivTask, 1, 3, 3, 1);
+        grid.add(lblDistTitle, 0, 3);
+        grid.add(lblIndivDistance, 1, 3);
+        grid.add(lblPayloadTitle, 2, 3);
+        grid.add(lblIndivPayload, 3, 3);
+
+        grid.add(lblTaskTitle, 0, 4);
+        grid.add(lblIndivTask, 1, 4, 3, 1);
 
         box.getChildren().addAll(title, inputRow, new Separator(), grid);
         return box;
+    }
+
+    private void triggerTrackAndTrace() {
+        String val = txtAntSearchId.getText() != null ? txtAntSearchId.getText().trim() : "";
+        if (!val.isEmpty()) {
+            setTrackedAntId(val);
+            if (onTrackAntListener != null) {
+                onTrackAntListener.accept(val);
+            }
+        }
+    }
+
+    private void cycleAnt(int delta) {
+        String current = (trackedAntId != null && !trackedAntId.isBlank()) ? trackedAntId.trim() : "ant_1";
+        int num = 1;
+        String prefix = "ant_";
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^(.*?)(\\d+)$").matcher(current);
+        if (m.find()) {
+            prefix = m.group(1);
+            try {
+                num = Integer.parseInt(m.group(2));
+            } catch (Exception ignored) {}
+        }
+        num = Math.max(1, num + delta);
+        String newId = prefix + num;
+        setTrackedAntId(newId);
+        if (onTrackAntListener != null) {
+            onTrackAntListener.accept(newId);
+        }
     }
 
     public void setTrackedAntId(String antId) {
         if (antId != null && !antId.trim().isEmpty()) {
             this.trackedAntId = antId.trim();
             txtAntSearchId.setText(this.trackedAntId);
+            lblTrackedIdDisplay.setText(this.trackedAntId);
             antHealthSeries.getData().clear();
             antEnergySeries.getData().clear();
             antDistanceSeries.getData().clear();
         }
+    }
+
+    public void setTrackedAnt(org.swarmforge.core.domain.Individual ant) {
+        if (ant != null) {
+            String idStr = ant.getFormattedId();
+            setTrackedAntId(idStr);
+            updateIndividualTelemetryFromEntity(ant);
+        }
+    }
+
+    public void updateIndividualTelemetryFromEntity(org.swarmforge.core.domain.Individual ant) {
+        if (ant == null) return;
+        Platform.runLater(() -> {
+            String shortUuid = ant.getId() != null ? ant.getId().toString().substring(0, Math.min(8, ant.getId().toString().length())) : "N/A";
+            lblTrackedIdDisplay.setText(String.format("%s (#%s)", ant.getFormattedId(), shortUuid));
+            if (!ant.isAlive() || ant.getHealth() <= 0) {
+                String cod = ant.getCauseOfDeath() != null ? " (" + ant.getCauseOfDeath() + ")" : "";
+                lblIndivHealth.setText("0.0% 💀 [MORT" + cod + "]");
+            } else {
+                lblIndivHealth.setText(String.format(Locale.US, "%.1f%%", ant.getHealth()));
+            }
+            lblIndivEnergy.setText(String.format(Locale.US, "%.1f%%", ant.getEnergy()));
+            double distNest = Math.hypot(ant.getX() - ant.getHomeX(), ant.getY() - ant.getHomeY());
+            lblIndivDistance.setText(String.format(Locale.US, "%.2f m (nid)", distNest));
+            String payload = (ant.getCarriedItem() != null && ant.getCarriedItem() != org.swarmforge.core.domain.Individual.CarriedItem.NONE)
+                    ? ant.getCarriedItem().name()
+                    : "0.0 mg";
+            lblIndivPayload.setText(payload);
+            double ageDays = ant.getAge() / 86400.0;
+            lblIndivCasteAge.setText(String.format(Locale.US, "%s (%.1f j)", ant.getCaste() != null ? ant.getCaste().name() : "Worker", ageDays));
+            String spName = ant.getSpecies() != null 
+                    ? (ant.getSpecies().getCommonName() != null ? ant.getSpecies().getCommonName() : ant.getSpecies().getScientificName())
+                    : "Formica fusca";
+            lblIndivSpecies.setText(spName != null ? spName : "Formicidae");
+            String jobStr = ant.getJob() != null ? ant.getJob().toString() : "Forager";
+            String stateStr = ant.getState() != null ? ant.getState().toString() : "ACTIVE";
+            lblIndivTask.setText(String.format(Locale.US, "%s [%s]", jobStr, stateStr));
+        });
     }
 
     private final VBox chartsContainer = new VBox(14);
@@ -225,11 +352,19 @@ public class StatisticsDashboard extends VBox {
     private final CheckBox chkWorkers = new CheckBox();
     private final CheckBox chkSoldiers = new CheckBox();
     private final CheckBox chkQueens = new CheckBox();
+    private final CheckBox chkMales = new CheckBox("Males");
     private final CheckBox chkFood = new CheckBox();
     private final CheckBox chkWater = new CheckBox();
+    private final CheckBox chkProtein = new CheckBox("Proteins");
     private final CheckBox chkBirths = new CheckBox();
     private final CheckBox chkDeaths = new CheckBox();
+    private final CheckBox chkTemp = new CheckBox("Temp (°C)");
+    private final CheckBox chkRain = new CheckBox("Rain (mm/h)");
+    private final CheckBox chkPhero = new CheckBox("Pheromones");
     private final CheckBox chkTps = new CheckBox();
+    private final CheckBox chkAntHealth = new CheckBox("Ant Health");
+    private final CheckBox chkAntEnergy = new CheckBox("Ant Energy");
+    private final CheckBox chkAntDistance = new CheckBox("Ant Distance");
 
     private final List<ColonyStats> historyList = new ArrayList<>();
 
@@ -252,7 +387,7 @@ public class StatisticsDashboard extends VBox {
         setPadding(new Insets(14));
 
         // === Header Toolbar ===
-        HBox headerBar = new HBox(12);
+        HBox headerBar = new HBox(10);
         headerBar.setAlignment(Pos.CENTER_LEFT);
 
         Label titleLabel = new Label("📊 " + i18n.get("stats.dashboard_title", "Tableau de Bord Statistiques Temporel"));
@@ -279,6 +414,47 @@ public class StatisticsDashboard extends VBox {
         comboGraphView.getSelectionModel().selectFirst();
         comboGraphView.tooltipProperty().bind(i18n.createTooltipBinding("stats.graph_view.tt"));
         comboGraphView.setOnAction(e -> updateVisibleCharts());
+
+        // Zoom Controls
+        Button btnZoomIn = new Button("🔍+");
+        btnZoomIn.setStyle("-fx-background-color: #334155; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        btnZoomIn.setTooltip(new Tooltip("Zoom avant temporel (réduire la fenêtre)"));
+        btnZoomIn.setOnAction(e -> {
+            if (currentSelectedWindowSec <= 0) {
+                currentSelectedWindowSec = 300.0;
+            } else {
+                currentSelectedWindowSec = Math.max(15.0, currentSelectedWindowSec / 1.5);
+            }
+            if (!historyList.isEmpty()) {
+                updateChartXAxes(historyList.get(historyList.size() - 1).getSimTimeSeconds());
+            }
+        });
+
+        Button btnZoomOut = new Button("🔍-");
+        btnZoomOut.setStyle("-fx-background-color: #334155; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        btnZoomOut.setTooltip(new Tooltip("Zoom arrière temporel (agrandir la fenêtre)"));
+        btnZoomOut.setOnAction(e -> {
+            if (currentSelectedWindowSec > 0) {
+                currentSelectedWindowSec = currentSelectedWindowSec * 1.5;
+                if (currentSelectedWindowSec > 3600.0) {
+                    currentSelectedWindowSec = -1.0; // All history
+                }
+            }
+            if (!historyList.isEmpty()) {
+                updateChartXAxes(historyList.get(historyList.size() - 1).getSimTimeSeconds());
+            }
+        });
+
+        Button btnZoomReset = new Button("🔍 100%");
+        btnZoomReset.setStyle("-fx-background-color: #334155; -fx-text-fill: #94a3b8;");
+        btnZoomReset.setTooltip(new Tooltip("Réinitialiser le zoom (3 minutes)"));
+        btnZoomReset.setOnAction(e -> {
+            currentSelectedWindowSec = 180.0;
+            comboTimeWindow.getSelectionModel().select(1);
+            if (!historyList.isEmpty()) {
+                updateChartXAxes(historyList.get(historyList.size() - 1).getSimTimeSeconds());
+            }
+        });
 
         // Time Window Selector (3 Minutes default as requested)
         Label lblTimeWindow = new Label();
@@ -317,7 +493,7 @@ public class StatisticsDashboard extends VBox {
         btnClear.tooltipProperty().bind(i18n.createTooltipBinding("stats.clear.tt"));
         btnClear.setOnAction(e -> clear());
 
-        headerBar.getChildren().addAll(titleLabel, spacer, lblViewMode, comboGraphView, lblTimeWindow, comboTimeWindow, btnClear, btnExport);
+        headerBar.getChildren().addAll(titleLabel, spacer, lblViewMode, comboGraphView, btnZoomIn, btnZoomOut, btnZoomReset, lblTimeWindow, comboTimeWindow, btnClear, btnExport);
 
         // === Summary KPI Cards ===
         GridPane summaryGrid = createSummaryPanel();
@@ -355,7 +531,12 @@ public class StatisticsDashboard extends VBox {
         chkTps.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.tps.tt"));
 
         FlowPane checkFlow = new FlowPane(12, 6);
-        checkFlow.getChildren().addAll(chkTotalPop, chkWorkers, chkSoldiers, chkQueens, chkFood, chkWater, chkBirths, chkDeaths, chkTps);
+        checkFlow.getChildren().addAll(
+                chkTotalPop, chkWorkers, chkSoldiers, chkQueens, chkMales,
+                chkFood, chkWater, chkProtein, chkBirths, chkDeaths,
+                chkTemp, chkRain, chkPhero, chkTps,
+                chkAntHealth, chkAntEnergy, chkAntDistance
+        );
 
         for (Node n : checkFlow.getChildren()) {
             if (n instanceof CheckBox cb) {
@@ -403,17 +584,28 @@ public class StatisticsDashboard extends VBox {
         chartPerformance.getData().addAll(tpsSeries);
         chartIndividualAnt.getData().addAll(antHealthSeries, antEnergySeries, antDistanceSeries);
 
-        // Bind visibility controls
+        // Bind visibility controls for all series
         chkTotalPop.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, totalPopSeries, newV));
         chkQueens.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, queensSeries, newV));
         chkWorkers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, workersSeries, newV));
         chkSoldiers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, soldiersSeries, newV));
+        chkMales.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, malesSeries, newV));
 
         chkFood.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, foodSeries, newV));
         chkWater.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, waterSeries, newV));
+        chkProtein.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, proteinSeries, newV));
         chkBirths.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, birthsSeries, newV));
         chkDeaths.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, deathsSeries, newV));
+
+        chkTemp.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartWeather, tempSeries, newV));
+        chkRain.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartWeather, rainSeries, newV));
+        chkPhero.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartWeather, pheroSeries, newV));
+
         chkTps.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartPerformance, tpsSeries, newV));
+
+        chkAntHealth.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartIndividualAnt, antHealthSeries, newV));
+        chkAntEnergy.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartIndividualAnt, antEnergySeries, newV));
+        chkAntDistance.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartIndividualAnt, antDistanceSeries, newV));
 
         updateVisibleCharts();
 
@@ -650,6 +842,42 @@ public class StatisticsDashboard extends VBox {
     private void trimSeries(XYChart.Series<Number, Number> series) {
         if (series.getData().size() > MAX_DATA_POINTS) {
             series.getData().remove(0);
+        }
+    }
+
+    public void truncateAfter(double simTimeSeconds) {
+        Runnable doTruncate = () -> {
+            historyList.removeIf(s -> s.getSimTimeSeconds() > simTimeSeconds);
+            for (XYChart.Series<Number, Number> s : colonySeriesMap.values()) {
+                s.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            }
+            totalPopSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            queensSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            workersSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            soldiersSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            malesSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+
+            foodSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            waterSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            proteinSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            birthsSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            deathsSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+
+            tempSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            rainSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            pheroSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+
+            tpsSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            antHealthSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            antEnergySeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            antDistanceSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+
+            updateChartXAxes(simTimeSeconds);
+        };
+        if (Platform.isFxApplicationThread()) {
+            doTruncate.run();
+        } else {
+            Platform.runLater(doTruncate);
         }
     }
 

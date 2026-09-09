@@ -58,6 +58,7 @@ public class SimulationSnapshot implements Serializable {
      */
     public record IndividualSnapshot(
             String id,
+            long antNumber,
             float x, float y, float z,
             float heading,
             float health,
@@ -96,6 +97,7 @@ public class SimulationSnapshot implements Serializable {
             for (Individual ind : colony.getLivingIndividuals()) {
                 indSnapshots.add(new IndividualSnapshot(
                         ind.getId().toString(),
+                        ind.getAntNumber(),
                         ind.getX(), ind.getY(), ind.getZ(),
                         ind.getHeading(),
                         ind.getHealth(),
@@ -145,7 +147,7 @@ public class SimulationSnapshot implements Serializable {
      * Restore simulation to this snapshot state.
      */
     public void restore(Simulation simulation) {
-        simulation.reset(tick);
+        simulation.restoreState(tick);
 
         for (ColonySnapshot cs : colonies) {
             String spName = cs.speciesName() != null ? cs.speciesName() : "Lasius niger";
@@ -168,8 +170,17 @@ public class SimulationSnapshot implements Serializable {
             }
 
             // recreate individuals
+            long maxAntNum = 0;
             for (IndividualSnapshot is : cs.individuals()) {
-                Individual ind = new Individual(colony.getId(), is.caste(), is.x(), is.y(), is.z());
+                java.util.UUID indId = null;
+                if (is.id() != null && !is.id().isEmpty()) {
+                    try {
+                        indId = java.util.UUID.fromString(is.id());
+                    } catch (Exception ignored) {}
+                }
+                long aNum = is.antNumber() > 0 ? is.antNumber() : 0;
+                if (aNum > maxAntNum) maxAntNum = aNum;
+                Individual ind = new Individual(indId, aNum, colony.getId(), is.caste(), is.x(), is.y(), is.z());
                 ind.setSpecies(species);
                 ind.setPosition(is.x(), is.y(), is.z());
                 ind.setHeading(is.heading());
@@ -183,6 +194,9 @@ public class SimulationSnapshot implements Serializable {
                 ind.setCarriedItem(is.carriedItem());
 
                 colony.addIndividual(ind);
+            }
+            if (maxAntNum > 0) {
+                Individual.setNextAntNumber(maxAntNum + 1);
             }
             simulation.addColony(colony);
         }

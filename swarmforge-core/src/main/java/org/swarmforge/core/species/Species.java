@@ -54,6 +54,27 @@ public interface Species extends java.io.Serializable {
     float getWorkerSpeed();
 
     /**
+     * @return Nominal cruising/foraging walking speed (m/s)
+     */
+    default float getWalkingSpeed() {
+        return getWorkerSpeed();
+    }
+
+    /**
+     * @return Fast sprint/alarm/attack running speed (m/s)
+     */
+    default float getRunningSpeed() {
+        return Math.max(0.1f, getWorkerSpeed() * 1.65f);
+    }
+
+    /**
+     * @return 3D flight speed (m/s) for flying hymenoptera or alates
+     */
+    default float getFlyingSpeed() {
+        return isWorkersCanFly() ? Math.max(3.5f, getWorkerSpeed() * 4.0f) : Math.max(1.5f, getWorkerSpeed() * 2.5f);
+    }
+
+    /**
      * @return View distance for detecting food/threats
      */
     float getViewDistance();

@@ -25,6 +25,25 @@ import org.swarmforge.core.behavior.AgentView;
 public class Individual implements java.io.Serializable, AgentView {
     private static final long serialVersionUID = 1L;
 
+    private static final java.util.concurrent.atomic.AtomicLong ANT_NUMBER_GENERATOR = new java.util.concurrent.atomic.AtomicLong(1);
+    private final long antNumber;
+
+    public static void resetAntNumberGenerator() {
+        ANT_NUMBER_GENERATOR.set(1);
+    }
+
+    public static void setNextAntNumber(long nextVal) {
+        ANT_NUMBER_GENERATOR.set(Math.max(1, nextVal));
+    }
+
+    public long getAntNumber() {
+        return antNumber;
+    }
+
+    public String getFormattedId() {
+        return "ant_" + antNumber;
+    }
+
     private final UUID id;
     private final Caste caste;
     private final UUID colonyId;
@@ -255,7 +274,12 @@ public class Individual implements java.io.Serializable, AgentView {
     private CasteTemplate casteTemplate;
 
     public Individual(UUID colonyId, Caste caste, float x, float y, float z) {
-        this.id = new UUID(java.util.concurrent.ThreadLocalRandom.current().nextLong(), java.util.concurrent.ThreadLocalRandom.current().nextLong());
+        this(new UUID(java.util.concurrent.ThreadLocalRandom.current().nextLong(), java.util.concurrent.ThreadLocalRandom.current().nextLong()), ANT_NUMBER_GENERATOR.getAndIncrement(), colonyId, caste, x, y, z);
+    }
+
+    public Individual(UUID id, long antNumber, UUID colonyId, Caste caste, float x, float y, float z) {
+        this.id = id != null ? id : new UUID(java.util.concurrent.ThreadLocalRandom.current().nextLong(), java.util.concurrent.ThreadLocalRandom.current().nextLong());
+        this.antNumber = antNumber > 0 ? antNumber : ANT_NUMBER_GENERATOR.getAndIncrement();
         this.colonyId = colonyId;
         this.caste = caste;
         this.x = x;
@@ -265,8 +289,8 @@ public class Individual implements java.io.Serializable, AgentView {
         this.homeY = y;
         this.homeZ = z;
         this.alive = true;
-        this.health = 100f;
         this.maxHealth = 100f;
+        this.health = 100f;
         this.energy = 100f;
         this.maxEnergy = 100f;
         this.hunger = 0f;
@@ -278,9 +302,9 @@ public class Individual implements java.io.Serializable, AgentView {
         this(colonyId, Caste.WORKER, x, y, z); // Default to WORKER enum for now
         this.casteTemplate = template;
         this.maxHealth = template.getBaseHealth();
+        this.health = this.maxHealth;
         this.attackDamage = template.getBaseDamage();
         this.defense = template.getBaseDefense();
-        this.health = this.maxHealth;
     }
 
     public CasteTemplate getCasteTemplate() {
@@ -318,24 +342,37 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     /**
-     * Get ground walking/running speed based on species, caste, genome, Q10 thermal factor, and health state.
+     * Get ground walking speed based on species walking speed, caste, activity state, payload, and Q10 thermal factor.
      */
     public float getWalkingSpeed() {
-        float baseWorkerSpeed = species != null ? species.getWorkerSpeed() : 0.5f; // m/s scale
-        float casteMult = 1.0f;
+        float baseWalkingSpeed = (casteTemplate != null && casteTemplate.getWalkingSpeed() > 0)
+                ? casteTemplate.getWalkingSpeed()
+                : (species != null ? species.getWalkingSpeed() : 0.45f);
+
+        float casteMult = switch (caste) {
+            case QUEEN -> 0.65f;
+            case MALE -> 0.90f;
+            case SOLDIER -> 1.05f;
+            case FORAGER -> 1.00f;
+            case NURSE -> 0.75f;
+            case WORKER -> 0.95f;
+        };
+
         if (casteTemplate != null && casteTemplate.getBodyLengthMm() > 0) {
-            casteMult = (float) Math.pow(casteTemplate.getBodyLengthMm() / 4.0f, 0.4);
-        } else {
-            casteMult = switch (caste) {
-                case QUEEN -> 0.75f;
-                case MALE -> 0.90f;
-                case SOLDIER -> 1.10f;
-                case FORAGER -> 1.05f;
-                case NURSE -> 0.85f;
-                case WORKER -> 1.00f;
-            };
+            casteMult *= (float) Math.pow(casteTemplate.getBodyLengthMm() / 5.0f, 0.35);
         }
-        float speed = baseWorkerSpeed * casteMult * getQ10ThermalFactor();
+
+        float activityMult = 0.65f; // Normal calm cruising/foraging pace
+        if (state == AiState.TEND_BROOD || state == AiState.IDLE) {
+            activityMult = 0.40f; // Gentle micro-movements in nursery
+        }
+
+        // Payload carrying resistance penalty
+        if (isCarryingFood() || carriedItem != CarriedItem.NONE) {
+            activityMult *= 0.72f;
+        }
+
+        float speed = baseWalkingSpeed * casteMult * activityMult * getQ10ThermalFactor();
         if (genome != null) {
             speed *= genome.getSpeedMultiplier();
         }
@@ -346,29 +383,55 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     /**
-     * Get 3D flying speed based on species wingbeat frequency, caste alate status, hovering capability, and individual state.
+     * Get fast ground running/sprint speed (during alarm, fleeing, or attack).
+     */
+    public float getRunningSpeed() {
+        float baseRunningSpeed = (casteTemplate != null && casteTemplate.getRunningSpeed() > 0)
+                ? casteTemplate.getRunningSpeed()
+                : (species != null ? species.getRunningSpeed() : 0.85f);
+
+        float casteMult = (caste == Caste.SOLDIER) ? 1.15f : ((caste == Caste.QUEEN) ? 0.75f : 1.0f);
+        float speed = baseRunningSpeed * casteMult * getQ10ThermalFactor();
+        if (genome != null) {
+            speed *= genome.getSpeedMultiplier();
+        }
+        if (health < maxHealth && maxHealth > 0f) {
+            speed *= (0.5f + 0.5f * (health / maxHealth));
+        }
+        return Math.max(0.05f, speed);
+    }
+
+    /**
+     * Get 3D flying speed based on species flying speed, wingbeat frequency, caste alate status, and hovering capability.
      */
     public float getFlyingSpeed() {
         if (!canFly()) return getWalkingSpeed();
         
+        float baseFlySpeed = (casteTemplate != null && casteTemplate.getFlyingSpeed() > 0)
+                ? casteTemplate.getFlyingSpeed()
+                : (species != null ? species.getFlyingSpeed() : 4.5f);
+
         float wingbeatHz = species != null ? species.getWingbeatFrequencyHz() : 180.0f;
         if (casteTemplate != null && casteTemplate.getWingbeatFrequencyHz() > 0) {
             wingbeatHz = casteTemplate.getWingbeatFrequencyHz();
         }
         
-        float baseFlySpeed = getWalkingSpeed() * 2.5f * (Math.max(50.0f, wingbeatHz) / 180.0f);
+        baseFlySpeed *= (Math.max(50.0f, wingbeatHz) / 180.0f);
         if (species != null && species.hasHoveringCapability()) {
-            baseFlySpeed *= 1.2f;
+            baseFlySpeed *= 1.15f;
         }
-        return Math.max(0.08f, baseFlySpeed);
+        return Math.max(0.20f, baseFlySpeed * getQ10ThermalFactor());
     }
 
     /**
-     * Get current active movement speed depending on flight status (walking vs 3D flight).
+     * Get current active movement speed depending on flight status, alarm/combat state, or calm cruising.
      */
     public float getCurrentMovementSpeed() {
         if (canFly() && z > 0.1f) {
             return getFlyingSpeed();
+        }
+        if (state == AiState.FLEE || state == AiState.FLEEING || state == AiState.ATTACKING) {
+            return getRunningSpeed();
         }
         return getWalkingSpeed();
     }

@@ -1,5 +1,223 @@
 import { create } from 'zustand'
 
+const WMO_WEATHER_CODES = {
+    0: { label: 'Ciel dégagé', state: 'CLEAR', icon: '☀️' },
+    1: { label: 'Principalement dégagé', state: 'CLEAR', icon: '🌤️' },
+    2: { label: 'Partiellement nuageux', state: 'CLOUDY', icon: '⛅' },
+    3: { label: 'Couvert', state: 'CLOUDY', icon: '☁️' },
+    45: { label: 'Brouillard', state: 'FOG', icon: '🌫️' },
+    48: { label: 'Brouillard givrant', state: 'FOG', icon: '🌫️' },
+    51: { label: 'Bruine légère', state: 'RAIN', icon: '🌦️' },
+    53: { label: 'Bruine modérée', state: 'RAIN', icon: '🌦️' },
+    55: { label: 'Bruine dense', state: 'RAIN', icon: '🌧️' },
+    61: { label: 'Pluie faible', state: 'RAIN', icon: '🌧️' },
+    63: { label: 'Pluie modérée', state: 'RAIN', icon: '🌧️' },
+    65: { label: 'Pluie forte', state: 'TEMPEST', icon: '🌧️' },
+    71: { label: 'Neige légère', state: 'SNOW', icon: '🌨️' },
+    73: { label: 'Neige modérée', state: 'SNOW', icon: '🌨️' },
+    75: { label: 'Blizzard / Neige forte', state: 'BLIZZARD', icon: '❄️' },
+    80: { label: 'Averses faibles', state: 'RAIN', icon: '🌦️' },
+    81: { label: 'Averses modérées', state: 'RAIN', icon: '🌧️' },
+    82: { label: 'Averses violentes', state: 'TEMPEST', icon: '⛈️' },
+    95: { label: 'Orage', state: 'THUNDERSTORM', icon: '⚡' },
+    96: { label: 'Orage avec grêle légère', state: 'HAIL', icon: '⛈️' },
+    99: { label: 'Orage avec forte grêle', state: 'HAIL', icon: '⛈️' },
+}
+
+const loadLocalCheckpoints = () => {
+    try {
+        const saved = localStorage.getItem('swarmforge_checkpoints')
+        return saved ? JSON.parse(saved) : []
+    } catch {
+        return []
+    }
+}
+
+const saveLocalCheckpoints = (checkpoints) => {
+    try {
+        localStorage.setItem('swarmforge_checkpoints', JSON.stringify(checkpoints.slice(0, 20)))
+    } catch (e) {
+        console.error('Failed to save checkpoints', e)
+    }
+}
+
+export function formatSimTime(totalSeconds) {
+    const totalSec = Math.floor(Math.max(0, totalSeconds || 0))
+    const days = Math.floor(totalSec / 86400)
+    const rem = totalSec % 86400
+    const hours = Math.floor(rem / 3600)
+    const mins = Math.floor((rem % 3600) / 60)
+    const secs = Math.floor(rem % 60)
+    return `J+${days} ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
+export function generateDefaultChambersForNest(nest) {
+    const scale = nest.scale || 1.0
+    const nx = nest.x <= 5 ? nest.x * 50 : nest.x
+    const nz = nest.y <= 5 ? (nest.y !== undefined ? nest.y * 50 : 50) : (nest.z !== undefined ? nest.z : 50)
+
+    return [
+        {
+            id: `${nest.id}_ch_queen`,
+            nestId: nest.id,
+            nestName: nest.name,
+            name: 'Chambre Royale (Reine)',
+            type: 'QUEEN_QUARTERS',
+            position: { x: nx, y: -2.4 * scale, z: nz },
+            radius: 2.2 * scale,
+            capacity: 15,
+            occupants: 1,
+            humidity: 84,
+            temperature: 24.8,
+            foodStored: 50,
+            safetyLevel: 'MAXIMALE (Cœur)',
+            caste: 'Reine & Gardes Royales',
+            icon: '👑',
+            description: 'Chambre centrale la plus profonde, maintenue à hygrométrie et température stables pour la ponte.'
+        },
+        {
+            id: `${nest.id}_ch_nursery`,
+            nestId: nest.id,
+            nestName: nest.name,
+            name: 'Nurserie & Couvain',
+            type: 'NURSERY',
+            position: { x: nx + 3.2 * scale, y: -1.6 * scale, z: nz + 1.2 * scale },
+            radius: 1.9 * scale,
+            capacity: 80,
+            occupants: 45,
+            humidity: 90,
+            temperature: 25.2,
+            foodStored: 80,
+            safetyLevel: 'ÉLEVÉE',
+            caste: 'Nourrices & Larves',
+            icon: '🍼',
+            description: 'Incubation des œufs et développement des larves régulés par les ouvrières nourrices.'
+        },
+        {
+            id: `${nest.id}_ch_food`,
+            nestId: nest.id,
+            nestName: nest.name,
+            name: 'Grenier à Graines & Miellat',
+            type: 'FOOD_STORAGE',
+            position: { x: nx - 3.0 * scale, y: -1.2 * scale, z: nz - 1.5 * scale },
+            radius: 2.0 * scale,
+            capacity: 160,
+            occupants: 20,
+            humidity: 62,
+            temperature: 21.5,
+            foodStored: 240,
+            safetyLevel: 'SÉCURISÉE',
+            caste: 'Magasinières & Butineuses',
+            icon: '🍯',
+            description: 'Stockage des réserves énergétiques (glucides, graines et lipides) à l\'abri des moisissures.'
+        },
+        {
+            id: `${nest.id}_ch_waste`,
+            nestId: nest.id,
+            nestName: nest.name,
+            name: 'Dépotoir & Chambre Sanitaire',
+            type: 'WASTE_DUMP',
+            position: { x: nx + 2.5 * scale, y: -3.2 * scale, z: nz - 2.8 * scale },
+            radius: 1.6 * scale,
+            capacity: 50,
+            occupants: 8,
+            humidity: 48,
+            temperature: 19.8,
+            foodStored: 0,
+            safetyLevel: 'BASSE (Isolée)',
+            caste: 'Éboueuses Sanitaires',
+            icon: '☣️',
+            description: 'Zone de confinement des débris organiques et individus défunts pour éviter les épidémies.'
+        },
+        {
+            id: `${nest.id}_ch_entrance`,
+            nestId: nest.id,
+            nestName: nest.name,
+            name: 'Poste de Garde & Entrée',
+            type: 'ENTRANCE',
+            position: { x: nx, y: -0.3 * scale, z: nz },
+            radius: 1.7 * scale,
+            capacity: 50,
+            occupants: 28,
+            humidity: 58,
+            temperature: 22.0,
+            foodStored: 20,
+            safetyLevel: 'FRONTALIÈRE',
+            caste: 'Soldats & Sentinelles',
+            icon: '🛡️',
+            description: 'Accès vers l\'extérieur et zone de filtrage des odeurs cuticulaires coloniales (CHC).'
+        }
+    ]
+}
+
+// Helper to generate realistic starting ants with species and colony metadata
+function generateInitialAnts(colonies = [], count = 80) {
+    const list = []
+    const cols = colonies && colonies.length > 0 ? colonies : [
+        { id: 'COLONY_1', name: 'Colonie #1 (Native)', species: 'Formica fusca', color: '#38bdf8' },
+        { id: 'COLONY_2', name: 'Colonie #2 (Rivale)', species: 'Linepithema humile', color: '#f43f5e' }
+    ]
+
+    cols.forEach((col, cIdx) => {
+        const nestBaseX = cIdx === 0 ? 35 : 65
+        const nestBaseY = cIdx === 0 ? 35 : 65
+        const perColonyCount = Math.floor(count / cols.length)
+
+        // 1 Queen
+        list.push({
+            id: `ant_${col.id}_queen`,
+            colonyId: col.id,
+            colonyName: col.name,
+            species: col.species || 'Formica fusca',
+            caste: 'QUEEN',
+            job: 'LAYING_EGGS',
+            x: nestBaseX,
+            y: nestBaseY,
+            z: 0,
+            health: 100,
+            energy: 100,
+            ageInDays: 365 + Math.floor(Math.random() * 200), // ~1-2 years
+            maxLifespanDays: 365 * 10,
+            bodyLengthMm: 11.0,
+            heading: Math.random() * Math.PI * 2,
+            carriedItem: 'NONE',
+            diseaseState: 'HEALTHY'
+        })
+
+        // Soldiers & Workers
+        for (let i = 0; i < perColonyCount; i++) {
+            const isSoldier = i < Math.floor(perColonyCount * 0.25)
+            const caste = isSoldier ? 'SOLDIER' : 'WORKER'
+            const jobs = isSoldier ? ['GUARDING', 'PATROLLING'] : ['FORAGING', 'EXCAVATING', 'NURSING', 'EXPLORING']
+            const job = jobs[Math.floor(Math.random() * jobs.length)]
+            const angle = Math.random() * Math.PI * 2
+            const dist = Math.random() * 15
+
+            list.push({
+                id: `ant_${col.id}_${i}`,
+                colonyId: col.id,
+                colonyName: col.name,
+                species: col.species || 'Formica fusca',
+                caste,
+                job,
+                x: Math.max(5, Math.min(95, nestBaseX + Math.cos(angle) * dist)),
+                y: Math.max(5, Math.min(95, nestBaseY + Math.sin(angle) * dist)),
+                z: 0,
+                health: 90 + Math.floor(Math.random() * 10),
+                energy: 70 + Math.floor(Math.random() * 30),
+                ageInDays: Math.floor(Math.random() * 15) + 3, // 3 to 18 days (healthy prime youth)
+                maxLifespanDays: isSoldier ? 180 : 120,
+                bodyLengthMm: isSoldier ? 7.5 : 5.0,
+                heading: Math.random() * Math.PI * 2,
+                carriedItem: Math.random() < 0.2 ? 'SEEDS' : (Math.random() < 0.1 ? 'SUGAR_NECTAR' : 'NONE'),
+                diseaseState: 'HEALTHY'
+            })
+        }
+    })
+
+    return list
+}
+
 export const useSimulationStore = create((set, get) => ({
     // Connection state
     connected: false,
@@ -9,19 +227,268 @@ export const useSimulationStore = create((set, get) => ({
     tick: 0,
     running: false,
     speed: 1.0,
+    simSeconds: 0,
+    simTimeFormatted: 'J+0 00:00:00',
+    simulationSeed: 12345,
 
-    // Entity data (Default multi-colony setup)
+    // Chamber selection & overlay toggle
+    selectedChamber: null,
+    setSelectedChamber: (chamber) => set({ selectedChamber: chamber, selectedEntity: null }),
+    showChamberOverlay: true,
+    setShowChamberOverlay: (show) => set({ showChamberOverlay: show }),
+    toggleChamberOverlay: () => set(state => ({ showChamberOverlay: !state.showChamberOverlay })),
+
+    // Ant navigation & cycling
+    selectNextAnt: () => {
+        const { ants, selectedEntity } = get()
+        if (!ants || ants.length === 0) return
+        let currentIdx = -1
+        if (selectedEntity && selectedEntity.id) {
+            currentIdx = ants.findIndex(a => a.id === selectedEntity.id)
+        }
+        const nextIdx = (currentIdx + 1) % ants.length
+        set({ selectedEntity: ants[nextIdx], selectedChamber: null })
+    },
+    selectPreviousAnt: () => {
+        const { ants, selectedEntity } = get()
+        if (!ants || ants.length === 0) return
+        let currentIdx = 0
+        if (selectedEntity && selectedEntity.id) {
+            currentIdx = ants.findIndex(a => a.id === selectedEntity.id)
+        }
+        const prevIdx = (currentIdx - 1 + ants.length) % ants.length
+        set({ selectedEntity: ants[prevIdx], selectedChamber: null })
+    },
+
+    stepSingleTick: () => {
+        get().stepSimulationTick()
+    },
+
+    // Camera 3D Viewport Reset Trigger
+    cameraResetTrigger: 0,
+    triggerCameraReset: () => {
+        set(state => ({
+            cameraResetTrigger: state.cameraResetTrigger + 1,
+            selectedEntity: null
+        }))
+        get().addEventLog({
+            level: 'INFO',
+            category: 'VIEWPORT',
+            message: '🎥 Caméra 3D repositionnée aux coordonnées par défaut [50, 65, 125].'
+        })
+    },
+
+    // Checkpoint Management System
+    checkpoints: loadLocalCheckpoints(),
+    autoCheckpoint: true,
+    autoCheckpointInterval: 25000, // Save every 25,000 ticks (approx. 500-1000s)
+
+    createCheckpoint: (customLabel) => {
+        const state = get()
+        const newCheckpoint = {
+            id: `ckpt_${Date.now()}_${state.tick}`,
+            tick: state.tick,
+            timestamp: new Date().toISOString(),
+            label: customLabel || `Checkpoint Tick #${state.tick}`,
+            masterSeed: state.simulationSeed,
+            stats: { ...state.stats },
+            colonies: JSON.parse(JSON.stringify(state.colonies)),
+            antsCount: state.ants.length,
+            ants: JSON.parse(JSON.stringify(state.ants)),
+            foodSources: JSON.parse(JSON.stringify(state.foodSources)),
+            predators: JSON.parse(JSON.stringify(state.predators)),
+            nests: JSON.parse(JSON.stringify(state.nests)),
+            environment: { ...state.environment },
+            climateEngine: { ...state.climateEngine },
+            weatherMode: state.weatherMode,
+            realWeatherData: state.realWeatherData,
+        }
+
+        const updated = [newCheckpoint, ...state.checkpoints.slice(0, 19)]
+        set({ checkpoints: updated })
+        saveLocalCheckpoints(updated)
+
+        get().addEventLog({
+            level: 'INFO',
+            category: 'CHECKPOINT',
+            message: `💾 Checkpoint "${newCheckpoint.label}" sauvegardé avec succès (Tick #${state.tick}, ${state.ants.length} individus).`
+        })
+        return newCheckpoint
+    },
+
+    restoreCheckpoint: (checkpointId) => {
+        const state = get()
+        const target = state.checkpoints.find(c => c.id === checkpointId)
+        if (!target) return false
+
+        const { localTickInterval } = state
+        if (localTickInterval) clearInterval(localTickInterval)
+
+        set({
+            tick: target.tick,
+            running: false,
+            localTickInterval: null,
+            simulationSeed: target.masterSeed || state.simulationSeed,
+            stats: target.stats || state.stats,
+            colonies: target.colonies || state.colonies,
+            ants: target.ants || [],
+            foodSources: target.foodSources || state.foodSources,
+            predators: target.predators || state.predators,
+            nests: target.nests || state.nests,
+            environment: target.environment || state.environment,
+            climateEngine: target.climateEngine || state.climateEngine,
+            weatherMode: target.weatherMode || 'SIMULATED',
+            realWeatherData: target.realWeatherData || null,
+            selectedEntity: null,
+            cameraResetTrigger: state.cameraResetTrigger + 1,
+        })
+
+        get().addEventLog({
+            level: 'WARN',
+            category: 'CHECKPOINT',
+            message: `⏮️ Restauration réussie au Checkpoint "${target.label}" (Tick #${target.tick}).`
+        })
+        return true
+    },
+
+    deleteCheckpoint: (checkpointId) => {
+        const state = get()
+        const updated = state.checkpoints.filter(c => c.id !== checkpointId)
+        set({ checkpoints: updated })
+        saveLocalCheckpoints(updated)
+        get().addEventLog({
+            level: 'INFO',
+            category: 'CHECKPOINT',
+            message: `🗑️ Checkpoint supprimé.`
+        })
+    },
+
+    clearCheckpoints: () => {
+        set({ checkpoints: [] })
+        saveLocalCheckpoints([])
+    },
+
+    // Weather Engine Mode: 'SIMULATED' (Presets) vs 'REAL_WORLD' (Open-Meteo Live API)
+    weatherMode: 'SIMULATED',
+    realWeatherData: null,
+    realWeatherLoading: false,
+    realWeatherError: null,
+
+    setWeatherMode: (mode) => {
+        set({ weatherMode: mode })
+        if (mode === 'REAL_WORLD') {
+            get().fetchRealWorldWeather()
+        }
+        get().addEventLog({
+            level: 'INFO',
+            category: 'WEATHER',
+            message: mode === 'REAL_WORLD'
+                ? '🟢 Météo basculée en mode Météo Réelle (Open-Meteo Live API).'
+                : '🔵 Météo basculée en mode Météo Simulée (Presets du Terrarium).'
+        })
+    },
+
+    fetchRealWorldWeather: async (customLat = 48.8566, customLon = 2.3522, customCity = 'Paris') => {
+        set({ realWeatherLoading: true, realWeatherError: null })
+        try {
+            let lat = customLat
+            let lon = customLon
+            let cityName = customCity
+
+            if (navigator.geolocation && customCity === 'Paris') {
+                try {
+                    const pos = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 })
+                    })
+                    lat = pos.coords.latitude
+                    lon = pos.coords.longitude
+                    cityName = 'Position Locale'
+                } catch {
+                    // Fallback to default
+                }
+            }
+
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure,cloud_cover`
+            const res = await fetch(url)
+            if (!res.ok) throw new Error(`Erreur API Open-Meteo (${res.status})`)
+            const data = await res.json()
+
+            const cur = data.current || {}
+            const wCode = cur.weather_code ?? 0
+            const wmo = WMO_WEATHER_CODES[wCode] || { label: 'Variable', state: 'CLEAR', icon: '🌤️' }
+
+            const realData = {
+                cityName,
+                latitude: lat,
+                longitude: lon,
+                temp: cur.temperature_2m ?? 20.0,
+                humidity: cur.relative_humidity_2m ?? 50,
+                precipitation: cur.precipitation ?? 0.0,
+                windSpeed: cur.wind_speed_10m ?? 3.5,
+                pressure: cur.surface_pressure ?? 1013.25,
+                cloudCover: (cur.cloud_cover ?? 20) / 100,
+                weatherCode: wCode,
+                condition: wmo.label,
+                state: wmo.state,
+                icon: wmo.icon,
+                lastUpdated: new Date().toLocaleTimeString('fr-FR')
+            }
+
+            set(state => ({
+                realWeatherData: realData,
+                realWeatherLoading: false,
+                environment: {
+                    ...state.environment,
+                    temperature: realData.temp,
+                    humidity: realData.humidity,
+                    rainIntensity: realData.precipitation,
+                    windSpeed: realData.windSpeed,
+                    weatherState: realData.state,
+                },
+                climateEngine: {
+                    ...state.climateEngine,
+                    latitudeDeg: lat,
+                    cloudCover: realData.cloudCover,
+                    precipitationMm: realData.precipitation,
+                    windSpeedMs: realData.windSpeed,
+                    barometricPressureHpa: realData.pressure,
+                }
+            }))
+
+            get().addEventLog({
+                level: 'INFO',
+                category: 'WEATHER',
+                message: `🛰️ Météo Réelle Open-Meteo synchronisée (${cityName}): ${realData.temp}°C, ${realData.condition} ${realData.icon}, Vent: ${realData.windSpeed} km/h, Humidité: ${realData.humidity}%.`
+            })
+        } catch (err) {
+            console.error('Failed to fetch real weather:', err)
+            set({ realWeatherLoading: false, realWeatherError: err.message })
+            get().addEventLog({
+                level: 'WARN',
+                category: 'WEATHER',
+                message: `⚠️ Échec de récupération de la Météo Réelle: ${err.message}`
+            })
+        }
+    },
+
+    // Dynamic Pheromones Field
+    pheromones: [],
+
+    // Entity data
     colonies: [
-        { id: 'COLONY_1', name: 'Colony #1 (Native)', species: 'Formica fusca', color: '#38bdf8', foodStored: 250, queenCount: 1, workerCount: 120 },
-        { id: 'COLONY_2', name: 'Colony #2 (Rival)', species: 'Linepithema humile', color: '#f43f5e', foodStored: 180, queenCount: 2, workerCount: 90 },
+        { id: 'COLONY_1', name: 'Colonie #1 (Native)', species: 'Formica fusca', color: '#38bdf8', foodStored: 250, queenCount: 1, workerCount: 120 },
+        { id: 'COLONY_2', name: 'Colonie #2 (Rivale)', species: 'Linepithema humile', color: '#f43f5e', foodStored: 180, queenCount: 2, workerCount: 90 },
     ],
-    ants: [],
+    ants: generateInitialAnts([
+        { id: 'COLONY_1', name: 'Colonie #1 (Native)', species: 'Formica fusca', color: '#38bdf8' },
+        { id: 'COLONY_2', name: 'Colonie #2 (Rivale)', species: 'Linepithema humile', color: '#f43f5e' }
+    ], 60),
     predators: [],
     foodSources: [
         { id: 'food_init_1', x: 45, y: 55, quantity: 200, type: 'SUGAR_NECTAR' },
         { id: 'food_init_2', x: 60, y: 40, quantity: 150, type: 'SEEDS' },
     ],
-    // Look and Feel Themes ('GAMING', 'SCIENTIFIC', 'REALISTIC')
+
     lookAndFeel: 'SCIENTIFIC',
     setLookAndFeel: (mode) => {
         const themeAttr = mode === 'SCIENTIFIC' ? 'scientific' : mode === 'REALISTIC' ? 'realistic' : 'gaming'
@@ -34,8 +501,7 @@ export const useSimulationStore = create((set, get) => ({
         })
     },
 
-    // Real-World Date / Time Synchronization
-    timeSyncMode: 'REAL_WORLD', // 'REAL_WORLD' | 'SIMULATED'
+    timeSyncMode: 'REAL_WORLD',
     realWorldTimeStr: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     realWorldDateStr: new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
     
@@ -58,11 +524,9 @@ export const useSimulationStore = create((set, get) => ({
         const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
         
-        // Calculate sun position based on real local hour (0-24h -> 0.0-1.0 sun angle)
         const hours = now.getHours() + now.getMinutes() / 60
         const sunAngle = (hours / 24)
         
-        // Light level calculation (daylight curve)
         let lightLevel = Math.max(0.08, Math.sin((hours - 6) / 12 * Math.PI))
         let timeOfDay = 'NIGHT'
         if (hours >= 6 && hours < 8) timeOfDay = 'DAWN'
@@ -81,13 +545,12 @@ export const useSimulationStore = create((set, get) => ({
         }))
     },
 
-    // Nest Creation & Phantom Ghost Rendering Engine
     phantomNestsVisible: true,
     togglePhantomNests: () => set(state => ({ phantomNestsVisible: !state.phantomNestsVisible })),
 
     ghostNest: {
         active: false,
-        type: 'PINE_NEEDLES', // 'PINE_NEEDLES', 'TERMITE_MOUND', 'WASP_BRANCH', 'WOODEN_BEEHIVE', 'EARTH_MOUND', 'TREE_TRUNK'
+        type: 'PINE_NEEDLES',
         x: 50,
         y: 50,
         z: 0,
@@ -97,8 +560,42 @@ export const useSimulationStore = create((set, get) => ({
     setGhostNest: (data) => set(state => ({ ghostNest: { ...state.ghostNest, ...data } })),
 
     nests: [
-        { id: 'nest_pine_1', name: 'Dôme d\'Épines de Pin', type: 'PINE_NEEDLES', x: 35, y: 35, z: 0, scale: 1.2, species: 'Formica rufa', population: 140, isPhantom: false },
-        { id: 'nest_termite_1', name: 'Termitière Cathédrale', type: 'TERMITE_MOUND', x: 75, y: 30, z: 0, scale: 1.5, species: 'Macrotermes', population: 310, isPhantom: false },
+        {
+            id: 'nest_pine_1',
+            name: 'Dôme d\'Épines de Pin',
+            type: 'PINE_NEEDLES',
+            x: 35, y: 35, z: 0,
+            scale: 1.2,
+            species: 'Formica rufa',
+            population: 140,
+            isPhantom: false,
+            chambers: generateDefaultChambersForNest({ id: 'nest_pine_1', name: 'Dôme d\'Épines de Pin', x: 35, y: 35, scale: 1.2 }),
+            tunnels: [
+                { startChamberId: 'nest_pine_1_ch_entrance', endChamberId: 'nest_pine_1_ch_nursery' },
+                { startChamberId: 'nest_pine_1_ch_entrance', endChamberId: 'nest_pine_1_ch_food' },
+                { startChamberId: 'nest_pine_1_ch_nursery', endChamberId: 'nest_pine_1_ch_queen' },
+                { startChamberId: 'nest_pine_1_ch_food', endChamberId: 'nest_pine_1_ch_queen' },
+                { startChamberId: 'nest_pine_1_ch_queen', endChamberId: 'nest_pine_1_ch_waste' },
+            ]
+        },
+        {
+            id: 'nest_termite_1',
+            name: 'Termitière Cathédrale',
+            type: 'TERMITE_MOUND',
+            x: 75, y: 30, z: 0,
+            scale: 1.5,
+            species: 'Macrotermes',
+            population: 310,
+            isPhantom: false,
+            chambers: generateDefaultChambersForNest({ id: 'nest_termite_1', name: 'Termitière Cathédrale', x: 75, y: 30, scale: 1.5 }),
+            tunnels: [
+                { startChamberId: 'nest_termite_1_ch_entrance', endChamberId: 'nest_termite_1_ch_nursery' },
+                { startChamberId: 'nest_termite_1_ch_entrance', endChamberId: 'nest_termite_1_ch_food' },
+                { startChamberId: 'nest_termite_1_ch_nursery', endChamberId: 'nest_termite_1_ch_queen' },
+                { startChamberId: 'nest_termite_1_ch_food', endChamberId: 'nest_termite_1_ch_queen' },
+                { startChamberId: 'nest_termite_1_ch_queen', endChamberId: 'nest_termite_1_ch_waste' },
+            ]
+        },
         { id: 'nest_wasp_1', name: 'Guêpier Suspendu sur Branche', type: 'WASP_BRANCH', x: 40, y: 70, z: 1.8, scale: 1.1, species: 'Vespula vulgaris', population: 85, isPhantom: false },
         { id: 'nest_beehive_1', name: 'Ruche Ruche Traditionnelle', type: 'WOODEN_BEEHIVE', x: 65, y: 65, z: 0, scale: 1.3, species: 'Apis mellifera', population: 220, isPhantom: false },
         { id: 'nest_trunk_1', name: 'Cavité dans Tronc d\'Arbre', type: 'TREE_TRUNK', x: 20, y: 55, z: 0, scale: 1.4, species: 'Camponotus herculeanus', population: 95, isPhantom: false },
@@ -119,27 +616,25 @@ export const useSimulationStore = create((set, get) => ({
         return { nests: state.nests.filter(n => n.id !== nestId) }
     }),
 
-    // Multi-Variable Astro-Atmospheric Climate & Seasonal Engine
     climateEngine: {
-        latitudeDeg: 45.0,         // Latitude (0° = Equator, 45° = Temperate, 65° = Boreal)
-        hemisphere: 'NORTHERN',    // 'NORTHERN' | 'SOUTHERN' (Flips seasons when SOUTHERN)
-        climateType: 'OCEANIC',    // 'OCEANIC' | 'CONTINENTAL' | 'MEDITERRANEAN' | 'ALPINE' | 'TROPICAL'
-        season: 'SUMMER',          // 'SPRING' | 'SUMMER' | 'AUTUMN' | 'WINTER'
-        dayOfYear: 200,            // 1 to 365
-        cloudCover: 0.25,          // 0.0 (clear sky) to 1.0 (overcast storm)
-        precipitationMm: 0.0,      // Rain intensity mm/h
+        latitudeDeg: 45.0,
+        hemisphere: 'NORTHERN',
+        climateType: 'OCEANIC',
+        season: 'SUMMER',
+        dayOfYear: 200,
+        cloudCover: 0.25,
+        precipitationMm: 0.0,
         barometricPressureHpa: 1013.25,
-        windSpeedMs: 2.4,          // Wind speed in m/s
-        windDirectionDeg: 225,     // SW Wind direction
-        soilMoisture: 0.45,        // 0.0 (dry dust) to 1.0 (saturated mud)
+        windSpeedMs: 2.4,
+        windDirectionDeg: 225,
+        soilMoisture: 0.45,
     },
 
-    // 3D Terrain Configuration (Slopes, Base Altitude Y=0 / Y=10 / Y=-5)
     terrainConfig: {
-        baseElevation: 0,          // Base ground altitude (Y=0, Y=10, Y=-5, etc.)
-        slopeX: 0.0,               // Ground slope incline along X axis (m/m)
-        slopeZ: 0.0,               // Ground slope incline along Z axis (m/m)
-        roughness: 0.45,           // Relief roughness index
+        baseElevation: 0,
+        slopeX: 0.0,
+        slopeZ: 0.0,
+        roughness: 0.45,
         hasRiver: true,
         riverX: 25,
         riverWidth: 10,
@@ -149,33 +644,44 @@ export const useSimulationStore = create((set, get) => ({
     setHemisphere: (hemisphere) => set(state => ({ climateEngine: { ...state.climateEngine, hemisphere } })),
 
     environmentLighting: {
-        sunAzimuthDeg: 145,       // Solar direction angle (0° = North, 180° = South)
-        sunElevationDeg: 42,      // Calculated solar elevation angle above horizon
-        slopeExposure: 'SOUTH',   // 'SOUTH' (warmer solar gain) vs 'NORTH' (shaded cool slope)
+        sunAzimuthDeg: 145,
+        sunElevationDeg: 42,
+        slopeExposure: 'SOUTH',
         isNight: false,
-        moonPhase: 'FULL_MOON',   // 'NEW_MOON' | 'CRESCENT' | 'FULL_MOON'
-        moonlightIntensity: 0.4,  // 0.0 (pitch dark) to 1.0 (bright silver moonlight)
+        moonPhase: 'FULL_MOON',
+        moonlightIntensity: 0.4,
         currentCalculatedTempC: 22.5,
     },
 
-    // Natural Hazards & Disasters (Inondation, Sécheresse, Gelé Spring)
     disasterState: {
-        activeDisaster: null,     // 'FLASH_FLOOD' | 'DROUGHT_CRACKS' | 'LATE_FROST'
-        intensity: 0,             // 0 to 100
-        floodWaterLevelMm: 0,     // Submergence of lower galleries
+        activeDisaster: null,
+        intensity: 0,
+        floodWaterLevelMm: 0,
     },
 
-    // Trophallaxis & Crop Social Energy Transfer Engine
-    trophallaxisEvents: [],       // List of active food transfers between workers
+    trophallaxisEvents: [],
     trophallaxisActive: true,
 
-    // Specific Predator Species Engine
     predatorCatalog: [
         { id: 'TAMANDUA', name: 'Fourmilier (Tamandua)', target: 'ALL_ANTS', threat: 'CRITICAL', icon: '🦥' },
         { id: 'PICUS_VIRIDIS', name: 'Pic-vert (Picus viridis)', target: 'PINE_NEEDLES', threat: 'HIGH', icon: '🐦' },
         { id: 'PSEUDACTEON', name: 'Mouche Phoride Parasite', target: 'WORKER_ANTS', threat: 'MEDIUM', icon: '🪰' },
         { id: 'SPIDER_MYRMECOPHAGE', name: 'Araignée Myrmécophage', target: 'FORAGERS', threat: 'MEDIUM', icon: '🕷️' },
     ],
+
+    diseaseParams: {
+        activeOutbreak: false,
+        diseaseType: 'CORDYCEPS',
+        contagionRate: 0.35,
+    },
+    epidemicStats: {
+        healthy: 210,
+        incubating: 0,
+        infected: 0,
+        contagious: 0,
+        immune: 0,
+        totalDeaths: 0,
+    },
 
     triggerEpidemic: (type = 'CORDYCEPS', patientZeroCount = 3) => {
         const ants = [...get().ants]
@@ -247,27 +753,22 @@ export const useSimulationStore = create((set, get) => ({
         })
     },
 
-    // Simulation Parameters (Categorized with strictly metric SI units)
     simulationParams: {
-        // Category 1: Phéromones & Diffusion
         pheromones: {
             dissipationRate: { value: 0.50, unit: '%/s', min: 0.01, max: 5.00, label: 'Taux de Dissipation des Phéromones' },
             diffusionRadius: { value: 1.20, unit: 'm', min: 0.20, max: 5.00, label: 'Rayon de Diffusion Évaporative' },
             alarmThreshold: { value: 40, unit: '%', min: 5, max: 100, label: 'Seuil d\'Intensité d\'Alarme' },
         },
-        // Category 2: Ressources & Alimentation
         resources: {
             foodSpawnRate: { value: 12, unit: 'g/min', min: 1, max: 100, label: 'Taux d\'Apparition de Nourriture' },
-            foodDecayRate: { value: 0.20, unit: '%/h', min: 0.0, max: 2.0, label: 'Taux de Décomposition Organic' },
+            foodDecayRate: { value: 0.20, unit: '%/h', min: 0.0, max: 2.0, label: 'Taux de Décomposition Organique' },
             honeydewRate: { value: 2.50, unit: 'mg/h', min: 0.1, max: 10.0, label: 'Production de Miellat (Pucerons)' },
         },
-        // Category 3: Espèces & Démographie
         species: {
             queenFecundity: { value: 60, unit: 'œufs/jour', min: 5, max: 300, label: 'Fécondité Reine (Taux de Ponte)' },
             workerLifespan: { value: 90, unit: 'jours', min: 10, max: 365, label: 'Espérance de Vie des Ouvrières' },
             soldierRatio: { value: 25, unit: '%', min: 0, max: 60, label: 'Proportion de Soldats dans la Colonie' },
         },
-        // Category 4: Commerciaux & Économie
         economics: {
             metabolicCost: { value: 0.50, unit: 'mW', min: 0.05, max: 5.00, label: 'Puissance Métabolique de Base' },
             harvestEfficiency: { value: 85, unit: '%', min: 20, max: 100, label: 'Rendement de Récolte Énergétique' },
@@ -287,7 +788,6 @@ export const useSimulationStore = create((set, get) => ({
         }
     })),
 
-    // Multi-Colony Management Actions
     addColony: (newColony) => set(state => {
         const id = newColony.id || `COLONY_${Date.now()}`
         const updated = [...state.colonies, { ...newColony, id }]
@@ -309,36 +809,36 @@ export const useSimulationStore = create((set, get) => ({
         return { colonies: state.colonies.filter(c => c.id !== colonyId) }
     }),
 
-    // Real-Time Dense Simulation Event Logging System
     eventLogs: [
         {
             id: `evt_init_${Date.now()}`,
             tick: 0,
+            simTimeFormatted: 'J+0 00:00:00',
             timestamp: new Date().toISOString(),
             level: 'INFO',
             category: 'SYSTEM',
-            message: '🎬 Session de simulation initialisée. Prêt pour le démarrage.',
+            message: '🎬 Session de simulation initialisée (Horloge 1:1). Prêt pour le démarrage.',
         }
     ],
 
     addEventLog: (logObj) => set(state => {
+        const simTimeStr = logObj.simTimeFormatted || state.simTimeFormatted || formatSimTime(state.simSeconds || state.tick || 0)
         const newLog = {
             id: `evt_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
             tick: state.tick,
+            simTimeFormatted: simTimeStr,
             timestamp: new Date().toISOString(),
             level: logObj.level || 'INFO',
             category: logObj.category || 'SIMULATION',
             message: logObj.message || '',
             details: logObj.details || null,
         }
-        // Cap max log entries to 500 for optimal UI performance
         const updated = [newLog, ...state.eventLogs.slice(0, 499)]
         return { eventLogs: updated }
     }),
 
     clearEventLogs: () => set({ eventLogs: [] }),
 
-    // Mode Divin (God Mode) Intervention Log for Deterministic Replay
     interventionsLog: [],
 
     recordDivineIntervention: (actionData) => set(state => {
@@ -349,7 +849,6 @@ export const useSimulationStore = create((set, get) => ({
             ...actionData
         }
 
-        // Apply physical changes locally if in standalone/simulated mode
         let newFood = [...state.foodSources]
         let newPredators = [...state.predators]
 
@@ -371,7 +870,6 @@ export const useSimulationStore = create((set, get) => ({
             })
         }
 
-        // Send via WebSocket if connected
         if (state.ws && state.connected) {
             state.ws.send(JSON.stringify({
                 type: 'GOD_MODE_INTERVENTION',
@@ -395,10 +893,8 @@ export const useSimulationStore = create((set, get) => ({
 
     clearInterventionsLog: () => set({ interventionsLog: [] }),
 
-    // Local tick timer ref
     localTickInterval: null,
 
-    // Statistics
     stats: {
         totalPopulation: 210,
         totalWorkers: 150,
@@ -406,11 +902,10 @@ export const useSimulationStore = create((set, get) => ({
         totalFood: 430,
     },
 
-    // Environment
     environment: {
-        terrariumWidth: 2.0,  // Variable surface size from World Editor (meters)
-        terrariumDepth: 2.0,  // Variable surface size from World Editor (meters)
-        terrariumHeight: 1.0, // Depth/Height (meters)
+        terrariumWidth: 2.0,
+        terrariumDepth: 2.0,
+        terrariumHeight: 1.0,
         lightLevel: 1.0,
         timeOfDay: 'DAY',
         sunAngle: 0.5,
@@ -418,7 +913,7 @@ export const useSimulationStore = create((set, get) => ({
         humidity: 50,
         rainIntensity: 0,
         windSpeed: 5,
-        weatherState: 'CLEAR', // 'CLEAR', 'CLOUDY', 'THUNDERSTORM', 'SNOW', 'BLIZZARD', 'TEMPEST', 'HAIL', 'FOG'
+        weatherState: 'CLEAR',
     },
 
     updateEnvironment: (newEnv) => {
@@ -432,7 +927,6 @@ export const useSimulationStore = create((set, get) => ({
         })
     },
 
-    // Display Toggles for Simulation Mode (Soleil, Éclairs, Nuages, Pluie, Brouillard, Vent, Vision Nuit)
     weatherToggles: {
         showSun: true,
         showLightning: true,
@@ -457,17 +951,14 @@ export const useSimulationStore = create((set, get) => ({
         })
     },
 
-    // Selection
     selectedEntity: null,
     setSelectedEntity: (entity) => set({ selectedEntity: entity }),
 
-    // Actions
     connect: () => {
         try {
             const ws = new WebSocket('ws://localhost:8081')
 
             ws.onopen = () => {
-                console.log('WebSocket connected')
                 set({ connected: true, ws })
                 get().addEventLog({
                     level: 'INFO',
@@ -486,10 +977,10 @@ export const useSimulationStore = create((set, get) => ({
                 set({ connected: false, ws: null })
             }
 
-            ws.onerror = (err) => {
+            ws.onerror = () => {
                 set({ connected: false, ws: null })
             }
-        } catch (e) {
+        } catch {
             set({ connected: false, ws: null })
         }
     },
@@ -539,171 +1030,239 @@ export const useSimulationStore = create((set, get) => ({
     },
 
     resetSimulation: (sessionData) => {
-        const { localTickInterval } = get()
+        const { localTickInterval, colonies, cameraResetTrigger } = get()
         if (localTickInterval) clearInterval(localTickInterval)
         
-        set({
+        const newAnts = generateInitialAnts(colonies, 75)
+
+        set(state => ({
             tick: 0,
+            simSeconds: 0,
+            simTimeFormatted: 'J+0 00:00:00',
             running: false,
             localTickInterval: null,
-            ants: [],
+            ants: newAnts,
+            pheromones: [],
+            selectedEntity: null,
+            selectedChamber: null,
             interventionsLog: [],
-        })
-
-        get().addEventLog({
-            level: 'INFO',
-            category: 'SIMULATION',
-            message: '🔄 Simulation réinitialisée à Tick #0. Presets & seed synchronisés.'
-        })
+            eventLogs: [
+                {
+                    id: `evt_init_${Date.now()}`,
+                    tick: 0,
+                    simTimeFormatted: 'J+0 00:00:00',
+                    timestamp: new Date().toISOString(),
+                    level: 'INFO',
+                    category: 'SYSTEM',
+                    message: '🎬 Nouvelle session initialisée à Tick #0 (Temps: J+0 00:00:00).',
+                }
+            ],
+            cameraResetTrigger: cameraResetTrigger + 1,
+            simulationSeed: sessionData?.masterSeed || state.simulationSeed || 12345,
+            stats: {
+                totalPopulation: newAnts.length,
+                totalWorkers: newAnts.filter(a => a.caste === 'WORKER').length,
+                totalSoldiers: newAnts.filter(a => a.caste === 'SOLDIER').length,
+                totalFood: 430,
+            }
+        }))
     },
 
-    // Standalone Tick Step Engine for local mode with dense events (100% Deterministic Seeded Engine)
     stepSimulationTick: () => {
         const state = get()
         const nextTick = state.tick + 1
+        const nextSimSeconds = (state.simSeconds || 0) + 1.0
+        const nextSimTimeFormatted = formatSimTime(nextSimSeconds)
 
-        // Seeded PRNG sequence generator (Zero unseeded Math.random in simulation loop)
         let currentSeed = (state.simulationSeed || 42) + nextTick * 10007
         const getSeededRandom = () => {
             const x = Math.sin(currentSeed++) * 10000
             return x - Math.floor(x)
         }
 
-        // Real World Clock Synchronization Update
         if (state.timeSyncMode === 'REAL_WORLD') {
             state.updateRealWorldTime()
         }
 
-        // Realistic Astronomical & Multi-Variable Astro-Atmospheric Climate Engine
-        const simHourOfDay = (nextTick * 0.25) % 24
-        const dayOfYear = state.climateEngine?.dayOfYear || 200
-        const latRad = ((state.climateEngine?.latitudeDeg || 45.0) * Math.PI) / 180.0
+        if (state.weatherMode === 'SIMULATED') {
+            // Realistic day-night solar progression: 24h = 86400 sim seconds
+            const simHourOfDay = ((nextSimSeconds % 86400) / 3600)
+            const dayOfYear = state.climateEngine?.dayOfYear || 200
+            const latRad = ((state.climateEngine?.latitudeDeg || 45.0) * Math.PI) / 180.0
 
-        // Solar Declination angle δ (Earth's tilt over 365 days)
-        const declinationRad = ((23.45 * Math.sin(((360 / 365) * (dayOfYear - 81) * Math.PI) / 180.0)) * Math.PI) / 180.0
-        const hourAngleRad = ((15 * (simHourOfDay - 12)) * Math.PI) / 180.0
+            const declinationRad = ((23.45 * Math.sin(((360 / 365) * (dayOfYear - 81) * Math.PI) / 180.0)) * Math.PI) / 180.0
+            const hourAngleRad = ((15 * (simHourOfDay - 12)) * Math.PI) / 180.0
 
-        // Calculated Solar Elevation Angle α above horizon
-        const sinElevation = Math.sin(latRad) * Math.sin(declinationRad) + Math.cos(latRad) * Math.cos(declinationRad) * Math.cos(hourAngleRad)
-        const solarElevationDeg = (Math.asin(Math.max(-1, Math.min(1, sinElevation))) * 180) / Math.PI
-        const isNightTime = solarElevationDeg < -0.833 // Sun below horizon
+            const sinElevation = Math.sin(latRad) * Math.sin(declinationRad) + Math.cos(latRad) * Math.cos(declinationRad) * Math.cos(hourAngleRad)
+            const solarElevationDeg = (Math.asin(Math.max(-1, Math.min(1, sinElevation))) * 180) / Math.PI
+            const isNightTime = solarElevationDeg < -0.833
 
-        // Climate Type Thermal Inertia & Diurnal Amplitude Factors
-        const climatePresets = {
-            OCEANIC: { baseTemp: 18.0, amplitude: 4.5, humidityBase: 75 },       // Buffered oceanic climate
-            CONTINENTAL: { baseTemp: 21.0, amplitude: 14.0, humidityBase: 50 },   // Sharp day/night continental swings
-            MEDITERRANEAN: { baseTemp: 25.0, amplitude: 9.0, humidityBase: 45 },  // Hot dry summer
-            ALPINE: { baseTemp: 12.0, amplitude: 11.0, humidityBase: 65 },       // Cold high altitude
-            TROPICAL: { baseTemp: 28.0, amplitude: 3.5, humidityBase: 85 },      // Hot humid equator
-        }
-        const activePreset = climatePresets[state.climateEngine?.climateType || 'OCEANIC']
-
-        // Cloud Cover & Rain Thermal Attenuation Factor
-        const cloudFactor = 1.0 - 0.55 * (state.climateEngine?.cloudCover || 0.25)
-        const solarHeatingGain = Math.max(0, Math.sin((solarElevationDeg * Math.PI) / 180.0)) * activePreset.amplitude * cloudFactor
-        const nightCoolingLoss = isNightTime ? activePreset.amplitude * 0.75 : 0.0
-
-        // Final Calculated Soil & Air Temperature (°C)
-        const calculatedDiurnalTemp = (activePreset.baseTemp + solarHeatingGain - nightCoolingLoss).toFixed(1)
-
-        // Update Climate & Astro state deterministically
-        set(s => ({
-            environmentLighting: {
-                ...s.environmentLighting,
-                sunElevationDeg: parseFloat(solarElevationDeg.toFixed(1)),
-                sunAzimuthDeg: parseFloat(((180 + 15 * (simHourOfDay - 12)) % 360).toFixed(1)),
-                isNight: isNightTime,
-                currentCalculatedTempC: parseFloat(calculatedDiurnalTemp)
+            const climatePresets = {
+                OCEANIC: { baseTemp: 18.0, amplitude: 4.5, humidityBase: 75 },
+                CONTINENTAL: { baseTemp: 21.0, amplitude: 14.0, humidityBase: 50 },
+                MEDITERRANEAN: { baseTemp: 25.0, amplitude: 9.0, humidityBase: 45 },
+                ALPINE: { baseTemp: 12.0, amplitude: 11.0, humidityBase: 65 },
+                TROPICAL: { baseTemp: 28.0, amplitude: 3.5, humidityBase: 85 },
             }
-        }))
+            const activePreset = climatePresets[state.climateEngine?.climateType || 'OCEANIC']
+            const cloudFactor = 1.0 - 0.55 * (state.climateEngine?.cloudCover || 0.25)
+            const solarHeatingGain = Math.max(0, Math.sin((solarElevationDeg * Math.PI) / 180.0)) * activePreset.amplitude * cloudFactor
+            const nightCoolingLoss = isNightTime ? activePreset.amplitude * 0.75 : 0.0
+            const calculatedDiurnalTemp = (activePreset.baseTemp + solarHeatingGain - nightCoolingLoss).toFixed(1)
 
-        // Disease Propagation Step (Deterministic Seeded Proximity Step)
-        if (state.diseaseParams.activeOutbreak && state.ants.length > 0) {
-            const randInfect = getSeededRandom()
-            if (randInfect < (state.diseaseParams.contagionRate || 0.35)) {
-                const healthyCount = state.epidemicStats.healthy
-                if (healthyCount > 0) {
-                    const newlyInfected = Math.min(healthyCount, Math.floor(getSeededRandom() * 3) + 1)
+            set(s => ({
+                environmentLighting: {
+                    ...s.environmentLighting,
+                    sunElevationDeg: parseFloat(solarElevationDeg.toFixed(1)),
+                    sunAzimuthDeg: parseFloat(((180 + 15 * (simHourOfDay - 12)) % 360).toFixed(1)),
+                    isNight: isNightTime,
+                    currentCalculatedTempC: parseFloat(calculatedDiurnalTemp)
+                }
+            }))
+        }
+
+        const newPheromones = [...state.pheromones]
+        const dissipationFactor = 0.985
+
+        const decayedPheros = newPheromones
+            .map(p => ({ ...p, intensity: p.intensity * dissipationFactor }))
+            .filter(p => p.intensity > 0.05)
+
+        let currentAnts = state.ants
+        if (currentAnts.length === 0) {
+            currentAnts = generateInitialAnts(state.colonies, 60)
+        }
+
+        const updatedAnts = currentAnts.map(ant => {
+            if (ant.caste === 'QUEEN') {
+                return { ...ant, ageInDays: ant.ageInDays + (1.0 / 86400.0) }
+            }
+
+            const stepDist = 0.4 + getSeededRandom() * 0.6
+            const turnAngle = (getSeededRandom() - 0.5) * 0.6
+            const heading = (ant.heading || 0) + turnAngle
+            
+            let nx = ant.x + Math.cos(heading) * stepDist
+            let ny = ant.y + Math.sin(heading) * stepDist
+
+            if (nx < 2 || nx > 98) nx = Math.max(2, Math.min(98, nx))
+            if (ny < 2 || ny > 98) ny = Math.max(2, Math.min(98, ny))
+
+            if (getSeededRandom() < 0.35 && decayedPheros.length < 800) {
+                const pType = ant.carriedItem !== 'NONE' ? 'FOOD' : (ant.job === 'GUARDING' ? 'ALARM' : 'HOME')
+                decayedPheros.push({
+                    id: `ph_${nextTick}_${ant.id}`,
+                    x: nx,
+                    y: ny,
+                    intensity: pType === 'FOOD' ? 1.0 : (pType === 'ALARM' ? 0.9 : 0.6),
+                    type: pType,
+                    colonyId: ant.colonyId
+                })
+            }
+
+            return {
+                ...ant,
+                x: nx,
+                y: ny,
+                heading,
+                energy: Math.max(10, ant.energy - 0.005),
+                ageInDays: (ant.ageInDays || 10) + (1.0 / 86400.0), // precise day progression (1 day = 86400s)
+            }
+        })
+
+        if (state.autoCheckpoint && nextTick > 0 && nextTick % state.autoCheckpointInterval === 0) {
+            state.createCheckpoint(`Auto-Checkpoint #${nextTick}`)
+        }
+
+        // Generate rich, varied biological & ecological simulation events
+        const rand = getSeededRandom()
+        if (updatedAnts.length > 0) {
+            const sampleAnt = updatedAnts[Math.floor(rand * updatedAnts.length)]
+            const antShortId = sampleAnt.id.replace('ant_', '').slice(0, 8)
+
+            if (nextTick % 2 === 0) {
+                if (rand < 0.18) {
+                    const foodAmt = (0.3 + getSeededRandom() * 1.2).toFixed(2)
                     state.addEventLog({
-                        level: 'WARN',
-                        category: 'DISEASE',
-                        message: `☣️ [Tick #${nextTick}] Propagation de ${state.diseaseParams.diseaseType}: ${newlyInfected} nouvel(s) individu(s) contaminé(s) par proximité.`
+                        level: 'INFO',
+                        category: 'FORAGING',
+                        simTimeFormatted: nextSimTimeFormatted,
+                        message: `🍓 [${nextSimTimeFormatted}] ${sampleAnt.species} (#${antShortId}): Récolte de ${foodAmt}mg de miellat ramenée au grenier (X:${sampleAnt.x.toFixed(1)}m, Z:${sampleAnt.y.toFixed(1)}m).`
                     })
-                    set(s => ({
-                        epidemicStats: {
-                            ...s.epidemicStats,
-                            healthy: Math.max(0, s.epidemicStats.healthy - newlyInfected),
-                            infected: s.epidemicStats.infected + newlyInfected,
-                            contagious: s.epidemicStats.contagious + newlyInfected,
-                        }
-                    }))
+                } else if (rand < 0.35) {
+                    state.addEventLog({
+                        level: 'DEBUG',
+                        category: 'PHEROMONE',
+                        simTimeFormatted: nextSimTimeFormatted,
+                        message: `🧪 [${nextSimTimeFormatted}] Piste de recrutement d'attraction (${sampleAnt.colonyName}) tracée à (X:${sampleAnt.x.toFixed(1)}, Z:${sampleAnt.y.toFixed(1)}).`
+                    })
+                } else if (rand < 0.52) {
+                    const larvaCount = Math.floor(1 + getSeededRandom() * 4)
+                    state.addEventLog({
+                        level: 'INFO',
+                        category: 'NURSERY',
+                        simTimeFormatted: nextSimTimeFormatted,
+                        message: `🍼 [${nextSimTimeFormatted}] Soins du Couvain : Une ouvrière nourrice a alimenté ${larvaCount} larves dans la Nurserie principale.`
+                    })
+                } else if (rand < 0.68) {
+                    state.addEventLog({
+                        level: 'INFO',
+                        category: 'QUEEN',
+                        simTimeFormatted: nextSimTimeFormatted,
+                        message: `👑 [${nextSimTimeFormatted}] Ponte Royale : La Reine fondatrice (${sampleAnt.species}) a pondu 2 nouveaux œufs dans la Chambre Royale.`
+                    })
+                } else if (rand < 0.82) {
+                    state.addEventLog({
+                        level: 'VERBOSE',
+                        category: 'EXCAVATION',
+                        simTimeFormatted: nextSimTimeFormatted,
+                        message: `⛏️ [${nextSimTimeFormatted}] Excavation : Paroi de galerie consolidée (+0.3m) par les ouvrières mineuses.`
+                    })
+                } else if (rand < 0.94) {
+                    state.addEventLog({
+                        level: 'DEBUG',
+                        category: 'PATROL',
+                        simTimeFormatted: nextSimTimeFormatted,
+                        message: `🛡️ [${nextSimTimeFormatted}] Sentinelle : Soldat en ronde de surveillance aux abords du dôme extérieur.`
+                    })
                 }
             }
         }
 
-        // Dense Simulation Event Generation per tick (Seeded)
-        const rand = getSeededRandom()
-
-        if (nextTick % 1 === 0) { // Log every tick in VERBOSE (Dense) level
-            const workerId = Math.floor(Math.random() * 120) + 1
-            const colonyName = state.colonies[Math.floor(Math.random() * state.colonies.length)]?.name || 'Colonie #1'
-            
-            if (rand < 0.30) {
-                const foodAmt = (0.2 + Math.random() * 0.8).toFixed(2)
-                state.addEventLog({
-                    level: 'VERBOSE',
-                    category: 'FORAGING',
-                    message: `🐜 [Tick #${nextTick}] Ouvrière #${workerId} (${colonyName}): Récolte de ${foodAmt}mg de miellat à (X:${(Math.random()*2).toFixed(2)}m, Y:${(Math.random()*2).toFixed(2)}m)`
-                })
-            } else if (rand < 0.55) {
-                const depthMm = (1.5 + Math.random() * 3.0).toFixed(1)
-                state.addEventLog({
-                    level: 'VERBOSE',
-                    category: 'DIGGING',
-                    message: `⛏️ [Tick #${nextTick}] Excavation: Tunnel N°${Math.floor(Math.random()*4)+1} approfondi de ${depthMm}mm (Substrat argileux compaction ${state.simulationParams.resources ? 65 : 50}%)`
-                })
-            } else if (rand < 0.75) {
-                const pheroInt = (40 + Math.random() * 55).toFixed(0)
-                state.addEventLog({
-                    level: 'DEBUG',
-                    category: 'PHEROMONE',
-                    message: `🧪 [Tick #${nextTick}] Piste d'attraction déposée avec intensité ${pheroInt}% par patrouilleur`
-                })
-            } else if (rand < 0.90) {
-                const eggCount = Math.floor(Math.random() * 3) + 1
-                state.addEventLog({
-                    level: 'INFO',
-                    category: 'COLONY',
-                    message: `👑 [Tick #${nextTick}] Reine (${colonyName}): Ponte de ${eggCount} nouveaux œufs dans la chambre royale`
-                })
-            } else {
-                state.addEventLog({
-                    level: 'DEBUG',
-                    category: 'METABOLISM',
-                    message: `💼 [Tick #${nextTick}] Consommation métabolique: -${(0.12 * state.colonies.length).toFixed(2)}mW consommés par la colonie`
-                })
-            }
-        }
-
-        // Random Stats update
         const updatedStats = {
-            totalPopulation: 210 + Math.floor(nextTick * 0.1),
-            totalWorkers: 150 + Math.floor(nextTick * 0.08),
-            totalSoldiers: 60 + Math.floor(nextTick * 0.02),
-            totalFood: Math.max(10, 430 + Math.floor(Math.sin(nextTick * 0.1) * 20)),
+            totalPopulation: updatedAnts.length,
+            totalWorkers: updatedAnts.filter(a => a.caste === 'WORKER').length,
+            totalSoldiers: updatedAnts.filter(a => a.caste === 'SOLDIER').length,
+            totalFood: Math.max(10, 430 + Math.floor(Math.sin(nextTick * 0.05) * 30)),
         }
 
-        set({ tick: nextTick, stats: updatedStats })
+        // If an ant is currently selected in the Inspector, update its live position/health/energy
+        let updatedSelectedEntity = state.selectedEntity
+        if (state.selectedEntity && state.selectedEntity.id) {
+            const found = updatedAnts.find(a => a.id === state.selectedEntity.id)
+            if (found) updatedSelectedEntity = found
+        }
+
+        set({
+            tick: nextTick,
+            simSeconds: nextSimSeconds,
+            simTimeFormatted: nextSimTimeFormatted,
+            ants: updatedAnts,
+            pheromones: decayedPheros,
+            stats: updatedStats,
+            selectedEntity: updatedSelectedEntity,
+        })
     },
 
-    // Control actions
     play: () => {
         const { ws, localTickInterval, speed } = get()
         if (ws) ws.send(JSON.stringify({ type: 'CONTROL', action: 'PLAY' }))
 
         if (localTickInterval) clearInterval(localTickInterval)
 
-        const intervalMs = Math.max(50, Math.floor(200 / (speed || 1.0)))
+        // 1:1 real-time default: at 1.0x, 1 tick per 1000ms (1s sim = 1s real)
+        // Rate increases smoothly with speed (e.g. 2.0x -> 500ms, 10.0x -> 100ms, 20.0x -> 50ms)
+        const intervalMs = Math.max(20, Math.floor(1000 / (speed || 1.0)))
         const newInterval = setInterval(() => {
             if (get().running) {
                 get().stepSimulationTick()
@@ -715,7 +1274,8 @@ export const useSimulationStore = create((set, get) => ({
         get().addEventLog({
             level: 'INFO',
             category: 'SIMULATION',
-            message: `▶ LANCEMENT DE SIMULATION (Tick #${get().tick}) - Génération d'événements bas niveau active.`
+            simTimeFormatted: get().simTimeFormatted,
+            message: `▶ LANCEMENT DE SIMULATION (Tick #${get().tick}, Vitesse: ${(speed || 1.0).toFixed(1)}x) - Moteur 1:1 temps réel actif.`
         })
     },
 
@@ -729,6 +1289,7 @@ export const useSimulationStore = create((set, get) => ({
         get().addEventLog({
             level: 'INFO',
             category: 'SIMULATION',
+            simTimeFormatted: get().simTimeFormatted,
             message: `⏸️ SIMULATION INTERROMPUE / PAUSE (Tick #${get().tick}).`
         })
     },
@@ -739,13 +1300,14 @@ export const useSimulationStore = create((set, get) => ({
         set({ speed: newSpeed })
 
         if (running) {
-            get().play() // restart interval with new speed
+            get().play()
         }
 
         get().addEventLog({
             level: 'INFO',
             category: 'SIMULATION',
-            message: `⚡ Vitesse de simulation ajustée à ${newSpeed.toFixed(1)}x`
+            simTimeFormatted: get().simTimeFormatted,
+            message: `⚡ Vitesse de simulation ajustée à ${newSpeed.toFixed(1)}x (1s réelle = ${newSpeed.toFixed(1)}s simulées)`
         })
     },
 }))

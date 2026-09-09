@@ -37,7 +37,8 @@ import java.util.function.Predicate;
  */
 public class EventLogPane extends BorderPane {
 
-    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
+    private static final DateTimeFormatter REAL_DATETIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SS");
+    private static final DateTimeFormatter SIM_DATETIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SS");
 
     private final ObservableList<SimulationEvent> events = FXCollections.observableArrayList();
     private final FilteredList<SimulationEvent> filteredEvents;
@@ -55,6 +56,18 @@ public class EventLogPane extends BorderPane {
     private long totalRecordedCount = 0;
     private String scenarioName = "swarmforge";
     private float simulationStepSeconds = 1.0f;
+    private LocalDateTime startDateTime = LocalDateTime.of(2026, 3, 20, 8, 0, 0);
+
+    public void setStartDateTime(LocalDateTime startDateTime) {
+        this.startDateTime = (startDateTime != null) ? startDateTime : LocalDateTime.of(2026, 3, 20, 8, 0, 0);
+        if (eventTable != null) {
+            eventTable.refresh();
+        }
+    }
+
+    public LocalDateTime getStartDateTime() {
+        return startDateTime;
+    }
 
     public float getSimulationStepSeconds() {
         return simulationStepSeconds;
@@ -312,10 +325,10 @@ public class EventLogPane extends BorderPane {
             }
         });
 
-        // Column 3: Real Timestamp
+        // Column 3: Real Timestamp (Date + Time)
         TableColumn<SimulationEvent, Instant> colTime = createSortableColumn(i18n.get("log.col.timestamp"));
-        colTime.setMinWidth(100);
-        colTime.setMaxWidth(120);
+        colTime.setMinWidth(180);
+        colTime.setMaxWidth(220);
         colTime.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTimestamp()));
         colTime.setCellFactory(col -> new TableCell<>() {
             @Override
@@ -326,7 +339,7 @@ public class EventLogPane extends BorderPane {
                     getStyleClass().remove("evt-cell-time");
                 } else {
                     try {
-                        setText(time.atZone(ZoneId.systemDefault()).format(TIME_FMT));
+                        setText(time.atZone(ZoneId.systemDefault()).format(REAL_DATETIME_FMT));
                     } catch (Exception e) {
                         setText("--:--:--");
                     }
@@ -338,10 +351,10 @@ public class EventLogPane extends BorderPane {
             }
         });
 
-        // Column 4: Sim Time (SI Metric Time Unit formatting + diagnostic tooltip with tick count!)
+        // Column 4: Sim Time (Simulated Date + Time + SI Metric duration in tooltip!)
         TableColumn<SimulationEvent, Long> colTick = createSortableColumn(i18n.get("log.col.sim_time"));
-        colTick.setMinWidth(95);
-        colTick.setMaxWidth(125);
+        colTick.setMinWidth(180);
+        colTick.setMaxWidth(220);
         colTick.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTick()));
         colTick.setCellFactory(col -> new TableCell<>() {
             @Override
@@ -352,9 +365,11 @@ public class EventLogPane extends BorderPane {
                     setTooltip(null);
                     getStyleClass().remove("evt-cell-tick");
                 } else {
-                    String formatted = SimulationTimeConverter.formatTicks(tick, simulationStepSeconds);
-                    setText(formatted);
-                    setTooltip(new Tooltip(SimulationTimeConverter.getTechnicalTooltip(tick, simulationStepSeconds)));
+                    LocalDateTime simDt = startDateTime.plusNanos((long) (tick * (double) simulationStepSeconds * 1_000_000_000L));
+                    String formattedDt = simDt.format(SIM_DATETIME_FMT);
+                    String formattedDuration = SimulationTimeConverter.formatTicks(tick, simulationStepSeconds);
+                    setText(formattedDt);
+                    setTooltip(new Tooltip("Date & Heure Simulées : " + formattedDt + "\nDurée : " + formattedDuration + "\n" + SimulationTimeConverter.getTechnicalTooltip(tick, simulationStepSeconds)));
                     if (!getStyleClass().contains("evt-cell-tick")) {
                         getStyleClass().add("evt-cell-tick");
                     }
@@ -525,31 +540,11 @@ public class EventLogPane extends BorderPane {
         btnExport.setTooltip(new Tooltip("Export displayed events to CSV or JSON format."));
         btnExport.setOnAction(e -> exportEvents());
 
-        // Full Simulation Log Path Indicator (User Request #5)
-        logPathLabel = new Label();
-        logPathLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-background-color: #1e293b; -fx-padding: 4 8; -fx-background-radius: 4; -fx-border-color: #334155; -fx-border-radius: 4; -fx-cursor: hand;");
-        logPathLabel.setOnMouseClicked(e -> {
-            String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
-                    ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
-                    : "swarmforge";
-            java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
-            java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
-            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
-            content.putString(logFile.getAbsolutePath());
-            javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
-            org.swarmforge.client.util.NotificationOverlay.show(
-                this,
-                "📋 Log path copied to clipboard:\n" + logFile.getAbsolutePath(),
-                org.swarmforge.client.util.NotificationOverlay.NotificationType.INFO
-            );
-        });
-        updateLogPathDisplay();
-
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         filters.getChildren().addAll(searchField, typeLabel, typeFilter, sevLabel, severityFilter, autoScrollCheck,
-                spacer, btnClear, btnExport, logPathLabel);
+                spacer, btnClear, btnExport);
 
         toolbar.getChildren().addAll(title, filters);
         return toolbar;
@@ -584,29 +579,48 @@ public class EventLogPane extends BorderPane {
     }
 
     private HBox createStatsBar() {
-        HBox bar = new HBox(10);
+        HBox bar = new HBox(12);
         bar.setPadding(new Insets(6, 12, 6, 12));
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.getStyleClass().add("legend-bar");
 
         eventCountLabel = new Label("Total: 0 recorded events | Displayed: 0");
-        eventCountLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold;");
+        eventCountLabel.setStyle("-fx-font-size: 11.5px; -fx-font-weight: bold;");
 
-        bar.getChildren().add(eventCountLabel);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // Copyable Full Simulation Log Path Pill
+        logPathLabel = new Label();
+        logPathLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-background-color: #1e293b; -fx-padding: 3 8; -fx-background-radius: 4; -fx-border-color: #334155; -fx-border-radius: 4; -fx-cursor: hand;");
+        logPathLabel.setOnMouseClicked(e -> {
+            String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
+                    ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
+                    : "swarmforge";
+            java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
+            java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
+            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+            content.putString(logFile.getAbsolutePath());
+            javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
+            org.swarmforge.client.util.NotificationOverlay.show(
+                this,
+                "📋 Log path copied to clipboard:\n" + logFile.getAbsolutePath(),
+                org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS
+            );
+        });
+        updateLogPathDisplay();
+
+        bar.getChildren().addAll(eventCountLabel, spacer, logPathLabel);
         return bar;
     }
 
     private void updateStats() {
         if (eventCountLabel == null) return;
         Runnable action = () -> {
-            String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
-                    ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
-                    : "swarmforge";
-            java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
-            java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
             org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
             eventCountLabel.setText(i18n.get("log.stats.summary",
-                totalRecordedCount, events.size(), sortedEvents.size(), logFile.getAbsolutePath()));
+                totalRecordedCount, events.size(), sortedEvents.size()));
+            updateLogPathDisplay();
         };
         if (Platform.isFxApplicationThread()) {
             action.run();
@@ -759,7 +773,7 @@ public class EventLogPane extends BorderPane {
             case "stage" -> "Stage";
             case "job" -> "Job";
             case "cause" -> "Cause of Death";
-            case "ageTicks" -> "Age (ticks)";
+            case "ageDays", "age", "ageTicks" -> "Âge (jours)";
             case "attackerId" -> "Attacker ID";
             case "attackerCaste" -> "Attacker Caste";
             case "defenderId" -> "Defender ID";
@@ -812,12 +826,34 @@ public class EventLogPane extends BorderPane {
      * Clear all recorded log events and reset event bus history.
      */
     public void clearLog() {
-        Platform.runLater(() -> {
+        Runnable doClear = () -> {
             events.clear();
             lastAddedEvent = null;
             totalRecordedCount = 0;
             EventBus.getInstance().clearHistory();
             updateStats();
-        });
+        };
+        if (Platform.isFxApplicationThread()) {
+            doClear.run();
+        } else {
+            Platform.runLater(doClear);
+        }
+    }
+
+    /**
+     * Truncate log events occurring after targetTick.
+     */
+    public void truncateAfterTick(long targetTick) {
+        Runnable doTruncate = () -> {
+            events.removeIf(e -> e.getTick() > targetTick);
+            EventBus.getInstance().truncateAfter(targetTick);
+            totalRecordedCount = events.size();
+            updateStats();
+        };
+        if (Platform.isFxApplicationThread()) {
+            doTruncate.run();
+        } else {
+            Platform.runLater(doTruncate);
+        }
     }
 }

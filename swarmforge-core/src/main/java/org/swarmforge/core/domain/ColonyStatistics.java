@@ -69,4 +69,15 @@ public class ColonyStatistics implements java.io.Serializable {
     public List<DetailedDataPoint> getDetailedHistory() {
         return new ArrayList<>(detailedHistory);
     }
+
+    public void truncateAfter(long targetTick) {
+        history.removeIf(p -> p.tick() > targetTick);
+        detailedHistory.removeIf(p -> p.tick() > targetTick);
+    }
+
+    public void clear() {
+        history.clear();
+        detailedHistory.clear();
+    }
 }
+

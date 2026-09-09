@@ -88,7 +88,7 @@ public class SpeciesEditorPane extends VBox {
     private ComboBox<String> secondaryDietCombo;
     private TextField foodConsumptionField;
     private TextField waterReqField;
-    private TextField workerLifespanField;
+    private TextField workerLifespanField = new TextField("6000");
     private TextField workerSpeedField;
     private TextField viewDistanceField;
     private TextField colonySizeField;
@@ -206,18 +206,18 @@ public class SpeciesEditorPane extends VBox {
         I18nManager i18n = I18nManager.getInstance();
         Alert alert = ThemeManager.createAlert(
             Alert.AlertType.CONFIRMATION,
-            "You have unsaved changes in the Species Editor.\n"
-            + (hasCurrentPreset ? "Current preset: \"" + currentName + "\"" : "No preset selected.")
+            i18n.get("dialog.unsaved.species_editor") + "\n"
+            + (hasCurrentPreset ? i18n.get("preset.current") + ": \"" + currentName + "\"" : "")
         );
-        alert.setTitle("Unsaved Changes");
-        alert.setHeaderText("Exit Species Editor?");
+        alert.setTitle(i18n.get("common.dialog.unsaved_title"));
+        alert.setHeaderText(i18n.get("dialog.exit.species_editor"));
 
         ButtonType btnUpdate  = hasCurrentPreset
-            ? new ButtonType("💾 Update \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
+            ? new ButtonType(i18n.get("preset.update") + " \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
             : null;
-        ButtonType btnSaveAs  = new ButtonType("📝 Save As...", ButtonBar.ButtonData.OTHER);
-        ButtonType btnDiscard = new ButtonType("🗑 Discard", ButtonBar.ButtonData.OTHER);
-        ButtonType btnCancel  = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType btnSaveAs  = new ButtonType(i18n.get("preset.save_as"), ButtonBar.ButtonData.OTHER);
+        ButtonType btnDiscard = new ButtonType(i18n.get("preset.discard"), ButtonBar.ButtonData.OTHER);
+        ButtonType btnCancel  = new ButtonType(i18n.get("common.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
 
         if (btnUpdate != null) {
             alert.getButtonTypes().setAll(btnUpdate, btnSaveAs, btnDiscard, btnCancel);
@@ -290,8 +290,8 @@ public class SpeciesEditorPane extends VBox {
                     Alert.AlertType.CONFIRMATION,
                     "Warning: You have unsaved changes on the current species.\n\nDo you really want to load preset '" + sel + "' and discard your changes?"
                 );
-                alert.setTitle(I18nManager.getInstance().get("common.dialog.unsaved"));
-                alert.setHeaderText("Species Preset Change");
+                alert.setTitle(i18n.get("common.dialog.unsaved_title"));
+                alert.setHeaderText(i18n.get("dialog.preset.change.header"));
                 java.util.Optional<ButtonType> res = alert.showAndWait();
                 if (res.isEmpty() || res.get() != ButtonType.OK) {
                     isUpdatingFields = true;
@@ -727,6 +727,18 @@ public class SpeciesEditorPane extends VBox {
         });
         flyCol.setPrefWidth(65);
 
+        TableColumn<CasteRow, Float> walkSpeedCol = new TableColumn<>("Walk (m/s)");
+        walkSpeedCol.setCellValueFactory(new PropertyValueFactory<>("walkSpeedMps"));
+        walkSpeedCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
+        walkSpeedCol.setOnEditCommit(e -> e.getRowValue().setWalkSpeedMps(e.getNewValue()));
+        walkSpeedCol.setPrefWidth(80);
+
+        TableColumn<CasteRow, Float> flySpeedCol = new TableColumn<>("Fly (m/s)");
+        flySpeedCol.setCellValueFactory(new PropertyValueFactory<>("flySpeedMps"));
+        flySpeedCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
+        flySpeedCol.setOnEditCommit(e -> e.getRowValue().setFlySpeedMps(e.getNewValue()));
+        flySpeedCol.setPrefWidth(75);
+
         TableColumn<CasteRow, Float> ratioCol = new TableColumn<>("Target Ratio");
         ratioCol.setCellValueFactory(new PropertyValueFactory<>("targetRatio"));
         ratioCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
@@ -807,7 +819,7 @@ public class SpeciesEditorPane extends VBox {
             // 👤 Identité & Morphologie
             nameCol, bodyCol, headCol, tunnelCol, healthCol, dmgCol, lifeCol,
             // ⚡ Biomécanique & Vol
-            flyCol, hzCol, biteCol, loadCol,
+            flyCol, walkSpeedCol, flySpeedCol, hzCol, biteCol, loadCol,
             // 🧠 IA & Allocation Tâches
             archCol, ratioCol, forageCol, defCol, excCol, nurseCol,
             // 🛡️ Armes & Toxines
@@ -843,6 +855,9 @@ public class SpeciesEditorPane extends VBox {
         TextField nursingWField = new TextField("0.15");
 
         // Motor & Biomechanical Caste Parameters
+        TextField casteWalkSpeedF = new TextField("0.50");
+        TextField casteFlySpeedF = new TextField("0.00");
+        casteFlySpeedF.disableProperty().bind(casteFlyCheck.selectedProperty().not());
         TextField casteWingbeatHzF = new TextField("0.0");
         CheckBox casteHoverCheck = new CheckBox("Hovering Flight");
         TextField castePayloadRatioF = new TextField("5.0");
@@ -904,6 +919,8 @@ public class SpeciesEditorPane extends VBox {
                 casteBitingForceMpaF.setText(formatDec(newVal.getBitingForceMpa()));
                 casteAutothysisCheck.setSelected(newVal.isHasAutothysis());
                 casteAroliaCheck.setSelected(newVal.isHasAroliaAdhesion());
+                casteWalkSpeedF.setText(formatDec(newVal.getWalkSpeedMps()));
+                casteFlySpeedF.setText(formatDec(newVal.getFlySpeedMps()));
             }
         });
 
@@ -928,6 +945,8 @@ public class SpeciesEditorPane extends VBox {
         col2Grid.addRow(3, createTooltipLabel("Biting Force (MPa):", "Mandibular biting force exerted by cephalic muscles.", casteBitingForceMpaF, "Mandibule"), casteBitingForceMpaF);
         col2Grid.addRow(4, createTooltipLabel("Payload Ratio (g/g):", "Maximum carrying load ratio relative to body weight.", castePayloadRatioF), castePayloadRatioF);
         col2Grid.addRow(5, createTooltipLabel("Arolia Adhesion:", "Presence of tarsal arolia pads for walking on vertical walls & ceilings.", casteAroliaCheck, "Arolia"), casteAroliaCheck);
+        col2Grid.addRow(6, createTooltipLabel("Walk Speed (m/s):", "Surface walking speed of this caste in meters per second.", casteWalkSpeedF), casteWalkSpeedF);
+        col2Grid.addRow(7, createTooltipLabel("Fly Speed (m/s):", "Flight speed of this caste in meters per second (0 if wingless).", casteFlySpeedF), casteFlySpeedF);
         VBox col2Box = createInspectorColumnBox("⚡ Biomechanics & Flight", col2Grid);
 
         // Column 3: 🧠 IA & Allocation Tâches
@@ -980,6 +999,8 @@ public class SpeciesEditorPane extends VBox {
                     sel.setBitingForceMpa(Float.parseFloat(casteBitingForceMpaF.getText()));
                     sel.setHasAutothysis(casteAutothysisCheck.isSelected());
                     sel.setHasAroliaAdhesion(casteAroliaCheck.isSelected());
+                    sel.setWalkSpeedMps(Float.parseFloat(casteWalkSpeedF.getText()));
+                    sel.setFlySpeedMps(Float.parseFloat(casteFlySpeedF.getText()));
                     casteTable.refresh();
                 } else {
                     CasteRow row = new CasteRow(
@@ -1006,6 +1027,8 @@ public class SpeciesEditorPane extends VBox {
                     row.setBitingForceMpa(Float.parseFloat(casteBitingForceMpaF.getText()));
                     row.setHasAutothysis(casteAutothysisCheck.isSelected());
                     row.setHasAroliaAdhesion(casteAroliaCheck.isSelected());
+                    row.setWalkSpeedMps(Float.parseFloat(casteWalkSpeedF.getText()));
+                    row.setFlySpeedMps(Float.parseFloat(casteFlySpeedF.getText()));
                     casteRows.add(row);
                 }
             } catch (Exception ex) {
@@ -1058,7 +1081,6 @@ public class SpeciesEditorPane extends VBox {
         waterReqField = new TextField("0.2");
 
         // Legacy / fallback fields now exposed in the Diet tab
-        workerLifespanField = new TextField("6000");
         workerSpeedField = new TextField("0.5");
         flyCheckBox = new CheckBox("Workers capable of flight (Winged species)");
         viewDistanceField = new TextField("5.0");
@@ -1069,12 +1091,11 @@ public class SpeciesEditorPane extends VBox {
         grid.addRow(1, createTooltipLabel("Secondary Diet Source:", "Complementary trophic source (e.g., protein intake during brood rearing).", secondaryDietCombo, "trophallaxis"), secondaryDietCombo);
         grid.addRow(2, createTooltipLabel("Metabolic Consumption (g/ind/day):", "Daily food mass consumed per adult individual.", foodConsumptionField, "metabolism"), foodConsumptionField);
         grid.addRow(3, createTooltipLabel("Water Requirement (mL/ind/day):", "Daily water volume needed for hydration and metabolism.", waterReqField, "water"), waterReqField);
-        grid.addRow(4, createTooltipLabel("Worker Lifespan (days):", "Average lifespan of an adult worker outside caste-specific overrides.", workerLifespanField, "polymorphism"), workerLifespanField);
-        grid.addRow(5, createTooltipLabel("Locomotion Speed (m/s):", "Standard surface movement speed of workers in meters per second.", workerSpeedField), workerSpeedField);
-        grid.addRow(6, createTooltipLabel("Visual Detection Distance (cm):", "Visual perception radius for food resources and enemies in centimeters.", viewDistanceField), viewDistanceField);
-        grid.addRow(7, createTooltipLabel("Worker Flight Capability:", "Check if workers of this species are winged and capable of flight (e.g. Honeybees, Wasps).", flyCheckBox, "flight"), flyCheckBox);
-        grid.addRow(8, createTooltipLabel("Global Metabolic Factor (0.1-5.0):", "Multiplier for energy expenditure rate and reserve consumption.", metabolismField, "metabolism"), metabolismField);
-        grid.addRow(9, createTooltipLabel("Physio-Muscular Strength (N):", "General physical strength index and mechanical resistance.", strengthField, "mandibule"), strengthField);
+        grid.addRow(4, createTooltipLabel("Locomotion Speed (m/s):", "Standard surface movement speed of workers in meters per second.", workerSpeedField), workerSpeedField);
+        grid.addRow(5, createTooltipLabel("Visual Detection Distance (cm):", "Visual perception radius for food resources and enemies in centimeters.", viewDistanceField), viewDistanceField);
+        grid.addRow(6, createTooltipLabel("Worker Flight Capability:", "Check if workers of this species are winged and capable of flight (e.g. Honeybees, Wasps).", flyCheckBox, "flight"), flyCheckBox);
+        grid.addRow(7, createTooltipLabel("Global Metabolic Factor (0.1-5.0):", "Multiplier for energy expenditure rate and reserve consumption.", metabolismField, "metabolism"), metabolismField);
+        grid.addRow(8, createTooltipLabel("Physio-Muscular Strength (N):", "General physical strength index and mechanical resistance.", strengthField, "mandibule"), strengthField);
 
         return wrapScroll(grid);
     }
@@ -1099,6 +1120,19 @@ public class SpeciesEditorPane extends VBox {
             "WAX_POTS_CLUSTER"
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(nestTypeCombo, SpeciesEditorPane::getNestTypeTitle, SpeciesEditorPane::getNestTypeDescription);
+        nestTypeCombo.setConverter(new javafx.util.StringConverter<String>() {
+            @Override
+            public String toString(String v) {
+                return getNestTypeTitle(v);
+            }
+            @Override
+            public String fromString(String s) {
+                for (String item : nestTypeCombo.getItems()) {
+                    if (getNestTypeTitle(item).equals(s)) return item;
+                }
+                return s;
+            }
+        });
         nestTypeCombo.getSelectionModel().select("MATURE");
 
         optTempField = new TextField("24.0");
@@ -1410,7 +1444,7 @@ public class SpeciesEditorPane extends VBox {
         I18nManager i18n = I18nManager.getInstance();
         Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, String.format(i18n.get("preset.delete.confirm"), selected));
         confirmAlert.setTitle(i18n.get("preset.delete.title"));
-        confirmAlert.setHeaderText("Delete Species");
+        confirmAlert.setHeaderText(i18n.get("preset.delete.header.species"));
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
@@ -1620,6 +1654,8 @@ public class SpeciesEditorPane extends VBox {
                     row.setBitingForceMpa(ct.getMandibularBitingForceMPa() >= 0.0f ? ct.getMandibularBitingForceMPa() : (float) Math.max(1.0, Math.round(s.getMandibularBitingForceMPa() * (head / 1.5) * 10.0) / 10.0));
                     row.setHasAutothysis(ct.getHasAutothysis() != null ? ct.getHasAutothysis() : s.hasAutothysis());
                     row.setHasAroliaAdhesion(ct.getHasSubstrateAdhesionArolia() != null ? ct.getHasSubstrateAdhesionArolia() : s.hasSubstrateAdhesionArolia());
+                    row.setWalkSpeedMps(ct.getWalkSpeedMps() > 0.0f ? ct.getWalkSpeedMps() : s.getWalkingSpeed());
+                    row.setFlySpeedMps(ct.getFlySpeedMps() > 0.0f ? ct.getFlySpeedMps() : (ct.isCanFly() ? s.getFlyingSpeed() : 0.0f));
                     casteRows.add(row);
                 }
             }
@@ -1739,6 +1775,8 @@ public class SpeciesEditorPane extends VBox {
             ct.setMandibularBitingForceMPa(r.getBitingForceMpa());
             ct.setHasAutothysis(r.isHasAutothysis());
             ct.setHasSubstrateAdhesionArolia(r.isHasAroliaAdhesion());
+            ct.setWalkSpeedMps(r.getWalkSpeedMps());
+            ct.setFlySpeedMps(r.getFlySpeedMps());
             templates.add(ct);
         }
         s.setCasteTemplates(templates);
@@ -1847,7 +1885,7 @@ public class SpeciesEditorPane extends VBox {
             case "Substrate Vibration Sensing (Subgenual):" -> "species.sensors.vibration";
             case "Substrate Vibration Threshold (dB):" -> "species.sensors.vibration_sens";
             case "Hygroreception (Relative Humidity):" -> "species.sensors.hygro";
-            case "Humidity Sensitivity (%):" -> "species.sensors.humidity_sens";
+            case "Humidity Sensitivity (%):" -> "species.sensors.hygro_sens";
             case "Electrostatic Field Perception:" -> "species.sensors.electro";
             case "Atmospheric Electric Threshold (V/m):" -> "species.sensors.electro_sens";
             case "UV Polarized Light Compass:" -> "species.sensors.uv_compass";
@@ -2098,6 +2136,13 @@ public class SpeciesEditorPane extends VBox {
 
         public boolean isCanFly() { return canFly; }
         public void setCanFly(boolean canFly) { this.canFly = canFly; }
+
+        private float walkSpeedMps = 0.5f;
+        private float flySpeedMps = 0.0f;
+        public float getWalkSpeedMps() { return walkSpeedMps; }
+        public void setWalkSpeedMps(float walkSpeedMps) { this.walkSpeedMps = walkSpeedMps; }
+        public float getFlySpeedMps() { return flySpeedMps; }
+        public void setFlySpeedMps(float flySpeedMps) { this.flySpeedMps = flySpeedMps; }
 
         public float getForagingWeight() { return foragingWeight; }
         public void setForagingWeight(float foragingWeight) { this.foragingWeight = foragingWeight; }

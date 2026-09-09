@@ -41,13 +41,12 @@ public class SwarmForgeClientUITest {
 
     @Start
     private void start(Stage stage) {
+        System.setProperty("swarmforge.test", "true");
         I18nManager.getInstance().setLocale(java.util.Locale.ENGLISH);
         this.stage = stage;
         this.app = new SwarmForgeClient();
         app.start(stage);
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException ignored) {}
+        WaitForAsyncUtils.waitForFxEvents();
 
         // Ensure screenshot directory exists
         SCREENSHOT_DIR.toFile().mkdirs();

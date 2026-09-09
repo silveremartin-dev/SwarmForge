@@ -35,8 +35,8 @@ public class CanvasInteractionHandler {
     private double panX = 0.0;
     private double panY = 0.0;
 
-    private double minZoom = 0.1;
-    private double maxZoom = 100.0;
+    private double minZoom = 0.05;
+    private double maxZoom = 500.0;
     private double zoomSensitivity = 0.005;
 
     private double lastMouseX = 0.0;

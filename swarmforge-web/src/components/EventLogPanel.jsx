@@ -32,7 +32,7 @@ export default function EventLogPanel() {
             filename = `simulation_events_tick_${tick}_${new Date().toISOString().slice(0, 10)}.json`;
             mime = 'application/json';
         } else {
-            content = eventLogs.map(l => `[${new Date(l.timestamp).toLocaleTimeString()}] [Tick #${l.tick}] [${l.level}] [${l.category}] ${l.message}`).join('\n');
+            content = eventLogs.map(l => `[${l.simTimeFormatted || 'J+0 00:00:00'}] [Tick #${l.tick}] [${l.level}] [${l.category}] ${l.message}`).join('\n');
             filename = `simulation_events_tick_${tick}_${new Date().toISOString().slice(0, 10)}.txt`;
             mime = 'text/plain';
         }
@@ -180,7 +180,7 @@ export default function EventLogPanel() {
                                     style={styles.filterBtn(levelFilter === lvl)}
                                     onClick={() => setLevelFilter(lvl)}
                                 >
-                                    {lvl === 'VERBOSE' ? 'DENSE (Bas Nivo)' : lvl}
+                                    {lvl === 'VERBOSE' ? 'DENSE' : lvl}
                                 </button>
                             ))}
                         </div>
@@ -204,12 +204,12 @@ export default function EventLogPanel() {
                         ) : (
                             filteredLogs.map(log => (
                                 <div key={log.id} style={styles.logItem}>
-                                    <span style={{ color: '#f59e0b', fontSize: 10, fontWeight: 700, minWidth: 60 }}>
+                                    <span style={{ color: '#f59e0b', fontSize: 10, fontWeight: 700, minWidth: 46 }}>
                                         #{log.tick}
                                     </span>
                                     {getLevelBadge(log.level)}
-                                    <span style={{ color: '#64748b', fontSize: 9 }}>
-                                        {new Date(log.timestamp).toLocaleTimeString()}
+                                    <span style={{ color: '#38bdf8', fontSize: 9, minWidth: 70 }}>
+                                        {log.simTimeFormatted || 'J+0 00:00:00'}
                                     </span>
                                     <span style={{ color: log.level === 'WARN' ? '#fbbf24' : log.level === 'ERROR' ? '#f87171' : '#e2e8f0', flex: 1 }}>
                                         {log.message}

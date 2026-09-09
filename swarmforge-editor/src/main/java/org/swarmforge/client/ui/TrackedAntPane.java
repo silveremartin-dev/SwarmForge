@@ -8,6 +8,7 @@ package org.swarmforge.client.ui;
 
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.core.domain.Individual;
+import org.swarmforge.core.domain.Predator;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -30,6 +31,7 @@ public class TrackedAntPane extends VBox {
     private final Button btnClose;
 
     // Telemetry Labels
+    private final Label lblSpeciesColony;
     private final Label lblHealthText;
     private final ProgressBar healthBar;
     private final Label lblEnergyHungerThirst;
@@ -41,7 +43,8 @@ public class TrackedAntPane extends VBox {
     private final Label lblSearchStatus;
 
     // Interactive Action Controls
-    private final Button btnFollowThisAnt;
+    private final Button btnFollowTps;
+    private final Button btnFollowFps;
     private final Button btnStopFollow;
     private final TextField txtAntId;
     private final Button btnDirectFollow;
@@ -51,14 +54,15 @@ public class TrackedAntPane extends VBox {
     private boolean isFollowing = false;
 
     private Consumer<Individual> onFollowAntHandler;
+    private java.util.function.BiConsumer<Individual, CameraFollowMode> onFollowAntModeHandler;
     private Consumer<String> onFollowAntByIdHandler;
     private Runnable onStopFollowHandler;
 
     public TrackedAntPane() {
         setSpacing(6);
         setPadding(new Insets(10, 12, 10, 12));
-        setPrefWidth(330);
-        setMaxWidth(340);
+        setPrefWidth(340);
+        setMaxWidth(360);
         setStyle("-fx-background-color: rgba(15, 23, 42, 0.94); " +
                 "-fx-border-color: #f59e0b; -fx-border-width: 1.5; " +
                 "-fx-border-radius: 10; -fx-background-radius: 10;");
@@ -69,13 +73,11 @@ public class TrackedAntPane extends VBox {
 
         titleLabel = new Label();
         titleLabel.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.no_ant_title"));
-        titleLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         btnClose = new Button("✕");
-        btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: hand;");
         btnClose.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.close_tt"));
         btnClose.setOnAction(e -> {
             if (onStopFollowHandler != null) {
@@ -91,6 +93,10 @@ public class TrackedAntPane extends VBox {
 
         // Telemetry Box
         telemetryBox = new VBox(5);
+
+        // 0. Species & Colony Row
+        lblSpeciesColony = new Label("🧬 Espèce: - | 🏛️ Colonie: -");
+        lblSpeciesColony.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
         // 1. Health Row
         HBox healthRow = new HBox(8);
@@ -139,6 +145,7 @@ public class TrackedAntPane extends VBox {
         lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
 
         telemetryBox.getChildren().addAll(
+                lblSpeciesColony,
                 healthRow,
                 lblEnergyHungerThirst,
                 lblAgeStageJob,
@@ -154,42 +161,69 @@ public class TrackedAntPane extends VBox {
         // Buttons & Controls
         VBox controlsBox = new VBox(6);
 
+        // Row 1: Camera Modes (TPS & FPS)
         HBox followActionRow = new HBox(6);
-        btnFollowThisAnt = new Button();
-        btnFollowThisAnt.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.btn_follow"));
-        btnFollowThisAnt.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(btnFollowThisAnt, Priority.ALWAYS);
-        btnFollowThisAnt.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand;");
-        btnFollowThisAnt.setOnAction(e -> {
-            if (currentAnt != null && onFollowAntHandler != null) {
-                onFollowAntHandler.accept(currentAnt);
+        btnFollowTps = new Button();
+        btnFollowTps.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.btn_follow_tps"));
+        btnFollowTps.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.btn_follow_tps.tt"));
+        btnFollowTps.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnFollowTps, Priority.ALWAYS);
+        btnFollowTps.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 5 8;");
+        btnFollowTps.setOnAction(e -> {
+            if (currentAnt != null) {
+                if (onFollowAntModeHandler != null) {
+                    onFollowAntModeHandler.accept(currentAnt, CameraFollowMode.TPS);
+                } else if (onFollowAntHandler != null) {
+                    onFollowAntHandler.accept(currentAnt);
+                }
             }
         });
 
+        btnFollowFps = new Button();
+        btnFollowFps.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.btn_follow_fps"));
+        btnFollowFps.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.btn_follow_fps.tt"));
+        btnFollowFps.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(btnFollowFps, Priority.ALWAYS);
+        btnFollowFps.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 5 8;");
+        btnFollowFps.setOnAction(e -> {
+            if (currentAnt != null) {
+                if (onFollowAntModeHandler != null) {
+                    onFollowAntModeHandler.accept(currentAnt, CameraFollowMode.FPS);
+                } else if (onFollowAntHandler != null) {
+                    onFollowAntHandler.accept(currentAnt);
+                }
+            }
+        });
+
+        followActionRow.getChildren().addAll(btnFollowTps, btnFollowFps);
+
+        // Row 2: Stop Follow Button (Full Width when following)
         btnStopFollow = new Button();
         btnStopFollow.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.btn_stop"));
-        btnStopFollow.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand;");
+        btnStopFollow.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.btn_stop.tt"));
+        btnStopFollow.setMaxWidth(Double.MAX_VALUE);
+        btnStopFollow.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 5 8;");
         btnStopFollow.setOnAction(e -> {
             if (onStopFollowHandler != null) {
                 onStopFollowHandler.run();
             }
         });
 
-        followActionRow.getChildren().addAll(btnFollowThisAnt, btnStopFollow);
-
-        // ID Search Row
+        // Row 3: ID Search Row
         HBox searchRow = new HBox(6);
         searchRow.setAlignment(Pos.CENTER_LEFT);
 
         txtAntId = new TextField();
         txtAntId.promptTextProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.prompt"));
+        txtAntId.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.prompt.tt"));
         txtAntId.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 11px;");
         HBox.setHgrow(txtAntId, Priority.ALWAYS);
         txtAntId.setOnAction(e -> triggerSearch());
 
         btnDirectFollow = new Button();
         btnDirectFollow.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.btn_search"));
-        btnDirectFollow.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand;");
+        btnDirectFollow.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.btn_search.tt"));
+        btnDirectFollow.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 4 10;");
         btnDirectFollow.setOnAction(e -> triggerSearch());
 
         searchRow.getChildren().addAll(txtAntId, btnDirectFollow);
@@ -198,10 +232,48 @@ public class TrackedAntPane extends VBox {
         lblSearchStatus.setStyle("-fx-font-size: 10px; -fx-text-fill: #ef4444;");
         lblSearchStatus.setVisible(false);
 
-        controlsBox.getChildren().addAll(followActionRow, searchRow, lblSearchStatus);
+        controlsBox.getChildren().addAll(followActionRow, btnStopFollow, searchRow, lblSearchStatus);
 
         getChildren().addAll(headerBox, sep1, telemetryBox, sep2, controlsBox);
+        org.swarmforge.client.util.ThemeManager.getInstance().currentThemeProperty().addListener((obs, o, n) -> applyThemeStyle());
+        applyThemeStyle();
         setNoAntSelectedState();
+    }
+
+    public void applyThemeStyle() {
+        boolean isDark = org.swarmforge.client.util.ThemeManager.getInstance().isDarkMode();
+        if (isDark) {
+            setStyle("-fx-background-color: rgba(15, 23, 42, 0.94); " +
+                    "-fx-border-color: #f59e0b; -fx-border-width: 1.5; " +
+                    "-fx-border-radius: 10; -fx-background-radius: 10;");
+            titleLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;");
+            btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: hand;");
+            lblSpeciesColony.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+            lblHealthText.setStyle("-fx-font-size: 11px; -fx-text-fill: #cbd5e1;");
+            lblEnergyHungerThirst.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
+            lblAgeStageJob.setStyle("-fx-font-size: 11px; -fx-text-fill: #e2e8f0;");
+            lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #a78bfa;");
+            lblPos3D.setStyle("-fx-font-size: 11px; -fx-text-fill: #cbd5e1;");
+            lblHeadingCargo.setStyle("-fx-font-size: 11px; -fx-text-fill: #cbd5e1;");
+            lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+            txtAntId.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 11px;");
+        } else {
+            setStyle("-fx-background-color: rgba(255, 255, 255, 0.96); " +
+                    "-fx-border-color: #0284c7; -fx-border-width: 1.5; " +
+                    "-fx-border-radius: 10; -fx-background-radius: 10; " +
+                    "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 4);");
+            titleLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #0369a1;");
+            btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: hand;");
+            lblSpeciesColony.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #0284c7;");
+            lblHealthText.setStyle("-fx-font-size: 11px; -fx-text-fill: #334155;");
+            lblEnergyHungerThirst.setStyle("-fx-font-size: 11px; -fx-text-fill: #0284c7;");
+            lblAgeStageJob.setStyle("-fx-font-size: 11px; -fx-text-fill: #1e293b;");
+            lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #6d28d9;");
+            lblPos3D.setStyle("-fx-font-size: 11px; -fx-text-fill: #334155;");
+            lblHeadingCargo.setStyle("-fx-font-size: 11px; -fx-text-fill: #334155;");
+            lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #475569;");
+            txtAntId.setStyle("-fx-background-color: #f8fafc; -fx-text-fill: #0f172a; -fx-border-color: #cbd5e1; -fx-border-radius: 4; -fx-background-radius: 4; -fx-font-size: 11px;");
+        }
     }
 
     private void triggerSearch() {
@@ -220,8 +292,11 @@ public class TrackedAntPane extends VBox {
         lblSearchStatus.setVisible(false);
     }
 
+    private Predator currentPredator = null;
+
     public void setNoAntSelectedState() {
         this.currentAnt = null;
+        this.currentPredator = null;
         this.isFollowing = false;
 
         titleLabel.textProperty().unbind();
@@ -231,6 +306,8 @@ public class TrackedAntPane extends VBox {
         lblHealthText.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.health_none"));
         healthBar.setProgress(0);
 
+        lblSpeciesColony.setText("🧬 Espèce: - | 🏛️ Colonie: -");
+
         lblEnergyHungerThirst.textProperty().unbind();
         lblEnergyHungerThirst.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.metrics_none"));
 
@@ -239,6 +316,8 @@ public class TrackedAntPane extends VBox {
 
         lblAiState.textProperty().unbind();
         lblAiState.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.ai_state_none"));
+        lblAiState.setTooltip(null);
+        lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #a78bfa;");
 
         lblPos3D.textProperty().unbind();
         lblPos3D.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.pos3d_none"));
@@ -250,7 +329,8 @@ public class TrackedAntPane extends VBox {
         lblChcGestalt.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.chc_gestalt_none"));
         lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
 
-        btnFollowThisAnt.setDisable(true);
+        btnFollowTps.setDisable(true);
+        btnFollowFps.setDisable(true);
         btnStopFollow.setVisible(false);
         btnStopFollow.setManaged(false);
         clearSearchStatus();
@@ -258,6 +338,7 @@ public class TrackedAntPane extends VBox {
 
     public void updateAnt(Individual ant, boolean following) {
         this.currentAnt = ant;
+        this.currentPredator = null;
         this.isFollowing = following;
 
         if (ant == null) {
@@ -267,17 +348,24 @@ public class TrackedAntPane extends VBox {
 
         String idStr = ant.getId() != null ? ant.getId().toString() : "N/A";
         String shortId = idStr.length() > 8 ? idStr.substring(0, 8) : idStr;
+        String formattedId = ant.getFormattedId();
 
         titleLabel.textProperty().unbind();
         String statusText = following ? I18nManager.getInstance().get("tracked_ant.status_tracked") : I18nManager.getInstance().get("tracked_ant.status_selected");
-        titleLabel.setText(String.format("🎯 %s %s: %s #%s", I18nManager.getInstance().get("tracked_ant.title"), statusText, ant.getCaste(), shortId));
+        titleLabel.setText(String.format("🎯 %s %s: %s [%s] (#%s)", I18nManager.getInstance().get("tracked_ant.title"), statusText, ant.getCaste(), formattedId, shortId));
+
+        // Species & Colony
+        String speciesName = ant.getSpecies() != null ? ant.getSpecies().getScientificName() : "Formica fusca";
+        String colonyIdStr = ant.getColonyId() != null ? ant.getColonyId().toString().substring(0, Math.min(8, ant.getColonyId().toString().length())) : "N/A";
+        lblSpeciesColony.setText(String.format("🧬 %s | 🏛️ Colonie #%s", speciesName, colonyIdStr));
 
         // Health
         double health = ant.getHealth();
         boolean alive = ant.isAlive() && health > 0;
         lblHealthText.textProperty().unbind();
         if (!alive) {
-            lblHealthText.setText(I18nManager.getInstance().get("tracked_ant.health", 0.0) + " 💀 [DEAD]");
+            String cod = ant.getCauseOfDeath() != null ? " (" + ant.getCauseOfDeath() + ")" : "";
+            lblHealthText.setText(I18nManager.getInstance().get("tracked_ant.health", 0.0) + " 💀 [MORT / DÉCÉDÉ" + cod + "]");
             healthBar.setProgress(0);
             healthBar.setStyle("-fx-accent: #64748b;");
         } else {
@@ -290,19 +378,35 @@ public class TrackedAntPane extends VBox {
         lblEnergyHungerThirst.textProperty().unbind();
         lblEnergyHungerThirst.setText(I18nManager.getInstance().get("tracked_ant.metrics", ant.getEnergy(), ant.getHunger(), ant.getThirst()));
 
-        // Age / Stage / Job
-        double ageDays = ant.getAge() / 600.0;
+        // Age in Days (1 day = 86400 seconds)
+        double ageDays = ant.getAge() / 86400.0;
         lblAgeStageJob.textProperty().unbind();
         lblAgeStageJob.setText(I18nManager.getInstance().get("tracked_ant.age_job", ageDays, ant.getLifeStage(), ant.getJob()));
 
         // AI State & Behaviors
-        String behaviorsStr = ant.getActiveBehaviorsSummary();
+        String rawBehaviors = ant.getActiveBehaviorsSummary();
         lblAiState.textProperty().unbind();
-        String stateStr = I18nManager.getInstance().get("tracked_ant.ai_state", ant.getState() != null ? ant.getState() : "IDLE", behaviorsStr != null ? behaviorsStr : "");
-        if (stateStr.length() > 46) {
-            stateStr = stateStr.substring(0, 43) + "...";
-        }
+        String stateStr = String.format("🧠 IA : %s | %s", ant.getState() != null ? ant.getState() : "PATROUILLE", ant.getJob() != null ? ant.getJob() : "Généraliste");
         lblAiState.setText(stateStr);
+
+        // Rich Mouse-over Tooltip with complete behavioral and ethological state
+        String fullAiDetails = String.format(
+            "🧠 IA - État Cognitif : %s\n" +
+            "💼 Tâche / Rôle Assigné : %s\n" +
+            "⚡ Action en cours : %s\n" +
+            "📋 Capacités & Comportements IA Actifs :\n  • %s\n" +
+            "🧬 Profil Éthologique : %s",
+            ant.getState() != null ? ant.getState() : "PATROUILLE",
+            ant.getJob() != null ? ant.getJob() : "Généraliste",
+            ant.getCachedAction() != null && ant.getCachedAction().type() != null ? ant.getCachedAction().type().name() : "Recherche autonome",
+            (rawBehaviors != null && !rawBehaviors.isBlank()) ? rawBehaviors.replace(";", "\n  • ") : "Patrouille & navigation standard",
+            ant.getSpecies() != null ? (ant.getSpecies().getCommonName() != null ? ant.getSpecies().getCommonName() : ant.getSpecies().getScientificName()) : "Standard"
+        );
+        Tooltip aiTooltip = new Tooltip(fullAiDetails);
+        aiTooltip.setShowDelay(javafx.util.Duration.millis(80));
+        aiTooltip.setStyle("-fx-font-size: 11px;");
+        lblAiState.setTooltip(aiTooltip);
+        lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #a78bfa; -fx-cursor: hand; -fx-underline: true;");
 
         // 3D Position
         lblPos3D.textProperty().unbind();
@@ -318,8 +422,99 @@ public class TrackedAntPane extends VBox {
         lblChcGestalt.setText(I18nManager.getInstance().get("tracked_ant.chc_gestalt"));
         lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #4ade80;");
 
-        btnFollowThisAnt.setDisable(false);
+        btnFollowTps.setDisable(false);
+        btnFollowFps.setDisable(false);
 
+        btnStopFollow.setVisible(following);
+        btnStopFollow.setManaged(following);
+        clearSearchStatus();
+    }
+
+    public void updatePredator(Predator predator, boolean following) {
+        this.currentPredator = predator;
+        this.currentAnt = null;
+        this.isFollowing = following;
+
+        if (predator == null) {
+            setNoAntSelectedState();
+            return;
+        }
+
+        String idStr = predator.getId() != null ? predator.getId().toString() : "N/A";
+        String shortId = idStr.length() > 8 ? idStr.substring(0, 8) : idStr;
+
+        titleLabel.textProperty().unbind();
+        String statusText = following ? I18nManager.getInstance().get("tracked_ant.status_tracked") : I18nManager.getInstance().get("tracked_ant.status_selected");
+        titleLabel.setText(String.format("🎯 %s: %s #%s", predator.getType().getDisplayName(), statusText, shortId));
+
+        // Species & Type
+        lblSpeciesColony.setText(String.format("🦅 %s | Tactique: %s", predator.getType().getDisplayName(), predator.getType().getHuntingStyle()));
+
+        // Health
+        double health = predator.getHealth();
+        double maxHealth = predator.getMaxHealth();
+        boolean alive = predator.isAlive() && health > 0;
+        lblHealthText.textProperty().unbind();
+        if (!alive) {
+            lblHealthText.setText(String.format(Locale.US, "Santé: 0.0 / %.0f 💀 [MORT]", maxHealth));
+            healthBar.setProgress(0);
+            healthBar.setStyle("-fx-accent: #64748b;");
+        } else {
+            lblHealthText.setText(String.format(Locale.US, "Santé: %.1f / %.0f", health, maxHealth));
+            healthBar.setProgress(Math.max(0, Math.min(1.0, health / maxHealth)));
+            healthBar.setStyle((health / maxHealth) > 0.5 ? "-fx-accent: #22c55e;" : "-fx-accent: #ef4444;");
+        }
+
+        // Energy & Hunger
+        lblEnergyHungerThirst.textProperty().unbind();
+        lblEnergyHungerThirst.setText(String.format(Locale.US, "⚡ Énergie: %.0f%% | 🍖 Faim: %.0f%%", predator.getEnergy(), predator.getHunger()));
+
+        // Age & Kills
+        lblAgeStageJob.textProperty().unbind();
+        double predAgeDays = predator.getAge() / 86400.0;
+        lblAgeStageJob.setText(String.format(Locale.US, "⏳ Âge: %.1f jours | ⚔️ Butins: %d", predAgeDays, predator.getKillCount()));
+
+        // AI State (Focus strictly on AI intelligence, decisions, and sensory perception)
+        String targetName = predator.getCurrentTarget() != null ? ("Fourmi " + predator.getCurrentTarget().getCaste()) : "Aucune (Recherche)";
+        String stateStr = String.format("🧠 IA : %s | Cible: %s", predator.getState(), targetName);
+        lblAiState.textProperty().unbind();
+        lblAiState.setText(stateStr);
+
+        String fullPredatorDetails = String.format(
+            "🧠 IA - État Décisionnel : %s\n" +
+            "🎯 Cible Verrouillée : %s\n" +
+            "🏹 Tactique de Chasse IA : %s\n" +
+            "👁️ Rayon de Perception Sensorielle : %.1f m\n" +
+            "🕸️ Piège / Embuscade IA : %s\n" +
+            "⚡ Vitesse de Traque IA : %.1f m/s",
+            predator.getState(),
+            targetName,
+            predator.getType().getHuntingStyle(),
+            predator.getType().getVisionRange(),
+            predator.isTrapBuilt() ? "Posé & Actif" : "En prospection",
+            predator.getType().getBaseSpeed()
+        );
+        Tooltip aiTooltip = new Tooltip(fullPredatorDetails);
+        aiTooltip.setShowDelay(javafx.util.Duration.millis(80));
+        aiTooltip.setStyle("-fx-font-size: 11px;");
+        lblAiState.setTooltip(aiTooltip);
+        lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #f59e0b; -fx-cursor: hand; -fx-underline: true;");
+
+        // 3D Position
+        lblPos3D.textProperty().unbind();
+        lblPos3D.setText(String.format(Locale.US, "📍 Pos: (%.1f, %.1f, %.1f)", predator.getX(), predator.getY(), predator.getZ()));
+
+        // Heading & Trap
+        lblHeadingCargo.textProperty().unbind();
+        lblHeadingCargo.setText(String.format(Locale.US, "🧭 Cap: %.0f° | Piège: %s", Math.toDegrees(predator.getHeading()), predator.isTrapBuilt() ? "Construit" : "Aucun"));
+
+        // Status
+        lblChcGestalt.textProperty().unbind();
+        lblChcGestalt.setText(predator.isAlive() ? "🟢 Menace Active" : "⚫ Inactif");
+        lblChcGestalt.setStyle(predator.isAlive() ? "-fx-font-size: 11px; -fx-text-fill: #ef4444;" : "-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+
+        btnFollowTps.setDisable(true);
+        btnFollowFps.setDisable(true);
         btnStopFollow.setVisible(following);
         btnStopFollow.setManaged(following);
         clearSearchStatus();
@@ -327,6 +522,10 @@ public class TrackedAntPane extends VBox {
 
     public void setOnFollowAnt(Consumer<Individual> handler) {
         this.onFollowAntHandler = handler;
+    }
+
+    public void setOnFollowAntMode(java.util.function.BiConsumer<Individual, CameraFollowMode> handler) {
+        this.onFollowAntModeHandler = handler;
     }
 
     public void setOnFollowAntById(Consumer<String> handler) {
@@ -339,5 +538,9 @@ public class TrackedAntPane extends VBox {
 
     public Individual getCurrentAnt() {
         return currentAnt;
+    }
+
+    public Predator getCurrentPredator() {
+        return currentPredator;
     }
 }

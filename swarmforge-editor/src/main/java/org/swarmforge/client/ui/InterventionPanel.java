@@ -13,6 +13,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.swarmforge.client.util.I18nManager;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -48,6 +49,19 @@ public class InterventionPanel extends BorderPane {
             this.icon = icon;
             this.label = label;
             this.color = color;
+        }
+
+        public String getDisplayName() {
+            org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+            return switch (this) {
+                case ENTITIES -> i18n.get("god.cat.entities");
+                case RESOURCE -> i18n.get("god.cat.resource");
+                case DISASTER -> i18n.get("god.cat.disaster");
+                case ABIOTIC -> i18n.get("god.cat.abiotic");
+                case PHEROMONE -> i18n.get("god.cat.pheromone");
+                case INVASION -> i18n.get("god.cat.invasion");
+                case MUTATION -> i18n.get("god.cat.mutation");
+            };
         }
     }
 
@@ -342,7 +356,7 @@ public class InterventionPanel extends BorderPane {
                     catIconNode.setIconSize(12);
                     catIconNode.setIconColor(javafx.scene.paint.Color.WHITE);
 
-                    Label badgeCat = new Label(" " + ev.category.label, catIconNode);
+                    Label badgeCat = new Label(" " + ev.category.getDisplayName(), catIconNode);
                     badgeCat.setStyle(String.format("-fx-background-color: %s; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 3;", ev.category.color));
 
                     Label timeLabel = new Label("[" + ev.timeFormatted + "]");
@@ -357,7 +371,8 @@ public class InterventionPanel extends BorderPane {
                     stIconNode.setIconSize(11);
                     stIconNode.setIconColor(javafx.scene.paint.Color.WHITE);
 
-                    String statusText = ev.executed ? " Executed" : ev.paused ? " Paused" : " Pending";
+                    org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+                    String statusText = " " + (ev.executed ? i18n.get("god.status.executed") : ev.paused ? i18n.get("god.status.paused") : i18n.get("god.status.pending"));
                     String statusBg = ev.executed ? "#16a34a" : ev.paused ? "#d97706" : "#0284c7";
                     Label statusBadge = new Label(statusText, stIconNode);
                     statusBadge.setStyle(String.format("-fx-background-color: %s; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 3;", statusBg));
@@ -509,13 +524,14 @@ public class InterventionPanel extends BorderPane {
                 btnSyncTime
         );
 
-        lblTargetTickSummary = new Label("🎯 Target Timestamp: Day 1 08:00:00 — Target Colony: All Colonies (Global)");
+        lblTargetTickSummary = new Label();
         lblTargetTickSummary.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
 
         Runnable updateSummary = () -> {
-            lblTargetTickSummary.setText(String.format("🎯 Target Timestamp: Day %d %02d:%02d:%02d — Colony: %s",
+            lblTargetTickSummary.setText(I18nManager.getInstance().get("god.spatial.target_summary",
                     spDay.getValue(), spHour.getValue(), spMin.getValue(), spSec.getValue(), eventColonySelect.getValue()));
         };
+        updateSummary.run();
 
         spDay.valueProperty().addListener((o, a, b) -> updateSummary.run());
         spHour.valueProperty().addListener((o, a, b) -> updateSummary.run());
@@ -561,11 +577,18 @@ public class InterventionPanel extends BorderPane {
     }
 
     public void setTerrainDimensions(double widthMeters, double lengthMeters, double depthMeters, double maxAltitudeMeters) {
-        this.terrainWidthMeters = Math.max(1.0, widthMeters);
-        this.terrainLengthMeters = Math.max(1.0, lengthMeters);
-        this.terrainDepthMeters = Math.max(0.1, depthMeters);
-        this.terrainMaxAltitudeMeters = Math.max(1.0, maxAltitudeMeters);
-        updateSpatialSliderRanges();
+        Runnable action = () -> {
+            this.terrainWidthMeters = Math.max(1.0, widthMeters);
+            this.terrainLengthMeters = Math.max(1.0, lengthMeters);
+            this.terrainDepthMeters = Math.max(0.1, depthMeters);
+            this.terrainMaxAltitudeMeters = Math.max(1.0, maxAltitudeMeters);
+            updateSpatialSliderRanges();
+        };
+        if (javafx.application.Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            javafx.application.Platform.runLater(action);
+        }
     }
 
     public void setTerrainSize(double sizeMeters) {
@@ -573,27 +596,34 @@ public class InterventionPanel extends BorderPane {
     }
 
     public void updateSpatialSliderRanges() {
-        if (posXSlider == null || posYSlider == null || posZSlider == null) return;
+        Runnable action = () -> {
+            if (posXSlider == null || posYSlider == null || posZSlider == null) return;
 
-        double centerX = terrainWidthMeters / 2.0;
-        double centerY = terrainLengthMeters / 2.0;
+            double centerX = terrainWidthMeters / 2.0;
+            double centerY = terrainLengthMeters / 2.0;
 
-        posXSlider.setMin(0.0);
-        posXSlider.setMax(terrainWidthMeters);
-        posXSlider.setMajorTickUnit(Math.max(1.0, terrainWidthMeters / 4.0));
-        posXSlider.setValue(centerX);
+            posXSlider.setMin(0.0);
+            posXSlider.setMax(terrainWidthMeters);
+            posXSlider.setMajorTickUnit(Math.max(1.0, terrainWidthMeters / 4.0));
+            posXSlider.setValue(centerX);
 
-        posYSlider.setMin(0.0);
-        posYSlider.setMax(terrainLengthMeters);
-        posYSlider.setMajorTickUnit(Math.max(1.0, terrainLengthMeters / 4.0));
-        posYSlider.setValue(centerY);
+            posYSlider.setMin(0.0);
+            posYSlider.setMax(terrainLengthMeters);
+            posYSlider.setMajorTickUnit(Math.max(1.0, terrainLengthMeters / 4.0));
+            posYSlider.setValue(centerY);
 
-        posZSlider.setMin(-terrainDepthMeters);
-        posZSlider.setMax(terrainMaxAltitudeMeters);
+            posZSlider.setMin(-terrainDepthMeters);
+            posZSlider.setMax(terrainMaxAltitudeMeters);
 
-        if (terrainDimensionsInfoLabel != null) {
-            terrainDimensionsInfoLabel.setText(String.format("🗺️ Active Terrain Coverage: %.1f m × %.1f m (Max Depth: -%.1f m | Max Alt: %.1f m)",
-                    terrainWidthMeters, terrainLengthMeters, terrainDepthMeters, terrainMaxAltitudeMeters));
+            if (terrainDimensionsInfoLabel != null) {
+                terrainDimensionsInfoLabel.setText(I18nManager.getInstance().get("god.spatial.terrain_coverage",
+                        terrainWidthMeters, terrainLengthMeters, terrainDepthMeters, terrainMaxAltitudeMeters));
+            }
+        };
+        if (javafx.application.Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            javafx.application.Platform.runLater(action);
         }
     }
 
@@ -607,7 +637,7 @@ public class InterventionPanel extends BorderPane {
         GridPane grid = new GridPane();
         grid.setHgap(12); grid.setVgap(10);
 
-        terrainDimensionsInfoLabel = new Label(String.format("🗺️ Active Terrain Coverage: %.1f m × %.1f m (Max Depth: -%.1f m | Max Alt: %.1f m)",
+        terrainDimensionsInfoLabel = new Label(i18n.get("god.spatial.terrain_coverage",
                 terrainWidthMeters, terrainLengthMeters, terrainDepthMeters, terrainMaxAltitudeMeters));
         terrainDimensionsInfoLabel.setStyle("-fx-text-fill: #0ea5e9; -fx-font-size: 11px; -fx-font-weight: bold;");
 
@@ -631,9 +661,9 @@ public class InterventionPanel extends BorderPane {
             double v = posXSlider.getValue();
             double c = terrainWidthMeters / 2.0;
             double pct = Math.min(100.0, Math.max(0.0, (v / terrainWidthMeters) * 100.0));
-            String note = (Math.abs(v - c) < (terrainWidthMeters * 0.05)) ? " (Center)" :
-                          (v < terrainWidthMeters * 0.15) ? " (Far West)" :
-                          (v > terrainWidthMeters * 0.85) ? " (Far East)" : "";
+            String note = (Math.abs(v - c) < (terrainWidthMeters * 0.05)) ? i18n.get("god.spatial.center") :
+                          (v < terrainWidthMeters * 0.15) ? i18n.get("god.spatial.far_west") :
+                          (v > terrainWidthMeters * 0.85) ? i18n.get("god.spatial.far_east") : "";
             posXValLabel.setText(String.format("%.1f m / %.1f m (%.0f%%%s)", v, terrainWidthMeters, pct, note));
         };
         posXSlider.valueProperty().addListener((o, a, b) -> updateXText.run());
@@ -659,9 +689,9 @@ public class InterventionPanel extends BorderPane {
             double v = posYSlider.getValue();
             double c = terrainLengthMeters / 2.0;
             double pct = Math.min(100.0, Math.max(0.0, (v / terrainLengthMeters) * 100.0));
-            String note = (Math.abs(v - c) < (terrainLengthMeters * 0.05)) ? " (Center)" :
-                          (v < terrainLengthMeters * 0.15) ? " (Far South)" :
-                          (v > terrainLengthMeters * 0.85) ? " (Far North)" : "";
+            String note = (Math.abs(v - c) < (terrainLengthMeters * 0.05)) ? i18n.get("god.spatial.center") :
+                          (v < terrainLengthMeters * 0.15) ? i18n.get("god.spatial.far_south") :
+                          (v > terrainLengthMeters * 0.85) ? i18n.get("god.spatial.far_north") : "";
             posYValLabel.setText(String.format("%.1f m / %.1f m (%.0f%%%s)", v, terrainLengthMeters, pct, note));
         };
         posYSlider.valueProperty().addListener((o, a, b) -> updateYText.run());
@@ -681,7 +711,8 @@ public class InterventionPanel extends BorderPane {
         posZValLabel = new Label();
         posZValLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold;");
 
-        atSurfaceCheckBox = new CheckBox("🌿 À la surface du terrain / Surface Level (Z auto)");
+        atSurfaceCheckBox = new CheckBox();
+        atSurfaceCheckBox.textProperty().bind(i18n.createStringBinding("god.spatial.atsurface"));
         atSurfaceCheckBox.setSelected(true);
         atSurfaceCheckBox.setStyle("-fx-font-weight: bold; -fx-text-fill: #22c55e; -fx-cursor: hand;");
         atSurfaceCheckBox.tooltipProperty().bind(i18n.createTooltipBinding("god.spatial.atsurface.tt"));
@@ -697,10 +728,10 @@ public class InterventionPanel extends BorderPane {
                 posZValLabel.setStyle("-fx-text-fill: #22c55e; -fx-font-weight: bold;");
             } else {
                 double v = posZSlider.getValue();
-                String desc = (v < 0.0) ? String.format("%.1f m (Subterranean / Max: -%.1f m)", v, terrainDepthMeters) :
-                              (Math.abs(v - 1.0) < 0.5) ? "1.0 m (Terrain Surface)" :
-                              (v <= 5.0) ? String.format("%.1f m (Low Relief)", v) :
-                              String.format("%.1f m (Canopy / Aerial - Max: %.1f m)", v, terrainMaxAltitudeMeters);
+                String desc = (v < 0.0) ? i18n.get("god.spatial.subterranean", v, terrainDepthMeters) :
+                              (Math.abs(v - 1.0) < 0.5) ? i18n.get("god.spatial.surface_level") :
+                              (v <= 5.0) ? i18n.get("god.spatial.low_relief", v) :
+                              i18n.get("god.spatial.aerial", v, terrainMaxAltitudeMeters);
                 posZValLabel.setText(desc);
                 posZValLabel.setStyle(v < 0.0 ? "-fx-text-fill: #f59e0b; -fx-font-weight: bold;" : v > 5.0 ? "-fx-text-fill: #c084fc; -fx-font-weight: bold;" : "-fx-text-fill: #4ade80; -fx-font-weight: bold;");
             }
@@ -1276,10 +1307,11 @@ public class InterventionPanel extends BorderPane {
         invasionCountSpinner.setPrefWidth(120);
         invasionCountSpinner.tooltipProperty().bind(i18n.createTooltipBinding("god.invasion.count.tt"));
 
-        Label lblInvasionNote = new Label("⚔️ Active Raid / Attack (25 specimens introduced).");
+        Label lblInvasionNote = new Label();
         lblInvasionNote.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 11px; -fx-font-style: italic;");
 
-        Label lblPredatorLifecycleNote = new Label("⏳ Cycle & Retreat: Predators hunt for the duration of the event. Upon expiration, remaining individuals leave the territory (despawn / retreat).");
+        Label lblPredatorLifecycleNote = new Label();
+        lblPredatorLifecycleNote.textProperty().bind(i18n.createStringBinding("god.invasion.lifecycle_note"));
         lblPredatorLifecycleNote.getStyleClass().add("legend-hover-info");
         lblPredatorLifecycleNote.setStyle("-fx-font-size: 11px; -fx-font-style: italic;");
         lblPredatorLifecycleNote.setWrapText(true);
@@ -1292,15 +1324,15 @@ public class InterventionPanel extends BorderPane {
 
             if (isProtection) {
                 invasionCountSpinner.setDisable(true);
-                lblInvasionNote.setText("🛡️ Safe Sanctuary: Eliminates all current predators and blocks all raids during the event.");
+                lblInvasionNote.setText(i18n.get("god.invasion.sanctuary"));
                 lblInvasionNote.setStyle("-fx-text-fill: #22c55e; -fx-font-size: 11px; -fx-font-weight: bold;");
             } else if (isZero) {
                 invasionCountSpinner.setDisable(false);
-                lblInvasionNote.setText("🛡️ Zero Predator Pressure (0 predators): Repels and clears active predators from zone.");
+                lblInvasionNote.setText(i18n.get("god.invasion.zero_pressure"));
                 lblInvasionNote.setStyle("-fx-text-fill: #22c55e; -fx-font-size: 11px; -fx-font-weight: bold;");
             } else {
                 invasionCountSpinner.setDisable(false);
-                lblInvasionNote.setText("⚔️ Active Raid / Attack (" + (cnt != null ? cnt : 0) + " specimens introduced).");
+                lblInvasionNote.setText(i18n.get("god.invasion.active_raid", (cnt != null ? cnt : 0)));
                 lblInvasionNote.setStyle("-fx-text-fill: #dc2626; -fx-font-size: 11px; -fx-font-style: italic;");
             }
         };
@@ -1775,16 +1807,23 @@ public class InterventionPanel extends BorderPane {
     }
 
     public void setSimulationRunning(boolean running) {
-        if (simStateWarningLabel != null) {
-            org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-            simStateWarningLabel.textProperty().unbind();
-            if (!running) {
-                simStateWarningLabel.setText(i18n.get("god.warn.paused"));
-                simStateWarningLabel.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: rgba(245,158,11,0.15); -fx-padding: 6 10; -fx-background-radius: 4;");
-            } else {
-                simStateWarningLabel.setText(i18n.get("god.warn.running"));
-                simStateWarningLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: rgba(74,222,128,0.15); -fx-padding: 6 10; -fx-background-radius: 4;");
+        Runnable action = () -> {
+            if (simStateWarningLabel != null) {
+                org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+                simStateWarningLabel.textProperty().unbind();
+                if (!running) {
+                    simStateWarningLabel.setText(i18n.get("god.warn.paused"));
+                    simStateWarningLabel.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: rgba(245,158,11,0.15); -fx-padding: 6 10; -fx-background-radius: 4;");
+                } else {
+                    simStateWarningLabel.setText(i18n.get("god.warn.running"));
+                    simStateWarningLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: rgba(74,222,128,0.15); -fx-padding: 6 10; -fx-background-radius: 4;");
+                }
             }
+        };
+        if (javafx.application.Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            javafx.application.Platform.runLater(action);
         }
     }
 
@@ -1793,22 +1832,29 @@ public class InterventionPanel extends BorderPane {
     }
 
     public void updateAvailableColonies(List<String> activeColonyNames) {
-        if (activeColonyNames == null || activeColonyNames.isEmpty()) return;
+        Runnable action = () -> {
+            if (activeColonyNames == null || activeColonyNames.isEmpty()) return;
 
-        if (eventColonySelect != null) {
-            List<String> items = new ArrayList<>();
-            items.add("All Colonies (Global)");
-            items.addAll(activeColonyNames);
-            String selEv = eventColonySelect.getValue();
-            eventColonySelect.getItems().setAll(items);
-            if (selEv != null && eventColonySelect.getItems().contains(selEv)) {
-                eventColonySelect.getSelectionModel().select(selEv);
-            } else {
-                eventColonySelect.getSelectionModel().selectFirst();
+            if (eventColonySelect != null) {
+                List<String> items = new ArrayList<>();
+                items.add("All Colonies (Global)");
+                items.addAll(activeColonyNames);
+                String selEv = eventColonySelect.getValue();
+                eventColonySelect.getItems().setAll(items);
+                if (selEv != null && eventColonySelect.getItems().contains(selEv)) {
+                    eventColonySelect.getSelectionModel().select(selEv);
+                } else {
+                    eventColonySelect.getSelectionModel().selectFirst();
+                }
             }
-        }
 
-        updateCastesForSelectedColony(eventColonySelect != null ? eventColonySelect.getValue() : null);
+            updateCastesForSelectedColony(eventColonySelect != null ? eventColonySelect.getValue() : null);
+        };
+        if (javafx.application.Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            javafx.application.Platform.runLater(action);
+        }
     }
 
     private void updateCastesForSelectedColony(String colonyName) {

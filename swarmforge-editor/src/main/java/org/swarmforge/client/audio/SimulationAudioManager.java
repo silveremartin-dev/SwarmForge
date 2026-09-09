@@ -328,16 +328,25 @@ public class SimulationAudioManager {
             channels.get("BIOME").stopWithFade();
         }
 
-        // 6. Insect Colony Activity & Digging Sound (Strict real-life attenuation: only audible when zoomed in close or subterranean)
-        double distanceFactor = (cameraZoom - 1.5) / 2.5;
-        double insectDistanceAtten = (cameraDepth > 0.4)
-            ? 1.0
-            : Math.max(0.0, 1.0 / (1.0 + Math.pow(Math.max(0.0, distanceFactor), 2.5)));
-        if (insectEnabled && populationCount > 5 && insectDistanceAtten > 0.005) {
+        // 6. Insect Colony Activity & Digging Sound (Strict real-life attenuation: completely silent when zoomed far out, only audible in close-up or subterranean view)
+        double insectDistanceAtten = 0.0;
+        if (cameraDepth > 0.4) {
+            // Subterranean nest view / inside galleries
+            insectDistanceAtten = 1.0;
+        } else if (cameraZoom > 4.5) {
+            // Close-up surface view: progressive fade in from zoom 4.5 up to zoom 12.0+
+            double zoomProximity = Math.max(0.0, Math.min(1.0, (cameraZoom - 4.5) / 7.5));
+            insectDistanceAtten = Math.pow(zoomProximity, 1.8);
+        } else {
+            // Far overview / zoomed out: completely silent
+            insectDistanceAtten = 0.0;
+        }
+
+        if (insectEnabled && populationCount > 5 && insectDistanceAtten > 0.01) {
             double popVolScale = Math.min(1.0, Math.log10(populationCount) / 3.5);
             File insectFile = null;
-            if (cameraDepth > 0.4 || cameraZoom < 3.0) {
-                // Subterranean nest view / close-up digging
+            if (cameraDepth > 0.4 || cameraZoom > 10.0) {
+                // Subterranean nest view or extreme close-up digging
                 insectFile = findSoundFile("anthill_nest_sounds.mp3");
                 if (insectFile == null) insectFile = findSoundFile("sand_soil_digging.mp3");
                 if (insectFile == null) insectFile = findSoundFile("termites-and-ants-sound.mp3");
@@ -653,6 +662,9 @@ public class SimulationAudioManager {
     public void setPopulationCount(int populationCount) { this.populationCount = populationCount; }
     public void setHasTrees(boolean hasTrees) { this.hasTrees = hasTrees; }
     public void setCameraZoom(double zoom) { this.cameraZoom = zoom; }
+    public double getCameraZoom() { return cameraZoom; }
+    public void setCameraDepth(double depth) { this.cameraDepth = depth; }
+    public double getCameraDepth() { return cameraDepth; }
     public void setSeason(String season) { if (season != null) this.currentSeason = season; }
     public void setTimeOfDayHours(double hour) { this.timeOfDayHours = hour; }
 

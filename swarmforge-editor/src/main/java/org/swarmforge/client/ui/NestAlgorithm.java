@@ -24,11 +24,18 @@ public final class NestAlgorithm {
     private NestAlgorithm() {}
 
     public static NestGeneratorPane.GeneratedNest generate(NestGeneratorPane p) {
+        return generate(p.getConfiguration(), p.getSeed());
+    }
+
+    @SuppressWarnings("unchecked")
+    public static NestGeneratorPane.GeneratedNest generate(Map<String, Object> config, long seed) {
         NestGeneratorPane.GeneratedNest nest = new NestGeneratorPane.GeneratedNest();
-        double maxDepth = p.getDepth();
-        String arch = p.getArchitecture();
-        String mat = p.getMaterial();
-        double workerMm = p.getWorkerSizeMm();
+        if (config == null) config = Collections.emptyMap();
+
+        double maxDepth = getDouble(config, "depth", 25.0);
+        String arch = getString(config, "architecture", "BURROW_UNDERGROUND");
+        String mat = getString(config, "material", "EARTH");
+        double workerMm = getDouble(config, "workerSizeMm", 5.0);
 
         nest.maxDepth = maxDepth;
         nest.architecture = arch;
@@ -38,15 +45,18 @@ public final class NestAlgorithm {
         // Scale factor relative to 5mm baseline
         double anatomicalScale = workerMm / 5.0;
 
-        int entrances = Math.max(1, p.sp("🚪 Entrances"));
-        int queenCnt  = p.sp("👑 Queen Chamber");
-        int broodCnt  = p.sp("🥚 Brood Chambers");
-        int foodCnt   = p.sp("🍖 Food Storage");
-        int wasteCnt  = p.sp("🗑 Waste Dumps");
-        int fungusCnt = p.sp("🍄 Fungus Gardens");
-        int branching = (int) p.getBranching();
+        Map<String, Integer> dist = config.get("chamberDistribution") instanceof Map
+                ? (Map<String, Integer>) config.get("chamberDistribution")
+                : Collections.emptyMap();
 
-        long seed = p.getSeed();
+        int entrances = Math.max(1, getDist(dist, "🚪 Entrances", 2));
+        int queenCnt  = getDist(dist, "👑 Queen Chamber", 1);
+        int broodCnt  = getDist(dist, "🥚 Brood Chambers", 3);
+        int foodCnt   = getDist(dist, "🍖 Food Storage", 2);
+        int wasteCnt  = getDist(dist, "🗑 Waste Dumps", 1);
+        int fungusCnt = getDist(dist, "🍄 Fungus Gardens", 0);
+        int branching = getInt(config, "branching", 2);
+
         Random rnd = new Random(seed);
 
         String archKey = NestRenderer.normalizeArchKey(arch);
@@ -69,14 +79,115 @@ public final class NestAlgorithm {
         return nest;
     }
 
+    public static void applyToTunnelNetwork(NestGeneratorPane.GeneratedNest genNest, float nx, float ny, float nz, org.swarmforge.core.simulation.TunnelNetwork tn, org.swarmforge.core.domain.Colony colony) {
+        if (genNest == null || tn == null) return;
+
+        Map<NestGeneratorPane.NestNode, UUID> nodeMap = new HashMap<>();
+        List<org.swarmforge.core.simulation.TunnelNetwork.TunnelNode> simNodes = new ArrayList<>();
+        List<org.swarmforge.core.simulation.TunnelNetwork.TunnelEdge> simEdges = new ArrayList<>();
+
+        for (NestGeneratorPane.NestNode n : genNest.nodes) {
+            UUID id = UUID.randomUUID();
+            nodeMap.put(n, id);
+            float wx = nx + (float) n.x;
+            float wy = ny + (float) n.y;
+            float wz = nz - (float) n.z; // Depth is down along -z
+
+            org.swarmforge.core.simulation.TunnelNetwork.ChamberType cType = mapChamberType(n.type);
+            float rx = (float) (n.rx > 0 ? n.rx : n.radius);
+            float ry = (float) (n.ry > 0 ? n.ry : n.radius);
+            float rz = (float) (n.rz > 0 ? n.rz : n.radius * 0.55);
+
+            simNodes.add(new org.swarmforge.core.simulation.TunnelNetwork.TunnelNode(id, wx, wy, wz, cType, rx, ry, rz));
+        }
+
+        for (NestGeneratorPane.NestEdge e : genNest.edges) {
+            UUID fromId = nodeMap.get(e.from);
+            UUID toId = nodeMap.get(e.to);
+            if (fromId != null && toId != null) {
+                List<float[]> pathPoints = new ArrayList<>();
+                if (e.pts != null && !e.pts.isEmpty()) {
+                    for (double[] pt : e.pts) {
+                        pathPoints.add(new float[]{nx + (float) pt[0], ny + (float) pt[1], nz - (float) pt[2]});
+                    }
+                }
+                float dist = (float) Math.sqrt(Math.pow(e.from.x - e.to.x, 2) + Math.pow(e.from.y - e.to.y, 2) + Math.pow(e.from.z - e.to.z, 2));
+                simEdges.add(new org.swarmforge.core.simulation.TunnelNetwork.TunnelEdge(fromId, toId, dist, pathPoints));
+            }
+        }
+
+        tn.populate(simNodes, simEdges, colony);
+    }
+
+    private static org.swarmforge.core.simulation.TunnelNetwork.ChamberType mapChamberType(String type) {
+        if (type == null) return org.swarmforge.core.simulation.TunnelNetwork.ChamberType.TUNNEL;
+        String t = type.toUpperCase().trim();
+        return switch (t) {
+            case "ENTRANCE", "ENTRY" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE;
+            case "QUEEN", "QUEEN_CHAMBER", "ROYAL_CELL" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.QUEEN_CHAMBER;
+            case "BROOD", "BROOD_CHAMBER", "NURSERY" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER;
+            case "FOOD", "FOOD_STORAGE", "STORAGE", "GRANARY" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.FOOD_STORAGE;
+            case "WASTE", "WASTE_DUMP", "MIDDEN" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.WASTE_DUMP;
+            case "FUNGUS", "FUNGUS_GARDEN" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.FUNGUS_GARDEN;
+            case "HIBERNATION" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.HIBERNATION;
+            case "SOLARIUM" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.SOLARIUM;
+            case "HONEYCOMB", "HONEY_HONEYCOMB" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.HONEYCOMB;
+            case "POLLEN_POT" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.POLLEN_POT;
+            case "VENTILATION", "VENTILATION_CHIMNEY" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.VENTILATION_CHIMNEY;
+            case "LEAF_CACHE" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.LEAF_CACHE;
+            case "GALL_NURSERY" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.GALL_NURSERY;
+            case "BIVOUAC_CORE" -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BIVOUAC_CORE;
+            default -> org.swarmforge.core.simulation.TunnelNetwork.ChamberType.TUNNEL;
+        };
+    }
+
+    private static double getDouble(Map<String, Object> m, String key, double def) {
+        if (m != null && m.containsKey(key)) {
+            Object v = m.get(key);
+            if (v instanceof Number n) return n.doubleValue();
+        }
+        return def;
+    }
+
+    private static int getInt(Map<String, Object> m, String key, int def) {
+        if (m != null && m.containsKey(key)) {
+            Object v = m.get(key);
+            if (v instanceof Number n) return n.intValue();
+        }
+        return def;
+    }
+
+    private static String getString(Map<String, Object> m, String key, String def) {
+        if (m != null && m.containsKey(key)) {
+            Object v = m.get(key);
+            if (v != null) return v.toString();
+        }
+        return def;
+    }
+
+    private static int getDist(Map<String, Integer> dist, String key, int def) {
+        if (dist == null || dist.isEmpty()) return def;
+        if (dist.containsKey(key)) {
+            Object v = dist.get(key);
+            if (v instanceof Number n) return n.intValue();
+        }
+        String cleanKey = key.replaceAll("[^a-zA-Z]", "").toLowerCase();
+        for (Map.Entry<String, Integer> e : dist.entrySet()) {
+            if (e.getKey() != null && e.getKey().replaceAll("[^a-zA-Z]", "").toLowerCase().contains(cleanKey)) {
+                if (e.getValue() != null) return e.getValue();
+            }
+        }
+        return def;
+    }
+
     // ── Helper to build queued chamber specifications ────────────────────────
     private static List<ChamberSpec> buildChamberQueue(int queenCnt, int broodCnt, int foodCnt, int wasteCnt, int fungusCnt, double scale, Random rnd) {
         List<ChamberSpec> q = new ArrayList<>();
-        for (int i = 0; i < queenCnt; i++)  q.add(new ChamberSpec("QUEEN",  0.80, 4.8 * scale, 2.4 * scale, Color.GOLD));
-        for (int i = 0; i < broodCnt; i++)  q.add(new ChamberSpec("BROOD",  0.30, 3.4 * scale, 1.8 * scale, Color.DEEPSKYBLUE));
-        for (int i = 0; i < foodCnt; i++)   q.add(new ChamberSpec("FOOD",   0.20, 3.6 * scale, 1.9 * scale, Color.ORANGE));
-        for (int i = 0; i < fungusCnt; i++) q.add(new ChamberSpec("FUNGUS", 0.50, 4.2 * scale, 2.2 * scale, Color.MEDIUMPURPLE));
-        for (int i = 0; i < wasteCnt; i++)  q.add(new ChamberSpec("WASTE",  0.65, 3.2 * scale, 1.6 * scale, Color.INDIANRED));
+        for (int i = 0; i < queenCnt; i++)  q.add(new ChamberSpec("QUEEN",  0.80, 4.8 * scale, 2.4 * scale, NestRenderer.CHAMBER_COLOR_QUEEN));
+        for (int i = 0; i < broodCnt; i++)  q.add(new ChamberSpec("BROOD",  0.30, 3.4 * scale, 1.8 * scale, NestRenderer.CHAMBER_COLOR_BROOD));
+        for (int i = 0; i < foodCnt; i++)   q.add(new ChamberSpec("FOOD",   0.20, 3.6 * scale, 1.9 * scale, NestRenderer.CHAMBER_COLOR_STORAGE));
+        for (int i = 0; i < fungusCnt; i++) q.add(new ChamberSpec("FUNGUS", 0.50, 4.2 * scale, 2.2 * scale, NestRenderer.CHAMBER_COLOR_FUNGUS));
+        for (int i = 0; i < wasteCnt; i++)  q.add(new ChamberSpec("WASTE",  0.65, 3.2 * scale, 1.6 * scale, NestRenderer.CHAMBER_COLOR_WASTE));
         return q;
     }
 
@@ -96,22 +207,49 @@ public final class NestAlgorithm {
             int entrances, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, int fungusCnt,
             int branching, double scale, Random rnd, boolean hasSurfaceMound) {
 
-        double groundZ = hasSurfaceMound ? 5.0 : 0.0;
+        double groundZ = 0.0;
 
         // Entrances
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
-        for (int i = 0; i < entrances; i++) {
-            double ang = 2 * Math.PI * i / entrances + rnd.nextDouble() * 0.4;
-            double d   = entrances > 1 ? 4 + rnd.nextDouble() * 8 : 0;
-            entNodes.add(node(nest, d * Math.cos(ang), d * Math.sin(ang), groundZ,
-                "ENTRANCE", 2.0 * scale, Color.LIMEGREEN));
+        if (hasSurfaceMound) {
+            // Apex chimney entrance on top of the pine-needle thatch dome
+            entNodes.add(node(nest, 0, 0, -6.5 * scale, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN));
+            for (int i = 1; i < entrances; i++) {
+                double ang = 2 * Math.PI * (i - 1) / Math.max(1, entrances - 1) + rnd.nextDouble() * 0.4;
+                double d = 4.0 * scale + rnd.nextDouble() * 3.0 * scale;
+                entNodes.add(node(nest, d * Math.cos(ang), d * Math.sin(ang), -2.0 * scale,
+                    "ENTRANCE", 1.8 * scale, Color.LIMEGREEN));
+            }
+        } else {
+            for (int i = 0; i < entrances; i++) {
+                double ang = 2 * Math.PI * i / entrances + rnd.nextDouble() * 0.4;
+                double d   = entrances > 1 ? 4 + rnd.nextDouble() * 8 : 0;
+                entNodes.add(node(nest, d * Math.cos(ang), d * Math.sin(ang), groundZ,
+                    "ENTRANCE", 2.0 * scale, Color.LIMEGREEN));
+            }
         }
 
         // Hub
-        NestGeneratorPane.NestNode hub = node(nest, 0, 0, groundZ + 2.0, "JUNCTION", 1.1 * scale, Color.SLATEGRAY);
+        NestGeneratorPane.NestNode hub = node(nest, 0, 0, groundZ + 2.0, "JUNCTION", 1.2 * scale, Color.SLATEGRAY);
         for (NestGeneratorPane.NestNode en : entNodes) edge(nest, en, hub, rnd);
 
-        // Main shaft
+        // Epigeic Solarium Incubation Chambers inside the warm above-ground thatch mound (Formica rufa)
+        if (hasSurfaceMound) {
+            int solariumBrood = Math.min(broodCnt, 2);
+            for (int s = 0; s < solariumBrood; s++) {
+                double ang = s * Math.PI + (rnd.nextDouble() - 0.5) * 0.5;
+                double rad = (2.5 + rnd.nextDouble() * 2.0) * scale;
+                double z = (-4.5 + s * 1.5) * scale;
+                NestGeneratorPane.NestNode solarium = nodeLenticular(nest,
+                    rad * Math.cos(ang), rad * Math.sin(ang), z,
+                    "BROOD", 3.8 * scale, 3.8 * scale, 1.8 * scale, NestRenderer.CHAMBER_COLOR_BROOD);
+                edge(nest, entNodes.get(0), solarium, rnd);
+                edge(nest, hub, solarium, rnd);
+            }
+            broodCnt = Math.max(0, broodCnt - solariumBrood);
+        }
+
+        // Main subterranean shaft
         List<NestGeneratorPane.NestNode> shaft = new ArrayList<>();
         shaft.add(hub);
         int steps = Math.max(4, (int)(maxDepth / 5.0));
