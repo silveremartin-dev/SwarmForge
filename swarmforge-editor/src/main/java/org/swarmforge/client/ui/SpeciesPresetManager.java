@@ -75,7 +75,7 @@ public class SpeciesPresetManager {
         lasius.setSecondaryDiet("INSECTS_MEAT");
         lasius.setDailyFoodConsumption(0.3f);
         lasius.setWaterRequirement(0.15f);
-        lasius.setNestType("MATURE");
+        lasius.setNestType("UNDERGROUND_BURROW");
         lasius.setVenomType("FORMIC_ACID");
         lasius.setAggression(0.3f);
         lasius.setTerritoriality(0.45f);
@@ -987,7 +987,7 @@ public class SpeciesPresetManager {
         formicaFusca.setSecondaryDiet("INSECTS_MEAT");
         formicaFusca.setDailyFoodConsumption(0.35f);
         formicaFusca.setWaterRequirement(0.20f);
-        formicaFusca.setNestType("MATURE");
+        formicaFusca.setNestType("UNDERGROUND_BURROW");
         formicaFusca.setVenomType("FORMIC_ACID");
         formicaFusca.setAggression(0.35f);
         formicaFusca.setTerritoriality(0.40f);
@@ -1083,7 +1083,7 @@ public class SpeciesPresetManager {
         polyergus.setSecondaryDiet("INSECTS_MEAT");
         polyergus.setDailyFoodConsumption(0.4f);
         polyergus.setWaterRequirement(0.2f);
-        polyergus.setNestType("MATURE");
+        polyergus.setNestType("UNDERGROUND_BURROW");
         polyergus.setVenomType("POWERFUL_MANDIBLES");
         polyergus.setAggression(0.95f);
         polyergus.setTerritoriality(0.85f);
@@ -1134,7 +1134,7 @@ public class SpeciesPresetManager {
         linepithema.setSecondaryDiet("INSECTS_MEAT");
         linepithema.setDailyFoodConsumption(0.25f);
         linepithema.setWaterRequirement(0.15f);
-        linepithema.setNestType("MATURE");
+        linepithema.setNestType("UNDERGROUND_BURROW");
         linepithema.setVenomType("FORMIC_ACID");
         linepithema.setAggression(0.8f);
         linepithema.setTerritoriality(0.2f);
@@ -1184,7 +1184,7 @@ public class SpeciesPresetManager {
         messor.setSecondaryDiet("HONEYDEW");
         messor.setDailyFoodConsumption(0.45f);
         messor.setWaterRequirement(0.1f);
-        messor.setNestType("MATURE");
+        messor.setNestType("UNDERGROUND_BURROW");
         messor.setVenomType("POWERFUL_MANDIBLES");
         messor.setAggression(0.5f);
         messor.setTerritoriality(0.6f);
@@ -1240,7 +1240,7 @@ public class SpeciesPresetManager {
         camponotus.setSecondaryDiet("INSECTS_MEAT");
         camponotus.setDailyFoodConsumption(0.5f);
         camponotus.setWaterRequirement(0.2f);
-        camponotus.setNestType("MATURE");
+        camponotus.setNestType("HOLLOW_TRUNK");
         camponotus.setVenomType("FORMIC_ACID");
         camponotus.setAggression(0.6f);
         camponotus.setTerritoriality(0.7f);
@@ -1352,7 +1352,7 @@ public class SpeciesPresetManager {
         fallback.setCommonName(cleanName.isEmpty() ? name : cleanName);
         fallback.setScientificName(cleanName.isEmpty() ? name : cleanName);
         fallback.setInsectType("ANT");
-        fallback.setNestType("MATURE");
+        fallback.setNestType("UNDERGROUND_BURROW");
         fallback.setOptimalTempCelsius(24.0f);
         fallback.setMinTempCelsius(0.0f);
         fallback.setMaxTempCelsius(45.0f);

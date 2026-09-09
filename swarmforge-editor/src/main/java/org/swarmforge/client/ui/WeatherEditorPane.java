@@ -465,7 +465,8 @@ public class WeatherEditorPane extends BorderPane {
         photoBox.setPadding(new Insets(8));
         photoBox.getStyleClass().add("card-pane");
 
-        Label photoTitle = new Label("☀️ Calculated Photoperiod (Theoretical daylight hours / day):");
+        Label photoTitle = new Label();
+        photoTitle.textProperty().bind(I18nManager.getInstance().createStringBinding("weather.geo.photoperiod_title"));
         photoTitle.getStyleClass().add("card-title");
         photoTitle.setStyle("-fx-font-size: 11px;");
 
@@ -720,7 +721,8 @@ public class WeatherEditorPane extends BorderPane {
         container.setPadding(new Insets(10));
         container.getStyleClass().add("card-pane");
 
-        Label title = new Label("🌫️ Atmosphere, Winds & Subterranean Soil Microclimate");
+        Label title = new Label();
+        title.textProperty().bind(I18nManager.getInstance().createStringBinding("weather.atmo.title"));
         title.getStyleClass().add("card-title");
         title.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
 
@@ -795,6 +797,23 @@ public class WeatherEditorPane extends BorderPane {
         return container;
     }
 
+    private String lookupKeyForLabel(String textOrKey) {
+        if (textOrKey == null) return "";
+        if (I18nManager.getInstance().containsKey(textOrKey)) return textOrKey;
+        return switch (textOrKey.trim()) {
+            case "🎚️ Barometric Pressure (hPa):" -> "weather.atmo.pressure";
+            case "🧭 Dominant Wind Direction:" -> "weather.atmo.wind_dir";
+            case "🧱 Soil Thermal Inertia (Days):" -> "weather.atmo.soil_inertia";
+            case "🕳️ Depth Attenuation (0-1):" -> "weather.atmo.depth_atten";
+            case "City Search (Open-Meteo):", "City Search:" -> "weather.geo.city_search";
+            case "Latitude (°N/S):", "Latitude:" -> "weather.geo.lat";
+            case "Longitude (°E/W):", "Longitude:" -> "weather.geo.lon";
+            case "Altitude (m):", "Altitude:" -> "weather.geo.alt";
+            case "Vegetation Cover:" -> "weather.geo.veg_cover";
+            default -> textOrKey;
+        };
+    }
+
     private Label createTooltipLabel(String text, String tooltipText) {
         return createTooltipLabel(text, tooltipText, (javafx.scene.Node) null, null);
     }
@@ -808,10 +827,13 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     private Label createTooltipLabel(String text, String tooltipText, javafx.scene.Node targetControl, String glossaryTerm) {
-        Label l = new Label(text);
+        Label l = new Label();
+        String labelKey = lookupKeyForLabel(text);
+        l.textProperty().bind(I18nManager.getInstance().createStringBinding(labelKey));
         l.setStyle("-fx-font-weight: bold;");
         if (tooltipText != null && !tooltipText.isEmpty()) {
-            Tooltip tt = new Tooltip(tooltipText);
+            Tooltip tt = new Tooltip();
+            tt.textProperty().bind(I18nManager.getInstance().createStringBinding(tooltipText));
             tt.setMaxWidth(380);
             tt.setWrapText(true);
             l.setTooltip(tt);
@@ -917,7 +939,8 @@ public class WeatherEditorPane extends BorderPane {
         Region sp = new Region();
         HBox.setHgrow(sp, Priority.ALWAYS);
 
-        Label hint = new Label("💡 Click and drag graph data points to modify monthly curves");
+        Label hint = new Label();
+        hint.textProperty().bind(i18n.createStringBinding("weather.curves.hint"));
         hint.setStyle("-fx-text-fill:#888;-fx-font-size:10;-fx-font-style:italic;");
 
         bar.getChildren().addAll(minLbl, avgLbl, maxLbl, sp, hint);

@@ -330,6 +330,8 @@ public class SparsePheromoneGrid {
                     accumulateSpread(deltas, x, y + 1, z, t, amountPerNeighbor);
                     accumulateSpread(deltas, x, y, z - 1, t, amountPerNeighbor);
                     accumulateSpread(deltas, x, y, z + 1, t, amountPerNeighbor);
+
+                    entry.update(t, Math.max(0.0f, conc - spreadAmount), currentTick);
                 }
             }
         });

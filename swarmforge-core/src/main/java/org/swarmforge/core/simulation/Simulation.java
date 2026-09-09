@@ -729,7 +729,7 @@ public class Simulation {
             float rain = weather.getRainfall();
             float snow = weather.getSnowfall();
             float wind = weather.getWindSpeed();
-            soilHydricCoupling.updateHydricAndThermalState(rain, snow, sTemp, wind, simulationStepSeconds / 3600.0f);
+            soilHydricCoupling.tick(rain, snow, sTemp, wind, simulationStepSeconds / 3600.0f);
         }
         if (waterTable != null && weather != null) {
             waterTable.tick(weather.getRainfall(), weather.isRaining() ? 0.0f : 0.5f);

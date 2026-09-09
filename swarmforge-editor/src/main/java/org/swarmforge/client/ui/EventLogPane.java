@@ -17,6 +17,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import org.swarmforge.core.event.EventBus;
 import org.swarmforge.core.event.SimulationEvent;
+import org.swarmforge.core.util.SimulationTimeConverter;
 
 import javafx.collections.transformation.SortedList;
 
@@ -53,6 +54,20 @@ public class EventLogPane extends BorderPane {
     private SimulationEvent lastAddedEvent = null;
     private long totalRecordedCount = 0;
     private String scenarioName = "swarmforge";
+    private float simulationStepSeconds = 1.0f;
+
+    public float getSimulationStepSeconds() {
+        return simulationStepSeconds;
+    }
+
+    public void setSimulationStepSeconds(float stepSeconds) {
+        if (stepSeconds > 0) {
+            this.simulationStepSeconds = stepSeconds;
+            if (eventTable != null) {
+                eventTable.refresh();
+            }
+        }
+    }
 
     public String getScenarioName() {
         return scenarioName;
@@ -236,12 +251,13 @@ public class EventLogPane extends BorderPane {
     }
 
     private TableView<SimulationEvent> createEventTable() {
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         TableView<SimulationEvent> table = new TableView<>(sortedEvents);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.getSortOrder().addListener((javafx.collections.ListChangeListener<TableColumn<SimulationEvent, ?>>) c -> updateSortButtonStyles());
 
         // Column 1: Severity Badge
-        TableColumn<SimulationEvent, SimulationEvent.Severity> colSeverity = createSortableColumn("Severity");
+        TableColumn<SimulationEvent, SimulationEvent.Severity> colSeverity = createSortableColumn(i18n.get("log.col.severity"));
         colSeverity.setMinWidth(90);
         colSeverity.setMaxWidth(110);
         colSeverity.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getSeverity()));
@@ -256,15 +272,15 @@ public class EventLogPane extends BorderPane {
                     Label badge = new Label();
                     switch (sev) {
                         case CRITICAL -> {
-                            badge.setText("CRITICAL");
+                            badge.setText(i18n.get("log.severity.badge.critical"));
                             badge.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 4;");
                         }
                         case WARNING -> {
-                            badge.setText("WARNING");
+                            badge.setText(i18n.get("log.severity.badge.warning"));
                             badge.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: #18181b; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 4;");
                         }
                         default -> {
-                            badge.setText("INFO");
+                            badge.setText(i18n.get("log.severity.badge.info"));
                             badge.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 4;");
                         }
                     }
@@ -275,7 +291,7 @@ public class EventLogPane extends BorderPane {
         });
 
         // Column 2: Event ID (EVT-XXXXXX)
-        TableColumn<SimulationEvent, Long> colId = createSortableColumn("Event ID");
+        TableColumn<SimulationEvent, Long> colId = createSortableColumn(i18n.get("log.col.id"));
         colId.setMinWidth(110);
         colId.setMaxWidth(130);
         colId.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getSequenceId()));
@@ -296,8 +312,8 @@ public class EventLogPane extends BorderPane {
             }
         });
 
-        // Column 3: Timestamp
-        TableColumn<SimulationEvent, Instant> colTime = createSortableColumn("Timestamp");
+        // Column 3: Real Timestamp
+        TableColumn<SimulationEvent, Instant> colTime = createSortableColumn(i18n.get("log.col.timestamp"));
         colTime.setMinWidth(100);
         colTime.setMaxWidth(120);
         colTime.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTimestamp()));
@@ -322,10 +338,10 @@ public class EventLogPane extends BorderPane {
             }
         });
 
-        // Column 4: Tick
-        TableColumn<SimulationEvent, Long> colTick = createSortableColumn("Tick");
-        colTick.setMinWidth(90);
-        colTick.setMaxWidth(110);
+        // Column 4: Sim Time (SI Metric Time Unit formatting + diagnostic tooltip with tick count!)
+        TableColumn<SimulationEvent, Long> colTick = createSortableColumn(i18n.get("log.col.sim_time"));
+        colTick.setMinWidth(95);
+        colTick.setMaxWidth(125);
         colTick.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getTick()));
         colTick.setCellFactory(col -> new TableCell<>() {
             @Override
@@ -333,9 +349,12 @@ public class EventLogPane extends BorderPane {
                 super.updateItem(tick, empty);
                 if (empty || tick == null) {
                     setText(null);
+                    setTooltip(null);
                     getStyleClass().remove("evt-cell-tick");
                 } else {
-                    setText("T#" + tick);
+                    String formatted = SimulationTimeConverter.formatTicks(tick, simulationStepSeconds);
+                    setText(formatted);
+                    setTooltip(new Tooltip(SimulationTimeConverter.getTechnicalTooltip(tick, simulationStepSeconds)));
                     if (!getStyleClass().contains("evt-cell-tick")) {
                         getStyleClass().add("evt-cell-tick");
                     }
@@ -345,7 +364,7 @@ public class EventLogPane extends BorderPane {
         });
 
         // Column 5: Event Type
-        TableColumn<SimulationEvent, String> colType = createSortableColumn("Event Type");
+        TableColumn<SimulationEvent, String> colType = createSortableColumn(i18n.get("log.col.type"));
         colType.setMinWidth(160);
         colType.setMaxWidth(200);
         colType.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(formatTypeString(cellData.getValue().getType())));
@@ -364,7 +383,7 @@ public class EventLogPane extends BorderPane {
         });
 
         // Column 6: Message & Details
-        TableColumn<SimulationEvent, String> colMessage = createSortableColumn("Details & Message");
+        TableColumn<SimulationEvent, String> colMessage = createSortableColumn(i18n.get("log.col.message"));
         colMessage.setCellValueFactory(cellData -> {
             SimulationEvent ev = cellData.getValue();
             if (ev == null) return new ReadOnlyObjectWrapper<>("");
@@ -585,8 +604,8 @@ public class EventLogPane extends BorderPane {
                     : "swarmforge";
             java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
             java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
-            eventCountLabel.setText(String.format(
-                "Total captured: %,d events | Memory buffer: %,d latest (10,000 max rolling buffer) | Filtered/Sorted: %,d | Full log file: %s",
+            org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+            eventCountLabel.setText(i18n.get("log.stats.summary",
                 totalRecordedCount, events.size(), sortedEvents.size(), logFile.getAbsolutePath()));
         };
         if (Platform.isFxApplicationThread()) {

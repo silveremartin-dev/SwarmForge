@@ -67,6 +67,7 @@ public class MinimapOverlay extends VBox {
     private static final int GRID_RES = 32;
 
     private boolean syncViews = true;
+    private boolean showLegend = true;
     private boolean isCollapsed = false;
 
     public MinimapOverlay(int width) {
@@ -107,6 +108,14 @@ public class MinimapOverlay extends VBox {
         chkSync.setStyle("-fx-text-fill: #00d4ff; -fx-font-size: 9px; -fx-font-weight: bold;");
         chkSync.selectedProperty().addListener((o, a, b) -> this.syncViews = b);
 
+        CheckBox chkLegend = new CheckBox(I18nManager.getInstance().get("legend.show"));
+        chkLegend.setSelected(true);
+        chkLegend.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 9px; -fx-font-weight: bold;");
+        chkLegend.selectedProperty().addListener((o, a, b) -> {
+            this.showLegend = b;
+            redraw(null);
+        });
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -121,7 +130,7 @@ public class MinimapOverlay extends VBox {
             btnCollapse.setText(isCollapsed ? "+" : "−");
         });
 
-        HBox headerBox = new HBox(4, lblHeader, chkSync, spacer, btnCollapse);
+        HBox headerBox = new HBox(4, lblHeader, chkSync, chkLegend, spacer, btnCollapse);
         headerBox.setAlignment(Pos.CENTER_LEFT);
 
         getChildren().addAll(headerBox, mapContentBox);
@@ -201,11 +210,6 @@ public class MinimapOverlay extends VBox {
         gcTop.setFill(Color.rgb(15, 23, 42));
         gcTop.fillRect(0, 0, w, h);
 
-        // Grid outline
-        gcTop.setStroke(Color.rgb(51, 65, 85));
-        gcTop.setLineWidth(1);
-        gcTop.strokeRect(1, 1, w - 2, h - 2);
-
         // Density heatmap
         float cellW = (float) w / GRID_RES;
         float cellH = (float) h / GRID_RES;
@@ -264,13 +268,51 @@ public class MinimapOverlay extends VBox {
         gcTop.setLineWidth(1.5);
         gcTop.strokeRect(vpX - vpW / 2, vpY - vpH / 2, Math.max(8, vpW), Math.max(8, vpH));
 
-        // Grid lines
-        gcTop.setStroke(Color.rgb(51, 65, 85, 0.4));
+        // Subdued Grid lines inside
+        gcTop.setStroke(Color.rgb(51, 65, 85, 0.3));
         gcTop.setLineWidth(0.5);
         for (int i = 1; i < 4; i++) {
-            gcTop.strokeLine(i * w / 4, 0, i * w / 4, h);
-            gcTop.strokeLine(0, i * h / 4, w, i * h / 4);
+            gcTop.strokeLine(i * w / 4, 1, i * w / 4, h - 1);
+            gcTop.strokeLine(1, i * h / 4, w - 1, i * h / 4);
         }
+
+        // Legend overlay for Top-Down Minimap
+        if (showLegend) {
+            double lgH = 16;
+            double lgY = h - lgH - 3;
+            gcTop.setFill(Color.rgb(15, 23, 42, 0.85));
+            gcTop.fillRoundRect(3, lgY, w - 6, lgH, 4, 4);
+            gcTop.setStroke(Color.rgb(51, 65, 85, 0.6));
+            gcTop.setLineWidth(1);
+            gcTop.strokeRoundRect(3, lgY, w - 6, lgH, 4, 4);
+
+            I18nManager i18n = I18nManager.getInstance();
+            gcTop.setFont(javafx.scene.text.Font.font("SansSerif", 9));
+
+            // Ant density swatch
+            gcTop.setFill(Color.rgb(245, 158, 11));
+            gcTop.fillRect(6, lgY + 4, 7, 7);
+            gcTop.setFill(Color.rgb(203, 213, 225));
+            gcTop.fillText(i18n.get("minimap.legend.ant_density"), 16, lgY + 10);
+
+            // Nest swatch
+            gcTop.setFill(Color.ORANGE);
+            gcTop.fillOval(w * 0.46, lgY + 4, 6, 6);
+            gcTop.setFill(Color.rgb(203, 213, 225));
+            gcTop.fillText(i18n.get("minimap.legend.nests"), w * 0.46 + 9, lgY + 10);
+
+            // Camera rect swatch
+            gcTop.setStroke(Color.rgb(56, 189, 248));
+            gcTop.setLineWidth(1);
+            gcTop.strokeRect(w * 0.73, lgY + 4, 7, 7);
+            gcTop.setFill(Color.rgb(203, 213, 225));
+            gcTop.fillText(i18n.get("minimap.legend.camera"), w * 0.73 + 10, lgY + 10);
+        }
+
+        // Clean outer border (drawn LAST to avoid stray overlapping grid lines)
+        gcTop.setStroke(Color.rgb(51, 65, 85));
+        gcTop.setLineWidth(1);
+        gcTop.strokeRect(0.5, 0.5, w - 1, h - 1);
     }
 
     private void redrawSide(List<Colony> colonies) {
@@ -330,10 +372,41 @@ public class MinimapOverlay extends VBox {
         gcSide.setLineWidth(1.5);
         gcSide.strokeLine(vpX, 0, vpX, h);
 
-        // Border
+        // Legend overlay for Side Minimap
+        if (showLegend) {
+            double lgH = 16;
+            double lgY = h - lgH - 3;
+            gcSide.setFill(Color.rgb(15, 23, 42, 0.85));
+            gcSide.fillRoundRect(3, lgY, w - 6, lgH, 4, 4);
+            gcSide.setStroke(Color.rgb(51, 65, 85, 0.6));
+            gcSide.setLineWidth(1);
+            gcSide.strokeRoundRect(3, lgY, w - 6, lgH, 4, 4);
+
+            I18nManager i18n = I18nManager.getInstance();
+            gcSide.setFont(javafx.scene.text.Font.font("SansSerif", 9));
+
+            // Humus/Clay swatches
+            gcSide.setFill(Color.web("#3d2817"));
+            gcSide.fillRect(6, lgY + 4, 5, 7);
+            gcSide.setFill(Color.web("#9a3412"));
+            gcSide.fillRect(11, lgY + 4, 5, 7);
+            gcSide.setFill(Color.web("#64748b"));
+            gcSide.fillRect(16, lgY + 4, 5, 7);
+            gcSide.setFill(Color.rgb(203, 213, 225));
+            gcSide.fillText(i18n.get("minimap.legend.humus") + "/" + i18n.get("minimap.legend.clay"), 24, lgY + 10);
+
+            // Water table line swatch
+            gcSide.setStroke(Color.web("#0284c7"));
+            gcSide.setLineWidth(1.5);
+            gcSide.strokeLine(w * 0.62, lgY + 7, w * 0.62 + 9, lgY + 7);
+            gcSide.setFill(Color.rgb(203, 213, 225));
+            gcSide.fillText(i18n.get("minimap.legend.water_table"), w * 0.62 + 12, lgY + 10);
+        }
+
+        // Clean outer border (drawn LAST to avoid stray overlapping grid lines)
         gcSide.setStroke(Color.rgb(51, 65, 85));
         gcSide.setLineWidth(1);
-        gcSide.strokeRect(1, 1, w - 2, h - 2);
+        gcSide.strokeRect(0.5, 0.5, w - 1, h - 1);
     }
 
     /**

@@ -274,10 +274,17 @@ public class TrackedAntPane extends VBox {
 
         // Health
         double health = ant.getHealth();
+        boolean alive = ant.isAlive() && health > 0;
         lblHealthText.textProperty().unbind();
-        lblHealthText.setText(I18nManager.getInstance().get("tracked_ant.health", health));
-        healthBar.setProgress(Math.max(0, Math.min(1.0, health / 100.0)));
-        healthBar.setStyle(health > 50 ? "-fx-accent: #22c55e;" : "-fx-accent: #ef4444;");
+        if (!alive) {
+            lblHealthText.setText(I18nManager.getInstance().get("tracked_ant.health", 0.0) + " 💀 [DEAD]");
+            healthBar.setProgress(0);
+            healthBar.setStyle("-fx-accent: #64748b;");
+        } else {
+            lblHealthText.setText(I18nManager.getInstance().get("tracked_ant.health", health));
+            healthBar.setProgress(Math.max(0, Math.min(1.0, health / 100.0)));
+            healthBar.setStyle(health > 50 ? "-fx-accent: #22c55e;" : "-fx-accent: #ef4444;");
+        }
 
         // Energy / Hunger / Thirst
         lblEnergyHungerThirst.textProperty().unbind();

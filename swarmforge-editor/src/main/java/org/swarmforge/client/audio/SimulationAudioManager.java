@@ -244,14 +244,17 @@ public class SimulationAudioManager {
         boolean isAstronomicalDay = (timeOfDayHours >= sunrise && timeOfDayHours <= sunset);
         boolean isDay = (ambientLightLevel > 0.15) || (isAstronomicalDay && isSunAboveHorizon);
 
-        // 1. River Water Sound
+        // 1. River Water Sound (Attenuated with camera zoom distance)
         if (riverEnabled) {
             File riverFile = findSoundFile("WATRFlow_Small stream 4 (ID 1354)_BigSoundBank.com.mp3");
             if (riverFile == null) riverFile = findSoundFile("AMB_Nature Pack Vol 1_Water Enviroments_Mountain Stream.mp3");
             if (riverFile == null) riverFile = findSoundFile("WATRFlow_Watercourse 5 2 (ID 3137)_BigSoundBank.com.mp3");
             if (riverFile == null) riverFile = findSoundFile("mixkit-river-water-flow-and-surroundings-2452.wav");
             if (riverFile == null) riverFile = findSoundFile("mixkit-water-flowing-ambience-loop-3126.wav");
-            channels.get("RIVER").playTrack(riverFile, 0.90, masterVolume);
+            
+            // Attenuate river volume based on camera zoom: close = 0.35, far = 0.08
+            double riverZoomAtten = Math.max(0.08, Math.min(1.0, 1.0 - (cameraZoom - 2.0) / 12.0));
+            channels.get("RIVER").playTrack(riverFile, 0.35 * riverZoomAtten, masterVolume);
         } else {
             channels.get("RIVER").stopWithFade();
         }
@@ -264,27 +267,28 @@ public class SimulationAudioManager {
         if (weatherEnabled && isHail) {
             File hailFile = findSoundFile("saturn-3-music-strong-hail-falling-against-the-window-116182.mp3");
             if (hailFile == null) hailFile = findSoundFile("freesound_community-hail-74904.mp3");
-            channels.get("WEATHER_RAIN").playTrack(hailFile, 0.70, masterVolume);
+            channels.get("WEATHER_RAIN").playTrack(hailFile, 0.60, masterVolume);
         } else if (weatherEnabled && isRain) {
             File rainFile = heavyRain ? findSoundFile("mixkit-heavy-rain-2403.wav") : findSoundFile("mixkit-light-rain-loop-2393.wav");
             if (rainFile == null) rainFile = findSoundFile("Sound_of_rain.ogg");
-            channels.get("WEATHER_RAIN").playTrack(rainFile, 0.75, masterVolume);
+            channels.get("WEATHER_RAIN").playTrack(rainFile, 0.50, masterVolume);
         } else {
             channels.get("WEATHER_RAIN").stopWithFade();
         }
 
-        // 3. Weather Wind Sound (Reduced dominance so ambient biome & river streams are distinct)
+        // 3. Weather Wind Sound (Significantly reduced volume so wind isn't overwhelming)
         boolean isTornado = wUpper.contains("TEMPEST") || wUpper.contains("TORNADO") || wUpper.contains("TORNADE");
         boolean isWindy = isStormType(wUpper) || windSpeedMps > 8.0 || isTornado;
 
         if (weatherEnabled && isTornado) {
             File tornadoFile = findSoundFile("April_19,_2011_-_Tornado_at_Girard_Illinois.ogg");
             if (tornadoFile == null) tornadoFile = findSoundFile("strong_howling_wind.mp3");
-            channels.get("WEATHER_WIND").playTrack(tornadoFile, 0.35, masterVolume);
+            channels.get("WEATHER_WIND").playTrack(tornadoFile, 0.18, masterVolume);
         } else if (weatherEnabled && isWindy) {
             File windFile = (windSpeedMps > 15.0) ? findSoundFile("strong_howling_wind.mp3") : findSoundFile("mixkit-wind-blowing-ambience-2658.wav");
             if (windFile == null) windFile = findSoundFile("Bourne_woods_windy_2020-05-05_0753.mp3");
-            channels.get("WEATHER_WIND").playTrack(windFile, 0.15, masterVolume);
+            double windVolScale = Math.min(1.0, windSpeedMps / 25.0);
+            channels.get("WEATHER_WIND").playTrack(windFile, 0.05 * windVolScale, masterVolume);
         } else {
             channels.get("WEATHER_WIND").stopWithFade();
         }
@@ -293,12 +297,12 @@ public class SimulationAudioManager {
         if (weatherEnabled && (wUpper.contains("FIRE") || wUpper.contains("INCENDIE") || wUpper.contains("FEU"))) {
             File fireFile = findSoundFile("AMB_Nature Pack Vol 1_ Fire & Elemental_Large Bonfire.mp3");
             if (fireFile == null) fireFile = findSoundFile("AMB_Nature Pack Vol 1_ Fire & Elemental_Campfire Crackling.mp3");
-            channels.get("WEATHER_FIRE").playTrack(fireFile, 0.70, masterVolume);
+            channels.get("WEATHER_FIRE").playTrack(fireFile, 0.50, masterVolume);
         } else {
             channels.get("WEATHER_FIRE").stopWithFade();
         }
 
-        // 5. Biome Ambient Sound Loop (Fauna, Birds & Vegetation - boosted volume)
+        // 5. Biome Ambient Sound Loop (Fauna, Birds & Vegetation)
         if (ambientEnabled && !heavyRain) {
             File biomeFile = null;
             if (bUpper.contains("DESERT") || bUpper.contains("DÉSERT") || bUpper.contains("ARID")) {
@@ -319,13 +323,17 @@ public class SimulationAudioManager {
                 if (biomeFile == null) biomeFile = findSoundFile("AMB_Nature Pack Vol 1_Forest Enviroments_Forest Night.mp3");
                 if (biomeFile == null) biomeFile = findSoundFile("AMBRurl_Nocturnal insects 4 (ID 1470)_BigSoundBank.com.mp3");
             }
-            channels.get("BIOME").playTrack(biomeFile, 0.85, masterVolume);
+            channels.get("BIOME").playTrack(biomeFile, 0.70, masterVolume);
         } else {
             channels.get("BIOME").stopWithFade();
         }
 
-        // 6. Insect Colony Activity & Digging Sound
-        if (insectEnabled && populationCount > 5) {
+        // 6. Insect Colony Activity & Digging Sound (Strict real-life attenuation: only audible when zoomed in close or subterranean)
+        double distanceFactor = (cameraZoom - 1.5) / 2.5;
+        double insectDistanceAtten = (cameraDepth > 0.4)
+            ? 1.0
+            : Math.max(0.0, 1.0 / (1.0 + Math.pow(Math.max(0.0, distanceFactor), 2.5)));
+        if (insectEnabled && populationCount > 5 && insectDistanceAtten > 0.005) {
             double popVolScale = Math.min(1.0, Math.log10(populationCount) / 3.5);
             File insectFile = null;
             if (cameraDepth > 0.4 || cameraZoom < 3.0) {
@@ -339,7 +347,7 @@ public class SimulationAudioManager {
                 if (insectFile == null) insectFile = findSoundFile("freesound_community-ants-23656.mp3");
                 if (insectFile == null) insectFile = findSoundFile("antscolony.mp3");
             }
-            channels.get("INSECT").playTrack(insectFile, 0.55 * popVolScale, masterVolume);
+            channels.get("INSECT").playTrack(insectFile, 0.28 * popVolScale * insectDistanceAtten, masterVolume);
         } else {
             channels.get("INSECT").stopWithFade();
         }

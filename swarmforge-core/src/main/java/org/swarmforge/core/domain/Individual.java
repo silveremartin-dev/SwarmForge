@@ -941,8 +941,23 @@ public class Individual implements java.io.Serializable, AgentView {
                     float moveSpeed = getCurrentMovementSpeed();
                     float baseStep = Math.max(0.02f, moveSpeed * 0.1f);
                     float step = Math.min(baseStep * Math.max(0.1f, action.intensity()), 0.25f);
-                    this.x += (dx / len) * step;
-                    this.y += (dy / len) * step;
+                    float nextX = this.x + (dx / len) * step;
+                    float nextY = this.y + (dy / len) * step;
+
+                    Terrarium t = colony != null ? colony.getTerrarium() : null;
+                    if (!canFly() && t != null) {
+                        int ix = Math.max(0, Math.min(t.getWidth() - 1, Math.round(nextX)));
+                        int iy = Math.max(0, Math.min(t.getHeight() - 1, Math.round(nextY)));
+                        int iz = Math.max(0, Math.min(t.getDepth() - 1, Math.round(z)));
+                        TerrariumCell cell = t.getCell(ix, iy, iz);
+                        if (cell != null && cell.material() == TerrariumCell.Material.WATER) {
+                            this.heading += (float) (Math.PI * 0.75f);
+                            return ActionResult.failure("Water hazard avoided");
+                        }
+                    }
+
+                    this.x = nextX;
+                    this.y = nextY;
                     this.heading = (float) Math.atan2(dy, dx);
                 }
                 return ActionResult.ok();
@@ -1007,8 +1022,23 @@ public class Individual implements java.io.Serializable, AgentView {
                     float workerSpeed = species != null ? species.getWorkerSpeed() : 0.5f;
                     float baseStep = Math.max(0.02f, workerSpeed * 0.1f) * getQ10ThermalFactor();
                     float step = Math.min(baseStep * Math.max(0.1f, action.intensity()), 0.15f);
-                    this.x += (dx / len) * step;
-                    this.y += (dy / len) * step;
+                    float nextX = this.x + (dx / len) * step;
+                    float nextY = this.y + (dy / len) * step;
+
+                    Terrarium t = colony != null ? colony.getTerrarium() : null;
+                    if (!canFly() && t != null) {
+                        int ix = Math.max(0, Math.min(t.getWidth() - 1, Math.round(nextX)));
+                        int iy = Math.max(0, Math.min(t.getHeight() - 1, Math.round(nextY)));
+                        int iz = Math.max(0, Math.min(t.getDepth() - 1, Math.round(z)));
+                        TerrariumCell cell = t.getCell(ix, iy, iz);
+                        if (cell != null && cell.material() == TerrariumCell.Material.WATER) {
+                            this.heading += (float) (Math.PI * 0.75f);
+                            return ActionResult.failure("Water hazard avoided");
+                        }
+                    }
+
+                    this.x = nextX;
+                    this.y = nextY;
                     this.heading = (float) Math.atan2(dy, dx);
                 }
                 return ActionResult.ok();

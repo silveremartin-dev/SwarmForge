@@ -302,6 +302,45 @@ public class WeatherSystem {
     /** SI Microtesla geomagnetic field */
     public float getMagneticField() { return magneticField; }
 
+    /**
+     * Get synodic moon phase value (0.0 = New Moon, 0.5 = Full Moon).
+     */
+    public float getMoonPhaseValue() {
+        double synodicMonth = 29.53058770576;
+        double phase = ((dayOfYear + 12) % synodicMonth) / synodicMonth;
+        return (float) phase;
+    }
+
+    /**
+     * Get moon phase icon.
+     */
+    public String getMoonPhaseIcon() {
+        float p = getMoonPhaseValue();
+        if (p < 0.0625f || p >= 0.9375f) return "🌑";
+        if (p < 0.1875f) return "🌒";
+        if (p < 0.3125f) return "🌓";
+        if (p < 0.4375f) return "🌔";
+        if (p < 0.5625f) return "🌕";
+        if (p < 0.6875f) return "🌖";
+        if (p < 0.8125f) return "🌗";
+        return "🌘";
+    }
+
+    /**
+     * Get moon phase i18n key.
+     */
+    public String getMoonPhaseKey() {
+        float p = getMoonPhaseValue();
+        if (p < 0.0625f || p >= 0.9375f) return "weather.moon.new";
+        if (p < 0.1875f) return "weather.moon.waxing_crescent";
+        if (p < 0.3125f) return "weather.moon.first_quarter";
+        if (p < 0.4375f) return "weather.moon.waxing_gibbous";
+        if (p < 0.5625f) return "weather.moon.full";
+        if (p < 0.6875f) return "weather.moon.waning_gibbous";
+        if (p < 0.8125f) return "weather.moon.last_quarter";
+        return "weather.moon.waning_crescent";
+    }
+
     public WeatherMarkovChain.WeatherState getWeatherState() { return markovChain.getCurrentState(); }
     public String getCurrentWeatherType() { return markovChain != null && markovChain.getCurrentState() != null ? markovChain.getCurrentState().name() : "CLEAR"; }
     public float getRainfallIntensity() { return currentRainfall; }

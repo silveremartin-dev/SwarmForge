@@ -10,8 +10,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd Alpha texture\Plant alpha 1.png
-map_d  Alpha texture\\Plant alpha 1.png
+map_Kd ../textures/Plant alpha 1.png
+map_d ../textures/Plant alpha 1.png
 
 newmtl Plant_alpha_2
 Ns 96.078431
@@ -22,8 +22,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd Alpha texture\Plant alpha 2.png
-map_d  Alpha texture\\Plant alpha 2.png
+map_Kd ../textures/Plant alpha 2.png
+map_d ../textures/Plant alpha 2.png
 
 newmtl Plant_alpha_3
 Ns 96.078431
@@ -34,8 +34,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd Alpha texture\Plant alpha 3.png
-map_d  Alpha texture\\Plant alpha 3.png
+map_Kd ../textures/Plant alpha 3.png
+map_d ../textures/Plant alpha 3.png
 
 newmtl Plant_alpha_4
 Ns 96.078431
@@ -46,8 +46,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd Alpha texture\Plant alpha 4.png
-map_d  Alpha texture\\Plant alpha 4.png
+map_Kd ../textures/Plant alpha 4.png
+map_d ../textures/Plant alpha 4.png
 
 newmtl Plant_alpha_5
 Ns 96.078431
@@ -58,8 +58,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 2
-map_Kd Alpha texture\Plant alpha 5.png
-map_d  Alpha texture\\Plant alpha 5.png
+map_Kd ../textures/Plant alpha 5.png
+map_d ../textures/Plant alpha 5.png
 
 newmtl Plant_alpha_6
 Ns 96.078431
@@ -70,5 +70,5 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd Alpha texture\Plant alpha 6.png
-map_d  Alpha texture\\Plant alpha 6.png
+map_Kd ../textures/Plant alpha 6.png
+map_d ../textures/Plant alpha 6.png

@@ -1222,10 +1222,20 @@ public class NestGeneratorPane extends BorderPane {
             repaint();
         });
         canvas3D.setOnScroll(e -> {
+            double oldZoom = zoom;
             zoom = Math.max(2.5, Math.min(22.0, zoom + e.getDeltaY() * 0.025));
-            if (isSync()) {
-                sideZoom = Math.max(0.3, Math.min(6.0, zoom / 7.5));
-                topZoom = sideZoom;
+            if (zoom != oldZoom) {
+                double scaleRatio = zoom / oldZoom;
+                double cx = canvas3D.getWidth() / 2.0;
+                double cy = canvas3D.getHeight() / 2.0;
+                pan3DX = org.swarmforge.client.util.CanvasInteractionHandler.calculatePointerAnchoredPan(pan3DX, e.getX(), cx, scaleRatio);
+                pan3DY = org.swarmforge.client.util.CanvasInteractionHandler.calculatePointerAnchoredPan(pan3DY, e.getY(), cy, scaleRatio);
+                if (isSync()) {
+                    sideZoom = Math.max(0.3, Math.min(6.0, zoom / 7.5));
+                    topZoom = sideZoom;
+                    sidePanX = pan3DX; sidePanY = pan3DY;
+                    topPanX = pan3DX; topPanY = pan3DY;
+                }
             }
             repaint();
         });
@@ -1250,10 +1260,20 @@ public class NestGeneratorPane extends BorderPane {
             repaint();
         });
         canvasSide.setOnScroll(e -> {
+            double oldZoom = sideZoom;
             sideZoom = Math.max(0.3, Math.min(6.0, sideZoom + e.getDeltaY() * 0.003));
-            if (isSync()) {
-                topZoom = sideZoom;
-                zoom = Math.max(2.5, Math.min(22.0, sideZoom * 7.5));
+            if (sideZoom != oldZoom) {
+                double scaleRatio = sideZoom / oldZoom;
+                double cx = canvasSide.getWidth() / 2.0;
+                double cy = canvasSide.getHeight() / 2.0;
+                sidePanX = org.swarmforge.client.util.CanvasInteractionHandler.calculatePointerAnchoredPan(sidePanX, e.getX(), cx, scaleRatio);
+                sidePanY = org.swarmforge.client.util.CanvasInteractionHandler.calculatePointerAnchoredPan(sidePanY, e.getY(), cy, scaleRatio);
+                if (isSync()) {
+                    topZoom = sideZoom;
+                    zoom = Math.max(2.5, Math.min(22.0, sideZoom * 7.5));
+                    topPanX = sidePanX; topPanY = sidePanY;
+                    pan3DX = sidePanX; pan3DY = sidePanY;
+                }
             }
             repaint();
         });
@@ -1278,10 +1298,20 @@ public class NestGeneratorPane extends BorderPane {
             repaint();
         });
         canvasTop.setOnScroll(e -> {
+            double oldZoom = topZoom;
             topZoom = Math.max(0.3, Math.min(6.0, topZoom + e.getDeltaY() * 0.003));
-            if (isSync()) {
-                sideZoom = topZoom;
-                zoom = Math.max(2.5, Math.min(22.0, topZoom * 7.5));
+            if (topZoom != oldZoom) {
+                double scaleRatio = topZoom / oldZoom;
+                double cx = canvasTop.getWidth() / 2.0;
+                double cy = canvasTop.getHeight() / 2.0;
+                topPanX = org.swarmforge.client.util.CanvasInteractionHandler.calculatePointerAnchoredPan(topPanX, e.getX(), cx, scaleRatio);
+                topPanY = org.swarmforge.client.util.CanvasInteractionHandler.calculatePointerAnchoredPan(topPanY, e.getY(), cy, scaleRatio);
+                if (isSync()) {
+                    sideZoom = topZoom;
+                    zoom = Math.max(2.5, Math.min(22.0, topZoom * 7.5));
+                    sidePanX = topPanX; sidePanY = topPanY;
+                    pan3DX = topPanX; pan3DY = topPanY;
+                }
             }
             repaint();
         });
@@ -1423,6 +1453,12 @@ public class NestGeneratorPane extends BorderPane {
                     setMatSelectValue("Silk Weave (Oecophylla Larvae)");
                 } else if ("MOUND".equalsIgnoreCase(nestTypeStr) || "SURFACE_MOUND".equalsIgnoreCase(nestTypeStr) || cName.contains("fire") || cName.contains("feu")) {
                     setArchSelectValue("Surface Dome Mound");
+                    setMatSelectValue("Earth & Clay Soil");
+                } else if ("HOLLOW_TRUNK".equalsIgnoreCase(nestTypeStr) || "HOLLOW_WOOD".equalsIgnoreCase(nestTypeStr) || cName.contains("carpenter") || cName.contains("camponotus") || cName.contains("charpentière")) {
+                    setArchSelectValue("Hollow Trunk & Stump");
+                    setMatSelectValue("Hollow Wood & Bark");
+                } else if ("UNDERGROUND_BURROW".equalsIgnoreCase(nestTypeStr) || "SUBTERRANEAN_BURROW".equalsIgnoreCase(nestTypeStr) || "MATURE".equalsIgnoreCase(nestTypeStr) || cName.contains("lasius")) {
+                    setArchSelectValue("Subterranean Burrow");
                     setMatSelectValue("Earth & Clay Soil");
                 } else {
                     setArchSelectValue("Subterranean Burrow");

@@ -28,6 +28,7 @@ import org.swarmforge.client.ui.StatisticsDashboard;
 import java.util.logging.Logger;
 import java.net.URL;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -56,6 +57,7 @@ public class SwarmForgeClient extends Application {
         private org.swarmforge.client.ui.SimulationControlPanel simControlPanel;
         private org.swarmforge.client.ui.WorldEditorPane simWorldViewer;
         private org.swarmforge.client.ui.WorldEditorPane worldEditorPane;
+        private Slider sliceSlider;
         private TabPane mainTabs;
         private Tab simTab;
         private Tab worldTab;
@@ -241,8 +243,8 @@ public class SwarmForgeClient extends Application {
 
         // Start loading progress on splash screen and reveal main window upon completion
         splashScreen.startProgressAndLaunch(() -> {
+            org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage);
             primaryStage.show();
-            primaryStage.toFront();
         });
 
         // Auto-connect to server at launch (localhost:50051)
@@ -1000,7 +1002,7 @@ public class SwarmForgeClient extends Application {
                                     );
                                 }
 
-                                 if (simWorldViewer != null && localSimulation != null) {
+                                 if (simWorldViewer != null && localSimulation != null && simWorldViewer.getActiveSimulation() != localSimulation) {
                                      simWorldViewer.setSimulation(localSimulation);
                                  }
 
@@ -1581,6 +1583,9 @@ public class SwarmForgeClient extends Application {
                 chkTerrain.textProperty().bind(i18n.createStringBinding("sidebar.chk.terrain"));
                 chkTerrain.setSelected(true);
                 chkTerrain.setStyle("-fx-font-size: 11px;");
+                Tooltip ttTerrain = new Tooltip();
+                ttTerrain.textProperty().bind(i18n.createStringBinding("world.render.terrain.tt"));
+                chkTerrain.setTooltip(ttTerrain);
                 chkTerrain.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setTerrainVisible(b);
                         simWorldViewer.setTerrainVisible(b);
@@ -1600,22 +1605,46 @@ public class SwarmForgeClient extends Application {
                 chkSkirt.setSelected(true);
                 chkSkirt.setStyle("-fx-font-size: 11px;");
                 Tooltip ttSkirt = new Tooltip();
-                ttSkirt.textProperty().bind(i18n.createStringBinding("sidebar.chk.skirt.tt"));
+                ttSkirt.textProperty().bind(i18n.createStringBinding("world.render.bezel.tt"));
                 chkSkirt.setTooltip(ttSkirt);
                 chkSkirt.selectedProperty().addListener((o, a, b) -> simWorldViewer.setShow3DSkirt(b));
 
-                Slider sliceSlider = new Slider(0, 100, 50);
-                sliceSlider.setPrefWidth(120);
-                sliceSlider.valueProperty().addListener((o, a, b) -> simWorldViewer.setSlicePlane(b.doubleValue()));
+                this.sliceSlider = new Slider(0, 100, 100);
+                this.sliceSlider.setPrefWidth(90);
                 Label sliceLbl = new Label();
                 sliceLbl.textProperty().bind(i18n.createStringBinding("sidebar.lbl.slice"));
-                sliceLbl.setStyle("-fx-font-size: 10px;");
-                HBox sliceBox = new HBox(6, sliceLbl, sliceSlider);
+                sliceLbl.setStyle("-fx-font-size: 10.5px;");
+                Tooltip ttSlice = new Tooltip();
+                ttSlice.textProperty().bind(i18n.createStringBinding("sidebar.chk.scanner.tt"));
+                sliceLbl.setTooltip(ttSlice);
+                this.sliceSlider.setTooltip(ttSlice);
+
+                Label sliceValLbl = new Label("100 %");
+                sliceValLbl.setStyle("-fx-text-fill: #00d4ff; -fx-min-width: 40px; -fx-font-weight: bold; -fx-font-size: 10.5px;");
+
+                this.sliceSlider.valueProperty().addListener((o, a, b) -> {
+                    sliceValLbl.setText(String.format(java.util.Locale.US, "%.0f %%", b.doubleValue()));
+                    if (simWorldViewer != null) simWorldViewer.setSlicePlane(b.doubleValue());
+                });
+                if (simWorldViewer != null) {
+                    simWorldViewer.setOnSlicePlaneChanged(val -> {
+                        if (sliceSlider != null && Math.abs(sliceSlider.getValue() - val) > 0.01) {
+                            sliceSlider.setValue(val);
+                            sliceValLbl.setText(String.format(java.util.Locale.US, "%.0f %%", val));
+                        }
+                    });
+                }
+
+                HBox sliceBox = new HBox(6, sliceLbl, sliceSlider, sliceValLbl);
+                sliceBox.setAlignment(Pos.CENTER_LEFT);
 
                 CheckBox chkNid = new CheckBox();
                 chkNid.textProperty().bind(i18n.createStringBinding("sidebar.chk.nest"));
                 chkNid.setSelected(true);
                 chkNid.setStyle("-fx-font-size: 11px;");
+                Tooltip ttNid = new Tooltip();
+                ttNid.textProperty().bind(i18n.createStringBinding("sidebar.chk.nest.tt"));
+                chkNid.setTooltip(ttNid);
                 chkNid.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setTunnelsVisible(b);
                         simWorldViewer.setGalleriesVisible(b);
@@ -1625,6 +1654,9 @@ public class SwarmForgeClient extends Application {
                 chkPheromonesLayer.textProperty().bind(i18n.createStringBinding("sidebar.chk.pheromones"));
                 chkPheromonesLayer.setSelected(true);
                 chkPheromonesLayer.setStyle("-fx-font-size: 11px;");
+                Tooltip ttPhero = new Tooltip();
+                ttPhero.textProperty().bind(i18n.createStringBinding("sidebar.chk.pheromones.tt"));
+                chkPheromonesLayer.setTooltip(ttPhero);
                 chkPheromonesLayer.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setPheromonesVisible(b);
                         simWorldViewer.setPheromonesVisible(b);
@@ -1656,6 +1688,9 @@ public class SwarmForgeClient extends Application {
                 chkAntsLayer.textProperty().bind(i18n.createStringBinding("sidebar.chk.ants"));
                 chkAntsLayer.setSelected(true);
                 chkAntsLayer.setStyle("-fx-font-size: 11px;");
+                Tooltip ttAnts = new Tooltip();
+                ttAnts.textProperty().bind(i18n.createStringBinding("sidebar.chk.ants.tt"));
+                chkAntsLayer.setTooltip(ttAnts);
                 chkAntsLayer.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setAntsVisible(b);
                         simWorldViewer.setColonyVisible(b);
@@ -1665,6 +1700,9 @@ public class SwarmForgeClient extends Application {
                 chkWeatherLayer.textProperty().bind(i18n.createStringBinding("sidebar.chk.weather"));
                 chkWeatherLayer.setSelected(true);
                 chkWeatherLayer.setStyle("-fx-font-size: 11px;");
+                Tooltip ttWeather = new Tooltip();
+                ttWeather.textProperty().bind(i18n.createStringBinding("sidebar.chk.weather.tt"));
+                chkWeatherLayer.setTooltip(ttWeather);
                 chkWeatherLayer.selectedProperty().addListener((o, a, b) -> {
                         if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setWeatherVisible(b);
                         simWorldViewer.setWeatherVisible(b);
@@ -1688,13 +1726,22 @@ public class SwarmForgeClient extends Application {
                 chkAntTracking.setTooltip(ttAntTracking);
                 chkAntTracking.selectedProperty().addListener((o, a, b) -> simWorldViewer.setAntTrackingEnabled(b));
 
+                CheckBox chkWeatherOverlay = new CheckBox();
+                chkWeatherOverlay.textProperty().bind(i18n.createStringBinding("world.render.weather_overlay"));
+                chkWeatherOverlay.setSelected(true);
+                chkWeatherOverlay.setStyle("-fx-font-size: 11px;");
+                Tooltip ttWeatherOverlay = new Tooltip();
+                ttWeatherOverlay.textProperty().bind(i18n.createStringBinding("world.render.weather_overlay.tt"));
+                chkWeatherOverlay.setTooltip(ttWeatherOverlay);
+                chkWeatherOverlay.selectedProperty().addListener((o, a, b) -> simWorldViewer.setWeatherOverlayVisible(b));
+
                 renderSection.getChildren().addAll(
                     lblRenderMode, comboRenderMode,
                     chkMinimap, chkSyncMinimap, chkShowLegend,
                     new Separator(),
                     chkTerrain, chkTrees, chkSkirt, sliceBox, chkNid, chkPheromonesLayer, comboPheromoneType, chkAntsLayer, chkWeatherLayer,
                     new Separator(),
-                    chkVoxelInfo, chkAntTracking
+                    chkVoxelInfo, chkAntTracking, chkWeatherOverlay
                 );
 
                 // Audio Controls Section
@@ -2627,6 +2674,8 @@ public class SwarmForgeClient extends Application {
                                                         }
                                                         if (simWorldViewer != null) {
                                                                 simWorldViewer.setSimulation(localSimulation);
+                                                                simWorldViewer.setSlicePlane(100.0);
+                                                                if (sliceSlider != null) sliceSlider.setValue(100.0);
                                                         }
                                                 });
                                         }

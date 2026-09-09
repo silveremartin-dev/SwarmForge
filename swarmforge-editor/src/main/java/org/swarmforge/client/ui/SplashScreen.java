@@ -44,10 +44,7 @@ public class SplashScreen {
 
     public SplashScreen(Stage owner) {
         splashStage = new Stage();
-        splashStage.initStyle(StageStyle.TRANSPARENT);
-        if (owner != null) {
-            splashStage.initOwner(owner);
-        }
+        splashStage.initStyle(StageStyle.UNDECORATED);
 
         // Window Icon registration for taskbar appearance right on startup
         org.swarmforge.client.util.IconUtils.applyWindowIcons(splashStage);
@@ -163,6 +160,7 @@ public class SplashScreen {
         }
 
         timeline.setOnFinished(e -> {
+            splashStage.setAlwaysOnTop(false);
             splashStage.close();
             if (onFinished != null) {
                 onFinished.run();

@@ -63,21 +63,23 @@ public class IconUtils {
 
             // 3. Load & Cache JavaFX Icons (Original + Multi-Resolution) once
             if (CACHED_ICONS.isEmpty()) {
-                URL iconUrl = IconUtils.class.getResource(ICON_PATH);
-                if (iconUrl != null) {
-                    try (java.io.InputStream is = iconUrl.openStream()) {
+                try (java.io.InputStream is = IconUtils.class.getResourceAsStream(ICON_PATH)) {
+                    if (is != null) {
                         Image mainImage = new Image(is);
                         if (!mainImage.isError()) {
                             CACHED_ICONS.add(mainImage);
                         }
-                    } catch (Exception e) {
-                        LOG.warning("Could not load main icon image: " + e.getMessage());
                     }
+                } catch (Exception e) {
+                    LOG.warning("Could not load main icon image via stream: " + e.getMessage());
+                }
 
+                URL iconUrl = IconUtils.class.getResource(ICON_PATH);
+                if (iconUrl != null) {
                     int[] sizes = {16, 32, 48, 64, 128, 256};
                     for (int s : sizes) {
-                        try (java.io.InputStream is = iconUrl.openStream()) {
-                            Image iconSized = new Image(is, s, s, true, true);
+                        try {
+                            Image iconSized = new Image(iconUrl.toExternalForm(), s, s, true, true, false);
                             if (!iconSized.isError()) {
                                 CACHED_ICONS.add(iconSized);
                             }
@@ -85,7 +87,7 @@ public class IconUtils {
                             LOG.fine("Could not load icon size " + s + ": " + e.getMessage());
                         }
                     }
-                } else {
+                } else if (CACHED_ICONS.isEmpty()) {
                     LOG.warning("Could not find icon resource: " + ICON_PATH);
                 }
             }

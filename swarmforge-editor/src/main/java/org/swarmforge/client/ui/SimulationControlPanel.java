@@ -205,33 +205,36 @@ public class SimulationControlPanel extends VBox {
         scenarioCard.getStyleClass().add("card-pane");
 
         Button bSaveScenario = new Button();
-        bSaveScenario.textProperty().bind(i18n.createStringBinding("common.btn.save"));
+        bSaveScenario.textProperty().bind(I18nManager.getInstance().createStringBinding("common.btn.save"));
         bSaveScenario.setGraphic(new FontIcon(Feather.SAVE));
         bSaveScenario.getStyleClass().add("btn-secondary");
         bSaveScenario.setMinWidth(Region.USE_PREF_SIZE);
-        bSaveScenario.setTooltip(new Tooltip("Save current scenario configuration"));
+        bSaveScenario.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("sim.btn.save.tt"));
         bSaveScenario.setOnAction(e -> handleSaveScenario());
 
-        Button bDeleteScenario = new Button(I18nManager.getInstance().get("common.btn.delete"));
+        Button bDeleteScenario = new Button();
+        bDeleteScenario.textProperty().bind(I18nManager.getInstance().createStringBinding("common.btn.delete"));
         bDeleteScenario.setGraphic(new FontIcon(Feather.TRASH_2));
         bDeleteScenario.getStyleClass().add("btn-danger");
         bDeleteScenario.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
         bDeleteScenario.setMinWidth(Region.USE_PREF_SIZE);
-        bDeleteScenario.setTooltip(new Tooltip("Delete selected scenario"));
+        bDeleteScenario.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("sim.btn.delete.tt"));
         bDeleteScenario.setOnAction(e -> handleDeleteScenario());
 
-        Button bExportScenario = new Button(I18nManager.getInstance().get("common.btn.export"));
+        Button bExportScenario = new Button();
+        bExportScenario.textProperty().bind(I18nManager.getInstance().createStringBinding("common.btn.export"));
         bExportScenario.setGraphic(new FontIcon(Feather.DOWNLOAD));
         bExportScenario.getStyleClass().add("btn-secondary");
         bExportScenario.setMinWidth(Region.USE_PREF_SIZE);
-        bExportScenario.setTooltip(new Tooltip("Export scenario configuration to JSON"));
+        bExportScenario.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("sim.btn.export.tt"));
         bExportScenario.setOnAction(e -> handleExportScenario());
 
-        Button bImportScenario = new Button(I18nManager.getInstance().get("common.btn.import"));
+        Button bImportScenario = new Button();
+        bImportScenario.textProperty().bind(I18nManager.getInstance().createStringBinding("common.btn.import"));
         bImportScenario.setGraphic(new FontIcon(Feather.UPLOAD));
         bImportScenario.getStyleClass().add("btn-secondary");
         bImportScenario.setMinWidth(Region.USE_PREF_SIZE);
-        bImportScenario.setTooltip(new Tooltip("Import a scenario JSON file."));
+        bImportScenario.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("sim.btn.import.tt"));
         bImportScenario.setOnAction(e -> handleImportScenario());
 
         HBox metaRow = new HBox(8);
@@ -311,9 +314,10 @@ public class SimulationControlPanel extends VBox {
         lbl2Weather.getStyleClass().add("accent-title");
         lbl2Weather.setTooltip(new Tooltip("Climate profile and seasonal weather from WeatherPresetManager."));
 
-        Button btnAlignWeather = new Button("🔄 Align");
+        Button btnAlignWeather = new Button();
+        btnAlignWeather.textProperty().bind(i18n.createStringBinding("sim.btn.align_weather"));
         btnAlignWeather.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
-        btnAlignWeather.setTooltip(new Tooltip("Align climate with the selected biotope"));
+        btnAlignWeather.tooltipProperty().bind(i18n.createTooltipBinding("sim.btn.align_weather.tt"));
         btnAlignWeather.setOnAction(e -> alignWeatherWithWorld(true));
         HBox weatherRow = new HBox(6, comboWeather, btnAlignWeather);
 
@@ -390,9 +394,10 @@ public class SimulationControlPanel extends VBox {
         txtSeed.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         txtSeed.setTooltip(new Tooltip("Numerical value of the random seed."));
 
-        Button btnRandSeed = new Button("🎲 New");
+        Button btnRandSeed = new Button();
+        btnRandSeed.textProperty().bind(i18n.createStringBinding("sim.btn.rand_seed"));
         btnRandSeed.setStyle("-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 10px;");
-        btnRandSeed.setTooltip(new Tooltip("Generate a new random seed."));
+        btnRandSeed.tooltipProperty().bind(i18n.createTooltipBinding("sim.btn.rand_seed.tt"));
         btnRandSeed.setOnAction(e -> {
             txtSeed.setText(String.valueOf((long)(Math.random() * 900000 + 100000)));
             updateValidationPanel();
@@ -540,7 +545,8 @@ public class SimulationControlPanel extends VBox {
             }
         });
 
-        Button btnAutoPreset = new Button("✨ Recommended Preset");
+        Button btnAutoPreset = new Button();
+        btnAutoPreset.textProperty().bind(i18n.createStringBinding("sim.btn.recommended_preset"));
         btnAutoPreset.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
         btnAutoPreset.setTooltip(new Tooltip());
         btnAutoPreset.getTooltip().textProperty().bind(i18n.createStringBinding("sim.btn.rec_preset.tt"));
@@ -579,11 +585,9 @@ public class SimulationControlPanel extends VBox {
         VBox checkpointsPane = buildCheckpointsPane();
 
         // Apply & Start Button with Inline Progress Bar
-        btnApplyPresets = new Button("⚡ APPLY AND CREATE SIMULATION");
+        btnApplyPresets = new Button();
         btnApplyPresets.setMaxWidth(Double.MAX_VALUE);
-        btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5;");
-        btnApplyPresets.setTooltip(new Tooltip());
-        btnApplyPresets.getTooltip().textProperty().bind(i18n.createStringBinding("sim.btn.apply_presets.tt"));
+        updateApplyPresetsButtonState(false);
 
         inlineProgressBar = new ProgressBar(0);
         inlineProgressBar.setMaxWidth(Double.MAX_VALUE);
@@ -824,6 +828,26 @@ public class SimulationControlPanel extends VBox {
         }
     }
 
+    private void updateApplyPresetsButtonState(boolean isCreating) {
+        if (btnApplyPresets == null) return;
+        btnApplyPresets.textProperty().unbind();
+        if (btnApplyPresets.getTooltip() != null) {
+            btnApplyPresets.getTooltip().textProperty().unbind();
+        } else {
+            btnApplyPresets.setTooltip(new Tooltip());
+        }
+
+        if (isCreating) {
+            btnApplyPresets.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.btn.cancel_creation"));
+            btnApplyPresets.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5; -fx-cursor: hand;");
+            btnApplyPresets.getTooltip().textProperty().bind(I18nManager.getInstance().createStringBinding("sim.btn.cancel_creation.tt"));
+        } else {
+            btnApplyPresets.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.btn.apply_create"));
+            btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5;");
+            btnApplyPresets.getTooltip().textProperty().bind(I18nManager.getInstance().createStringBinding("sim.btn.apply_presets.tt"));
+        }
+    }
+
     private void cancelScenarioCreation() {
         isCreatingScenario = false;
         if (activeCreationTimeline != null) {
@@ -834,11 +858,7 @@ public class SimulationControlPanel extends VBox {
             activeCreationFuture.cancel(true);
             activeCreationFuture = null;
         }
-        if (btnApplyPresets != null) {
-            btnApplyPresets.setText("⚡ APPLY AND CREATE SIMULATION");
-            btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5;");
-            btnApplyPresets.setTooltip(new Tooltip("Reset simulation applying multi-species scenario, filtered nests, ecosystem, and random seed."));
-        }
+        updateApplyPresetsButtonState(false);
         if (inlineProgressBar != null) {
             inlineProgressBar.setProgress(0);
             inlineProgressLabel.setText("❌ Scenario creation cancelled by user.");
@@ -880,11 +900,7 @@ public class SimulationControlPanel extends VBox {
         // are dynamically evaluated and displayed in the Validation Panel right above Checkpoints.
 
         isCreatingScenario = true;
-        if (btnApplyPresets != null) {
-            btnApplyPresets.setText("❌ CANCEL CALCULATION");
-            btnApplyPresets.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5; -fx-cursor: hand;");
-            btnApplyPresets.setTooltip(new Tooltip("Click to interrupt scenario creation and free memory."));
-        }
+        updateApplyPresetsButtonState(true);
 
         if (isPlaying) {
             isPlaying = false;
@@ -952,11 +968,7 @@ public class SimulationControlPanel extends VBox {
                 activeCreationFuture.whenComplete((res, ex) -> javafx.application.Platform.runLater(() -> {
                     if (!isCreatingScenario) return;
                     isCreatingScenario = false;
-                    if (btnApplyPresets != null) {
-                        btnApplyPresets.setText("⚡ APPLY AND CREATE SIMULATION");
-                        btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5;");
-                        btnApplyPresets.setTooltip(new Tooltip("Reset simulation applying multi-species scenario, filtered nests, ecosystem, and random seed."));
-                    }
+                    updateApplyPresetsButtonState(false);
 
                     if (ex != null) {
                         System.err.println("[ERROR] [SwarmForge Engine] Exception during scenario creation: " + ex.getMessage());
@@ -2215,14 +2227,16 @@ public class SimulationControlPanel extends VBox {
             HBox header = new HBox(8);
             header.setAlignment(Pos.CENTER_LEFT);
 
-            Label lblTitle = new Label("🐜 Species: " + speciesName);
+            Label lblTitle = new Label();
+            lblTitle.textProperty().bind(javafx.beans.binding.Bindings.concat("🐜 ", I18nManager.getInstance().createStringBinding("sim.species.title"), ": ", speciesName));
             lblTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
             lblTitle.getStyleClass().add("accent-title");
 
             Region sp = new Region();
             HBox.setHgrow(sp, Priority.ALWAYS);
 
-            Button btnRemove = new Button("🗑️ Remove Species");
+            Button btnRemove = new Button();
+            btnRemove.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.btn.remove_species"));
             btnRemove.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-cursor: hand;");
             btnRemove.setOnAction(e -> onRemove.run());
 
@@ -2234,7 +2248,8 @@ public class SimulationControlPanel extends VBox {
             HBox nestRow = new HBox(8);
             nestRow.setAlignment(Pos.CENTER_LEFT);
 
-            Label lblNest = new Label("🏰 Nest Architecture :");
+            Label lblNest = new Label();
+            lblNest.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.nest.architecture"));
             lblNest.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
             lblNest.getStyleClass().add("purple-accent-title");
 
@@ -2245,41 +2260,30 @@ public class SimulationControlPanel extends VBox {
             HBox stageRow = new HBox(8);
             stageRow.setAlignment(Pos.CENTER_LEFT);
 
-            Label lblStage = new Label("🌱 Nest Stage / Age :");
+            Label lblStage = new Label();
+            lblStage.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.nest.stage"));
             lblStage.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
             lblStage.getStyleClass().add("purple-accent-title");
 
-            nestStageCombo.getItems().addAll(
-                "👑 Claustral Founding (1 Queen, 0 Workers, 10 Brood)",
-                "🌱 Young Colony (1 Queen, 100 Workers, 50 Brood)",
-                "🏰 Mature Colony (1 Queen, 5,000 Workers, 2,500 Brood)",
-                "🌐 Complex Supercolony (50 Queens, 500,000 Workers, 200,000 Brood)"
-            );
-            nestStageCombo.getSelectionModel().select(1); // Young colony by default
             nestStageCombo.setTooltip(new Tooltip("Colony demographic maturity stage. Automatically adjusts caste counts."));
             stageRow.getChildren().addAll(lblStage, nestStageCombo);
 
             HBox placementRow = new HBox(8);
             placementRow.setAlignment(Pos.CENTER_LEFT);
 
-            Label lblPlacement = new Label("📍 Placement :");
+            Label lblPlacement = new Label();
+            lblPlacement.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.nest.placement"));
             lblPlacement.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
             lblPlacement.getStyleClass().add("purple-accent-title");
 
-            nestPlacementCombo.getItems().addAll(
-                "📍 Center of Map (Optimal Unflooded Zone)",
-                "✋ Manual Placement (Coordinates X, Z)",
-                "👑 Queen Foundation (Virgin Surface Soil)",
-                "🎲 Random Position (Dispersed Across Map)"
-            );
-            nestPlacementCombo.getSelectionModel().selectFirst();
             nestPlacementCombo.setTooltip(new Tooltip("Spatial placement strategy of the nest in the 3D grid."));
             placementRow.getChildren().addAll(lblPlacement, nestPlacementCombo);
 
             HBox foodRow = new HBox(8);
             foodRow.setAlignment(Pos.CENTER_LEFT);
 
-            Label lblInitialFood = new Label("🍖 Food :");
+            Label lblInitialFood = new Label();
+            lblInitialFood.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.nest.food"));
             lblInitialFood.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
             lblInitialFood.getStyleClass().add("purple-accent-title");
 
@@ -2295,12 +2299,14 @@ public class SimulationControlPanel extends VBox {
             manualPosBox.setAlignment(Pos.CENTER_LEFT);
             manualPosBox.setStyle("-fx-padding: 4 0 0 0;");
 
-            Label lblManualX = new Label("X Coordinate :");
+            Label lblManualX = new Label();
+            lblManualX.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.nest.coord_x"));
             lblManualX.setStyle("-fx-font-size: 10px;");
             lblManualX.getStyleClass().add("accent-title");
             posXSpinner.setPrefWidth(85); posXSpinner.setEditable(true);
 
-            Label lblManualZ = new Label("Z Coordinate :");
+            Label lblManualZ = new Label();
+            lblManualZ.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.nest.coord_z"));
             lblManualZ.setStyle("-fx-font-size: 10px;");
             lblManualZ.getStyleClass().add("accent-title");
             posZSpinner.setPrefWidth(85); posZSpinner.setEditable(true);
@@ -2321,21 +2327,17 @@ public class SimulationControlPanel extends VBox {
             HBox relationRow = new HBox(8);
             relationRow.setAlignment(Pos.CENTER_LEFT);
 
-            Label lblRelation = new Label("⚔️ Inter-Nest Relationship :");
+            Label lblRelation = new Label();
+            lblRelation.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.nest.relationship"));
             lblRelation.setStyle("-fx-font-weight: bold; -fx-font-size: 10px;");
             lblRelation.getStyleClass().add("purple-accent-title");
 
-            nestRelationCombo.getItems().addAll(
-                "⚔️ Hostile / Enemy Nest (Territorial Competition & Warfare)",
-                "🤝 Allied Nest (Supercolony Member / Resource Sharing)",
-                "🕊️ Neutral / Peaceful Coexistence (Ignore / Non-Aggressive)"
-            );
-            nestRelationCombo.getSelectionModel().selectFirst();
             nestRelationCombo.setTooltip(new Tooltip("Diplomatic relationship towards other nests of the same or different species."));
 
             relationRow.getChildren().addAll(lblRelation, nestRelationCombo);
 
-            CheckBox chkSupercolonyMember = new CheckBox("🤝 Join Polycalic Supercolony Network (Cooperation, free passage & brood sharing among allied nests)");
+            CheckBox chkSupercolonyMember = new CheckBox();
+            chkSupercolonyMember.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.card.supercolony"));
             chkSupercolonyMember.setSelected(false);
             chkSupercolonyMember.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;");
             chkSupercolonyMember.getStyleClass().add("accent-title");
@@ -2343,15 +2345,17 @@ public class SimulationControlPanel extends VBox {
 
             relationBox.getChildren().addAll(relationRow, chkSupercolonyMember);
 
-            // 2. Demographics & AI Engines Standard Block (Unified AI engine by default across castes)
+            // 2. Demographics & AI Engines Standard Block
             VBox demoBox = new VBox(6);
             demoBox.getStyleClass().add("card-pane");
 
-            Label lblDemoTitle = new Label("🧠 Demographics & Castes (Queens, Workers, Soldiers & Unified AI Engine)");
-            lblDemoTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
+            Label lblDemoTitle = new Label();
+            lblDemoTitle.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.demographics.title"));
+            lblDemoTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 12px;");
             lblDemoTitle.getStyleClass().add("accent-title");
 
-            Label lblSpatialInfo = new Label("ℹ️ Demographics & AI Note: Population sizes (Queens, Workers, Soldiers, Brood) are automatically proportioned to the selected nest development stage.");
+            Label lblSpatialInfo = new Label();
+            lblSpatialInfo.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.demographics.note"));
             lblSpatialInfo.setStyle("-fx-font-size: 9.5px; -fx-wrap-text: true;");
             lblSpatialInfo.getStyleClass().add("sub-title-gray");
 
@@ -2383,7 +2387,6 @@ public class SimulationControlPanel extends VBox {
             soldierEngineCombo.getSelectionModel().select(soldierArch);
             queenEngineCombo.getSelectionModel().select(queenArch);
 
-            // Sync caste engines when worker engine changes (unless user explicitly changes others)
             workerEngineCombo.valueProperty().addListener((o, oldV, newV) -> {
                 if (newV != null) {
                     soldierEngineCombo.getSelectionModel().select(newV);
@@ -2396,13 +2399,11 @@ public class SimulationControlPanel extends VBox {
             queenSpinner.setPrefWidth(90); queenSpinner.setEditable(true);
             broodSpinner.setPrefWidth(90); broodSpinner.setEditable(true);
 
-            // Set higher default ranges for realistic biological scale (up to millions for supercolonies)
             workerSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 5000000, 100, 100));
             soldierSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 500000, 10, 10));
             queenSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 1000, 1, 1));
             broodSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(0, 2000000, 50, 50));
 
-            // Auto-adjust demographics when nest stage changes
             nestStageCombo.valueProperty().addListener((o, oldV, newV) -> {
                 applyDemographicsFromStage(nestStageCombo.getSelectionModel().getSelectedIndex());
                 triggerChange();
@@ -2414,34 +2415,67 @@ public class SimulationControlPanel extends VBox {
             broodSpinner.valueProperty().addListener((o, oldV, newV) -> triggerChange());
             initialFoodSpinner.valueProperty().addListener((o, oldV, newV) -> triggerChange());
 
-            // Trigger initial population calculation for default Stage 1 (Young Colony)
             applyDemographicsFromStage(1);
 
-            Label lblQ = new Label("👑 Queens :"); lblQ.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblQ.getStyleClass().add("bold-label");
-            Label lblQEngine = new Label("AI Engine :"); lblQEngine.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblQEngine.getStyleClass().add("bold-label");
+            Label lblQ = new Label(); lblQ.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.caste.queens")); lblQ.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblQ.getStyleClass().add("bold-label");
+            Label lblQEngine = new Label(); lblQEngine.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.ai.engine")); lblQEngine.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblQEngine.getStyleClass().add("bold-label");
             demoGrid.add(lblQ, 0, 0); demoGrid.add(queenSpinner, 1, 0); demoGrid.add(lblQEngine, 2, 0); demoGrid.add(queenEngineCombo, 3, 0);
 
-            Label lblW = new Label("🐜 Workers :"); lblW.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblW.getStyleClass().add("bold-label");
-            Label lblWEngine = new Label("AI Engine :"); lblWEngine.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblWEngine.getStyleClass().add("bold-label");
+            Label lblW = new Label(); lblW.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.caste.workers")); lblW.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblW.getStyleClass().add("bold-label");
+            Label lblWEngine = new Label(); lblWEngine.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.ai.engine")); lblWEngine.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblWEngine.getStyleClass().add("bold-label");
             demoGrid.add(lblW, 0, 1); demoGrid.add(workerSpinner, 1, 1); demoGrid.add(lblWEngine, 2, 1); demoGrid.add(workerEngineCombo, 3, 1);
 
-            Label lblS = new Label("⚔️ Soldiers :"); lblS.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblS.getStyleClass().add("bold-label");
-            Label lblSEngine = new Label("AI Engine :"); lblSEngine.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblSEngine.getStyleClass().add("bold-label");
+            Label lblS = new Label(); lblS.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.caste.soldiers")); lblS.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblS.getStyleClass().add("bold-label");
+            Label lblSEngine = new Label(); lblSEngine.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.ai.engine")); lblSEngine.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblSEngine.getStyleClass().add("bold-label");
             demoGrid.add(lblS, 0, 2); demoGrid.add(soldierSpinner, 1, 2); demoGrid.add(lblSEngine, 2, 2); demoGrid.add(soldierEngineCombo, 3, 2);
 
-            Label lblB = new Label("🥚 Brood :"); lblB.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblB.getStyleClass().add("bold-label");
+            Label lblB = new Label(); lblB.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.caste.brood")); lblB.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;"); lblB.getStyleClass().add("bold-label");
             demoGrid.add(lblB, 0, 3); demoGrid.add(broodSpinner, 1, 3);
 
             demoBox.getChildren().addAll(lblDemoTitle, lblSpatialInfo, demoGrid);
 
-            // 3. Filtered Accessory Species Section (Proies, Prédateurs & Commensaux)
-            Label lblAccessoryTitle = new Label("🦗 Accessory Species & Ecological Roles (Filtered for " + getShortSpeciesName(speciesName) + ") :");
+            Label lblAccessoryTitle = new Label();
+            lblAccessoryTitle.textProperty().bind(javafx.beans.binding.Bindings.concat("🌿 ", I18nManager.getInstance().createStringBinding("sim.accessory.title"), " (", getShortSpeciesName(speciesName), ") :"));
             lblAccessoryTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px;");
             lblAccessoryTitle.getStyleClass().add("accent-title");
+
+            updateTexts();
+            I18nManager.getInstance().localeProperty().addListener((obs, oldLoc, newLoc) -> updateTexts());
 
             setupAccessoryRows(speciesName);
 
             cardPane.getChildren().addAll(header, nestConfigBox, manualPosBox, relationBox, new Separator(), demoBox, new Separator(), lblAccessoryTitle, accessoryBoxPane);
+        }
+
+        public void updateTexts() {
+            int stageIdx = nestStageCombo.getSelectionModel().getSelectedIndex();
+            if (stageIdx < 0) stageIdx = 1;
+            nestStageCombo.getItems().setAll(
+                I18nManager.getInstance().get("sim.stage.claustral"),
+                I18nManager.getInstance().get("sim.stage.young"),
+                I18nManager.getInstance().get("sim.stage.mature"),
+                I18nManager.getInstance().get("sim.stage.supercolony")
+            );
+            nestStageCombo.getSelectionModel().select(stageIdx);
+
+            int placementIdx = nestPlacementCombo.getSelectionModel().getSelectedIndex();
+            if (placementIdx < 0) placementIdx = 0;
+            nestPlacementCombo.getItems().setAll(
+                I18nManager.getInstance().get("sim.placement.center"),
+                I18nManager.getInstance().get("sim.placement.manual"),
+                I18nManager.getInstance().get("sim.placement.queen"),
+                I18nManager.getInstance().get("sim.placement.random")
+            );
+            nestPlacementCombo.getSelectionModel().select(placementIdx);
+
+            int relIdx = nestRelationCombo.getSelectionModel().getSelectedIndex();
+            if (relIdx < 0) relIdx = 0;
+            nestRelationCombo.getItems().setAll(
+                I18nManager.getInstance().get("sim.relation.hostile"),
+                I18nManager.getInstance().get("sim.relation.allied"),
+                I18nManager.getInstance().get("sim.relation.neutral")
+            );
+            nestRelationCombo.getSelectionModel().select(relIdx);
         }
 
         private final List<AccessoryRowControls> accessoryControlsList = new ArrayList<>();

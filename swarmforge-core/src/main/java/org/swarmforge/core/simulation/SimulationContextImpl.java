@@ -198,7 +198,19 @@ public class SimulationContextImpl implements SimulationContext {
 
     @Override
     public float getWaterLevel(float x, float y, float z) {
-        return simulation.getWaterGrid().getWaterAt(x, y, z);
+        float dynamicWater = simulation.getWaterGrid().getWaterAt(x, y, z);
+        if (dynamicWater > 0.1f) return dynamicWater;
+
+        if (simulation.getTerrarium() != null) {
+            int ix = Math.max(0, Math.min(simulation.getTerrarium().getWidth() - 1, Math.round(x)));
+            int iy = Math.max(0, Math.min(simulation.getTerrarium().getHeight() - 1, Math.round(y)));
+            int iz = Math.max(0, Math.min(simulation.getTerrarium().getDepth() - 1, Math.round(z)));
+            org.swarmforge.core.domain.TerrariumCell cell = simulation.getTerrarium().getCell(ix, iy, iz);
+            if (cell != null && cell.material() == org.swarmforge.core.domain.TerrariumCell.Material.WATER) {
+                return 1.0f;
+            }
+        }
+        return dynamicWater;
     }
 
     @Override

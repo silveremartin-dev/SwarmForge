@@ -104,10 +104,11 @@ public class PheromoneVisualizer {
 
             int[] coords = org.swarmforge.core.spatial.Morton3D.decode(key);
             int x = coords[0];
-            int z = coords[2]; // Correct mapping: coords[2] is Z depth (horizontal ground plane)
+            int y = coords[1];
+            int z = coords[2];
 
-            // Project 3D to 2D map (Top-down ground view)
-            if (x >= 0 && x < width && z >= 0 && z < depth) {
+            // Project 3D (X, Y, Z) to 2D texture map (Top-down ground view)
+            if (x >= 0 && x < width && y >= 0 && y < depth) {
                 // Color mapping:
                 // 0: TO_HOME (Blue)
                 // 1: TO_FOOD (Green/Red)
@@ -124,7 +125,7 @@ public class PheromoneVisualizer {
                 float a = Math.min(1.0f, (food + homing + danger) * 2.0f);
 
                 if (a > 0.02f) {
-                    setPixel(x, z, r, g, b, a); // Z maps to texture depth
+                    setPixel(x, y, r, g, b, a); // Y maps to texture ground depth
                 }
             }
         }
@@ -142,21 +143,25 @@ public class PheromoneVisualizer {
     }
 
     private void setPixel(int x, int y, float r, float g, float b, float a) {
-        // Texture coordinates: (0,0) is usually bottom-left.
-        // Our map might be different. Let's assume 1:1.
         int index = (y * width + x) * 4;
         if (index < 0 || index >= imageBuffer.capacity() - 4)
             return;
 
-        // JME Image format usually RGBA8 or ABGR8? We selected RGBA8.
-        // Values 0-255
+        int existingR = imageBuffer.get(index) & 0xFF;
+        int existingG = imageBuffer.get(index + 1) & 0xFF;
+        int existingB = imageBuffer.get(index + 2) & 0xFF;
+        int existingA = imageBuffer.get(index + 3) & 0xFF;
 
-        // Check if pixel already set? (Simple Overwrite or Blend?)
-        // Let's Blend logic: Max
-        byte newR = (byte) (Math.min(1.0f, r) * 255);
-        byte newG = (byte) (Math.min(1.0f, g) * 255);
-        byte newB = (byte) (Math.min(1.0f, b) * 255);
-        byte newA = (byte) (Math.min(1.0f, a) * 255);
+        int targetR = (int) (Math.min(1.0f, r) * 255);
+        int targetG = (int) (Math.min(1.0f, g) * 255);
+        int targetB = (int) (Math.min(1.0f, b) * 255);
+        int targetA = (int) (Math.min(1.0f, a) * 255);
+
+        // Composite / Max blend to combine contributions across Z-layers without overwriting
+        byte newR = (byte) Math.max(existingR, targetR);
+        byte newG = (byte) Math.max(existingG, targetG);
+        byte newB = (byte) Math.max(existingB, targetB);
+        byte newA = (byte) Math.max(existingA, targetA);
 
         imageBuffer.put(index, newR);
         imageBuffer.put(index + 1, newG);

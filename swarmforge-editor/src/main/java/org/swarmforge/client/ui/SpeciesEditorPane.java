@@ -1776,11 +1776,93 @@ public class SpeciesEditorPane extends VBox {
             case "Taxonomic Order / Family:" -> "species.taxonomy.group";
             case "Ecological Role / Category:" -> "species.taxonomy.category";
             case "Description & Ecological Notes:" -> "species.taxonomy.description";
-            case "Queen Reproduction System:" -> "species.queen_mode";
-            case "Number of Queens:" -> "species.queens_count";
-            case "Queen Lifespan (Days):" -> "species.queen_lifespan";
-            case "Queen Oviposition Rate (eggs/day):" -> "species.queen_egg_rate";
-            case "Nuptial Flight & Swarming Mode:" -> "species.nuptial_mode";
+
+            case "Gynic Structure (Queen Mode):", "Queen Reproduction System:" -> "species.queens.mode";
+            case "Founding Queens Count (ind):", "Number of Queens:" -> "species.queens.count";
+            case "Queen Lifespan (days):", "Queen Lifespan (Days):" -> "species.queens.lifespan";
+            case "Queen Egg Laying Rate (eggs/day):", "Queen Oviposition Rate (eggs/day):" -> "species.queens.egg_rate";
+            case "Reproductive King (Isoptera):" -> "species.queens.has_king";
+            case "King Lifespan (days):" -> "species.queens.king_lifespan";
+            case "Nuptial Flight / Swarming Mode:", "Nuptial Flight & Swarming Mode:" -> "species.queens.nuptial_flight";
+            case "Mature Colony Population (ind):" -> "species.diet.colony_size";
+            case "Supercolonies (Unicoloniality):" -> "species.diet.supercolonies";
+
+            case "Egg Stage Duration (days):" -> "species.stages.egg_duration";
+            case "Larval Stage Duration (days):" -> "species.stages.larva_duration";
+            case "Larval Diet Requirement:" -> "species.stages.larva_diet";
+            case "Pupal Stage / Cocoon Duration (days):" -> "species.stages.pupa_duration";
+            case "Minor Worker Protein Threshold (%):" -> "species.stages.protein_minor";
+            case "Major Worker Protein Threshold (%):" -> "species.stages.protein_major";
+            case "Soldier Protein Threshold (%):" -> "species.stages.protein_soldier";
+            case "Royal Food Protein Threshold (%):" -> "species.stages.protein_queen";
+            case "Queen Pheromonal Inhibition:" -> "species.stages.phero_inhib";
+            case "Male Determination (Arrhenotoky):" -> "species.stages.haplodiploidy";
+            case "Pathogen Immune Resistance (%):" -> "species.stages.pathogen_resistance";
+            case "Social Grooming Efficacy (%):" -> "species.stages.grooming_efficacy";
+
+            case "Caste Name:" -> "species.castes.name";
+            case "Body Length (mm):" -> "species.castes.body_length";
+            case "Head Width (mm):" -> "species.castes.head_width";
+            case "Base Health:" -> "species.castes.health";
+            case "Attack Damage:" -> "species.castes.damage";
+            case "Lifespan (days):" -> "species.castes.lifespan";
+            case "Flight Capability:" -> "species.castes.fly_cap";
+            case "Wingbeat Frequency (Hz):" -> "species.castes.wingbeat_hz";
+            case "Hovering Flight:" -> "species.castes.hovering";
+            case "Biting Force (MPa):" -> "species.castes.biting_force";
+            case "Payload Ratio (g/g):" -> "species.castes.payload_ratio";
+            case "Arolia Adhesion:" -> "species.castes.arolia";
+            case "Decision Model:" -> "species.castes.decision_model";
+            case "Target Ratio (%):" -> "species.castes.target_ratio";
+            case "Foraging Weight:" -> "species.castes.forage_w";
+            case "Defense Weight:" -> "species.castes.defense_w";
+            case "Excavation Weight:" -> "species.castes.excavation_w";
+            case "Nursing Weight:" -> "species.castes.nursing_w";
+            case "Weapons & Venom:" -> "species.nest.venom";
+            case "Venom Toxicity:" -> "species.castes.venom_toxicity";
+            case "Explosive Autothysis:" -> "species.castes.autothysis";
+            case "👤 Identity & Morphology" -> "species.castes.col1_title";
+            case "⚡ Biomechanics & Flight" -> "species.castes.col2_title";
+            case "🧠 AI & Task Allocation" -> "species.castes.col3_title";
+            case "🛡️ Weapons & Toxins" -> "species.castes.col4_title";
+
+            case "Primary Diet Source:" -> "species.diet.primary";
+            case "Secondary Diet Source:" -> "species.diet.secondary";
+            case "Metabolic Consumption (g/ind/day):" -> "species.diet.consumption";
+            case "Water Requirement (mL/ind/day):" -> "species.diet.water";
+            case "Worker Lifespan (days):" -> "species.diet.worker_lifespan";
+            case "Locomotion Speed (m/s):" -> "species.diet.worker_speed";
+            case "Visual Detection Distance (cm):" -> "species.diet.view_distance";
+            case "Worker Flight Capability:" -> "species.diet.worker_fly";
+            case "Global Metabolic Factor (0.1-5.0):" -> "species.diet.metabolism";
+            case "Physio-Muscular Strength (N):" -> "species.diet.strength";
+
+            case "Magnetoreception (Earth Field):" -> "species.sensors.magneto";
+            case "Magnetic Field Threshold (µT):" -> "species.sensors.magneto_sens";
+            case "Thermal Sensitivity (Δ°C/mm):" -> "species.sensors.thermo_sens";
+            case "CO₂ Threshold (ppm):" -> "species.sensors.gas_sens";
+            case "Visual Acuity (0-1):" -> "species.sensors.visual_acuity";
+            case "Visual Perception Radius (cm):" -> "species.sensors.view_dist";
+            case "Minimum Light Threshold (lux):" -> "species.sensors.min_light";
+            case "Substrate Vibration Sensing (Subgenual):" -> "species.sensors.vibration";
+            case "Substrate Vibration Threshold (dB):" -> "species.sensors.vibration_sens";
+            case "Hygroreception (Relative Humidity):" -> "species.sensors.hygro";
+            case "Humidity Sensitivity (%):" -> "species.sensors.humidity_sens";
+            case "Electrostatic Field Perception:" -> "species.sensors.electro";
+            case "Atmospheric Electric Threshold (V/m):" -> "species.sensors.electro_sens";
+            case "UV Polarized Light Compass:" -> "species.sensors.uv_compass";
+
+            case "Specific Nest Type (NestType):" -> "species.nest.type";
+            case "Optimal Temperature (°C):" -> "species.nest.opt_temp";
+            case "Minimum Temperature (°C):" -> "species.nest.min_temp";
+            case "Maximum Temperature (°C):" -> "species.nest.max_temp";
+            case "Aggression Level:" -> "species.nest.aggression";
+            case "Territoriality:" -> "species.nest.territoriality";
+            case "Synchronized Nest Generation:" -> "species.nest.sync_gen";
+
+            case "Plugin Parameter Key:" -> "species.plugins.key";
+            case "Value:" -> "species.plugins.val";
+
             default -> textOrKey;
         };
     }
@@ -1915,10 +1997,12 @@ public class SpeciesEditorPane extends VBox {
         return grid;
     }
 
-    private VBox createInspectorColumnBox(String title, GridPane grid) {
+    private VBox createInspectorColumnBox(String titleOrKey, GridPane grid) {
         VBox box = new VBox(8);
         box.getStyleClass().add("render-options-panel");
-        Label lblTitle = new Label(title);
+        Label lblTitle = new Label();
+        String key = lookupKeyForLabel(titleOrKey);
+        lblTitle.textProperty().bind(I18nManager.getInstance().createStringBinding(key));
         lblTitle.getStyleClass().add("accent-text");
         box.getChildren().addAll(lblTitle, new Separator(), grid);
         HBox.setHgrow(box, Priority.ALWAYS);

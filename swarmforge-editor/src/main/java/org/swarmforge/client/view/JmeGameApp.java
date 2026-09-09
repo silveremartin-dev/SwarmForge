@@ -61,6 +61,7 @@ public class JmeGameApp extends SimpleApplication {
     private WeatherVisualizer weatherVisualizer;
     private VegetationVisualizer vegetationVisualizer;
     private DirectionalLight sunLight;
+    private float antVisualScaleMultiplier = 1.0f;
 
     public interface TerrainModificationListener {
         void onBlockChanged(int x, int y, int z, boolean added);
@@ -719,6 +720,11 @@ public class JmeGameApp extends SimpleApplication {
             if (simulation.getWeather() != null) {
                 weatherVisualizer.update(simulation.getWeather(), tpf);
             }
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.update(simulation.getWeather(), tpf);
+            }
+        } else if (vegetationVisualizer != null) {
+            vegetationVisualizer.update(null, tpf);
         }
     }
 
@@ -869,5 +875,9 @@ public class JmeGameApp extends SimpleApplication {
             return Math.max(0.0, -cam.getLocation().y);
         }
         return 0.0;
+    }
+
+    public void setAntVisualScaleMultiplier(float multiplier) {
+        this.antVisualScaleMultiplier = multiplier;
     }
 }

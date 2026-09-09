@@ -127,14 +127,14 @@ public class TerrainMeshGenerator {
     private void addUpFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
         v.add(x - 0.5f);
         v.add(y + 0.5f);
-        v.add(z + 0.5f);
-        v.add(x + 0.5f);
-        v.add(y + 0.5f);
-        v.add(z + 0.5f);
-        v.add(x + 0.5f);
-        v.add(y + 0.5f);
         v.add(z - 0.5f);
         v.add(x - 0.5f);
+        v.add(y + 0.5f);
+        v.add(z + 0.5f);
+        v.add(x + 0.5f);
+        v.add(y + 0.5f);
+        v.add(z + 0.5f);
+        v.add(x + 0.5f);
         v.add(y + 0.5f);
         v.add(z - 0.5f);
 

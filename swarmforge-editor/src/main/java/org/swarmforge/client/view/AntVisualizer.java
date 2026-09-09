@@ -19,6 +19,15 @@ public class AntVisualizer {
     private final AssetManager assetManager;
     private final java.util.Map<Individual.Caste, Mesh> meshCache = new java.util.EnumMap<>(Individual.Caste.class);
     private final java.util.Map<Individual.Caste, Material> matCache = new java.util.EnumMap<>(Individual.Caste.class);
+    private float visualScaleMultiplier = 1.0f;
+
+    public void setVisualScaleMultiplier(float visualScaleMultiplier) {
+        this.visualScaleMultiplier = visualScaleMultiplier;
+    }
+
+    public float getVisualScaleMultiplier() {
+        return visualScaleMultiplier;
+    }
 
     public AntVisualizer(AssetManager assetManager) {
         this.assetManager = assetManager;
@@ -323,8 +332,8 @@ public class AntVisualizer {
         float mmPerWorldUnit = (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
         float physicalScale = lengthMm / mmPerWorldUnit;
 
-        // Apply a visual contrast multiplier (3.5x) so small insects remain clearly visible at camera zoom while maintaining exact caste ratios
-        return Math.max(0.12f, physicalScale * 3.5f);
+        // Clean calibrated visual scale level (1.0x exact physical scale factor)
+        return Math.max(0.08f, physicalScale * 1.0f);
     }
 
     private int addBox(java.util.List<Vector3f> pos, java.util.List<Vector3f> norm, java.util.List<Integer> idx,
