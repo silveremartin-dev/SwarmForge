@@ -238,10 +238,22 @@ export const useSimulationStore = create((set, get) => ({
     setShowChamberOverlay: (show) => set({ showChamberOverlay: show }),
     toggleChamberOverlay: () => set(state => ({ showChamberOverlay: !state.showChamberOverlay })),
 
-    // Scientific Mode: Kinematic vectors and sensory FOV cones toggle
+    // Scientific Mode: Kinematic vectors, sensory FOV cones & Isolines toggles
     showScientificSensoryVectors: true,
     setShowScientificSensoryVectors: (show) => set({ showScientificSensoryVectors: show }),
     toggleScientificSensoryVectors: () => set(state => ({ showScientificSensoryVectors: !state.showScientificSensoryVectors })),
+
+    showScientificIsolinesTopo: true,
+    setShowScientificIsolinesTopo: (show) => set({ showScientificIsolinesTopo: show }),
+    toggleScientificIsolinesTopo: () => set(state => ({ showScientificIsolinesTopo: !state.showScientificIsolinesTopo })),
+
+    showScientificIsolinesPheromones: true,
+    setShowScientificIsolinesPheromones: (show) => set({ showScientificIsolinesPheromones: show }),
+    toggleScientificIsolinesPheromones: () => set(state => ({ showScientificIsolinesPheromones: !state.showScientificIsolinesPheromones })),
+
+    showScientificIsolinesMicroclimate: true,
+    setShowScientificIsolinesMicroclimate: (show) => set({ showScientificIsolinesMicroclimate: show }),
+    toggleScientificIsolinesMicroclimate: () => set(state => ({ showScientificIsolinesMicroclimate: !state.showScientificIsolinesMicroclimate })),
 
     // Ant navigation & cycling
     selectNextAnt: () => {

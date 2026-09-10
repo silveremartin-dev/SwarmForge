@@ -18,22 +18,15 @@ public class Nest implements java.io.Serializable {
      * Calculates 3D Morton Code (Z-order curve) for spatial indexing.
      */
     public static long morton3D(int x, int y, int z) {
-        long lx = Math.max(0, Math.min(1023, x));
-        long ly = Math.max(0, Math.min(1023, y));
-        long lz = Math.max(0, Math.min(1023, Math.abs(z)));
-        return (splitBits(lx)) | (splitBits(ly) << 1) | (splitBits(lz) << 2);
+        return org.swarmforge.core.spatial.Morton3D.encode(
+                Math.max(0, x),
+                Math.max(0, y),
+                Math.max(0, Math.abs(z))
+        );
     }
 
     public static long morton3D(float x, float y, float z) {
         return morton3D(Math.round(x), Math.round(y), Math.round(z));
-    }
-
-    private static long splitBits(long a) {
-        a = (a | (a << 16)) & 0x00001f00000000ffL;
-        a = (a | (a << 8))  & 0x0000100f0000000fL;
-        a = (a | (a << 4))  & 0x000010c3000000c3L;
-        a = (a | (a << 2))  & 0x0000124900001249L;
-        return a;
     }
 
     public void clear() {

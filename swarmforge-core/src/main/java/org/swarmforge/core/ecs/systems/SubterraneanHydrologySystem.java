@@ -67,14 +67,21 @@ public class SubterraneanHydrologySystem extends BaseSystem {
         final float dt = UPDATE_INTERVAL_SEC;
 
         // 1. High-Resolution Active Stratum Thermal Diffusion (1x1x1m)
-        for (int x = 1; x < GRID_W - 1; x += 2) {
-            for (int y = 1; y < GRID_D - 1; y += 2) {
+        for (int x = 1; x < GRID_W - 1; x++) {
+            for (int y = 1; y < GRID_D - 1; y++) {
                 for (int z = 1; z < ACTIVE_Z - 1; z++) {
                     float laplacian = activeTemp[x+1][y][z] + activeTemp[x-1][y][z]
                                     + activeTemp[x][y+1][z] + activeTemp[x][y-1][z]
                                     + activeTemp[x][y][z+1] + activeTemp[x][y][z-1]
                                     - 6.0f * activeTemp[x][y][z];
                     activeTemp[x][y][z] += THERMAL_DIFFUSIVITY * laplacian * dt;
+
+                    // Moisture percolation towards deeper layers
+                    float moistureLaplacian = activeMoisture[x+1][y][z] + activeMoisture[x-1][y][z]
+                                            + activeMoisture[x][y+1][z] + activeMoisture[x][y-1][z]
+                                            + activeMoisture[x][y][z+1] + activeMoisture[x][y][z-1]
+                                            - 6.0f * activeMoisture[x][y][z];
+                    activeMoisture[x][y][z] = Math.max(0.05f, Math.min(1.0f, activeMoisture[x][y][z] + MOISTURE_PERCO_RATE * moistureLaplacian * dt));
                 }
             }
         }
@@ -85,7 +92,8 @@ public class SubterraneanHydrologySystem extends BaseSystem {
                 for (int cz = 1; cz < DEEP_Z - 1; cz++) {
                     float laplacianMacro = deepTempMacro[cx+1][cy][cz] + deepTempMacro[cx-1][cy][cz]
                                          + deepTempMacro[cx][cy+1][cz] + deepTempMacro[cx][cy-1][cz]
-                                         - 4.0f * deepTempMacro[cx][cy][cz];
+                                         + deepTempMacro[cx][cy][cz+1] + deepTempMacro[cx][cy][cz-1]
+                                         - 6.0f * deepTempMacro[cx][cy][cz];
                     deepTempMacro[cx][cy][cz] += (THERMAL_DIFFUSIVITY * 0.25f) * laplacianMacro * dt;
                 }
             }

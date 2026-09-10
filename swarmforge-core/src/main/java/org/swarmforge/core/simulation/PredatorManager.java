@@ -229,7 +229,7 @@ public class PredatorManager {
             x = random.nextFloat() * terrarium.getWidth();
             y = random.nextBoolean() ? 0 : terrarium.getHeight() - 1;
         }
-        z = terrarium.getDepth() - 1; // Surface level
+        z = (simulation != null && simulation.getTerrarium() != null) ? simulation.getTerrarium().getSurfaceElevation(x, y) : 0.0f; // Surface level
 
         Predator predator = new Predator(type, x, y, z);
         predators.add(predator);
@@ -276,10 +276,10 @@ public class PredatorManager {
             boolean hasSand = false;
             int w = terrarium.getWidth();
             int h = terrarium.getHeight();
-            int z = terrarium.getDepth() - 1;
             for (int i = 0; i < 15; i++) {
                 int rx = random.nextInt(w);
                 int ry = random.nextInt(h);
+                int z = (int) terrarium.getSurfaceElevation(rx, ry);
                 var cell = terrarium.getCell(rx, ry, z);
                 if (cell != null && cell.material() == org.swarmforge.core.domain.TerrariumCell.Material.SAND) {
                     hasSand = true;

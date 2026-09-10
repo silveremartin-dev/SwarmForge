@@ -12,7 +12,13 @@ export default function Navbar({ activeMode, setActiveMode }) {
         realWorldTimeStr,
         realWorldDateStr,
         showScientificSensoryVectors,
-        toggleScientificSensoryVectors
+        toggleScientificSensoryVectors,
+        showScientificIsolinesTopo,
+        toggleScientificIsolinesTopo,
+        showScientificIsolinesPheromones,
+        toggleScientificIsolinesPheromones,
+        showScientificIsolinesMicroclimate,
+        toggleScientificIsolinesMicroclimate
     } = useSimulationStore()
     const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -160,26 +166,89 @@ export default function Navbar({ activeMode, setActiveMode }) {
                     </button>
                 </div>
 
-                {/* Scientific Mode: Vectors & FOV sensory cones toggle */}
+                {/* Scientific Mode: Vectors, FOV & Isolines toggles */}
                 {lookAndFeel === 'SCIENTIFIC' && (
-                    <button
-                        onClick={toggleScientificSensoryVectors}
-                        title="Activer / Désactiver les vecteurs cinématiques de vitesse et les cônes de détection sensorielle (FOV) des fourmis"
-                        style={{
-                            ...styles.actionBtn,
-                            borderColor: showScientificSensoryVectors ? '#38bdf8' : 'rgba(255,255,255,0.15)',
-                            background: showScientificSensoryVectors ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
-                            color: showScientificSensoryVectors ? '#38bdf8' : '#94a3b8',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            padding: '4px 8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4
-                        }}
-                    >
-                        <span>{showScientificSensoryVectors ? '🎯 Vecteurs & FOV: ON' : '🎯 Vecteurs & FOV: OFF'}</span>
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        {/* Vectors & FOV */}
+                        <button
+                            onClick={toggleScientificSensoryVectors}
+                            title="Activer / Désactiver les vecteurs cinématiques de vitesse et les cônes de détection sensorielle (FOV) des fourmis"
+                            style={{
+                                ...styles.actionBtn,
+                                borderColor: showScientificSensoryVectors ? '#38bdf8' : 'rgba(255,255,255,0.15)',
+                                background: showScientificSensoryVectors ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: showScientificSensoryVectors ? '#38bdf8' : '#94a3b8',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                padding: '4px 8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                            }}
+                        >
+                            <span>{showScientificSensoryVectors ? '🎯 Vecteurs: ON' : '🎯 Vecteurs: OFF'}</span>
+                        </button>
+
+                        {/* Isolignes Topo */}
+                        <button
+                            onClick={toggleScientificIsolinesTopo}
+                            title="Activer / Désactiver les courbes de niveau topographiques (Relief & Altitude IGN)"
+                            style={{
+                                ...styles.actionBtn,
+                                borderColor: showScientificIsolinesTopo ? '#fbbf24' : 'rgba(255,255,255,0.15)',
+                                background: showScientificIsolinesTopo ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: showScientificIsolinesTopo ? '#fbbf24' : '#94a3b8',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                padding: '4px 8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                            }}
+                        >
+                            <span>{showScientificIsolinesTopo ? '🏔️ Topo: ON' : '🏔️ Topo: OFF'}</span>
+                        </button>
+
+                        {/* Isolignes Phéromones */}
+                        <button
+                            onClick={toggleScientificIsolinesPheromones}
+                            title="Activer / Désactiver les isolignes de gradient chimique et équipotentielles de phéromones"
+                            style={{
+                                ...styles.actionBtn,
+                                borderColor: showScientificIsolinesPheromones ? '#c084fc' : 'rgba(255,255,255,0.15)',
+                                background: showScientificIsolinesPheromones ? 'rgba(192, 132, 252, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: showScientificIsolinesPheromones ? '#c084fc' : '#94a3b8',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                padding: '4px 8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                            }}
+                        >
+                            <span>{showScientificIsolinesPheromones ? '🧪 Phéro: ON' : '🧪 Phéro: OFF'}</span>
+                        </button>
+
+                        {/* Isolignes Micro-Climat */}
+                        <button
+                            onClick={toggleScientificIsolinesMicroclimate}
+                            title="Activer / Désactiver les isothermes de surface du micro-climat (ombrage des arbres, refroidissement du cours d'eau)"
+                            style={{
+                                ...styles.actionBtn,
+                                borderColor: showScientificIsolinesMicroclimate ? '#34d399' : 'rgba(255,255,255,0.15)',
+                                background: showScientificIsolinesMicroclimate ? 'rgba(52, 211, 153, 0.2)' : 'rgba(255,255,255,0.05)',
+                                color: showScientificIsolinesMicroclimate ? '#34d399' : '#94a3b8',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                padding: '4px 8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                            }}
+                        >
+                            <span>{showScientificIsolinesMicroclimate ? '🌡️ Climat: ON' : '🌡️ Climat: OFF'}</span>
+                        </button>
+                    </div>
                 )}
 
                 {/* Real-World Clock Sync Display */}

@@ -47,7 +47,7 @@ public class NestMicroclimateSystem {
             // Sample nest chambers
             int nestX = (int) colony.getNestX();
             int nestY = (int) colony.getNestY();
-            int nestZ = 5; // Subterranean chamber depth
+            int nestZ = (int) colony.getNestZ(); // Subterranean chamber depth
 
             if (terrarium.inBounds(nestX, nestY, nestZ)) {
                 TerrariumCell cell = terrarium.getCell(nestX, nestY, nestZ);

@@ -77,14 +77,10 @@ public class ComputeNodeApp {
         // 3. Register
         registerWithServer();
 
-        // 4. Heartbeat
-        heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
-        heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeat, 10, 30, TimeUnit.SECONDS);
-
-        LOG.info("Compute node ready. Waiting for tasks...");
-
+        // 4. Heartbeat started upon successful registration
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
 
+        LOG.info("Compute node ready. Waiting for tasks...");
         server.awaitTermination();
     }
 
@@ -123,27 +119,12 @@ public class ComputeNodeApp {
         }
     }
 
-    private void startHeartbeat() {
+    private synchronized void startHeartbeat() {
+        if (heartbeatExecutor != null && !heartbeatExecutor.isShutdown()) {
+            return;
+        }
         heartbeatExecutor = Executors.newSingleThreadScheduledExecutor();
-        heartbeatExecutor.scheduleAtFixedRate(() -> {
-            if (registered && stub != null) {
-                try {
-                    double systemCpuLoad = com.sun.management.OperatingSystemMXBean.class.isInstance(
-                            java.lang.management.ManagementFactory.getOperatingSystemMXBean())
-                            ? ((com.sun.management.OperatingSystemMXBean) java.lang.management.ManagementFactory.getOperatingSystemMXBean()).getCpuLoad()
-                            : 0.2;
-                    float cpuLoad = (float) Math.max(0.0, systemCpuLoad);
-                    stub.sendHeartbeat(HeartbeatRequest.newBuilder()
-                            .setNodeId(nodeId)
-                            .setCpuLoad(cpuLoad)
-                            .setGpuLoad(gpuEnabled ? 0.1f : 0.0f)
-                            .setTasksCompleted(1)
-                            .build());
-                } catch (Exception e) {
-                    LOG.fine("Heartbeat failed: " + e.getMessage());
-                }
-            }
-        }, 5, 5, TimeUnit.SECONDS);
+        heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeat, 5, 5, TimeUnit.SECONDS);
     }
 
     public boolean isRegistered() {
@@ -178,9 +159,16 @@ public class ComputeNodeApp {
         if (!registered || stub == null)
             return;
         try {
+            double systemCpuLoad = com.sun.management.OperatingSystemMXBean.class.isInstance(
+                    java.lang.management.ManagementFactory.getOperatingSystemMXBean())
+                    ? ((com.sun.management.OperatingSystemMXBean) java.lang.management.ManagementFactory.getOperatingSystemMXBean()).getCpuLoad()
+                    : 0.2;
+            float cpuLoad = (float) Math.max(0.0, systemCpuLoad);
             stub.sendHeartbeat(HeartbeatRequest.newBuilder()
                     .setNodeId(nodeId)
-                    .setNodeId(nodeId)
+                    .setCpuLoad(cpuLoad)
+                    .setGpuLoad(gpuEnabled ? 0.1f : 0.0f)
+                    .setTasksCompleted(1)
                     .build());
         } catch (Exception e) {
             LOG.warning("Heartbeat failed: " + e.getMessage());

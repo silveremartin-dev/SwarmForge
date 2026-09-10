@@ -42,10 +42,11 @@ public class SwoopStrategy implements HuntingStrategy {
             // Actually, better logic: Move in a circle pattern relative to time
             // We need to keep the predator moving.
             // Let's just wander high up.
+            float cruiseAltitude = (simulation.getTerrarium() != null ? simulation.getTerrarium().getDepth() * 0.5f : 20.0f) + 5.0f;
             predator.setPosition(
                     predator.getX() + (float) Math.cos(angle) * 0.5f,
                     predator.getY() + (float) Math.sin(angle) * 0.5f,
-                    simulation.getTerrarium().getDepth() + 10); // Stay high
+                    cruiseAltitude); // Stay high above surface
             return;
         }
 
@@ -72,13 +73,11 @@ public class SwoopStrategy implements HuntingStrategy {
             boolean killed = predator.attack(target);
             if (killed) {
                 predator.setCurrentTarget(null);
-                // Fly up could be handled next tick by "target == null" logic resetting height
             }
         }
     }
 
     private Individual findNearestSurfaceAnt(Predator predator, Simulation simulation) {
-        float surfaceZ = simulation.getTerrarium().getDepth() - 5;
         float searchRadius = 50.0f;
         List<Individual> nearby = simulation.getSpatialIndex().queryRadius(
                 predator.getX(), predator.getY(), predator.getZ(), searchRadius);
@@ -87,7 +86,8 @@ public class SwoopStrategy implements HuntingStrategy {
         float nearestDist = Float.MAX_VALUE;
 
         for (Individual ant : nearby) {
-            if (ant.getZ() >= surfaceZ) { // Check visibility?
+            float surfZ = simulation.getTerrarium() != null ? simulation.getTerrarium().getSurfaceElevation(ant.getX(), ant.getY()) : 0.0f;
+            if (ant.getZ() >= surfZ - 0.5f) { // Visible surface ants
                 float dist = predator.distanceTo(ant);
                 if (dist < nearestDist) {
                     nearestDist = dist;

@@ -61,20 +61,20 @@ public class EcsWorldManager {
 
         WorldConfigurationBuilder config = new WorldConfigurationBuilder()
                 .with(
+                        subterraneanHydrologySystem,
+                        agingSystem,
+                        metabolismSystem,
+                        parasiteSystem,
+                        aiSystem,
+                        foragingSystem,
+                        mandibularBiomechanicsSystem,
+                        ethologyEcsSystem,
                         movementSystem,
                         spatialPartitioningSystem,
                         trophallaxisSystem,
                         pheromoneDepositionSystem,
-                        mandibularBiomechanicsSystem,
-                        metabolismSystem,
-                        agingSystem,
-                        aiSystem,
-                        foragingSystem,
                         soilSystem,
-                        parasiteSystem,
-                        rlBridgeSystem,
-                        subterraneanHydrologySystem,
-                        ethologyEcsSystem
+                        rlBridgeSystem
                 );
 
         this.world = new World(config.build());

@@ -169,6 +169,9 @@ public class BDIArchitecture implements ReasoningArchitecture {
 
     private IntentionType formIntention(DesireType desire, AgentView agent) {
         if (agent.isCarryingFood()) {
+            if (agent.isAtNest()) {
+                return IntentionType.DEPOSIT_RESOURCES;
+            }
             return IntentionType.RETURN_TO_NEST;
         }
         return switch (desire) {
@@ -182,6 +185,7 @@ public class BDIArchitecture implements ReasoningArchitecture {
 
     private Action executeIntentionPlan(IntentionType intention, AgentView agent, SimulationContext context) {
         return switch (intention) {
+            case DEPOSIT_RESOURCES -> new Action(Action.ActionType.DEPOSIT_FOOD, 0, 0, 0, 1.0f, null);
             case RETURN_TO_NEST -> Action.returnHome();
             case GO_FORAGING -> Action.forage();
             case ATTACK_ENEMY -> {

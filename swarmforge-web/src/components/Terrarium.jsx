@@ -8,6 +8,7 @@ import FoodSource from './FoodSource'
 import Predator from './Predator'
 import NestRenderer from './NestRenderer'
 import VegetationRenderer from './VegetationRenderer'
+import ScientificIsolines from './ScientificIsolines'
 import { soundEngine } from '../utils/soundEngine'
 import { getTerrainHeight } from '../utils/terrainUtils'
 
@@ -614,6 +615,11 @@ export default function Terrarium() {
                         receiveShadow
                     />
                 </group>
+            )}
+
+            {/* Scientific Mode: 3D Topographic, Pheromones & Micro-climate Isolines */}
+            {lookAndFeel === 'SCIENTIFIC' && (
+                <ScientificIsolines />
             )}
 
             {/* Natural Disaster: Flash Flood Water Level Layer */}

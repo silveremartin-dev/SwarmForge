@@ -1258,4 +1258,8 @@ public class Simulation {
     public void queueEvent(org.swarmforge.core.event.SimulationEvent event) {
         eventQueue.offer(event);
     }
+
+    public float getSurfaceElevation(float x, float y) {
+        return terrarium != null ? terrarium.getSurfaceElevation(x, y) : 0.0f;
+    }
 }

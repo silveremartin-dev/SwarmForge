@@ -1,143 +1,146 @@
-# 🌀 Boucle de Simulation & Spécification des Paramètres Environnementaux
+# 🌀 Simulation Loop & Environmental Parameter Specification
 
-Ce document détaille l'architecture de la boucle de simulation temporelle de **SwarmForge**, son séquençage multi-échelles par tick, ainsi que l'intégralité des paramètres physiques, biologiques et sensoriels gérés en unités SI.
+This document provides a detailed specification of the **SwarmForge** temporal simulation loop architecture, multi-scale tick sequencing, and all physical, biological, biomechanical, and sensory parameters standardized in SI metric units.
 
 ---
 
-## 1. Architecture de la Boucle de Simulation
+## 1. Simulation Loop Architecture
 
-La boucle de simulation (`Simulation.java`) s'exécute à fréquence fixe (par défaut 60 ticks par seconde ou mode accéléré à plusieurs milliers de ticks/sec) sur des **Virtual Threads Java 21**.
+The SwarmForge simulation loop (`Simulation.java` / `World.java`) executes at a configurable fixed frequency (default: 60 ticks per second, or headless accelerated mode reaching thousands of ticks/sec) powered by **Java 21 Virtual Threads** (`Executors.newVirtualThreadPerTaskExecutor()`).
 
 ```
                            ┌──────────────────────────────────────────┐
-                           │      Cadenceur Temporel (Tick Loop)      │
+                           │      Temporal Cadence (Tick Loop)        │
                            └────────────────────┬─────────────────────┘
                                                 │
                                                 ▼
                            ┌──────────────────────────────────────────┐
-                           │        1. WeatherSystem (Climat)         │
-                           │ Température, Pluie, Vent, Soleil, Saison │
+                           │        1. WeatherSystem (Climate)        │
+                           │ Temperature, Rain, Wind, Solar, Seasons  │
                            └────────────────────┬─────────────────────┘
                                                 │
                                                 ▼
                            ┌──────────────────────────────────────────┐
-                           │  2. Systèmes Physiques & Sous-Sols       │
-                           │ Microclimat Nids, Stabilité Sols (Mohr-   │
-                           │ Coulomb), Jardins à Champignons (Atta)   │
+                           │    2. Physical & Subterranean Systems    │
+                           │ Nest Microclimate, Soil Mohr-Coulomb     │
+                           │ Stability, Symbiotic Fungus Gardens      │
                            └────────────────────┬─────────────────────┘
                                                 │
                                                 ▼
                            ┌──────────────────────────────────────────┐
-                           │     3. Organismes & Colonies (Agents)    │
-                           │   FSM Comportements, IA, Déplacements,   │
-                           │  Sensors (Vision, Magnétique, Chimique)  │
+                           │     3. Organisms & Colonies (Agents)     │
+                           │ FSM/BDI Behaviors, AI, Pathfinding,      │
+                           │ Sensory Grids (Visual, Magnetic, Chem)   │
                            └────────────────────┬─────────────────────┘
                                                 │
                                                 ▼
                            ┌──────────────────────────────────────────┐
                            │    4. Voxel Grid / Terrarium Updates     │
-                           │ Diffusion Phéromones, Échanges de Gaz,   │
-                           │ Accumulation CO2/O2, Évaporations Eau    │
+                           │ Pheromone Diffusion, Gas Equilibrium     │
+                           │ CO2/O2 Respiration, Water Evaporation    │
                            └────────────────────┬─────────────────────┘
                                                 │
                                                 ▼
                            ┌──────────────────────────────────────────┐
-                           │ 5. Sync Réseau & Rendu 3D (RFI / JME)    │
-                           │ Protobuf, WebSockets, Three.js, JME3     │
+                           │ 5. Network Sync & 3D Rendering (gRPC/JME)│
+                           │ Protobuf/FlatBuffers, WebSockets, JME3   │
                            └──────────────────────────────────────────┘
 ```
 
-### Séquençage détaillé d'un Tick (`tickCount`) :
-1. **Mise à jour Climatique (`WeatherSystem`)** :
-   - Trajectoire solaire & inclinaison azimuthale calculées selon l'heure de la journée (0.0h à 24.0h) et le jour de l'année.
-   - Chaine de Markov d'états météo (`CLEAR`, `CLOUDY`, `RAIN`, `THUNDERSTORM`, `HAIL`, `SNOW`, `TEMPEST`).
-   - Ajustement dynamique du vent (m/s), de l'humidité relative (%), du champ magnétique ($\mu\text{T}$) et des précipitations.
-2. **Systèmes Physiques Sous-Souterrains** :
-   - `SoilStructureSystem` : Évaluation de la stabilité des galeries (Critère de rupture de Mohr-Coulomb, cohésion du sol, contrainte verticale).
-   - `NestMicroclimateSystem` : Simulation de la respiration de la colonie (production de CO₂ par ouvrière, consommation d'O₂), déclenchant l'excavation de conduits de ventilation si $\text{CO}_2 > 2.5\%$.
-   - `FungusGardenSystem` : Croissance des jardins du champignon symbiotique (chez les fourmi/termites coupeuses de feuilles *Atta/Acromyrmex/Macrotermes*).
-3. **Mise à jour des Agents (`Colony` & `Individual`)** :
-   - Traitement parallèle des cerveaux d'insects (FSM, arbres de comportement, vol, thigmotaxie).
-   - Prise en compte des informations sensoriels : perception du champ magnétique terrestre, gradients de température, niveau de CO₂, phéromones.
-4. **Diffusion & Physique des Cellules Voxels (`TerrariumCell`)** :
-   - Équation de diffusion des phéromones (8 canaux distincts) et dissipation par le vent.
-   - Équilibre gazeux et gradients de température entre voxels adjacents.
+### Detailed Tick Sequencing (`tickCount`):
+1. **Atmospheric & Climate Update (`WeatherSystem`)**:
+   - Computes solar trajectory and azimuthal inclination according to the time of day ($0.0\,\text{h} - 24.0\,\text{h}$) and day of year.
+   - Markov chain weather state transitions (`CLEAR`, `CLOUDY`, `RAIN`, `THUNDERSTORM`, `HAIL`, `SNOW`, `TEMPEST`).
+   - Dynamically updates wind speed vectors ($\text{m/s}$), relative humidity ($\%$), geomagnetic field ($\mu\text{T}$), and precipitation volume.
+2. **Subterranean Physical Systems**:
+   - `SoilStructureSystem`: Evaluates tunnel stability (Mohr-Coulomb failure criterion, soil cohesion, vertical overburden stress).
+   - `NestMicroclimateSystem`: Models collective colony respiration ($\text{CO}_2$ production per worker, $\text{O}_2$ consumption), triggering ventilation shaft excavation if $\text{CO}_2 > 2.5\%$.
+   - `FungusGardenSystem`: Simulates symbiotic fungal cultivar growth and substrate decay (*Atta*, *Acromyrmex*, *Macrotermes*).
+3. **Agent & Colony Processing (`Colony`, `Individual`, `EcsEngine`)**:
+   - Parallel evaluation of multi-agent cognitive architectures (FSM, Behavior Trees, BDI, flight kinematics, thigmotaxis).
+   - Multi-channel sensory processing: geomagnetic field orientation, thermal gradients, $\text{CO}_2$ levels, trail pheromones.
+4. **Voxel Grid Physics & Diffusion (`TerrariumCell`)**:
+   - 3D numerical pheromone diffusion across 8 distinct chemical channels, subject to wind advection and substrate porosity.
+   - Inter-cell gaseous equilibrium and heat conduction between adjacent voxels.
+5. **Network Telemetry & Rendering Synchronization**:
+   - Incremental entity deltas serialized via Protobuf / FlatBuffers.
+   - Real-time gRPC stream broadcast and jMonkeyEngine 3.6 GPU viewport synchronization.
 
 ---
 
-## 2. Paramètres Physiques & Unités SI de la Grille Voxel (`TerrariumCell`)
+## 2. Physical Parameters & SI Units of the Voxel Grid (`TerrariumCell`)
 
-La cellule (`TerrariumCell`) représente la résolution spatiale fondamentale de la simulation ($\le 1.0\text{ mm}^3$).
+The voxel cell (`TerrariumCell`) represents the fundamental spatial discretization unit of the simulation ($\le 1.0\,\text{mm}^3$).
 
-| Paramètre | Unité SI / Format | Description & Effet Biologique |
+| Parameter | SI Metric Unit / Format | Description & Biological Effect |
 | :--- | :--- | :--- |
-| **Résolution Spatiale** | $\le 1.0\text{ mm}^3$ | Taille et volume de référence d'un voxel dans la grille 3D. |
-| **Matériaux** | Enum (`Material`) | `AIR`, `EARTH`, `SAND`, `ROCK`, `WOOD`, `WATER`, `SNOW`, `ICE`, `DEAD_ORGANISM`. |
-| **Température** | Kelvin ($\text{K}$) / $^{\circ}\text{C}$ | Influe sur le métabolisme, la vitesse de déplacement et la survie. |
-| **Humidité Relative** | Pourcentage ($\%$) | Détermine l'évapotranspiration et les besoins en eau des couvain. |
-| **CO₂ (Dioxyde de Carbone)** | $\text{ppm}$ / Pourcentage ($\%$) | Respiration de la colonie. Déclenche l'hyperpnée et la ventilation des nids. |
-| **O₂ (Dioxygène)** | Pourcentage ($\%$) | Taux de ventilation des galeries souterraines. |
-| **N₂O (Protoxyde d'Azote)** | $\text{ppm}$ | Gaz d'origine microbienne du sol. |
-| **Lumière / Éclairement** | Lux / $[0.0, 1.0]$ | Niveau d'éclairement solaire ou de pénombre (influence les rythmes meutes/nycthéméraux). |
-| **Champ Magnétique** | Microtesla ($\mu\text{T}$) | Vecteur d'orientation géomagnétique ($B_x, B_y, B_z$) utilisé pour l'orientation des monticules. |
-| **Vent** | Mètres par seconde ($\text{m/s}$) | Vecteur de vitesse du vent ($v_x, v_y$) influençant la dérive des phéromones. |
-| **Pression Atmosphérique** | Pascal ($\text{Pa}$) / $\text{hPa}$ | Pression hydrostatique et de l'air liée à la profondeur ou l'altitude. |
-| **Phéromones** | Tableau `float[8]` | 8 canaux de pistes chimiques (nourriture, alarme, territoire, reine, cadavre, etc.). |
+| **Spatial Resolution** | $\le 1.0\,\text{mm}^3$ | Reference voxel volume and grid resolution in the 3D terrarium. |
+| **Substrate Material** | Enum (`Material`) | `AIR`, `EARTH`, `SAND`, `ROCK`, `WOOD`, `WATER`, `SNOW`, `ICE`, `DEAD_ORGANISM`. |
+| **Temperature** | Kelvin ($\text{K}$) / $^{\circ}\text{C}$ | Governs ectothermic metabolic rates ($Q_{10}$ kinetics), locomotion speed, and critical thermal limits. |
+| **Relative Humidity** | Percentage ($\%$) | Modulates cuticle water loss, egg desiccation risks, and fungal growth. |
+| **$\text{CO}_2$ (Carbon Dioxide)** | $\text{ppm}$ / Percentage ($\%$) | Colony respiration byproduct. Triggers hyperpnea, fanning behavior, and chimney excavation. |
+| **$\text{O}_2$ (Dioxygen)** | Percentage ($\%$) | Tunnel ventilation adequacy index; hypoxemia triggers emergency digging. |
+| **$\text{N}_2\text{O}$ (Nitrous Oxide)** | $\text{ppm}$ | Subterranean soil microbial emissions and anaerobic decomposition. |
+| **Illuminance / Light** | Lux / $[0.0, 1.0]$ | Solar irradiation and subterranean darkness; drives circadian and nycthemeral rhythms. |
+| **Geomagnetic Vector** | Microtesla ($\mu\text{T}$) | Triaxial magnetic field vector ($B_x, B_y, B_z$) for mound alignment and blind orientation. |
+| **Wind Velocity** | Meters per second ($\text{m/s}$) | 3D wind velocity vector modulating aerial dispersion of pheromone plumes and flight drag. |
+| **Atmospheric Pressure** | Pascal ($\text{Pa}$) / $\text{hPa}$ | Hydrostatic and barometric pressure correlated with subterranean depth and altitude. |
+| **Pheromone Matrix** | `float[8]` array | 8 chemical channels (Food, Home, Alarm, Territory, Brood, Queen, Necrophoric, Aggression). |
 
 ---
 
-## 3. Paramètres Sensoriels des Espèces (`Species` & `CustomSpecies`)
+## 3. Sensory Capabilities & Modalities (`Species` & `CustomSpecies`)
 
-Chaque espèce ou caste d'insectes eusociaux (Fourmis, Abeilles, Guêpes, Termites) dispose d'un profil sensoriel complet :
+Every eusocial insect species and polymorphic caste (Ants, Bees, Wasps, Termites) possesses a comprehensive physiological sensory profile:
 
-### 🧲 1. Magnétoréception (`hasMagnetoreception`, `magnetoreceptionSensitivity`)
-- **Biological Basis** : Les termites (ex: *Reticulitermes flavipes*, *Macrotermes*, *Amitermes meridionalis* - "compass termites") et certaines espèces de fourmis possèdent des récepteurs magnétiques (particules de magnétite $\text{Fe}_3\text{O}_4$ dans les antennes ou l'abdomen).
-- **Function in SwarmForge** :
-  - Alignement nord-sud des monticules et cathédrales de termites pour l'optimisation thermorégulatrice.
-  - Orientation dans l'obscurité totale des galeries souterraines en l'absence de repères visuels ou phéromonaux.
+### 🧲 1. Magnetoreception (`hasMagnetoreception`, `magnetoreceptionSensitivity`)
+- **Biological Basis**: Termites (*Reticulitermes flavipes*, *Macrotermes*, *Amitermes meridionalis* - "magnetic termites") and select ant species utilize biogenic magnetite ($\text{Fe}_3\text{O}_4$) crystals in antenna/abdomen.
+- **Function in SwarmForge**:
+  - Directs North-South planar orientation of wedge mounds for passive thermoregulation.
+  - Enables dead-reckoning navigation in dark subterranean tunnels lacking visual or pheromone cues.
 
-### 🌡️ 2. Thermoréception (`thermoreceptionSensitivity`)
-- **Sensibilité au Gradient Thermique** ($^{\circ}\text{C}$ / $\text{K}$).
-- Permet aux ouvrières de déplacer le couvain (œufs, larves, nymphes) vers les chambres d'incubation dont la température est optimale ($24^{\circ}\text{C} - 28^{\circ}\text{C}$).
+### 🌡️ 2. Thermoreception (`thermoreceptionSensitivity`)
+- **Thermal Gradient Sensitivity** ($^{\circ}\text{C}$ / $\text{K}$).
+- Drives brood relocation behavior: workers transport eggs, larvae, and pupae to optimal incubation chambers ($24^{\circ}\text{C} - 28^{\circ}\text{C}$).
 
-### 💨 3. Chémioréception & Capteur de Gaz (`gasSensitivityCo2Ppm`)
-- **Seuil de détection du CO₂ et des COV** ($\text{ppm}$).
-- Déclenche un comportement d'urgence d'excavation de puits de ventilation lorsque la concentration de CO₂ accumulée dans les chambres profondes dépasse $2.5\%$.
+### 💨 3. Chemoreception & Gas Sensing (`gasSensitivityCo2Ppm`)
+- **$\text{CO}_2$ & VOC Detection Threshold** ($\text{ppm}$).
+- Triggers emergency ventilation shaft excavation and fanning when subterranean nest chamber $\text{CO}_2$ exceeds $2.5\%$.
 
-### 👁️ 4. Photoréception & Vision (`visualAcuity`, `minLightLevelThreshold`)
-- **Acuité Visuelle & Seuil d'Éclairement Minimal** (lux).
-- Distingue les yeux composés des ouvrières de surface (fourmis moissonneuses, abeilles) et la cécité quasi-totale des ouvrières termites souterraines.
+### 👁️ 4. Photoreception & Compound Vision (`visualAcuity`, `minLightLevelThreshold`)
+- **Visual Acuity & Minimum Illuminance Threshold** (Lux).
+- Accurately differentiates surface foraging compound eyes (*Cataglyphis*, *Formica*, *Apis*) from microphthalmic or eyeless subterranean workers (*Dorylus*, *Reticulitermes*).
 
-### 🔊 5. Perception des Vibrations du Substrat (`hasSubstrateVibrationSensing`, `vibrationSensitivityDb`)
-- **Organes Subgénuaux & Organe de Johnston** (Sensibilité en dB).
-- Percetion du tambourinage de la tête/abdomen des termites et fourmis charpentières (*Camponotus*) pour les signaux d'alarme, ainsi que la transmission acoustique de la danse frétillante (*waggle dance*) dans les rayons de cire des abeilles (*Apis mellifera*).
+### 🔊 5. Substrate Vibration Sensing (`hasSubstrateVibrationSensing`, `vibrationSensitivityDb`)
+- **Subgenual Organs & Johnston's Organ** (Sensitivity in $\text{dB}$).
+- Detects substrate head/gaster drumming alarms (*Camponotus*, *Reticulitermes*) and comb vibration acoustics (*Apis mellifera* waggle dance).
 
-### 💧 6. Hygroréception (`hasHygroreception`, `hygroreceptionSensitivityPercent`)
-- **Sensibilité au Gradient d'Humidité Relative** (%).
-- Essentiel pour la sélection des chambres d'incubation du couvain et la prévention de la dessiccation des œufs.
+### 💧 6. Hygroreception (`hasHygroreception`, `hygroreceptionSensitivityPercent`)
+- **Relative Humidity Gradient Sensitivity** ($\%$).
+- Governs nursery chamber selection and protects vulnerable brood from lethal desiccation.
 
-### ⚡ 7. Électroréception Atmosphérique (`hasElectrosensing`, `electroceptionSensitivityVolts`)
-- **Perception des Champs Électrostatiques** ($\text{V/m}$).
-- Utilisé par les abeilles et les guêpes pour percevoir la charge électrique des fleurs visitées, la fixation du pollen et l'approche d'orages électrostatiques.
+### ⚡ 7. Atmospheric Electroreception (`hasElectrosensing`, `electroceptionSensitivityVolts`)
+- **Electrostatic Field Perception** ($\text{V/m}$).
+- Utilized by bees and wasps to sense floral electrical charges, pollen adhesion potentials, and impending thunderstorm fronts.
 
-### ☀️ 8. Boussole Céleste & Lumière Polarisée UV (`hasPolarizedLightNavigation`)
-- **Aire du Bord Dorsal (DRA) & Ocelles**.
-- Navigation par intégration de chemin (*dead reckoning*) selon la polarisation UV du ciel (ex: fourmis du désert *Cataglyphis*, abeilles domestiques, guêpes vespines).
+### ☀️ 8. Celestial Polarized Light Navigation (`hasPolarizedLightNavigation`)
+- **Dorsal Rim Area (DRA) & Ocelli**.
+- UV polarized celestial e-vector path integration (*dead reckoning*) for long-distance foraging (*Cataglyphis*, *Apis*).
 
 ---
 
-## 4. Systèmes Moteurs & Capacité Biomécanique (`Species` & `CustomSpecies`)
+## 4. Biomechanical & Motor Systems (`Species` & `CustomSpecies`)
 
-| Paramètre Moteur | Unité SI / Type | Rôle Biologique par Groupe (Abeilles, Guêpes, Fourmis, Termites) |
+| Motor Parameter | SI Unit / Type | Biological Function by Clade (Ants, Bees, Wasps, Termites) |
 | :--- | :--- | :--- |
-| **Battement d'Ailes** | Hertz ($\text{Hz}$) | Fréquence de battement asynchrone ($180 - 250\text{ Hz}$ pour les apidés/vespidés et alés). |
-| **Vol Stationnaire** | Boolean | Capacité de sustentation aérienne fixe (*hovering*) chez les guêpes et abeilles. |
-| **Ratio de Charge Transportable** | Adimensionnel ($\times\text{masse}$) | Ratio masse transportée/masse corporelle ($10\times - 50\times$ chez les fourmis; $0.8\times - 1.5\times$ chez les abeilles). |
-| **Force Mandibulaire de Cisaillement** | Mégapascal ($\text{MPa}$) | Pression de coupe du bois (termites/scolytes: $20\text{ MPa}$), des feuilles (*Atta*: $30\text{ MPa}$), ou malaxage de la pâte à papier (*Vespula*: $15\text{ MPa}$). |
-| **Autothysie Explosive** | Boolean | Défense suicidaire par rupture glandulaire (*Colobopsis explodens*, *Neocapritermes taracua*). |
-| **Adhésion Ventouses Arolia** | Boolean | Adhésion par fluide tarsal permettant la locomotion verticale et au plafond sur parois lisses. |
+| **Wing Beat Frequency** | Hertz ($\text{Hz}$) | Asynchronous flight muscle oscillation ($180 - 250\,\text{Hz}$ in Apidae, Vespidae, and alate reproductives). |
+| **Hovering Capability** | Boolean | Stationary aerial sustentation in bees and hunting wasps. |
+| **Payload Capacity Ratio** | Dimensionless ($\times\,\text{body mass}$) | Transportable cargo multiplier ($10\times - 50\times$ in Formicidae; $0.8\times - 1.5\times$ in Apidae). |
+| **Mandibular Biting Pressure**| Megapascals ($\text{MPa}$) | Substrate shearing: wood boring ($20\,\text{MPa}$), leaf shearing (*Atta*: $30\,\text{MPa}$), paper mastication (*Vespula*: $15\,\text{MPa}$). |
+| **Explosive Autothysis** | Boolean | Suicidal glandular rupture defense (*Colobopsis explodens*, *Globitermes sulfureus*). |
+| **Tarsal Arolia Adhesion** | Boolean | Wet adhesive pads enabling vertical climbing and inverted locomotion on smooth surfaces. |
 
 ---
 
-## 5. Validation des Compilations & Tests
-Les moteurs de simulation de `swarmforge-core` et l'éditeur graphique `swarmforge-editor` s'appuient sur ces définitions unifiées pour assurer une synchronisation exacte entre la physique des particules 3D et le comportement biologique des colonies.
+## 5. System Consistency & Validation
+The `swarmforge-core` simulation pipeline, `swarmforge-compute` distributed offloading, and `swarmforge-editor` visual studio maintain 1:1 parameter synchronization, ensuring scientific accuracy between 3D particle physics and biological swarm ethology.

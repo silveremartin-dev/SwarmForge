@@ -113,7 +113,7 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
         lastOutputs = outputs;
 
         // Convert outputs to action
-        return outputsToAction(outputs);
+        return outputsToAction(outputs, agent, context);
     }
 
     private float[] buildInputVector(AgentView agent, SimulationContext context) {
@@ -152,7 +152,7 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
         return inputs;
     }
 
-    private Action outputsToAction(float[] outputs) {
+    private Action outputsToAction(float[] outputs, AgentView agent, SimulationContext context) {
         // outputs[0]: move forward strength
         // outputs[1]: turn left/right (-1 to 1)
         // outputs[2]: forage/return toggle
@@ -172,7 +172,7 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
 
         return switch (maxIdx) {
             case 2 -> outputs[2] > 0.7f ? Action.returnHome() : Action.forage();
-            case 3 -> Action.attack(null);
+            case 3 -> Action.attack(context != null ? context.getNearestEnemy(agent) : null);
             case 4 -> Action.rest();
             default -> {
                 float moveStrength = Math.max(0.2f, outputs[0]);

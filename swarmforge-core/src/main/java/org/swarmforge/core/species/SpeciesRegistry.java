@@ -133,6 +133,7 @@ public class SpeciesRegistry {
         register(new FormicaRufa());
         register(new LasiusNiger());
         register(new SolenopsisInvicta());
+        register(new Camponotus());
         register(new CamponotusPennsylvanicus());
         register(new LinepithemaHumile());
         register(new ReticulitermesFlavipes());

@@ -52,7 +52,7 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
         applyRules();
 
         // Defuzzify to get best action
-        return defuzzify(agent);
+        return defuzzify(agent, context);
     }
 
     private void fuzzifyInputs(AgentView agent, SimulationContext context) {
@@ -133,7 +133,7 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
         addWeight(Action.ActionType.EXPLORE, 0.1f);
     }
 
-    private Action defuzzify(AgentView agent) {
+    private Action defuzzify(AgentView agent, SimulationContext context) {
         // Find action with highest weight
         Action.ActionType bestAction = Action.ActionType.EXPLORE;
         float bestWeight = 0;
@@ -145,16 +145,16 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
             }
         }
 
-        return createAction(bestAction, agent, bestWeight);
+        return createAction(bestAction, agent, context, bestWeight);
     }
 
-    private Action createAction(Action.ActionType type, AgentView agent, float intensity) {
+    private Action createAction(Action.ActionType type, AgentView agent, SimulationContext context, float intensity) {
         return switch (type) {
             case FORAGE -> Action.forage();
             case RETURN_HOME -> Action.returnHome();
             case DEPOSIT_FOOD -> new Action(Action.ActionType.DEPOSIT_FOOD, 0, 0, 0, 1f, null);
             case REST -> Action.rest();
-            case ATTACK -> Action.attack(null); // Target usually resolved by System/Context
+            case ATTACK -> Action.attack(context != null ? context.getNearestEnemy(agent) : null);
             case FLEE, EXPLORE -> {
                 java.util.Random rng = (agent instanceof org.swarmforge.core.domain.Individual ind && ind.getRandom() != null)
                         ? ind.getRandom()
@@ -162,7 +162,16 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
                 float angle = rng.nextFloat() * (float) (Math.PI * 2);
                 yield Action.move((float) Math.cos(angle) * intensity, (float) Math.sin(angle) * intensity, 0);
             }
-            case FOLLOW_TRAIL -> Action.followTrail(intensity, intensity, 0);
+            case FOLLOW_TRAIL -> {
+                if (context != null) {
+                    float px = context.getFoodPheromoneGradientX(agent.getX(), agent.getY(), agent.getZ());
+                    float py = context.getFoodPheromoneGradientY(agent.getX(), agent.getY(), agent.getZ());
+                    if (Math.abs(px) > 0.001f || Math.abs(py) > 0.001f) {
+                        yield Action.followTrail(px * intensity, py * intensity, 0);
+                    }
+                }
+                yield Action.followTrail(intensity, intensity, 0);
+            }
             default -> Action.rest();
         };
     }

@@ -186,10 +186,12 @@ public class TerritoryManager {
         boolean attackerWon = attackerStrength > defenderStrength;
 
         // Calculate casualties
+        float safeAttackerStrength = Math.max(0.001f, attackerStrength);
+        float safeDefenderStrength = Math.max(0.001f, defenderStrength);
         int attackerCasualties = Math.min(attackerSoldiers.size(),
-                (int) (attackerSoldiers.size() * (defenderStrength / attackerStrength) * 0.3f));
+                (int) (attackerSoldiers.size() * (safeDefenderStrength / safeAttackerStrength) * 0.3f));
         int defenderCasualties = Math.min(defenderSoldiers.size(),
-                (int) (defenderSoldiers.size() * (attackerStrength / defenderStrength) * 0.3f));
+                (int) (defenderSoldiers.size() * (safeAttackerStrength / safeDefenderStrength) * 0.3f));
 
         // Apply casualties
         for (int i = 0; i < attackerCasualties && i < attackerSoldiers.size(); i++) {

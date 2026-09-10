@@ -64,9 +64,15 @@ public class DiggingBehavior {
 
         // Normalize
         float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
-        dx /= len;
-        dy /= len;
-        dz /= len;
+        if (len > 0.0001f) {
+            dx /= len;
+            dy /= len;
+            dz /= len;
+        } else {
+            dx = 0f;
+            dy = 0f;
+            dz = -1f;
+        }
 
         // Dig 2 units away
         network.dig(startNode.id(), dx * 2, dy * 2, dz * 2, TunnelNetwork.ChamberType.TUNNEL);
