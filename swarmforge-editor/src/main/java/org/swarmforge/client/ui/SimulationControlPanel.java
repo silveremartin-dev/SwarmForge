@@ -313,6 +313,7 @@ public class SimulationControlPanel extends VBox {
         java.util.Collections.sort(sortedWorldNames);
         comboWorld.getItems().setAll(sortedWorldNames);
         if (!comboWorld.getItems().isEmpty()) comboWorld.getSelectionModel().selectFirst();
+        comboWorld.setOnAction(e -> alignWeatherWithWorld(false));
 
         java.util.List<String> sortedWeatherNames = new java.util.ArrayList<>(weatherPresetManager.names());
         java.util.Collections.sort(sortedWeatherNames);
@@ -1253,7 +1254,7 @@ public class SimulationControlPanel extends VBox {
             }
         } else if (mLower.contains("taïga") || mLower.contains("taiga") || mLower.contains("boréale") || mLower.contains("boreal") || mLower.contains("formica")) {
             selectComboIfPresent(comboWorld, "Boreal Taiga (Rovaniemi, FI)");
-            selectComboIfPresent(comboWeather, "Temperate");
+            selectComboIfPresent(comboWeather, "Taiga");
             areaDescription.setText(I18nManager.getInstance().get("sim.preset.desc.taiga"));
             addSpeciesCard("Fourmi Noire des Jardins (Lasius niger)");
             if (!speciesCardList.isEmpty()) {
@@ -2137,18 +2138,19 @@ public class SimulationControlPanel extends VBox {
     }
 
     private static void selectComboIfPresent(ComboBox<String> combo, String val) {
-        if (val == null) return;
+        if (val == null || combo == null) return;
         if (combo.getItems().contains(val)) {
             combo.getSelectionModel().select(val);
-        } else {
-            for (String item : combo.getItems()) {
-                if (item.toLowerCase().contains(val.toLowerCase())) {
+            return;
+        }
+        String valLower = val.toLowerCase().trim();
+        for (String item : combo.getItems()) {
+            if (item != null) {
+                String itemLower = item.toLowerCase().trim();
+                if (itemLower.contains(valLower) || valLower.contains(itemLower)) {
                     combo.getSelectionModel().select(item);
                     return;
                 }
-            }
-            if (!combo.getItems().isEmpty()) {
-                combo.getSelectionModel().selectFirst();
             }
         }
     }

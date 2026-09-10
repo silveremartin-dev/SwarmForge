@@ -41,16 +41,28 @@ public class AustroplatypusIncompertus extends CustomSpecies {
 
         CasteTemplate queen = new CasteTemplate("Reine Reproductrice", 250f, 8f);
         queen.setCanDig(true);
+        queen.setWalkSpeedMps(0.20f);
+        queen.setFlySpeedMps(0.0f);
         queen.setBodyLengthMm(6.0f);
         queen.setHeadWidthMm(1.8f);
 
         CasteTemplate sterileWorker = new CasteTemplate("Ouvrière Stérile Défensive", 110f, 15f);
         sterileWorker.setCanDig(true);
         sterileWorker.setBaseDefense(8f);
+        sterileWorker.setWalkSpeedMps(0.25f);
+        sterileWorker.setFlySpeedMps(0.0f);
         sterileWorker.setBodyLengthMm(5.5f);
         sterileWorker.setHeadWidthMm(1.6f);
 
-        setCasteTemplates(List.of(queen, sterileWorker));
+        CasteTemplate male = new CasteTemplate("Mâle Dispersant (Alé)", 80f, 2f);
+        male.setDescription("Mâle ailé participant à l'accouplement et dispersion");
+        male.setCanFly(true);
+        male.setWalkSpeedMps(0.20f);
+        male.setFlySpeedMps(3.0f);
+        male.setBodyLengthMm(5.0f);
+        male.setHeadWidthMm(1.5f);
+
+        setCasteTemplates(List.of(queen, sterileWorker, male));
     }
 
     @Override

@@ -46,6 +46,8 @@ public class VespaCrabro extends CustomSpecies {
         queen.setCanFly(true);
         queen.setCanDig(false);
         queen.setCanCarry(true);
+        queen.setWalkSpeedMps(0.25f);
+        queen.setFlySpeedMps(7.0f);
         queen.setBodyLengthMm(30.0f);
         queen.setHeadWidthMm(6.0f);
         queen.setVenomType("NEUROTOXIN");
@@ -56,6 +58,8 @@ public class VespaCrabro extends CustomSpecies {
         worker.setCanFly(true);
         worker.setCanDig(false);
         worker.setCanCarry(true);
+        worker.setWalkSpeedMps(0.25f);
+        worker.setFlySpeedMps(7.5f);
         worker.setBodyLengthMm(22.0f);
         worker.setHeadWidthMm(4.8f);
         worker.setVenomType("NEUROTOXIN");
@@ -66,6 +70,8 @@ public class VespaCrabro extends CustomSpecies {
         male.setCanFly(true);
         male.setCanDig(false);
         male.setCanCarry(false);
+        male.setWalkSpeedMps(0.20f);
+        male.setFlySpeedMps(7.5f);
         male.setBodyLengthMm(24.0f);
         male.setHeadWidthMm(4.5f);
 

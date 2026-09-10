@@ -42,24 +42,47 @@ public class AttaCephalotes extends CustomSpecies {
 
         CasteTemplate queen = new CasteTemplate("Reine Géante", 1000f, 20f);
         queen.setLifespan(365 * 20);
+        queen.setCanFly(true);
+        queen.setWalkSpeedMps(0.20f);
+        queen.setFlySpeedMps(2.5f);
         queen.setBodyLengthMm(30.0f);
         queen.setHeadWidthMm(7.0f);
 
         CasteTemplate minima = new CasteTemplate("Ouvrière Minime (Nourrice)", 40f, 2f);
+        minima.setWalkSpeedMps(0.25f);
+        minima.setFlySpeedMps(0.0f);
         minima.setBodyLengthMm(2.0f);
         minima.setHeadWidthMm(0.6f);
 
         CasteTemplate media = new CasteTemplate("Ouvrière Média (Coupeuse)", 100f, 10f);
         media.setCanCarry(true);
+        media.setWalkSpeedMps(0.35f);
+        media.setFlySpeedMps(0.0f);
         media.setBodyLengthMm(7.0f);
         media.setHeadWidthMm(2.2f);
 
         CasteTemplate major = new CasteTemplate("Soldat Majeur (Garde)", 300f, 45f);
         major.setBaseDefense(8f);
+        major.setWalkSpeedMps(0.30f);
+        major.setFlySpeedMps(0.0f);
         major.setBodyLengthMm(16.0f);
         major.setHeadWidthMm(6.0f);
 
-        setCasteTemplates(List.of(queen, minima, media, major));
+        CasteTemplate male = new CasteTemplate("Mâle Reproducteur (Alé)", 80f, 0f);
+        male.setDescription("Mâle ailé pour le vol nuptial");
+        male.setLifespan(30);
+        male.setCanFly(true);
+        male.setWalkSpeedMps(0.22f);
+        male.setFlySpeedMps(3.2f);
+        male.setBodyLengthMm(18.0f);
+        male.setHeadWidthMm(3.5f);
+
+        setCasteTemplates(List.of(queen, minima, media, major, male));
+    }
+
+    @Override
+    public boolean canFarmFungus() {
+        return true;
     }
 
     @Override

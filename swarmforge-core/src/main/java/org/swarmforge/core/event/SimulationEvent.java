@@ -47,6 +47,9 @@ public class SimulationEvent {
         WEATHER_CHANGED,
         DISASTER_OCCURRED,
         SEASON_CHANGED,
+        NUPTIAL_FLIGHT,
+        DIAPAUSE_ENTERED,
+        DIAPAUSE_EXITED,
 
         // Simulation Events
         SIMULATION_STARTED,
@@ -129,6 +132,13 @@ public class SimulationEvent {
     // but update static factories to use pool.
     public SimulationEvent(EventType type, long tick, String message) {
         this(type, Severity.INFO, tick, message, new HashMap<>());
+    }
+
+    public SimulationEvent(EventType type, long tick, UUID colonyId, String message) {
+        this(type, Severity.INFO, tick, message, new HashMap<>());
+        if (colonyId != null) {
+            this.data.put("colonyId", colonyId.toString());
+        }
     }
 
     public SimulationEvent(EventType type, Severity severity, long tick, String message, Map<String, Object> data) {

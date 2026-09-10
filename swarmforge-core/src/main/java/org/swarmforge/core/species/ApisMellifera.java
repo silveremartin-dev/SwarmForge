@@ -51,6 +51,8 @@ public class ApisMellifera extends CustomSpecies {
         CasteTemplate queen = new CasteTemplate("Reine Abeille", 400f, 5f);
         queen.setLifespan(365 * 4);
         queen.setCanFly(true);
+        queen.setWalkSpeedMps(0.20f);
+        queen.setFlySpeedMps(4.5f);
         queen.setBodyLengthMm(20.0f);
         queen.setHeadWidthMm(4.0f);
 
@@ -58,12 +60,16 @@ public class ApisMellifera extends CustomSpecies {
         worker.setLifespan(60 * 24 * 45);
         worker.setCanFly(true);
         worker.setCanCarry(true);
+        worker.setWalkSpeedMps(0.25f);
+        worker.setFlySpeedMps(6.5f);
         worker.setBodyLengthMm(14.0f);
         worker.setHeadWidthMm(3.5f);
 
         CasteTemplate drone = new CasteTemplate("Drone (Male)", 120f, 0f);
         drone.setLifespan(30 * 24);
         drone.setCanFly(true);
+        drone.setWalkSpeedMps(0.20f);
+        drone.setFlySpeedMps(7.0f);
         drone.setBodyLengthMm(16.0f);
         drone.setHeadWidthMm(4.2f);
 

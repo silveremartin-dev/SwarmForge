@@ -57,6 +57,7 @@ public class EcsWorldManager {
 
         if (pheromoneGrid != null) {
             this.pheromoneDepositionSystem.setPheromoneGrid(pheromoneGrid);
+            this.ethologyEcsSystem.setPheromoneGrid(pheromoneGrid);
         }
 
         WorldConfigurationBuilder config = new WorldConfigurationBuilder()
@@ -83,6 +84,7 @@ public class EcsWorldManager {
 
     public void setSparsePheromoneGrid(SparsePheromoneGrid grid) {
         this.pheromoneDepositionSystem.setPheromoneGrid(grid);
+        this.ethologyEcsSystem.setPheromoneGrid(grid);
     }
 
     private boolean enableRenderYieldGuard = false;

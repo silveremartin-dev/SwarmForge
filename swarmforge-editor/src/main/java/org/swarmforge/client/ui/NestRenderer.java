@@ -87,7 +87,7 @@ public final class NestRenderer {
 
         // Edges / Tunnels
         double tw = tunnelW * 2.0;
-        Color edgeColor = getMaterialColor(nest.material);
+        Color edgeColor = CHAMBER_COLOR_TUNNEL;
         if (nest.edges != null) {
             for (NestGeneratorPane.NestEdge edge : nest.edges) {
                 if (edge == null || edge.pts == null || edge.pts.isEmpty()) continue;
@@ -107,7 +107,7 @@ public final class NestRenderer {
                 final double fa = avg;
                 final boolean fSubEdge = isSubterraneanEdge;
                 items.add(new Item(fa-1000, () -> {
-                    Color drawEdgeCol = (showGhost && fSubEdge) ? Color.color(edgeColor.darker().getRed(), edgeColor.darker().getGreen(), edgeColor.darker().getBlue(), 0.75) : edgeColor.darker();
+                    Color drawEdgeCol = (showGhost && fSubEdge) ? Color.color(edgeColor.getRed(), edgeColor.getGreen(), edgeColor.getBlue(), 0.85) : edgeColor;
                     gc.setStroke(drawEdgeCol); gc.setLineWidth(tw);
                     gc.beginPath();
                     for (int i=0;i<fsp.size();i++) {
@@ -222,7 +222,7 @@ public final class NestRenderer {
         double sX = 8.5 * zoom;
         double cx = w/2 + panX;
 
-        Color edgeColor = getMaterialColor(nest.material);
+        Color edgeColor = CHAMBER_COLOR_TUNNEL;
         gc.setStroke(edgeColor); gc.setLineWidth(tunnelW * 2.1 * zoom);
         if (nest.edges != null) {
             for (NestGeneratorPane.NestEdge e : nest.edges) {
@@ -281,7 +281,7 @@ public final class NestRenderer {
             gc.strokeOval(cx-r, cy-r, r*2, r*2);
         }
 
-        Color edgeColor = getMaterialColor(nest.material);
+        Color edgeColor = CHAMBER_COLOR_TUNNEL;
         gc.setStroke(edgeColor); gc.setLineWidth(tunnelW * 2.0 * zoom);
         if (nest.edges != null) {
             for (NestGeneratorPane.NestEdge e : nest.edges) {

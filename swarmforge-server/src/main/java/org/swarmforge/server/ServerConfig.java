@@ -31,12 +31,6 @@ public record ServerConfig(
                 "localhost", 6379);
     }
 
-    /** @deprecated use {@link #local()} instead */
-    @Deprecated
-    public static ServerConfig defaults() {
-        return local();
-    }
-
     /**
      * Fully offline mode — no database or Redis connections attempted.
      * Use this only when neither PostgreSQL nor H2 is needed.

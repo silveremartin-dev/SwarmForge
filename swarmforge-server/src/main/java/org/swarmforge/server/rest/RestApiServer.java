@@ -11,6 +11,8 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.swarmforge.server.security.JwtUtil;
+
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -58,6 +60,21 @@ public class RestApiServer {
     public void stop() {
         if (server != null) {
             server.stop(0);
+        }
+    }
+
+    private boolean isAuthorized(HttpExchange exchange) {
+        String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return false;
+        }
+        String token = authHeader.substring(7).trim();
+        try {
+            var claims = JwtUtil.validateToken(token);
+            return claims != null && claims.getSubject() != null;
+        } catch (Exception e) {
+            LOG.warning("REST API authentication failed: " + e.getMessage());
+            return false;
         }
     }
 
@@ -151,6 +168,11 @@ public class RestApiServer {
 
             if (!"POST".equals(exchange.getRequestMethod())) {
                 sendError(exchange, 405, "Method not allowed");
+                return;
+            }
+
+            if (!isAuthorized(exchange)) {
+                sendError(exchange, 401, "Unauthorized: Valid Bearer JWT token required for control actions");
                 return;
             }
 

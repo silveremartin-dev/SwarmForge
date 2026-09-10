@@ -157,7 +157,7 @@ public class SimulationServiceImpl extends SimulationServiceGrpc.SimulationServi
 
                     // Start streaming updates
                     if (streamThread == null) {
-                        streamThread = new Thread(() -> {
+                        streamThread = Thread.ofVirtual().name("grpc-stream-" + clientId).start(() -> {
                             long lastTick = -1;
                             while (streaming) {
                                 // double check if kicked
@@ -206,7 +206,6 @@ public class SimulationServiceImpl extends SimulationServiceGrpc.SimulationServi
                                                     if (dx < POS_THRESHOLD && dy < POS_THRESHOLD && dz < POS_THRESHOLD
                                                             && dh < ROT_THRESHOLD
                                                             && last.getAlive() == alive
-                                                            && last.getLifeStage() == stage
                                                             && last.getLifeStage() == stage) {
                                                         sendUpdate = false;
                                                     }

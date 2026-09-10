@@ -43,15 +43,28 @@ public class VespulaGermanica extends CustomSpecies {
 
         CasteTemplate queen = new CasteTemplate("Fondatrice (Reine)", 450f, 20f);
         queen.setCanFly(true);
+        queen.setWalkSpeedMps(0.25f);
+        queen.setFlySpeedMps(6.5f);
         queen.setBodyLengthMm(19.0f);
         queen.setHeadWidthMm(4.5f);
 
         CasteTemplate worker = new CasteTemplate("Ouvrière Chasseresse", 100f, 22f);
         worker.setLifespan(30 * 24);
         worker.setCanFly(true);
+        worker.setWalkSpeedMps(0.25f);
+        worker.setFlySpeedMps(6.0f);
         worker.setBodyLengthMm(13.0f);
         worker.setHeadWidthMm(3.2f);
 
-        setCasteTemplates(List.of(queen, worker));
+        CasteTemplate male = new CasteTemplate("Mâle / Faux-Bourdon", 90f, 0f);
+        male.setDescription("Mâle haploïde sans dard");
+        male.setLifespan(30 * 24);
+        male.setCanFly(true);
+        male.setWalkSpeedMps(0.20f);
+        male.setFlySpeedMps(6.5f);
+        male.setBodyLengthMm(15.0f);
+        male.setHeadWidthMm(3.5f);
+
+        setCasteTemplates(List.of(queen, worker, male));
     }
 }

@@ -26,7 +26,7 @@ public class CasteTemplate implements java.io.Serializable {
     private float baseHealth;
     private float baseDamage;
     private float baseDefense;
-    private float walkSpeedMps = 0.5f;
+    private float walkSpeedMps = 0.40f;
     private float flySpeedMps = 0.0f;
 
     // Life
@@ -87,7 +87,7 @@ public class CasteTemplate implements java.io.Serializable {
         this.name = name;
         this.baseHealth = health;
         this.baseDamage = damage;
-        this.walkSpeedMps = 1.0f;
+        this.walkSpeedMps = 0.40f;
     }
 
     // Getters and Setters

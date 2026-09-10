@@ -43,19 +43,25 @@ public class SolenopsisInvicta extends CustomSpecies {
 
         CasteTemplate queen = new CasteTemplate("Reine", 450f, 15f);
         queen.setLifespan(365 * 7);
+        queen.setCanFly(true);
+        queen.setWalkSpeedMps(0.22f);
+        queen.setFlySpeedMps(2.8f);
         queen.setBodyLengthMm(8.0f);
         queen.setHeadWidthMm(2.0f);
 
         CasteTemplate minor = new CasteTemplate("Ouvrière Mineure", 60f, 8f);
         minor.setLifespan(180);
         minor.setCanDig(true);
+        minor.setWalkSpeedMps(0.35f);
+        minor.setFlySpeedMps(0.0f);
         minor.setBodyLengthMm(3.0f);
         minor.setHeadWidthMm(0.8f);
 
         CasteTemplate tank = new CasteTemplate("Major (Tank)", 300f, 25f);
         tank.setDescription("Heavily armored major worker built for combat.");
         tank.setBaseDefense(10f);
-        tank.setWalkSpeedMps(0.5f);
+        tank.setWalkSpeedMps(0.30f);
+        tank.setFlySpeedMps(0.0f);
         tank.setProteinCost(80f);
         tank.setCarbohydrateCost(60f);
         tank.setWaterCost(30f);
@@ -63,6 +69,15 @@ public class SolenopsisInvicta extends CustomSpecies {
         tank.setBodyLengthMm(6.0f);
         tank.setHeadWidthMm(1.8f);
 
-        setCasteTemplates(List.of(queen, minor, tank));
+        CasteTemplate male = new CasteTemplate("Mâle Reproducteur (Alé)", 40f, 0f);
+        male.setDescription("Mâle ailé pour le vol nuptial");
+        male.setLifespan(25);
+        male.setCanFly(true);
+        male.setWalkSpeedMps(0.20f);
+        male.setFlySpeedMps(3.2f);
+        male.setBodyLengthMm(5.0f);
+        male.setHeadWidthMm(1.2f);
+
+        setCasteTemplates(List.of(queen, minor, tank, male));
     }
 }

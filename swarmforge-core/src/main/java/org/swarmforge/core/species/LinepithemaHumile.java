@@ -41,15 +41,28 @@ public class LinepithemaHumile extends CustomSpecies {
 
         CasteTemplate queen = new CasteTemplate("Reine", 300f, 8f);
         queen.setLifespan(365 * 10);
+        queen.setWalkSpeedMps(0.25f);
+        queen.setFlySpeedMps(0.0f);
         queen.setBodyLengthMm(5.0f);
         queen.setHeadWidthMm(1.2f);
 
         CasteTemplate worker = new CasteTemplate("Ouvrière", 50f, 3f);
         worker.setLifespan(365);
         worker.setCanDig(true);
+        worker.setWalkSpeedMps(0.45f);
+        worker.setFlySpeedMps(0.0f);
         worker.setBodyLengthMm(2.8f);
         worker.setHeadWidthMm(0.7f);
 
-        setCasteTemplates(List.of(queen, worker));
+        CasteTemplate male = new CasteTemplate("Mâle Reproducteur (Alé)", 35f, 0f);
+        male.setDescription("Mâle ailé (3mm)");
+        male.setLifespan(30);
+        male.setCanFly(true);
+        male.setWalkSpeedMps(0.25f);
+        male.setFlySpeedMps(2.5f);
+        male.setBodyLengthMm(3.0f);
+        male.setHeadWidthMm(0.8f);
+
+        setCasteTemplates(List.of(queen, worker, male));
     }
 }

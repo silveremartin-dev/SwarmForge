@@ -45,12 +45,17 @@ public class PolyergusRufescens extends CustomSpecies {
 
         CasteTemplate queen = new CasteTemplate("Reine Amazone", 550f, 20f);
         queen.setLifespan(365 * 15);
+        queen.setCanFly(true);
+        queen.setWalkSpeedMps(0.25f);
+        queen.setFlySpeedMps(3.0f);
         queen.setBodyLengthMm(9.5f);
         queen.setHeadWidthMm(2.8f);
 
         CasteTemplate raider = new CasteTemplate("Guerrière Amazone", 180f, 18f);
         raider.setDescription("Highly specialized warrior armed with falcate mandibles for decapitating defenders and rapturing cocoons.");
         raider.setBaseDefense(4f);
+        raider.setWalkSpeedMps(0.55f);
+        raider.setFlySpeedMps(0.0f);
         raider.setProteinCost(30f);
         raider.setCarbohydrateCost(40f);
         raider.setWaterCost(10f);
@@ -59,6 +64,15 @@ public class PolyergusRufescens extends CustomSpecies {
         raider.setBodyLengthMm(7.0f);
         raider.setHeadWidthMm(2.1f);
 
-        setCasteTemplates(List.of(queen, raider));
+        CasteTemplate male = new CasteTemplate("Mâle Reproducteur (Alé)", 60f, 0f);
+        male.setDescription("Mâle ailé pour le vol nuptial");
+        male.setLifespan(30);
+        male.setCanFly(true);
+        male.setWalkSpeedMps(0.25f);
+        male.setFlySpeedMps(3.5f);
+        male.setBodyLengthMm(6.5f);
+        male.setHeadWidthMm(1.8f);
+
+        setCasteTemplates(List.of(queen, raider, male));
     }
 }

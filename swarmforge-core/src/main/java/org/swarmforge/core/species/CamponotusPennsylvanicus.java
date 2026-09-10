@@ -41,16 +41,39 @@ public class CamponotusPennsylvanicus extends CustomSpecies {
 
         CasteTemplate queen = new CasteTemplate("Reine", 750f, 15f);
         queen.setLifespan(365 * 25);
+        queen.setCanFly(true);
+        queen.setWalkSpeedMps(0.22f);
+        queen.setFlySpeedMps(2.8f);
         queen.setBodyLengthMm(19.0f);
         queen.setHeadWidthMm(4.8f);
+
+        CasteTemplate minor = new CasteTemplate("Ouvrière Mineure", 95f, 8f);
+        minor.setLifespan(365 * 7);
+        minor.setCanDig(true);
+        minor.setCanCarry(true);
+        minor.setWalkSpeedMps(0.38f);
+        minor.setFlySpeedMps(0.0f);
+        minor.setBodyLengthMm(7.5f);
+        minor.setHeadWidthMm(1.9f);
 
         CasteTemplate worker = new CasteTemplate("Ouvrière Major", 190f, 18f);
         worker.setLifespan(365 * 7);
         worker.setCanDig(true);
         worker.setCanCarry(true);
+        worker.setWalkSpeedMps(0.32f);
+        worker.setFlySpeedMps(0.0f);
         worker.setBodyLengthMm(13.0f);
         worker.setHeadWidthMm(3.7f);
 
-        setCasteTemplates(List.of(queen, worker));
+        CasteTemplate male = new CasteTemplate("Mâle Reproducteur (Alé)", 85f, 0f);
+        male.setDescription("Mâle ailé pour le vol nuptial");
+        male.setLifespan(30);
+        male.setCanFly(true);
+        male.setWalkSpeedMps(0.22f);
+        male.setFlySpeedMps(3.2f);
+        male.setBodyLengthMm(10.5f);
+        male.setHeadWidthMm(2.3f);
+
+        setCasteTemplates(List.of(queen, minor, worker, male));
     }
 }

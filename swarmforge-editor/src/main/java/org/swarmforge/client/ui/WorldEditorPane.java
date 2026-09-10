@@ -704,22 +704,39 @@ public class WorldEditorPane extends BorderPane {
         double rWidthMm = riverWidthSlider != null ? riverWidthSlider.getValue() : 120.0;
         double riverWidthVox = Math.max(2.0, rWidthMm / 25.0);
         double maxCarveDepth = 0.045; // Gentle natural riverbed/canyon incision depth
-        int rRad = (int) Math.max(1, Math.round(riverWidthVox / 2.0));
-        for (int i = 0; i < riverPath.size(); i++) {
-            int[] pt = riverPath.get(i);
+        double maxR = Math.max(1.0, riverWidthVox / 2.0) + 1.5;
+
+        // Compute minimum Euclidean distance from each grid cell to river path to prevent multi-pass over-incision
+        double[][] minRiverDist = new double[GRID_SIZE][GRID_SIZE];
+        for (int x = 0; x < GRID_SIZE; x++) {
+            for (int y = 0; y < GRID_SIZE; y++) {
+                minRiverDist[x][y] = Double.MAX_VALUE;
+            }
+        }
+
+        for (int[] pt : riverPath) {
             int rx = pt[0], ry = pt[1];
-            for (int dx = -rRad - 2; dx <= rRad + 2; dx++) {
-                for (int dy = -rRad - 2; dy <= rRad + 2; dy++) {
+            int rRad = (int) Math.ceil(maxR);
+            for (int dx = -rRad; dx <= rRad; dx++) {
+                for (int dy = -rRad; dy <= rRad; dy++) {
                     int cx = rx + dx, cy = ry + dy;
                     if (cx >= 0 && cx < GRID_SIZE && cy >= 0 && cy < GRID_SIZE) {
                         double dist = Math.sqrt(dx * dx + dy * dy);
-                        double maxR = rRad + 1.5;
-                        if (dist <= maxR) {
-                            double profile = 1.0 - (dist / maxR) * (dist / maxR); // Smooth parabolic valley profile
-                            double incision = maxCarveDepth * profile;
-                            heightGrid[cx][cy] = Math.max(0.02, heightGrid[cx][cy] - incision);
+                        if (dist < minRiverDist[cx][cy]) {
+                            minRiverDist[cx][cy] = dist;
                         }
                     }
+                }
+            }
+        }
+
+        for (int x = 0; x < GRID_SIZE; x++) {
+            for (int y = 0; y < GRID_SIZE; y++) {
+                double dist = minRiverDist[x][y];
+                if (dist <= maxR) {
+                    double profile = 1.0 - (dist / maxR) * (dist / maxR); // Smooth parabolic valley profile
+                    double incision = maxCarveDepth * profile;
+                    heightGrid[x][y] = Math.max(0.02, heightGrid[x][y] - incision);
                 }
             }
         }
@@ -3584,21 +3601,24 @@ public class WorldEditorPane extends BorderPane {
             }
         }
 
-        // 3. Check Surface Terrain Quads (up to cutXLimit)
+        // 3. Check Surface Terrain Points / Quads (up to cutXLimit)
         for (int x = 0; x < Math.min(GRID_SIZE, cutXLimit); x += step) {
             for (int y = 0; y < GRID_SIZE; y += step) {
                 int x2 = Math.min(GRID_SIZE - 1, x + step);
                 int y2 = Math.min(GRID_SIZE - 1, y + step);
-                double midX = (x + x2) / 2.0;
-                double midY = (y + y2) / 2.0;
-                double zAvg = (heightGrid[x][y] + heightGrid[x2][y] + heightGrid[x2][y2] + heightGrid[x][y2]) * 10.0;
-                double[] p = project3DPoint(midX, midY, zAvg, cx, cy, scale, radAz, radEl);
-                double dSq = (p[0] - mx) * (p[0] - mx) + (p[1] - my) * (p[1] - my);
-                if (dSq < minDstSq) {
-                    minDstSq = dSq;
-                    bestX = x;
-                    bestY = y;
-                    bestD = 0;
+                int[][] quadPts = {{x, y}, {x2, y}, {x, y2}, {x2, y2}};
+                for (int[] qp : quadPts) {
+                    int qx = qp[0];
+                    int qy = qp[1];
+                    double z = heightGrid[qx][qy] * 40.0;
+                    double[] p = project3DPoint(qx, qy, z, cx, cy, scale, radAz, radEl);
+                    double dSq = (p[0] - mx) * (p[0] - mx) + (p[1] - my) * (p[1] - my);
+                    if (dSq < minDstSq) {
+                        minDstSq = dSq;
+                        bestX = qx;
+                        bestY = qy;
+                        bestD = 0;
+                    }
                 }
             }
         }
@@ -3644,12 +3664,26 @@ public class WorldEditorPane extends BorderPane {
                 inspectedY = 0;
             }
             repaintAllViews();
+        } else if ("SIDE".equals(viewType)) {
+            double blockW = (cw - 20.0) / GRID_SIZE;
+            double blockH = (ch - 90.0) / SOIL_DEPTH;
+            double refSurfaceH = 0.50 * 25.0;
+            double cutRatio = slicePlaneSlider != null ? (slicePlaneSlider.getValue() / 100.0) : 1.0;
+            int cutX = Math.max(0, Math.min(GRID_SIZE - 1, (int) (GRID_SIZE * cutRatio)));
+
+            int yScreen = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((mx - 10.0) / blockW)));
+            gx = cutX;
+            gy = GRID_SIZE - 1 - yScreen;
+            inspectedY = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, Math.floor((my - (65 - refSurfaceH)) / blockH)));
         } else {
-            gx = (int) Math.max(0, Math.min(GRID_SIZE - 1, (mx / cw) * GRID_SIZE));
-            gy = (int) Math.max(0, Math.min(GRID_SIZE - 1, (my / ch) * GRID_SIZE));
-            if ("SIDE".equals(viewType)) {
-                inspectedY = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, (my / ch) * SOIL_DEPTH));
-            } else if (!isTerrainVisible || (slicePlaneSlider != null && slicePlaneSlider.getValue() < 99.0)) {
+            double gridPx = Math.min(cw - 12, ch - 12) * topZoom;
+            double cellW = gridPx / GRID_SIZE;
+            double cellH = gridPx / GRID_SIZE;
+            double offsetX = (cw - gridPx) / 2.0 + topPanX;
+            double offsetY = (ch - gridPx) / 2.0 + topPanY;
+            gx = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((mx - offsetX) / cellW)));
+            gy = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((my - offsetY) / cellH)));
+            if (!isTerrainVisible || (slicePlaneSlider != null && slicePlaneSlider.getValue() < 99.0)) {
                 double sliceVal = slicePlaneSlider != null ? slicePlaneSlider.getValue() : 100.0;
                 inspectedY = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, Math.round((1.0 - sliceVal / 100.0) * (SOIL_DEPTH - 1))));
             } else {
@@ -3792,8 +3826,36 @@ public class WorldEditorPane extends BorderPane {
         double ch = "3D".equals(viewType) ? canvas3D.getHeight() : ("SIDE".equals(viewType) ? canvasSide.getHeight() : canvasTop.getHeight());
         if (cw <= 0 || ch <= 0) return;
 
-        int gx = (int)(Math.max(0, Math.min(1.0, mx/cw)) * (GRID_SIZE-1));
-        int gy = (int)(Math.max(0, Math.min(1.0, my/ch)) * (GRID_SIZE-1));
+        int gx, gy;
+        if ("3D".equals(viewType)) {
+            double radAz = Math.toRadians(azimuth);
+            double radEl = Math.toRadians(elevation);
+            double cx = cw / 2 + pan3DX;
+            double cy = ch / 2 + pan3DY + 40;
+            double scale = zoom * 12.0;
+            int[] picked = pick3DGridCell(mx, my, cx, cy, scale, radAz, radEl);
+            if (picked != null) {
+                gx = picked[0];
+                gy = picked[1];
+            } else {
+                gx = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((mx / cw) * GRID_SIZE)));
+                gy = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((my / ch) * GRID_SIZE)));
+            }
+        } else if ("SIDE".equals(viewType)) {
+            double blockW = (cw - 20.0) / GRID_SIZE;
+            double cutRatio = slicePlaneSlider != null ? (slicePlaneSlider.getValue() / 100.0) : 1.0;
+            gx = Math.max(0, Math.min(GRID_SIZE - 1, (int) (GRID_SIZE * cutRatio)));
+            int yScreen = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((mx - 10.0) / blockW)));
+            gy = GRID_SIZE - 1 - yScreen;
+        } else {
+            double gridPx = Math.min(cw - 12, ch - 12) * topZoom;
+            double cellW = gridPx / GRID_SIZE;
+            double cellH = gridPx / GRID_SIZE;
+            double offsetX = (cw - gridPx) / 2.0 + topPanX;
+            double offsetY = (ch - gridPx) / 2.0 + topPanY;
+            gx = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((mx - offsetX) / cellW)));
+            gy = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((my - offsetY) / cellH)));
+        }
         int radius = (int) brushRadiusSlider.getValue();
         double strength = brushStrengthSlider.getValue() / 100.0 * 0.08;
         String mode = brushModeSelect.getValue();

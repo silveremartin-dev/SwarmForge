@@ -46,6 +46,8 @@ public class BombusTerrestris extends CustomSpecies {
         queen.setCanFly(true);
         queen.setCanDig(true);
         queen.setCanCarry(true);
+        queen.setWalkSpeedMps(0.20f);
+        queen.setFlySpeedMps(5.0f);
         queen.setBodyLengthMm(22.0f);
         queen.setHeadWidthMm(4.5f);
 
@@ -54,6 +56,8 @@ public class BombusTerrestris extends CustomSpecies {
         worker.setCanFly(true);
         worker.setCanDig(false);
         worker.setCanCarry(true);
+        worker.setWalkSpeedMps(0.25f);
+        worker.setFlySpeedMps(5.5f);
         worker.setBodyLengthMm(14.0f);
         worker.setHeadWidthMm(3.2f);
 
@@ -62,6 +66,8 @@ public class BombusTerrestris extends CustomSpecies {
         male.setCanFly(true);
         male.setCanDig(false);
         male.setCanCarry(false);
+        male.setWalkSpeedMps(0.20f);
+        male.setFlySpeedMps(6.0f);
         male.setBodyLengthMm(15.0f);
         male.setHeadWidthMm(3.0f);
 

@@ -45,12 +45,17 @@ public class FormicaFusca extends CustomSpecies {
 
         CasteTemplate queen = new CasteTemplate("Reine Cendrée", 450f, 15f);
         queen.setLifespan(365 * 10);
+        queen.setCanFly(true);
+        queen.setWalkSpeedMps(0.25f);
+        queen.setFlySpeedMps(3.0f);
         queen.setBodyLengthMm(8.0f);
         queen.setHeadWidthMm(2.2f);
 
         CasteTemplate worker = new CasteTemplate("Ouvrière Cendrée", 120f, 12f);
         worker.setDescription("Agile, versatile worker managing foraging, brood care, and nest defense.");
         worker.setBaseDefense(1.5f);
+        worker.setWalkSpeedMps(0.45f);
+        worker.setFlySpeedMps(0.0f);
         worker.setProteinCost(15f);
         worker.setCarbohydrateCost(30f);
         worker.setWaterCost(10f);
@@ -58,6 +63,15 @@ public class FormicaFusca extends CustomSpecies {
         worker.setBodyLengthMm(5.5f);
         worker.setHeadWidthMm(1.6f);
 
-        setCasteTemplates(List.of(queen, worker));
+        CasteTemplate male = new CasteTemplate("Mâle Reproducteur (Alé)", 50f, 0f);
+        male.setDescription("Mâle ailé pour le vol nuptial");
+        male.setLifespan(30);
+        male.setCanFly(true);
+        male.setWalkSpeedMps(0.25f);
+        male.setFlySpeedMps(3.5f);
+        male.setBodyLengthMm(5.5f);
+        male.setHeadWidthMm(1.4f);
+
+        setCasteTemplates(List.of(queen, worker, male));
     }
 }

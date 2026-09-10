@@ -51,23 +51,39 @@ public class ReticulitermesFlavipes extends CustomSpecies {
         setMinLightLevelThreshold(0.01f);
 
         CasteTemplate termiteQueen = new CasteTemplate("Reine Physogastre", 600f, 2f);
+        termiteQueen.setWalkSpeedMps(0.15f);
+        termiteQueen.setFlySpeedMps(0.0f);
         termiteQueen.setBodyLengthMm(22.0f);
         termiteQueen.setHeadWidthMm(3.0f);
 
         CasteTemplate termiteKing = new CasteTemplate("Roi Reproducteur", 300f, 5f);
+        termiteKing.setWalkSpeedMps(0.18f);
+        termiteKing.setFlySpeedMps(0.0f);
         termiteKing.setBodyLengthMm(10.0f);
         termiteKing.setHeadWidthMm(2.0f);
 
         CasteTemplate termiteWorker = new CasteTemplate("Ouvrier Termite", 50f, 3f);
         termiteWorker.setCanDig(true);
+        termiteWorker.setWalkSpeedMps(0.25f);
+        termiteWorker.setFlySpeedMps(0.0f);
         termiteWorker.setBodyLengthMm(5.0f);
         termiteWorker.setHeadWidthMm(1.2f);
 
         CasteTemplate termiteSoldier = new CasteTemplate("Soldat à Mandiboles", 200f, 35f);
         termiteSoldier.setBaseDefense(6f);
+        termiteSoldier.setWalkSpeedMps(0.20f);
+        termiteSoldier.setFlySpeedMps(0.0f);
         termiteSoldier.setBodyLengthMm(7.0f);
         termiteSoldier.setHeadWidthMm(2.5f);
 
-        setCasteTemplates(List.of(termiteQueen, termiteKing, termiteWorker, termiteSoldier));
+        CasteTemplate termiteAlate = new CasteTemplate("Alé Reproducteur (Essaimage)", 60f, 1f);
+        termiteAlate.setDescription("Individu ailé reproducteur participant au vol de dispersion printanier.");
+        termiteAlate.setCanFly(true);
+        termiteAlate.setWalkSpeedMps(0.20f);
+        termiteAlate.setFlySpeedMps(2.5f);
+        termiteAlate.setBodyLengthMm(6.0f);
+        termiteAlate.setHeadWidthMm(1.3f);
+
+        setCasteTemplates(List.of(termiteQueen, termiteKing, termiteWorker, termiteSoldier, termiteAlate));
     }
 }

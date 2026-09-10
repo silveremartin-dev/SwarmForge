@@ -122,6 +122,7 @@ public class CustomSpecies implements Species {
     private boolean canPerformLarvalSalivaryTrophallaxis = false;
     private boolean hasTermiteGutSymbiosis = false;
     private boolean canFarmAphids = false;
+    private boolean canFarmFungus = false;
     private boolean hasRoyalPheromoneInhibition = true;
     private boolean canDrumSubstrate = false;
     private boolean isPolycalic = false;
@@ -961,6 +962,9 @@ public class CustomSpecies implements Species {
 
     @Override public boolean canFarmAphids() { return canFarmAphids; }
     public void setCanFarmAphids(boolean val) { this.canFarmAphids = val; }
+
+    @Override public boolean canFarmFungus() { return canFarmFungus || canWeedFungusGarden || "FUNGUS".equalsIgnoreCase(primaryDiet); }
+    public void setCanFarmFungus(boolean val) { this.canFarmFungus = val; }
 
     @Override public boolean hasRoyalPheromoneInhibition() { return hasRoyalPheromoneInhibition; }
     public void setHasRoyalPheromoneInhibition(boolean val) { this.hasRoyalPheromoneInhibition = val; }

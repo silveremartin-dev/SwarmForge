@@ -289,6 +289,7 @@ public interface Species extends java.io.Serializable {
     default boolean canPerformLarvalSalivaryTrophallaxis() { return false; } // Wasp protein-saliva exchange (Vespula/Vespa)
     default boolean hasTermiteGutSymbiosis() { return false; } // Lignocellulose protist digestion (Isoptera)
     default boolean canFarmAphids() { return false; } // Aphid milking and herd protection (Lasius, Formica)
+    default boolean canFarmFungus() { return false; } // Symbiotic fungus garden cultivation (Atta, Acromyrmex, Macrotermitinae)
     default boolean hasRoyalPheromoneInhibition() { return true; } // 9-ODA ovary suppression & queen succession
     default boolean canDrumSubstrate() { return false; } // Head-banging substrate acoustic vibrations (Camponotus, Reticulitermes)
     default boolean isPolycalic() { return false; } // Polycalic inter-mound network routing (Formica lugubris)

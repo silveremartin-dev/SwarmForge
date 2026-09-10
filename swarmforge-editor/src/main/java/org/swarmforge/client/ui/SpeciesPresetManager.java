@@ -122,6 +122,8 @@ public class SpeciesPresetManager {
         lasiusQueen.setDescription("Founding Queen / Gyne (9mm)");
         lasiusQueen.setLifespan(5475);
         lasiusQueen.setCanFly(true);
+        lasiusQueen.setWalkSpeedMps(0.25f);
+        lasiusQueen.setFlySpeedMps(3.0f);
         lasiusQueen.setBodyLengthMm(9.0f);
         lasiusQueen.setHeadWidthMm(2.4f);
         lasiusQueen.setWingbeatFrequencyHz(180.0f);
@@ -135,6 +137,8 @@ public class SpeciesPresetManager {
         lasiusWorker.setLifespan(1095);
         lasiusWorker.setCanDig(true);
         lasiusWorker.setCanCarry(true);
+        lasiusWorker.setWalkSpeedMps(0.35f);
+        lasiusWorker.setFlySpeedMps(0.0f);
         lasiusWorker.setBodyLengthMm(4.0f);
         lasiusWorker.setHeadWidthMm(1.0f);
         lasiusWorker.setWingbeatFrequencyHz(0.0f);
@@ -146,6 +150,8 @@ public class SpeciesPresetManager {
         lasiusMale.setDescription("Haploid winged male for nuptial flight (4.5mm)");
         lasiusMale.setLifespan(21);
         lasiusMale.setCanFly(true);
+        lasiusMale.setWalkSpeedMps(0.20f);
+        lasiusMale.setFlySpeedMps(3.5f);
         lasiusMale.setBodyLengthMm(4.5f);
         lasiusMale.setHeadWidthMm(1.1f);
         lasiusMale.setWingbeatFrequencyHz(210.0f);
@@ -223,6 +229,8 @@ public class SpeciesPresetManager {
         CasteTemplate fireQueen = new CasteTemplate("Queen", 450f, 15f);
         fireQueen.setLifespan(2555);
         fireQueen.setCanFly(true);
+        fireQueen.setWalkSpeedMps(0.22f);
+        fireQueen.setFlySpeedMps(2.8f);
         fireQueen.setBodyLengthMm(8.0f);
         fireQueen.setHeadWidthMm(2.0f);
         fireQueen.setWingbeatFrequencyHz(190.0f);
@@ -233,6 +241,8 @@ public class SpeciesPresetManager {
         CasteTemplate fireMinor = new CasteTemplate("Minor Worker", 60f, 8f);
         fireMinor.setLifespan(60);
         fireMinor.setCanDig(true);
+        fireMinor.setWalkSpeedMps(0.35f);
+        fireMinor.setFlySpeedMps(0.0f);
         fireMinor.setBodyLengthMm(3.0f);
         fireMinor.setHeadWidthMm(0.8f);
         fireMinor.setWingbeatFrequencyHz(0.0f);
@@ -243,6 +253,8 @@ public class SpeciesPresetManager {
         CasteTemplate fireMajor = new CasteTemplate("Major Worker / Soldier", 150f, 25f);
         fireMajor.setLifespan(180);
         fireMajor.setBaseDefense(5f);
+        fireMajor.setWalkSpeedMps(0.30f);
+        fireMajor.setFlySpeedMps(0.0f);
         fireMajor.setBodyLengthMm(6.0f);
         fireMajor.setHeadWidthMm(1.8f);
         fireMajor.setWingbeatFrequencyHz(0.0f);
@@ -250,7 +262,18 @@ public class SpeciesPresetManager {
         fireMajor.setMandibularBitingForceMPa(35.0f);
         fireMajor.setTargetRatio(0.15f);
 
-        solenopsis.setCasteTemplates(List.of(fireQueen, fireMinor, fireMajor));
+        CasteTemplate fireMale = new CasteTemplate("Reproductive Male (Alate)", 40f, 0f);
+        fireMale.setDescription("Haploid winged male for nuptial flight (5mm)");
+        fireMale.setLifespan(25);
+        fireMale.setCanFly(true);
+        fireMale.setWalkSpeedMps(0.20f);
+        fireMale.setFlySpeedMps(3.2f);
+        fireMale.setBodyLengthMm(5.0f);
+        fireMale.setHeadWidthMm(1.2f);
+        fireMale.setWingbeatFrequencyHz(200.0f);
+        fireMale.setTargetRatio(0.00f);
+
+        solenopsis.setCasteTemplates(List.of(fireQueen, fireMinor, fireMajor, fireMale));
         map.put(solenopsis.getPresetName(), solenopsis);
 
         // 3. Leafcutter Ant (Atta sexdens)
@@ -320,6 +343,8 @@ public class SpeciesPresetManager {
         CasteTemplate attaQueen = new CasteTemplate("Giant Queen", 1000f, 20f);
         attaQueen.setLifespan(5475);
         attaQueen.setCanFly(true);
+        attaQueen.setWalkSpeedMps(0.20f);
+        attaQueen.setFlySpeedMps(2.5f);
         attaQueen.setBodyLengthMm(30.0f);
         attaQueen.setHeadWidthMm(7.0f);
         attaQueen.setWingbeatFrequencyHz(110.0f);
@@ -328,6 +353,8 @@ public class SpeciesPresetManager {
         attaQueen.setTargetRatio(0.00f);
 
         CasteTemplate attaMinima = new CasteTemplate("Minima Worker (Gardener)", 40f, 2f);
+        attaMinima.setWalkSpeedMps(0.25f);
+        attaMinima.setFlySpeedMps(0.0f);
         attaMinima.setBodyLengthMm(2.0f);
         attaMinima.setHeadWidthMm(0.6f);
         attaMinima.setWingbeatFrequencyHz(0.0f);
@@ -337,6 +364,8 @@ public class SpeciesPresetManager {
 
         CasteTemplate attaMedia = new CasteTemplate("Media Worker (Cutter)", 100f, 10f);
         attaMedia.setCanCarry(true);
+        attaMedia.setWalkSpeedMps(0.35f);
+        attaMedia.setFlySpeedMps(0.0f);
         attaMedia.setBodyLengthMm(7.0f);
         attaMedia.setHeadWidthMm(2.2f);
         attaMedia.setWingbeatFrequencyHz(0.0f);
@@ -346,6 +375,8 @@ public class SpeciesPresetManager {
 
         CasteTemplate attaMajor = new CasteTemplate("Major Soldier (Guard)", 300f, 45f);
         attaMajor.setBaseDefense(8f);
+        attaMajor.setWalkSpeedMps(0.30f);
+        attaMajor.setFlySpeedMps(0.0f);
         attaMajor.setBodyLengthMm(16.0f);
         attaMajor.setHeadWidthMm(6.0f);
         attaMajor.setWingbeatFrequencyHz(0.0f);
@@ -353,7 +384,18 @@ public class SpeciesPresetManager {
         attaMajor.setMandibularBitingForceMPa(120.0f);
         attaMajor.setTargetRatio(0.10f);
 
-        atta.setCasteTemplates(List.of(attaQueen, attaMinima, attaMedia, attaMajor));
+        CasteTemplate attaMale = new CasteTemplate("Reproductive Male (Alate)", 80f, 0f);
+        attaMale.setDescription("Large winged male for nuptial swarming flight (18mm)");
+        attaMale.setLifespan(30);
+        attaMale.setCanFly(true);
+        attaMale.setWalkSpeedMps(0.22f);
+        attaMale.setFlySpeedMps(3.2f);
+        attaMale.setBodyLengthMm(18.0f);
+        attaMale.setHeadWidthMm(3.5f);
+        attaMale.setWingbeatFrequencyHz(120.0f);
+        attaMale.setTargetRatio(0.00f);
+
+        atta.setCasteTemplates(List.of(attaQueen, attaMinima, attaMedia, attaMajor, attaMale));
         map.put(atta.getPresetName(), atta);
 
         // 4. European Honey Bee (Apis mellifera)
@@ -422,6 +464,8 @@ public class SpeciesPresetManager {
         CasteTemplate apisQueen = new CasteTemplate("Queen Bee", 400f, 5f);
         apisQueen.setLifespan(1460);
         apisQueen.setCanFly(true);
+        apisQueen.setWalkSpeedMps(0.20f);
+        apisQueen.setFlySpeedMps(4.5f);
         apisQueen.setBodyLengthMm(20.0f);
         apisQueen.setHeadWidthMm(4.0f);
         apisQueen.setWingbeatFrequencyHz(180.0f);
@@ -434,6 +478,8 @@ public class SpeciesPresetManager {
         apisWorker.setLifespan(60);
         apisWorker.setCanFly(true);
         apisWorker.setCanCarry(true);
+        apisWorker.setWalkSpeedMps(0.25f);
+        apisWorker.setFlySpeedMps(6.5f);
         apisWorker.setBodyLengthMm(14.0f);
         apisWorker.setHeadWidthMm(3.5f);
         apisWorker.setWingbeatFrequencyHz(230.0f);
@@ -445,6 +491,8 @@ public class SpeciesPresetManager {
         CasteTemplate apisDrone = new CasteTemplate("Drone (Male)", 120f, 0f);
         apisDrone.setLifespan(40);
         apisDrone.setCanFly(true);
+        apisDrone.setWalkSpeedMps(0.20f);
+        apisDrone.setFlySpeedMps(7.0f);
         apisDrone.setBodyLengthMm(16.0f);
         apisDrone.setHeadWidthMm(4.2f);
         apisDrone.setWingbeatFrequencyHz(200.0f);
@@ -520,6 +568,8 @@ public class SpeciesPresetManager {
         CasteTemplate vespulaQueen = new CasteTemplate("Foundress (Queen)", 450f, 20f);
         vespulaQueen.setLifespan(365);
         vespulaQueen.setCanFly(true);
+        vespulaQueen.setWalkSpeedMps(0.25f);
+        vespulaQueen.setFlySpeedMps(6.5f);
         vespulaQueen.setBodyLengthMm(19.0f);
         vespulaQueen.setHeadWidthMm(4.5f);
         vespulaQueen.setWingbeatFrequencyHz(160.0f);
@@ -531,6 +581,8 @@ public class SpeciesPresetManager {
         CasteTemplate vespulaWorker = new CasteTemplate("Hunter Worker", 100f, 22f);
         vespulaWorker.setLifespan(30);
         vespulaWorker.setCanFly(true);
+        vespulaWorker.setWalkSpeedMps(0.25f);
+        vespulaWorker.setFlySpeedMps(6.0f);
         vespulaWorker.setBodyLengthMm(13.0f);
         vespulaWorker.setHeadWidthMm(3.2f);
         vespulaWorker.setWingbeatFrequencyHz(210.0f);
@@ -539,7 +591,19 @@ public class SpeciesPresetManager {
         vespulaWorker.setMandibularBitingForceMPa(22.0f);
         vespulaWorker.setTargetRatio(1.00f);
 
-        vespula.setCasteTemplates(List.of(vespulaQueen, vespulaWorker));
+        CasteTemplate vespulaMale = new CasteTemplate("Drone (Male)", 90f, 0f);
+        vespulaMale.setDescription("Haploid male without sting (15mm)");
+        vespulaMale.setLifespan(30);
+        vespulaMale.setCanFly(true);
+        vespulaMale.setWalkSpeedMps(0.20f);
+        vespulaMale.setFlySpeedMps(6.5f);
+        vespulaMale.setBodyLengthMm(15.0f);
+        vespulaMale.setHeadWidthMm(3.5f);
+        vespulaMale.setWingbeatFrequencyHz(210.0f);
+        vespulaMale.setHasHoveringCapability(true);
+        vespulaMale.setTargetRatio(0.00f);
+
+        vespula.setCasteTemplates(List.of(vespulaQueen, vespulaWorker, vespulaMale));
         map.put(vespula.getPresetName(), vespula);
 
         // 5b. European Hornet (Vespa crabro)
@@ -606,6 +670,8 @@ public class SpeciesPresetManager {
         CasteTemplate vespaQueen = new CasteTemplate("Queen Hornet", 600f, 30f);
         vespaQueen.setLifespan(365);
         vespaQueen.setCanFly(true);
+        vespaQueen.setWalkSpeedMps(0.25f);
+        vespaQueen.setFlySpeedMps(7.0f);
         vespaQueen.setBodyLengthMm(30.0f);
         vespaQueen.setHeadWidthMm(6.5f);
         vespaQueen.setWingbeatFrequencyHz(140.0f);
@@ -617,6 +683,8 @@ public class SpeciesPresetManager {
         CasteTemplate vespaWorker = new CasteTemplate("Hornet Worker", 160f, 35f);
         vespaWorker.setLifespan(35);
         vespaWorker.setCanFly(true);
+        vespaWorker.setWalkSpeedMps(0.25f);
+        vespaWorker.setFlySpeedMps(7.5f);
         vespaWorker.setBodyLengthMm(22.0f);
         vespaWorker.setHeadWidthMm(4.8f);
         vespaWorker.setWingbeatFrequencyHz(170.0f);
@@ -625,7 +693,19 @@ public class SpeciesPresetManager {
         vespaWorker.setMandibularBitingForceMPa(45.0f);
         vespaWorker.setTargetRatio(1.00f);
 
-        vespa.setCasteTemplates(List.of(vespaQueen, vespaWorker));
+        CasteTemplate vespaMale = new CasteTemplate("Male Hornet", 150f, 5f);
+        vespaMale.setDescription("Male hornet for nuptial flights (24mm)");
+        vespaMale.setLifespan(35);
+        vespaMale.setCanFly(true);
+        vespaMale.setWalkSpeedMps(0.20f);
+        vespaMale.setFlySpeedMps(7.5f);
+        vespaMale.setBodyLengthMm(24.0f);
+        vespaMale.setHeadWidthMm(4.5f);
+        vespaMale.setWingbeatFrequencyHz(170.0f);
+        vespaMale.setHasHoveringCapability(true);
+        vespaMale.setTargetRatio(0.00f);
+
+        vespa.setCasteTemplates(List.of(vespaQueen, vespaWorker, vespaMale));
         map.put(vespa.getPresetName(), vespa);
 
         // 6. Subterranean Termite (Reticulitermes flavipes)
@@ -692,6 +772,8 @@ public class SpeciesPresetManager {
 
         CasteTemplate termiteQueen = new CasteTemplate("Physogastric Queen", 600f, 2f);
         termiteQueen.setLifespan(7300);
+        termiteQueen.setWalkSpeedMps(0.15f);
+        termiteQueen.setFlySpeedMps(0.0f);
         termiteQueen.setBodyLengthMm(22.0f);
         termiteQueen.setHeadWidthMm(3.0f);
         termiteQueen.setWingbeatFrequencyHz(0.0f);
@@ -701,6 +783,8 @@ public class SpeciesPresetManager {
 
         CasteTemplate termiteKing = new CasteTemplate("Reproductive King", 300f, 5f);
         termiteKing.setLifespan(5475);
+        termiteKing.setWalkSpeedMps(0.18f);
+        termiteKing.setFlySpeedMps(0.0f);
         termiteKing.setBodyLengthMm(10.0f);
         termiteKing.setHeadWidthMm(2.0f);
         termiteKing.setWingbeatFrequencyHz(0.0f);
@@ -711,6 +795,8 @@ public class SpeciesPresetManager {
         CasteTemplate termiteWorker = new CasteTemplate("Termite Worker", 50f, 3f);
         termiteWorker.setLifespan(500);
         termiteWorker.setCanDig(true);
+        termiteWorker.setWalkSpeedMps(0.25f);
+        termiteWorker.setFlySpeedMps(0.0f);
         termiteWorker.setBodyLengthMm(5.0f);
         termiteWorker.setHeadWidthMm(1.2f);
         termiteWorker.setWingbeatFrequencyHz(0.0f);
@@ -721,6 +807,8 @@ public class SpeciesPresetManager {
         CasteTemplate termiteSoldier = new CasteTemplate("Mandibulate Soldier", 200f, 35f);
         termiteSoldier.setLifespan(730);
         termiteSoldier.setBaseDefense(6f);
+        termiteSoldier.setWalkSpeedMps(0.20f);
+        termiteSoldier.setFlySpeedMps(0.0f);
         termiteSoldier.setBodyLengthMm(7.0f);
         termiteSoldier.setHeadWidthMm(2.5f);
         termiteSoldier.setWingbeatFrequencyHz(0.0f);
@@ -728,7 +816,16 @@ public class SpeciesPresetManager {
         termiteSoldier.setMandibularBitingForceMPa(55.0f);
         termiteSoldier.setTargetRatio(0.15f);
 
-        termite.setCasteTemplates(List.of(termiteQueen, termiteKing, termiteWorker, termiteSoldier));
+        CasteTemplate termiteAlate = new CasteTemplate("Reproductive Alate (Swarming)", 60f, 1f);
+        termiteAlate.setDescription("Winged reproductive alate dispersing in spring nuptial flight");
+        termiteAlate.setCanFly(true);
+        termiteAlate.setWalkSpeedMps(0.20f);
+        termiteAlate.setFlySpeedMps(2.5f);
+        termiteAlate.setBodyLengthMm(6.0f);
+        termiteAlate.setHeadWidthMm(1.3f);
+        termiteAlate.setTargetRatio(0.00f);
+
+        termite.setCasteTemplates(List.of(termiteQueen, termiteKing, termiteWorker, termiteSoldier, termiteAlate));
         map.put(termite.getPresetName(), termite);
 
         // 7. Red Harvester Ant (Pogonomyrmex barbatus)
@@ -794,6 +891,9 @@ public class SpeciesPresetManager {
 
         CasteTemplate harvestQueen = new CasteTemplate("Queen", 450f, 10f);
         harvestQueen.setLifespan(7300);
+        harvestQueen.setCanFly(true);
+        harvestQueen.setWalkSpeedMps(0.25f);
+        harvestQueen.setFlySpeedMps(3.0f);
         harvestQueen.setBodyLengthMm(12.0f);
         harvestQueen.setHeadWidthMm(3.0f);
         harvestQueen.setWingbeatFrequencyHz(170.0f);
@@ -805,6 +905,8 @@ public class SpeciesPresetManager {
         harvestWorker.setLifespan(500);
         harvestWorker.setCanCarry(true);
         harvestWorker.setCanDig(true);
+        harvestWorker.setWalkSpeedMps(0.45f);
+        harvestWorker.setFlySpeedMps(0.0f);
         harvestWorker.setBodyLengthMm(7.0f);
         harvestWorker.setHeadWidthMm(2.0f);
         harvestWorker.setWingbeatFrequencyHz(0.0f);
@@ -812,7 +914,17 @@ public class SpeciesPresetManager {
         harvestWorker.setMandibularBitingForceMPa(40.0f);
         harvestWorker.setTargetRatio(1.00f);
 
-        harvester.setCasteTemplates(List.of(harvestQueen, harvestWorker));
+        CasteTemplate harvestMale = new CasteTemplate("Reproductive Male (Alate)", 50f, 0f);
+        harvestMale.setDescription("Haploid winged male (8mm)");
+        harvestMale.setLifespan(30);
+        harvestMale.setCanFly(true);
+        harvestMale.setWalkSpeedMps(0.22f);
+        harvestMale.setFlySpeedMps(3.5f);
+        harvestMale.setBodyLengthMm(8.0f);
+        harvestMale.setHeadWidthMm(1.8f);
+        harvestMale.setTargetRatio(0.00f);
+
+        harvester.setCasteTemplates(List.of(harvestQueen, harvestWorker, harvestMale));
         map.put(harvester.getPresetName(), harvester);
 
         // 8. Elderberry Aphid (Aphis fabae - Honeydew Producer)
@@ -1034,6 +1146,8 @@ public class SpeciesPresetManager {
         ffQueen.setDescription("Gyne (8-10mm)");
         ffQueen.setLifespan(4000);
         ffQueen.setCanFly(true);
+        ffQueen.setWalkSpeedMps(0.25f);
+        ffQueen.setFlySpeedMps(3.0f);
         ffQueen.setBodyLengthMm(9.5f);
         ffQueen.setHeadWidthMm(2.3f);
         ffQueen.setWingbeatFrequencyHz(190.0f);
@@ -1044,6 +1158,8 @@ public class SpeciesPresetManager {
         ffWorker.setLifespan(730);
         ffWorker.setCanDig(true);
         ffWorker.setCanCarry(true);
+        ffWorker.setWalkSpeedMps(0.45f);
+        ffWorker.setFlySpeedMps(0.0f);
         ffWorker.setBodyLengthMm(5.5f);
         ffWorker.setHeadWidthMm(1.3f);
         ffWorker.setWingbeatFrequencyHz(0.0f);
@@ -1055,6 +1171,8 @@ public class SpeciesPresetManager {
         ffMale.setDescription("Alate male (5-6mm)");
         ffMale.setLifespan(30);
         ffMale.setCanFly(true);
+        ffMale.setWalkSpeedMps(0.25f);
+        ffMale.setFlySpeedMps(3.5f);
         ffMale.setBodyLengthMm(5.5f);
         ffMale.setHeadWidthMm(1.2f);
         ffMale.setWingbeatFrequencyHz(220.0f);
@@ -1099,6 +1217,8 @@ public class SpeciesPresetManager {
         CasteTemplate polyergusQueen = new CasteTemplate("Reine Amazone", 550f, 20f);
         polyergusQueen.setLifespan(5475);
         polyergusQueen.setCanFly(true);
+        polyergusQueen.setWalkSpeedMps(0.25f);
+        polyergusQueen.setFlySpeedMps(3.0f);
         polyergusQueen.setBodyLengthMm(9.5f);
         polyergusQueen.setHeadWidthMm(2.8f);
         polyergusQueen.setTargetRatio(0.00f);
@@ -1107,11 +1227,23 @@ public class SpeciesPresetManager {
         polyergusRaider.setDescription("Highly specialized warrior armed with falcate mandibles for raids.");
         polyergusRaider.setLifespan(730);
         polyergusRaider.setCanCarry(true);
+        polyergusRaider.setWalkSpeedMps(0.55f);
+        polyergusRaider.setFlySpeedMps(0.0f);
         polyergusRaider.setBodyLengthMm(7.0f);
         polyergusRaider.setHeadWidthMm(2.1f);
         polyergusRaider.setTargetRatio(1.00f);
 
-        polyergus.setCasteTemplates(List.of(polyergusQueen, polyergusRaider));
+        CasteTemplate polyergusMale = new CasteTemplate("Reproductive Male (Alate)", 60f, 0f);
+        polyergusMale.setDescription("Alate male (6.5mm)");
+        polyergusMale.setLifespan(30);
+        polyergusMale.setCanFly(true);
+        polyergusMale.setWalkSpeedMps(0.25f);
+        polyergusMale.setFlySpeedMps(3.5f);
+        polyergusMale.setBodyLengthMm(6.5f);
+        polyergusMale.setHeadWidthMm(1.8f);
+        polyergusMale.setTargetRatio(0.00f);
+
+        polyergus.setCasteTemplates(List.of(polyergusQueen, polyergusRaider, polyergusMale));
         map.put(polyergus.getPresetName(), polyergus);
 
         // 14. Argentine Ant (Linepithema humile - Invasive Supercolony)
@@ -1149,6 +1281,8 @@ public class SpeciesPresetManager {
 
         CasteTemplate linepithemaQueen = new CasteTemplate("Queen", 300f, 5f);
         linepithemaQueen.setLifespan(365);
+        linepithemaQueen.setWalkSpeedMps(0.25f);
+        linepithemaQueen.setFlySpeedMps(0.0f);
         linepithemaQueen.setBodyLengthMm(5.0f);
         linepithemaQueen.setHeadWidthMm(1.4f);
         linepithemaQueen.setTargetRatio(0.00f);
@@ -1157,11 +1291,23 @@ public class SpeciesPresetManager {
         linepithemaWorker.setLifespan(180);
         linepithemaWorker.setCanDig(true);
         linepithemaWorker.setCanCarry(true);
+        linepithemaWorker.setWalkSpeedMps(0.45f);
+        linepithemaWorker.setFlySpeedMps(0.0f);
         linepithemaWorker.setBodyLengthMm(2.8f);
         linepithemaWorker.setHeadWidthMm(0.7f);
         linepithemaWorker.setTargetRatio(1.00f);
 
-        linepithema.setCasteTemplates(List.of(linepithemaQueen, linepithemaWorker));
+        CasteTemplate linepithemaMale = new CasteTemplate("Reproductive Male (Alate)", 35f, 0f);
+        linepithemaMale.setDescription("Alate male (3mm)");
+        linepithemaMale.setLifespan(30);
+        linepithemaMale.setCanFly(true);
+        linepithemaMale.setWalkSpeedMps(0.25f);
+        linepithemaMale.setFlySpeedMps(2.5f);
+        linepithemaMale.setBodyLengthMm(3.0f);
+        linepithemaMale.setHeadWidthMm(0.8f);
+        linepithemaMale.setTargetRatio(0.00f);
+
+        linepithema.setCasteTemplates(List.of(linepithemaQueen, linepithemaWorker, linepithemaMale));
         map.put(linepithema.getPresetName(), linepithema);
 
         // 15. European Harvester Ant (Messor barbarus - Granivore)
@@ -1199,6 +1345,9 @@ public class SpeciesPresetManager {
 
         CasteTemplate messorQueen = new CasteTemplate("Queen", 600f, 15f);
         messorQueen.setLifespan(7300);
+        messorQueen.setCanFly(true);
+        messorQueen.setWalkSpeedMps(0.22f);
+        messorQueen.setFlySpeedMps(2.8f);
         messorQueen.setBodyLengthMm(15.0f);
         messorQueen.setHeadWidthMm(3.5f);
         messorQueen.setTargetRatio(0.00f);
@@ -1206,6 +1355,8 @@ public class SpeciesPresetManager {
         CasteTemplate messorMinor = new CasteTemplate("Minor Worker", 60f, 4f);
         messorMinor.setLifespan(1095);
         messorMinor.setCanDig(true);
+        messorMinor.setWalkSpeedMps(0.35f);
+        messorMinor.setFlySpeedMps(0.0f);
         messorMinor.setBodyLengthMm(4.0f);
         messorMinor.setHeadWidthMm(1.0f);
         messorMinor.setTargetRatio(0.60f);
@@ -1213,11 +1364,23 @@ public class SpeciesPresetManager {
         CasteTemplate messorMajor = new CasteTemplate("Major Worker (Seed Crusher)", 220f, 30f);
         messorMajor.setLifespan(1095);
         messorMajor.setCanCarry(true);
+        messorMajor.setWalkSpeedMps(0.30f);
+        messorMajor.setFlySpeedMps(0.0f);
         messorMajor.setBodyLengthMm(11.0f);
         messorMajor.setHeadWidthMm(3.2f);
         messorMajor.setTargetRatio(0.40f);
 
-        messor.setCasteTemplates(List.of(messorQueen, messorMinor, messorMajor));
+        CasteTemplate messorMale = new CasteTemplate("Reproductive Male (Alate)", 55f, 0f);
+        messorMale.setDescription("Alate male (8mm)");
+        messorMale.setLifespan(30);
+        messorMale.setCanFly(true);
+        messorMale.setWalkSpeedMps(0.22f);
+        messorMale.setFlySpeedMps(3.2f);
+        messorMale.setBodyLengthMm(8.0f);
+        messorMale.setHeadWidthMm(1.8f);
+        messorMale.setTargetRatio(0.00f);
+
+        messor.setCasteTemplates(List.of(messorQueen, messorMinor, messorMajor, messorMale));
         map.put(messor.getPresetName(), messor);
 
         // 16. Giant Carpenter Ant (Camponotus ligniperda - Wood Nesting)
@@ -1255,6 +1418,9 @@ public class SpeciesPresetManager {
 
         CasteTemplate campQueen = new CasteTemplate("Queen", 700f, 25f);
         campQueen.setLifespan(5475);
+        campQueen.setCanFly(true);
+        campQueen.setWalkSpeedMps(0.22f);
+        campQueen.setFlySpeedMps(2.8f);
         campQueen.setBodyLengthMm(18.0f);
         campQueen.setHeadWidthMm(4.0f);
         campQueen.setTargetRatio(0.00f);
@@ -1263,6 +1429,8 @@ public class SpeciesPresetManager {
         campMinor.setLifespan(1460);
         campMinor.setCanDig(true);
         campMinor.setCanCarry(true);
+        campMinor.setWalkSpeedMps(0.38f);
+        campMinor.setFlySpeedMps(0.0f);
         campMinor.setBodyLengthMm(7.0f);
         campMinor.setHeadWidthMm(1.8f);
         campMinor.setTargetRatio(0.70f);
@@ -1270,11 +1438,23 @@ public class SpeciesPresetManager {
         CasteTemplate campMajor = new CasteTemplate("Major Worker", 250f, 35f);
         campMajor.setLifespan(1460);
         campMajor.setCanCarry(true);
+        campMajor.setWalkSpeedMps(0.32f);
+        campMajor.setFlySpeedMps(0.0f);
         campMajor.setBodyLengthMm(14.0f);
         campMajor.setHeadWidthMm(3.8f);
         campMajor.setTargetRatio(0.30f);
 
-        camponotus.setCasteTemplates(List.of(campQueen, campMinor, campMajor));
+        CasteTemplate campMale = new CasteTemplate("Reproductive Male (Alate)", 80f, 0f);
+        campMale.setDescription("Alate male (10mm)");
+        campMale.setLifespan(30);
+        campMale.setCanFly(true);
+        campMale.setWalkSpeedMps(0.22f);
+        campMale.setFlySpeedMps(3.2f);
+        campMale.setBodyLengthMm(10.0f);
+        campMale.setHeadWidthMm(2.2f);
+        campMale.setTargetRatio(0.00f);
+
+        camponotus.setCasteTemplates(List.of(campQueen, campMinor, campMajor, campMale));
         map.put(camponotus.getPresetName(), camponotus);
 
         return map;

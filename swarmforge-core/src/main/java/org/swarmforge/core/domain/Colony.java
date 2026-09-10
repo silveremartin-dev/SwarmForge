@@ -893,6 +893,16 @@ public class Colony implements java.io.Serializable {
         this.nestZ = z;
     }
 
+    private float metabolicRate = 1.0f;
+
+    public float getMetabolicRate() {
+        return metabolicRate;
+    }
+
+    public void setMetabolicRate(float metabolicRate) {
+        this.metabolicRate = Math.max(0.01f, metabolicRate);
+    }
+
     // === Resource Management ===
 
     /**

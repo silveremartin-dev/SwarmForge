@@ -124,13 +124,13 @@ public class SwarmForgeClientUITest {
         }
         robot.sleep(500, TimeUnit.MILLISECONDS);
 
-        // Click Generate Preview / Charger button if present
+        // Click Generate Preview button if present
         var buttonOpt = robot.lookup(".button").queryAllAs(Button.class).stream()
-                .filter(b -> b.getText() != null && (b.getText().contains("Generate") || b.getText().contains("Générer") || b.getText().contains("Charger")))
+                .filter(b -> b.getText() != null && (b.getText().contains("Generate") || b.getText().contains("Générer") || b.getText().contains("Preview") || b.getText().contains("Aperçu")))
                 .findFirst();
         if (buttonOpt.isPresent()) {
             robot.clickOn(buttonOpt.get());
-            robot.sleep(1000, TimeUnit.MILLISECONDS); // Wait for terrain generation
+            robot.sleep(500, TimeUnit.MILLISECONDS);
         }
 
         captureScreenshot("05_terrain_generated");
