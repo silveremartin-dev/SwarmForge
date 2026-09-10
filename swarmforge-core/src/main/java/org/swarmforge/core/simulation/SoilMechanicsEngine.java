@@ -71,7 +71,7 @@ public class SoilMechanicsEngine {
         float shearStrength = computeShearStrength(material, compactionIndex, relativeHumidity);
         float unitWeight = 16.0f; // Unit weight gamma (~16 kN/m^3)
         float spanMeters = (2.0f * shearStrength) / unitWeight;
-        return Math.max(1.5f, Math.min(250.0f, spanMeters * 10.0f)); // Max span in mm
+        return Math.max(1.5f, Math.min(250.0f, spanMeters * 1000.0f)); // Max span in mm
     }
 
     /**

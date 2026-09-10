@@ -77,6 +77,21 @@ public class PassiveVentilationEngine implements Serializable {
         // Ant metabolic CO2 emission: ~0.5 ppm per ant per tick inside air voxels
         float metabolicCo2Addition = antMetabolismCount * 0.5f;
 
+        // Count air voxels first for uniform metabolic distribution
+        int totalAirVoxels = 0;
+        for (int x = 0; x < grid.getWidth(); x++) {
+            for (int y = 0; y < grid.getHeight(); y++) {
+                for (int z = 0; z < grid.getDepth(); z++) {
+                    NestVoxelGrid.VoxelCell cell = grid.getVoxel(x, y, z);
+                    if (cell != null && cell.getMaterial() == VoxelMaterial.AIR) {
+                        totalAirVoxels++;
+                    }
+                }
+            }
+        }
+        int effectiveAirVoxels = Math.max(1, totalAirVoxels);
+        float perVoxelCo2Addition = metabolicCo2Addition / effectiveAirVoxels;
+
         float totalTemp = 0.0f;
         float totalCo2 = 0.0f;
         int airVoxelCount = 0;
@@ -89,7 +104,7 @@ public class PassiveVentilationEngine implements Serializable {
                         // CO2 Update: Purge + Ant Respiration
                         float currentCo2 = cell.getCo2Ppm();
                         float purgedCo2 = currentCo2 - co2PurgeFraction * (currentCo2 - externalCo2Ppm);
-                        float nextCo2 = Math.max(350.0f, purgedCo2 + metabolicCo2Addition / Math.max(1, airVoxelCount));
+                        float nextCo2 = Math.max(350.0f, purgedCo2 + perVoxelCo2Addition);
                         cell.setCo2Ppm(nextCo2);
 
                         // Temperature Update towards ambient equilibrium

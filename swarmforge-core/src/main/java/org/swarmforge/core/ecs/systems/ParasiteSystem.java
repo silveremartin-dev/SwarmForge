@@ -85,17 +85,18 @@ public class ParasiteSystem extends IteratingSystem {
 
             if (neighborMeta != null && neighborMeta.alive) {
                 if (neighborPath != null) {
-                    // Contagion
-                    if (neighborPath.activePathogens == PathogenComponent.TYPE_NONE && pathogen.viralLoad > 20.0f) {
-                        neighborPath.activePathogens = pathogen.activePathogens;
-                        neighborPath.viralLoad = 5.0f;
-                        neighborPath.incubationTimer = 0.0f;
-                    }
                     // Social Immunity (Allogrooming: healthy nestmate cleans infected one)
-                    else if (neighborPath.activePathogens == PathogenComponent.TYPE_NONE) {
+                    if (neighborPath.activePathogens == PathogenComponent.TYPE_NONE) {
                         pathogen.viralLoad = Math.max(0.0f, pathogen.viralLoad - 3.0f * delta);
                         if (pathogen.viralLoad <= 0.0f) {
                             pathogen.activePathogens = PathogenComponent.TYPE_NONE;
+                        }
+
+                        // Risk of contagion to groomer if viral load is high
+                        if (pathogen.viralLoad > 30.0f && java.util.concurrent.ThreadLocalRandom.current().nextFloat() < 0.25f) {
+                            neighborPath.activePathogens = pathogen.activePathogens;
+                            neighborPath.viralLoad = 5.0f;
+                            neighborPath.incubationTimer = 0.0f;
                         }
                     }
                 }

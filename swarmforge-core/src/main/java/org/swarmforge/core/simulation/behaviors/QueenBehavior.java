@@ -168,15 +168,23 @@ public class QueenBehavior {
         }
 
         // Mate with multiple males (polyandry typical in ants)
-        int matingsCount = Math.min(males.size(), 5 + random.nextInt(10));
-
-        for (int i = 0; i < matingsCount; i++) {
-            Individual male = males.get(random.nextInt(males.size()));
-            matedMaleIds.add(male.getId().toString());
-            storedSperm += 500_000 + random.nextInt(500_000); // Each male contributes
-
-            // Males typically die after mating
-            male.takeDamage(100);
+        int matingsCount = 0;
+        if (!males.isEmpty()) {
+            matingsCount = Math.min(males.size(), 5 + random.nextInt(10));
+            for (int i = 0; i < matingsCount; i++) {
+                Individual male = males.get(random.nextInt(males.size()));
+                matedMaleIds.add(male.getId().toString());
+                storedSperm += 500_000 + random.nextInt(500_000); // Each male contributes
+                // Males typically die after mating
+                male.takeDamage(100);
+            }
+        } else {
+            // Single-colony / isolated founding scenario: mate with wild dispersal males
+            matingsCount = 3 + random.nextInt(4);
+            for (int i = 0; i < matingsCount; i++) {
+                matedMaleIds.add("dispersal-male-" + java.util.UUID.randomUUID().toString().substring(0, 8));
+                storedSperm += 600_000 + random.nextInt(400_000);
+            }
         }
 
         storedSperm = Math.min(storedSperm, maxSperm);

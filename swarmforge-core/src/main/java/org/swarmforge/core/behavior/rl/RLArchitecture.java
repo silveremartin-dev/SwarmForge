@@ -85,22 +85,30 @@ public class RLArchitecture implements ReasoningArchitecture {
 
     private RLState observeState(AgentView ind, SimulationContext ctx) {
         // Simple discrete state observation
-        boolean hasFood = ind.isCarryingFood();
-        boolean isAtNest = ind.isAtNest(); // Use Interface method
         boolean isLoaded = ind.isCarryingFood();
+        boolean isAtNest = ind.isAtNest();
+        boolean hasFood = isLoaded || (ctx != null && ctx.hasFoodNearby(ind));
 
         // Pheromones (Simplified) - Need position
         RLState.PheromoneDirection foodDir = RLState.PheromoneDirection.NONE;
 
         if (ctx != null) {
             float px = ctx.getFoodPheromoneGradientX(ind.getX(), ind.getY(), ind.getZ());
-            if (px > 0.1)
+            if (px > 0.1f)
                 foodDir = RLState.PheromoneDirection.RIGHT;
-            else if (px < -0.1)
+            else if (px < -0.1f)
                 foodDir = RLState.PheromoneDirection.LEFT;
         }
 
-        RLState.PheromoneDirection homeDir = RLState.PheromoneDirection.NONE; // Similar logic
+        RLState.PheromoneDirection homeDir = RLState.PheromoneDirection.NONE;
+        if (ctx != null) {
+            float hx = ctx.getHomePheromone(ind.getX() + 1, ind.getY(), ind.getZ())
+                    - ctx.getHomePheromone(ind.getX() - 1, ind.getY(), ind.getZ());
+            if (hx > 0.1f)
+                homeDir = RLState.PheromoneDirection.RIGHT;
+            else if (hx < -0.1f)
+                homeDir = RLState.PheromoneDirection.LEFT;
+        }
 
         return new RLState(hasFood, foodDir, homeDir, isAtNest, isLoaded);
     }

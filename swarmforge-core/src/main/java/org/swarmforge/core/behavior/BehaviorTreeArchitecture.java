@@ -184,6 +184,7 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
                 case FOLLOW_TRAIL -> followTrail(agent, ctx);
                 case FORAGE -> Action.forage();
                 case RETURN_HOME -> Action.returnHome();
+                case ABORT_AND_RETURN -> Action.abortAndReturn();
                 case DEPOSIT_FOOD -> new Action(Action.ActionType.DEPOSIT_FOOD, 0, 0, 0, 1f, null);
                 case FLEE -> flee(agent);
                 default -> Action.rest();

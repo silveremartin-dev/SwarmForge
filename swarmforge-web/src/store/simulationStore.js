@@ -238,6 +238,11 @@ export const useSimulationStore = create((set, get) => ({
     setShowChamberOverlay: (show) => set({ showChamberOverlay: show }),
     toggleChamberOverlay: () => set(state => ({ showChamberOverlay: !state.showChamberOverlay })),
 
+    // Scientific Mode: Kinematic vectors and sensory FOV cones toggle
+    showScientificSensoryVectors: true,
+    setShowScientificSensoryVectors: (show) => set({ showScientificSensoryVectors: show }),
+    toggleScientificSensoryVectors: () => set(state => ({ showScientificSensoryVectors: !state.showScientificSensoryVectors })),
+
     // Ant navigation & cycling
     selectNextAnt: () => {
         const { ants, selectedEntity } = get()

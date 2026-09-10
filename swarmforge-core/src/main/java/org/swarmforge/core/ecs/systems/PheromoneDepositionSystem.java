@@ -46,6 +46,7 @@ public class PheromoneDepositionSystem extends IteratingSystem {
         if (sampleAccumulatorSec >= SAMPLE_INTERVAL_SEC) {
             sampleAccumulatorSec -= SAMPLE_INTERVAL_SEC;
             samplingFrame = true;
+            stepCounter++;
         } else {
             samplingFrame = false;
         }
@@ -59,9 +60,9 @@ public class PheromoneDepositionSystem extends IteratingSystem {
         boolean isCarryingFood = mInventory != null && mInventory.has(entityId) &&
                 mInventory.get(entityId).carriedItem == InventoryComponent.ItemType.FOOD;
 
-        // Rotational Interleaving: entities deposit at fixed time interval
+        // Rotational Interleaving: all entities deposit across rotating frames
         int sampleModulo = 4;
-        if (entityId % sampleModulo == 0) {
+        if ((entityId + stepCounter) % sampleModulo == 0) {
             float depositAmount = 0.5f * (world.getDelta() / 0.016666667f) * sampleModulo;
             int pType = isCarryingFood ? PheromoneType.FOOD_TRAIL.getIndex() : PheromoneType.HOME_TRAIL.getIndex();
             pheromoneGrid.deposit((int) pos.x, (int) pos.y, (int) pos.z, pType, depositAmount);

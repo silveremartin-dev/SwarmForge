@@ -669,8 +669,9 @@ public class Simulation {
             switch (ind.getLifeStage()) {
                 case EGG -> {
                     ind.setLifeStage(Individual.LifeStage.LARVA);
-                    float larvaDays = sp != null ? sp.getLarvaStageDuration() : 14f;
-                    ind.setMaturationThreshold(ind.getAgeInSeconds() + larvaDays * 86400.0f);
+                    float larvaDur = sp != null ? sp.getLarvaStageDuration() : 600f;
+                    if (larvaDur <= 30f) larvaDur *= 60.0f;
+                    ind.setMaturationThreshold(ind.getAgeInSeconds() + larvaDur);
                     SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.WORKER_BORN, SimulationEvent.Severity.INFO, tickCount.get(), "Hatching: Egg hatched into Larva", null);
                     eventQueue.offer(evt);
                     org.swarmforge.core.event.EventBus.getInstance().publish(evt);
@@ -678,8 +679,9 @@ public class Simulation {
                 case LARVA -> {
                     if (ind.getEnergy() > 50) {
                         ind.setLifeStage(Individual.LifeStage.PUPA);
-                        float pupaDays = sp != null ? sp.getPupaStageDuration() : 14f;
-                        ind.setMaturationThreshold(ind.getAgeInSeconds() + pupaDays * 86400.0f);
+                        float pupaDur = sp != null ? sp.getPupaStageDuration() : 500f;
+                        if (pupaDur <= 30f) pupaDur *= 60.0f;
+                        ind.setMaturationThreshold(ind.getAgeInSeconds() + pupaDur);
                         SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.WORKER_BORN, SimulationEvent.Severity.INFO, tickCount.get(), "Pupation: Larva pupated into Pupa", null);
                         eventQueue.offer(evt);
                         org.swarmforge.core.event.EventBus.getInstance().publish(evt);

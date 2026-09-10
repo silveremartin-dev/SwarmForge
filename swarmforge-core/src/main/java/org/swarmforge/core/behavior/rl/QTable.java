@@ -30,7 +30,7 @@ public class QTable {
         WAIT
     }
 
-    private final Map<RLState, Map<RLAction, Double>> table = new HashMap<>();
+    private final Map<RLState, Map<RLAction, Double>> table = new java.util.concurrent.ConcurrentHashMap<>();
     private final Random random = new Random();
 
     // Hyperparameters
@@ -44,7 +44,7 @@ public class QTable {
     /**
      * Get the Q-value for a state-action pair.
      */
-    public double getQ(RLState state, RLAction action) {
+    public synchronized double getQ(RLState state, RLAction action) {
         return table.computeIfAbsent(state, k -> new EnumMap<>(RLAction.class))
                 .getOrDefault(action, 0.0);
     }
@@ -52,7 +52,7 @@ public class QTable {
     /**
      * Get the best action for a given state (Exploitation).
      */
-    public RLAction getBestAction(RLState state) {
+    public synchronized RLAction getBestAction(RLState state) {
         Map<RLAction, Double> actions = table.computeIfAbsent(state, k -> new EnumMap<>(RLAction.class));
 
         RLAction bestAction = RLAction.WAIT;
@@ -76,7 +76,7 @@ public class QTable {
     /**
      * Choose an action using Epsilon-Greedy strategy.
      */
-    public RLAction chooseAction(RLState state) {
+    public synchronized RLAction chooseAction(RLState state) {
         if (random.nextDouble() < epsilon) {
             // Explore
             return RLAction.values()[random.nextInt(RLAction.values().length)];
@@ -90,16 +90,16 @@ public class QTable {
      * Update the Q-value based on reward and next state.
      * Q(s,a) = Q(s,a) + alpha * (reward + gamma * max(Q(s', a')) - Q(s,a))
      */
-    public void update(RLState state, RLAction action, double reward, RLState nextState) {
+    public synchronized void update(RLState state, RLAction action, double reward, RLState nextState) {
         double currentQ = getQ(state, action);
         double maxNextQ = getMaxQ(nextState);
 
         double newQ = currentQ + alpha * (reward + gamma * maxNextQ - currentQ);
 
-        table.get(state).put(action, newQ);
+        table.computeIfAbsent(state, k -> new EnumMap<>(RLAction.class)).put(action, newQ);
     }
 
-    public double getMaxQ(RLState state) {
+    public synchronized double getMaxQ(RLState state) {
         Map<RLAction, Double> actions = table.get(state);
         if (actions == null || actions.isEmpty())
             return 0.0;

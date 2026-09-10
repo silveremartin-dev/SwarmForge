@@ -38,7 +38,7 @@ public class PolyergusRufescens extends CustomSpecies {
         setOptimalTempCelsius(22.0f);
         setMinTempCelsius(0.0f);
         setMaxTempCelsius(40.0f);
-        setNestType("SUBTERRANEAN");
+        setNestType("UNDERGROUND_BURROW");
         setVenomType("NONE");
         setAggression(0.95f);
         setCanPerformSocialThermoregulation(false);

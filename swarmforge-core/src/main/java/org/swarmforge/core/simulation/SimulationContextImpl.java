@@ -237,14 +237,31 @@ public class SimulationContextImpl implements SimulationContext {
 
     @Override
     public float getThermalGradientX(float x, float y, float z) {
-        float left = getTemperature();
-        float right = getTemperature();
-        return right - left;
+        if (simulation.getTerrarium() != null) {
+            int ix = Math.round(x);
+            int iy = Math.round(y);
+            int iz = Math.round(z);
+            float tLeft = simulation.getTerrarium().inBounds(ix - 1, iy, iz) && simulation.getTerrarium().getCell(ix - 1, iy, iz) != null 
+                    ? simulation.getTerrarium().getCell(ix - 1, iy, iz).temperature() : getTemperature();
+            float tRight = simulation.getTerrarium().inBounds(ix + 1, iy, iz) && simulation.getTerrarium().getCell(ix + 1, iy, iz) != null 
+                    ? simulation.getTerrarium().getCell(ix + 1, iy, iz).temperature() : getTemperature();
+            return tRight - tLeft;
+        }
+        return 0.0f;
     }
 
     @Override
     public float getThermalGradientY(float x, float y, float z) {
-        // Surface is exposed to solar warming, subterranean is insulated
+        if (simulation.getTerrarium() != null) {
+            int ix = Math.round(x);
+            int iy = Math.round(y);
+            int iz = Math.round(z);
+            float tDown = simulation.getTerrarium().inBounds(ix, iy - 1, iz) && simulation.getTerrarium().getCell(ix, iy - 1, iz) != null 
+                    ? simulation.getTerrarium().getCell(ix, iy - 1, iz).temperature() : getTemperature();
+            float tUp = simulation.getTerrarium().inBounds(ix, iy + 1, iz) && simulation.getTerrarium().getCell(ix, iy + 1, iz) != null 
+                    ? simulation.getTerrarium().getCell(ix, iy + 1, iz).temperature() : getTemperature();
+            return tUp - tDown;
+        }
         return (z < 0) ? -0.1f : 0.1f;
     }
 

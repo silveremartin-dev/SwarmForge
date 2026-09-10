@@ -4,7 +4,16 @@ import { useSimulationStore } from '../store/simulationStore'
 import { showToast } from '../store/toastStore'
 
 export default function Navbar({ activeMode, setActiveMode }) {
-    const { lookAndFeel, setLookAndFeel, timeSyncMode, setTimeSyncMode, realWorldTimeStr, realWorldDateStr } = useSimulationStore()
+    const {
+        lookAndFeel,
+        setLookAndFeel,
+        timeSyncMode,
+        setTimeSyncMode,
+        realWorldTimeStr,
+        realWorldDateStr,
+        showScientificSensoryVectors,
+        toggleScientificSensoryVectors
+    } = useSimulationStore()
     const [isFullscreen, setIsFullscreen] = useState(false)
 
     useEffect(() => {
@@ -150,6 +159,28 @@ export default function Navbar({ activeMode, setActiveMode }) {
                         🎮 Gaming (Minecraft)
                     </button>
                 </div>
+
+                {/* Scientific Mode: Vectors & FOV sensory cones toggle */}
+                {lookAndFeel === 'SCIENTIFIC' && (
+                    <button
+                        onClick={toggleScientificSensoryVectors}
+                        title="Activer / Désactiver les vecteurs cinématiques de vitesse et les cônes de détection sensorielle (FOV) des fourmis"
+                        style={{
+                            ...styles.actionBtn,
+                            borderColor: showScientificSensoryVectors ? '#38bdf8' : 'rgba(255,255,255,0.15)',
+                            background: showScientificSensoryVectors ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
+                            color: showScientificSensoryVectors ? '#38bdf8' : '#94a3b8',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: '4px 8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                        }}
+                    >
+                        <span>{showScientificSensoryVectors ? '🎯 Vecteurs & FOV: ON' : '🎯 Vecteurs & FOV: OFF'}</span>
+                    </button>
+                )}
 
                 {/* Real-World Clock Sync Display */}
                 <button

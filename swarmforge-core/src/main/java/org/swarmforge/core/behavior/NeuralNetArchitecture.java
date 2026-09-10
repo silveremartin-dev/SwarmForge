@@ -160,9 +160,9 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
         // outputs[4]: rest
         // outputs[5]: explore
 
-        // Find dominant action
-        int maxIdx = 0;
-        float maxVal = 0;
+        // Find dominant action above confidence threshold
+        int maxIdx = -1;
+        float maxVal = 0.5f; // Activation threshold
         for (int i = 2; i < OUTPUT_SIZE; i++) {
             if (outputs[i] > maxVal) {
                 maxVal = outputs[i];
@@ -171,11 +171,11 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
         }
 
         return switch (maxIdx) {
-            case 2 -> outputs[2] > 0.5f ? Action.returnHome() : Action.forage();
+            case 2 -> outputs[2] > 0.7f ? Action.returnHome() : Action.forage();
             case 3 -> Action.attack(null);
             case 4 -> Action.rest();
             default -> {
-                float moveStrength = outputs[0];
+                float moveStrength = Math.max(0.2f, outputs[0]);
                 float turnAngle = (outputs[1] - 0.5f) * (float) Math.PI;
                 yield Action.move((float) Math.cos(turnAngle) * moveStrength,
                         (float) Math.sin(turnAngle) * moveStrength, 0);
@@ -186,32 +186,17 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
     @Override
     public void update(AgentView agent, Action executedAction, ActionResult result) {
         // Full Backpropagation implementation
-        if (lastHidden == null || lastOutputs == null)
+        if (lastHidden == null || lastOutputs == null || result == null)
             return;
 
-        float reward = result.reward();
+        float reward = Math.max(-1.0f, Math.min(1.0f, result.reward()));
         
-        // Target: Only the taken action should be nudged towards reward
-        // Since we don't know "optimal" action, we use reward as a signal to reinforce or discourage the TAKEN action.
-        // Simplified Policy Gradient idea: target = output + learning_rate * reward
-        // Here we just modify the error term.
-
         // 1. Output Gradients
         float[] outputGradients = new float[OUTPUT_SIZE];
         for (int k = 0; k < OUTPUT_SIZE; k++) {
             // Derivative of Sigmoid: o * (1 - o)
-            float derivative = lastOutputs[k] * (1 - lastOutputs[k]);
-            // Error signal: We want to increase activation if reward is positive, decrease if negative
-            // But only for the dominant action or all? 
-            // Better approach for online learning: Nudge dominant outputs towards reward * sign
-            
-            // Heuristic target: If reward > 0, target is 1. If reward < 0, target is 0.
-            // Error = (Target - Output)
-            // But we only have a scalar reward.
-            // Let's use the simple reinforcement heuristic: 
-            // gradient = reward * derivative
-            // This is effectively saying "Move in direction of reward"
-            outputGradients[k] = reward * derivative; 
+            float derivative = lastOutputs[k] * (1.0f - lastOutputs[k]);
+            outputGradients[k] = reward * derivative;
         }
 
         // 2. Hidden Gradients

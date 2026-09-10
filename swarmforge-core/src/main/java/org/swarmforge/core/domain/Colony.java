@@ -581,9 +581,12 @@ public class Colony implements java.io.Serializable {
 
             // Brood breakdown: 35% Eggs, 40% Larvae, 25% Pupae
             double r = java.util.concurrent.ThreadLocalRandom.current().nextDouble();
-            float eggDur = (species != null ? species.getEggStageDuration() : 15f) * 86400.0f;
-            float larvaDur = (species != null ? species.getLarvaStageDuration() : 14f) * 86400.0f;
-            float pupaDur = (species != null ? species.getPupaStageDuration() : 14f) * 86400.0f;
+            float eggDur = species != null ? species.getEggStageDuration() : 300f;
+            float larvaDur = species != null ? species.getLarvaStageDuration() : 600f;
+            float pupaDur = species != null ? species.getPupaStageDuration() : 500f;
+            if (eggDur <= 30f) eggDur *= 60.0f;
+            if (larvaDur <= 30f) larvaDur *= 60.0f;
+            if (pupaDur <= 30f) pupaDur *= 60.0f;
 
             if (r < 0.35) {
                 ind.setLifeStage(Individual.LifeStage.EGG);
@@ -1064,7 +1067,7 @@ public class Colony implements java.io.Serializable {
     }
 
     /**
-     * Process internal colony mechanics (Fungus Garden cultivation, Queen egg-laying based on protein storage & spermatheca reserves).
+     * Process internal colony mechanics (Fungus Garden cultivation, Queen egg-laying, ontogeny expansion).
      */
     public void tick() {
         // 1. Process Fungus Garden if present
@@ -1072,7 +1075,12 @@ public class Colony implements java.io.Serializable {
             fungusGarden.tick();
         }
 
-        // 2. Queen Oviposition & Haplodiploid Determination
+        // 2. Ontogeny nest expansion (checked periodically)
+        if (tunnelNetwork != null && (age % 300 == 0)) {
+            tunnelNetwork.checkAndExpandOntogeny(this);
+        }
+
+        // 3. Queen Oviposition & Haplodiploid Determination
         if (hasQueen() && proteinStored >= 5.0f && (age % 600 == 0)) { // Every ~10 seconds
             float eggCost = 5.0f;
             proteinStored -= eggCost;

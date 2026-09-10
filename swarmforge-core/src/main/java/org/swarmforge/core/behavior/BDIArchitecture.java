@@ -133,7 +133,7 @@ public class BDIArchitecture implements ReasoningArchitecture {
         currentIntention = formIntention(topDesire, agent);
 
         // 4. Translate Intention into Low-Level Action
-        return executeIntentionPlan(currentIntention, agent);
+        return executeIntentionPlan(currentIntention, agent, context);
     }
 
     private void updateBeliefs(AgentView agent, SimulationContext context) {
@@ -142,6 +142,16 @@ public class BDIArchitecture implements ReasoningArchitecture {
         }
         if (agent.isCarryingFood()) {
             desireWeights.put(DesireType.COLONY_NUTRITION, 0.9f);
+        }
+        if (context != null) {
+            if (context.hasEnemyNearby(agent)) {
+                beliefs.perceivedThreatLevel = 1.0f;
+                desireWeights.put(DesireType.DEFENSE, 0.95f);
+            } else {
+                beliefs.perceivedThreatLevel = 0.0f;
+                desireWeights.put(DesireType.DEFENSE, 0.2f);
+            }
+            beliefs.lastPheromoneSignal = context.getFoodPheromone(agent.getX(), agent.getY(), agent.getZ());
         }
     }
 
@@ -170,11 +180,14 @@ public class BDIArchitecture implements ReasoningArchitecture {
         };
     }
 
-    private Action executeIntentionPlan(IntentionType intention, AgentView agent) {
+    private Action executeIntentionPlan(IntentionType intention, AgentView agent, SimulationContext context) {
         return switch (intention) {
             case RETURN_TO_NEST -> Action.returnHome();
             case GO_FORAGING -> Action.forage();
-            case ATTACK_ENEMY -> Action.attack(null);
+            case ATTACK_ENEMY -> {
+                var enemy = context != null ? context.getNearestEnemy(agent) : null;
+                yield Action.attack(enemy);
+            }
             case REST_AND_RECOVER, CLEAN_SELF -> Action.rest();
             default -> Action.forage();
         };

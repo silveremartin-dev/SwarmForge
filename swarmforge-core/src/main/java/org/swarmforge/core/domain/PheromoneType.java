@@ -5,12 +5,14 @@ package org.swarmforge.core.domain;
  * Maps meaningful names to indices in the PheromoneGrid.
  */
 public enum PheromoneType {
-    HOME_TRAIL(0),
-    FOOD_TRAIL(1),
+    FOOD_TRAIL(0),
+    HOME_TRAIL(1),
     ALARM(2),
     RECRUITMENT(3),
     QUEEN_SCENT(4),
-    DEATH_SCENT(5);
+    BROOD_SCENT(5),
+    DEATH_SCENT(6),
+    TERRITORY(7);
 
     private final int index;
 

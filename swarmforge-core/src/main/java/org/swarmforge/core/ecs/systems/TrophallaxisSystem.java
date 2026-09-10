@@ -21,6 +21,7 @@ public class TrophallaxisSystem extends IteratingSystem {
     private ComponentMapper<PositionComponent> mPosition;
     private ComponentMapper<MetabolismComponent> mMetabolism;
     private ComponentMapper<InventoryComponent> mInventory;
+    private ComponentMapper<org.swarmforge.core.ecs.components.ColonyComponent> mColony;
 
     private SpatialPartitioningSystem spatialSystem;
 
@@ -56,11 +57,21 @@ public class TrophallaxisSystem extends IteratingSystem {
         }
         if (spatialSystem == null) return;
 
+        var donorColony = mColony != null && mColony.has(donorId) ? mColony.get(donorId) : null;
+
         List<Integer> nearby = spatialSystem.getNearbyEntities(donorPos.x, donorPos.y, donorPos.z);
         float interactionRadiusSq = 0.25f; // 0.5m radius
 
         for (int recipientId : nearby) {
             if (recipientId == donorId) continue;
+
+            // Check colony membership: only exchange with nestmates
+            if (donorColony != null && mColony != null && mColony.has(recipientId)) {
+                var recipColony = mColony.get(recipientId);
+                if (donorColony.colonyId != null && !donorColony.colonyId.equals(recipColony.colonyId)) {
+                    continue; // Do not feed enemy ants
+                }
+            }
 
             MetabolismComponent recipMeta = mMetabolism.get(recipientId);
             if (recipMeta != null && recipMeta.alive && recipMeta.energy < 40.0f) {

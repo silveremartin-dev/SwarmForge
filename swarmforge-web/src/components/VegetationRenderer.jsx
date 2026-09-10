@@ -615,41 +615,63 @@ function Stump3D({ position, scale = 1.0, terrainConfig }) {
 }
 
 /**
- * Dedicated Scientific Tree Component (Scientific Mode)
- * Parametric botanical structure with clean geometric trunk and conical/spherical crown
- * casting exact parametric scientific shadows.
+ * Standardized Botanical Diagram Tree Component (Scientific Mode)
+ * Represents an academic forestry diagram calibrated to physical biometrics:
+ * - Measured trunk DBH (Diameter at Breast Height) at Y=1.3m
+ * - LAI (Leaf Area Index) light interception crown volume
+ * - Projected ground root zone radius (R_root)
  */
 function ScientificTree({ position, scale = 1.0, variant = 0, season = 'SUMMER', terrainConfig }) {
     const [x, _, z] = position
     const groundY = getTerrainHeight(x, z, terrainConfig)
-    const trunkHeight = 3.8 * scale
+    const trunkHeight = 4.0 * scale
     const crownColor = season === 'WINTER' ? '#cbd5e1' : season === 'AUTUMN' ? '#d97706' : '#15803d'
+    const dbhMm = Math.round(280 * scale) // Diameter at Breast Height in mm
 
     return (
         <group position={[x, groundY, z]} frustumCulled={false}>
-            {/* Scientific Parametric Trunk */}
-            <mesh position={[0, trunkHeight / 2, 0]} castShadow receiveShadow frustumCulled={false}>
-                <cylinderGeometry args={[0.22 * scale, 0.42 * scale, trunkHeight, 10]} />
-                <meshStandardMaterial color="#451a03" roughness={0.7} metalness={0.1} side={THREE.FrontSide} depthWrite depthTest />
+            {/* Projected Ground Root Zone Disk */}
+            <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[0.2 * scale, 2.4 * scale, 24]} />
+                <meshBasicMaterial color="#0284c7" transparent opacity={0.15} side={THREE.DoubleSide} />
             </mesh>
 
-            {/* Scientific Foliage Canopies */}
+            {/* Scientific Parametric Trunk (Charcoal / DBH Calibrated) */}
+            <mesh position={[0, trunkHeight / 2, 0]} castShadow receiveShadow frustumCulled={false}>
+                <cylinderGeometry args={[0.20 * scale, 0.38 * scale, trunkHeight, 12]} />
+                <meshStandardMaterial color="#334155" roughness={0.7} metalness={0.15} side={THREE.FrontSide} depthWrite depthTest />
+            </mesh>
+
+            {/* DBH Metric Ring at Y=1.3m */}
+            <mesh position={[0, 1.3 * scale, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <torusGeometry args={[0.32 * scale, 0.02 * scale, 6, 16]} />
+                <meshBasicMaterial color="#38bdf8" />
+            </mesh>
+
+            {/* LAI (Leaf Area Index) Light Interception Volumes */}
             {variant % 2 === 0 ? (
+                // Conifer / Pinaceae Canopy
                 <group position={[0, trunkHeight * 0.65, 0]} frustumCulled={false}>
                     <mesh position={[0, 0, 0]} castShadow receiveShadow frustumCulled={false}>
-                        <coneGeometry args={[2.0 * scale, 2.4 * scale, 8]} />
+                        <coneGeometry args={[2.0 * scale, 2.4 * scale, 10]} />
                         <meshStandardMaterial color={crownColor} roughness={0.65} side={THREE.FrontSide} depthWrite depthTest />
                     </mesh>
                     <mesh position={[0, 1.3 * scale, 0]} castShadow receiveShadow frustumCulled={false}>
-                        <coneGeometry args={[1.5 * scale, 1.9 * scale, 8]} />
+                        <coneGeometry args={[1.5 * scale, 1.9 * scale, 10]} />
                         <meshStandardMaterial color={crownColor} roughness={0.65} side={THREE.FrontSide} depthWrite depthTest />
                     </mesh>
                     <mesh position={[0, 2.4 * scale, 0]} castShadow receiveShadow frustumCulled={false}>
-                        <coneGeometry args={[1.0 * scale, 1.5 * scale, 8]} />
+                        <coneGeometry args={[1.0 * scale, 1.5 * scale, 10]} />
                         <meshStandardMaterial color={crownColor} roughness={0.65} side={THREE.FrontSide} depthWrite depthTest />
+                    </mesh>
+                    {/* LAI Light Interception Wireframe Envelope */}
+                    <mesh position={[0, 1.2 * scale, 0]}>
+                        <coneGeometry args={[2.2 * scale, 4.0 * scale, 8]} />
+                        <meshBasicMaterial color="#38bdf8" wireframe transparent opacity={0.2} />
                     </mesh>
                 </group>
             ) : (
+                // Deciduous / Broadleaf Canopy
                 <group position={[0, trunkHeight + 0.8 * scale, 0]} frustumCulled={false}>
                     <mesh position={[0, 0, 0]} castShadow receiveShadow frustumCulled={false}>
                         <sphereGeometry args={[1.7 * scale, 12, 10]} />
@@ -662,6 +684,11 @@ function ScientificTree({ position, scale = 1.0, variant = 0, season = 'SUMMER',
                     <mesh position={[-0.6 * scale, -0.3 * scale, -0.5 * scale]} castShadow receiveShadow frustumCulled={false}>
                         <sphereGeometry args={[1.1 * scale, 10, 8]} />
                         <meshStandardMaterial color={crownColor} roughness={0.65} side={THREE.FrontSide} depthWrite depthTest />
+                    </mesh>
+                    {/* LAI Interception Ring */}
+                    <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                        <ringGeometry args={[1.8 * scale, 1.9 * scale, 24]} />
+                        <meshBasicMaterial color="#22c55e" transparent opacity={0.4} side={THREE.DoubleSide} />
                     </mesh>
                 </group>
             )}

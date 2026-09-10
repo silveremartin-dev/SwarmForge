@@ -12,6 +12,103 @@ import { soundEngine } from '../utils/soundEngine'
 import { getTerrainHeight } from '../utils/terrainUtils'
 
 /**
+ * Realistic Mode Atmospheric Macro Pollen & Night Fireflies
+ */
+function MacroAtmosphere({ isNight, terrainConfig }) {
+    const groupRef = useRef()
+    const particles = useMemo(() => {
+        const pts = []
+        for (let i = 0; i < 60; i++) {
+            pts.push({
+                x: Math.random() * 90 + 5,
+                y: Math.random() * 6 + 0.5,
+                z: Math.random() * 90 + 5,
+                speed: 0.2 + Math.random() * 0.5,
+                phase: Math.random() * Math.PI * 2,
+                size: isNight ? 0.25 : 0.12
+            })
+        }
+        return pts
+    }, [isNight])
+
+    useFrame((state) => {
+        if (groupRef.current) {
+            const t = state.clock.getElapsedTime()
+            groupRef.current.children.forEach((mesh, idx) => {
+                const p = particles[idx]
+                mesh.position.y = p.y + Math.sin(t * p.speed + p.phase) * 0.4
+                mesh.position.x = (mesh.position.x + Math.sin(t * 0.2 + idx) * 0.02)
+            })
+        }
+    })
+
+    return (
+        <group ref={groupRef} frustumCulled={false}>
+            {particles.map((p, i) => (
+                <mesh key={i} position={[p.x, p.y, p.z]}>
+                    <sphereGeometry args={[p.size, 6, 6]} />
+                    <meshBasicMaterial
+                        color={isNight ? '#a3e635' : '#fef08a'}
+                        transparent
+                        opacity={isNight ? 0.85 : 0.55}
+                    />
+                </mesh>
+            ))}
+        </group>
+    )
+}
+
+/**
+ * Gamified Mode Floating Voxel Pheromone Particles
+ */
+function GamifiedVoxelParticles({ terrainConfig }) {
+    const groupRef = useRef()
+    const voxels = useMemo(() => {
+        const v = []
+        for (let i = 0; i < 40; i++) {
+            const x = Math.random() * 90 + 5
+            const z = Math.random() * 90 + 5
+            const groundY = getTerrainHeight(x, z, terrainConfig)
+            v.push({
+                x,
+                baseY: groundY + 0.2 + Math.random() * 0.8,
+                z,
+                color: i % 3 === 0 ? '#38bdf8' : (i % 3 === 1 ? '#f59e0b' : '#f43f5e'),
+                speed: 0.8 + Math.random() * 1.2
+            })
+        }
+        return v
+    }, [terrainConfig])
+
+    useFrame((state) => {
+        if (groupRef.current) {
+            const t = state.clock.getElapsedTime()
+            groupRef.current.children.forEach((mesh, idx) => {
+                const v = voxels[idx]
+                mesh.position.y = v.baseY + Math.sin(t * v.speed + idx) * 0.25
+                mesh.rotation.y = t * 0.8 + idx
+            })
+        }
+    })
+
+    return (
+        <group ref={groupRef} frustumCulled={false}>
+            {voxels.map((v, i) => (
+                <mesh key={i} position={[v.x, v.baseY, v.z]}>
+                    <boxGeometry args={[0.25, 0.25, 0.25]} />
+                    <meshStandardMaterial
+                        color={v.color}
+                        emissive={v.color}
+                        emissiveIntensity={0.6}
+                        roughness={0.3}
+                    />
+                </mesh>
+            ))}
+        </group>
+    )
+}
+
+/**
  * Creates a procedural Gaussian-splatted ground texture for Realistic Mode.
  * Blends patches of forest soil, red clay, golden sand, slate pebbles, and vibrant moss.
  */
@@ -587,6 +684,16 @@ export default function Terrarium() {
 
             {/* Trees & Ground Flora Renderer (Voxel Trees for Gamified vs Realistic Anchored Trees & Flora for Realistic) */}
             <VegetationRenderer />
+
+            {/* Gamified Mode Voxel Floating Pheromone Particles */}
+            {isGamified && (
+                <GamifiedVoxelParticles terrainConfig={terrainConfig} />
+            )}
+
+            {/* Realistic Mode Macro Atmospheric Pollen & Night Fireflies */}
+            {lookAndFeel === 'REALISTIC' && (
+                <MacroAtmosphere isNight={environmentLighting?.isNight} terrainConfig={terrainConfig} />
+            )}
 
             {/* Nests Renderer */}
             <NestRenderer />

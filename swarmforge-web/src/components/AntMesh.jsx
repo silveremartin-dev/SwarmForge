@@ -65,7 +65,7 @@ function resolveInsectOrder(insectOrder) {
 }
 
 export default function AntMesh({ position, caste = 'WORKER', scale = 1, diseaseState = 'HEALTHY', insectOrder = 'ANT' }) {
-    const { lookAndFeel } = useSimulationStore()
+    const { lookAndFeel, showScientificSensoryVectors } = useSimulationStore()
     const order = useMemo(() => resolveInsectOrder(insectOrder), [insectOrder])
 
     // Determine base color based on family and caste
@@ -88,6 +88,37 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
 
     return (
         <group position={position}>
+            {/* SCIENTIFIC MODE: Velocity vector & Olfactory/Visual FOV sensory rays */}
+            {lookAndFeel === 'SCIENTIFIC' && showScientificSensoryVectors && (
+                <group position={[0, 0.05, 0]}>
+                    {/* Direction / Velocity Vector Arrow v */}
+                    <mesh position={[0, 0.08, 0.8 * scale]} rotation={[Math.PI / 2, 0, 0]}>
+                        <cylinderGeometry args={[0.015, 0.015, 0.7 * scale, 6]} />
+                        <meshBasicMaterial color="#22c55e" />
+                    </mesh>
+                    <mesh position={[0, 0.08, 1.2 * scale]} rotation={[Math.PI / 2, 0, 0]}>
+                        <coneGeometry args={[0.06 * scale, 0.18 * scale, 6]} />
+                        <meshBasicMaterial color="#22c55e" />
+                    </mesh>
+
+                    {/* Sensory Perception Cone (FOV +/- 35 deg) */}
+                    <mesh position={[0, 0.02, 0.9 * scale]} rotation={[-Math.PI / 2, 0, 0]}>
+                        <coneGeometry args={[0.65 * scale, 1.3 * scale, 10, 1, true]} />
+                        <meshBasicMaterial color="#38bdf8" transparent opacity={0.18} side={THREE.DoubleSide} wireframe />
+                    </mesh>
+
+                    {/* Antennal Sensory Receptors */}
+                    <mesh position={[0.12 * scale, 0.12 * scale, 0.55 * scale]}>
+                        <sphereGeometry args={[0.035 * scale, 6, 6]} />
+                        <meshBasicMaterial color="#f59e0b" />
+                    </mesh>
+                    <mesh position={[-0.12 * scale, 0.12 * scale, 0.55 * scale]}>
+                        <sphereGeometry args={[0.035 * scale, 6, 6]} />
+                        <meshBasicMaterial color="#f59e0b" />
+                    </mesh>
+                </group>
+            )}
+
             {/* SCIENTIFIC MODE: High-contrast data glowing aura */}
             {isInfected && lookAndFeel === 'SCIENTIFIC' && (
                 <mesh position={[0, 0, 0]}>

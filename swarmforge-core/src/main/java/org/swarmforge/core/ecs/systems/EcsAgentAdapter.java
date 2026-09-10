@@ -42,10 +42,22 @@ public class EcsAgentAdapter implements AgentView {
     public float getHeading() { return mPos.get(entityId).heading; }
 
     @Override
-    public float getHomeX() { return homeX; } // Should come from a ColonyComponent
+    public float getHomeX() {
+        if (mColony != null && mColony.has(entityId)) {
+            var col = org.swarmforge.core.ecs.ColonyRegistry.getColony(mColony.get(entityId).colonyId);
+            if (col != null) return col.getNestX();
+        }
+        return homeX;
+    }
 
     @Override
-    public float getHomeY() { return homeY; }
+    public float getHomeY() {
+        if (mColony != null && mColony.has(entityId)) {
+            var col = org.swarmforge.core.ecs.ColonyRegistry.getColony(mColony.get(entityId).colonyId);
+            if (col != null) return col.getNestY();
+        }
+        return homeY;
+    }
     
     @Override
     public boolean isCarryingFood() {
@@ -57,9 +69,17 @@ public class EcsAgentAdapter implements AgentView {
     
     @Override
     public boolean isAtNest() {
-        float dx = getX() - homeX;
-        float dz = getZ() - homeZ;
-        return (dx*dx + dz*dz) < 4.0f; 
+        float hx = getHomeX();
+        float hy = getHomeY();
+        float hz = 0f;
+        if (mColony != null && mColony.has(entityId)) {
+            var col = org.swarmforge.core.ecs.ColonyRegistry.getColony(mColony.get(entityId).colonyId);
+            if (col != null) hz = col.getNestZ();
+        }
+        float dx = getX() - hx;
+        float dy = getY() - hy;
+        float dz = getZ() - hz;
+        return (dx * dx + dy * dy + dz * dz) < 9.0f; 
     }
 
     @Override

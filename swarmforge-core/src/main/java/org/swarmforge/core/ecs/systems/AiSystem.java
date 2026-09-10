@@ -55,21 +55,36 @@ public class AiSystem extends IteratingSystem {
         PositionComponent pos = mPos.get(entityId);
         
         if (inv != null && inv.carriedItem == InventoryComponent.ItemType.FOOD) {
-             // Go Home
-            float dx = 50f - pos.x;
-            float dz = 50f - pos.z;
-            float dist = (float) Math.sqrt(dx*dx + dz*dz);
+            // Go Home
+            float hx = 50f, hy = 50f, hz = 0f;
+            if (mColony != null && mColony.has(entityId)) {
+                var col = org.swarmforge.core.ecs.ColonyRegistry.getColony(mColony.get(entityId).colonyId);
+                if (col != null) {
+                    hx = col.getNestX();
+                    hy = col.getNestY();
+                    hz = col.getNestZ();
+                }
+            }
+            float dx = hx - pos.x;
+            float dy = hy - pos.y;
+            float dz = hz - pos.z;
+            float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
             if (dist < 1.0f) {
                 inv.carriedItem = InventoryComponent.ItemType.NONE; // Drop
+                vel.dx = 0;
+                vel.dy = 0;
+                vel.dz = 0;
             } else {
                 vel.dx = (dx / dist) * vel.speed;
+                vel.dy = (dy / dist) * vel.speed;
                 vel.dz = (dz / dist) * vel.speed;
             }
         } else {
-            // Random Walk
+            // Random Walk on X/Y plane
             double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble() * Math.PI * 2;
             vel.dx = (float) Math.cos(angle) * vel.speed;
-            vel.dz = (float) Math.sin(angle) * vel.speed;
+            vel.dy = (float) Math.sin(angle) * vel.speed;
+            vel.dz = 0;
         }
     }
 
@@ -138,13 +153,23 @@ public class AiSystem extends IteratingSystem {
                 vel.dy = 0;
             }
             case RETURN_HOME -> {
-                // Simplified: head to origin
                 PositionComponent pos = mPos.get(entityId);
-                float dx = -pos.x;
-                float dz = -pos.z;
-                float dist = (float) Math.sqrt(dx*dx + dz*dz);
-                if (dist > 0) {
+                float hx = 50f, hy = 50f, hz = 0f;
+                if (mColony != null && mColony.has(entityId)) {
+                    var col = org.swarmforge.core.ecs.ColonyRegistry.getColony(mColony.get(entityId).colonyId);
+                    if (col != null) {
+                        hx = col.getNestX();
+                        hy = col.getNestY();
+                        hz = col.getNestZ();
+                    }
+                }
+                float dx = hx - pos.x;
+                float dy = hy - pos.y;
+                float dz = hz - pos.z;
+                float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+                if (dist > 0.01f) {
                     vel.dx = (dx / dist) * vel.speed;
+                    vel.dy = (dy / dist) * vel.speed;
                     vel.dz = (dz / dist) * vel.speed;
                 }
             }
@@ -158,10 +183,11 @@ public class AiSystem extends IteratingSystem {
                 }
             }
             case EXPLORE -> {
-                // Random walk
+                // Random walk on X/Y ground plane
                 double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble() * Math.PI * 2;
                 vel.dx = (float) Math.cos(angle) * vel.speed;
-                vel.dz = (float) Math.sin(angle) * vel.speed;
+                vel.dy = (float) Math.sin(angle) * vel.speed;
+                vel.dz = 0;
             }
             case NURSE, DEPOSIT_PHEROMONE, FLEE, COMMUNICATE, FOLLOW_TRAIL, GROOM, ATTACK -> {
                 // Placeholder for more complex actions
