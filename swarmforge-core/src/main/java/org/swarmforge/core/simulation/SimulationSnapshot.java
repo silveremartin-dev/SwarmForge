@@ -192,6 +192,7 @@ public class SimulationSnapshot implements Serializable {
                 }
                 ind.setState(is.state());
                 ind.setCarriedItem(is.carriedItem());
+                ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
 
                 colony.addIndividual(ind);
             }

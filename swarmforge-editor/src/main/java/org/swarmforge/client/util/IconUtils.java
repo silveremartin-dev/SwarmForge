@@ -109,6 +109,13 @@ public class IconUtils {
         URL iconUrl = IconUtils.class.getResource(ICON_PATH);
 
         if (iconUrl != null) {
+            try {
+                Image fullImg = new Image(iconUrl.toExternalForm());
+                if (!fullImg.isError()) {
+                    CACHED_ICONS.add(fullImg);
+                }
+            } catch (Exception ignored) {}
+
             for (int s : sizes) {
                 try {
                     Image iconSized = new Image(iconUrl.toExternalForm(), s, s, true, true, false);

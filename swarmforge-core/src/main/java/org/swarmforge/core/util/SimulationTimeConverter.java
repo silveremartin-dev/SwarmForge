@@ -60,19 +60,22 @@ public final class SimulationTimeConverter {
 
         if (totalSeconds < 60.0) {
             if (totalSeconds == (long) totalSeconds) {
-                return String.format(Locale.ROOT, "%d s", (long) totalSeconds);
+                return String.format(Locale.ROOT, "%.2f s", totalSeconds);
             }
-            return String.format(Locale.ROOT, "%.1f s", totalSeconds);
+            return String.format(Locale.ROOT, "%.2f s", totalSeconds);
         }
 
         double totalMinutes = totalSeconds / 60.0;
         if (totalMinutes < 60.0) {
             long mins = (long) totalMinutes;
-            long secs = (long) (totalSeconds % 60.0);
-            if (secs == 0) {
+            double remSecs = totalSeconds % 60.0;
+            if (remSecs == 0.0) {
                 return String.format(Locale.ROOT, "%d min", mins);
             }
-            return String.format(Locale.ROOT, "%d min %d s", mins, secs);
+            if (remSecs == (long) remSecs) {
+                return String.format(Locale.ROOT, "%d min %d s", mins, (long) remSecs);
+            }
+            return String.format(Locale.ROOT, "%d min %.2f s", mins, remSecs);
         }
 
         double totalHours = totalMinutes / 60.0;

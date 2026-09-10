@@ -1026,7 +1026,9 @@ public class Individual implements java.io.Serializable, AgentView {
                 return ActionResult.ok();
             }
             case FORAGE -> {
-                return ActionResult.ok(); // Intent registered
+                this.heading += (getRandom().nextFloat() - 0.5f) * 0.25f;
+                move(0.9f);
+                return ActionResult.ok();
             }
             case RETURN_HOME, ABORT_AND_RETURN -> {
                 turnTowards(getHomeX(), getHomeY(), 0.1f);

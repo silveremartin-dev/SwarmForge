@@ -137,6 +137,28 @@ export const DEFAULT_WEATHER_PRESETS = [
         humidity: 65
     },
     {
+        id: 'weather_tropical_rainforest',
+        name: 'Tropical Monsoon & Rainforest (30°C, 95% Humidity, Heavy Rain)',
+        description: 'Warm, dense equatorial climate with constant high humidity and frequent tropical showers',
+        season: 'SUMMER',
+        photoperiodHours: 12,
+        tempDay: 30,
+        tempNight: 24,
+        precipitationMm: 50,
+        humidity: 95
+    },
+    {
+        id: 'weather_desert_arid',
+        name: 'Arid Desert & Scorching Sun (42°C, 10% Humidity, Zero Rain)',
+        description: 'Extreme thermal amplitude, high UV index and hyper-arid substrate',
+        season: 'SUMMER',
+        photoperiodHours: 15,
+        tempDay: 42,
+        tempNight: 12,
+        precipitationMm: 0,
+        humidity: 12
+    },
+    {
         id: 'weather_ete_caniculaire',
         name: 'Heatwave Summer & Storms (34°C, Torrential Rain)',
         description: 'High daytime heat triggering violent storms and lightning',
@@ -183,7 +205,7 @@ export const DEFAULT_SCENARIO_META_PRESETS = [
         speciesPresetId: 'species_messor_barbarus',
         nestPresetId: 'nest_messor_granary',
         preyPredatorPresetId: 'prey_pred_peaceful_abundance',
-        weatherPresetId: 'weather_ete_caniculaire'
+        weatherPresetId: 'weather_desert_arid'
     },
     {
         id: 'scenario_guerre_invasives',
@@ -195,7 +217,7 @@ export const DEFAULT_SCENARIO_META_PRESETS = [
         speciesPresetId: 'species_linepithema_humile',
         nestPresetId: 'nest_arboreal_log',
         preyPredatorPresetId: 'prey_pred_vespula_attack',
-        weatherPresetId: 'weather_automne_frais'
+        weatherPresetId: 'weather_tropical_rainforest'
     }
 ]
 

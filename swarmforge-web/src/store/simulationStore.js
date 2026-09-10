@@ -302,6 +302,7 @@ export const useSimulationStore = create((set, get) => ({
             climateEngine: { ...state.climateEngine },
             weatherMode: state.weatherMode,
             realWeatherData: state.realWeatherData,
+            weatherQueryHistory: JSON.parse(JSON.stringify(state.weatherQueryHistory || [])),
         }
 
         const updated = [newCheckpoint, ...state.checkpoints.slice(0, 19)]
@@ -339,6 +340,7 @@ export const useSimulationStore = create((set, get) => ({
             climateEngine: target.climateEngine || state.climateEngine,
             weatherMode: target.weatherMode || 'SIMULATED',
             realWeatherData: target.realWeatherData || null,
+            weatherQueryHistory: target.weatherQueryHistory || [],
             selectedEntity: null,
             cameraResetTrigger: state.cameraResetTrigger + 1,
         })
@@ -373,6 +375,7 @@ export const useSimulationStore = create((set, get) => ({
     realWeatherData: null,
     realWeatherLoading: false,
     realWeatherError: null,
+    weatherQueryHistory: [],
 
     setWeatherMode: (mode) => {
         set({ weatherMode: mode })
@@ -388,7 +391,47 @@ export const useSimulationStore = create((set, get) => ({
         })
     },
 
-    fetchRealWorldWeather: async (customLat = 48.8566, customLon = 2.3522, customCity = 'Paris') => {
+    fetchRealWorldWeather: async (customLat = 48.8566, customLon = 2.3522, customCity = 'Paris', forceLive = false) => {
+        const state = get()
+        const currentTick = state.tick || 0
+
+        // If recorded history has weather data for replay / determinism and not forcing live, use stored data
+        if (!forceLive && state.weatherQueryHistory && state.weatherQueryHistory.length > 0) {
+            const storedRecord = state.weatherQueryHistory.slice().reverse().find(r => r.tick === currentTick) ||
+                state.weatherQueryHistory.slice().reverse().find(r => r.tick <= currentTick)
+            
+            if (storedRecord && storedRecord.data) {
+                const realData = storedRecord.data
+                set(st => ({
+                    realWeatherData: realData,
+                    realWeatherLoading: false,
+                    realWeatherError: null,
+                    environment: {
+                        ...st.environment,
+                        temperature: realData.temp,
+                        humidity: realData.humidity,
+                        rainIntensity: realData.precipitation,
+                        windSpeed: realData.windSpeed,
+                        weatherState: realData.state,
+                    },
+                    climateEngine: {
+                        ...st.climateEngine,
+                        latitudeDeg: realData.latitude,
+                        cloudCover: realData.cloudCover,
+                        precipitationMm: realData.precipitation,
+                        windSpeedMs: realData.windSpeed,
+                        barometricPressureHpa: realData.pressure,
+                    }
+                }))
+                get().addEventLog({
+                    level: 'INFO',
+                    category: 'WEATHER',
+                    message: `⏮️ [Replay Déterministe] Météo réelle restaurée depuis l'historique enregistré (Tick #${storedRecord.tick}): ${realData.temp}°C, ${realData.condition} ${realData.icon}.`
+                })
+                return realData
+            }
+        }
+
         set({ realWeatherLoading: true, realWeatherError: null })
         try {
             let lat = customLat
@@ -434,11 +477,19 @@ export const useSimulationStore = create((set, get) => ({
                 lastUpdated: new Date().toLocaleTimeString('fr-FR')
             }
 
-            set(state => ({
+            const newHistoryEntry = {
+                tick: currentTick,
+                simTime: state.stats?.simTime || currentTick,
+                timestamp: new Date().toISOString(),
+                data: realData
+            }
+
+            set(st => ({
                 realWeatherData: realData,
+                weatherQueryHistory: [...(st.weatherQueryHistory || []), newHistoryEntry],
                 realWeatherLoading: false,
                 environment: {
-                    ...state.environment,
+                    ...st.environment,
                     temperature: realData.temp,
                     humidity: realData.humidity,
                     rainIntensity: realData.precipitation,
@@ -446,7 +497,7 @@ export const useSimulationStore = create((set, get) => ({
                     weatherState: realData.state,
                 },
                 climateEngine: {
-                    ...state.climateEngine,
+                    ...st.climateEngine,
                     latitudeDeg: lat,
                     cloudCover: realData.cloudCover,
                     precipitationMm: realData.precipitation,
@@ -1082,6 +1133,34 @@ export const useSimulationStore = create((set, get) => ({
 
         if (state.timeSyncMode === 'REAL_WORLD') {
             state.updateRealWorldTime()
+        }
+
+        if (state.weatherMode === 'REAL_WORLD') {
+            if (state.weatherQueryHistory && state.weatherQueryHistory.length > 0) {
+                const recordedEntry = state.weatherQueryHistory.slice().reverse().find(r => r.tick <= nextTick)
+                if (recordedEntry && recordedEntry.data && (!state.realWeatherData || state.realWeatherData.lastUpdated !== recordedEntry.data.lastUpdated)) {
+                    const realData = recordedEntry.data
+                    set(s => ({
+                        realWeatherData: realData,
+                        environment: {
+                            ...s.environment,
+                            temperature: realData.temp,
+                            humidity: realData.humidity,
+                            rainIntensity: realData.precipitation,
+                            windSpeed: realData.windSpeed,
+                            weatherState: realData.state,
+                        },
+                        climateEngine: {
+                            ...s.climateEngine,
+                            latitudeDeg: realData.latitude,
+                            cloudCover: realData.cloudCover,
+                            precipitationMm: realData.precipitation,
+                            windSpeedMs: realData.windSpeed,
+                            barometricPressureHpa: realData.pressure,
+                        }
+                    }))
+                }
+            }
         }
 
         if (state.weatherMode === 'SIMULATED') {

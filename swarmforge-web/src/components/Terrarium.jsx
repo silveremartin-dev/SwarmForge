@@ -91,7 +91,7 @@ function VoxelTerrain({ terrainConfig }) {
                     height: blockHeight,
                     isRiver: isRiverChannel,
                     topColor: isRiverChannel ? '#0284c7' : (checker ? '#22c55e' : '#15803d'),
-                    sideColor: isRiverChannel ? '#0369a1' : '#5c3a21'
+                    sideColor: isRiverChannel ? '#0369a1' : (checker ? '#5c3a21' : '#452b18')
                 })
             }
         }
@@ -225,6 +225,21 @@ export default function Terrarium() {
             side: THREE.FrontSide,
         })
     }, [groundColor, lookAndFeel, realisticTextures, splattingTexture])
+
+    // Geological Strata: Carved around river when hasRiver is true
+    const hasRiver = terrainConfig?.hasRiver ?? true
+    const riverX = terrainConfig?.riverX ?? 25
+    const riverWidth = terrainConfig?.riverWidth ?? 12
+    const riverLeft = Math.max(0, riverX - riverWidth / 2)
+    const riverRight = Math.min(100, riverX + riverWidth / 2)
+    const leftWidth = Math.max(0.1, riverLeft)
+    const rightWidth = Math.max(0.1, 100 - riverRight)
+    const leftCenterX = leftWidth / 2
+    const rightCenterX = riverRight + rightWidth / 2
+
+    // Topsoil Left & Right Bank Geometries
+    const topsoilLeftGeo = useMemo(() => new THREE.BoxGeometry(leftWidth, 0.8, 100), [leftWidth])
+    const topsoilRightGeo = useMemo(() => new THREE.BoxGeometry(rightWidth, 0.8, 100), [rightWidth])
 
     // Geological Stratum 1: Topsoil / Humus (Fully opaque solid BoxGeometry)
     const topsoilGeo = useMemo(() => {
@@ -391,46 +406,51 @@ export default function Terrarium() {
                 </mesh>
             )}
 
-            {/* Geological Skirt Stratum 1: Topsoil / Humus (Y: [0, -0.8]) */}
-            <mesh
-                geometry={topsoilGeo}
-                material={topsoilMat}
-                position={[50, -0.4, 50]}
-                receiveShadow
-            />
+            {/* Geological Skirt Strata (Realistic & Scientific Modes only) */}
+            {!isGamified && (
+                <group>
+                    {hasRiver ? (
+                        <>
+                            {/* Topsoil Left Bank & Right Bank */}
+                            <mesh geometry={topsoilLeftGeo} material={topsoilMat} position={[leftCenterX, -0.4, 50]} receiveShadow />
+                            <mesh geometry={topsoilRightGeo} material={topsoilMat} position={[rightCenterX, -0.4, 50]} receiveShadow />
 
-            {/* Geological Skirt Stratum 2: Subsoil (Y: [-0.8, -2.8]) */}
-            <mesh
-                geometry={subsoilGeo}
-                material={subsoilMat}
-                position={[50, -1.8, 50]}
-                receiveShadow
-            />
+                            {/* Subsoil Left Bank & Right Bank */}
+                            <mesh position={[leftCenterX, -1.8, 50]} receiveShadow>
+                                <boxGeometry args={[leftWidth, 2.0, 100]} />
+                                <primitive object={subsoilMat} attach="material" />
+                            </mesh>
+                            <mesh position={[rightCenterX, -1.8, 50]} receiveShadow>
+                                <boxGeometry args={[rightWidth, 2.0, 100]} />
+                                <primitive object={subsoilMat} attach="material" />
+                            </mesh>
+                        </>
+                    ) : (
+                        <>
+                            <mesh geometry={topsoilGeo} material={topsoilMat} position={[50, -0.4, 50]} receiveShadow />
+                            <mesh geometry={subsoilGeo} material={subsoilMat} position={[50, -1.8, 50]} receiveShadow />
+                        </>
+                    )}
 
-            {/* Geological Skirt Stratum 3: Bedrock (Y: [-2.8, -5.0]) */}
-            <mesh
-                geometry={bedrockGeo}
-                material={bedrockMat}
-                position={[50, -3.9, 50]}
-                receiveShadow
-            />
+                    {/* Geological Stratum 3: Bedrock (Y: [-2.8, -5.0]) */}
+                    <mesh geometry={bedrockGeo} material={bedrockMat} position={[50, -3.9, 50]} receiveShadow />
 
-            {/* Subterranean Water Table Horizon */}
-            <mesh
-                geometry={waterTableGeo}
-                material={waterTableMat}
-                position={[50, -3.1, 50]}
-            />
+                    {/* Subterranean Water Table Horizon */}
+                    <mesh geometry={waterTableGeo} material={waterTableMat} position={[50, -3.1, 50]} />
+                </group>
+            )}
 
-            {/* CUBIC OUTER BORDER / VOXEL RIM (Bordure cubique en blocs 3D) */}
-            <group>
-                {voxelRimBlocks.map((b) => (
-                    <mesh key={b.id} position={b.pos} castShadow receiveShadow>
-                        <boxGeometry args={[2.05, 0.25, 2.05]} />
-                        <meshStandardMaterial color={b.color} roughness={0.3} metalness={0.7} side={THREE.DoubleSide} />
-                    </mesh>
-                ))}
-            </group>
+            {/* CUBIC OUTER BORDER / VOXEL RIM (Bordure cubique en blocs 3D - Gamified Mode Only) */}
+            {isGamified && (
+                <group>
+                    {voxelRimBlocks.map((b) => (
+                        <mesh key={b.id} position={b.pos} castShadow receiveShadow>
+                            <boxGeometry args={[2.05, 0.25, 2.05]} />
+                            <meshStandardMaterial color={b.color} roughness={0.3} metalness={0.7} side={THREE.DoubleSide} />
+                        </mesh>
+                    ))}
+                </group>
+            )}
 
             {/* Volumetric Voxel Gravel & Quartz Pebble Inclusions on Cutaway Side Walls (Cubic Voxels) */}
             {gravelInclusions.map((g) => (

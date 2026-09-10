@@ -59,6 +59,14 @@ public class StatisticsDashboard extends VBox {
         public int deaths;
         public String activeEvent = "AUCUN";
 
+        // Ethological / Behavioral state distribution
+        public int stateForaging;
+        public int stateDigging;
+        public int stateNursing;
+        public int stateGuarding;
+        public int stateRoyalCare;
+        public int stateResting;
+
         // Multi-colony & dynamic caste breakdown: ColonyName -> (CasteName -> Count)
         public Map<String, Map<String, Integer>> colonyCasteCounts = new HashMap<>();
 
@@ -106,6 +114,14 @@ public class StatisticsDashboard extends VBox {
     private final XYChart.Series<Number, Number> rainSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> pheroSeries = new XYChart.Series<>();
 
+    // Ethological Behavior Series
+    private final XYChart.Series<Number, Number> behaviorForagingSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> behaviorDiggingSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> behaviorNursingSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> behaviorGuardingSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> behaviorRoyalCareSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> behaviorRestingSeries = new XYChart.Series<>();
+
     // System Performance Series
     private final XYChart.Series<Number, Number> tpsSeries = new XYChart.Series<>();
 
@@ -119,6 +135,7 @@ public class StatisticsDashboard extends VBox {
     private final LineChart<Number, Number> chartCastes;
     private final LineChart<Number, Number> chartResources;
     private final LineChart<Number, Number> chartWeather;
+    private final LineChart<Number, Number> chartBehaviors;
     private final LineChart<Number, Number> chartPerformance;
     private final LineChart<Number, Number> chartIndividualAnt;
 
@@ -336,9 +353,25 @@ public class StatisticsDashboard extends VBox {
                     ? (ant.getSpecies().getCommonName() != null ? ant.getSpecies().getCommonName() : ant.getSpecies().getScientificName())
                     : "Formica fusca";
             lblIndivSpecies.setText(spName != null ? spName : "Formicidae");
+
+            String ethology;
+            if (ant.getCaste() == org.swarmforge.core.domain.Individual.Caste.QUEEN) {
+                ethology = "👑 Soins Royaux / Ponte";
+            } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.FORAGE || ant.getJob() == org.swarmforge.core.domain.Individual.Job.FORAGER || ant.isCarryingFood()) {
+                ethology = "🌾 Fourragement (Récolte / Transport)";
+            } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.DIG || ant.getJob() == org.swarmforge.core.domain.Individual.Job.BUILDER || ant.getCarriedItem() == org.swarmforge.core.domain.Individual.CarriedItem.EARTH) {
+                ethology = "⛏️ Excavation / Creusage";
+            } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.TEND_BROOD || ant.getJob() == org.swarmforge.core.domain.Individual.Job.NURSE || ant.getCarriedItem() == org.swarmforge.core.domain.Individual.CarriedItem.BROOD) {
+                ethology = "🍼 Soins aux Larves (Nursing)";
+            } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.ATTACKING || ant.getState() == org.swarmforge.core.domain.Individual.AiState.PATROL || ant.getJob() == org.swarmforge.core.domain.Individual.Job.GUARD || ant.getCaste() == org.swarmforge.core.domain.Individual.Caste.SOLDIER) {
+                ethology = "🛡️ Garde & Défense";
+            } else {
+                ethology = "💤 Repos / Inactivité";
+            }
+
             String jobStr = ant.getJob() != null ? ant.getJob().toString() : "Forager";
             String stateStr = ant.getState() != null ? ant.getState().toString() : "ACTIVE";
-            lblIndivTask.setText(String.format(Locale.US, "%s [%s]", jobStr, stateStr));
+            lblIndivTask.setText(String.format(Locale.US, "%s [%s / %s]", ethology, jobStr, stateStr));
         });
     }
 
@@ -361,6 +394,12 @@ public class StatisticsDashboard extends VBox {
     private final CheckBox chkTemp = new CheckBox("Temp (°C)");
     private final CheckBox chkRain = new CheckBox("Rain (mm/h)");
     private final CheckBox chkPhero = new CheckBox("Pheromones");
+    private final CheckBox chkForaging = new CheckBox("🌾 Fourragement");
+    private final CheckBox chkDigging = new CheckBox("⛏️ Excavation");
+    private final CheckBox chkNursing = new CheckBox("🍼 Soins Larves");
+    private final CheckBox chkGuarding = new CheckBox("🛡️ Garde/Défense");
+    private final CheckBox chkRoyalCare = new CheckBox("👑 Soins Royaux");
+    private final CheckBox chkResting = new CheckBox("💤 Repos/Inactivité");
     private final CheckBox chkTps = new CheckBox();
     private final CheckBox chkAntHealth = new CheckBox("Ant Health");
     private final CheckBox chkAntEnergy = new CheckBox("Ant Energy");
@@ -403,13 +442,14 @@ public class StatisticsDashboard extends VBox {
         lblViewMode.textProperty().bind(i18n.createStringBinding("stats.res_chart"));
         lblViewMode.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-font-weight: bold;");
         comboGraphView.getItems().addAll(
-                i18n.get("stats.view.all"),
-                i18n.get("stats.view.demographics"),
-                i18n.get("stats.view.castes"),
-                i18n.get("stats.view.resources"),
-                i18n.get("stats.view.ecosystem"),
-                i18n.get("stats.view.tps"),
-                i18n.get("stats.view.telemetry")
+                i18n.get("stats.view.all", "Tous les Graphiques"),
+                i18n.get("stats.view.demographics", "Démographie & Espèces"),
+                i18n.get("stats.view.castes", "Castes"),
+                i18n.get("stats.view.behaviors", "Éthologie & Comportements"),
+                i18n.get("stats.view.resources", "Ressources"),
+                i18n.get("stats.view.ecosystem", "Écosystème & Météo"),
+                i18n.get("stats.view.tps", "Performance TPS"),
+                i18n.get("stats.view.telemetry", "Télémétrie Individuelle")
         );
         comboGraphView.getSelectionModel().selectFirst();
         comboGraphView.tooltipProperty().bind(i18n.createTooltipBinding("stats.graph_view.tt"));
@@ -533,6 +573,7 @@ public class StatisticsDashboard extends VBox {
         FlowPane checkFlow = new FlowPane(12, 6);
         checkFlow.getChildren().addAll(
                 chkTotalPop, chkWorkers, chkSoldiers, chkQueens, chkMales,
+                chkForaging, chkDigging, chkNursing, chkGuarding, chkRoyalCare, chkResting,
                 chkFood, chkWater, chkProtein, chkBirths, chkDeaths,
                 chkTemp, chkRain, chkPhero, chkTps,
                 chkAntHealth, chkAntEnergy, chkAntDistance
@@ -549,10 +590,11 @@ public class StatisticsDashboard extends VBox {
         // === Setup Charts ===
         chartMultiColony = createChart("📈 1. Multi-Colony & Species Demographics (Population per Colony)", "Individuals (Per Colony)");
         chartCastes = createChart("👥 2. Global Caste Breakdown (Queens, Workers, Soldiers, Males)", "Count per Caste");
-        chartResources = createChart("🌾 3. Bio-Resources & Events (Food, Water, Births, Deaths)", "Quantity / Events");
-        chartWeather = createChart("🌤️ 4. Ecosystem & Climate (Temperature °C, Rainfall mm/h, Pheromones)", "Environmental Units");
-        chartPerformance = createChart("⚡ 5. Engine Performance (Computation Speed TPS)", "Ticks Per Second (TPS)");
-        chartIndividualAnt = createChart("🐜 6. Individual Timeline & Telemetry (Health %, Energy %, Distance m)", "Metric Values (%)");
+        chartBehaviors = createChart("🐜 3. Répartition Éthologique des Comportements", "Nombre d'Individus");
+        chartResources = createChart("🌾 4. Bio-Resources & Events (Food, Water, Births, Deaths)", "Quantity / Events");
+        chartWeather = createChart("🌤️ 5. Ecosystem & Climate (Temperature °C, Rainfall mm/h, Pheromones)", "Environmental Units");
+        chartPerformance = createChart("⚡ 6. Engine Performance (Computation Speed TPS)", "Ticks Per Second (TPS)");
+        chartIndividualAnt = createChart("🐜 7. Individual Timeline & Telemetry (Health %, Energy %, Distance m)", "Metric Values (%)");
 
         // Setup series names
         totalPopSeries.setName("Global Total Population");
@@ -560,6 +602,13 @@ public class StatisticsDashboard extends VBox {
         workersSeries.setName(i18n.get("stats.workers", "Workers"));
         soldiersSeries.setName(i18n.get("stats.soldiers", "Soldiers"));
         malesSeries.setName("Males");
+
+        behaviorForagingSeries.setName("🌾 Fourragement (Récolte)");
+        behaviorDiggingSeries.setName("⛏️ Excavation (Galeries)");
+        behaviorNursingSeries.setName("🍼 Soins aux Larves");
+        behaviorGuardingSeries.setName("🛡️ Garde & Défense");
+        behaviorRoyalCareSeries.setName("👑 Soins Royaux");
+        behaviorRestingSeries.setName("💤 Repos / Inactivité");
 
         foodSeries.setName(i18n.get("stats.food", "Stored Food"));
         waterSeries.setName(i18n.get("stats.water", "Water / Humidity"));
@@ -579,6 +628,7 @@ public class StatisticsDashboard extends VBox {
 
         // Assign series to charts
         chartCastes.getData().addAll(totalPopSeries, queensSeries, workersSeries, soldiersSeries, malesSeries);
+        chartBehaviors.getData().addAll(behaviorForagingSeries, behaviorDiggingSeries, behaviorNursingSeries, behaviorGuardingSeries, behaviorRoyalCareSeries, behaviorRestingSeries);
         chartResources.getData().addAll(foodSeries, waterSeries, proteinSeries, birthsSeries, deathsSeries);
         chartWeather.getData().addAll(tempSeries, rainSeries, pheroSeries);
         chartPerformance.getData().addAll(tpsSeries);
@@ -590,6 +640,13 @@ public class StatisticsDashboard extends VBox {
         chkWorkers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, workersSeries, newV));
         chkSoldiers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, soldiersSeries, newV));
         chkMales.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, malesSeries, newV));
+
+        chkForaging.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorForagingSeries, newV));
+        chkDigging.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorDiggingSeries, newV));
+        chkNursing.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorNursingSeries, newV));
+        chkGuarding.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorGuardingSeries, newV));
+        chkRoyalCare.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorRoyalCareSeries, newV));
+        chkResting.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorRestingSeries, newV));
 
         chkFood.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, foodSeries, newV));
         chkWater.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, waterSeries, newV));
@@ -620,15 +677,17 @@ public class StatisticsDashboard extends VBox {
         chartsContainer.getChildren().clear();
         int selected = comboGraphView.getSelectionModel().getSelectedIndex();
         switch (selected) {
-            case 0 -> chartsContainer.getChildren().addAll(chartMultiColony, chartCastes, chartResources, chartWeather, chartPerformance, individualAntCard, chartIndividualAnt);
+            case 0 -> chartsContainer.getChildren().addAll(chartMultiColony, chartCastes, chartBehaviors, chartResources, chartWeather, chartPerformance, individualAntCard, chartIndividualAnt);
             case 1 -> chartsContainer.getChildren().add(chartMultiColony);
             case 2 -> chartsContainer.getChildren().add(chartCastes);
-            case 3 -> chartsContainer.getChildren().add(chartResources);
-            case 4 -> chartsContainer.getChildren().add(chartWeather);
-            case 5 -> chartsContainer.getChildren().add(chartPerformance);
-            case 6 -> chartsContainer.getChildren().addAll(individualAntCard, chartIndividualAnt);
+            case 3 -> chartsContainer.getChildren().add(chartBehaviors);
+            case 4 -> chartsContainer.getChildren().add(chartResources);
+            case 5 -> chartsContainer.getChildren().add(chartWeather);
+            case 6 -> chartsContainer.getChildren().add(chartPerformance);
+            case 7 -> chartsContainer.getChildren().addAll(individualAntCard, chartIndividualAnt);
         }
     }
+
 
     private void toggleSeries(LineChart<Number, Number> chart, XYChart.Series<Number, Number> series, boolean show) {
         if (show) {
@@ -764,22 +823,30 @@ public class StatisticsDashboard extends VBox {
                 soldiersSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.soldiers));
                 malesSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.males));
 
-                // 3. Resources Chart
+                // 3. Ethological Behaviors Chart
+                behaviorForagingSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.stateForaging));
+                behaviorDiggingSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.stateDigging));
+                behaviorNursingSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.stateNursing));
+                behaviorGuardingSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.stateGuarding));
+                behaviorRoyalCareSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.stateRoyalCare));
+                behaviorRestingSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.stateResting));
+
+                // 4. Resources Chart
                 foodSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.food));
                 waterSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.water));
                 proteinSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.protein));
                 birthsSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.births));
                 deathsSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.deaths));
 
-                // 4. Weather Chart
+                // 5. Weather Chart
                 tempSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.temperature));
                 rainSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.rainfall));
                 pheroSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.pheromones));
 
-                // 5. Performance Chart
+                // 6. Performance Chart
                 tpsSeries.getData().add(new XYChart.Data<>(timeSeconds, stats.tickRate));
 
-                // 6. Individual Ant Telemetry Chart & KPI Update
+                // 7. Individual Ant Telemetry Chart & KPI Update
                 double simulatedHealth = Math.max(50.0, 100.0 - (stats.simTicks % 100) * 0.1);
                 double simulatedEnergy = Math.max(20.0, 95.0 - (stats.simTicks % 150) * 0.2);
                 double simulatedDistance = (stats.simTicks * 0.08);
@@ -800,6 +867,12 @@ public class StatisticsDashboard extends VBox {
                 trimSeries(workersSeries);
                 trimSeries(soldiersSeries);
                 trimSeries(malesSeries);
+                trimSeries(behaviorForagingSeries);
+                trimSeries(behaviorDiggingSeries);
+                trimSeries(behaviorNursingSeries);
+                trimSeries(behaviorGuardingSeries);
+                trimSeries(behaviorRoyalCareSeries);
+                trimSeries(behaviorRestingSeries);
                 trimSeries(foodSeries);
                 trimSeries(waterSeries);
                 trimSeries(proteinSeries);
@@ -821,7 +894,7 @@ public class StatisticsDashboard extends VBox {
 
     private void updateChartXAxes(double currentTimeSec) {
         double window = currentSelectedWindowSec;
-        List<LineChart<Number, Number>> allCharts = List.of(chartMultiColony, chartCastes, chartResources, chartWeather, chartPerformance);
+        List<LineChart<Number, Number>> allCharts = List.of(chartMultiColony, chartCastes, chartBehaviors, chartResources, chartWeather, chartPerformance);
 
         for (LineChart<Number, Number> c : allCharts) {
             NumberAxis xAxis = (NumberAxis) c.getXAxis();
@@ -856,6 +929,13 @@ public class StatisticsDashboard extends VBox {
             workersSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
             soldiersSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
             malesSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+
+            behaviorForagingSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            behaviorDiggingSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            behaviorNursingSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            behaviorGuardingSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            behaviorRoyalCareSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
+            behaviorRestingSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
 
             foodSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
             waterSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
@@ -895,6 +975,13 @@ public class StatisticsDashboard extends VBox {
             workersSeries.getData().clear();
             soldiersSeries.getData().clear();
             malesSeries.getData().clear();
+
+            behaviorForagingSeries.getData().clear();
+            behaviorDiggingSeries.getData().clear();
+            behaviorNursingSeries.getData().clear();
+            behaviorGuardingSeries.getData().clear();
+            behaviorRoyalCareSeries.getData().clear();
+            behaviorRestingSeries.getData().clear();
 
             foodSeries.getData().clear();
             waterSeries.getData().clear();
@@ -950,16 +1037,17 @@ public class StatisticsDashboard extends VBox {
                 writer.println("# SwarmForge Simulation Analytics Export");
                 writer.println("# Export_Date; " + LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
                 writer.println("# Total_Records; " + historyList.size());
-                writer.println("Local_Timestamp;Simulated_Time_Seconds;Formatted_Duration;Engine_Tick;dt_Step_Sec;Total_Population;Queens;Workers;Soldiers;Food;Water;Proteins;Temperature_C;Rainfall_mm;TPS_Speed;Births;Deaths;Active_Event");
+                writer.println("Local_Timestamp;Simulated_Time_Seconds;Formatted_Duration;Engine_Tick;dt_Step_Sec;Total_Population;Queens;Workers;Soldiers;Foraging;Digging;Nursing;Guarding;Royal_Care;Resting;Food;Water;Proteins;Temperature_C;Rainfall_mm;TPS_Speed;Births;Deaths;Active_Event");
 
                 for (ColonyStats s : historyList) {
                     double timeSec = s.getSimTimeSeconds();
                     String timeFormatted = formatTime(s.simTicks, s.stepTimeSeconds);
                     String localTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
-                    writer.printf("%s;%.2f;%s;%d;%.4f;%d;%d;%d;%d;%.2f;%.2f;%.2f;%.1f;%.1f;%.2f;%d;%d;%s%n",
+                    writer.printf("%s;%.2f;%s;%d;%.4f;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%.2f;%.2f;%.2f;%.1f;%.1f;%.2f;%d;%d;%s%n",
                             localTime, timeSec, timeFormatted, s.simTicks, s.stepTimeSeconds,
                             s.population, s.queens, s.workers, s.soldiers,
+                            s.stateForaging, s.stateDigging, s.stateNursing, s.stateGuarding, s.stateRoyalCare, s.stateResting,
                             s.food, s.water, s.protein, s.temperature, s.rainfall,
                             s.tickRate, s.births, s.deaths, s.activeEvent);
                 }

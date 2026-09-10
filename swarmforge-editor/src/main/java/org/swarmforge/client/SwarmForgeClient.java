@@ -1058,8 +1058,20 @@ public class SwarmForgeClient extends Application {
 
                                 if (localSimulation != null) {
                                     long curTick = localSimulation.getTickCount();
+                                    if (isPlaying && simControlPanel != null) {
+                                        long maxTicks = simControlPanel.getMaxSimulationTicks();
+                                        if (curTick >= maxTicks) {
+                                            simControlPanel.pauseSimulation();
+                                            if (localSimulation.isRunning()) {
+                                                localSimulation.pause();
+                                            }
+                                        }
+                                    }
                                     if (isPlaying && !isConnected && simControlPanel != null) {
-                                        simControlPanel.updateTick(curTick, curTick);
+                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
+                                    }
+                                    if (simControlPanel != null && localSimulation.getCheckpoints().size() != simControlPanel.getCheckpointsCount()) {
+                                        simControlPanel.updateCheckpoints(localSimulation.getCheckpoints());
                                     }
                                     if (interventionPanel != null) {
                                         interventionPanel.processScheduledEvents(curTick);
@@ -1157,6 +1169,12 @@ public class SwarmForgeClient extends Application {
                                         int males = 0;
                                         float foodAmt = 0;
                                         float waterAmt = 0;
+                                        int foraging = 0;
+                                        int digging = 0;
+                                        int nursing = 0;
+                                        int guarding = 0;
+                                        int royalCare = 0;
+                                        int resting = 0;
 
                                         if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
                                             for (org.swarmforge.core.domain.Colony col : localSimulation.getColonies()) {
@@ -1175,6 +1193,32 @@ public class SwarmForgeClient extends Application {
                                                 males += cM;
                                                 foodAmt += cFood;
                                                 waterAmt += cWater;
+
+                                                for (org.swarmforge.core.domain.Individual ind : col.getLivingIndividuals()) {
+                                                    if (!ind.isAlive()) continue;
+                                                    if (ind.getCaste() == org.swarmforge.core.domain.Individual.Caste.QUEEN) {
+                                                        royalCare++;
+                                                    } else if (ind.getState() == org.swarmforge.core.domain.Individual.AiState.FORAGE
+                                                            || ind.getJob() == org.swarmforge.core.domain.Individual.Job.FORAGER
+                                                            || ind.isCarryingFood()) {
+                                                        foraging++;
+                                                    } else if (ind.getState() == org.swarmforge.core.domain.Individual.AiState.DIG
+                                                            || ind.getJob() == org.swarmforge.core.domain.Individual.Job.BUILDER
+                                                            || ind.getCarriedItem() == org.swarmforge.core.domain.Individual.CarriedItem.EARTH) {
+                                                        digging++;
+                                                    } else if (ind.getState() == org.swarmforge.core.domain.Individual.AiState.TEND_BROOD
+                                                            || ind.getJob() == org.swarmforge.core.domain.Individual.Job.NURSE
+                                                            || ind.getCarriedItem() == org.swarmforge.core.domain.Individual.CarriedItem.BROOD) {
+                                                        nursing++;
+                                                    } else if (ind.getState() == org.swarmforge.core.domain.Individual.AiState.ATTACKING
+                                                            || ind.getState() == org.swarmforge.core.domain.Individual.AiState.PATROL
+                                                            || ind.getJob() == org.swarmforge.core.domain.Individual.Job.GUARD
+                                                            || ind.getCaste() == org.swarmforge.core.domain.Individual.Caste.SOLDIER) {
+                                                        guarding++;
+                                                    } else {
+                                                        resting++;
+                                                    }
+                                                }
 
                                                 Map<String, Integer> casteMap = new HashMap<>();
                                                 casteMap.put("Reines", cQ);
@@ -1204,6 +1248,12 @@ public class SwarmForgeClient extends Application {
                                         stats.soldiers = soldiers;
                                         stats.queens = queens;
                                         stats.males = males;
+                                        stats.stateForaging = foraging;
+                                        stats.stateDigging = digging;
+                                        stats.stateNursing = nursing;
+                                        stats.stateGuarding = guarding;
+                                        stats.stateRoyalCare = royalCare;
+                                        stats.stateResting = resting;
                                         stats.food = foodAmt;
                                         stats.water = waterAmt;
                                         stats.tickRate = isPlaying ? (float) (1.0 / stats.stepTimeSeconds) : 0.0f;
@@ -1397,7 +1447,8 @@ public class SwarmForgeClient extends Application {
                         new javafx.animation.KeyFrame(javafx.util.Duration.millis(100), ev -> {
                             if (!isVideoRecording) return;
                             try {
-                                javafx.scene.image.WritableImage snap = simWorldViewer.snapshot(new javafx.scene.SnapshotParameters(), null);
+                                javafx.scene.Node captureNode = (simWorldViewer != null && simWorldViewer.getCanvas3D() != null) ? simWorldViewer.getCanvas3D() : simWorldViewer;
+                                javafx.scene.image.WritableImage snap = captureNode.snapshot(new javafx.scene.SnapshotParameters(), null);
                                 java.awt.image.BufferedImage frame = org.swarmforge.client.util.MediaCaptureUtil.convertToBufferedImage(snap);
                                 recordedVideoFrames.add(frame);
 
@@ -1687,7 +1738,8 @@ public class SwarmForgeClient extends Application {
 
                         // 2. Take HD screenshot
                         String scName = (simControlPanel != null) ? simControlPanel.getSelectedScenarioName() : "Scenario";
-                        java.io.File screenshotFile = org.swarmforge.client.util.MediaCaptureUtil.takeScreenshot(simWorldViewer, scName);
+                        javafx.scene.Node captureNode = (simWorldViewer != null && simWorldViewer.getCanvas3D() != null) ? simWorldViewer.getCanvas3D() : simWorldViewer;
+                        java.io.File screenshotFile = org.swarmforge.client.util.MediaCaptureUtil.takeScreenshot(captureNode, scName);
                         LOG.info("[SwarmForge] Screenshot HD enregistré: " + screenshotFile.getAbsolutePath());
 
                         // 3. Green checkmark indicator directly on button for 3 seconds

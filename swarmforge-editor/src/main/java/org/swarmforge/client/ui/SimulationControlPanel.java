@@ -1296,12 +1296,12 @@ public class SimulationControlPanel extends VBox {
         isPlaying = false;
         isPaused = true;
         isStopped = false;
-        long target = Math.max(0, currentTick - 1000);
+        long target = Math.max(0, currentTick - 10000);
         currentTick = target;
         updateTick(currentTick, highestRecordedTick);
         updateButtonStates();
         if (onPause != null) onPause.accept(null);
-        if (onRewind != null) onRewind.accept(1000);
+        if (onRewind != null) onRewind.accept(10000);
     }
 
     private void doStepBack() {
@@ -1338,7 +1338,12 @@ public class SimulationControlPanel extends VBox {
         isPlaying = false;
         isPaused = true;
         isStopped = false;
-        long target = currentTick + 100;
+        long maxTicks = getMaxSimulationTicks();
+        if (currentTick >= maxTicks) {
+            updateButtonStates();
+            return;
+        }
+        long target = Math.min(maxTicks, currentTick + 100);
         if (target <= highestRecordedTick) {
             currentTick = target;
             updateTick(currentTick, highestRecordedTick);
@@ -1346,9 +1351,10 @@ public class SimulationControlPanel extends VBox {
             if (onPause != null) onPause.accept(null);
             if (onSeek != null) onSeek.accept(target);
         } else {
+            int stepCount = (int) Math.min(100, maxTicks - currentTick);
             updateButtonStates();
             if (onPause != null) onPause.accept(null);
-            if (onStepForward != null) onStepForward.accept(100);
+            if (onStepForward != null && stepCount > 0) onStepForward.accept(stepCount);
         }
     }
 
@@ -1356,7 +1362,12 @@ public class SimulationControlPanel extends VBox {
         isPlaying = false;
         isPaused = true;
         isStopped = false;
-        long target = currentTick + 1000;
+        long maxTicks = getMaxSimulationTicks();
+        if (currentTick >= maxTicks) {
+            updateButtonStates();
+            return;
+        }
+        long target = Math.min(maxTicks, currentTick + 10000);
         if (target <= highestRecordedTick) {
             currentTick = target;
             updateTick(target, highestRecordedTick);
@@ -1364,9 +1375,10 @@ public class SimulationControlPanel extends VBox {
             if (onPause != null) onPause.accept(null);
             if (onSeek != null) onSeek.accept(target);
         } else {
+            int stepCount = (int) Math.min(10000, maxTicks - currentTick);
             updateButtonStates();
             if (onPause != null) onPause.accept(null);
-            if (onStepForward != null) onStepForward.accept(1000);
+            if (onStepForward != null && stepCount > 0) onStepForward.accept(stepCount);
         }
     }
 
@@ -1590,6 +1602,10 @@ public class SimulationControlPanel extends VBox {
                 comboCheckpoints.getSelectionModel().selectLast();
             }
         }
+    }
+
+    public int getCheckpointsCount() {
+        return comboCheckpoints.getItems().size();
     }
 
     public long getCurrentTick() { return currentTick; }

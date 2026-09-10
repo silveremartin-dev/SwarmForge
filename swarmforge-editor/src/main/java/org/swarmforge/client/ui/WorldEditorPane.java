@@ -52,6 +52,10 @@ public class WorldEditorPane extends BorderPane {
         if (active) repaintAllViews();
     }
 
+    public ResizableCanvas getCanvas3D() {
+        return canvas3D;
+    }
+
     // 3D Camera Controls
     private double azimuth = 45, elevation = 35, zoom = 7.5;
     private double pan3DX = 0, pan3DY = 0;
@@ -262,8 +266,9 @@ public class WorldEditorPane extends BorderPane {
 
     public void updateRightScrollVisibility() {
         if (rightScroll != null) {
-            boolean hasVisibleContent = (legendPanel != null && legendPanel.isVisible()) ||
-                                        (rightRenderOptions != null && rightRenderOptions.isVisible());
+            boolean hasLegend = (legendPanel != null && legendPanel.isVisible() && (showLegendCheckBox == null || showLegendCheckBox.isSelected()));
+            boolean hasOptions = (rightRenderOptions != null && rightRenderOptions.isVisible());
+            boolean hasVisibleContent = hasLegend || hasOptions;
             rightScroll.setVisible(hasVisibleContent);
             rightScroll.setManaged(hasVisibleContent);
         }
@@ -296,8 +301,12 @@ public class WorldEditorPane extends BorderPane {
 
     public void setRightLegendVisible(boolean visible) {
         if (rightScroll != null) {
-            rightScroll.setVisible(visible);
-            rightScroll.setManaged(visible);
+            if (!visible) {
+                rightScroll.setVisible(false);
+                rightScroll.setManaged(false);
+            } else {
+                updateRightScrollVisibility();
+            }
         }
         repaintAllViews();
     }
@@ -336,7 +345,6 @@ public class WorldEditorPane extends BorderPane {
     private double previousZoom = 7.5;
 
     public void setFullscreenMode(boolean fs) {
-        setRightLegendVisible(!fs);
         setDualMinimapVisible(!fs);
         setHeaderVisible(!fs);
         if (fs) {
@@ -346,6 +354,7 @@ public class WorldEditorPane extends BorderPane {
             setHideHeaderPresets(true);
             setHideConfigPanel(true);
             setHideRightRenderOptions(true);
+            setRightLegendVisible(false);
         } else {
             this.zoom = this.previousZoom;
             if (isSync()) { this.sideZoom = Math.max(0.3, Math.min(6.0, zoom / 7.5)); this.topZoom = sideZoom; }
@@ -354,6 +363,7 @@ public class WorldEditorPane extends BorderPane {
                 setHideConfigPanel(false);
                 setHideRightRenderOptions(false);
             }
+            updateRightScrollVisibility();
         }
         repaintAllViews();
     }
@@ -3299,7 +3309,7 @@ public class WorldEditorPane extends BorderPane {
                     pan3DX += dx; pan3DY += dy;
                     if (isSync()) { sidePanX = pan3DX; sidePanY = pan3DY; topPanX = pan3DX; topPanY = pan3DY; }
                 } else {
-                    azimuth = (azimuth - dx * 0.55) % 360;
+                    azimuth = (azimuth + dx * 0.55) % 360;
                     if (azimuth < 0) azimuth += 360;
                     elevation = Math.max(5, Math.min(85, elevation - dy * 0.35));
                 }
@@ -3371,11 +3381,11 @@ public class WorldEditorPane extends BorderPane {
                 if (activeSimulation.getPredatorManager() != null) {
                     for (org.swarmforge.core.domain.Predator pred : activeSimulation.getPredatorManager().getPredators()) {
                         if (!pred.isAlive()) continue;
-                        double px = (pred.getX() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
-                        double py = (pred.getY() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
+                        double px = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (pred.getX() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE));
+                        double py = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (pred.getY() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE));
                         int ipx = Math.max(0, Math.min(GRID_SIZE - 1, (int) px));
                         int ipy = Math.max(0, Math.min(GRID_SIZE - 1, (int) py));
-                        double pz = heightGrid[ipx][ipy] * 40.0 + pred.getZ() * 2.0 + 2.0;
+                        double pz = heightGrid[ipx][ipy] * 40.0 + Math.max(-40.0, Math.min(60.0, (double) pred.getZ())) * 2.0 + 2.0;
 
                         double[] p = project3DPoint(px, py, pz, cx, cy, scale, radAz, radEl);
                         double dSq = (p[0] - mx) * (p[0] - mx) + (p[1] - my) * (p[1] - my);
@@ -3718,11 +3728,11 @@ public class WorldEditorPane extends BorderPane {
             if (activeSimulation.getPredatorManager() != null) {
                 for (org.swarmforge.core.domain.Predator pred : activeSimulation.getPredatorManager().getPredators()) {
                     if (!pred.isAlive()) continue;
-                    double px = (pred.getX() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
-                    double py = (pred.getY() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
+                    double px = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (pred.getX() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE));
+                    double py = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (pred.getY() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE));
                     int ipx = Math.max(0, Math.min(GRID_SIZE - 1, (int) px));
                     int ipy = Math.max(0, Math.min(GRID_SIZE - 1, (int) py));
-                    double pz = heightGrid[ipx][ipy] * 40.0 + pred.getZ() * 2.0 + 2.0;
+                    double pz = heightGrid[ipx][ipy] * 40.0 + Math.max(-40.0, Math.min(60.0, (double) pred.getZ())) * 2.0 + 2.0;
 
                     double[] p = project3DPoint(px, py, pz, cx, cy, scale, radAz, radEl);
                     double dSq = (p[0] - mx) * (p[0] - mx) + (p[1] - my) * (p[1] - my);
@@ -4035,6 +4045,7 @@ public class WorldEditorPane extends BorderPane {
         double scale = zoom * 12.0;
 
         int step = 2;
+        double sideM = surfaceSizeSlider != null ? surfaceSizeSlider.getValue() : 25.0;
         double targetDepthVal = depthSlider != null ? depthSlider.getValue() : 1.5;
         double maxDepthPx = targetDepthVal * 22.0;
 
@@ -4046,7 +4057,7 @@ public class WorldEditorPane extends BorderPane {
         double cutRatio = slicePlaneSlider != null ? (slicePlaneSlider.getValue() / 100.0) : 1.0;
         int cutXLimit = (int) (GRID_SIZE * cutRatio);
         cutXLimit = (cutXLimit / step) * step;
-        cutXLimit = Math.max(step, Math.min(GRID_SIZE - step, cutXLimit));
+        cutXLimit = Math.max(step, Math.min(GRID_SIZE, cutXLimit));
         boolean isScanning = false;
         boolean isCutPlaneFacingCamera = Math.sin(radAz) >= 0;
 
@@ -4072,13 +4083,13 @@ public class WorldEditorPane extends BorderPane {
                     }
                 }
 
-                int limitX = Math.min(GRID_SIZE - step, cutXLimit);
+                int limitX = Math.min(GRID_SIZE, cutXLimit);
                 int xStart = sinPos ? 0 : limitX - step;
                 int xEnd = sinPos ? limitX : -step;
                 int xDir = sinPos ? step : -step;
 
-                int yStart = cosPos ? 0 : GRID_SIZE - 1 - step;
-                int yEnd = cosPos ? GRID_SIZE - step : -step;
+                int yStart = cosPos ? 0 : GRID_SIZE - step;
+                int yEnd = cosPos ? GRID_SIZE : -step;
                 int yDir = cosPos ? step : -step;
 
                 for (int x = xStart; (xDir > 0 ? x < xEnd : x >= 0); x += xDir) {
@@ -4135,26 +4146,26 @@ public class WorldEditorPane extends BorderPane {
                     }
                 }
             } else {
-                int limitX = Math.min(GRID_SIZE - step, cutXLimit);
+                int limitX = Math.min(GRID_SIZE, cutXLimit);
                 int xStart = sinPos ? 0 : limitX - step;
                 int xEnd = sinPos ? limitX : -step;
                 int xDir = sinPos ? step : -step;
 
-                int yStart = cosPos ? 0 : GRID_SIZE - 1 - step;
-                int yEnd = cosPos ? GRID_SIZE - step : -step;
+                int yStart = cosPos ? 0 : GRID_SIZE - step;
+                int yEnd = cosPos ? GRID_SIZE : -step;
                 int yDir = cosPos ? step : -step;
 
                 for (int x = xStart; (xDir > 0 ? x < xEnd : x >= 0); x += xDir) {
                     for (int y = yStart; (yDir > 0 ? y < yEnd : y >= 0); y += yDir) {
                         double z0 = heightGrid[x][y] * 40.0;
-                        double z1 = heightGrid[x + step][y] * 40.0;
-                        double z2 = heightGrid[x + step][y + step] * 40.0;
-                        double z3 = heightGrid[x][y + step] * 40.0;
+                        double z1 = heightGrid[Math.min(GRID_SIZE - 1, x + step)][y] * 40.0;
+                        double z2 = heightGrid[Math.min(GRID_SIZE - 1, x + step)][Math.min(GRID_SIZE - 1, y + step)] * 40.0;
+                        double z3 = heightGrid[x][Math.min(GRID_SIZE - 1, y + step)] * 40.0;
 
                         if (carvedVoxelGrid[x][y]) z0 -= 15.0;
-                        if (carvedVoxelGrid[x + step][y]) z1 -= 15.0;
-                        if (carvedVoxelGrid[x + step][y + step]) z2 -= 15.0;
-                        if (carvedVoxelGrid[x][y + step]) z3 -= 15.0;
+                        if (carvedVoxelGrid[Math.min(GRID_SIZE - 1, x + step)][y]) z1 -= 15.0;
+                        if (carvedVoxelGrid[Math.min(GRID_SIZE - 1, x + step)][Math.min(GRID_SIZE - 1, y + step)]) z2 -= 15.0;
+                        if (carvedVoxelGrid[x][Math.min(GRID_SIZE - 1, y + step)]) z3 -= 15.0;
 
                         double[] p0 = project3DPoint(x, y, z0, cx, cy, scale, radAz, radEl);
                         double[] p1 = project3DPoint(x + step, y, z1, cx, cy, scale, radAz, radEl);
@@ -4178,6 +4189,11 @@ public class WorldEditorPane extends BorderPane {
                         } else {
                             baseMatCol = Color.web("#1e293b", 0.35);
                         }
+
+                        // Highlight Substrate Cut Profile Slice
+                        if (x + step >= cutXLimit && isScanning) {
+                            baseMatCol = Color.web("#38bdf8"); // Laser Cut Glow
+                        }
                         // Dynamic Lambertian Directional Sunlight Shading Model
                         double dzdx = ((z1 + z2) - (z0 + z3)) * 0.025;
                         double dzdy = ((z2 + z3) - (z0 + z1)) * 0.025;
@@ -4191,9 +4207,12 @@ public class WorldEditorPane extends BorderPane {
                         gc3D.setFill(col);
                         gc3D.fillPolygon(pxs, pys, 4);
 
-                        gc3D.setStroke(col.darker());
-                        gc3D.setLineWidth(visibleMat ? 0.3 : 0.1);
-                        gc3D.strokePolygon(pxs, pys, 4);
+                        // Render voxel wireframe outlines only in GAMIFIED or HYBRID mode, NOT in REALISTIC mode
+                        if (currentRenderMode != RenderMode.REALISTIC) {
+                            gc3D.setStroke(col.darker());
+                            gc3D.setLineWidth(visibleMat ? 0.3 : 0.1);
+                            gc3D.strokePolygon(pxs, pys, 4);
+                        }
 
                         // Render Procedural Organic Litter Detritus (Fallen Leaves & Twigs) when Organic Matter is toggled ON
                         if (mat == 5 && visibleMat && (x + y) % 3 == 0) {
@@ -4398,13 +4417,9 @@ public class WorldEditorPane extends BorderPane {
                 double sz = heightGrid[sx][sy] * 40.0;
                 if (isPointOccluded(sx, sy, sz, radAz, radEl)) continue;
                 double[] sp = project3DPoint(sx, sy, sz, cx, cy, scale, radAz, radEl);
-
-                gc3D.setFill(Color.web("#78350f"));
-                gc3D.fillRect(sp[0] - 5, sp[1] - 12, 10, 12);
-                gc3D.setFill(Color.web("#451a03"));
-                gc3D.fillOval(sp[0] - 5, sp[1] - 15, 10, 6);
-                gc3D.setFill(Color.web("#15803d"));
-                gc3D.fillOval(sp[0] - 7, sp[1] - 3, 14, 5);
+                double stW = Math.max(7.0, 10.0 * (zoom / 7.5));
+                double stH = Math.max(8.0, 12.0 * (zoom / 7.5));
+                draw3DVolumetricStump(sp[0], sp[1], stW, stH);
             }
         }
 
@@ -4419,52 +4434,63 @@ public class WorldEditorPane extends BorderPane {
                 double sc = item.scale * (zoom / 7.5);
 
                 if (currentRenderMode == RenderMode.REALISTIC && !item.isCharred) {
-                    // Render true 3D Wavefront OBJ models for surface flora in Realistic mode
-                    double objScale = sc * 0.40;
+                    // Render true 3D Wavefront OBJ models calibrated to real meter dimensions relative to terrain parcel sideM
+                    double gridPerM = (double) GRID_SIZE / Math.max(1.0, sideM);
                     switch (item.type) {
                         case 0 -> { // Bamboo
                             if (bambooObjMeshes != null && !bambooObjMeshes.isEmpty()) {
-                                drawObjSingleMesh3D(bambooObjMeshes.get(0), item.gx, item.gy, z, objScale * 0.35, Color.web("#4ade80"), Color.web("#166534"), cx, cy, scale, radAz, radEl);
+                                org.swarmforge.client.util.ObjModelLoader.ObjMesh bMesh = bambooObjMeshes.get(0);
+                                double bScale = (2.5 * item.scale * gridPerM) / Math.max(0.1, bMesh.height);
+                                drawObjSingleMesh3D(bMesh, item.gx, item.gy, z, bScale, Color.web("#4ade80"), Color.web("#166534"), cx, cy, scale, radAz, radEl);
                             }
                         }
                         case 1 -> { // Small Cactus
                             if (cactusObjMeshes != null && !cactusObjMeshes.isEmpty()) {
-                                drawObjSingleMesh3D(cactusObjMeshes.get(0), item.gx, item.gy, z, objScale * 0.30, Color.web("#eab308"), Color.web("#854d0e"), cx, cy, scale, radAz, radEl);
+                                org.swarmforge.client.util.ObjModelLoader.ObjMesh cMesh = cactusObjMeshes.get(0);
+                                double cScale = (0.7 * item.scale * gridPerM) / Math.max(0.1, cMesh.height);
+                                drawObjSingleMesh3D(cMesh, item.gx, item.gy, z, cScale, Color.web("#eab308"), Color.web("#854d0e"), cx, cy, scale, radAz, radEl);
                             }
                         }
                         case 2 -> { // Flowering Cactus
                             if (cactusObjMeshes != null && !cactusObjMeshes.isEmpty()) {
-                                drawObjSingleMesh3D(cactusObjMeshes.get(0), item.gx, item.gy, z, objScale * 0.30, Color.web("#f43f5e"), Color.web("#854d0e"), cx, cy, scale, radAz, radEl);
+                                org.swarmforge.client.util.ObjModelLoader.ObjMesh cMesh = cactusObjMeshes.get(0);
+                                double cScale = (0.9 * item.scale * gridPerM) / Math.max(0.1, cMesh.height);
+                                drawObjSingleMesh3D(cMesh, item.gx, item.gy, z, cScale, Color.web("#f43f5e"), Color.web("#854d0e"), cx, cy, scale, radAz, radEl);
                             }
                         }
-                        case 3, 4 -> { // Fougère Tropicale / Fern (calibrated 3D scale)
+                        case 3, 4 -> { // Fougère Tropicale / Fern
                             org.swarmforge.client.util.ObjModelLoader.ObjMesh fMesh = fernMesh != null ? fernMesh : (tropicalObjMeshes != null && !tropicalObjMeshes.isEmpty() ? tropicalObjMeshes.get(0) : null);
                             if (fMesh != null) {
-                                drawObjSingleMesh3D(fMesh, item.gx, item.gy, z, objScale * 0.35, Color.web("#15803d"), Color.web("#14532d"), cx, cy, scale, radAz, radEl);
+                                double fScale = (0.65 * item.scale * gridPerM) / Math.max(0.1, fMesh.height);
+                                drawObjSingleMesh3D(fMesh, item.gx, item.gy, z, fScale, Color.web("#15803d"), Color.web("#14532d"), cx, cy, scale, radAz, radEl);
                             }
                         }
                         case 5 -> { // Bois mort / Souche
                             org.swarmforge.client.util.ObjModelLoader.ObjMesh sMesh = stumpMesh != null ? stumpMesh : deadTreeMesh;
                             if (sMesh != null) {
-                                drawObjSingleMesh3D(sMesh, item.gx, item.gy, z, objScale * 0.35, Color.web("#78350f"), Color.web("#451a03"), cx, cy, scale, radAz, radEl);
+                                double sScale = (0.8 * item.scale * gridPerM) / Math.max(0.1, sMesh.height);
+                                drawObjSingleMesh3D(sMesh, item.gx, item.gy, z, sScale, Color.web("#78350f"), Color.web("#451a03"), cx, cy, scale, radAz, radEl);
                             }
                         }
                         case 7 -> { // Graminées hautes (Tall Grass Clump)
                             org.swarmforge.client.util.ObjModelLoader.ObjMesh gMesh = grassHighMesh != null ? grassHighMesh : bushMesh;
                             if (gMesh != null) {
-                                drawObjSingleMesh3D(gMesh, item.gx, item.gy, z, objScale * 0.30, Color.web("#65a30d"), Color.web("#365314"), cx, cy, scale, radAz, radEl);
+                                double gScale = (0.85 * item.scale * gridPerM) / Math.max(0.1, gMesh.height);
+                                drawObjSingleMesh3D(gMesh, item.gx, item.gy, z, gScale, Color.web("#65a30d"), Color.web("#365314"), cx, cy, scale, radAz, radEl);
                             }
                         }
                         case 8 -> { // Graminées basses (Low Grass / Meadow)
                             org.swarmforge.client.util.ObjModelLoader.ObjMesh gMesh = grassLowMesh != null ? grassLowMesh : bushMesh;
                             if (gMesh != null) {
-                                drawObjSingleMesh3D(gMesh, item.gx, item.gy, z, objScale * 0.25, Color.web("#84cc16"), Color.web("#3f6212"), cx, cy, scale, radAz, radEl);
+                                double gScale = (0.45 * item.scale * gridPerM) / Math.max(0.1, gMesh.height);
+                                drawObjSingleMesh3D(gMesh, item.gx, item.gy, z, gScale, Color.web("#84cc16"), Color.web("#3f6212"), cx, cy, scale, radAz, radEl);
                             }
                         }
                         case 9 -> { // Fleurs / Champignons
                             org.swarmforge.client.util.ObjModelLoader.ObjMesh flMesh = flowerWhiteMesh != null ? flowerWhiteMesh : mushroomMesh;
                             if (flMesh != null) {
-                                drawObjSingleMesh3D(flMesh, item.gx, item.gy, z, objScale * 0.28, Color.web("#f8fafc"), Color.web("#e11d48"), cx, cy, scale, radAz, radEl);
+                                double flScale = (0.35 * item.scale * gridPerM) / Math.max(0.1, flMesh.height);
+                                drawObjSingleMesh3D(flMesh, item.gx, item.gy, z, flScale, Color.web("#f8fafc"), Color.web("#e11d48"), cx, cy, scale, radAz, radEl);
                             }
                         }
                         default -> {
@@ -4613,7 +4639,7 @@ public class WorldEditorPane extends BorderPane {
         if (treeCountSlider != null && (showVegetationCheck == null || showVegetationCheck.isSelected())) {
             List<BotanicalTreeData> treeDataList = getBotanicalTreeInstances();
 
-            double sideM = surfaceSizeSlider != null ? surfaceSizeSlider.getValue() : 25.0;
+            sideM = surfaceSizeSlider != null ? surfaceSizeSlider.getValue() : 25.0;
             double pixelsPerMeter = Math.max(1.5, (GRID_SIZE * scale * (zoom / 7.5)) / Math.max(1.0, sideM));
 
             class TreeInstance {
@@ -4709,13 +4735,7 @@ public class WorldEditorPane extends BorderPane {
                 // Canopy radius scaled to pixels
                 double canopyR = Math.max(5.0, canopyRadiusM * pixelsPerMeter);
 
-                // 1. Dynamic Directional Soft Cast Shadow (ONLY in Simulation mode, zero in 3D Editor mode)
-                if (isSimulationMode) {
-                    gc3D.setFill(Color.web("#020617", 0.12));
-                    gc3D.fillOval(p[0] - canopyR * 0.8 + 6, p[1] - canopyR * 0.2, canopyR * 1.8, canopyR * 0.5);
-                }
-
-                // 2. Animated Wind Sway offset (ONLY in Simulation mode, zero in 3D Editor mode)
+                // 1. Animated Wind Sway offset
                 double windSwayX = 0.0;
                 double windSwayY = 0.0;
                 if (isSimulationMode) {
@@ -4736,6 +4756,20 @@ public class WorldEditorPane extends BorderPane {
                     windSwayY = Math.sin(windAngleRad) * swayAmp * 0.4;
                 }
                 double swayX = p[0] + windSwayX;
+
+                // 2. Dynamic Directional Soft Cast Shadow (follows tree base, height, canopy radius and wind sway)
+                double shadowOffsetDist = trunkH * 0.45;
+                double shadowDx = Math.cos(radAz + Math.PI / 4.0) * shadowOffsetDist + windSwayX * 0.5;
+                double shadowDy = Math.sin(radAz + Math.PI / 4.0) * shadowOffsetDist * Math.sin(radEl) + windSwayY * 0.5;
+                double shadowW = canopyR * 1.5;
+                double shadowH = canopyR * 0.7 * Math.sin(radEl);
+
+                // Soft ground canopy shadow
+                gc3D.setFill(Color.color(0.02, 0.04, 0.09, isSimulationMode ? 0.18 : 0.12));
+                gc3D.fillOval(p[0] + shadowDx - shadowW * 0.5, p[1] + shadowDy - shadowH * 0.5, shadowW, shadowH);
+                // Contact shadow at trunk/stump base
+                gc3D.setFill(Color.color(0.01, 0.02, 0.05, 0.28));
+                gc3D.fillOval(p[0] - trunkW * 0.75, p[1] - trunkW * 0.25, trunkW * 1.5, trunkW * 0.5);
 
                 // Seasonal State & Palette Determination (0=Spring, 1=Summer, 2=Autumn, 3=Winter)
                 int seasonIdx = 1; // Summer default in World Editor mode
@@ -4912,10 +4946,14 @@ public class WorldEditorPane extends BorderPane {
 
 
 
+                double gridPerM = (double) GRID_SIZE / Math.max(1.0, sideM);
+
                 switch (speciesIdx) {
                     case 0 -> { // Bambouseraie (Bamboo Cluster 3D OBJ Model)
                         if (currentRenderMode == RenderMode.REALISTIC && bambooObjMeshes != null && !bambooObjMeshes.isEmpty()) {
-                            drawObjSingleMesh3D(bambooObjMeshes.get(0), ti.gx, ti.gy, z, 0.45 * ti.ageScale * (zoom / 7.5), Color.web("#4ade80"), Color.web("#15803d"), cx, cy, scale, radAz, radEl);
+                            org.swarmforge.client.util.ObjModelLoader.ObjMesh bMesh = bambooObjMeshes.get(0);
+                            double bScale = (3.5 * ti.ageScale * gridPerM) / Math.max(0.1, bMesh.height);
+                            drawObjSingleMesh3D(bMesh, ti.gx, ti.gy, z, bScale, Color.web("#4ade80"), Color.web("#15803d"), cx, cy, scale, radAz, radEl);
                         } else {
                             gc3D.setStroke(Color.web("#84cc16")); gc3D.setLineWidth(Math.max(2.0, trunkW * 0.35));
                             gc3D.strokeLine(p[0] - trunkW * 0.6, p[1], swayX - trunkW * 0.4, p[1] - trunkH * 1.1);
@@ -4933,22 +4971,19 @@ public class WorldEditorPane extends BorderPane {
                     }
                     case 1 -> { // Souche / Bois Mort & Champignons (Dead Stump 3D OBJ Model)
                         if (currentRenderMode == RenderMode.REALISTIC && (stumpMesh != null || deadTreeMesh != null)) {
-                            drawObjSingleMesh3D(stumpMesh != null ? stumpMesh : deadTreeMesh, ti.gx, ti.gy, z, 0.45 * ti.ageScale * (zoom / 7.5), Color.web("#78350f"), Color.web("#451a03"), cx, cy, scale, radAz, radEl);
+                            org.swarmforge.client.util.ObjModelLoader.ObjMesh sMesh = stumpMesh != null ? stumpMesh : deadTreeMesh;
+                            double sScale = (1.2 * ti.ageScale * gridPerM) / Math.max(0.1, sMesh.height);
+                            drawObjSingleMesh3D(sMesh, ti.gx, ti.gy, z, sScale, Color.web("#78350f"), Color.web("#451a03"), cx, cy, scale, radAz, radEl);
                         } else {
-                            gc3D.setFill(Color.web("#78350f"));
-                            gc3D.fillRect(p[0] - trunkW * 0.9, p[1] - trunkH * 0.5, trunkW * 1.8, trunkH * 0.5);
-                            gc3D.setFill(Color.web("#451a03"));
-                            gc3D.fillOval(p[0] - trunkW * 0.9, p[1] - trunkH * 0.55, trunkW * 1.8, trunkH * 0.25);
-                            gc3D.setFill(Color.web("#b45309"));
-                            gc3D.fillOval(p[0] - trunkW * 0.6, p[1] - trunkH * 0.52, trunkW * 1.2, trunkH * 0.15);
-                            gc3D.setFill(Color.web("#f59e0b"));
-                            gc3D.fillOval(p[0] + trunkW * 0.7, p[1] - trunkH * 0.3, trunkW * 0.6, trunkH * 0.12);
+                            draw3DVolumetricStump(p[0], p[1], trunkW * 1.8, trunkH * 0.6);
                         }
                     }
                     case 2 -> { // Bouleau (Betula - Birch 3D OBJ Model)
                         if (currentRenderMode == RenderMode.REALISTIC && (birchMesh != null || oakMesh != null)) {
+                            org.swarmforge.client.util.ObjModelLoader.ObjMesh bMesh = birchMesh != null ? birchMesh : oakMesh;
+                            double bScale = (treeHeightM * gridPerM) / Math.max(0.1, bMesh.height);
                             Color foliageB = (seasonIdx == 2) ? Color.web("#fde047") : ((seasonIdx == 3) ? Color.web("#f8fafc") : Color.web("#86efac"));
-                            drawObjSingleMesh3D(birchMesh != null ? birchMesh : oakMesh, ti.gx, ti.gy, z, 0.50 * ti.ageScale * (zoom / 7.5), foliageB, Color.web("#f8fafc"), cx, cy, scale, radAz, radEl);
+                            drawObjSingleMesh3D(bMesh, ti.gx, ti.gy, z, bScale, foliageB, Color.web("#f8fafc"), cx, cy, scale, radAz, radEl);
                         } else {
                             draw3DCylinderTrunk(p[0], p[1], trunkW, trunkH, Color.web("#f8fafc"), Color.web("#475569"), Color.web("#ffffff"));
                             gc3D.setFill(Color.web("#0f172a"));
@@ -4967,7 +5002,9 @@ public class WorldEditorPane extends BorderPane {
                     }
                     case 3 -> { // Cactus Saguaro (3D OBJ Model)
                         if (currentRenderMode == RenderMode.REALISTIC && cactusObjMeshes != null && !cactusObjMeshes.isEmpty()) {
-                            drawObjSingleMesh3D(cactusObjMeshes.get(0), ti.gx, ti.gy, z, 0.40 * ti.ageScale * (zoom / 7.5), Color.web("#15803d"), Color.web("#14532d"), cx, cy, scale, radAz, radEl);
+                            org.swarmforge.client.util.ObjModelLoader.ObjMesh cMesh = cactusObjMeshes.get(0);
+                            double cScale = (3.2 * ti.ageScale * gridPerM) / Math.max(0.1, cMesh.height);
+                            drawObjSingleMesh3D(cMesh, ti.gx, ti.gy, z, cScale, Color.web("#15803d"), Color.web("#14532d"), cx, cy, scale, radAz, radEl);
                         } else {
                             draw3DCylinderTrunk(p[0], p[1], trunkW, trunkH, Color.web("#15803d"), Color.web("#14532d"), Color.web("#4ade80"));
                             gc3D.setFill(Color.web("#166534"));
@@ -4978,8 +5015,10 @@ public class WorldEditorPane extends BorderPane {
                     }
                     case 5 -> { // Pin Sylvestre (Scotch Pine 3D OBJ Model)
                         if (currentRenderMode == RenderMode.REALISTIC && (pineMesh != null || oakMesh != null)) {
+                            org.swarmforge.client.util.ObjModelLoader.ObjMesh pMesh = pineMesh != null ? pineMesh : oakMesh;
+                            double pScale = (treeHeightM * gridPerM) / Math.max(0.1, pMesh.height);
                             Color pineFoliage = (seasonIdx == 3) ? Color.web("#14532d") : Color.web("#166534");
-                            drawObjSingleMesh3D(pineMesh != null ? pineMesh : oakMesh, ti.gx, ti.gy, z, 0.55 * ti.ageScale * (zoom / 7.5), pineFoliage, Color.web("#78350f"), cx, cy, scale, radAz, radEl);
+                            drawObjSingleMesh3D(pMesh, ti.gx, ti.gy, z, pScale, pineFoliage, Color.web("#78350f"), cx, cy, scale, radAz, radEl);
                         } else {
                             draw3DCylinderTrunk(p[0], p[1], trunkW, trunkH, Color.web("#78350f"), Color.web("#3d1a04"), Color.web("#a16207"));
                             double[] pxs1 = {swayX, swayX - canopyR * 0.95, swayX + canopyR * 0.95};
@@ -4992,8 +5031,10 @@ public class WorldEditorPane extends BorderPane {
                     }
                     case 6 -> { // Acacia (Savanna Parasol 3D OBJ Model)
                         if (currentRenderMode == RenderMode.REALISTIC && (oakMesh != null || tropicalObjMeshes != null)) {
+                            org.swarmforge.client.util.ObjModelLoader.ObjMesh aMesh = oakMesh != null ? oakMesh : tropicalObjMeshes.get(0);
+                            double aScale = (treeHeightM * gridPerM) / Math.max(0.1, aMesh.height);
                             Color aCol = (seasonIdx == 2 || seasonIdx == 3) ? Color.web("#eab308") : Color.web("#4d7c0f");
-                            drawObjSingleMesh3D(oakMesh != null ? oakMesh : tropicalObjMeshes.get(0), ti.gx, ti.gy, z, 0.50 * ti.ageScale * (zoom / 7.5), aCol, Color.web("#78350f"), cx, cy, scale, radAz, radEl);
+                            drawObjSingleMesh3D(aMesh, ti.gx, ti.gy, z, aScale, aCol, Color.web("#78350f"), cx, cy, scale, radAz, radEl);
                         } else {
                             draw3DCylinderTrunk(p[0], p[1], trunkW, trunkH, Color.web("#78350f"), Color.web("#3d1a04"), Color.web("#a16207"));
                             gc3D.setFill(Color.web("#4d7c0f"));
@@ -5002,13 +5043,14 @@ public class WorldEditorPane extends BorderPane {
                     }
                     default -> { // Chêne Quercus (Oak Tree 3D OBJ Model)
                         if (currentRenderMode == RenderMode.REALISTIC && oakMesh != null) {
+                            double oScale = (treeHeightM * gridPerM) / Math.max(0.1, oakMesh.height);
                             Color oakFoliage = switch (seasonIdx) {
                                 case 0 -> Color.web("#4ade80");
                                 case 2 -> Color.web("#d97706");
                                 case 3 -> Color.web("#78716c");
                                 default -> Color.web("#15803d");
                             };
-                            drawObjSingleMesh3D(oakMesh, ti.gx, ti.gy, z, 0.55 * ti.ageScale * (zoom / 7.5), oakFoliage, Color.web("#78350f"), cx, cy, scale, radAz, radEl);
+                            drawObjSingleMesh3D(oakMesh, ti.gx, ti.gy, z, oScale, oakFoliage, Color.web("#78350f"), cx, cy, scale, radAz, radEl);
                         } else {
                             draw3DCylinderTrunk(p[0], p[1], trunkW, trunkH, Color.web("#78350f"), Color.web("#3d1a04"), Color.web("#a16207"));
                             Color cCol = switch (seasonIdx) {
@@ -5169,6 +5211,65 @@ public class WorldEditorPane extends BorderPane {
         gc3D.strokeArc(px - halfW, py - capH * 0.5, trunkW, capH, 180, 180, javafx.scene.shape.ArcType.OPEN);
         // Top cap rim facing camera
         gc3D.strokeOval(px - halfW, topY - capH * 0.5, trunkW, capH);
+    }
+
+    private void draw3DVolumetricStump(double px, double py, double stumpW, double stumpH) {
+        double halfW = Math.max(1.8, stumpW / 2.0);
+        double topY = py - stumpH;
+        double capH = Math.max(2.2, stumpW * 0.40);
+
+        Color barkBase = Color.web("#78350f");
+        Color barkShadow = Color.web("#3b1a03");
+        Color barkHighlight = Color.web("#a16207");
+        Color woodHeart = Color.web("#d97706");
+        Color woodSapwood = Color.web("#fef08a");
+        Color woodHollow = Color.web("#1c1917");
+
+        // 1. Root flare base (flared base ovals)
+        gc3D.setFill(barkShadow);
+        gc3D.fillOval(px - halfW * 1.35, py - capH * 0.5, stumpW * 1.35, capH * 1.1);
+
+        // 2. 3D Cylindrical Trunk Body with gradient shading
+        LinearGradient trunkGrad = new LinearGradient(
+            0, 0, 1, 0, true, CycleMethod.NO_CYCLE,
+            new Stop(0.0, barkShadow),
+            new Stop(0.35, barkBase),
+            new Stop(0.75, barkHighlight),
+            new Stop(1.0, barkShadow.darker())
+        );
+        gc3D.setFill(trunkGrad);
+        gc3D.fillRect(px - halfW, topY, stumpW, stumpH);
+        gc3D.fillOval(px - halfW, py - capH * 0.5, stumpW, capH);
+
+        // 3. Top Cut Cross-Section (Sapwood + Growth Rings + Heartwood + Hollow Cavity)
+        gc3D.setFill(woodSapwood);
+        gc3D.fillOval(px - halfW, topY - capH * 0.5, stumpW, capH);
+
+        // Heartwood / Annual rings
+        gc3D.setFill(woodHeart);
+        gc3D.fillOval(px - halfW * 0.8, topY - capH * 0.4, stumpW * 0.8, capH * 0.8);
+        gc3D.setStroke(Color.web("#92400e"));
+        gc3D.setLineWidth(Math.max(0.6, stumpW * 0.05));
+        gc3D.strokeOval(px - halfW * 0.6, topY - capH * 0.3, stumpW * 0.6, capH * 0.6);
+        gc3D.strokeOval(px - halfW * 0.4, topY - capH * 0.2, stumpW * 0.4, capH * 0.4);
+
+        // Dark hollow center / cavity
+        gc3D.setFill(woodHollow);
+        gc3D.fillOval(px - halfW * 0.3, topY - capH * 0.15, stumpW * 0.3, capH * 0.3);
+
+        // 4. Contour outlines
+        gc3D.setStroke(barkShadow.darker());
+        gc3D.setLineWidth(Math.max(0.8, stumpW * 0.10));
+        gc3D.strokeLine(px - halfW, py, px - halfW, topY);
+        gc3D.strokeLine(px + halfW, py, px + halfW, topY);
+        gc3D.strokeArc(px - halfW, py - capH * 0.5, stumpW, capH, 180, 180, javafx.scene.shape.ArcType.OPEN);
+        gc3D.strokeOval(px - halfW, topY - capH * 0.5, stumpW, capH);
+
+        // 5. Small shelf fungus / mushrooms on bark flank
+        gc3D.setFill(Color.web("#f59e0b"));
+        gc3D.fillOval(px + halfW * 0.6, py - stumpH * 0.65, halfW * 0.7, capH * 0.4);
+        gc3D.setFill(Color.web("#d97706"));
+        gc3D.fillOval(px + halfW * 0.5, py - stumpH * 0.35, halfW * 0.6, capH * 0.35);
     }
 
     private int pickBotanicalTreeSpecies(Random rand) {
@@ -5525,7 +5626,7 @@ public class WorldEditorPane extends BorderPane {
                             boolean isAntExposed = !isTerrainVisible || az >= 0 || igx >= cutXLimit || isTranslucent || isGalleriesVisible;
                             if (!isAntExposed) continue;
 
-                            double gz = heightGrid[igx][igy] * 40.0 + az * 2.0 + 1.5;
+                            double gz = heightGrid[igx][igy] * 40.0 + Math.max(-40.0, Math.min(60.0, az)) * 2.0 + 1.5;
 
                             double[] p = project3DPoint(gx, gy, gz, cx, cy, scale, radAz, radEl);
                             double sideM = surfaceSizeSlider != null ? surfaceSizeSlider.getValue() : 25.0;
@@ -5574,17 +5675,22 @@ public class WorldEditorPane extends BorderPane {
                                 }
 
                                 if (isFollowAntCameraEnabled && cameraFollowMode != CameraFollowMode.FREE) {
-                                    pan3DX = (GRID_SIZE / 2.0 - gx) * 8.0;
-                                    pan3DY = (GRID_SIZE / 2.0 - gy) * 8.0;
+                                    double targetPanX = (GRID_SIZE / 2.0 - gx) * 8.0;
+                                    double targetPanY = (GRID_SIZE / 2.0 - gy) * 8.0;
+                                    pan3DX += (targetPanX - pan3DX) * 0.15;
+                                    pan3DY += (targetPanY - pan3DY) * 0.15;
                                     double headingDeg = Math.toDegrees(ind.getHeading());
+                                    double targetAz = ((-headingDeg + 90.0) % 360.0 + 360.0) % 360.0;
                                     if (cameraFollowMode == CameraFollowMode.TPS) {
-                                        azimuth = (-headingDeg + 90.0) % 360.0;
-                                        elevation = 38.0;
-                                        zoom = 14.0;
+                                        double diff = ((targetAz - azimuth + 540.0) % 360.0) - 180.0;
+                                        azimuth = (azimuth + diff * 0.08) % 360.0;
+                                        elevation += (38.0 - elevation) * 0.10;
+                                        zoom += (14.0 - zoom) * 0.10;
                                     } else if (cameraFollowMode == CameraFollowMode.FPS) {
-                                        azimuth = (-headingDeg + 90.0) % 360.0;
-                                        elevation = 15.0;
-                                        zoom = 24.0;
+                                        double diff = ((targetAz - azimuth + 540.0) % 360.0) - 180.0;
+                                        azimuth = (azimuth + diff * 0.15) % 360.0;
+                                        elevation += (15.0 - elevation) * 0.10;
+                                        zoom += (24.0 - zoom) * 0.10;
                                     }
                                 }
                             }
@@ -5597,11 +5703,11 @@ public class WorldEditorPane extends BorderPane {
                     for (org.swarmforge.core.domain.Predator pred : activeSimulation.getPredatorManager().getPredators()) {
                         try {
                             if (!pred.isAlive()) continue;
-                            double px = (pred.getX() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
-                            double py = (pred.getY() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
+                            double px = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (pred.getX() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE));
+                            double py = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (pred.getY() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE));
                             int ipx = Math.max(0, Math.min(GRID_SIZE - 1, (int) px));
                             int ipy = Math.max(0, Math.min(GRID_SIZE - 1, (int) py));
-                            double pz = heightGrid[ipx][ipy] * 40.0 + pred.getZ() * 2.0 + 2.0;
+                            double pz = heightGrid[ipx][ipy] * 40.0 + Math.max(-40.0, Math.min(60.0, (double) pred.getZ())) * 2.0 + 2.0;
 
                             double[] p = project3DPoint(px, py, pz, cx, cy, scale, radAz, radEl);
                             double predR = Math.max(2.5, 4.0 * (zoom / 7.5));

@@ -457,17 +457,72 @@ function Stump3D({ position, scale = 1.0, terrainConfig }) {
     )
 }
 
+/**
+ * Dedicated Scientific Tree Component (Scientific Mode)
+ * Parametric botanical structure with clean geometric trunk and conical/spherical crown
+ * casting exact parametric scientific shadows.
+ */
+function ScientificTree({ position, scale = 1.0, variant = 0, season = 'SUMMER', terrainConfig }) {
+    const [x, _, z] = position
+    const groundY = getTerrainHeight(x, z, terrainConfig)
+    const trunkHeight = 3.8 * scale
+    const crownColor = season === 'WINTER' ? '#cbd5e1' : season === 'AUTUMN' ? '#d97706' : '#15803d'
+
+    return (
+        <group position={[x, groundY, z]} frustumCulled={false}>
+            {/* Scientific Parametric Trunk */}
+            <mesh position={[0, trunkHeight / 2, 0]} castShadow receiveShadow frustumCulled={false}>
+                <cylinderGeometry args={[0.22 * scale, 0.42 * scale, trunkHeight, 10]} />
+                <meshStandardMaterial color="#451a03" roughness={0.7} metalness={0.1} side={THREE.FrontSide} depthWrite depthTest />
+            </mesh>
+
+            {/* Scientific Foliage Canopies */}
+            {variant % 2 === 0 ? (
+                <group position={[0, trunkHeight * 0.65, 0]} frustumCulled={false}>
+                    <mesh position={[0, 0, 0]} castShadow receiveShadow frustumCulled={false}>
+                        <coneGeometry args={[2.0 * scale, 2.4 * scale, 8]} />
+                        <meshStandardMaterial color={crownColor} roughness={0.65} side={THREE.FrontSide} depthWrite depthTest />
+                    </mesh>
+                    <mesh position={[0, 1.3 * scale, 0]} castShadow receiveShadow frustumCulled={false}>
+                        <coneGeometry args={[1.5 * scale, 1.9 * scale, 8]} />
+                        <meshStandardMaterial color={crownColor} roughness={0.65} side={THREE.FrontSide} depthWrite depthTest />
+                    </mesh>
+                    <mesh position={[0, 2.4 * scale, 0]} castShadow receiveShadow frustumCulled={false}>
+                        <coneGeometry args={[1.0 * scale, 1.5 * scale, 8]} />
+                        <meshStandardMaterial color={crownColor} roughness={0.65} side={THREE.FrontSide} depthWrite depthTest />
+                    </mesh>
+                </group>
+            ) : (
+                <group position={[0, trunkHeight + 0.8 * scale, 0]} frustumCulled={false}>
+                    <mesh position={[0, 0, 0]} castShadow receiveShadow frustumCulled={false}>
+                        <sphereGeometry args={[1.7 * scale, 12, 10]} />
+                        <meshStandardMaterial color={crownColor} roughness={0.65} side={THREE.FrontSide} depthWrite depthTest />
+                    </mesh>
+                    <mesh position={[0.7 * scale, -0.4 * scale, 0.5 * scale]} castShadow receiveShadow frustumCulled={false}>
+                        <sphereGeometry args={[1.0 * scale, 10, 8]} />
+                        <meshStandardMaterial color={crownColor} roughness={0.65} side={THREE.FrontSide} depthWrite depthTest />
+                    </mesh>
+                    <mesh position={[-0.6 * scale, -0.3 * scale, -0.5 * scale]} castShadow receiveShadow frustumCulled={false}>
+                        <sphereGeometry args={[1.1 * scale, 10, 8]} />
+                        <meshStandardMaterial color={crownColor} roughness={0.65} side={THREE.FrontSide} depthWrite depthTest />
+                    </mesh>
+                </group>
+            )}
+        </group>
+    )
+}
+
 export default function VegetationRenderer() {
     const { lookAndFeel, climateEngine, terrainConfig } = useSimulationStore()
-    // Gamified mode is strictly 'GAMING'. Scientific mode uses standard 3D rendering.
     const isGamified = lookAndFeel === 'GAMING'
+    const isScientific = lookAndFeel === 'SCIENTIFIC'
     const windSpeed = climateEngine?.windSpeedMs ?? 2.4
     
     // Effective season flipped for Southern Hemisphere
     const rawSeason = climateEngine?.currentSeason || climateEngine?.season || 'SUMMER'
     const season = getEffectiveSeason(rawSeason, climateEngine?.hemisphere || 'NORTHERN')
 
-    // Tree positions systematically using 3D .obj model files for Realistic & Scientific modes
+    // Tree positions systematically across terrarium
     const treePositions = useMemo(() => [
         { id: 1, pos: [15, getTerrainHeight(15, 30, terrainConfig), 30], scale: 1.3, variant: 0, modelUrl: '/3d/LOW_POLY_set.obj' },
         { id: 2, pos: [78, getTerrainHeight(78, 25, terrainConfig), 25], scale: 1.5, variant: 1, modelUrl: '/3d/tree.obj' },
@@ -486,21 +541,23 @@ export default function VegetationRenderer() {
 
     return (
         <group frustumCulled={false}>
-            {/* Render Dense Multi-Variant Voxel Trees in Gamified Mode, or Systematic 3D .OBJ Trees in Scientific/Realistic Mode */}
-            {treePositions.map((tree) => (
-                isGamified ? (
-                    <VoxelTree key={tree.id} position={tree.pos} scale={tree.scale} variant={tree.variant} terrainConfig={terrainConfig} />
-                ) : (
-                    <RealisticTree key={tree.id} position={tree.pos} scale={tree.scale} windSpeed={windSpeed} season={season} modelUrl={tree.modelUrl} terrainConfig={terrainConfig} />
-                )
-            ))}
+            {/* Render Trees according to visual mode: Voxel (Gaming), Parametric (Scientific), or High-poly OBJ (Realistic) */}
+            {treePositions.map((tree) => {
+                if (isGamified) {
+                    return <VoxelTree key={tree.id} position={tree.pos} scale={tree.scale} variant={tree.variant} terrainConfig={terrainConfig} />
+                }
+                if (isScientific) {
+                    return <ScientificTree key={tree.id} position={tree.pos} scale={tree.scale} variant={tree.variant} season={season} terrainConfig={terrainConfig} />
+                }
+                return <RealisticTree key={tree.id} position={tree.pos} scale={tree.scale} windSpeed={windSpeed} season={season} modelUrl={tree.modelUrl} terrainConfig={terrainConfig} />
+            })}
 
             {/* Render 3D Volumetric Tree Stumps */}
             {stumpPositions.map((stump) => (
                 <Stump3D key={stump.id} position={stump.pos} scale={stump.scale} terrainConfig={terrainConfig} />
             ))}
 
-            {/* Flora Floor: Voxel Plants in Gamified mode vs Systematic 3D .OBJ Flora Floor in Realistic/Scientific mode */}
+            {/* Flora Floor: Voxel Plants in Gamified mode vs Systematic Flora Floor in Realistic/Scientific mode */}
             {isGamified ? (
                 <GamifiedVoxelFlora terrainConfig={terrainConfig} />
             ) : (

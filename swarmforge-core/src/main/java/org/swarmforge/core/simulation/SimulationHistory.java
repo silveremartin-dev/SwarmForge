@@ -80,6 +80,8 @@ public class SimulationHistory {
         return false;
     }
 
+    private SimulationSnapshot initialSnapshot = null;
+
     /**
      * Record a snapshot.
      */
@@ -87,6 +89,9 @@ public class SimulationHistory {
         if (snapshot == null) return;
         lock.lock();
         try {
+            if (initialSnapshot == null || snapshot.getTick() == 0) {
+                initialSnapshot = snapshot;
+            }
             buffer[head] = snapshot;
             head = (head + 1) % capacity;
             if (count < capacity) {
@@ -107,7 +112,7 @@ public class SimulationHistory {
         lock.lock();
         try {
             if (count == 0)
-                return null;
+                return initialSnapshot;
             int index = (head - 1 + capacity) % capacity;
             return buffer[index];
         } finally {
@@ -121,8 +126,11 @@ public class SimulationHistory {
     public SimulationSnapshot getAtTick(long tick) {
         lock.lock();
         try {
-            SimulationSnapshot best = null;
-            long bestDiff = Long.MAX_VALUE;
+            if (tick == 0 && initialSnapshot != null) {
+                return initialSnapshot;
+            }
+            SimulationSnapshot best = (initialSnapshot != null && tick == 0) ? initialSnapshot : null;
+            long bestDiff = (initialSnapshot != null) ? Math.abs(initialSnapshot.getTick() - tick) : Long.MAX_VALUE;
 
             for (int i = 0; i < count; i++) {
                 int index = (head - 1 - i + capacity) % capacity;
@@ -136,7 +144,7 @@ public class SimulationHistory {
                     best = snap;
                 }
             }
-            return best;
+            return best != null ? best : initialSnapshot;
         } finally {
             lock.unlock();
         }

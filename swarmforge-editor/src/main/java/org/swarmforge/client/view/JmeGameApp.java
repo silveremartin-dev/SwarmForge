@@ -380,10 +380,10 @@ public class JmeGameApp extends SimpleApplication {
             terrainNode.attachChild(terrainGeom);
             rootNode.attachChild(terrainNode);
 
-            // Initialize Pheromone Visualizer with full world dimensions (width, height)
+            // Initialize Pheromone Visualizer with full world dimensions (width, depth)
             if (pheromoneVisualizer == null) {
                 pheromoneVisualizer = new PheromoneVisualizer(assetManager);
-                pheromoneVisualizer.initialize(w, h);
+                pheromoneVisualizer.initialize(w, d);
                 rootNode.attachChild(pheromoneVisualizer.getRootNode());
             }
 

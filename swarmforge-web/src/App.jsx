@@ -55,7 +55,7 @@ function ResponsiveOrbitControls() {
 }
 
 export default function App() {
-    const { connected, connect, disconnect, running, tick, simTimeFormatted, speed, environment, showChamberOverlay } = useSimulationStore()
+    const { connected, connect, disconnect, running, tick, simTimeFormatted, speed, environment, showChamberOverlay, renderMode } = useSimulationStore()
     const [activeMode, setActiveMode] = useState('SIMULATION')
 
     useEffect(() => {
@@ -143,16 +143,18 @@ export default function App() {
                         <WeatherRenderer />
                         {showChamberOverlay && <UndergroundView />}
 
-                        <Grid
-                            args={[100, 100]}
-                            position={[50, -0.01, 50]}
-                            cellSize={5}
-                            cellThickness={0.5}
-                            cellColor="#1a1a2e"
-                            sectionSize={10}
-                            sectionThickness={1}
-                            sectionColor="#2a2a4e"
-                        />
+                        {renderMode === 'gamified' && (
+                            <Grid
+                                args={[100, 100]}
+                                position={[50, -0.01, 50]}
+                                cellSize={5}
+                                cellThickness={0.5}
+                                cellColor="#1a1a2e"
+                                sectionSize={10}
+                                sectionThickness={1}
+                                sectionColor="#2a2a4e"
+                            />
+                        )}
 
                         <ResponsiveOrbitControls />
                         <Stats />

@@ -117,15 +117,17 @@ public class PredatorManager {
 
             updatePredatorAI(predator);
 
-            // Enforce terrarium boundary clamping to prevent predator escape or out-of-bounds positioning
+            // Enforce terrarium boundary clamping to prevent predator escape or out-of-bounds positioning (horizontal and vertical)
             if (simulation != null && simulation.getTerrarium() != null) {
                 var terrarium = simulation.getTerrarium();
-                float maxX = terrarium.getWidth() - 1.0f;
-                float maxY = terrarium.getHeight() - 1.0f;
-                float maxZ = terrarium.getDepth() - 1.0f;
+                float maxX = Math.max(1.0f, terrarium.getWidth() - 1.0f);
+                float maxY = Math.max(1.0f, terrarium.getHeight() - 1.0f);
+                float maxDepth = Math.max(10.0f, (float) terrarium.getDepth());
+                float minZ = -maxDepth;
+                float maxZ = maxDepth;
                 float cx = Math.max(0.0f, Math.min(maxX, predator.getX()));
                 float cy = Math.max(0.0f, Math.min(maxY, predator.getY()));
-                float cz = Math.max(0.0f, Math.min(maxZ, predator.getZ()));
+                float cz = Math.max(minZ, Math.min(maxZ, predator.getZ()));
                 if (cx != predator.getX() || cy != predator.getY() || cz != predator.getZ()) {
                     predator.setPosition(cx, cy, cz);
                 }

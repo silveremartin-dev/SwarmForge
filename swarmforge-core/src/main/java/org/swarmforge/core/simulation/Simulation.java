@@ -502,8 +502,12 @@ public class Simulation {
         for (Colony colony : colonies) {
             colony.getIndividuals().parallelStream().forEach(individual -> {
                 if (!individual.isAlive()) return;
+                if (individual.getBrain() == null) {
+                    individual.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+                }
                 org.swarmforge.core.behavior.ReasoningArchitecture.Action action;
-                boolean mustDecide = (currentTick - individual.getLastDecisionTick() >= individual.getDynamicDecisionInterval())
+                boolean mustDecide = (currentTick < individual.getLastDecisionTick()
+                        || currentTick - individual.getLastDecisionTick() >= individual.getDynamicDecisionInterval())
                         || individual.getCachedAction() == null;
 
                 if (mustDecide && individual.getBrain() != null) {
@@ -602,8 +606,22 @@ public class Simulation {
                     individual.tick(simulationStepSeconds);
                 }
 
-                // Collect living individuals for spatial index update
+                // Collect living individuals for spatial index update and enforce spatial containment
                 if (individual.isAlive()) {
+                    if (terrarium != null) {
+                        float maxX = Math.max(1.0f, terrarium.getWidth() - 1.0f);
+                        float maxY = Math.max(1.0f, terrarium.getHeight() - 1.0f);
+                        float maxDepth = Math.max(10.0f, (float) terrarium.getDepth());
+                        float minZ = -maxDepth;
+                        float maxZ = maxDepth;
+                        float cx = Math.max(0.0f, Math.min(maxX, individual.getX()));
+                        float cy = Math.max(0.0f, Math.min(maxY, individual.getY()));
+                        float cz = Math.max(minZ, Math.min(maxZ, individual.getZ()));
+                        if (cx != individual.getX() || cy != individual.getY() || cz != individual.getZ()) {
+                            individual.setPosition(cx, cy, cz);
+                        }
+                    }
+
                     livingIndividuals.add(individual);
 
                     // Check environmental hazards (Floods, damage per second scaled by simulationStepSeconds)
@@ -632,6 +650,11 @@ public class Simulation {
         }
 
         processEvents();
+
+        // Auto periodic checkpoint creation every autoCheckpointInterval ticks (default 50,000) for live checkpoint manager
+        if (currentTick > 0 && currentTick % autoCheckpointInterval == 0) {
+            createCheckpoint("Auto-Snapshot (Tick #" + currentTick + ")");
+        }
 
         // Record history snapshot periodically
         history.recordIfNeeded(this);
@@ -1010,6 +1033,9 @@ public class Simulation {
         if (this.history != null) {
             this.history.record(SimulationSnapshot.capture(this));
         }
+        if (this.checkpoints.isEmpty()) {
+            createCheckpoint("Départ / Initial Setup (#0)");
+        }
     }
 
     /**
@@ -1088,8 +1114,18 @@ public class Simulation {
         boolean success = history.rewind(this, steps);
 
         if (success) {
+            long curTick = tickCount.get();
+            for (Colony colony : colonies) {
+                for (Individual ind : colony.getIndividuals()) {
+                    ind.setLastDecisionTick(curTick);
+                    ind.setCachedAction(null);
+                    if (ind.getBrain() == null) {
+                        ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+                    }
+                }
+            }
             eventQueue.offer(new SimulationEvent(org.swarmforge.core.event.SimulationEvent.EventType.MILESTONE_REACHED,
-                    tickCount.get(), "Rewound " + steps + " steps to tick " + tickCount.get()));
+                    curTick, "Rewound " + steps + " steps to tick " + curTick));
         }
 
         return success;
@@ -1114,8 +1150,18 @@ public class Simulation {
         boolean success = history.seekToTick(this, tick);
 
         if (success) {
+            this.tickCount.set(tick);
+            for (Colony colony : colonies) {
+                for (Individual ind : colony.getIndividuals()) {
+                    ind.setLastDecisionTick(tick);
+                    ind.setCachedAction(null);
+                    if (ind.getBrain() == null) {
+                        ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+                    }
+                }
+            }
             eventQueue.offer(new SimulationEvent(org.swarmforge.core.event.SimulationEvent.EventType.MILESTONE_REACHED,
-                    tickCount.get(), "Seeked to tick " + tick));
+                    tick, "Seeked to tick " + tick));
         }
 
         return success;
@@ -1123,6 +1169,15 @@ public class Simulation {
 
     private final java.util.List<org.swarmforge.core.event.GodModeIntervention> interventionJournal = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
     private final java.util.List<SimulationCheckpoint> checkpoints = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+    private int autoCheckpointInterval = 50000; // Default 50,000 ticks (~41 min at 20 TPS, ~14 min at 60 TPS)
+
+    public int getAutoCheckpointInterval() {
+        return autoCheckpointInterval;
+    }
+
+    public void setAutoCheckpointInterval(int interval) {
+        this.autoCheckpointInterval = Math.max(1000, interval);
+    }
 
     public void logIntervention(org.swarmforge.core.event.GodModeIntervention intervention) {
         if (intervention != null) {
@@ -1143,10 +1198,13 @@ public class Simulation {
         return new java.util.ArrayList<>(interventionJournal);
     }
 
-    public SimulationCheckpoint createCheckpoint(String name) {
+    public synchronized SimulationCheckpoint createCheckpoint(String name) {
         SimulationSnapshot snap = SimulationSnapshot.capture(this);
         SimulationCheckpoint cp = new SimulationCheckpoint(name, getTickCount(), snap, interventionJournal);
         checkpoints.add(cp);
+        while (checkpoints.size() > 60) {
+            checkpoints.remove(1); // Keep index 0 (initial), drop oldest intermediate
+        }
         return cp;
     }
 
@@ -1155,6 +1213,16 @@ public class Simulation {
         cp.getSnapshot().restore(this);
         this.interventionJournal.clear();
         this.interventionJournal.addAll(cp.getInterventionsRecorded());
+        long curTick = getTickCount();
+        for (Colony colony : colonies) {
+            for (Individual ind : colony.getIndividuals()) {
+                ind.setLastDecisionTick(curTick);
+                ind.setCachedAction(null);
+                if (ind.getBrain() == null) {
+                    ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+                }
+            }
+        }
         return true;
     }
 

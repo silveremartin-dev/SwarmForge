@@ -733,11 +733,81 @@ public class SpeciesEditorPane extends VBox {
         walkSpeedCol.setOnEditCommit(e -> e.getRowValue().setWalkSpeedMps(e.getNewValue()));
         walkSpeedCol.setPrefWidth(80);
 
+        TableColumn<CasteRow, Boolean> aroliaCol = new TableColumn<>("Arolia");
+        aroliaCol.setCellValueFactory(new PropertyValueFactory<>("hasAroliaAdhesion"));
+        aroliaCol.setCellFactory(col -> new TableCell<CasteRow, Boolean>() {
+            private final CheckBox cb = new CheckBox();
+            {
+                cb.setOnAction(e -> {
+                    CasteRow row = getTableView().getItems().get(getIndex());
+                    if (row != null) {
+                        row.setHasAroliaAdhesion(cb.isSelected());
+                    }
+                });
+            }
+            @Override
+            protected void updateItem(Boolean item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    cb.setSelected(item);
+                    setGraphic(cb);
+                    setAlignment(Pos.CENTER);
+                }
+            }
+        });
+        aroliaCol.setPrefWidth(60);
+
         TableColumn<CasteRow, Float> flySpeedCol = new TableColumn<>("Fly (m/s)");
         flySpeedCol.setCellValueFactory(new PropertyValueFactory<>("flySpeedMps"));
         flySpeedCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
         flySpeedCol.setOnEditCommit(e -> e.getRowValue().setFlySpeedMps(e.getNewValue()));
         flySpeedCol.setPrefWidth(75);
+
+        TableColumn<CasteRow, Float> hzCol = new TableColumn<>("Wings (Hz)");
+        hzCol.setCellValueFactory(new PropertyValueFactory<>("wingbeatFrequencyHz"));
+        hzCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
+        hzCol.setOnEditCommit(e -> e.getRowValue().setWingbeatFrequencyHz(e.getNewValue()));
+        hzCol.setPrefWidth(80);
+
+        TableColumn<CasteRow, Boolean> hoverCol = new TableColumn<>("Hover");
+        hoverCol.setCellValueFactory(new PropertyValueFactory<>("hasHoveringCapability"));
+        hoverCol.setCellFactory(col -> new TableCell<CasteRow, Boolean>() {
+            private final CheckBox cb = new CheckBox();
+            {
+                cb.setOnAction(e -> {
+                    CasteRow row = getTableView().getItems().get(getIndex());
+                    if (row != null) {
+                        row.setHasHoveringCapability(cb.isSelected());
+                    }
+                });
+            }
+            @Override
+            protected void updateItem(Boolean item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    cb.setSelected(item);
+                    setGraphic(cb);
+                    setAlignment(Pos.CENTER);
+                }
+            }
+        });
+        hoverCol.setPrefWidth(60);
+
+        TableColumn<CasteRow, Float> biteCol = new TableColumn<>("Bite (MPa)");
+        biteCol.setCellValueFactory(new PropertyValueFactory<>("bitingForceMpa"));
+        biteCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
+        biteCol.setOnEditCommit(e -> e.getRowValue().setBitingForceMpa(e.getNewValue()));
+        biteCol.setPrefWidth(85);
+
+        TableColumn<CasteRow, Float> loadCol = new TableColumn<>("Payload (g/g)");
+        loadCol.setCellValueFactory(new PropertyValueFactory<>("maxPayloadRatio"));
+        loadCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
+        loadCol.setOnEditCommit(e -> e.getRowValue().setMaxPayloadRatio(e.getNewValue()));
+        loadCol.setPrefWidth(90);
 
         TableColumn<CasteRow, Float> ratioCol = new TableColumn<>("Target Ratio");
         ratioCol.setCellValueFactory(new PropertyValueFactory<>("targetRatio"));
@@ -796,34 +866,42 @@ public class SpeciesEditorPane extends VBox {
         venomToxCol.setOnEditCommit(e -> e.getRowValue().setVenomToxicity(e.getNewValue()));
         venomToxCol.setPrefWidth(90);
 
-        TableColumn<CasteRow, Float> biteCol = new TableColumn<>("Bite Force (MPa)");
-        biteCol.setCellValueFactory(new PropertyValueFactory<>("bitingForceMpa"));
-        biteCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
-        biteCol.setOnEditCommit(e -> e.getRowValue().setBitingForceMpa(e.getNewValue()));
-        biteCol.setPrefWidth(95);
-
-        TableColumn<CasteRow, Float> loadCol = new TableColumn<>("Payload (g/g)");
-        loadCol.setCellValueFactory(new PropertyValueFactory<>("maxPayloadRatio"));
-        loadCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
-        loadCol.setOnEditCommit(e -> e.getRowValue().setMaxPayloadRatio(e.getNewValue()));
-        loadCol.setPrefWidth(90);
-
-        TableColumn<CasteRow, Float> hzCol = new TableColumn<>("Wings (Hz)");
-        hzCol.setCellValueFactory(new PropertyValueFactory<>("wingbeatFrequencyHz"));
-        hzCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
-        hzCol.setOnEditCommit(e -> e.getRowValue().setWingbeatFrequencyHz(e.getNewValue()));
-        hzCol.setPrefWidth(80);
+        TableColumn<CasteRow, Boolean> autothysisCol = new TableColumn<>("Autothysis");
+        autothysisCol.setCellValueFactory(new PropertyValueFactory<>("hasAutothysis"));
+        autothysisCol.setCellFactory(col -> new TableCell<CasteRow, Boolean>() {
+            private final CheckBox cb = new CheckBox();
+            {
+                cb.setOnAction(e -> {
+                    CasteRow row = getTableView().getItems().get(getIndex());
+                    if (row != null) {
+                        row.setHasAutothysis(cb.isSelected());
+                    }
+                });
+            }
+            @Override
+            protected void updateItem(Boolean item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+                    cb.setSelected(item);
+                    setGraphic(cb);
+                    setAlignment(Pos.CENTER);
+                }
+            }
+        });
+        autothysisCol.setPrefWidth(75);
 
         // Table Columns grouped in phase with the 4 Inspector sections
         casteTable.getColumns().addAll(
             // 👤 Identité & Morphologie
             nameCol, bodyCol, headCol, tunnelCol, healthCol, dmgCol, lifeCol,
-            // ⚡ Biomécanique & Vol
-            flyCol, walkSpeedCol, flySpeedCol, hzCol, biteCol, loadCol,
+            // ⚡ Locomotion (Marche & Vol) & Biomécanique
+            walkSpeedCol, aroliaCol, flyCol, flySpeedCol, hzCol, hoverCol, biteCol, loadCol,
             // 🧠 IA & Allocation Tâches
             archCol, ratioCol, forageCol, defCol, excCol, nurseCol,
             // 🛡️ Armes & Toxines
-            venomTypeCol, venomToxCol
+            venomTypeCol, venomToxCol, autothysisCol
         );
 
         // Controls to add/edit caste (Inspector Panel by Columns)
@@ -838,9 +916,22 @@ public class SpeciesEditorPane extends VBox {
         TextField casteLifeF = new TextField("5000");
         TextField casteHealthF = new TextField("120");
         TextField casteDmgF = new TextField("15");
-        CheckBox casteFlyCheck = new CheckBox("Flying");
 
-        // Advanced Caste Parameters
+        // Motor & Locomotion Caste Parameters (Walk & Flight grouped)
+        TextField casteWalkSpeedF = new TextField("0.50");
+        CheckBox casteAroliaCheck = new CheckBox("Arolia Adhesive Pads");
+        casteAroliaCheck.setSelected(true);
+        CheckBox casteFlyCheck = new CheckBox("Flying Capability");
+        TextField casteFlySpeedF = new TextField("0.00");
+        casteFlySpeedF.disableProperty().bind(casteFlyCheck.selectedProperty().not());
+        TextField casteWingbeatHzF = new TextField("0.0");
+        casteWingbeatHzF.disableProperty().bind(casteFlyCheck.selectedProperty().not());
+        CheckBox casteHoverCheck = new CheckBox("Hovering Flight");
+        casteHoverCheck.disableProperty().bind(casteFlyCheck.selectedProperty().not());
+        TextField casteBitingForceMpaF = new TextField("15.0");
+        TextField castePayloadRatioF = new TextField("5.0");
+
+        // Advanced Cognitive Caste Parameters
         TextField targetRatioF = new TextField("0.25");
         ComboBox<String> decisionArchCombo = new ComboBox<>();
         for (ArchitectureType type : ArchitectureType.values()) {
@@ -854,18 +945,7 @@ public class SpeciesEditorPane extends VBox {
         TextField excavationWField = new TextField("0.20");
         TextField nursingWField = new TextField("0.15");
 
-        // Motor & Biomechanical Caste Parameters
-        TextField casteWalkSpeedF = new TextField("0.50");
-        TextField casteFlySpeedF = new TextField("0.00");
-        casteFlySpeedF.disableProperty().bind(casteFlyCheck.selectedProperty().not());
-        TextField casteWingbeatHzF = new TextField("0.0");
-        CheckBox casteHoverCheck = new CheckBox("Hovering Flight");
-        TextField castePayloadRatioF = new TextField("5.0");
-        TextField casteBitingForceMpaF = new TextField("15.0");
-        CheckBox casteAutothysisCheck = new CheckBox("Explosive Autothysis Defense");
-        CheckBox casteAroliaCheck = new CheckBox("Arolia Adhesive Pads");
-        casteAroliaCheck.setSelected(true);
-
+        // Weapons, Venom & Special Defense
         MenuButton casteVenomMenuButton = new MenuButton("🚫 No Venom (Physical Attack)");
         casteVenomMenuButton.setPrefWidth(220);
         casteVenomMenuButton.getStyleClass().add("btn-secondary");
@@ -893,6 +973,7 @@ public class SpeciesEditorPane extends VBox {
         updateVenomMenuText(casteVenomMenuButton, casteVenomCheckItems);
 
         TextField casteVenomToxField = new TextField("10.0");
+        CheckBox casteAutothysisCheck = new CheckBox("Explosive Autothysis Defense");
 
         casteTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
@@ -902,7 +983,15 @@ public class SpeciesEditorPane extends VBox {
                 casteLifeF.setText(String.valueOf(newVal.getLifespan()));
                 casteHealthF.setText(formatDec(newVal.getHealth()));
                 casteDmgF.setText(formatDec(newVal.getDamage()));
+
+                casteWalkSpeedF.setText(formatDec(newVal.getWalkSpeedMps()));
+                casteAroliaCheck.setSelected(newVal.isHasAroliaAdhesion());
                 casteFlyCheck.setSelected(newVal.isCanFly());
+                casteFlySpeedF.setText(formatDec(newVal.getFlySpeedMps()));
+                casteWingbeatHzF.setText(formatDec(newVal.getWingbeatFrequencyHz()));
+                casteHoverCheck.setSelected(newVal.isHasHoveringCapability());
+                casteBitingForceMpaF.setText(formatDec(newVal.getBitingForceMpa()));
+                castePayloadRatioF.setText(formatDec(newVal.getMaxPayloadRatio()));
 
                 targetRatioF.setText(formatDec(newVal.getTargetRatio()));
                 decisionArchCombo.setValue(newVal.getDecisionArch());
@@ -910,17 +999,10 @@ public class SpeciesEditorPane extends VBox {
                 defenseWField.setText(formatDec(newVal.getDefenseWeight()));
                 excavationWField.setText(formatDec(newVal.getExcavationWeight()));
                 nursingWField.setText(formatDec(newVal.getNursingWeight()));
+
                 setSelectedVenomTypes(casteVenomCheckItems, casteVenomMenuButton, newVal.getVenomType());
                 casteVenomToxField.setText(formatDec(newVal.getVenomToxicity()));
-
-                casteWingbeatHzF.setText(formatDec(newVal.getWingbeatFrequencyHz()));
-                casteHoverCheck.setSelected(newVal.isHasHoveringCapability());
-                castePayloadRatioF.setText(formatDec(newVal.getMaxPayloadRatio()));
-                casteBitingForceMpaF.setText(formatDec(newVal.getBitingForceMpa()));
                 casteAutothysisCheck.setSelected(newVal.isHasAutothysis());
-                casteAroliaCheck.setSelected(newVal.isHasAroliaAdhesion());
-                casteWalkSpeedF.setText(formatDec(newVal.getWalkSpeedMps()));
-                casteFlySpeedF.setText(formatDec(newVal.getFlySpeedMps()));
             }
         });
 
@@ -937,17 +1019,17 @@ public class SpeciesEditorPane extends VBox {
         col1Grid.addRow(5, createTooltipLabel("Lifespan (days):", "Average lifespan of caste members in days.", casteLifeF), casteLifeF);
         VBox col1Box = createInspectorColumnBox("👤 Identity & Morphology", col1Grid);
 
-        // Column 2: ⚡ Biomécanique & Vol
+        // Column 2: ⚡ Locomotion (Marche & Vol) & Biomécanique
         GridPane col2Grid = createColumnGrid();
-        col2Grid.addRow(0, createTooltipLabel("Flight Capability:", "Indicates if caste members possess wings and flight capability.", casteFlyCheck), casteFlyCheck);
-        col2Grid.addRow(1, createTooltipLabel("Wingbeat Frequency (Hz):", "Wingbeat frequency if caste flies (0 Hz if wingless).", casteWingbeatHzF), casteWingbeatHzF);
-        col2Grid.addRow(2, createTooltipLabel("Hovering Flight:", "Ability to maintain stationary position in flight.", casteHoverCheck), casteHoverCheck);
-        col2Grid.addRow(3, createTooltipLabel("Biting Force (MPa):", "Mandibular biting force exerted by cephalic muscles.", casteBitingForceMpaF, "Mandibule"), casteBitingForceMpaF);
-        col2Grid.addRow(4, createTooltipLabel("Payload Ratio (g/g):", "Maximum carrying load ratio relative to body weight.", castePayloadRatioF), castePayloadRatioF);
-        col2Grid.addRow(5, createTooltipLabel("Arolia Adhesion:", "Presence of tarsal arolia pads for walking on vertical walls & ceilings.", casteAroliaCheck, "Arolia"), casteAroliaCheck);
-        col2Grid.addRow(6, createTooltipLabel("Walk Speed (m/s):", "Surface walking speed of this caste in meters per second.", casteWalkSpeedF), casteWalkSpeedF);
-        col2Grid.addRow(7, createTooltipLabel("Fly Speed (m/s):", "Flight speed of this caste in meters per second (0 if wingless).", casteFlySpeedF), casteFlySpeedF);
-        VBox col2Box = createInspectorColumnBox("⚡ Biomechanics & Flight", col2Grid);
+        col2Grid.addRow(0, createTooltipLabel("Walk Speed (m/s):", "Surface walking speed of this caste in meters per second.", casteWalkSpeedF), casteWalkSpeedF);
+        col2Grid.addRow(1, createTooltipLabel("Arolia Adhesion:", "Presence of tarsal arolia pads for walking on vertical walls & ceilings.", casteAroliaCheck, "Arolia"), casteAroliaCheck);
+        col2Grid.addRow(2, createTooltipLabel("Flight Capability:", "Indicates if caste members possess wings and flight capability.", casteFlyCheck), casteFlyCheck);
+        col2Grid.addRow(3, createTooltipLabel("Fly Speed (m/s):", "Flight speed of this caste in meters per second (0 if wingless).", casteFlySpeedF), casteFlySpeedF);
+        col2Grid.addRow(4, createTooltipLabel("Wingbeat Frequency (Hz):", "Wingbeat frequency if caste flies (0 Hz if wingless).", casteWingbeatHzF), casteWingbeatHzF);
+        col2Grid.addRow(5, createTooltipLabel("Hovering Flight:", "Ability to maintain stationary position in flight.", casteHoverCheck), casteHoverCheck);
+        col2Grid.addRow(6, createTooltipLabel("Biting Force (MPa):", "Mandibular biting force exerted by cephalic muscles.", casteBitingForceMpaF, "Mandibule"), casteBitingForceMpaF);
+        col2Grid.addRow(7, createTooltipLabel("Payload Ratio (g/g):", "Maximum carrying load ratio relative to body weight.", castePayloadRatioF), castePayloadRatioF);
+        VBox col2Box = createInspectorColumnBox("⚡ Locomotion & Biomechanics", col2Grid);
 
         // Column 3: 🧠 IA & Allocation Tâches
         GridPane col3Grid = createColumnGrid();

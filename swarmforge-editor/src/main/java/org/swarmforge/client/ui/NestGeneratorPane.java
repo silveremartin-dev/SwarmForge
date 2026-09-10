@@ -1242,7 +1242,7 @@ public class NestGeneratorPane extends BorderPane {
                 }
             } else {
                 // Orbit 3D camera
-                azimuth = (azimuth - dx * 0.55) % 360;
+                azimuth = (azimuth + dx * 0.55) % 360;
                 if (azimuth < 0) azimuth += 360;
                 elevation = Math.max(5, Math.min(85, elevation - dy * 0.35));
             }
@@ -1852,6 +1852,54 @@ public class NestGeneratorPane extends BorderPane {
             if (cfg.containsKey("envMoisture") && evalMoistureSlider != null) evalMoistureSlider.setValue(num(cfg, "envMoisture"));
             if (cfg.containsKey("envForaging") && evalForagingSlider != null) evalForagingSlider.setValue(num(cfg, "envForaging"));
             if (cfg.containsKey("envCompaction") && evalCompactionSlider != null) evalCompactionSlider.setValue(num(cfg, "envCompaction"));
+
+            // Resolve and select matching Reference Species for this preset
+            populateSpeciesModelCombo();
+            String matchedSpecies = null;
+            if (cfg.containsKey("referenceSpecies")) {
+                matchedSpecies = String.valueOf(cfg.get("referenceSpecies"));
+            }
+            if (matchedSpecies != null && !matchedSpecies.isBlank()) {
+                for (String item : speciesModelCombo.getItems()) {
+                    if (item.toLowerCase().contains(matchedSpecies.toLowerCase())) {
+                        speciesModelCombo.setValue(item);
+                        matchedSpecies = item;
+                        break;
+                    }
+                }
+            } else {
+                // Auto-match best species by architecture or select first valid species in category
+                String currentArch = getArchitecture();
+                String defaultMatch = switch (currentArch) {
+                    case "WAX_COMB_HEXAGONAL", "WOODEN_BEEHIVE" -> "Apis";
+                    case "WAX_POTS_CLUSTER" -> "Bombus";
+                    case "PAPER_PEDUNCULATE" -> "Vespa";
+                    case "CATHEDRAL_MOUND" -> "Macrotermes";
+                    case "BIVOUAC_LIVING_NEST" -> "Eciton";
+                    case "SUBTERRANEAN_FUNGI_VAULT" -> "Atta";
+                    case "CARTON_NEST" -> "Crematogaster";
+                    case "BAMBOO_STEM_NEST" -> "Temnothorax";
+                    case "ARBOREAL_SILK_LEAF" -> "Oecophylla";
+                    case "HOLLOW_TRUNK_NEST" -> "Camponotus";
+                    case "SURFACE_MOUND" -> "Formica";
+                    default -> "Lasius";
+                };
+                for (String item : speciesModelCombo.getItems()) {
+                    if (item.toLowerCase().contains(defaultMatch.toLowerCase())) {
+                        speciesModelCombo.setValue(item);
+                        matchedSpecies = item;
+                        break;
+                    }
+                }
+                if (matchedSpecies == null && !speciesModelCombo.getItems().isEmpty()) {
+                    speciesModelCombo.getSelectionModel().selectFirst();
+                    matchedSpecies = speciesModelCombo.getValue();
+                }
+            }
+            if (speciesStatusLabel != null && matchedSpecies != null) {
+                speciesStatusLabel.setText("Nest preset loaded (Reference: " + matchedSpecies.replaceAll("^[🐜🐝✨🛠️]\\s*", "") + ")");
+            }
+
             regen();
             repaint();
         } finally {
@@ -1870,6 +1918,7 @@ public class NestGeneratorPane extends BorderPane {
     public Map<String,Object> getConfiguration() {
         Map<String,Object> c = new LinkedHashMap<>();
         c.put("presetName",   presetsCombo.getValue() != null ? presetsCombo.getValue() : "Custom");
+        c.put("referenceSpecies", speciesModelCombo != null && speciesModelCombo.getValue() != null ? speciesModelCombo.getValue() : "Custom");
         c.put("seed",         nestSeed);
         c.put("taxonCategory",categorySelect.getValue());
         c.put("genus",        genusSelect != null && genusSelect.getValue() != null ? genusSelect.getValue() : "");

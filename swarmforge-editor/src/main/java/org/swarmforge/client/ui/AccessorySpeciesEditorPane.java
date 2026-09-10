@@ -358,13 +358,13 @@ public class AccessorySpeciesEditorPane extends VBox {
         ));
         ComboBoxTooltipHelper.setupDescriptiveComboBox(categoryCombo,
             val -> switch (val) {
-                case "FLORA" -> "🌿 FLORA (Plants & Seeds)";
-                case "APHID_MUTUALIST" -> "🐄 APHID_MUTUALIST (Aphids & Honeydew)";
-                case "PREY_INSECT" -> "🐛 PREY_INSECT (Prey Insects)";
-                case "PREDATOR" -> "🕷️ PREDATOR (Spiders, Antlions, Birds)";
-                case "PATHOGEN_PARASITE" -> "🦠 PATHOGEN_PARASITE (Cordyceps, Mites)";
-                case "FUNGI" -> "🍄 FUNGI (Symbiotic Fungi)";
-                case "DETRITIVORE" -> "🍂 DETRITIVORE (Springtails & Woodlice)";
+                case "FLORA" -> "🌿 Flora (Vegetation & Seeds)";
+                case "APHID_MUTUALIST" -> "🐄 Aphid Mutualists (Trophobiosis & Honeydew)";
+                case "PREY_INSECT" -> "🐛 Prey Insects (Protein Hunt)";
+                case "PREDATOR" -> "🕷️ Predators (Spiders, Antlions, Birds)";
+                case "PATHOGEN_PARASITE" -> "🦠 Pathogens & Parasites (Cordyceps, Mites)";
+                case "FUNGI" -> "🍄 Symbiotic Fungi (Cultivated Gardens)";
+                case "DETRITIVORE" -> "🍂 Detritivores (Springtails & Refuse Recyclers)";
                 default -> val;
             },
             val -> switch (val) {

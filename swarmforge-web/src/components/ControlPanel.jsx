@@ -470,18 +470,18 @@ export default function ControlPanel({ inline = false }) {
                             <Sun size={13} style={{ color: '#eab308' }} />
                             <span>Météo :</span>
                         </label>
-                        <div style={{ display: 'flex', gap: 4 }}>
+                        <div style={{ display: 'inline-flex', borderRadius: 4, overflow: 'hidden', border: '1px solid #334155' }}>
                             <button
                                 onClick={() => setWeatherMode('SIMULATED')}
                                 style={{
-                                    padding: '3px 7px',
+                                    padding: '3px 8px',
                                     fontSize: 10,
                                     fontWeight: 700,
-                                    borderRadius: 4,
-                                    border: weatherMode === 'SIMULATED' ? '1px solid #38bdf8' : '1px solid #334155',
+                                    border: 'none',
                                     background: weatherMode === 'SIMULATED' ? '#0284c7' : '#1e293b',
-                                    color: '#fff',
-                                    cursor: 'pointer'
+                                    color: weatherMode === 'SIMULATED' ? '#ffffff' : '#94a3b8',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
                                 }}
                                 title="Utiliser les presets météo simulés"
                             >
@@ -490,14 +490,15 @@ export default function ControlPanel({ inline = false }) {
                             <button
                                 onClick={() => setWeatherMode('REAL_WORLD')}
                                 style={{
-                                    padding: '3px 7px',
+                                    padding: '3px 8px',
                                     fontSize: 10,
                                     fontWeight: 700,
-                                    borderRadius: 4,
-                                    border: weatherMode === 'REAL_WORLD' ? '1px solid #22c55e' : '1px solid #334155',
+                                    border: 'none',
+                                    borderLeft: '1px solid #334155',
                                     background: weatherMode === 'REAL_WORLD' ? '#16a34a' : '#1e293b',
-                                    color: '#fff',
-                                    cursor: 'pointer'
+                                    color: weatherMode === 'REAL_WORLD' ? '#ffffff' : '#94a3b8',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
                                 }}
                                 title="Synchroniser la météo en direct avec Open-Meteo API"
                             >
@@ -524,7 +525,7 @@ export default function ControlPanel({ inline = false }) {
                                     {realWeatherData?.cityName || 'Position en direct'}
                                 </span>
                                 <button
-                                    onClick={() => fetchRealWorldWeather()}
+                                    onClick={() => fetchRealWorldWeather(undefined, undefined, undefined, true)}
                                     disabled={realWeatherLoading}
                                     style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: 2 }}
                                     title="Rafraîchir les données météo Open-Meteo"
@@ -544,6 +545,9 @@ export default function ControlPanel({ inline = false }) {
                                     {realWeatherLoading ? 'Chargement Open-Meteo...' : 'Cliquez pour récupérer la météo locale'}
                                 </div>
                             )}
+                            <div style={{ marginTop: 6, padding: '4px 6px', background: 'rgba(0,0,0,0.3)', borderRadius: 4, fontSize: 9.5, color: '#a7f3d0', lineHeight: 1.3 }}>
+                                ℹ️ <em>Météo réelle sous réserve d'accès API. Chaque mesure est enregistrée dans l'historique et les snapshots pour garantir un replay déterministe.</em>
+                            </div>
                         </div>
                     )}
                 </div>

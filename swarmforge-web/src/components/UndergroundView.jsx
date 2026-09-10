@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import * as THREE from 'three'
 import { Html } from '@react-three/drei'
 import { useSimulationStore } from '../store/simulationStore'
+import { getTerrainHeight } from '../utils/terrainUtils'
 
 const CHAMBER_COLORS = {
     QUEEN_QUARTERS: '#a855f7', // Royal Purple
@@ -19,10 +20,12 @@ const CHAMBER_ICONS = {
     ENTRANCE: '🛡️'
 }
 
-function Tunnel({ start, end }) {
+function Tunnel({ start, end, terrainConfig }) {
     const { position, rotation, length } = useMemo(() => {
-        const startVec = new THREE.Vector3(start.x, start.y, start.z)
-        const endVec = new THREE.Vector3(end.x, end.y, end.z)
+        const startGroundY = getTerrainHeight(start.x, start.z, terrainConfig)
+        const endGroundY = getTerrainHeight(end.x, end.z, terrainConfig)
+        const startVec = new THREE.Vector3(start.x, startGroundY + start.y, start.z)
+        const endVec = new THREE.Vector3(end.x, endGroundY + end.y, end.z)
 
         const length = startVec.distanceTo(endVec)
         const position = startVec.clone().add(endVec).multiplyScalar(0.5)
@@ -32,25 +35,28 @@ function Tunnel({ start, end }) {
         const rotation = new THREE.Euler().setFromQuaternion(quaternion)
 
         return { position, rotation, length }
-    }, [start, end])
+    }, [start, end, terrainConfig])
 
     return (
         <mesh position={position} rotation={rotation}>
-            <cylinderGeometry args={[0.45, 0.45, length, 10]} />
+            <cylinderGeometry args={[0.3, 0.3, length, 10]} />
             <meshStandardMaterial color="#451a03" roughness={0.9} transparent opacity={0.85} />
         </mesh>
     )
 }
 
-function ChamberMesh({ chamber, isSelected, onClick }) {
+function ChamberMesh({ chamber, isSelected, onClick, terrainConfig }) {
     const [hovered, setHovered] = useState(false)
     const { showChamberOverlay } = useSimulationStore()
     const color = CHAMBER_COLORS[chamber.type] || '#38bdf8'
     const icon = CHAMBER_ICONS[chamber.type] || '🏛️'
-    const radius = chamber.radius || 2.0
+    const radius = chamber.radius || 1.2
+
+    const groundY = getTerrainHeight(chamber.position.x, chamber.position.z, terrainConfig)
+    const worldY = groundY + chamber.position.y
 
     return (
-        <group position={[chamber.position.x, chamber.position.y, chamber.position.z]}>
+        <group position={[chamber.position.x, worldY, chamber.position.z]}>
             {/* Main Chamber Sphere */}
             <mesh
                 onClick={(e) => {
@@ -128,7 +134,7 @@ function ChamberMesh({ chamber, isSelected, onClick }) {
 }
 
 export default function UndergroundView() {
-    const { nests, showChamberOverlay, selectedChamber, setSelectedChamber } = useSimulationStore()
+    const { nests, showChamberOverlay, selectedChamber, setSelectedChamber, terrainConfig } = useSimulationStore()
 
     if (!showChamberOverlay || !nests || nests.length === 0) return null
 
@@ -143,6 +149,7 @@ export default function UndergroundView() {
                             chamber={chamber}
                             isSelected={selectedChamber?.id === chamber.id}
                             onClick={setSelectedChamber}
+                            terrainConfig={terrainConfig}
                         />
                     ))}
 
@@ -157,6 +164,7 @@ export default function UndergroundView() {
                                     key={`${nest.id}-tunnel-${idx}`}
                                     start={startChamber.position}
                                     end={endChamber.position}
+                                    terrainConfig={terrainConfig}
                                 />
                             )
                         }

@@ -17,13 +17,13 @@ import java.util.*;
 /** Static rendering methods for NestGeneratorPane multi-species views. */
 public final class NestRenderer {
     // ── Shared Chamber Color Constants (synchronized with simulation legend) ──────
-    public static final javafx.scene.paint.Color CHAMBER_COLOR_ENTRANCE = javafx.scene.paint.Color.web("#32CD32"); // LimeGreen
-    public static final javafx.scene.paint.Color CHAMBER_COLOR_QUEEN    = javafx.scene.paint.Color.web("#FFD700"); // Gold
-    public static final javafx.scene.paint.Color CHAMBER_COLOR_BROOD    = javafx.scene.paint.Color.web("#00BFFF"); // DeepSkyBlue
-    public static final javafx.scene.paint.Color CHAMBER_COLOR_STORAGE  = javafx.scene.paint.Color.web("#FFA500"); // Orange
-    public static final javafx.scene.paint.Color CHAMBER_COLOR_FUNGUS   = javafx.scene.paint.Color.web("#9370DB"); // MediumPurple
-    public static final javafx.scene.paint.Color CHAMBER_COLOR_WASTE    = javafx.scene.paint.Color.web("#CD5C5C"); // IndianRed
-    public static final javafx.scene.paint.Color CHAMBER_COLOR_TUNNEL   = javafx.scene.paint.Color.web("#708090"); // SlateGray
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_ENTRANCE = javafx.scene.paint.Color.web("#10b981"); // Emerald/Lime
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_QUEEN    = javafx.scene.paint.Color.web("#d946ef"); // Royal Magenta/Gold
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_BROOD    = javafx.scene.paint.Color.web("#0284c7"); // DeepSkyBlue / Brood Blue
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_STORAGE  = javafx.scene.paint.Color.web("#22c55e"); // Green Storage
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_FUNGUS   = javafx.scene.paint.Color.web("#a855f7"); // Purple Fungus
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_WASTE    = javafx.scene.paint.Color.web("#eab308"); // Amber Waste
+    public static final javafx.scene.paint.Color CHAMBER_COLOR_TUNNEL   = javafx.scene.paint.Color.web("#f59e0b"); // Amber Ochre Tunnel
 
     private NestRenderer() {}
 
@@ -670,22 +670,36 @@ public final class NestRenderer {
             }
             case "BIVOUAC_LIVING_NEST" -> {
                 // Overhead fallen log shelter
-                gc.setStroke(Color.web("#78350f", 0.80)); gc.setLineWidth(4.0 * zoom);
-                double[] log1 = proj.apply(new double[]{rx0 - 15, ry0, -8 * scale}), log2 = proj.apply(new double[]{rx0 + 16, ry0, -8 * scale});
+                gc.setStroke(Color.web("#451a03", 0.90)); gc.setLineWidth(5.0 * zoom);
+                double[] log1 = proj.apply(new double[]{rx0 - 18, ry0, -8 * scale}), log2 = proj.apply(new double[]{rx0 + 18, ry0, -8 * scale});
                 gc.strokeLine(log1[0], log1[1], log2[0], log2[1]);
+                gc.setStroke(Color.web("#78350f", 0.70)); gc.setLineWidth(2.5 * zoom);
+                gc.strokeLine(log1[0], log1[1] - 2 * zoom, log2[0], log2[1] - 2 * zoom);
 
-                // Living ant catenary body curtain
-                double bivouacH = 12.0 * scale;
+                // Living ant catenary body cluster (chitinous dark reddish-brown basket)
+                double bivouacH = 14.0 * scale;
                 for (double zLevel = -8 * scale; zLevel <= bivouacH; zLevel += 2.0 * scale) {
                     double norm = (zLevel - (-8 * scale)) / (bivouacH - (-8 * scale));
-                    double rad = (Math.sin(norm * Math.PI) * 10.0 + 2.0) * scale;
+                    double rad = (Math.sin(norm * Math.PI * 0.85 + 0.15) * 11.0 + 3.0) * scale;
                     double[] cp = proj.apply(new double[]{rx0, ry0, zLevel});
                     double rx = rad * zoom * 0.85, ry = rad * zoom * 0.42;
 
-                    gc.setFill(Color.web("#dc2626", 0.22 + (1 - norm) * 0.15));
+                    gc.setFill(Color.web("#421c0e", 0.28 + (1 - norm) * 0.20));
                     gc.fillOval(cp[0] - rx, cp[1] - ry, rx * 2, ry * 2);
-                    gc.setStroke(Color.web("#ef4444", 0.60)); gc.setLineWidth(1.1 * zoom);
+                    gc.setStroke(Color.web("#7f1d1d", 0.75)); gc.setLineWidth(1.3 * zoom);
                     gc.strokeOval(cp[0] - rx, cp[1] - ry, rx * 2, ry * 2);
+                }
+
+                // Hanging vertical ant catenary chain links (tarsal claw interlocking strands)
+                gc.setStroke(Color.web("#991b1b", 0.85)); gc.setLineWidth(1.8 * zoom);
+                for (double offsetStrand = -10.0 * scale; offsetStrand <= 10.0 * scale; offsetStrand += 3.5 * scale) {
+                    double strandLen = (12.0 - Math.abs(offsetStrand) * 0.45) * scale;
+                    double[] topP = proj.apply(new double[]{rx0 + offsetStrand, ry0, -7 * scale});
+                    double[] botP = proj.apply(new double[]{rx0 + offsetStrand * 0.7, ry0, strandLen});
+                    gc.strokeLine(topP[0], topP[1], botP[0], botP[1]);
+                    // Clustered ant bodies along the hanging chains
+                    gc.setFill(Color.web("#421c0e"));
+                    gc.fillOval(botP[0] - 2 * zoom, botP[1] - 1.5 * zoom, 4 * zoom, 3 * zoom);
                 }
             }
             case "SURFACE_MOUND" -> {
