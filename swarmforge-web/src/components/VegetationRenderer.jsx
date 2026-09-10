@@ -361,8 +361,96 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
 }
 
 /**
- * Gamified Mode Voxel Flora Renderer
- * Renders blocky 3D voxel shrubs, flowers, and cacti across the terrain.
+ * Grand Ancient Hollow Tree Stump Component (Gamified Mode)
+ * Inspired by the prominent hollow tree stump in the reference diorama.
+ * Features a hollow interior cavity, broken jagged rim, flared root arches, and bracket fungi.
+ */
+function VoxelHollowStump({ position = [52, 0, 48], scale = 1.0, terrainConfig }) {
+    const [posX, _, posZ] = position
+    const gridX = Math.round(posX)
+    const gridZ = Math.round(posZ)
+    const groundY = getTerrainHeight(gridX, gridZ, terrainConfig)
+
+    const { stumpVoxels, rootVoxels, fungiVoxels } = useMemo(() => {
+        const trunk = []
+        const roots = []
+        const fungi = []
+        const trunkRadius = Math.round(3 * scale)
+        const trunkH = Math.round(7 * scale)
+
+        // 1. Hollow cylindrical trunk wall
+        for (let y = 0; y < trunkH; y++) {
+            const isRim = y === trunkH - 1
+            for (let dx = -trunkRadius; dx <= trunkRadius; dx++) {
+                for (let dz = -trunkRadius; dz <= trunkRadius; dz++) {
+                    const distSq = dx * dx + dz * dz
+                    const isWall = distSq <= trunkRadius * trunkRadius && distSq >= (trunkRadius - 1.2) * (trunkRadius - 1.2)
+                    if (isWall) {
+                        // Jagged broken top rim
+                        if (isRim && (Math.abs(dx * dz) % 2 === 0)) continue
+                        const barkColor = (y + dx + dz) % 2 === 0 ? '#451a03' : '#3b1402'
+                        trunk.push({ x: dx, y: y + 0.5, z: dz, color: barkColor })
+                    }
+                }
+            }
+        }
+
+        // 2. Root buttresses flaring outwards and downwards
+        const flareAngles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2, Math.PI / 4, (5 * Math.PI) / 4]
+        flareAngles.forEach((angle, idx) => {
+            const len = 3 + (idx % 2) * 2
+            for (let r = trunkRadius; r < trunkRadius + len; r++) {
+                const rx = Math.round(Math.cos(angle) * r)
+                const rz = Math.round(Math.sin(angle) * r)
+                const rootH = Math.max(1, trunkH - (r - trunkRadius) * 2)
+                for (let ry = 0; ry < rootH; ry++) {
+                    roots.push({ x: rx, y: ry + 0.5, z: rz, color: '#3d2514' })
+                }
+            }
+        })
+
+        // 3. Bracket fungi / shelf mushrooms growing on the trunk
+        fungi.push({ x: trunkRadius, y: 3.5, z: 0, w: 2, d: 2, color: '#d97706' })
+        fungi.push({ x: trunkRadius + 1, y: 3.5, z: 0, w: 1, d: 1, color: '#fef3c7' })
+        fungi.push({ x: -trunkRadius, y: 4.5, z: 1, w: 2, d: 2, color: '#b45309' })
+        fungi.push({ x: 0, y: 2.5, z: trunkRadius, w: 2, d: 2, color: '#d97706' })
+
+        return { stumpVoxels: trunk, rootVoxels: roots, fungiVoxels: fungi }
+    }, [scale])
+
+    return (
+        <group position={[gridX, groundY, gridZ]} frustumCulled={false}>
+            {/* Trunk Wall Voxels */}
+            {stumpVoxels.map((v, i) => (
+                <mesh key={`stump_${i}`} position={[v.x, v.y, v.z]} castShadow receiveShadow frustumCulled={false}>
+                    <boxGeometry args={[1, 1, 1]} />
+                    <meshStandardMaterial color={v.color} roughness={0.9} metalness={0.05} depthWrite depthTest />
+                </mesh>
+            ))}
+
+            {/* Root Flares */}
+            {rootVoxels.map((v, i) => (
+                <mesh key={`root_${i}`} position={[v.x, v.y, v.z]} castShadow receiveShadow frustumCulled={false}>
+                    <boxGeometry args={[1, 1, 1]} />
+                    <meshStandardMaterial color={v.color} roughness={0.92} metalness={0.05} depthWrite depthTest />
+                </mesh>
+            ))}
+
+            {/* Bracket Shelf Fungi */}
+            {fungiVoxels.map((f, i) => (
+                <mesh key={`fungi_${i}`} position={[f.x, f.y, f.z]} castShadow receiveShadow frustumCulled={false}>
+                    <boxGeometry args={[f.w, 0.4, f.d]} />
+                    <meshStandardMaterial color={f.color} roughness={0.7} metalness={0.05} depthWrite depthTest />
+                </mesh>
+            ))}
+        </group>
+    )
+}
+
+/**
+ * Gamified Mode Voxel Flora Renderer (High Fidelity)
+ * Renders detailed voxel mushrooms (Amanites with white spots, brown bolets),
+ * coral/yellow flower bushes, and stepped voxel ferns across the terrarium floor.
  */
 function GamifiedVoxelFlora({ terrainConfig }) {
     const voxelPlants = useMemo(() => {
@@ -371,47 +459,116 @@ function GamifiedVoxelFlora({ terrainConfig }) {
             const x = Math.sin(seed * 14.123 + 45.67) * 43758.5453
             return x - Math.floor(x)
         }
-        for (let i = 0; i < 40; i++) {
-            const gridX = Math.round(rand(i * 1.5) * 90 + 5)
-            const gridZ = Math.round(rand(i * 2.8) * 90 + 5)
-            if (gridX >= 18 && gridX <= 32) continue
+
+        // Generate 70 rich voxel flora instances
+        for (let i = 0; i < 70; i++) {
+            const gridX = Math.round(rand(i * 1.7) * 90 + 5)
+            const gridZ = Math.round(rand(i * 3.1) * 90 + 5)
+            if (gridX >= 18 && gridX <= 32) continue // Skip river channel
             const groundY = getTerrainHeight(gridX, gridZ, terrainConfig)
-            const typeInt = Math.floor(rand(i * 3.3) * 3)
-            items.push({ id: i, x: gridX, y: groundY, z: gridZ, type: typeInt })
+            const type = Math.floor(rand(i * 4.3) * 4) // 0: Red Mushroom, 1: Brown Mushroom, 2: Flower Bush, 3: Voxel Fern
+
+            items.push({ id: i, x: gridX, y: groundY, z: gridZ, type, scale: 0.7 + rand(i * 2.9) * 0.6 })
         }
         return items
     }, [terrainConfig])
 
     return (
         <group frustumCulled={false}>
-            {voxelPlants.map((item) => (
-                <group key={item.id} position={[item.x, item.y, item.z]} frustumCulled={false}>
-                    {item.type === 0 ? (
-                        <mesh position={[0, 0.5, 0]} castShadow frustumCulled={false}>
-                            <boxGeometry args={[1, 1, 1]} />
-                            <meshStandardMaterial color="#166534" roughness={0.9} side={THREE.FrontSide} depthWrite depthTest />
-                        </mesh>
-                    ) : item.type === 1 ? (
-                        <group frustumCulled={false}>
+            {voxelPlants.map((item) => {
+                // Type 0: Red Fly Agaric Mushroom (White stem + Crimson cap with white speckles)
+                if (item.type === 0) {
+                    return (
+                        <group key={item.id} position={[item.x, item.y, item.z]} scale={[item.scale, item.scale, item.scale]} frustumCulled={false}>
+                            {/* Stem */}
                             <mesh position={[0, 0.5, 0]} castShadow frustumCulled={false}>
-                                <boxGeometry args={[0.3, 1, 0.3]} />
-                                <meshStandardMaterial color="#15803d" roughness={0.9} side={THREE.FrontSide} depthWrite depthTest />
+                                <boxGeometry args={[0.4, 1.0, 0.4]} />
+                                <meshStandardMaterial color="#f8fafc" roughness={0.8} depthWrite depthTest />
+                            </mesh>
+                            {/* Crimson Tier 1 Cap */}
+                            <mesh position={[0, 1.1, 0]} castShadow frustumCulled={false}>
+                                <boxGeometry args={[1.2, 0.3, 1.2]} />
+                                <meshStandardMaterial color="#dc2626" roughness={0.6} depthWrite depthTest />
+                            </mesh>
+                            {/* Crimson Tier 2 Dome */}
+                            <mesh position={[0, 1.35, 0]} castShadow frustumCulled={false}>
+                                <boxGeometry args={[0.8, 0.25, 0.8]} />
+                                <meshStandardMaterial color="#b91c1c" roughness={0.6} depthWrite depthTest />
+                            </mesh>
+                            {/* White Spot Voxels */}
+                            <mesh position={[0.3, 1.3, 0.3]} castShadow frustumCulled={false}>
+                                <boxGeometry args={[0.2, 0.2, 0.2]} />
+                                <meshStandardMaterial color="#ffffff" roughness={0.8} depthWrite depthTest />
+                            </mesh>
+                            <mesh position={[-0.3, 1.3, -0.3]} castShadow frustumCulled={false}>
+                                <boxGeometry args={[0.2, 0.2, 0.2]} />
+                                <meshStandardMaterial color="#ffffff" roughness={0.8} depthWrite depthTest />
+                            </mesh>
+                        </group>
+                    )
+                }
+
+                // Type 1: Brown Stepped Bolet Mushroom
+                if (item.type === 1) {
+                    return (
+                        <group key={item.id} position={[item.x, item.y, item.z]} scale={[item.scale, item.scale, item.scale]} frustumCulled={false}>
+                            <mesh position={[0, 0.4, 0]} castShadow frustumCulled={false}>
+                                <boxGeometry args={[0.35, 0.8, 0.35]} />
+                                <meshStandardMaterial color="#e2e8f0" roughness={0.85} depthWrite depthTest />
+                            </mesh>
+                            <mesh position={[0, 0.9, 0]} castShadow frustumCulled={false}>
+                                <boxGeometry args={[1.4, 0.25, 1.4]} />
+                                <meshStandardMaterial color="#92400e" roughness={0.7} depthWrite depthTest />
                             </mesh>
                             <mesh position={[0, 1.1, 0]} castShadow frustumCulled={false}>
-                                <boxGeometry args={[0.5, 0.5, 0.5]} />
-                                <meshStandardMaterial color={item.id % 2 === 0 ? '#ef4444' : '#eab308'} roughness={0.6} side={THREE.FrontSide} depthWrite depthTest />
+                                <boxGeometry args={[0.9, 0.25, 0.9]} />
+                                <meshStandardMaterial color="#78350f" roughness={0.7} depthWrite depthTest />
                             </mesh>
                         </group>
-                    ) : (
-                        <group frustumCulled={false}>
-                            <mesh position={[0, 1.0, 0]} castShadow frustumCulled={false}>
-                                <boxGeometry args={[0.8, 2.0, 0.8]} />
-                                <meshStandardMaterial color="#4d7c0f" roughness={0.8} side={THREE.FrontSide} depthWrite depthTest />
+                    )
+                }
+
+                // Type 2: Colorful Voxel Flower Bush (Coral / Rose / Yellow)
+                if (item.type === 2) {
+                    const flowerColor = item.id % 2 === 0 ? '#f43f5e' : '#eab308'
+                    return (
+                        <group key={item.id} position={[item.x, item.y, item.z]} scale={[item.scale, item.scale, item.scale]} frustumCulled={false}>
+                            {/* Base Leaves */}
+                            <mesh position={[0, 0.4, 0]} castShadow frustumCulled={false}>
+                                <boxGeometry args={[1.0, 0.8, 1.0]} />
+                                <meshStandardMaterial color="#15803d" roughness={0.85} depthWrite depthTest />
+                            </mesh>
+                            {/* Top Flower Blooms */}
+                            <mesh position={[0.2, 0.9, 0.2]} castShadow frustumCulled={false}>
+                                <boxGeometry args={[0.4, 0.4, 0.4]} />
+                                <meshStandardMaterial color={flowerColor} roughness={0.6} depthWrite depthTest />
+                            </mesh>
+                            <mesh position={[-0.2, 0.9, -0.2]} castShadow frustumCulled={false}>
+                                <boxGeometry args={[0.35, 0.35, 0.35]} />
+                                <meshStandardMaterial color={flowerColor} roughness={0.6} depthWrite depthTest />
+                            </mesh>
+                            <mesh position={[0.1, 1.0, -0.2]} castShadow frustumCulled={false}>
+                                <boxGeometry args={[0.3, 0.3, 0.3]} />
+                                <meshStandardMaterial color="#fbbf24" roughness={0.6} depthWrite depthTest />
                             </mesh>
                         </group>
-                    )}
-                </group>
-            ))}
+                    )
+                }
+
+                // Type 3: Voxel Cross Fern / Grass Cluster
+                return (
+                    <group key={item.id} position={[item.x, item.y, item.z]} scale={[item.scale, item.scale, item.scale]} frustumCulled={false}>
+                        <mesh position={[0, 0.5, 0]} castShadow frustumCulled={false}>
+                            <boxGeometry args={[0.2, 1.0, 0.9]} />
+                            <meshStandardMaterial color="#4d7c0f" roughness={0.85} depthWrite depthTest />
+                        </mesh>
+                        <mesh position={[0, 0.5, 0]} castShadow frustumCulled={false}>
+                            <boxGeometry args={[0.9, 1.0, 0.2]} />
+                            <meshStandardMaterial color="#65a30d" roughness={0.85} depthWrite depthTest />
+                        </mesh>
+                    </group>
+                )
+            })}
         </group>
     )
 }
@@ -552,10 +709,14 @@ export default function VegetationRenderer() {
                 return <RealisticTree key={tree.id} position={tree.pos} scale={tree.scale} windSpeed={windSpeed} season={season} modelUrl={tree.modelUrl} terrainConfig={terrainConfig} />
             })}
 
-            {/* Render 3D Volumetric Tree Stumps */}
-            {stumpPositions.map((stump) => (
-                <Stump3D key={stump.id} position={stump.pos} scale={stump.scale} terrainConfig={terrainConfig} />
-            ))}
+            {/* Render Grand Ancient Hollow Stump in Gamified mode, or Realistic 3D Stumps in Realistic mode */}
+            {isGamified ? (
+                <VoxelHollowStump position={[56, 0, 48]} scale={1.2} terrainConfig={terrainConfig} />
+            ) : (
+                stumpPositions.map((stump) => (
+                    <Stump3D key={stump.id} position={stump.pos} scale={stump.scale} terrainConfig={terrainConfig} />
+                ))
+            )}
 
             {/* Flora Floor: Voxel Plants in Gamified mode vs Systematic Flora Floor in Realistic/Scientific mode */}
             {isGamified ? (

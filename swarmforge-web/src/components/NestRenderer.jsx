@@ -24,6 +24,8 @@ function SingleNest({ nest, isGhost = false }) {
     const groupRef = useRef()
     const phantomMeshRef = useRef()
     const terrainConfig = useSimulationStore(state => state.terrainConfig)
+    const lookAndFeel = useSimulationStore(state => state.lookAndFeel)
+    const isGamified = lookAndFeel === 'GAMING'
 
     // Pulse effect for Phantom / Ghost rendering
     useFrame((state) => {
@@ -309,18 +311,36 @@ function SingleNest({ nest, isGhost = false }) {
                 // 11. Dôme d'épines de surface à sorties multiples
                 return (
                     <group>
-                        <mesh position={[0, 0.55 * scale, 0]} castShadow receiveShadow>
-                            <coneGeometry args={[1.4 * scale, 1.1 * scale, 16]} />
-                            <meshStandardMaterial
-                                color={isPhantomMode ? '#38bdf8' : '#4a3319'}
-                                roughness={0.9}
-                                wireframe={isPhantomMode}
-                                transparent={isPhantomMode}
-                                opacity={isPhantomMode ? 0.45 : 1.0}
-                                emissive={isPhantomMode ? '#0284c7' : '#000000'}
-                                emissiveIntensity={isPhantomMode ? 0.6 : 0}
-                            />
-                        </mesh>
+                        {isGamified ? (
+                            <group position={[0, 0, 0]}>
+                                {/* Stepped Voxel Dome */}
+                                <mesh position={[0, 0.25 * scale, 0]} castShadow receiveShadow>
+                                    <boxGeometry args={[2.4 * scale, 0.5 * scale, 2.4 * scale]} />
+                                    <meshStandardMaterial color={isPhantomMode ? '#38bdf8' : '#593d25'} roughness={0.9} />
+                                </mesh>
+                                <mesh position={[0, 0.70 * scale, 0]} castShadow receiveShadow>
+                                    <boxGeometry args={[1.6 * scale, 0.4 * scale, 1.6 * scale]} />
+                                    <meshStandardMaterial color={isPhantomMode ? '#38bdf8' : '#452b19'} roughness={0.9} />
+                                </mesh>
+                                <mesh position={[0, 1.05 * scale, 0]} castShadow receiveShadow>
+                                    <boxGeometry args={[0.8 * scale, 0.3 * scale, 0.8 * scale]} />
+                                    <meshStandardMaterial color={isPhantomMode ? '#38bdf8' : '#3d2514'} roughness={0.9} />
+                                </mesh>
+                            </group>
+                        ) : (
+                            <mesh position={[0, 0.55 * scale, 0]} castShadow receiveShadow>
+                                <coneGeometry args={[1.4 * scale, 1.1 * scale, 16]} />
+                                <meshStandardMaterial
+                                    color={isPhantomMode ? '#38bdf8' : '#4a3319'}
+                                    roughness={0.9}
+                                    wireframe={isPhantomMode}
+                                    transparent={isPhantomMode}
+                                    opacity={isPhantomMode ? 0.45 : 1.0}
+                                    emissive={isPhantomMode ? '#0284c7' : '#000000'}
+                                    emissiveIntensity={isPhantomMode ? 0.6 : 0}
+                                />
+                            </mesh>
+                        )}
                         {exitPortals.map((portal) => (
                             <group key={`exit-${portal.id}`} position={[portal.relX, portal.relY, portal.relZ]}>
                                 <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>

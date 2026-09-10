@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useSimulationStore } from '../store/simulationStore'
 
 const foodColors = {
     SUGAR: '#ffffff',
@@ -11,6 +12,8 @@ const foodColors = {
 
 export default function FoodSource({ position, quantity = 100, type = 'SUGAR' }) {
     const meshRef = useRef()
+    const { lookAndFeel } = useSimulationStore()
+    const isGamified = lookAndFeel === 'GAMING'
     const color = foodColors[type] || foodColors.SUGAR
     const scale = Math.max(0.5, Math.min(3, quantity / 100))
 
@@ -22,8 +25,12 @@ export default function FoodSource({ position, quantity = 100, type = 'SUGAR' })
     })
 
     return (
-        <mesh ref={meshRef} position={position}>
-            <dodecahedronGeometry args={[0.5, 0]} />
+        <mesh ref={meshRef} position={position} castShadow>
+            {isGamified ? (
+                <boxGeometry args={[0.7, 0.7, 0.7]} />
+            ) : (
+                <dodecahedronGeometry args={[0.5, 0]} />
+            )}
             <meshStandardMaterial
                 color={color}
                 emissive={color}

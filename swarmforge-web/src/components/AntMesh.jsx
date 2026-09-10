@@ -280,21 +280,59 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
             ) : (
                 /* Standard Ant / Formicidae morphology (Default Fallback) */
                 <group>
-                    {/* Head */}
-                    <mesh position={[0, 0, 0.3 * scale]}>
-                        <sphereGeometry args={[0.15 * scale, 8, 6]} />
-                        <meshStandardMaterial color={antColor} roughness={lookAndFeel === 'REALISTIC' ? 0.8 : 0.4} />
-                    </mesh>
-                    {/* Thorax */}
-                    <mesh position={[0, 0, 0]}>
-                        <sphereGeometry args={[0.12 * scale, 8, 6]} />
-                        <meshStandardMaterial color={antColor} roughness={lookAndFeel === 'REALISTIC' ? 0.8 : 0.4} />
-                    </mesh>
-                    {/* Abdomen */}
-                    <mesh position={[0, 0, -0.35 * scale]}>
-                        <sphereGeometry args={[0.2 * scale, 8, 6]} />
-                        <meshStandardMaterial color={antColor} roughness={lookAndFeel === 'REALISTIC' ? 0.8 : 0.4} />
-                    </mesh>
+                    {lookAndFeel === 'GAMING' ? (
+                        /* Blocky Minecraft Ant Mob */
+                        <group>
+                            {/* Voxel Head */}
+                            <mesh position={[0, 0, 0.28 * scale]} castShadow>
+                                <boxGeometry args={[0.24 * scale, 0.22 * scale, 0.24 * scale]} />
+                                <meshStandardMaterial color={antColor} roughness={0.8} />
+                            </mesh>
+                            {/* Voxel Mandibles */}
+                            <mesh position={[0.08 * scale, -0.05 * scale, 0.42 * scale]}>
+                                <boxGeometry args={[0.06 * scale, 0.05 * scale, 0.12 * scale]} />
+                                <meshStandardMaterial color="#1e1b4b" roughness={0.7} />
+                            </mesh>
+                            <mesh position={[-0.08 * scale, -0.05 * scale, 0.42 * scale]}>
+                                <boxGeometry args={[0.06 * scale, 0.05 * scale, 0.12 * scale]} />
+                                <meshStandardMaterial color="#1e1b4b" roughness={0.7} />
+                            </mesh>
+                            {/* Voxel Thorax */}
+                            <mesh position={[0, 0, 0]} castShadow>
+                                <boxGeometry args={[0.20 * scale, 0.18 * scale, 0.26 * scale]} />
+                                <meshStandardMaterial color={antColor} roughness={0.8} />
+                            </mesh>
+                            {/* Voxel Petiole Waist */}
+                            <mesh position={[0, 0.02 * scale, -0.16 * scale]}>
+                                <boxGeometry args={[0.10 * scale, 0.12 * scale, 0.10 * scale]} />
+                                <meshStandardMaterial color="#3b1d11" roughness={0.9} />
+                            </mesh>
+                            {/* Voxel Gaster / Abdomen */}
+                            <mesh position={[0, 0, -0.38 * scale]} castShadow>
+                                <boxGeometry args={[0.30 * scale, 0.26 * scale, 0.42 * scale]} />
+                                <meshStandardMaterial color={antColor} roughness={0.7} />
+                            </mesh>
+                        </group>
+                    ) : (
+                        /* Smooth Natural / Scientific Chitin Anatomy */
+                        <group>
+                            {/* Head */}
+                            <mesh position={[0, 0, 0.3 * scale]} castShadow>
+                                <sphereGeometry args={[0.15 * scale, 8, 6]} />
+                                <meshStandardMaterial color={antColor} roughness={lookAndFeel === 'REALISTIC' ? 0.75 : 0.4} metalness={0.15} />
+                            </mesh>
+                            {/* Thorax */}
+                            <mesh position={[0, 0, 0]} castShadow>
+                                <sphereGeometry args={[0.12 * scale, 8, 6]} />
+                                <meshStandardMaterial color={antColor} roughness={lookAndFeel === 'REALISTIC' ? 0.75 : 0.4} metalness={0.15} />
+                            </mesh>
+                            {/* Abdomen */}
+                            <mesh position={[0, 0, -0.35 * scale]} castShadow>
+                                <sphereGeometry args={[0.2 * scale, 8, 6]} />
+                                <meshStandardMaterial color={antColor} roughness={lookAndFeel === 'REALISTIC' ? 0.75 : 0.4} metalness={0.15} />
+                            </mesh>
+                        </group>
+                    )}
                 </group>
             )}
         </group>

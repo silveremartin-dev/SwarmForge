@@ -58,51 +58,164 @@ function createSplattingGroundTexture() {
 }
 
 /**
- * Dedicated Voxel Terrain Generator for Gamified Mode (Gaming Mode)
- * Creates solid voxel column blocks anchored from Y_BASE=-5.0 up to exact getTerrainHeight with no gaps or clipping holes.
+ * High-Fidelity Minecraft Diorama Voxel Terrain Generator (Gamified Mode)
+ * Creates fine-subdivided stepped voxel blocks with organic biomes (Grass, Dirt Paths, Rock Cliffs, Sand Shores, Water)
+ * and rich vertical geological cutaways matching isometric voxel diorama aesthetics.
  */
 function VoxelTerrain({ terrainConfig }) {
     const Y_BASE = -5.0
+    const STEP = 1.25 // Fine voxel subdivision (80x80 grid across 100m)
 
-    const voxelGrid = useMemo(() => {
+    const { terrainBlocks, cutawayBlocks } = useMemo(() => {
         const blocks = []
+        const skirt = []
         const hasRiver = terrainConfig?.hasRiver ?? true
         const riverX = terrainConfig?.riverX ?? 25
-        const riverWidth = terrainConfig?.riverWidth ?? 10
+        const riverWidth = terrainConfig?.riverWidth ?? 11
 
-        // Grid step 2m across 100m x 100m terrarium
-        for (let x = 1; x <= 99; x += 2) {
-            for (let z = 1; z <= 99; z += 2) {
+        // Hash-based pseudo random for deterministic terrain shading
+        const hash = (x, z) => {
+            const val = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453
+            return val - Math.floor(val)
+        }
+
+        // 1. Generate Surface Terrain Voxel Columns
+        for (let x = STEP / 2; x <= 100; x += STEP) {
+            for (let z = STEP / 2; z <= 100; z += STEP) {
                 const heightY = getTerrainHeight(x, z, terrainConfig)
-                const isRiverChannel = hasRiver && Math.abs(x - riverX) < riverWidth / 2
+                const distToRiver = Math.abs(x - riverX)
+                const isRiver = hasRiver && distToRiver < riverWidth / 2
+                const isBeach = hasRiver && distToRiver >= riverWidth / 2 && distToRiver < (riverWidth / 2 + 3.5)
                 
-                // Height from bottom floor (-5.0m) up to exact surface altitude (heightY)
-                const blockHeight = Math.max(0.5, heightY - Y_BASE)
-                // Center Y = (Y_BASE + heightY) / 2 -> Top face is ALWAYS exactly at heightY
+                // Path curve through terrain center
+                const distToPath = Math.abs(z - (50 + Math.sin(x * 0.08) * 12))
+                const isPath = distToPath < 3.2 && !isRiver
+
+                // Rock cliffs on elevated or rough terrain
+                const isRock = (heightY > 1.6 || (heightY > 0.8 && hash(x, z) > 0.65)) && !isRiver && !isBeach
+
+                // Determine block height from floor to surface
+                const surfaceY = isRiver ? -0.1 : heightY
+                const blockHeight = Math.max(0.4, surfaceY - Y_BASE)
                 const posY = Y_BASE + blockHeight / 2
 
-                const checker = (Math.floor(x / 2) + Math.floor(z / 2)) % 2 === 0
+                // Natural, desaturated Minecraft color palettes
+                let topColor = '#4d7c0f' // Default lush grass
+                let sideColor = '#593d25' // Rich loam dirt
+
+                const rnd = hash(x * 2.1, z * 3.7)
+
+                if (isRiver) {
+                    topColor = rnd > 0.5 ? '#0284c7' : '#0369a1'
+                    sideColor = '#0369a1'
+                } else if (isBeach) {
+                    topColor = rnd > 0.5 ? '#d4b483' : '#c2a675'
+                    sideColor = '#a8895b'
+                } else if (isRock) {
+                    topColor = rnd > 0.6 ? '#64748b' : (rnd > 0.3 ? '#57534e' : '#78716c')
+                    sideColor = rnd > 0.5 ? '#475569' : '#3f3f46'
+                } else if (isPath) {
+                    topColor = rnd > 0.5 ? '#714d2e' : '#8c6747'
+                    sideColor = '#57391e'
+                } else {
+                    // Natural Grass Variations (Lush forest, meadow, dry patches)
+                    if (rnd > 0.75) topColor = '#5b8c32'
+                    else if (rnd > 0.45) topColor = '#4d7c0f'
+                    else if (rnd > 0.2) topColor = '#3f6212'
+                    else topColor = '#65a30d' // Bright clover accent
+                }
 
                 blocks.push({
-                    id: `v_${x}_${z}`,
+                    id: `v_${Math.round(x)}_${Math.round(z)}`,
                     x,
                     y: posY,
                     z,
+                    width: STEP - 0.04,
                     height: blockHeight,
-                    isRiver: isRiverChannel,
-                    topColor: isRiverChannel ? '#0284c7' : (checker ? '#22c55e' : '#15803d'),
-                    sideColor: isRiverChannel ? '#0369a1' : (checker ? '#5c3a21' : '#452b18')
+                    isRiver,
+                    topColor,
+                    sideColor
                 })
             }
         }
-        return blocks
+
+        // 2. Generate Cutaway Side Walls with Sliced Subterranean Strata & Hollow Cavities
+        const createWallSlice = (side, count) => {
+            for (let i = 0; i < count; i++) {
+                const coord = (i + 0.5) * (100 / count)
+                let x = 0, z = 0
+                if (side === 'N') { x = coord; z = 0.5 }
+                else if (side === 'S') { x = coord; z = 99.5 }
+                else if (side === 'W') { x = 0.5; z = coord }
+                else { x = 99.5; z = coord }
+
+                const surfaceY = getTerrainHeight(x, z, terrainConfig)
+
+                // Sliced Stratum 1: Humus & Topsoil (Y: surfaceY down to -0.8m)
+                const topsoilH = Math.max(0.2, surfaceY - (-0.8))
+                skirt.push({
+                    id: `sk_top_${side}_${i}`,
+                    x,
+                    y: -0.8 + topsoilH / 2,
+                    z,
+                    w: (100 / count) - 0.05,
+                    h: topsoilH,
+                    color: i % 2 === 0 ? '#452b18' : '#382010'
+                })
+
+                // Sliced Stratum 2: Subsoil / Ochre Clay (Y: -0.8m down to -2.8m)
+                // Procedural hollow pocket in clay (representing subterranean chamber cutout)
+                const isHollow = (i >= 8 && i <= 11) || (i >= 22 && i <= 24)
+                if (!isHollow) {
+                    skirt.push({
+                        id: `sk_mid_${side}_${i}`,
+                        x,
+                        y: -1.8,
+                        z,
+                        w: (100 / count) - 0.05,
+                        h: 2.0,
+                        color: i % 2 === 0 ? '#92400e' : '#a16207'
+                    })
+                } else {
+                    // Dark interior background of carved cavity
+                    skirt.push({
+                        id: `sk_cav_${side}_${i}`,
+                        x,
+                        y: -1.8,
+                        z,
+                        w: (100 / count) - 0.05,
+                        h: 2.0,
+                        color: '#1c1917'
+                    })
+                }
+
+                // Sliced Stratum 3: Bedrock & Cobble Foundation (Y: -2.8m down to -5.0m)
+                skirt.push({
+                    id: `sk_bed_${side}_${i}`,
+                    x,
+                    y: -3.9,
+                    z,
+                    w: (100 / count) - 0.05,
+                    h: 2.2,
+                    color: i % 3 === 0 ? '#475569' : (i % 3 === 1 ? '#334155' : '#1e293b')
+                })
+            }
+        }
+
+        createWallSlice('N', 32)
+        createWallSlice('S', 32)
+        createWallSlice('W', 32)
+        createWallSlice('E', 32)
+
+        return { terrainBlocks: blocks, cutawayBlocks: skirt }
     }, [terrainConfig])
 
     return (
         <group frustumCulled={false}>
-            {voxelGrid.map((b) => (
+            {/* Voxel Surface Columns */}
+            {terrainBlocks.map((b) => (
                 <mesh key={b.id} position={[b.x, b.y, b.z]} receiveShadow castShadow frustumCulled={false}>
-                    <boxGeometry args={[1.98, b.height, 1.98]} />
+                    <boxGeometry args={[b.width, b.height, b.width]} />
                     <meshStandardMaterial
                         color={b.topColor}
                         roughness={b.isRiver ? 0.2 : 0.85}
@@ -113,6 +226,14 @@ function VoxelTerrain({ terrainConfig }) {
                         depthWrite={true}
                         depthTest={true}
                     />
+                </mesh>
+            ))}
+
+            {/* Cutaway Geological Skirt Faces with Sliced Strata & Hollow Cavities */}
+            {cutawayBlocks.map((s) => (
+                <mesh key={s.id} position={[s.x, s.y, s.z]} receiveShadow castShadow frustumCulled={false}>
+                    <boxGeometry args={[s.w, s.h, s.w]} />
+                    <meshStandardMaterial color={s.color} roughness={0.92} metalness={0.05} depthWrite depthTest />
                 </mesh>
             ))}
         </group>

@@ -21,6 +21,9 @@ const CHAMBER_ICONS = {
 }
 
 function Tunnel({ start, end, terrainConfig }) {
+    const { lookAndFeel } = useSimulationStore()
+    const isGamified = lookAndFeel === 'GAMING'
+
     const { position, rotation, length } = useMemo(() => {
         const startGroundY = getTerrainHeight(start.x, start.z, terrainConfig)
         const endGroundY = getTerrainHeight(end.x, end.z, terrainConfig)
@@ -39,7 +42,11 @@ function Tunnel({ start, end, terrainConfig }) {
 
     return (
         <mesh position={position} rotation={rotation}>
-            <cylinderGeometry args={[0.3, 0.3, length, 10]} />
+            {isGamified ? (
+                <boxGeometry args={[0.5, length, 0.5]} />
+            ) : (
+                <cylinderGeometry args={[0.3, 0.3, length, 10]} />
+            )}
             <meshStandardMaterial color="#451a03" roughness={0.9} transparent opacity={0.85} />
         </mesh>
     )
@@ -47,7 +54,8 @@ function Tunnel({ start, end, terrainConfig }) {
 
 function ChamberMesh({ chamber, isSelected, onClick, terrainConfig }) {
     const [hovered, setHovered] = useState(false)
-    const { showChamberOverlay } = useSimulationStore()
+    const { showChamberOverlay, lookAndFeel } = useSimulationStore()
+    const isGamified = lookAndFeel === 'GAMING'
     const color = CHAMBER_COLORS[chamber.type] || '#38bdf8'
     const icon = CHAMBER_ICONS[chamber.type] || '🏛️'
     const radius = chamber.radius || 1.2
@@ -57,7 +65,7 @@ function ChamberMesh({ chamber, isSelected, onClick, terrainConfig }) {
 
     return (
         <group position={[chamber.position.x, worldY, chamber.position.z]}>
-            {/* Main Chamber Sphere */}
+            {/* Main Chamber Shape (Voxel Cube in Gaming vs Sphere in Realistic) */}
             <mesh
                 onClick={(e) => {
                     e.stopPropagation()
@@ -74,7 +82,11 @@ function ChamberMesh({ chamber, isSelected, onClick, terrainConfig }) {
                     document.body.style.cursor = 'auto'
                 }}
             >
-                <sphereGeometry args={[radius * (hovered ? 1.08 : 1.0), 16, 16]} />
+                {isGamified ? (
+                    <boxGeometry args={[radius * 1.6 * (hovered ? 1.08 : 1.0), radius * 1.4 * (hovered ? 1.08 : 1.0), radius * 1.6 * (hovered ? 1.08 : 1.0)]} />
+                ) : (
+                    <sphereGeometry args={[radius * (hovered ? 1.08 : 1.0), 16, 16]} />
+                )}
                 <meshStandardMaterial
                     color={color}
                     roughness={0.6}

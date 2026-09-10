@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { useSimulationStore } from '../store/simulationStore'
 
 const predatorColors = {
     SPIDER: '#333333',
@@ -19,6 +20,8 @@ const predatorScales = {
 
 export default function Predator({ position, type = 'SPIDER', state = 'IDLE' }) {
     const meshRef = useRef()
+    const { lookAndFeel } = useSimulationStore()
+    const isGamified = lookAndFeel === 'GAMING'
     const color = predatorColors[type] || predatorColors.SPIDER
     const scale = predatorScales[type] || 1.5
 
@@ -36,8 +39,10 @@ export default function Predator({ position, type = 'SPIDER', state = 'IDLE' }) 
     })
 
     return (
-        <mesh ref={meshRef} position={position} scale={scale}>
-            {type === 'SPIDER' ? (
+        <mesh ref={meshRef} position={position} scale={scale} castShadow>
+            {isGamified ? (
+                <boxGeometry args={[0.7, 0.4, 0.9]} />
+            ) : type === 'SPIDER' ? (
                 <octahedronGeometry args={[0.5, 0]} />
             ) : type === 'BIRD' ? (
                 <coneGeometry args={[0.3, 1, 4]} />
