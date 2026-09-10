@@ -66,6 +66,10 @@ public class SparsePheromoneGrid {
     private volatile float evaporationMultiplier = 1.0f;
     private final int width, height, depth;
 
+    public int getWidth() { return width; }
+    public int getHeight() { return height; }
+    public int getDepth() { return depth; }
+
     public float getSimulationStepSeconds() { return simulationStepSeconds; }
     public void setSimulationStepSeconds(float stepSeconds) { this.simulationStepSeconds = Math.max(0.0001f, stepSeconds); }
 

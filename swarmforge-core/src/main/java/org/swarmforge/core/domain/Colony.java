@@ -264,6 +264,7 @@ public class Colony implements java.io.Serializable {
         List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
         List<org.swarmforge.core.structure.Chamber> entranceChambers = (nest != null) ? nest.getChambersOfType(org.swarmforge.core.structure.Chamber.Type.ENTRANCE) : List.of();
         List<org.swarmforge.core.structure.Chamber> nurseryChambers = (nest != null) ? nest.getChambersOfType(org.swarmforge.core.structure.Chamber.Type.NURSERY) : List.of();
+        List<org.swarmforge.core.simulation.TunnelNetwork.TunnelNode> simNodes = (tunnelNetwork != null && tunnelNetwork.getNodes() != null) ? tunnelNetwork.getNodes() : List.of();
 
         double surfaceActivityRatio = calculateSurfaceActivityRatio(dayOfYear, hourOfDay, ambientTemp);
 
@@ -279,9 +280,19 @@ public class Colony implements java.io.Serializable {
                 } else if (!nestChambers.isEmpty()) {
                     var ch = nestChambers.get(index % nestChambers.size());
                     sx = (float) ch.getX(); sy = (float) ch.getY(); sz = (float) ch.getZ();
+                } else if (!simNodes.isEmpty()) {
+                    var node = simNodes.stream()
+                            .filter(n -> n.type() != org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE)
+                            .findFirst().orElse(simNodes.get(0));
+                    sx = node.x(); sy = node.y(); sz = node.z();
                 } else {
                     sz = getDynamicQueenChamberDepth();
                 }
+            } else if (!simNodes.isEmpty()) {
+                var node = simNodes.stream()
+                        .filter(n -> n.type() != org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE)
+                        .findFirst().orElse(simNodes.get(0));
+                sx = node.x(); sy = node.y(); sz = node.z();
             } else {
                 sz = getDynamicQueenChamberDepth();
             }
@@ -302,9 +313,25 @@ public class Colony implements java.io.Serializable {
                 sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
                 sz = (float) ch.getZ();
+            } else if (tunnelNetwork != null && tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ) != null) {
+                var ch = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ);
+                float maxR = Math.min(1.0f, Math.max(0.2f, ch.radiusX() * 0.7f));
+                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                sx = (float) (ch.x() + Math.cos(rAngle) * rDist);
+                sy = (float) (ch.y() + Math.sin(rAngle) * rDist);
+                sz = ch.z();
             } else if (!nestChambers.isEmpty()) {
                 var ch = nestChambers.get(index % nestChambers.size());
                 sx = (float) ch.getX(); sy = (float) ch.getY(); sz = (float) ch.getZ();
+            } else if (!simNodes.isEmpty()) {
+                var node = simNodes.get(index % simNodes.size());
+                float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
+                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                sx = (float) (node.x() + Math.cos(rAngle) * rDist);
+                sy = (float) (node.y() + Math.sin(rAngle) * rDist);
+                sz = node.z();
             } else {
                 sz = nestZ - 4.0f;
             }
@@ -317,6 +344,10 @@ public class Colony implements java.io.Serializable {
                     var ent = entranceChambers.get(index % entranceChambers.size());
                     refX = (float) ent.getX();
                     refY = (float) ent.getY();
+                } else if (tunnelNetwork != null && tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) != null) {
+                    var ent = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ);
+                    refX = ent.x();
+                    refY = ent.y();
                 }
                 float rAngle = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0f, (float) (Math.PI * 2));
                 float rDist = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0.5f, 3.5f);
@@ -326,6 +357,14 @@ public class Colony implements java.io.Serializable {
             } else if (!nestChambers.isEmpty()) {
                 var ch = nestChambers.get(index % nestChambers.size());
                 sx = (float) ch.getX(); sy = (float) ch.getY(); sz = (float) ch.getZ();
+            } else if (!simNodes.isEmpty()) {
+                var node = simNodes.get(index % simNodes.size());
+                float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
+                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                sx = (float) (node.x() + Math.cos(rAngle) * rDist);
+                sy = (float) (node.y() + Math.sin(rAngle) * rDist);
+                sz = node.z();
             } else {
                 sz = nestZ - 1.5f;
             }
@@ -339,6 +378,10 @@ public class Colony implements java.io.Serializable {
                     var ent = entranceChambers.get(index % entranceChambers.size());
                     refX = (float) ent.getX();
                     refY = (float) ent.getY();
+                } else if (tunnelNetwork != null && tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) != null) {
+                    var ent = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ);
+                    refX = ent.x();
+                    refY = ent.y();
                 }
                 float rAngle = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0f, (float) (Math.PI * 2));
                 float rDist = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0.5f, 3.5f);
@@ -353,9 +396,14 @@ public class Colony implements java.io.Serializable {
                 sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
                 sz = (float) ch.getZ();
-            } else if (tunnelNetwork != null && tunnelNetwork.getNodes() != null && !tunnelNetwork.getNodes().isEmpty()) {
-                var node = tunnelNetwork.getNodes().get(index % tunnelNetwork.getNodes().size());
-                sx = node.x(); sy = node.y(); sz = node.z();
+            } else if (!simNodes.isEmpty()) {
+                var node = simNodes.get(index % simNodes.size());
+                float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
+                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                sx = (float) (node.x() + Math.cos(rAngle) * rDist);
+                sy = (float) (node.y() + Math.sin(rAngle) * rDist);
+                sz = node.z();
             } else {
                 sz = nestZ - 3.0f;
             }
@@ -369,6 +417,10 @@ public class Colony implements java.io.Serializable {
                     var ent = entranceChambers.get(index % entranceChambers.size());
                     refX = (float) ent.getX();
                     refY = (float) ent.getY();
+                } else if (tunnelNetwork != null && tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) != null) {
+                    var ent = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ);
+                    refX = ent.x();
+                    refY = ent.y();
                 }
                 float rAngle = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0f, (float) (Math.PI * 2));
                 float rDist = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0.3f, 2.5f);
@@ -383,6 +435,14 @@ public class Colony implements java.io.Serializable {
                 sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
                 sz = (float) ch.getZ();
+            } else if (!simNodes.isEmpty()) {
+                var node = simNodes.get(index % simNodes.size());
+                float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
+                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                sx = (float) (node.x() + Math.cos(rAngle) * rDist);
+                sy = (float) (node.y() + Math.sin(rAngle) * rDist);
+                sz = node.z();
             } else {
                 sz = nestZ - 2.0f;
             }
@@ -395,6 +455,14 @@ public class Colony implements java.io.Serializable {
                 sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
                 sz = (float) ch.getZ();
+            } else if (!simNodes.isEmpty()) {
+                var node = simNodes.get(index % simNodes.size());
+                float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
+                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                sx = (float) (node.x() + Math.cos(rAngle) * rDist);
+                sy = (float) (node.y() + Math.sin(rAngle) * rDist);
+                sz = node.z();
             } else {
                 sz = nestZ - 4.0f;
             }

@@ -1523,7 +1523,7 @@ public class SimulationControlPanel extends VBox {
         this.maxTick = Math.max(this.highestRecordedTick, Math.max(tick, maxTick));
         double totalSecs = tick * simulationStepSeconds;
         long totalSecondsElapsed = (long) totalSecs;
-        currentDateTime = startDateTime.plusSeconds(totalSecondsElapsed);
+        currentDateTime = startDateTime.plusNanos((long) (totalSecs * 1_000_000_000L));
 
         String timeStr = formatSimulationTime(tick, simulationStepSeconds);
         lblDateTime.setText("📅 " + currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + String.format(" (Jour %d)", 1 + (totalSecondsElapsed / 86400)) + "  |  ⏱️ " + timeStr + String.format(" (Pas #%d)", tick));

@@ -30,6 +30,9 @@ public final class Morton3D {
      * @return 63-bit Morton code
      */
     public static long encode(int x, int y, int z) {
+        if (x < 0) x = 0; else if (x > MAX_COORD) x = MAX_COORD;
+        if (y < 0) y = 0; else if (y > MAX_COORD) y = MAX_COORD;
+        if (z < 0) z = 0; else if (z > MAX_COORD) z = MAX_COORD;
         return splitBy3(x) | (splitBy3(y) << 1) | (splitBy3(z) << 2);
     }
 

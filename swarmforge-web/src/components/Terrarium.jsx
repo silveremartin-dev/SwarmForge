@@ -11,6 +11,14 @@ import VegetationRenderer from './VegetationRenderer'
 import ScientificIsolines from './ScientificIsolines'
 import { soundEngine } from '../utils/soundEngine'
 import { getTerrainHeight } from '../utils/terrainUtils'
+import {
+    getPixelGrassTopTexture,
+    getPixelGrassSideTexture,
+    getPixelCobbleTexture,
+    getPixelSandTexture,
+    getPixelLilyPadTexture,
+    getPixelSugarCaneTexture
+} from '../utils/pixelTextures'
 
 /**
  * Realistic Mode Atmospheric Macro Pollen & Night Fireflies
@@ -156,13 +164,228 @@ function createSplattingGroundTexture() {
 }
 
 /**
+ * Minecraft Cubic Sky with Drifting Clouds, Cubic Sun & Moon
+ */
+function VoxelSky({ isNight }) {
+    const cloudsRef = useRef()
+    useFrame((state) => {
+        if (cloudsRef.current) {
+            const t = state.clock.getElapsedTime()
+            cloudsRef.current.position.x = ((t * 0.4) % 120) - 20
+        }
+    })
+
+    return (
+        <group frustumCulled={false}>
+            {/* Minecraft Cubic Sun / Moon */}
+            {isNight ? (
+                <mesh position={[85, 55, 15]}>
+                    <boxGeometry args={[8, 8, 8]} />
+                    <meshBasicMaterial color="#f1f5f9" />
+                </mesh>
+            ) : (
+                <mesh position={[20, 60, 20]}>
+                    <boxGeometry args={[10, 10, 10]} />
+                    <meshBasicMaterial color="#fef08a" />
+                </mesh>
+            )}
+
+            {/* Drifting Layered Cubic Clouds */}
+            <group ref={cloudsRef} position={[0, 42, 50]}>
+                {[
+                    { x: 10, z: -20, w: 25, d: 15 },
+                    { x: 45, z: 10, w: 30, d: 18 },
+                    { x: 85, z: -10, w: 22, d: 14 },
+                    { x: -30, z: 25, w: 28, d: 16 },
+                ].map((c, i) => (
+                    <mesh key={i} position={[c.x, 0, c.z]}>
+                        <boxGeometry args={[c.w, 1.8, c.d]} />
+                        <meshBasicMaterial color="#ffffff" transparent opacity={0.6} />
+                    </mesh>
+                ))}
+            </group>
+        </group>
+    )
+}
+
+/**
+ * Minecraft Cubic Torch with Flickering Cubic Flame & Rising Smoke
+ */
+function VoxelTorch({ position }) {
+    const flameRef = useRef()
+    const smokeRef = useRef()
+
+    useFrame((state) => {
+        const t = state.clock.getElapsedTime()
+        if (flameRef.current) {
+            flameRef.current.scale.y = 0.8 + Math.sin(t * 12) * 0.25
+        }
+        if (smokeRef.current) {
+            smokeRef.current.position.y = 0.65 + ((t * 0.6) % 0.8)
+            smokeRef.current.scale.setScalar(0.5 + ((t * 0.6) % 0.8) * 0.6)
+        }
+    })
+
+    return (
+        <group position={position} frustumCulled={false}>
+            {/* Wooden post */}
+            <mesh position={[0, 0.35, 0]} castShadow>
+                <boxGeometry args={[0.12, 0.7, 0.12]} />
+                <meshStandardMaterial color="#78350f" roughness={0.9} />
+            </mesh>
+            {/* Coal Head */}
+            <mesh position={[0, 0.72, 0]}>
+                <boxGeometry args={[0.14, 0.14, 0.14]} />
+                <meshStandardMaterial color="#18181b" roughness={0.9} />
+            </mesh>
+            {/* Flickering Cubic Flame */}
+            <mesh ref={flameRef} position={[0, 0.85, 0]}>
+                <boxGeometry args={[0.16, 0.16, 0.16]} />
+                <meshStandardMaterial color="#f59e0b" emissive="#fbbf24" emissiveIntensity={1.0} />
+            </mesh>
+            {/* Rising smoke voxel */}
+            <mesh ref={smokeRef} position={[0, 0.95, 0]}>
+                <boxGeometry args={[0.1, 0.1, 0.1]} />
+                <meshBasicMaterial color="#71717a" transparent opacity={0.4} />
+            </mesh>
+        </group>
+    )
+}
+
+/**
+ * Minecraft River Flora: Water Lily Pads on River & Sugar Cane along Banks
+ */
+function VoxelRiverFlora({ terrainConfig }) {
+    const lilyTex = useMemo(() => getPixelLilyPadTexture(), [])
+    const caneTex = useMemo(() => getPixelSugarCaneTexture(), [])
+
+    const { lilyPads, sugarCanes } = useMemo(() => {
+        const lilies = [
+            { x: 23, z: 18, s: 1.4 },
+            { x: 26, z: 34, s: 1.6 },
+            { x: 24, z: 52, s: 1.5 },
+            { x: 27, z: 68, s: 1.3 },
+            { x: 23, z: 84, s: 1.7 },
+        ]
+        const canes = [
+            { x: 19.5, z: 22, h: 2.2 },
+            { x: 19.2, z: 42, h: 2.5 },
+            { x: 30.5, z: 58, h: 2.0 },
+            { x: 30.8, z: 76, h: 2.4 },
+        ]
+        return { lilyPads: lilies, sugarCanes: canes }
+    }, [])
+
+    return (
+        <group frustumCulled={false}>
+            {/* Lily Pads on River */}
+            {lilyPads.map((l, idx) => (
+                <mesh key={`lily_${idx}`} position={[l.x, 0.04, l.z]} rotation={[-Math.PI / 2, 0, idx * 1.2]}>
+                    <planeGeometry args={[l.s, l.s]} />
+                    <meshStandardMaterial map={lilyTex} transparent alphaTest={0.3} side={THREE.DoubleSide} />
+                </mesh>
+            ))}
+            {/* Sugar Cane Reeds along Banks */}
+            {sugarCanes.map((c, idx) => {
+                const groundY = getTerrainHeight(c.x, c.z, terrainConfig)
+                return (
+                    <group key={`cane_${idx}`} position={[c.x, groundY, c.z]}>
+                        <mesh position={[0, c.h / 2, 0]} rotation={[0, Math.PI / 4, 0]}>
+                            <planeGeometry args={[0.9, c.h]} />
+                            <meshStandardMaterial map={caneTex} transparent alphaTest={0.3} side={THREE.DoubleSide} />
+                        </mesh>
+                        <mesh position={[0, c.h / 2, 0]} rotation={[0, -Math.PI / 4, 0]}>
+                            <planeGeometry args={[0.9, c.h]} />
+                            <meshStandardMaterial map={caneTex} transparent alphaTest={0.3} side={THREE.DoubleSide} />
+                        </mesh>
+                    </group>
+                )
+            })}
+        </group>
+    )
+}
+
+/**
+ * Realistic Mode: Low-Lying River Mist Floating over River
+ */
+function RiverMist() {
+    const mistRef = useRef()
+    useFrame((state) => {
+        if (mistRef.current) {
+            const t = state.clock.getElapsedTime()
+            mistRef.current.position.y = 0.28 + Math.sin(t * 0.8) * 0.05
+            mistRef.current.material.opacity = 0.35 + Math.sin(t * 0.5) * 0.10
+        }
+    })
+
+    return (
+        <mesh ref={mistRef} position={[25, 0.3, 50]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[14, 100]} />
+            <meshStandardMaterial color="#e0f2fe" transparent opacity={0.35} depthWrite={false} roughness={0.1} />
+        </mesh>
+    )
+}
+
+/**
+ * Realistic Mode: Forest Floor Leaf Litter, Twigs & Dewdrop Reflections
+ */
+function ForestLitterLayer({ terrainConfig }) {
+    const litter = useMemo(() => {
+        const items = []
+        const rand = (seed) => {
+            const x = Math.sin(seed * 19.123 + 88.23) * 43758.5453
+            return x - Math.floor(x)
+        }
+        const leafColors = ['#78350f', '#92400e', '#a16207', '#b45309', '#d97706']
+
+        for (let i = 0; i < 90; i++) {
+            const x = rand(i * 1.3) * 90 + 5
+            const z = rand(i * 2.7) * 90 + 5
+            if (x >= 18 && x <= 32) continue // skip river
+            const groundY = getTerrainHeight(x, z, terrainConfig)
+            const isTwig = i % 3 === 0
+            const rotY = rand(i * 4.1) * Math.PI * 2
+            const col = leafColors[i % leafColors.length]
+            const scale = 0.25 + rand(i * 5.9) * 0.3
+
+            items.push({ id: i, x, y: groundY + 0.02, z, isTwig, rotY, col, scale })
+        }
+        return items
+    }, [terrainConfig])
+
+    return (
+        <group frustumCulled={false}>
+            {litter.map((item) => (
+                <group key={item.id} position={[item.x, item.y, item.z]} rotation={[0, item.rotY, 0]}>
+                    {item.isTwig ? (
+                        <mesh position={[0, 0.015, 0]} rotation={[0, 0, Math.PI / 2]}>
+                            <cylinderGeometry args={[0.015 * item.scale, 0.012 * item.scale, 0.6 * item.scale, 5]} />
+                            <meshStandardMaterial color="#451a03" roughness={0.95} />
+                        </mesh>
+                    ) : (
+                        <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0.2, 0]}>
+                            <planeGeometry args={[0.4 * item.scale, 0.3 * item.scale]} />
+                            <meshStandardMaterial color={item.col} roughness={0.9} side={THREE.DoubleSide} />
+                        </mesh>
+                    )}
+                </group>
+            ))}
+        </group>
+    )
+}
+
+/**
  * High-Fidelity Minecraft Diorama Voxel Terrain Generator (Gamified Mode)
  * Creates fine-subdivided stepped voxel blocks with organic biomes (Grass, Dirt Paths, Rock Cliffs, Sand Shores, Water)
- * and rich vertical geological cutaways matching isometric voxel diorama aesthetics.
+ * textured with crisp 16x16 pixel-art textures and rich vertical geological cutaways.
  */
 function VoxelTerrain({ terrainConfig }) {
     const Y_BASE = -5.0
     const STEP = 1.25 // Fine voxel subdivision (80x80 grid across 100m)
+
+    const grassTopTex = useMemo(() => getPixelGrassTopTexture(), [])
+    const cobbleTex = useMemo(() => getPixelCobbleTexture(), [])
+    const sandTex = useMemo(() => getPixelSandTexture(), [])
 
     const { terrainBlocks, cutawayBlocks } = useMemo(() => {
         const blocks = []
@@ -231,6 +454,8 @@ function VoxelTerrain({ terrainConfig }) {
                     width: STEP - 0.04,
                     height: blockHeight,
                     isRiver,
+                    isRock,
+                    isBeach,
                     topColor,
                     sideColor
                 })
@@ -316,6 +541,7 @@ function VoxelTerrain({ terrainConfig }) {
                     <boxGeometry args={[b.width, b.height, b.width]} />
                     <meshStandardMaterial
                         color={b.topColor}
+                        map={b.isRiver ? null : (b.isRock ? cobbleTex : (b.isBeach ? sandTex : grassTopTex))}
                         roughness={b.isRiver ? 0.2 : 0.85}
                         metalness={b.isRiver ? 0.6 : 0.05}
                         transparent={b.isRiver}
@@ -337,6 +563,7 @@ function VoxelTerrain({ terrainConfig }) {
         </group>
     )
 }
+
 
 export default function Terrarium() {
     const { ants, foodSources, predators, environment, terrainConfig, lookAndFeel, environmentLighting, disasterState } = useSimulationStore()
@@ -696,9 +923,32 @@ export default function Terrarium() {
                 <GamifiedVoxelParticles terrainConfig={terrainConfig} />
             )}
 
-            {/* Realistic Mode Macro Atmospheric Pollen & Night Fireflies */}
+            {/* Gamified Mode: Minecraft Cubic Sky with Drifting Clouds & Sun/Moon */}
+            {isGamified && (
+                <VoxelSky isNight={environmentLighting?.isNight} />
+            )}
+
+            {/* Gamified Mode: Water Lilies on River & Sugar Cane Reeds on Banks */}
+            {isGamified && (
+                <VoxelRiverFlora terrainConfig={terrainConfig} />
+            )}
+
+            {/* Gamified Mode: Torches with Flickering Cubic Flame & Smoke at Landmark Locations */}
+            {isGamified && (
+                <group>
+                    <VoxelTorch position={[30, getTerrainHeight(30, 30, terrainConfig), 30]} />
+                    <VoxelTorch position={[72, getTerrainHeight(72, 72, terrainConfig), 72]} />
+                    <VoxelTorch position={[52, getTerrainHeight(52, 42, terrainConfig), 42]} />
+                </group>
+            )}
+
+            {/* Realistic Mode: Low-Lying River Mist & Forest Floor Leaf Litter Layer */}
             {lookAndFeel === 'REALISTIC' && (
-                <MacroAtmosphere isNight={environmentLighting?.isNight} terrainConfig={terrainConfig} />
+                <group>
+                    <RiverMist />
+                    <ForestLitterLayer terrainConfig={terrainConfig} />
+                    <MacroAtmosphere isNight={environmentLighting?.isNight} terrainConfig={terrainConfig} />
+                </group>
             )}
 
             {/* Nests Renderer */}

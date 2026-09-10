@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Auto-tests for ant nest habitation, reproduction (ponte/egg laying),
  * life-stage maturation, feeding, energy, and mortality.
  */
-class AntLifecycleAutoTest {
+public class AntLifecycleAutoTest {
 
     private Terrarium terrarium;
     private Simulation simulation;

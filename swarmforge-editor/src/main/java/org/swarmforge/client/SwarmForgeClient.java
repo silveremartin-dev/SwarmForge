@@ -99,9 +99,14 @@ public class SwarmForgeClient extends Application {
         // 1. Immediately bind window icons to primary stage for OS taskbar registration
         org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage);
 
+        boolean isTestMode = Boolean.getBoolean("testfx.headless") || Boolean.getBoolean("headless") || "true".equals(System.getProperty("swarmforge.test")) || "true".equals(System.getProperty("testfx.robot"));
+
         // 2. Show Splash Screen on startup with progress bar, bound to primary stage owner
-        org.swarmforge.client.ui.SplashScreen splashScreen = new org.swarmforge.client.ui.SplashScreen(primaryStage);
-        splashScreen.show();
+        org.swarmforge.client.ui.SplashScreen splashScreen = null;
+        if (!isTestMode) {
+            splashScreen = new org.swarmforge.client.ui.SplashScreen(primaryStage);
+            splashScreen.show();
+        }
 
         org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
 
@@ -242,8 +247,7 @@ public class SwarmForgeClient extends Application {
             System.exit(0);
         });
 
-        boolean isTestMode = Boolean.getBoolean("testfx.headless") || Boolean.getBoolean("headless") || "true".equals(System.getProperty("swarmforge.test")) || "true".equals(System.getProperty("testfx.robot"));
-        if (isTestMode) {
+        if (isTestMode || splashScreen == null) {
             org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage);
             primaryStage.show();
         } else {
@@ -627,6 +631,7 @@ public class SwarmForgeClient extends Application {
 
                         if (this.eventLogPane != null && this.simControlPanel != null) {
                             this.eventLogPane.setStartDateTime(this.simControlPanel.getStartDateTime());
+                            this.eventLogPane.setSimulationStepSeconds((float) this.simControlPanel.getSimulationStepSeconds());
                         }
 
                         org.swarmforge.client.ui.ScenarioSetupSnapshot setupSnap = simControlPanel.getLastSetupSnapshot();

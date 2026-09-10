@@ -1,6 +1,7 @@
 package org.swarmforge.server.grpc;
 
 import io.grpc.stub.StreamObserver;
+import org.mindrot.jbcrypt.BCrypt;
 import org.swarmforge.protocol.grpc.AuthServiceGrpc;
 import org.swarmforge.protocol.grpc.LoginRequest;
 import org.swarmforge.protocol.grpc.LoginResponse;
@@ -19,10 +20,8 @@ public class AuthServiceImpl extends AuthServiceGrpc.AuthServiceImplBase {
         String username = request.getUsername();
         String password = request.getPassword();
 
-        // MVP: Hardcoded users map or allow "admin" with specific password
-        // In real impl, check database using Bcrypt
         if (isValidUser(username, password)) {
-            List<String> roles = username.equals("admin") ? List.of("ADMIN", "USER") : List.of("USER");
+            List<String> roles = "admin".equalsIgnoreCase(username) ? List.of("ADMIN", "USER") : List.of("USER");
             String token = JwtUtil.generateToken(username, roles);
 
             LoginResponse response = LoginResponse.newBuilder()
@@ -31,7 +30,7 @@ public class AuthServiceImpl extends AuthServiceGrpc.AuthServiceImplBase {
                     .addAllRoles(roles)
                     .build();
 
-            LOG.info("User logged in: " + username);
+            LOG.info("User authenticated successfully: " + username);
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } else {
@@ -43,13 +42,34 @@ public class AuthServiceImpl extends AuthServiceGrpc.AuthServiceImplBase {
     }
 
     private boolean isValidUser(String username, String password) {
-        String adminPass = System.getenv().getOrDefault("SWARMFORGE_ADMIN_PASSWORD", "admin123");
-        String userPass = System.getenv().getOrDefault("SWARMFORGE_USER_PASSWORD", "user123");
+        if (username == null || password == null || username.isBlank() || password.isBlank()) {
+            return false;
+        }
 
-        if ("admin".equals(username) && adminPass.equals(password))
-            return true;
-        if ("user".equals(username) && userPass.equals(password))
-            return true;
+        String adminSecret = System.getenv().getOrDefault("SWARMFORGE_ADMIN_PASSWORD", "admin123");
+        String userSecret = System.getenv().getOrDefault("SWARMFORGE_USER_PASSWORD", "user123");
+
+        if ("admin123".equals(adminSecret) || "user123".equals(userSecret)) {
+            LOG.warn("⚠️ Security Notice: Using default credentials in non-production environment.");
+        }
+
+        if ("admin".equalsIgnoreCase(username)) {
+            return verifyPassword(password, adminSecret);
+        } else if ("user".equalsIgnoreCase(username)) {
+            return verifyPassword(password, userSecret);
+        }
         return false;
+    }
+
+    private boolean verifyPassword(String rawPassword, String expectedHashOrPlain) {
+        if (expectedHashOrPlain.startsWith("$2a$") || expectedHashOrPlain.startsWith("$2b$") || expectedHashOrPlain.startsWith("$2y$")) {
+            try {
+                return BCrypt.checkpw(rawPassword, expectedHashOrPlain);
+            } catch (Exception e) {
+                LOG.error("BCrypt validation error: " + e.getMessage());
+                return false;
+            }
+        }
+        return expectedHashOrPlain.equals(rawPassword);
     }
 }

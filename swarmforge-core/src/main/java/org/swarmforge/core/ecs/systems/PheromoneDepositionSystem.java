@@ -63,9 +63,12 @@ public class PheromoneDepositionSystem extends IteratingSystem {
         // Rotational Interleaving: all entities deposit across rotating frames
         int sampleModulo = 4;
         if ((entityId + stepCounter) % sampleModulo == 0) {
+            PheromoneType pType = isCarryingFood ? PheromoneType.FOOD_TRAIL : PheromoneType.HOME_TRAIL;
             float depositAmount = 0.5f * (world.getDelta() / 0.016666667f) * sampleModulo;
-            int pType = isCarryingFood ? PheromoneType.FOOD_TRAIL.getIndex() : PheromoneType.HOME_TRAIL.getIndex();
-            pheromoneGrid.deposit((int) pos.x, (int) pos.y, (int) pos.z, pType, depositAmount);
+            int px = Math.max(0, Math.min(pheromoneGrid.getWidth() - 1, (int) pos.x));
+            int py = Math.max(0, Math.min(pheromoneGrid.getHeight() - 1, (int) pos.y));
+            int pz = Math.max(0, Math.min(pheromoneGrid.getDepth() - 1, (int) pos.z));
+            pheromoneGrid.deposit(px, py, pz, pType.getIndex(), depositAmount);
         }
     }
 }

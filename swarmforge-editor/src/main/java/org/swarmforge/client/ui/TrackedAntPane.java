@@ -520,6 +520,73 @@ public class TrackedAntPane extends VBox {
         clearSearchStatus();
     }
 
+    public void updateChamber(org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node, org.swarmforge.core.domain.Colony colony) {
+        this.currentAnt = null;
+        this.currentPredator = null;
+        this.isFollowing = false;
+
+        if (node == null) {
+            setNoAntSelectedState();
+            return;
+        }
+
+        titleLabel.textProperty().unbind();
+        titleLabel.setText("🏛️ Chambre : " + node.type().name());
+
+        String speciesName = (colony != null && colony.getSpecies() != null) ? colony.getSpecies().getScientificName() : "Formica sp.";
+        String colonyIdStr = (colony != null && colony.getId() != null) ? colony.getId().toString().substring(0, Math.min(8, colony.getId().toString().length())) : "N/A";
+        lblSpeciesColony.setText(String.format("🧬 %s | 🏛️ Colonie #%s", speciesName, colonyIdStr));
+
+        // Capacity and occupant count
+        int occupants = 0;
+        int queens = 0, workers = 0, soldiers = 0, males = 0;
+        if (colony != null) {
+            for (Individual ind : colony.getLivingIndividuals()) {
+                double dist = Math.hypot(ind.getX() - node.x(), Math.hypot(ind.getY() - node.y(), ind.getZ() - node.z()));
+                if (dist <= Math.max(node.radiusX(), node.radiusZ()) * 1.5) {
+                    occupants++;
+                    if (ind.getCaste() == Individual.Caste.QUEEN) queens++;
+                    else if (ind.getCaste() == Individual.Caste.SOLDIER) soldiers++;
+                    else if (ind.getCaste() == Individual.Caste.MALE) males++;
+                    else workers++;
+                }
+            }
+        }
+
+        lblHealthText.textProperty().unbind();
+        lblHealthText.setText(String.format(Locale.US, "👥 Occupants réels : %d (👑 %d | ⚒️ %d | ⚔️ %d | ♂ %d)", occupants, queens, workers, soldiers, males));
+        healthBar.setProgress(Math.min(1.0, occupants / 50.0));
+        healthBar.setStyle("-fx-accent: #38bdf8;");
+
+        lblEnergyHungerThirst.textProperty().unbind();
+        float foodStored = (colony != null) ? colony.getFoodStored() : 0.0f;
+        lblEnergyHungerThirst.setText(String.format(Locale.US, "📦 Réserve Nourriture: %.1f | Rayon: %.1f m", foodStored, node.radiusX()));
+
+        lblAgeStageJob.textProperty().unbind();
+        lblAgeStageJob.setText(String.format(Locale.US, "📐 Position: X=%.1f m, Y=%.1f m, Profondeur=%.1f m", node.x(), node.y(), -node.z()));
+
+        lblAiState.textProperty().unbind();
+        lblAiState.setText("Type architectural : " + node.type().name());
+        lblAiState.setTooltip(new Tooltip("Chambre biogène souterraine\nVolume lenticulaire adapté à la régulation microclimatique"));
+        lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
+
+        lblPos3D.textProperty().unbind();
+        lblPos3D.setText(String.format(Locale.US, "Dimensions cavité: Rx=%.1fm, Ry=%.1fm, Rz=%.1fm", node.radiusX(), node.radiusY(), node.radiusZ()));
+
+        lblHeadingCargo.textProperty().unbind();
+        lblHeadingCargo.setText("Identifiant Nodule: #" + (node.id() != null ? node.id().toString().substring(0, Math.min(8, node.id().toString().length())) : "0"));
+
+        lblChcGestalt.textProperty().unbind();
+        lblChcGestalt.setText("🟢 Structure Stable & Intacte");
+        lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #22c55e;");
+
+        btnFollowTps.setDisable(true);
+        btnFollowFps.setDisable(true);
+        btnStopFollow.setVisible(false);
+        btnStopFollow.setManaged(false);
+        clearSearchStatus();
+    }
+
     public void setOnFollowAnt(Consumer<Individual> handler) {
         this.onFollowAntHandler = handler;
     }

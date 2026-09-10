@@ -123,6 +123,8 @@ export default function LODAnts({ ants }) {
                         scale={antScale}
                         diseaseState={ant.diseaseState || 'HEALTHY'}
                         insectOrder={ant.insectOrder || ant.insectType || ant.family || 'ANT'}
+                        carriedItem={ant.carriedItem || 'NONE'}
+                        heading={ant.heading || 0}
                     />
                 )
             })}

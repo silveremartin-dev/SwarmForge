@@ -3355,7 +3355,6 @@ public class WorldEditorPane extends BorderPane {
         canvas3D.setOnMouseClicked(e -> {
             if (e.getClickCount() == 2) { resetAllCameras(); return; }
             if (enableSculptingCheck != null && enableSculptingCheck.isSelected()) return;
-            if (!isAntTrackingEnabled) return;
 
             double mx = e.getX();
             double my = e.getY();
@@ -3369,7 +3368,12 @@ public class WorldEditorPane extends BorderPane {
 
             org.swarmforge.core.domain.Individual clickedAnt = null;
             org.swarmforge.core.domain.Predator clickedPredator = null;
+            org.swarmforge.core.simulation.TunnelNetwork.TunnelNode clickedChamber = null;
+            org.swarmforge.core.domain.Colony chamberColony = null;
+
             double minEntityDistSq = 900.0;
+            double minChamberDistSq = 625.0;
+
             if (activeSimulation != null) {
                 // 1. Check Ants
                 for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
@@ -3390,6 +3394,7 @@ public class WorldEditorPane extends BorderPane {
                             minEntityDistSq = dSq;
                             clickedAnt = ind;
                             clickedPredator = null;
+                            clickedChamber = null;
                         }
                     }
                 }
@@ -3410,6 +3415,32 @@ public class WorldEditorPane extends BorderPane {
                             minEntityDistSq = dSq;
                             clickedPredator = pred;
                             clickedAnt = null;
+                            clickedChamber = null;
+                        }
+                    }
+                }
+
+                // 3. Check Nest Chambers & Nodes
+                if (clickedAnt == null && clickedPredator == null) {
+                    int tWidth = Math.max(1, activeSimulation.getTerrarium().getWidth());
+                    int tHeight = Math.max(1, activeSimulation.getTerrarium().getHeight());
+                    for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
+                        if (colony.getTunnelNetwork() != null && colony.getTunnelNetwork().getNodes() != null) {
+                            for (org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node : colony.getTunnelNetwork().getNodes()) {
+                                double gx = (node.x() / (double) tWidth) * GRID_SIZE;
+                                double gy = (node.y() / (double) tHeight) * GRID_SIZE;
+                                int igx = Math.max(0, Math.min(GRID_SIZE - 1, (int) gx));
+                                int igy = Math.max(0, Math.min(GRID_SIZE - 1, (int) gy));
+                                double gz = heightGrid[igx][igy] * 40.0 + node.z() * 2.0;
+
+                                double[] p = project3DPoint(gx, gy, gz, cx, cy, scale, radAz, radEl);
+                                double dSq = (p[0] - mx) * (p[0] - mx) + (p[1] - my) * (p[1] - my);
+                                if (dSq < minChamberDistSq) {
+                                    minChamberDistSq = dSq;
+                                    clickedChamber = node;
+                                    chamberColony = colony;
+                                }
+                            }
                         }
                     }
                 }
@@ -3424,6 +3455,11 @@ public class WorldEditorPane extends BorderPane {
             } else if (clickedPredator != null) {
                 if (trackedAntPane != null) {
                     trackedAntPane.updatePredator(clickedPredator, true);
+                    trackedAntPane.setVisible(true);
+                }
+            } else if (clickedChamber != null) {
+                if (trackedAntPane != null) {
+                    trackedAntPane.updateChamber(clickedChamber, chamberColony);
                     trackedAntPane.setVisible(true);
                 }
             } else if (trackedAntPane != null) {
@@ -3736,7 +3772,9 @@ public class WorldEditorPane extends BorderPane {
 
             org.swarmforge.core.domain.Individual hoveredAnt = null;
             org.swarmforge.core.domain.Predator hoveredPredator = null;
+            org.swarmforge.core.simulation.TunnelNetwork.TunnelNode hoveredChamber = null;
             double minEntityDistSq = 1225.0; // 35px threshold
+            double minChamberDistSq = 625.0; // 25px threshold
             for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
                 for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
                     double ax = ind.getX();
@@ -3778,6 +3816,29 @@ public class WorldEditorPane extends BorderPane {
                 }
             }
 
+            if (hoveredAnt == null && hoveredPredator == null) {
+                int tWidth = Math.max(1, activeSimulation.getTerrarium().getWidth());
+                int tHeight = Math.max(1, activeSimulation.getTerrarium().getHeight());
+                for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
+                    if (colony.getTunnelNetwork() != null && colony.getTunnelNetwork().getNodes() != null) {
+                        for (org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node : colony.getTunnelNetwork().getNodes()) {
+                            double gxNode = (node.x() / (double) tWidth) * GRID_SIZE;
+                            double gyNode = (node.y() / (double) tHeight) * GRID_SIZE;
+                            int igx = Math.max(0, Math.min(GRID_SIZE - 1, (int) gxNode));
+                            int igy = Math.max(0, Math.min(GRID_SIZE - 1, (int) gyNode));
+                            double gz = heightGrid[igx][igy] * 40.0 + node.z() * 2.0;
+
+                            double[] p = project3DPoint(gxNode, gyNode, gz, cx, cy, scale, radAz, radEl);
+                            double dSq = (p[0] - mx) * (p[0] - mx) + (p[1] - my) * (p[1] - my);
+                            if (dSq < minChamberDistSq) {
+                                minChamberDistSq = dSq;
+                                hoveredChamber = node;
+                            }
+                        }
+                    }
+                }
+            }
+
             if (hoveredAnt != null) {
                 antHoverStr = I18nManager.getInstance().get("world.hover.ant",
                     hoveredAnt.getSpecies() != null ? hoveredAnt.getSpecies().getCommonName() : "Formicidae",
@@ -3788,6 +3849,9 @@ public class WorldEditorPane extends BorderPane {
                     hoveredPredator.getType().getDisplayName(),
                     hoveredPredator.getHealth(), hoveredPredator.getMaxHealth(),
                     hoveredPredator.getState());
+            } else if (hoveredChamber != null) {
+                antHoverStr = String.format(Locale.US, " | 🏛️ %s [Prof: %.1fm | Cavité: Rx=%.1fm]",
+                    hoveredChamber.type().name(), -hoveredChamber.z(), hoveredChamber.radiusX());
             }
         }
 
@@ -4820,15 +4884,56 @@ public class WorldEditorPane extends BorderPane {
                 double swayX = p[0] + windSwayX;
 
                 // 2. Dynamic Directional Soft Cast Shadow (follows tree base, height, canopy radius and wind sway)
+                boolean isStump = (speciesIdx == 1);
                 double shadowOffsetDist = trunkH * 0.45;
                 double shadowDx = Math.cos(radAz + Math.PI / 4.0) * shadowOffsetDist + windSwayX * 0.5;
                 double shadowDy = Math.sin(radAz + Math.PI / 4.0) * shadowOffsetDist * Math.sin(radEl) + windSwayY * 0.5;
                 double shadowW = canopyR * 1.5;
                 double shadowH = canopyR * 0.7 * Math.sin(radEl);
 
-                // Soft ground canopy shadow
-                gc3D.setFill(Color.color(0.02, 0.04, 0.09, isSimulationMode ? 0.18 : 0.12));
-                gc3D.fillOval(p[0] + shadowDx - shadowW * 0.5, p[1] + shadowDy - shadowH * 0.5, shadowW, shadowH);
+                // Directional trunk shadow connecting ground base to canopy/top
+                if (!isStump && trunkH > 3.0) {
+                    double perpAngle = Math.atan2(shadowDy, shadowDx) + Math.PI / 2.0;
+                    double halfTw = Math.max(1.2, trunkW * 0.45);
+                    double pxPerp = Math.cos(perpAngle) * halfTw;
+                    double pyPerp = Math.sin(perpAngle) * halfTw;
+                    double[] trunkShadowX = new double[]{
+                        p[0] - pxPerp, p[0] + pxPerp,
+                        p[0] + shadowDx + pxPerp * 0.7, p[0] + shadowDx - pxPerp * 0.7
+                    };
+                    double[] trunkShadowY = new double[]{
+                        p[1] - pyPerp, p[1] + pyPerp,
+                        p[1] + shadowDy + pyPerp * 0.7, p[1] + shadowDy - pyPerp * 0.7
+                    };
+                    gc3D.setFill(Color.color(0.02, 0.04, 0.08, isSimulationMode ? 0.18 : 0.12));
+                    gc3D.fillPolygon(trunkShadowX, trunkShadowY, 4);
+                } else if (isStump) {
+                    // Small trunk base shadow for stump
+                    double sDist = trunkH * 0.35;
+                    double sDx = Math.cos(radAz + Math.PI / 4.0) * sDist;
+                    double sDy = Math.sin(radAz + Math.PI / 4.0) * sDist * Math.sin(radEl);
+                    double halfTw = Math.max(1.8, trunkW * 0.6);
+                    double perpAngle = Math.atan2(sDy, sDx) + Math.PI / 2.0;
+                    double pxPerp = Math.cos(perpAngle) * halfTw;
+                    double pyPerp = Math.sin(perpAngle) * halfTw;
+                    double[] stumpShadowX = new double[]{
+                        p[0] - pxPerp, p[0] + pxPerp,
+                        p[0] + sDx + pxPerp * 0.8, p[0] + sDx - pxPerp * 0.8
+                    };
+                    double[] stumpShadowY = new double[]{
+                        p[1] - pyPerp, p[1] + pyPerp,
+                        p[1] + sDy + pyPerp * 0.8, p[1] + sDy - pyPerp * 0.8
+                    };
+                    gc3D.setFill(Color.color(0.01, 0.02, 0.05, 0.22));
+                    gc3D.fillPolygon(stumpShadowX, stumpShadowY, 4);
+                }
+
+                // Soft ground canopy shadow (ONLY for trees with actual foliage, NOT for stumps)
+                if (!isStump) {
+                    gc3D.setFill(Color.color(0.02, 0.04, 0.09, isSimulationMode ? 0.18 : 0.12));
+                    gc3D.fillOval(p[0] + shadowDx - shadowW * 0.5, p[1] + shadowDy - shadowH * 0.5, shadowW, shadowH);
+                }
+
                 // Contact shadow at trunk/stump base
                 gc3D.setFill(Color.color(0.01, 0.02, 0.05, 0.28));
                 gc3D.fillOval(p[0] - trunkW * 0.75, p[1] - trunkW * 0.25, trunkW * 1.5, trunkW * 0.5);
@@ -7235,9 +7340,9 @@ public class WorldEditorPane extends BorderPane {
             int y = coords[1];
             int zVox = coords[2];
 
-            // Normalize terrarium cell coordinates (0..terrW, 0..terrH) to editor grid (0..GRID_SIZE) with cell center offset (+0.5)
-            double gx = Math.max(0.0, Math.min(GRID_SIZE - 1.0, ((x + 0.5) / terrW) * GRID_SIZE));
-            double gy = Math.max(0.0, Math.min(GRID_SIZE - 1.0, ((y + 0.5) / terrH) * GRID_SIZE));
+            // Normalize terrarium cell coordinates (0..terrW, 0..terrH) to editor grid (0..GRID_SIZE)
+            double gx = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (x / (double) terrW) * GRID_SIZE));
+            double gy = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (y / (double) terrH) * GRID_SIZE));
             int igx = Math.max(0, Math.min(GRID_SIZE - 1, (int) gx));
             int igy = Math.max(0, Math.min(GRID_SIZE - 1, (int) gy));
 
@@ -7273,8 +7378,8 @@ public class WorldEditorPane extends BorderPane {
             }
 
             double depthZOffset = isSubterraneanPheromone
-                ? - (Math.abs(zVox > 15 ? zVox - 32 : zVox) * 2.2)
-                : 0.8;
+                ? - (Math.abs(zVox > 15 ? zVox - 32 : zVox) * 2.0)
+                : 1.5;
             double terrainZ = (heightGrid[igx][igy] * 40.0) + depthZOffset;
             double[] p = project3DPoint(gx, gy, terrainZ, cx, cy, scale, radAz, radEl);
             double alpha = Math.min(0.9, maxVal * 0.75);

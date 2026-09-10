@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { useSimulationStore } from '../store/simulationStore'
 import LowPolyModel from './LowPolyModel'
 import { getTerrainHeight, getEffectiveSeason } from '../utils/terrainUtils'
+import { getPixelPoppyTexture, getPixelDandelionTexture, getPixelTallGrassTexture } from '../utils/pixelTextures'
 
 /**
  * Single Voxel Tree Component (Gamified Mode)
@@ -448,11 +449,37 @@ function VoxelHollowStump({ position = [52, 0, 48], scale = 1.0, terrainConfig }
 }
 
 /**
+ * 2.5D Cross-Billboard Mesh for Minecraft flowers and plants (X-shape)
+ */
+function PixelCrossMesh({ position, texture, scale = 1.0 }) {
+    const geo = useMemo(() => new THREE.PlaneGeometry(0.85 * scale, 0.95 * scale), [scale])
+    const mat = useMemo(() => new THREE.MeshStandardMaterial({
+        map: texture,
+        transparent: true,
+        alphaTest: 0.25,
+        roughness: 0.8,
+        metalness: 0.05,
+        side: THREE.DoubleSide,
+    }), [texture])
+
+    return (
+        <group position={position} frustumCulled={false}>
+            <mesh geometry={geo} material={mat} rotation={[0, Math.PI / 4, 0]} position={[0, 0.45 * scale, 0]} castShadow receiveShadow />
+            <mesh geometry={geo} material={mat} rotation={[0, -Math.PI / 4, 0]} position={[0, 0.45 * scale, 0]} castShadow receiveShadow />
+        </group>
+    )
+}
+
+/**
  * Gamified Mode Voxel Flora Renderer (High Fidelity)
- * Renders detailed voxel mushrooms (Amanites with white spots, brown bolets),
- * coral/yellow flower bushes, and stepped voxel ferns across the terrarium floor.
+ * Renders authentic 2.5D cross-billboard pixel flowers (Poppies, Dandelions, Tall Grass),
+ * voxel mushrooms (Amanites with white spots, brown bolets), and coral/yellow flower bushes.
  */
 function GamifiedVoxelFlora({ terrainConfig }) {
+    const poppyTex = useMemo(() => getPixelPoppyTexture(), [])
+    const dandelionTex = useMemo(() => getPixelDandelionTexture(), [])
+    const tallGrassTex = useMemo(() => getPixelTallGrassTexture(), [])
+
     const voxelPlants = useMemo(() => {
         const items = []
         const rand = (seed) => {
@@ -460,15 +487,16 @@ function GamifiedVoxelFlora({ terrainConfig }) {
             return x - Math.floor(x)
         }
 
-        // Generate 70 rich voxel flora instances
-        for (let i = 0; i < 70; i++) {
+        // Generate 80 rich voxel flora instances
+        for (let i = 0; i < 80; i++) {
             const gridX = Math.round(rand(i * 1.7) * 90 + 5)
             const gridZ = Math.round(rand(i * 3.1) * 90 + 5)
             if (gridX >= 18 && gridX <= 32) continue // Skip river channel
             const groundY = getTerrainHeight(gridX, gridZ, terrainConfig)
-            const type = Math.floor(rand(i * 4.3) * 4) // 0: Red Mushroom, 1: Brown Mushroom, 2: Flower Bush, 3: Voxel Fern
+            // 0: Red Mushroom, 1: Brown Mushroom, 2: Flower Bush, 3: Poppy Cross, 4: Dandelion Cross, 5: Tall Grass Cross
+            const type = Math.floor(rand(i * 4.3) * 6)
 
-            items.push({ id: i, x: gridX, y: groundY, z: gridZ, type, scale: 0.7 + rand(i * 2.9) * 0.6 })
+            items.push({ id: i, x: gridX, y: groundY, z: gridZ, type, scale: 0.75 + rand(i * 2.9) * 0.5 })
         }
         return items
     }, [terrainConfig])
@@ -476,6 +504,19 @@ function GamifiedVoxelFlora({ terrainConfig }) {
     return (
         <group frustumCulled={false}>
             {voxelPlants.map((item) => {
+                // Type 3: 2.5D Cross Poppy
+                if (item.type === 3) {
+                    return <PixelCrossMesh key={item.id} position={[item.x, item.y, item.z]} texture={poppyTex} scale={item.scale} />
+                }
+                // Type 4: 2.5D Cross Dandelion
+                if (item.type === 4) {
+                    return <PixelCrossMesh key={item.id} position={[item.x, item.y, item.z]} texture={dandelionTex} scale={item.scale} />
+                }
+                // Type 5: 2.5D Cross Tall Grass
+                if (item.type === 5) {
+                    return <PixelCrossMesh key={item.id} position={[item.x, item.y, item.z]} texture={tallGrassTex} scale={item.scale} />
+                }
+
                 // Type 0: Red Fly Agaric Mushroom (White stem + Crimson cap with white speckles)
                 if (item.type === 0) {
                     return (
@@ -529,42 +570,26 @@ function GamifiedVoxelFlora({ terrainConfig }) {
                 }
 
                 // Type 2: Colorful Voxel Flower Bush (Coral / Rose / Yellow)
-                if (item.type === 2) {
-                    const flowerColor = item.id % 2 === 0 ? '#f43f5e' : '#eab308'
-                    return (
-                        <group key={item.id} position={[item.x, item.y, item.z]} scale={[item.scale, item.scale, item.scale]} frustumCulled={false}>
-                            {/* Base Leaves */}
-                            <mesh position={[0, 0.4, 0]} castShadow frustumCulled={false}>
-                                <boxGeometry args={[1.0, 0.8, 1.0]} />
-                                <meshStandardMaterial color="#15803d" roughness={0.85} depthWrite depthTest />
-                            </mesh>
-                            {/* Top Flower Blooms */}
-                            <mesh position={[0.2, 0.9, 0.2]} castShadow frustumCulled={false}>
-                                <boxGeometry args={[0.4, 0.4, 0.4]} />
-                                <meshStandardMaterial color={flowerColor} roughness={0.6} depthWrite depthTest />
-                            </mesh>
-                            <mesh position={[-0.2, 0.9, -0.2]} castShadow frustumCulled={false}>
-                                <boxGeometry args={[0.35, 0.35, 0.35]} />
-                                <meshStandardMaterial color={flowerColor} roughness={0.6} depthWrite depthTest />
-                            </mesh>
-                            <mesh position={[0.1, 1.0, -0.2]} castShadow frustumCulled={false}>
-                                <boxGeometry args={[0.3, 0.3, 0.3]} />
-                                <meshStandardMaterial color="#fbbf24" roughness={0.6} depthWrite depthTest />
-                            </mesh>
-                        </group>
-                    )
-                }
-
-                // Type 3: Voxel Cross Fern / Grass Cluster
+                const flowerColor = item.id % 2 === 0 ? '#f43f5e' : '#eab308'
                 return (
                     <group key={item.id} position={[item.x, item.y, item.z]} scale={[item.scale, item.scale, item.scale]} frustumCulled={false}>
-                        <mesh position={[0, 0.5, 0]} castShadow frustumCulled={false}>
-                            <boxGeometry args={[0.2, 1.0, 0.9]} />
-                            <meshStandardMaterial color="#4d7c0f" roughness={0.85} depthWrite depthTest />
+                        {/* Base Leaves */}
+                        <mesh position={[0, 0.4, 0]} castShadow frustumCulled={false}>
+                            <boxGeometry args={[1.0, 0.8, 1.0]} />
+                            <meshStandardMaterial color="#15803d" roughness={0.85} depthWrite depthTest />
                         </mesh>
-                        <mesh position={[0, 0.5, 0]} castShadow frustumCulled={false}>
-                            <boxGeometry args={[0.9, 1.0, 0.2]} />
-                            <meshStandardMaterial color="#65a30d" roughness={0.85} depthWrite depthTest />
+                        {/* Top Flower Blooms */}
+                        <mesh position={[0.2, 0.9, 0.2]} castShadow frustumCulled={false}>
+                            <boxGeometry args={[0.4, 0.4, 0.4]} />
+                            <meshStandardMaterial color={flowerColor} roughness={0.6} depthWrite depthTest />
+                        </mesh>
+                        <mesh position={[-0.2, 0.9, -0.2]} castShadow frustumCulled={false}>
+                            <boxGeometry args={[0.35, 0.35, 0.35]} />
+                            <meshStandardMaterial color={flowerColor} roughness={0.6} depthWrite depthTest />
+                        </mesh>
+                        <mesh position={[0.1, 1.0, -0.2]} castShadow frustumCulled={false}>
+                            <boxGeometry args={[0.3, 0.3, 0.3]} />
+                            <meshStandardMaterial color="#fbbf24" roughness={0.6} depthWrite depthTest />
                         </mesh>
                     </group>
                 )

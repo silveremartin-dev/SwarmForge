@@ -64,8 +64,8 @@ function resolveInsectOrder(insectOrder) {
     return 'ANT'
 }
 
-export default function AntMesh({ position, caste = 'WORKER', scale = 1, diseaseState = 'HEALTHY', insectOrder = 'ANT' }) {
-    const { lookAndFeel, showScientificSensoryVectors } = useSimulationStore()
+export default function AntMesh({ position, caste = 'WORKER', scale = 1, diseaseState = 'HEALTHY', insectOrder = 'ANT', carriedItem = 'NONE', heading = 0 }) {
+    const { lookAndFeel, showScientificSensoryVectors, environmentLighting } = useSimulationStore()
     const order = useMemo(() => resolveInsectOrder(insectOrder), [insectOrder])
 
     // Determine base color based on family and caste
@@ -86,8 +86,11 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
         return '#65a30d'                                 // Scientific chart green
     }, [baseColor, isInfected, lookAndFeel])
 
+    const isGamified = lookAndFeel === 'GAMING'
+    const isRealistic = lookAndFeel === 'REALISTIC'
+
     return (
-        <group position={position}>
+        <group position={position} rotation={[0, heading, 0]}>
             {/* SCIENTIFIC MODE: Velocity vector & Olfactory/Visual FOV sensory rays */}
             {lookAndFeel === 'SCIENTIFIC' && showScientificSensoryVectors && (
                 <group position={[0, 0.05, 0]}>
@@ -128,7 +131,7 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
             )}
 
             {/* REALISTIC MODE: Fungal spore tendrils sprouting on exoskeleton */}
-            {isInfected && lookAndFeel === 'REALISTIC' && (
+            {isInfected && isRealistic && (
                 <group position={[0, 0.2 * scale, 0]}>
                     <mesh position={[0.08 * scale, 0.1 * scale, 0]}>
                         <cylinderGeometry args={[0.02 * scale, 0.04 * scale, 0.25 * scale, 6]} />
@@ -142,7 +145,7 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
             )}
 
             {/* GAMING MODE: Retro status effect biohazard block indicator */}
-            {isInfected && lookAndFeel === 'GAMING' && (
+            {isInfected && isGamified && (
                 <mesh position={[0, 0.8 * scale, 0]}>
                     <boxGeometry args={[0.25 * scale, 0.25 * scale, 0.25 * scale]} />
                     <meshBasicMaterial color="#a3e635" wireframe={false} />
@@ -152,7 +155,7 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
             {/* ── Dynamic Species Morphology rendering based on InsectOrder ── */}
             {order === 'TERMITE' ? (
                 <group>
-                    {/* Head (Soldiers get large orange head & mandibles) */}
+                    {/* Head */}
                     <mesh position={[0, 0, 0.3 * scale]}>
                         <boxGeometry args={[0.25 * scale * (caste === 'SOLDIER' ? 1.4 : 1), 0.22 * scale, 0.26 * scale]} />
                         <meshStandardMaterial color={caste === 'SOLDIER' ? '#ea580c' : antColor} roughness={0.7} />
@@ -174,7 +177,7 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
                         <cylinderGeometry args={[0.12 * scale, 0.14 * scale, 0.25 * scale, 8]} rotation={[Math.PI / 2, 0, 0]} />
                         <meshStandardMaterial color={antColor} roughness={0.8} />
                     </mesh>
-                    {/* Abdomen (Queens are physogastric enlarged) */}
+                    {/* Abdomen */}
                     <mesh position={[0, 0, -0.45 * scale * (caste === 'QUEEN' ? 1.8 : 1)]}>
                         <sphereGeometry args={[0.24 * scale * (caste === 'QUEEN' ? 1.5 : 1), 10, 8]} />
                         <meshStandardMaterial color={antColor} roughness={0.9} />
@@ -221,7 +224,7 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
                         <sphereGeometry args={[0.18 * scale, 8, 8]} />
                         <meshStandardMaterial color={antColor} roughness={0.4} />
                     </mesh>
-                    {/* Extremely Thin Petiole Waist */}
+                    {/* Waist */}
                     <mesh position={[0, 0, -0.18 * scale]}>
                         <cylinderGeometry args={[0.04 * scale, 0.04 * scale, 0.15 * scale, 6]} rotation={[Math.PI / 2, 0, 0]} />
                         <meshStandardMaterial color="#0f172a" />
@@ -231,7 +234,7 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
                         <coneGeometry args={[0.20 * scale, 0.45 * scale, 8]} rotation={[-Math.PI / 2, 0, 0]} />
                         <meshStandardMaterial color={antColor} roughness={0.3} />
                     </mesh>
-                    {/* Elongated Wings */}
+                    {/* Wings */}
                     <group position={[0, 0.18 * scale, -0.05 * scale]}>
                         <mesh position={[0.30 * scale, 0, 0]} rotation={[0, 0.1, 0.15]}>
                             <boxGeometry args={[0.40 * scale, 0.01, 0.12 * scale]} />
@@ -260,7 +263,7 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
                         <sphereGeometry args={[0.26 * scale, 10, 10]} />
                         <meshStandardMaterial color={antColor} roughness={0.7} />
                     </mesh>
-                    {/* Rear Cornicles / Siphunculi tubes */}
+                    {/* Rear Cornicles */}
                     <group position={[0, 0.2 * scale, -0.36 * scale]}>
                         <mesh position={[0.1 * scale, 0, 0]} rotation={[0.4, 0, 0]}>
                             <cylinderGeometry args={[0.02 * scale, 0.02 * scale, 0.15 * scale, 6]} />
@@ -279,45 +282,36 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
                         <boxGeometry args={[0.16 * scale, 0.12 * scale, 0.14 * scale]} />
                         <meshStandardMaterial color="#1e1b4b" roughness={0.3} />
                     </mesh>
-                    {/* Broad Thoracic Pronotum Shield */}
+                    {/* Broad Pronotum */}
                     <mesh position={[0, 0, 0.08 * scale]}>
                         <boxGeometry args={[0.26 * scale, 0.16 * scale, 0.18 * scale]} />
                         <meshStandardMaterial color={antColor} roughness={0.2} metalness={0.4} />
                     </mesh>
-                    {/* Hard Chitin Elytra Wing Covers */}
+                    {/* Hard Chitin Elytra */}
                     <mesh position={[0, 0, -0.28 * scale]}>
                         <sphereGeometry args={[0.28 * scale, 10, 8]} />
                         <meshStandardMaterial color={antColor} roughness={0.15} metalness={0.5} />
                     </mesh>
                 </group>
-            ) : order === 'THRIPS' ? (
-                <group>
-                    {/* Small Head */}
-                    <mesh position={[0, 0, 0.26 * scale]}>
-                        <boxGeometry args={[0.08 * scale, 0.08 * scale, 0.10 * scale]} />
-                        <meshStandardMaterial color={antColor} roughness={0.6} />
-                    </mesh>
-                    {/* Narrow Thorax */}
-                    <mesh position={[0, 0, 0.12 * scale]}>
-                        <boxGeometry args={[0.10 * scale, 0.08 * scale, 0.16 * scale]} />
-                        <meshStandardMaterial color={antColor} roughness={0.6} />
-                    </mesh>
-                    {/* Elongated Narrow Abdomen */}
-                    <mesh position={[0, 0, -0.28 * scale]}>
-                        <cylinderGeometry args={[0.09 * scale, 0.09 * scale, 0.50 * scale, 6]} rotation={[Math.PI / 2, 0, 0]} />
-                        <meshStandardMaterial color={antColor} roughness={0.6} />
-                    </mesh>
-                </group>
             ) : (
-                /* Standard Ant / Formicidae morphology (Default Fallback) */
+                /* Standard Ant / Formicidae morphology */
                 <group>
-                    {lookAndFeel === 'GAMING' ? (
-                        /* Blocky Minecraft Ant Mob */
+                    {isGamified ? (
+                        /* ── Minecraft Mob Ant ── */
                         <group>
                             {/* Voxel Head */}
                             <mesh position={[0, 0, 0.28 * scale]} castShadow>
                                 <boxGeometry args={[0.24 * scale, 0.22 * scale, 0.24 * scale]} />
-                                <meshStandardMaterial color={antColor} roughness={0.8} />
+                                <meshStandardMaterial color={antColor} roughness={0.85} />
+                            </mesh>
+                            {/* Pixel Eyes (Minecraft Spider/Mob Glowing Eyes) */}
+                            <mesh position={[0.08 * scale, 0.05 * scale, 0.41 * scale]}>
+                                <boxGeometry args={[0.05 * scale, 0.05 * scale, 0.02 * scale]} />
+                                <meshBasicMaterial color={environmentLighting?.isNight ? '#ef4444' : '#18181b'} />
+                            </mesh>
+                            <mesh position={[-0.08 * scale, 0.05 * scale, 0.41 * scale]}>
+                                <boxGeometry args={[0.05 * scale, 0.05 * scale, 0.02 * scale]} />
+                                <meshBasicMaterial color={environmentLighting?.isNight ? '#ef4444' : '#18181b'} />
                             </mesh>
                             {/* Voxel Mandibles */}
                             <mesh position={[0.08 * scale, -0.05 * scale, 0.42 * scale]}>
@@ -331,7 +325,7 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
                             {/* Voxel Thorax */}
                             <mesh position={[0, 0, 0]} castShadow>
                                 <boxGeometry args={[0.20 * scale, 0.18 * scale, 0.26 * scale]} />
-                                <meshStandardMaterial color={antColor} roughness={0.8} />
+                                <meshStandardMaterial color={antColor} roughness={0.85} />
                             </mesh>
                             {/* Voxel Petiole Waist */}
                             <mesh position={[0, 0.02 * scale, -0.16 * scale]}>
@@ -341,27 +335,165 @@ export default function AntMesh({ position, caste = 'WORKER', scale = 1, disease
                             {/* Voxel Gaster / Abdomen */}
                             <mesh position={[0, 0, -0.38 * scale]} castShadow>
                                 <boxGeometry args={[0.30 * scale, 0.26 * scale, 0.42 * scale]} />
-                                <meshStandardMaterial color={antColor} roughness={0.7} />
+                                <meshStandardMaterial color={antColor} roughness={0.75} />
                             </mesh>
+                            {/* 6 Blocky Stick Legs */}
+                            <group position={[0, -0.05 * scale, 0]}>
+                                {/* Left Legs */}
+                                <mesh position={[0.18 * scale, -0.08 * scale, 0.10 * scale]} rotation={[0, 0, -0.4]}>
+                                    <boxGeometry args={[0.04 * scale, 0.18 * scale, 0.04 * scale]} />
+                                    <meshStandardMaterial color="#2d1c0c" roughness={0.9} />
+                                </mesh>
+                                <mesh position={[0.20 * scale, -0.08 * scale, 0]} rotation={[0, 0, -0.4]}>
+                                    <boxGeometry args={[0.04 * scale, 0.18 * scale, 0.04 * scale]} />
+                                    <meshStandardMaterial color="#2d1c0c" roughness={0.9} />
+                                </mesh>
+                                <mesh position={[0.18 * scale, -0.08 * scale, -0.10 * scale]} rotation={[0, 0, -0.4]}>
+                                    <boxGeometry args={[0.04 * scale, 0.18 * scale, 0.04 * scale]} />
+                                    <meshStandardMaterial color="#2d1c0c" roughness={0.9} />
+                                </mesh>
+                                {/* Right Legs */}
+                                <mesh position={[-0.18 * scale, -0.08 * scale, 0.10 * scale]} rotation={[0, 0, 0.4]}>
+                                    <boxGeometry args={[0.04 * scale, 0.18 * scale, 0.04 * scale]} />
+                                    <meshStandardMaterial color="#2d1c0c" roughness={0.9} />
+                                </mesh>
+                                <mesh position={[-0.20 * scale, -0.08 * scale, 0]} rotation={[0, 0, 0.4]}>
+                                    <boxGeometry args={[0.04 * scale, 0.18 * scale, 0.04 * scale]} />
+                                    <meshStandardMaterial color="#2d1c0c" roughness={0.9} />
+                                </mesh>
+                                <mesh position={[-0.18 * scale, -0.08 * scale, -0.10 * scale]} rotation={[0, 0, 0.4]}>
+                                    <boxGeometry args={[0.04 * scale, 0.18 * scale, 0.04 * scale]} />
+                                    <meshStandardMaterial color="#2d1c0c" roughness={0.9} />
+                                </mesh>
+                            </group>
+
+                            {/* Minecraft Carried Voxel Item */}
+                            {carriedItem === 'SUGAR_NECTAR' && (
+                                <mesh position={[0, 0.28 * scale, 0.38 * scale]}>
+                                    <boxGeometry args={[0.16 * scale, 0.16 * scale, 0.16 * scale]} />
+                                    <meshStandardMaterial color="#facc15" emissive="#eab308" emissiveIntensity={0.5} roughness={0.2} />
+                                </mesh>
+                            )}
+                            {carriedItem === 'SEEDS' && (
+                                <mesh position={[0, 0.28 * scale, 0.38 * scale]}>
+                                    <boxGeometry args={[0.14 * scale, 0.14 * scale, 0.18 * scale]} />
+                                    <meshStandardMaterial color="#92400e" roughness={0.7} />
+                                </mesh>
+                            )}
                         </group>
                     ) : (
-                        /* Smooth Natural / Scientific Chitin Anatomy */
+                        /* ── Smooth Natural / Realistic Chitin Anatomy ── */
                         <group>
-                            {/* Head */}
-                            <mesh position={[0, 0, 0.3 * scale]} castShadow>
-                                <sphereGeometry args={[0.15 * scale, 8, 6]} />
-                                <meshStandardMaterial color={antColor} roughness={lookAndFeel === 'REALISTIC' ? 0.75 : 0.4} metalness={0.15} />
-                            </mesh>
-                            {/* Thorax */}
+                            {/* Head with Compound Eyes & Mandibles */}
+                            <group position={[0, 0, 0.3 * scale]}>
+                                <mesh castShadow>
+                                    <sphereGeometry args={[0.15 * scale, 12, 10]} />
+                                    <meshStandardMaterial
+                                        color={antColor}
+                                        roughness={isRealistic ? 0.35 : 0.45}
+                                        metalness={isRealistic ? 0.25 : 0.1}
+                                    />
+                                </mesh>
+                                {/* Left & Right Compound Eyes (Glossy black facet) */}
+                                <mesh position={[0.11 * scale, 0.04 * scale, 0.06 * scale]}>
+                                    <sphereGeometry args={[0.045 * scale, 8, 8]} />
+                                    <meshStandardMaterial color="#09090b" roughness={0.1} metalness={0.8} />
+                                </mesh>
+                                <mesh position={[-0.11 * scale, 0.04 * scale, 0.06 * scale]}>
+                                    <sphereGeometry args={[0.045 * scale, 8, 8]} />
+                                    <meshStandardMaterial color="#09090b" roughness={0.1} metalness={0.8} />
+                                </mesh>
+                                {/* Natural Curved Mandibles */}
+                                <mesh position={[0.05 * scale, -0.05 * scale, 0.16 * scale]} rotation={[0, -0.3, 0]}>
+                                    <coneGeometry args={[0.025 * scale, 0.10 * scale, 6]} rotation={[Math.PI / 2, 0, 0]} />
+                                    <meshStandardMaterial color="#1e1b4b" roughness={0.2} metalness={0.4} />
+                                </mesh>
+                                <mesh position={[-0.05 * scale, -0.05 * scale, 0.16 * scale]} rotation={[0, 0.3, 0]}>
+                                    <coneGeometry args={[0.025 * scale, 0.10 * scale, 6]} rotation={[Math.PI / 2, 0, 0]} />
+                                    <meshStandardMaterial color="#1e1b4b" roughness={0.2} metalness={0.4} />
+                                </mesh>
+
+                                {/* Realistic Liquid Nectar / Sugar Droplet held in Mandibles */}
+                                {carriedItem === 'SUGAR_NECTAR' && (
+                                    <mesh position={[0, 0, 0.22 * scale]}>
+                                        <sphereGeometry args={[0.10 * scale, 14, 14]} />
+                                        <meshStandardMaterial
+                                            color="#fef08a"
+                                            roughness={0.05}
+                                            metalness={0.1}
+                                            transparent
+                                            opacity={0.88}
+                                            emissive="#facc15"
+                                            emissiveIntensity={0.3}
+                                        />
+                                    </mesh>
+                                )}
+                                {carriedItem === 'SEEDS' && (
+                                    <mesh position={[0, 0, 0.22 * scale]} rotation={[0.3, 0.2, 0]}>
+                                        <coneGeometry args={[0.08 * scale, 0.20 * scale, 8]} />
+                                        <meshStandardMaterial color="#78350f" roughness={0.7} />
+                                    </mesh>
+                                )}
+                            </group>
+
+                            {/* Pronotum / Thorax */}
                             <mesh position={[0, 0, 0]} castShadow>
-                                <sphereGeometry args={[0.12 * scale, 8, 6]} />
-                                <meshStandardMaterial color={antColor} roughness={lookAndFeel === 'REALISTIC' ? 0.75 : 0.4} metalness={0.15} />
+                                <sphereGeometry args={[0.13 * scale, 12, 10]} />
+                                <meshStandardMaterial
+                                    color={antColor}
+                                    roughness={isRealistic ? 0.35 : 0.45}
+                                    metalness={isRealistic ? 0.25 : 0.1}
+                                />
                             </mesh>
-                            {/* Abdomen */}
-                            <mesh position={[0, 0, -0.35 * scale]} castShadow>
-                                <sphereGeometry args={[0.2 * scale, 8, 6]} />
-                                <meshStandardMaterial color={antColor} roughness={lookAndFeel === 'REALISTIC' ? 0.75 : 0.4} metalness={0.15} />
+
+                            {/* Petiole Node */}
+                            <mesh position={[0, 0.02 * scale, -0.16 * scale]}>
+                                <sphereGeometry args={[0.06 * scale, 8, 8]} />
+                                <meshStandardMaterial color={antColor} roughness={0.5} />
                             </mesh>
+
+                            {/* Gaster / Abdomen (Segmented Chitin Rings) */}
+                            <mesh position={[0, 0, -0.38 * scale]} castShadow>
+                                <sphereGeometry args={[0.22 * scale, 14, 12]} />
+                                <meshStandardMaterial
+                                    color={antColor}
+                                    roughness={isRealistic ? 0.30 : 0.45}
+                                    metalness={isRealistic ? 0.30 : 0.1}
+                                />
+                            </mesh>
+
+                            {/* Hexapod Articulated Legs (Tripod Locomotion Stance) */}
+                            {isRealistic && (
+                                <group position={[0, -0.04 * scale, 0]}>
+                                    {/* Prothoracic Legs (Front) */}
+                                    <mesh position={[0.18 * scale, -0.06 * scale, 0.12 * scale]} rotation={[-0.2, 0, -0.6]}>
+                                        <cylinderGeometry args={[0.012 * scale, 0.010 * scale, 0.28 * scale, 6]} />
+                                        <meshStandardMaterial color="#2d1c0c" roughness={0.4} metalness={0.2} />
+                                    </mesh>
+                                    <mesh position={[-0.18 * scale, -0.06 * scale, 0.12 * scale]} rotation={[-0.2, 0, 0.6]}>
+                                        <cylinderGeometry args={[0.012 * scale, 0.010 * scale, 0.28 * scale, 6]} />
+                                        <meshStandardMaterial color="#2d1c0c" roughness={0.4} metalness={0.2} />
+                                    </mesh>
+                                    {/* Mesothoracic Legs (Middle) */}
+                                    <mesh position={[0.22 * scale, -0.06 * scale, 0]} rotation={[0, 0, -0.7]}>
+                                        <cylinderGeometry args={[0.012 * scale, 0.010 * scale, 0.30 * scale, 6]} />
+                                        <meshStandardMaterial color="#2d1c0c" roughness={0.4} metalness={0.2} />
+                                    </mesh>
+                                    <mesh position={[-0.22 * scale, -0.06 * scale, 0]} rotation={[0, 0, 0.7]}>
+                                        <cylinderGeometry args={[0.012 * scale, 0.010 * scale, 0.30 * scale, 6]} />
+                                        <meshStandardMaterial color="#2d1c0c" roughness={0.4} metalness={0.2} />
+                                    </mesh>
+                                    {/* Metathoracic Legs (Hind) */}
+                                    <mesh position={[0.20 * scale, -0.06 * scale, -0.14 * scale]} rotation={[0.3, 0, -0.8]}>
+                                        <cylinderGeometry args={[0.012 * scale, 0.010 * scale, 0.36 * scale, 6]} />
+                                        <meshStandardMaterial color="#2d1c0c" roughness={0.4} metalness={0.2} />
+                                    </mesh>
+                                    <mesh position={[-0.20 * scale, -0.06 * scale, -0.14 * scale]} rotation={[0.3, 0, 0.8]}>
+                                        <cylinderGeometry args={[0.012 * scale, 0.010 * scale, 0.36 * scale, 6]} />
+                                        <meshStandardMaterial color="#2d1c0c" roughness={0.4} metalness={0.2} />
+                                    </mesh>
+                                </group>
+                            )}
                         </group>
                     )}
                 </group>
