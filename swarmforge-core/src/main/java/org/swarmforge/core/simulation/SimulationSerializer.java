@@ -34,6 +34,12 @@ public class SimulationSerializer {
                 GZIPInputStream gzis = new GZIPInputStream(fis);
                 ObjectInputStream ois = new ObjectInputStream(gzis)) {
 
+            // Security Hardening: Restrict deserialization strictly to trusted SwarmForge and Java standard types
+            ObjectInputFilter filter = ObjectInputFilter.Config.createFilter(
+                "org.swarmforge.**;java.lang.*;java.util.**;java.util.concurrent.**;java.util.concurrent.atomic.**;[F;[I;[B;[Z;[Ljava.lang.String;;!*"
+            );
+            ois.setObjectInputFilter(filter);
+
             SimulationSnapshot snapshot = (SimulationSnapshot) ois.readObject();
             snapshot.restore(simulation);
         }

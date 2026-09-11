@@ -30,7 +30,7 @@ public class CasteTemplate implements java.io.Serializable {
     private float flySpeedMps = 0.0f;
 
     // Life
-    private int lifespan; // ticks
+    private int lifespan; // Lifespan in days (converted to seconds via SI simulation scaling)
 
     // Cost
     private float waterCost; // New Resource Management

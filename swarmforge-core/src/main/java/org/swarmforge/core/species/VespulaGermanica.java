@@ -29,7 +29,7 @@ public class VespulaGermanica extends CustomSpecies {
         setQueenCount(1);
         setQueenLifespan(365);
         setQueenEggLayingRate(40.0f);
-        setWorkerLifespan(30 * 24);
+        setWorkerLifespan(30);
         setWorkerSpeed(1.4f);
         setViewDistance(6.0f);
         setWorkersCanFly(true);
@@ -42,6 +42,7 @@ public class VespulaGermanica extends CustomSpecies {
         setCanPerformLarvalSalivaryTrophallaxis(true);
 
         CasteTemplate queen = new CasteTemplate("Fondatrice (Reine)", 450f, 20f);
+        queen.setLifespan(365);
         queen.setCanFly(true);
         queen.setWalkSpeedMps(0.25f);
         queen.setFlySpeedMps(6.5f);
@@ -49,7 +50,7 @@ public class VespulaGermanica extends CustomSpecies {
         queen.setHeadWidthMm(4.5f);
 
         CasteTemplate worker = new CasteTemplate("Ouvrière Chasseresse", 100f, 22f);
-        worker.setLifespan(30 * 24);
+        worker.setLifespan(30);
         worker.setCanFly(true);
         worker.setWalkSpeedMps(0.25f);
         worker.setFlySpeedMps(6.0f);
@@ -58,7 +59,7 @@ public class VespulaGermanica extends CustomSpecies {
 
         CasteTemplate male = new CasteTemplate("Mâle / Faux-Bourdon", 90f, 0f);
         male.setDescription("Mâle haploïde sans dard");
-        male.setLifespan(30 * 24);
+        male.setLifespan(30);
         male.setCanFly(true);
         male.setWalkSpeedMps(0.20f);
         male.setFlySpeedMps(6.5f);

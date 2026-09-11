@@ -49,6 +49,14 @@ public class SwarmNeuralDecisionEngine extends IteratingSystem {
         super(Aspect.all(PositionComponent.class, MetabolismComponent.class, EthologyComponent.class, AiComponent.class));
     }
 
+    private final float[] sensoryBuffer = new float[8];
+    private SpatialPartitioningSystem spatialSystem;
+    private org.swarmforge.core.gpu.SparsePheromoneGrid pheromoneGrid;
+
+    public void setPheromoneGrid(org.swarmforge.core.gpu.SparsePheromoneGrid grid) {
+        this.pheromoneGrid = grid;
+    }
+
     @Override
     protected void begin() {
         accumulatorSec += world.getDelta();
@@ -61,6 +69,9 @@ public class SwarmNeuralDecisionEngine extends IteratingSystem {
 
         if (hydrologySystem == null) {
             hydrologySystem = world.getSystem(SubterraneanHydrologySystem.class);
+        }
+        if (spatialSystem == null) {
+            spatialSystem = world.getSystem(SpatialPartitioningSystem.class);
         }
     }
 
@@ -75,20 +86,28 @@ public class SwarmNeuralDecisionEngine extends IteratingSystem {
         EthologyComponent eth = mEthology.get(entityId);
         AiComponent ai = mAi.get(entityId);
 
-        // 1. Assemble Sensory Vector
+        // 1. Assemble Sensory Vector into zero-allocation instance buffer
         float temp = hydrologySystem != null ? hydrologySystem.getSoilTemperature(pos.x, pos.y, pos.z) : 18.0f;
         float moisture = hydrologySystem != null ? hydrologySystem.getSoilMoisture(pos.x, pos.y, pos.z) : 0.4f;
 
-        float[] sensoryVector = new float[]{
-            meta.energy / 100.0f,
-            meta.health / 100.0f,
-            (temp - 10.0f) / 30.0f,
-            moisture,
-            0.5f,                           // Pheromone gradient placeholder
-            Math.min(1.0f, Math.abs(pos.z) / 20.0f),
-            0.0f,                           // Intruder distance indicator
-            eth.isStridulating ? 1.0f : 0.0f
-        };
+        float pheroConcentration = 0.0f;
+        if (pheromoneGrid != null) {
+            int px = Math.max(0, (int) pos.x);
+            int py = Math.max(0, (int) pos.y);
+            int pz = Math.max(0, (int) pos.z);
+            pheroConcentration = pheromoneGrid.getConcentration(px, py, pz, org.swarmforge.core.domain.PheromoneType.FOOD_TRAIL.getIndex());
+        }
+
+        int neighborCount = spatialSystem != null ? spatialSystem.getNearbyEntities(pos.x, pos.y, pos.z).size() : 0;
+
+        sensoryBuffer[0] = meta.energy / 100.0f;
+        sensoryBuffer[1] = meta.health / 100.0f;
+        sensoryBuffer[2] = (temp - 10.0f) / 30.0f;
+        sensoryBuffer[3] = moisture;
+        sensoryBuffer[4] = Math.min(1.0f, pheroConcentration);
+        sensoryBuffer[5] = Math.min(1.0f, Math.abs(pos.z) / 20.0f);
+        sensoryBuffer[6] = neighborCount > 25 ? 1.0f : (neighborCount / 25.0f);
+        sensoryBuffer[7] = eth.isStridulating ? 1.0f : 0.0f;
 
         // 2. Matrix Vector Multiplication (Dot Product)
         float bestLogit = -999f;
@@ -98,7 +117,7 @@ public class SwarmNeuralDecisionEngine extends IteratingSystem {
             float logit = 0.0f;
             float[] weights = WEIGHT_MATRIX[out];
             for (int in = 0; in < 8; in++) {
-                logit += weights[in] * sensoryVector[in];
+                logit += weights[in] * sensoryBuffer[in];
             }
             // Deterministic micro-tie-breaker noise
             logit += (deterministicRng.nextFloat() - 0.5f) * 0.01f;

@@ -56,7 +56,7 @@ public class NuptialFlightSystem {
         float humidity = weather.getHumidity();
         float wind = weather.getWindSpeed();
 
-        if (isNuptialSeason && temp >= 22.0f && humidity >= 65.0f && wind <= 4.2f) {
+        if (isNuptialSeason && temp >= 22.0f && humidity >= 65.0f && (weather.getWindSpeed() <= 15.0f || weather.getWindSpeedMs() <= 4.2f)) {
             for (Colony colony : simulation.getColonies()) {
                 if (colony.getPopulation() > 50 && colony.getFoodStored() > 100.0f) {
                     simulation.queueEvent(new SimulationEvent(

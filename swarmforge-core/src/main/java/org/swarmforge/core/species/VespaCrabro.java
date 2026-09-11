@@ -30,7 +30,7 @@ public class VespaCrabro extends CustomSpecies {
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365);
-        setWorkerLifespan(30 * 24);
+        setWorkerLifespan(30);
         setWorkerSpeed(1.5f);
         setViewDistance(9.0f);
         setWorkersCanFly(true);
@@ -43,6 +43,7 @@ public class VespaCrabro extends CustomSpecies {
 
         // Fondatrice / Reine
         CasteTemplate queen = new CasteTemplate("Reine Frelon", 350f, 30f);
+        queen.setLifespan(365);
         queen.setCanFly(true);
         queen.setCanDig(false);
         queen.setCanCarry(true);
@@ -55,6 +56,7 @@ public class VespaCrabro extends CustomSpecies {
 
         // Ouvrière Chasseuse
         CasteTemplate worker = new CasteTemplate("Ouvrière Frelon", 200f, 20f);
+        worker.setLifespan(30);
         worker.setCanFly(true);
         worker.setCanDig(false);
         worker.setCanCarry(true);
@@ -67,6 +69,7 @@ public class VespaCrabro extends CustomSpecies {
 
         // Mâle / Faux-bourdon
         CasteTemplate male = new CasteTemplate("Male Hornet", 150f, 5f);
+        male.setLifespan(30);
         male.setCanFly(true);
         male.setCanDig(false);
         male.setCanCarry(false);

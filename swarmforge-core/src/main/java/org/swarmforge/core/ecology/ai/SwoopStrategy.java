@@ -41,8 +41,9 @@ public class SwoopStrategy implements HuntingStrategy {
 
             // Actually, better logic: Move in a circle pattern relative to time
             // We need to keep the predator moving.
-            // Let's just wander high up.
-            float cruiseAltitude = (simulation.getTerrarium() != null ? simulation.getTerrarium().getDepth() * 0.5f : 20.0f) + 5.0f;
+            float surfZ = simulation.getTerrarium() != null ? simulation.getTerrarium().getSurfaceElevation(predator.getX(), predator.getY()) : 20.0f;
+            float maxZ = simulation.getTerrarium() != null ? simulation.getTerrarium().getDepth() - 1 : surfZ + 10.0f;
+            float cruiseAltitude = Math.min(maxZ, surfZ + 8.0f);
             predator.setPosition(
                     predator.getX() + (float) Math.cos(angle) * 0.5f,
                     predator.getY() + (float) Math.sin(angle) * 0.5f,

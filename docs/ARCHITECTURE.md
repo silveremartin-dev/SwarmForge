@@ -66,29 +66,31 @@ The core engine balances object-oriented domain richness with data-oriented perf
 ### 3.2 Spatial Indexing & Navigation
 - **Morton 3D (Z-Order Curve Coding)**: Maps 3D coordinates `(x, y, z)` into 64-bit integer Morton codes for $O(1)$ spatial hashing and cache-coherent cell grouping.
 - **3D Octree**: Hierarchical spatial tree for fast $O(\log N)$ range queries, raycasting, perception checks, and collision detection across 100,000+ entities.
-- **A* Pathfinder**: Multi-layered 3D grid pathfinding for intelligent navigation across variable terrain elevation and subterranean tunnels.
+- **A* Pathfinder**: Multi-layered 3D grid pathfinding with zero-allocation `NodePool` (ThreadLocal recycling) to eliminate GC overhead during massive concurrent path requests.
+- **Simulation Event Bus**: High-throughput asynchronous event pipeline (`EventBus`) with non-blocking disk streaming and decoupled UI/telemetry broadcasting.
 
 ### 3.3 Behavioral & AI Systems
 - **Finite State Machines (FSM)**: Declarative state transitions (`FSMArchitecture`) governing individual agent behavior cycles (Foraging, Nesting, Defending, Nursing).
+- **Arrhenius Thermal Kinetics & Ethology**: Full ECS integration of 220+ ethological capabilities modulated by voxel microclimate temperatures via the Arrhenius $Q_{10} = 2.2$ law and cold torpor triggers.
 - **Fuzzy Logic & Reinforcement Learning**: Fuzzy decision engines for need-based priority scoring combined with Q-Learning agents (`MockRLService`, `RLTest`) for adaptive behavior.
 - **Ecology & Biochemistry**: Aphid farming, fungal cultivation, disease propagation (`DiseaseManager`), biochemistry cycles, predator-prey dynamics, and inter-colony diplomacy (`DiplomacyManager`).
 
 ### 3.4 World & Environment Generation
 - **Dynamic Terrain & Biomes**: Procedural heightmaps (`BiomeTerrainGenerator`), water tables, soil moisture, and vegetation growth (`VegetationSystem`).
 - **Real-World API Providers**: Integration with `OpenTopographyProvider` for real elevation data and `OpenWeatherMapProvider` for live weather syncing.
-- **Subterranean Excavation**: Dynamic nest architecture generation (`Nest`, `Chamber`, `Tunnel`, `ConstructionManager`).
+- **Subterranean Excavation & Mohr-Coulomb Stability**: Dynamic nest architecture generation (`Nest`, `Chamber`, `Tunnel`, `ConstructionManager`) coupled to real-time Mohr-Coulomb shear collapse physics.
 
 ---
 
 ## 4. Server & Distributed Compute (`swarmforge-server` & `swarmforge-compute`)
 
 ### 4.1 Networking & API Layer
-- **gRPC & Protobuf / FlatBuffers**: High-efficiency, bidirectional streaming API (`SimulationServiceImpl`, `AuthServiceImpl`, `LeaderboardServiceImpl`, `MatchmakingServiceImpl`). Zero-copy serialization reduces network overhead.
+- **gRPC & Protobuf / FlatBuffers**: High-efficiency, bidirectional streaming API (`SimulationServiceImpl`, `AuthServiceImpl`, `LeaderboardServiceImpl`, `MatchmakingServiceImpl`) running on Java 21 Virtual Threads. Zero-copy serialization reduces network overhead.
 - **WebSockets & REST**: Web-compatible real-time event streaming (`SwarmForgeWebSocketServer`) and management endpoints (`RestApiServer`).
 - **Prometheus Telemetry**: Real-time server performance metrics export (`MetricsServer`, `MetricsExporter`).
 
 ### 4.2 Security & Authentication
-- **JWT Middleware**: `JwtServerInterceptor` & `JwtUtil` enforce secure token-based authentication and role-based access across gRPC services.
+- **Unified JWT Middleware & BCrypt**: `JwtServerInterceptor`, `JwtUtil`, and `RestApiServer` enforce Bearer JWT authentication, BCrypt password verification, and strict credential checking across both gRPC and REST endpoints.
 
 ### 4.3 GPU Acceleration (TornadoVM)
 - Pheromone grid diffusion and evaporation equations are offloaded to GPU hardware using **TornadoVM** task graphs:
@@ -123,7 +125,7 @@ graph TD
     B --> C[Environment & Water Table Cycle]
     C --> D[Pheromone Diffusion & Decay Kernel]
     D --> E[Biological & Ecological Systems Update]
-    E --> F[ECS Systems Execution]
+    E --> F[ECS Systems Execution - Arrhenius Q10]
     F --> G[FSM & Behavior Strategy Execution]
     G --> H[Spatial Partition & Octree Rebuild]
     H --> I[Event & Telemetry Streaming gRPC/WebSocket]
@@ -140,7 +142,7 @@ graph TD
 | **World Dimensions** | 1,000m × 1,000m × 100m | Supported with sparse Morton3D spatial maps |
 | **Tick Execution Rate**| 60 TPS (Ticks Per Second) | Sustained up to 500 agents on CPU 4-cores (1,131–2,333 TPS @ 100 ants, 70–96 TPS @ 500 ants) |
 | **Supercolony Scale**  | 1,000,000 Agents | 0.95 TPS (~1s/tick) on CPU, scalable to >60 TPS with GPU compute nodes |
-| **Streaming Latency**  | < 50 ms | Achieved via gRPC HTTP/2 bidirectional streams |
+| **Streaming Latency**  | < 50 ms | Achieved via gRPC HTTP/2 bidirectional streams on Virtual Threads |
 
 > 📖 For comprehensive benchmark metrics from 100 to 1,000,000 agents, consult [BENCHMARKS.md](BENCHMARKS.md) and [BENCHMARK_RESULTS.md](BENCHMARK_RESULTS.md).
 
@@ -148,5 +150,5 @@ graph TD
 
 ## 8. Infrastructure & Containerization
 
-- **Docker & Compose**: Containerized multi-container setup (`Dockerfile`, `docker-compose.yaml`, `envoy.yaml`) packaging SwarmForge Server, Envoy Proxy, PostgreSQL, Redis, and Prometheus.
+- **Docker & Compose**: Production containerized multi-service configuration (`Dockerfile`, `docker-compose.yml`, `envoy.yaml`) packaging SwarmForge Server, Envoy Proxy, PostgreSQL, Redis, Compute Node, and Web UI.
 - **Kubernetes**: Helm deployment charts available in `charts/` for scalable cluster orchestration.

@@ -58,6 +58,15 @@ public class EcsAgentAdapter implements AgentView {
         }
         return homeY;
     }
+
+    @Override
+    public float getHomeZ() {
+        if (mColony != null && mColony.has(entityId)) {
+            var col = org.swarmforge.core.ecs.ColonyRegistry.getColony(mColony.get(entityId).colonyId);
+            if (col != null) return col.getNestZ();
+        }
+        return homeZ;
+    }
     
     @Override
     public boolean isCarryingFood() {

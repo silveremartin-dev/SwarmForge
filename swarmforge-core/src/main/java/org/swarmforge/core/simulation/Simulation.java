@@ -46,6 +46,7 @@ public class Simulation {
 
     private int ticksPerSecond = 60;
     private float simulationStepSeconds = 0.016666667f;
+    private double accumulatedSimulationSeconds = 0.0;
     private long tickDurationNanos;
     private int diffusionInterval = 5;
     private Thread simulationThread;
@@ -297,6 +298,7 @@ public class Simulation {
             data.put("z", z);
 
             SimulationEvent event = SimulationEvent.obtain(type, SimulationEvent.Severity.INFO, tickCount.get(), message, data);
+            event.setSimTimeSeconds(Simulation.this.accumulatedSimulationSeconds);
             eventQueue.offer(event);
             org.swarmforge.core.event.EventBus.getInstance().publish(event);
         }
@@ -338,6 +340,7 @@ public class Simulation {
             String message = String.format(Locale.US, "Death: %s %s (Cause: %s, Age: %.1f jours) in colony %s at (%d, %d, %d)",
                     casteStr, shortId, cause, ageDays, colName, x, y, z);
             SimulationEvent event = SimulationEvent.obtain(type, severity, tickCount.get(), message, data);
+            event.setSimTimeSeconds(Simulation.this.accumulatedSimulationSeconds);
             eventQueue.offer(event);
             org.swarmforge.core.event.EventBus.getInstance().publish(event);
         }
@@ -438,6 +441,7 @@ public class Simulation {
 
     public void tick() {
         long currentTick = tickCount.incrementAndGet();
+        accumulatedSimulationSeconds += this.simulationStepSeconds;
         updateEnvironment(currentTick);
         ecsWorldManager.step(this.simulationStepSeconds);
 
@@ -469,6 +473,7 @@ public class Simulation {
 
                 String msg = String.format("🥀 Food Depleted: %s source fully consumed at (%d, %d, %d)", resName, xPos, yPos, zPos);
                 SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.FOOD_DEPLETED, SimulationEvent.Severity.INFO, currentTick, msg, data);
+                evt.setSimTimeSeconds(this.accumulatedSimulationSeconds);
                 eventQueue.offer(evt);
                 org.swarmforge.core.event.EventBus.getInstance().publish(evt);
             }
@@ -498,6 +503,35 @@ public class Simulation {
         for (Colony colony : colonies) {
             colony.getIndividuals().parallelStream().forEach(individual -> {
                 if (!individual.isAlive()) return;
+
+                // Update thermodynamic ambient temperature and humidity from weather context (with subterranean microclimate buffering)
+                float ambTemp = context.getTemperature();
+                float ambHum = context.getRelativeHumidity(individual.getX(), individual.getY(), individual.getZ());
+                if (individual.getZ() < -0.5f) {
+                    float optT = individual.getSpecies() != null ? individual.getSpecies().getOptimalTempCelsius() : 20.0f;
+                    float optH = individual.getSpecies() != null ? individual.getSpecies().getOptimalHumidityPercent() : 85.0f;
+                    float depthFactor = Math.min(1.0f, Math.abs(individual.getZ()) / 4.0f);
+                    ambTemp = ambTemp * (1.0f - depthFactor) + optT * depthFactor;
+                    ambHum = ambHum * (1.0f - depthFactor) + optH * depthFactor;
+                }
+                individual.setAmbientTemperatureC(ambTemp);
+                individual.setAmbientHumidityPercent(ambHum);
+
+                // Non-adult individuals (eggs, larvae, pupae) only undergo biological maturation and subterranean care
+                if (individual.getLifeStage() != Individual.LifeStage.ADULT) {
+                    processGrowth(individual);
+                    individual.tick(simulationStepSeconds);
+
+                    // Ensure brood remains strictly subterranean inside the nest
+                    if (individual.getZ() >= 0) {
+                        individual.setZ(Math.min(-0.8f, colony.getNestZ() < 0 ? colony.getNestZ() : -1.5f));
+                    }
+                    if (individual.isAlive()) {
+                        livingIndividuals.add(individual);
+                    }
+                    return;
+                }
+
                 if (individual.getBrain() == null) {
                     individual.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
                 }
@@ -539,10 +573,12 @@ public class Simulation {
                         typeToDeposit = org.swarmforge.core.domain.PheromoneType.HOME_TRAIL;
                     }
 
+                    int depZ = (int) individual.getZ();
+                    int mortonZ = depZ >= 0 ? depZ : (32 + depZ);
                     pheromoneGrid.deposit(
                             (int) individual.getX(),
                             (int) individual.getY(),
-                            (int) individual.getZ(),
+                            mortonZ,
                             typeToDeposit.getIndex(),
                             1.0f
                     );
@@ -563,12 +599,14 @@ public class Simulation {
 
                 // Coordinate boundary clamping to prevent out-of-bounds positioning
                 if (terrarium != null) {
-                    float maxX = terrarium.getWidth() - 1.0f;
-                    float maxY = terrarium.getHeight() - 1.0f;
-                    float maxZ = terrarium.getDepth() - 1.0f;
+                    float maxX = Math.max(1.0f, terrarium.getWidth() - 1.0f);
+                    float maxY = Math.max(1.0f, terrarium.getHeight() - 1.0f);
+                    float maxDepth = Math.max(10.0f, (float) terrarium.getDepth());
+                    float minZ = -maxDepth;
+                    float maxZ = maxDepth;
                     float cx = Math.max(0.0f, Math.min(maxX, individual.getX()));
                     float cy = Math.max(0.0f, Math.min(maxY, individual.getY()));
-                    float cz = Math.max(0.0f, Math.min(maxZ, individual.getZ()));
+                    float cz = Math.max(minZ, Math.min(maxZ, individual.getZ()));
                     if (cx != individual.getX() || cy != individual.getY() || cz != individual.getZ()) {
                         individual.setPosition(cx, cy, cz);
                         individual.setHeading(individual.getHeading() + (float) Math.PI);
@@ -577,22 +615,6 @@ public class Simulation {
 
                 // Inject master simulation deterministic PRNG
                 individual.setRandom(this.random);
-
-                // Update thermodynamic ambient temperature and humidity from weather context (with subterranean microclimate buffering)
-                float ambTemp = context.getTemperature();
-                float ambHum = context.getRelativeHumidity(individual.getX(), individual.getY(), individual.getZ());
-                if (individual.getZ() < -0.5f) {
-                    float optT = individual.getSpecies() != null ? individual.getSpecies().getOptimalTempCelsius() : 20.0f;
-                    float optH = individual.getSpecies() != null ? individual.getSpecies().getOptimalHumidityPercent() : 85.0f;
-                    float depthFactor = Math.min(1.0f, Math.abs(individual.getZ()) / 4.0f);
-                    ambTemp = ambTemp * (1.0f - depthFactor) + optT * depthFactor;
-                    ambHum = ambHum * (1.0f - depthFactor) + optH * depthFactor;
-                }
-                individual.setAmbientTemperatureC(ambTemp);
-                individual.setAmbientHumidityPercent(ambHum);
-
-                // Process growth and lifecycle stage progression
-                processGrowth(individual);
 
                 // Update individual with construction context if applicable (calls tick())
                 org.swarmforge.core.structure.ConstructionManager cm = constructionManagers.get(colony);
@@ -669,6 +691,7 @@ public class Simulation {
                     if (larvaDur <= 30f) larvaDur *= 60.0f;
                     ind.setMaturationThreshold(ind.getAgeInSeconds() + larvaDur);
                     SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.WORKER_BORN, SimulationEvent.Severity.INFO, tickCount.get(), "Hatching: Egg hatched into Larva", null);
+                    evt.setSimTimeSeconds(this.accumulatedSimulationSeconds);
                     eventQueue.offer(evt);
                     org.swarmforge.core.event.EventBus.getInstance().publish(evt);
                 }
@@ -679,6 +702,7 @@ public class Simulation {
                         if (pupaDur <= 30f) pupaDur *= 60.0f;
                         ind.setMaturationThreshold(ind.getAgeInSeconds() + pupaDur);
                         SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.WORKER_BORN, SimulationEvent.Severity.INFO, tickCount.get(), "Pupation: Larva pupated into Pupa", null);
+                        evt.setSimTimeSeconds(this.accumulatedSimulationSeconds);
                         eventQueue.offer(evt);
                         org.swarmforge.core.event.EventBus.getInstance().publish(evt);
                     }
@@ -701,6 +725,7 @@ public class Simulation {
                         ind.getCaste() == Individual.Caste.QUEEN ? SimulationEvent.EventType.QUEEN_BORN :
                         (ind.getCaste() == Individual.Caste.SOLDIER ? SimulationEvent.EventType.SOLDIER_BORN : SimulationEvent.EventType.WORKER_BORN),
                         SimulationEvent.Severity.INFO, tickCount.get(), "Emergence: New Adult (" + ind.getCaste() + ") emerged", null);
+                    evt.setSimTimeSeconds(this.accumulatedSimulationSeconds);
                     eventQueue.offer(evt);
                     org.swarmforge.core.event.EventBus.getInstance().publish(evt);
                 }
@@ -756,6 +781,12 @@ public class Simulation {
         }
         if (waterTable != null && weather != null) {
             waterTable.tick(weather.getRainfall(), weather.isRaining() ? 0.0f : 0.5f);
+        }
+
+        if (weather != null && ecsWorldManager != null) {
+            float sTemp = weather.getTemperature();
+            float sMoist = (soilHydricCoupling != null) ? (soilHydricCoupling.getMoistureAtDepth(0) / 100.0f) : (weather.getSoilHumidityAtDepth(0) / 100.0f);
+            ecsWorldManager.updateEnvironmentalBoundaryConditions(sTemp, sMoist, 0.0f);
         }
 
         // Distributed Pheromone Logic
@@ -853,9 +884,11 @@ public class Simulation {
         }
     }
 
+    private static final int MAX_QUEUED_EVENTS = 1000;
+
     private void processEvents() {
-        while (eventQueue.poll() != null) {
-            // Events are consumed - clients can use pollEvents() to retrieve them
+        while (eventQueue.size() > MAX_QUEUED_EVENTS) {
+            eventQueue.poll();
         }
     }
 
@@ -886,7 +919,15 @@ public class Simulation {
     }
 
     public float getElapsedSeconds() {
-        return tickCount.get() * simulationStepSeconds;
+        return (float) (accumulatedSimulationSeconds > 0 ? accumulatedSimulationSeconds : (tickCount.get() * simulationStepSeconds));
+    }
+
+    public double getElapsedSimulationSeconds() {
+        return accumulatedSimulationSeconds > 0 ? accumulatedSimulationSeconds : (tickCount.get() * (double) simulationStepSeconds);
+    }
+
+    public void setElapsedSimulationSeconds(double seconds) {
+        this.accumulatedSimulationSeconds = Math.max(0.0, seconds);
     }
 
     public State getState() {
@@ -1257,10 +1298,20 @@ public class Simulation {
      * @param event The event to queue
      */
     public void queueEvent(org.swarmforge.core.event.SimulationEvent event) {
-        eventQueue.offer(event);
+        if (event != null) {
+            if (event.getSimTimeSeconds() < 0) {
+                event.setSimTimeSeconds(this.accumulatedSimulationSeconds);
+            }
+            eventQueue.offer(event);
+            org.swarmforge.core.event.EventBus.getInstance().publishAsync(event);
+        }
     }
 
     public float getSurfaceElevation(float x, float y) {
         return terrarium != null ? terrarium.getSurfaceElevation(x, y) : 0.0f;
+    }
+
+    public org.swarmforge.core.simulation.diseases.DiseaseManager getDiseaseManager() {
+        return diseaseManager;
     }
 }

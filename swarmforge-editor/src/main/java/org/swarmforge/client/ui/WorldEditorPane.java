@@ -618,6 +618,7 @@ public class WorldEditorPane extends BorderPane {
     }
 
     public boolean promptUnsavedChanges() {
+        if ("true".equals(System.getProperty("swarmforge.test")) || Boolean.getBoolean("headless") || Boolean.getBoolean("testfx.headless")) return true;
         if (!isDirty) return true;
         String currentName = lastSelectedPreset != null ? lastSelectedPreset : "";
         boolean hasCurrentPreset = !currentName.isEmpty();
@@ -1419,6 +1420,7 @@ public class WorldEditorPane extends BorderPane {
 
     private org.swarmforge.core.simulation.Simulation activeSimulation = null;
     private org.swarmforge.core.domain.Individual followedAnt = null;
+    private org.swarmforge.core.simulation.TunnelNetwork.TunnelNode selectedChamberNode = null;
     private boolean isFollowAntCameraEnabled = false;
     private CameraFollowMode cameraFollowMode = CameraFollowMode.FREE;
     private final java.util.LinkedList<double[]> antTrailHistory = new java.util.LinkedList<>();
@@ -1767,6 +1769,29 @@ public class WorldEditorPane extends BorderPane {
         this.cameraFollowMode = mode != null ? mode : CameraFollowMode.FREE;
         this.isFollowAntCameraEnabled = (this.cameraFollowMode != CameraFollowMode.FREE);
         repaintAllViews();
+    }
+
+    public void centerCameraOnSelection() {
+        if (activeSimulation == null || activeSimulation.getTerrarium() == null) return;
+        double targetX = -1, targetY = -1;
+
+        if (followedAnt != null) {
+            targetX = (followedAnt.getX() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
+            targetY = (followedAnt.getY() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
+        } else if (trackedAntPane != null && trackedAntPane.getCurrentPredator() != null) {
+            var pred = trackedAntPane.getCurrentPredator();
+            targetX = (pred.getX() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
+            targetY = (pred.getY() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
+        } else if (selectedChamberNode != null) {
+            targetX = (selectedChamberNode.x() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
+            targetY = (selectedChamberNode.y() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
+        }
+
+        if (targetX >= 0 && targetY >= 0) {
+            pan3DX = (GRID_SIZE / 2.0 - targetX) * 8.0;
+            pan3DY = (GRID_SIZE / 2.0 - targetY) * 8.0;
+            repaintAllViews();
+        }
     }
 
     public void setShowTrees(boolean visible) {
@@ -2959,6 +2984,8 @@ public class WorldEditorPane extends BorderPane {
             trackedAntPane.setNoAntSelectedState();
         });
 
+        trackedAntPane.setOnCenter(this::centerCameraOnSelection);
+
         StackPane hSide = new StackPane(canvasSide);
         hSide.setPrefSize(190, 150);
         hSide.setMinSize(190, 150);
@@ -3447,17 +3474,20 @@ public class WorldEditorPane extends BorderPane {
             }
 
             if (clickedAnt != null) {
+                selectedChamberNode = null;
                 setFollowedAnt(clickedAnt);
                 if (trackedAntPane != null) {
                     trackedAntPane.updateAnt(clickedAnt, true);
                     trackedAntPane.setVisible(true);
                 }
             } else if (clickedPredator != null) {
+                selectedChamberNode = null;
                 if (trackedAntPane != null) {
                     trackedAntPane.updatePredator(clickedPredator, true);
                     trackedAntPane.setVisible(true);
                 }
             } else if (clickedChamber != null) {
+                selectedChamberNode = clickedChamber;
                 if (trackedAntPane != null) {
                     trackedAntPane.updateChamber(clickedChamber, chamberColony);
                     trackedAntPane.setVisible(true);
@@ -5805,6 +5835,14 @@ public class WorldEditorPane extends BorderPane {
                             double antPhysPx = (6.0 / 1000.0) * pixelsPerMeter;
                             double antR = Math.max(1.0, (antPhysPx / 3.9) * (zoom / 7.5));
 
+                            // Brood rendering (Eggs, Larvae, Pupae): Never appear on surface, render as biological brood clusters
+                            if (ind.getLifeStage() != null && ind.getLifeStage() != org.swarmforge.core.domain.Individual.LifeStage.ADULT) {
+                                if (az < 0) {
+                                    drawRealisticBroodItem(gc3D, p[0], p[1], ind.getLifeStage(), antR);
+                                }
+                                continue;
+                            }
+
                             Color casteColor;
                             if (currentRenderMode == RenderMode.REALISTIC) {
                                 casteColor = switch (ind.getCaste()) {
@@ -5844,8 +5882,6 @@ public class WorldEditorPane extends BorderPane {
                                 if (isFollowAntCameraEnabled && cameraFollowMode != CameraFollowMode.FREE) {
                                     double targetPanX = (GRID_SIZE / 2.0 - gx) * 8.0;
                                     double targetPanY = (GRID_SIZE / 2.0 - gy) * 8.0;
-                                    pan3DX += (targetPanX - pan3DX) * 0.15;
-                                    pan3DY += (targetPanY - pan3DY) * 0.15;
                                     double headingDeg = Math.toDegrees(ind.getHeading());
                                     double targetAz = ((-headingDeg + 90.0) % 360.0 + 360.0) % 360.0;
                                     if (cameraFollowMode == CameraFollowMode.TPS) {
@@ -5855,10 +5891,13 @@ public class WorldEditorPane extends BorderPane {
                                         zoom += (14.0 - zoom) * 0.10;
                                     } else if (cameraFollowMode == CameraFollowMode.FPS) {
                                         double diff = ((targetAz - azimuth + 540.0) % 360.0) - 180.0;
-                                        azimuth = (azimuth + diff * 0.15) % 360.0;
-                                        elevation += (15.0 - elevation) * 0.10;
-                                        zoom += (24.0 - zoom) * 0.10;
+                                        azimuth = (azimuth + diff * 0.20) % 360.0;
+                                        elevation += (2.0 - elevation) * 0.15;
+                                        zoom += (28.0 - zoom) * 0.12;
+                                        targetPanY = (GRID_SIZE / 2.0 - gy) * 8.0 - 25.0;
                                     }
+                                    pan3DX += (targetPanX - pan3DX) * 0.15;
+                                    pan3DY += (targetPanY - pan3DY) * 0.15;
                                 }
                             }
                         } catch (Exception ignored) {}
@@ -5907,6 +5946,51 @@ public class WorldEditorPane extends BorderPane {
         } catch (Exception ignored) {}
 
         drawTrackedAntFX(cx, cy, scale, radAz, radEl);
+    }
+
+    private void drawRealisticBroodItem(GraphicsContext gc, double px, double py,
+                                        org.swarmforge.core.domain.Individual.LifeStage stage, double baseR) {
+        if (stage == null) stage = org.swarmforge.core.domain.Individual.LifeStage.EGG;
+        double r = Math.max(1.2, baseR * 0.7);
+        switch (stage) {
+            case EGG -> {
+                // Shiny pearly white egg ovoid
+                gc.setFill(Color.web("#f8fafc", 0.92));
+                gc.fillOval(px - r * 0.6, py - r * 0.9, r * 1.2, r * 1.8);
+                gc.setStroke(Color.web("#cbd5e1", 0.7));
+                gc.setLineWidth(Math.max(0.5, r * 0.15));
+                gc.strokeOval(px - r * 0.6, py - r * 0.9, r * 1.2, r * 1.8);
+                // Specular highlight
+                gc.setFill(Color.web("#ffffff", 0.95));
+                gc.fillOval(px - r * 0.25, py - r * 0.6, r * 0.35, r * 0.5);
+            }
+            case LARVA -> {
+                // Curved segmented cream-colored grub
+                gc.setFill(Color.web("#fef08a", 0.95));
+                gc.fillOval(px - r * 0.8, py - r * 1.1, r * 1.6, r * 2.2);
+                // Cuticular segments
+                gc.setStroke(Color.web("#ca8a04", 0.45));
+                gc.setLineWidth(Math.max(0.5, r * 0.12));
+                gc.strokeLine(px - r * 0.6, py - r * 0.4, px + r * 0.6, py - r * 0.4);
+                gc.strokeLine(px - r * 0.7, py, px + r * 0.7, py);
+                gc.strokeLine(px - r * 0.6, py + r * 0.4, px + r * 0.6, py + r * 0.4);
+                // Head capsule dot
+                gc.setFill(Color.web("#854d0e", 0.9));
+                gc.fillOval(px - r * 0.25, py - r * 1.0, r * 0.5, r * 0.5);
+            }
+            case PUPA -> {
+                // Silken cocoon / exarate nymph
+                gc.setFill(Color.web("#fed7aa", 0.92));
+                gc.fillOval(px - r * 0.7, py - r * 1.3, r * 1.4, r * 2.6);
+                gc.setStroke(Color.web("#d97706", 0.6));
+                gc.setLineWidth(Math.max(0.5, r * 0.15));
+                gc.strokeOval(px - r * 0.7, py - r * 1.3, r * 1.4, r * 2.6);
+                // Cocoon longitudinal fiber highlight
+                gc.setStroke(Color.web("#ffedd5", 0.7));
+                gc.strokeLine(px, py - r * 1.0, px, py + r * 1.0);
+            }
+            default -> {}
+        }
     }
 
     private void drawRealisticAnt(GraphicsContext gc, double px, double py, double heading,

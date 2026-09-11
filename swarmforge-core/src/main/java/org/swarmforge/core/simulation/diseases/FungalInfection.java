@@ -195,7 +195,9 @@ public class FungalInfection implements Disease {
 
                 Random random = getRng(source, simulation);
                 if (random.nextFloat() < sporeProbability) {
-                    // Mark as infected (would need infection tracking)
+                    if (simulation.getDiseaseManager() != null) {
+                        simulation.getDiseaseManager().infect(target, this);
+                    }
                     simulation.queueEvent(new SimulationEvent(SimulationEvent.EventType.INFO,
                             simulation.getTickCount(),
                             "New fungal infection from spores"));

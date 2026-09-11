@@ -107,8 +107,9 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
     }
 
     private boolean isNearHome(AgentView agent) {
+        if (agent.isAtNest()) return true;
         return (agent.getHomeX() - agent.getX()) * (agent.getHomeX() - agent.getX()) +
-                (agent.getHomeY() - agent.getY()) * (agent.getHomeY() - agent.getY()) < 4.0;
+                (agent.getHomeY() - agent.getY()) * (agent.getHomeY() - agent.getY()) < 9.0;
     }
 
     @Override

@@ -74,10 +74,29 @@ public class DiggingBehavior {
             dz = -1f;
         }
 
-        // Dig 2 units away
-        network.dig(startNode.id(), dx * 2, dy * 2, dz * 2, TunnelNetwork.ChamberType.TUNNEL);
+        float targetX = startNode.x() + dx * 2f;
+        float targetY = startNode.y() + dy * 2f;
+        float targetZ = startNode.z() + dz * 2f;
 
-        // Cost energy
-        individual.setEnergy(individual.getEnergy() - 0.01f);
+        org.swarmforge.core.domain.Terrarium terrarium = simulation != null ? simulation.getTerrarium() : null;
+        org.swarmforge.core.simulation.SoilStructureSystem soilSystem = simulation != null ? simulation.getSoilStructureSystem() : null;
+
+        boolean excavationSuccess = true;
+        if (terrarium != null && soilSystem != null) {
+            float compaction = colony.getSpecies() != null ? Math.min(90.0f, colony.getSpecies().getMandibularBitingForceMPa() * 3.0f) : 50.0f;
+            int vx = (int) targetX;
+            int vy = (int) targetY;
+            int vz = (int) targetZ;
+            excavationSuccess = soilSystem.digGalleryVoxel(terrarium, vx, vy, vz, compaction);
+        }
+
+        if (excavationSuccess) {
+            // Dig 2 units away and connect gallery node
+            network.dig(startNode.id(), dx * 2, dy * 2, dz * 2, TunnelNetwork.ChamberType.TUNNEL);
+            individual.setEnergy(Math.max(0f, individual.getEnergy() - 0.01f));
+        } else {
+            // Tunnel collapsed under shear stress: extra metabolic exertion
+            individual.setEnergy(Math.max(0f, individual.getEnergy() - 0.03f));
+        }
     }
 }

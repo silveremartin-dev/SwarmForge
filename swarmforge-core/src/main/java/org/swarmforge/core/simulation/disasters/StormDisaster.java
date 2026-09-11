@@ -76,7 +76,12 @@ public class StormDisaster implements DisasterEvent {
 
     @Override
     public void tick(Simulation simulation, Terrarium terrarium) {
-        if (remainingTicks <= 0) return;
+        if (remainingTicks <= 0) {
+            if (simulation != null && simulation.getPheromoneGrid() != null) {
+                simulation.getPheromoneGrid().setEvaporationMultiplier(1.0f);
+            }
+            return;
+        }
         remainingTicks--;
 
         if (simulation != null) {

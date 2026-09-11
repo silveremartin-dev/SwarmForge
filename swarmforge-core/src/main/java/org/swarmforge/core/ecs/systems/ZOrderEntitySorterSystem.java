@@ -27,11 +27,19 @@ public class ZOrderEntitySorterSystem extends IteratingSystem {
 
     private float timerSec = 0f;
     private int activeCount = 0;
-    private final long[] mortonKeysScratch = new long[100_000];
-    private final int[]  entityIdsScratch = new int[100_000];
+    private long[] mortonKeysScratch = new long[1024];
+    private int[]  entityIdsScratch = new int[1024];
 
     public ZOrderEntitySorterSystem() {
         super(Aspect.all(PositionComponent.class));
+    }
+
+    private void ensureCapacity(int minCapacity) {
+        if (minCapacity > mortonKeysScratch.length) {
+            int newCap = Math.max(minCapacity, mortonKeysScratch.length * 2);
+            mortonKeysScratch = Arrays.copyOf(mortonKeysScratch, newCap);
+            entityIdsScratch = Arrays.copyOf(entityIdsScratch, newCap);
+        }
     }
 
     @Override
@@ -42,10 +50,12 @@ public class ZOrderEntitySorterSystem extends IteratingSystem {
 
     @Override
     protected void process(int entityId) {
-        if (timerSec < SORT_INTERVAL_SEC || entityId >= 100_000) return;
+        if (timerSec < SORT_INTERVAL_SEC) return;
 
         PositionComponent pos = mPosition.get(entityId);
         if (pos == null) return;
+
+        ensureCapacity(activeCount + 1);
 
         int cx = (int) Math.floor(pos.x / CELL_SIZE);
         int cy = (int) Math.floor(pos.y / CELL_SIZE);

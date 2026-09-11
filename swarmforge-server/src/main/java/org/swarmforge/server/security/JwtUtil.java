@@ -18,6 +18,7 @@ public class JwtUtil {
         if (envSecret != null && envSecret.length() >= 32) {
             SECRET_KEY = Keys.hmacShaKeyFor(envSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         } else {
+            System.err.println("[SECURITY WARNING] SWARMFORGE_JWT_SECRET not set (min 32 chars). Using ephemeral in-memory signing key. Tokens will be invalidated upon server restart!");
             SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
         }
     }

@@ -288,10 +288,12 @@ public class QueenBehavior {
 
     private void processDecliningState(Individual queen) {
         // Reduced egg production
-        if (layingCooldownSeconds <= 0.0f && random.nextFloat() < 0.3f) {
-            layEgg(queen);
+        if (layingCooldownSeconds <= 0.0f) {
+            if (random.nextFloat() < 0.3f) {
+                layEgg(queen);
+            }
+            layingCooldownSeconds = 60.0f; // Slower laying interval (60 seconds)
         }
-        layingCooldownSeconds = 60.0f; // Slower laying (60 seconds)
 
         // Check if succession needed
         checkSuccession(queen);

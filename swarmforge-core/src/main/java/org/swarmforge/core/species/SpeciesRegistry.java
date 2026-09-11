@@ -142,6 +142,8 @@ public class SpeciesRegistry {
         register(new AustroplatypusIncompertus());
         register(new PolyergusRufescens());
         register(new FormicaFusca());
+        register(new CataglyphisBombycina());
+        register(new OdontomachusBauri());
 
         // Load custom user JSON files from ~/.swarmforge/presets/species/
         try {

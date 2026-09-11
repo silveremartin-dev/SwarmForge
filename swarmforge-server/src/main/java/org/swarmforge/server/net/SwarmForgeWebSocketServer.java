@@ -14,6 +14,7 @@ import org.swarmforge.protocol.grpc.SimulationUpdate;
 import org.swarmforge.protocol.grpc.Vec3;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -87,90 +88,101 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
     }
 
     private void broadcastUpdates(JsonFormat.Printer printer) {
-        if (getConnections().isEmpty())
+        var connections = getConnections();
+        if (connections.isEmpty())
             return;
 
-        // Group clients by simulation ID to avoid redundant processing
-        // But for MVP, just iterate clients
+        // Cache serialized JSON per simulation ID to avoid redundant formatting
+        Map<String, String> cachedJsonPerSim = new HashMap<>();
 
-        for (WebSocket conn : getConnections()) {
+        for (WebSocket conn : connections) {
             String simId = clientSubscriptions.getOrDefault(conn, "main");
-            Simulation sim = simulationManager.getSimulation(simId).orElse(null);
 
-            if (sim != null && sim.getState() == Simulation.State.RUNNING) {
-                try {
-                    SimulationUpdate.Builder update = SimulationUpdate.newBuilder()
-                            .setTick(sim.getTickCount());
+            String json = cachedJsonPerSim.computeIfAbsent(simId, id -> {
+                Simulation sim = simulationManager.getSimulation(id).orElse(null);
+                if (sim != null && sim.getState() == Simulation.State.RUNNING) {
+                    try {
+                        SimulationUpdate.Builder update = SimulationUpdate.newBuilder()
+                                .setTick(sim.getTickCount());
 
-                    // Populate entities (optimization: stick to visible area or limit count?)
-                    // Sending ALL entities might be heavy.
-                    // For MVP limit to first 500?
-                    int count = 0;
-                    for (Colony colony : sim.getColonies()) {
-                        for (Individual ind : colony.getLivingIndividuals()) {
-                            if (count++ > 1000)
-                                break;
+                        int count = 0;
+                        for (Colony colony : sim.getColonies()) {
+                            if (count < 1000) {
+                                for (Individual ind : colony.getLivingIndividuals()) {
+                                    if (count++ >= 1000)
+                                        break;
 
-                            update.addIndividuals(IndividualDelta.newBuilder()
-                                    .setId(ind.getId().toString())
-                                    .setPosition(Vec3.newBuilder()
-                                            .setX(ind.getX())
-                                            .setY(ind.getY())
-                                            .setZ(ind.getZ())
-                                            .build())
-                                    .setHeading(ind.getHeading())
-                                    .setAlive(ind.isAlive())
-                                    .build());
+                                    update.addIndividuals(IndividualDelta.newBuilder()
+                                            .setId(ind.getId().toString())
+                                            .setPosition(Vec3.newBuilder()
+                                                    .setX(ind.getX())
+                                                    .setY(ind.getY())
+                                                    .setZ(ind.getZ())
+                                                    .build())
+                                            .setHeading(ind.getHeading())
+                                            .setAlive(ind.isAlive())
+                                            .build());
+                                }
+                            }
+
+                            // Add Nest Structure
+                            org.swarmforge.core.structure.Nest nest = colony.getNest();
+                            org.swarmforge.protocol.grpc.NestStructure.Builder nestBuilder = org.swarmforge.protocol.grpc.NestStructure
+                                    .newBuilder()
+                                    .setId(colony.getId().toString());
+
+                            for (org.swarmforge.core.structure.Chamber chamber : nest.getChambers()) {
+                                nestBuilder.addChambers(org.swarmforge.protocol.grpc.ChamberInfo.newBuilder()
+                                        .setId(chamber.getId())
+                                        .setType(chamber.getType().name())
+                                        .setPosition(Vec3.newBuilder().setX(chamber.getX()).setY(chamber.getY())
+                                                .setZ(chamber.getZ()).build())
+                                        .setCapacity(chamber.getCapacity())
+                                        .setCurrentLoading(chamber.getCurrentLoad())
+                                        .build());
+                            }
+
+                            for (org.swarmforge.core.structure.Tunnel tunnel : nest.getTunnels()) {
+                                nestBuilder.addTunnels(org.swarmforge.protocol.grpc.TunnelInfo.newBuilder()
+                                        .setStartChamberId(tunnel.getStart().getId())
+                                        .setEndChamberId(tunnel.getEnd().getId())
+                                        .setLength(tunnel.getLength())
+                                        .build());
+                            }
+
+                            update.addNests(nestBuilder);
                         }
 
-                        // Add Nest Structure
-                        org.swarmforge.core.structure.Nest nest = colony.getNest();
-                        org.swarmforge.protocol.grpc.NestStructure.Builder nestBuilder = org.swarmforge.protocol.grpc.NestStructure
-                                .newBuilder()
-                                .setId(colony.getId().toString());
+                        // Environment
+                        org.swarmforge.core.world.DayNightCycle cycle = sim.getDayNightCycle();
+                        org.swarmforge.core.world.WeatherSystem weather = sim.getWeather();
+                        org.swarmforge.core.world.SeasonManager seasons = sim.getSeasonManager();
 
-                        for (org.swarmforge.core.structure.Chamber chamber : nest.getChambers()) {
-                            nestBuilder.addChambers(org.swarmforge.protocol.grpc.ChamberInfo.newBuilder()
-                                    .setId(chamber.getId())
-                                    .setType(chamber.getType().name())
-                                    .setPosition(Vec3.newBuilder().setX(chamber.getX()).setY(chamber.getY())
-                                            .setZ(chamber.getZ()).build())
-                                    .setCapacity(chamber.getCapacity())
-                                    .setCurrentLoading(chamber.getCurrentLoad())
-                                    .build());
-                        }
+                        update.setEnvironment(org.swarmforge.protocol.grpc.Environment.newBuilder()
+                                .setLightLevel(cycle.getLightLevel())
+                                .setTimeOfDay(cycle.getTimeOfDay().name())
+                                .setSunAngle(cycle.getSunAngle())
+                                .setTemperature(weather.getTemperature())
+                                .setHumidity(weather.getHumidity())
+                                .setRainIntensity(weather.getRainfall())
+                                .setWindSpeed(weather.getWindSpeed())
+                                .setSeason(seasons.getCurrentSeason().name())
+                                .build());
 
-                        for (org.swarmforge.core.structure.Tunnel tunnel : nest.getTunnels()) {
-                            nestBuilder.addTunnels(org.swarmforge.protocol.grpc.TunnelInfo.newBuilder()
-                                    .setStartChamberId(tunnel.getStart().getId())
-                                    .setEndChamberId(tunnel.getEnd().getId())
-                                    .setLength(tunnel.getLength())
-                                    .build());
-                        }
-
-                        update.addNests(nestBuilder);
+                        return printer.print(update.build());
+                    } catch (Exception e) {
+                        LOG.warn("Error serializing simulation update for " + id + ": " + e.getMessage());
+                        return null;
                     }
+                }
+                return null;
+            });
 
-                    // Environment
-                    org.swarmforge.core.world.DayNightCycle cycle = sim.getDayNightCycle();
-                    org.swarmforge.core.world.WeatherSystem weather = sim.getWeather();
-                    org.swarmforge.core.world.SeasonManager seasons = sim.getSeasonManager();
-
-                    update.setEnvironment(org.swarmforge.protocol.grpc.Environment.newBuilder()
-                            .setLightLevel(cycle.getLightLevel())
-                            .setTimeOfDay(cycle.getTimeOfDay().name())
-                            .setSunAngle(cycle.getSunAngle())
-                            .setTemperature(weather.getTemperature())
-                            .setHumidity(weather.getHumidity())
-                            .setRainIntensity(weather.getRainfall())
-                            .setWindSpeed(weather.getWindSpeed())
-                            .setSeason(seasons.getCurrentSeason().name())
-                            .build());
-
-                    String json = printer.print(update.build());
+            if (json != null && conn.isOpen()) {
+                try {
                     conn.send(json);
                 } catch (Exception e) {
-                    // ignore
+                    // ignore connection drop
                 }
             }
         }

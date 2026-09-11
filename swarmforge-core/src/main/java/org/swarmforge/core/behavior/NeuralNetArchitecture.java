@@ -135,10 +135,11 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
                     + 0.5f;
         }
 
-        // Distance from home (normalized)
+        // Distance from home (3D Euclidian with subterranean nest support)
         float dx = agent.getHomeX() - agent.getX();
         float dy = agent.getHomeY() - agent.getY();
-        float distHome = (float) Math.sqrt(dx * dx + dy * dy);
+        float dz = agent.getHomeZ() - agent.getZ();
+        float distHome = agent.isAtNest() ? 0.0f : (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         inputs[8] = Math.min(distHome / 100f, 1.0f);
 
         // Direction to home

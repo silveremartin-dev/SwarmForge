@@ -97,6 +97,7 @@ public class AccessorySpeciesEditorPane extends VBox {
     }
 
     public boolean promptUnsavedChanges() {
+        if ("true".equals(System.getProperty("swarmforge.test")) || Boolean.getBoolean("headless") || Boolean.getBoolean("testfx.headless")) return true;
         if (!isDirty) return true;
         I18nManager i18n = I18nManager.getInstance();
 

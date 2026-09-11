@@ -28,11 +28,20 @@ public class MortonOctreeBroadphase extends IteratingSystem {
 
     private final List<Integer> potentialPairs = new ArrayList<>(2048);
     private final int[] bucketHeads = new int[BUCKET_COUNT];
-    private final int[] nextPointers = new int[100_000];
+    private int[] nextPointers = new int[1024];
 
     public MortonOctreeBroadphase() {
         super(Aspect.all(PositionComponent.class));
         java.util.Arrays.fill(bucketHeads, -1);
+    }
+
+    private void ensureCapacity(int capacity) {
+        if (capacity > nextPointers.length) {
+            int newCap = Math.max(capacity, nextPointers.length * 2);
+            int[] newArr = new int[newCap];
+            System.arraycopy(nextPointers, 0, newArr, 0, nextPointers.length);
+            nextPointers = newArr;
+        }
     }
 
     @Override
@@ -43,10 +52,10 @@ public class MortonOctreeBroadphase extends IteratingSystem {
 
     @Override
     protected void process(int entityId) {
-        if (entityId >= 100_000) return;
-
         PositionComponent pos = mPosition.get(entityId);
         if (pos == null) return;
+
+        ensureCapacity(entityId + 1);
 
         int cx = (int) Math.floor(pos.x / CELL_SIZE);
         int cy = (int) Math.floor(pos.y / CELL_SIZE);
@@ -59,7 +68,7 @@ public class MortonOctreeBroadphase extends IteratingSystem {
 
     public List<Integer> getPotentialCollisions(int entityId) {
         potentialPairs.clear();
-        if (entityId >= 100_000) return potentialPairs;
+        if (entityId >= nextPointers.length) return potentialPairs;
 
         PositionComponent pos = mPosition.get(entityId);
         if (pos == null) return potentialPairs;
@@ -74,7 +83,7 @@ public class MortonOctreeBroadphase extends IteratingSystem {
             if (curr != entityId) {
                 potentialPairs.add(curr);
             }
-            curr = nextPointers[curr];
+            curr = (curr < nextPointers.length) ? nextPointers[curr] : -1;
         }
         return potentialPairs;
     }

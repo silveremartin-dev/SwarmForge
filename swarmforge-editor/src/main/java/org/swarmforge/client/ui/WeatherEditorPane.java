@@ -145,6 +145,7 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     public boolean promptUnsavedChanges() {
+        if ("true".equals(System.getProperty("swarmforge.test")) || Boolean.getBoolean("headless") || Boolean.getBoolean("testfx.headless")) return true;
         if (!isDirty) return true;
         String currentName = lastSelectedPreset != null ? lastSelectedPreset : "";
         boolean hasCurrentPreset = !currentName.isEmpty();

@@ -55,7 +55,7 @@ public class EventLogPane extends BorderPane {
     private SimulationEvent lastAddedEvent = null;
     private long totalRecordedCount = 0;
     private String scenarioName = "swarmforge";
-    private float simulationStepSeconds = 1.0f;
+    private float simulationStepSeconds = 0.0166f;
     private LocalDateTime startDateTime = LocalDateTime.of(2026, 3, 20, 8, 0, 0);
 
     public void setStartDateTime(LocalDateTime startDateTime) {
@@ -365,9 +365,13 @@ public class EventLogPane extends BorderPane {
                     setTooltip(null);
                     getStyleClass().remove("evt-cell-tick");
                 } else {
-                    LocalDateTime simDt = startDateTime.plusNanos((long) (tick * (double) simulationStepSeconds * 1_000_000_000L));
+                    SimulationEvent ev = getTableRow() != null ? getTableRow().getItem() : null;
+                    double evSec = (ev != null && ev.getSimTimeSeconds() >= 0.0)
+                            ? ev.getSimTimeSeconds()
+                            : (tick * (double) simulationStepSeconds);
+                    LocalDateTime simDt = startDateTime.plusNanos((long) (evSec * 1_000_000_000L));
                     String formattedDt = simDt.format(SIM_DATETIME_FMT);
-                    String formattedDuration = SimulationTimeConverter.formatTicks(tick, simulationStepSeconds);
+                    String formattedDuration = SimulationTimeConverter.formatSeconds(evSec);
                     setText(formattedDt);
                     setTooltip(new Tooltip("Date & Heure Simulées : " + formattedDt + "\nDurée : " + formattedDuration + "\n" + SimulationTimeConverter.getTechnicalTooltip(tick, simulationStepSeconds)));
                     if (!getStyleClass().contains("evt-cell-tick")) {
@@ -434,7 +438,7 @@ public class EventLogPane extends BorderPane {
             }
         });
 
-        table.getColumns().addAll(colSeverity, colId, colTime, colTick, colType, colMessage);
+        table.getColumns().addAll(colSeverity, colId, colTick, colTime, colType, colMessage);
 
         // Row factory for row background color & double click inspection
         table.setRowFactory(tv -> {

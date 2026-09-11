@@ -185,6 +185,7 @@ public class SimulationControlPanel extends VBox {
     private Consumer<String> onCreateCheckpoint;
     private Consumer<org.swarmforge.core.simulation.SimulationCheckpoint> onRestoreCheckpoint;
     private Consumer<Long> onApplyPresets;
+    private Consumer<LocalDateTime> onStartDateTimeChange;
 
     private final ComboBox<org.swarmforge.core.simulation.SimulationCheckpoint> comboCheckpoints = new ComboBox<>();
     private final VBox playbackAndSpeedPanel = new VBox(8);
@@ -442,6 +443,9 @@ public class SimulationControlPanel extends VBox {
                 int s = startTimeSecondSpinner.getValue() != null ? Math.max(0, Math.min(59, startTimeSecondSpinner.getValue())) : 0;
                 startDateTime = LocalDateTime.of(startDatePicker.getValue(), LocalTime.of(h, m, s));
                 updateTick(currentTick, maxTick);
+                if (onStartDateTimeChange != null) {
+                    onStartDateTimeChange.accept(startDateTime);
+                }
             }
         };
 
@@ -482,6 +486,7 @@ public class SimulationControlPanel extends VBox {
         btnRandSeed.textProperty().bind(i18n.createStringBinding("sim.btn.rand_seed"));
         btnRandSeed.setStyle("-fx-background-color: #334155; -fx-text-fill: white; -fx-font-size: 10px;");
         btnRandSeed.tooltipProperty().bind(i18n.createTooltipBinding("sim.btn.rand_seed.tt"));
+        btnRandSeed.disableProperty().bind(txtSeed.disabledProperty());
         btnRandSeed.setOnAction(e -> {
             txtSeed.setText(String.valueOf((long)(Math.random() * 900000 + 100000)));
             updateValidationPanel();
@@ -1485,7 +1490,11 @@ public class SimulationControlPanel extends VBox {
         this.currentTick = 0;
         this.highestRecordedTick = 0;
         this.maxTick = 0;
+        this.isPlaying = false;
+        this.isPaused = false;
+        this.isStopped = true;
         updateTick(0, 0);
+        updateButtonStates();
     }
 
     private void updateButtonStates() {
@@ -1513,19 +1522,32 @@ public class SimulationControlPanel extends VBox {
         if (btnGoToEnd != null) btnGoToEnd.setDisable(false);
         if (btnPlay != null) btnPlay.setDisable(false);
         if (btnPause != null) btnPause.setDisable(false);
+
+        boolean isSimulationActive = isPlaying || currentTick > 0 || highestRecordedTick > 0;
+        if (scenarioStepCombo != null) scenarioStepCombo.setDisable(isSimulationActive);
+        if (startDatePicker != null) startDatePicker.setDisable(isSimulationActive);
+        if (startTimeHourSpinner != null) startTimeHourSpinner.setDisable(isSimulationActive);
+        if (startTimeMinuteSpinner != null) startTimeMinuteSpinner.setDisable(isSimulationActive);
+        if (startTimeSecondSpinner != null) startTimeSecondSpinner.setDisable(isSimulationActive);
+        if (txtSeed != null) txtSeed.setDisable(isSimulationActive);
     }
 
     public void updateTick(long tick, long maxTick) {
+        updateTick(tick, maxTick, tick * (double) simulationStepSeconds);
+    }
+
+    public void updateTick(long tick, long maxTick, double elapsedSimulationSeconds) {
         this.currentTick = tick;
         if (tick > this.highestRecordedTick) {
             this.highestRecordedTick = tick;
         }
         this.maxTick = Math.max(this.highestRecordedTick, Math.max(tick, maxTick));
-        double totalSecs = tick * simulationStepSeconds;
+        updateButtonStates();
+        double totalSecs = (elapsedSimulationSeconds >= 0.0) ? elapsedSimulationSeconds : (tick * (double) simulationStepSeconds);
         long totalSecondsElapsed = (long) totalSecs;
         currentDateTime = startDateTime.plusNanos((long) (totalSecs * 1_000_000_000L));
 
-        String timeStr = formatSimulationTime(tick, simulationStepSeconds);
+        String timeStr = formatSimulationTimeSeconds(totalSecs);
         lblDateTime.setText("📅 " + currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + String.format(" (Jour %d)", 1 + (totalSecondsElapsed / 86400)) + "  |  ⏱️ " + timeStr + String.format(" (Pas #%d)", tick));
         if (lblTick != null) {
             lblTick.setText(timeStr + String.format(" (Pas #%d)", tick));
@@ -1538,8 +1560,7 @@ public class SimulationControlPanel extends VBox {
         }
     }
 
-    public static String formatSimulationTime(long tick, double stepSeconds) {
-        double totalSeconds = tick * stepSeconds;
+    public static String formatSimulationTimeSeconds(double totalSeconds) {
         long wholeSec = (long) totalSeconds;
         long days = wholeSec / 86400;
         long hours = (wholeSec % 86400) / 3600;
@@ -1551,6 +1572,10 @@ public class SimulationControlPanel extends VBox {
             return String.format("%dj %02dh %02dm %02ds", days, hours, minutes, seconds);
         }
         return String.format("%02dh %02dm %02ds %02dcs", hours, minutes, seconds, cs);
+    }
+
+    public static String formatSimulationTime(long tick, double stepSeconds) {
+        return formatSimulationTimeSeconds(tick * stepSeconds);
     }
 
     private String formatTime(long seconds) {
@@ -1594,6 +1619,7 @@ public class SimulationControlPanel extends VBox {
     public void setOnCreateCheckpoint(Consumer<String> cb) { this.onCreateCheckpoint = cb; }
     public void setOnRestoreCheckpoint(Consumer<org.swarmforge.core.simulation.SimulationCheckpoint> cb) { this.onRestoreCheckpoint = cb; }
     public void setOnApplyPresets(Consumer<Long> callback) { this.onApplyPresets = callback; }
+    public void setOnStartDateTimeChange(Consumer<LocalDateTime> callback) { this.onStartDateTimeChange = callback; }
 
     public void updateCheckpoints(List<org.swarmforge.core.simulation.SimulationCheckpoint> checkpoints) {
         comboCheckpoints.getItems().clear();

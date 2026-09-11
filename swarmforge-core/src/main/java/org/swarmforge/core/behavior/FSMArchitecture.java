@@ -256,16 +256,16 @@ public class FSMArchitecture implements ReasoningArchitecture {
 
     private Action handleFleeing(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
         if (isNearHome(agent)) {
-            transitionTo(State.IDLE);
-            return Action.rest();
+            transitionTo(State.EXPLORING);
+            return randomMove(agent);
         }
         return fleeHome(agent);
     }
 
     private Action handleResting(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
-        if (agent.getEnergyLevel() > 0.8f) {
-            transitionTo(State.IDLE);
-            return Action.rest();
+        if (agent.getEnergyLevel() > 0.6f) {
+            transitionTo(State.EXPLORING);
+            return randomMove(agent);
         }
         return Action.rest();
     }
@@ -321,7 +321,10 @@ public class FSMArchitecture implements ReasoningArchitecture {
         java.util.Random rng = (agent instanceof Individual ind && ind.getRandom() != null) 
                 ? ind.getRandom() 
                 : java.util.concurrent.ThreadLocalRandom.current();
-        float angle = rng.nextFloat() * (float) (Math.PI * 2);
+        float heading = (agent instanceof Individual ind) ? ind.getHeading() : 0.0f;
+        // Directional persistence with natural wander jitter
+        float jitter = (rng.nextFloat() - 0.5f) * 0.8f;
+        float angle = heading + jitter;
         return Action.move((float) Math.cos(angle), (float) Math.sin(angle), 0);
     }
 
@@ -338,6 +341,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
     }
 
     private boolean isNearHome(AgentView agent) {
+        if (agent.isAtNest()) return true;
         float dx = agent.getHomeX() - agent.getX();
         float dy = agent.getHomeY() - agent.getY();
         return (dx * dx + dy * dy) < 9; // Within 3 units

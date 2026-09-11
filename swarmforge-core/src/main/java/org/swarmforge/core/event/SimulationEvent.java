@@ -82,6 +82,7 @@ public class SimulationEvent {
     private Severity severity;
     private long tick;
     private Instant timestamp;
+    private double simTimeSeconds = -1.0;
     private String message;
     private Map<String, Object> data;
 
@@ -117,6 +118,7 @@ public class SimulationEvent {
         this.severity = severity;
         this.tick = tick;
         this.timestamp = Instant.now();
+        this.simTimeSeconds = -1.0;
         this.message = message;
         if (data != null) {
             this.data.putAll(data);
@@ -224,6 +226,15 @@ public class SimulationEvent {
 
     public Instant getTimestamp() {
         return timestamp;
+    }
+
+    public double getSimTimeSeconds() {
+        return simTimeSeconds;
+    }
+
+    public SimulationEvent setSimTimeSeconds(double simTimeSeconds) {
+        this.simTimeSeconds = simTimeSeconds;
+        return this;
     }
 
     public String getMessage() {

@@ -429,8 +429,8 @@ public class JmeGameApp extends SimpleApplication {
                     Vector3f fwd = rot.mult(Vector3f.UNIT_Z);
 
                     if (cameraFollowMode == CameraFollowMode.FPS) {
-                        // First-Person ground perspective directly above ant head
-                        Vector3f eyePos = target.add(new Vector3f(0, 0.35f, 0));
+                        // First-Person ground perspective directly through ant eye level
+                        Vector3f eyePos = target.add(fwd.mult(0.12f)).add(new Vector3f(0, 0.06f, 0));
                         cam.setLocation(eyePos);
                         cam.lookAt(eyePos.add(fwd.mult(15.0f)), Vector3f.UNIT_Y);
                     } else if (cameraFollowMode == CameraFollowMode.TPS) {

@@ -88,12 +88,21 @@ public class VegetationSystem {
     }
 
     private final java.util.List<Plant> plants = new java.util.concurrent.CopyOnWriteArrayList<>();
-    private final Random rng = new Random();
+    private final Random rng;
     private final int worldWidth, worldDepth;
 
     public VegetationSystem(int width, int depth) {
+        this(width, depth, 1337L);
+    }
+
+    public VegetationSystem(int width, int depth, long seed) {
         this.worldWidth = Math.max(1, width);
         this.worldDepth = Math.max(1, depth);
+        this.rng = new Random(seed);
+    }
+
+    public void setSeed(long seed) {
+        this.rng.setSeed(seed);
     }
 
     /**

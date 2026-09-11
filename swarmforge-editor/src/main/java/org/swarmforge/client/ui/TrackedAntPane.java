@@ -45,7 +45,7 @@ public class TrackedAntPane extends VBox {
     // Interactive Action Controls
     private final Button btnFollowTps;
     private final Button btnFollowFps;
-    private final Button btnStopFollow;
+    private final Button btnCenter;
     private final TextField txtAntId;
     private final Button btnDirectFollow;
     private final VBox telemetryBox;
@@ -57,6 +57,7 @@ public class TrackedAntPane extends VBox {
     private java.util.function.BiConsumer<Individual, CameraFollowMode> onFollowAntModeHandler;
     private Consumer<String> onFollowAntByIdHandler;
     private Runnable onStopFollowHandler;
+    private Runnable onCenterHandler;
 
     public TrackedAntPane() {
         setSpacing(6);
@@ -197,15 +198,15 @@ public class TrackedAntPane extends VBox {
 
         followActionRow.getChildren().addAll(btnFollowTps, btnFollowFps);
 
-        // Row 2: Stop Follow Button (Full Width when following)
-        btnStopFollow = new Button();
-        btnStopFollow.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.btn_stop"));
-        btnStopFollow.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.btn_stop.tt"));
-        btnStopFollow.setMaxWidth(Double.MAX_VALUE);
-        btnStopFollow.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 5 8;");
-        btnStopFollow.setOnAction(e -> {
-            if (onStopFollowHandler != null) {
-                onStopFollowHandler.run();
+        // Row 2: Center Viewport Button (Full Width when entity is selected)
+        btnCenter = new Button();
+        btnCenter.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.btn_center"));
+        btnCenter.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.btn_center.tt"));
+        btnCenter.setMaxWidth(Double.MAX_VALUE);
+        btnCenter.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 5 8; -fx-background-radius: 4;");
+        btnCenter.setOnAction(e -> {
+            if (onCenterHandler != null) {
+                onCenterHandler.run();
             }
         });
 
@@ -232,7 +233,7 @@ public class TrackedAntPane extends VBox {
         lblSearchStatus.setStyle("-fx-font-size: 10px; -fx-text-fill: #ef4444;");
         lblSearchStatus.setVisible(false);
 
-        controlsBox.getChildren().addAll(followActionRow, btnStopFollow, searchRow, lblSearchStatus);
+        controlsBox.getChildren().addAll(followActionRow, btnCenter, searchRow, lblSearchStatus);
 
         getChildren().addAll(headerBox, sep1, telemetryBox, sep2, controlsBox);
         org.swarmforge.client.util.ThemeManager.getInstance().currentThemeProperty().addListener((obs, o, n) -> applyThemeStyle());
@@ -331,8 +332,9 @@ public class TrackedAntPane extends VBox {
 
         btnFollowTps.setDisable(true);
         btnFollowFps.setDisable(true);
-        btnStopFollow.setVisible(false);
-        btnStopFollow.setManaged(false);
+        btnCenter.setVisible(false);
+        btnCenter.setManaged(false);
+        btnCenter.setDisable(true);
         clearSearchStatus();
     }
 
@@ -425,8 +427,9 @@ public class TrackedAntPane extends VBox {
         btnFollowTps.setDisable(false);
         btnFollowFps.setDisable(false);
 
-        btnStopFollow.setVisible(following);
-        btnStopFollow.setManaged(following);
+        btnCenter.setVisible(true);
+        btnCenter.setManaged(true);
+        btnCenter.setDisable(false);
         clearSearchStatus();
     }
 
@@ -515,8 +518,9 @@ public class TrackedAntPane extends VBox {
 
         btnFollowTps.setDisable(true);
         btnFollowFps.setDisable(true);
-        btnStopFollow.setVisible(following);
-        btnStopFollow.setManaged(following);
+        btnCenter.setVisible(true);
+        btnCenter.setManaged(true);
+        btnCenter.setDisable(false);
         clearSearchStatus();
     }
 
@@ -582,8 +586,9 @@ public class TrackedAntPane extends VBox {
 
         btnFollowTps.setDisable(true);
         btnFollowFps.setDisable(true);
-        btnStopFollow.setVisible(false);
-        btnStopFollow.setManaged(false);
+        btnCenter.setVisible(true);
+        btnCenter.setManaged(true);
+        btnCenter.setDisable(false);
         clearSearchStatus();
     }
 
@@ -601,6 +606,10 @@ public class TrackedAntPane extends VBox {
 
     public void setOnStopFollow(Runnable handler) {
         this.onStopFollowHandler = handler;
+    }
+
+    public void setOnCenter(Runnable handler) {
+        this.onCenterHandler = handler;
     }
 
     public Individual getCurrentAnt() {

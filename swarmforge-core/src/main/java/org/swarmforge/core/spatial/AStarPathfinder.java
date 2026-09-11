@@ -123,12 +123,15 @@ public class AStarPathfinder {
             return Collections.emptyList();
         }
 
-        // A* algorithm
+        // A* algorithm using ThreadLocal NodePool
+        NodePool pool = NODE_POOL.get();
+        pool.reset();
+
         PriorityQueue<Node> openSet = new PriorityQueue<>(Comparator.comparingDouble(n -> n.fScore));
         Map<Long, Node> allNodes = new HashMap<>();
         Set<Long> closedSet = new HashSet<>();
 
-        Node startNode = new Node(startX, startY, startZ);
+        Node startNode = pool.acquire(startX, startY, startZ);
         startNode.gScore = 0;
         startNode.fScore = heuristicDistance(startX, startY, startZ, goalX, goalY, goalZ);
 
@@ -168,12 +171,8 @@ public class AStarPathfinder {
                 if (closedSet.contains(neighborKey))
                     continue;
 
-                // Calculate movement cost (diagonal moves cost more)
-                float moveCost = (dir[0] != 0 && dir[1] != 0) ||
-                        (dir[1] != 0 && dir[2] != 0) ||
-                        (dir[0] != 0 && dir[2] != 0)
-                                ? 1.414f
-                                : 1.0f;
+                // Calculate movement cost (exact 3D Euclidean step cost: 1.0, 1.414, 1.732)
+                float moveCost = (float) Math.sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
 
                 // Add terrain cost (e.g., sand is slower)
                 TerrariumCell cell = terrarium.getCell(nx, ny, nz);
@@ -183,7 +182,7 @@ public class AStarPathfinder {
 
                 Node neighbor = allNodes.get(neighborKey);
                 if (neighbor == null) {
-                    neighbor = new Node(nx, ny, nz);
+                    neighbor = pool.acquire(nx, ny, nz);
                     allNodes.put(neighborKey, neighbor);
                 }
 
@@ -327,7 +326,7 @@ public class AStarPathfinder {
 
     // Inner classes
 
-    private static class Node {
+    static class Node {
         int x, y, z;
         float gScore = Float.MAX_VALUE;
         float fScore = Float.MAX_VALUE;
@@ -353,6 +352,38 @@ public class AStarPathfinder {
             return Objects.hash(x, y, z);
         }
     }
+
+    private static class NodePool {
+        private final List<Node> pool = new ArrayList<>(512);
+        private int index = 0;
+
+        Node acquire(int x, int y, int z) {
+            Node node;
+            if (index < pool.size()) {
+                node = pool.get(index);
+                node.x = x;
+                node.y = y;
+                node.z = z;
+                node.gScore = Float.MAX_VALUE;
+                node.fScore = Float.MAX_VALUE;
+                node.parent = null;
+            } else {
+                node = new Node(x, y, z);
+                pool.add(node);
+            }
+            index++;
+            return node;
+        }
+
+        void reset() {
+            for (int i = 0; i < index; i++) {
+                pool.get(i).parent = null;
+            }
+            index = 0;
+        }
+    }
+
+    private static final ThreadLocal<NodePool> NODE_POOL = ThreadLocal.withInitial(NodePool::new);
 
     private record CachedPath(List<int[]> path, long tick) {
     }

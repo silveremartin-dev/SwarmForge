@@ -28,7 +28,7 @@ public class PseudoregmaBambucicola extends CustomSpecies {
         setQueenCount(1);
         setQueenLifespan(180);
         setQueenEggLayingRate(80.0f);
-        setWorkerLifespan(60 * 24);
+        setWorkerLifespan(60);
         setWorkerSpeed(0.25f);
         setViewDistance(2.0f);
         setWorkersCanFly(false);
@@ -40,19 +40,21 @@ public class PseudoregmaBambucicola extends CustomSpecies {
         setAggression(0.6f);
 
         CasteTemplate matriarch = new CasteTemplate("Matriarche Parthénogénétique", 200f, 1f);
+        matriarch.setLifespan(180);
         matriarch.setWalkSpeedMps(0.15f);
         matriarch.setFlySpeedMps(0.0f);
         matriarch.setBodyLengthMm(3.5f);
         matriarch.setHeadWidthMm(1.0f);
 
         CasteTemplate worker = new CasteTemplate("Sap-Sucking Aphid", 30f, 0f);
-        worker.setLifespan(45 * 24);
+        worker.setLifespan(45);
         worker.setWalkSpeedMps(0.20f);
         worker.setFlySpeedMps(0.0f);
         worker.setBodyLengthMm(2.2f);
         worker.setHeadWidthMm(0.7f);
 
         CasteTemplate soldier = new CasteTemplate("Soldat à Cornes Frontales (Stérile)", 150f, 25f);
+        soldier.setLifespan(60);
         soldier.setBaseDefense(4f);
         soldier.setWalkSpeedMps(0.25f);
         soldier.setFlySpeedMps(0.0f);

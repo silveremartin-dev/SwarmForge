@@ -36,6 +36,7 @@ public class SoilStructureSystem {
         lastErosionCheck = currentTick;
 
         WeatherSystem weather = simulation.getWeather();
+        if (weather == null) return;
         float rainfall = weather.getRainfall();
         float snowfall = weather.getSnowfall();
         float temp = weather.getTemperature();
@@ -54,8 +55,9 @@ public class SoilStructureSystem {
         if (rainfall > 20.0f || surfaceMoisture > 92.0f) {
             // Flash Flood / High Saturation Erosion Risk
             for (Colony colony : simulation.getColonies()) {
-                if (colony.getSpecies().getInsectOrder() == org.swarmforge.core.species.Species.InsectOrder.ANT ||
-                    colony.getSpecies().getInsectOrder() == org.swarmforge.core.species.Species.InsectOrder.TERMITE) {
+                if (colony.getSpecies() != null &&
+                    (colony.getSpecies().getInsectOrder() == org.swarmforge.core.species.Species.InsectOrder.ANT ||
+                     colony.getSpecies().getInsectOrder() == org.swarmforge.core.species.Species.InsectOrder.TERMITE)) {
 
                     simulation.queueEvent(new SimulationEvent(
                             SimulationEvent.EventType.MILESTONE_REACHED,

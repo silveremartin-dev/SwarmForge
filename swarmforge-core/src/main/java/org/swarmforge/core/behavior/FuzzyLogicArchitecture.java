@@ -84,10 +84,11 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
             inputs.put("danger_low", 1 - danger);
         }
 
-        // Distance from home
+        // Distance from home (3D Euclidian with subterranean nest support)
         float dx = agent.getHomeX() - agent.getX();
         float dy = agent.getHomeY() - agent.getY();
-        float distHome = (float) Math.sqrt(dx * dx + dy * dy);
+        float dz = agent.getHomeZ() - agent.getZ();
+        float distHome = agent.isAtNest() ? 0.0f : (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         inputs.put("home_close", trapezoid(distHome, 0, 0, 5, 15));
         inputs.put("home_far", trapezoid(distHome, 10, 30, 100, 100));
 

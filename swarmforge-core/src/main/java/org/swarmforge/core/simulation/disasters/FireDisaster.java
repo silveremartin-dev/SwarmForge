@@ -144,11 +144,14 @@ public class FireDisaster implements DisasterEvent {
             });
         }
 
-        // Damage ants progressively based on duration exposure and intensity
+        // Damage ants progressively based on duration exposure and intensity (surface only)
         if (simulation != null) {
             for (Colony colony : simulation.getColonies()) {
                 List<Individual> ants = colony.getLivingIndividuals();
                 for (Individual ant : ants) {
+                    if (ant.getZ() < centerZ - 2) {
+                        continue; // Underground ants are shielded from surface wildfire
+                    }
                     float dx = ant.getX() - centerX;
                     float dy = ant.getY() - centerY;
                     float dist = (float) Math.sqrt(dx * dx + dy * dy);

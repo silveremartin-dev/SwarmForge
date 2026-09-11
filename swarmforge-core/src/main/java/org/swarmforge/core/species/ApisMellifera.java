@@ -30,7 +30,7 @@ public class ApisMellifera extends CustomSpecies {
         setQueenLifespan(365 * 4);
         setQueenEggLayingRate(150.0f);
         setNuptialFlightType("SWARM_DIVISION");
-        setWorkerLifespan(60 * 24 * 45);
+        setWorkerLifespan(45);
         setWorkerSpeed(1.2f);
         setViewDistance(8.0f);
         setWorkersCanFly(true);
@@ -57,7 +57,7 @@ public class ApisMellifera extends CustomSpecies {
         queen.setHeadWidthMm(4.0f);
 
         CasteTemplate worker = new CasteTemplate("Ouvrière Butineuse", 90f, 12f);
-        worker.setLifespan(60 * 24 * 45);
+        worker.setLifespan(45);
         worker.setCanFly(true);
         worker.setCanCarry(true);
         worker.setWalkSpeedMps(0.25f);
@@ -66,7 +66,7 @@ public class ApisMellifera extends CustomSpecies {
         worker.setHeadWidthMm(3.5f);
 
         CasteTemplate drone = new CasteTemplate("Drone (Male)", 120f, 0f);
-        drone.setLifespan(30 * 24);
+        drone.setLifespan(30);
         drone.setCanFly(true);
         drone.setWalkSpeedMps(0.20f);
         drone.setFlySpeedMps(7.0f);

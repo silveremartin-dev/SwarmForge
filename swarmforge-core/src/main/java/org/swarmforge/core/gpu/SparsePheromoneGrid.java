@@ -77,6 +77,19 @@ public class SparsePheromoneGrid {
         this.evaporationMultiplier = Math.max(0.1f, Math.min(5.0f, multiplier));
     }
 
+    private volatile float windVx = 0.0f;
+    private volatile float windVy = 0.0f;
+    private volatile float surfaceRainIntensity = 0.0f;
+
+    public void setWindVector(float vx, float vy) {
+        this.windVx = vx;
+        this.windVy = vy;
+    }
+
+    public void setSurfaceRainIntensity(float rain) {
+        this.surfaceRainIntensity = Math.max(0.0f, rain);
+    }
+
     // Terrain awareness
     private Terrarium terrarium;
     private int maxHeightAboveGround = 10;
@@ -113,6 +126,10 @@ public class SparsePheromoneGrid {
 
     public void setTerrarium(Terrarium terrarium) {
         this.terrarium = terrarium;
+    }
+
+    public Terrarium getTerrarium() {
+        return this.terrarium;
     }
 
     public void setMaxHeightAboveGround(int layers) {
@@ -230,6 +247,10 @@ public class SparsePheromoneGrid {
         return read(x, y, z, type);
     }
 
+    public float getConcentration(int x, int y, int z, int type) {
+        return read(x, y, z, type);
+    }
+
     public float[] readAll(int x, int y, int z) {
         if (!inBounds(x, y, z))
             return null;
@@ -246,13 +267,27 @@ public class SparsePheromoneGrid {
     }
 
     private float computeDecay(float original, long depositTick, int type) {
+        return computeDecay(original, depositTick, type, 0);
+    }
+
+    private float computeDecay(float original, long depositTick, int type, int z) {
         if (original <= 0)
             return 0f;
         long elapsedTicks = currentTick - depositTick;
         if (elapsedTicks <= 0)
             return original;
         double elapsedSeconds = elapsedTicks * (double) simulationStepSeconds;
-        double effectiveHalfLifeSec = (double) halfLifeSeconds[type] / (double) evaporationMultiplier;
+        double effectiveMultiplier = evaporationMultiplier;
+        if (z >= 0) {
+            // Surface is exposed to rain runoff wash-off
+            if (surfaceRainIntensity > 0.0f) {
+                effectiveMultiplier *= (1.0f + surfaceRainIntensity * 0.08f);
+            }
+        } else {
+            // Subterranean chambers are insulated from direct wind/rain wash-off
+            effectiveMultiplier = Math.max(0.4f, effectiveMultiplier * 0.65f);
+        }
+        double effectiveHalfLifeSec = (double) halfLifeSeconds[type] / effectiveMultiplier;
         return (float) (original * Math.pow(0.5, elapsedSeconds / effectiveHalfLifeSec));
     }
 
@@ -273,7 +308,7 @@ public class SparsePheromoneGrid {
                 float[] p = cell.pheromones();
                 if (p != null) {
                     for (int t = 0; t < PHEROMONE_TYPES; t++) {
-                        p[t] = computeDecay(entry.getConcentration(t), entry.getLastUpdatedTick(t), t);
+                        p[t] = computeDecay(entry.getConcentration(t), entry.getLastUpdatedTick(t), t, z);
                     }
                     terrarium.setCell(cell);
                 }
@@ -282,12 +317,12 @@ public class SparsePheromoneGrid {
     }
 
     public void prune() {
-        // Optimized pruning using removeIf (internal parallelization if supported by
-        // map, or at least optimized)
         grid.entrySet().removeIf(entry -> {
             PheromoneEntry val = entry.getValue();
+            int[] coords = Morton3D.decode(entry.getKey());
+            int z = coords[2];
             for (int t = 0; t < PHEROMONE_TYPES; t++) {
-                if (computeDecay(val.concentrations[t], val.lastUpdatedTick[t], t) >= PRUNE_THRESHOLD) {
+                if (computeDecay(val.concentrations[t], val.lastUpdatedTick[t], t, z) >= PRUNE_THRESHOLD) {
                     return false; // Keep if any type has significant concentration
                 }
             }
@@ -296,18 +331,16 @@ public class SparsePheromoneGrid {
     }
 
     /**
-     * Terrain-aware diffusion: only spreads to passable neighbors.
-     * Uses parallel two-pass approach to avoid bias and maximize performance.
-     */
-    /**
-     * Terrain-aware diffusion: only spreads to passable neighbors.
-     * Uses parallel two-pass approach to avoid bias and maximize performance.
-     * Optimized to reduce GC pressure by accumulating deltas instead of creating
-     * objects.
+     * Terrain-aware and Climate-Coupled Diffusion:
+     * - In surface air (z >= 0), diffusion incorporates anisotropic advection along the wind vector.
+     * - In subterranean galleries (z < 0), isotropic molecular diffusion occurs through passable cavities.
      */
     public void diffuse() {
         // Pass 1: Calculate spread updates in parallel and accumulate them
         ConcurrentHashMap<Long, float[]> deltas = new ConcurrentHashMap<>();
+        final float curWindVx = this.windVx;
+        final float curWindVy = this.windVy;
+        final float windSpeed = (float) Math.sqrt(curWindVx * curWindVx + curWindVy * curWindVy);
 
         grid.entrySet().parallelStream().forEach(e -> {
             Long key = e.getKey();
@@ -316,7 +349,7 @@ public class SparsePheromoneGrid {
             int x = coords[0], y = coords[1], z = coords[2];
 
             for (int t = 0; t < PHEROMONE_TYPES; t++) {
-                float conc = computeDecay(entry.concentrations[t], entry.lastUpdatedTick[t], t);
+                float conc = computeDecay(entry.concentrations[t], entry.lastUpdatedTick[t], t, z);
                 if (conc < PRUNE_THRESHOLD)
                     continue;
 
@@ -325,17 +358,39 @@ public class SparsePheromoneGrid {
                     continue;
 
                 float spreadAmount = conc * diffusionRate[t];
-                float amountPerNeighbor = spreadAmount / passable;
 
-                if (amountPerNeighbor >= PRUNE_THRESHOLD) {
-                    accumulateSpread(deltas, x - 1, y, z, t, amountPerNeighbor);
-                    accumulateSpread(deltas, x + 1, y, z, t, amountPerNeighbor);
-                    accumulateSpread(deltas, x, y - 1, z, t, amountPerNeighbor);
-                    accumulateSpread(deltas, x, y + 1, z, t, amountPerNeighbor);
-                    accumulateSpread(deltas, x, y, z - 1, t, amountPerNeighbor);
-                    accumulateSpread(deltas, x, y, z + 1, t, amountPerNeighbor);
+                if (z >= 0 && windSpeed > 0.01f) {
+                    // Anisotropic surface advection diffusion along wind vector
+                    float advectionStrength = Math.min(0.6f, windSpeed * 0.08f);
+                    float wLeft  = isPassable(x - 1, y, z, t) ? Math.max(0.05f, 1.0f - curWindVx * advectionStrength) : 0f;
+                    float wRight = isPassable(x + 1, y, z, t) ? Math.max(0.05f, 1.0f + curWindVx * advectionStrength) : 0f;
+                    float wDown  = isPassable(x, y - 1, z, t) ? Math.max(0.05f, 1.0f - curWindVy * advectionStrength) : 0f;
+                    float wUp    = isPassable(x, y + 1, z, t) ? Math.max(0.05f, 1.0f + curWindVy * advectionStrength) : 0f;
+                    float wBelow = isPassable(x, y, z - 1, t) ? 1.0f : 0f;
+                    float wAbove = isPassable(x, y, z + 1, t) ? 1.0f : 0f;
 
-                    entry.update(t, Math.max(0.0f, conc - spreadAmount), currentTick);
+                    float sumW = wLeft + wRight + wDown + wUp + wBelow + wAbove;
+                    if (sumW > 0.0001f) {
+                        if (wLeft > 0f)  accumulateSpread(deltas, x - 1, y, z, t, spreadAmount * (wLeft / sumW));
+                        if (wRight > 0f) accumulateSpread(deltas, x + 1, y, z, t, spreadAmount * (wRight / sumW));
+                        if (wDown > 0f)  accumulateSpread(deltas, x, y - 1, z, t, spreadAmount * (wDown / sumW));
+                        if (wUp > 0f)    accumulateSpread(deltas, x, y + 1, z, t, spreadAmount * (wUp / sumW));
+                        if (wBelow > 0f) accumulateSpread(deltas, x, y, z - 1, t, spreadAmount * (wBelow / sumW));
+                        if (wAbove > 0f) accumulateSpread(deltas, x, y, z + 1, t, spreadAmount * (wAbove / sumW));
+                        entry.update(t, Math.max(0.0f, conc - spreadAmount), currentTick);
+                    }
+                } else {
+                    // Isotropic molecular diffusion
+                    float amountPerNeighbor = spreadAmount / passable;
+                    if (amountPerNeighbor >= PRUNE_THRESHOLD) {
+                        accumulateSpread(deltas, x - 1, y, z, t, amountPerNeighbor);
+                        accumulateSpread(deltas, x + 1, y, z, t, amountPerNeighbor);
+                        accumulateSpread(deltas, x, y - 1, z, t, amountPerNeighbor);
+                        accumulateSpread(deltas, x, y + 1, z, t, amountPerNeighbor);
+                        accumulateSpread(deltas, x, y, z - 1, t, amountPerNeighbor);
+                        accumulateSpread(deltas, x, y, z + 1, t, amountPerNeighbor);
+                        entry.update(t, Math.max(0.0f, conc - spreadAmount), currentTick);
+                    }
                 }
             }
         });

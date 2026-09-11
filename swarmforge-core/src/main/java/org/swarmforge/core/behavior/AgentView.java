@@ -14,6 +14,7 @@ public interface AgentView {
     float getHeading();
     float getHomeX();
     float getHomeY();
+    default float getHomeZ() { return 0.0f; }
     boolean isCarryingFood();
     boolean isAtNest();
     float getEnergyLevel();

@@ -130,8 +130,19 @@ public class RestApiServer {
     class ColoniesHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                handleCors(exchange);
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
             if (!"GET".equals(exchange.getRequestMethod())) {
                 sendError(exchange, 405, "Method not allowed");
+                return;
+            }
+
+            if (!isAuthorized(exchange)) {
+                sendError(exchange, 401, "Unauthorized: Valid Bearer JWT token required");
                 return;
             }
 
@@ -217,8 +228,19 @@ public class RestApiServer {
     class WorldHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                handleCors(exchange);
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
             if (!"GET".equals(exchange.getRequestMethod())) {
                 sendError(exchange, 405, "Method not allowed");
+                return;
+            }
+
+            if (!isAuthorized(exchange)) {
+                sendError(exchange, 401, "Unauthorized: Valid Bearer JWT token required");
                 return;
             }
 

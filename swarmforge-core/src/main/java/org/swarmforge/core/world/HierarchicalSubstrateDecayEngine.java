@@ -64,4 +64,16 @@ public class HierarchicalSubstrateDecayEngine extends BaseSystem {
         int sy = Math.min(GRID_SECTORS_D - 1, Math.max(0, (int) y / SECTOR_SIZE));
         return sectorHumusBiomass[sx][sy];
     }
+
+    /**
+     * Injects organic leaf litter biomass deposited by vegetation canopy shed.
+     */
+    public void addLitterBiomass(float amount) {
+        float perSector = amount / (GRID_SECTORS_W * GRID_SECTORS_D);
+        for (int x = 0; x < GRID_SECTORS_W; x++) {
+            for (int y = 0; y < GRID_SECTORS_D; y++) {
+                sectorLeafLitter[x][y] = Math.min(500.0f, sectorLeafLitter[x][y] + perSector);
+            }
+        }
+    }
 }

@@ -81,6 +81,9 @@ public class EcsColonyFactory {
 
         // Ethology & Behavioral Capabilities
         EthologyComponent eth = edit.create(EthologyComponent.class);
+        if (species != null) {
+            eth.loadFromSpecies(species);
+        }
 
         // Pathogen & Epidemiological State
         PathogenComponent path = edit.create(PathogenComponent.class);
@@ -111,8 +114,8 @@ public class EcsColonyFactory {
             } else {
                 rawVal = species.getWorkerLifespan();
             }
-            // Ensure lifespan in seconds is at least 300s (5 minutes) to avoid premature death
-            meanLifespanSeconds = Math.max(300.0f, (rawVal > 2000) ? (rawVal / 60.0f) : (float) rawVal);
+            // Convert lifespan in days to simulation seconds (scale: 10s per sim-day, minimum 300s)
+            meanLifespanSeconds = Math.max(300.0f, rawVal * 10.0f);
         }
         // Compute 100% deterministic seed based on colony UUID and entityId
         long entitySeed = (colonyId != null ? colonyId.getLeastSignificantBits() : 1337L) ^ ((long) entityId * 0x9E3779B97F4A7C15L);

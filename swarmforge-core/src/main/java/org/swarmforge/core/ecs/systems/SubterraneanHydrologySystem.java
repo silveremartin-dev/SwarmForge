@@ -58,6 +58,21 @@ public class SubterraneanHydrologySystem extends BaseSystem {
         }
     }
 
+    /**
+     * Injects dynamic surface boundary conditions driven by ambient weather and precipitation.
+     * Propagates downward via the 3D Laplace finite-difference diffusion solver.
+     */
+    public void updateSurfaceBoundaryConditions(float surfaceTemp, float surfaceMoistureRatio) {
+        float boundedTemp = Math.max(-20.0f, Math.min(60.0f, surfaceTemp));
+        float boundedMoist = Math.max(0.01f, Math.min(1.0f, surfaceMoistureRatio));
+        for (int x = 0; x < GRID_W; x++) {
+            for (int y = 0; y < GRID_D; y++) {
+                activeTemp[x][y][0] = boundedTemp;
+                activeMoisture[x][y][0] = boundedMoist;
+            }
+        }
+    }
+
     @Override
     protected void processSystem() {
         updateTimerSec += world.getDelta();

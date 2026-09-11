@@ -545,6 +545,7 @@ public class Colony implements java.io.Serializable {
             float[] pos = getSpawningCoordinates(Individual.Caste.WORKER, job, i);
 
             Individual ind = new Individual(this.id, Individual.Caste.WORKER, pos[0], pos[1], pos[2]);
+            ind.setHomePosition(this.nestX, this.nestY, this.nestZ);
             ind.setSpecies(this.species);
             ind.setJob(job);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
@@ -570,6 +571,7 @@ public class Colony implements java.io.Serializable {
             float[] pos = getSpawningCoordinates(Individual.Caste.SOLDIER, Individual.Job.GUARD, i);
 
             Individual ind = new Individual(this.id, Individual.Caste.SOLDIER, pos[0], pos[1], pos[2]);
+            ind.setHomePosition(this.nestX, this.nestY, this.nestZ);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
             applyGaussianHealth(ind, false);
@@ -594,6 +596,7 @@ public class Colony implements java.io.Serializable {
             float[] pos = getSpawningCoordinates(Individual.Caste.MALE, Individual.Job.NONE, i);
 
             Individual ind = new Individual(this.id, Individual.Caste.MALE, pos[0], pos[1], pos[2]);
+            ind.setHomePosition(this.nestX, this.nestY, this.nestZ);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
             applyGaussianHealth(ind, false);
@@ -614,9 +617,20 @@ public class Colony implements java.io.Serializable {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
         var broodChamber = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ) : null;
+        if (broodChamber == null && tunnelNetwork != null) {
+            broodChamber = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.QUEEN_CHAMBER, nestX, nestY, nestZ);
+        }
+        if (broodChamber == null && tunnelNetwork != null && !tunnelNetwork.getNodes().isEmpty()) {
+            for (var node : tunnelNetwork.getNodes()) {
+                if (node.z() < -0.1f) {
+                    broodChamber = node;
+                    break;
+                }
+            }
+        }
         float baseSx = broodChamber != null ? broodChamber.x() : nestX;
         float baseSy = broodChamber != null ? broodChamber.y() : nestY;
-        float baseSz = broodChamber != null ? broodChamber.z() : nestZ;
+        float baseSz = broodChamber != null ? broodChamber.z() : Math.min(-0.8f, nestZ < 0 ? nestZ : -Math.abs(getDynamicQueenChamberDepth() * 0.5f));
 
         List<org.swarmforge.core.structure.Chamber> nurseryChambers = nest != null ? nest.getChambersOfType(org.swarmforge.core.structure.Chamber.Type.NURSERY) : List.of();
         List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
@@ -637,6 +651,18 @@ public class Colony implements java.io.Serializable {
                 sx = (float) (targetChamber.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (targetChamber.getY() + Math.sin(rAngle) * rDist);
                 sz = targetChamber.getZ();
+            } else if (broodChamber != null) {
+                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
+                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.1, Math.min(1.2, broodChamber.radiusX() * 0.8));
+                sx = (float) (broodChamber.x() + Math.cos(rAngle) * rDist);
+                sy = (float) (broodChamber.y() + Math.sin(rAngle) * rDist);
+                sz = broodChamber.z();
+            }
+
+            // Enforce strictly subterranean depth for all non-adult brood
+            if (sz >= 0) {
+                sz = -Math.abs(getDynamicQueenChamberDepth() * 0.5f);
+                if (sz >= 0) sz = -1.2f;
             }
 
             sx = Math.max(1.0f, Math.min(mapWidth - 1.0f, sx));

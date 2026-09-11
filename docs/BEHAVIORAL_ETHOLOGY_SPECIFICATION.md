@@ -76,9 +76,11 @@ This document provides a comprehensive technical and biological reference for th
 * **Mechanism**: Water-foraging bees deposit micro-droplets on brood cells combined with high-frequency wing fanning to lower hive temperature below $35^\circ\text{C}$ during heatwaves.
 
 ### 14. Trap-Jaw Catapult Mandibles (`TrapJawSystem`)
-* **Capability Flag**: `hasTrapJawMechanism()`
-* **Key Species**: *Odontomachus*, *Anochetus*
-* **Mechanism**: Latch-mediated spring actuation accelerates mandibles to $60\,\text{m/s}$, delivering instant lethal strikes or catapulting the ant backward to escape danger.
+* **Capability Flag**: `hasTrapJawMechanism()` / `canSnapTrapMandiblesCatapult()`
+* **Key Species**: *Odontomachus bauri*, *Odontomachus hastatus*, *Anochetus*, *Strumigenys*, *Daceton armigerum*
+* **Mechanism & Kinematics**: Latch-mediated spring actuation (LaSMA) locks mandibles open at $180^\circ$ with massive elastic strain energy stored in the apodemes. When trigger hairs are touched, the latch releases within milliseconds, accelerating mandibles up to $60\,\text{m/s}$ with biting forces reaching $45\,\text{MPa}$. If directed against solid substrate, the strike generates an explosive ballistic escape jump:
+  $$\mathbf{v}_{\text{catapult}} = 2.8 \cdot (1 - \text{mandibleWear}) \cdot \mathbf{u}_{\text{recoil}} + 1.6 \cdot (1 - \text{mandibleWear}) \cdot \hat{\mathbf{z}}$$
+  The catapult jump imparts vertical lift and lateral escape displacement scaled dynamically by the ant's mandibular structural integrity.
 
 ### 15. Dulosis & Slave-Making Raids (`DulosisRaidSystem`)
 * **Capability Flag**: `isSlaveMakingSpecies()`
@@ -1055,10 +1057,13 @@ This document provides a comprehensive technical and biological reference for th
 * **Key Species**: *Pachycondyla villosa*
 * **Mechanism**: Transporting surface tension water droplets trapped between mandibles for brood hydration.
 
-### 210. Cataglyphis High-Temperature Stilt Walking (`DesertAntStiltWalkingSystem`)
+### 210. Desert Ant High-Temperature Stilt-Walking (`DesertAntStiltWalkingSystem`)
 * **Capability Flag**: `canStiltWalkThermalRegim()`
-* **Key Species**: *Cataglyphis bombycina*
-* **Mechanism**: Raising body high on long legs ("stilt walking") and pausing on dry grass stems to cool off above 50°C desert sand.
+* **Key Species**: *Cataglyphis bombycina* (Saharan silver ant), *Cataglyphis fortis*, *Ocymyrmex barbiger*, *Melophorus bagoti* (Australian red honey ant)
+* **Mechanism & Thermal Physics**: In hyper-arid desert environments with ground surface temperatures exceeding $50^\circ\text{C}$ to $65^\circ\text{C}$, long-legged desert ants adopt a "stilt-walking" high-stepping tripod gait:
+  - **Boundary Layer Convection**: Stilt locomotion elevates the ant's body center of mass $\approx 4\,\text{mm}$ above the scorching sand surface, entering a convective thermal gradient where air temperature is up to $10\,\text{K}$ cooler than the ground.
+  - **Velocity Scaling**: Instead of an arbitrary fixed speed, stilt-walking multiplies the species baseline velocity by $+50\%$ ($\mathbf{v}_{\text{stilt}} = 1.5 \cdot \mathbf{v}_{\text{baseline}}$), allowing ultra-rapid foraging bursts between thermal refuges (e.g. grass stems and pebble crests).
+  - **Thermal Stress Mitigation**: Reduces convective heat absorption rate by $\Delta Q_{\text{thermal}} = -0.005 \cdot Q_{10}(T) \cdot \Delta t$, preventing heat coma.
 
 ### 211. Giant Honeybee Anti-Predator Shimmering Wave (`GiantHoneybeeShimmeringWaveSystem`)
 * **Capability Flag**: `canPerformAntiPredatorShimmeringWave()`

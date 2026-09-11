@@ -554,7 +554,7 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     /**
-     * Get biomechanically accurate attack damage based on mandibular biting force (MPa) and muscle strength.
+     * Get biomechanically accurate attack damage based on mandibular biting force (MPa), muscle strength, and octopamine arousal titer.
      */
     public float getAttackDamage() {
         float mandibularForce = species != null ? species.getMandibularBitingForceMPa() : 15.0f;
@@ -563,7 +563,8 @@ public class Individual implements java.io.Serializable, AgentView {
         }
         float strength = species != null ? species.getStrength() : 5.0f;
         float casteMult = (caste == Caste.SOLDIER) ? 2.5f : ((caste == Caste.QUEEN) ? 1.5f : 1.0f);
-        return casteMult * (mandibularForce / 15.0f) * (strength / 5.0f) * attackDamage;
+        float octopamineArousal = 0.75f + 0.5f * octopamine;
+        return casteMult * (mandibularForce / 15.0f) * (strength / 5.0f) * attackDamage * octopamineArousal;
     }
 
     /**
@@ -682,7 +683,36 @@ public class Individual implements java.io.Serializable, AgentView {
                 this.job = Job.NURSE;
             }
         }
+
+        // Endocrine feedback loop: Juvenile Hormone titer rises with age polyethism
+        if (caste == Caste.WORKER && lifeStage == LifeStage.ADULT) {
+            float expectedAdultLife = Math.max(300.0f, maxLifespanSeconds * 0.5f);
+            juvenileHormone = Math.min(1.0f, juvenileHormone + (0.9f / expectedAdultLife) * deltaSeconds);
+            
+            // Age polyethism transition: Low JH -> Nurse, High JH -> Forager (unless worn mandibles force retrenchment)
+            if (juvenileHormone > 0.65f && job == Job.NURSE && mandibleWear < 0.8f) {
+                this.job = Job.FORAGER;
+            }
+        }
+
+        // Octopamine relaxation towards baseline (0.5f)
+        if (state == AiState.ATTACKING || state == AiState.FLEEING) {
+            octopamine = Math.min(1.0f, octopamine + 0.1f * deltaSeconds);
+        } else {
+            octopamine = octopamine + (0.5f - octopamine) * Math.min(1.0f, 0.05f * deltaSeconds);
+        }
     }
+
+    private float juvenileHormone = 0.1f;
+    private float octopamine = 0.5f;
+    private float ecdysone = 0.2f;
+
+    public float getJuvenileHormone() { return juvenileHormone; }
+    public void setJuvenileHormone(float jh) { this.juvenileHormone = Math.max(0f, Math.min(1f, jh)); }
+    public float getOctopamine() { return octopamine; }
+    public void setOctopamine(float oct) { this.octopamine = Math.max(0f, Math.min(1f, oct)); }
+    public float getEcdysone() { return ecdysone; }
+    public void setEcdysone(float ecd) { this.ecdysone = Math.max(0f, Math.min(1f, ecd)); }
 
     private float mandibleWear = 0.0f;
     public float getMandibleWear() { return mandibleWear; }

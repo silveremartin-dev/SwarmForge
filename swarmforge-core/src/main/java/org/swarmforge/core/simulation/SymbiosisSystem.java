@@ -40,20 +40,18 @@ public class SymbiosisSystem {
         lastSymbiosisTick = currentTick;
 
         for (Colony colony : simulation.getColonies()) {
-            if (colony.getSpecies().canFarmAphids()) {
-                // Trophobiosis bonus: small continuous carbohydrate influx when foragers maintain herds
-                float foodStock = colony.getFoodStored();
-                if (colony.getPopulation() > 10) {
-                    colony.setFoodStored(foodStock + 0.1f);
+            if (colony.getSpecies() != null && colony.getSpecies().canFarmAphids()) {
+                // Trophobiosis: carbohydrate and honeydew influx when colony maintains aphid herds or has active foragers
+                boolean hasAphids = simulation.getFoodSources().stream()
+                        .anyMatch(f -> f instanceof Aphid || f.getType() == org.swarmforge.core.domain.ResourceType.HONEYDEW);
+                if (hasAphids || colony.getPopulation() > 0) {
+                    colony.addResource(org.swarmforge.core.domain.ResourceType.HONEYDEW, 0.5f);
                 }
             }
 
-            if (colony.getSpecies().canFarmFungus()) {
+            if (colony.getSpecies() != null && colony.getSpecies().canFarmFungus()) {
                 // Attine / Macrotermes fungal cultivar dynamics
-                float foodStock = colony.getFoodStored();
-                if (colony.getPopulation() > 20) {
-                    colony.setFoodStored(foodStock + 0.2f);
-                }
+                colony.addResource(org.swarmforge.core.domain.ResourceType.FUNGUS, 0.5f);
             }
         }
     }

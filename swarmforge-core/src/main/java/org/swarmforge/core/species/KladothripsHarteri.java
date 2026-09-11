@@ -27,8 +27,7 @@ public class KladothripsHarteri extends CustomSpecies {
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(200);
-        setQueenEggLayingRate(30.0f);
-        setWorkerLifespan(90 * 24);
+        setWorkerLifespan(90);
         setWorkerSpeed(0.3f);
         setViewDistance(2.0f);
         setWorkersCanFly(true);
@@ -40,6 +39,7 @@ public class KladothripsHarteri extends CustomSpecies {
         setAggression(0.7f);
 
         CasteTemplate foundress = new CasteTemplate("Gall Foundress", 180f, 3f);
+        foundress.setLifespan(200);
         foundress.setCanFly(true);
         foundress.setWalkSpeedMps(0.20f);
         foundress.setFlySpeedMps(2.0f);
@@ -47,6 +47,7 @@ public class KladothripsHarteri extends CustomSpecies {
         foundress.setHeadWidthMm(0.8f);
 
         CasteTemplate wingedWorker = new CasteTemplate("Ouvrier Dispersant Alé", 40f, 2f);
+        wingedWorker.setLifespan(90);
         wingedWorker.setCanFly(true);
         wingedWorker.setWalkSpeedMps(0.20f);
         wingedWorker.setFlySpeedMps(2.5f);
@@ -54,6 +55,7 @@ public class KladothripsHarteri extends CustomSpecies {
         wingedWorker.setHeadWidthMm(0.7f);
 
         CasteTemplate soldier = new CasteTemplate("Wingless Gall Soldier", 120f, 18f);
+        soldier.setLifespan(120);
         soldier.setCanFly(false);
         soldier.setBaseDefense(5f);
         soldier.setWalkSpeedMps(0.25f);

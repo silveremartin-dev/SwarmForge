@@ -33,22 +33,17 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(ApplicationExtension.class)
 public class SwarmForgeClientUITest {
 
-    private SwarmForgeClient app;
     private Stage stage;
-
-    // Screenshot output directory
     private static final Path SCREENSHOT_DIR = Path.of("target/test-screenshots");
 
     @Start
-    private void start(Stage stage) {
+    public void start(Stage stage) {
         System.setProperty("swarmforge.test", "true");
-        I18nManager.getInstance().setLocale(java.util.Locale.ENGLISH);
         this.stage = stage;
-        this.app = new SwarmForgeClient();
-        app.start(stage);
+        I18nManager.getInstance().setLocale(java.util.Locale.ENGLISH);
+        SwarmForgeClient clientApp = new SwarmForgeClient();
+        clientApp.start(stage);
         WaitForAsyncUtils.waitForFxEvents();
-
-        // Ensure screenshot directory exists
         SCREENSHOT_DIR.toFile().mkdirs();
     }
 
@@ -66,90 +61,56 @@ public class SwarmForgeClientUITest {
     }
 
     @Test
-    void applicationStarts_shouldShowMainWindow(FxRobot robot) {
-        // Verify window is showing
+    void testCompleteClientUiWorkflow(FxRobot robot) {
+        // 1. Verify window is showing
         assertTrue(stage.isShowing());
         assertTrue(stage.getTitle().contains("SwarmForge"));
-
         captureScreenshot("01_application_started");
-    }
 
-    @Test
-    void mainTabs_shouldExist(FxRobot robot) {
-        // Find the main TabPane
+        // 2. Main tabs
         TabPane tabPane = robot.lookup(".tab-pane").queryAs(TabPane.class);
         assertNotNull(tabPane);
-
-        // Verify expected tabs
         assertTrue(tabPane.getTabs().size() >= 3, "Expected at least 3 tabs");
-
         captureScreenshot("02_main_tabs");
-    }
 
-    @Test
-    void clickWorldEditorTab_shouldShowTerrainGenerator(FxRobot robot) {
-        // Click on World Editor tab
-        TabPane tabPane = robot.lookup(".tab-pane").queryAs(TabPane.class);
-        if (tabPane != null && tabPane.getTabs().size() > 1) {
+        // 3. World Editor tab
+        if (tabPane.getTabs().size() > 1) {
             robot.interact(() -> tabPane.getSelectionModel().select(1));
         }
         WaitForAsyncUtils.waitForFxEvents();
-
-        // Wait for render
-        robot.sleep(500, TimeUnit.MILLISECONDS);
-
+        robot.sleep(300, TimeUnit.MILLISECONDS);
         captureScreenshot("03_world_editor_tab");
-    }
 
-    @Test
-    void clickSpeciesEditorTab_shouldShowSpeciesDesigner(FxRobot robot) {
-        // Click on Species Editor tab
-        TabPane tabPane = robot.lookup(".tab-pane").queryAs(TabPane.class);
-        if (tabPane != null && tabPane.getTabs().size() > 2) {
+        // 4. Species Editor tab
+        if (tabPane.getTabs().size() > 2) {
             robot.interact(() -> tabPane.getSelectionModel().select(2));
         }
         WaitForAsyncUtils.waitForFxEvents();
-
-        robot.sleep(500, TimeUnit.MILLISECONDS);
-
+        robot.sleep(300, TimeUnit.MILLISECONDS);
         captureScreenshot("04_species_editor_tab");
-    }
 
-    @Test
-    void clickGeneratePreview_shouldGenerateTerrain(FxRobot robot) {
-        // Navigate to World Editor
-        TabPane tabPane = robot.lookup(".tab-pane").queryAs(TabPane.class);
-        if (tabPane != null && tabPane.getTabs().size() > 1) {
+        // 5. World Editor preview button
+        if (tabPane.getTabs().size() > 1) {
             robot.interact(() -> tabPane.getSelectionModel().select(1));
         }
-        robot.sleep(500, TimeUnit.MILLISECONDS);
-
-        // Click Generate Preview button if present
+        robot.sleep(300, TimeUnit.MILLISECONDS);
         var buttonOpt = robot.lookup(".button").queryAllAs(Button.class).stream()
                 .filter(b -> b.getText() != null && (b.getText().contains("Generate") || b.getText().contains("Générer") || b.getText().contains("Preview") || b.getText().contains("Aperçu")))
                 .findFirst();
         if (buttonOpt.isPresent()) {
             robot.clickOn(buttonOpt.get());
-            robot.sleep(500, TimeUnit.MILLISECONDS);
+            robot.sleep(300, TimeUnit.MILLISECONDS);
         }
-
         captureScreenshot("05_terrain_generated");
-    }
 
-    @Test
-    void simulationManager_connectToServer(FxRobot robot) {
-        // Should start on Simulation Manager tab
-        TabPane tabPane = robot.lookup(".tab-pane").queryAs(TabPane.class);
-        if (tabPane != null && !tabPane.getTabs().isEmpty()) {
+        // 6. Simulation Manager
+        if (!tabPane.getTabs().isEmpty()) {
             robot.interact(() -> tabPane.getSelectionModel().select(0));
         }
         robot.sleep(300, TimeUnit.MILLISECONDS);
-
-        // Find host field and verify default
         var fields = robot.lookup(".text-field").queryAllAs(TextField.class);
         boolean hasLocalhost = fields.stream().anyMatch(f -> "localhost".equals(f.getText()));
         assertTrue(hasLocalhost, "Should contain host field defaulted to 'localhost'");
-
         captureScreenshot("06_simulation_manager");
     }
 }

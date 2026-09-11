@@ -259,15 +259,17 @@ public class SwarmForgeClient extends Application {
         }
 
         // Auto-connect to server at launch (localhost:50051)
-        Platform.runLater(() -> {
-            try {
-                networkClient.connect("localhost", 50051);
-                networkClient.startStreaming();
-                LOG.info("Auto-connected to SwarmForge server at localhost:50051");
-            } catch (Exception ex) {
-                LOG.info("Standalone mode active (server auto-connect offline)");
-            }
-        });
+        if (!isTestMode) {
+            Platform.runLater(() -> {
+                try {
+                    networkClient.connect("localhost", 50051);
+                    networkClient.startStreaming();
+                    LOG.info("Auto-connected to SwarmForge server at localhost:50051");
+                } catch (Exception ex) {
+                    LOG.info("Standalone mode active (server auto-connect offline)");
+                }
+            });
+        }
     }
 
 
@@ -569,6 +571,23 @@ public class SwarmForgeClient extends Application {
                 eventLogTab.textProperty().bind(i18n.createStringBinding("tab.log"));
                 eventLogTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.LIST));
                 this.eventLogPane = new org.swarmforge.client.ui.EventLogPane();
+                if (this.simControlPanel != null) {
+                    this.eventLogPane.setStartDateTime(this.simControlPanel.getStartDateTime());
+                    this.eventLogPane.setSimulationStepSeconds(this.simControlPanel.getSimulationStepSeconds());
+                    this.simControlPanel.setOnStartDateTimeChange(newDt -> {
+                        if (this.eventLogPane != null) {
+                            this.eventLogPane.setStartDateTime(newDt);
+                        }
+                    });
+                    this.simControlPanel.setOnStepChange(newStep -> {
+                        if (this.eventLogPane != null) {
+                            this.eventLogPane.setSimulationStepSeconds(newStep);
+                        }
+                        if (this.localSimulation != null) {
+                            this.localSimulation.setSimulationStepSeconds(newStep);
+                        }
+                    });
+                }
                 eventLogTab.setContent(this.eventLogPane);
 
                 setSimTabsEnabled(false);
@@ -925,7 +944,7 @@ public class SwarmForgeClient extends Application {
                         boolean ok = this.localSimulation.seekToTick(targetTick);
                         if (ok) {
                             long curTick = this.localSimulation.getTickCount();
-                            this.simControlPanel.updateTick(curTick, this.localSimulation.getHighestRecordedTick());
+                            this.simControlPanel.updateTick(curTick, this.localSimulation.getHighestRecordedTick(), this.localSimulation.getElapsedSimulationSeconds());
                             double stepSec = this.simControlPanel.getSimulationStepSeconds();
                             if (this.interventionPanel != null) {
                                 this.interventionPanel.processScheduledEvents(curTick);
@@ -948,7 +967,7 @@ public class SwarmForgeClient extends Application {
                         this.localSimulation.pause();
                         boolean ok = this.localSimulation.rewind(steps);
                         long curTick = this.localSimulation.getTickCount();
-                        this.simControlPanel.updateTick(curTick, this.localSimulation.getHighestRecordedTick());
+                        this.simControlPanel.updateTick(curTick, this.localSimulation.getHighestRecordedTick(), this.localSimulation.getElapsedSimulationSeconds());
                         double stepSec = this.simControlPanel.getSimulationStepSeconds();
                         if (this.interventionPanel != null) {
                             this.interventionPanel.processScheduledEvents(curTick);
@@ -973,7 +992,7 @@ public class SwarmForgeClient extends Application {
                             this.localSimulation.tick();
                         }
                         long curTick = this.localSimulation.getTickCount();
-                        this.simControlPanel.updateTick(curTick, this.localSimulation.getHighestRecordedTick());
+                        this.simControlPanel.updateTick(curTick, this.localSimulation.getHighestRecordedTick(), this.localSimulation.getElapsedSimulationSeconds());
                         if (this.interventionPanel != null) {
                             this.interventionPanel.processScheduledEvents(curTick);
                         }
@@ -1073,7 +1092,7 @@ public class SwarmForgeClient extends Application {
                                         }
                                     }
                                     if (isPlaying && !isConnected && simControlPanel != null) {
-                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
+                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick(), localSimulation.getElapsedSimulationSeconds());
                                     }
                                     if (simControlPanel != null && localSimulation.getCheckpoints().size() != simControlPanel.getCheckpointsCount()) {
                                         simControlPanel.updateCheckpoints(localSimulation.getCheckpoints());
@@ -1614,7 +1633,7 @@ public class SwarmForgeClient extends Application {
                                         localSimulation.pause();
                                         localSimulation.rewind(steps);
                                         long curTick = localSimulation.getTickCount();
-                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
+                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick(), localSimulation.getElapsedSimulationSeconds());
                                         double stepSec = simControlPanel.getSimulationStepSeconds();
                                         if (interventionPanel != null) {
                                             interventionPanel.processScheduledEvents(curTick);
@@ -1641,7 +1660,7 @@ public class SwarmForgeClient extends Application {
                                             localSimulation.tick();
                                         }
                                         long curTick = localSimulation.getTickCount();
-                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
+                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick(), localSimulation.getElapsedSimulationSeconds());
                                         if (interventionPanel != null) {
                                             interventionPanel.processScheduledEvents(curTick);
                                         }
@@ -1673,7 +1692,7 @@ public class SwarmForgeClient extends Application {
                                         localSimulation.pause();
                                         localSimulation.seekToTick(tick);
                                         long curTick = localSimulation.getTickCount();
-                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick());
+                                        simControlPanel.updateTick(curTick, localSimulation.getHighestRecordedTick(), localSimulation.getElapsedSimulationSeconds());
                                         double stepSec = simControlPanel.getSimulationStepSeconds();
                                         if (interventionPanel != null) {
                                             interventionPanel.processScheduledEvents(curTick);

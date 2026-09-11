@@ -30,7 +30,7 @@ public class BombusTerrestris extends CustomSpecies {
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365);
-        setWorkerLifespan(40 * 24);
+        setWorkerLifespan(40);
         setWorkerSpeed(1.1f);
         setViewDistance(7.0f);
         setWorkersCanFly(true);
@@ -43,6 +43,7 @@ public class BombusTerrestris extends CustomSpecies {
 
         // Queen
         CasteTemplate queen = new CasteTemplate("Reine Bourdon", 250f, 15f);
+        queen.setLifespan(365);
         queen.setCanFly(true);
         queen.setCanDig(true);
         queen.setCanCarry(true);
@@ -53,6 +54,7 @@ public class BombusTerrestris extends CustomSpecies {
 
         // Worker
         CasteTemplate worker = new CasteTemplate("Ouvrière Bourdon", 120f, 8f);
+        worker.setLifespan(40);
         worker.setCanFly(true);
         worker.setCanDig(false);
         worker.setCanCarry(true);
@@ -63,6 +65,7 @@ public class BombusTerrestris extends CustomSpecies {
 
         // Male / Drone
         CasteTemplate male = new CasteTemplate("Male Bumblebee", 100f, 2f);
+        male.setLifespan(30);
         male.setCanFly(true);
         male.setCanDig(false);
         male.setCanCarry(false);

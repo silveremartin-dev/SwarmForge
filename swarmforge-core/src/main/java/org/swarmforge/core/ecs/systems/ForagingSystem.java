@@ -67,8 +67,11 @@ public class ForagingSystem extends IteratingSystem {
                 vel.dz = dz * invDist * vel.speed;
             }
         } else {
-            // Wander Logic (Random Walk on X/Y plane)
-            if (java.util.concurrent.ThreadLocalRandom.current().nextFloat() < 0.05f) {
+            if (vel.speed <= 0) {
+                vel.speed = 0.5f;
+            }
+            // Wander Logic (Random Walk on X/Y plane with natural exploration)
+            if ((vel.dx == 0 && vel.dy == 0) || java.util.concurrent.ThreadLocalRandom.current().nextFloat() < 0.08f) {
                 double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble() * Math.PI * 2;
                 vel.dx = (float) Math.cos(angle) * vel.speed;
                 vel.dy = (float) Math.sin(angle) * vel.speed;
@@ -76,8 +79,10 @@ public class ForagingSystem extends IteratingSystem {
             }
             
             // Boundary check (Bounce)
-            if (pos.x < 0 || pos.x > 100) vel.dx *= -1;
-            if (pos.y < 0 || pos.y > 100) vel.dy *= -1;
+            float maxX = (colony != null && colony.getTerrarium() != null) ? colony.getTerrarium().getWidth() : 100.0f;
+            float maxY = (colony != null && colony.getTerrarium() != null) ? colony.getTerrarium().getHeight() : 100.0f;
+            if (pos.x < 0 || pos.x > maxX) vel.dx *= -1;
+            if (pos.y < 0 || pos.y > maxY) vel.dy *= -1;
         }
     }
 }

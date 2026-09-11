@@ -31,7 +31,9 @@ public class EcsWorldManager {
     private final ParasiteSystem parasiteSystem;
     private final RlBridgeSystem rlBridgeSystem;
     private final SubterraneanHydrologySystem subterraneanHydrologySystem;
+    private final org.swarmforge.core.world.HierarchicalSubstrateDecayEngine substrateDecayEngine;
     private final EthologyEcsSystem ethologyEcsSystem;
+    private final SwarmNeuralDecisionEngine swarmNeuralDecisionEngine;
     private final org.swarmforge.core.spatial.SpatialChunkManager chunkManager;
 
     public EcsWorldManager() {
@@ -52,21 +54,26 @@ public class EcsWorldManager {
         this.parasiteSystem = new ParasiteSystem();
         this.rlBridgeSystem = new RlBridgeSystem();
         this.subterraneanHydrologySystem = new SubterraneanHydrologySystem();
+        this.substrateDecayEngine = new org.swarmforge.core.world.HierarchicalSubstrateDecayEngine();
         this.ethologyEcsSystem = new EthologyEcsSystem();
+        this.swarmNeuralDecisionEngine = new SwarmNeuralDecisionEngine();
         this.chunkManager = new org.swarmforge.core.spatial.SpatialChunkManager();
 
         if (pheromoneGrid != null) {
             this.pheromoneDepositionSystem.setPheromoneGrid(pheromoneGrid);
             this.ethologyEcsSystem.setPheromoneGrid(pheromoneGrid);
+            this.swarmNeuralDecisionEngine.setPheromoneGrid(pheromoneGrid);
         }
 
         WorldConfigurationBuilder config = new WorldConfigurationBuilder()
                 .with(
                         subterraneanHydrologySystem,
+                        substrateDecayEngine,
                         agingSystem,
                         metabolismSystem,
                         parasiteSystem,
                         aiSystem,
+                        swarmNeuralDecisionEngine,
                         foragingSystem,
                         mandibularBiomechanicsSystem,
                         ethologyEcsSystem,
@@ -85,6 +92,7 @@ public class EcsWorldManager {
     public void setSparsePheromoneGrid(SparsePheromoneGrid grid) {
         this.pheromoneDepositionSystem.setPheromoneGrid(grid);
         this.ethologyEcsSystem.setPheromoneGrid(grid);
+        this.swarmNeuralDecisionEngine.setPheromoneGrid(grid);
     }
 
     private boolean enableRenderYieldGuard = false;
@@ -115,5 +123,26 @@ public class EcsWorldManager {
 
     public SpatialPartitioningSystem getSpatialPartitioningSystem() {
         return spatialPartitioningSystem;
+    }
+
+    public org.swarmforge.core.world.HierarchicalSubstrateDecayEngine getSubstrateDecayEngine() {
+        return substrateDecayEngine;
+    }
+
+    public SubterraneanHydrologySystem getSubterraneanHydrologySystem() {
+        return subterraneanHydrologySystem;
+    }
+
+    /**
+     * Propagates real-time environmental boundary variables (surface temperature, moisture infiltration, litter)
+     * directly into the physical ECS solver systems.
+     */
+    public void updateEnvironmentalBoundaryConditions(float surfaceTemp, float surfaceMoistureRatio, float leafLitterBiomass) {
+        if (subterraneanHydrologySystem != null) {
+            subterraneanHydrologySystem.updateSurfaceBoundaryConditions(surfaceTemp, surfaceMoistureRatio);
+        }
+        if (substrateDecayEngine != null && leafLitterBiomass > 0.0f) {
+            substrateDecayEngine.addLitterBiomass(leafLitterBiomass);
+        }
     }
 }

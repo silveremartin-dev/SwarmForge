@@ -13,10 +13,11 @@ import com.artemis.Component;
 public class CompactPathogenBitmaskComponent extends Component {
 
     public static final short PATHOGEN_NONE        = 0;
-    public static final short PATHOGEN_METARHIZIUM  = 1 << 0; // Fungal spore
+    public static final short PATHOGEN_METARHIZIUM  = 1 << 0; // Fungal spore (Metarhizium anisopliae)
     public static final short PATHOGEN_CBPV         = 1 << 1; // Chronic Bee Paralysis Virus
     public static final short PATHOGEN_VARROA_MITES = 1 << 2; // Parasitic mite infestation
     public static final short PATHOGEN_NOSEMA_SPORE = 1 << 3; // Microsporidian gut parasite
+    public static final short PATHOGEN_BEAUVERIA    = 1 << 4; // White muscardine fungus (Beauveria bassiana)
 
     public short activePathogensBitmask = PATHOGEN_NONE;
     public short viralLoadPacked = 0; // 0..65535 scale
