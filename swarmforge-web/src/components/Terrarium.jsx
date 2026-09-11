@@ -17,7 +17,8 @@ import {
     getPixelCobbleTexture,
     getPixelSandTexture,
     getPixelLilyPadTexture,
-    getPixelSugarCaneTexture
+    getPixelSugarCaneTexture,
+    getPixelWaterTexture
 } from '../utils/pixelTextures'
 
 /**
@@ -386,6 +387,7 @@ function VoxelTerrain({ terrainConfig }) {
     const grassTopTex = useMemo(() => getPixelGrassTopTexture(), [])
     const cobbleTex = useMemo(() => getPixelCobbleTexture(), [])
     const sandTex = useMemo(() => getPixelSandTexture(), [])
+    const waterTex = useMemo(() => getPixelWaterTexture(), [])
 
     const { terrainBlocks, cutawayBlocks } = useMemo(() => {
         const blocks = []
@@ -541,7 +543,7 @@ function VoxelTerrain({ terrainConfig }) {
                     <boxGeometry args={[b.width, b.height, b.width]} />
                     <meshStandardMaterial
                         color={b.topColor}
-                        map={b.isRiver ? null : (b.isRock ? cobbleTex : (b.isBeach ? sandTex : grassTopTex))}
+                        map={b.isRiver ? waterTex : (b.isRock ? cobbleTex : (b.isBeach ? sandTex : grassTopTex))}
                         roughness={b.isRiver ? 0.2 : 0.85}
                         metalness={b.isRiver ? 0.6 : 0.05}
                         transparent={b.isRiver}
@@ -610,13 +612,18 @@ export default function Terrarium() {
         }
 
         return {
-            groundMap: loadTex('/3d/textures/3td_AfricaGrass_Dry.png', 10, 10),
-            groundNormalMap: loadTex('/3d/textures/3td_AfricaGrass_Dry_NRM.png', 10, 10),
-            topsoilMap: loadTex('/3d/textures/3td_RedDirt_01.png', 8, 8),
-            topsoilNormalMap: loadTex('/3d/textures/3td_RedDirt_01_NRM.png', 8, 8),
-            subsoilMap: loadTex('/3d/textures/3td_YellowDirt_01_1024.jpg', 6, 6),
-            bedrockMap: loadTex('/3d/textures/3td_RedRock_01.jpg', 6, 6),
-            bedrockNormalMap: loadTex('/3d/textures/3td_RedRock_01_NRM.png', 6, 6),
+            groundMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_Color.jpg', 12, 12),
+            groundNormalMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_NormalGL.jpg', 12, 12),
+            groundRoughnessMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_Roughness.jpg', 12, 12),
+            topsoilMap: loadTex('/3d/textures/pbr/Ground003/Ground003_1K-JPG_Color.jpg', 8, 8),
+            topsoilNormalMap: loadTex('/3d/textures/pbr/Ground003/Ground003_1K-JPG_NormalGL.jpg', 8, 8),
+            topsoilRoughnessMap: loadTex('/3d/textures/pbr/Ground003/Ground003_1K-JPG_Roughness.jpg', 8, 8),
+            subsoilMap: loadTex('/3d/textures/pbr/Ground049A/Ground049A_1K-JPG_Color.jpg', 6, 6),
+            subsoilNormalMap: loadTex('/3d/textures/pbr/Ground049A/Ground049A_1K-JPG_NormalGL.jpg', 6, 6),
+            subsoilRoughnessMap: loadTex('/3d/textures/pbr/Ground049A/Ground049A_1K-JPG_Roughness.jpg', 6, 6),
+            bedrockMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_Color.jpg', 6, 6),
+            bedrockNormalMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_NormalGL.jpg', 6, 6),
+            bedrockRoughnessMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_Roughness.jpg', 6, 6),
             riverCobbleMap: loadTex('/3d/textures/3td_RiverCobble_01.png', 4, 12),
             riverCobbleNormalMap: loadTex('/3d/textures/3td_RiverCobble_01_NRM.png', 4, 12),
         }
@@ -637,15 +644,15 @@ export default function Terrarium() {
         return '#3d2817'
     }, [lookAndFeel])
 
-    // Displaced Ground Surface mesh matching terrain elevation relief
+    // Displaced Ground Surface mesh matching terrain elevation relief (Aligned to terrarium center [50, 0, 50])
     const groundGeometry = useMemo(() => {
-        const geo = new THREE.PlaneGeometry(100, 100, 50, 50)
+        const geo = new THREE.PlaneGeometry(100, 100, 80, 80)
         geo.rotateX(-Math.PI / 2)
         const pos = geo.attributes.position
         for (let i = 0; i < pos.count; i++) {
-            const x = pos.getX(i) + 50
-            const z = pos.getZ(i) + 50
-            const y = getTerrainHeight(x, z, terrainConfig)
+            const worldX = pos.getX(i) + 50
+            const worldZ = pos.getZ(i) + 50
+            const y = getTerrainHeight(worldX, worldZ, terrainConfig)
             pos.setY(i, y)
         }
         geo.computeVertexNormals()
@@ -659,6 +666,7 @@ export default function Terrarium() {
             return new THREE.MeshStandardMaterial({
                 map: realisticTextures?.groundMap || splattingTexture,
                 normalMap: realisticTextures?.groundNormalMap || null,
+                roughnessMap: realisticTextures?.groundRoughnessMap || null,
                 roughness: 0.85,
                 metalness: 0.05,
                 side: THREE.FrontSide,
@@ -698,6 +706,7 @@ export default function Terrarium() {
         color: lookAndFeel === 'REALISTIC' ? '#ffffff' : (lookAndFeel === 'SCIENTIFIC' ? '#334155' : '#4a321f'),
         map: lookAndFeel === 'REALISTIC' ? realisticTextures?.topsoilMap : null,
         normalMap: lookAndFeel === 'REALISTIC' ? realisticTextures?.topsoilNormalMap : null,
+        roughnessMap: lookAndFeel === 'REALISTIC' ? realisticTextures?.topsoilRoughnessMap : null,
         roughness: 0.9,
         metalness: 0.05,
         side: THREE.FrontSide,
@@ -713,6 +722,8 @@ export default function Terrarium() {
     const subsoilMat = useMemo(() => new THREE.MeshStandardMaterial({
         color: lookAndFeel === 'REALISTIC' ? '#ffffff' : (lookAndFeel === 'SCIENTIFIC' ? '#1e293b' : '#6b4c33'),
         map: lookAndFeel === 'REALISTIC' ? realisticTextures?.subsoilMap : null,
+        normalMap: lookAndFeel === 'REALISTIC' ? realisticTextures?.subsoilNormalMap : null,
+        roughnessMap: lookAndFeel === 'REALISTIC' ? realisticTextures?.subsoilRoughnessMap : null,
         roughness: 0.95,
         metalness: 0.05,
         side: THREE.FrontSide,
@@ -729,6 +740,7 @@ export default function Terrarium() {
         color: lookAndFeel === 'REALISTIC' ? '#ffffff' : (lookAndFeel === 'SCIENTIFIC' ? '#0f172a' : '#2c2825'),
         map: lookAndFeel === 'REALISTIC' ? realisticTextures?.bedrockMap : null,
         normalMap: lookAndFeel === 'REALISTIC' ? realisticTextures?.bedrockNormalMap : null,
+        roughnessMap: lookAndFeel === 'REALISTIC' ? realisticTextures?.bedrockRoughnessMap : null,
         roughness: 0.98,
         metalness: 0.2,
         side: THREE.FrontSide,
@@ -744,7 +756,7 @@ export default function Terrarium() {
         side: THREE.DoubleSide,
     }), [])
 
-    // ── 3D RIVER STREAM (Voxel Water Cubes in Gamified mode vs Liquid Plane in Realistic) ──
+    // ── 3D RIVER STREAM (Liquid Plane in Realistic and Scientific modes) ──
     const riverGeometry = useMemo(() => new THREE.PlaneGeometry(12, 100), [])
     const riverMaterial = useMemo(() => new THREE.MeshStandardMaterial({
         color: '#0284c7',
@@ -757,23 +769,11 @@ export default function Terrarium() {
         side: THREE.DoubleSide,
     }), [])
 
-    // Array of aligned 3D River Voxel Cubes for Gamified Mode
-    const voxelRiverCubes = useMemo(() => {
-        const cubes = []
-        for (let z = 0; z <= 100; z += 2) {
-            for (let x = 20; x <= 28; x += 2) {
-                cubes.push({ id: `r_${x}_${z}`, x, z })
-            }
-        }
-        return cubes
-    }, [])
-
     // ── CUBIC OUTER BORDER / VOXEL RIM (Bordure cubique en empilement de blocs) ──
     const voxelRimBlocks = useMemo(() => {
         const blocks = []
         const rimColor = lookAndFeel === 'SCIENTIFIC' ? '#475569' : (lookAndFeel === 'REALISTIC' ? '#84cc16' : '#0284c7')
 
-        // Generate stepped cubic rim voxel blocks along all 4 outer edges of the 100m x 100m terrarium
         for (let i = 0; i <= 100; i += 2) {
             blocks.push({ id: `rim_n_${i}`, pos: [i, 0.1, 0], color: rimColor })
             blocks.push({ id: `rim_s_${i}`, pos: [i, 0.1, 100], color: rimColor })
@@ -783,7 +783,7 @@ export default function Terrarium() {
         return blocks
     }, [lookAndFeel])
 
-    // Option B1: Volumetric Voxel Gravel & Quartz Pebble Inclusions on Cutaway Side Walls (Cubic in Gamified mode)
+    // Volumetric Voxel Gravel & Quartz Pebble Inclusions on Cutaway Side Walls
     const gravelInclusions = useMemo(() => {
         const items = []
         const rand = (seed) => Math.sin(seed * 9999) - Math.floor(Math.sin(seed * 9999))
@@ -815,7 +815,7 @@ export default function Terrarium() {
                     <mesh
                         geometry={groundGeometry}
                         material={groundMaterial}
-                        position={[0, 0, 0]}
+                        position={[50, 0, 50]}
                         receiveShadow
                     />
                     {/* River Pebble & Cobble Bed underneath water */}

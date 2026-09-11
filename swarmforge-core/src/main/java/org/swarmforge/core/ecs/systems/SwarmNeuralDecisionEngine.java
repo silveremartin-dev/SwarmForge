@@ -4,6 +4,7 @@ import com.artemis.Aspect;
 import com.artemis.ComponentMapper;
 import com.artemis.systems.IteratingSystem;
 import org.swarmforge.core.ecs.components.AiComponent;
+import org.swarmforge.core.ecs.components.ColonyComponent;
 import org.swarmforge.core.ecs.components.EthologyComponent;
 import org.swarmforge.core.ecs.components.MetabolismComponent;
 import org.swarmforge.core.ecs.components.PositionComponent;
@@ -26,7 +27,8 @@ public class SwarmNeuralDecisionEngine extends IteratingSystem {
     private ComponentMapper<PositionComponent>   mPosition;
     private ComponentMapper<MetabolismComponent> mMetabolism;
     private ComponentMapper<EthologyComponent>   mEthology;
-    private ComponentMapper<AiComponent>           mAi;
+    private ComponentMapper<AiComponent>          mAi;
+    private ComponentMapper<ColonyComponent>      mColony;
 
     private SubterraneanHydrologySystem hydrologySystem;
     private final FastDeterministicRandom deterministicRng = new FastDeterministicRandom(42L);
@@ -35,9 +37,9 @@ public class SwarmNeuralDecisionEngine extends IteratingSystem {
     // Inputs:  [0:Energy, 1:Health, 2:Temp, 3:Moisture, 4:Pheromone, 5:Depth, 6:Intruder, 7:Noise]
     // Outputs: [0:Forage, 1:Flee, 2:Rest, 3:NurseryGroom]
     private static final float[][] WEIGHT_MATRIX = {
-        {  0.8f, -0.9f,  0.1f,  0.2f,  0.6f, -0.3f, -0.4f,  0.0f }, // Forage
+        {  0.8f,  0.4f,  0.1f,  0.2f,  0.6f, -0.3f, -0.4f,  0.0f }, // Forage (High energy & health encourage foraging)
         { -0.5f, -0.8f,  0.9f, -0.2f, -0.3f,  0.1f,  0.95f, 0.4f }, // Flee
-        { -0.9f,  0.4f, -0.4f,  0.3f, -0.5f,  0.8f, -0.7f, -0.2f }, // Rest
+        { -0.9f, -0.5f, -0.4f,  0.3f, -0.5f,  0.8f, -0.7f, -0.2f }, // Rest (Low energy or low health encourages resting)
         {  0.3f,  0.5f,  0.4f,  0.8f,  0.2f,  0.5f, -0.8f, -0.1f }  // NurseryGroom
     };
 
@@ -98,15 +100,35 @@ public class SwarmNeuralDecisionEngine extends IteratingSystem {
             pheroConcentration = pheromoneGrid.getConcentration(px, py, pz, org.swarmforge.core.domain.PheromoneType.FOOD_TRAIL.getIndex());
         }
 
-        int neighborCount = spatialSystem != null ? spatialSystem.getNearbyEntities(pos.x, pos.y, pos.z).size() : 0;
+        // Count only foreign / enemy entities as intruders (exclude nestmates)
+        int foreignCount = 0;
+        if (spatialSystem != null) {
+            java.util.UUID myColonyId = mColony != null && mColony.has(entityId) ? mColony.get(entityId).colonyId : null;
+            var nearby = spatialSystem.getNearbyEntities(pos.x, pos.y, pos.z);
+            for (int neighborId : nearby) {
+                if (neighborId == entityId) continue;
+                if (mColony != null && mColony.has(neighborId)) {
+                    java.util.UUID neighborColonyId = mColony.get(neighborId).colonyId;
+                    if (myColonyId != null && !myColonyId.equals(neighborColonyId)) {
+                        foreignCount++;
+                    }
+                }
+            }
+        }
+
+        float surfaceZ = 16.0f;
+        if (pheromoneGrid != null && pheromoneGrid.getTerrarium() != null) {
+            surfaceZ = pheromoneGrid.getTerrarium().getSurfaceElevation(pos.x, pos.y);
+        }
+        float depthRatio = Math.max(0.0f, (surfaceZ - pos.z) / Math.max(1.0f, surfaceZ));
 
         sensoryBuffer[0] = meta.energy / 100.0f;
         sensoryBuffer[1] = meta.health / 100.0f;
         sensoryBuffer[2] = (temp - 10.0f) / 30.0f;
         sensoryBuffer[3] = moisture;
         sensoryBuffer[4] = Math.min(1.0f, pheroConcentration);
-        sensoryBuffer[5] = Math.min(1.0f, Math.abs(pos.z) / 20.0f);
-        sensoryBuffer[6] = neighborCount > 25 ? 1.0f : (neighborCount / 25.0f);
+        sensoryBuffer[5] = Math.min(1.0f, depthRatio);
+        sensoryBuffer[6] = foreignCount > 5 ? 1.0f : (foreignCount / 5.0f);
         sensoryBuffer[7] = eth.isStridulating ? 1.0f : 0.0f;
 
         // 2. Matrix Vector Multiplication (Dot Product)

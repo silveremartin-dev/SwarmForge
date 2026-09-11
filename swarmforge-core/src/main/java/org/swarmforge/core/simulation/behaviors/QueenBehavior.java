@@ -211,6 +211,12 @@ public class QueenBehavior {
         if (queen.getEnergy() < 30)
             return; // Need energy to lay
 
+        // Arrest oviposition during winter diapause / cold torpor
+        if (colony != null && colony.getMetabolicRate() < 0.5f) {
+            layingCooldownSeconds = 60.0f;
+            return;
+        }
+
         // Check colony needs
         int currentPop = colony != null ? colony.getPopulation() : 0;
         int targetPop = 1000; // Base target capacity

@@ -59,13 +59,18 @@ public class BossPredator extends Predator {
 
     @Override
     public void tick() {
-        super.tick();
+        tick(0.016666667f);
+    }
+
+    @Override
+    public void tick(float deltaSeconds) {
+        super.tick(deltaSeconds);
         if (cooldown > 0)
             cooldown--;
 
-        // Regenerate slightly
+        // Regenerate slightly (1.5 HP/s scaled by deltaSeconds)
         if (getHealth() < maxHealth) {
-            setHealth(Math.min(maxHealth, getHealth() + 0.5f));
+            setHealth(Math.min(maxHealth, getHealth() + 1.5f * deltaSeconds));
         }
     }
 

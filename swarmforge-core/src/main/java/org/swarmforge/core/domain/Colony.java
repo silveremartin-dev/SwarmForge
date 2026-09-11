@@ -617,12 +617,14 @@ public class Colony implements java.io.Serializable {
         if (count <= 0) return List.of();
         List<Individual> batch = new java.util.ArrayList<>(count);
         var broodChamber = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ) : null;
+        float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(nestX, nestY) : 16.0f;
+        float defaultUndergroundZ = Math.max(1.0f, surfaceZ - Math.max(1.0f, Math.abs(getDynamicQueenChamberDepth() * 0.5f)));
         if (broodChamber == null && tunnelNetwork != null) {
             broodChamber = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.QUEEN_CHAMBER, nestX, nestY, nestZ);
         }
         if (broodChamber == null && tunnelNetwork != null && !tunnelNetwork.getNodes().isEmpty()) {
             for (var node : tunnelNetwork.getNodes()) {
-                if (node.z() < -0.1f) {
+                if (node.z() < surfaceZ) {
                     broodChamber = node;
                     break;
                 }
@@ -630,7 +632,7 @@ public class Colony implements java.io.Serializable {
         }
         float baseSx = broodChamber != null ? broodChamber.x() : nestX;
         float baseSy = broodChamber != null ? broodChamber.y() : nestY;
-        float baseSz = broodChamber != null ? broodChamber.z() : Math.min(-0.8f, nestZ < 0 ? nestZ : -Math.abs(getDynamicQueenChamberDepth() * 0.5f));
+        float baseSz = broodChamber != null ? broodChamber.z() : defaultUndergroundZ;
 
         List<org.swarmforge.core.structure.Chamber> nurseryChambers = nest != null ? nest.getChambersOfType(org.swarmforge.core.structure.Chamber.Type.NURSERY) : List.of();
         List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
@@ -660,13 +662,14 @@ public class Colony implements java.io.Serializable {
             }
 
             // Enforce strictly subterranean depth for all non-adult brood
-            if (sz >= 0) {
-                sz = -Math.abs(getDynamicQueenChamberDepth() * 0.5f);
-                if (sz >= 0) sz = -1.2f;
+            float antSurfaceZ = terrarium != null ? terrarium.getSurfaceElevation(sx, sy) : 16.0f;
+            if (sz >= antSurfaceZ) {
+                sz = Math.max(1.0f, antSurfaceZ - Math.max(1.0f, Math.abs(getDynamicQueenChamberDepth() * 0.5f)));
             }
 
             sx = Math.max(1.0f, Math.min(mapWidth - 1.0f, sx));
             sy = Math.max(1.0f, Math.min(mapHeight - 1.0f, sy));
+            sz = Math.max(1.0f, Math.min(terrarium != null ? terrarium.getDepth() - 1 : 63, sz));
 
             Individual ind = new Individual(this.id, Individual.Caste.WORKER, sx, sy, sz);
             ind.setSpecies(this.species);
@@ -1061,6 +1064,27 @@ public class Colony implements java.io.Serializable {
                 .filter(e -> e.getKey() != ResourceType.WATER)
                 .mapToDouble(java.util.Map.Entry::getValue)
                 .sum();
+    }
+
+    /**
+     * Consume food from colony storage across available food types.
+     * 
+     * @param amount Desired amount of food to consume
+     * @return Amount actually consumed
+     */
+    public float consumeFood(float amount) {
+        if (amount <= 0) return 0f;
+        float remaining = amount;
+        ResourceType[] foodTypes = { ResourceType.SUGAR, ResourceType.CARBOHYDRATE, ResourceType.SEED, ResourceType.NECTAR, ResourceType.PROTEIN, ResourceType.INSECT, ResourceType.FUNGUS, ResourceType.HONEYDEW };
+        for (ResourceType type : foodTypes) {
+            if (remaining <= 0) break;
+            float available = getResourceAmount(type);
+            if (available > 0) {
+                float taken = consumeResource(type, Math.min(available, remaining));
+                remaining -= taken;
+            }
+        }
+        return amount - remaining;
     }
 
     public void setFoodStored(float food) {

@@ -134,20 +134,28 @@ public class PredatorManager {
             }
         }
 
-        // Remove dead predators
+        // Remove dead predators and convert carcasses into forageable INSECT protein biomass
         for (Predator p : dead) {
             predators.remove(p);
             predatorsKilled++;
+            if (simulation != null) {
+                float insectBiomass = Math.max(15.0f, p.getMaxHealth() * 1.2f);
+                simulation.spawnFood(p.getX(), p.getY(), p.getZ(), insectBiomass, org.swarmforge.core.domain.ResourceType.INSECT);
+            }
         }
     }
 
     public void removePredator(Predator predator) {
         if (predators.remove(predator)) {
             predatorsKilled++;
+            if (simulation != null) {
+                float insectBiomass = Math.max(15.0f, predator.getMaxHealth() * 1.2f);
+                simulation.spawnFood(predator.getX(), predator.getY(), predator.getZ(), insectBiomass, org.swarmforge.core.domain.ResourceType.INSECT);
+            }
             simulation.getEventQueue().offer(new SimulationEvent(
                     SimulationEvent.EventType.DEATH,
                     simulation.getTickCount(),
-                    "Predator killed by colony!"));
+                    "Predator killed by colony! Carcass dropped as forageable insect biomass."));
         }
     }
 

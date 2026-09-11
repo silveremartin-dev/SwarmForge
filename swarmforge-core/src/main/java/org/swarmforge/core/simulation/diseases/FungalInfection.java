@@ -147,10 +147,15 @@ public class FungalInfection implements Disease {
             individual.setState(Individual.AiState.WANDER);
         }
 
-        // Characteristic climbing behavior
-        if (random.nextFloat() < 0.05f && individual.getZ() < 100) {
-            // Try to climb (fungus makes ants climb)
-            individual.setPosition(individual.getX(), individual.getY(), individual.getZ() + 1);
+        // Characteristic climbing behavior (summit disease)
+        if (random.nextFloat() < 0.05f && !individual.isClimbingTree()) {
+            if (individual.getZ() <= 1.0f) {
+                // Near surface: climb upward on vegetation
+                individual.climbTree(5.0f);
+            } else {
+                // Move towards surface
+                individual.setPosition(individual.getX(), individual.getY(), Math.max(0.0f, individual.getZ() - 1.0f));
+            }
         }
     }
 

@@ -113,6 +113,20 @@ public interface Species extends java.io.Serializable {
     }
 
     /**
+     * @return Innate physiological resistance to pathogen spore germination (0.0 to 1.0)
+     */
+    default float getPathogenResistance() {
+        return 0.5f;
+    }
+
+    /**
+     * @return Social allogrooming defense efficacy against cuticular ectoparasites and spores (0.0 to 1.0)
+     */
+    default float getGroomingDefenseEfficacy() {
+        return 0.6f;
+    }
+
+    /**
      * @return Set of resource types this species forages for to bring to the
      * 
      *         colony.

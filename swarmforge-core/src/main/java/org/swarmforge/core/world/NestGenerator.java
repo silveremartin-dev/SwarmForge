@@ -207,7 +207,7 @@ public class NestGenerator {
         }
 
         for (int depth = 1; depth <= 4; depth++) {
-            int subZ = startZ - depth * 8;
+            int subZ = Math.max(1, startZ - depth * 8);
             carveEllipsoidChamber(startX, startY, subZ, 6, 6, 3);
             chamberCount++;
         }
@@ -328,13 +328,14 @@ public class NestGenerator {
         int numVaults = Math.max(3, (int) (8 * scale));
         int chamberCount = 0;
 
-        for (int z = startZ; z >= startZ - 35; z--) {
+        int minZ = Math.max(0, startZ - 35);
+        for (int z = startZ; z >= minZ; z--) {
             setMaterial(startX, startY, z, TerrariumCell.Material.AIR);
             setMaterial(startX + 1, startY, z, TerrariumCell.Material.AIR);
         }
 
         for (int v = 0; v < numVaults; v++) {
-            int depthZ = startZ - 10 - (v * 5);
+            int depthZ = Math.max(2, startZ - 10 - (v * 5));
             float angle = v * (360f / numVaults);
             int dist = 12;
             int vx = startX + (int) (Math.cos(Math.toRadians(angle)) * dist);
@@ -517,9 +518,12 @@ public class NestGenerator {
                 }
             }
 
-            // Clamp depth
-            if (turtle.z < -maxDepth)
-                turtle.z = -maxDepth;
+            // Clamp depth to non-negative coordinates within terrarium bounds
+            if (turtle.z < 0) {
+                turtle.z = 0;
+            } else if (terrarium != null && turtle.z >= terrarium.getDepth()) {
+                turtle.z = terrarium.getDepth() - 1;
+            }
         }
 
         return chambers;

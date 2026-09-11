@@ -139,8 +139,8 @@ public class SwarmViewerApp extends SimpleApplication {
                 antNode.attachChild(geom);
                 entities.put(id, geom);
             }
-            // Update position
-            geom.setLocalTranslation(x, y, z);
+            // Update position (SwarmForge Z-up to JMonkeyEngine Y-up: X->X, Y->Z, Z->Y)
+            geom.setLocalTranslation(x, z, y);
         });
     }
 

@@ -20,6 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class WaterGrid {
 
+    private final Terrarium terrarium;
     private final int width;
     private final int height;
     private final float[] surfaceWater; // 1D array for 2D grid [x + y * width]
@@ -28,6 +29,7 @@ public class WaterGrid {
     private final Map<UUID, Float> tunnelWaterLevels = new ConcurrentHashMap<>();
 
     public WaterGrid(Terrarium terrarium) {
+        this.terrarium = terrarium;
         this.width = (int) terrarium.getWidth(); // Assuming grid resolution matches 1 unit
         this.height = (int) terrarium.getHeight();
         this.surfaceWater = new float[width * height];
@@ -127,7 +129,8 @@ public class WaterGrid {
     }
 
     public float getWaterAt(float x, float y, float z) {
-        if (z >= 0) {
+        float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(x, y) : 16.0f;
+        if (z >= surfaceZ) {
             return getSurfaceWaterAt((int) x, (int) y);
         } else {
             // Spatial lookup for tunnels is expensive without a persistent index.

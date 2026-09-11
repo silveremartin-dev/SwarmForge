@@ -22,62 +22,40 @@ public class NursingBehavior implements BehaviorStrategy {
 
     private final Random random = new Random();
 
-    private enum NurseState {
-        SEEKING_BROOD, TENDING, SEEKING_FOOD, FEEDING
-    }
-
-    private NurseState state = NurseState.SEEKING_BROOD;
-
     @Override
     public void execute(Individual ind, Terrarium terrarium, Colony colony, BehaviorContext ctx) {
         if (!ind.isAlive())
             return;
 
-        switch (state) {
-            case SEEKING_BROOD -> {
-                // Follow brood pheromone to find larvae/eggs
-                if (ctx.atNest()) {
-                    // Found brood area
-                    state = NurseState.TENDING;
-                } else {
-                    // Move towards nest center (brood is typically there)
-                    moveTowardsNest(ind, colony);
-                }
+        // If carrying food for brood
+        if (ind.getCarriedItem() == Individual.CarriedItem.FOOD) {
+            if (ctx.atNest()) {
+                // Feed larvae (food transferred to brood)
+                ind.setCarriedItem(Individual.CarriedItem.NONE);
+                ind.setState(Individual.AiState.TEND_BROOD);
+            } else {
+                moveTowardsNest(ind, colony);
             }
-            case TENDING -> {
-                // Stay near brood, occasionally check temperature/humidity
-                if (random.nextFloat() < 0.1f) {
-                    // Check if brood needs food
-                    state = NurseState.SEEKING_FOOD;
-                }
-                // Small random movements while tending
-                ind.setHeading(ind.getHeading() + (random.nextFloat() - 0.5f) * 0.3f);
-                ind.move(0.1f);
-            }
-            case SEEKING_FOOD -> {
-                // Go get food from storage
-                if (colony.getFoodStored() > 0) {
-                    colony.setFoodStored(colony.getFoodStored() - 0.5f);
+        } else {
+            // Not carrying food
+            if (!ctx.atNest()) {
+                // Move back to brood chamber in nest
+                moveTowardsNest(ind, colony);
+            } else {
+                // At nest: either seek food from storage or tend brood directly
+                if (random.nextFloat() < 0.1f && colony.getFoodStored() > 0) {
+                    colony.setFoodStored(Math.max(0.0f, colony.getFoodStored() - 0.5f));
                     ind.setCarriedItem(Individual.CarriedItem.FOOD);
-                    state = NurseState.FEEDING;
                 } else {
-                    // No food available, go back to tending
-                    state = NurseState.TENDING;
-                }
-            }
-            case FEEDING -> {
-                // Bring food back to brood
-                if (ctx.atNest()) {
-                    // Feed larvae (food disappears)
-                    ind.setCarriedItem(Individual.CarriedItem.NONE);
-                    state = NurseState.TENDING;
-                } else {
-                    moveTowardsNest(ind, colony);
+                    // Tend brood with micro-movements
+                    ind.setState(Individual.AiState.TEND_BROOD);
+                    ind.setHeading(ind.getHeading() + (random.nextFloat() - 0.5f) * 0.3f);
+                    ind.move(0.1f);
                 }
             }
         }
 
-        ind.setEnergy(ind.getEnergy() - 0.0001f);
+        ind.setEnergy(Math.max(0.0f, ind.getEnergy() - 0.0001f));
     }
 
     private void moveTowardsNest(Individual ind, Colony colony) {

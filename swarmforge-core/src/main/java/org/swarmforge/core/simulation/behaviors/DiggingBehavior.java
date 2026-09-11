@@ -76,9 +76,9 @@ public class DiggingBehavior {
 
         float targetX = startNode.x() + dx * 2f;
         float targetY = startNode.y() + dy * 2f;
-        float targetZ = startNode.z() + dz * 2f;
-
         org.swarmforge.core.domain.Terrarium terrarium = simulation != null ? simulation.getTerrarium() : null;
+        int maxZ = terrarium != null ? terrarium.getDepth() - 1 : 100;
+        float targetZ = Math.max(0.0f, Math.min(maxZ, startNode.z() + dz * 2f));
         org.swarmforge.core.simulation.SoilStructureSystem soilSystem = simulation != null ? simulation.getSoilStructureSystem() : null;
 
         boolean excavationSuccess = true;

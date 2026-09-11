@@ -87,7 +87,7 @@ public class ParasiteSystem extends IteratingSystem {
                 if (neighborPath != null) {
                     // Social Immunity (Allogrooming: healthy nestmate cleans infected one)
                     if (neighborPath.activePathogens == PathogenComponent.TYPE_NONE) {
-                        pathogen.viralLoad = Math.max(0.0f, pathogen.viralLoad - 3.0f * delta);
+                        pathogen.viralLoad = Math.max(0.0f, pathogen.viralLoad - 3.0f * SAMPLE_INTERVAL_SEC);
                         if (pathogen.viralLoad <= 0.0f) {
                             pathogen.activePathogens = PathogenComponent.TYPE_NONE;
                         }

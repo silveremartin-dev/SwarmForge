@@ -82,13 +82,13 @@ public class EarthquakeDisaster implements DisasterEvent {
         if (remainingTicks <= 0) return;
         remainingTicks--;
 
-        Random rand = new Random();
+        java.util.Random rand = java.util.concurrent.ThreadLocalRandom.current();
         float collapseChance = (magnitude * 0.15f) / Math.max(1, durationTicks / 10);
 
         if (terrarium != null) {
             for (int x = 0; x < terrarium.getWidth(); x++) {
                 for (int y = 0; y < terrarium.getHeight(); y++) {
-                    for (int z = 0; z < terrarium.getDepth() - 10; z++) {
+                    for (int z = 0; z < terrarium.getDepth(); z++) {
                         TerrariumCell cell = terrarium.getCell(x, y, z);
                         if (cell.material() == TerrariumCell.Material.AIR || cell.material() == TerrariumCell.Material.CHAMBER) {
                             float actualChance = cell.material() == TerrariumCell.Material.CHAMBER ? collapseChance * 1.5f : collapseChance;
@@ -111,11 +111,16 @@ public class EarthquakeDisaster implements DisasterEvent {
             for (Colony colony : simulation.getColonies()) {
                 for (Individual ant : colony.getLivingIndividuals()) {
                     if (terrarium != null) {
-                        TerrariumCell atAnt = terrarium.getCell((int) ant.getX(), (int) ant.getY(), (int) ant.getZ());
-                        if (atAnt.material() == TerrariumCell.Material.EARTH) {
-                            ant.takeDamage(100f); // Crushing collapse damage
-                        } else if (rand.nextFloat() < magnitude * 0.1f) {
-                            ant.takeDamage(magnitude * 4.0f); // Shaking stress
+                        int ax = (int) ant.getX();
+                        int ay = (int) ant.getY();
+                        int az = (int) ant.getZ();
+                        if (terrarium.inBounds(ax, ay, az)) {
+                            TerrariumCell atAnt = terrarium.getCell(ax, ay, az);
+                            if (atAnt.material() == TerrariumCell.Material.EARTH) {
+                                ant.takeDamage(100f); // Crushing collapse damage
+                            } else if (rand.nextFloat() < magnitude * 0.1f) {
+                                ant.takeDamage(magnitude * 4.0f); // Shaking stress
+                            }
                         }
                     }
                 }

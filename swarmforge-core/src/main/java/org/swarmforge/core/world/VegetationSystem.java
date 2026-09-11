@@ -150,24 +150,24 @@ public class VegetationSystem {
     public void populate(int count, PlantType type) {
         for (int i = 0; i < count; i++) {
             int x = rng.nextInt(worldWidth);
-            int z = rng.nextInt(worldDepth);
-            Plant p = new Plant(type, x, 0, z);
+            int y = rng.nextInt(worldDepth);
+            Plant p = new Plant(type, x, y, 0);
             p.growth = 1.0f; // Initial plants are mature
             plants.add(p);
         }
     }
 
     /**
-     * Find nearest plant to specific position.
+     * Find nearest plant to specific horizontal position (x, y) on surface.
      */
-    public Plant findNearestPlant(float x, float z, float maxDist, PlantType filterType) {
+    public Plant findNearestPlant(float x, float y, float maxDist, PlantType filterType) {
         Plant nearest = null;
         float minDistSq = maxDist * maxDist;
         for (Plant p : plants) {
             if (filterType != null && p.type != filterType) continue;
             float dx = p.x - x;
-            float dz = p.z - z;
-            float d2 = dx * dx + dz * dz;
+            float dy = p.y - y;
+            float d2 = dx * dx + dy * dy;
             if (d2 < minDistSq) {
                 minDistSq = d2;
                 nearest = p;
@@ -178,17 +178,17 @@ public class VegetationSystem {
 
     private Plant spreadSeed(Plant parent) {
         int dx = rng.nextInt(11) - 5;
-        int dz = rng.nextInt(11) - 5;
+        int dy = rng.nextInt(11) - 5;
         int nx = parent.x + dx;
-        int nz = parent.z + dz;
+        int ny = parent.y + dy;
 
-        if (nx >= 0 && nx < worldWidth && nz >= 0 && nz < worldDepth) {
+        if (nx >= 0 && nx < worldWidth && ny >= 0 && ny < worldDepth) {
             // Check no plant already there
             for (Plant p : plants) {
-                if (p.x == nx && p.z == nz)
+                if (p.x == nx && p.y == ny)
                     return null;
             }
-            return new Plant(parent.type, nx, 0, nz);
+            return new Plant(parent.type, nx, ny, 0);
         }
         return null;
     }

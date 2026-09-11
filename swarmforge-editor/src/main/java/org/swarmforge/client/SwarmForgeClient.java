@@ -250,11 +250,13 @@ public class SwarmForgeClient extends Application {
         if (isTestMode || splashScreen == null) {
             org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage);
             primaryStage.show();
+            Platform.runLater(() -> org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage));
         } else {
             // Start loading progress on splash screen and reveal main window upon completion
             splashScreen.startProgressAndLaunch(() -> {
                 org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage);
                 primaryStage.show();
+                Platform.runLater(() -> org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage));
             });
         }
 
@@ -2383,17 +2385,8 @@ public class SwarmForgeClient extends Application {
                         }
                 });
 
-                grid.add(langLabel, 0, 0);
-                grid.add(langCombo, 1, 0);
-                grid.add(themeLabel, 0, 1);
-                grid.add(themeCombo, 1, 1);
-
-                VBox settingsCard = new VBox(8, headerBox, grid);
-                settingsCard.getStyleClass().add("card-pane");
-                settingsCard.setPadding(new Insets(12));
-                settingsCard.setMaxWidth(650);
-
-                main.getChildren().add(settingsCard);
+                main.getChildren().addAll(headerBox, grid);
+                main.setPadding(new Insets(20));
                 VBox.setVgrow(main, Priority.ALWAYS);
                 return main;
         }

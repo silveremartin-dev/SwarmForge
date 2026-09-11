@@ -77,15 +77,20 @@ public class EthologyEcsSystem extends IteratingSystem {
 
         // ── Biological Thermal Kinetics (Arrhenius Q10 = 2.2 Law) ───────────────
         float ambientTemp = 25.0f;
+        float surfaceZ = 16.0f;
         if (pheromoneGrid != null && pheromoneGrid.getTerrarium() != null) {
             org.swarmforge.core.domain.Terrarium terr = pheromoneGrid.getTerrarium();
             int tx = Math.max(0, Math.min(terr.getWidth() - 1, (int) pos.x));
             int ty = Math.max(0, Math.min(terr.getHeight() - 1, (int) pos.y));
             int tz = Math.max(0, Math.min(terr.getDepth() - 1, (int) pos.z));
             ambientTemp = terr.getCell(tx, ty, tz).temperature();
+            surfaceZ = terr.getSurfaceElevation(pos.x, pos.y);
         } else if (hydrologySystem != null) {
             ambientTemp = hydrologySystem.getSoilTemperature(pos.x, pos.y, pos.z);
         }
+
+        final boolean isSubterranean = pos.z < surfaceZ;
+        final boolean isSurface = pos.z >= surfaceZ;
 
         // Q10 thermal multiplier: rate(T) = rate(25C) * Q10^((T - 25)/10)
         float q10Factor = (float) Math.pow(2.2, (ambientTemp - 25.0f) / 10.0f);
@@ -110,7 +115,7 @@ public class EthologyEcsSystem extends IteratingSystem {
         // ── WORD 0 behaviors: Navigation, Sanitation, Defense & Reproduction ────
 
         // 1. Geomagnetic Navigation (Blind subterranean orientation)
-        if (eth.has0(EthologyComponent.W0_MAGNETORECEPTION) && pos.z < 0f) {
+        if (eth.has0(EthologyComponent.W0_MAGNETORECEPTION) && isSubterranean) {
             if (mVelocity != null && mVelocity.has(entityId)) {
                 VelocityComponent vel = mVelocity.get(entityId);
                 // Subtle geomagnetic bias towards North (Y+)
@@ -125,7 +130,7 @@ public class EthologyEcsSystem extends IteratingSystem {
 
         // 3. Stridulation distress signal (low energy / trapped underground)
         if (eth.has0(EthologyComponent.W0_STRIDULATION_RESCUE)) {
-            eth.isStridulating = meta.energy < 20f || pos.z < -5f;
+            eth.isStridulating = meta.energy < 20f || (isSubterranean && (surfaceZ - pos.z) > 5.0f);
             if (eth.isStridulating && doSpatialSample()) {
                 propagateStridulationRescue(entityId, pos, eth);
             }
@@ -161,7 +166,7 @@ public class EthologyEcsSystem extends IteratingSystem {
         }
 
         // 8. Desert Ant Thermal Stilt Walking (Cataglyphis/Ocymyrmex/Melophorus boundary layer elevation)
-        if (eth.has0(EthologyComponent.W0_DESERT_ANT_STILT_WALKING) && pos.z >= 0f && ambientTemp > 35.0f) {
+        if (eth.has0(EthologyComponent.W0_DESERT_ANT_STILT_WALKING) && isSurface && ambientTemp > 35.0f) {
             if (mVelocity != null && mVelocity.has(entityId)) {
                 VelocityComponent vel = mVelocity.get(entityId);
                 // Biological fidelity: Desert ants elevate body ~4mm into cooler boundary layer and increase sprint velocity by 50% relative to species baseline
@@ -244,15 +249,15 @@ public class EthologyEcsSystem extends IteratingSystem {
         }
 
         // 18. Granary Seed Aeration in damp soil
-        if (eth.has1(EthologyComponent.W1_GRANARY_SEED_AERATION) && pos.z < 0f) {
+        if (eth.has1(EthologyComponent.W1_GRANARY_SEED_AERATION) && isSubterranean) {
             float moisture = hydrologySystem != null ? hydrologySystem.getSoilMoisture(pos.x, pos.y, pos.z) : 0.4f;
             if (moisture > 0.65f) {
-                pos.z = Math.min(0.0f, pos.z + 0.3f * dt); // Moves seeds toward upper dry chambers
+                pos.z = Math.min(surfaceZ, pos.z + 0.3f * dt); // Moves seeds toward upper dry chambers
             }
         }
 
         // 19. Solar Mound Thermal Collection (Orientation towards sun on surface)
-        if (eth.has1(EthologyComponent.W1_SOLAR_MOUND) && pos.z >= 0f) {
+        if (eth.has1(EthologyComponent.W1_SOLAR_MOUND) && isSurface) {
             eth.thermalThoraxTempC = Math.min(32f, eth.thermalThoraxTempC + 0.5f * dt);
         }
 
@@ -269,7 +274,7 @@ public class EthologyEcsSystem extends IteratingSystem {
         // ── WORD 2 & 3 behaviors: Supercolonies, Flooding, Bivouacs, Mechanics ──
 
         // 17. Atta Leaf Crescent Shear: mandibular mechanical wear & substrate biomass harvest
-        if (eth.has2(EthologyComponent.W2_ATTA_LEAF_CRESCENT_SHEAR) && pos.z >= 0f) {
+        if (eth.has2(EthologyComponent.W2_ATTA_LEAF_CRESCENT_SHEAR) && isSurface) {
             if (mMandible != null && mMandible.has(entityId)) {
                 MandibularBiomechanicsComponent mand = mMandible.get(entityId);
                 mand.applyWear(0.0001f * dt);
@@ -315,7 +320,7 @@ public class EthologyEcsSystem extends IteratingSystem {
 
         // 22. Floating ant raft during floods
         if (eth.has2(EthologyComponent.W2_FLOATING_ANT_RAFT)) {
-            if (pos.z < -2f) {
+            if (isSubterranean && (surfaceZ - pos.z) > 2.0f) {
                 eth.isRafting = true;
                 pos.z += 0.5f * dt; // hydro-buoyancy
                 meta.energy -= 0.1f * dt;
@@ -325,7 +330,7 @@ public class EthologyEcsSystem extends IteratingSystem {
         }
 
         // 23. Flood evacuation (barometric pressure drop reaction)
-        if (eth.has2(EthologyComponent.W2_FLOOD_EVACUATION) && pos.z < -2f) {
+        if (eth.has2(EthologyComponent.W2_FLOOD_EVACUATION) && isSubterranean && (surfaceZ - pos.z) > 2.0f) {
             pos.z += 0.8f * dt; // rapid upward migration
             meta.energy -= 0.15f * dt;
         }
@@ -353,7 +358,7 @@ public class EthologyEcsSystem extends IteratingSystem {
         }
 
         // 26. Termite Saliva Cement Gallery Sealing against dry air
-        if (eth.has3(EthologyComponent.W3_TERMITE_SALIVA_CEMENT_MOISTURE_SEAL) && pos.z < 0f) {
+        if (eth.has3(EthologyComponent.W3_TERMITE_SALIVA_CEMENT_MOISTURE_SEAL) && isSubterranean) {
             float soilHum = hydrologySystem != null ? hydrologySystem.getSoilMoisture(pos.x, pos.y, pos.z) : 0.5f;
             if (soilHum < 0.35f) {
                 eth.stercoralMortarAmount = Math.min(100f, eth.stercoralMortarAmount + 2.0f * dt);
@@ -369,7 +374,7 @@ public class EthologyEcsSystem extends IteratingSystem {
         }
 
         // 28. Drought Soil Moisture Vibrato (Vibrational acoustics to locate subterranean water table)
-        if (eth.has3(EthologyComponent.W3_DROUGHT_SOIL_MOISTURE_VIBRATO) && pos.z < 0f) {
+        if (eth.has3(EthologyComponent.W3_DROUGHT_SOIL_MOISTURE_VIBRATO) && isSubterranean) {
             float soilHum = hydrologySystem != null ? hydrologySystem.getSoilMoisture(pos.x, pos.y, pos.z) : 0.5f;
             if (soilHum < 0.20f) {
                 eth.isStridulating = true;
@@ -397,8 +402,16 @@ public class EthologyEcsSystem extends IteratingSystem {
 
     private void depositAlarmChemicalPulse(PositionComponent pos, float intensity) {
         if (pheromoneGrid != null) {
-            pheromoneGrid.deposit((int) Math.max(0, pos.x), (int) Math.max(0, pos.y), (int) Math.max(0, pos.z),
-                    PheromoneType.ALARM.getIndex(), intensity);
+            int px = Math.max(0, (int) pos.x);
+            int py = Math.max(0, (int) pos.y);
+            int pz = Math.max(0, (int) pos.z);
+            if (pheromoneGrid.getTerrarium() != null) {
+                org.swarmforge.core.domain.Terrarium terr = pheromoneGrid.getTerrarium();
+                px = Math.min(terr.getWidth() - 1, px);
+                py = Math.min(terr.getHeight() - 1, py);
+                pz = Math.min(terr.getDepth() - 1, pz);
+            }
+            pheromoneGrid.deposit(px, py, pz, PheromoneType.ALARM.getIndex(), intensity);
         }
     }
 

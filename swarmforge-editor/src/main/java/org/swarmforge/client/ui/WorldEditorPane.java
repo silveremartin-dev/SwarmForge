@@ -1426,6 +1426,12 @@ public class WorldEditorPane extends BorderPane {
     private final java.util.LinkedList<double[]> antTrailHistory = new java.util.LinkedList<>();
     private static final int MAX_TRAIL_LENGTH = 100;
     private TrackedAntPane trackedAntPane;
+    private ChamberInfoPane chamberInfoPane;
+    private CheckBox showAntTrackingCheck;
+    private CheckBox showChamberOverlayCheck;
+    private CheckBox showElevationIsolinesCheck;
+    private CheckBox showClimateIsolinesCheck;
+    private CheckBox showPheromoneIsolinesCheck;
     private Label lblTopdownMinimapTitle;
     private Label lblSideMinimapTitle;
 
@@ -1773,23 +1779,53 @@ public class WorldEditorPane extends BorderPane {
 
     public void centerCameraOnSelection() {
         if (activeSimulation == null || activeSimulation.getTerrarium() == null) return;
-        double targetX = -1, targetY = -1;
+        double targetX = -1, targetY = -1, targetZ = 0;
+        int tWidth = Math.max(1, activeSimulation.getTerrarium().getWidth());
+        int tHeight = Math.max(1, activeSimulation.getTerrarium().getHeight());
 
-        if (followedAnt != null) {
-            targetX = (followedAnt.getX() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
-            targetY = (followedAnt.getY() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
+        org.swarmforge.core.domain.Individual ant = (followedAnt != null) ? followedAnt : (trackedAntPane != null ? trackedAntPane.getCurrentAnt() : null);
+        if (ant != null) {
+            targetX = (ant.getX() / (double) tWidth) * GRID_SIZE;
+            targetY = (ant.getY() / (double) tHeight) * GRID_SIZE;
+            int igx = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetX));
+            int igy = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetY));
+            targetZ = heightGrid[igx][igy] * 40.0 + ant.getZ() * 2.0;
         } else if (trackedAntPane != null && trackedAntPane.getCurrentPredator() != null) {
             var pred = trackedAntPane.getCurrentPredator();
-            targetX = (pred.getX() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
-            targetY = (pred.getY() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
-        } else if (selectedChamberNode != null) {
-            targetX = (selectedChamberNode.x() / (float) Math.max(1, activeSimulation.getTerrarium().getWidth())) * GRID_SIZE;
-            targetY = (selectedChamberNode.y() / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE;
+            targetX = (pred.getX() / (double) tWidth) * GRID_SIZE;
+            targetY = (pred.getY() / (double) tHeight) * GRID_SIZE;
+            int igx = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetX));
+            int igy = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetY));
+            targetZ = heightGrid[igx][igy] * 40.0 + pred.getZ() * 2.0;
+        } else {
+            org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node = (chamberInfoPane != null && chamberInfoPane.getCurrentNode() != null)
+                    ? chamberInfoPane.getCurrentNode() : selectedChamberNode;
+            if (node != null) {
+                targetX = (node.x() / (double) tWidth) * GRID_SIZE;
+                targetY = (node.y() / (double) tHeight) * GRID_SIZE;
+                int igx = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetX));
+                int igy = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetY));
+                targetZ = heightGrid[igx][igy] * 40.0 + node.z() * 2.0;
+            }
         }
 
         if (targetX >= 0 && targetY >= 0) {
-            pan3DX = (GRID_SIZE / 2.0 - targetX) * 8.0;
-            pan3DY = (GRID_SIZE / 2.0 - targetY) * 8.0;
+            double radAz = Math.toRadians(azimuth);
+            double radEl = Math.toRadians(elevation);
+            double w = (canvas3D != null && canvas3D.getWidth() > 0) ? canvas3D.getWidth() : 800.0;
+            double h = (canvas3D != null && canvas3D.getHeight() > 0) ? canvas3D.getHeight() : 600.0;
+            double scale = (Math.min(w, h) / 120.0) * (zoom / 7.5);
+
+            double isoX = (targetX - GRID_SIZE / 2.0) * Math.cos(radAz) - (targetY - GRID_SIZE / 2.0) * Math.sin(radAz);
+            double isoY = (targetX - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (targetY - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - targetZ * Math.cos(radEl);
+
+            pan3DX = -isoX * (scale / 10.0);
+            pan3DY = -isoY * (scale / 10.0);
+
+            topPanX = (GRID_SIZE / 2.0 - targetX) * 2.0;
+            topPanY = (GRID_SIZE / 2.0 - targetY) * 2.0;
+            sidePanX = (GRID_SIZE / 2.0 - targetY) * 2.0;
+
             repaintAllViews();
         }
     }
@@ -2985,6 +3021,21 @@ public class WorldEditorPane extends BorderPane {
         });
 
         trackedAntPane.setOnCenter(this::centerCameraOnSelection);
+        trackedAntPane.setOnClose(() -> {
+            if (showAntTrackingCheck != null) showAntTrackingCheck.setSelected(false);
+        });
+
+        chamberInfoPane = new ChamberInfoPane();
+        chamberInfoPane.setPickOnBounds(false);
+        chamberInfoPane.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        chamberInfoPane.setVisible(false);
+        StackPane.setAlignment(chamberInfoPane, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(chamberInfoPane, new Insets(10, 10, 40, 10));
+        chamberInfoPane.setOnCenter(this::centerCameraOnSelection);
+        chamberInfoPane.setOnClose(() -> {
+            if (showChamberOverlayCheck != null) showChamberOverlayCheck.setSelected(false);
+            selectedChamberNode = null;
+        });
 
         StackPane hSide = new StackPane(canvasSide);
         hSide.setPrefSize(190, 150);
@@ -3016,7 +3067,7 @@ public class WorldEditorPane extends BorderPane {
         StackPane.setMargin(sideMinimapsBox, new Insets(10, 10, 10, 10));
 
         this.weatherOverlayPane = createWeatherOverlayPane();
-        StackPane h3d = new StackPane(canvas3D, sideMinimapsBox, trackedAntPane, weatherOverlayPane);
+        StackPane h3d = new StackPane(canvas3D, sideMinimapsBox, trackedAntPane, chamberInfoPane, weatherOverlayPane);
         h3d.setStyle("-fx-border-color: #555; -fx-border-width: 1; -fx-background-color: #0b0f19;");
         HBox.setHgrow(h3d, Priority.ALWAYS);
         VBox.setVgrow(h3d, Priority.ALWAYS);
@@ -3152,15 +3203,39 @@ public class WorldEditorPane extends BorderPane {
             }
         });
 
+        this.showAntTrackingCheck = new CheckBox("🐜 Suivi des fourmis");
+        this.showAntTrackingCheck.setSelected(isSimulationMode);
+        this.showAntTrackingCheck.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (trackedAntPane != null) trackedAntPane.setVisible(newV);
+        });
+
+        this.showChamberOverlayCheck = new CheckBox("🏛️ Suivi des chambres");
+        this.showChamberOverlayCheck.setSelected(false);
+        this.showChamberOverlayCheck.selectedProperty().addListener((obs, oldV, newV) -> {
+            if (chamberInfoPane != null) chamberInfoPane.setVisible(newV);
+        });
+
+        this.showElevationIsolinesCheck = new CheckBox("📈 Isolignes Élévation");
+        this.showElevationIsolinesCheck.setSelected(false);
+        this.showElevationIsolinesCheck.selectedProperty().addListener((obs, oldV, newV) -> repaintAllViews());
+
+        this.showClimateIsolinesCheck = new CheckBox("🌡️ Isolignes Microclimat");
+        this.showClimateIsolinesCheck.setSelected(false);
+        this.showClimateIsolinesCheck.selectedProperty().addListener((obs, oldV, newV) -> repaintAllViews());
+
+        this.showPheromoneIsolinesCheck = new CheckBox("🧪 Isolignes Phéromones");
+        this.showPheromoneIsolinesCheck.setSelected(false);
+        this.showPheromoneIsolinesCheck.selectedProperty().addListener((obs, oldV, newV) -> repaintAllViews());
+
         addBoolLsn(showTerrainCheck, showChamferedBezelCheck, showGravelInclusionsCheck, showSubstrateStratigraphyCheck,
                    showTranslucentVolumetricModeCheck, showHumidityCheck,
                    showOrganicCheck, showEarthCheck, showSandCheck, showClayCheck, showSiltCheck, showPeatCheck, showGravelCheck, showStoneCheck, showGalleriesCheck,
-                   showVegetationCheck, showRootsCheck, showPhCheck);
+                   showVegetationCheck, showRootsCheck, showPhCheck,
+                   showAntTrackingCheck, showChamberOverlayCheck,
+                   showElevationIsolinesCheck, showClimateIsolinesCheck, showPheromoneIsolinesCheck);
 
         Label visHeader = new Label();
         visHeader.textProperty().bind(I18nManager.getInstance().createStringBinding("world.layer_visibility.title"));
-        visHeader.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
-        visHeader.getStyleClass().add("purple-title");
         visHeader.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
         visHeader.getStyleClass().add("purple-title");
 
@@ -3169,6 +3244,13 @@ public class WorldEditorPane extends BorderPane {
             showMinimapCheck,
             syncViewsCheckBox,
             showLegendCheckBox,
+            new Separator(),
+            showAntTrackingCheck,
+            showChamberOverlayCheck,
+            new Separator(),
+            showElevationIsolinesCheck,
+            showClimateIsolinesCheck,
+            showPheromoneIsolinesCheck,
             new Separator(),
             showTerrainCheck, showOrganicCheck, showEarthCheck, showSandCheck, showClayCheck, showSiltCheck, showPeatCheck, showGravelCheck, showStoneCheck, showGalleriesCheck,
             new Separator(),
@@ -3474,23 +3556,24 @@ public class WorldEditorPane extends BorderPane {
             }
 
             if (clickedAnt != null) {
-                selectedChamberNode = null;
                 setFollowedAnt(clickedAnt);
                 if (trackedAntPane != null) {
                     trackedAntPane.updateAnt(clickedAnt, true);
                     trackedAntPane.setVisible(true);
+                    if (showAntTrackingCheck != null) showAntTrackingCheck.setSelected(true);
                 }
             } else if (clickedPredator != null) {
-                selectedChamberNode = null;
                 if (trackedAntPane != null) {
                     trackedAntPane.updatePredator(clickedPredator, true);
                     trackedAntPane.setVisible(true);
+                    if (showAntTrackingCheck != null) showAntTrackingCheck.setSelected(true);
                 }
             } else if (clickedChamber != null) {
                 selectedChamberNode = clickedChamber;
-                if (trackedAntPane != null) {
-                    trackedAntPane.updateChamber(clickedChamber, chamberColony);
-                    trackedAntPane.setVisible(true);
+                if (chamberInfoPane != null) {
+                    chamberInfoPane.updateChamber(clickedChamber, chamberColony);
+                    chamberInfoPane.setVisible(true);
+                    if (showChamberOverlayCheck != null) showChamberOverlayCheck.setSelected(true);
                 }
             } else if (trackedAntPane != null) {
                 trackedAntPane.clearSearchStatus();
@@ -3668,11 +3751,12 @@ public class WorldEditorPane extends BorderPane {
         }
 
         // 3. Check Surface Terrain Points / Quads (up to cutXLimit)
-        for (int x = 0; x < Math.min(GRID_SIZE, cutXLimit); x += step) {
+        int maxX = Math.min(GRID_SIZE - 1, cutXLimit - 1);
+        for (int x = 0; x <= maxX; x += step) {
             for (int y = 0; y < GRID_SIZE; y += step) {
-                int x2 = Math.min(GRID_SIZE - 1, x + step);
+                int x2 = Math.min(maxX, x + step);
                 int y2 = Math.min(GRID_SIZE - 1, y + step);
-                int[][] quadPts = {{x, y}, {x2, y}, {x, y2}, {x2, y2}};
+                int[][] quadPts = {{x, y}, {x2, y}, {x, y2}, {x2, y2}, {x, GRID_SIZE - 1}, {x2, GRID_SIZE - 1}, {maxX, y}, {maxX, y2}};
                 for (int[] qp : quadPts) {
                     int qx = qp[0];
                     int qy = qp[1];
@@ -3886,13 +3970,15 @@ public class WorldEditorPane extends BorderPane {
         }
 
         float co2Ppm = 400.0f;
+        float o2Pct = 20.95f;
         float n2oPpm = 0.33f;
         int surfaceActivityPct = 100;
         if (activeSimulation != null) {
             if (activeSimulation.getTerrarium() != null) {
                 org.swarmforge.core.domain.TerrariumCell cell = activeSimulation.getTerrarium().getCell(gx, gy, inspectedY);
                 if (cell != null) {
-                    co2Ppm = cell.co2();
+                    if (cell.co2() > 0) co2Ppm = cell.co2();
+                    if (cell.o2() > 0) o2Pct = cell.o2();
                     n2oPpm = cell.n2o();
                 }
             }
@@ -3904,14 +3990,19 @@ public class WorldEditorPane extends BorderPane {
         } else {
             double depthFrac = (double) (SOIL_DEPTH - 1 - inspectedY) / (double) (SOIL_DEPTH - 1);
             co2Ppm = (float) (415.0 + depthFrac * 650.0 + (isVoid ? 450.0 : 0.0));
+            o2Pct = (float) Math.max(12.0, 20.95 - (co2Ppm - 400.0) * 0.0006);
             n2oPpm = (float) (0.33 + (mat == 0 || mat == 5 ? 1.4 : 0.2) * (1.0 - depthFrac));
             surfaceActivityPct = 100;
         }
 
+        float co2Pct = co2Ppm / 10000.0f;
+        String gasBadge = (co2Ppm < 1500.0f && o2Pct >= 19.5f) ? "🟢" : ((co2Ppm < 5000.0f && o2Pct >= 18.0f) ? "🟠" : "🔴");
+        String humBadge = (humPct >= 55 && humPct <= 90) ? "🟢" : ((humPct >= 35 && humPct < 55) || (humPct > 90 && humPct <= 95) ? "🟠" : "🔴");
+
         String riverOrTerr = isRiver ? I18nManager.getInstance().get("world.hover.river") : I18nManager.getInstance().get("world.hover.terrestrial");
         lblHoverInfo.setText(I18nManager.getInstance().get("world.hover.format",
-            gx, gy, inspectedY, SOIL_DEPTH - 1, altM, matName, tempC, humPct, phVal, rootPct,
-            co2Ppm, n2oPpm, surfaceActivityPct, riverOrTerr, antHoverStr));
+            gx, gy, inspectedY, SOIL_DEPTH - 1, altM, matName, tempC, humPct, humBadge, phVal, rootPct,
+            co2Ppm, co2Pct, gasBadge, o2Pct, riverOrTerr, antHoverStr));
     }
 
     private void handleSculptClick(double mx, double my, String viewType) {
@@ -4362,6 +4453,47 @@ public class WorldEditorPane extends BorderPane {
 
                         gc3D.setFill(col);
                         gc3D.fillPolygon(pxs, pys, 4);
+
+                        // Elevation Isolines
+                        if (showElevationIsolinesCheck != null && showElevationIsolinesCheck.isSelected()) {
+                            double normZ = heightGrid[x][y];
+                            double isoStep = 0.05;
+                            int nx = Math.min(GRID_SIZE - 1, x + step);
+                            int ny = Math.min(GRID_SIZE - 1, y + step);
+                            if ((int)(normZ / isoStep) != (int)(heightGrid[nx][y] / isoStep) ||
+                                (int)(normZ / isoStep) != (int)(heightGrid[x][ny] / isoStep)) {
+                                gc3D.setStroke(Color.web("#38bdf8", 0.90));
+                                gc3D.setLineWidth(1.2);
+                                gc3D.strokeLine(p0[0], p0[1], p2[0], p2[1]);
+                            }
+                        }
+
+                        // Microclimate Isolines
+                        if (showClimateIsolinesCheck != null && showClimateIsolinesCheck.isSelected() && humidityGrid != null) {
+                            float hum = humidityGrid[x][y][0];
+                            double humStep = 0.10;
+                            int nx = Math.min(GRID_SIZE - 1, x + step);
+                            int ny = Math.min(GRID_SIZE - 1, y + step);
+                            if ((int)(hum / humStep) != (int)(humidityGrid[nx][y][0] / humStep) ||
+                                (int)(hum / humStep) != (int)(humidityGrid[x][ny][0] / humStep)) {
+                                gc3D.setStroke(Color.web("#06b6d4", 0.90));
+                                gc3D.setLineWidth(1.2);
+                                gc3D.strokeLine(p1[0], p1[1], p3[0], p3[1]);
+                            }
+                        }
+
+                        // Pheromone Isolines
+                        if (showPheromoneIsolinesCheck != null && showPheromoneIsolinesCheck.isSelected() && activeSimulation != null) {
+                            org.swarmforge.core.gpu.SparsePheromoneGrid pGrid = activeSimulation.getPheromoneGrid();
+                            if (pGrid != null) {
+                                float val0 = pGrid.read(x, y, 0, 1);
+                                if (val0 > 0.05f) {
+                                    gc3D.setStroke(Color.web("#ec4899", 0.85));
+                                    gc3D.setLineWidth(1.5);
+                                    gc3D.strokeLine(p0[0], p0[1], p2[0], p2[1]);
+                                }
+                            }
+                        }
 
                         // Render voxel wireframe outlines only in GAMIFIED or HYBRID mode, NOT in REALISTIC mode
                         if (currentRenderMode != RenderMode.REALISTIC) {
@@ -5507,13 +5639,15 @@ public class WorldEditorPane extends BorderPane {
             if (carvedVoxelGrid[cutXLimit][y]) surfZ0 -= 15.0;
             if (carvedVoxelGrid[cutXLimit][y + (int)stepY]) surfZ1 -= 15.0;
 
-            double refZ0 = surfZ0;
-            double refZ1 = surfZ1;
+            double refZ0 = 32.0;
+            double refZ1 = 32.0;
             for (int d = 0; d < SOIL_DEPTH; d++) {
-                double topZ0 = refZ0 - d * layerDepthPx;
-                double topZ1 = refZ1 - d * layerDepthPx;
-                double botZ0 = refZ0 - (d + 1) * layerDepthPx;
-                double botZ1 = refZ1 - (d + 1) * layerDepthPx;
+                double topZ0 = Math.min(surfZ0, refZ0 - d * layerDepthPx);
+                double topZ1 = Math.min(surfZ1, refZ1 - d * layerDepthPx);
+                double botZ0 = Math.min(surfZ0, refZ0 - (d + 1) * layerDepthPx);
+                double botZ1 = Math.min(surfZ1, refZ1 - (d + 1) * layerDepthPx);
+
+                if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
 
                 double[] pTop0 = project3DPoint(cutXLimit, y, topZ0, cx, cy, scale, radAz, radEl);
                 double[] pTop1 = project3DPoint(cutXLimit, y + (int)stepY, topZ1, cx, cy, scale, radAz, radEl);
@@ -5709,8 +5843,8 @@ public class WorldEditorPane extends BorderPane {
         }
 
         // Draw HUD Box on 3D Viewport
-        double boxW = 270.0;
-        double boxH = 145.0;
+        double boxW = 330.0;
+        double boxH = 172.0;
         double hx = Math.max(10, Math.min(w - boxW - 10, hoverMX + 15));
         double hy = Math.max(10, Math.min(h - boxH - 10, hoverMY - 20));
 
@@ -5732,19 +5866,19 @@ public class WorldEditorPane extends BorderPane {
 
         String matName;
         if (isVoid) {
-            matName = "🕳️ Galerie / Cavité excavée";
+            matName = "🕳️ Galerie / Cavité";
         } else {
             matName = switch (mat) {
-                case 0 -> "Humus (Terreau végétal)";
+                case 0 -> "Humus";
                 case 1 -> "Sable xérique";
-                case 2 -> "Argile Limoneuse";
-                case 3 -> "Roche / Socle rocheux";
-                case 4 -> "Gravier & Cailloutis";
-                case 5 -> "Litière organique";
-                case 6 -> "Galerie Souterraine";
-                case 7 -> "Chambre de Couvain";
+                case 2 -> "Argile";
+                case 3 -> "Roche";
+                case 4 -> "Gravier";
+                case 5 -> "Litière";
+                case 6 -> "Galerie";
+                case 7 -> "Couvain";
                 case 8 -> "Chambre Royale";
-                default -> "Substrat Terrestre";
+                default -> "Substrat";
             };
         }
         boolean isRiver = isNearRiver(gx, gy, 1);
@@ -5756,18 +5890,135 @@ public class WorldEditorPane extends BorderPane {
         int rootPct = (int) (rootGrid[gx][gy][gd] * 100);
         float phVal = phGrid[gx][gy][gd] > 0 ? phGrid[gx][gy][gd] : 6.5f;
 
+        // Humidity Color-coding (Green: 55-90%, Orange: 35-54% or 91-95%, Red: <35% or >95%)
+        Color humColor;
+        String humStatus;
+        if (humPct >= 55 && humPct <= 90) {
+            humColor = Color.web("#4ade80"); // GREEN (Idéale)
+            humStatus = "🟢";
+        } else if ((humPct >= 35 && humPct < 55) || (humPct > 90 && humPct <= 95)) {
+            humColor = Color.web("#f59e0b"); // ORANGE (Modérée)
+            humStatus = "🟠";
+        } else {
+            humColor = Color.web("#ef4444"); // RED (Sécheresse / Saturation)
+            humStatus = "🔴";
+        }
+
+        // Voxel Atmospheric Gas Concentrations (CO2 & O2)
+        float co2Ppm = 400.0f;
+        float o2Pct = 20.95f;
+        String pheromoneInfo = "Aucune trace chimique";
+        if (activeSimulation != null && activeSimulation.getTerrarium() != null) {
+            var cell = activeSimulation.getTerrarium().getCell(gx, gy, gd);
+            if (cell != null) {
+                if (cell.co2() > 0) co2Ppm = cell.co2();
+                if (cell.o2() > 0) o2Pct = cell.o2();
+                if (cell.pheromones() != null) {
+                    float[] ph = cell.pheromones();
+                    StringBuilder sb = new StringBuilder();
+                    if (ph.length > 0 && ph[0] > 0.05f) sb.append(String.format(Locale.US, "🟢 Piste:%.0f%% ", ph[0] * 100));
+                    if (ph.length > 1 && ph[1] > 0.05f) sb.append(String.format(Locale.US, "🔴 Alarme:%.0f%% ", ph[1] * 100));
+                    if (ph.length > 2 && ph[2] > 0.05f) sb.append(String.format(Locale.US, "🟡 Nourr:%.0f%% ", ph[2] * 100));
+                    if (ph.length > 3 && ph[3] > 0.05f) sb.append(String.format(Locale.US, "🔵 Nid:%.0f%% ", ph[3] * 100));
+                    if (ph.length > 5 && ph[5] > 0.05f) sb.append(String.format(Locale.US, "🟣 Reine:%.0f%% ", ph[5] * 100));
+                    if (sb.length() > 0) pheromoneInfo = sb.toString().trim();
+                }
+            }
+        } else {
+            double depthFrac = (double) (SOIL_DEPTH - 1 - gd) / (double) (SOIL_DEPTH - 1);
+            co2Ppm = (float) (415.0 + depthFrac * 650.0 + (isVoid ? 450.0 : 0.0));
+            o2Pct = (float) Math.max(12.0, 20.95 - (co2Ppm - 400.0) * 0.0006);
+        }
+        float co2Pct = co2Ppm / 10000.0f;
+
+        // Color-coding: Green / Orange / Red based on biological thresholds
+        Color gasColor;
+        String gasStatus;
+        if (co2Ppm < 1500.0f && o2Pct >= 19.5f) {
+            gasColor = Color.web("#4ade80"); // GREEN (Optimal)
+            gasStatus = "🟢 Optimal";
+        } else if (co2Ppm < 5000.0f && o2Pct >= 18.0f) {
+            gasColor = Color.web("#f59e0b"); // ORANGE (Elevated / Ventilation needed)
+            gasStatus = "🟠 CO₂ Élevé";
+        } else {
+            gasColor = Color.web("#ef4444"); // RED (Critical / Hypoxia)
+            gasStatus = "🔴 Hypoxie Critique";
+        }
+
+        float lightLux = (gd == 0) ? (isForestArea(gx, gy) ? 4500.0f : 12000.0f) : (gd == 1 && isVoid ? 120.0f : 0.0f);
+        String lightStr = (lightLux > 0) ? String.format(Locale.US, "☀️ %.0flux", lightLux) : "🌑 Aphotique (0 lux)";
+        float baroPressure = (float) (1013.25 + (depthM * 0.12));
+
         gc3D.setFill(gd > 0 ? Color.web("#38bdf8") : Color.web("#fbbf24"));
         gc3D.setFont(Font.font("System", javafx.scene.text.FontWeight.BOLD, 11));
-        gc3D.fillText(String.format(Locale.US, "📍 Voxel [%d, %d, Profondeur: %d/%d]", gx, gy, gd, SOIL_DEPTH - 1), hx + 10, hy + 18);
+        gc3D.fillText(String.format(Locale.US, "📍 Voxel [%d, %d, Prof: %d/%d] | 🌪️ %.1f hPa", gx, gy, gd, SOIL_DEPTH - 1, baroPressure), hx + 10, hy + 17);
 
         gc3D.setFill(Color.web("#f8fafc"));
         gc3D.setFont(Font.font("System", 10));
-        gc3D.fillText(String.format(Locale.US, "📏 Alt: %.2fm | Profondeur: -%.2fm (%dcm)", voxelAltM, depthM, (int)(depthM * 100)), hx + 10, hy + 36);
-        gc3D.fillText(String.format(Locale.US, "🟤 Substrat: %s", matName), hx + 10, hy + 52);
-        gc3D.fillText(String.format(Locale.US, "💧 Humidité: %d%% | 🌡️ Température: %.1f°C", humPct, tempC), hx + 10, hy + 68);
-        gc3D.fillText(String.format(Locale.US, "🧪 pH: %.1f | 🌿 Densité racinaire: %d%%", phVal, rootPct), hx + 10, hy + 84);
-        gc3D.fillText(String.format(Locale.US, "🌲 Environnement: %s", hasTree ? "🌳 Canopée d'arbres" : (isRiver ? "💧 Cours d'eau" : "🌾 Terrestre")), hx + 10, hy + 100);
-        gc3D.fillText(String.format(Locale.US, "🐜 Activité biologique: %s", isSimulationMode ? (followedAnt != null ? "🎯 Suivi de fourmi actif..." : "Ouvrières en patrouille (4/m²)") : "Mode Éditeur - Pas d'insectes"), hx + 10, hy + 116);
+        gc3D.fillText(String.format(Locale.US, "📏 Alt: %.2fm | Profondeur: -%.2fm (%dcm)", voxelAltM, depthM, (int)(depthM * 100)), hx + 10, hy + 34);
+        gc3D.fillText(String.format(Locale.US, "🟤 Substrat: %s | %s", matName, lightStr), hx + 10, hy + 50);
+
+        // Microclimate line with color-coded humidity
+        gc3D.fillText(String.format(Locale.US, "🌡️ Temp: %.1f°C | ", tempC), hx + 10, hy + 66);
+        gc3D.setFill(humColor);
+        gc3D.setFont(Font.font("System", javafx.scene.text.FontWeight.BOLD, 10));
+        gc3D.fillText(String.format(Locale.US, "💧 Humidité: %d%% %s", humPct, humStatus), hx + 115, hy + 66);
+
+        gc3D.setFill(Color.web("#f8fafc"));
+        gc3D.setFont(Font.font("System", 10));
+        String phStatus = phVal < 5.8f ? " (Acide)" : (phVal > 7.4f ? " (Basique)" : " (Neutre)");
+        gc3D.fillText(String.format(Locale.US, "🧪 pH: %.1f%s | 🌿 Racines: %d%%", phVal, phStatus, rootPct), hx + 10, hy + 82);
+
+        // Render Color-coded Gas Line
+        gc3D.setFill(gasColor);
+        gc3D.setFont(Font.font("System", javafx.scene.text.FontWeight.BOLD, 10));
+        gc3D.fillText(String.format(Locale.US, "💨 CO₂: %.0f ppm (%.3f%%) | O₂: %.1f%% | %s", co2Ppm, co2Pct, o2Pct, gasStatus), hx + 10, hy + 98);
+
+        // Render Pheromones Line
+        gc3D.setFill(Color.web("#a78bfa"));
+        gc3D.setFont(Font.font("System", 9.5));
+        gc3D.fillText(String.format(Locale.US, "🧪 Phéromones: %s", pheromoneInfo), hx + 10, hy + 114);
+
+        String bioContents = "Mode Éditeur - Aucun individu";
+        if (isSimulationMode && activeSimulation != null) {
+            int antCount = 0;
+            int broodCount = 0;
+            String mainCaste = null;
+            int tW = Math.max(1, activeSimulation.getTerrarium() != null ? activeSimulation.getTerrarium().getWidth() : 1);
+            int tH = Math.max(1, activeSimulation.getTerrarium() != null ? activeSimulation.getTerrarium().getHeight() : 1);
+
+            for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
+                for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
+                    int igx = (int) Math.max(0, Math.min(GRID_SIZE - 1, (ind.getX() / (double) tW) * GRID_SIZE));
+                    int igy = (int) Math.max(0, Math.min(GRID_SIZE - 1, (ind.getY() / (double) tH) * GRID_SIZE));
+                    if (igx == gx && igy == gy) {
+                        if (ind.getLifeStage() != org.swarmforge.core.domain.Individual.LifeStage.ADULT) {
+                            broodCount++;
+                        } else {
+                            antCount++;
+                            if (mainCaste == null) mainCaste = ind.getCaste() != null ? ind.getCaste().name() : "Ouvrière";
+                        }
+                    }
+                }
+            }
+
+            if (antCount > 0 || broodCount > 0) {
+                if (antCount > 0 && broodCount > 0) {
+                    bioContents = String.format("%d fourmi(s) (%s) + %d couvain", antCount, mainCaste, broodCount);
+                } else if (antCount > 0) {
+                    bioContents = String.format("%d fourmi(s) (%s)", antCount, mainCaste);
+                } else {
+                    bioContents = String.format("%d couvain(s)", broodCount);
+                }
+            } else if (isVoid) {
+                bioContents = "Galerie vide (accessible)";
+            } else {
+                bioContents = "Sol intact (aucun individu)";
+            }
+        }
+        gc3D.setFill(Color.web("#f8fafc"));
+        gc3D.setFont(Font.font("System", 10));
+        gc3D.fillText(String.format(Locale.US, "🐜 Contenu Voxel: %s", bioContents), hx + 10, hy + 130);
     }
 
     private void drawMetricScaleBar3D(double w, double h, double cx, double cy, double scale, double radAz, double radEl) {
@@ -6545,6 +6796,7 @@ public class WorldEditorPane extends BorderPane {
 
                             java.util.List<float[]> pts = edge.pathPoints();
                             if (pts != null && pts.size() >= 2) {
+                                double totalDepthM = depthSlider != null ? depthSlider.getValue() : 3.0;
                                 for (int pi = 0; pi < pts.size() - 1; pi++) {
                                     float[] ptA = pts.get(pi);
                                     float[] ptB = pts.get(pi + 1);
@@ -6552,30 +6804,31 @@ public class WorldEditorPane extends BorderPane {
                                     double gaY = (ptA[1] / (double) tHeight) * GRID_SIZE;
                                     int igaX = Math.max(0, Math.min(GRID_SIZE - 1, (int) gaX));
                                     int igaY = Math.max(0, Math.min(GRID_SIZE - 1, (int) gaY));
-                                    double gaZ = heightGrid[igaX][igaY] * 40.0 + ptA[2] * 2.0;
+                                    double gaZ = heightGrid[igaX][igaY] * 40.0 + (ptA[2] / Math.max(0.5, totalDepthM)) * 32.0;
 
                                     double gbX = (ptB[0] / (double) tWidth) * GRID_SIZE;
                                     double gbY = (ptB[1] / (double) tHeight) * GRID_SIZE;
                                     int igbX = Math.max(0, Math.min(GRID_SIZE - 1, (int) gbX));
                                     int igbY = Math.max(0, Math.min(GRID_SIZE - 1, (int) gbY));
-                                    double gbZ = heightGrid[igbX][igbY] * 40.0 + ptB[2] * 2.0;
+                                    double gbZ = heightGrid[igbX][igbY] * 40.0 + (ptB[2] / Math.max(0.5, totalDepthM)) * 32.0;
 
                                     double[] pa = project3DPoint(gaX, gaY, gaZ, cx, cy, scale, radAz, radEl);
                                     double[] pb = project3DPoint(gbX, gbY, gbZ, cx, cy, scale, radAz, radEl);
                                     gc3D.strokeLine(pa[0], pa[1], pb[0], pb[1]);
                                 }
                             } else {
+                                double totalDepthM = depthSlider != null ? depthSlider.getValue() : 3.0;
                                 double g1x = (n1.x() / (double) tWidth) * GRID_SIZE;
                                 double g1y = (n1.y() / (double) tHeight) * GRID_SIZE;
                                 int ig1x = Math.max(0, Math.min(GRID_SIZE - 1, (int) g1x));
                                 int ig1y = Math.max(0, Math.min(GRID_SIZE - 1, (int) g1y));
-                                double g1z = heightGrid[ig1x][ig1y] * 40.0 + n1.z() * 2.0;
+                                double g1z = heightGrid[ig1x][ig1y] * 40.0 + (n1.z() / Math.max(0.5, totalDepthM)) * 32.0;
 
                                 double g2x = (n2.x() / (double) tWidth) * GRID_SIZE;
                                 double g2y = (n2.y() / (double) tHeight) * GRID_SIZE;
                                 int ig2x = Math.max(0, Math.min(GRID_SIZE - 1, (int) g2x));
                                 int ig2y = Math.max(0, Math.min(GRID_SIZE - 1, (int) g2y));
-                                double g2z = heightGrid[ig2x][ig2y] * 40.0 + n2.z() * 2.0;
+                                double g2z = heightGrid[ig2x][ig2y] * 40.0 + (n2.z() / Math.max(0.5, totalDepthM)) * 32.0;
 
                                 double[] p1 = project3DPoint(g1x, g1y, g1z, cx, cy, scale, radAz, radEl);
                                 double[] p2 = project3DPoint(g2x, g2y, g2z, cx, cy, scale, radAz, radEl);
@@ -6584,17 +6837,18 @@ public class WorldEditorPane extends BorderPane {
                         }
 
                         // 2. Draw chamber nodes with biological lenticular geometry and color palette
+                        double totalDepthM = depthSlider != null ? depthSlider.getValue() : 3.0;
                         for (org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node : tn.getNodes()) {
                             double gx = (node.x() / (double) tWidth) * GRID_SIZE;
                             double gy = (node.y() / (double) tHeight) * GRID_SIZE;
                             int igx = Math.max(0, Math.min(GRID_SIZE - 1, (int) gx));
                             int igy = Math.max(0, Math.min(GRID_SIZE - 1, (int) gy));
-                            double gz = heightGrid[igx][igy] * 40.0 + node.z() * 2.0;
+                            double gz = heightGrid[igx][igy] * 40.0 + (node.z() / Math.max(0.5, totalDepthM)) * 32.0;
 
                             double[] pNode = project3DPoint(gx, gy, gz, cx, cy, scale, radAz, radEl);
 
-                            double rxChamber = Math.max(3.0, (node.radiusX() * 2.5) * zSc);
-                            double rzChamber = Math.max(2.0, (node.radiusZ() * 1.8) * zSc);
+                            double rxChamber = Math.max(2.5, (node.radiusX() / (double) tWidth) * GRID_SIZE * (scale / 10.0));
+                            double rzChamber = Math.max(1.8, (node.radiusZ() / Math.max(0.5, totalDepthM)) * (scale / 10.0) * 2.5);
 
                             Color fillCol = switch (node.type()) {
                                 case QUEEN_CHAMBER, BIVOUAC_CORE -> Color.web("#d946ef", 0.80);
@@ -7749,13 +8003,14 @@ public class WorldEditorPane extends BorderPane {
         boolean showInclusions = showGravelInclusionsCheck != null && showGravelInclusionsCheck.isSelected();
         boolean isAdvMode = true;
 
-        double refZ0 = surfZ0;
-        double refZ1 = surfZ1;
+        double refZ0 = 32.0;
+        double refZ1 = 32.0;
         for (int d = 0; d < SOIL_DEPTH; d++) {
-            double topZ0 = refZ0 - d * layerDepthPx;
-            double topZ1 = refZ1 - d * layerDepthPx;
-            double botZ0 = refZ0 - (d + 1) * layerDepthPx;
-            double botZ1 = refZ1 - (d + 1) * layerDepthPx;
+            double topZ0 = Math.min(surfZ0, refZ0 - d * layerDepthPx);
+            double topZ1 = Math.min(surfZ1, refZ1 - d * layerDepthPx);
+            double botZ0 = Math.min(surfZ0, refZ0 - (d + 1) * layerDepthPx);
+            double botZ1 = Math.min(surfZ1, refZ1 - (d + 1) * layerDepthPx);
+            if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
 
             double[] pTop0 = project3DPoint(x0, y0, topZ0, cx, cy, scale, radAz, radEl);
             double[] pTop1 = project3DPoint(x1, y1, topZ1, cx, cy, scale, radAz, radEl);
@@ -7957,7 +8212,7 @@ public class WorldEditorPane extends BorderPane {
             }
 
             double px = 10 + y * blockW;
-            double pyBase = 65 - surfaceH + SOIL_DEPTH * blockH;
+            double pyBase = 65 - refSurfaceH + SOIL_DEPTH * blockH;
             gcSide.setFill(Color.web("#020617"));
             gcSide.fillRect(px, pyBase, Math.max(1, blockW + 0.5), h - pyBase);
             gcSide.setStroke(Color.web("#334155"));
@@ -8187,10 +8442,12 @@ public class WorldEditorPane extends BorderPane {
                         if (vals == null) continue;
 
                         int[] coords = org.swarmforge.core.spatial.Morton3D.decode(key);
-                        int px = coords[0];
-                        int py = coords[1];
+                        double terrW = Math.max(1.0, activeSimulation.getTerrarium().getWidth());
+                        double terrH = Math.max(1.0, activeSimulation.getTerrarium().getHeight());
+                        double gx = (coords[0] / terrW) * GRID_SIZE;
+                        double gy = (coords[1] / terrH) * GRID_SIZE;
 
-                        if (px < 0 || px >= GRID_SIZE || py < 0 || py >= GRID_SIZE) continue;
+                        if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) continue;
 
                         float homeVal = (vals.length > 0 && showHomePheromone) ? vals[0] : 0f;
                         float foodVal = (vals.length > 1 && showFoodPheromone) ? vals[1] : 0f;
@@ -8208,8 +8465,8 @@ public class WorldEditorPane extends BorderPane {
                                          (recruitVal == maxVal) ? "#f59e0b" :
                                          (queenVal == maxVal) ? "#ec4899" : "#64748b";
 
-                        double topPx = offsetX + px * cellW;
-                        double topPy = offsetY + py * cellH;
+                        double topPx = offsetX + gx * cellW;
+                        double topPy = offsetY + gy * cellH;
                         double dotR = cellW * (1.2 + maxVal * 1.5);
 
                         gcTop.setFill(Color.web(colorHex, Math.min(0.85, maxVal * 0.7)));
@@ -8241,6 +8498,34 @@ public class WorldEditorPane extends BorderPane {
                     double aPy = offsetY + gy * cellH;
                     gcTop.setFill(Color.web("#fbbf24"));
                     gcTop.fillOval(aPx - 1.5 * tZoom, aPy - 1.5 * tZoom, 3.0 * tZoom, 3.0 * tZoom);
+                }
+            }
+        }
+
+        // Draw 2D Isolines on Top Minimap
+        if (showElevationIsolinesCheck != null && showElevationIsolinesCheck.isSelected()) {
+            gcTop.setStroke(Color.web("#38bdf8", 0.70));
+            gcTop.setLineWidth(1.0 * tZoom);
+            for (int ix = 0; ix < GRID_SIZE - 1; ix += 2) {
+                for (int iy = 0; iy < GRID_SIZE - 1; iy += 2) {
+                    if ((int)(heightGrid[ix][iy] / 0.05) != (int)(heightGrid[ix + 1][iy] / 0.05)) {
+                        double ipx = offsetX + ix * cellW;
+                        double ipy = offsetY + iy * cellH;
+                        gcTop.strokeLine(ipx, ipy, ipx + cellW * 2, ipy + cellH * 2);
+                    }
+                }
+            }
+        }
+        if (showClimateIsolinesCheck != null && showClimateIsolinesCheck.isSelected() && humidityGrid != null) {
+            gcTop.setStroke(Color.web("#06b6d4", 0.70));
+            gcTop.setLineWidth(1.0 * tZoom);
+            for (int ix = 0; ix < GRID_SIZE - 1; ix += 2) {
+                for (int iy = 0; iy < GRID_SIZE - 1; iy += 2) {
+                    if ((int)(humidityGrid[ix][iy][0] / 0.10) != (int)(humidityGrid[ix + 1][iy][0] / 0.10)) {
+                        double ipx = offsetX + ix * cellW;
+                        double ipy = offsetY + iy * cellH;
+                        gcTop.strokeLine(ipx + cellW * 2, ipy, ipx, ipy + cellH * 2);
+                    }
                 }
             }
         }

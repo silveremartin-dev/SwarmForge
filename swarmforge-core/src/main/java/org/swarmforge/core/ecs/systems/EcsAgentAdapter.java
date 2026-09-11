@@ -19,6 +19,7 @@ public class EcsAgentAdapter implements AgentView {
     public ComponentMapper<InventoryComponent> mInv;
     public ComponentMapper<MetabolismComponent> mMeta;
     public ComponentMapper<ColonyComponent> mColony;
+    public ComponentMapper<LifeCycleComponent> mLife;
     
     // Configuration / Constants
     private final float homeX = 50f; // Mock
@@ -78,16 +79,9 @@ public class EcsAgentAdapter implements AgentView {
     
     @Override
     public boolean isAtNest() {
-        float hx = getHomeX();
-        float hy = getHomeY();
-        float hz = 0f;
-        if (mColony != null && mColony.has(entityId)) {
-            var col = org.swarmforge.core.ecs.ColonyRegistry.getColony(mColony.get(entityId).colonyId);
-            if (col != null) hz = col.getNestZ();
-        }
-        float dx = getX() - hx;
-        float dy = getY() - hy;
-        float dz = getZ() - hz;
+        float dx = getX() - getHomeX();
+        float dy = getY() - getHomeY();
+        float dz = getZ() - getHomeZ();
         return (dx * dx + dy * dy + dz * dz) < 9.0f; 
     }
 
@@ -109,12 +103,19 @@ public class EcsAgentAdapter implements AgentView {
 
     @Override
     public boolean isSoldier() {
-        return false; // Mock for now
+        if (mLife != null && mLife.has(entityId)) {
+            String caste = mLife.get(entityId).casteName;
+            if (caste != null) {
+                String c = caste.toLowerCase();
+                return c.contains("soldier") || c.contains("soldat") || c.contains("major") || c.contains("guard");
+            }
+        }
+        return false;
     }
 
     @Override
     public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
-        return java.util.Set.of(org.swarmforge.core.domain.ResourceType.SEED); // Mock
+        return java.util.Set.of(org.swarmforge.core.domain.ResourceType.SEED); // Standard forager payload
     }
 
     @Override

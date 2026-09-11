@@ -154,7 +154,8 @@ public class TerritoryManager {
             for (Individual a2 : c2.getLivingIndividuals()) {
                 float dx = a1.getX() - a2.getX();
                 float dy = a1.getY() - a2.getY();
-                if (dx * dx + dy * dy < aggressionRange * aggressionRange) {
+                float dz = a1.getZ() - a2.getZ();
+                if (dx * dx + dy * dy + dz * dz < aggressionRange * aggressionRange) {
                     return new float[] { a1.getX(), a1.getY() };
                 }
             }

@@ -88,20 +88,39 @@ public class EcsColonyFactory {
         // Pathogen & Epidemiological State
         PathogenComponent path = edit.create(PathogenComponent.class);
 
-        // Life Cycle & 100% Deterministic Gaussian Lifespan in SECONDS
+        // Life Cycle & Caste Template
         LifeCycleComponent life = edit.create(LifeCycleComponent.class);
         life.casteName = (caste != null) ? caste.name() : "WORKER";
         float meanLifespanSeconds = 300.0f; // Default 300 seconds
-        if (species != null) {
-            CasteTemplate casteTemplate = null;
-            if (species.getCastes() != null) {
-                for (CasteTemplate ct : species.getCastes()) {
-                    if (ct != null && ct.getName() != null && ct.getName().equalsIgnoreCase(life.casteName)) {
-                        casteTemplate = ct;
-                        break;
-                    }
+
+        CasteTemplate casteTemplate = null;
+        if (species != null && species.getCastes() != null) {
+            for (CasteTemplate ct : species.getCastes()) {
+                if (matchesCasteTemplate(ct, caste, life.casteName)) {
+                    casteTemplate = ct;
+                    break;
                 }
             }
+        }
+
+        // Apply Caste Overrides to components if present
+        if (casteTemplate != null) {
+            if (casteTemplate.getBaseHealth() > 0) {
+                meta.maxHealth = casteTemplate.getBaseHealth();
+                meta.health = meta.maxHealth;
+            }
+            if (casteTemplate.getWalkSpeedMps() > 0) {
+                vel.speed = casteTemplate.getWalkSpeedMps();
+            }
+            if (casteTemplate.getMandibularBitingForceMPa() > 0) {
+                mand.bitingForceMPa = casteTemplate.getMandibularBitingForceMPa();
+            }
+            if (casteTemplate.getMaxCarryingPayloadRatio() > 0) {
+                gen.payloadRatio = casteTemplate.getMaxCarryingPayloadRatio();
+            }
+        }
+
+        if (species != null) {
             int rawVal = 300;
             if (casteTemplate != null && casteTemplate.getLifespan() > 0) {
                 rawVal = casteTemplate.getLifespan();
@@ -117,6 +136,7 @@ public class EcsColonyFactory {
             // Convert lifespan in days to simulation seconds (scale: 10s per sim-day, minimum 300s)
             meanLifespanSeconds = Math.max(300.0f, rawVal * 10.0f);
         }
+
         // Compute 100% deterministic seed based on colony UUID and entityId
         long entitySeed = (colonyId != null ? colonyId.getLeastSignificantBits() : 1337L) ^ ((long) entityId * 0x9E3779B97F4A7C15L);
         org.swarmforge.core.util.FastDeterministicRandom entityRng = new org.swarmforge.core.util.FastDeterministicRandom(entitySeed);
@@ -127,6 +147,20 @@ public class EcsColonyFactory {
         ai.type = AiComponent.AiType.FSM_WORKER;
 
         return entityId;
+    }
+
+    private static boolean matchesCasteTemplate(CasteTemplate ct, Individual.Caste caste, String casteName) {
+        if (ct == null || ct.getName() == null) return false;
+        String name = ct.getName().toLowerCase().trim();
+        if (casteName != null && name.equalsIgnoreCase(casteName.trim())) return true;
+        if (caste == null) return false;
+        return switch (caste) {
+            case WORKER -> name.contains("worker") || name.contains("ouvri") || name.contains("minor") || name.contains("media");
+            case QUEEN -> name.contains("queen") || name.contains("rein") || name.contains("gyne");
+            case SOLDIER -> name.contains("soldier") || name.contains("soldat") || name.contains("major") || name.contains("guard");
+            case MALE -> name.contains("male") || name.contains("mâle") || name.contains("drone");
+            default -> false;
+        };
     }
 
     /**

@@ -261,7 +261,6 @@ public class SimulationServiceImpl extends SimulationServiceGrpc.SimulationServi
                                 }
                             }
                         });
-                        streamThread.start();
                     }
                 }
             }

@@ -90,7 +90,7 @@ public class HeatwaveDisaster implements DisasterEvent {
             for (Colony colony : simulation.getColonies()) {
                 for (Individual ant : colony.getLivingIndividuals()) {
                     if (terrarium != null) {
-                        float surfaceExposure = Math.max(0f, ant.getZ() / (float) Math.max(1, terrarium.getDepth()));
+                        float surfaceExposure = Math.max(0f, 1.0f - (ant.getZ() / (float) Math.max(1, terrarium.getDepth())));
                         if (surfaceExposure > 0.3f) {
                             ant.takeDamage(heatDamagePerTick * surfaceExposure);
                             ant.setEnergy(Math.max(0f, ant.getEnergy() - metabolicDrain));

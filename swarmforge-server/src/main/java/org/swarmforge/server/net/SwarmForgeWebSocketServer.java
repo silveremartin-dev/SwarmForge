@@ -49,13 +49,28 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket conn, String message) {
-        LOG.info("Received message: " + message);
-        // Handle simple commands like {"action": "SUBSCRIBE", "simulationId": "sim2"}
-        if (message.contains("SUBSCRIBE")) {
-            // Rudimentary parsing for MVP
-            if (message.contains("main"))
+        if (message == null || message.length() > 65536) {
+            conn.close(1009, "Payload too large (>64KB)");
+            return;
+        }
+        try {
+            if (message.contains("SUBSCRIBE")) {
+                int idx = message.indexOf("\"simulationId\":");
+                if (idx != -1) {
+                    int start = message.indexOf("\"", idx + 15);
+                    int end = (start != -1) ? message.indexOf("\"", start + 1) : -1;
+                    if (start != -1 && end != -1) {
+                        String simId = message.substring(start + 1, end).trim();
+                        if (!simId.isEmpty() && simId.length() <= 64) {
+                            clientSubscriptions.put(conn, simId);
+                            return;
+                        }
+                    }
+                }
                 clientSubscriptions.put(conn, "main");
-            // Add other parsing logic if needed
+            }
+        } catch (Exception e) {
+            LOG.warn("Failed to parse WebSocket message from {}: {}", conn.getRemoteSocketAddress(), e.getMessage());
         }
     }
 

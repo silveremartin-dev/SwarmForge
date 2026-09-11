@@ -155,8 +155,8 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public void descendTree() {
         this.climbingTree = false;
+        this.z = Math.max(0.0f, this.z - this.treeClimbHeight);
         this.treeClimbHeight = 0.0f;
-        this.z = 0.0f;
     }
 
     public boolean harvestPlant(org.swarmforge.core.world.VegetationSystem.Plant plant) {
@@ -1024,6 +1024,14 @@ public class Individual implements java.io.Serializable, AgentView {
         if (!alive)
             return ActionResult.failure("Dead");
 
+        if (caste == Caste.QUEEN && colony != null) {
+            float targetZ = colony.getNestZ() < 0 ? colony.getNestZ() - 0.5f : -1.8f;
+            this.z += (targetZ - this.z) * 0.1f;
+        } else if (job == Job.NURSE && isAtNest()) {
+            float targetZ = -1.2f;
+            this.z += (targetZ - this.z) * 0.1f;
+        }
+
         switch (action.type()) {
             case MOVE -> {
                 // Normalized & speed-scaled directional move
@@ -1057,6 +1065,9 @@ public class Individual implements java.io.Serializable, AgentView {
             }
             case FORAGE -> {
                 this.heading += (getRandom().nextFloat() - 0.5f) * 0.25f;
+                if (this.z < 0.0f && (caste != Caste.QUEEN && job != Job.NURSE)) {
+                    this.z = Math.min(0.0f, this.z + 0.08f);
+                }
                 move(0.9f);
                 return ActionResult.ok();
             }
@@ -1064,6 +1075,8 @@ public class Individual implements java.io.Serializable, AgentView {
                 turnTowards(getHomeX(), getHomeY(), 0.1f);
                 move(1.0f);
                 if (isAtNest() && colony != null) {
+                    float targetNestZ = colony.getNestZ() < 0 ? colony.getNestZ() : -1.5f;
+                    this.z += (targetNestZ - this.z) * 0.12f;
                     if (colony.getFoodStored() > 0.1f) {
                         if (colony.getCarbohydrateStored() > 0.05f) {
                             colony.setCarbohydrateStored(colony.getCarbohydrateStored() - 0.05f);
@@ -1083,6 +1096,10 @@ public class Individual implements java.io.Serializable, AgentView {
                 return ActionResult.ok();
             }
             case REST -> {
+                if (isAtNest() && colony != null) {
+                    float targetNestZ = colony.getNestZ() < 0 ? colony.getNestZ() : -1.2f;
+                    this.z += (targetNestZ - this.z) * 0.12f;
+                }
                 energy = Math.min(maxEnergy, energy + 5.0f);
                 hunger = Math.max(0f, hunger - 5.0f);
                 thirst = Math.max(0f, thirst - 5.0f);
@@ -1140,6 +1157,10 @@ public class Individual implements java.io.Serializable, AgentView {
             }
             case DEPOSIT_FOOD -> {
                 if (isCarryingFood() && colony != null) {
+                    if (isAtNest()) {
+                        float targetNestZ = colony.getNestZ() < 0 ? colony.getNestZ() : -1.0f;
+                        this.z += (targetNestZ - this.z) * 0.15f;
+                    }
                     if (carriedResourceType != null) {
                         colony.addResource(carriedResourceType, 1.0f);
                     } else {
@@ -1154,6 +1175,50 @@ public class Individual implements java.io.Serializable, AgentView {
                     return ActionResult.ok();
                 }
                 return ActionResult.failure("Not carrying food");
+            }
+            case GROOM -> {
+                if (action.target() instanceof Individual target) {
+                    if (target.isAlive() && target.getColonyId().equals(this.getColonyId())) {
+                        float distSq = (float) ((target.getX() - x) * (target.getX() - x) + (target.getY() - y) * (target.getY() - y) + (target.getZ() - z) * (target.getZ() - z));
+                        if (distSq <= 4.0f) {
+                            this.energy = Math.max(0.0f, this.energy - 0.5f);
+                            return ActionResult.ok();
+                        }
+                        return ActionResult.failure("Target out of grooming range");
+                    }
+                }
+                return ActionResult.failure("Invalid grooming target");
+            }
+            case NURSE -> {
+                if (action.target() instanceof Individual broodTarget) {
+                    if (broodTarget.isAlive() && broodTarget.getColonyId().equals(this.getColonyId()) && broodTarget.getLifeStage() != LifeStage.ADULT) {
+                        float distSq = (float) ((broodTarget.getX() - x) * (broodTarget.getX() - x) + (broodTarget.getY() - y) * (broodTarget.getY() - y) + (broodTarget.getZ() - z) * (broodTarget.getZ() - z));
+                        if (distSq <= 4.0f) {
+                            if (colony != null && (colony.getProteinStored() > 0.1f || colony.getFoodStored() > 0.1f)) {
+                                if (colony.getProteinStored() > 0.1f) colony.setProteinStored(colony.getProteinStored() - 0.1f);
+                                else colony.setFoodStored(colony.getFoodStored() - 0.1f);
+                                broodTarget.setEnergy(Math.min(100.0f, broodTarget.getEnergy() + 10.0f));
+                            }
+                            return ActionResult.ok();
+                        }
+                        return ActionResult.failure("Brood out of range");
+                    }
+                }
+                return ActionResult.failure("Invalid brood target");
+            }
+            case COMMUNICATE -> {
+                if (action.target() instanceof Individual mate) {
+                    if (mate.isAlive() && mate.getColonyId().equals(this.getColonyId())) {
+                        float distSq = (float) ((mate.getX() - x) * (mate.getX() - x) + (mate.getY() - y) * (mate.getY() - y) + (mate.getZ() - z) * (mate.getZ() - z));
+                        if (distSq <= 4.0f) {
+                            float avgEnergy = (this.energy + mate.getEnergy()) / 2.0f;
+                            this.energy = avgEnergy;
+                            mate.setEnergy(avgEnergy);
+                            return ActionResult.ok();
+                        }
+                    }
+                }
+                return ActionResult.failure("Nestmate not in contact range");
             }
             default -> {
                 return ActionResult.ok();

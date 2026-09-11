@@ -62,10 +62,12 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
         inputs.put("energy_medium", trapezoid(energy, 0.3f, 0.4f, 0.6f, 0.7f));
         inputs.put("energy_high", trapezoid(energy, 0.6f, 0.8f, 1.0f, 1.0f));
 
-        // Hunger (inverse of food carried)
-        float hunger = agent.isCarryingFood() ? 0 : 1;
-        inputs.put("hungry", hunger);
-        inputs.put("fed", 1 - hunger);
+        // Food payload & physiological hunger state
+        float carrying = agent.isCarryingFood() ? 1.0f : 0.0f;
+        float hunger = Math.max(0.0f, Math.min(1.0f, agent.getHunger() / 100.0f));
+        inputs.put("carrying_food", carrying);
+        inputs.put("hungry", Math.max(hunger, 1.0f - carrying));
+        inputs.put("fed", carrying);
 
         // Pheromone signals
         if (context != null) {

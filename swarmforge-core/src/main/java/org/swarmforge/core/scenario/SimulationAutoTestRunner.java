@@ -328,7 +328,7 @@ public class SimulationAutoTestRunner {
         Colony colony = sim.addColony("AttaCephalotes", 0, 1, 0);
         Individual ant = colony.getLivingIndividuals().get(0);
 
-        VegetationSystem.Plant tree = veg.findNearestPlant(ant.getX(), ant.getZ(), 100f, PlantType.TREE);
+        VegetationSystem.Plant tree = veg.findNearestPlant(ant.getX(), ant.getY(), 100f, PlantType.TREE);
         if (tree != null) {
             ant.harvestPlant(tree);
             if (!ant.isClimbingTree()) {

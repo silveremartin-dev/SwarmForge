@@ -194,3 +194,153 @@ export function getPixelSugarCaneTexture() {
         ctx.fillRect(9, 13, 3, 1)
     })
 }
+
+// 10. Minecraft Oak Log Side (Écorce de chêne)
+export function getPixelOakLogSideTexture() {
+    return createPixelTexture((ctx) => {
+        const barkPalette = ['#6b4423', '#57371c', '#4a2f17', '#3d2511', '#7a4f2b']
+        for (let x = 0; x < 16; x++) {
+            for (let y = 0; y < 16; y++) {
+                const stripe = (x % 3 === 0) ? 1 : 0
+                const rnd = (Math.sin(x * 5.3 + y * 17.7) * 43758.5453) % 1
+                const idx = (Math.floor(Math.abs(rnd) * (barkPalette.length - 1)) + stripe) % barkPalette.length
+                ctx.fillStyle = barkPalette[idx]
+                ctx.fillRect(x, y, 1, 1)
+            }
+        }
+        // Vertical bark grooves
+        ctx.fillStyle = '#2e1c0c'
+        for (let y = 0; y < 16; y++) {
+            if ((y + 1) % 4 !== 0) {
+                ctx.fillRect(4, y, 1, 1)
+                ctx.fillRect(11, y, 1, 1)
+            }
+        }
+    })
+}
+
+// 11. Minecraft Oak Log Top (Cernes de bois de chêne)
+export function getPixelOakLogTopTexture() {
+    return createPixelTexture((ctx) => {
+        // Outer bark rim
+        ctx.fillStyle = '#4a2f17'
+        ctx.fillRect(0, 0, 16, 16)
+        // Inner heartwood
+        ctx.fillStyle = '#b8945f'
+        ctx.fillRect(2, 2, 12, 12)
+        // Tree rings
+        ctx.fillStyle = '#8f6e3c'
+        ctx.strokeRect(3.5, 3.5, 9, 9)
+        ctx.strokeRect(5.5, 5.5, 5, 5)
+        ctx.fillStyle = '#6b5029'
+        ctx.fillRect(7, 7, 2, 2)
+    })
+}
+
+// 12. Minecraft Oak Leaves (Feuilles de chêne avec découpes alpha)
+export function getPixelOakLeavesTexture() {
+    return createPixelTexture((ctx) => {
+        const leafPalette = ['#2e7d32', '#388e3c', '#1b5e20', '#4caf50', '#14532d']
+        for (let x = 0; x < 16; x++) {
+            for (let y = 0; y < 16; y++) {
+                const rnd = (Math.sin(x * 9.7 + y * 23.1) * 43758.5453) % 1
+                // 15% transparent cutout holes typical of Minecraft fast/fancy leaves
+                if (Math.abs(rnd) < 0.12 && (x + y) % 2 === 0) {
+                    ctx.clearRect(x, y, 1, 1)
+                } else {
+                    const idx = Math.floor(Math.abs(rnd) * leafPalette.length) % leafPalette.length
+                    ctx.fillStyle = leafPalette[idx]
+                    ctx.fillRect(x, y, 1, 1)
+                }
+            }
+        }
+    })
+}
+
+// 13. Minecraft Birch Log (Tronc de bouleau blanc avec striations sombres)
+export function getPixelBirchLogTexture() {
+    return createPixelTexture((ctx) => {
+        ctx.fillStyle = '#e2e8f0'
+        ctx.fillRect(0, 0, 16, 16)
+        const whitePalette = ['#ffffff', '#f1f5f9', '#e2e8f0', '#cbd5e1']
+        for (let x = 0; x < 16; x++) {
+            for (let y = 0; y < 16; y++) {
+                const rnd = (Math.sin(x * 13.1 + y * 7.9) * 43758.5453) % 1
+                ctx.fillStyle = whitePalette[Math.floor(Math.abs(rnd) * whitePalette.length) % whitePalette.length]
+                ctx.fillRect(x, y, 1, 1)
+            }
+        }
+        // Horizontal black spots
+        ctx.fillStyle = '#1e293b'
+        ctx.fillRect(2, 3, 3, 1)
+        ctx.fillRect(9, 7, 4, 1)
+        ctx.fillRect(3, 11, 4, 1)
+        ctx.fillRect(11, 13, 2, 1)
+    })
+}
+
+// 14. Minecraft Birch Leaves (Feuilles de bouleau vert clair)
+export function getPixelBirchLeavesTexture() {
+    return createPixelTexture((ctx) => {
+        const birchLeafPalette = ['#65a30d', '#84cc16', '#4d7c0f', '#a3e635', '#3f6212']
+        for (let x = 0; x < 16; x++) {
+            for (let y = 0; y < 16; y++) {
+                const rnd = (Math.sin(x * 11.3 + y * 19.4) * 43758.5453) % 1
+                if (Math.abs(rnd) < 0.12 && (x + y) % 2 === 0) {
+                    ctx.clearRect(x, y, 1, 1)
+                } else {
+                    ctx.fillStyle = birchLeafPalette[Math.floor(Math.abs(rnd) * birchLeafPalette.length) % birchLeafPalette.length]
+                    ctx.fillRect(x, y, 1, 1)
+                }
+            }
+        }
+    })
+}
+
+// 15. Minecraft Pine / Spruce Log (Épinette sombre)
+export function getPixelPineLogTexture() {
+    return createPixelTexture((ctx) => {
+        const pineLogPalette = ['#3e2723', '#2e1c14', '#4e342e', '#1e100a']
+        for (let x = 0; x < 16; x++) {
+            for (let y = 0; y < 16; y++) {
+                const rnd = (Math.sin(x * 6.1 + y * 14.3) * 43758.5453) % 1
+                ctx.fillStyle = pineLogPalette[Math.floor(Math.abs(rnd) * pineLogPalette.length) % pineLogPalette.length]
+                ctx.fillRect(x, y, 1, 1)
+            }
+        }
+    })
+}
+
+// 16. Minecraft Pine Leaves (Aiguilles de pin sombre / bleuté)
+export function getPixelPineLeavesTexture() {
+    return createPixelTexture((ctx) => {
+        const pineLeafPalette = ['#064e3b', '#065f46', '#047857', '#022c22', '#0f766e']
+        for (let x = 0; x < 16; x++) {
+            for (let y = 0; y < 16; y++) {
+                const rnd = (Math.sin(x * 8.5 + y * 27.2) * 43758.5453) % 1
+                if (Math.abs(rnd) < 0.12 && (x + y) % 2 === 0) {
+                    ctx.clearRect(x, y, 1, 1)
+                } else {
+                    ctx.fillStyle = pineLeafPalette[Math.floor(Math.abs(rnd) * pineLeafPalette.length) % pineLeafPalette.length]
+                    ctx.fillRect(x, y, 1, 1)
+                }
+            }
+        }
+    })
+}
+
+// 17. Minecraft Pixel Water Texture
+export function getPixelWaterTexture() {
+    return createPixelTexture((ctx) => {
+        const waterPalette = ['#0284c7', '#0369a1', '#075985', '#38bdf8', '#0c4a6e']
+        for (let x = 0; x < 16; x++) {
+            for (let y = 0; y < 16; y++) {
+                const wave = Math.sin((x + y) * 0.8)
+                const idx = Math.floor(Math.abs(wave) * waterPalette.length) % waterPalette.length
+                ctx.fillStyle = waterPalette[idx]
+                ctx.fillRect(x, y, 1, 1)
+            }
+        }
+    })
+}
+

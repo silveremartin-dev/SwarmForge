@@ -45,9 +45,9 @@ public class NestMicroclimateSystem {
             int antCount = colony.getPopulation();
             if (antCount == 0) continue;
 
-            // Compute respiration CO2 production and O2 consumption (RQ ≈ 0.85)
-            float co2ProductionRate = antCount * 0.0012f * deltaSeconds;
-            float o2ConsumptionRate = co2ProductionRate / 0.85f;
+            // Compute respiration CO2 production (ppm) and O2 consumption (converted to %) (RQ ≈ 0.85)
+            float co2ProductionRate = antCount * 0.0012f * deltaSeconds; // in ppm
+            float o2ConsumptionPct = (co2ProductionRate / 0.85f) / 10000.0f; // converted from ppm to % (1% = 10,000 ppm)
 
             // Sample nest chambers
             int nestX = (int) colony.getNestX();
@@ -69,14 +69,14 @@ public class NestMicroclimateSystem {
                 // Dynamic ventilation purge rate based on stack airflow
                 float purgeFraction = Math.min(0.40f, (0.015f + 0.035f * totalDraftVelocity) * deltaSeconds);
 
-                // CO2 & O2 gas exchange
+                // CO2 & O2 gas exchange (CO2 in ppm, O2 in %)
                 float ambientCo2 = TerrariumCell.DEFAULT_CO2;
                 float ambientO2 = TerrariumCell.DEFAULT_O2;
                 float currentCo2 = cell.co2() + co2ProductionRate;
-                currentCo2 = currentCo2 - (currentCo2 - ambientCo2) * purgeFraction;
+                currentCo2 = Math.max(ambientCo2, currentCo2 - (currentCo2 - ambientCo2) * purgeFraction);
 
-                float currentO2 = cell.o2() - o2ConsumptionRate;
-                currentO2 = currentO2 + (ambientO2 - currentO2) * purgeFraction;
+                float currentO2 = Math.max(0.0f, Math.min(21.0f, cell.o2() - o2ConsumptionPct));
+                currentO2 = Math.max(0.0f, Math.min(21.0f, currentO2 + (ambientO2 - currentO2) * purgeFraction));
 
                 // Thermal equilibration draft
                 float thermalEquilRate = Math.min(0.15f, 0.01f * totalDraftVelocity * deltaSeconds);

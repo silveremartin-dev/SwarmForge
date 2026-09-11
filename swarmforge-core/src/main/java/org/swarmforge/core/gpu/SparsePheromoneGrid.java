@@ -271,6 +271,10 @@ public class SparsePheromoneGrid {
     }
 
     private float computeDecay(float original, long depositTick, int type, int z) {
+        return computeDecay(original, depositTick, type, 0, 0, z);
+    }
+
+    private float computeDecay(float original, long depositTick, int type, int x, int y, int z) {
         if (original <= 0)
             return 0f;
         long elapsedTicks = currentTick - depositTick;
@@ -278,7 +282,8 @@ public class SparsePheromoneGrid {
             return original;
         double elapsedSeconds = elapsedTicks * (double) simulationStepSeconds;
         double effectiveMultiplier = evaporationMultiplier;
-        if (z >= 0) {
+        float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(x, y) : 16.0f;
+        if (z >= surfaceZ) {
             // Surface is exposed to rain runoff wash-off
             if (surfaceRainIntensity > 0.0f) {
                 effectiveMultiplier *= (1.0f + surfaceRainIntensity * 0.08f);
@@ -308,7 +313,7 @@ public class SparsePheromoneGrid {
                 float[] p = cell.pheromones();
                 if (p != null) {
                     for (int t = 0; t < PHEROMONE_TYPES; t++) {
-                        p[t] = computeDecay(entry.getConcentration(t), entry.getLastUpdatedTick(t), t, z);
+                        p[t] = computeDecay(entry.getConcentration(t), entry.getLastUpdatedTick(t), t, x, y, z);
                     }
                     terrarium.setCell(cell);
                 }
@@ -320,9 +325,9 @@ public class SparsePheromoneGrid {
         grid.entrySet().removeIf(entry -> {
             PheromoneEntry val = entry.getValue();
             int[] coords = Morton3D.decode(entry.getKey());
-            int z = coords[2];
+            int x = coords[0], y = coords[1], z = coords[2];
             for (int t = 0; t < PHEROMONE_TYPES; t++) {
-                if (computeDecay(val.concentrations[t], val.lastUpdatedTick[t], t, z) >= PRUNE_THRESHOLD) {
+                if (computeDecay(val.concentrations[t], val.lastUpdatedTick[t], t, x, y, z) >= PRUNE_THRESHOLD) {
                     return false; // Keep if any type has significant concentration
                 }
             }
@@ -332,8 +337,8 @@ public class SparsePheromoneGrid {
 
     /**
      * Terrain-aware and Climate-Coupled Diffusion:
-     * - In surface air (z >= 0), diffusion incorporates anisotropic advection along the wind vector.
-     * - In subterranean galleries (z < 0), isotropic molecular diffusion occurs through passable cavities.
+     * - In surface air (z >= surfaceZ), diffusion incorporates anisotropic advection along the wind vector.
+     * - In subterranean galleries (z < surfaceZ), isotropic molecular diffusion occurs through passable cavities.
      */
     public void diffuse() {
         // Pass 1: Calculate spread updates in parallel and accumulate them
@@ -348,8 +353,10 @@ public class SparsePheromoneGrid {
             int[] coords = Morton3D.decode(key);
             int x = coords[0], y = coords[1], z = coords[2];
 
+            float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(x, y) : 16.0f;
+
             for (int t = 0; t < PHEROMONE_TYPES; t++) {
-                float conc = computeDecay(entry.concentrations[t], entry.lastUpdatedTick[t], t, z);
+                float conc = computeDecay(entry.concentrations[t], entry.lastUpdatedTick[t], t, x, y, z);
                 if (conc < PRUNE_THRESHOLD)
                     continue;
 
@@ -359,7 +366,7 @@ public class SparsePheromoneGrid {
 
                 float spreadAmount = conc * diffusionRate[t];
 
-                if (z >= 0 && windSpeed > 0.01f) {
+                if (z >= surfaceZ && windSpeed > 0.01f) {
                     // Anisotropic surface advection diffusion along wind vector
                     float advectionStrength = Math.min(0.6f, windSpeed * 0.08f);
                     float wLeft  = isPassable(x - 1, y, z, t) ? Math.max(0.05f, 1.0f - curWindVx * advectionStrength) : 0f;

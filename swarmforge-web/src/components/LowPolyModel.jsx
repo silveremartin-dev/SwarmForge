@@ -49,6 +49,9 @@ function applySeasonalTint(material, season) {
  */
 export default function LowPolyModel({
     url,
+    objectName,
+    objectIndex,
+    targetHeight,
     textureUrl,
     position = [0, 0, 0],
     rotation = [0, 0, 0],
@@ -64,9 +67,12 @@ export default function LowPolyModel({
     const swayRef = useRef()
 
     useEffect(() => {
-        if (!url) return
+        if (!url) {
+            setFailed(true)
+            return
+        }
 
-        const cacheKey = `${url}_${season}_${textureUrl || 'none'}`
+        const cacheKey = `${url}_${objectName || 'all'}_${objectIndex ?? 'none'}_${targetHeight || 'auto'}_${season}_${textureUrl || 'none'}`
         if (modelCache.has(cacheKey)) {
             setModelScene(modelCache.get(cacheKey).clone(true))
             return
@@ -78,16 +84,80 @@ export default function LowPolyModel({
         const isFbx = lowerUrl.endsWith('.fbx')
 
         const processScene = (sceneObj) => {
-            const bbox = new THREE.Box3().setFromObject(sceneObj)
-            const minY = bbox.min.y
-            sceneObj.position.y -= minY
+            let target = new THREE.Group()
+
+            // Find all candidate top-level nodes
+            const candidates = []
+            if (sceneObj.children.length === 1 && sceneObj.children[0].name === 'RootNode') {
+                sceneObj.children[0].children.forEach(c => candidates.push(c))
+            } else {
+                sceneObj.children.forEach(c => candidates.push(c))
+            }
+
+            if (objectName) {
+                // Find named object or node matching objectName (case-insensitive)
+                let found = null
+                const lowerName = objectName.toLowerCase()
+                sceneObj.traverse((child) => {
+                    if (!found && child.name && child.name.toLowerCase().includes(lowerName)) {
+                        found = child
+                    }
+                })
+                if (found) {
+                    target.add(found.clone(true))
+                } else {
+                    target = sceneObj.clone(true)
+                }
+            } else if (objectIndex !== undefined && candidates.length > 0) {
+                const chosen = candidates[objectIndex % candidates.length]
+                target.add(chosen.clone(true))
+            } else {
+                // Filter out any full-scene ground plane objects (e.g. SimpleGround_Plane.024)
+                const toKeep = []
+                sceneObj.traverse((child) => {
+                    if (child.isMesh) {
+                        const name = (child.name || '').toLowerCase()
+                        if (!name.includes('simpleground') && !name.includes('plane.024') && !name.includes('ground_plane')) {
+                            toKeep.push(child.clone())
+                        }
+                    }
+                })
+                if (toKeep.length > 0) {
+                    toKeep.forEach(m => target.add(m))
+                } else {
+                    target = sceneObj.clone(true)
+                }
+            }
+
+            // Calculate bounding box and center target at base (X=0, Z=0, MinY=0)
+            target.updateMatrixWorld(true)
+            const initialBbox = new THREE.Box3().setFromObject(target)
+            if (!initialBbox.isEmpty()) {
+                const size = new THREE.Vector3()
+                initialBbox.getSize(size)
+                const centerX = (initialBbox.min.x + initialBbox.max.x) / 2
+                const centerZ = (initialBbox.min.z + initialBbox.max.z) / 2
+                const minY = initialBbox.min.y
+
+                // Height normalization if targetHeight is provided (e.g. 9.5m for trees, 1.2m for bushes)
+                let normFactor = 1.0
+                if (targetHeight && size.y > 0.001) {
+                    normFactor = targetHeight / size.y
+                    target.scale.set(normFactor, normFactor, normFactor)
+                }
+
+                target.position.set(-centerX * normFactor, -minY * normFactor, -centerZ * normFactor)
+            }
+
+            const wrapper = new THREE.Group()
+            wrapper.add(target)
 
             if (textureUrl) {
                 const texLoader = new THREE.TextureLoader()
                 texLoader.load(textureUrl, (tex) => {
                     tex.wrapS = THREE.RepeatWrapping
                     tex.wrapT = THREE.RepeatWrapping
-                    sceneObj.traverse((child) => {
+                    wrapper.traverse((child) => {
                         if (child.isMesh) {
                             child.frustumCulled = false
                             child.material = new THREE.MeshStandardMaterial({
@@ -109,7 +179,7 @@ export default function LowPolyModel({
                     })
                 })
             } else {
-                sceneObj.traverse((child) => {
+                wrapper.traverse((child) => {
                     if (child.isMesh) {
                         child.castShadow = true
                         child.receiveShadow = true
@@ -127,8 +197,8 @@ export default function LowPolyModel({
                 })
             }
 
-            modelCache.set(cacheKey, sceneObj)
-            setModelScene(sceneObj.clone(true))
+            modelCache.set(cacheKey, wrapper)
+            setModelScene(wrapper.clone(true))
         }
 
         if (isGltf) {
@@ -181,7 +251,7 @@ export default function LowPolyModel({
         } else {
             setFailed(true)
         }
-    }, [url, textureUrl, season])
+    }, [url, objectName, objectIndex, targetHeight, textureUrl, season])
 
     // Wind Sway Micro-Animations (modulated by windSpeed m/s)
     useFrame((state) => {

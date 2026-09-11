@@ -19,8 +19,13 @@ public class MovementSystem extends IteratingSystem {
         PositionComponent position = mPosition.get(entityId);
         VelocityComponent velocity = mVelocity.get(entityId);
 
-        position.x += velocity.dx * world.getDelta();
-        position.y += velocity.dy * world.getDelta();
-        position.z += velocity.dz * world.getDelta();
+        float dt = world.getDelta();
+        position.x += velocity.dx * dt;
+        position.y += velocity.dy * dt;
+        position.z += velocity.dz * dt;
+
+        if (Math.abs(velocity.dx) > 0.001f || Math.abs(velocity.dy) > 0.001f) {
+            position.heading = (float) Math.atan2(velocity.dy, velocity.dx);
+        }
     }
 }

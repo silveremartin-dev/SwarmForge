@@ -273,48 +273,87 @@ public class FSMArchitecture implements ReasoningArchitecture {
     // === Species-Specific Behavioral State Handlers ===
 
     private Action handleWaggleDancing(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
-        // Honeybee (Apis mellifera) waggle dance execution on vertical comb
         if (agent instanceof Individual ind && ind.getSpecies() != null && ind.getSpecies().canPerformWaggleDance()) {
-            // Dance step: figure-eight vibration loop broadcasting vector
-            transitionTo(State.IDLE);
-            return Action.rest();
+            if (ctx != null && ctx.hasFoodNearby(agent)) {
+                float[] foodPos = ctx.getNearestFoodPosition(agent);
+                if (foodPos != null) {
+                    float dx = foodPos[0] - agent.getX();
+                    float dy = foodPos[1] - agent.getY();
+                    float dist = (float) Math.hypot(dx, dy);
+                    ind.setHeading((float) Math.atan2(dy, dx));
+                    transitionTo(State.IDLE);
+                    return Action.move(dx / (dist + 0.001f), dy / (dist + 0.001f), 0);
+                }
+            }
         }
         transitionTo(State.IDLE);
         return Action.rest();
     }
 
     private Action handleBiostructureLocked(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
-        // Army ant / Fire ant biostructure (living bridge / water raft)
         if (agent instanceof Individual ind && ind.getSpecies() != null && ind.getSpecies().canPerformBiostructures()) {
-            return Action.rest(); // Remain immobile as structural voxel element
+            ind.setEnergy(Math.max(0.0f, ind.getEnergy() - 0.01f));
+            return Action.rest();
         }
         transitionTo(State.IDLE);
         return Action.rest();
     }
 
     private Action handleNecrophoreTransport(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
-        // Oleic acid corpse transportation to refuse dump
-        if (isNearHome(agent)) {
-            transitionTo(State.IDLE);
-            return Action.rest();
+        if (agent instanceof Individual ind) {
+            if (ind.getCarriedItem() == Individual.CarriedItem.DEAD_ANT) {
+                if (isNearHome(agent)) {
+                    ind.setCarriedItem(Individual.CarriedItem.NONE);
+                    transitionTo(State.IDLE);
+                    return Action.rest();
+                }
+                return Action.returnHome();
+            }
         }
-        return Action.returnHome();
+        transitionTo(State.IDLE);
+        return Action.rest();
     }
 
     private Action handleThermoregulating(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
-        // Shivering / Fanning thermoregulation
+        if (agent instanceof Individual ind && ctx != null) {
+            float temp = ctx.getTemperature();
+            float optT = (ind.getSpecies() != null) ? ind.getSpecies().getOptimalTempCelsius() : 25.0f;
+            if (temp < optT - 5.0f) {
+                ind.setEnergy(Math.max(0.0f, ind.getEnergy() - 0.2f));
+            } else if (temp > optT + 5.0f) {
+                ind.setEnergy(Math.max(0.0f, ind.getEnergy() - 0.1f));
+            }
+            if (Math.abs(temp - optT) < 3.0f || ind.getEnergyLevel() < 0.3f) {
+                transitionTo(State.IDLE);
+            }
+            return Action.rest();
+        }
+        transitionTo(State.IDLE);
         return Action.rest();
     }
 
     private Action handleLarvalTrophallaxis(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
-        // Wasp / Hornet larval meatball feeding & saliva reward exchange
+        if (agent instanceof Individual ind) {
+            ind.setEnergy(Math.min(100.0f, ind.getEnergy() + 2.0f));
+            transitionTo(State.IDLE);
+            return Action.rest();
+        }
         transitionTo(State.IDLE);
         return Action.rest();
     }
 
     private Action handleTandemRunning(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
-        // Leader-follower tandem recruitment
-        return Action.returnHome();
+        if (agent instanceof Individual ind) {
+            if (ctx != null) {
+                float px = ctx.getFoodPheromoneGradientX(agent.getX(), agent.getY(), agent.getZ());
+                float py = ctx.getFoodPheromoneGradientY(agent.getX(), agent.getY(), agent.getZ());
+                if (Math.abs(px) > 0.01f || Math.abs(py) > 0.01f) {
+                    return Action.followTrail(px, py, 0);
+                }
+            }
+            return randomMove(agent);
+        }
+        return Action.rest();
     }
 
     private Action randomMove(AgentView agent) {

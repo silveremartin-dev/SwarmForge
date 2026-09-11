@@ -97,6 +97,11 @@ public class ColonyRepository {
                     byte[] data = rs.getBytes("data");
                     try (ByteArrayInputStream bis = new ByteArrayInputStream(data);
                             ObjectInputStream ois = new ObjectInputStream(bis)) {
+                        // Security Hardening: Restrict deserialization strictly to trusted SwarmForge and Java standard types
+                        ObjectInputFilter filter = ObjectInputFilter.Config.createFilter(
+                            "org.swarmforge.**;java.lang.*;java.util.**;java.util.concurrent.**;java.util.concurrent.atomic.**;[F;[I;[B;[Z;[Ljava.lang.String;;!*"
+                        );
+                        ois.setObjectInputFilter(filter);
                         return (Colony) ois.readObject();
                     }
                 }

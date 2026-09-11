@@ -22,15 +22,15 @@ public enum PathogenType implements Serializable {
     MICROSPORIDIA("Microsporidia Nosema", 0.03f, 0.01f, 500);
 
     private final String name;
-    private final float baseInfectivity;   // Germination probability per tick
-    private final float baseLethality;     // Damage per tick once infected
-    private final int incubationTicks;     // Ticks from exposure to active infection
+    private final float baseInfectivity;   // Germination probability per second
+    private final float baseLethality;     // Damage per second once infected
+    private final float incubationSeconds; // Incubation duration in SI seconds from exposure to active infection
 
-    PathogenType(String name, float baseInfectivity, float baseLethality, int incubationTicks) {
+    PathogenType(String name, float baseInfectivity, float baseLethality, float incubationSeconds) {
         this.name = name;
         this.baseInfectivity = baseInfectivity;
         this.baseLethality = baseLethality;
-        this.incubationTicks = incubationTicks;
+        this.incubationSeconds = incubationSeconds;
     }
 
     public String getName() {
@@ -45,7 +45,15 @@ public enum PathogenType implements Serializable {
         return baseLethality;
     }
 
+    public float getIncubationSeconds() {
+        return incubationSeconds;
+    }
+
+    /**
+     * @deprecated Use {@link #getIncubationSeconds()} instead.
+     */
+    @Deprecated
     public int getIncubationTicks() {
-        return incubationTicks;
+        return (int) incubationSeconds;
     }
 }

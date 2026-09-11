@@ -66,7 +66,7 @@ public class IndividualInfection implements Serializable {
         if (state == InfectionState.EXPOSED && activePathogen != null) {
             incubationProgressSeconds += deltaSeconds;
             // Check germination after incubation period in seconds (adjusted by genetic resistance)
-            float effectiveIncubationSeconds = activePathogen.getIncubationTicks() * Math.max(0.1f, geneticPathogenResistance);
+            float effectiveIncubationSeconds = activePathogen.getIncubationSeconds() * Math.max(0.1f, geneticPathogenResistance);
             if (incubationProgressSeconds >= effectiveIncubationSeconds) {
                 this.state = InfectionState.INFECTED;
                 this.internalInfectionLoad = 0.1f;

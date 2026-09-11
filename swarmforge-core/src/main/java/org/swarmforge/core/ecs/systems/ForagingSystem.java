@@ -3,6 +3,7 @@ package org.swarmforge.core.ecs.systems;
 import com.artemis.Aspect;
 import com.artemis.ComponentMapper;
 import com.artemis.systems.IteratingSystem;
+import org.swarmforge.core.ecs.components.AiComponent;
 import org.swarmforge.core.ecs.components.InventoryComponent;
 import org.swarmforge.core.ecs.components.PositionComponent;
 import org.swarmforge.core.ecs.components.VelocityComponent;
@@ -19,6 +20,7 @@ public class ForagingSystem extends IteratingSystem {
     ComponentMapper<InventoryComponent> mInv;
     ComponentMapper<MetabolismComponent> mMeta; // Only live ants forage
     ComponentMapper<ColonyComponent> mColony;
+    ComponentMapper<AiComponent> mAi;
 
     public ForagingSystem() {
         super(Aspect.all(PositionComponent.class, VelocityComponent.class, InventoryComponent.class, ColonyComponent.class));
@@ -26,8 +28,16 @@ public class ForagingSystem extends IteratingSystem {
 
     @Override
     protected void process(int entityId) {
-        // If dead, do nothing (should probably filter out dead entities in Aspect or remove components)
-        if (mMeta.has(entityId) && !mMeta.get(entityId).alive) {
+        // If controlled by advanced AI (FSM, RL, Fuzzy, BDI), delegate logic to AiSystem
+        if (mAi != null && mAi.has(entityId)) {
+            AiComponent ai = mAi.get(entityId);
+            if (ai.type != AiComponent.AiType.SIMPLE_FORAGER) {
+                return;
+            }
+        }
+
+        // If dead, do nothing
+        if (mMeta != null && mMeta.has(entityId) && !mMeta.get(entityId).alive) {
             mVel.get(entityId).speed = 0;
             return;
         }
@@ -78,11 +88,13 @@ public class ForagingSystem extends IteratingSystem {
                 vel.dz = 0;
             }
             
-            // Boundary check (Bounce)
+            // Boundary check (Inward reflection)
             float maxX = (colony != null && colony.getTerrarium() != null) ? colony.getTerrarium().getWidth() : 100.0f;
             float maxY = (colony != null && colony.getTerrarium() != null) ? colony.getTerrarium().getHeight() : 100.0f;
-            if (pos.x < 0 || pos.x > maxX) vel.dx *= -1;
-            if (pos.y < 0 || pos.y > maxY) vel.dy *= -1;
+            if (pos.x < 0 && vel.dx < 0) vel.dx = Math.abs(vel.dx);
+            else if (pos.x > maxX && vel.dx > 0) vel.dx = -Math.abs(vel.dx);
+            if (pos.y < 0 && vel.dy < 0) vel.dy = Math.abs(vel.dy);
+            else if (pos.y > maxY && vel.dy > 0) vel.dy = -Math.abs(vel.dy);
         }
     }
 }

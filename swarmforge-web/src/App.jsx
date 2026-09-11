@@ -55,7 +55,7 @@ function ResponsiveOrbitControls() {
 }
 
 export default function App() {
-    const { connected, connect, disconnect, running, tick, simTimeFormatted, speed, environment, showChamberOverlay, renderMode } = useSimulationStore()
+    const { connected, connect, disconnect, running, tick, simTimeFormatted, speed, environment, showChamberOverlay, lookAndFeel } = useSimulationStore()
     const [activeMode, setActiveMode] = useState('SIMULATION')
 
     useEffect(() => {
@@ -63,16 +63,17 @@ export default function App() {
         return () => disconnect()
     }, [])
 
-    // Derived values for lighting
-    const sunX = Math.cos((environment.sunAngle - 0.25) * Math.PI * 2) * 50
-    const sunY = Math.sin((environment.sunAngle - 0.25) * Math.PI * 2) * 50
-    const sunZ = 20
+    // Derived values for directional sun & sky lighting (centered on [50, 0, 50])
+    const sunAngle = environment?.sunAngle ?? 0.35
+    const sunX = Math.cos((sunAngle - 0.25) * Math.PI * 2) * 60
+    const sunY = Math.max(15, Math.sin((sunAngle - 0.25) * Math.PI * 2) * 70)
+    const sunZ = 25
 
     // Light Color Interpolation
-    const isNight = environment.lightLevel < 0.3
-    const skyColor = isNight ? '#111122' : '#88ccff'
-    const groundColor = isNight ? '#050510' : '#444422'
-    const sunIntensity = Math.max(0.1, environment.lightLevel * 1.5)
+    const isNight = (environment?.lightLevel ?? 1.0) < 0.3
+    const skyColor = isNight ? '#0f172a' : '#93c5fd'
+    const groundColor = isNight ? '#020617' : '#334155'
+    const sunIntensity = Math.max(0.15, (environment?.lightLevel ?? 1.0) * 1.4)
 
     return (
         <div style={{ width: '100vw', height: '100vh', background: '#0b0f19', overflow: 'hidden', position: 'relative' }}>
@@ -121,29 +122,55 @@ export default function App() {
                         <Hands />
                         <ImmersiveControls />
 
-                        {/* Dynamic Environment Lighting */}
-                        <ambientLight intensity={Math.max(0.2, environment.lightLevel * 0.4)} />
-                        <pointLight
-                            position={[sunX, sunY, sunZ]}
-                            intensity={sunIntensity}
+                        {/* Ambient & Sky Illumination */}
+                        <ambientLight intensity={Math.max(0.3, (environment?.lightLevel ?? 1.0) * 0.45)} />
+                        <hemisphereLight skyColor={skyColor} groundColor={groundColor} intensity={Math.max(0.2, (environment?.lightLevel ?? 1.0) * 0.5)} />
+
+                        {/* Sun Directional Light with calibrated parallel shadow projection across 100m terrarium */}
+                        <directionalLight
+                            position={[50 + sunX, sunY + 30, 50 + sunZ]}
+                            intensity={isNight ? 0.05 : sunIntensity}
                             castShadow
                             shadow-mapSize={[2048, 2048]}
+                            shadow-camera-left={-65}
+                            shadow-camera-right={65}
+                            shadow-camera-top={65}
+                            shadow-camera-bottom={-65}
+                            shadow-camera-near={1}
+                            shadow-camera-far={250}
+                            shadow-bias={-0.0004}
                             color={environment.timeOfDay === 'DAWN' ? '#ff9966' : environment.timeOfDay === 'DUSK' ? '#ff7744' : '#ffffff'}
                         />
-                        <hemisphereLight skyColor={skyColor} groundColor={groundColor} intensity={Math.max(0.1, environment.lightLevel * 0.6)} />
 
-                        {/* Visual Sun */}
-                        <mesh position={[sunX, sunY, sunZ]}>
-                            <sphereGeometry args={[2, 16, 16]} />
-                            <meshBasicMaterial color={environment.timeOfDay === 'DAWN' || environment.timeOfDay === 'DUSK' ? '#ff4400' : '#ffffaa'} />
-                        </mesh>
+                        {/* Night Moon Light */}
+                        {isNight && (
+                            <directionalLight
+                                position={[30, 60, 40]}
+                                intensity={0.25}
+                                color="#818cf8"
+                                castShadow
+                                shadow-mapSize={[1024, 1024]}
+                                shadow-camera-left={-60}
+                                shadow-camera-right={60}
+                                shadow-camera-top={60}
+                                shadow-camera-bottom={-60}
+                            />
+                        )}
+
+                        {/* Visual Sun Sphere (Non-Gamified modes) */}
+                        {lookAndFeel !== 'GAMING' && (
+                            <mesh position={[50 + sunX, sunY + 30, 50 + sunZ]}>
+                                <sphereGeometry args={[2.5, 16, 16]} />
+                                <meshBasicMaterial color={environment.timeOfDay === 'DAWN' || environment.timeOfDay === 'DUSK' ? '#ff4400' : '#ffffaa'} />
+                            </mesh>
+                        )}
 
                         <Terrarium />
                         <PheromoneCloud />
                         <WeatherRenderer />
                         {showChamberOverlay && <UndergroundView />}
 
-                        {renderMode === 'gamified' && (
+                        {activeMode === 'WORLD_EDITOR' && (
                             <Grid
                                 args={[100, 100]}
                                 position={[50, -0.01, 50]}

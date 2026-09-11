@@ -146,6 +146,9 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
         if (distHome > 0) {
             inputs[9] = (dx / distHome + 1) / 2; // Normalized 0-1
             inputs[10] = (dy / distHome + 1) / 2;
+        } else {
+            inputs[9] = 0.5f; // Neutral
+            inputs[10] = 0.5f;
         }
 
         inputs[11] = agent.isSoldier() ? 1.0f : 0.0f;
@@ -155,7 +158,7 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
 
     private Action outputsToAction(float[] outputs, AgentView agent, SimulationContext context) {
         // outputs[0]: move forward strength
-        // outputs[1]: turn left/right (-1 to 1)
+        // outputs[1]: turn left/right (-1 to 1) -> maps to full [-PI, +PI]
         // outputs[2]: forage/return toggle
         // outputs[3]: attack
         // outputs[4]: rest
@@ -177,7 +180,7 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
             case 4 -> Action.rest();
             default -> {
                 float moveStrength = Math.max(0.2f, outputs[0]);
-                float turnAngle = (outputs[1] - 0.5f) * (float) Math.PI;
+                float turnAngle = (outputs[1] - 0.5f) * 2.0f * (float) Math.PI;
                 yield Action.move((float) Math.cos(turnAngle) * moveStrength,
                         (float) Math.sin(turnAngle) * moveStrength, 0);
             }
@@ -186,18 +189,32 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
 
     @Override
     public void update(AgentView agent, Action executedAction, ActionResult result) {
-        // Full Backpropagation implementation
+        // Targeted Backpropagation for reinforcement learning
         if (lastHidden == null || lastOutputs == null || result == null)
             return;
 
         float reward = Math.max(-1.0f, Math.min(1.0f, result.reward()));
         
-        // 1. Output Gradients
+        // 1. Output Gradients (targeted to executed action)
         float[] outputGradients = new float[OUTPUT_SIZE];
-        for (int k = 0; k < OUTPUT_SIZE; k++) {
-            // Derivative of Sigmoid: o * (1 - o)
-            float derivative = lastOutputs[k] * (1.0f - lastOutputs[k]);
-            outputGradients[k] = reward * derivative;
+        int activeIdx = -1;
+        if (executedAction != null) {
+            switch (executedAction.type()) {
+                case MOVE -> {
+                    // Move strength & turn angle
+                    outputGradients[0] = reward * (lastOutputs[0] * (1.0f - lastOutputs[0]));
+                    outputGradients[1] = reward * (lastOutputs[1] * (1.0f - lastOutputs[1]));
+                }
+                case FORAGE, RETURN_HOME -> activeIdx = 2;
+                case ATTACK -> activeIdx = 3;
+                case REST -> activeIdx = 4;
+                case EXPLORE -> activeIdx = 5;
+                default -> {}
+            }
+        }
+        if (activeIdx >= 0 && activeIdx < OUTPUT_SIZE) {
+            float derivative = lastOutputs[activeIdx] * (1.0f - lastOutputs[activeIdx]);
+            outputGradients[activeIdx] = reward * derivative;
         }
 
         // 2. Hidden Gradients

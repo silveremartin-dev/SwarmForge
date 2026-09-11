@@ -77,16 +77,21 @@ public class StructuralStabilityAnalyzer implements Serializable {
         // Air voxels cannot collapse themselves, but adjacent roof voxels can!
         VoxelMaterial mat = cell.getMaterial();
         float effectiveShearStrength = mat.getShearStrengthKPa() * (1.0f - saturationLevel * 0.5f);
+        int evalX = x;
+        int evalY = y;
+        int evalZ = z;
+
         if (mat == VoxelMaterial.AIR) {
             // Check roof voxel above
             NestVoxelGrid.VoxelCell roof = grid.getVoxel(x, y + 1, z);
             if (roof == null || !roof.getMaterial().isSolid()) return 0.0f;
             mat = roof.getMaterial();
             cell = roof;
+            evalY = y + 1;
             effectiveShearStrength = mat.getShearStrengthKPa() * (1.0f - saturationLevel * 0.5f);
         }
 
-        float archSupport = calculateArchSupportFactor(grid, x, y, z);
+        float archSupport = calculateArchSupportFactor(grid, evalX, evalY, evalZ);
         float baselineIntegrity = grid.getNestType().getStructuralIntegrityBaseline();
         float stress = cell.getOverburdenStressKPa();
 

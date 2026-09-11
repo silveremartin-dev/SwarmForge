@@ -137,12 +137,18 @@ public class BDIArchitecture implements ReasoningArchitecture {
     }
 
     private void updateBeliefs(AgentView agent, SimulationContext context) {
-        if (agent.getEnergyLevel() < 0.3f) {
-            desireWeights.put(DesireType.SURVIVAL_HUNGER, 1.0f - agent.getEnergyLevel());
-        }
-        if (agent.isCarryingFood()) {
-            desireWeights.put(DesireType.COLONY_NUTRITION, 0.9f);
-        }
+        float energy = agent.getEnergyLevel();
+        float hunger = Math.max(0.0f, Math.min(1.0f, agent.getHunger() / 100.0f));
+        // Dynamic hunger drive: high when energy < 0.4 or hunger > 0.6, relaxes to 0.15 otherwise
+        float survivalHungerWeight = (energy < 0.4f || hunger > 0.6f)
+                ? Math.max(0.6f, Math.max(1.0f - energy, hunger))
+                : 0.15f;
+        desireWeights.put(DesireType.SURVIVAL_HUNGER, survivalHungerWeight);
+
+        // Colony nutrition drive: high when carrying food, normal otherwise
+        float colonyNutritionWeight = agent.isCarryingFood() ? 0.95f : 0.45f;
+        desireWeights.put(DesireType.COLONY_NUTRITION, colonyNutritionWeight);
+
         if (context != null) {
             if (context.hasEnemyNearby(agent)) {
                 beliefs.perceivedThreatLevel = 1.0f;
@@ -176,7 +182,8 @@ public class BDIArchitecture implements ReasoningArchitecture {
         }
         return switch (desire) {
             case DEFENSE -> IntentionType.ATTACK_ENEMY;
-            case SURVIVAL_HUNGER, COLONY_NUTRITION -> IntentionType.GO_FORAGING;
+            case SURVIVAL_HUNGER -> agent.isAtNest() ? IntentionType.REST_AND_RECOVER : IntentionType.RETURN_TO_NEST;
+            case COLONY_NUTRITION -> IntentionType.GO_FORAGING;
             case REST -> IntentionType.REST_AND_RECOVER;
             case GROOMING_HYGIENE -> IntentionType.CLEAN_SELF;
             default -> IntentionType.GO_FORAGING;

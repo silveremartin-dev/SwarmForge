@@ -84,7 +84,7 @@ public class FloodDisaster implements DisasterEvent {
         if (remainingTicks <= 0) return;
         remainingTicks--;
 
-        Random rand = new Random();
+        java.util.Random rand = java.util.concurrent.ThreadLocalRandom.current();
         float progress = 1.0f - ((float) remainingTicks / (float) durationTicks);
         int currentWaterLevel = Math.max(1, (int) (waterLevel * progress));
 
@@ -115,9 +115,14 @@ public class FloodDisaster implements DisasterEvent {
                 for (Individual ant : colony.getLivingIndividuals()) {
                     if (ant.getZ() < currentWaterLevel) {
                         if (terrarium != null) {
-                            TerrariumCell cell = terrarium.getCell((int) ant.getX(), (int) ant.getY(), (int) ant.getZ());
-                            if (cell.material() == TerrariumCell.Material.WATER) {
-                                ant.takeDamage(drowningDamagePerTick);
+                            int ax = (int) ant.getX();
+                            int ay = (int) ant.getY();
+                            int az = (int) ant.getZ();
+                            if (terrarium.inBounds(ax, ay, az)) {
+                                TerrariumCell cell = terrarium.getCell(ax, ay, az);
+                                if (cell.material() == TerrariumCell.Material.WATER) {
+                                    ant.takeDamage(drowningDamagePerTick);
+                                }
                             }
                         }
                     }

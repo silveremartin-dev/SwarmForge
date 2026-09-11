@@ -89,25 +89,33 @@ public class RLArchitecture implements ReasoningArchitecture {
         boolean isAtNest = ind.isAtNest();
         boolean hasFood = isLoaded || (ctx != null && ctx.hasFoodNearby(ind));
 
-        // Pheromones (Simplified) - Need position
+        // Pheromones (Egocentric lateral projection relative to heading)
         RLState.PheromoneDirection foodDir = RLState.PheromoneDirection.NONE;
 
         if (ctx != null) {
-            float px = ctx.getFoodPheromoneGradientX(ind.getX(), ind.getY(), ind.getZ());
-            if (px > 0.1f)
-                foodDir = RLState.PheromoneDirection.RIGHT;
-            else if (px < -0.1f)
+            float gx = ctx.getFoodPheromoneGradientX(ind.getX(), ind.getY(), ind.getZ());
+            float gy = ctx.getFoodPheromoneGradientY(ind.getX(), ind.getY(), ind.getZ());
+            float heading = ind.getHeading();
+            // Project gradient onto lateral axis: positive = LEFT, negative = RIGHT
+            float lateral = (float) (-gx * Math.sin(heading) + gy * Math.cos(heading));
+            if (lateral > 0.1f)
                 foodDir = RLState.PheromoneDirection.LEFT;
+            else if (lateral < -0.1f)
+                foodDir = RLState.PheromoneDirection.RIGHT;
         }
 
         RLState.PheromoneDirection homeDir = RLState.PheromoneDirection.NONE;
         if (ctx != null) {
             float hx = ctx.getHomePheromone(ind.getX() + 1, ind.getY(), ind.getZ())
                     - ctx.getHomePheromone(ind.getX() - 1, ind.getY(), ind.getZ());
-            if (hx > 0.1f)
-                homeDir = RLState.PheromoneDirection.RIGHT;
-            else if (hx < -0.1f)
+            float hy = ctx.getHomePheromone(ind.getX(), ind.getY() + 1, ind.getZ())
+                    - ctx.getHomePheromone(ind.getX(), ind.getY() - 1, ind.getZ());
+            float heading = ind.getHeading();
+            float lateral = (float) (-hx * Math.sin(heading) + hy * Math.cos(heading));
+            if (lateral > 0.1f)
                 homeDir = RLState.PheromoneDirection.LEFT;
+            else if (lateral < -0.1f)
+                homeDir = RLState.PheromoneDirection.RIGHT;
         }
 
         return new RLState(hasFood, foodDir, homeDir, isAtNest, isLoaded);

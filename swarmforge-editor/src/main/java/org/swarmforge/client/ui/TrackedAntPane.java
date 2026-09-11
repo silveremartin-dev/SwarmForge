@@ -58,6 +58,7 @@ public class TrackedAntPane extends VBox {
     private Consumer<String> onFollowAntByIdHandler;
     private Runnable onStopFollowHandler;
     private Runnable onCenterHandler;
+    private Runnable onCloseHandler;
 
     public TrackedAntPane() {
         setSpacing(6);
@@ -85,6 +86,9 @@ public class TrackedAntPane extends VBox {
                 onStopFollowHandler.run();
             }
             setVisible(false);
+            if (onCloseHandler != null) {
+                onCloseHandler.run();
+            }
         });
 
         headerBox.getChildren().addAll(titleLabel, spacer, btnClose);
@@ -610,6 +614,10 @@ public class TrackedAntPane extends VBox {
 
     public void setOnCenter(Runnable handler) {
         this.onCenterHandler = handler;
+    }
+
+    public void setOnClose(Runnable handler) {
+        this.onCloseHandler = handler;
     }
 
     public Individual getCurrentAnt() {

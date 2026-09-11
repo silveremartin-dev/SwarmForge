@@ -143,7 +143,18 @@ public class DiseaseManager {
                 float dist = distance(source, target);
 
                 if (record.disease.attemptInfection(source, target, dist)) {
-                    infect(target, record.disease);
+                    // Social Immunity & Allogrooming Spore Defense Check
+                    float socialImmunityDefense = 0.0f;
+                    if (target.getSpecies() != null) {
+                        float grooming = target.getSpecies().getGroomingDefenseEfficacy();
+                        float resistance = target.getSpecies().getPathogenResistance();
+                        socialImmunityDefense = grooming * 0.55f + resistance * 0.35f;
+                    }
+
+                    // Successful allogrooming & social sanitization prevents infection
+                    if (random.nextFloat() >= socialImmunityDefense) {
+                        infect(target, record.disease);
+                    }
                 }
             }
         }

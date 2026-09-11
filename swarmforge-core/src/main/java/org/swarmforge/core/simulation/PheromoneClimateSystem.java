@@ -42,8 +42,8 @@ public class PheromoneClimateSystem {
         float humFactor = (float) Math.max(0.4, 1.2 - humidity / 100.0);
         float windFactor = (float) Math.max(1.0, 1.0 + windMs / 4.167f); // 4.167 m/s ≈ 15.0 km/h
         float rainFactor = weather.isRaining() ? (1.0f + weather.getRainfall() / 15.0f) : 1.0f; // Rain runoff wash-off
-
         float decayMultiplier = tempFactor * humFactor * windFactor * rainFactor;
+        decayMultiplier = Math.max(0.1f, Math.min(20.0f, decayMultiplier));
 
         // Apply decay multiplier to pheromone grid tick logic
         grid.setEvaporationMultiplier(decayMultiplier);

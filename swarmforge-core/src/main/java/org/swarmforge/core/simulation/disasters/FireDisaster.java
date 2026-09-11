@@ -81,10 +81,11 @@ public class FireDisaster implements DisasterEvent {
     public void trigger(Simulation simulation, Terrarium terrarium) {
         System.out.println("🔥 DISASTER TRIGGER: " + getName() + " (" + getSeverity() + " | Durée: " + durationTicks + " pas)!");
 
-        Random rand = new Random();
+        java.util.Random rand = java.util.concurrent.ThreadLocalRandom.current();
         if (centerX < 0 && terrarium != null) centerX = rand.nextInt(terrarium.getWidth());
         if (centerY < 0 && terrarium != null) centerY = rand.nextInt(terrarium.getHeight());
-        if (centerZ < 0 && terrarium != null) centerZ = terrarium.getDepth() - 5;
+        if (centerZ < 0 && terrarium != null) centerZ = (int) terrarium.getSurfaceElevation(centerX, centerY);
+        else if (centerZ < 0) centerZ = 0;
 
         this.remainingTicks = durationTicks;
         tick(simulation, terrarium);
@@ -95,7 +96,7 @@ public class FireDisaster implements DisasterEvent {
         if (remainingTicks <= 0) return;
         remainingTicks--;
 
-        Random rand = new Random();
+        java.util.Random rand = java.util.concurrent.ThreadLocalRandom.current();
         float progress = 1.0f - ((float) remainingTicks / (float) durationTicks);
         int currentRadius = Math.max(2, (int) (spreadRadius * Math.min(1.0f, progress * 1.3f)));
 
@@ -108,7 +109,7 @@ public class FireDisaster implements DisasterEvent {
                     int x = centerX + dx;
                     int y = centerY + dy;
 
-                    if (!terrarium.inBounds(x, y, centerZ)) continue;
+                    if (!terrarium.inBounds(x, y, 0)) continue;
 
                     float dist = (float) Math.sqrt(dx * dx + dy * dy);
                     if (dist > currentRadius) continue;
@@ -116,7 +117,7 @@ public class FireDisaster implements DisasterEvent {
                     float burnChance = intensity * (1f - dist / currentRadius) * 0.3f;
                     if (rand.nextFloat() > burnChance) continue;
 
-                    for (int z = centerZ; z < Math.min(terrarium.getDepth(), centerZ + 5); z++) {
+                    for (int z = 0; z < Math.min(terrarium.getDepth(), 2); z++) {
                         TerrariumCell cell = terrarium.getCell(x, y, z);
                         if (cell.material() == TerrariumCell.Material.ORGANIC) {
                             terrarium.setCell(new TerrariumCell(
@@ -149,8 +150,8 @@ public class FireDisaster implements DisasterEvent {
             for (Colony colony : simulation.getColonies()) {
                 List<Individual> ants = colony.getLivingIndividuals();
                 for (Individual ant : ants) {
-                    if (ant.getZ() < centerZ - 2) {
-                        continue; // Underground ants are shielded from surface wildfire
+                    if (ant.getZ() > 2.0f) {
+                        continue; // Underground ants (Z > 2) are shielded from surface wildfire
                     }
                     float dx = ant.getX() - centerX;
                     float dy = ant.getY() - centerY;

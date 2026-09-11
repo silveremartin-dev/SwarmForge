@@ -187,11 +187,22 @@ public class RestApiServer {
                 return;
             }
 
-            // Read body
-            String body;
-            try (var reader = new BufferedReader(new InputStreamReader(exchange.getRequestBody()))) {
-                body = reader.lines().reduce("", String::concat);
+            // Read body with 64KB maximum limit to protect against DoS memory exhaustion
+            StringBuilder sb = new StringBuilder();
+            int totalBytes = 0;
+            char[] buffer = new char[4096];
+            try (var reader = new BufferedReader(new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8))) {
+                int read;
+                while ((read = reader.read(buffer)) != -1) {
+                    totalBytes += read;
+                    if (totalBytes > 65536) {
+                        sendError(exchange, 413, "Payload Too Large (max 64KB)");
+                        return;
+                    }
+                    sb.append(buffer, 0, read);
+                }
             }
+            String body = sb.toString();
 
             @SuppressWarnings("unchecked")
             Map<String, Object> request = MAPPER.readValue(body, Map.class);

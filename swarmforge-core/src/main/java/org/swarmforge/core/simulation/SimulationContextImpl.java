@@ -215,23 +215,34 @@ public class SimulationContextImpl implements SimulationContext {
 
     @Override
     public float getRelativeHumidity(float x, float y, float z) {
-        // High subterranean humidity (~85%), lower ambient surface humidity (~55%)
-        if (z < 0) return 85.0f;
-        return isRaining() ? 95.0f : 55.0f;
+        float surfaceZ = simulation.getTerrarium() != null ? simulation.getTerrarium().getSurfaceElevation(x, y) : 16.0f;
+        if (z < surfaceZ && simulation.getSoilHydricCoupling() != null) {
+            int depthCells = Math.max(0, (int) (surfaceZ - z));
+            return simulation.getSoilHydricCoupling().getMoistureAtDepth(depthCells);
+        }
+        return simulation.getWeather() != null ? simulation.getWeather().getHumidity() : (isRaining() ? 95.0f : 55.0f);
     }
 
     @Override
     public float getCo2Ppm(float x, float y, float z) {
-        // Underground respiration accumulation (baseline 400 ppm, elevated underground)
-        if (z < 0) {
-            return 400.0f + Math.abs(z) * 150.0f;
+        if (simulation.getTerrarium() != null) {
+            int ix = Math.max(0, Math.min(simulation.getTerrarium().getWidth() - 1, Math.round(x)));
+            int iy = Math.max(0, Math.min(simulation.getTerrarium().getHeight() - 1, Math.round(y)));
+            int iz = Math.max(0, Math.min(simulation.getTerrarium().getDepth() - 1, Math.round(z)));
+            org.swarmforge.core.domain.TerrariumCell cell = simulation.getTerrarium().getCell(ix, iy, iz);
+            if (cell != null) {
+                return cell.co2();
+            }
         }
         return 400.0f;
     }
 
     @Override
     public float getGeomagneticHeading(float x, float y, float z) {
-        // Earth magnetic field inclination gradient (approx 45 degrees north)
+        if (simulation.getWeather() != null) {
+            double lat = simulation.getWeather().getLatitude();
+            return (float) Math.toDegrees(Math.atan(2.0 * Math.tan(Math.toRadians(lat))));
+        }
         return 45.0f;
     }
 

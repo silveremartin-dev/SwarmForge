@@ -140,7 +140,7 @@ public class Simulation {
         this.nestMicroclimateSystem = new NestMicroclimateSystem(this);
         this.vegetationSystem = new org.swarmforge.core.world.VegetationSystem(
                 terrarium != null ? terrarium.getWidth() : 100,
-                terrarium != null ? terrarium.getDepth() : 100);
+                terrarium != null ? terrarium.getHeight() : 100);
 
         this.dayNightCycle = new org.swarmforge.core.world.DayNightCycle();
         this.ecsWorldManager = new org.swarmforge.core.ecs.EcsWorldManager(this.pheromoneGrid);
@@ -207,7 +207,7 @@ public class Simulation {
     public void seedInitialEnvironmentResources() {
         if (terrarium == null) return;
         int width = (int) terrarium.getWidth();
-        int depth = (int) terrarium.getDepth();
+        int height = (int) terrarium.getHeight();
         int totalPopulation = colonies.stream().mapToInt(Colony::getPopulation).sum();
         int foodClusters = Math.max(8, totalPopulation / 20);
 
@@ -229,7 +229,7 @@ public class Simulation {
 
             for (int i = 0; i < foodClusters; i++) {
                 float fx = 5.0f + rng.nextFloat() * Math.max(1.0f, width - 10.0f);
-                float fy = 5.0f + rng.nextFloat() * Math.max(1.0f, depth - 10.0f);
+                float fy = 5.0f + rng.nextFloat() * Math.max(1.0f, height - 10.0f);
                 org.swarmforge.core.domain.ResourceType rType = types[i % types.length];
                 float qty = 300.0f + rng.nextFloat() * 700.0f;
                 foodSources.add(new org.swarmforge.core.domain.FoodSource(fx, fy, 0.0f, qty, rType));
@@ -238,10 +238,10 @@ public class Simulation {
 
         if (predatorManager != null && predatorManager.getPredatorCount() == 0) {
             // Seed initial accessory prey / predator species in the environment
-            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.CATERPILLAR, width * 0.35f, depth * 0.35f, 0.0f);
-            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.BEETLE, width * 0.65f, depth * 0.40f, 0.0f);
-            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.SPIDER, width * 0.50f, depth * 0.70f, 0.0f);
-            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.LADYBUG_LARVA, width * 0.25f, depth * 0.60f, 0.0f);
+            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.CATERPILLAR, width * 0.35f, height * 0.35f, 0.0f);
+            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.BEETLE, width * 0.65f, height * 0.40f, 0.0f);
+            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.SPIDER, width * 0.50f, height * 0.70f, 0.0f);
+            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.LADYBUG_LARVA, width * 0.25f, height * 0.60f, 0.0f);
         }
     }
 
@@ -397,6 +397,14 @@ public class Simulation {
         return waterGrid;
     }
 
+    public SoilStructureSystem getSoilStructureSystem() {
+        return soilStructureSystem;
+    }
+
+    public PheromoneClimateSystem getPheromoneClimateSystem() {
+        return pheromoneClimateSystem;
+    }
+
     public void stop() {
         if (state.compareAndSet(State.RUNNING, State.STOPPED) || state.compareAndSet(State.PAUSED, State.STOPPED)) {
             if (simulationThread != null) {
@@ -523,8 +531,10 @@ public class Simulation {
                     individual.tick(simulationStepSeconds);
 
                     // Ensure brood remains strictly subterranean inside the nest
-                    if (individual.getZ() >= 0) {
-                        individual.setZ(Math.min(-0.8f, colony.getNestZ() < 0 ? colony.getNestZ() : -1.5f));
+                    float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(individual.getX(), individual.getY()) : 16.0f;
+                    if (individual.getZ() >= surfaceZ) {
+                        float chamberDepth = Math.max(1.0f, colony.getDynamicQueenChamberDepth() * 0.5f);
+                        individual.setZ(Math.max(1.0f, surfaceZ - chamberDepth));
                     }
                     if (individual.isAlive()) {
                         livingIndividuals.add(individual);
@@ -573,12 +583,12 @@ public class Simulation {
                         typeToDeposit = org.swarmforge.core.domain.PheromoneType.HOME_TRAIL;
                     }
 
-                    int depZ = (int) individual.getZ();
-                    int mortonZ = depZ >= 0 ? depZ : (32 + depZ);
+                    int maxDepth = terrarium != null ? terrarium.getDepth() - 1 : 63;
+                    int depZ = Math.max(0, Math.min(maxDepth, (int) individual.getZ()));
                     pheromoneGrid.deposit(
                             (int) individual.getX(),
                             (int) individual.getY(),
-                            mortonZ,
+                            depZ,
                             typeToDeposit.getIndex(),
                             1.0f
                     );
@@ -780,7 +790,12 @@ public class Simulation {
             soilHydricCoupling.tick(rain, snow, sTemp, wind, simulationStepSeconds / 3600.0f);
         }
         if (waterTable != null && weather != null) {
-            waterTable.tick(weather.getRainfall(), weather.isRaining() ? 0.0f : 0.5f);
+            float evap = (weather.isRaining() ? 0.0f : 0.2f);
+            if (vegetationSystem != null) {
+                float solarIrr = (dayNightCycle != null) ? dayNightCycle.getLightLevel() : 0.8f;
+                evap += vegetationSystem.calculateRootEvapotranspiration(solarIrr);
+            }
+            waterTable.tick(weather.getRainfall(), evap);
         }
 
         if (weather != null && ecsWorldManager != null) {

@@ -199,7 +199,8 @@ public class Predator {
 
         float dx = ant.getX() - trapX;
         float dy = ant.getY() - trapY;
-        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+        float dz = ant.getZ() - trapZ;
+        float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
 
         java.util.Random rng = (ant != null && ant.getRandom() != null) ? ant.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
         return dist <= trapRadius && rng.nextFloat() < type.getTrapChance();
