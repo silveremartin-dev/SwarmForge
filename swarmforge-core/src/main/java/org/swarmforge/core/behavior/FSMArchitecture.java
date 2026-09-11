@@ -292,7 +292,12 @@ public class FSMArchitecture implements ReasoningArchitecture {
 
     private Action handleBiostructureLocked(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
         if (agent instanceof Individual ind && ind.getSpecies() != null && ind.getSpecies().canPerformBiostructures()) {
-            ind.setEnergy(Math.max(0.0f, ind.getEnergy() - 0.01f));
+            ind.setEnergy(Math.max(0.0f, ind.getEnergy() - 0.005f));
+            float waterLevel = ctx != null ? ctx.getWaterLevel(agent.getX(), agent.getY(), agent.getZ()) : 0.0f;
+            if (waterLevel > 0.3f) {
+                // Living raft flotation buoyancy: maintain floating surface position
+                ind.setPosition(ind.getX(), ind.getY(), Math.max(0.0f, ind.getZ() + 0.2f));
+            }
             return Action.rest();
         }
         transitionTo(State.IDLE);
@@ -378,18 +383,21 @@ public class FSMArchitecture implements ReasoningArchitecture {
         // Move toward home
         float dx = agent.getHomeX() - agent.getX();
         float dy = agent.getHomeY() - agent.getY();
-        float len = (float) Math.sqrt(dx * dx + dy * dy);
-        if (len > 0) {
+        float dz = agent.getHomeZ() - agent.getZ();
+        float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (len > 0.001f) {
             dx /= len;
             dy /= len;
+            dz /= len;
         }
-        return Action.move(dx, dy, 0);
+        return Action.move(dx, dy, dz);
     }
 
     private boolean isNearHome(AgentView agent) {
         if (agent.isAtNest()) return true;
         float dx = agent.getHomeX() - agent.getX();
         float dy = agent.getHomeY() - agent.getY();
-        return (dx * dx + dy * dy) < 9; // Within 3 units
+        float dz = agent.getHomeZ() - agent.getZ();
+        return (dx * dx + dy * dy + dz * dz) < 9.0f; // Within 3 units in 3D Euclidean space
     }
 }

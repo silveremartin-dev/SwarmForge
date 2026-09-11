@@ -60,7 +60,9 @@ public class NestMicroclimateSystem {
 
                 // Stack effect / thermal buoyancy ventilation formula:
                 // v_draft = sqrt(g * h * |T_nest - T_ext| / T_ext_K) + 0.12 * v_wind
-                float chimneyHeightM = Math.max(0.2f, Math.abs(nestZ) * 0.1f);
+                float surfaceZ = terrarium.getSurfaceElevation((float) nestX, (float) nestY);
+                float depthM = Math.max(0.2f, (surfaceZ - nestZ) * 0.1f);
+                float chimneyHeightM = Math.max(0.2f, depthM);
                 float deltaT = Math.abs(nestTemp - externalTemp);
                 float extKelvin = Math.max(240.0f, externalTemp + 273.15f);
                 float buoyancyVelocity = (float) Math.sqrt(Math.max(0.0f, (9.81f * chimneyHeightM * deltaT) / extKelvin));

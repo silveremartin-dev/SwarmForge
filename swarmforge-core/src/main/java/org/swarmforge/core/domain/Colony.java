@@ -836,6 +836,9 @@ public class Colony implements java.io.Serializable {
 
     public void addIndividual(Individual individual) {
         if (individual == null || individuals.contains(individual)) return;
+        if (individual.getSpecies() == null && this.species != null) {
+            individual.setSpecies(this.species);
+        }
         individuals.add(individual);
         totalBorn++;
         for (ColonyListener l : listeners) {
@@ -856,6 +859,13 @@ public class Colony implements java.io.Serializable {
             toAdd = batch.stream().filter(ind -> ind != null && !existing.contains(ind)).toList();
         }
         if (toAdd.isEmpty()) return;
+        if (this.species != null) {
+            toAdd.forEach(ind -> {
+                if (ind.getSpecies() == null) {
+                    ind.setSpecies(this.species);
+                }
+            });
+        }
         individuals.addAll(toAdd);
         totalBorn += toAdd.size();
     }

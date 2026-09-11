@@ -27,7 +27,7 @@ public class NursingBehavior implements BehaviorStrategy {
         if (!ind.isAlive())
             return;
 
-        // If carrying food for brood
+        // 1. If carrying food for brood
         if (ind.getCarriedItem() == Individual.CarriedItem.FOOD) {
             if (ctx.atNest()) {
                 // Feed larvae (food transferred to brood)
@@ -36,15 +36,40 @@ public class NursingBehavior implements BehaviorStrategy {
             } else {
                 moveTowardsNest(ind, colony);
             }
-        } else {
-            // Not carrying food
+        } 
+        // 2. If carrying brood during thermal shuttling
+        else if (ind.getCarriedItem() == Individual.CarriedItem.BROOD) {
+            float optimalZ = colony != null ? colony.getDynamicQueenChamberDepth() : -2.0f;
+            float currentZ = ind.getZ();
+            if (Math.abs(currentZ - optimalZ) < 0.5f) {
+                // Deposited brood in thermally regulated chamber
+                ind.setCarriedItem(Individual.CarriedItem.NONE);
+                ind.setState(Individual.AiState.TEND_BROOD);
+            } else {
+                // Move towards optimal chamber depth
+                float stepZ = (optimalZ > currentZ) ? 0.2f : -0.2f;
+                ind.setPosition(ind.getX(), ind.getY(), ind.getZ() + stepZ);
+            }
+        } 
+        else {
+            // Not carrying anything
             if (!ctx.atNest()) {
                 // Move back to brood chamber in nest
                 moveTowardsNest(ind, colony);
             } else {
-                // At nest: either seek food from storage or tend brood directly
-                if (random.nextFloat() < 0.1f && colony.getFoodStored() > 0) {
-                    colony.setFoodStored(Math.max(0.0f, colony.getFoodStored() - 0.5f));
+                // At nest: check thermal gradient for brood shuttling needs
+                float ambientTemp = ind.getAmbientTemperatureC();
+                if (ambientTemp < 20.0f || ambientTemp > 31.0f) {
+                    // Temperature stress: initiate brood translocation to deeper buffered chamber
+                    if (random.nextFloat() < 0.2f) {
+                        ind.setCarriedItem(Individual.CarriedItem.BROOD);
+                    }
+                } else if (random.nextFloat() < 0.1f && (colony.getFoodStored() > 0 || colony.getProteinStored() > 0)) {
+                    if (colony.getProteinStored() > 0.5f) {
+                        colony.setProteinStored(colony.getProteinStored() - 0.5f);
+                    } else {
+                        colony.setFoodStored(Math.max(0.0f, colony.getFoodStored() - 0.5f));
+                    }
                     ind.setCarriedItem(Individual.CarriedItem.FOOD);
                 } else {
                     // Tend brood with micro-movements

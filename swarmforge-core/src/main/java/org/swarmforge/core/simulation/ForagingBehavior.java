@@ -25,8 +25,6 @@ public class ForagingBehavior implements BehaviorStrategy {
     private static final float PHEROMONE_DEPOSIT = 0.5f;
     private static final float MOVE_SPEED = 0.5f;
 
-    private final Random random = new Random();
-
     @Override
     public void execute(Individual ind, Terrarium terrarium, Colony colony, BehaviorContext ctx) {
         if (!ind.isAlive())
@@ -91,15 +89,18 @@ public class ForagingBehavior implements BehaviorStrategy {
     }
 
     private void explore(Individual ind) {
-        if (random.nextFloat() < RANDOM_TURN_CHANCE) {
-            ind.setHeading(ind.getHeading() + (random.nextFloat() - 0.5f) * 0.5f);
+        var rand = java.util.concurrent.ThreadLocalRandom.current();
+        if (rand.nextFloat() < RANDOM_TURN_CHANCE) {
+            ind.setHeading(ind.getHeading() + (rand.nextFloat() - 0.5f) * 0.5f);
         }
     }
 
     private void depositPheromone(Terrarium terrarium, Individual ind, int pheromoneType) {
+        if (terrarium == null) return;
         int x = (int) ind.getX();
         int y = (int) ind.getY();
         int z = (int) ind.getZ();
+        if (!terrarium.inBounds(x, y, z)) return;
 
         TerrariumCell current = terrarium.getCell(x, y, z);
         float[] newPheromones = current.pheromones().clone();

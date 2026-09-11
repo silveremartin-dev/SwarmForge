@@ -348,6 +348,22 @@ public class EthologyEcsSystem extends IteratingSystem {
             }
         }
 
+        // 24b. Dulosis & Slave-Making Raid (Polyergus / Formica sanguinea pupal capture)
+        if (eth.has2(EthologyComponent.W2_DULOSIS_RAID) && doSpatialSample() && !eth.carryingBuildingMaterial) {
+            List<Integer> nearby = queryNearby(pos);
+            for (int targetId : nearby) {
+                if (targetId != entityId && mMetabolism != null && mMetabolism.has(targetId)) {
+                    MetabolismComponent targetMeta = mMetabolism.get(targetId);
+                    if (targetMeta.alive && targetMeta.energy < 30.0f) {
+                        eth.carryingBuildingMaterial = true; // Captures allospecific host pupa
+                        targetMeta.energy = 0.0f; // Pupal capture
+                        meta.energy = Math.min(100f, meta.energy + 5.0f);
+                        break;
+                    }
+                }
+            }
+        }
+
         // 25. Termite soldier head-banging acoustic synchrony alarm
         if (eth.has3(EthologyComponent.W3_TERMITE_SOLDIER_ALARM_DRUM_SYNCHRONY) && doSpatialSample()) {
             int nearbyCount = queryNearby(pos).size();
@@ -428,11 +444,31 @@ public class EthologyEcsSystem extends IteratingSystem {
 
     private void propagateStridulationRescue(int entityId, PositionComponent pos, EthologyComponent eth) {
         List<Integer> nearby = queryNearby(pos);
+        float baseFrequency = eth.stridulationFrequencyHz > 0 ? eth.stridulationFrequencyHz : 850.0f; // Hz
+        float attenuationCoeff = 0.04f; // Rayleigh seismic attenuation in granular porous soil
+
         for (int neighborId : nearby) {
             if (neighborId == entityId) continue;
-            EthologyComponent neighborEth = mEthology.get(neighborId);
-            if (neighborEth != null && neighborEth.has1(EthologyComponent.W1_GRAVEL_PLUGGING)) {
-                neighborEth.carryingBuildingMaterial = true; // trigger rescue excavation
+            if (mPosition != null && mPosition.has(neighborId)) {
+                PositionComponent neighborPos = mPosition.get(neighborId);
+                float dx = pos.x - neighborPos.x;
+                float dy = pos.y - neighborPos.y;
+                float dz = pos.z - neighborPos.z;
+                float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                // Seismic wave amplitude decay: A(r) = A0 * exp(-alpha * r) / max(0.2, r)
+                float amplitude = (float) (Math.exp(-attenuationCoeff * dist) / Math.max(0.2f, dist));
+                if (amplitude > 0.15f) { // Sensory auditory / subgenual organ reception threshold
+                    EthologyComponent neighborEth = mEthology != null ? mEthology.get(neighborId) : null;
+                    if (neighborEth != null) {
+                        neighborEth.carryingBuildingMaterial = true; // Trigger emergency rescue excavation
+                    }
+                    if (mVelocity != null && mVelocity.has(neighborId) && dist > 0.1f) {
+                        VelocityComponent vel = mVelocity.get(neighborId);
+                        vel.dx = (dx / dist) * 0.8f; // Orient towards seismic epicenter
+                        vel.dy = (dy / dist) * 0.8f;
+                    }
+                }
             }
         }
     }

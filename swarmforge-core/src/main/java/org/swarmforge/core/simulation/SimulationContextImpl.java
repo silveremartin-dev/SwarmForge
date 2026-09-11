@@ -84,7 +84,8 @@ public class SimulationContextImpl implements SimulationContext {
             if (isEnemy(agentColony, agent, neighbor)) {
                 float dx = neighbor.getX() - agent.getX();
                 float dy = neighbor.getY() - agent.getY();
-                float distSq = dx * dx + dy * dy;
+                float dz = neighbor.getZ() - agent.getZ();
+                float distSq = dx * dx + dy * dy + dz * dz;
                 if (distSq < minDistSq) {
                     minDistSq = distSq;
                     nearest = neighbor;
@@ -119,7 +120,8 @@ public class SimulationContextImpl implements SimulationContext {
         for (FoodSource f : foods) {
             float dx = f.getX() - agent.getX();
             float dy = f.getY() - agent.getY();
-            float distSq = dx * dx + dy * dy;
+            float dz = f.getZ() - agent.getZ();
+            float distSq = dx * dx + dy * dy + dz * dz;
             if (distSq < minDistSq) {
                 minDistSq = distSq;
                 nearest = f;
@@ -161,7 +163,8 @@ public class SimulationContextImpl implements SimulationContext {
             if (types.contains(f.getType())) {
                 float dx = f.getX() - agent.getX();
                 float dy = f.getY() - agent.getY();
-                float distSq = dx * dx + dy * dy;
+                float dz = f.getZ() - agent.getZ();
+                float distSq = dx * dx + dy * dy + dz * dz;
                 if (distSq < minDistSq) {
                     minDistSq = distSq;
                     nearest = f;

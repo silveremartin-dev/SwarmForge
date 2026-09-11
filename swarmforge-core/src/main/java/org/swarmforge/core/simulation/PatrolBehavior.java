@@ -22,7 +22,6 @@ public class PatrolBehavior implements BehaviorStrategy {
 
     private static final float PATROL_RADIUS = 10f;
     private static final float TURN_RATE = 0.1f;
-    private final Random random = new Random();
 
     @Override
     public void execute(Individual ind, Terrarium terrarium, Colony colony, BehaviorContext ctx) {
@@ -52,7 +51,7 @@ public class PatrolBehavior implements BehaviorStrategy {
 
     private void rushToAlarm(Individual ind, BehaviorContext ctx) {
         // Turn towards alarm source (simplified)
-        ind.setHeading(ind.getHeading() + (random.nextFloat() - 0.5f) * 0.5f);
+        ind.setHeading(ind.getHeading() + (java.util.concurrent.ThreadLocalRandom.current().nextFloat() - 0.5f) * 0.5f);
         ind.move(0.8f); // Move fast
     }
 
