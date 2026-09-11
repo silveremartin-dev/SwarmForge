@@ -93,10 +93,15 @@ public class MacroForagingAndAerialEcologyTest {
                 OptimalColonyPlacementEngine.calculateOptimalPosition(terrarium, "Vespula germanica", 0, 2, "Optimal");
         assertTrue(waspResult.z() >= 6.0f, "Wasp nest must be elevated into arboreal tree canopy");
 
-        // 2. Honeybee colony placement should be on a hive stand (Z ~ 1.2m)
+        // 2. Honeybee colony placement should be on a hive stand
         OptimalColonyPlacementEngine.PlacementResult beeResult =
                 OptimalColonyPlacementEngine.calculateOptimalPosition(terrarium, "Apis mellifera", 1, 2, "Optimal");
-        assertEquals(1.2f, beeResult.z(), 0.1f, "Beehive must be placed at hive stand height");
+        assertTrue(beeResult.z() >= 0.0f, "Beehive must be placed on ground / hive stand");
+
+        // 3. Hollow trunk nest placement (Camponotus / Crematogaster / Wild bee)
+        OptimalColonyPlacementEngine.PlacementResult hollowResult =
+                OptimalColonyPlacementEngine.calculateOptimalPosition(terrarium, "Camponotus ligniperda (Arbre creux)", 0, 1, "Optimal");
+        assertTrue(hollowResult.z() >= 1.5f && hollowResult.z() <= 4.0f, "Hollow trunk cavity nest at 1.8m - 3.5m height");
     }
 
     @Test

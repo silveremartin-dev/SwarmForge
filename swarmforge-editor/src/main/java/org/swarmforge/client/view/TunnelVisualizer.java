@@ -92,23 +92,31 @@ public class TunnelVisualizer {
 
     private Geometry createNodeGeometry(TunnelNode node) {
         float mmPerWorldUnit = (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
-        // Queen chamber ~80mm radius, Brood chamber ~50mm radius, Entrance ~35mm, Fungus ~70mm, Hibernation ~60mm
+        // Biological chamber sizes (Queen: ~60-80mm, Brood: ~40-50mm, Entrance: ~30-35mm)
         float radiusMm = switch (node.type()) {
-            case QUEEN_CHAMBER -> 80.0f;
-            case FUNGUS_GARDEN -> 70.0f;
-            case HIBERNATION -> 60.0f;
-            case BROOD_CHAMBER, FOOD_STORAGE -> 50.0f;
-            case ENTRANCE -> 35.0f;
-            default -> 25.0f;
+            case QUEEN_CHAMBER -> 65.0f;
+            case FUNGUS_GARDEN -> 55.0f;
+            case HIBERNATION -> 50.0f;
+            case BROOD_CHAMBER, FOOD_STORAGE -> 40.0f;
+            case ENTRANCE -> 30.0f;
+            default -> 20.0f;
         };
-        float radius3D = Math.max(0.15f, (radiusMm / mmPerWorldUnit) * 3.5f);
+
+        // If node has explicit dimensions from lenticular model
+        float baseRadius3D = (node.radius() > 0 && node.radius() < 5.0f)
+                ? node.radius() * 0.45f
+                : (radiusMm / mmPerWorldUnit) * 1.3f;
+        float radius3D = Math.max(0.12f, baseRadius3D);
 
         Sphere shape = new Sphere(8, 8, radius3D);
         Geometry geom = new Geometry("Node_" + node.id(), shape);
         geom.setLocalTranslation(node.x(), node.z(), node.y());
 
-        Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        mat.setColor("Color", getNodeColor(node.type()));
+        Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        mat.setBoolean("UseMaterialColors", true);
+        ColorRGBA col = getNodeColor(node.type());
+        mat.setColor("Diffuse", col);
+        mat.setColor("Ambient", col.mult(0.6f));
         geom.setMaterial(mat);
 
         return geom;
@@ -127,8 +135,8 @@ public class TunnelVisualizer {
         float len = diff.length();
 
         float mmPerWorldUnit = (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
-        float galleryRadiusMm = customGalleryDiameterMm > 0 ? customGalleryDiameterMm / 2.0f : 12.0f;
-        float galleryRadius3D = Math.max(0.08f, (galleryRadiusMm / mmPerWorldUnit) * 3.5f);
+        float galleryRadiusMm = customGalleryDiameterMm > 0 ? customGalleryDiameterMm / 2.0f : 10.0f;
+        float galleryRadius3D = Math.max(0.04f, (galleryRadiusMm / mmPerWorldUnit) * 1.25f);
 
         // Cylinder aligned Z
         Cylinder shape = new Cylinder(4, 8, galleryRadius3D, len, true);
@@ -140,8 +148,11 @@ public class TunnelVisualizer {
         // Rotate to match direction
         geom.lookAt(p2, Vector3f.UNIT_Y);
 
-        Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        mat.setColor("Color", ColorRGBA.Brown);
+        Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        mat.setBoolean("UseMaterialColors", true);
+        ColorRGBA col = new ColorRGBA(0.48f, 0.32f, 0.20f, 1.0f);
+        mat.setColor("Diffuse", col);
+        mat.setColor("Ambient", col.mult(0.5f));
         geom.setMaterial(mat);
 
         return geom;

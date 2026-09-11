@@ -103,14 +103,16 @@ public class HeatmapEngine {
     private static void fillChamberSpecialization(List<Colony> colonies, int width, int height, int zSlice, float[][] map) {
         if (colonies == null) return;
         for (Colony col : colonies) {
-            if (col.getNest() != null && col.getNest().getChambers() != null) {
+            boolean hasChambers = false;
+            if (col.getNest() != null && col.getNest().getChambers() != null && !col.getNest().getChambers().isEmpty()) {
                 for (Chamber chamber : col.getNest().getChambers()) {
+                    hasChambers = true;
                     int cx = (int) Math.floor(chamber.getX());
                     int cy = (int) Math.floor(chamber.getY());
                     int cz = (int) Math.floor(chamber.getZ());
                     int radius = Math.max(2, (int) Math.sqrt(chamber.getCapacity()));
 
-                    if (Math.abs(cz - zSlice) <= 2) {
+                    if (Math.abs(cz - zSlice) <= 6) {
                         float code = getChamberTypeCode(chamber.getType());
                         for (int x = Math.max(0, cx - radius); x <= Math.min(width - 1, cx + radius); x++) {
                             for (int y = Math.max(0, cy - radius); y <= Math.min(height - 1, cy + radius); y++) {
@@ -121,6 +123,13 @@ public class HeatmapEngine {
                             }
                         }
                     }
+                }
+            }
+            int nx = (int) Math.floor(col.getNestX());
+            int ny = (int) Math.floor(col.getNestY());
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height && map[nx][ny] == 0.0f) {
+                if (Math.abs(col.getNestZ() - zSlice) <= 6) {
+                    map[nx][ny] = 0.9f;
                 }
             }
         }

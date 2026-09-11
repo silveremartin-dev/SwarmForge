@@ -42,7 +42,9 @@ public class AntVisualizer {
             mat.setBoolean("UseMaterialColors", true);
             ColorRGBA color = getColor(caste);
             mat.setColor("Diffuse", color);
-            mat.setColor("Ambient", color);
+            mat.setColor("Ambient", color.mult(0.6f));
+            mat.setColor("Specular", new ColorRGBA(0.45f, 0.45f, 0.45f, 1.0f));
+            mat.setFloat("Shininess", 32f);
             matCache.put(caste, mat);
         }
     }
@@ -136,7 +138,9 @@ public class AntVisualizer {
         mat.setBoolean("UseMaterialColors", true);
         ColorRGBA color = getSpeciesColor(caste, species);
         mat.setColor("Diffuse", color);
-        mat.setColor("Ambient", color);
+        mat.setColor("Ambient", color.mult(0.6f));
+        mat.setColor("Specular", new ColorRGBA(0.40f, 0.40f, 0.40f, 1.0f));
+        mat.setFloat("Shininess", 28f);
         speciesMatCache.put(key, mat);
         return mat;
     }

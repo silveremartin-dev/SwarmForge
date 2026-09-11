@@ -85,7 +85,7 @@ class PredatorTest {
 
         spider.takeDamage(20f);
 
-        assertEquals(initialHealth - 20f, spider.getHealth());
+        assertEquals(initialHealth - (20f - spider.getBaseArmor()), spider.getHealth(), 0.001f);
         assertTrue(spider.isAlive());
     }
 

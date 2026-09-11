@@ -389,10 +389,25 @@ public class VegetationVisualizer {
         if (spatial instanceof Geometry geom) {
             Material mat = geom.getMaterial();
             if (mat != null && mat.getMaterialDef().getMaterialParam("Diffuse") != null) {
-                ColorRGBA seasonalColor = getSeasonFoliageColor(season, biome);
-                if (seasonalColor != null) {
-                    mat.setColor("Diffuse", seasonalColor);
-                    mat.setColor("Ambient", seasonalColor.mult(0.6f));
+                String name = geom.getName() != null ? geom.getName().toLowerCase() : "";
+                boolean isRockOrWood = name.contains("stone") || name.contains("rock") || name.contains("log")
+                        || name.contains("stump") || name.contains("trunk") || name.contains("branch")
+                        || name.contains("mushroom") || name.contains("cactus") || name.contains("bamboo");
+
+                if (!isRockOrWood) {
+                    ColorRGBA seasonalColor = getSeasonFoliageColor(season, biome);
+                    if (seasonalColor != null) {
+                        // If geometry has a diffuse texture map, apply light tint blend rather than overriding solid color
+                        if (mat.getMaterialDef().getMaterialParam("DiffuseMap") != null && mat.getParam("DiffuseMap") != null) {
+                            mat.setColor("Diffuse", ColorRGBA.White.mult(0.7f).add(seasonalColor.mult(0.3f)));
+                        } else {
+                            mat.setColor("Diffuse", seasonalColor);
+                        }
+                        mat.setColor("Ambient", ColorRGBA.White.mult(0.45f));
+                    }
+                } else {
+                    mat.setColor("Diffuse", ColorRGBA.White);
+                    mat.setColor("Ambient", new ColorRGBA(0.45f, 0.45f, 0.45f, 1.0f));
                 }
             }
         } else if (spatial instanceof Node node) {

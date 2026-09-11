@@ -49,29 +49,29 @@ public class NestPresetManager {
     private Map<String, Map<String, Object>> builtins() {
         Map<String, Map<String, Object>> m = new TreeMap<>();
 
-        // Ant presets - mapped to exact biological species models
-        m.put("Young Subterranean Burrow",                  make("Young Subterranean Burrow",                  "🐜 Black Garden Ant (Lasius niger)", 0, "ANT", "Lasius",             "BURROW_UNDERGROUND", "EARTH",             4.0, 10, 15, 2, 2, 1, 2,  1, 1, 0,  0));
-        m.put("Mature Subterranean Nest",         make("Mature Subterranean Nest",         "🐜 Dusky Wood Ant (Formica fusca)",   2, "ANT", "Formica",             "BURROW_UNDERGROUND", "EARTH",             5.0, 25, 20, 3, 3, 1, 5,  6, 3, 2,  0));
-        m.put("Solar Pine-Needle Mound",              make("Solar Pine-Needle Mound",              "🐜 Red Wood Ant (Formica rufa)",   2, "ANT", "Formica",             "SURFACE_MOUND",      "EARTH",             5.5, 20, 25, 3, 3, 1, 6,  8, 2, 2,  0));
-        m.put("Complex Supercolony Network",                 make("Complex Supercolony Network",                 "🐜 Argentine Ant (Linepithema humile)", 3, "ANT", "Linepithema",             "BURROW_UNDERGROUND", "EARTH",             4.5, 45, 50, 4, 5, 5,12, 15, 8, 5,  0));
-        m.put("Subterranean Fungus Vaults",     make("Subterranean Fungus Vaults",     "🐜 Leafcutter Ant (Atta sexdens)", 2, "ANT", "Atta",             "SUBTERRANEAN_FUNGI_VAULT", "EARTH",      7.0, 45, 35, 3, 4, 1, 4,  3, 3, 4, 12));
-        m.put("Arboreal Carton Nest",                 make("Arboreal Carton Nest",                 "🐜 Acrobat Ant (Crematogaster scutellaris)", 2, "ANT", "Crematogaster",          "CARTON_NEST",        "CARTON_PULP",       3.5, 15, 20, 2, 3, 1, 5,  6, 2, 2,  0));
-        m.put("Hollow Stem & Acorn Nest",             make("Hollow Stem & Acorn Nest",             "🐜 Acorn Ant (Temnothorax unifasciatus)", 1, "ANT", "Temnothorax",        "BAMBOO_STEM_NEST",   "WOOD_PULP_PAPER",   2.5,  8,  8, 1, 1, 1, 3,  2, 1, 1,  0));
-        m.put("Hollow Trunk Nest",                 make("Hollow Trunk Nest",                 "🐜 Carpenter Ant (Camponotus herculeanus)", 2, "ANT", "Camponotus",        "HOLLOW_TRUNK_NEST",  "TREE_TRUNK",       12.0, 10, 20, 3, 3, 1, 6,  8, 2, 2,  0));
-        m.put("Living Army Ant Bivouac",                        make("Living Army Ant Bivouac",                        "🐜 Army Ant (Eciton burchellii)",  2, "ANT", "Eciton",             "BIVOUAC_LIVING_NEST","LIVING_INSECT_BODIES", 8.0, 15, 25, 3, 3, 1, 8,  8, 2, 2,  0));
+        // Ant presets - mapped to exact biological species models with realistic depth scaling
+        m.put("Young Subterranean Burrow",                  make("Young Subterranean Burrow",                  "🐜 Black Garden Ant (Lasius niger)", 0, "ANT", "Lasius",             "BURROW_UNDERGROUND", "EARTH",             4.0,  5, 12, 2, 2, 1, 2,  1, 1, 0,  0));
+        m.put("Mature Subterranean Nest",         make("Mature Subterranean Nest",         "🐜 Dusky Wood Ant (Formica fusca)",   2, "ANT", "Formica",             "BURROW_UNDERGROUND", "EARTH",             5.0,  8, 16, 2, 3, 1, 5,  5, 3, 2,  0));
+        m.put("Solar Pine-Needle Mound",              make("Solar Pine-Needle Mound",              "🐜 Red Wood Ant (Formica rufa)",   2, "ANT", "Formica",             "SURFACE_MOUND",      "EARTH",             5.5,  7, 18, 2, 3, 1, 6,  6, 2, 2,  0));
+        m.put("Complex Supercolony Network",                 make("Complex Supercolony Network",                 "🐜 Argentine Ant (Linepithema humile)", 3, "ANT", "Linepithema",             "BURROW_UNDERGROUND", "EARTH",             4.5, 10, 24, 3, 4, 3, 8, 10, 5, 3,  0));
+        m.put("Subterranean Fungus Vaults",     make("Subterranean Fungus Vaults",     "🐜 Leafcutter Ant (Atta sexdens)", 2, "ANT", "Atta",             "SUBTERRANEAN_FUNGI_VAULT", "EARTH",      7.0, 10, 20, 2, 3, 1, 4,  3, 3, 4,  8));
+        m.put("Arboreal Carton Nest",                 make("Arboreal Carton Nest",                 "🐜 Acrobat Ant (Crematogaster scutellaris)", 2, "ANT", "Crematogaster",          "CARTON_NEST",        "CARTON_PULP",       3.5,  6, 14, 2, 3, 1, 4,  5, 2, 2,  0));
+        m.put("Hollow Stem & Acorn Nest",             make("Hollow Stem & Acorn Nest",             "🐜 Acorn Ant (Temnothorax unifasciatus)", 1, "ANT", "Temnothorax",        "BAMBOO_STEM_NEST",   "WOOD_PULP_PAPER",   2.5,  4,  6, 1, 1, 1, 2,  2, 1, 1,  0));
+        m.put("Hollow Trunk Nest",                 make("Hollow Trunk Nest",                 "🐜 Carpenter Ant (Camponotus herculeanus)", 2, "ANT", "Camponotus",        "HOLLOW_TRUNK_NEST",  "TREE_TRUNK",       12.0,  6, 16, 2, 3, 1, 5,  6, 2, 2,  0));
+        m.put("Living Army Ant Bivouac",                        make("Living Army Ant Bivouac",                        "🐜 Army Ant (Eciton burchellii)",  2, "ANT", "Eciton",             "BIVOUAC_LIVING_NEST","LIVING_INSECT_BODIES", 8.0,  5, 18, 2, 3, 1, 6,  6, 2, 2,  0));
 
         // Bee presets
-        m.put("Hexagonal Wax Comb Nest",           make("Hexagonal Wax Comb Nest",           "🐝 Honeybee (Apis mellifera)",         2, "BEE", "Apis",              "WAX_COMB_HEXAGONAL", "BEESWAX",          14.0, 15, 30, 2, 3, 1, 8, 12, 1, 0,  0));
-        m.put("Propolis & Wax Pots Cluster",               make("Propolis & Wax Pots Cluster",               "🐝 Buff-Tailed Bumblebee (Bombus terrestris)",   1, "BEE", "Bombus",           "WAX_POTS_CLUSTER",   "PROPOLIS",         16.0, 10, 18, 2, 2, 1, 4,  6, 1, 1,  0));
+        m.put("Hexagonal Wax Comb Nest",           make("Hexagonal Wax Comb Nest",           "🐝 Honeybee (Apis mellifera)",         2, "BEE", "Apis",              "WAX_COMB_HEXAGONAL", "BEESWAX",          14.0,  6, 20, 2, 3, 1, 6,  8, 1, 0,  0));
+        m.put("Propolis & Wax Pots Cluster",               make("Propolis & Wax Pots Cluster",               "🐝 Buff-Tailed Bumblebee (Bombus terrestris)",   1, "BEE", "Bombus",           "WAX_POTS_CLUSTER",   "PROPOLIS",         16.0,  5, 14, 2, 2, 1, 4,  5, 1, 1,  0));
 
         // Wasp presets
-        m.put("Hanging Paper Nest",                make("Hanging Paper Nest",                "🐝 Common Wasp (Vespula vulgaris)",        2, "WASP", "Vespula",    "PAPER_PEDUNCULATE",  "WOOD_PULP_PAPER",  13.0, 12, 24, 2, 3, 1, 6,  4, 2, 1,  0));
+        m.put("Hanging Paper Nest",                make("Hanging Paper Nest",                "🐝 Common Wasp (Vespula vulgaris)",        2, "WASP", "Vespula",    "PAPER_PEDUNCULATE",  "WOOD_PULP_PAPER",  13.0,  6, 16, 2, 3, 1, 5,  4, 2, 1,  0));
 
         // Termite presets
-        m.put("Cathedral Termite Mound",                 make("Cathedral Termite Mound",                 "🐜 Subterranean Termite (Reticulitermes flavipes)", 3, "TERMITE", "Reticulitermes",           "CATHEDRAL_MOUND", "STERCORAL_CEMENT", 6.0, 30, 40, 3, 4, 1,10,  8, 4, 5,  0));
+        m.put("Cathedral Termite Mound",                 make("Cathedral Termite Mound",                 "🐜 Subterranean Termite (Reticulitermes flavipes)", 3, "TERMITE", "Reticulitermes",           "CATHEDRAL_MOUND", "STERCORAL_CEMENT", 6.0,  8, 22, 2, 3, 1, 7,  6, 3, 4,  0));
 
         // Weaver ant presets
-        m.put("Arboreal Silk Weave Nest",                make("Arboreal Silk Weave Nest",                "🐜 Weaver Ant (Oecophylla smaragdina)", 2, "ANT", "Oecophylla",             "ARBOREAL_SILK_LEAF", "SILK_WEAVE",        6.0,  8, 16, 2, 2, 1, 5,  4, 2, 1,  0));
+        m.put("Arboreal Silk Weave Nest",                make("Arboreal Silk Weave Nest",                "🐜 Weaver Ant (Oecophylla smaragdina)", 2, "ANT", "Oecophylla",             "ARBOREAL_SILK_LEAF", "SILK_WEAVE",        6.0,  5, 12, 2, 2, 1, 4,  3, 2, 1,  0));
 
         return m;
     }

@@ -122,9 +122,15 @@ public class TunnelNetwork implements java.io.Serializable {
     public void setBedrockDepth(float depth) { this.bedrockDepth = Math.max(3.0f, depth); }
 
     public TunnelNetwork(Colony colony) {
-        float nx = colony != null ? colony.getNestX() : 40.0f;
-        float ny = colony != null ? colony.getNestY() : 40.0f;
+        float nx = colony != null ? colony.getNestX() : 32.0f;
+        float ny = colony != null ? colony.getNestY() : 32.0f;
         float nz = colony != null ? colony.getNestZ() : 0.0f;
+        if (nz <= 0.5f && colony != null && colony.getTerrarium() != null) {
+            nz = colony.getTerrarium().getSurfaceElevation(nx, ny);
+        }
+        if (nz <= 0.5f) {
+            nz = 10.0f;
+        }
 
         String nestType = (colony != null && colony.getSpecies() != null && colony.getSpecies().getNestType() != null)
                 ? colony.getSpecies().getNestType().toUpperCase()

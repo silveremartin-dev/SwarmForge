@@ -787,6 +787,206 @@ public class Individual implements java.io.Serializable, AgentView {
         return true;
     }
 
+    // ==========================================
+    // LOT H: Maçonnerie Végétale & Climatisation
+    // ==========================================
+    private boolean holdingSilkLarva = false;
+    private float silkReservoir = 100.0f;
+    private boolean rainSiphonConstructed = false;
+    private float drainedFloodWaterLiters = 0.0f;
+    private boolean dualConduitsActive = false;
+    private int antisepticGravelCarried = 0;
+    private int sealedContaminatedGalleries = 0;
+
+    public boolean isHoldingSilkLarva() { return holdingSilkLarva; }
+    public void setHoldingSilkLarva(boolean h) { this.holdingSilkLarva = h; }
+    public float getSilkReservoir() { return silkReservoir; }
+    public void refillSilkReservoir(float amt) { this.silkReservoir = Math.min(100.0f, this.silkReservoir + amt); }
+
+    public boolean weaveLeafSilkSeam(float silkCost) {
+        if (!holdingSilkLarva || silkReservoir < silkCost) return false;
+        silkReservoir -= silkCost;
+        return true;
+    }
+
+    public boolean isRainSiphonConstructed() { return rainSiphonConstructed; }
+    public void constructRainSiphon() { this.rainSiphonConstructed = true; }
+    public float getDrainedFloodWaterLiters() { return drainedFloodWaterLiters; }
+    public void drainFloodWater(float liters) { this.drainedFloodWaterLiters += Math.max(0.0f, liters); }
+
+    public boolean isDualConduitsActive() { return dualConduitsActive; }
+    public void setDualConduitsActive(boolean active) { this.dualConduitsActive = active; }
+    public float getSubterraneanMicroclimateTemp(float surfaceTempC) {
+        if (!dualConduitsActive) return surfaceTempC;
+        return 24.0f + (surfaceTempC - 24.0f) * 0.25f;
+    }
+
+    public int getAntisepticGravelCarried() { return antisepticGravelCarried; }
+    public void pickUpAntisepticGravel(int count) { this.antisepticGravelCarried += Math.max(0, count); }
+    public int getSealedContaminatedGalleries() { return sealedContaminatedGalleries; }
+    public boolean sealContaminatedGallery() {
+        if (antisepticGravelCarried < 3) return false;
+        antisepticGravelCarried -= 3;
+        sealedContaminatedGalleries++;
+        return true;
+    }
+
+    // ==========================================
+    // LOT I: Bio-Acoustique & Télégraphie Substratique
+    // ==========================================
+    private boolean drummingSubstrateAlarm = false;
+    private float drumFrequencyHz = 1000.0f;
+    private boolean guardShiftWhispering = false;
+    private boolean queenPiping = false;
+    private float pipingFrequencyHz = 450.0f;
+    private boolean eggLayingSyncStridulation = false;
+
+    public boolean isDrummingSubstrateAlarm() { return drummingSubstrateAlarm; }
+    public void triggerDrummingSubstrateAlarm() { this.drummingSubstrateAlarm = true; }
+    public void stopDrummingSubstrateAlarm() { this.drummingSubstrateAlarm = false; }
+    public float getDrumFrequencyHz() { return drumFrequencyHz; }
+    public float getSubstrateVibrationPropagationDistanceMeters() { return 8.5f; }
+
+    public boolean isGuardShiftWhispering() { return guardShiftWhispering; }
+    public void setGuardShiftWhispering(boolean w) { this.guardShiftWhispering = w; }
+    public boolean performGuardShiftWhisper(Individual replacementGuard) {
+        if (replacementGuard == null || !replacementGuard.isAlive()) return false;
+        this.guardShiftWhispering = true;
+        this.job = Job.IDLE;
+        replacementGuard.setJob(Job.GUARD);
+        return true;
+    }
+
+    public boolean isQueenPiping() { return queenPipingActive; }
+    public float getPipingFrequencyHz() { return queenPipingFrequencyHz; }
+
+    public boolean isEggLayingSyncStridulation() { return eggLayingSyncStridulation; }
+    public void triggerEggLayingSync() { this.eggLayingSyncStridulation = true; }
+    public float calculateSynchronizedFertilityMultiplier() { return eggLayingSyncStridulation ? 1.45f : 1.0f; }
+
+    // ==========================================
+    // LOT J: Écologie Chimique & Allélochimie
+    // ==========================================
+    private float territorialRepellentCarried = 100.0f;
+    private boolean fanoutEscapeActive = false;
+    private float plantCuticularCamouflagePercent = 0.0f;
+
+    public float getTerritorialRepellentCarried() { return territorialRepellentCarried; }
+    public boolean depositTerritorialRepellent(float amount) {
+        if (territorialRepellentCarried < amount) return false;
+        territorialRepellentCarried -= amount;
+        return true;
+    }
+
+    public boolean shouldRetreatFromTerritory(UUID markerColonyId) {
+        return (this.colonyId != null && !this.colonyId.equals(markerColonyId));
+    }
+
+    public boolean isFanoutEscapeActive() { return fanoutEscapeActive; }
+    public void setFanoutEscapeActive(boolean active) { this.fanoutEscapeActive = active; }
+    public void triggerFormicAcidFanoutEscape(float stimulusHeading, float dispersionAngle) {
+        this.fanoutEscapeActive = true;
+        float escapeHeading = (float) ((stimulusHeading + Math.PI + dispersionAngle) % (2.0 * Math.PI));
+        if (escapeHeading < 0) escapeHeading += (float) (2.0 * Math.PI);
+        this.heading = escapeHeading;
+        this.state = AiState.FLEEING;
+    }
+
+    public float calculatePheromoneHalfLifeSeconds(float soilTempC, float baseHalfLifeSeconds) {
+        double factor = (soilTempC - 20.0) / 10.0;
+        return (float) (baseHalfLifeSeconds * Math.pow(2.0, -factor));
+    }
+
+    public float getPlantCuticularCamouflagePercent() { return plantCuticularCamouflagePercent; }
+    public void rubAgainstHostBark(float durationSeconds) {
+        this.plantCuticularCamouflagePercent = Math.min(100.0f, this.plantCuticularCamouflagePercent + durationSeconds * 2.5f);
+    }
+
+    // ==========================================
+    // LOT K: Pharmacie & Gestion Spécialisée des Déchets
+    // ==========================================
+    private float sulfurDustCarried = 0.0f;
+    private float woodDustCarried = 0.0f;
+    private boolean participatingInParasiteQuarantine = false;
+    private boolean refuseSortingDuty = false;
+    private int sortedRefuseItems = 0;
+
+    public float getSulfurDustCarried() { return sulfurDustCarried; }
+    public void collectSulfurDust(float amt) { this.sulfurDustCarried = Math.min(50.0f, this.sulfurDustCarried + amt); }
+    public boolean dustParasiticMites() {
+        if (sulfurDustCarried < 2.0f) return false;
+        sulfurDustCarried -= 2.0f;
+        return true;
+    }
+
+    public float getWoodDustCarried() { return woodDustCarried; }
+    public void collectWoodDust(float amt) { this.woodDustCarried = Math.min(50.0f, this.woodDustCarried + amt); }
+    public boolean applyLarvalWoodDustDrying(Individual larva) {
+        if (woodDustCarried < 1.0f || larva == null) return false;
+        woodDustCarried -= 1.0f;
+        return true;
+    }
+
+    public boolean isParticipatingInParasiteQuarantine() { return participatingInParasiteQuarantine; }
+    public void joinParasiteQuarantineEncirclement() { this.participatingInParasiteQuarantine = true; }
+    public void leaveParasiteQuarantineEncirclement() { this.participatingInParasiteQuarantine = false; }
+
+    public boolean isRefuseSortingDuty() { return refuseSortingDuty; }
+    public void setRefuseSortingDuty(boolean duty) { this.refuseSortingDuty = duty; }
+    public int getSortedRefuseItems() { return sortedRefuseItems; }
+    public boolean depositSortedRefuseOutside() {
+        if (!refuseSortingDuty || this.carriedItem == CarriedItem.NONE) return false;
+        this.carriedItem = CarriedItem.NONE;
+        this.sortedRefuseItems++;
+        return true;
+    }
+
+    // ==========================================
+    // LOT L: Métabolisme de Crise & Régulation Sociale
+    // ==========================================
+    private boolean repletesHoneypot = false;
+    private float honeypotStorageGrams = 0.0f;
+    private float fermentedSapCombatBuffSeconds = 0.0f;
+    private float gutCellulolyticProtozoaTiter = 1.0f;
+
+    public boolean isRepletesHoneypot() { return repletesHoneypot; }
+    public void setRepletesHoneypot(boolean replete) { this.repletesHoneypot = replete; }
+    public float getHoneypotStorageGrams() { return honeypotStorageGrams; }
+    public float storeHoneypotNectar(float amount) {
+        if (!repletesHoneypot) return 0.0f;
+        float space = 0.35f - honeypotStorageGrams; // max 350mg
+        float stored = Math.min(space, amount);
+        this.honeypotStorageGrams += stored;
+        return stored;
+    }
+    public float dispenseHoneypotNectar(float amount) {
+        if (honeypotStorageGrams <= 0.0f) return 0.0f;
+        float dispensed = Math.min(honeypotStorageGrams, amount);
+        this.honeypotStorageGrams -= dispensed;
+        return dispensed;
+    }
+
+    public float getFermentedSapCombatBuffSeconds() { return fermentedSapCombatBuffSeconds; }
+    public void ingestFermentedSap(float amt) {
+        this.fermentedSapCombatBuffSeconds = Math.min(300.0f, this.fermentedSapCombatBuffSeconds + amt * 60.0f);
+    }
+    public boolean hasCombatAnestheticBuff() { return fermentedSapCombatBuffSeconds > 0.0f; }
+    public float getCombatPainResistanceMultiplier() {
+        return hasCombatAnestheticBuff() ? 2.2f : 1.0f;
+    }
+
+    public float getGutCellulolyticProtozoaTiter() { return gutCellulolyticProtozoaTiter; }
+    public void setGutCellulolyticProtozoaTiter(float titer) { this.gutCellulolyticProtozoaTiter = Math.max(0.0f, Math.min(1.0f, titer)); }
+    public boolean transferProctodealMicrobiome(Individual nymph) {
+        if (nymph == null || !nymph.isAlive() || this.gutCellulolyticProtozoaTiter < 0.3f) return false;
+        nymph.setGutCellulolyticProtozoaTiter(Math.min(1.0f, nymph.getGutCellulolyticProtozoaTiter() + 0.6f));
+        return true;
+    }
+
+    public boolean canDifferentiateNewSoldier(float currentSoldierRatio) {
+        return currentSoldierRatio < 0.15f;
+    }
+
     public boolean isClimbingTree() {
         return climbingTree;
     }
@@ -920,6 +1120,10 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     private CasteTemplate casteTemplate;
+
+    public Individual(UUID colonyId, Caste caste) {
+        this(colonyId, caste, 0f, 0f, 0f);
+    }
 
     public Individual(UUID colonyId, Caste caste, float x, float y, float z) {
         this(null, ANT_NUMBER_GENERATOR.getAndIncrement(), colonyId, caste, x, y, z);

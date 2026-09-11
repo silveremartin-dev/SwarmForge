@@ -82,24 +82,44 @@ public class Predator {
         this.health = maxHealth;
     }
 
-    private float getBaseHealth() {
+    public float getBaseHealth() {
         return switch (type) {
-            case SPIDER -> 50f;
+            case SPIDER -> 60f;
             case ANTLION -> 40f;
-            case BEETLE -> 60f;
-            case BIRD -> 80f;
-            case LIZARD -> 150f;
-            case WASP -> 40f;
+            case BEETLE -> 90f;
+            case BIRD -> 350f;
+            case LIZARD -> 250f;
+            case WASP -> 45f;
             case SYRPHID_LARVA -> 25f;
             case LADYBUG_LARVA -> 30f;
             case KLEPTOPARASITE_THRIPS -> 15f;
             case CATERPILLAR -> 45f;
-            case MYRMECOPHILE_BEETLE -> 35f;
-            case ASIAN_HORNET -> 50f;
-            case BEE_WOLF -> 35f;
+            case MYRMECOPHILE_BEETLE -> 50f;
+            case ASIAN_HORNET -> 75f;
+            case BEE_WOLF -> 55f;
             case VARROA_MITE -> 10f;
-            case HONEY_BUZZARD -> 120f;
+            case HONEY_BUZZARD -> 450f;
+            case MEGAPONERA_RAIDER -> 65f;
+            case AARDVARK_MOUND_BREAKER -> 800f;
+            case WOODPECKER -> 300f;
             default -> 30f;
+        };
+    }
+
+    public float getBaseArmor() {
+        return switch (type) {
+            case VARROA_MITE -> 1.0f;
+            case ANTLION -> 2.0f;
+            case SPIDER -> 1.5f;
+            case BEETLE, MYRMECOPHILE_BEETLE -> 5.0f;
+            case WASP -> 2.0f;
+            case ASIAN_HORNET -> 3.5f;
+            case BEE_WOLF -> 2.5f;
+            case MEGAPONERA_RAIDER -> 3.0f;
+            case LIZARD -> 8.0f;
+            case BIRD, HONEY_BUZZARD, WOODPECKER -> 10.0f;
+            case AARDVARK_MOUND_BREAKER -> 15.0f;
+            default -> 0.0f;
         };
     }
 
@@ -180,10 +200,11 @@ public class Predator {
     }
 
     /**
-     * Take damage from ant soldiers.
+     * Take damage from ant soldiers or defensive sting.
      */
     public void takeDamage(float amount) {
-        health -= amount;
+        float effectiveDamage = Math.max(1.0f, amount - getBaseArmor());
+        health -= effectiveDamage;
         if (health <= 0) {
             health = 0;
             alive = false;

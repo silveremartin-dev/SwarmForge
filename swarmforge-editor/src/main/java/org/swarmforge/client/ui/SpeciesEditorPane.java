@@ -702,6 +702,12 @@ public class SpeciesEditorPane extends VBox {
         dmgCol.setOnEditCommit(e -> e.getRowValue().setDamage(e.getNewValue()));
         dmgCol.setPrefWidth(65);
 
+        TableColumn<CasteRow, Float> armorCol = new TableColumn<>("Armor");
+        armorCol.setCellValueFactory(new PropertyValueFactory<>("defense"));
+        armorCol.setCellFactory(javafx.scene.control.cell.TextFieldTableCell.forTableColumn(new FormattedFloatStringConverter()));
+        armorCol.setOnEditCommit(e -> e.getRowValue().setDefense(e.getNewValue()));
+        armorCol.setPrefWidth(65);
+
         TableColumn<CasteRow, Boolean> flyCol = new TableColumn<>("Flying");
         flyCol.setCellValueFactory(new PropertyValueFactory<>("canFly"));
         flyCol.setCellFactory(col -> new TableCell<CasteRow, Boolean>() {
@@ -896,7 +902,7 @@ public class SpeciesEditorPane extends VBox {
         // Table Columns grouped in phase with the 4 Inspector sections
         casteTable.getColumns().addAll(
             // 👤 Identité & Morphologie
-            nameCol, bodyCol, headCol, tunnelCol, healthCol, dmgCol, lifeCol,
+            nameCol, bodyCol, headCol, tunnelCol, healthCol, dmgCol, armorCol, lifeCol,
             // ⚡ Locomotion (Marche & Vol) & Biomécanique
             walkSpeedCol, aroliaCol, flyCol, flySpeedCol, hzCol, hoverCol, biteCol, loadCol,
             // 🧠 IA & Allocation Tâches
@@ -917,6 +923,7 @@ public class SpeciesEditorPane extends VBox {
         TextField casteLifeF = new TextField("5000");
         TextField casteHealthF = new TextField("120");
         TextField casteDmgF = new TextField("15");
+        TextField casteDefenseF = new TextField("0.0");
 
         // Motor & Locomotion Caste Parameters (Walk & Flight grouped)
         TextField casteWalkSpeedF = new TextField("0.50");
@@ -984,6 +991,7 @@ public class SpeciesEditorPane extends VBox {
                 casteLifeF.setText(String.valueOf(newVal.getLifespan()));
                 casteHealthF.setText(formatDec(newVal.getHealth()));
                 casteDmgF.setText(formatDec(newVal.getDamage()));
+                casteDefenseF.setText(formatDec(newVal.getDefense()));
 
                 casteWalkSpeedF.setText(formatDec(newVal.getWalkSpeedMps()));
                 casteAroliaCheck.setSelected(newVal.isHasAroliaAdhesion());
@@ -1017,7 +1025,8 @@ public class SpeciesEditorPane extends VBox {
         col1Grid.addRow(2, createTooltipLabel("Head Width (mm):", "Maximum head capsule width determining minimum gallery diameter.", casteHeadF), casteHeadF);
         col1Grid.addRow(3, createTooltipLabel("Base Health:", "Initial health points of the caste.", casteHealthF), casteHealthF);
         col1Grid.addRow(4, createTooltipLabel("Attack Damage:", "Physical damage dealt per bite/attack.", casteDmgF), casteDmgF);
-        col1Grid.addRow(5, createTooltipLabel("Lifespan (days):", "Average lifespan of caste members in days.", casteLifeF), casteLifeF);
+        col1Grid.addRow(5, createTooltipLabel("Base Armor / Defense:", "Cuticular armor reduction points against incoming physical damage.", casteDefenseF), casteDefenseF);
+        col1Grid.addRow(6, createTooltipLabel("Lifespan (days):", "Average lifespan of caste members in days.", casteLifeF), casteLifeF);
         VBox col1Box = createInspectorColumnBox("👤 Identity & Morphology", col1Grid);
 
         // Column 2: ⚡ Locomotion (Marche & Vol) & Biomécanique
@@ -1066,6 +1075,7 @@ public class SpeciesEditorPane extends VBox {
                     sel.setLifespan(Integer.parseInt(casteLifeF.getText()));
                     sel.setHealth(Float.parseFloat(casteHealthF.getText()));
                     sel.setDamage(Float.parseFloat(casteDmgF.getText()));
+                    sel.setDefense(Float.parseFloat(casteDefenseF.getText()));
                     sel.setCanFly(casteFlyCheck.isSelected());
                     sel.setTargetRatio(Float.parseFloat(targetRatioF.getText()));
                     sel.setDecisionArch(decisionArchCombo.getValue());
@@ -1095,6 +1105,7 @@ public class SpeciesEditorPane extends VBox {
                             Float.parseFloat(casteDmgF.getText()),
                             casteFlyCheck.isSelected()
                     );
+                    row.setDefense(Float.parseFloat(casteDefenseF.getText()));
                     row.setTargetRatio(Float.parseFloat(targetRatioF.getText()));
                     row.setDecisionArch(decisionArchCombo.getValue());
                     row.setForagingWeight(Float.parseFloat(foragingWField.getText()));
@@ -1719,6 +1730,7 @@ public class SpeciesEditorPane extends VBox {
                     double body = ct.getBodyLengthMm() > 0 ? ct.getBodyLengthMm() : ct.getAttribute("size_mm", 5.0f);
                     double head = ct.getHeadWidthMm() > 0 ? ct.getHeadWidthMm() : (body * 0.25);
                     CasteRow row = new CasteRow(ct.getName(), body, head, ct.getLifespan(), ct.getBaseHealth(), ct.getBaseDamage(), ct.isCanFly());
+                    row.setDefense(ct.getBaseDefense());
                     row.setForagingWeight(ct.getTaskForagingWeight());
                     row.setDefenseWeight(ct.getTaskDefenseWeight());
                     row.setExcavationWeight(ct.getTaskExcavationWeight());
@@ -1836,6 +1848,7 @@ public class SpeciesEditorPane extends VBox {
         List<CasteTemplate> templates = new ArrayList<>();
         for (CasteRow r : casteRows) {
             CasteTemplate ct = new CasteTemplate(r.getName(), r.getHealth(), r.getDamage());
+            ct.setBaseDefense(r.getDefense());
             ct.setLifespan(r.getLifespan());
             ct.setCanFly(r.isCanFly());
             ct.setBodyLengthMm((float) r.getBodyLengthMm());
@@ -1926,6 +1939,7 @@ public class SpeciesEditorPane extends VBox {
             case "Head Width (mm):" -> "species.castes.head_width";
             case "Base Health:" -> "species.castes.health";
             case "Attack Damage:" -> "species.castes.damage";
+            case "Base Armor / Defense:" -> "species.castes.defense";
             case "Lifespan (days):" -> "species.castes.lifespan";
             case "Flight Capability:" -> "species.castes.fly_cap";
             case "Wingbeat Frequency (Hz):" -> "species.castes.wingbeat_hz";
@@ -2160,6 +2174,7 @@ public class SpeciesEditorPane extends VBox {
         private int lifespan;
         private float health;
         private float damage;
+        private float defense = 0.0f;
         private boolean canFly;
 
         // Task Weights & Caste Ratios
@@ -2216,6 +2231,9 @@ public class SpeciesEditorPane extends VBox {
 
         public float getDamage() { return damage; }
         public void setDamage(float damage) { this.damage = damage; }
+
+        public float getDefense() { return defense; }
+        public void setDefense(float defense) { this.defense = defense; }
 
         public boolean isCanFly() { return canFly; }
         public void setCanFly(boolean canFly) { this.canFly = canFly; }

@@ -372,12 +372,40 @@ public class JmeGameApp extends SimpleApplication {
             // High-fidelity PBR Terrain Lighting & Texturing
             Material soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             soilMat.setBoolean("UseMaterialColors", true);
-            soilMat.setColor("Diffuse", new ColorRGBA(0.42f, 0.32f, 0.22f, 1f));
-            soilMat.setColor("Ambient", new ColorRGBA(0.28f, 0.22f, 0.16f, 1f));
+            soilMat.setColor("Diffuse", ColorRGBA.White);
+            soilMat.setColor("Ambient", new ColorRGBA(0.35f, 0.35f, 0.35f, 1f));
+            soilMat.setColor("Specular", new ColorRGBA(0.1f, 0.1f, 0.1f, 1f));
+            soilMat.setFloat("Shininess", 8f);
+
+            // Select appropriate high-res 1K PBR texture set based on terrain biome & latitude
+            double lat = Math.abs(terrarium.getLatitude());
+            String pbrFolder = "Ground037"; // Rich organic humus / forest
+            if (lat < 23.5) {
+                pbrFolder = "Ground025"; // Desert / tropical sand
+            } else if (lat > 60.0) {
+                pbrFolder = "Ground061"; // Alpine / tundra snow
+            } else if (lat >= 30.0 && lat <= 50.0) {
+                pbrFolder = "Ground049A"; // Temperate meadow grass
+            }
+
             try {
-                com.jme3.texture.Texture diffuseTex = assetManager.loadTexture("models/textures/pbr/Ground037_512_Color.jpg");
+                com.jme3.texture.Texture diffuseTex = assetManager.loadTexture("models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_Color.jpg");
                 diffuseTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
+                diffuseTex.setMinFilter(com.jme3.texture.Texture.MinFilter.BilinearNearestMipMap);
+                diffuseTex.setMagFilter(com.jme3.texture.Texture.MagFilter.Bilinear);
                 soilMat.setTexture("DiffuseMap", diffuseTex);
+            } catch (Exception e) {
+                try {
+                    com.jme3.texture.Texture fallbackTex = assetManager.loadTexture("models/textures/pbr/Ground037/Ground037_1K-JPG_Color.jpg");
+                    fallbackTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
+                    soilMat.setTexture("DiffuseMap", fallbackTex);
+                } catch (Exception ignored) {}
+            }
+
+            try {
+                com.jme3.texture.Texture normalTex = assetManager.loadTexture("models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_NormalGL.jpg");
+                normalTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
+                soilMat.setTexture("NormalMap", normalTex);
             } catch (Exception ignored) {}
 
             TerrainMeshGenerator generator = new TerrainMeshGenerator();
@@ -393,13 +421,21 @@ public class JmeGameApp extends SimpleApplication {
                 vegetationVisualizer.rebuildVegetation(w, h, terrarium, simulation != null ? simulation.getVegetationSystem() : null);
             }
 
-            // Initialize Pheromone Visualizer with full world dimensions (width, height)
+            if (tunnelVisualizer != null) {
+                tunnelVisualizer.setTerrainDimensions(10.0f, w);
+            }
+            if (antVisualizer != null) {
+                antVisualizer.setTerrainDimensions(10.0f, w);
+            }
+
+            // Initialize Pheromone Visualizer aligned with exact ground surface elevation
+            float surfaceY = terrarium.getSurfaceElevation(w / 2f, h / 2f);
             if (pheromoneVisualizer == null) {
                 pheromoneVisualizer = new PheromoneVisualizer(assetManager);
-                pheromoneVisualizer.initialize(w, h);
+                pheromoneVisualizer.initialize(w, h, surfaceY);
                 rootNode.attachChild(pheromoneVisualizer.getRootNode());
             } else {
-                pheromoneVisualizer.initialize(w, h);
+                pheromoneVisualizer.initialize(w, h, surfaceY);
             }
 
             // Recenter camera

@@ -86,12 +86,18 @@ public class OptimalColonyPlacementEngine {
             attempts++;
         }
 
-        // Determine biological Z elevation and snap to existing trees if arboreal
+        // Determine biological Z elevation and snap to existing trees if arboreal / tree cavity nesting
         float targetZ = 0.0f;
         String sName = speciesName != null ? speciesName.toLowerCase() : "";
-        boolean isArboreal = sName.contains("wasp") || sName.contains("guêpe") || sName.contains("vespula") || sName.contains("polistes") || sName.contains("carton") || sName.contains("weaver") || sName.contains("oecophylla") || sName.contains("tronc");
 
-        if (isArboreal) {
+        boolean isHollowTrunkNest = sName.contains("camponotus") || sName.contains("crematogaster") || sName.contains("dolichoderus")
+                || sName.contains("charpentière") || sName.contains("hollow") || sName.contains("arbre creux")
+                || sName.contains("tronc creux") || sName.contains("sauvage") || sName.contains("wild_bee") || sName.contains("wild");
+
+        boolean isCanopyArboreal = sName.contains("wasp") || sName.contains("guêpe") || sName.contains("vespula")
+                || sName.contains("polistes") || sName.contains("carton") || sName.contains("weaver") || sName.contains("oecophylla");
+
+        if (isHollowTrunkNest || isCanopyArboreal) {
             // Check if scenario has pre-existing mature trees in VegetationSystem
             if (vegetation != null && !vegetation.getPlants().isEmpty()) {
                 org.swarmforge.core.world.VegetationSystem.Plant bestTree = null;
@@ -110,14 +116,21 @@ public class OptimalColonyPlacementEngine {
                 if (bestTree != null) {
                     targetX = bestTree.x;
                     targetY = bestTree.y;
-                    targetZ = Math.max(6.5f, bestTree.getCurrentHeight() * 0.85f);
-                    return new PlacementResult(targetX, targetY, targetZ, "Snapped to Existing Scenario Tree #" + bestTree.x + "_" + bestTree.y);
+                    if (isHollowTrunkNest) {
+                        // Trunk cavity height (1.8m - 3.5m above ground)
+                        targetZ = Math.max(1.8f, Math.min(3.5f, bestTree.getCurrentHeight() * 0.35f));
+                        return new PlacementResult(targetX, targetY, targetZ, "Snapped to Hollow Tree Trunk Cavity #" + bestTree.x + "_" + bestTree.y);
+                    } else {
+                        // High canopy branch attachment for wasps and silk weaver ants
+                        targetZ = Math.max(6.5f, bestTree.getCurrentHeight() * 0.85f);
+                        return new PlacementResult(targetX, targetY, targetZ, "Snapped to Tree Canopy Branch #" + bestTree.x + "_" + bestTree.y);
+                    }
                 }
             }
-            targetZ = 8.5f;
+            targetZ = isHollowTrunkNest ? 2.2f : 8.5f;
         } else if (sName.contains("bee") || sName.contains("abeille") || sName.contains("apis") || sName.contains("ruche")) {
             // Hive stand base elevation above ground
-            targetZ = 1.2f;
+            targetZ = 0.4f;
         }
 
         return new PlacementResult(targetX, targetY, targetZ, strategy != null ? strategy : "Optimal Multi-Territory Cluster");
