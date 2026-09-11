@@ -150,7 +150,10 @@ public class BDIArchitecture implements ReasoningArchitecture {
         desireWeights.put(DesireType.COLONY_NUTRITION, colonyNutritionWeight);
 
         if (context != null) {
-            if (context.hasEnemyNearby(agent)) {
+            if (agent.canFly() && context.isAdverseWeatherForFlight() && agent.getZ() >= 4.0f) {
+                beliefs.perceivedThreatLevel = 0.9f;
+                desireWeights.put(DesireType.REST, 1.0f);
+            } else if (context.hasEnemyNearby(agent)) {
                 beliefs.perceivedThreatLevel = 1.0f;
                 desireWeights.put(DesireType.DEFENSE, 0.95f);
             } else {

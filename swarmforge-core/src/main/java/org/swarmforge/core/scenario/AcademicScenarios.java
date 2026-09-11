@@ -529,7 +529,121 @@ public class AcademicScenarios {
     }
 
     /**
-     * List all available academic scenarios.
+     * Multiplayer Scenario 1: 1v1 Territorial Battle Arena.
+     */
+    public static Scenario createMultiplayerBattleArena1v1(long seed) {
+        Scenario scenario = new Scenario(
+                "MP_01_BATTLE_ARENA_1V1",
+                "Arène Territoriale 1v1 - Atta sexdens vs Solenopsis invicta",
+                "Confrontation directe en environnement compétitif multi-nœuds avec ressources centrales et frontières dynamiques."
+        );
+        scenario.setAcademicCategory("Multiplayer / Territorial War");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(200);
+        scenario.setHeight(100);
+        scenario.setDepth(40);
+        scenario.setBiomeName("TROPICAL");
+        scenario.setFoodPatchesCount(16);
+        scenario.setMultiplayerOnly(true);
+        scenario.setRequiredPlayerCount(2);
+        scenario.setGridTilesX(2);
+        scenario.setGridTilesY(1);
+
+        Map<String, ArchitectureType> player1Engine = new HashMap<>();
+        player1Engine.put("WORKER", ArchitectureType.FINITE_STATE_MACHINE);
+        player1Engine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
+        player1Engine.put("QUEEN", ArchitectureType.BDI);
+
+        Map<String, ArchitectureType> player2Engine = new HashMap<>();
+        player2Engine.put("WORKER", ArchitectureType.FINITE_STATE_MACHINE);
+        player2Engine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
+        player2Engine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Atta sexdens (Joueur 1)", "COLONY_P1_ATTA", 1, 60, 15, 300, player1Engine));
+        scenario.addColony(new Scenario.ColonySetup("Solenopsis invicta (Joueur 2)", "COLONY_P2_SOLENOPSIS", 1, 80, 20, 300, player2Engine));
+
+        scenario.addTargetMetric("TERRITORIAL_CONTROL_PERCENT");
+        scenario.addTargetMetric("CASUALTY_RATIO");
+        scenario.addTargetMetric("RESOURCE_DEPLETION_RATE");
+
+        return scenario;
+    }
+
+    /**
+     * Multiplayer Scenario 2: Cooperative Trade & Tribute Convoys.
+     */
+    public static Scenario createMultiplayerCoopTributeTrade(long seed) {
+        Scenario scenario = new Scenario(
+                "MP_02_COOP_TRIBUTE_TRADE",
+                "Coopération Écologique & Convois de Tribut",
+                "Partage de ressources et diplomatie active entre terrariums adjacents (échanges nectar/graines et allègement des pénuries)."
+        );
+        scenario.setAcademicCategory("Multiplayer / Cooperative Ecology");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(200);
+        scenario.setHeight(100);
+        scenario.setDepth(40);
+        scenario.setBiomeName("MEDITERRANEAN");
+        scenario.setFoodPatchesCount(20);
+        scenario.setMultiplayerOnly(true);
+        scenario.setRequiredPlayerCount(2);
+        scenario.setGridTilesX(2);
+        scenario.setGridTilesY(1);
+
+        Map<String, ArchitectureType> engine = new HashMap<>();
+        engine.put("WORKER", ArchitectureType.FINITE_STATE_MACHINE);
+        engine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Messor barbarus (Joueur 1 - Grenier)", "COLONY_P1_MESSOR", 1, 80, 5, 500, engine));
+        scenario.addColony(new Scenario.ColonySetup("Lasius niger (Joueur 2 - Miellat)", "COLONY_P2_LASIUS", 1, 80, 5, 500, engine));
+
+        scenario.addTargetMetric("TRIBUTE_TRANSFER_VOLUME_TOTAL");
+        scenario.addTargetMetric("ALLIANCE_STABILITY_INDEX");
+        scenario.addTargetMetric("BORDER_MIGRATION_CONVOY_COUNT");
+
+        return scenario;
+    }
+
+    /**
+     * Multiplayer Scenario 3: 4-Node Sharded Megaterrarium Polycalic Federation.
+     */
+    public static Scenario createMultiplayerMegaterrariumSharded(long seed) {
+        Scenario scenario = new Scenario(
+                "MP_03_MEGATERRARIUM_4NODE_ALLIANCE",
+                "Mégaterrarium 4-Nœuds - Fédération Polycalique",
+                "Simulation distribuée sur une grille 2x2 de sous-volumes avec migration d'entités transfrontalière et synchronisation des halos de phéromones."
+        );
+        scenario.setAcademicCategory("Multiplayer / Distributed Sharding");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(200);
+        scenario.setHeight(200);
+        scenario.setDepth(50);
+        scenario.setBiomeName("TEMPERATE_FOREST");
+        scenario.setFoodPatchesCount(40);
+        scenario.setMultiplayerOnly(true);
+        scenario.setRequiredPlayerCount(4);
+        scenario.setGridTilesX(2);
+        scenario.setGridTilesY(2);
+
+        Map<String, ArchitectureType> engine = new HashMap<>();
+        engine.put("WORKER", ArchitectureType.FINITE_STATE_MACHINE);
+        engine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
+        engine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Formica polyctena (Nœud 0,0 - Ouest Nord)", "COLONY_NODE_00", 1, 100, 10, 400, engine));
+        scenario.addColony(new Scenario.ColonySetup("Formica polyctena (Nœud 1,0 - Est Nord)", "COLONY_NODE_10", 1, 100, 10, 400, engine));
+        scenario.addColony(new Scenario.ColonySetup("Formica polyctena (Nœud 0,1 - Ouest Sud)", "COLONY_NODE_01", 1, 100, 10, 400, engine));
+        scenario.addColony(new Scenario.ColonySetup("Formica polyctena (Nœud 1,1 - Est Sud)", "COLONY_NODE_11", 1, 100, 10, 400, engine));
+
+        scenario.addTargetMetric("POLYCALIC_SUPERCOLONY_POPULATION");
+        scenario.addTargetMetric("INTER_NODE_CROSS_BORDER_FLUX");
+        scenario.addTargetMetric("HALO_DIFFUSION_ACCURACY");
+
+        return scenario;
+    }
+
+    /**
+     * List all available academic single-player and standard scenarios.
      */
     public static List<Scenario> getAllAcademicScenarios(long seed) {
         return List.of(
@@ -549,6 +663,17 @@ public class AcademicScenarios {
                 createWetlandFloodRaftingScenario(seed),
                 createWaspVsWildBeehiveScenario(seed),
                 createApiculturalApiaryScenario(seed)
+        );
+    }
+
+    /**
+     * List all dedicated multiplayer & megaterrarium sharded scenarios.
+     */
+    public static List<Scenario> getAllMultiplayerScenarios(long seed) {
+        return List.of(
+                createMultiplayerBattleArena1v1(seed),
+                createMultiplayerCoopTributeTrade(seed),
+                createMultiplayerMegaterrariumSharded(seed)
         );
     }
 }

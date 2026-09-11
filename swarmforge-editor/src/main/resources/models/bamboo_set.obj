@@ -1,6 +1,6 @@
 # Blender v2.79 (sub 0) OBJ File: 'bamboo set .blend'
 # www.blender.org
-mtllib bamboo set .mtl
+mtllib bamboo_set.mtl
 o bamboo_stick_3_Cylinder.005
 v -0.006931 -2.265673 -0.627500
 v 0.081364 -2.265673 -0.590927

@@ -181,8 +181,33 @@ public class Scenario implements Serializable {
     public long getMaxSimulationTicks() { return maxSimulationTicks; }
     public void setMaxSimulationTicks(long maxSimulationTicks) { this.maxSimulationTicks = maxSimulationTicks; }
 
-    public int getMinPopulationStopThreshold() { return minPopulationStopThreshold; }
-    public void setMinPopulationStopThreshold(int threshold) { this.minPopulationStopThreshold = threshold; }
+    // Multiplayer & Megaterrarium Configuration
+    private boolean multiplayerOnly = false;
+    private int requiredPlayerCount = 1;
+    private int gridTilesX = 1;
+    private int gridTilesY = 1;
+
+    public boolean isMultiplayerOnly() { return multiplayerOnly; }
+    public void setMultiplayerOnly(boolean multiplayerOnly) { this.multiplayerOnly = multiplayerOnly; }
+
+    public int getRequiredPlayerCount() { return requiredPlayerCount; }
+    public void setRequiredPlayerCount(int count) { this.requiredPlayerCount = Math.max(1, count); }
+
+    public int getGridTilesX() { return gridTilesX; }
+    public void setGridTilesX(int x) { this.gridTilesX = Math.max(1, x); }
+
+    public int getGridTilesY() { return gridTilesY; }
+    public void setGridTilesY(int y) { this.gridTilesY = Math.max(1, y); }
+
+    /**
+     * Validates that this scenario is executing in an authorized environment.
+     * Throws an IllegalStateException if a multiplayer-only scenario is launched in single-player standalone mode.
+     */
+    public void validateExecutionEnvironment(boolean isMultiplayer) {
+        if (this.multiplayerOnly && !isMultiplayer) {
+            throw new IllegalStateException("Le scénario '" + title + "' (" + id + ") est un scénario exclusivement Multijoueur / Multi-Nœuds et ne peut pas être exécuté en mode Solo.");
+        }
+    }
 
     public float getSimulationStepSeconds() { return simulationStepSeconds; }
     public void setSimulationStepSeconds(float simulationStepSeconds) { this.simulationStepSeconds = simulationStepSeconds; }

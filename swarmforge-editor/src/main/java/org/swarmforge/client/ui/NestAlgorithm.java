@@ -90,17 +90,10 @@ public final class NestAlgorithm {
             nz = 10.0f; // Standard baseline ground elevation
         }
 
-        // Measure maximum depth in generated nest
-        float maxZDepthInGen = 0.0f;
-        for (NestGeneratorPane.NestNode n : genNest.nodes) {
-            if (n.z > maxZDepthInGen) {
-                maxZDepthInGen = (float) n.z;
-            }
-        }
-
-        // Available subterranean depth from surface nz down to bedrock (z = 1.0)
-        float availableDepth = Math.max(2.0f, nz - 1.0f);
-        float depthScale = (maxZDepthInGen > availableDepth && availableDepth > 0) ? (availableDepth / maxZDepthInGen) : 1.0f;
+        // Preserve true biological scale and vertical distances as designed in the nest editor.
+        // If excavation encounters bedrock (z <= 1.0f), growth halts naturally at the rock interface
+        // without artificially squashing or compressing the upper nest chambers.
+        float bedrockLimitZ = 1.05f;
 
         Map<NestGeneratorPane.NestNode, UUID> nodeMap = new HashMap<>();
         List<org.swarmforge.core.simulation.TunnelNetwork.TunnelNode> simNodes = new ArrayList<>();
@@ -111,10 +104,13 @@ public final class NestAlgorithm {
             nodeMap.put(n, id);
             float wx = nx + (float) n.x;
             float wy = ny + (float) n.y;
-            // Scale subterranean depth safely above bedrock
-            float wz = (n.z >= 0)
-                    ? Math.max(1.0f, nz - (float) (n.z * depthScale))
-                    : (nz + (float) (-n.z * depthScale)); // Arboreal / mound structures above surface
+            // True biological elevation without artificial compression
+            float rawZ = (n.z >= 0)
+                    ? (nz - (float) n.z)
+                    : (nz + (float) (-n.z)); // Epigeic / mound / arboreal above ground
+
+            // Natural bedrock barrier: excavation halts at the rock boundary
+            float wz = (n.z >= 0) ? Math.max(bedrockLimitZ, rawZ) : rawZ;
 
             org.swarmforge.core.simulation.TunnelNetwork.ChamberType cType = mapChamberType(n.type);
             float rx = (float) (n.rx > 0 ? n.rx : n.radius);
@@ -131,13 +127,14 @@ public final class NestAlgorithm {
                 List<float[]> pathPoints = new ArrayList<>();
                 if (e.pts != null && !e.pts.isEmpty()) {
                     for (double[] pt : e.pts) {
-                        float pz = (pt[2] >= 0)
-                                ? Math.max(1.0f, nz - (float) (pt[2] * depthScale))
-                                : (nz + (float) (-pt[2] * depthScale));
+                        float rawPtZ = (pt[2] >= 0)
+                                ? (nz - (float) pt[2])
+                                : (nz + (float) (-pt[2]));
+                        float pz = (pt[2] >= 0) ? Math.max(bedrockLimitZ, rawPtZ) : rawPtZ;
                         pathPoints.add(new float[]{nx + (float) pt[0], ny + (float) pt[1], pz});
                     }
                 }
-                float dist = (float) Math.sqrt(Math.pow(e.from.x - e.to.x, 2) + Math.pow(e.from.y - e.to.y, 2) + Math.pow((e.from.z - e.to.z) * depthScale, 2));
+                float dist = (float) Math.sqrt(Math.pow(e.from.x - e.to.x, 2) + Math.pow(e.from.y - e.to.y, 2) + Math.pow(e.from.z - e.to.z, 2));
                 simEdges.add(new org.swarmforge.core.simulation.TunnelNetwork.TunnelEdge(fromId, toId, dist, pathPoints));
             }
         }

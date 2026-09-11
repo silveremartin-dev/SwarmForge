@@ -16,16 +16,22 @@ import com.jme3.scene.Node;
 import com.jme3.scene.VertexBuffer.Type;
 import com.jme3.texture.Image;
 import com.jme3.texture.Texture2D;
+import com.jme3.texture.Texture.MagFilter;
+import com.jme3.texture.Texture.MinFilter;
 import com.jme3.texture.image.ColorSpace;
 import com.jme3.util.BufferUtils;
+import org.swarmforge.client.ui.WorldEditorPane.RenderMode;
 import org.swarmforge.core.gpu.SparsePheromoneGrid;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
 
 /**
- * Visualizes pheromone chemical trails on the terrain surface using a dynamic texture overlay.
- * Uses exact 1:1 spatial mapping aligned with ant positions and world coordinates.
+ * Visualizes pheromone chemical trails on the terrain surface.
+ * Supports 3 distinct rendering modes:
+ * - SCIENTIFIC: Discrete voxel-accurate chemical concentration heatmap (crisp cell borders, quantitative precision)
+ * - REALISTIC: Smooth organic chemical vapor diffusion (continuous vapor trail corridors, natural evaporation falloff)
+ * - GAMIFIED: Glowing continuous particle-flow ribbons (luminous neon trails with radiant energy halo along ant paths)
  */
 public class PheromoneVisualizer {
 
@@ -37,6 +43,7 @@ public class PheromoneVisualizer {
     private int width, height;
     private float groundElevation = 0.0f;
     private boolean initialized = false;
+    private RenderMode currentRenderMode = RenderMode.REALISTIC;
 
     public PheromoneVisualizer(AssetManager assetManager) {
         this.assetManager = assetManager;
@@ -45,6 +52,25 @@ public class PheromoneVisualizer {
 
     public Node getRootNode() {
         return rootNode;
+    }
+
+    public void setRenderMode(RenderMode mode) {
+        if (mode == null) mode = RenderMode.REALISTIC;
+        this.currentRenderMode = mode;
+        applyTextureFiltering();
+    }
+
+    private void applyTextureFiltering() {
+        if (texture == null) return;
+        if (currentRenderMode == RenderMode.SCIENTIFIC) {
+            // Discrete voxel precision
+            texture.setMinFilter(MinFilter.NearestNoMipMaps);
+            texture.setMagFilter(MagFilter.Nearest);
+        } else {
+            // Smooth continuous organic or glowing particle trail
+            texture.setMinFilter(MinFilter.BilinearNearestMipMap);
+            texture.setMagFilter(MagFilter.Bilinear);
+        }
     }
 
     public void initialize(int width, int height) {
@@ -62,8 +88,7 @@ public class PheromoneVisualizer {
         this.imageBuffer = BufferUtils.createByteBuffer(width * height * 4);
         Image img = new Image(Image.Format.RGBA8, width, height, imageBuffer, ColorSpace.Linear);
         this.texture = new Texture2D(img);
-        this.texture.setMinFilter(com.jme3.texture.Texture.MinFilter.BilinearNearestMipMap);
-        this.texture.setMagFilter(com.jme3.texture.Texture.MagFilter.Bilinear);
+        applyTextureFiltering();
 
         // Build horizontal flat mesh spanning X in [0, width] and Z in [0, height]
         // Facing strictly UP (+Y) so normal is (0, 1, 0)
@@ -138,23 +163,68 @@ public class PheromoneVisualizer {
             int y = coords[1]; // Domain Y -> JME Z
             int z = coords[2]; // Domain Z -> Vertical altitude
 
-            // Map across full terrarium footprint (0..width-1, 0..height-1)
             if (x >= 0 && x < width && y >= 0 && y < height) {
                 float homing = pheromones.length > 0 ? pheromones[0] : 0f;
                 float food = pheromones.length > 1 ? pheromones[1] : 0f;
                 float danger = pheromones.length > 2 ? pheromones[2] : 0f;
 
-                // Vivid, high-contrast chemical coloration:
-                // Food = Glowing Emerald Green / Yellow
-                // Homing = Deep Electric Blue / Cyan
-                // Danger = Vivid Crimson Red
-                float r = Math.min(1.0f, danger * 1.8f + food * 0.4f);
-                float g = Math.min(1.0f, food * 1.5f + homing * 0.2f);
-                float b = Math.min(1.0f, homing * 1.6f + danger * 0.1f);
-                float a = Math.min(0.95f, (food * 1.4f + homing * 1.2f + danger * 1.8f));
+                if (currentRenderMode == RenderMode.SCIENTIFIC) {
+                    // Scientific mode: discrete quantitative heatmap
+                    float r = Math.min(1.0f, danger * 1.6f + food * 0.3f);
+                    float g = Math.min(1.0f, food * 1.5f + homing * 0.2f);
+                    float b = Math.min(1.0f, homing * 1.6f + danger * 0.1f);
+                    float a = Math.min(0.95f, food * 1.3f + homing * 1.2f + danger * 1.8f);
 
-                if (a > 0.02f) {
-                    setPixel(x, y, r, g, b, a);
+                    if (a > 0.02f) {
+                        setPixel(x, y, r, g, b, a);
+                    }
+                } else if (currentRenderMode == RenderMode.REALISTIC) {
+                    // Realistic mode: continuous organic chemical vapor trail diffusion
+                    // Smooth 3x3 kernel creates uninterrupted chemical corridors between voxels
+                    float r = Math.min(1.0f, danger * 1.5f + food * 0.2f);
+                    float g = Math.min(1.0f, food * 1.4f + homing * 0.15f);
+                    float b = Math.min(1.0f, homing * 1.5f + danger * 0.05f);
+                    float intensity = Math.min(0.85f, food * 1.2f + homing * 1.1f + danger * 1.6f);
+
+                    if (intensity > 0.02f) {
+                        // Core pixel
+                        setPixel(x, y, r, g, b, intensity * 0.90f);
+                        // Continuous organic vapor dispersion onto 4-neighbors (merging adjacent dots into trails)
+                        spreadPixel(x + 1, y, r, g, b, intensity * 0.42f);
+                        spreadPixel(x - 1, y, r, g, b, intensity * 0.42f);
+                        spreadPixel(x, y + 1, r, g, b, intensity * 0.42f);
+                        spreadPixel(x, y - 1, r, g, b, intensity * 0.42f);
+                        // Diagonal soft falloff
+                        spreadPixel(x + 1, y + 1, r, g, b, intensity * 0.20f);
+                        spreadPixel(x - 1, y + 1, r, g, b, intensity * 0.20f);
+                        spreadPixel(x + 1, y - 1, r, g, b, intensity * 0.20f);
+                        spreadPixel(x - 1, y - 1, r, g, b, intensity * 0.20f);
+                    }
+                } else {
+                    // Gamified mode: luminous neon glowing particle trail ribbons
+                    float r = Math.min(1.0f, danger * 2.0f + food * 0.4f);
+                    float g = Math.min(1.0f, food * 1.8f + homing * 0.3f);
+                    float b = Math.min(1.0f, homing * 1.9f + danger * 0.2f);
+                    float intensity = Math.min(0.95f, food * 1.5f + homing * 1.4f + danger * 2.0f);
+
+                    if (intensity > 0.02f) {
+                        // Radiant intense core
+                        setPixel(x, y, r * 1.2f, g * 1.2f, b * 1.2f, intensity * 0.95f);
+                        // Continuous luminous energy envelope
+                        spreadPixel(x + 1, y, r, g, b, intensity * 0.55f);
+                        spreadPixel(x - 1, y, r, g, b, intensity * 0.55f);
+                        spreadPixel(x, y + 1, r, g, b, intensity * 0.55f);
+                        spreadPixel(x, y - 1, r, g, b, intensity * 0.55f);
+                        spreadPixel(x + 1, y + 1, r * 0.9f, g * 0.9f, b * 0.9f, intensity * 0.30f);
+                        spreadPixel(x - 1, y + 1, r * 0.9f, g * 0.9f, b * 0.9f, intensity * 0.30f);
+                        spreadPixel(x + 1, y - 1, r * 0.9f, g * 0.9f, b * 0.9f, intensity * 0.30f);
+                        spreadPixel(x - 1, y - 1, r * 0.9f, g * 0.9f, b * 0.9f, intensity * 0.30f);
+                        // Outer radiant halo
+                        spreadPixel(x + 2, y, r * 0.7f, g * 0.7f, b * 0.7f, intensity * 0.18f);
+                        spreadPixel(x - 2, y, r * 0.7f, g * 0.7f, b * 0.7f, intensity * 0.18f);
+                        spreadPixel(x, y + 2, r * 0.7f, g * 0.7f, b * 0.7f, intensity * 0.18f);
+                        spreadPixel(x, y - 2, r * 0.7f, g * 0.7f, b * 0.7f, intensity * 0.18f);
+                    }
                 }
             }
         }
@@ -168,6 +238,11 @@ public class PheromoneVisualizer {
             imageBuffer.put(i, (byte) 0);
         }
         imageBuffer.clear();
+    }
+
+    private void spreadPixel(int x, int y, float r, float g, float b, float a) {
+        if (x < 0 || x >= width || y < 0 || y >= height) return;
+        setPixel(x, y, r, g, b, a);
     }
 
     private void setPixel(int x, int y, float r, float g, float b, float a) {
@@ -185,11 +260,11 @@ public class PheromoneVisualizer {
         int targetB = (int) (Math.min(1.0f, b) * 255);
         int targetA = (int) (Math.min(1.0f, a) * 255);
 
-        // Maximum blending to combine contributions across layers
-        byte newR = (byte) Math.max(existingR, targetR);
-        byte newG = (byte) Math.max(existingG, targetG);
-        byte newB = (byte) Math.max(existingB, targetB);
-        byte newA = (byte) Math.max(existingA, targetA);
+        // Additive & maximum blending for continuous flowing trail superposition
+        byte newR = (byte) Math.min(255, Math.max(existingR, targetR));
+        byte newG = (byte) Math.min(255, Math.max(existingG, targetG));
+        byte newB = (byte) Math.min(255, Math.max(existingB, targetB));
+        byte newA = (byte) Math.min(255, Math.max(existingA, targetA));
 
         imageBuffer.put(index, newR);
         imageBuffer.put(index + 1, newG);

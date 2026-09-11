@@ -190,6 +190,16 @@ public class SimulationContextImpl implements SimulationContext {
     }
 
     @Override
+    public boolean isAdverseWeatherForFlight() {
+        if (simulation.getWeather() != null) {
+            return simulation.getWeather().getWindSpeedMs() > 6.94f
+                    || simulation.getWeather().getRainfall() > 2.0f
+                    || simulation.getWeather().getTemperature() < 10.0f;
+        }
+        return isRaining() || getTemperature() < 10.0f;
+    }
+
+    @Override
     public float getLightLevel() {
         // Day/night cycle calculated in real elapsed seconds (240s full cycle)
         double totalSeconds = simulation.getTickCount() * (double) simulation.getSimulationStepSeconds();

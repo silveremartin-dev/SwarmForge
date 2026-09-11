@@ -10,8 +10,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd ../textures/bamboo leaf 2.png
-map_d ../textures/bamboo leaf 2.png
+map_Kd bamboo_leaf_2.png
+map_d bamboo_leaf_2.png
 
 newmtl bamboo_leaf_2
 Ns 96.078431
@@ -22,9 +22,9 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd ../textures/bamboo leaf 2.png
-map_Bump ../textures/bamboo leaf 2.png
-map_d ../textures/bamboo leaf 2.png
+map_Kd bamboo_leaf_2.png
+map_Bump bamboo_leaf_2.png
+map_d bamboo_leaf_2.png
 
 newmtl bamboo_leaf_3
 Ns 96.078431
@@ -35,8 +35,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd ../textures/bamboo leaf 3.png
-map_d ../textures/bamboo leaf 3.png
+map_Kd bamboo_leaf_3.png
+map_d bamboo_leaf_3.png
 
 newmtl bamboo_shrub_1
 Ns 96.078431
@@ -47,8 +47,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd ../textures/bamboo shrub 1.png
-map_d ../textures/bamboo shrub 1.png
+map_Kd bamboo_shrub_1.png
+map_d bamboo_shrub_1.png
 
 newmtl bamboo_shrub_2
 Ns 96.078431
@@ -59,8 +59,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd ../textures/bamboo shrub 2.png
-map_d ../textures/bamboo shrub 2.png
+map_Kd bamboo_shrub_2.png
+map_d bamboo_shrub_2.png
 
 newmtl bamboo_shrub_3
 Ns 96.078431
@@ -71,8 +71,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 0.000000
 illum 1
-map_Kd ../textures/bamboo shrub 3.png
-map_d ../textures/bamboo shrub 3.png
+map_Kd bamboo_shrub_3.png
+map_d bamboo_shrub_3.png
 
 newmtl bamboo_stick_1_baked
 Ns 96.078431
@@ -83,8 +83,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd ../textures/bamboo stick 1 bake.png
-map_Bump -bm 0.878049 ../textures/bamboo stick 1 bake.png
+map_Kd bamboo_stick_1_bake.png
+map_Bump -bm 0.878049 bamboo_stick_1_bake.png
 
 newmtl bamboo_stick_2
 Ns 96.078431
@@ -95,8 +95,8 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd ../textures/bamboo stick 2 bake.png
-map_Bump -bm 0.594595 ../textures/bamboo stick 2 bake.png
+map_Kd bamboo_stick_2_bake.png
+map_Bump -bm 0.594595 bamboo_stick_2_bake.png
 
 newmtl bamboo_stick_3
 Ns 96.078431
@@ -107,5 +107,5 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.000000
 d 1.000000
 illum 2
-map_Kd ../textures/bamboo stick 3 bake.png
-map_Bump -bm 0.591837 ../textures/bamboo stick 3 bake.png
+map_Kd bamboo_stick_3_bake.png
+map_Bump -bm 0.591837 bamboo_stick_3_bake.png

@@ -908,6 +908,9 @@ public class JmeGameApp extends SimpleApplication {
             if (weatherVisualizer != null) {
                 weatherVisualizer.setRenderMode(mode);
             }
+            if (pheromoneVisualizer != null) {
+                pheromoneVisualizer.setRenderMode(mode);
+            }
             if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
                 setGamifiedVoxelMode(true);
             } else if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.SCIENTIFIC) {

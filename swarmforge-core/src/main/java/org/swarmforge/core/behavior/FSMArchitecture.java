@@ -158,6 +158,12 @@ public class FSMArchitecture implements ReasoningArchitecture {
     }
 
     private Action handleExploring(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
+        // Emergency weather shelter check: Flying foragers retreat to nest during storms/rain/cold
+        if (agent.canFly() && ctx != null && ctx.isAdverseWeatherForFlight() && agent.getZ() >= 4.0f) {
+            transitionTo(State.RETURNING_HOME);
+            return fleeHome(agent);
+        }
+
         // Check for food pheromone
         if (ctx != null) {
             java.util.Set<org.swarmforge.core.domain.ResourceType> types = agent.getForagingTypes();

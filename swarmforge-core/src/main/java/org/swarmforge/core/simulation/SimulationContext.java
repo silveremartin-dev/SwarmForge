@@ -113,6 +113,13 @@ public interface SimulationContext {
     boolean isRaining();
 
     /**
+     * Check if weather conditions (rain, storm, high winds, freezing cold) force flying foragers to shelter.
+     */
+    default boolean isAdverseWeatherForFlight() {
+        return isRaining() || getTemperature() < 10.0f;
+    }
+
+    /**
      * Get light level (0=dark, 1=bright).
      */
     float getLightLevel();
