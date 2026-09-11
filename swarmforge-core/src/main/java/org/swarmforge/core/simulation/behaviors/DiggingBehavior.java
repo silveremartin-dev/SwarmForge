@@ -96,6 +96,9 @@ public class DiggingBehavior {
             // Dig 2 units away and connect gallery node
             network.dig(startNode.id(), dx * 2, dy * 2, dz * 2, TunnelNetwork.ChamberType.TUNNEL);
             individual.setEnergy(Math.max(0f, individual.getEnergy() - 0.01f));
+            if (individual.getCarriedItem() == Individual.CarriedItem.NONE) {
+                individual.setCarriedItem(Individual.CarriedItem.EARTH);
+            }
         } else {
             // Tunnel collapsed under shear stress: extra metabolic exertion
             individual.setEnergy(Math.max(0f, individual.getEnergy() - 0.03f));

@@ -47,9 +47,18 @@ public class SimulationSerializer {
         return mapper.writeValueAsBytes(colonies);
     }
 
+    private static final int MAX_PAYLOAD_BYTES = 64 * 1024 * 1024; // 64 MB security limit
+
+    private static void checkPayloadSize(byte[] data) {
+        if (data != null && data.length > MAX_PAYLOAD_BYTES) {
+            throw new IllegalArgumentException("Payload size exceeds maximum allowed limit of " + MAX_PAYLOAD_BYTES + " bytes.");
+        }
+    }
+
     public Collection<TerrariumCell> deserializeCells(byte[] data) throws IOException {
         if (data == null || data.length == 0)
             return new ArrayList<>();
+        checkPayloadSize(data);
         return mapper.readValue(data, new com.fasterxml.jackson.core.type.TypeReference<List<TerrariumCell>>() {
         });
     }
@@ -57,6 +66,7 @@ public class SimulationSerializer {
     public Collection<Colony> deserializeColonies(byte[] data) throws IOException {
         if (data == null || data.length == 0)
             return new ArrayList<>();
+        checkPayloadSize(data);
         return mapper.readValue(data, new com.fasterxml.jackson.core.type.TypeReference<List<Colony>>() {
         });
     }

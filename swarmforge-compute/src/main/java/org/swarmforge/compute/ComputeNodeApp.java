@@ -87,8 +87,9 @@ public class ComputeNodeApp {
     void connectToServer() {
         channel = ManagedChannelBuilder.forAddress(serverHost, serverPort)
                 .usePlaintext()
+                .maxInboundMessageSize(16 * 1024 * 1024)
                 .build();
-        stub = SimulationServiceGrpc.newBlockingStub(channel);
+        stub = SimulationServiceGrpc.newBlockingStub(channel).withCompression("gzip");
     }
 
     void registerWithServer() {

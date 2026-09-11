@@ -176,7 +176,9 @@ public class SwarmForgeServer {
             LOG.info("Offline/Test Mode: gRPC Server running in plaintext mode");
         }
 
-        NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(grpcPort);
+        NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(grpcPort)
+                .maxInboundMessageSize(16 * 1024 * 1024) // 16 MB max payload size
+                .maxInboundMetadataSize(64 * 1024);     // 64 KB metadata limit
         if (sslContext != null) {
             serverBuilder.sslContext(sslContext);
         }

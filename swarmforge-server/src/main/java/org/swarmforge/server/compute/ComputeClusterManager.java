@@ -47,13 +47,14 @@ public class ComputeClusterManager implements org.swarmforge.core.compute.Comput
 
         ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
                 .usePlaintext()
-                // .keepAliveTime(30, TimeUnit.SECONDS)
+                .maxInboundMessageSize(16 * 1024 * 1024)
+                .keepAliveTime(30, java.util.concurrent.TimeUnit.SECONDS)
                 .build();
 
         ComputeNodeInfo info = new ComputeNodeInfo(
                 id, host, port, hasGpu,
                 channel,
-                ComputeServiceGrpc.newBlockingStub(channel));
+                ComputeServiceGrpc.newBlockingStub(channel).withCompression("gzip"));
 
         nodes.put(id, info);
     }

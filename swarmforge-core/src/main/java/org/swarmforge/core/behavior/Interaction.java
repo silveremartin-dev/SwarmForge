@@ -22,23 +22,50 @@ public class Interaction {
      * @return true if exchange occurred
      */
     public static boolean trophallaxis(Individual giver, Individual receiver) {
-        // Validation: Distance, Caste, etc. assumed handled by caller logic
-
-        if (!giver.isCarryingFood() && giver.getEnergy() > 20) {
-            // Giver can regurgitate from stomach?
-            // For now, only pass carried items or energy if species supports it.
+        if (giver == null || receiver == null || !giver.isAlive() || !receiver.isAlive()) {
+            return false;
         }
 
-        if (giver.isCarryingFood() && !receiver.isCarryingFood()) {
-            // Simple item pass
+        boolean exchanged = false;
+
+        // 1. Social Crop (Stomodeal Regurgitation) Transfer
+        if (giver.getSocialCropAmount() > 0.1f) {
+            float toTransfer = Math.min(5.0f, giver.getSocialCropAmount());
+            org.swarmforge.core.domain.ResourceType rType = giver.getSocialCropResourceType();
+            float taken = giver.regurgitateSocialCrop(toTransfer);
+            if (taken > 0) {
+                if (receiver.getLifeStage() == Individual.LifeStage.ADULT && receiver.getSocialCropAmount() < receiver.getSocialCropCapacity() * 0.8f) {
+                    receiver.fillSocialCrop(taken, rType);
+                } else {
+                    receiver.setEnergy(Math.min(receiver.getMaxEnergy(), receiver.getEnergy() + taken * 2.0f));
+                    receiver.setHunger(Math.max(0.0f, receiver.getHunger() - taken * 2.0f));
+                }
+                exchanged = true;
+            }
+        }
+
+        // 2. Direct Metabolic Fluid Transfer (when donor is well-fed and recipient is hungry)
+        if (!exchanged && giver.getEnergy() > 60.0f && receiver.getEnergy() < 40.0f) {
+            float transfer = Math.min(15.0f, (giver.getEnergy() - 40.0f) * 0.5f);
+            giver.setEnergy(giver.getEnergy() - transfer);
+            receiver.setEnergy(Math.min(receiver.getMaxEnergy(), receiver.getEnergy() + transfer));
+            receiver.setHunger(Math.max(0.0f, receiver.getHunger() - transfer * 0.5f));
+            exchanged = true;
+        }
+
+        // 3. Solid Carried Food Transfer
+        if (!exchanged && giver.isCarryingFood() && !receiver.isCarryingFood()) {
             receiver.setCarriedItem(giver.getCarriedItem());
             receiver.setCarriedResourceType(giver.getCarriedResourceType());
-
             giver.setCarriedItem(Individual.CarriedItem.NONE);
             giver.setCarriedResourceType(null);
+            exchanged = true;
+        }
 
-            // Social bonding: Reduce aggression
-            // In future: mix PheromoneSignature to homogenize colony scent
+        // 4. Cuticular Hydrocarbon (CHC) Gestalt Odor Homogenization
+        if (exchanged) {
+            giver.homogenizeChcProfile(receiver, 0.05f);
+            receiver.homogenizeChcProfile(giver, 0.05f);
             return true;
         }
 

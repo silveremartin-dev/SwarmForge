@@ -54,19 +54,24 @@ public class PluginManager {
     }
 
     /**
-     * Load a single plugin JAR.
+     * Load a single plugin JAR with strict path and class validation.
      */
     public void loadPlugin(File jarFile) throws Exception {
-        URL jarUrl = jarFile.toURI().toURL();
+        if (jarFile == null || !jarFile.exists() || !jarFile.isFile() || !jarFile.getName().endsWith(".jar")) {
+            throw new IllegalArgumentException("Invalid plugin file: " + jarFile);
+        }
+
+        File canonicalJar = jarFile.getCanonicalFile();
+        URL jarUrl = canonicalJar.toURI().toURL();
         URLClassLoader loader = new URLClassLoader(new URL[] { jarUrl }, getClass().getClassLoader());
 
         // Look for plugin manifest or service loader
-        try (JarFile jar = new JarFile(jarFile)) {
+        try (JarFile jar = new JarFile(canonicalJar)) {
             var manifest = jar.getManifest();
             if (manifest != null) {
                 String pluginClass = manifest.getMainAttributes().getValue("Plugin-Class");
-                if (pluginClass != null) {
-                    Class<?> clazz = loader.loadClass(pluginClass);
+                if (pluginClass != null && !pluginClass.trim().isEmpty()) {
+                    Class<?> clazz = loader.loadClass(pluginClass.trim());
                     if (SwarmForgePlugin.class.isAssignableFrom(clazz)) {
                         SwarmForgePlugin plugin = (SwarmForgePlugin) clazz.getDeclaredConstructor().newInstance();
                         loadedPlugins.put(plugin.getId(), plugin);
@@ -77,8 +82,15 @@ public class PluginManager {
                         }
 
                         LOG.info("Loaded plugin: " + plugin.getName() + " v" + plugin.getVersion());
+                    } else {
+                        loader.close();
+                        LOG.warning("Class " + pluginClass + " does not implement SwarmForgePlugin.");
                     }
+                } else {
+                    loader.close();
                 }
+            } else {
+                loader.close();
             }
         }
     }

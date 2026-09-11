@@ -51,7 +51,6 @@ public class SwarmViewerApp extends SimpleApplication {
         settings.setResolution(1280, 720);
         settings.setVSync(true);
         settings.setSamples(0); // Optimization for mass rendering
-        // Important: Enable Gamma Correction if needed, but not strictly for perf
         setSettings(settings);
     }
 
@@ -105,7 +104,6 @@ public class SwarmViewerApp extends SimpleApplication {
         Runnable task;
         boolean needsInstanceUpdate = false;
         
-        // Limit number of updates per frame to avoid choking if queue is huge
         int updates = 0;
         int maxUpdates = 10000; 
 
@@ -115,11 +113,6 @@ public class SwarmViewerApp extends SimpleApplication {
             updates++;
         }
         
-        // If we added/moved stuff, we might need to refresh instances if using InstancedNode
-        // Note: For InstancedNode, simply moving the geometry children requires call to instance()
-        // if the structure changed. But for simple translation updates of children, 
-        // JME's InstancedNode might need a re-instance call to update buffers.
-        // This is the trade-off. For 100k moving items, re-uploading the buffer is necessary.
         if (needsInstanceUpdate) {
             antNode.instance();
         }
@@ -139,8 +132,8 @@ public class SwarmViewerApp extends SimpleApplication {
                 antNode.attachChild(geom);
                 entities.put(id, geom);
             }
-            // Update position (SwarmForge Z-up to JMonkeyEngine Y-up: X->X, Y->Z, Z->Y)
-            geom.setLocalTranslation(x, z, y);
+            // Update position
+            geom.setLocalTranslation(x, y, z);
         });
     }
 

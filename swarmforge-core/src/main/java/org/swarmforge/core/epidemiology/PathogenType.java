@@ -48,12 +48,4 @@ public enum PathogenType implements Serializable {
     public float getIncubationSeconds() {
         return incubationSeconds;
     }
-
-    /**
-     * @deprecated Use {@link #getIncubationSeconds()} instead.
-     */
-    @Deprecated
-    public int getIncubationTicks() {
-        return (int) incubationSeconds;
-    }
 }

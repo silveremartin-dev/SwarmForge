@@ -51,6 +51,13 @@ public interface Disease {
     String getScientificName();
 
     /**
+     * Get disease description.
+     */
+    default String getDescription() {
+        return "";
+    }
+
+    /**
      * Get transmission mode.
      */
     TransmissionMode getTransmissionMode();

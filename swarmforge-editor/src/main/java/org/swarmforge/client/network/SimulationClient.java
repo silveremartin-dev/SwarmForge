@@ -41,10 +41,12 @@ public class SimulationClient {
         LOG.info("Connecting to " + host + ":" + port);
         channel = ManagedChannelBuilder.forAddress(host, port)
                 .usePlaintext()
+                .maxInboundMessageSize(16 * 1024 * 1024)
+                .keepAliveTime(30, TimeUnit.SECONDS)
                 .build();
-        asyncStub = SimulationServiceGrpc.newStub(channel);
-        blockingStub = SimulationServiceGrpc.newBlockingStub(channel);
-        worldStub = WorldServiceGrpc.newBlockingStub(channel);
+        asyncStub = SimulationServiceGrpc.newStub(channel).withCompression("gzip");
+        blockingStub = SimulationServiceGrpc.newBlockingStub(channel).withCompression("gzip");
+        worldStub = WorldServiceGrpc.newBlockingStub(channel).withCompression("gzip");
         connected = true;
         LOG.info("Connected to server");
     }

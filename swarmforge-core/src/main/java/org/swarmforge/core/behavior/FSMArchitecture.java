@@ -234,6 +234,23 @@ public class FSMArchitecture implements ReasoningArchitecture {
             return new Action(Action.ActionType.DEPOSIT_FOOD, 0, 0, 0, 1.0f, null);
         }
 
+        if (agent instanceof Individual ind) {
+            // 1. Follow home pheromone trail if available
+            if (ctx != null) {
+                float px = ctx.getHomePheromoneGradientX(agent.getX(), agent.getY(), agent.getZ());
+                float py = ctx.getHomePheromoneGradientY(agent.getX(), agent.getY(), agent.getZ());
+                if (Math.abs(px) > 0.01f || Math.abs(py) > 0.01f) {
+                    return Action.followTrail(px, py, 0);
+                }
+            }
+
+            // 2. Celestial UV Polarized Light Compass & Path Integration Dead Reckoning
+            if (ind.getPathIntegrationDistance() > 0.3f && (ind.getSpecies() == null || ind.getSpecies().hasPolarizedLightNavigation() || ind.getSpecies().canNavigatePolarizedLightCompass())) {
+                float returnHeading = ind.getPathIntegrationReturnHeading();
+                return Action.move((float) Math.cos(returnHeading), (float) Math.sin(returnHeading), 0);
+            }
+        }
+
         return Action.returnHome();
     }
 
@@ -346,7 +363,13 @@ public class FSMArchitecture implements ReasoningArchitecture {
 
     private Action handleLarvalTrophallaxis(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
         if (agent instanceof Individual ind) {
-            ind.setEnergy(Math.min(100.0f, ind.getEnergy() + 2.0f));
+            // Nurse stomodeal fluid delivery to brood
+            if (ind.getSocialCropAmount() > 0.1f) {
+                ind.regurgitateSocialCrop(1.5f);
+                ind.setEnergy(Math.min(100.0f, ind.getEnergy() + 1.0f));
+            } else if (ind.getEnergyLevel() > 0.5f) {
+                ind.setEnergy(Math.max(0.0f, ind.getEnergy() - 1.0f));
+            }
             transitionTo(State.IDLE);
             return Action.rest();
         }
@@ -356,6 +379,31 @@ public class FSMArchitecture implements ReasoningArchitecture {
 
     private Action handleTandemRunning(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
         if (agent instanceof Individual ind) {
+            // 1. Leader Dynamics: Guide follower with regulated tandem speed
+            if (ind.isTandemLeader()) {
+                if (ctx != null && ind.getTandemPartnerId() != null) {
+                    float px = ctx.getFoodPheromoneGradientX(agent.getX(), agent.getY(), agent.getZ());
+                    float py = ctx.getFoodPheromoneGradientY(agent.getX(), agent.getY(), agent.getZ());
+                    if (Math.abs(px) > 0.01f || Math.abs(py) > 0.01f) {
+                        return Action.followTrail(px * 0.6f, py * 0.6f, 0);
+                    }
+                }
+                return randomMove(agent);
+            }
+
+            // 2. Follower Dynamics: Track leader closely with antennal tapping saccades
+            if (ind.isTandemFollower()) {
+                if (ctx != null) {
+                    float px = ctx.getFoodPheromoneGradientX(agent.getX(), agent.getY(), agent.getZ());
+                    float py = ctx.getFoodPheromoneGradientY(agent.getX(), agent.getY(), agent.getZ());
+                    if (Math.abs(px) > 0.01f || Math.abs(py) > 0.01f) {
+                        return Action.followTrail(px * 0.9f, py * 0.9f, 0);
+                    }
+                }
+                return randomMove(agent);
+            }
+
+            // Fallback for unassigned tandem ant: follow local chemical vector
             if (ctx != null) {
                 float px = ctx.getFoodPheromoneGradientX(agent.getX(), agent.getY(), agent.getZ());
                 float py = ctx.getFoodPheromoneGradientY(agent.getX(), agent.getY(), agent.getZ());

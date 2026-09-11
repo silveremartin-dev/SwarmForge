@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
   SwarmForge - Eusocial Insect Simulation
   Client (Viewer) - Connects to server and visualizes running simulations
@@ -26,6 +26,11 @@
         <dependency>
             <groupId>org.swarmforge</groupId>
             <artifactId>swarmforge-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.swarmforge</groupId>
+            <artifactId>swarmforge-editor</artifactId>
+            <version>${project.version}</version>
         </dependency>
         
         <!-- jMonkeyEngine for 3D -->

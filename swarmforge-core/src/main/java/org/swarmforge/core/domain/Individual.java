@@ -14,14 +14,12 @@ import org.swarmforge.core.genetics.Genome;
 import org.swarmforge.core.behavior.AgentView;
 
 /**
- * Represents an individual eusocial insect in the simulation.
- * Uses a sealed interface for type-safe caste representation.
+ * Canonical Domain Entity representing an individual eusocial insect in the simulation.
+ * Implements AgentView for direct bridge and inter-compatibility with the ECS and Rendering engines.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
- * @deprecated Use org.swarmforge.core.ecs.components.* and org.swarmforge.core.ecs.systems.* instead.
  */
-@Deprecated
 public class Individual implements java.io.Serializable, AgentView {
     private static final long serialVersionUID = 1L;
 
@@ -175,6 +173,135 @@ public class Individual implements java.io.Serializable, AgentView {
         }
         // Chemical camouflage / social parasitism / dulosis acceptance
         return calculateChcDissimilarity(other) <= 0.28f;
+    }
+
+    public void homogenizeChcProfile(Individual partner, float factor) {
+        if (partner == null || partner.chcProfile == null || this.chcProfile == null) return;
+        float f = Math.max(0.0f, Math.min(0.5f, factor));
+        int len = Math.min(this.chcProfile.length, partner.chcProfile.length);
+        for (int i = 0; i < len; i++) {
+            float blend = this.chcProfile[i] * (1.0f - f) + partner.chcProfile[i] * f;
+            this.chcProfile[i] = blend;
+        }
+    }
+
+    // --- Social Crop (Ingluvies / Jabot Social) ---
+    private float socialCropCapacity = 20.0f;
+    private float socialCropAmount = 0.0f;
+    private ResourceType socialCropResourceType = null;
+
+    public float getSocialCropAmount() { return socialCropAmount; }
+    public void setSocialCropAmount(float amount) { this.socialCropAmount = Math.max(0f, Math.min(socialCropCapacity, amount)); }
+    public float getSocialCropCapacity() { return socialCropCapacity; }
+    public void setSocialCropCapacity(float cap) { this.socialCropCapacity = Math.max(0.1f, cap); }
+    public ResourceType getSocialCropResourceType() { return socialCropResourceType; }
+    public void setSocialCropResourceType(ResourceType type) { this.socialCropResourceType = type; }
+
+    public float fillSocialCrop(float amount, ResourceType type) {
+        if (amount <= 0) return 0f;
+        if (this.socialCropAmount <= 0.001f) {
+            this.socialCropResourceType = type;
+        }
+        float space = socialCropCapacity - socialCropAmount;
+        float added = Math.min(space, amount);
+        this.socialCropAmount += added;
+        return added;
+    }
+
+    public float regurgitateSocialCrop(float amount) {
+        if (amount <= 0 || socialCropAmount <= 0) return 0f;
+        float taken = Math.min(socialCropAmount, amount);
+        this.socialCropAmount -= taken;
+        if (this.socialCropAmount <= 0.001f) {
+            this.socialCropAmount = 0.0f;
+            this.socialCropResourceType = null;
+        }
+        return taken;
+    }
+
+    // --- Tandem Running Dynamics ---
+    public enum TandemRole {
+        NONE, LEADER, FOLLOWER
+    }
+
+    private TandemRole tandemRole = TandemRole.NONE;
+    private UUID tandemPartnerId = null;
+    private long lastTandemContactTick = 0;
+
+    public TandemRole getTandemRole() { return tandemRole; }
+    public void setTandemRole(TandemRole role) { this.tandemRole = (role != null) ? role : TandemRole.NONE; }
+    public UUID getTandemPartnerId() { return tandemPartnerId; }
+    public void setTandemPartnerId(UUID id) { this.tandemPartnerId = id; }
+    public long getLastTandemContactTick() { return lastTandemContactTick; }
+    public void setLastTandemContactTick(long tick) { this.lastTandemContactTick = tick; }
+
+    public void pairTandem(Individual partner, boolean asLeader) {
+        if (partner == null) return;
+        this.tandemRole = asLeader ? TandemRole.LEADER : TandemRole.FOLLOWER;
+        this.tandemPartnerId = partner.getId();
+        this.lastTandemContactTick = 0;
+        partner.tandemRole = asLeader ? TandemRole.FOLLOWER : TandemRole.LEADER;
+        partner.tandemPartnerId = this.getId();
+        partner.lastTandemContactTick = 0;
+    }
+
+    public void breakTandem() {
+        this.tandemRole = TandemRole.NONE;
+        this.tandemPartnerId = null;
+    }
+
+    public boolean isTandemLeader() { return tandemRole == TandemRole.LEADER; }
+    public boolean isTandemFollower() { return tandemRole == TandemRole.FOLLOWER; }
+
+    // --- Celestial Polarized Light & Path Integration ---
+    private float pathIntegrationX = 0.0f;
+    private float pathIntegrationY = 0.0f;
+
+    public float getPathIntegrationX() { return pathIntegrationX; }
+    public float getPathIntegrationY() { return pathIntegrationY; }
+
+    public void resetPathIntegration() {
+        this.pathIntegrationX = 0.0f;
+        this.pathIntegrationY = 0.0f;
+    }
+
+    public void integrateDisplacement(float dx, float dy) {
+        this.pathIntegrationX += dx;
+        this.pathIntegrationY += dy;
+    }
+
+    public float getPathIntegrationDistance() {
+        return (float) Math.hypot(pathIntegrationX, pathIntegrationY);
+    }
+
+    public float getPathIntegrationReturnHeading() {
+        return (float) Math.atan2(-pathIntegrationY, -pathIntegrationX);
+    }
+
+    public boolean isNearHomeSurface(Colony colony) {
+        float hx = (colony != null) ? colony.getNestX() : getHomeX();
+        float hy = (colony != null) ? colony.getNestY() : getHomeY();
+        float dx = this.x - hx;
+        float dy = this.y - hy;
+        float distSq = dx * dx + dy * dy;
+        float surfaceZ = (colony != null && colony.getTerrarium() != null)
+                ? colony.getTerrarium().getSurfaceElevation(this.x, this.y)
+                : getSurfaceElevation();
+        return distSq <= 9.0f && (this.z >= surfaceZ - 1.5f || Math.abs(this.z - surfaceZ) <= 1.5f);
+    }
+
+    public void depositEarthMound(Colony colony) {
+        this.carriedItem = CarriedItem.NONE;
+        if (colony != null && colony.getTerrarium() != null) {
+            Terrarium terrarium = colony.getTerrarium();
+            int ix = Math.max(0, Math.min(terrarium.getWidth() - 1, Math.round(this.x)));
+            int iy = Math.max(0, Math.min(terrarium.getHeight() - 1, Math.round(this.y)));
+            float surfZ = terrarium.getSurfaceElevation(this.x, this.y);
+            int targetZ = Math.min(terrarium.getDepth() - 1, (int) Math.floor(surfZ));
+            if (targetZ >= 0 && targetZ < terrarium.getDepth()) {
+                terrarium.setCell(TerrariumCell.earth(ix, iy, targetZ));
+            }
+        }
     }
 
     public boolean isClimbingTree() {
@@ -797,6 +924,10 @@ public class Individual implements java.io.Serializable, AgentView {
         return energy;
     }
 
+    public float getMaxEnergy() {
+        return maxEnergy;
+    }
+
     public float getAge() {
         return ageInSeconds;
     }
@@ -1102,9 +1233,13 @@ public class Individual implements java.io.Serializable, AgentView {
                         }
                     }
 
+                    integrateDisplacement(nextX - this.x, nextY - this.y);
                     this.x = nextX;
                     this.y = nextY;
                     this.heading = (float) Math.atan2(dy, dx);
+                    if (carriedItem == CarriedItem.EARTH && isNearHomeSurface(colony)) {
+                        depositEarthMound(colony);
+                    }
                 }
                 return ActionResult.ok();
             }
@@ -1121,6 +1256,10 @@ public class Individual implements java.io.Serializable, AgentView {
                 turnTowards(getHomeX(), getHomeY(), 0.1f);
                 move(1.0f);
                 if (isAtNest() && colony != null) {
+                    resetPathIntegration();
+                    if (carriedItem == CarriedItem.EARTH) {
+                        depositEarthMound(colony);
+                    }
                     float surfaceZ = getSurfaceElevation();
                     float targetNestZ = colony.getNestZ() < surfaceZ ? colony.getNestZ() : surfaceZ - 1.5f;
                     this.z += (targetNestZ - this.z) * 0.12f;

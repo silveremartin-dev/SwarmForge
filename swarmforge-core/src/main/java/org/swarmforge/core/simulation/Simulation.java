@@ -148,6 +148,11 @@ public class Simulation {
         this.pluginManager.setContext(new org.swarmforge.core.plugin.PluginContext(this, this.pluginManager));
     }
 
+    public Simulation(Terrarium terrarium, long masterSeed) {
+        this(terrarium);
+        setMasterSeed(masterSeed);
+    }
+
     private final org.swarmforge.core.plugin.PluginManager pluginManager;
 
     public org.swarmforge.core.plugin.PluginManager getPluginManager() {
@@ -166,7 +171,7 @@ public class Simulation {
 
     public void addColony(Colony colony) {
         if (colony != null) {
-            if (this.random != null) {
+            if (this.random != null && colony.getRandom() == null) {
                 colony.setRandom(new java.util.Random(this.random.nextLong()));
             }
             colony.bootstrapDefaultResources();
@@ -461,6 +466,11 @@ public class Simulation {
         }
     }
 
+    public void tick(float dtSeconds) {
+        setSimulationStepSeconds(dtSeconds);
+        tick();
+    }
+
     public void tick() {
         long currentTick = tickCount.incrementAndGet();
         accumulatedSimulationSeconds += this.simulationStepSeconds;
@@ -523,7 +533,7 @@ public class Simulation {
         java.util.concurrent.ConcurrentLinkedQueue<Individual> livingIndividuals = new java.util.concurrent.ConcurrentLinkedQueue<>();
 
         for (Colony colony : colonies) {
-            colony.getIndividuals().parallelStream().forEach(individual -> {
+            colony.getIndividuals().forEach(individual -> {
                 if (!individual.isAlive()) return;
 
                 // Update thermodynamic ambient temperature and humidity from weather context (with subterranean microclimate buffering)
@@ -1072,6 +1082,10 @@ public class Simulation {
 
     public java.util.Random getRandom() {
         return random;
+    }
+
+    public void setRandom(java.util.Random random) {
+        this.random = random;
     }
 
     /**

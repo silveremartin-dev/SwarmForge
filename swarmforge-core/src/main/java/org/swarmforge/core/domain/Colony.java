@@ -70,11 +70,12 @@ public class Colony implements java.io.Serializable {
     }
 
     public Colony(Species species, float x, float y, float z) {
-        long cNum = COLONY_COUNTER.getAndIncrement();
-        this.id = new UUID(cNum, (long) (x * 31.0 + y * 17.0 + z * 7.0 + cNum));
+        long specHash = (species != null && species.getScientificName() != null) ? species.getScientificName().hashCode() : 1337L;
+        long coordHash = ((long) Float.floatToIntBits(x) << 32) ^ ((long) Float.floatToIntBits(y) * 31L + Float.floatToIntBits(z) * 7L);
+        this.id = new UUID(specHash, coordHash);
         this.random = new java.util.Random(this.id.getLeastSignificantBits());
         this.species = species;
-        this.speciesName = species.getScientificName(); // Fixed legacy accessor
+        this.speciesName = species != null ? species.getScientificName() : "UnknownSpecies";
         this.individuals = new CopyOnWriteArrayList<>();
         this.nestX = x;
         this.nestY = y;

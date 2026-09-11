@@ -44,6 +44,24 @@ public interface SimulationContext {
     float getFoodPheromoneGradientY(float x, float y, float z);
 
     /**
+     * Get home pheromone gradient X component.
+     */
+    default float getHomePheromoneGradientX(float x, float y, float z) {
+        float hLeft = getHomePheromone(x - 1, y, z);
+        float hRight = getHomePheromone(x + 1, y, z);
+        return hRight - hLeft;
+    }
+
+    /**
+     * Get home pheromone gradient Y component.
+     */
+    default float getHomePheromoneGradientY(float x, float y, float z) {
+        float hDown = getHomePheromone(x, y - 1, z);
+        float hUp = getHomePheromone(x, y + 1, z);
+        return hUp - hDown;
+    }
+
+    /**
      * Check if there's an enemy nearby.
      */
     boolean hasEnemyNearby(AgentView agent);
