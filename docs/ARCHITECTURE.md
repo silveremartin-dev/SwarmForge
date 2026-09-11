@@ -102,23 +102,39 @@ The core engine balances object-oriented domain richness with data-oriented perf
   ```
 - Transparent fallback to parallel CPU streams when hardware acceleration is unavailable.
 
-### 4.4 Persistence Tier
+### 4.4 Persistence Tier & Automated Checkpoint Retention
 - **PostgreSQL**: Relational storage for persistent worlds, colony profiles, user credentials, and historical telemetry.
 - **H2 In-Memory Database**: Automatic fallback for offline standalone mode without external server dependencies.
 - **Redis Cache**: High-speed in-memory store for session states, active leaderboard rankings, and volatile simulation updates.
-- **State Checkpointing**: Binary GZIP compressed snapshots (`SimulationCheckpoint`) recording physical grid states and God Mode intervention journals.
+- **FIFO Rotating Checkpoints (`CheckpointRetentionManager`)**: Automatically creates periodic simulation snapshots and enforces a FIFO eviction policy (keeping the latest $N=10$ snapshots, capped at 500 MB per simulation) while permanently preserving manual user checkpoints.
 
 ---
 
-## 5. Visual Studio & Rendering (`swarmforge-editor`)
+## 5. Multi-Node Distributed Architecture & Megaterrarium Sharding
 
-- **Dual UI Architecture**: Combines JavaFX desktop controls (`SimulationControlPanel`, `StatisticsDashboard`, `PopulationGraphPane`, `WeatherEditorPane`, `NestGeneratorPane`) with an embedded 3D viewport.
+### 5.1 Spatial Decomposition & Coordinate Continuity
+To simulate massive megaterrariums exceeding single-machine memory or CPU capacity, the world is sharded into regular 2D/3D grid tiles $(I_x, I_y)$:
+- **Master Random Seed & World-Space Coordinate Sampling**: Each compute node evaluates procedural Simplex/Perlin terrain elevation and geology using absolute world coordinates $X_{\text{global}} = I_x \times W + x, Y_{\text{global}} = I_y \times H + y$. This guarantees seamless cliff-free borders, continuous river networks, and coherent geological strata across tile edges.
+- **Cross-Border Entity Migration (`BorderMigrationSystem`)**: When an individual reaches a tile perimeter ($X \ge W - 0.5$ or $Y \ge H - 0.5$), it is seamlessly removed from the source node's spatial index and handed off via high-speed gRPC streaming to the target adjacent node. 100% of biological attributes (identity, genetics, CHC profile, health, carried resources, home nest coordinates) are preserved.
+- **Pheromone Boundary Halo Exchange (`BoundaryHaloSync`)**: Compute nodes exchange 2-voxel deep boundary matrices in real-time, allowing chemical trails and recruitment gradients to traverse node boundaries without interruption.
+- **Fault-Tolerant Network Partitioning**: If a middle node disconnects, adjoining border cells dynamically transition to impassable barrier voxels (*dead border fallback*) to preserve entity safety, while the disconnected node's state is preserved in the database until reconnection.
+
+### 5.2 Multiplayer Protocols, Lobbies & Diplomacy
+- **Multi-Client Server Browser (`ServerBrowserPane`)**: JavaFX multiplayer hub featuring live server discovery, ping monitoring, room creation, species deck selection, and ready-check handshakes.
+- **Diplomatic Protocol (`DiplomacyManager`)**: Governs inter-colony relationships (`NEUTRAL`, `ALLY`, `ENEMY`, `TRADING`), alliance proposals, declarations of war, and resource tribute convoys.
+- **Dedicated Multiplayer Scenarios**: Scenarios flagged with `isMultiplayerOnly = true` (e.g., `MP_01_BATTLE_ARENA_1V1`, `MP_02_COOP_TRIBUTE_TRADE`, `MP_03_MEGATERRARIUM_4NODE_ALLIANCE`) enforce multi-node execution rules.
+
+---
+
+## 6. Visual Studio & Rendering (`swarmforge-editor`)
+
+- **Dual UI Architecture**: Combines JavaFX desktop controls (`SimulationControlPanel`, `StatisticsDashboard`, `PopulationGraphPane`, `WeatherEditorPane`, `NestGeneratorPane`, `ServerBrowserPane`) with an embedded 3D viewport.
 - **jMonkeyEngine 3D Rendering**: Hardware-accelerated 3D viewport featuring level-of-detail management (`LODManager`), procedural terrain rendering (`TerrainMeshGenerator`), pheromone heatmap overlays (`PheromoneVisualizer`), ant mesh instancing (`AntVisualizer`), and subterranean tunnel rendering (`TunnelVisualizer`).
 - **Internationalization (I18n)**: Fully localized string management via `I18nManager`.
 
 ---
 
-## 6. Simulation Tick Lifecycle
+## 7. Simulation Tick Lifecycle
 
 Each simulation tick operates through a deterministic pipeline:
 
@@ -131,18 +147,19 @@ graph TD
     E --> F[ECS Systems Execution - Arrhenius Q10]
     F --> G[FSM & Behavior Strategy Execution]
     G --> H[Spatial Partition & Octree Rebuild]
-    H --> I[Event & Telemetry Streaming gRPC/WebSocket]
-    I --> J[Async Checkpoint Persistence If Scheduled]
+    H --> I[Cross-Border Migration & Boundary Halo Sync]
+    I --> J[Event & Telemetry Streaming gRPC/WebSocket]
+    J --> K[Async Checkpoint Persistence If Scheduled]
 ```
 
 ---
 
-## 7. Performance Objectives & Scaling Benchmarks
+## 8. Performance Objectives & Scaling Benchmarks
 
 | Parameter | Target | Achieved / Design Capacity |
 | :--- | :--- | :--- |
 | **Simulated Entities** | 1,000,000+ Active Agents | Verified up to 1,000,000 entities with SpatialHashMap + Virtual Threads |
-| **World Dimensions** | 1,000m × 1,000m × 100m | Supported with sparse Morton3D spatial maps |
+| **World Dimensions** | 1,000m × 1,000m × 100m | Supported with sparse Morton3D spatial maps and Megaterrarium sharding |
 | **Tick Execution Rate**| 60 TPS (Ticks Per Second) | Sustained up to 500 agents on CPU 4-cores (1,131–2,333 TPS @ 100 ants, 70–96 TPS @ 500 ants) |
 | **Supercolony Scale**  | 1,000,000 Agents | 0.95 TPS (~1s/tick) on CPU, scalable to >60 TPS with GPU compute nodes |
 | **Streaming Latency**  | < 50 ms | Achieved via gRPC HTTP/2 bidirectional streams on Virtual Threads |
@@ -151,7 +168,8 @@ graph TD
 
 ---
 
-## 8. Infrastructure & Containerization
+## 9. Infrastructure & Containerization
 
 - **Docker & Compose**: Production containerized multi-service configuration (`Dockerfile`, `docker-compose.yml`, `envoy.yaml`) packaging SwarmForge Server, Envoy Proxy, PostgreSQL, Redis, Compute Node, and Web UI.
 - **Kubernetes**: Helm deployment charts available in `charts/` for scalable cluster orchestration.
+

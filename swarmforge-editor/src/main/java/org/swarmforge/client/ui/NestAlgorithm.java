@@ -91,11 +91,13 @@ public final class NestAlgorithm {
         }
 
         // Preserve true biological scale and vertical distances as designed in the nest editor.
-        // If excavation encounters bedrock (z <= 1.0f), growth halts naturally at the rock interface
-        // without artificially squashing or compressing the upper nest chambers.
-        float bedrockLimitZ = 1.05f;
+        // If excavation encounters bedrock (z <= 1.15m), excavation redirects horizontally (lateral epilithic expansion)
+        // along the rock interface, preserving 100% of chamber capacity to house all ants without piercing rock.
+        float bedrockLimitZ = 1.15f;
+        float maxExcavatableSoil = Math.max(0.5f, nz - bedrockLimitZ);
 
         Map<NestGeneratorPane.NestNode, UUID> nodeMap = new HashMap<>();
+        Map<UUID, org.swarmforge.core.simulation.TunnelNetwork.TunnelNode> simNodeMap = new HashMap<>();
         List<org.swarmforge.core.simulation.TunnelNetwork.TunnelNode> simNodes = new ArrayList<>();
         List<org.swarmforge.core.simulation.TunnelNetwork.TunnelEdge> simEdges = new ArrayList<>();
 
@@ -104,37 +106,61 @@ public final class NestAlgorithm {
             nodeMap.put(n, id);
             float wx = nx + (float) n.x;
             float wy = ny + (float) n.y;
-            // True biological elevation without artificial compression
-            float rawZ = (n.z >= 0)
-                    ? (nz - (float) n.z)
-                    : (nz + (float) (-n.z)); // Epigeic / mound / arboreal above ground
+            float wz;
 
-            // Natural bedrock barrier: excavation halts at the rock boundary
-            float wz = (n.z >= 0) ? Math.max(bedrockLimitZ, rawZ) : rawZ;
+            if (n.z >= 0) {
+                // Subterranean excavation
+                float rawDepth = (float) n.z;
+                if (rawDepth > maxExcavatableSoil) {
+                    // Bedrock encounter: Excavation redirects laterally along the soil-rock boundary
+                    float excessDepth = rawDepth - maxExcavatableSoil;
+                    wz = bedrockLimitZ + (float) (Math.sin(simNodes.size() * 0.75) * 0.12f); // Gentle natural floor variance
+                    
+                    double angle = (Math.abs(n.x) > 0.001 || Math.abs(n.y) > 0.001)
+                            ? Math.atan2(n.y, n.x)
+                            : (simNodes.size() * 1.6180339887); // Golden angle radial distribution
+                    float lateralRadius = excessDepth * 1.10f;
+                    wx += (float) (lateralRadius * Math.cos(angle));
+                    wy += (float) (lateralRadius * Math.sin(angle));
+                } else {
+                    wz = nz - rawDepth;
+                }
+            } else {
+                // Epigeic / mound / arboreal above ground
+                wz = nz + (float) (-n.z);
+            }
 
             org.swarmforge.core.simulation.TunnelNetwork.ChamberType cType = mapChamberType(n.type);
             float rx = (float) (n.rx > 0 ? n.rx : n.radius);
             float ry = (float) (n.ry > 0 ? n.ry : n.radius);
             float rz = (float) (n.rz > 0 ? n.rz : n.radius * 0.55);
 
-            simNodes.add(new org.swarmforge.core.simulation.TunnelNetwork.TunnelNode(id, wx, wy, wz, cType, rx, ry, rz));
+            org.swarmforge.core.simulation.TunnelNetwork.TunnelNode tNode =
+                    new org.swarmforge.core.simulation.TunnelNetwork.TunnelNode(id, wx, wy, wz, cType, rx, ry, rz);
+            simNodes.add(tNode);
+            simNodeMap.put(id, tNode);
         }
 
         for (NestGeneratorPane.NestEdge e : genNest.edges) {
             UUID fromId = nodeMap.get(e.from);
             UUID toId = nodeMap.get(e.to);
             if (fromId != null && toId != null) {
+                org.swarmforge.core.simulation.TunnelNetwork.TunnelNode nFrom = simNodeMap.get(fromId);
+                org.swarmforge.core.simulation.TunnelNetwork.TunnelNode nTo = simNodeMap.get(toId);
                 List<float[]> pathPoints = new ArrayList<>();
-                if (e.pts != null && !e.pts.isEmpty()) {
-                    for (double[] pt : e.pts) {
-                        float rawPtZ = (pt[2] >= 0)
-                                ? (nz - (float) pt[2])
-                                : (nz + (float) (-pt[2]));
-                        float pz = (pt[2] >= 0) ? Math.max(bedrockLimitZ, rawPtZ) : rawPtZ;
-                        pathPoints.add(new float[]{nx + (float) pt[0], ny + (float) pt[1], pz});
+                if (e.pts != null && !e.pts.isEmpty() && nFrom != null && nTo != null) {
+                    int ptCount = e.pts.size();
+                    for (int pIdx = 0; pIdx < ptCount; pIdx++) {
+                        float t = (pIdx + 1.0f) / (ptCount + 1.0f);
+                        float px = nFrom.x() + t * (nTo.x() - nFrom.x());
+                        float py = nFrom.y() + t * (nTo.y() - nFrom.y());
+                        float pz = nFrom.z() + t * (nTo.z() - nFrom.z());
+                        pathPoints.add(new float[]{px, py, pz});
                     }
                 }
-                float dist = (float) Math.sqrt(Math.pow(e.from.x - e.to.x, 2) + Math.pow(e.from.y - e.to.y, 2) + Math.pow(e.from.z - e.to.z, 2));
+                float dist = (nFrom != null && nTo != null)
+                        ? (float) Math.sqrt(Math.pow(nTo.x() - nFrom.x(), 2) + Math.pow(nTo.y() - nFrom.y(), 2) + Math.pow(nTo.z() - nFrom.z(), 2))
+                        : (float) Math.sqrt(Math.pow(e.from.x - e.to.x, 2) + Math.pow(e.from.y - e.to.y, 2) + Math.pow(e.from.z - e.to.z, 2));
                 simEdges.add(new org.swarmforge.core.simulation.TunnelNetwork.TunnelEdge(fromId, toId, dist, pathPoints));
             }
         }

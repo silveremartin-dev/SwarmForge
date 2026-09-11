@@ -181,6 +181,9 @@ public class Scenario implements Serializable {
     public long getMaxSimulationTicks() { return maxSimulationTicks; }
     public void setMaxSimulationTicks(long maxSimulationTicks) { this.maxSimulationTicks = maxSimulationTicks; }
 
+    public int getMinPopulationStopThreshold() { return minPopulationStopThreshold; }
+    public void setMinPopulationStopThreshold(int minPopulationStopThreshold) { this.minPopulationStopThreshold = minPopulationStopThreshold; }
+
     // Multiplayer & Megaterrarium Configuration
     private boolean multiplayerOnly = false;
     private int requiredPlayerCount = 1;

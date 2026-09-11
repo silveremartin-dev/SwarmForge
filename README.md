@@ -116,14 +116,18 @@ SwarmForge/
 
 ---
 
-## 🗺️ Multi-Node & Multiplayer Extension Specifications
+## 🌐 Multi-Node Megaterrarium, Server Browser & Multiplayer
 
-For technical specifications regarding multi-client server browsers, automated periodic checkpoint rotation policies, terrarium border topology alignment, and player-to-player diplomatic protocols:
-- 📖 Read the [Multi-Node Architecture & Extension Specification](docs/PROPOSED_MULTINODE_SPECIFICATION.md).
+SwarmForge v2.0 includes a comprehensive distributed architecture for multi-client and multi-node simulations:
+- **Megaterrarium Sharding & Border Migration**: Divide massive worlds into a $N \times M$ grid of sub-volumes across compute nodes. Seamless entity transition via `BorderMigrationSystem` and real-time boundary halo pheromone exchange via `BoundaryHaloSync`.
+- **Automated FIFO Checkpoint Retention**: `CheckpointRetentionManager` manages rotating auto-checkpoints (keeping the 10 latest snapshots, capped at 500 MB) with permanent pinning for manual checkpoints.
+- **Server Browser & Matchmaking Lobby**: `ServerBrowserPane` in `swarmforge-editor` provides server discovery, latency monitoring, room creation, and species deck selection.
+- **Inter-Colony Diplomacy & Tribute Transfers**: `DiplomacyManager` supports alliances, declarations of war, and resource tribute convoys.
+- **Dedicated Multiplayer Scenarios**: Scenarios such as `MP_01_BATTLE_ARENA_1V1`, `MP_02_COOP_TRIBUTE_TRADE`, and `MP_03_MEGATERRARIUM_4NODE_ALLIANCE` provide pre-configured competitive and cooperative game modes.
 
 ---
 
-## 🚀 Quick Start & Building
+## 🚀 Quick Start & Setup Guide
 
 ### Prerequisites
 - **Java 21 LTS** or higher

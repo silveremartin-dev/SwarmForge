@@ -78,8 +78,42 @@ Through the **God Mode & Climate Panel**, researchers can trigger controlled eco
 
 ---
 
+## 🌐 Multi-Node Megaterrarium, Server Browser & Multiplayer Guide
+
+### 1. Launching a Multi-Node Cluster
+1. **Start the Master Orchestrator Server**:
+   ```bash
+   mvn exec:java -pl swarmforge-server -Dexec.mainClass=org.swarmforge.server.SwarmForgeServer
+   ```
+2. **Connect Distributed Compute Nodes**:
+   ```bash
+   mvn exec:java -pl swarmforge-compute -Dexec.mainClass=org.swarmforge.compute.ComputeNodeApp \
+     -Dexec.args="--host localhost --port 50051 --my-port 50052"
+   ```
+3. **Launch the Studio with Server Browser**:
+   ```bash
+   mvn exec:java -pl swarmforge-editor -Dexec.mainClass=org.swarmforge.client.SwarmForgeClient
+   ```
+
+### 2. Using the Server Browser (`ServerBrowserPane`)
+- Open the **Server Browser** tab in the main studio window.
+- **Server Discovery**: Click **Refresh** to query local LAN and registered servers, showing real-time ping latencies, player counts, and active simulations.
+- **Create Megaterrarium Room**:
+  - Set grid dimensions (e.g. $2 \times 1$ for a 2-player 1v1 duel, $2 \times 2$ for a 4-node federation).
+  - Select a dedicated Multiplayer Scenario from the dropdown.
+  - Choose your species deck profile (starting queen, worker counts, and genetic adaptations).
+- **Ready & Start**: When all players indicate readiness, the host launches the synchronized simulation.
+
+### 3. Dedicated Multiplayer Scenarios
+- **`MP_01_BATTLE_ARENA_1V1`**: 2-Player territorial duel (*Atta sexdens* vs *Solenopsis invicta*) with contested central food resources.
+- **`MP_02_COOP_TRIBUTE_TRADE`**: 2-Player cooperative trade (*Messor barbarus* seed granary trading with *Lasius niger* honeydew harvesters via diplomatic tribute transfers).
+- **`MP_03_MEGATERRARIUM_4NODE_ALLIANCE`**: 4-Node sharded megaterrarium simulating a polycalic supercolony (*Formica polyctena*) across a $2 \times 2$ grid with real-time border migration and pheromone halo synchronization.
+
+---
+
 ## 🛡️ Configuration & Security Tips
 
 - **JWT Authentication**: Export `SWARMFORGE_JWT_SECRET` (minimum 32 characters) to enable persistent authenticated multi-client sessions.
 - **Rate Limiting**: Built-in sliding-window rate limiters prevent client flooding (max 100 messages/second per WebSocket connection).
-- **Deterministic Checkpointing**: Save states at any time via the **File $\rightarrow$ Save Checkpoint** menu for exact snapshot replay and analysis.
+- **FIFO Checkpoint Retention**: Automatic periodic checkpoints keep the last 10 snapshots (up to 500 MB) while preserving user-pinned manual checkpoints.
+

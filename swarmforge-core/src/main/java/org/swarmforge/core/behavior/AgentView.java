@@ -21,8 +21,10 @@ public interface AgentView {
     float getHunger();
     UUID getColonyId();
     boolean isSoldier();
-    java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes();
-    String getAgentId();
+    default java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() { return java.util.Collections.emptySet(); }
+    default String getAgentId() { return ""; }
+    default boolean canFly() { return false; }
+    default boolean isFlying() { return false; }
     
     // Actions output
     // (Note: In pure ECS, output is side-effect on components, but for this bridge we keep the structure)
