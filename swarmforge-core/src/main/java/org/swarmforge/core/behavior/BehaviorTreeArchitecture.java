@@ -198,7 +198,7 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
         private Action randomMove(AgentView agent) {
             java.util.Random rng = (agent instanceof org.swarmforge.core.domain.Individual ind && ind.getRandom() != null)
                     ? ind.getRandom()
-                    : java.util.concurrent.ThreadLocalRandom.current();
+                    : new java.util.Random(1337L);
             float angle = rng.nextFloat() * (float) (Math.PI * 2);
             return Action.move((float) Math.cos(angle), (float) Math.sin(angle), 0);
         }

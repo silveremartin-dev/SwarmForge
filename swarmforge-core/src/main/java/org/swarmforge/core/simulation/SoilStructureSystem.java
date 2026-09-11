@@ -77,7 +77,7 @@ public class SoilStructureSystem {
         int h = terrarium.getHeight();
         int d = terrarium.getDepth();
 
-        java.util.Random rng = simulation != null ? simulation.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
+        java.util.Random rng = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new java.util.Random(1337L);
         // Sample top surface voxels for snowfall accumulation
         for (int i = 0; i < 30; i++) {
             int x = (int) (rng.nextFloat() * w);
@@ -142,7 +142,7 @@ public class SoilStructureSystem {
         int h = terrarium.getHeight();
         int d = terrarium.getDepth();
 
-        java.util.Random rng = simulation != null ? simulation.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
+        java.util.Random rng = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new java.util.Random(1337L);
         // Sample random voxels for performance efficiency
         for (int i = 0; i < 50; i++) {
             int x = 1 + (int) (rng.nextFloat() * Math.max(1, w - 2));

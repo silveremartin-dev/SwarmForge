@@ -31,7 +31,7 @@ public class QTable {
     }
 
     private final Map<RLState, Map<RLAction, Double>> table = new java.util.concurrent.ConcurrentHashMap<>();
-    private final Random random = new Random();
+    private Random random = new Random(1337L);
 
     // Hyperparameters
     private double alpha = 0.1; // Learning Rate
@@ -39,6 +39,14 @@ public class QTable {
     private double epsilon = 0.1; // Exploration Rate
 
     public QTable() {
+    }
+
+    public QTable(Random random) {
+        this.random = random != null ? random : new Random(1337L);
+    }
+
+    public void setRandom(Random random) {
+        this.random = random != null ? random : new Random(1337L);
     }
 
     /**

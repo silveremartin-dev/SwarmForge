@@ -19,9 +19,14 @@ import java.util.UUID;
 public class EcsColonyFactory {
 
     private final World ecsWorld;
+    private java.util.Random random = new java.util.Random(1337L);
 
     public EcsColonyFactory(World ecsWorld) {
         this.ecsWorld = ecsWorld;
+    }
+
+    public void setRandom(java.util.Random random) {
+        this.random = random != null ? random : new java.util.Random(1337L);
     }
 
     /**
@@ -37,7 +42,7 @@ public class EcsColonyFactory {
         pos.x = x;
         pos.y = y;
         pos.z = z;
-        pos.heading = (float) (Math.random() * Math.PI * 2);
+        pos.heading = (float) (random.nextDouble() * Math.PI * 2);
 
         VelocityComponent vel = edit.create(VelocityComponent.class);
         vel.dx = 0.0f;
@@ -53,7 +58,7 @@ public class EcsColonyFactory {
         meta.energy = 100.0f;
         meta.maxEnergy = 100.0f;
         meta.maxHealth = 100.0f;
-        double healthGaussian = (caste == Individual.Caste.QUEEN) ? 100.0 : (94.0 + 5.0 * java.util.concurrent.ThreadLocalRandom.current().nextGaussian());
+        double healthGaussian = (caste == Individual.Caste.QUEEN) ? 100.0 : (94.0 + 5.0 * random.nextGaussian());
         meta.health = (float) Math.max(65.0, Math.min(100.0, healthGaussian));
         meta.hunger = 0.0f;
         meta.thirst = 0.0f;
@@ -169,8 +174,8 @@ public class EcsColonyFactory {
     public int[] createWorkersBatch(UUID colonyId, int count, float nestX, float nestY, float nestZ, Species species) {
         int[] entityIds = new int[count];
         for (int i = 0; i < count; i++) {
-            float rAngle = (float) (Math.random() * Math.PI * 2);
-            float rDist = (float) (Math.random() * 2.5f);
+            float rAngle = (float) (random.nextDouble() * Math.PI * 2);
+            float rDist = random.nextFloat() * 2.5f;
             float x = nestX + (float) Math.cos(rAngle) * rDist;
             float y = nestY + (float) Math.sin(rAngle) * rDist;
             Individual.Job job = (i % 2 == 0) ? Individual.Job.FORAGER : Individual.Job.NURSE;

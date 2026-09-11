@@ -89,7 +89,7 @@ public class ForagingBehavior implements BehaviorStrategy {
     }
 
     private void explore(Individual ind) {
-        var rand = java.util.concurrent.ThreadLocalRandom.current();
+        var rand = (ind != null && ind.getRandom() != null) ? ind.getRandom() : new java.util.Random(1337L);
         if (rand.nextFloat() < RANDOM_TURN_CHANCE) {
             ind.setHeading(ind.getHeading() + (rand.nextFloat() - 0.5f) * 0.5f);
         }

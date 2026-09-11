@@ -99,7 +99,7 @@ public class StormDisaster implements DisasterEvent {
 
         // Localized surface flash flooding
         if (terrarium != null) {
-            Random rand = new Random();
+            Random rand = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new Random(1337L);
             int count = (int) (3 + intensity * 10);
             for (int i = 0; i < count; i++) {
                 int x = rand.nextInt(terrarium.getWidth());

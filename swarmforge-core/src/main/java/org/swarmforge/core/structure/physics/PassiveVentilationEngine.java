@@ -25,7 +25,8 @@ public class PassiveVentilationEngine implements Serializable {
     ) implements Serializable {}
 
     /**
-     * Compute chimney stack effect airflow velocity (m/s).
+     * Compute chimney stack effect airflow velocity (m/s) coupled with Darcy-Weisbach friction & minor head losses.
+     * v_eff = v_raw / sqrt(1 + sum(xi) + lambda * L / D_h)
      */
     public float calculateStackEffectAirflow(NestVoxelGrid grid, float externalTempC, float externalWindSpeed) {
         NestType nestType = grid.getNestType();
@@ -51,12 +52,30 @@ public class PassiveVentilationEngine implements Serializable {
         float deltaT = Math.abs(meanNestTemp - externalTempC);
         float absExtK = Math.max(250.0f, externalTempC + 273.15f);
 
-        // Thermal buoyancy stack velocity formula
+        // Thermal buoyancy stack velocity formula (ideal inviscid driving velocity)
         float buoyancyVelocity = (float) Math.sqrt(Math.max(0.0f, (9.81f * heightChimney * deltaT) / absExtK));
 
-        // Total passive draft combines thermal buoyancy and wind suction draft
+        // Wind Bernoulli suction draft
         float windDraft = externalWindSpeed * 0.15f;
-        return draftMult * (buoyancyVelocity + windDraft);
+        float rawDraftVelocity = draftMult * (buoyancyVelocity + windDraft);
+
+        // Darcy-Weisbach & Minor Head Loss hydraulic resistance in porous gallery network
+        float lambdaFriction = 0.055f; // Darcy friction factor for rough subterranean galleries
+        float hydraulicDiameterDh = 0.08f; // Mean conduit hydraulic diameter (8 cm)
+        float minorLossSumXi = 1.25f; // Cumulative minor loss coefficient for gallery bends and junctions
+        float headLossDamping = (float) Math.sqrt(1.0f + minorLossSumXi + (lambdaFriction * heightChimney / hydraulicDiameterDh));
+
+        return rawDraftVelocity / headLossDamping;
+    }
+
+    /**
+     * Calculates Darcy-Weisbach head loss factor (Delta P / (0.5 * rho * v^2)).
+     */
+    public float calculateDarcyWeisbachLossFactor(float lengthM, float hydraulicDiameterM) {
+        float lambda = 0.055f;
+        float minorLoss = 1.25f;
+        float dh = Math.max(0.01f, hydraulicDiameterM);
+        return minorLoss + (lambda * Math.max(0.1f, lengthM) / dh);
     }
 
     /**

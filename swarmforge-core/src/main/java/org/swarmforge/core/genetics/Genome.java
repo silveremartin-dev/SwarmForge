@@ -13,7 +13,7 @@ import java.util.Random;
  * Supports mutation and crossover for evolutionary algorithms.
  */
 public class Genome {
-    private static final Random RANDOM = new Random();
+    private static final Random RANDOM = new Random(1337L);
 
     // Traits (Multipliers centered around 1.0)
     private float speedMultiplier;

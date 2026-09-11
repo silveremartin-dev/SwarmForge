@@ -19,9 +19,20 @@ import java.util.Random;
  */
 public class EvolutionEngine {
 
-    private final Random random = new Random();
+    private Random random = new Random(1337L);
     private static final float MUTATION_RATE = 0.05f;
     private static final float MUTATION_STRENGTH = 0.1f; // +/- 10% change
+
+    public EvolutionEngine() {
+    }
+
+    public EvolutionEngine(Random random) {
+        this.random = random != null ? random : new Random(1337L);
+    }
+
+    public void setRandom(Random random) {
+        this.random = random != null ? random : new Random(1337L);
+    }
 
     /**
      * Evolve a new colony configuration from a parent colony.

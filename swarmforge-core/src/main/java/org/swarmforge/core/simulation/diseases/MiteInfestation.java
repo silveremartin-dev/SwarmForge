@@ -31,7 +31,7 @@ import java.util.Random;
  */
 public class MiteInfestation implements Disease {
 
-    private static final Random random = new Random();
+    private static final Random RANDOM = new Random(1337L);
 
     @Override
     public String getName() {
@@ -43,9 +43,13 @@ public class MiteInfestation implements Disease {
         return "Varroa simulata";
     }
 
+    public String getDescription() {
+        return "Parasitic mites that attach to ants, draining energy and weakening the host.";
+    }
+
     @Override
     public TransmissionMode getTransmissionMode() {
-        return TransmissionMode.CONTACT;
+        return TransmissionMode.VECTOR;
     }
 
     @Override
@@ -55,17 +59,17 @@ public class MiteInfestation implements Disease {
 
     @Override
     public float getInfectionRate() {
-        return 0.25f; // Highly contagious
-    }
-
-    @Override
-    public float getRecoveryRate() {
-        return 0.01f; // Can be groomed off
+        return 0.15f; // Moderate transmission
     }
 
     @Override
     public float getMortalityRate() {
-        return 0.3f; // Moderate mortality
+        return 0.05f; // Low direct mortality, but weakens host
+    }
+
+    @Override
+    public float getRecoveryRate() {
+        return 0.02f; // Low natural recovery
     }
 
     @Override
@@ -76,7 +80,7 @@ public class MiteInfestation implements Disease {
     private Random getRng(Individual individual, Simulation simulation) {
         if (simulation != null && simulation.getRandom() != null) return simulation.getRandom();
         if (individual != null && individual.getRandom() != null) return individual.getRandom();
-        return java.util.concurrent.ThreadLocalRandom.current();
+        return RANDOM;
     }
 
     @Override
@@ -122,7 +126,7 @@ public class MiteInfestation implements Disease {
             probability *= 1.5f;
         }
 
-        Random random = target.getRandom() != null ? target.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
+        Random random = target.getRandom() != null ? target.getRandom() : (source != null && source.getRandom() != null ? source.getRandom() : RANDOM);
         return random.nextFloat() < probability;
     }
 

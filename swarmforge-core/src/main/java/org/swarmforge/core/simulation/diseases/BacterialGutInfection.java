@@ -34,7 +34,7 @@ public class BacterialGutInfection implements Disease {
     private Random getRng(Individual individual, Simulation simulation) {
         if (simulation != null && simulation.getRandom() != null) return simulation.getRandom();
         if (individual != null && individual.getRandom() != null) return individual.getRandom();
-        return java.util.concurrent.ThreadLocalRandom.current();
+        return new Random(1337L);
     }
 
     @Override
@@ -125,7 +125,7 @@ public class BacterialGutInfection implements Disease {
             return false;
         }
 
-        Random random = target.getRandom() != null ? target.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
+        Random random = target.getRandom() != null ? target.getRandom() : (source != null && source.getRandom() != null ? source.getRandom() : new Random(1337L));
         return random.nextFloat() < getInfectionRate();
     }
 

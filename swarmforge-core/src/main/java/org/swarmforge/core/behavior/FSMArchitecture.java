@@ -371,7 +371,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
     private Action randomMove(AgentView agent) {
         java.util.Random rng = (agent instanceof Individual ind && ind.getRandom() != null) 
                 ? ind.getRandom() 
-                : java.util.concurrent.ThreadLocalRandom.current();
+                : new java.util.Random(1337L);
         float heading = (agent instanceof Individual ind) ? ind.getHeading() : 0.0f;
         // Directional persistence with natural wander jitter
         float jitter = (rng.nextFloat() - 0.5f) * 0.8f;

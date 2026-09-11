@@ -29,7 +29,7 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
     private final float[] hiddenBias;
     private final float[] outputBias;
     private final float learningRate;
-    private final Random random = new Random();
+    private final Random random;
 
     // Last hidden activations (for learning)
     private float[] lastInputs; // Stored inputs for backprop
@@ -41,7 +41,12 @@ public class NeuralNetArchitecture implements ReasoningArchitecture {
     }
 
     public NeuralNetArchitecture(float learningRate) {
+        this(learningRate, new Random(1337L));
+    }
+
+    public NeuralNetArchitecture(float learningRate, Random random) {
         this.learningRate = learningRate;
+        this.random = random != null ? random : new Random(1337L);
 
         // Initialize weights with small random values
         weightsInputHidden = new float[INPUT_SIZE][HIDDEN_SIZE];

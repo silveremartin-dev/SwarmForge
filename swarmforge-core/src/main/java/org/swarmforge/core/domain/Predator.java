@@ -56,9 +56,24 @@ public class Predator {
     private boolean trapBuilt = false;
     private float trapX, trapY, trapZ;
     private float trapRadius = 3f;
+    private java.util.Random random;
+
+    public void setRandom(java.util.Random random) {
+        this.random = random;
+    }
+
+    public java.util.Random getRandom() {
+        if (this.random != null) {
+            return this.random;
+        }
+        long seed = id != null ? id.getLeastSignificantBits() : 1337L;
+        this.random = new java.util.Random(seed);
+        return this.random;
+    }
 
     public Predator(PredatorType type, float x, float y, float z) {
         this.id = UUID.randomUUID();
+        this.random = new java.util.Random(this.id.getLeastSignificantBits());
         this.type = type;
         this.x = x;
         this.y = y;
@@ -204,7 +219,7 @@ public class Predator {
         float dz = ant.getZ() - trapZ;
         float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-        java.util.Random rng = (ant != null && ant.getRandom() != null) ? ant.getRandom() : java.util.concurrent.ThreadLocalRandom.current();
+        java.util.Random rng = (ant != null && ant.getRandom() != null) ? ant.getRandom() : getRandom();
         return dist <= trapRadius && rng.nextFloat() < type.getTrapChance();
     }
 

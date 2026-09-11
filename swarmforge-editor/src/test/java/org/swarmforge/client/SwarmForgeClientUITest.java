@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @author Gemini AI Assistant
  */
-@org.junit.jupiter.api.condition.DisabledIfSystemProperty(named = "headless", matches = "true")
+@org.junit.jupiter.api.condition.EnabledIfSystemProperty(named = "testfx.ui.enable", matches = "true")
 @ExtendWith(ApplicationExtension.class)
 public class SwarmForgeClientUITest {
 

@@ -166,6 +166,9 @@ public class Simulation {
 
     public void addColony(Colony colony) {
         if (colony != null) {
+            if (this.random != null) {
+                colony.setRandom(new java.util.Random(this.random.nextLong()));
+            }
             colony.bootstrapDefaultResources();
         }
         colonies.add(colony);
@@ -200,6 +203,9 @@ public class Simulation {
         }
 
         Colony colony = new Colony(species, x, y, 0); // Z=0 surface
+        if (this.random != null) {
+            colony.setRandom(new java.util.Random(this.random.nextLong()));
+        }
         if (queens > 0) colony.createQueens(queens);
         if (workers > 0) colony.createWorkers(workers);
         if (soldiers > 0) colony.createSoldiers(soldiers);
@@ -227,7 +233,7 @@ public class Simulation {
         }
 
         if (foodSources.isEmpty()) {
-            java.util.Random rng = new java.util.Random(12345);
+            java.util.Random rng = (this.random != null) ? this.random : new java.util.Random(12345);
             org.swarmforge.core.domain.ResourceType[] types = {
                 org.swarmforge.core.domain.ResourceType.SUGAR,
                 org.swarmforge.core.domain.ResourceType.SEED,

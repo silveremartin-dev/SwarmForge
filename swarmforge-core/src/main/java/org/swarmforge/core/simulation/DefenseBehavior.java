@@ -44,7 +44,7 @@ public class DefenseBehavior implements BehaviorStrategy {
             return;
         }
 
-        var rand = java.util.concurrent.ThreadLocalRandom.current();
+        var rand = (ind != null && ind.getRandom() != null) ? ind.getRandom() : new java.util.Random(1337L);
 
         // Stay near nest entrance
         if (distFromNest > GUARD_RANGE) {
@@ -78,6 +78,7 @@ public class DefenseBehavior implements BehaviorStrategy {
         // Move towards source of alarm
         ind.move(0.4f);
         // Add random component to spread out guards
-        ind.setHeading(ind.getHeading() + (java.util.concurrent.ThreadLocalRandom.current().nextFloat() - 0.5f) * 0.3f);
+        float randOffset = (ind != null && ind.getRandom() != null) ? ind.getRandom().nextFloat() : 0.5f;
+        ind.setHeading(ind.getHeading() + (randOffset - 0.5f) * 0.3f);
     }
 }

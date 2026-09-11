@@ -84,7 +84,7 @@ public class FloodDisaster implements DisasterEvent {
         if (remainingTicks <= 0) return;
         remainingTicks--;
 
-        java.util.Random rand = java.util.concurrent.ThreadLocalRandom.current();
+        java.util.Random rand = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new java.util.Random(1337L);
         float progress = 1.0f - ((float) remainingTicks / (float) durationTicks);
         int currentWaterLevel = Math.max(1, (int) (waterLevel * progress));
 

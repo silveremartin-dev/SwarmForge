@@ -26,7 +26,7 @@ public class PredatorManager {
 
     private final Simulation simulation;
     private final java.util.Set<Predator> predators = java.util.concurrent.ConcurrentHashMap.newKeySet();
-    private final Random random = new Random();
+    private final Random random;
 
     // Configuration
     private int maxPredators = 10;
@@ -48,6 +48,7 @@ public class PredatorManager {
 
     public PredatorManager(Simulation simulation) {
         this.simulation = simulation;
+        this.random = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new Random(1337L);
     }
 
     /**

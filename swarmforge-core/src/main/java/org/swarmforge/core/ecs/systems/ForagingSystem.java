@@ -21,9 +21,14 @@ public class ForagingSystem extends IteratingSystem {
     ComponentMapper<MetabolismComponent> mMeta; // Only live ants forage
     ComponentMapper<ColonyComponent> mColony;
     ComponentMapper<AiComponent> mAi;
+    private java.util.Random random = new java.util.Random(1337L);
 
     public ForagingSystem() {
         super(Aspect.all(PositionComponent.class, VelocityComponent.class, InventoryComponent.class, ColonyComponent.class));
+    }
+
+    public void setRandom(java.util.Random random) {
+        this.random = random != null ? random : new java.util.Random(1337L);
     }
 
     @Override
@@ -81,8 +86,8 @@ public class ForagingSystem extends IteratingSystem {
                 vel.speed = 0.5f;
             }
             // Wander Logic (Random Walk on X/Y plane with natural exploration)
-            if ((vel.dx == 0 && vel.dy == 0) || java.util.concurrent.ThreadLocalRandom.current().nextFloat() < 0.08f) {
-                double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble() * Math.PI * 2;
+            if ((vel.dx == 0 && vel.dy == 0) || random.nextFloat() < 0.08f) {
+                double angle = random.nextDouble() * Math.PI * 2;
                 vel.dx = (float) Math.cos(angle) * vel.speed;
                 vel.dy = (float) Math.sin(angle) * vel.speed;
                 vel.dz = 0;

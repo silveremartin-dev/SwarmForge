@@ -18,10 +18,14 @@ public class AiSystem extends IteratingSystem {
     ComponentMapper<ColonyComponent> mColony;
     ComponentMapper<LifeCycleComponent> mLife;
 
-    // Sub-systems or Logic helpers could be injected here
+    private java.util.Random random = new java.util.Random(1337L);
 
     public AiSystem() {
         super(Aspect.all(AiComponent.class, PositionComponent.class, VelocityComponent.class, ColonyComponent.class));
+    }
+
+    public void setRandom(java.util.Random random) {
+        this.random = random != null ? random : new java.util.Random(1337L);
     }
 
     @Override
@@ -82,7 +86,7 @@ public class AiSystem extends IteratingSystem {
             }
         } else {
             // Random Walk on X/Y plane
-            double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble() * Math.PI * 2;
+            double angle = random.nextDouble() * Math.PI * 2;
             vel.dx = (float) Math.cos(angle) * vel.speed;
             vel.dy = (float) Math.sin(angle) * vel.speed;
             vel.dz = 0;
@@ -178,7 +182,7 @@ public class AiSystem extends IteratingSystem {
             }
             case EXPLORE -> {
                 // Random walk on X/Y ground plane
-                double angle = java.util.concurrent.ThreadLocalRandom.current().nextDouble() * Math.PI * 2;
+                double angle = random.nextDouble() * Math.PI * 2;
                 vel.dx = (float) Math.cos(angle) * vel.speed;
                 vel.dy = (float) Math.sin(angle) * vel.speed;
                 vel.dz = 0;

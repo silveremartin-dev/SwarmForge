@@ -33,9 +33,14 @@ public class EthologyEcsSystem extends IteratingSystem {
     private SparsePheromoneGrid pheromoneGrid;
     private float sampleAccumulatorSec = 0f;
     private boolean samplingFrame = false;
+    private java.util.Random random = new java.util.Random(1337L);
 
     public EthologyEcsSystem() {
         super(Aspect.all(PositionComponent.class, MetabolismComponent.class, EthologyComponent.class));
+    }
+
+    public void setRandom(java.util.Random random) {
+        this.random = random != null ? random : new java.util.Random(1337L);
     }
 
     public void setPheromoneGrid(SparsePheromoneGrid grid) {
@@ -184,8 +189,8 @@ public class EthologyEcsSystem extends IteratingSystem {
                     ? Math.max(0.2f, 1.0f - mMandible.get(entityId).mandibleWear)
                     : 1.0f;
                 float recoilMag = 2.8f * biteIntegrity;
-                vel.dx += (float) (Math.random() - 0.5) * recoilMag * 2.0f;
-                vel.dy += (float) (Math.random() - 0.5) * recoilMag * 2.0f;
+                vel.dx += (random.nextFloat() - 0.5f) * recoilMag * 2.0f;
+                vel.dy += (random.nextFloat() - 0.5f) * recoilMag * 2.0f;
                 vel.dz = 1.6f * biteIntegrity; // Vertical catapult lift modulated by biomechanical integrity
                 if (mMandible != null && mMandible.has(entityId)) {
                     mMandible.get(entityId).mandibleWear = Math.min(1.0f, mMandible.get(entityId).mandibleWear + 0.002f);

@@ -56,8 +56,7 @@ public class NestGenerator {
     private int maxDepth = 50;
 
     public NestGenerator(Terrarium terrarium) {
-        this.terrarium = terrarium;
-        this.random = new Random();
+        this(terrarium, 1337L);
     }
 
     public NestGenerator(Terrarium terrarium, long seed) {

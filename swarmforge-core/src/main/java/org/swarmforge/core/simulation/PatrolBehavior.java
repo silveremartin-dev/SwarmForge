@@ -51,7 +51,8 @@ public class PatrolBehavior implements BehaviorStrategy {
 
     private void rushToAlarm(Individual ind, BehaviorContext ctx) {
         // Turn towards alarm source (simplified)
-        ind.setHeading(ind.getHeading() + (java.util.concurrent.ThreadLocalRandom.current().nextFloat() - 0.5f) * 0.5f);
+        float randOffset = (ind != null && ind.getRandom() != null) ? ind.getRandom().nextFloat() : 0.5f;
+        ind.setHeading(ind.getHeading() + (randOffset - 0.5f) * 0.5f);
         ind.move(0.8f); // Move fast
     }
 

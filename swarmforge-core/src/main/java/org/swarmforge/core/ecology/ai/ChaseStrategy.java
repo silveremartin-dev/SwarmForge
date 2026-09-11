@@ -20,8 +20,6 @@ import java.util.Random;
  */
 public class ChaseStrategy implements HuntingStrategy {
 
-    private final Random random = new Random();
-
     @Override
     public void update(Predator predator, Simulation simulation) {
         Individual target = predator.getCurrentTarget();
@@ -50,9 +48,10 @@ public class ChaseStrategy implements HuntingStrategy {
     }
 
     private void wander(Predator predator) {
-        if (random.nextFloat() < 0.05f) { // 5% chance to change direction
-            float wanderX = predator.getX() + (random.nextFloat() - 0.5f) * 20f;
-            float wanderY = predator.getY() + (random.nextFloat() - 0.5f) * 20f;
+        Random rng = (predator != null && predator.getRandom() != null) ? predator.getRandom() : new Random(1337L);
+        if (rng.nextFloat() < 0.05f) { // 5% chance to change direction
+            float wanderX = predator.getX() + (rng.nextFloat() - 0.5f) * 20f;
+            float wanderY = predator.getY() + (rng.nextFloat() - 0.5f) * 20f;
             predator.moveToward(wanderX, wanderY, 0.5f);
         }
     }

@@ -43,7 +43,7 @@ public class TerritoryManager {
     private final Simulation simulation;
     private final Map<Long, TerritoryCell> territoryGrid = new ConcurrentHashMap<>();
     private final List<ConflictEvent> conflictHistory = new ArrayList<>();
-    private final Random random = new Random();
+    private final Random random;
 
     // Grid settings
     private int cellSize = 5; // Territory cells are 5x5 world units
@@ -59,6 +59,7 @@ public class TerritoryManager {
 
     public TerritoryManager(Simulation simulation) {
         this.simulation = simulation;
+        this.random = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new Random(1337L);
     }
 
     /**

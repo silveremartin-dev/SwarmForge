@@ -81,7 +81,7 @@ public class FireDisaster implements DisasterEvent {
     public void trigger(Simulation simulation, Terrarium terrarium) {
         System.out.println("🔥 DISASTER TRIGGER: " + getName() + " (" + getSeverity() + " | Durée: " + durationTicks + " pas)!");
 
-        java.util.Random rand = java.util.concurrent.ThreadLocalRandom.current();
+        java.util.Random rand = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new java.util.Random(1337L);
         if (centerX < 0 && terrarium != null) centerX = rand.nextInt(terrarium.getWidth());
         if (centerY < 0 && terrarium != null) centerY = rand.nextInt(terrarium.getHeight());
         if (centerZ < 0 && terrarium != null) centerZ = (int) terrarium.getSurfaceElevation(centerX, centerY);
@@ -96,7 +96,7 @@ public class FireDisaster implements DisasterEvent {
         if (remainingTicks <= 0) return;
         remainingTicks--;
 
-        java.util.Random rand = java.util.concurrent.ThreadLocalRandom.current();
+        java.util.Random rand = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new java.util.Random(1337L);
         float progress = 1.0f - ((float) remainingTicks / (float) durationTicks);
         int currentRadius = Math.max(2, (int) (spreadRadius * Math.min(1.0f, progress * 1.3f)));
 

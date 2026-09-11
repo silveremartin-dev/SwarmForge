@@ -65,7 +65,13 @@ public class QueenBehavior {
     public QueenBehavior(Colony colony, Simulation simulation) {
         this.colony = colony;
         this.simulation = simulation;
-        this.random = new Random();
+        if (simulation != null && simulation.getRandom() != null) {
+            this.random = simulation.getRandom();
+        } else if (colony != null && colony.getRandom() != null) {
+            this.random = colony.getRandom();
+        } else {
+            this.random = new Random(1337L);
+        }
     }
 
     /**

@@ -22,13 +22,16 @@ public class SoilHydricCoupling {
     private float frostDepthCells = 0.0f;     // Subterranean freezing front depth in cells
     private final int maxDepth;
     private final float[] soilMoistureByDepth;
+    private final float[] soilTemperatureByDepth;
     private float surfaceMoisture = 45.0f;
 
     public SoilHydricCoupling(int maxDepth) {
         this.maxDepth = Math.max(1, maxDepth);
         this.soilMoistureByDepth = new float[this.maxDepth];
+        this.soilTemperatureByDepth = new float[this.maxDepth];
         for (int z = 0; z < this.maxDepth; z++) {
             soilMoistureByDepth[z] = 45.0f; // Default baseline moisture
+            soilTemperatureByDepth[z] = 18.0f; // Default baseline soil temperature
         }
     }
 
@@ -130,10 +133,23 @@ public class SoilHydricCoupling {
         } else if (surfaceTemp > 5.0f) {
             frostDepthCells = Math.max(0.0f, frostDepthCells - surfaceTemp * 0.03f * deltaHours);
         }
+
+        // 6. 1D Fourier Heat Diffusion in Porous Soil: dT/dt = alpha(theta) * d2T/dz2
+        soilTemperatureByDepth[0] = surfaceTemp;
+        for (int z = 1; z < maxDepth - 1; z++) {
+            float theta = soilMoistureByDepth[z] / 100.0f;
+            // Thermal diffusivity: alpha increases with moisture from 0.15 (dry sand) to 0.65 (wet loam)
+            float alpha = 0.15f + 0.50f * theta;
+            float d2T = (soilTemperatureByDepth[z - 1] - 2.0f * soilTemperatureByDepth[z] + soilTemperatureByDepth[z + 1]);
+            soilTemperatureByDepth[z] += alpha * d2T * deltaHours * 5.0f;
+        }
+        if (maxDepth > 1) {
+            soilTemperatureByDepth[maxDepth - 1] = soilTemperatureByDepth[maxDepth - 2];
+        }
     }
 
     /**
-     * Calculate underground temperature at depth z (cells) considering soil thermal inertia phase lag and snow cover insulation.
+     * Calculate underground temperature at depth z (cells) considering 1D Fourier diffusion, phase lag and snow cover insulation.
      *
      * @param depth Depth in cells (0 = surface)
      * @param surfaceTemp Current surface temperature
@@ -145,6 +161,7 @@ public class SoilHydricCoupling {
     public float calculateTemperatureAtDepth(int depth, float surfaceTemp, float annualAvgTemp,
                                             double soilInertiaDays, double depthAttenuation) {
         if (depth <= 0) return surfaceTemp;
+        int z = Math.max(0, Math.min(maxDepth - 1, depth));
 
         // Snow layer acts as a thermal insulator (blanket protecting sub-surface from extreme cold)
         float snowInsulationFactor = Math.min(0.90f, snowDepthMm / 80.0f);
@@ -161,7 +178,10 @@ public class SoilHydricCoupling {
         float tempDelta = insulatedSurfaceTemp - annualAvgTemp;
         float dampenedDelta = (float) (tempDelta * attenuationFactor);
 
-        return annualAvgTemp + dampenedDelta;
+        // Blend Fourier 1D grid state with analytical attenuation
+        float fourierT = soilTemperatureByDepth[z];
+        float analyticalT = annualAvgTemp + dampenedDelta;
+        return 0.5f * fourierT + 0.5f * analyticalT;
     }
 
     public float getSnowDepthMm() { return snowDepthMm; }
@@ -175,5 +195,13 @@ public class SoilHydricCoupling {
     public float getMoistureAtDepth(int depth) {
         int z = Math.max(0, Math.min(maxDepth - 1, depth));
         return soilMoistureByDepth[z];
+    }
+
+    /**
+     * Get 1D Fourier diffused soil temperature at a specific depth cell.
+     */
+    public float getTemperatureAtDepth(int depth) {
+        int z = Math.max(0, Math.min(maxDepth - 1, depth));
+        return soilTemperatureByDepth[z];
     }
 }

@@ -145,11 +145,13 @@ public class JmeGameApp extends SimpleApplication {
             al.setColor(new ColorRGBA(0.55f, 0.58f, 0.65f, 1.0f));
             rootNode.addLight(al);
 
-            // Shadows
+            // Enhanced Soft Directional Shadows
             com.jme3.shadow.DirectionalLightShadowRenderer dlsr = new com.jme3.shadow.DirectionalLightShadowRenderer(
-                    assetManager, 1024, 3);
+                    assetManager, 2048, 3);
             dlsr.setLight(sun);
-            dlsr.setShadowIntensity(0.30f);
+            dlsr.setShadowIntensity(0.40f);
+            dlsr.setEdgeFilteringMode(com.jme3.shadow.EdgeFilteringMode.PCF8);
+            dlsr.setShadowZExtend(150f);
             viewPort.addProcessor(dlsr);
 
             // Disable standard flyCam to use custom mouse control
@@ -367,11 +369,16 @@ public class JmeGameApp extends SimpleApplication {
             int d = terrarium.getDepth();
             int h = terrarium.getHeight();
 
-            // Better Lighting
+            // High-fidelity PBR Terrain Lighting & Texturing
             Material soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             soilMat.setBoolean("UseMaterialColors", true);
-            soilMat.setColor("Diffuse", new ColorRGBA(0.4f, 0.25f, 0.1f, 1f));
-            soilMat.setColor("Ambient", new ColorRGBA(0.4f, 0.25f, 0.1f, 1f));
+            soilMat.setColor("Diffuse", new ColorRGBA(0.42f, 0.32f, 0.22f, 1f));
+            soilMat.setColor("Ambient", new ColorRGBA(0.28f, 0.22f, 0.16f, 1f));
+            try {
+                com.jme3.texture.Texture diffuseTex = assetManager.loadTexture("models/textures/pbr/Ground037_512_Color.jpg");
+                diffuseTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
+                soilMat.setTexture("DiffuseMap", diffuseTex);
+            } catch (Exception ignored) {}
 
             TerrainMeshGenerator generator = new TerrainMeshGenerator();
             com.jme3.scene.Mesh terrainMesh = generator.generateMesh(terrarium);
@@ -379,6 +386,11 @@ public class JmeGameApp extends SimpleApplication {
             terrainGeom.setMaterial(soilMat);
             terrainNode.attachChild(terrainGeom);
             rootNode.attachChild(terrainNode);
+
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.setLatitude(terrarium.getLatitude());
+                vegetationVisualizer.rebuildVegetation(w, d);
+            }
 
             // Initialize Pheromone Visualizer with full world dimensions (width, depth)
             if (pheromoneVisualizer == null) {
@@ -749,6 +761,9 @@ public class JmeGameApp extends SimpleApplication {
         }
         if (vegetationVisualizer == null) {
             vegetationVisualizer = new VegetationVisualizer(assetManager);
+            if (simulation != null && simulation.getTerrarium() != null) {
+                vegetationVisualizer.setLatitude(simulation.getTerrarium().getLatitude());
+            }
             vegetationVisualizer.rebuildVegetation(
                 simulation != null && simulation.getTerrarium() != null ? simulation.getTerrarium().getWidth() : 64,
                 simulation != null && simulation.getTerrarium() != null ? simulation.getTerrarium().getDepth() : 64
@@ -757,6 +772,12 @@ public class JmeGameApp extends SimpleApplication {
         }
 
         if (simulation != null) {
+            if (simulation.getTerrarium() != null) {
+                vegetationVisualizer.setLatitude(simulation.getTerrarium().getLatitude());
+            }
+            if (simulation.getSeasonManager() != null) {
+                vegetationVisualizer.setSeason(simulation.getSeasonManager().getCurrentSeason());
+            }
             for (org.swarmforge.core.domain.Colony colony : simulation.getColonies()) {
                 if (colony.getTunnelNetwork() != null) {
                     tunnelVisualizer.update(colony.getTunnelNetwork());

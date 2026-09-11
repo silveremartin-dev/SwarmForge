@@ -81,7 +81,7 @@ public class DroughtDisaster implements DisasterEvent {
         if (remainingTicks <= 0) return;
         remainingTicks--;
 
-        Random rand = new Random();
+        Random rand = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new Random(1337L);
 
         if (terrarium != null) {
             float dryChance = intensity * 0.05f;

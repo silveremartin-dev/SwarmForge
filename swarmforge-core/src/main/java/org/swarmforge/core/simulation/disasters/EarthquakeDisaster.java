@@ -82,7 +82,7 @@ public class EarthquakeDisaster implements DisasterEvent {
         if (remainingTicks <= 0) return;
         remainingTicks--;
 
-        java.util.Random rand = java.util.concurrent.ThreadLocalRandom.current();
+        java.util.Random rand = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new java.util.Random(1337L);
         float collapseChance = (magnitude * 0.15f) / Math.max(1, durationTicks / 10);
 
         if (terrarium != null) {

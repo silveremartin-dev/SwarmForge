@@ -119,7 +119,7 @@ public class FungalInfection implements Disease {
     private Random getRng(Individual individual, Simulation simulation) {
         if (simulation != null && simulation.getRandom() != null) return simulation.getRandom();
         if (individual != null && individual.getRandom() != null) return individual.getRandom();
-        return java.util.concurrent.ThreadLocalRandom.current();
+        return new Random(1337L);
     }
 
     private void processEarlyPhase(Individual individual, Simulation simulation) {

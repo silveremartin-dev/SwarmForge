@@ -49,10 +49,15 @@ public class CrowdSimulator {
     private int gridHeight;
     private int[] head = new int[0];
     private int[] next = new int[0];
+    private java.util.Random random = new java.util.Random(1337L);
 
     public CrowdSimulator(int initialCapacity) {
         this.capacity = initialCapacity;
         allocateArrays(initialCapacity);
+    }
+
+    public void setRandom(java.util.Random random) {
+        this.random = random != null ? random : new java.util.Random(1337L);
     }
 
     private void allocateArrays(int size) {
@@ -244,7 +249,7 @@ public class CrowdSimulator {
             }
 
             // Wandering force
-            java.util.Random rng = java.util.concurrent.ThreadLocalRandom.current();
+            java.util.Random rng = this.random;
             forceX += (rng.nextFloat() - 0.5f) * WANDER_WEIGHT;
             forceY += (rng.nextFloat() - 0.5f) * WANDER_WEIGHT;
 

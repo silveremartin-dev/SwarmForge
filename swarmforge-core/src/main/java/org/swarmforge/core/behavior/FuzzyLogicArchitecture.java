@@ -161,7 +161,7 @@ public class FuzzyLogicArchitecture implements ReasoningArchitecture {
             case FLEE, EXPLORE -> {
                 java.util.Random rng = (agent instanceof org.swarmforge.core.domain.Individual ind && ind.getRandom() != null)
                         ? ind.getRandom()
-                        : java.util.concurrent.ThreadLocalRandom.current();
+                        : new java.util.Random(1337L);
                 float angle = rng.nextFloat() * (float) (Math.PI * 2);
                 yield Action.move((float) Math.cos(angle) * intensity, (float) Math.sin(angle) * intensity, 0);
             }

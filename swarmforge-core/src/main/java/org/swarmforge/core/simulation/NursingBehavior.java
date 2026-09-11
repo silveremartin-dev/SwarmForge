@@ -20,12 +20,12 @@ import java.util.Random;
  */
 public class NursingBehavior implements BehaviorStrategy {
 
-    private final Random random = new Random();
-
     @Override
     public void execute(Individual ind, Terrarium terrarium, Colony colony, BehaviorContext ctx) {
         if (!ind.isAlive())
             return;
+
+        Random rng = (ind.getRandom() != null) ? ind.getRandom() : (colony != null && colony.getRandom() != null ? colony.getRandom() : new Random(1337L));
 
         // 1. If carrying food for brood
         if (ind.getCarriedItem() == Individual.CarriedItem.FOOD) {
@@ -61,10 +61,10 @@ public class NursingBehavior implements BehaviorStrategy {
                 float ambientTemp = ind.getAmbientTemperatureC();
                 if (ambientTemp < 20.0f || ambientTemp > 31.0f) {
                     // Temperature stress: initiate brood translocation to deeper buffered chamber
-                    if (random.nextFloat() < 0.2f) {
+                    if (rng.nextFloat() < 0.2f) {
                         ind.setCarriedItem(Individual.CarriedItem.BROOD);
                     }
-                } else if (random.nextFloat() < 0.1f && (colony.getFoodStored() > 0 || colony.getProteinStored() > 0)) {
+                } else if (rng.nextFloat() < 0.1f && (colony.getFoodStored() > 0 || colony.getProteinStored() > 0)) {
                     if (colony.getProteinStored() > 0.5f) {
                         colony.setProteinStored(colony.getProteinStored() - 0.5f);
                     } else {
@@ -74,7 +74,7 @@ public class NursingBehavior implements BehaviorStrategy {
                 } else {
                     // Tend brood with micro-movements
                     ind.setState(Individual.AiState.TEND_BROOD);
-                    ind.setHeading(ind.getHeading() + (random.nextFloat() - 0.5f) * 0.3f);
+                    ind.setHeading(ind.getHeading() + (rng.nextFloat() - 0.5f) * 0.3f);
                     ind.move(0.1f);
                 }
             }

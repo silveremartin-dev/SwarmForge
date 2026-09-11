@@ -27,7 +27,7 @@ import java.util.Random;
 public class DiseaseManager {
 
     private final Simulation simulation;
-    private final Random random = new Random();
+    private final Random random;
 
     // Track infections: Individual ID -> (Disease, ticks infected)
     private final Map<String, InfectionRecord> infections = new ConcurrentHashMap<>();
@@ -48,6 +48,7 @@ public class DiseaseManager {
 
     public DiseaseManager(Simulation simulation) {
         this.simulation = simulation;
+        this.random = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new Random(1337L);
 
         // Register all biological pathogen and parasite types
         diseases.add(new FungalInfection());

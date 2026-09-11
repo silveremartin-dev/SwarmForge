@@ -48,6 +48,21 @@ public class Colony implements java.io.Serializable {
     private final org.swarmforge.core.structure.physics.PassiveVentilationEngine ventilationEngine;
     private final org.swarmforge.core.structure.physics.StructuralStabilityAnalyzer stabilityAnalyzer;
     private final java.util.Map<UUID, org.swarmforge.core.epidemiology.IndividualInfection> infectionRegistry = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.atomic.AtomicLong COLONY_COUNTER = new java.util.concurrent.atomic.AtomicLong(1);
+    private java.util.Random random;
+
+    public void setRandom(java.util.Random random) {
+        this.random = random;
+    }
+
+    public java.util.Random getRandom() {
+        if (this.random != null) {
+            return this.random;
+        }
+        long seed = id != null ? id.getLeastSignificantBits() : 1337L;
+        this.random = new java.util.Random(seed);
+        return this.random;
+    }
 
     public Colony(Species species, Terrarium terrarium) {
         this(species, terrarium.getWidth() / 2f, terrarium.getHeight() / 2f, 0);
@@ -55,7 +70,9 @@ public class Colony implements java.io.Serializable {
     }
 
     public Colony(Species species, float x, float y, float z) {
-        this.id = new UUID(java.util.concurrent.ThreadLocalRandom.current().nextLong(), java.util.concurrent.ThreadLocalRandom.current().nextLong());
+        long cNum = COLONY_COUNTER.getAndIncrement();
+        this.id = new UUID(cNum, (long) (x * 31.0 + y * 17.0 + z * 7.0 + cNum));
+        this.random = new java.util.Random(this.id.getLeastSignificantBits());
         this.species = species;
         this.speciesName = species.getScientificName(); // Fixed legacy accessor
         this.individuals = new CopyOnWriteArrayList<>();
@@ -166,14 +183,14 @@ public class Colony implements java.io.Serializable {
         float maxLifespanSec = maxLifespanDays * 86400.0f;
         if (isFoundingQueen) {
             // Young founding queen: age between 0 and 0.05 * maxLifespan
-            float youngAgeSec = (float) (java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.0, 0.05) * maxLifespanSec);
+            float youngAgeSec = (float) (getRandom().nextDouble(0.0, 0.05) * maxLifespanSec);
             ind.setAgeInSeconds(youngAgeSec);
         } else {
             // Gaussian distribution across young adult workforce (mean = 15%, stdDev = 6%)
             // Guarantees all starting workers are in their prime youth with ample lifespan remaining
             double mean = 0.15 * maxLifespanSec;
             double stdDev = 0.06 * maxLifespanSec;
-            double sample = mean + stdDev * java.util.concurrent.ThreadLocalRandom.current().nextGaussian();
+            double sample = mean + stdDev * getRandom().nextGaussian();
             float ageSec = (float) Math.max(0.01 * maxLifespanSec, Math.min(0.35 * maxLifespanSec, sample));
             ind.setAgeInSeconds(ageSec);
         }
@@ -188,7 +205,7 @@ public class Colony implements java.io.Serializable {
             // Normal / Gaussian distribution for startup health (mean = 94% maxH, stdDev = 5% maxH)
             double mean = 0.94 * maxH;
             double stdDev = 0.05 * maxH;
-            double sample = mean + stdDev * java.util.concurrent.ThreadLocalRandom.current().nextGaussian();
+            double sample = mean + stdDev * getRandom().nextGaussian();
             float h = (float) Math.max(0.65 * maxH, Math.min(maxH, sample));
             ind.setHealth(h);
         }
@@ -327,8 +344,8 @@ public class Colony implements java.io.Serializable {
             }
 
             // Queen center placement with micro-jitter (<= 0.2m) to guarantee 100% inside chamber air cavity
-            float rAngle = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0f, (float) (Math.PI * 2));
-            float rDist = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0.05f, 0.2f);
+            float rAngle = getRandom().nextFloat(0f, (float) (Math.PI * 2));
+            float rDist = getRandom().nextFloat(0.05f, 0.2f);
             sx += (float) Math.cos(rAngle) * rDist;
             sy += (float) Math.sin(rAngle) * rDist;
 
@@ -337,16 +354,16 @@ public class Colony implements java.io.Serializable {
             if (!nurseryChambers.isEmpty()) {
                 var ch = nurseryChambers.get(index % nurseryChambers.size());
                 float maxR = Math.min(1.2f, Math.max(0.3f, (float) Math.cbrt(ch.getCapacity()) * 0.3f));
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR * 0.7);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.05, maxR * 0.7);
                 sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
                 sz = (float) ch.getZ();
             } else if (tunnelNetwork != null && tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ) != null) {
                 var ch = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ);
                 float maxR = Math.min(1.0f, Math.max(0.2f, ch.radiusX() * 0.7f));
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.05, maxR);
                 sx = (float) (ch.x() + Math.cos(rAngle) * rDist);
                 sy = (float) (ch.y() + Math.sin(rAngle) * rDist);
                 sz = ch.z();
@@ -356,8 +373,8 @@ public class Colony implements java.io.Serializable {
             } else if (!simNodes.isEmpty()) {
                 var node = simNodes.get(index % simNodes.size());
                 float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.05, maxR);
                 sx = (float) (node.x() + Math.cos(rAngle) * rDist);
                 sy = (float) (node.y() + Math.sin(rAngle) * rDist);
                 sz = node.z();
@@ -378,8 +395,8 @@ public class Colony implements java.io.Serializable {
                     refX = ent.x();
                     refY = ent.y();
                 }
-                float rAngle = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0f, (float) (Math.PI * 2));
-                float rDist = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0.5f, 3.5f);
+                float rAngle = getRandom().nextFloat(0f, (float) (Math.PI * 2));
+                float rDist = getRandom().nextFloat(0.5f, 3.5f);
                 sx = refX + (float) Math.cos(rAngle) * rDist;
                 sy = refY + (float) Math.sin(rAngle) * rDist;
                 sz = getSurfaceZAt(sx, sy);
@@ -389,8 +406,8 @@ public class Colony implements java.io.Serializable {
             } else if (!simNodes.isEmpty()) {
                 var node = simNodes.get(index % simNodes.size());
                 float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.05, maxR);
                 sx = (float) (node.x() + Math.cos(rAngle) * rDist);
                 sy = (float) (node.y() + Math.sin(rAngle) * rDist);
                 sz = node.z();
@@ -412,24 +429,24 @@ public class Colony implements java.io.Serializable {
                     refX = ent.x();
                     refY = ent.y();
                 }
-                float rAngle = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0f, (float) (Math.PI * 2));
-                float rDist = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0.5f, 3.5f);
+                float rAngle = getRandom().nextFloat(0f, (float) (Math.PI * 2));
+                float rDist = getRandom().nextFloat(0.5f, 3.5f);
                 sx = refX + (float) Math.cos(rAngle) * rDist;
                 sy = refY + (float) Math.sin(rAngle) * rDist;
                 sz = getSurfaceZAt(sx, sy); // Dynamic terrain elevation adaptation
             } else if (!nestChambers.isEmpty()) {
                 var ch = nestChambers.get(index % nestChambers.size());
                 float maxR = Math.min(1.2f, Math.max(0.3f, (float) Math.cbrt(ch.getCapacity()) * 0.3f));
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR * 0.7);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.05, maxR * 0.7);
                 sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
                 sz = (float) ch.getZ();
             } else if (!simNodes.isEmpty()) {
                 var node = simNodes.get(index % simNodes.size());
                 float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.05, maxR);
                 sx = (float) (node.x() + Math.cos(rAngle) * rDist);
                 sy = (float) (node.y() + Math.sin(rAngle) * rDist);
                 sz = node.z();
@@ -451,24 +468,24 @@ public class Colony implements java.io.Serializable {
                     refX = ent.x();
                     refY = ent.y();
                 }
-                float rAngle = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0f, (float) (Math.PI * 2));
-                float rDist = java.util.concurrent.ThreadLocalRandom.current().nextFloat(0.3f, 2.5f);
+                float rAngle = getRandom().nextFloat(0f, (float) (Math.PI * 2));
+                float rDist = getRandom().nextFloat(0.3f, 2.5f);
                 sx = refX + (float) Math.cos(rAngle) * rDist;
                 sy = refY + (float) Math.sin(rAngle) * rDist;
                 sz = getSurfaceZAt(sx, sy); // Dynamic terrain elevation adaptation
             } else if (!nestChambers.isEmpty()) {
                 var ch = nestChambers.get(index % nestChambers.size());
                 float maxR = Math.min(1.2f, Math.max(0.3f, (float) Math.cbrt(ch.getCapacity()) * 0.3f));
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR * 0.7);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.05, maxR * 0.7);
                 sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
                 sz = (float) ch.getZ();
             } else if (!simNodes.isEmpty()) {
                 var node = simNodes.get(index % simNodes.size());
                 float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.05, maxR);
                 sx = (float) (node.x() + Math.cos(rAngle) * rDist);
                 sy = (float) (node.y() + Math.sin(rAngle) * rDist);
                 sz = node.z();
@@ -479,16 +496,16 @@ public class Colony implements java.io.Serializable {
             if (!nestChambers.isEmpty()) {
                 var ch = nestChambers.get(index % nestChambers.size());
                 float maxR = Math.min(1.0f, Math.max(0.3f, (float) Math.cbrt(ch.getCapacity()) * 0.3f));
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR * 0.7);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.05, maxR * 0.7);
                 sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
                 sz = (float) ch.getZ();
             } else if (!simNodes.isEmpty()) {
                 var node = simNodes.get(index % simNodes.size());
                 float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.05, maxR);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.05, maxR);
                 sx = (float) (node.x() + Math.cos(rAngle) * rDist);
                 sy = (float) (node.y() + Math.sin(rAngle) * rDist);
                 sz = node.z();
@@ -670,21 +687,21 @@ public class Colony implements java.io.Serializable {
             float sx = baseSx, sy = baseSy, sz = baseSz;
             if (!nurseryChambers.isEmpty()) {
                 org.swarmforge.core.structure.Chamber targetChamber = nurseryChambers.get(i % nurseryChambers.size());
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.1, 1.5);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.1, 1.5);
                 sx = (float) (targetChamber.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (targetChamber.getY() + Math.sin(rAngle) * rDist);
                 sz = targetChamber.getZ();
             } else if (!nestChambers.isEmpty()) {
                 org.swarmforge.core.structure.Chamber targetChamber = nestChambers.get(i % nestChambers.size());
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.1, 1.5);
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.1, 1.5);
                 sx = (float) (targetChamber.getX() + Math.cos(rAngle) * rDist);
                 sy = (float) (targetChamber.getY() + Math.sin(rAngle) * rDist);
                 sz = targetChamber.getZ();
             } else if (broodChamber != null) {
-                double rAngle = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, Math.PI * 2);
-                double rDist = java.util.concurrent.ThreadLocalRandom.current().nextDouble(0.1, Math.min(1.2, broodChamber.radiusX() * 0.8));
+                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
+                double rDist = getRandom().nextDouble(0.1, Math.min(1.2, broodChamber.radiusX() * 0.8));
                 sx = (float) (broodChamber.x() + Math.cos(rAngle) * rDist);
                 sy = (float) (broodChamber.y() + Math.sin(rAngle) * rDist);
                 sz = broodChamber.z();
@@ -706,7 +723,7 @@ public class Colony implements java.io.Serializable {
             applyGaussianHealth(ind, false);
 
             // Brood breakdown: 35% Eggs, 40% Larvae, 25% Pupae
-            double r = java.util.concurrent.ThreadLocalRandom.current().nextDouble();
+            double r = getRandom().nextDouble();
             float eggDur = species != null ? species.getEggStageDuration() : 300f;
             float larvaDur = species != null ? species.getLarvaStageDuration() : 600f;
             float pupaDur = species != null ? species.getPupaStageDuration() : 500f;
@@ -718,19 +735,19 @@ public class Colony implements java.io.Serializable {
                 ind.setLifeStage(Individual.LifeStage.EGG);
                 ind.setMaturationThreshold(eggDur);
                 if (applyAgeDistribution) {
-                    ind.setAgeInSeconds((float) (java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, eggDur * 0.9)));
+                    ind.setAgeInSeconds((float) (getRandom().nextDouble(0, eggDur * 0.9)));
                 }
             } else if (r < 0.75) {
                 ind.setLifeStage(Individual.LifeStage.LARVA);
                 ind.setMaturationThreshold(eggDur + larvaDur);
                 if (applyAgeDistribution) {
-                    ind.setAgeInSeconds((float) (eggDur + java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, larvaDur * 0.9)));
+                    ind.setAgeInSeconds((float) (eggDur + getRandom().nextDouble(0, larvaDur * 0.9)));
                 }
             } else {
                 ind.setLifeStage(Individual.LifeStage.PUPA);
                 ind.setMaturationThreshold(eggDur + larvaDur + pupaDur);
                 if (applyAgeDistribution) {
-                    ind.setAgeInSeconds((float) (eggDur + larvaDur + java.util.concurrent.ThreadLocalRandom.current().nextDouble(0, pupaDur * 0.9)));
+                    ind.setAgeInSeconds((float) (eggDur + larvaDur + getRandom().nextDouble(0, pupaDur * 0.9)));
                 }
             }
             batch.add(ind);
@@ -839,6 +856,7 @@ public class Colony implements java.io.Serializable {
         if (individual.getSpecies() == null && this.species != null) {
             individual.setSpecies(this.species);
         }
+        individual.setRandom(new java.util.Random(getRandom().nextLong()));
         individuals.add(individual);
         totalBorn++;
         for (ColonyListener l : listeners) {
@@ -859,13 +877,12 @@ public class Colony implements java.io.Serializable {
             toAdd = batch.stream().filter(ind -> ind != null && !existing.contains(ind)).toList();
         }
         if (toAdd.isEmpty()) return;
-        if (this.species != null) {
-            toAdd.forEach(ind -> {
-                if (ind.getSpecies() == null) {
-                    ind.setSpecies(this.species);
-                }
-            });
-        }
+        toAdd.forEach(ind -> {
+            if (this.species != null && ind.getSpecies() == null) {
+                ind.setSpecies(this.species);
+            }
+            ind.setRandom(new java.util.Random(getRandom().nextLong()));
+        });
         individuals.addAll(toAdd);
         totalBorn += toAdd.size();
     }

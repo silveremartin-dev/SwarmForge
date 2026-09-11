@@ -22,9 +22,14 @@ public class ParasiteSystem extends IteratingSystem {
     private ComponentMapper<MetabolismComponent> mMetabolism;
 
     private SpatialPartitioningSystem spatialSystem;
+    private java.util.Random random = new java.util.Random(1337L);
 
     public ParasiteSystem() {
         super(Aspect.all(PositionComponent.class, PathogenComponent.class, MetabolismComponent.class));
+    }
+
+    public void setRandom(java.util.Random random) {
+        this.random = random != null ? random : new java.util.Random(1337L);
     }
 
     private static final float SAMPLE_INTERVAL_SEC = 0.0833333f; // Fixed 83.3ms time interval (~12 Hz)
@@ -93,7 +98,7 @@ public class ParasiteSystem extends IteratingSystem {
                         }
 
                         // Risk of contagion to groomer if viral load is high
-                        if (pathogen.viralLoad > 30.0f && java.util.concurrent.ThreadLocalRandom.current().nextFloat() < 0.25f) {
+                        if (pathogen.viralLoad > 30.0f && random.nextFloat() < 0.25f) {
                             neighborPath.activePathogens = pathogen.activePathogens;
                             neighborPath.viralLoad = 5.0f;
                             neighborPath.incubationTimer = 0.0f;

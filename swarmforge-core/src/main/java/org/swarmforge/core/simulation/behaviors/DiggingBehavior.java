@@ -21,8 +21,6 @@ import java.util.Random;
  */
 public class DiggingBehavior {
 
-    private final Random random = new Random();
-
     public String getName() {
         return "Digging";
     }
@@ -55,12 +53,16 @@ public class DiggingBehavior {
         if (nodes.isEmpty())
             return;
 
-        var startNode = nodes.get(random.nextInt(nodes.size()));
+        Random rng = (individual != null && individual.getRandom() != null) 
+                ? individual.getRandom() 
+                : (simulation != null && simulation.getRandom() != null ? simulation.getRandom() : new Random(1337L));
+
+        var startNode = nodes.get(rng.nextInt(nodes.size()));
 
         // Dig in random direction, mostly down or sideways
-        float dx = (random.nextFloat() - 0.5f) * 2f; // -1 to 1
-        float dy = (random.nextFloat() - 0.5f) * 2f; // -1 to 1
-        float dz = -random.nextFloat(); // 0 to -1 (down)
+        float dx = (rng.nextFloat() - 0.5f) * 2f; // -1 to 1
+        float dy = (rng.nextFloat() - 0.5f) * 2f; // -1 to 1
+        float dz = -rng.nextFloat(); // 0 to -1 (down)
 
         // Normalize
         float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);

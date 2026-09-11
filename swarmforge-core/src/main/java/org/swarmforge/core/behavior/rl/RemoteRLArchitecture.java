@@ -108,7 +108,8 @@ public class RemoteRLArchitecture implements ReasoningArchitecture {
             // e.g. MOVE takes 500ms, FORAGE takes 2000ms
             this.lastDecisionTime = now;
             this.currentAction = newAction;
-            this.actionDuration = (long) (500 + java.util.concurrent.ThreadLocalRandom.current().nextFloat() * 500); // Randomize slightly
+            float randF = (agent instanceof org.swarmforge.core.domain.Individual ind && ind.getRandom() != null) ? ind.getRandom().nextFloat() : 0.5f;
+            this.actionDuration = (long) (500 + randF * 500); // Randomize slightly
 
             return newAction;
 

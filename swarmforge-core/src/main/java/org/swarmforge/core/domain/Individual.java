@@ -139,6 +139,44 @@ public class Individual implements java.io.Serializable, AgentView {
         return chcProfile;
     }
 
+    public void setChcProfile(float[] profile) {
+        if (profile != null && profile.length > 0) {
+            this.chcProfile = profile.clone();
+        }
+    }
+
+    /**
+     * Calculates Bray-Curtis CHC dissimilarity index d_BC between this individual and another:
+     * d_BC(u, v) = sum(|u_k - v_k|) / sum(u_k + v_k)
+     * Returns a distance in [0.0, 1.0].
+     */
+    public float calculateChcDissimilarity(Individual other) {
+        if (other == null || other.chcProfile == null || this.chcProfile == null) {
+            return 1.0f;
+        }
+        float num = 0.0f;
+        float den = 0.0f;
+        int len = Math.min(this.chcProfile.length, other.chcProfile.length);
+        for (int i = 0; i < len; i++) {
+            num += Math.abs(this.chcProfile[i] - other.chcProfile[i]);
+            den += (this.chcProfile[i] + other.chcProfile[i]);
+        }
+        return (den > 0.0001f) ? (num / den) : 0.0f;
+    }
+
+    /**
+     * Nestmate recognition decision rule based on CHC chemical signature.
+     * Threshold theta = 0.28 (academic literature: cuticular hydrocarbon gestalt envelope).
+     */
+    public boolean isNestmateRecognized(Individual other) {
+        if (other == null) return false;
+        if (this.colonyId != null && this.colonyId.equals(other.colonyId)) {
+            return true; // True genetic/colony nestmate
+        }
+        // Chemical camouflage / social parasitism / dulosis acceptance
+        return calculateChcDissimilarity(other) <= 0.28f;
+    }
+
     public boolean isClimbingTree() {
         return climbingTree;
     }
@@ -180,10 +218,6 @@ public class Individual implements java.io.Serializable, AgentView {
             }
         }
         return false;
-    }
-
-    public void setChcProfile(float[] profile) {
-        this.chcProfile = profile;
     }
 
     // Disease Status - Handled by DiseaseManager externally
@@ -274,12 +308,12 @@ public class Individual implements java.io.Serializable, AgentView {
     private CasteTemplate casteTemplate;
 
     public Individual(UUID colonyId, Caste caste, float x, float y, float z) {
-        this(new UUID(java.util.concurrent.ThreadLocalRandom.current().nextLong(), java.util.concurrent.ThreadLocalRandom.current().nextLong()), ANT_NUMBER_GENERATOR.getAndIncrement(), colonyId, caste, x, y, z);
+        this(null, ANT_NUMBER_GENERATOR.getAndIncrement(), colonyId, caste, x, y, z);
     }
 
     public Individual(UUID id, long antNumber, UUID colonyId, Caste caste, float x, float y, float z) {
-        this.id = id != null ? id : new UUID(java.util.concurrent.ThreadLocalRandom.current().nextLong(), java.util.concurrent.ThreadLocalRandom.current().nextLong());
         this.antNumber = antNumber > 0 ? antNumber : ANT_NUMBER_GENERATOR.getAndIncrement();
+        this.id = id != null ? id : new UUID(colonyId != null ? colonyId.getMostSignificantBits() ^ this.antNumber : this.antNumber, this.antNumber);
         this.colonyId = colonyId;
         this.caste = caste;
         this.x = x;
@@ -954,8 +988,9 @@ public class Individual implements java.io.Serializable, AgentView {
         if (random != null) {
             return random;
         }
-        long seed = id != null ? id.getLeastSignificantBits() : 1337L;
-        return new java.util.Random(seed);
+        long seed = id != null ? id.getLeastSignificantBits() : (antNumber > 0 ? antNumber : 1337L);
+        this.random = new java.util.Random(seed);
+        return this.random;
     }
 
     public org.swarmforge.core.species.Species getSpecies() {
