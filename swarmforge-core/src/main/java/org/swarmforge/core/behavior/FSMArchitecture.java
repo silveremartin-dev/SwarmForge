@@ -302,12 +302,19 @@ public class FSMArchitecture implements ReasoningArchitecture {
     private Action handleNecrophoreTransport(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
         if (agent instanceof Individual ind) {
             if (ind.getCarriedItem() == Individual.CarriedItem.DEAD_ANT) {
-                if (isNearHome(agent)) {
+                // Necrophorism: carry away from nest entrance towards external refuse midden (d > 8.0m)
+                float dx = agent.getX() - agent.getHomeX();
+                float dy = agent.getY() - agent.getHomeY();
+                float dist = (float) Math.hypot(dx, dy);
+                if (dist > 8.0f) {
                     ind.setCarriedItem(Individual.CarriedItem.NONE);
                     transitionTo(State.IDLE);
                     return Action.rest();
                 }
-                return Action.returnHome();
+                if (dist < 0.1f) {
+                    return randomMove(agent);
+                }
+                return Action.move(dx / dist, dy / dist, 0);
             }
         }
         transitionTo(State.IDLE);

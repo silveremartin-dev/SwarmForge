@@ -104,18 +104,15 @@ public class StormDisaster implements DisasterEvent {
             for (int i = 0; i < count; i++) {
                 int x = rand.nextInt(terrarium.getWidth());
                 int y = rand.nextInt(terrarium.getHeight());
-                for (int z = terrarium.getDepth() - 1; z >= 0; z--) {
-                    var cell = terrarium.getCell(x, y, z);
-                    if (cell.material() != org.swarmforge.core.domain.TerrariumCell.Material.AIR) {
-                        if (z < 12 && z + 1 < terrarium.getDepth()) {
-                            terrarium.setCell(new org.swarmforge.core.domain.TerrariumCell(
-                                    x, y, z + 1,
-                                    org.swarmforge.core.domain.TerrariumCell.Material.WATER,
-                                    new float[org.swarmforge.core.domain.TerrariumCell.PHEROMONE_TYPES],
-                                    14f, 100f));
-                        }
-                        break;
-                    }
+                float surfaceElev = terrarium.getSurfaceElevation(x, y);
+                int surfaceZ = (int) Math.floor(surfaceElev);
+                int waterZ = surfaceZ + 1;
+                if (waterZ >= 0 && waterZ < terrarium.getDepth()) {
+                    terrarium.setCell(new org.swarmforge.core.domain.TerrariumCell(
+                            x, y, waterZ,
+                            org.swarmforge.core.domain.TerrariumCell.Material.WATER,
+                            new float[org.swarmforge.core.domain.TerrariumCell.PHEROMONE_TYPES],
+                            14f, 100f));
                 }
             }
         }

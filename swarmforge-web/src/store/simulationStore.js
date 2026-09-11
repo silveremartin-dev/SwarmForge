@@ -710,6 +710,8 @@ export const useSimulationStore = create((set, get) => ({
     },
     updateTerrainConfig: (config) => set(state => ({ terrainConfig: { ...state.terrainConfig, ...config } })),
     setHemisphere: (hemisphere) => set(state => ({ climateEngine: { ...state.climateEngine, hemisphere } })),
+    setClimateType: (climateType) => set(state => ({ climateEngine: { ...state.climateEngine, climateType } })),
+    updateClimateEngine: (config) => set(state => ({ climateEngine: { ...state.climateEngine, ...config } })),
 
     environmentLighting: {
         sunAzimuthDeg: 145,
@@ -1184,7 +1186,7 @@ export const useSimulationStore = create((set, get) => ({
             // Realistic day-night solar progression: 24h = 86400 sim seconds
             const simHourOfDay = ((nextSimSeconds % 86400) / 3600)
             const dayOfYear = state.climateEngine?.dayOfYear || 200
-            const latRad = ((state.climateEngine?.latitudeDeg || 45.0) * Math.PI) / 180.0
+            const latRad = ((state.climateEngine?.latitudeDeg || 45.0) * (state.climateEngine?.hemisphere === 'SOUTHERN' ? -1 : 1) * Math.PI) / 180.0
 
             const declinationRad = ((23.45 * Math.sin(((360 / 365) * (dayOfYear - 81) * Math.PI) / 180.0)) * Math.PI) / 180.0
             const hourAngleRad = ((15 * (simHourOfDay - 12)) * Math.PI) / 180.0
@@ -1199,8 +1201,11 @@ export const useSimulationStore = create((set, get) => ({
                 MEDITERRANEAN: { baseTemp: 25.0, amplitude: 9.0, humidityBase: 45 },
                 ALPINE: { baseTemp: 12.0, amplitude: 11.0, humidityBase: 65 },
                 TROPICAL: { baseTemp: 28.0, amplitude: 3.5, humidityBase: 85 },
+                ARID: { baseTemp: 32.0, amplitude: 16.0, humidityBase: 20 },
+                SAVANNA: { baseTemp: 30.0, amplitude: 12.0, humidityBase: 35 },
+                DESERT: { baseTemp: 35.0, amplitude: 18.0, humidityBase: 15 },
             }
-            const activePreset = climatePresets[state.climateEngine?.climateType || 'OCEANIC']
+            const activePreset = climatePresets[state.climateEngine?.climateType || 'OCEANIC'] || climatePresets.OCEANIC
             const cloudFactor = 1.0 - 0.55 * (state.climateEngine?.cloudCover || 0.25)
             const solarHeatingGain = Math.max(0, Math.sin((solarElevationDeg * Math.PI) / 180.0)) * activePreset.amplitude * cloudFactor
             const nightCoolingLoss = isNightTime ? activePreset.amplitude * 0.75 : 0.0

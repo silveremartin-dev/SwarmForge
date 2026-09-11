@@ -564,14 +564,7 @@ public class InterventionPanel extends BorderPane {
             return posZSlider != null ? (float) posZSlider.getValue() : 1.0f;
         }
         if (terrariumRef != null) {
-            int cellX = Math.max(0, Math.min(terrariumRef.getWidth() - 1, (int) posX));
-            int cellY = Math.max(0, Math.min(terrariumRef.getHeight() - 1, (int) posY));
-            for (int z = terrariumRef.getDepth() - 1; z >= 0; z--) {
-                var cell = terrariumRef.getCell(cellX, cellY, z);
-                if (cell != null && cell.material() != org.swarmforge.core.domain.TerrariumCell.Material.AIR) {
-                    return (float) (z + 1.0);
-                }
-            }
+            return terrariumRef.getSurfaceElevation((float) posX, (float) posY);
         }
         return 1.0f; // Default surface height
     }

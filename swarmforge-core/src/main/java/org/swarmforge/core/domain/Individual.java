@@ -423,11 +423,21 @@ public class Individual implements java.io.Serializable, AgentView {
         return Math.max(0.20f, baseFlySpeed * getQ10ThermalFactor());
     }
 
+    public float getSurfaceElevation() {
+        if (this.colonyId != null) {
+            Colony col = org.swarmforge.core.ecs.ColonyRegistry.getColony(this.colonyId);
+            if (col != null && col.getTerrarium() != null) {
+                return col.getTerrarium().getSurfaceElevation(this.x, this.y);
+            }
+        }
+        return 16.0f; // Default planar ground elevation
+    }
+
     /**
      * Get current active movement speed depending on flight status, alarm/combat state, or calm cruising.
      */
     public float getCurrentMovementSpeed() {
-        if (canFly() && z > 0.1f) {
+        if (canFly() && z > getSurfaceElevation() + 0.1f) {
             return getFlyingSpeed();
         }
         if (state == AiState.FLEE || state == AiState.FLEEING || state == AiState.ATTACKING) {
@@ -452,7 +462,7 @@ public class Individual implements java.io.Serializable, AgentView {
         };
 
         float activityFactor = 1.0f;
-        if (canFly() && z > 0.1f) {
+        if (canFly() && z > getSurfaceElevation() + 0.1f) {
             activityFactor = 3.5f;
         } else if (job == Job.BUILDER || job == Job.GUARD) {
             activityFactor = 1.3f;
@@ -574,7 +584,7 @@ public class Individual implements java.io.Serializable, AgentView {
         float effectiveSpeed = getCurrentMovementSpeed() * 0.1f * Math.max(0.1f, speedMult);
         x += Math.cos(heading) * effectiveSpeed;
         y += Math.sin(heading) * effectiveSpeed;
-        if (canFly() && z > 0.0f) {
+        if (canFly() && z > getSurfaceElevation()) {
             z += (float) (Math.sin(age * 0.2f) * 0.05f);
         }
     }
@@ -609,8 +619,8 @@ public class Individual implements java.io.Serializable, AgentView {
     public void tick(float deltaSeconds) {
         if (!alive)
             return;
-        age++;
         ageInSeconds += deltaSeconds;
+        age = ageInSeconds;
 
         float effectiveMetabolism = getEffectiveMetabolismRate();
         float waterReq = species != null ? species.getWaterRequirement() : 0.15f;
@@ -1065,8 +1075,9 @@ public class Individual implements java.io.Serializable, AgentView {
             }
             case FORAGE -> {
                 this.heading += (getRandom().nextFloat() - 0.5f) * 0.25f;
-                if (this.z < 0.0f && (caste != Caste.QUEEN && job != Job.NURSE)) {
-                    this.z = Math.min(0.0f, this.z + 0.08f);
+                float surfaceZ = getSurfaceElevation();
+                if (this.z < surfaceZ && (caste != Caste.QUEEN && job != Job.NURSE)) {
+                    this.z = Math.min(surfaceZ, this.z + 0.08f);
                 }
                 move(0.9f);
                 return ActionResult.ok();
@@ -1075,7 +1086,8 @@ public class Individual implements java.io.Serializable, AgentView {
                 turnTowards(getHomeX(), getHomeY(), 0.1f);
                 move(1.0f);
                 if (isAtNest() && colony != null) {
-                    float targetNestZ = colony.getNestZ() < 0 ? colony.getNestZ() : -1.5f;
+                    float surfaceZ = getSurfaceElevation();
+                    float targetNestZ = colony.getNestZ() < surfaceZ ? colony.getNestZ() : surfaceZ - 1.5f;
                     this.z += (targetNestZ - this.z) * 0.12f;
                     if (colony.getFoodStored() > 0.1f) {
                         if (colony.getCarbohydrateStored() > 0.05f) {
@@ -1163,6 +1175,12 @@ public class Individual implements java.io.Serializable, AgentView {
                     }
                     if (carriedResourceType != null) {
                         colony.addResource(carriedResourceType, 1.0f);
+                        if (carriedResourceType == ResourceType.PROPOLIS_RESIN && colony.getSocialImmunityManager() != null && colony.getNestVoxelGrid() != null) {
+                            int vx = Math.max(0, Math.min(colony.getNestVoxelGrid().getWidth() - 1, (int) Math.floor(x - colony.getNestX() + 8)));
+                            int vy = Math.max(0, Math.min(colony.getNestVoxelGrid().getHeight() - 1, (int) Math.floor(y - colony.getNestY() + 8)));
+                            int vz = Math.max(0, Math.min(colony.getNestVoxelGrid().getDepth() - 1, (int) Math.floor(Math.abs(z))));
+                            colony.getSocialImmunityManager().applyPropolisCoating(colony, colony.getNestVoxelGrid(), vx, vy, vz);
+                        }
                     } else {
                         // Default to SEED if unspecified
                         colony.addResource(ResourceType.SEED, 1.0f);
@@ -1182,6 +1200,12 @@ public class Individual implements java.io.Serializable, AgentView {
                         float distSq = (float) ((target.getX() - x) * (target.getX() - x) + (target.getY() - y) * (target.getY() - y) + (target.getZ() - z) * (target.getZ() - z));
                         if (distSq <= 4.0f) {
                             this.energy = Math.max(0.0f, this.energy - 0.5f);
+                            if (colony != null && colony.getSocialImmunityManager() != null) {
+                                var registry = colony.getInfectionRegistry();
+                                var groomerInf = registry.computeIfAbsent(this.getId(), k -> new org.swarmforge.core.epidemiology.IndividualInfection(k));
+                                var targetInf = registry.computeIfAbsent(target.getId(), k -> new org.swarmforge.core.epidemiology.IndividualInfection(k));
+                                colony.getSocialImmunityManager().performAllogrooming(groomerInf, targetInf, this.random != null ? this.random : new java.util.Random());
+                            }
                             return ActionResult.ok();
                         }
                         return ActionResult.failure("Target out of grooming range");

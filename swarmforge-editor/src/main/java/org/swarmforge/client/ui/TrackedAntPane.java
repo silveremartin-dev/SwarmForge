@@ -478,7 +478,7 @@ public class TrackedAntPane extends VBox {
 
         // Age & Kills
         lblAgeStageJob.textProperty().unbind();
-        double predAgeDays = predator.getAge() / 86400.0;
+        double predAgeDays = predator.getAgeInSeconds() / 86400.0;
         lblAgeStageJob.setText(String.format(Locale.US, "⏳ Âge: %.1f jours | ⚔️ Butins: %d", predAgeDays, predator.getKillCount()));
 
         // AI State (Focus strictly on AI intelligence, decisions, and sensory perception)

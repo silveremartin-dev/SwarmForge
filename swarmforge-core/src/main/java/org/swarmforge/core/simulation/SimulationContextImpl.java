@@ -273,7 +273,7 @@ public class SimulationContextImpl implements SimulationContext {
                     ? simulation.getTerrarium().getCell(ix, iy + 1, iz).temperature() : getTemperature();
             return tUp - tDown;
         }
-        return (z < 0) ? -0.1f : 0.1f;
+        return 0.0f;
     }
 
     @Override

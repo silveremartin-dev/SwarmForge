@@ -6066,15 +6066,17 @@ public class WorldEditorPane extends BorderPane {
                             double gy = Math.max(0.0, Math.min(GRID_SIZE - 1.0, (ay / (float) Math.max(1, activeSimulation.getTerrarium().getHeight())) * GRID_SIZE));
                             int igx = (int) gx;
                             int igy = (int) gy;
+                            float surfaceZ = activeSimulation.getTerrarium().getSurfaceElevation((float) ax, (float) ay);
+                            boolean isSubterranean = az < surfaceZ;
 
-                            // Occlusion check: render subterranean ants (az < 0) when inside galleries or cut plane
+                            // Occlusion check: render subterranean ants (az < surfaceZ) when inside galleries or cut plane
                             double cutRatio = slicePlaneSlider != null ? (slicePlaneSlider.getValue() / 100.0) : 1.0;
                             int cutXLimit = (int) (GRID_SIZE * cutRatio);
                             boolean isTranslucent = showTranslucentVolumetricModeCheck != null && showTranslucentVolumetricModeCheck.isSelected();
-                            boolean isAntExposed = !isTerrainVisible || az >= 0 || igx >= cutXLimit || isTranslucent || isGalleriesVisible;
+                            boolean isAntExposed = !isTerrainVisible || !isSubterranean || igx >= cutXLimit || isTranslucent || isGalleriesVisible;
                             if (!isAntExposed) continue;
 
-                            double gz = heightGrid[igx][igy] * 40.0 + Math.max(-40.0, Math.min(60.0, az)) * 2.0 + 1.5;
+                            double gz = heightGrid[igx][igy] * 40.0 + Math.max(-40.0, Math.min(60.0, az - surfaceZ)) * 2.0 + 1.5;
 
                             double[] p = project3DPoint(gx, gy, gz, cx, cy, scale, radAz, radEl);
                             double sideM = surfaceSizeSlider != null ? surfaceSizeSlider.getValue() : 25.0;
@@ -6088,7 +6090,7 @@ public class WorldEditorPane extends BorderPane {
 
                             // Brood rendering (Eggs, Larvae, Pupae): Never appear on surface, render as biological brood clusters
                             if (ind.getLifeStage() != null && ind.getLifeStage() != org.swarmforge.core.domain.Individual.LifeStage.ADULT) {
-                                if (az < 0) {
+                                if (isSubterranean) {
                                     drawRealisticBroodItem(gc3D, p[0], p[1], ind.getLifeStage(), antR);
                                 }
                                 continue;
@@ -6112,7 +6114,7 @@ public class WorldEditorPane extends BorderPane {
                             }
 
                             // If subterranean ant in solid terrain, render with slight opacity
-                            if (az < 0 && isTerrainVisible && !isTranslucent && igx < cutXLimit && isGalleriesVisible) {
+                            if (isSubterranean && isTerrainVisible && !isTranslucent && igx < cutXLimit && isGalleriesVisible) {
                                 casteColor = Color.color(casteColor.getRed(), casteColor.getGreen(), casteColor.getBlue(), 0.80);
                             }
 

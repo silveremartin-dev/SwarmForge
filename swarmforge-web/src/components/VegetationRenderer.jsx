@@ -232,7 +232,7 @@ function VoxelTree({ position, scale = 1.0, variant = 0, terrainConfig }) {
 /**
  * Single Realistic Tree Component
  */
-function RealisticTree({ position, scale = 1.0, windSpeed = 2.4, season = 'SUMMER', url, objectName, terrainConfig }) {
+function RealisticTree({ position, scale = 1.0, targetHeight = 9.5, windSpeed = 2.4, season = 'SUMMER', url, objectName, terrainConfig }) {
     const [x, _, z] = position
     const groundY = getTerrainHeight(x, z, terrainConfig)
 
@@ -241,7 +241,7 @@ function RealisticTree({ position, scale = 1.0, windSpeed = 2.4, season = 'SUMME
             <LowPolyModel
                 url={url || '/3d/nature_pack/Trees.glb'}
                 objectName={objectName}
-                targetHeight={9.5}
+                targetHeight={targetHeight}
                 scale={scale}
                 sway={true}
                 windSpeed={windSpeed}
@@ -254,9 +254,9 @@ function RealisticTree({ position, scale = 1.0, windSpeed = 2.4, season = 'SUMME
 }
 
 /**
- * Dense Realistic Ground Flora & Understory
+ * Dense Realistic Ground Flora & Understory with Biome Adaption
  */
-function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfig }) {
+function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', climateType = 'OCEANIC', terrainConfig }) {
     const floraItems = useMemo(() => {
         const items = []
         const rand = (seed) => {
@@ -297,52 +297,132 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
         }
     })
 
+    const isArid = climateType === 'ARID' || climateType === 'SAVANNA' || climateType === 'DESERT'
+    const isTropical = climateType === 'TROPICAL'
+
     return (
         <group ref={groupRef} frustumCulled={false}>
-            {/* Natural Bushes & Shrubs from 3D pack */}
-            <LowPolyModel
-                url="/3d/nature_pack/Bushes.glb"
-                objectName="Bush"
-                targetHeight={1.4}
-                position={[45, getTerrainHeight(45, 82, terrainConfig), 82]}
-                scale={0.95}
-                sway={true}
-                windSpeed={windSpeed}
-                season={season}
-            />
-            <LowPolyModel
-                url="/3d/nature_pack/Bushes.glb"
-                objectName="Plant_1"
-                targetHeight={1.2}
-                position={[28, getTerrainHeight(28, 22, terrainConfig), 22]}
-                scale={0.9}
-                rotation={[0, 2.1, 0]}
-                sway={true}
-                windSpeed={windSpeed}
-                season={season}
-            />
-            <LowPolyModel
-                url="/3d/nature_pack/Bushes.glb"
-                objectName="Bush_Flowers"
-                targetHeight={1.5}
-                position={[65, getTerrainHeight(65, 85, terrainConfig), 85]}
-                scale={0.9}
-                rotation={[0, 0.8, 0]}
-                season={season}
-            />
-            <LowPolyModel
-                url="/3d/nature_pack/Bushes.glb"
-                objectName="Bush"
-                targetHeight={1.3}
-                position={[14, getTerrainHeight(14, 48, terrainConfig), 48]}
-                scale={0.85}
-                rotation={[0, 1.2, 0]}
-                sway={true}
-                windSpeed={windSpeed}
-                season={season}
-            />
+            {/* Biome-specific Bushes / Cacti / Tropical Shrubs */}
+            {isArid ? (
+                <>
+                    <LowPolyModel
+                        url="/3d/cactus.obj"
+                        objectName="2_lowpoly_Circle.047"
+                        targetHeight={1.6}
+                        position={[45, getTerrainHeight(45, 82, terrainConfig), 82]}
+                        scale={0.95}
+                    />
+                    <LowPolyModel
+                        url="/3d/cactus.obj"
+                        objectName="3_lowpoly_Circle.005"
+                        targetHeight={1.4}
+                        position={[28, getTerrainHeight(28, 22, terrainConfig), 22]}
+                        scale={0.9}
+                        rotation={[0, 2.1, 0]}
+                    />
+                    <LowPolyModel
+                        url="/3d/nature_pack/Bushes.glb"
+                        objectName="Plant_1"
+                        targetHeight={1.1}
+                        position={[65, getTerrainHeight(65, 85, terrainConfig), 85]}
+                        scale={0.85}
+                        rotation={[0, 0.8, 0]}
+                        season={season}
+                    />
+                    <LowPolyModel
+                        url="/3d/cactus.obj"
+                        objectName="4_lowpoly_Circle.007"
+                        targetHeight={1.3}
+                        position={[14, getTerrainHeight(14, 48, terrainConfig), 48]}
+                        scale={0.85}
+                        rotation={[0, 1.2, 0]}
+                    />
+                </>
+            ) : isTropical ? (
+                <>
+                    <LowPolyModel
+                        url="/3d/nature_pack/Flower Bushes.glb"
+                        objectName="Plant_Flowers"
+                        targetHeight={1.6}
+                        position={[45, getTerrainHeight(45, 82, terrainConfig), 82]}
+                        scale={0.95}
+                        season={season}
+                    />
+                    <LowPolyModel
+                        url="/3d/bamboo_set.obj"
+                        objectName="bamboo_shrub_1"
+                        targetHeight={1.5}
+                        position={[28, getTerrainHeight(28, 22, terrainConfig), 22]}
+                        scale={0.9}
+                        rotation={[0, 2.1, 0]}
+                        season={season}
+                    />
+                    <LowPolyModel
+                        url="/3d/nature_pack/Flower Bushes.glb"
+                        objectName="Plant_2"
+                        targetHeight={1.4}
+                        position={[65, getTerrainHeight(65, 85, terrainConfig), 85]}
+                        scale={0.9}
+                        rotation={[0, 0.8, 0]}
+                        season={season}
+                    />
+                    <LowPolyModel
+                        url="/3d/bamboo_set.obj"
+                        objectName="bamboo_shrub_2"
+                        targetHeight={1.4}
+                        position={[14, getTerrainHeight(14, 48, terrainConfig), 48]}
+                        scale={0.85}
+                        rotation={[0, 1.2, 0]}
+                        season={season}
+                    />
+                </>
+            ) : (
+                <>
+                    <LowPolyModel
+                        url="/3d/nature_pack/Bushes.glb"
+                        objectName="Bush"
+                        targetHeight={1.4}
+                        position={[45, getTerrainHeight(45, 82, terrainConfig), 82]}
+                        scale={0.95}
+                        sway={true}
+                        windSpeed={windSpeed}
+                        season={season}
+                    />
+                    <LowPolyModel
+                        url="/3d/nature_pack/Bushes.glb"
+                        objectName="Plant_1"
+                        targetHeight={1.2}
+                        position={[28, getTerrainHeight(28, 22, terrainConfig), 22]}
+                        scale={0.9}
+                        rotation={[0, 2.1, 0]}
+                        sway={true}
+                        windSpeed={windSpeed}
+                        season={season}
+                    />
+                    <LowPolyModel
+                        url="/3d/nature_pack/Bushes.glb"
+                        objectName="Bush_Flowers"
+                        targetHeight={1.5}
+                        position={[65, getTerrainHeight(65, 85, terrainConfig), 85]}
+                        scale={0.9}
+                        rotation={[0, 0.8, 0]}
+                        season={season}
+                    />
+                    <LowPolyModel
+                        url="/3d/nature_pack/Bushes.glb"
+                        objectName="Bush"
+                        targetHeight={1.3}
+                        position={[14, getTerrainHeight(14, 48, terrainConfig), 48]}
+                        scale={0.85}
+                        rotation={[0, 1.2, 0]}
+                        sway={true}
+                        windSpeed={windSpeed}
+                        season={season}
+                    />
+                </>
+            )}
 
-            {/* Mossy Rocks & Boulders from 3D pack */}
+            {/* Mossy / Arid Rocks & Boulders from 3D pack */}
             <LowPolyModel
                 url="/3d/nature_pack/Rocks.glb"
                 objectName="Rock_1"
@@ -375,10 +455,10 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
                 rotation={[0, 0.5, 0]}
             />
 
-            {/* Clustered Flowers from 3D pack */}
+            {/* Clustered Flowers / Tropical blooms */}
             <LowPolyModel
                 url="/3d/nature_pack/Flowers.glb"
-                objectName="Flower_1_Clump"
+                objectName={isTropical ? 'Flower_5_Clump' : 'Flower_1_Clump'}
                 targetHeight={0.8}
                 position={[35, getTerrainHeight(35, 40, terrainConfig), 40]}
                 scale={0.9}
@@ -405,10 +485,17 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', terrainConfi
                 scale={0.85}
             />
 
+            {/* Ground Grass / Moss / Fern Sprites */}
             {floraItems.map((item) => {
-                const mossColor = season === 'WINTER' ? '#e2e8f0' : season === 'AUTUMN' ? '#a16207' : '#3f6212'
-                const fernColor = season === 'WINTER' ? '#cbd5e1' : season === 'AUTUMN' ? '#b45309' : '#15803d'
-                const grassColor = season === 'WINTER' ? '#f1f5f9' : season === 'AUTUMN' ? '#ca8a04' : '#4d7c0f'
+                const mossColor = isArid
+                    ? '#a16207'
+                    : season === 'WINTER' ? '#e2e8f0' : season === 'AUTUMN' ? '#a16207' : '#3f6212'
+                const fernColor = isArid
+                    ? '#b45309'
+                    : season === 'WINTER' ? '#cbd5e1' : season === 'AUTUMN' ? '#b45309' : '#15803d'
+                const grassColor = isArid
+                    ? '#d4b483'
+                    : season === 'WINTER' ? '#f1f5f9' : season === 'AUTUMN' ? '#ca8a04' : '#4d7c0f'
 
                 if (item.type === 'MOSS') {
                     return (
@@ -749,15 +836,60 @@ export default function VegetationRenderer() {
     const rawSeason = climateEngine?.currentSeason || climateEngine?.season || 'SUMMER'
     const season = getEffectiveSeason(rawSeason, climateEngine?.hemisphere || 'NORTHERN')
 
-    // Standardized tree positions & scale across all 3 modes
-    const treePositions = useMemo(() => [
-        { id: 1, pos: [15, 0, 30], scale: 1.0, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_1' },
-        { id: 2, pos: [78, 0, 25], scale: 1.1, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_2' },
-        { id: 3, pos: [82, 0, 75], scale: 1.05, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_1' },
-        { id: 4, pos: [18, 0, 80], scale: 1.1, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_3' },
-        { id: 5, pos: [55, 0, 15], scale: 1.15, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_4' },
-        { id: 6, pos: [88, 0, 88], scale: 1.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_4' },
-    ], [])
+    const climateType = climateEngine?.climateType || 'OCEANIC'
+
+    // Standardized tree positions & biome-adapted models across all 3 modes
+    const treePositions = useMemo(() => {
+        if (climateType === 'ARID' || climateType === 'SAVANNA' || climateType === 'DESERT') {
+            return [
+                { id: 1, pos: [15, 0, 30], scale: 1.0, targetHeight: 5.5, variant: 0, url: '/3d/cactus.obj', objectName: '0_lowpoly_Circle.034' },
+                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 8.5, variant: 1, url: '/3d/nature_pack/Dead Trees.glb', objectName: 'DeadTree_1' },
+                { id: 3, pos: [82, 0, 75], scale: 1.0, targetHeight: 6.0, variant: 2, url: '/3d/cactus.obj', objectName: '1_lowpoly_Circle.035' },
+                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 9.0, variant: 0, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_1' },
+                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 8.5, variant: 1, url: '/3d/nature_pack/Dead Trees.glb', objectName: 'DeadTree_3' },
+                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 9.5, variant: 2, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_2' },
+            ]
+        }
+        if (climateType === 'TROPICAL') {
+            return [
+                { id: 1, pos: [15, 0, 30], scale: 1.05, targetHeight: 9.5, variant: 0, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_1' },
+                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 8.5, variant: 1, url: '/3d/bamboo_set.obj', objectName: 'bamboo_tree_1_Cylinder' },
+                { id: 3, pos: [82, 0, 75], scale: 1.0, targetHeight: 9.5, variant: 2, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_3' },
+                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 10.0, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_1' },
+                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 8.5, variant: 1, url: '/3d/bamboo_set.obj', objectName: 'bamboo_tree_2_Cylinder.001' },
+                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 10.0, variant: 2, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_5' },
+            ]
+        }
+        if (climateType === 'MEDITERRANEAN') {
+            return [
+                { id: 1, pos: [15, 0, 30], scale: 1.0, targetHeight: 9.0, variant: 0, url: '/3d/nature_pack/Maple Trees.glb', objectName: 'MapleTree_1' },
+                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 9.5, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_1' },
+                { id: 3, pos: [82, 0, 75], scale: 1.05, targetHeight: 8.5, variant: 2, url: '/3d/nature_pack/Maple Trees.glb', objectName: 'MapleTree_2' },
+                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 9.0, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_4' },
+                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 8.5, variant: 1, url: '/3d/nature_pack/Dead Trees.glb', objectName: 'DeadTree_2' },
+                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 9.5, variant: 2, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_3' },
+            ]
+        }
+        if (climateType === 'ALPINE' || climateType === 'CONTINENTAL') {
+            return [
+                { id: 1, pos: [15, 0, 30], scale: 1.05, targetHeight: 10.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_2' },
+                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 9.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_1' },
+                { id: 3, pos: [82, 0, 75], scale: 1.05, targetHeight: 10.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_4' },
+                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 9.5, variant: 0, url: '/3d/nature_pack/Maple Trees.glb', objectName: 'MapleTree_3' },
+                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 10.5, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_5' },
+                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 9.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_3' },
+            ]
+        }
+        // Default Oceanic / Temperate
+        return [
+            { id: 1, pos: [15, 0, 30], scale: 1.0, targetHeight: 9.5, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_1' },
+            { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 10.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_2' },
+            { id: 3, pos: [82, 0, 75], scale: 1.05, targetHeight: 9.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_1' },
+            { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 9.5, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_3' },
+            { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 10.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_4' },
+            { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 9.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_4' },
+        ]
+    }, [climateType])
 
     // Volumetric 3D Tree Stump positions
     const stumpPositions = useMemo(() => [
@@ -781,6 +913,7 @@ export default function VegetationRenderer() {
                         key={tree.id}
                         position={tree.pos}
                         scale={tree.scale}
+                        targetHeight={tree.targetHeight}
                         windSpeed={windSpeed}
                         season={season}
                         url={tree.url}
@@ -803,7 +936,7 @@ export default function VegetationRenderer() {
             {isGamified ? (
                 <GamifiedVoxelFlora terrainConfig={terrainConfig} />
             ) : (
-                <RealisticGroundFlora windSpeed={windSpeed} season={season} terrainConfig={terrainConfig} />
+                <RealisticGroundFlora windSpeed={windSpeed} season={season} climateType={climateType} terrainConfig={terrainConfig} />
             )}
         </group>
     )

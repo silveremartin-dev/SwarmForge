@@ -126,7 +126,7 @@ public final class NestRenderer {
                 Color nodeColor = n.color != null ? n.color : Color.GRAY;
                 double[] p = proj.apply(new double[]{n.x, n.y, n.z});
                 double rx = n.rx * 2.2, rz = n.rz * 2.2, depth = p[2];
-                final boolean isSubterraneanNode = n.z > 0;
+                final boolean isSubterraneanNode = !"ENTRANCE".equals(n.type);
                 items.add(new Item(depth, () -> {
                     if ("ENTRANCE".equals(n.type)) {
                         gc.setFill(Color.LIMEGREEN);

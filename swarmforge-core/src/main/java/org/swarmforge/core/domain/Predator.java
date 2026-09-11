@@ -44,6 +44,7 @@ public class Predator {
     private float hunger = 0f;
     private float energy = 100f;
     private int age = 0;
+    private float ageInSeconds = 0.0f;
     private boolean alive = true;
 
     // Hunting
@@ -99,6 +100,7 @@ public class Predator {
             return;
 
         age++;
+        ageInSeconds += deltaSeconds;
 
         // Natural energy drain per second
         energy -= 1.2f * deltaSeconds;
@@ -271,6 +273,10 @@ public class Predator {
 
     public int getAge() {
         return age;
+    }
+
+    public float getAgeInSeconds() {
+        return ageInSeconds;
     }
 
     private void die() {

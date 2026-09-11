@@ -599,7 +599,7 @@ export default function Terrarium() {
         return '#87ceeb'
     }, [environmentLighting?.isNight, lookAndFeel])
 
-    // Real Textures loaded for Mode 3D Naturel (REALISTIC mode)
+    // Real Textures loaded for Mode 3D Naturel (REALISTIC mode) with dynamic Biome / Climate adaption
     const realisticTextures = useMemo(() => {
         if (lookAndFeel !== 'REALISTIC') return null
         const loader = new THREE.TextureLoader()
@@ -611,6 +611,89 @@ export default function Terrarium() {
             return t
         }
 
+        const climateType = climateEngine?.climateType || 'OCEANIC'
+
+        // Arid / Savanna / Desert landscapes
+        if (climateType === 'ARID' || climateType === 'SAVANNA') {
+            return {
+                groundMap: loadTex('/3d/textures/pbr/Ground086/Ground086_1K-JPG_Color.jpg', 12, 12),
+                groundNormalMap: loadTex('/3d/textures/pbr/Ground086/Ground086_1K-JPG_NormalGL.jpg', 12, 12),
+                groundRoughnessMap: loadTex('/3d/textures/pbr/Ground086/Ground086_1K-JPG_Roughness.jpg', 12, 12),
+                topsoilMap: loadTex('/3d/textures/pbr/Ground093C/Ground093C_1K-JPG_Color.jpg', 8, 8),
+                topsoilNormalMap: loadTex('/3d/textures/pbr/Ground093C/Ground093C_1K-JPG_NormalGL.jpg', 8, 8),
+                topsoilRoughnessMap: loadTex('/3d/textures/pbr/Ground093C/Ground093C_1K-JPG_Roughness.jpg', 8, 8),
+                subsoilMap: loadTex('/3d/textures/pbr/Ground061/Ground061_1K-JPG_Color.jpg', 6, 6),
+                subsoilNormalMap: loadTex('/3d/textures/pbr/Ground061/Ground061_1K-JPG_NormalGL.jpg', 6, 6),
+                subsoilRoughnessMap: loadTex('/3d/textures/pbr/Ground061/Ground061_1K-JPG_Roughness.jpg', 6, 6),
+                bedrockMap: loadTex('/3d/textures/pbr/Ground089/Ground089_1K-JPG_Color.jpg', 6, 6),
+                bedrockNormalMap: loadTex('/3d/textures/pbr/Ground089/Ground089_1K-JPG_NormalGL.jpg', 6, 6),
+                bedrockRoughnessMap: loadTex('/3d/textures/pbr/Ground089/Ground089_1K-JPG_Roughness.jpg', 6, 6),
+                riverCobbleMap: loadTex('/3d/textures/3td_RiverCobble_01.png', 4, 12),
+                riverCobbleNormalMap: loadTex('/3d/textures/3td_RiverCobble_01_NRM.png', 4, 12),
+            }
+        }
+
+        // Mediterranean / Stony Dry Scrubland
+        if (climateType === 'MEDITERRANEAN') {
+            return {
+                groundMap: loadTex('/3d/textures/pbr/Ground097/Ground097_1K-JPG_Color.jpg', 12, 12),
+                groundNormalMap: loadTex('/3d/textures/pbr/Ground097/Ground097_1K-JPG_NormalGL.jpg', 12, 12),
+                groundRoughnessMap: loadTex('/3d/textures/pbr/Ground097/Ground097_1K-JPG_Roughness.jpg', 12, 12),
+                topsoilMap: loadTex('/3d/textures/pbr/Ground003/Ground003_1K-JPG_Color.jpg', 8, 8),
+                topsoilNormalMap: loadTex('/3d/textures/pbr/Ground003/Ground003_1K-JPG_NormalGL.jpg', 8, 8),
+                topsoilRoughnessMap: loadTex('/3d/textures/pbr/Ground003/Ground003_1K-JPG_Roughness.jpg', 8, 8),
+                subsoilMap: loadTex('/3d/textures/pbr/Ground049A/Ground049A_1K-JPG_Color.jpg', 6, 6),
+                subsoilNormalMap: loadTex('/3d/textures/pbr/Ground049A/Ground049A_1K-JPG_NormalGL.jpg', 6, 6),
+                subsoilRoughnessMap: loadTex('/3d/textures/pbr/Ground049A/Ground049A_1K-JPG_Roughness.jpg', 6, 6),
+                bedrockMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_Color.jpg', 6, 6),
+                bedrockNormalMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_NormalGL.jpg', 6, 6),
+                bedrockRoughnessMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_Roughness.jpg', 6, 6),
+                riverCobbleMap: loadTex('/3d/textures/3td_RiverCobble_01.png', 4, 12),
+                riverCobbleNormalMap: loadTex('/3d/textures/3td_RiverCobble_01_NRM.png', 4, 12),
+            }
+        }
+
+        // Alpine / Mountain
+        if (climateType === 'ALPINE') {
+            return {
+                groundMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_Color.jpg', 12, 12),
+                groundNormalMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_NormalGL.jpg', 12, 12),
+                groundRoughnessMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_Roughness.jpg', 12, 12),
+                topsoilMap: loadTex('/3d/textures/pbr/Ground003/Ground003_1K-JPG_Color.jpg', 8, 8),
+                topsoilNormalMap: loadTex('/3d/textures/pbr/Ground003/Ground003_1K-JPG_NormalGL.jpg', 8, 8),
+                topsoilRoughnessMap: loadTex('/3d/textures/pbr/Ground003/Ground003_1K-JPG_Roughness.jpg', 8, 8),
+                subsoilMap: loadTex('/3d/textures/pbr/Ground108/Ground108_1K-JPG_Color.jpg', 6, 6),
+                subsoilNormalMap: loadTex('/3d/textures/pbr/Ground108/Ground108_1K-JPG_NormalGL.jpg', 6, 6),
+                subsoilRoughnessMap: loadTex('/3d/textures/pbr/Ground108/Ground108_1K-JPG_Roughness.jpg', 6, 6),
+                bedrockMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_Color.jpg', 6, 6),
+                bedrockNormalMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_NormalGL.jpg', 6, 6),
+                bedrockRoughnessMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_Roughness.jpg', 6, 6),
+                riverCobbleMap: loadTex('/3d/textures/3td_RiverCobble_01.png', 4, 12),
+                riverCobbleNormalMap: loadTex('/3d/textures/3td_RiverCobble_01_NRM.png', 4, 12),
+            }
+        }
+
+        // Tropical Jungle
+        if (climateType === 'TROPICAL') {
+            return {
+                groundMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_Color.jpg', 12, 12),
+                groundNormalMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_NormalGL.jpg', 12, 12),
+                groundRoughnessMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_Roughness.jpg', 12, 12),
+                topsoilMap: loadTex('/3d/textures/pbr/Ground052/Ground052_1K-JPG_Color.jpg', 8, 8),
+                topsoilNormalMap: loadTex('/3d/textures/pbr/Ground052/Ground052_1K-JPG_NormalGL.jpg', 8, 8),
+                topsoilRoughnessMap: loadTex('/3d/textures/pbr/Ground052/Ground052_1K-JPG_Roughness.jpg', 8, 8),
+                subsoilMap: loadTex('/3d/textures/pbr/Ground049B/Ground049B_1K-JPG_Color.jpg', 6, 6),
+                subsoilNormalMap: loadTex('/3d/textures/pbr/Ground049B/Ground049B_1K-JPG_NormalGL.jpg', 6, 6),
+                subsoilRoughnessMap: loadTex('/3d/textures/pbr/Ground049B/Ground049B_1K-JPG_Roughness.jpg', 6, 6),
+                bedrockMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_Color.jpg', 6, 6),
+                bedrockNormalMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_NormalGL.jpg', 6, 6),
+                bedrockRoughnessMap: loadTex('/3d/textures/pbr/Ground025/Ground025_1K-JPG_Roughness.jpg', 6, 6),
+                riverCobbleMap: loadTex('/3d/textures/3td_RiverCobble_01.png', 4, 12),
+                riverCobbleNormalMap: loadTex('/3d/textures/3td_RiverCobble_01_NRM.png', 4, 12),
+            }
+        }
+
+        // Default Oceanic / Continental Temperate
         return {
             groundMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_Color.jpg', 12, 12),
             groundNormalMap: loadTex('/3d/textures/pbr/Ground037/Ground037_1K-JPG_NormalGL.jpg', 12, 12),
@@ -627,7 +710,7 @@ export default function Terrarium() {
             riverCobbleMap: loadTex('/3d/textures/3td_RiverCobble_01.png', 4, 12),
             riverCobbleNormalMap: loadTex('/3d/textures/3td_RiverCobble_01_NRM.png', 4, 12),
         }
-    }, [lookAndFeel])
+    }, [lookAndFeel, climateEngine?.climateType])
 
     // Procedural Splatting Ground Texture fallback for Realistic Mode
     const splattingTexture = useMemo(() => {

@@ -43,6 +43,11 @@ public class Colony implements java.io.Serializable {
     private final org.swarmforge.core.simulation.FungusGarden fungusGarden;
     private final org.swarmforge.core.structure.Nest nest; // New Nest Structure
     private final org.swarmforge.core.diplomacy.DiplomacyManager diplomacyManager;
+    private final org.swarmforge.core.structure.physics.NestVoxelGrid nestVoxelGrid;
+    private final org.swarmforge.core.epidemiology.SocialImmunityManager socialImmunityManager;
+    private final org.swarmforge.core.structure.physics.PassiveVentilationEngine ventilationEngine;
+    private final org.swarmforge.core.structure.physics.StructuralStabilityAnalyzer stabilityAnalyzer;
+    private final java.util.Map<UUID, org.swarmforge.core.epidemiology.IndividualInfection> infectionRegistry = new java.util.concurrent.ConcurrentHashMap<>();
 
     public Colony(Species species, Terrarium terrarium) {
         this(species, terrarium.getWidth() / 2f, terrarium.getHeight() / 2f, 0);
@@ -60,6 +65,10 @@ public class Colony implements java.io.Serializable {
         this.tunnelNetwork = new org.swarmforge.core.simulation.TunnelNetwork(this);
         this.nest = new org.swarmforge.core.structure.Nest();
         this.diplomacyManager = new org.swarmforge.core.diplomacy.DiplomacyManager(this.id);
+        this.nestVoxelGrid = new org.swarmforge.core.structure.physics.NestVoxelGrid(16, 16, 16, getResolvedNestType());
+        this.socialImmunityManager = new org.swarmforge.core.epidemiology.SocialImmunityManager(nestX + 10.0f, nestY + 10.0f, 0.0f);
+        this.ventilationEngine = new org.swarmforge.core.structure.physics.PassiveVentilationEngine();
+        this.stabilityAnalyzer = new org.swarmforge.core.structure.physics.StructuralStabilityAnalyzer();
 
         // Seed Initial Nest
         var entrance = new org.swarmforge.core.structure.Chamber(id + "-ent",
@@ -81,6 +90,26 @@ public class Colony implements java.io.Serializable {
         }
 
         bootstrapDefaultResources();
+    }
+
+    public org.swarmforge.core.structure.physics.NestType getResolvedNestType() {
+        String arch = species != null ? species.getNestType() : (speciesName != null ? speciesName : "SUBTERRANEAN_SIMPLE");
+        if (arch != null) {
+            String u = arch.toUpperCase();
+            if (u.contains("MOUND") || u.contains("FORMICA")) return org.swarmforge.core.structure.physics.NestType.SUBTERRANEAN_MOUND;
+            if (u.contains("CATHEDRAL") || u.contains("TERMITE") || u.contains("MACROTERMES")) return org.swarmforge.core.structure.physics.NestType.TERMITE_CATHEDRAL;
+            if (u.contains("TREE") || u.contains("WOOD") || u.contains("CAVITY") || u.contains("CAMPONOTUS")) return org.swarmforge.core.structure.physics.NestType.CAVITY_TREE;
+            if (u.contains("WEAVER") || u.contains("OECOPHYLLA")) return org.swarmforge.core.structure.physics.NestType.ARBOREAL_WEAVER;
+            if (u.contains("CARTON") || u.contains("CREMATOGASTER")) return org.swarmforge.core.structure.physics.NestType.ARBOREAL_CARTON;
+            if (u.contains("CRATER") || u.contains("POGONOMYRMEX")) return org.swarmforge.core.structure.physics.NestType.CRATER_NEST;
+            if (u.contains("TOWER") || u.contains("CHIMNEY") || u.contains("ODONTOMACHUS")) return org.swarmforge.core.structure.physics.NestType.TOWER_CHIMNEY;
+            if (u.contains("CATAGLYPHIS") || u.contains("DESERT")) return org.swarmforge.core.structure.physics.NestType.CATAGLYPHIS_DEEP;
+            if (u.contains("ROCK") || u.contains("LITHOPHILIC")) return org.swarmforge.core.structure.physics.NestType.LITHOPHILIC;
+            if (u.contains("BAMBOO")) return org.swarmforge.core.structure.physics.NestType.SUSPENDED_BAMBOO;
+            if (u.contains("POLYDOMOUS") || u.contains("LINEPITHEMA")) return org.swarmforge.core.structure.physics.NestType.POLYDOMOUS_NETWORK;
+            if (u.contains("POCKET") || u.contains("SOLENOPSIS")) return org.swarmforge.core.structure.physics.NestType.HYPOGAEIC_POCKET;
+        }
+        return org.swarmforge.core.structure.physics.NestType.SUBTERRANEAN_SIMPLE;
     }
 
     public float getDynamicQueenChamberDepth() {
@@ -1238,4 +1267,48 @@ public class Colony implements java.io.Serializable {
     public void decrementBroodCount() { if (broodCount > 0) broodCount--; }
     public void incrementEnslavedPupaeCount() { enslavedPupaeCount++; }
     public int getEnslavedPupaeCount() { return enslavedPupaeCount; }
+
+    public org.swarmforge.core.structure.physics.NestVoxelGrid getNestVoxelGrid() {
+        return nestVoxelGrid;
+    }
+
+    public org.swarmforge.core.epidemiology.SocialImmunityManager getSocialImmunityManager() {
+        return socialImmunityManager;
+    }
+
+    public org.swarmforge.core.structure.physics.PassiveVentilationEngine getVentilationEngine() {
+        return ventilationEngine;
+    }
+
+    public org.swarmforge.core.structure.physics.StructuralStabilityAnalyzer getStabilityAnalyzer() {
+        return stabilityAnalyzer;
+    }
+
+    public java.util.Map<UUID, org.swarmforge.core.epidemiology.IndividualInfection> getInfectionRegistry() {
+        return infectionRegistry;
+    }
+
+    /**
+     * Executes passive stack-effect ventilation, Mohr-Coulomb stability analysis,
+     * and social immunity transmission cycles across the colony's 3D voxel nest.
+     */
+    public void tickPhysicalEngines(float ambientTemp, float ambientCo2, float windSpeed,
+                                   float waterSaturation, float deltaSeconds, java.util.Random rng) {
+        if (nestVoxelGrid == null) return;
+
+        // 1. Passive Stack-Effect Nest Ventilation
+        if (ventilationEngine != null) {
+            ventilationEngine.simulateVentilationStep(nestVoxelGrid, ambientTemp, ambientCo2, windSpeed, getPopulation());
+        }
+
+        // 2. Structural Mechanics & Cave-In Risk under Moisture Saturation
+        if (stabilityAnalyzer != null && age % 60 == 0) { // Evaluate every ~1 sec
+            stabilityAnalyzer.evaluateAndTriggerCaveIns(nestVoxelGrid, waterSaturation, rng != null ? rng : new java.util.Random());
+        }
+
+        // 3. Social Immunity & Epizootic Management
+        if (socialImmunityManager != null && age % 30 == 0) { // Evaluate every ~0.5 sec
+            socialImmunityManager.simulateEpidemiologyStep(infectionRegistry, getLivingIndividuals(), nestVoxelGrid, rng != null ? rng : new java.util.Random(), deltaSeconds);
+        }
+    }
 }

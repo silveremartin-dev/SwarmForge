@@ -181,17 +181,17 @@ public class BiomeTerrainGenerator {
                 if (random.nextFloat() > density)
                     continue;
 
-                // Find surface
-                for (int z = terrarium.getDepth() - 1; z > 0; z--) {
-                    TerrariumCell cell = terrarium.getCell(x, y, z);
-                    TerrariumCell above = terrarium.getCell(x, y, z + 1);
-
+                // Find surface elevation
+                float surfaceElev = terrarium.getSurfaceElevation(x, y);
+                int surfaceZ = (int) Math.floor(surfaceElev);
+                if (surfaceZ >= 0 && surfaceZ + 1 < terrarium.getDepth()) {
+                    TerrariumCell cell = terrarium.getCell(x, y, surfaceZ);
+                    TerrariumCell above = terrarium.getCell(x, y, surfaceZ + 1);
                     if (cell.isDiggable() && above.material() == TerrariumCell.Material.AIR) {
                         // Place organic matter above surface
                         if (random.nextFloat() < 0.3f) {
-                            terrarium.setCell(TerrariumCell.organic(x, y, z + 1));
+                            terrarium.setCell(TerrariumCell.organic(x, y, surfaceZ + 1));
                         }
-                        break;
                     }
                 }
             }

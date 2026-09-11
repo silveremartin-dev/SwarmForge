@@ -144,6 +144,14 @@ public class Simulation {
 
         this.dayNightCycle = new org.swarmforge.core.world.DayNightCycle();
         this.ecsWorldManager = new org.swarmforge.core.ecs.EcsWorldManager(this.pheromoneGrid);
+        this.pluginManager = new org.swarmforge.core.plugin.PluginManager();
+        this.pluginManager.setContext(new org.swarmforge.core.plugin.PluginContext(this, this.pluginManager));
+    }
+
+    private final org.swarmforge.core.plugin.PluginManager pluginManager;
+
+    public org.swarmforge.core.plugin.PluginManager getPluginManager() {
+        return pluginManager;
     }
 
     public org.swarmforge.core.ecs.EcsWorldManager getEcsWorldManager() {
@@ -515,10 +523,11 @@ public class Simulation {
                 // Update thermodynamic ambient temperature and humidity from weather context (with subterranean microclimate buffering)
                 float ambTemp = context.getTemperature();
                 float ambHum = context.getRelativeHumidity(individual.getX(), individual.getY(), individual.getZ());
-                if (individual.getZ() < -0.5f) {
+                float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(individual.getX(), individual.getY()) : 16.0f;
+                if (individual.getZ() < surfaceZ) {
                     float optT = individual.getSpecies() != null ? individual.getSpecies().getOptimalTempCelsius() : 20.0f;
                     float optH = individual.getSpecies() != null ? individual.getSpecies().getOptimalHumidityPercent() : 85.0f;
-                    float depthFactor = Math.min(1.0f, Math.abs(individual.getZ()) / 4.0f);
+                    float depthFactor = Math.min(1.0f, (surfaceZ - individual.getZ()) / 4.0f);
                     ambTemp = ambTemp * (1.0f - depthFactor) + optT * depthFactor;
                     ambHum = ambHum * (1.0f - depthFactor) + optH * depthFactor;
                 }
@@ -531,7 +540,6 @@ public class Simulation {
                     individual.tick(simulationStepSeconds);
 
                     // Ensure brood remains strictly subterranean inside the nest
-                    float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(individual.getX(), individual.getY()) : 16.0f;
                     if (individual.getZ() >= surfaceZ) {
                         float chamberDepth = Math.max(1.0f, colony.getDynamicQueenChamberDepth() * 0.5f);
                         individual.setZ(Math.max(1.0f, surfaceZ - chamberDepth));
@@ -611,8 +619,8 @@ public class Simulation {
                 if (terrarium != null) {
                     float maxX = Math.max(1.0f, terrarium.getWidth() - 1.0f);
                     float maxY = Math.max(1.0f, terrarium.getHeight() - 1.0f);
-                    float maxDepth = Math.max(10.0f, (float) terrarium.getDepth());
-                    float minZ = -maxDepth;
+                    float maxDepth = Math.max(1.0f, (float) terrarium.getDepth() - 1.0f);
+                    float minZ = 0.0f;
                     float maxZ = maxDepth;
                     float cx = Math.max(0.0f, Math.min(maxX, individual.getX()));
                     float cy = Math.max(0.0f, Math.min(maxY, individual.getY()));
@@ -639,8 +647,8 @@ public class Simulation {
                     if (terrarium != null) {
                         float maxX = Math.max(1.0f, terrarium.getWidth() - 1.0f);
                         float maxY = Math.max(1.0f, terrarium.getHeight() - 1.0f);
-                        float maxDepth = Math.max(10.0f, (float) terrarium.getDepth());
-                        float minZ = -maxDepth;
+                        float maxDepth = Math.max(1.0f, (float) terrarium.getDepth() - 1.0f);
+                        float minZ = 0.0f;
                         float maxZ = maxDepth;
                         float cx = Math.max(0.0f, Math.min(maxX, individual.getX()));
                         float cy = Math.max(0.0f, Math.min(maxY, individual.getY()));
@@ -669,6 +677,14 @@ public class Simulation {
             });
             colony.removeDeadIndividuals();
             colony.tick(); // Update internal state (Fungus Gardens, Consumption)
+            colony.tickPhysicalEngines(
+                    weather != null ? weather.getTemperature() : 20.0f,
+                    org.swarmforge.core.domain.TerrariumCell.DEFAULT_CO2,
+                    weather != null ? weather.getWindSpeedMs() : 1.0f,
+                    soilHydricCoupling != null ? (soilHydricCoupling.getMoistureAtDepth(0) / 100.0f) : 0.2f,
+                    simulationStepSeconds,
+                    this.random
+            );
         }
 
         // Re-insert moved living individuals into spatial index
@@ -847,6 +863,10 @@ public class Simulation {
         }
         if (seasonManager != null) {
             seasonManager.tick();
+        }
+
+        if (pluginManager != null) {
+            pluginManager.notifyTick(currentTick);
         }
 
         // Advance weather continuously every tick (1 tick = 1 second => 1/3600 hour)

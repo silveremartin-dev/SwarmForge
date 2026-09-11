@@ -107,8 +107,8 @@ public class TerrainMeshGenerator {
 
     private boolean isTransparent(Terrarium terrarium, int x, int y, int z) {
         if (x < 0 || x >= terrarium.getWidth() ||
-                y < 0 || y >= terrarium.getDepth() ||
-                z < 0 || z >= terrarium.getHeight()) {
+                y < 0 || y >= terrarium.getHeight() ||
+                z < 0 || z >= terrarium.getDepth()) {
             return true; // Boundary faces visible
         }
         return terrarium.getCell(x, y, z).material() == TerrariumCell.Material.AIR;
