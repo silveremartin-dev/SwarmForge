@@ -43,7 +43,7 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     private final UUID id;
-    private final Caste caste;
+    private Caste caste;
     private UUID colonyId;
 
     // Position
@@ -421,6 +421,372 @@ public class Individual implements java.io.Serializable, AgentView {
         this.stridulatingRescueCall = true;
     }
 
+    public void consumeEnergy(float amount) {
+        this.energy = Math.max(0.0f, this.energy - amount);
+    }
+
+    public void setClimbingTree(boolean climbing) {
+        this.climbingTree = climbing;
+    }
+
+    // ==========================================
+    // LOT A: Advanced Biological & Mechanical Defense
+    // ==========================================
+    private boolean autothysed = false;
+    private boolean phragmoticShieldActive = false;
+    private boolean inThermalBallCluster = false;
+    private float nasuteResinReservoir = 100.0f;
+
+    public boolean hasAutothysed() { return autothysed; }
+    public boolean isPhragmoticShieldActive() { return phragmoticShieldActive; }
+    public void setPhragmoticShieldActive(boolean active) { this.phragmoticShieldActive = active; }
+    public boolean isInThermalBallCluster() { return inThermalBallCluster; }
+    public void setInThermalBallCluster(boolean cluster) { this.inThermalBallCluster = cluster; }
+    public float getNasuteResinReservoir() { return nasuteResinReservoir; }
+    public void refillNasuteResin(float amt) { this.nasuteResinReservoir = Math.min(100.0f, this.nasuteResinReservoir + amt); }
+
+    public boolean performAutothysis(java.util.List<Individual> nearbyEnemies) {
+        if (!alive || autothysed) return false;
+        autothysed = true;
+        die("Autothysis Defensive Rupture");
+        if (nearbyEnemies != null) {
+            for (Individual enemy : nearbyEnemies) {
+                if (enemy != null && enemy.isAlive() && enemy.getColonyId() != this.colonyId) {
+                    enemy.takeDamage(35.0f, "Toxic Polyketone Adhesive Glue");
+                    enemy.setChemotacticBlindnessTicks(180);
+                }
+            }
+        }
+        return true;
+    }
+
+    public boolean performThermalBalling(Individual targetPredator, float clusterPower) {
+        if (!alive || targetPredator == null || !targetPredator.isAlive()) return false;
+        this.inThermalBallCluster = true;
+        this.energy = Math.max(0.0f, this.energy - 0.5f);
+        this.thoraxTemperatureC = Math.min(47.0f, this.thoraxTemperatureC + 4.0f);
+        targetPredator.takeDamage(10.0f * clusterPower, "Thermal Ball Asphyxiation");
+        return true;
+    }
+
+    public boolean squirtNasuteResin(Individual targetEnemy, float distance) {
+        if (!alive || targetEnemy == null || !targetEnemy.isAlive() || distance > 0.8f || nasuteResinReservoir < 15.0f) {
+            return false;
+        }
+        nasuteResinReservoir -= 15.0f;
+        targetEnemy.takeDamage(12.0f, "Nasute Monoterpene Resin");
+        targetEnemy.setChemotacticBlindnessTicks(100);
+        return true;
+    }
+
+    /**
+     * Honeybee worker barbed sting defense against other arthropods/insects.
+     * Inflicts severe apitoxin venom damage (40.0) and releases alarm pheromone (isopentyl acetate).
+     *
+     * Biological Realism: When stinging rigid chitinous insect cuticle, the barbs do NOT systematically
+     * tear the abdomen (autotomy rate ~12% if wedged in hard sclerite). The worker bee survives in ~88% of cases
+     * and can continue active nest defense.
+     */
+    public boolean performBarbedBeeSting(Individual targetEnemy) {
+        if (!alive || targetEnemy == null || !targetEnemy.isAlive()) {
+            return false;
+        }
+        // Heavy envenomation
+        targetEnemy.takeDamage(40.0f, "Apitoxin Envenomation (Barbed Sting)");
+        targetEnemy.setChemotacticBlindnessTicks(150);
+        this.energy = Math.max(0.0f, this.energy - 8.0f);
+
+        // Chitin penetration: only ~12% risk of mechanical entrapment / autotomy against insects
+        if (Math.random() < 0.12) {
+            this.alive = false;
+            this.health = 0.0f;
+            die("Autotomie post-piqûre (Dard coincé dans la cuticule)");
+        }
+        return true;
+    }
+
+    /**
+     * Honeybee worker barbed sting defense against vertebrate/mammalian predators (Bears, Mice, Humans).
+     * The thick, elastic dermis traps the recurved barbs, tearing away the sting apparatus and caudal ganglion.
+     * Results in 100% fatal autotomy with prolonged apitoxin pumping.
+     */
+    public boolean performMammalianDefensiveSting(float envenomationDamage) {
+        if (!alive) return false;
+        this.alive = false;
+        this.health = 0.0f;
+        die("Autotomie défensive post-piqûre mammifère (Dard arraché)");
+        return true;
+    }
+
+    /**
+     * Honeybee barbed sting defense against a predator entity.
+     */
+    public boolean performBarbedBeeSting(Predator targetPredator) {
+        if (!alive || targetPredator == null || !targetPredator.isAlive()) {
+            return false;
+        }
+        targetPredator.takeDamage(40.0f);
+        this.energy = Math.max(0.0f, this.energy - 8.0f);
+
+        // Against arthropod predators (spiders, hornets), 12% autotomy risk
+        if (Math.random() < 0.12) {
+            this.alive = false;
+            this.health = 0.0f;
+            die("Autotomie post-piqûre contre prédateur");
+        }
+        return true;
+    }
+
+    /**
+     * Wasp smooth sting attack.
+     * Inflicts repeated venom damage (20.0) without abdominal rupture.
+     */
+    public boolean performSmoothWaspSting(Individual targetEnemy) {
+        if (!alive || targetEnemy == null || !targetEnemy.isAlive()) {
+            return false;
+        }
+        this.energy = Math.max(0.0f, this.energy - 5.0f);
+        targetEnemy.takeDamage(20.0f, "Vespula Envenomation (Smooth Sting)");
+        return true;
+    }
+
+    public boolean performSmoothWaspSting(Predator targetPredator) {
+        if (!alive || targetPredator == null || !targetPredator.isAlive()) {
+            return false;
+        }
+        this.energy = Math.max(0.0f, this.energy - 5.0f);
+        targetPredator.takeDamage(20.0f);
+        return true;
+    }
+
+    // ==========================================
+    // LOT B: Living Civil Engineering & Subterranean Architecture
+    // ==========================================
+    private boolean formingLivingBridge = false;
+    private boolean formingLivingRaft = false;
+    private boolean inhabitingDomatia = false;
+    private float stercoralMortarReservoir = 100.0f;
+
+    public boolean isFormingLivingBridge() { return formingLivingBridge; }
+    public void setFormingLivingBridge(boolean bridge) { this.formingLivingBridge = bridge; }
+    public boolean isFormingLivingRaft() { return formingLivingRaft; }
+    public void setFormingLivingRaft(boolean raft) { this.formingLivingRaft = raft; }
+    public boolean isInhabitingDomatia() { return inhabitingDomatia; }
+    public void setInhabitingDomatia(boolean domatia) { this.inhabitingDomatia = domatia; }
+    public float getStercoralMortarReservoir() { return stercoralMortarReservoir; }
+    public void refillStercoralMortar(float amt) { this.stercoralMortarReservoir = Math.min(100.0f, this.stercoralMortarReservoir + amt); }
+
+    public boolean sewLeavesWithLarvalSilk(Individual silkLarva) {
+        if (silkLarva == null || silkLarva.getLifeStage() != LifeStage.LARVA || this.carriedItem != CarriedItem.NONE) {
+            return false;
+        }
+        this.carriedItem = CarriedItem.BROOD;
+        return true;
+    }
+
+    public boolean applyStercoralCement() {
+        if (stercoralMortarReservoir < 10.0f) return false;
+        stercoralMortarReservoir -= 10.0f;
+        return true;
+    }
+
+    // ==========================================
+    // LOT C: Agronomy, Storage & Plant/Insect Symbiosis
+    // ==========================================
+    private boolean repleteStorageCaste = false;
+    private float repleteStorageVolume = 0.0f;
+    private int deGerminatedSeedsCount = 0;
+    private int managedAphidsCount = 0;
+
+    public boolean isRepleteStorageCaste() { return repleteStorageCaste; }
+    public void setRepleteStorageCaste(boolean replete) { this.repleteStorageCaste = replete; }
+    public float getRepleteStorageVolume() { return repleteStorageVolume; }
+    public void setRepleteStorageVolume(float vol) { this.repleteStorageVolume = Math.max(0.0f, Math.min(100.0f, vol)); }
+    public int getDeGerminatedSeedsCount() { return deGerminatedSeedsCount; }
+    public int getManagedAphidsCount() { return managedAphidsCount; }
+
+    public boolean deGermStoredSeed() {
+        if (carriedItem != CarriedItem.FOOD) return false;
+        deGerminatedSeedsCount++;
+        return true;
+    }
+
+    public float milkAphid(float honeydewYield) {
+        managedAphidsCount++;
+        float harvested = Math.max(0.0f, honeydewYield);
+        this.energy = Math.min(maxEnergy, this.energy + harvested * 5.0f);
+        if (repleteStorageCaste) {
+            repleteStorageVolume = Math.min(100.0f, repleteStorageVolume + harvested * 10.0f);
+        }
+        return harvested;
+    }
+
+    // ==========================================
+    // LOT D: Bio-Acoustic Communication, Dance & Royal Signaling
+    // ==========================================
+    private boolean waggleDancing = false;
+    private float waggleTargetHeading = 0.0f;
+    private float waggleDistanceMeters = 0.0f;
+    private boolean trembleDancing = false;
+    private boolean queenPipingActive = false;
+    private float queenPipingFrequencyHz = 450.0f;
+
+    public boolean isWaggleDancing() { return waggleDancing; }
+    public float getWaggleTargetHeading() { return waggleTargetHeading; }
+    public float getWaggleDistanceMeters() { return waggleDistanceMeters; }
+    public boolean isTrembleDancing() { return trembleDancing; }
+    public void setTrembleDancing(boolean tremble) { this.trembleDancing = tremble; }
+    public boolean isQueenPipingActive() { return queenPipingActive; }
+    public float getQueenPipingFrequencyHz() { return queenPipingFrequencyHz; }
+
+    public void performWaggleDance(float targetHeading, float distanceMeters) {
+        this.waggleDancing = true;
+        this.waggleTargetHeading = targetHeading;
+        this.waggleDistanceMeters = Math.max(0.0f, distanceMeters);
+    }
+
+    public void stopWaggleDance() {
+        this.waggleDancing = false;
+    }
+
+    public void triggerQueenPiping() {
+        if (caste == Caste.QUEEN) {
+            this.queenPipingActive = true;
+            this.queenPipingFrequencyHz = 450.0f;
+        }
+    }
+
+    public void stopQueenPiping() {
+        this.queenPipingActive = false;
+    }
+
+    // ==========================================
+    // LOT E: Genetics, Reproduction & Social Regulation
+    // ==========================================
+    private float royalPheromoneInhibitionTiter = 1.0f;
+    private boolean gamergate = false;
+    private int dominanceScore = 0;
+    private int trophicEggsLaid = 0;
+
+    public float getRoyalPheromoneInhibitionTiter() { return royalPheromoneInhibitionTiter; }
+    public void setRoyalPheromoneInhibitionTiter(float titer) { this.royalPheromoneInhibitionTiter = Math.max(0.0f, Math.min(1.0f, titer)); }
+    public boolean isGamergate() { return gamergate; }
+    public void setGamergate(boolean g) { this.gamergate = g; }
+    public int getDominanceScore() { return dominanceScore; }
+    public int getTrophicEggsLaid() { return trophicEggsLaid; }
+
+    public boolean isOvariesActivated() {
+        return (caste == Caste.WORKER || caste == Caste.NURSE) && royalPheromoneInhibitionTiter < 0.15f;
+    }
+
+    public boolean layTrophicEgg() {
+        if (!isOvariesActivated() && !gamergate) return false;
+        trophicEggsLaid++;
+        this.energy = Math.max(0.0f, this.energy - 10.0f);
+        return true;
+    }
+
+    public boolean feedOnLarvalHemolymph(Individual larva) {
+        if (larva == null || larva.getLifeStage() != LifeStage.LARVA || !larva.isAlive()) return false;
+        larva.takeDamage(4.0f, "Non-lethal Larval Hemolymph Tap");
+        this.energy = Math.min(maxEnergy, this.energy + 15.0f);
+        return true;
+    }
+
+    public boolean engageDominanceTournament(Individual rival) {
+        if (rival == null || !rival.isAlive() || rival.getColonyId() != this.colonyId) return false;
+        if (this.health >= rival.getHealth()) {
+            this.dominanceScore += 2;
+            rival.dominanceScore = Math.max(0, rival.dominanceScore - 1);
+            if (this.dominanceScore >= 10 && !this.gamergate) {
+                this.gamergate = true;
+                this.caste = Caste.QUEEN;
+            }
+            return true;
+        } else {
+            rival.dominanceScore += 2;
+            this.dominanceScore = Math.max(0, this.dominanceScore - 1);
+            return false;
+        }
+    }
+
+    public boolean consumeDefectiveEgg() {
+        this.energy = Math.min(maxEnergy, this.energy + 8.0f);
+        return true;
+    }
+
+    // ==========================================
+    // LOT F: Extreme Eco-Physiology & Climatic Adaptation
+    // ==========================================
+    private float glycerolConcentrationMgMl = 0.0f;
+    private boolean stiltWalking = false;
+    private boolean floodEvacuating = false;
+
+    public float getGlycerolConcentrationMgMl() { return glycerolConcentrationMgMl; }
+    public void setGlycerolConcentrationMgMl(float conc) { this.glycerolConcentrationMgMl = Math.max(0.0f, conc); }
+    public boolean isStiltWalking() { return stiltWalking; }
+    public void setStiltWalking(boolean sw) { this.stiltWalking = sw; }
+    public boolean isFloodEvacuating() { return floodEvacuating; }
+    public void setFloodEvacuating(boolean fe) { this.floodEvacuating = fe; }
+
+    public void synthesizeGlycerol(float amount) {
+        this.glycerolConcentrationMgMl = Math.min(50.0f, this.glycerolConcentrationMgMl + amount);
+    }
+
+    public boolean canSurviveSubzero(float tempC) {
+        if (tempC >= 0.0f) return true;
+        float criticalMinTemp = - (this.glycerolConcentrationMgMl * 0.375f);
+        return tempC >= criticalMinTemp;
+    }
+
+    public float getEffectiveLocomotionSpeed() {
+        float speed = getWalkingSpeed();
+        if (stiltWalking) {
+            speed *= 1.50f;
+        }
+        return speed;
+    }
+
+    public void detectHydrostaticFloodPressure(float barometricDropHpa, float soilMoisturePercent) {
+        if (barometricDropHpa > 15.0f || soilMoisturePercent > 85.0f) {
+            this.floodEvacuating = true;
+        }
+    }
+
+    // ==========================================
+    // LOT G: Advanced Sanitation, Social Immunity & Pharmacy
+    // ==========================================
+    private boolean voluntarySelfIsolating = false;
+    private float propolisVarnishCarried = 0.0f;
+
+    public boolean isVoluntarySelfIsolating() { return voluntarySelfIsolating; }
+    public void setVoluntarySelfIsolating(boolean iso) { this.voluntarySelfIsolating = iso; }
+    public float getPropolisVarnishCarried() { return propolisVarnishCarried; }
+    public void setPropolisVarnishCarried(float amt) { this.propolisVarnishCarried = Math.max(0.0f, amt); }
+
+    public void checkPathogenSelfIsolation(float fungalSporeTiter) {
+        if (fungalSporeTiter >= 75.0f) {
+            this.voluntarySelfIsolating = true;
+        }
+    }
+
+    public boolean performFormicAcidBathGrooming() {
+        if (this.formicAcidGland < 10.0f) return false;
+        this.formicAcidGland -= 10.0f;
+        return true;
+    }
+
+    public boolean applyPropolisVarnish() {
+        if (this.propolisVarnishCarried < 5.0f) return false;
+        this.propolisVarnishCarried -= 5.0f;
+        return true;
+    }
+
+    public boolean clipAphidWingBuds() {
+        this.managedAphidsCount++;
+        return true;
+    }
+
     public boolean isClimbingTree() {
         return climbingTree;
     }
@@ -480,7 +846,9 @@ public class Individual implements java.io.Serializable, AgentView {
         RESTING,
         TEND_BROOD,
         PATROL,
-        DIG
+        DIG,
+        EVACUATE_FLOOD,
+        RESCUE_DIGGING
     }
 
     /**
@@ -527,6 +895,7 @@ public class Individual implements java.io.Serializable, AgentView {
         FORAGER,
         GUARD,
         UNDERTAKER,
+        DANCING,
         IDLE
     }
 
@@ -568,22 +937,18 @@ public class Individual implements java.io.Serializable, AgentView {
         this.homeY = y;
         this.homeZ = z;
         this.alive = true;
-        this.maxHealth = 100f;
-        this.health = 100f;
         this.energy = 100f;
         this.maxEnergy = 100f;
         this.hunger = 0f;
         this.thirst = 0f;
         this.fatigue = 0f;
+        applyBiologicalCasteStats();
     }
 
     public Individual(UUID colonyId, CasteTemplate template, float x, float y, float z) {
         this(colonyId, Caste.WORKER, x, y, z); // Default to WORKER enum for now
         this.casteTemplate = template;
-        this.maxHealth = template.getBaseHealth();
-        this.health = this.maxHealth;
-        this.attackDamage = template.getBaseDamage();
-        this.defense = template.getBaseDefense();
+        applyBiologicalCasteStats();
     }
 
     public CasteTemplate getCasteTemplate() {
@@ -592,10 +957,55 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public void setCasteTemplate(CasteTemplate casteTemplate) {
         this.casteTemplate = casteTemplate;
+        applyBiologicalCasteStats();
+    }
+
+    /**
+     * Dynamically initializes biological combat attributes (health, damage, defense)
+     * based on species ecology, body mass, and caste specialization.
+     */
+    public void applyBiologicalCasteStats() {
         if (casteTemplate != null) {
-            this.maxHealth = casteTemplate.getBaseHealth();
-            this.attackDamage = casteTemplate.getBaseDamage();
+            this.maxHealth = casteTemplate.getBaseHealth() > 0 ? casteTemplate.getBaseHealth() : 50f;
+            this.attackDamage = casteTemplate.getBaseDamage() > 0 ? casteTemplate.getBaseDamage() : 5f;
             this.defense = casteTemplate.getBaseDefense();
+            return;
+        }
+        float baseSpeciesStrength = (species != null) ? species.getStrength() : 5.0f;
+        if (caste != null) {
+            switch (caste) {
+                case QUEEN -> {
+                    this.maxHealth = 200.0f;
+                    this.attackDamage = Math.max(8.0f, baseSpeciesStrength * 1.5f);
+                    this.defense = 4.0f;
+                }
+                case SOLDIER -> {
+                    this.maxHealth = 150.0f;
+                    this.attackDamage = Math.max(15.0f, baseSpeciesStrength * 2.5f);
+                    this.defense = 2.5f;
+                }
+                case MALE -> {
+                    this.maxHealth = 50.0f;
+                    this.attackDamage = 1.0f;
+                    this.defense = 0.0f;
+                }
+                default -> { // WORKER, FORAGER, NURSE
+                    if (species != null && "Apis mellifera".equalsIgnoreCase(species.getScientificName())) {
+                        this.maxHealth = 40.0f;
+                    } else {
+                        this.maxHealth = 100.0f;
+                    }
+                    this.attackDamage = baseSpeciesStrength;
+                    this.defense = 0.5f;
+                }
+            }
+        } else {
+            this.maxHealth = 100.0f;
+            this.attackDamage = baseSpeciesStrength;
+            this.defense = 0.5f;
+        }
+        if (this.health > this.maxHealth || this.health <= 0.0f) {
+            this.health = this.maxHealth;
         }
     }
 
@@ -825,6 +1235,10 @@ public class Individual implements java.io.Serializable, AgentView {
         this.ambientHumidityPercent = humidity;
     }
 
+    public float getHumidity() {
+        return ambientHumidityPercent;
+    }
+
     /**
      * Compute thermodynamic response factor using asymmetric Schoolfield thermal reaction norm kinetics.
      * Incorporates rapid enzymatic inactivation near Critical Thermal Maximum (CTmax).
@@ -1048,6 +1462,10 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public Caste getCaste() {
         return caste;
+    }
+
+    public void setCaste(Caste caste) {
+        this.caste = caste;
     }
 
     public float getX() {
@@ -1280,6 +1698,7 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public void setSpecies(org.swarmforge.core.species.Species species) {
         this.species = species;
+        applyBiologicalCasteStats();
     }
 
     public LifeStage getLifeStage() {
@@ -1319,7 +1738,11 @@ public class Individual implements java.io.Serializable, AgentView {
     public boolean takeDamage(float amount, String cause) {
         if (!alive)
             return false;
-        health -= amount;
+        float effectiveDamage = amount;
+        if (phragmoticShieldActive) {
+            effectiveDamage *= 0.20f; // 80% physical shield damage reduction
+        }
+        health -= effectiveDamage;
         if (health <= 0) {
             health = 0;
             die(cause != null ? cause : "Physical Trauma / Damage");

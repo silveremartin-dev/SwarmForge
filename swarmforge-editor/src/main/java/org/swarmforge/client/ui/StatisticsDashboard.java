@@ -152,9 +152,14 @@ public class StatisticsDashboard extends VBox {
     private String trackedAntId = "ant_1";
     private String scenarioName = "swarmforge";
     private java.util.function.Consumer<String> onTrackAntListener;
+    private java.util.function.Consumer<String> onSelectAntListener;
 
     public void setOnTrackAnt(java.util.function.Consumer<String> listener) {
         this.onTrackAntListener = listener;
+    }
+
+    public void setOnSelectAnt(java.util.function.Consumer<String> listener) {
+        this.onSelectAntListener = listener;
     }
 
     public String getScenarioName() {
@@ -305,8 +310,8 @@ public class StatisticsDashboard extends VBox {
         num = Math.max(1, num + delta);
         String newId = prefix + num;
         setTrackedAntId(newId);
-        if (onTrackAntListener != null) {
-            onTrackAntListener.accept(newId);
+        if (onSelectAntListener != null) {
+            onSelectAntListener.accept(newId);
         }
     }
 
@@ -336,37 +341,40 @@ public class StatisticsDashboard extends VBox {
             lblTrackedIdDisplay.setText(String.format("%s (#%s)", ant.getFormattedId(), shortUuid));
             if (!ant.isAlive() || ant.getHealth() <= 0) {
                 String cod = ant.getCauseOfDeath() != null ? " (" + ant.getCauseOfDeath() + ")" : "";
-                lblIndivHealth.setText("0.0% 💀 [MORT" + cod + "]");
+                lblIndivHealth.setText(i18n.get("stats.indiv.dead", cod));
             } else {
                 lblIndivHealth.setText(String.format(Locale.US, "%.1f%%", ant.getHealth()));
             }
             lblIndivEnergy.setText(String.format(Locale.US, "%.1f%%", ant.getEnergy()));
             double distNest = Math.hypot(ant.getX() - ant.getHomeX(), ant.getY() - ant.getHomeY());
-            lblIndivDistance.setText(String.format(Locale.US, "%.2f m (nid)", distNest));
+            lblIndivDistance.setText(i18n.get("stats.indiv.dist_fmt", distNest));
             String payload = (ant.getCarriedItem() != null && ant.getCarriedItem() != org.swarmforge.core.domain.Individual.CarriedItem.NONE)
                     ? ant.getCarriedItem().name()
                     : "0.0 mg";
             lblIndivPayload.setText(payload);
             double ageDays = ant.getAge() / 86400.0;
-            lblIndivCasteAge.setText(String.format(Locale.US, "%s (%.1f j)", ant.getCaste() != null ? ant.getCaste().name() : "Worker", ageDays));
+            String casteName = ant.getCaste() != null ? ant.getCaste().name() : "Worker";
+            lblIndivCasteAge.setText(i18n.get("stats.indiv.age_fmt", casteName, ageDays));
             String spName = ant.getSpecies() != null 
                     ? (ant.getSpecies().getCommonName() != null ? ant.getSpecies().getCommonName() : ant.getSpecies().getScientificName())
-                    : "Formica fusca";
+                    : i18n.get("stats.indiv.species_fallback", "Formicidae");
             lblIndivSpecies.setText(spName != null ? spName : "Formicidae");
+            String colStr = ant.getColonyId() != null ? ant.getColonyId().toString().substring(0, Math.min(8, ant.getColonyId().toString().length())) : "1";
+            lblIndivColony.setText(i18n.get("stats.indiv.colony_fmt", colStr));
 
             String ethology;
             if (ant.getCaste() == org.swarmforge.core.domain.Individual.Caste.QUEEN) {
-                ethology = "👑 Soins Royaux / Ponte";
+                ethology = i18n.get("stats.ethology.queen", "👑 Soins Royaux / Ponte");
             } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.FORAGE || ant.getJob() == org.swarmforge.core.domain.Individual.Job.FORAGER || ant.isCarryingFood()) {
-                ethology = "🌾 Fourragement (Récolte / Transport)";
+                ethology = i18n.get("stats.ethology.forage", "🌾 Fourragement (Récolte / Transport)");
             } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.DIG || ant.getJob() == org.swarmforge.core.domain.Individual.Job.BUILDER || ant.getCarriedItem() == org.swarmforge.core.domain.Individual.CarriedItem.EARTH) {
-                ethology = "⛏️ Excavation / Creusage";
+                ethology = i18n.get("stats.ethology.dig", "⛏️ Excavation / Creusage");
             } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.TEND_BROOD || ant.getJob() == org.swarmforge.core.domain.Individual.Job.NURSE || ant.getCarriedItem() == org.swarmforge.core.domain.Individual.CarriedItem.BROOD) {
-                ethology = "🍼 Soins aux Larves (Nursing)";
+                ethology = i18n.get("stats.ethology.nurse", "🍼 Soins aux Larves (Nursing)");
             } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.ATTACKING || ant.getState() == org.swarmforge.core.domain.Individual.AiState.PATROL || ant.getJob() == org.swarmforge.core.domain.Individual.Job.GUARD || ant.getCaste() == org.swarmforge.core.domain.Individual.Caste.SOLDIER) {
-                ethology = "🛡️ Garde & Défense";
+                ethology = i18n.get("stats.ethology.guard", "🛡️ Garde & Défense");
             } else {
-                ethology = "💤 Repos / Inactivité";
+                ethology = i18n.get("stats.ethology.rest", "💤 Repos / Inactivité");
             }
 
             String jobStr = ant.getJob() != null ? ant.getJob().toString() : "Forager";
@@ -385,25 +393,25 @@ public class StatisticsDashboard extends VBox {
     private final CheckBox chkWorkers = new CheckBox();
     private final CheckBox chkSoldiers = new CheckBox();
     private final CheckBox chkQueens = new CheckBox();
-    private final CheckBox chkMales = new CheckBox("Males");
+    private final CheckBox chkMales = new CheckBox();
     private final CheckBox chkFood = new CheckBox();
     private final CheckBox chkWater = new CheckBox();
-    private final CheckBox chkProtein = new CheckBox("Proteins");
+    private final CheckBox chkProtein = new CheckBox();
     private final CheckBox chkBirths = new CheckBox();
     private final CheckBox chkDeaths = new CheckBox();
-    private final CheckBox chkTemp = new CheckBox("Temp (°C)");
-    private final CheckBox chkRain = new CheckBox("Rain (mm/h)");
-    private final CheckBox chkPhero = new CheckBox("Pheromones");
-    private final CheckBox chkForaging = new CheckBox("🌾 Fourragement");
-    private final CheckBox chkDigging = new CheckBox("⛏️ Excavation");
-    private final CheckBox chkNursing = new CheckBox("🍼 Soins Larves");
-    private final CheckBox chkGuarding = new CheckBox("🛡️ Garde/Défense");
-    private final CheckBox chkRoyalCare = new CheckBox("👑 Soins Royaux");
-    private final CheckBox chkResting = new CheckBox("💤 Repos/Inactivité");
+    private final CheckBox chkTemp = new CheckBox();
+    private final CheckBox chkRain = new CheckBox();
+    private final CheckBox chkPhero = new CheckBox();
+    private final CheckBox chkForaging = new CheckBox();
+    private final CheckBox chkDigging = new CheckBox();
+    private final CheckBox chkNursing = new CheckBox();
+    private final CheckBox chkGuarding = new CheckBox();
+    private final CheckBox chkRoyalCare = new CheckBox();
+    private final CheckBox chkResting = new CheckBox();
     private final CheckBox chkTps = new CheckBox();
-    private final CheckBox chkAntHealth = new CheckBox("Ant Health");
-    private final CheckBox chkAntEnergy = new CheckBox("Ant Energy");
-    private final CheckBox chkAntDistance = new CheckBox("Ant Distance");
+    private final CheckBox chkAntHealth = new CheckBox();
+    private final CheckBox chkAntEnergy = new CheckBox();
+    private final CheckBox chkAntDistance = new CheckBox();
 
     private final List<ColonyStats> historyList = new ArrayList<>();
 
@@ -429,7 +437,8 @@ public class StatisticsDashboard extends VBox {
         HBox headerBar = new HBox(10);
         headerBar.setAlignment(Pos.CENTER_LEFT);
 
-        Label titleLabel = new Label("📊 " + i18n.get("stats.dashboard_title", "Tableau de Bord Statistiques Temporel"));
+        Label titleLabel = new Label();
+        titleLabel.textProperty().bind(i18n.createStringBinding("stats.dashboard_title"));
         titleLabel.getStyleClass().add("card-title");
         titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #0284c7;");
         titleLabel.tooltipProperty().bind(i18n.createTooltipBinding("stats.dashboard_title.tt"));
@@ -439,26 +448,16 @@ public class StatisticsDashboard extends VBox {
 
         // View Mode Selector
         Label lblViewMode = new Label();
-        lblViewMode.textProperty().bind(i18n.createStringBinding("stats.res_chart"));
+        lblViewMode.textProperty().bind(i18n.createStringBinding("stats.graph_view.label"));
         lblViewMode.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-font-weight: bold;");
-        comboGraphView.getItems().addAll(
-                i18n.get("stats.view.all", "Tous les Graphiques"),
-                i18n.get("stats.view.demographics", "Démographie & Espèces"),
-                i18n.get("stats.view.castes", "Castes"),
-                i18n.get("stats.view.behaviors", "Éthologie & Comportements"),
-                i18n.get("stats.view.resources", "Ressources"),
-                i18n.get("stats.view.ecosystem", "Écosystème & Météo"),
-                i18n.get("stats.view.tps", "Performance TPS"),
-                i18n.get("stats.view.telemetry", "Télémétrie Individuelle")
-        );
-        comboGraphView.getSelectionModel().selectFirst();
+        populateGraphViewItems();
         comboGraphView.tooltipProperty().bind(i18n.createTooltipBinding("stats.graph_view.tt"));
         comboGraphView.setOnAction(e -> updateVisibleCharts());
 
         // Zoom Controls
         Button btnZoomIn = new Button("🔍+");
         btnZoomIn.setStyle("-fx-background-color: #334155; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-        btnZoomIn.setTooltip(new Tooltip("Zoom avant temporel (réduire la fenêtre)"));
+        btnZoomIn.tooltipProperty().bind(i18n.createTooltipBinding("stats.zoom.in.tt"));
         btnZoomIn.setOnAction(e -> {
             if (currentSelectedWindowSec <= 0) {
                 currentSelectedWindowSec = 300.0;
@@ -472,7 +471,7 @@ public class StatisticsDashboard extends VBox {
 
         Button btnZoomOut = new Button("🔍-");
         btnZoomOut.setStyle("-fx-background-color: #334155; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-        btnZoomOut.setTooltip(new Tooltip("Zoom arrière temporel (agrandir la fenêtre)"));
+        btnZoomOut.tooltipProperty().bind(i18n.createTooltipBinding("stats.zoom.out.tt"));
         btnZoomOut.setOnAction(e -> {
             if (currentSelectedWindowSec > 0) {
                 currentSelectedWindowSec = currentSelectedWindowSec * 1.5;
@@ -487,7 +486,7 @@ public class StatisticsDashboard extends VBox {
 
         Button btnZoomReset = new Button("🔍 100%");
         btnZoomReset.setStyle("-fx-background-color: #334155; -fx-text-fill: #94a3b8;");
-        btnZoomReset.setTooltip(new Tooltip("Réinitialiser le zoom (3 minutes)"));
+        btnZoomReset.tooltipProperty().bind(i18n.createTooltipBinding("stats.zoom.reset.tt"));
         btnZoomReset.setOnAction(e -> {
             currentSelectedWindowSec = 180.0;
             comboTimeWindow.getSelectionModel().select(1);
@@ -500,13 +499,7 @@ public class StatisticsDashboard extends VBox {
         Label lblTimeWindow = new Label();
         lblTimeWindow.textProperty().bind(i18n.createStringBinding("stats.tick_rate"));
         lblTimeWindow.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-font-weight: bold;");
-        comboTimeWindow.getItems().addAll(
-                i18n.get("stats.window.1m"),
-                i18n.get("stats.window.3m"),
-                i18n.get("stats.window.5m"),
-                i18n.get("stats.window.10m"),
-                i18n.get("stats.window.all")
-        );
+        populateTimeWindowItems();
         comboTimeWindow.getSelectionModel().select(1); // 3 Minutes default
         comboTimeWindow.tooltipProperty().bind(i18n.createTooltipBinding("stats.time_window.tt"));
         comboTimeWindow.setOnAction(e -> {
@@ -523,14 +516,18 @@ public class StatisticsDashboard extends VBox {
             }
         });
 
-        Button btnExport = new Button("📤 " + i18n.get("stats.export_btn", "Exporter CSV"));
+        Button btnExport = new Button();
+        btnExport.textProperty().bind(i18n.createStringBinding("stats.export_btn"));
+        btnExport.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.UPLOAD));
         btnExport.getStyleClass().add("btn-primary");
-        btnExport.tooltipProperty().bind(i18n.createTooltipBinding("stats.export.tt"));
+        btnExport.tooltipProperty().bind(i18n.createTooltipBinding("stats.export_btn.tt"));
         btnExport.setOnAction(e -> exportToCSV());
 
-        Button btnClear = new Button("🗑 " + i18n.get("log.btn.clear", "Reset"));
+        Button btnClear = new Button();
+        btnClear.textProperty().bind(i18n.createStringBinding("log.btn.clear"));
+        btnClear.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.TRASH_2));
         btnClear.getStyleClass().add("btn-secondary");
-        btnClear.tooltipProperty().bind(i18n.createTooltipBinding("stats.clear.tt"));
+        btnClear.tooltipProperty().bind(i18n.createTooltipBinding("stats.clear_btn.tt"));
         btnClear.setOnAction(e -> clear());
 
         headerBar.getChildren().addAll(titleLabel, spacer, lblViewMode, comboGraphView, btnZoomIn, btnZoomOut, btnZoomReset, lblTimeWindow, comboTimeWindow, btnClear, btnExport);
@@ -547,7 +544,8 @@ public class StatisticsDashboard extends VBox {
         VBox selectorBox = new VBox(6);
         selectorBox.getStyleClass().add("card-pane");
 
-        Label lblSelect = new Label("🎯 " + i18n.get("stats.series_select", "Select time series to display:"));
+        Label lblSelect = new Label();
+        lblSelect.textProperty().bind(i18n.createStringBinding("stats.series_select"));
         lblSelect.getStyleClass().add("card-title");
         lblSelect.tooltipProperty().bind(i18n.createTooltipBinding("stats.series_select.tt"));
 
@@ -559,16 +557,32 @@ public class StatisticsDashboard extends VBox {
         chkSoldiers.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.soldiers.tt"));
         chkQueens.textProperty().bind(i18n.createStringBinding("stats.queens"));
         chkQueens.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.queens.tt"));
+        chkMales.textProperty().bind(i18n.createStringBinding("stats.chk.males"));
+
+        chkForaging.textProperty().bind(i18n.createStringBinding("stats.behavior.foraging"));
+        chkDigging.textProperty().bind(i18n.createStringBinding("stats.behavior.digging"));
+        chkNursing.textProperty().bind(i18n.createStringBinding("stats.behavior.nursing"));
+        chkGuarding.textProperty().bind(i18n.createStringBinding("stats.behavior.guarding"));
+        chkRoyalCare.textProperty().bind(i18n.createStringBinding("stats.behavior.royal_care"));
+        chkResting.textProperty().bind(i18n.createStringBinding("stats.behavior.resting"));
+
         chkFood.textProperty().bind(i18n.createStringBinding("stats.food"));
         chkFood.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.food.tt"));
         chkWater.textProperty().bind(i18n.createStringBinding("stats.water"));
         chkWater.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.water.tt"));
+        chkProtein.textProperty().bind(i18n.createStringBinding("stats.chk.protein"));
         chkBirths.textProperty().bind(i18n.createStringBinding("stats.births"));
         chkBirths.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.births.tt"));
         chkDeaths.textProperty().bind(i18n.createStringBinding("stats.deaths"));
         chkDeaths.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.deaths.tt"));
+        chkTemp.textProperty().bind(i18n.createStringBinding("stats.chk.temp"));
+        chkRain.textProperty().bind(i18n.createStringBinding("stats.chk.rain"));
+        chkPhero.textProperty().bind(i18n.createStringBinding("stats.chk.phero"));
         chkTps.textProperty().bind(i18n.createStringBinding("stats.tps"));
         chkTps.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.tps.tt"));
+        chkAntHealth.textProperty().bind(i18n.createStringBinding("stats.chk.ant_health"));
+        chkAntEnergy.textProperty().bind(i18n.createStringBinding("stats.chk.ant_energy"));
+        chkAntDistance.textProperty().bind(i18n.createStringBinding("stats.chk.ant_distance"));
 
         FlowPane checkFlow = new FlowPane(12, 6);
         checkFlow.getChildren().addAll(
@@ -588,43 +602,23 @@ public class StatisticsDashboard extends VBox {
         selectorBox.getChildren().addAll(lblSelect, checkFlow);
 
         // === Setup Charts ===
-        chartMultiColony = createChart("📈 1. Multi-Colony & Species Demographics (Population per Colony)", "Individuals (Per Colony)");
-        chartCastes = createChart("👥 2. Global Caste Breakdown (Queens, Workers, Soldiers, Males)", "Count per Caste");
-        chartBehaviors = createChart("🐜 3. Répartition Éthologique des Comportements", "Nombre d'Individus");
-        chartResources = createChart("🌾 4. Bio-Resources & Events (Food, Water, Births, Deaths)", "Quantity / Events");
-        chartWeather = createChart("🌤️ 5. Ecosystem & Climate (Temperature °C, Rainfall mm/h, Pheromones)", "Environmental Units");
-        chartPerformance = createChart("⚡ 6. Engine Performance (Computation Speed TPS)", "Ticks Per Second (TPS)");
-        chartIndividualAnt = createChart("🐜 7. Individual Timeline & Telemetry (Health %, Energy %, Distance m)", "Metric Values (%)");
+        chartMultiColony = createChart("stats.chart.multi_colony.title", "stats.chart.multi_colony.y");
+        chartCastes = createChart("stats.chart.castes.title", "stats.chart.castes.y");
+        chartBehaviors = createChart("stats.chart.behaviors.title", "stats.chart.behaviors.y");
+        chartResources = createChart("stats.chart.resources.title", "stats.chart.resources.y");
+        chartWeather = createChart("stats.chart.weather.title", "stats.chart.weather.y");
+        chartPerformance = createChart("stats.chart.performance.title", "stats.chart.performance.y");
+        chartIndividualAnt = createChart("stats.chart.individual.title", "stats.chart.individual.y");
 
         // Setup series names
-        totalPopSeries.setName("Global Total Population");
-        queensSeries.setName(i18n.get("stats.queens", "Queens"));
-        workersSeries.setName(i18n.get("stats.workers", "Workers"));
-        soldiersSeries.setName(i18n.get("stats.soldiers", "Soldiers"));
-        malesSeries.setName("Males");
+        updateSeriesNames();
 
-        behaviorForagingSeries.setName("🌾 Fourragement (Récolte)");
-        behaviorDiggingSeries.setName("⛏️ Excavation (Galeries)");
-        behaviorNursingSeries.setName("🍼 Soins aux Larves");
-        behaviorGuardingSeries.setName("🛡️ Garde & Défense");
-        behaviorRoyalCareSeries.setName("👑 Soins Royaux");
-        behaviorRestingSeries.setName("💤 Repos / Inactivité");
-
-        foodSeries.setName(i18n.get("stats.food", "Stored Food"));
-        waterSeries.setName(i18n.get("stats.water", "Water / Humidity"));
-        proteinSeries.setName("Proteins");
-        birthsSeries.setName(i18n.get("stats.births", "Cumulative Births"));
-        deathsSeries.setName(i18n.get("stats.deaths", "Cumulative Deaths"));
-
-        tempSeries.setName("Air Temp (°C)");
-        rainSeries.setName("Rainfall (mm/h)");
-        pheroSeries.setName("Pheromone Intensity");
-
-        tpsSeries.setName(i18n.get("stats.tps", "Engine Speed (TPS)"));
-
-        antHealthSeries.setName("Individual Health (%)");
-        antEnergySeries.setName("Energy / Lipids (%)");
-        antDistanceSeries.setName("Traveled Distance (m)");
+        // Listen for locale changes
+        i18n.localeProperty().addListener((obs, oldLoc, newLoc) -> {
+            populateGraphViewItems();
+            populateTimeWindowItems();
+            updateSeriesNames();
+        });
 
         // Assign series to charts
         chartCastes.getData().addAll(totalPopSeries, queensSeries, workersSeries, soldiersSeries, malesSeries);
@@ -673,6 +667,72 @@ public class StatisticsDashboard extends VBox {
         getChildren().addAll(headerBar, summaryPane, selectorBox, scrollCharts);
     }
 
+    private void populateGraphViewItems() {
+        int selected = comboGraphView.getSelectionModel().getSelectedIndex();
+        comboGraphView.getItems().setAll(
+                i18n.get("stats.view.all", "All Charts (Global View)"),
+                i18n.get("stats.view.demographics", "Multi-Colony Demographics & Species"),
+                i18n.get("stats.view.castes", "Caste Distribution (Queens, Workers, Soldiers)"),
+                i18n.get("stats.view.behaviors", "Ethological Behaviors Distribution"),
+                i18n.get("stats.view.resources", "Resources & Biomass (Food, Water)"),
+                i18n.get("stats.view.ecosystem", "Ecosystem & Climate (Temp, Rain)"),
+                i18n.get("stats.view.tps", "Engine Performance (TPS)"),
+                i18n.get("stats.view.telemetry", "Individual Telemetry (Specific Ant)")
+        );
+        if (selected >= 0 && selected < comboGraphView.getItems().size()) {
+            comboGraphView.getSelectionModel().select(selected);
+        } else {
+            comboGraphView.getSelectionModel().selectFirst();
+        }
+    }
+
+    private void populateTimeWindowItems() {
+        int selected = comboTimeWindow.getSelectionModel().getSelectedIndex();
+        comboTimeWindow.getItems().setAll(
+                i18n.get("stats.window.1m"),
+                i18n.get("stats.window.3m"),
+                i18n.get("stats.window.5m"),
+                i18n.get("stats.window.10m"),
+                i18n.get("stats.window.all")
+        );
+        if (selected >= 0 && selected < comboTimeWindow.getItems().size()) {
+            comboTimeWindow.getSelectionModel().select(selected);
+        } else {
+            comboTimeWindow.getSelectionModel().select(1);
+        }
+    }
+
+    private void updateSeriesNames() {
+        totalPopSeries.setName(i18n.get("stats.series.total_pop", "Global Total Population"));
+        queensSeries.setName(i18n.get("stats.queens", "Queens"));
+        workersSeries.setName(i18n.get("stats.workers", "Workers"));
+        soldiersSeries.setName(i18n.get("stats.soldiers", "Soldiers"));
+        malesSeries.setName(i18n.get("stats.series.males", "Males"));
+
+        behaviorForagingSeries.setName(i18n.get("stats.behavior.series.foraging", "🌾 Foraging (Harvest)"));
+        behaviorDiggingSeries.setName(i18n.get("stats.behavior.series.digging", "⛏️ Excavation (Galleries)"));
+        behaviorNursingSeries.setName(i18n.get("stats.behavior.series.nursing", "🍼 Brood Care (Larvae)"));
+        behaviorGuardingSeries.setName(i18n.get("stats.behavior.series.guarding", "🛡️ Guard & Defense"));
+        behaviorRoyalCareSeries.setName(i18n.get("stats.behavior.series.royal_care", "👑 Royal Care"));
+        behaviorRestingSeries.setName(i18n.get("stats.behavior.series.resting", "💤 Resting / Inactivity"));
+
+        foodSeries.setName(i18n.get("stats.food", "Stored Food"));
+        waterSeries.setName(i18n.get("stats.water", "Water / Humidity"));
+        proteinSeries.setName(i18n.get("stats.series.protein", "Proteins"));
+        birthsSeries.setName(i18n.get("stats.births", "Cumulative Births"));
+        deathsSeries.setName(i18n.get("stats.deaths", "Cumulative Deaths"));
+
+        tempSeries.setName(i18n.get("stats.series.temp", "Air Temp (°C)"));
+        rainSeries.setName(i18n.get("stats.series.rain", "Rainfall (mm/h)"));
+        pheroSeries.setName(i18n.get("stats.series.phero", "Pheromone Intensity"));
+
+        tpsSeries.setName(i18n.get("stats.tps", "Engine Speed (TPS)"));
+
+        antHealthSeries.setName(i18n.get("stats.series.ant_health", "Individual Health (%)"));
+        antEnergySeries.setName(i18n.get("stats.series.ant_energy", "Energy / Lipids (%)"));
+        antDistanceSeries.setName(i18n.get("stats.series.ant_distance", "Traveled Distance (m)"));
+    }
+
     private void updateVisibleCharts() {
         chartsContainer.getChildren().clear();
         int selected = comboGraphView.getSelectionModel().getSelectedIndex();
@@ -688,7 +748,6 @@ public class StatisticsDashboard extends VBox {
         }
     }
 
-
     private void toggleSeries(LineChart<Number, Number> chart, XYChart.Series<Number, Number> series, boolean show) {
         if (show) {
             if (!chart.getData().contains(series)) {
@@ -700,59 +759,58 @@ public class StatisticsDashboard extends VBox {
     }
 
     private GridPane createSummaryPanel() {
-        org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
         GridPane grid = new GridPane();
         grid.setHgap(16);
         grid.setVgap(10);
         grid.setPadding(new Insets(10));
 
-        grid.add(createKpiCard(i18n.get("stats.population", "Total Pop.:"), lblPopulation, "Total living individuals in the simulation"), 0, 0);
-        grid.add(createKpiCard("Active Colonies:", lblColoniesCount, "Number of distinct colonies & species residing in the terrarium"), 1, 0);
-        grid.add(createKpiCard(i18n.get("stats.queens", "Queens:"), lblQueens, "Genetically reproductive queens"), 2, 0);
-        grid.add(createKpiCard(i18n.get("stats.workers", "Workers:"), lblWorkers, "Workers for foraging and brood care"), 3, 0);
+        grid.add(createKpiCard("stats.population", lblPopulation, "Total living individuals in the simulation"), 0, 0);
+        grid.add(createKpiCard("stats.active_colonies", lblColoniesCount, "Number of distinct colonies & species residing in the terrarium"), 1, 0);
+        grid.add(createKpiCard("stats.queens", lblQueens, "Genetically reproductive queens"), 2, 0);
+        grid.add(createKpiCard("stats.workers", lblWorkers, "Workers for foraging and brood care"), 3, 0);
 
-        grid.add(createKpiCard(i18n.get("stats.soldiers", "Soldiers:"), lblSoldiers, "Soldiers armed with defensive mandibles"), 0, 1);
-        grid.add(createKpiCard(i18n.get("stats.food", "Food:"), lblFood, "Food reserves accumulated in nests"), 1, 1);
-        grid.add(createKpiCard(i18n.get("stats.water", "Water / Moisture:"), lblWater, "Water reserves and nest hygrometry level"), 2, 1);
-        grid.add(createKpiCard(i18n.get("stats.tick_rate", "TPS Rate:"), lblTickRate, "Engine calculation speed in Ticks Per Second"), 3, 1);
+        grid.add(createKpiCard("stats.soldiers", lblSoldiers, "Soldiers armed with defensive mandibles"), 0, 1);
+        grid.add(createKpiCard("stats.food", lblFood, "Food reserves accumulated in nests"), 1, 1);
+        grid.add(createKpiCard("stats.water", lblWater, "Water reserves and nest hygrometry level"), 2, 1);
+        grid.add(createKpiCard("stats.tick_rate", lblTickRate, "Engine calculation speed in Ticks Per Second"), 3, 1);
 
-        grid.add(createKpiCard(i18n.get("stats.sim_time", "Duration & Date:"), lblSimTime, "Elapsed simulation time and converted theoretical date"), 0, 2, 4, 1);
+        grid.add(createKpiCard("stats.sim_time", lblSimTime, "Elapsed simulation time and converted theoretical date"), 0, 2, 4, 1);
 
         return grid;
     }
 
-    private HBox createKpiCard(String labelText, Label valueLabel, String tooltipDesc) {
+    private HBox createKpiCard(String labelKey, Label valueLabel, String tooltipDesc) {
         HBox box = new HBox(6);
         box.setAlignment(Pos.CENTER_LEFT);
         box.getStyleClass().add("card-pane");
         box.setPadding(new Insets(6, 12, 6, 12));
 
-        Label lbl = new Label(labelText);
+        Label lbl = new Label();
+        lbl.textProperty().bind(i18n.createStringBinding(labelKey));
         lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #94a3b8;");
 
         valueLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #38bdf8;");
 
         box.getChildren().addAll(lbl, valueLabel);
-        Tooltip.install(box, new Tooltip(tooltipDesc + " (" + labelText + ")"));
+        Tooltip.install(box, new Tooltip(tooltipDesc));
         return box;
     }
 
-    private LineChart<Number, Number> createChart(String title, String yLabel) {
+    private LineChart<Number, Number> createChart(String titleKey, String yLabelKey) {
         NumberAxis xAxis = new NumberAxis();
-        xAxis.setLabel("Real Time Elapsed (seconds)");
+        xAxis.labelProperty().bind(i18n.createStringBinding("stats.chart.x_axis"));
         xAxis.setForceZeroInRange(false);
 
         NumberAxis yAxis = new NumberAxis();
-        yAxis.setLabel(yLabel);
+        yAxis.labelProperty().bind(i18n.createStringBinding(yLabelKey));
 
         LineChart<Number, Number> chart = new LineChart<>(xAxis, yAxis);
-        chart.setTitle(title);
+        chart.titleProperty().bind(i18n.createStringBinding(titleKey));
         chart.setCreateSymbols(false);
         chart.setAnimated(false);
         chart.setLegendVisible(true);
         chart.setPrefHeight(230);
         chart.getStyleClass().add("chart-holder");
-        Tooltip.install(chart, new Tooltip(title + " — X Axis graduated in real seconds with temporal smoothing."));
 
         return chart;
     }
@@ -1022,7 +1080,7 @@ public class StatisticsDashboard extends VBox {
 
     private void exportToCSV() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Export Detailed Statistical Analysis (CSV / Excel)");
+        fileChooser.setTitle(i18n.get("stats.export.dialog_title", "Export Detailed Statistical Analysis (CSV / Excel)"));
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files (*.csv)", "*.csv"));
         String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
                 ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
@@ -1051,9 +1109,9 @@ public class StatisticsDashboard extends VBox {
                             s.food, s.water, s.protein, s.temperature, s.rainfall,
                             s.tickRate, s.births, s.deaths, s.activeEvent);
                 }
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Exhaustive statistical export successful!\nFile saved to: " + file.getAbsolutePath()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, i18n.get("stats.export.success", file.getAbsolutePath())).show();
             } catch (Exception ex) {
-                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, "Error during CSV export: " + ex.getMessage()).show();
+                org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.ERROR, i18n.get("stats.export.error", ex.getMessage())).show();
             }
         }
     }

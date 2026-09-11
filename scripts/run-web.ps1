@@ -1,58 +1,46 @@
 <#
 .SYNOPSIS
-    SwarmForge Web Client Launcher (PowerShell)
+    SwarmForge Web Client & Integrated Live Server Launcher (PowerShell)
 #>
 param (
-    [switch]$Static,
-    [int]$Port = 0
+    [int]$Port = 5173
 )
 
 $rootDir = Split-Path -Parent $PSScriptRoot
 Set-Location $rootDir
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  SwarmForge - Web Client Launcher" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "======================================================" -ForegroundColor Cyan
+Write-Host "      SwarmForge - Web Client & Serveur Simulation    " -ForegroundColor Cyan
+Write-Host "======================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$targetDir = if ($Static) { "swarmforge-web-client" } else { "swarmforge-web" }
-if ($Port -eq 0) {
-    $Port = if ($Static) { 8080 } else { 5173 }
+$pythonCmd = $null
+if (Get-Command py -ErrorAction SilentlyContinue) {
+    $pythonCmd = "py"
+} elseif (Get-Command python -ErrorAction SilentlyContinue) {
+    $pythonCmd = "python"
+} elseif (Test-Path "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe") {
+    $pythonCmd = "$env:LOCALAPPDATA\Programs\Python\Python314\python.exe"
+}
+
+if ($pythonCmd) {
+    Write-Host "[INFO] Démarrage du serveur SwarmForge complet (Web sur :$Port + WebSocket sur :8081)..." -ForegroundColor Green
+    & $pythonCmd (Join-Path $rootDir "scripts\mock_server.py")
+    exit
 }
 
 $hasNode = Get-Command node -ErrorAction SilentlyContinue
 $hasNpm = Get-Command npm -ErrorAction SilentlyContinue
 
-if ($hasNode -and $hasNpm -and -not $Static) {
-    Write-Host "[1/2] Checking dependencies for swarmforge-web..." -ForegroundColor Green
-    Set-Location "swarmforge-web"
+if ($hasNode -and $hasNpm) {
+    Set-Location (Join-Path $rootDir "swarmforge-web")
     if (-not (Test-Path "node_modules")) {
-        Write-Host "[INFO] Installing NPM dependencies..." -ForegroundColor Yellow
+        Write-Host "[INFO] Installation des dépendances NPM..." -ForegroundColor Yellow
         npm install
     }
-    Write-Host "[2/2] Starting SwarmForge Web Client (Vite Dev Server)..." -ForegroundColor Green
-    Write-Host "URL: http://localhost:$Port/" -ForegroundColor Cyan
+    Write-Host "[INFO] Lancement du serveur Vite Dev..." -ForegroundColor Green
     npm run dev -- --host --port $Port --open
     exit
 }
 
-$hasPython = Get-Command python -ErrorAction SilentlyContinue
-if ($hasPython) {
-    Write-Host "[INFO] Starting local Web server on port $Port using Python..." -ForegroundColor Green
-    Write-Host "URL: http://localhost:$Port/" -ForegroundColor Cyan
-    Start-Process "http://localhost:$Port"
-    python -m http.server $Port --directory $targetDir
-    exit
-}
-
-$hasPy = Get-Command py -ErrorAction SilentlyContinue
-if ($hasPy) {
-    Write-Host "[INFO] Starting local Web server on port $Port using Python Launcher..." -ForegroundColor Green
-    Write-Host "URL: http://localhost:$Port/" -ForegroundColor Cyan
-    Start-Process "http://localhost:$Port"
-    py -m http.server $Port --directory $targetDir
-    exit
-}
-
-Write-Host "[WARNING] Opening static web client directly..." -ForegroundColor Yellow
-Start-Process "swarmforge-web-client\index.html"
+Write-Host "ERREUR: Ni Python ni Node.js n'ont été trouvés sur le système." -ForegroundColor Red

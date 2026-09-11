@@ -13,28 +13,30 @@ import java.io.Serializable;
  * Density (kg/m3), Shear Strength (kPa), Cohesion (kPa), Thermal Conductivity (W/mK), Porosity (0-1).
  */
 public enum VoxelMaterial implements Serializable {
-    AIR(1.225f, 0.0f, 0.0f, 0.026f, 1.0f),
-    SOIL(1400.0f, 15.0f, 10.0f, 0.85f, 0.40f),
-    CLAY(1800.0f, 45.0f, 35.0f, 1.25f, 0.25f),
-    SAND(1600.0f, 5.0f, 2.0f, 0.45f, 0.45f),
-    STONE(2600.0f, 250.0f, 180.0f, 2.80f, 0.05f),
-    CARTON(600.0f, 30.0f, 25.0f, 0.12f, 0.50f),
-    RESIN_PROPOLIS(1100.0f, 80.0f, 75.0f, 0.18f, 0.10f),
-    REINFORCED(2000.0f, 150.0f, 120.0f, 1.10f, 0.20f);
+    AIR(1.225f, 0.0f, 0.0f, 0.026f, 1.0f, 0.14f),
+    SOIL(1400.0f, 15.0f, 10.0f, 0.85f, 0.40f, 40.0f),
+    CLAY(1800.0f, 45.0f, 35.0f, 1.25f, 0.25f, 75.0f),
+    SAND(1600.0f, 5.0f, 2.0f, 0.45f, 0.45f, 25.0f),
+    STONE(2600.0f, 250.0f, 180.0f, 2.80f, 0.05f, 25000.0f),
+    CARTON(600.0f, 30.0f, 25.0f, 0.12f, 0.50f, 1500.0f),
+    RESIN_PROPOLIS(1100.0f, 80.0f, 75.0f, 0.18f, 0.10f, 800.0f),
+    REINFORCED(2000.0f, 150.0f, 120.0f, 1.10f, 0.20f, 5000.0f);
 
     private final float densityKgM3;
     private final float shearStrengthKPa;
     private final float cohesionKPa;
     private final float thermalConductivityWMK;
     private final float porosity;
+    private final float youngsModulusMPa;
 
     VoxelMaterial(float densityKgM3, float shearStrengthKPa, float cohesionKPa,
-                  float thermalConductivityWMK, float porosity) {
+                  float thermalConductivityWMK, float porosity, float youngsModulusMPa) {
         this.densityKgM3 = densityKgM3;
         this.shearStrengthKPa = shearStrengthKPa;
         this.cohesionKPa = cohesionKPa;
         this.thermalConductivityWMK = thermalConductivityWMK;
         this.porosity = porosity;
+        this.youngsModulusMPa = youngsModulusMPa;
     }
 
     public float getDensityKgM3() {
@@ -57,7 +59,25 @@ public enum VoxelMaterial implements Serializable {
         return porosity;
     }
 
+    public float getYoungsModulusMPa() {
+        return youngsModulusMPa;
+    }
+
     public boolean isSolid() {
         return this != AIR;
+    }
+
+    public static VoxelMaterial fromDomainMaterial(org.swarmforge.core.domain.TerrariumCell.Material mat) {
+        if (mat == null) return AIR;
+        return switch (mat) {
+            case AIR, CAVITY -> AIR;
+            case CLAY -> CLAY;
+            case SAND, GRAVEL, SILT -> SAND;
+            case ROCK -> STONE;
+            case WOOD_PULP_PAPER, DEAD_WOOD, ROOT, BAMBOO_STEM -> CARTON;
+            case PROPOLIS -> RESIN_PROPOLIS;
+            case STERCORAL_CEMENT -> REINFORCED;
+            default -> SOIL;
+        };
     }
 }

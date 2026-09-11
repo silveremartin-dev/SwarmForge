@@ -444,6 +444,91 @@ public class AcademicScenarios {
     }
 
     /**
+     * Scenario 15: Arboreal Wasp Nest vs Wild Tree Hollow Beehive Predation & Defense.
+     */
+    public static Scenario createWaspVsWildBeehiveScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_15_WASP_WILD_BEEHIVE",
+                "Arboreal Wasp Nest vs Wild Beehive (Tree Hollow)",
+                "Ecological predation dynamics between an arboreal hanging paper wasp nest (Vespula germanica) and a wild honeybee colony (Apis mellifera) nested inside a hollow tree trunk with thermal balling defense."
+        );
+        scenario.setAcademicCategory("Aerial Ecology / Predation & Thermal Defense");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(350);
+        scenario.setHeight(350);
+        scenario.setDepth(32);
+        scenario.setBiomeName("TEMPERATE_FOREST");
+
+        Map<String, ArchitectureType> waspEngine = new HashMap<>();
+        waspEngine.put("WORKER", ArchitectureType.BEHAVIOR_TREE);
+        waspEngine.put("QUEEN", ArchitectureType.BDI);
+
+        Map<String, ArchitectureType> beeEngine = new HashMap<>();
+        beeEngine.put("WORKER", ArchitectureType.BDI);
+        beeEngine.put("QUEEN", ArchitectureType.BDI);
+
+        // Vespula germanica (Hanging Paper Nest in Canopy at Z ≈ +8.5m)
+        scenario.addColony(new Scenario.ColonySetup("Vespula germanica (Canopy Paper Nest)", "COLONY_WASP_NEST", 1, 80, 20, 500, waspEngine));
+        // Apis mellifera (Wild Hollow Trunk at Z ≈ +1.2m)
+        scenario.addColony(new Scenario.ColonySetup("Apis mellifera (Wild Hollow Trunk)", "COLONY_WILD_BEEHIVE", 1, 250, 0, 500, beeEngine));
+
+        scenario.addTargetMetric("AERIAL_INTERCEPTION_RATE");
+        scenario.addTargetMetric("THERMAL_BALL_DEFENSE_SUCCESS");
+        scenario.addTargetMetric("HONEY_DEPLETION_PREDATION_LOSS");
+        scenario.addTargetMetric("WORKER_DEFENSIVE_AUTOTOMY_COUNT");
+
+        // Scheduled Event: Wasp Foraging Raid at Tick 6,000
+        scenario.addEvent(new Scenario.ScenarioEvent(
+                6_000L,
+                "WASP_RAID_TRIGGER",
+                "Wasp scouting party detects honey stores and triggers aerial raid",
+                Map.of("targetColonyId", "COLONY_WILD_BEEHIVE", "raidForceSize", 30)
+        ));
+
+        return scenario;
+    }
+
+    /**
+     * Scenario 16: Managed Apicultural Apiary & Regional Landscape Foraging.
+     */
+    public static Scenario createApiculturalApiaryScenario(long seed) {
+        Scenario scenario = new Scenario(
+                "ACAD_16_APICULTURAL_APIARY",
+                "Managed Apicultural Apiary & Regional Landscape Foraging (Dadant 10-Frame)",
+                "Complete simulation of a managed modern apiary: Dadant 10-frame honey supers, comb honey maturation, active brood thermoregulation (34.5°C), seasonal swarming (SWARM_DIVISION), and micro-macro long-distance floral foraging across regional orchards and meadows."
+        );
+        scenario.setAcademicCategory("Apiculture & Ecosystem Services / Macro-Foraging");
+        scenario.setMasterSeed(seed);
+        scenario.setWidth(400);
+        scenario.setHeight(400);
+        scenario.setDepth(24);
+        scenario.setBiomeName("TEMPERATE_FOREST");
+
+        Map<String, ArchitectureType> beeEngine = new HashMap<>();
+        beeEngine.put("WORKER", ArchitectureType.BDI);
+        beeEngine.put("SOLDIER", ArchitectureType.FUZZY_LOGIC);
+        beeEngine.put("QUEEN", ArchitectureType.BDI);
+
+        scenario.addColony(new Scenario.ColonySetup("Apis mellifera (Dadant Apiary Hive)", "COLONY_DADANT_APIARY", 1, 400, 0, 800, beeEngine));
+
+        scenario.addTargetMetric("NECTAR_TO_HONEY_MATURATION_KG");
+        scenario.addTargetMetric("BROOD_CORE_TEMPERATURE_DELTA");
+        scenario.addTargetMetric("MACRO_FORAGING_FLIGHT_HOURS");
+        scenario.addTargetMetric("SWARMING_PREPARATION_INDEX");
+        scenario.addTargetMetric("UV_POLARIZATION_NAVIGATION_PRECISION");
+
+        // Scheduled Event: Spring Floral Bloom Surge at Tick 10,000
+        scenario.addEvent(new Scenario.ScenarioEvent(
+                10_000L,
+                "HONEY_FLOW_SURGE",
+                "Massive floral bloom trigger across regional macro-patches",
+                Map.of("regionalNectarMultiplier", 2.5f, "durationTicks", 50000)
+        ));
+
+        return scenario;
+    }
+
+    /**
      * List all available academic scenarios.
      */
     public static List<Scenario> getAllAcademicScenarios(long seed) {
@@ -461,7 +546,9 @@ public class AcademicScenarios {
                 createAlpineThermoregulationScenario(seed),
                 createBorealSolarDomesScenario(seed),
                 createSteppeHarvestingScenario(seed),
-                createWetlandFloodRaftingScenario(seed)
+                createWetlandFloodRaftingScenario(seed),
+                createWaspVsWildBeehiveScenario(seed),
+                createApiculturalApiaryScenario(seed)
         );
     }
 }

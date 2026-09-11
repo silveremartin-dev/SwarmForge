@@ -77,11 +77,11 @@ Inter-colony relationships between players are governed by 4 status states:
 
 ---
 
-## 6. Execution & Implementation Roadmap
-
-| Phase | Subsystem | Description & Artifact Deliverables |
-| :--- | :--- | :--- |
-| **Phase 1** | **Auto-Checkpointing** | Implement background timer & FIFO disk pruning (`~/.swarmforge/checkpoints/`). |
-| **Phase 2** | **Server Browser GUI** | Build `ServerBrowserPane` in JavaFX for listing rooms and server status. |
-| **Phase 3** | **Border Topology** | Implement cross-border entity handoff and boundary pheromone coupling via gRPC. |
-| **Phase 4** | **Diplomacy UI** | Add interactive diplomacy panel for alliance proposals and resource transfers. |
+## 6. Implementation Status & Module Reference
+ 
+| Phase | Subsystem | Implementation Class & Module | Status |
+| :--- | :--- | :--- | :--- |
+| **Phase 1** | **Auto-Checkpointing** | `org.swarmforge.core.simulation.CheckpointRetentionManager` (`swarmforge-core`) | **IMPLEMENTED** |
+| **Phase 2** | **Server Browser GUI** | `org.swarmforge.client.ui.ServerBrowserPane` (`swarmforge-editor`) | **IMPLEMENTED** |
+| **Phase 3** | **Border Topology & Halos** | `org.swarmforge.core.spatial.BorderMigrationSystem` & `org.swarmforge.server.compute.BoundaryHaloSync` | **IMPLEMENTED** |
+| **Phase 4** | **Diplomacy Protocol** | `org.swarmforge.core.diplomacy.DiplomacyManager` (with `DiplomaticAction` & tribute transfers) | **IMPLEMENTED** |

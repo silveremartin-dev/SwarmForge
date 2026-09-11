@@ -22,30 +22,19 @@ public class TerrainMeshGenerator {
         List<Integer> indices = new ArrayList<>();
 
         int width = terrarium.getWidth();
-        int height = terrarium.getHeight(); // Z-axis in domain, Y-axis in JME usually but mapped to Z here
-        int depth = terrarium.getDepth(); // Y-axis in domain? Check JmeGameApp mapping
-
-        // JmeGameApp mapping: x=x, y=z (height in domain), z=y (depth in domain) based
-        // on:
-        // g.setLocalTranslation(x, z, y); // Y is up
-        // Wait, Terrarium has x,y,z.
-        // JME: Y is UP.
-        // Terrarium likely: X, Y (North/South), Z (Height/Altitude).
-        // JmeGameApp loop: for x, for y (depth), for z (height).
-        // g.setLocalTranslation(x, z, y) -> X=x, Y=z, Z=y.
-        // So Terrarium Z maps to JME Y. Terrarium Y maps to JME Z.
+        int height = terrarium.getHeight(); // Y-axis in Terrarium (horizontal North/South -> JME Z)
+        int depth = terrarium.getDepth();   // Z-axis in Terrarium (vertical altitude -> JME Y)
 
         int indexOffset = 0;
 
         for (int x = 0; x < width; x++) {
-            for (int y = 0; y < depth; y++) {
-                for (int z = 0; z < height; z++) {
+            for (int y = 0; y < height; y++) {
+                for (int z = 0; z < depth; z++) {
                     TerrariumCell cell = terrarium.getCell(x, y, z);
                     if (cell.material() == TerrariumCell.Material.AIR)
                         continue;
 
-                    // Check 6 faces
-                    // JME Coords: X, Y(Up, from z), Z(Depth, from y)
+                    // JME Coords: X=x, Y=z (Up, altitude), Z=y (North/South depth)
                     float jmeX = x;
                     float jmeY = z;
                     float jmeZ = y;
@@ -114,192 +103,132 @@ public class TerrainMeshGenerator {
         return terrarium.getCell(x, y, z).material() == TerrariumCell.Material.AIR;
     }
 
-    // --- Face Generation Helpers ---
-    // Assuming voxel size 1.0, positioned at min corner or center?
-    // JmeGameApp used Box(0.5, 0.5, 0.5) which has extends 0.5 (size 1.0) generally
-    // centered.
-    // Let's use offsets +0.5 to keep logic consistent with "center at integer+.5"
-    // or similar.
-    // Box constructor (0.5, 0.5, 0.5) creates a box of size 1x1x1.
-    // setLocalTranslation(x, z, y) places center of box.
-    // So vertices should be relative to center (x, z, y) with +/- 0.5.
+    // --- Face Generation Helpers with Continuous Seamless World UVs (No Tile Seams) ---
+    private static final float UV_SCALE = 0.25f; // 4 meters per full texture repeat for realistic natural look
 
     private void addUpFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
-        v.add(x - 0.5f);
-        v.add(y + 0.5f);
-        v.add(z - 0.5f);
-        v.add(x - 0.5f);
-        v.add(y + 0.5f);
-        v.add(z + 0.5f);
-        v.add(x + 0.5f);
-        v.add(y + 0.5f);
-        v.add(z + 0.5f);
-        v.add(x + 0.5f);
-        v.add(y + 0.5f);
-        v.add(z - 0.5f);
+        float x0 = x - 0.5f, x1 = x + 0.5f;
+        float y0 = y + 0.5f;
+        float z0 = z - 0.5f, z1 = z + 0.5f;
+
+        v.add(x0); v.add(y0); v.add(z0);
+        v.add(x0); v.add(y0); v.add(z1);
+        v.add(x1); v.add(y0); v.add(z1);
+        v.add(x1); v.add(y0); v.add(z0);
 
         for (int i = 0; i < 4; i++) {
-            n.add(0f);
-            n.add(1f);
-            n.add(0f);
+            n.add(0f); n.add(1f); n.add(0f);
         }
-        t.add(0f);
-        t.add(0f);
-        t.add(1f);
-        t.add(0f);
-        t.add(1f);
-        t.add(1f);
-        t.add(0f);
-        t.add(1f);
+
+        // Continuous World-Space UVs on Horizontal Plane (eliminates individual voxel tile borders)
+        t.add(x0 * UV_SCALE); t.add(z0 * UV_SCALE);
+        t.add(x0 * UV_SCALE); t.add(z1 * UV_SCALE);
+        t.add(x1 * UV_SCALE); t.add(z1 * UV_SCALE);
+        t.add(x1 * UV_SCALE); t.add(z0 * UV_SCALE);
     }
 
     private void addDownFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
-        v.add(x - 0.5f);
-        v.add(y - 0.5f);
-        v.add(z - 0.5f);
-        v.add(x + 0.5f);
-        v.add(y - 0.5f);
-        v.add(z - 0.5f);
-        v.add(x + 0.5f);
-        v.add(y - 0.5f);
-        v.add(z + 0.5f);
-        v.add(x - 0.5f);
-        v.add(y - 0.5f);
-        v.add(z + 0.5f);
+        float x0 = x - 0.5f, x1 = x + 0.5f;
+        float y0 = y - 0.5f;
+        float z0 = z - 0.5f, z1 = z + 0.5f;
+
+        v.add(x0); v.add(y0); v.add(z0);
+        v.add(x1); v.add(y0); v.add(z0);
+        v.add(x1); v.add(y0); v.add(z1);
+        v.add(x0); v.add(y0); v.add(z1);
 
         for (int i = 0; i < 4; i++) {
-            n.add(0f);
-            n.add(-1f);
-            n.add(0f);
+            n.add(0f); n.add(-1f); n.add(0f);
         }
-        t.add(0f);
-        t.add(0f);
-        t.add(1f);
-        t.add(0f);
-        t.add(1f);
-        t.add(1f);
-        t.add(0f);
-        t.add(1f);
+
+        t.add(x0 * UV_SCALE); t.add(z0 * UV_SCALE);
+        t.add(x1 * UV_SCALE); t.add(z0 * UV_SCALE);
+        t.add(x1 * UV_SCALE); t.add(z1 * UV_SCALE);
+        t.add(x0 * UV_SCALE); t.add(z1 * UV_SCALE);
     }
 
     private void addFrontFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
         // JME +Z
-        v.add(x - 0.5f);
-        v.add(y + 0.5f);
-        v.add(z + 0.5f);
-        v.add(x - 0.5f);
-        v.add(y - 0.5f);
-        v.add(z + 0.5f);
-        v.add(x + 0.5f);
-        v.add(y - 0.5f);
-        v.add(z + 0.5f);
-        v.add(x + 0.5f);
-        v.add(y + 0.5f);
-        v.add(z + 0.5f);
+        float x0 = x - 0.5f, x1 = x + 0.5f;
+        float y0 = y - 0.5f, y1 = y + 0.5f;
+        float z0 = z + 0.5f;
+
+        v.add(x0); v.add(y1); v.add(z0);
+        v.add(x0); v.add(y0); v.add(z0);
+        v.add(x1); v.add(y0); v.add(z0);
+        v.add(x1); v.add(y1); v.add(z0);
 
         for (int i = 0; i < 4; i++) {
-            n.add(0f);
-            n.add(0f);
-            n.add(1f);
+            n.add(0f); n.add(0f); n.add(1f);
         }
-        t.add(0f);
-        t.add(1f);
-        t.add(0f);
-        t.add(0f);
-        t.add(1f);
-        t.add(0f);
-        t.add(1f);
-        t.add(1f);
+
+        t.add(x0 * UV_SCALE); t.add(y1 * UV_SCALE);
+        t.add(x0 * UV_SCALE); t.add(y0 * UV_SCALE);
+        t.add(x1 * UV_SCALE); t.add(y0 * UV_SCALE);
+        t.add(x1 * UV_SCALE); t.add(y1 * UV_SCALE);
     }
 
     private void addBackFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
         // JME -Z
-        v.add(x + 0.5f);
-        v.add(y + 0.5f);
-        v.add(z - 0.5f);
-        v.add(x + 0.5f);
-        v.add(y - 0.5f);
-        v.add(z - 0.5f);
-        v.add(x - 0.5f);
-        v.add(y - 0.5f);
-        v.add(z - 0.5f);
-        v.add(x - 0.5f);
-        v.add(y + 0.5f);
-        v.add(z - 0.5f);
+        float x0 = x - 0.5f, x1 = x + 0.5f;
+        float y0 = y - 0.5f, y1 = y + 0.5f;
+        float z0 = z - 0.5f;
+
+        v.add(x1); v.add(y1); v.add(z0);
+        v.add(x1); v.add(y0); v.add(z0);
+        v.add(x0); v.add(y0); v.add(z0);
+        v.add(x0); v.add(y1); v.add(z0);
 
         for (int i = 0; i < 4; i++) {
-            n.add(0f);
-            n.add(0f);
-            n.add(-1f);
+            n.add(0f); n.add(0f); n.add(-1f);
         }
-        t.add(0f);
-        t.add(1f);
-        t.add(0f);
-        t.add(0f);
-        t.add(1f);
-        t.add(0f);
-        t.add(1f);
-        t.add(1f);
+
+        t.add(x1 * UV_SCALE); t.add(y1 * UV_SCALE);
+        t.add(x1 * UV_SCALE); t.add(y0 * UV_SCALE);
+        t.add(x0 * UV_SCALE); t.add(y0 * UV_SCALE);
+        t.add(x0 * UV_SCALE); t.add(y1 * UV_SCALE);
     }
 
     private void addRightFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
         // JME +X
-        v.add(x + 0.5f);
-        v.add(y + 0.5f);
-        v.add(z + 0.5f);
-        v.add(x + 0.5f);
-        v.add(y - 0.5f);
-        v.add(z + 0.5f);
-        v.add(x + 0.5f);
-        v.add(y - 0.5f);
-        v.add(z - 0.5f);
-        v.add(x + 0.5f);
-        v.add(y + 0.5f);
-        v.add(z - 0.5f);
+        float x0 = x + 0.5f;
+        float y0 = y - 0.5f, y1 = y + 0.5f;
+        float z0 = z - 0.5f, z1 = z + 0.5f;
+
+        v.add(x0); v.add(y1); v.add(z1);
+        v.add(x0); v.add(y0); v.add(z1);
+        v.add(x0); v.add(y0); v.add(z0);
+        v.add(x0); v.add(y1); v.add(z0);
 
         for (int i = 0; i < 4; i++) {
-            n.add(1f);
-            n.add(0f);
-            n.add(0f);
+            n.add(1f); n.add(0f); n.add(0f);
         }
-        t.add(0f);
-        t.add(1f);
-        t.add(0f);
-        t.add(0f);
-        t.add(1f);
-        t.add(0f);
-        t.add(1f);
-        t.add(1f);
+
+        t.add(z1 * UV_SCALE); t.add(y1 * UV_SCALE);
+        t.add(z1 * UV_SCALE); t.add(y0 * UV_SCALE);
+        t.add(z0 * UV_SCALE); t.add(y0 * UV_SCALE);
+        t.add(z0 * UV_SCALE); t.add(y1 * UV_SCALE);
     }
 
     private void addLeftFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
         // JME -X
-        v.add(x - 0.5f);
-        v.add(y + 0.5f);
-        v.add(z - 0.5f);
-        v.add(x - 0.5f);
-        v.add(y - 0.5f);
-        v.add(z - 0.5f);
-        v.add(x - 0.5f);
-        v.add(y - 0.5f);
-        v.add(z + 0.5f);
-        v.add(x - 0.5f);
-        v.add(y + 0.5f);
-        v.add(z + 0.5f);
+        float x0 = x - 0.5f;
+        float y0 = y - 0.5f, y1 = y + 0.5f;
+        float z0 = z - 0.5f, z1 = z + 0.5f;
+
+        v.add(x0); v.add(y1); v.add(z0);
+        v.add(x0); v.add(y0); v.add(z0);
+        v.add(x0); v.add(y0); v.add(z1);
+        v.add(x0); v.add(y1); v.add(z1);
 
         for (int i = 0; i < 4; i++) {
-            n.add(-1f);
-            n.add(0f);
-            n.add(0f);
+            n.add(-1f); n.add(0f); n.add(0f);
         }
-        t.add(0f);
-        t.add(1f);
-        t.add(0f);
-        t.add(0f);
-        t.add(1f);
-        t.add(0f);
-        t.add(1f);
-        t.add(1f);
+
+        t.add(z0 * UV_SCALE); t.add(y1 * UV_SCALE);
+        t.add(z0 * UV_SCALE); t.add(y0 * UV_SCALE);
+        t.add(z1 * UV_SCALE); t.add(y0 * UV_SCALE);
+        t.add(z1 * UV_SCALE); t.add(y1 * UV_SCALE);
     }
 
     private void addIndices(List<Integer> indices, int offset) {

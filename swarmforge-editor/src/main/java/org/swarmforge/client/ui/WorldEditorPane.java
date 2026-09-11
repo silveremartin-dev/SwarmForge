@@ -179,6 +179,15 @@ public class WorldEditorPane extends BorderPane {
     private boolean isAntTrackingEnabled = true;
     private CheckBox showVoxelInfoCheck;
     private CheckBox enableAntTrackingCheck;
+    private boolean isUVVisionMode = false;
+    private CheckBox showUVVisionModeCheck;
+
+    public boolean isUVVisionMode() { return isUVVisionMode; }
+    public void setUVVisionMode(boolean enabled) {
+        this.isUVVisionMode = enabled;
+        if (showUVVisionModeCheck != null) showUVVisionModeCheck.setSelected(enabled);
+        repaintAllViews();
+    }
 
     public boolean isVoxelInfoVisible() { return isVoxelInfoVisible; }
     public void setVoxelInfoVisible(boolean visible) {
@@ -427,6 +436,36 @@ public class WorldEditorPane extends BorderPane {
     public void setPheromoneRenderMode(PheromoneRenderMode mode) {
         this.pheromoneRenderMode = mode != null ? mode : PheromoneRenderMode.HEATMAP_GRADIENT;
         repaintAllViews();
+    }
+
+    public void setShowElevationIsolines(boolean show) {
+        if (showElevationIsolinesCheck != null) {
+            showElevationIsolinesCheck.setSelected(show);
+        }
+    }
+
+    public void setShowClimateIsolines(boolean show) {
+        if (showClimateIsolinesCheck != null) {
+            showClimateIsolinesCheck.setSelected(show);
+        }
+    }
+
+    public void setShowPheromoneIsolines(boolean show) {
+        if (showPheromoneIsolinesCheck != null) {
+            showPheromoneIsolinesCheck.setSelected(show);
+        }
+    }
+
+    public boolean isShowElevationIsolines() {
+        return showElevationIsolinesCheck != null && showElevationIsolinesCheck.isSelected();
+    }
+
+    public boolean isShowClimateIsolines() {
+        return showClimateIsolinesCheck != null && showClimateIsolinesCheck.isSelected();
+    }
+
+    public boolean isShowPheromoneIsolines() {
+        return showPheromoneIsolinesCheck != null && showPheromoneIsolinesCheck.isSelected();
     }
 
     public PheromoneRenderMode getPheromoneRenderMode() {
@@ -3227,12 +3266,19 @@ public class WorldEditorPane extends BorderPane {
         this.showPheromoneIsolinesCheck.setSelected(false);
         this.showPheromoneIsolinesCheck.selectedProperty().addListener((obs, oldV, newV) -> repaintAllViews());
 
+        this.showUVVisionModeCheck = new CheckBox("👁️ Vision Ultraviolette (UV / Guides à Nectar)");
+        this.showUVVisionModeCheck.setSelected(false);
+        this.showUVVisionModeCheck.selectedProperty().addListener((obs, oldV, newV) -> {
+            this.isUVVisionMode = newV;
+            repaintAllViews();
+        });
+
         addBoolLsn(showTerrainCheck, showChamferedBezelCheck, showGravelInclusionsCheck, showSubstrateStratigraphyCheck,
                    showTranslucentVolumetricModeCheck, showHumidityCheck,
                    showOrganicCheck, showEarthCheck, showSandCheck, showClayCheck, showSiltCheck, showPeatCheck, showGravelCheck, showStoneCheck, showGalleriesCheck,
                    showVegetationCheck, showRootsCheck, showPhCheck,
                    showAntTrackingCheck, showChamberOverlayCheck,
-                   showElevationIsolinesCheck, showClimateIsolinesCheck, showPheromoneIsolinesCheck);
+                   showElevationIsolinesCheck, showClimateIsolinesCheck, showPheromoneIsolinesCheck, showUVVisionModeCheck);
 
         Label visHeader = new Label();
         visHeader.textProperty().bind(I18nManager.getInstance().createStringBinding("world.layer_visibility.title"));
@@ -3245,6 +3291,7 @@ public class WorldEditorPane extends BorderPane {
             syncViewsCheckBox,
             showLegendCheckBox,
             new Separator(),
+            showUVVisionModeCheck,
             showAntTrackingCheck,
             showChamberOverlayCheck,
             new Separator(),

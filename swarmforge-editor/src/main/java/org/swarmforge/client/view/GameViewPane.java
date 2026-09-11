@@ -63,6 +63,16 @@ public class GameViewPane extends Pane {
         }
     }
 
+    public void setUVVisionMode(boolean enabled) {
+        if (gameApp != null) {
+            gameApp.setUVVisionMode(enabled);
+        }
+    }
+
+    public boolean isUVVisionMode() {
+        return gameApp != null && gameApp.isUVVisionMode();
+    }
+
     public void stop() {
         gameApp.stop();
     }

@@ -22,7 +22,7 @@ public class AcademicScenariosTest {
     public void testAcademicScenariosCreation() {
         List<Scenario> scenarios = AcademicScenarios.getAllAcademicScenarios(12345L);
         assertNotNull(scenarios);
-        assertEquals(14, scenarios.size());
+        assertEquals(16, scenarios.size());
 
         for (Scenario sc : scenarios) {
             assertNotNull(sc.getBiomeName(), "Scenario " + sc.getId() + " must have a non-null biome name!");
@@ -71,6 +71,16 @@ public class AcademicScenariosTest {
         Scenario s14 = scenarios.get(13);
         assertEquals("ACAD_14_WETLAND_FLOOD_RAFTING", s14.getId());
         assertEquals("WETLAND", s14.getBiomeName());
+
+        Scenario s15 = scenarios.get(14);
+        assertEquals("ACAD_15_WASP_WILD_BEEHIVE", s15.getId());
+        assertEquals(2, s15.getColonies().size());
+        assertTrue(s15.getTargetMetrics().contains("THERMAL_BALL_DEFENSE_SUCCESS"));
+
+        Scenario s16 = scenarios.get(15);
+        assertEquals("ACAD_16_APICULTURAL_APIARY", s16.getId());
+        assertTrue(s16.getTargetMetrics().contains("NECTAR_TO_HONEY_MATURATION_KG"));
+        assertTrue(s16.getTargetMetrics().contains("UV_POLARIZATION_NAVIGATION_PRECISION"));
     }
 
     @Test

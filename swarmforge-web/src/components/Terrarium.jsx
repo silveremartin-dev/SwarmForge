@@ -568,7 +568,7 @@ function VoxelTerrain({ terrainConfig }) {
 
 
 export default function Terrarium() {
-    const { ants, foodSources, predators, environment, terrainConfig, lookAndFeel, environmentLighting, disasterState } = useSimulationStore()
+    const { ants, foodSources, predators, environment, terrainConfig, lookAndFeel, environmentLighting, disasterState, climateEngine } = useSimulationStore()
     const groupRef = useRef()
     const riverMeshRef = useRef()
     const floodMeshRef = useRef()

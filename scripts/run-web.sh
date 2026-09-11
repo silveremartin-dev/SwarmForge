@@ -1,20 +1,17 @@
 #!/usr/bin/env bash
 # SwarmForge Web Client Launcher (Linux / macOS)
-# Automatically detects Node.js/Vite or falls back to local HTTP server.
 
 set -e
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../swarmforge-web" && pwd)"
 cd "$DIR"
 
-TARGET_DIR="swarmforge-web"
 PORT=5173
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        --static) TARGET_DIR="swarmforge-web-client"; PORT=8080 ;;
         --port) PORT="$2"; shift ;;
-        *) echo "Unknown parameter passed: $1"; exit 1 ;;
+        *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
 done
@@ -24,9 +21,8 @@ echo "  SwarmForge - Web Client Launcher"
 echo "========================================"
 echo ""
 
-if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && [ "$TARGET_DIR" = "swarmforge-web" ]; then
-    echo "[1/2] Checking dependencies for swarmforge-web..."
-    cd swarmforge-web
+if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+    echo "[1/2] Checking dependencies..."
     if [ ! -d "node_modules" ]; then
         echo "[INFO] Installing NPM dependencies..."
         npm install
@@ -38,14 +34,12 @@ if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 && [ "$TARG
 fi
 
 if command -v python3 >/dev/null 2>&1; then
-    echo "[INFO] Starting local Web server on port $PORT using Python 3..."
-    echo "URL: http://localhost:$PORT/"
-    python3 -m http.server "$PORT" --directory "$TARGET_DIR"
+    echo "[INFO] Serving dist/ on port $PORT with Python 3..."
+    python3 -m http.server "$PORT" --directory "dist"
     exit 0
 elif command -v python >/dev/null 2>&1; then
-    echo "[INFO] Starting local Web server on port $PORT using Python..."
-    echo "URL: http://localhost:$PORT/"
-    python -m http.server "$PORT" --directory "$TARGET_DIR"
+    echo "[INFO] Serving dist/ on port $PORT with Python..."
+    python -m http.server "$PORT" --directory "dist"
     exit 0
 fi
 

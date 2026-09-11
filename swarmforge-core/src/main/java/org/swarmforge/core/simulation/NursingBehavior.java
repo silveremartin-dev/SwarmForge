@@ -27,9 +27,16 @@ public class NursingBehavior implements BehaviorStrategy {
 
         Random rng = (ind.getRandom() != null) ? ind.getRandom() : (colony != null && colony.getRandom() != null ? colony.getRandom() : new Random(1337L));
 
+        // 0. Flood Emergency Evacuation: If local humidity/water saturation is excessive (>85%), evacuate brood upward
+        boolean isFlooded = ind.getAmbientHumidityPercent() > 85.0f || (colony != null && ind.getZ() < -1.0f && ind.getAmbientTemperatureC() < 12.0f && ind.getAmbientHumidityPercent() > 80.0f);
+
         // 1. If carrying food for brood
         if (ind.getCarriedItem() == Individual.CarriedItem.FOOD) {
-            if (ctx.atNest()) {
+            if (isFlooded) {
+                // Drop food in flood emergency and switch to brood rescue
+                ind.setCarriedItem(Individual.CarriedItem.BROOD);
+                ind.setState(Individual.AiState.EVACUATE_FLOOD);
+            } else if (ctx.atNest()) {
                 // Feed larvae (food transferred to brood)
                 ind.setCarriedItem(Individual.CarriedItem.NONE);
                 ind.setState(Individual.AiState.TEND_BROOD);
@@ -37,23 +44,29 @@ public class NursingBehavior implements BehaviorStrategy {
                 moveTowardsNest(ind, colony);
             }
         } 
-        // 2. If carrying brood during thermal shuttling
+        // 2. If carrying brood during thermal shuttling or flood evacuation
         else if (ind.getCarriedItem() == Individual.CarriedItem.BROOD) {
-            float optimalZ = colony != null ? colony.getDynamicQueenChamberDepth() : -2.0f;
+            float targetZ = isFlooded ? -0.5f : (colony != null ? colony.getDynamicQueenChamberDepth() : -2.0f);
             float currentZ = ind.getZ();
-            if (Math.abs(currentZ - optimalZ) < 0.5f) {
-                // Deposited brood in thermally regulated chamber
+            if (Math.abs(currentZ - targetZ) < 0.5f && (!isFlooded || ind.getAmbientHumidityPercent() <= 80.0f)) {
+                // Deposited brood in safe regulated chamber
                 ind.setCarriedItem(Individual.CarriedItem.NONE);
                 ind.setState(Individual.AiState.TEND_BROOD);
             } else {
-                // Move towards optimal chamber depth
-                float stepZ = (optimalZ > currentZ) ? 0.2f : -0.2f;
+                // Move towards safe upper/optimal chamber depth
+                float stepZ = (targetZ > currentZ) ? 0.3f : -0.2f;
                 ind.setPosition(ind.getX(), ind.getY(), ind.getZ() + stepZ);
+                ind.setState(isFlooded ? Individual.AiState.EVACUATE_FLOOD : Individual.AiState.TEND_BROOD);
             }
         } 
         else {
             // Not carrying anything
-            if (!ctx.atNest()) {
+            if (isFlooded) {
+                // Initiate emergency brood rescue: grab brood and climb up
+                ind.setCarriedItem(Individual.CarriedItem.BROOD);
+                ind.setState(Individual.AiState.EVACUATE_FLOOD);
+                ind.setPosition(ind.getX(), ind.getY(), ind.getZ() + 0.3f);
+            } else if (!ctx.atNest()) {
                 // Move back to brood chamber in nest
                 moveTowardsNest(ind, colony);
             } else {

@@ -384,19 +384,22 @@ public class JmeGameApp extends SimpleApplication {
             com.jme3.scene.Mesh terrainMesh = generator.generateMesh(terrarium);
             Geometry terrainGeom = new Geometry("TerrainMesh", terrainMesh);
             terrainGeom.setMaterial(soilMat);
+            terrainGeom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Receive);
             terrainNode.attachChild(terrainGeom);
             rootNode.attachChild(terrainNode);
 
             if (vegetationVisualizer != null) {
                 vegetationVisualizer.setLatitude(terrarium.getLatitude());
-                vegetationVisualizer.rebuildVegetation(w, d);
+                vegetationVisualizer.rebuildVegetation(w, h, terrarium, simulation != null ? simulation.getVegetationSystem() : null);
             }
 
-            // Initialize Pheromone Visualizer with full world dimensions (width, depth)
+            // Initialize Pheromone Visualizer with full world dimensions (width, height)
             if (pheromoneVisualizer == null) {
                 pheromoneVisualizer = new PheromoneVisualizer(assetManager);
-                pheromoneVisualizer.initialize(w, d);
+                pheromoneVisualizer.initialize(w, h);
                 rootNode.attachChild(pheromoneVisualizer.getRootNode());
+            } else {
+                pheromoneVisualizer.initialize(w, h);
             }
 
             // Recenter camera
@@ -766,7 +769,9 @@ public class JmeGameApp extends SimpleApplication {
             }
             vegetationVisualizer.rebuildVegetation(
                 simulation != null && simulation.getTerrarium() != null ? simulation.getTerrarium().getWidth() : 64,
-                simulation != null && simulation.getTerrarium() != null ? simulation.getTerrarium().getDepth() : 64
+                simulation != null && simulation.getTerrarium() != null ? simulation.getTerrarium().getHeight() : 64,
+                simulation != null ? simulation.getTerrarium() : null,
+                simulation != null ? simulation.getVegetationSystem() : null
             );
             rootNode.attachChild(vegetationVisualizer.getRootNode());
         }
@@ -782,6 +787,20 @@ public class JmeGameApp extends SimpleApplication {
                 if (colony.getTunnelNetwork() != null) {
                     tunnelVisualizer.update(colony.getTunnelNetwork());
                 }
+
+                // Check for 3D Beehive or Wasp Nest tree anchoring
+                String spName = colony.getSpecies() != null ? colony.getSpecies().getCommonName().toLowerCase() : "";
+                String arch = colony.getSpecies() != null && colony.getSpecies().getNestType() != null ? colony.getSpecies().getNestType().toUpperCase() : "";
+                
+                if (spName.contains("bee") || spName.contains("abeille") || spName.contains("apis") || arch.contains("BEEHIVE")) {
+                    // Check if 3D beehive is already attached
+                    String hiveName = "3D_Beehive_" + (int) colony.getNestX() + "_" + (int) colony.getNestY();
+                    if (rootNode.getChild(hiveName) == null) {
+                        vegetationVisualizer.renderBeehive(colony.getNestX(), colony.getNestY(), colony.getNestZ(), 45.0f);
+                    }
+                } else if (spName.contains("wasp") || spName.contains("guêpe") || spName.contains("vespula") || arch.contains("PAPER") || arch.contains("ARBOREAL")) {
+                    vegetationVisualizer.ensureHostTreeForWaspNest(colony.getNestX(), colony.getNestY(), colony.getNestZ());
+                }
             }
             if (simulation.getWeather() != null) {
                 weatherVisualizer.update(simulation.getWeather(), tpf);
@@ -792,6 +811,16 @@ public class JmeGameApp extends SimpleApplication {
         } else if (vegetationVisualizer != null) {
             vegetationVisualizer.update(null, tpf);
         }
+    }
+
+    public void setUVVisionMode(boolean enabled) {
+        if (vegetationVisualizer != null) {
+            vegetationVisualizer.setUVVisionMode(enabled);
+        }
+    }
+
+    public boolean isUVVisionMode() {
+        return vegetationVisualizer != null && vegetationVisualizer.isUVVisionMode();
     }
 
     private boolean isGamifiedVoxelMode = false;

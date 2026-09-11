@@ -23,5 +23,6 @@ public enum ResourceType {
     SAP,
     AMBROSIA_FUNGUS,
     HONEYDEW_PRODUCER,
-    PROPOLIS_RESIN
+    PROPOLIS_RESIN,
+    POLLEN
 }

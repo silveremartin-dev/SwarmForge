@@ -16,6 +16,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
 import javafx.scene.text.Font;
+import javafx.stage.Stage;
 
 import java.io.File;
 import java.util.*;
@@ -637,6 +638,14 @@ public class NestGeneratorPane extends BorderPane {
             }
         });
 
+        Button btnInspectHive = new Button("🐝 " + i18n.get("hive.inspect.button", "Inspection Apicole (Cadres)"));
+        btnInspectHive.setPrefWidth(270);
+        btnInspectHive.setTooltip(new Tooltip(i18n.get("hive.inspect.tooltip", "Ouvrir l'inspection apicole détaillée des 10 cadres Dadant")));
+        btnInspectHive.setOnAction(e -> {
+            Stage owner = getScene() != null && getScene().getWindow() instanceof Stage ? (Stage) getScene().getWindow() : null;
+            new HiveInspectionDialog(owner, null).show();
+        });
+
         Label lblWorkerAuto = new Label();
         lblWorkerAuto.textProperty().bind(i18n.createStringBinding("nest.worker.size.label"));
         lblWorkerAuto.setStyle("-fx-font-size:10px;-fx-text-fill:#94a3b8;");
@@ -667,6 +676,7 @@ public class NestGeneratorPane extends BorderPane {
             new Separator(),
             lblSeed, seedRow,
             btnAutoAdapt,
+            btnInspectHive,
             lblWorkerAuto, sv(workerSizeSlider, "mm"),
             lblTunnelAuto, sv(tunnelWidthSlider, "mm"),
             passageCheckLabel,

@@ -14,6 +14,9 @@ import org.swarmforge.core.gpu.SparsePheromoneGrid;
 import org.swarmforge.core.event.SimulationEvent;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -70,6 +73,7 @@ public class Simulation {
     private final PheromoneClimateSystem pheromoneClimateSystem;
     private final SymbiosisSystem symbiosisSystem;
     private final NestMicroclimateSystem nestMicroclimateSystem;
+    private final MacroForagingSystem macroForagingSystem;
     private final org.swarmforge.core.world.VegetationSystem vegetationSystem;
     private final java.util.Map<org.swarmforge.core.domain.Colony, org.swarmforge.core.structure.ConstructionManager> constructionManagers = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.List<org.swarmforge.core.simulation.disasters.DisasterEvent> activeDisasters = new java.util.concurrent.CopyOnWriteArrayList<>();
@@ -142,6 +146,7 @@ public class Simulation {
         this.pheromoneClimateSystem = new PheromoneClimateSystem(this);
         this.symbiosisSystem = new SymbiosisSystem(this);
         this.nestMicroclimateSystem = new NestMicroclimateSystem(this);
+        this.macroForagingSystem = new MacroForagingSystem();
         this.vegetationSystem = new org.swarmforge.core.world.VegetationSystem(
                 terrarium != null ? terrarium.getWidth() : 100,
                 terrarium != null ? terrarium.getHeight() : 100);
@@ -709,9 +714,17 @@ public class Simulation {
 
         // Re-insert moved living individuals into spatial index
         spatialIndex.clear();
+        Map<UUID, Individual> indMap = new HashMap<>();
         for (Individual ind : livingIndividuals) {
             spatialIndex.insert(ind, ind.getX(), ind.getY(), ind.getZ());
+            indMap.put(ind.getId(), ind);
         }
+
+        Map<UUID, Colony> colMap = new HashMap<>();
+        for (Colony col : colonies) {
+            colMap.put(col.getId(), col);
+        }
+        macroForagingSystem.update(simulationStepSeconds, indMap, colMap);
 
         processEvents();
 
@@ -991,6 +1004,10 @@ public class Simulation {
 
     public org.swarmforge.core.world.SeasonManager getSeasonManager() {
         return seasonManager;
+    }
+
+    public MacroForagingSystem getMacroForagingSystem() {
+        return macroForagingSystem;
     }
 
     public Terrarium getTerrarium() {

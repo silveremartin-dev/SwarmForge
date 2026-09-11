@@ -31,7 +31,7 @@ public class PheromoneVisualizer {
     private Geometry overlayGeom;
     private Texture2D texture;
     private ByteBuffer imageBuffer;
-    private int width, depth;
+    private int width, height;
     private boolean initialized = false;
 
     public PheromoneVisualizer(AssetManager assetManager) {
@@ -43,19 +43,21 @@ public class PheromoneVisualizer {
         return rootNode;
     }
 
-    public void initialize(int width, int depth) {
+    public void initialize(int width, int height) {
         this.width = width;
-        this.depth = depth;
+        this.height = height;
+
+        rootNode.detachAllChildren();
 
         // Create texture buffer (RGBA8)
-        this.imageBuffer = BufferUtils.createByteBuffer(width * depth * 4);
-        Image img = new Image(Image.Format.RGBA8, width, depth, imageBuffer, ColorSpace.Linear);
+        this.imageBuffer = BufferUtils.createByteBuffer(width * height * 4);
+        Image img = new Image(Image.Format.RGBA8, width, height, imageBuffer, ColorSpace.Linear);
         this.texture = new Texture2D(img);
         this.texture.setMinFilter(com.jme3.texture.Texture.MinFilter.BilinearNearestMipMap);
         this.texture.setMagFilter(com.jme3.texture.Texture.MagFilter.Bilinear);
 
-        // Create overlay geometry flat on XZ ground plane
-        Quad quad = new Quad(width, depth);
+        // Create overlay geometry flat on XZ ground plane (spanning width on X, height on Z)
+        Quad quad = new Quad(width, height);
         this.overlayGeom = new Geometry("PheromoneOverlay", quad);
 
         Material mat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
@@ -90,13 +92,8 @@ public class PheromoneVisualizer {
             int y = coords[1];
             int z = coords[2];
 
-            // Project 3D (X, Y, Z) to 2D texture map (Top-down ground view)
-            if (x >= 0 && x < width && y >= 0 && y < depth) {
-                // Color mapping:
-                // 0: TO_HOME (Blue)
-                // 1: TO_FOOD (Green/Red)
-                // 2: DANGER (Red/Purple)
-
+            // Project 3D (X, Y, Z) to 2D texture map across full terrarium footprint (0..width-1, 0..height-1)
+            if (x >= 0 && x < width && y >= 0 && y < height) {
                 float homing = pheromones.length > 0 ? pheromones[0] : 0f;
                 float food = pheromones.length > 1 ? pheromones[1] : 0f;
                 float danger = pheromones.length > 2 ? pheromones[2] : 0f;
@@ -108,7 +105,7 @@ public class PheromoneVisualizer {
                 float a = Math.min(1.0f, (food + homing + danger) * 2.0f);
 
                 if (a > 0.02f) {
-                    setPixel(x, y, r, g, b, a); // Y maps to texture ground depth
+                    setPixel(x, y, r, g, b, a);
                 }
             }
         }

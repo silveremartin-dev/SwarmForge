@@ -80,6 +80,9 @@ public class TrackedAntPane extends VBox {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         btnClose = new Button("✕");
+        btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 13px; -fx-padding: 0 4 0 4; -fx-cursor: hand;");
+        btnClose.setOnMouseEntered(e -> btnClose.setStyle("-fx-background-color: rgba(239, 68, 68, 0.2); -fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-font-size: 13px; -fx-padding: 0 4 0 4; -fx-background-radius: 4; -fx-cursor: hand;"));
+        btnClose.setOnMouseExited(e -> btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 13px; -fx-padding: 0 4 0 4; -fx-cursor: hand;"));
         btnClose.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.close_tt"));
         btnClose.setOnAction(e -> {
             if (onStopFollowHandler != null) {

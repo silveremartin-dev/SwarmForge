@@ -51,18 +51,9 @@ public class ClientApp extends Application {
     public void start(Stage primaryStage) {
         LOG.info("Starting SwarmForge Dedicated Client...");
 
-        // Load multi-resolution application icons
-        try {
-            java.net.URL iconUrl = getClass().getResource("/icons/icon.png");
-            if (iconUrl != null) {
-                String urlStr = iconUrl.toExternalForm();
-                primaryStage.getIcons().clear();
-                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 16, 16, true, true));
-                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 32, 32, true, true));
-                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 64, 64, true, true));
-                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr));
-            }
-        } catch (Exception ignored) {}
+        // Load multi-resolution application icons and set taskbar ID
+        org.swarmforge.client.util.IconUtils.initEarlyTaskbarAppId();
+        org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage);
 
         showConnectionDialog(primaryStage);
     }

@@ -27,6 +27,13 @@ public class OptimalColonyPlacementEngine {
      * Compute optimal placement coordinates for a new colony of a specific species.
      */
     public static PlacementResult calculateOptimalPosition(Terrarium terrarium, String speciesName, int colonyIndex, int totalColonies, String strategy) {
+        return calculateOptimalPosition(terrarium, null, speciesName, colonyIndex, totalColonies, strategy);
+    }
+
+    /**
+     * Compute optimal placement coordinates for a new colony of a specific species with vegetation snapping.
+     */
+    public static PlacementResult calculateOptimalPosition(Terrarium terrarium, org.swarmforge.core.world.VegetationSystem vegetation, String speciesName, int colonyIndex, int totalColonies, String strategy) {
         if (terrarium == null) {
             return new PlacementResult(32f, 32f, 0f, strategy);
         }
@@ -79,7 +86,41 @@ public class OptimalColonyPlacementEngine {
             attempts++;
         }
 
-        return new PlacementResult(targetX, targetY, 0f, strategy != null ? strategy : "Optimal Multi-Territory Cluster");
+        // Determine biological Z elevation and snap to existing trees if arboreal
+        float targetZ = 0.0f;
+        String sName = speciesName != null ? speciesName.toLowerCase() : "";
+        boolean isArboreal = sName.contains("wasp") || sName.contains("guêpe") || sName.contains("vespula") || sName.contains("polistes") || sName.contains("carton") || sName.contains("weaver") || sName.contains("oecophylla") || sName.contains("tronc");
+
+        if (isArboreal) {
+            // Check if scenario has pre-existing mature trees in VegetationSystem
+            if (vegetation != null && !vegetation.getPlants().isEmpty()) {
+                org.swarmforge.core.world.VegetationSystem.Plant bestTree = null;
+                float bestDistSq = Float.MAX_VALUE;
+                for (org.swarmforge.core.world.VegetationSystem.Plant p : vegetation.getPlants()) {
+                    if (p.type == org.swarmforge.core.world.VegetationSystem.PlantType.TREE && p.growth >= 0.5f) {
+                        float dx = p.x - targetX;
+                        float dy = p.y - targetY;
+                        float d2 = dx * dx + dy * dy;
+                        if (d2 < bestDistSq && !isTooCloseToExisting(p.x, p.y, existingColonies, 12.0f)) {
+                            bestDistSq = d2;
+                            bestTree = p;
+                        }
+                    }
+                }
+                if (bestTree != null) {
+                    targetX = bestTree.x;
+                    targetY = bestTree.y;
+                    targetZ = Math.max(6.5f, bestTree.getCurrentHeight() * 0.85f);
+                    return new PlacementResult(targetX, targetY, targetZ, "Snapped to Existing Scenario Tree #" + bestTree.x + "_" + bestTree.y);
+                }
+            }
+            targetZ = 8.5f;
+        } else if (sName.contains("bee") || sName.contains("abeille") || sName.contains("apis") || sName.contains("ruche")) {
+            // Hive stand base elevation above ground
+            targetZ = 1.2f;
+        }
+
+        return new PlacementResult(targetX, targetY, targetZ, strategy != null ? strategy : "Optimal Multi-Territory Cluster");
     }
 
     private static boolean isTooCloseToExisting(float x, float y, Collection<Colony> existing, float minDistance) {

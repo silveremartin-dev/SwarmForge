@@ -266,6 +266,17 @@ public class SparsePheromoneGrid {
         return result;
     }
 
+    public float[] getPheromones(int x, int y, int z) {
+        float[] all = readAll(x, y, z);
+        return all != null ? all : new float[PHEROMONE_TYPES];
+    }
+
+    public void setPheromones(int x, int y, int z, float[] values) {
+        if (!inBounds(x, y, z) || values == null) return;
+        long key = Morton3D.encode(x, y, z);
+        putEntry(key, values);
+    }
+
     private float computeDecay(float original, long depositTick, int type) {
         return computeDecay(original, depositTick, type, 0);
     }

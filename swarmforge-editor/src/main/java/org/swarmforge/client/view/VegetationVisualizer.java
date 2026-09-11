@@ -14,14 +14,17 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Quaternion;
 import com.jme3.math.Vector3f;
+import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Cylinder;
 import org.swarmforge.client.ui.WorldEditorPane.RenderMode;
+import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.world.Biome;
 import org.swarmforge.core.world.Season;
+import org.swarmforge.core.world.VegetationSystem;
 import org.swarmforge.core.world.WeatherSystem;
 
 import java.util.ArrayList;
@@ -31,9 +34,9 @@ import java.util.Random;
 /**
  * 3D Vegetation and Flora visualizer for JMonkeyEngine.
  * Handles rendering of trees, plants, and foliage across 3 distinct modes:
- * - REALISTIC (Naturalist): Quaternius GLB Nature Pack & OBJ models with metric heights and multi-biome flora
+ * - REALISTIC: 150+ native standalone OBJ Nature Pack models (Oaks, Birches, Spruces, Palms, Bushes, Rocks, Cacti)
  * - SCIENTIFIC: Metric parametric trees with DBH markers and LAI foliage envelopes
- * - GAMIFIED: Authentic Minecraft cubic voxel trees (Oak, Birch, Spruce/Pine, Cacti)
+ * - GAMIFIED: Authentic full-scale Minecraft cubic voxel trees (Oak, Birch, Spruce/Pine, Cacti) with active shadows
  *
  * Features physical wind sway coupling and hemisphere-aware seasonal foliage tinting.
  *
@@ -49,71 +52,120 @@ public class VegetationVisualizer {
     private float swayTime = 0.0f;
     private double currentLatitude = 45.0; // Default temperate Northern hemisphere
     private Season currentSeason = Season.SPRING;
+    private Terrarium activeTerrarium;
+    private VegetationSystem activeVegetationSystem;
+    private int currentGridWidth = 64;
+    private int currentGridHeight = 64;
 
-    // Loaded 3D Assets (GLB Nature Pack & OBJ)
-    private Spatial treesGlb;
-    private Spatial birchTreesGlb;
-    private Spatial pineTreesGlb;
-    private Spatial mapleTreesGlb;
-    private Spatial deadTreesGlb;
-    private Spatial palmTreesGlb;
-    private Spatial bushesGlb;
-    private Spatial flowerBushesGlb;
-    private Spatial flowersGlb;
-    private Spatial rocksGlb;
-
-    private Spatial bambooModel;
+    // Loaded 3D Assets (Categorized Lists of OBJ Models)
+    private final List<Spatial> deciduousTrees = new ArrayList<>();
+    private final List<Spatial> coniferTrees = new ArrayList<>();
+    private final List<Spatial> palmTrees = new ArrayList<>();
+    private final List<Spatial> deadTrees = new ArrayList<>();
+    private final List<Spatial> bushes = new ArrayList<>();
+    private final List<Spatial> flowers = new ArrayList<>();
+    private final List<Spatial> mushrooms = new ArrayList<>();
+    private final List<Spatial> rocks = new ArrayList<>();
     private Spatial cactusModel;
-    private Spatial tropicalPlantsModel;
+    private Spatial bambooModel;
+    private Spatial beehiveModel;
+    private boolean uvVisionMode = false;
 
     public VegetationVisualizer(AssetManager assetManager) {
         this.assetManager = assetManager;
         this.rootNode = new Node("VegetationNode");
+        this.rootNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
         loadAssets();
     }
 
     private void loadAssets() {
-        // Load GLB Nature Pack Assets
-        treesGlb = safeLoadModel("models/nature_pack/Trees.glb");
-        birchTreesGlb = safeLoadModel("models/nature_pack/Birch Trees.glb");
-        pineTreesGlb = safeLoadModel("models/nature_pack/Pine Trees.glb");
-        mapleTreesGlb = safeLoadModel("models/nature_pack/Maple Trees.glb");
-        deadTreesGlb = safeLoadModel("models/nature_pack/Dead Trees.glb");
-        palmTreesGlb = safeLoadModel("models/nature_pack/Palm Trees.glb");
-        bushesGlb = safeLoadModel("models/nature_pack/Bushes.glb");
-        flowerBushesGlb = safeLoadModel("models/nature_pack/Flower Bushes.glb");
-        flowersGlb = safeLoadModel("models/nature_pack/Flowers.glb");
-        rocksGlb = safeLoadModel("models/nature_pack/Rocks.glb");
+        // 1. Deciduous / Oak / Lush Forest Trees
+        loadIntoList(deciduousTrees, "models/nature_pack_obj/forest_Tree_average_lush_Cube_004.obj");
+        loadIntoList(deciduousTrees, "models/nature_pack_obj/forest_Tree_average_regular_Cube_002.obj");
+        loadIntoList(deciduousTrees, "models/nature_pack_obj/forest_Tree_small_regular_Cube_005.obj");
 
-        // Load OBJ Models
-        bambooModel = safeLoadModel("models/bamboo_set.obj");
+        // 2. Conifers / Spruces / Pines
+        loadIntoList(coniferTrees, "models/nature_pack_obj/forest_Tree_Spruce_small_01_Cylinder_016.obj");
+        loadIntoList(coniferTrees, "models/nature_pack_obj/forest_Tree_Spruce_small_02_Cylinder_003.obj");
+        loadIntoList(coniferTrees, "models/nature_pack_obj/forest_Tree_Spruce_tiny_01_Cylinder_012.obj");
+        loadIntoList(coniferTrees, "models/nature_pack_obj/forest_Tree_Spruce_tiny_02_Cylinder_014.obj");
+
+        // 3. Dead Trees, Logs & Stumps
+        loadIntoList(deadTrees, "models/nature_pack_obj/forest_Tree_average_bare_Cube.obj");
+        loadIntoList(deadTrees, "models/nature_pack_obj/forest_Tree_small_bare_Cube_007.obj");
+        loadIntoList(deadTrees, "models/nature_pack_obj/forest_Log_big_regular_Cylinder_015.obj");
+        loadIntoList(deadTrees, "models/nature_pack_obj/forest_Log_big_knotty_Cylinder_017.obj");
+        loadIntoList(deadTrees, "models/nature_pack_obj/forest_Stump_average_flat_Cube_013.obj");
+
+        // 4. Bushes & Shrubs
+        loadIntoList(bushes, "models/nature_pack_obj/forest_Bush_average_Plane_001.obj");
+        loadIntoList(bushes, "models/nature_pack_obj/forest_Bush_group_average_Plane_137.obj");
+        loadIntoList(bushes, "models/nature_pack_obj/forest_Bush_group_big_Plane_138.obj");
+        loadIntoList(bushes, "models/nature_pack_obj/forest_Bush_group_small_Plane_140.obj");
+
+        // 5. Flowers & Grass
+        loadIntoList(flowers, "models/nature_pack_obj/forest_Flower_bush_blue_Plane_030.obj");
+        loadIntoList(flowers, "models/nature_pack_obj/forest_Flower_bush_red_Plane_031.obj");
+        loadIntoList(flowers, "models/nature_pack_obj/forest_Flower_bush_white_Plane_023.obj");
+        loadIntoList(flowers, "models/nature_pack_obj/forest_Grass_bush_high_01_Plane_002.obj");
+        loadIntoList(flowers, "models/nature_pack_obj/forest_Grass_bush_low_01_Plane_005.obj");
+
+        // 6. Mushrooms
+        loadIntoList(mushrooms, "models/nature_pack_obj/forest_Mushroom_big_brown_Icosphere_019.obj");
+        loadIntoList(mushrooms, "models/nature_pack_obj/forest_Mushroom_big_group_brown_Icosphere_027.obj");
+        loadIntoList(mushrooms, "models/nature_pack_obj/forest_Mushroom_flat_group_white_Cylinder_046.obj");
+        loadIntoList(mushrooms, "models/nature_pack_obj/forest_Mushroom_high_group_yellow_Cylinder_068.obj");
+
+        // 7. Rocks & Boulders
+        loadIntoList(rocks, "models/nature_pack_obj/forest_Stone_average_01_Icosphere.obj");
+        loadIntoList(rocks, "models/nature_pack_obj/forest_Stone_average_01_mossy_Icosphere_009.obj");
+        loadIntoList(rocks, "models/nature_pack_obj/forest_Stone_group_average_Icosphere_022.obj");
+        loadIntoList(rocks, "models/nature_pack_obj/forest_Stone_group_average_mossy_Icosphere_030.obj");
+
+        // 8. Cacti & Bamboo Sets
         cactusModel = safeLoadModel("models/cactus.obj");
-        tropicalPlantsModel = safeLoadModel("models/tropical_plants.obj");
+        bambooModel = safeLoadModel("models/bamboo_set.obj");
+
+        // 9. Beehive
+        beehiveModel = safeLoadModel("models/beehive/beehive_low.glb");
+        if (beehiveModel == null) beehiveModel = safeLoadModel("models/beehive/beehive_box.glb");
+
+        // 10. Load Low-Poly Variants for Palms & Jungle
+        for (int i = 1; i <= 30; i++) {
+            Spatial lp = safeLoadModel(String.format("models/nature_pack_obj/lp_Plane_%03d_Plane_%03d.obj", i, i));
+            if (lp != null) palmTrees.add(lp);
+        }
+    }
+
+    private void loadIntoList(List<Spatial> list, String path) {
+        Spatial s = safeLoadModel(path);
+        if (s != null) {
+            list.add(s);
+        }
     }
 
     private Spatial safeLoadModel(String path) {
         try {
             Spatial model = assetManager.loadModel(path);
             if (model != null) {
-                applyAlphaAndLightingFixes(model);
+                applyAlphaLightingAndShadows(model);
             }
             return model;
         } catch (Exception e) {
-            System.err.println("[VegetationVisualizer] Notice: Could not load " + path + " (" + e.getMessage() + ")");
             return null;
         }
     }
 
-    private void applyAlphaAndLightingFixes(Spatial spatial) {
+    private void applyAlphaLightingAndShadows(Spatial spatial) {
+        spatial.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
         if (spatial instanceof Geometry geom) {
             Material mat = geom.getMaterial();
             if (mat != null) {
-                // Ensure proper shadow casting and clean face culling
                 mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
             }
         } else if (spatial instanceof Node node) {
             for (Spatial child : node.getChildren()) {
-                applyAlphaAndLightingFixes(child);
+                applyAlphaLightingAndShadows(child);
             }
         }
     }
@@ -129,14 +181,14 @@ public class VegetationVisualizer {
     public void setSeason(Season season) {
         if (this.currentSeason != season) {
             this.currentSeason = season;
-            rebuildVegetation(64, 64);
+            rebuildVegetation(currentGridWidth, currentGridHeight, activeTerrarium, activeVegetationSystem);
         }
     }
 
     public void setRenderMode(RenderMode mode) {
         if (this.currentRenderMode != mode) {
             this.currentRenderMode = mode;
-            rebuildVegetation(64, 64);
+            rebuildVegetation(currentGridWidth, currentGridHeight, activeTerrarium, activeVegetationSystem);
         }
     }
 
@@ -145,10 +197,6 @@ public class VegetationVisualizer {
         rootNode.setCullHint(visible ? Spatial.CullHint.Dynamic : Spatial.CullHint.Always);
     }
 
-    /**
-     * Computes the hemisphere-adjusted season.
-     * Southern hemisphere inverts seasons (Winter <-> Summer, Autumn <-> Spring).
-     */
     public Season getEffectiveSeason() {
         if (currentLatitude < 0) {
             return switch (currentSeason) {
@@ -161,116 +209,102 @@ public class VegetationVisualizer {
         return currentSeason;
     }
 
-    public void rebuildVegetation(int gridWidth, int gridDepth) {
+    public void rebuildVegetation(int gridWidth, int gridHeight) {
+        rebuildVegetation(gridWidth, gridHeight, activeTerrarium, activeVegetationSystem);
+    }
+
+    public void rebuildVegetation(int gridWidth, int gridHeight, Terrarium terrarium, VegetationSystem vegSystem) {
+        this.currentGridWidth = gridWidth;
+        this.currentGridHeight = gridHeight;
+        this.activeTerrarium = terrarium;
+        this.activeVegetationSystem = vegSystem;
+
         rootNode.detachAllChildren();
         if (!visible) return;
 
-        Random rand = new Random(42);
-        int treeCount = Math.min(65, (gridWidth * gridDepth) / 45);
         Biome biome = Biome.forLatitude(currentLatitude);
         Season effectiveSeason = getEffectiveSeason();
+        Random rand = new Random(42);
 
-        for (int i = 0; i < treeCount; i++) {
-            float x = 4 + rand.nextFloat() * (gridWidth - 8);
-            float z = 4 + rand.nextFloat() * (gridDepth - 8);
-            float y = 0.5f;
+        if (vegSystem != null && !vegSystem.getPlants().isEmpty()) {
+            // Position flora according to real simulation plants
+            for (VegetationSystem.Plant plant : vegSystem.getPlants()) {
+                float x = plant.x;
+                float z = plant.y; // Horizontal Y in domain -> JME Z
+                float y = (terrarium != null) ? terrarium.getSurfaceElevation(x, z) : 0.5f;
 
-            if (currentRenderMode == RenderMode.REALISTIC) {
-                createRealisticFlora(x, y, z, biome, effectiveSeason, rand, i);
-            } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
-                createProceduralTreeScientific(x, y, z, biome, rand);
-            } else if (currentRenderMode == RenderMode.GAMIFIED) {
-                createProceduralTreeGamified(x, y, z, biome, effectiveSeason, rand);
+                if (currentRenderMode == RenderMode.REALISTIC) {
+                    createRealisticFloraForPlant(x, y, z, plant, biome, effectiveSeason, rand);
+                } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
+                    createProceduralTreeScientific(x, y, z, biome, rand);
+                } else if (currentRenderMode == RenderMode.GAMIFIED) {
+                    createProceduralTreeGamified(x, y, z, biome, effectiveSeason, rand);
+                }
+            }
+        } else {
+            // Procedural landscape distribution across full terrarium footprint (0..gridWidth, 0..gridHeight)
+            int count = Math.min(65, (gridWidth * gridHeight) / 45);
+            for (int i = 0; i < count; i++) {
+                float x = 3 + rand.nextFloat() * (gridWidth - 6);
+                float z = 3 + rand.nextFloat() * (gridHeight - 6);
+                float y = (terrarium != null) ? terrarium.getSurfaceElevation(x, z) : 0.5f;
+
+                if (currentRenderMode == RenderMode.REALISTIC) {
+                    createRealisticFlora(x, y, z, biome, effectiveSeason, rand, i);
+                } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
+                    createProceduralTreeScientific(x, y, z, biome, rand);
+                } else if (currentRenderMode == RenderMode.GAMIFIED) {
+                    createProceduralTreeGamified(x, y, z, biome, effectiveSeason, rand);
+                }
             }
         }
     }
 
-    /**
-     * Builds realistic 3D flora scaled accurately in meters based on biome and seasonal tint.
-     */
-    private void createRealisticFlora(float x, float y, float z, Biome biome, Season season, Random rand, int index) {
+    private void createRealisticFloraForPlant(float x, float y, float z, VegetationSystem.Plant plant, Biome biome, Season season, Random rand) {
         Spatial chosenModel = null;
-        float targetHeight = 9.5f + rand.nextFloat() * 3.0f; // Standard ~9-12m mature canopy tree
+        float targetHeight = 8.5f * plant.growth;
 
-        switch (biome) {
-            case DESERT:
-                if (rand.nextFloat() < 0.40f && cactusModel != null) {
-                    chosenModel = cactusModel;
-                    targetHeight = 2.5f + rand.nextFloat() * 2.0f; // 2.5 - 4.5m Saguaro cactus
-                } else if (rand.nextFloat() < 0.70f && deadTreesGlb != null) {
-                    chosenModel = pickRandomSubModel(deadTreesGlb, rand);
-                    targetHeight = 5.0f + rand.nextFloat() * 3.0f;
-                } else if (rocksGlb != null) {
-                    chosenModel = pickRandomSubModel(rocksGlb, rand);
-                    targetHeight = 0.8f + rand.nextFloat() * 1.5f;
-                }
-                break;
+        switch (plant.type) {
+            case TREE -> {
+                targetHeight = (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA)
+                        ? (8.0f + rand.nextFloat() * 4.0f) * plant.growth
+                        : (9.5f + rand.nextFloat() * 3.5f) * plant.growth;
+                chosenModel = pickModelForBiome(biome, rand, true);
+            }
+            case SHRUB -> {
+                targetHeight = (1.5f + rand.nextFloat() * 1.5f) * plant.growth;
+                chosenModel = pickRandomFromList(bushes, rand);
+            }
+            case FLOWER -> {
+                targetHeight = (0.5f + rand.nextFloat() * 0.6f) * plant.growth;
+                chosenModel = pickRandomFromList(flowers, rand);
+            }
+            case MOSS, GRASS -> {
+                targetHeight = (0.4f + rand.nextFloat() * 0.5f) * plant.growth;
+                chosenModel = pickRandomFromList(flowers, rand);
+            }
+        }
 
-            case TROPICAL:
-                float rTrop = rand.nextFloat();
-                if (rTrop < 0.45f && palmTreesGlb != null) {
-                    chosenModel = pickRandomSubModel(palmTreesGlb, rand);
-                    targetHeight = 8.0f + rand.nextFloat() * 4.0f;
-                } else if (rTrop < 0.70f && bambooModel != null) {
-                    chosenModel = bambooModel;
-                    targetHeight = 4.0f + rand.nextFloat() * 2.5f;
-                } else if (rTrop < 0.85f && tropicalPlantsModel != null) {
-                    chosenModel = tropicalPlantsModel;
-                    targetHeight = 1.8f + rand.nextFloat() * 1.2f;
-                } else if (flowerBushesGlb != null) {
-                    chosenModel = pickRandomSubModel(flowerBushesGlb, rand);
-                    targetHeight = 1.5f + rand.nextFloat() * 1.0f;
-                }
-                break;
+        if (chosenModel != null) {
+            Spatial instance = chosenModel.clone();
+            normalizeAndPositionModel(instance, x, y, z, Math.max(0.4f, targetHeight), rand);
+            applySeasonalTint(instance, season, biome);
+            rootNode.attachChild(instance);
+        } else {
+            createProceduralTree3D(x, y, z, (biome == Biome.ALPINE_SNOW) ? 4 : 0, rand, season);
+        }
+    }
 
-            case MEDITERRANEAN:
-                float rMed = rand.nextFloat();
-                if (rMed < 0.45f && treesGlb != null) {
-                    chosenModel = pickRandomSubModel(treesGlb, rand);
-                    targetHeight = 7.0f + rand.nextFloat() * 3.5f;
-                } else if (rMed < 0.70f && bushesGlb != null) {
-                    chosenModel = pickRandomSubModel(bushesGlb, rand);
-                    targetHeight = 1.6f + rand.nextFloat() * 1.2f;
-                } else if (rocksGlb != null) {
-                    chosenModel = pickRandomSubModel(rocksGlb, rand);
-                    targetHeight = 0.9f + rand.nextFloat() * 1.4f;
-                }
-                break;
+    private void createRealisticFlora(float x, float y, float z, Biome biome, Season season, Random rand, int index) {
+        Spatial chosenModel = pickModelForBiome(biome, rand, false);
+        float targetHeight = 9.0f + rand.nextFloat() * 3.5f;
 
-            case ALPINE_SNOW:
-            case TUNDRA:
-                float rAlp = rand.nextFloat();
-                if (rAlp < 0.60f && pineTreesGlb != null) {
-                    chosenModel = pickRandomSubModel(pineTreesGlb, rand);
-                    targetHeight = 9.0f + rand.nextFloat() * 4.5f;
-                } else if (rAlp < 0.80f && birchTreesGlb != null) {
-                    chosenModel = pickRandomSubModel(birchTreesGlb, rand);
-                    targetHeight = 7.5f + rand.nextFloat() * 3.0f;
-                } else if (rocksGlb != null) {
-                    chosenModel = pickRandomSubModel(rocksGlb, rand);
-                    targetHeight = 1.0f + rand.nextFloat() * 1.8f;
-                }
-                break;
-
-            case FOREST:
-            case GRASSLAND:
-            case WETLAND:
-            default:
-                float rFor = rand.nextFloat();
-                if (rFor < 0.35f && mapleTreesGlb != null) {
-                    chosenModel = pickRandomSubModel(mapleTreesGlb, rand);
-                    targetHeight = 9.0f + rand.nextFloat() * 3.5f;
-                } else if (rFor < 0.60f && treesGlb != null) {
-                    chosenModel = pickRandomSubModel(treesGlb, rand);
-                    targetHeight = 8.5f + rand.nextFloat() * 3.0f;
-                } else if (rFor < 0.80f && birchTreesGlb != null) {
-                    chosenModel = pickRandomSubModel(birchTreesGlb, rand);
-                    targetHeight = 8.0f + rand.nextFloat() * 3.0f;
-                } else if (bushesGlb != null) {
-                    chosenModel = pickRandomSubModel(bushesGlb, rand);
-                    targetHeight = 1.4f + rand.nextFloat() * 1.0f;
-                }
-                break;
+        if (biome == Biome.DESERT && chosenModel == cactusModel) {
+            targetHeight = 2.8f + rand.nextFloat() * 2.2f;
+        } else if (chosenModel != null && (rocks.contains(chosenModel) || flowers.contains(chosenModel))) {
+            targetHeight = 0.8f + rand.nextFloat() * 1.2f;
+        } else if (chosenModel != null && bushes.contains(chosenModel)) {
+            targetHeight = 1.6f + rand.nextFloat() * 1.2f;
         }
 
         if (chosenModel != null) {
@@ -279,25 +313,57 @@ public class VegetationVisualizer {
             applySeasonalTint(instance, season, biome);
             rootNode.attachChild(instance);
         } else {
-            // High-fidelity fallback procedural mesh
             createProceduralTree3D(x, y, z, rand.nextInt(5), rand, season);
         }
     }
 
-    /**
-     * Picks a random variant sub-spatial from a multi-mesh GLB node.
-     */
-    private Spatial pickRandomSubModel(Spatial model, Random rand) {
-        if (model instanceof Node node && node.getQuantity() > 0) {
-            int idx = rand.nextInt(node.getQuantity());
-            return node.getChild(idx);
+    private Spatial pickModelForBiome(Biome biome, Random rand, boolean preferTrees) {
+        switch (biome) {
+            case DESERT -> {
+                float r = rand.nextFloat();
+                if (r < 0.45f && cactusModel != null) return cactusModel;
+                if (r < 0.75f && !deadTrees.isEmpty()) return pickRandomFromList(deadTrees, rand);
+                if (!rocks.isEmpty()) return pickRandomFromList(rocks, rand);
+                return cactusModel;
+            }
+            case TROPICAL -> {
+                float r = rand.nextFloat();
+                if (r < 0.40f && !palmTrees.isEmpty()) return pickRandomFromList(palmTrees, rand);
+                if (r < 0.65f && bambooModel != null) return bambooModel;
+                if (r < 0.85f && !deciduousTrees.isEmpty()) return pickRandomFromList(deciduousTrees, rand);
+                if (!flowers.isEmpty()) return pickRandomFromList(flowers, rand);
+                return pickRandomFromList(deciduousTrees, rand);
+            }
+            case ALPINE_SNOW, TUNDRA -> {
+                float r = rand.nextFloat();
+                if (r < 0.65f && !coniferTrees.isEmpty()) return pickRandomFromList(coniferTrees, rand);
+                if (r < 0.85f && !rocks.isEmpty()) return pickRandomFromList(rocks, rand);
+                if (!deadTrees.isEmpty()) return pickRandomFromList(deadTrees, rand);
+                return pickRandomFromList(coniferTrees, rand);
+            }
+            case MEDITERRANEAN -> {
+                float r = rand.nextFloat();
+                if (r < 0.50f && !coniferTrees.isEmpty()) return pickRandomFromList(coniferTrees, rand);
+                if (r < 0.80f && !bushes.isEmpty()) return pickRandomFromList(bushes, rand);
+                if (!rocks.isEmpty()) return pickRandomFromList(rocks, rand);
+                return pickRandomFromList(coniferTrees, rand);
+            }
+            case FOREST, GRASSLAND, WETLAND -> {
+            }
         }
-        return model;
+        float r = rand.nextFloat();
+        if (r < 0.55f && !deciduousTrees.isEmpty()) return pickRandomFromList(deciduousTrees, rand);
+        if (r < 0.75f && !coniferTrees.isEmpty()) return pickRandomFromList(coniferTrees, rand);
+        if (r < 0.90f && !bushes.isEmpty()) return pickRandomFromList(bushes, rand);
+        if (!flowers.isEmpty()) return pickRandomFromList(flowers, rand);
+        return pickRandomFromList(deciduousTrees, rand);
     }
 
-    /**
-     * Normalizes bounding box so model sits precisely at base Y=0 and reaches target metric height.
-     */
+    private Spatial pickRandomFromList(List<Spatial> list, Random rand) {
+        if (list == null || list.isEmpty()) return null;
+        return list.get(rand.nextInt(list.size()));
+    }
+
     private void normalizeAndPositionModel(Spatial spatial, float x, float y, float z, float targetHeight, Random rand) {
         spatial.updateModelBound();
         BoundingBox bbox = (BoundingBox) spatial.getWorldBound();
@@ -312,15 +378,13 @@ public class VegetationVisualizer {
 
         spatial.setLocalScale(scale);
         spatial.setLocalTranslation(x, y + baseYOffset, z);
+        spatial.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
 
         float rotY = rand.nextFloat() * FastMath.TWO_PI;
         spatial.setUserData("BaseRotY", rotY);
         spatial.setLocalRotation(new Quaternion().fromAngles(0, rotY, 0));
     }
 
-    /**
-     * Applies seasonal color tinting to foliage geometries.
-     */
     private void applySeasonalTint(Spatial spatial, Season season, Biome biome) {
         if (spatial instanceof Geometry geom) {
             Material mat = geom.getMaterial();
@@ -352,11 +416,9 @@ public class VegetationVisualizer {
         };
     }
 
-    /**
-     * Realistic procedural fallback tree mesh with seasonal foliage.
-     */
     private void createProceduralTree3D(float x, float y, float z, int speciesType, Random rand, Season season) {
         Node treeNode = new Node("Tree3D");
+        treeNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
         treeNode.setLocalTranslation(x, y, z);
         float rotY = rand.nextFloat() * FastMath.TWO_PI;
         treeNode.setUserData("BaseRotY", rotY);
@@ -375,40 +437,44 @@ public class VegetationVisualizer {
         leafMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
         if (speciesType == 4) { // Pine
-            Cylinder trunkMesh = new Cylinder(8, 12, 0.20f, 0.30f, 4.5f, true, false);
+            Cylinder trunkMesh = new Cylinder(8, 12, 0.25f, 0.35f, 5.5f, true, false);
             Geometry trunkGeom = new Geometry("PineTrunk", trunkMesh);
             trunkGeom.setMaterial(trunkMat);
-            trunkGeom.setLocalTranslation(0, 2.25f, 0);
+            trunkGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            trunkGeom.setLocalTranslation(0, 2.75f, 0);
             trunkGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
             treeNode.attachChild(trunkGeom);
 
-            float[] tierRadii = {2.0f, 1.5f, 1.0f};
-            float[] tierHeights = {2.8f, 4.0f, 5.2f};
+            float[] tierRadii = {2.4f, 1.8f, 1.2f};
+            float[] tierHeights = {3.2f, 4.6f, 6.0f};
             for (int i = 0; i < 3; i++) {
-                Cylinder coneMesh = new Cylinder(10, 12, 0.05f, tierRadii[i], 1.5f, true, false);
+                Cylinder coneMesh = new Cylinder(10, 12, 0.05f, tierRadii[i], 1.8f, true, false);
                 Geometry coneGeom = new Geometry("PineTier_" + i, coneMesh);
                 coneGeom.setMaterial(leafMat);
+                coneGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
                 coneGeom.setLocalTranslation(0, tierHeights[i], 0);
                 coneGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
                 treeNode.attachChild(coneGeom);
             }
         } else { // Deciduous / Oak
-            Cylinder trunkMesh = new Cylinder(8, 12, 0.28f, 0.38f, 4.0f, true, false);
+            Cylinder trunkMesh = new Cylinder(8, 12, 0.32f, 0.45f, 4.8f, true, false);
             Geometry trunkGeom = new Geometry("OakTrunk", trunkMesh);
             trunkGeom.setMaterial(trunkMat);
-            trunkGeom.setLocalTranslation(0, 2.0f, 0);
+            trunkGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            trunkGeom.setLocalTranslation(0, 2.4f, 0);
             trunkGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
             treeNode.attachChild(trunkGeom);
 
             float[][] clusters = {
-                {0.0f, 4.8f, 0.0f, 1.8f},
-                {-0.9f, 4.2f, 0.6f, 1.4f},
-                {0.9f, 4.4f, -0.6f, 1.4f}
+                {0.0f, 5.6f, 0.0f, 2.2f},
+                {-1.1f, 4.8f, 0.8f, 1.7f},
+                {1.1f, 5.0f, -0.8f, 1.7f}
             };
             for (int i = 0; i < clusters.length; i++) {
                 com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(12, 12, clusters[i][3]);
                 Geometry crownGeom = new Geometry("OakCluster_" + i, crownMesh);
                 crownGeom.setMaterial(leafMat);
+                crownGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
                 crownGeom.setLocalTranslation(clusters[i][0], clusters[i][1], clusters[i][2]);
                 treeNode.attachChild(crownGeom);
             }
@@ -418,11 +484,9 @@ public class VegetationVisualizer {
         rootNode.attachChild(treeNode);
     }
 
-    /**
-     * Scientific mode: Standardized metric scale (6.0m trunk, DBH 1.3m ring indicator, LAI crown envelope).
-     */
     private void createProceduralTreeScientific(float x, float y, float z, Biome biome, Random rand) {
         Node treeNode = new Node("TreeScientific");
+        treeNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
         treeNode.setLocalTranslation(x, y, z);
         float rotY = rand.nextFloat() * FastMath.TWO_PI;
         treeNode.setUserData("BaseRotY", rotY);
@@ -430,49 +494,45 @@ public class VegetationVisualizer {
         Material trunkMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         trunkMat.setColor("Color", new ColorRGBA(0.40f, 0.25f, 0.12f, 1.0f));
 
-        // 6.0m Metric Trunk Axis
-        Cylinder trunkMesh = new Cylinder(4, 8, 0.10f, 0.10f, 6.0f, true, false);
+        Cylinder trunkMesh = new Cylinder(4, 8, 0.15f, 0.15f, 6.0f, true, false);
         Geometry trunkGeom = new Geometry("SciTrunk", trunkMesh);
         trunkGeom.setMaterial(trunkMat);
+        trunkGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
         trunkGeom.setLocalTranslation(0, 3.0f, 0);
         trunkGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
         treeNode.attachChild(trunkGeom);
 
-        // Standard DBH (Diameter at Breast Height = 1.3m) Metric Ring Marker
         Material dbhMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         dbhMat.setColor("Color", new ColorRGBA(0.1f, 0.8f, 1.0f, 1.0f));
-        Cylinder dbhRing = new Cylinder(8, 12, 0.18f, 0.18f, 0.08f, true, false);
+        Cylinder dbhRing = new Cylinder(8, 12, 0.22f, 0.22f, 0.10f, true, false);
         Geometry dbhGeom = new Geometry("DBHMarker", dbhRing);
         dbhGeom.setMaterial(dbhMat);
         dbhGeom.setLocalTranslation(0, 1.3f, 0);
         dbhGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
         treeNode.attachChild(dbhGeom);
 
-        // LAI (Leaf Area Index) Crown Volume Envelope
         Material leafMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         leafMat.setColor("Color", new ColorRGBA(0.12f, 0.65f, 0.28f, 0.75f));
 
-        com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(10, 10, 1.6f);
+        com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(10, 10, 1.8f);
         Geometry crownGeom = new Geometry("SciCrownLAI", crownMesh);
         crownGeom.setMaterial(leafMat);
-        crownGeom.setLocalTranslation(0, 5.2f, 0);
+        crownGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+        crownGeom.setLocalTranslation(0, 5.5f, 0);
         treeNode.attachChild(crownGeom);
 
         treeNode.setLocalRotation(new Quaternion().fromAngles(0, rotY, 0));
         rootNode.attachChild(treeNode);
     }
 
-    /**
-     * Gamified Mode: Authentic Minecraft cubic voxel trees (Oak, Birch, Spruce/Pine, Cactus).
-     * Rendered with Lit materials and backface culling to ensure correct voxel orientation and shadows.
-     */
     private void createProceduralTreeGamified(float x, float y, float z, Biome biome, Season season, Random rand) {
         Node treeNode = new Node("TreeGamified");
+        treeNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
         treeNode.setLocalTranslation(x, y, z);
         float rotY = rand.nextFloat() * FastMath.TWO_PI;
         treeNode.setUserData("BaseRotY", rotY);
 
-        float voxelSize = 0.6f; // 0.6m per Minecraft voxel block
+        float voxelSize = 1.0f; // 1.0m per authentic Minecraft voxel block for realistic stature
 
         Material woodMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         woodMat.setBoolean("UseMaterialColors", true);
@@ -481,17 +541,18 @@ public class VegetationVisualizer {
         woodMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
         if (biome == Biome.DESERT) {
-            // Authentic Minecraft Voxel Saguaro Cactus (3 block trunk + 2 side arms)
+            // Authentic Minecraft Saguaro Cactus (5-block trunk + 2 staggered arms)
             Material cactusMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             cactusMat.setBoolean("UseMaterialColors", true);
             cactusMat.setColor("Diffuse", new ColorRGBA(0.20f, 0.58f, 0.22f, 1f));
             cactusMat.setColor("Ambient", new ColorRGBA(0.12f, 0.35f, 0.14f, 1f));
             cactusMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-            for (int h = 0; h < 4; h++) {
+            for (int h = 0; h < 5; h++) {
                 Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
                 Geometry g = new Geometry("CactusVoxel_" + h, box);
                 g.setMaterial(cactusMat);
+                g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
                 g.setLocalTranslation(0, h * voxelSize + voxelSize / 2, 0);
                 treeNode.attachChild(g);
             }
@@ -499,22 +560,40 @@ public class VegetationVisualizer {
             Box armLeft1 = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
             Geometry gL1 = new Geometry("CactusArmL1", armLeft1);
             gL1.setMaterial(cactusMat);
-            gL1.setLocalTranslation(-voxelSize, 1.5f * voxelSize, 0);
+            gL1.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            gL1.setLocalTranslation(-voxelSize, 2.0f * voxelSize + voxelSize / 2, 0);
             treeNode.attachChild(gL1);
 
             Box armLeft2 = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
             Geometry gL2 = new Geometry("CactusArmL2", armLeft2);
             gL2.setMaterial(cactusMat);
-            gL2.setLocalTranslation(-voxelSize, 2.5f * voxelSize, 0);
+            gL2.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            gL2.setLocalTranslation(-voxelSize, 3.0f * voxelSize + voxelSize / 2, 0);
             treeNode.attachChild(gL2);
 
+            // Arm Right
+            Box armRight1 = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
+            Geometry gR1 = new Geometry("CactusArmR1", armRight1);
+            gR1.setMaterial(cactusMat);
+            gR1.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            gR1.setLocalTranslation(voxelSize, 3.0f * voxelSize + voxelSize / 2, 0);
+            treeNode.attachChild(gR1);
+
+            Box armRight2 = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
+            Geometry gR2 = new Geometry("CactusArmR2", armRight2);
+            gR2.setMaterial(cactusMat);
+            gR2.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            gR2.setLocalTranslation(voxelSize, 4.0f * voxelSize + voxelSize / 2, 0);
+            treeNode.attachChild(gR2);
+
         } else if (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
-            // Authentic Minecraft Spruce/Pine Tree (6 block trunk + staggered conical canopy)
-            int trunkHeight = 6;
+            // Authentic Minecraft Spruce/Pine Tree (7-8 block trunk + multi-tiered cross canopy)
+            int trunkHeight = 8;
             for (int h = 0; h < trunkHeight; h++) {
                 Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
                 Geometry g = new Geometry("PineLog_" + h, box);
                 g.setMaterial(woodMat);
+                g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
                 g.setLocalTranslation(0, h * voxelSize + voxelSize / 2, 0);
                 treeNode.attachChild(g);
             }
@@ -526,47 +605,51 @@ public class VegetationVisualizer {
             pineLeafMat.setColor("Ambient", pineCol.mult(0.6f));
             pineLeafMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-            float canopyBaseY = 3 * voxelSize;
+            float canopyBaseY = 4 * voxelSize;
 
-            // Tier 1: 5x5 Cross at Y=3
+            // Tier 1: 5x5 Cross at Y=4
             for (int bx = -2; bx <= 2; bx++) {
                 for (int bz = -2; bz <= 2; bz++) {
-                    if (Math.abs(bx) == 2 && Math.abs(bz) == 2) continue; // Skip 4 extreme corners
+                    if (Math.abs(bx) == 2 && Math.abs(bz) == 2) continue;
                     Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
                     Geometry g = new Geometry("PineLeaf_T1_" + bx + "_" + bz, box);
                     g.setMaterial(pineLeafMat);
+                    g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
                     g.setLocalTranslation(bx * voxelSize, canopyBaseY + voxelSize / 2, bz * voxelSize);
                     treeNode.attachChild(g);
                 }
             }
 
-            // Tier 2: 3x3 Cross at Y=4
+            // Tier 2: 3x3 Cross at Y=6
             for (int bx = -1; bx <= 1; bx++) {
                 for (int bz = -1; bz <= 1; bz++) {
                     Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
                     Geometry g = new Geometry("PineLeaf_T2_" + bx + "_" + bz, box);
                     g.setMaterial(pineLeafMat);
-                    g.setLocalTranslation(bx * voxelSize, canopyBaseY + 1.5f * voxelSize, bz * voxelSize);
+                    g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+                    g.setLocalTranslation(bx * voxelSize, canopyBaseY + 2 * voxelSize + voxelSize / 2, bz * voxelSize);
                     treeNode.attachChild(g);
                 }
             }
 
-            // Tier 3: 1x1 Peak at Y=5 & Y=6
-            for (int by = 2; by <= 3; by++) {
+            // Tier 3: 1x1 Peak at Y=7 & Y=8
+            for (int by = 3; by <= 4; by++) {
                 Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
                 Geometry g = new Geometry("PineLeaf_Peak_" + by, box);
                 g.setMaterial(pineLeafMat);
+                g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
                 g.setLocalTranslation(0, canopyBaseY + by * voxelSize + voxelSize / 2, 0);
                 treeNode.attachChild(g);
             }
 
         } else {
-            // Authentic Minecraft Oak / Birch Tree (5 block trunk + 5x5 / 3x3 canopy with corner notches)
-            int trunkHeight = 5;
+            // Authentic Minecraft Oak / Birch Tree (6 block trunk + 5x5 / 3x3 canopy with corner notches)
+            int trunkHeight = 6;
             for (int h = 0; h < trunkHeight; h++) {
                 Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
                 Geometry g = new Geometry("OakLog_" + h, box);
                 g.setMaterial(woodMat);
+                g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
                 g.setLocalTranslation(0, h * voxelSize + voxelSize / 2, 0);
                 treeNode.attachChild(g);
             }
@@ -588,6 +671,7 @@ public class VegetationVisualizer {
                         Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
                         Geometry g = new Geometry("OakLeaf_" + by + "_" + bx + "_" + bz, box);
                         g.setMaterial(leafMat);
+                        g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
                         g.setLocalTranslation(bx * voxelSize, canopyBaseY + by * voxelSize + voxelSize / 2, bz * voxelSize);
                         treeNode.attachChild(g);
                     }
@@ -601,6 +685,7 @@ public class VegetationVisualizer {
                     Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
                     Geometry g = new Geometry("OakLeaf_Top_" + bx + "_" + bz, box);
                     g.setMaterial(leafMat);
+                    g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
                     g.setLocalTranslation(bx * voxelSize, canopyBaseY + 2 * voxelSize + voxelSize / 2, bz * voxelSize);
                     treeNode.attachChild(g);
                 }
@@ -610,6 +695,7 @@ public class VegetationVisualizer {
             Box topBox = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
             Geometry topGeom = new Geometry("OakLeaf_Cap", topBox);
             topGeom.setMaterial(leafMat);
+            topGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
             topGeom.setLocalTranslation(0, canopyBaseY + 3 * voxelSize + voxelSize / 2, 0);
             treeNode.attachChild(topGeom);
         }
@@ -618,9 +704,6 @@ public class VegetationVisualizer {
         rootNode.attachChild(treeNode);
     }
 
-    /**
-     * Updates wind swaying animation for foliage and trees based on environmental wind speed and angle.
-     */
     public void update(WeatherSystem weather, float tpf) {
         if (!visible || rootNode.getChildren().isEmpty()) return;
 
@@ -665,4 +748,73 @@ public class VegetationVisualizer {
             }
         }
     }
+
+    public Spatial renderBeehive(float x, float y, float z, float orientationAngle) {
+        if (beehiveModel == null) return null;
+
+        Spatial hive = beehiveModel.clone();
+        hive.setName("3D_Beehive_" + (int) x + "_" + (int) y);
+        hive.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+        
+        hive.setLocalScale(0.015f);
+        hive.setLocalTranslation(x, z, y);
+        hive.setLocalRotation(new Quaternion().fromAngles(0, FastMath.DEG_TO_RAD * orientationAngle, 0));
+
+        rootNode.attachChild(hive);
+        return hive;
+    }
+
+    public void ensureHostTreeForWaspNest(float x, float y, float nestAltitude) {
+        for (Spatial child : rootNode.getChildren()) {
+            if (child.getName() != null && child.getName().startsWith("Tree_")) {
+                Vector3f pos = child.getLocalTranslation();
+                float dist = FastMath.sqrt(FastMath.sqr(pos.x - x) + FastMath.sqr(pos.z - y));
+                if (dist < 3.5f) {
+                    return;
+                }
+            }
+        }
+
+        Spatial hostTree = !deciduousTrees.isEmpty() ? pickRandomFromList(deciduousTrees, new Random()) : null;
+        if (hostTree != null) {
+            Spatial treeInstance = hostTree.clone();
+            treeInstance.setName("Tree_WaspHost_" + (int) x + "_" + (int) y);
+            float targetHeight = Math.max(nestAltitude + 2.5f, 10.0f);
+            BoundingBox bbox = (BoundingBox) treeInstance.getWorldBound();
+            float naturalHeight = bbox != null ? (bbox.getYExtent() * 2.0f) : 1.0f;
+            float scale = (naturalHeight > 0.01f) ? (targetHeight / naturalHeight) : 1.0f;
+
+            treeInstance.setLocalScale(scale);
+            treeInstance.setLocalTranslation(x, 0.5f, y);
+            treeInstance.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            treeInstance.setUserData("BaseRotY", 0.0f);
+            rootNode.attachChild(treeInstance);
+        }
+    }
+
+    public void setUVVisionMode(boolean enabled) {
+        this.uvVisionMode = enabled;
+        applyUVColoration(rootNode, enabled);
+    }
+
+    public boolean isUVVisionMode() {
+        return uvVisionMode;
+    }
+
+    private void applyUVColoration(Spatial spatial, boolean uv) {
+        if (spatial instanceof Geometry geom) {
+            Material mat = geom.getMaterial();
+            if (mat != null) {
+                if (uv) {
+                    mat.setColor("Diffuse", new ColorRGBA(0.45f, 0.20f, 0.85f, 1.0f));
+                    mat.setColor("Ambient", new ColorRGBA(0.25f, 0.10f, 0.65f, 1.0f));
+                }
+            }
+        } else if (spatial instanceof Node node) {
+            for (Spatial child : node.getChildren()) {
+                applyUVColoration(child, uv);
+            }
+        }
+    }
 }
+

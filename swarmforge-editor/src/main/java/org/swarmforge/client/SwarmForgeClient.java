@@ -72,8 +72,9 @@ public class SwarmForgeClient extends Application {
         private TabPane simSubTabs;
         private HBox connectBox;
         private VBox simulationInactiveOverlay;
-        private Label syncLabel;
         private Label statsLabel;
+        private Label syncLabel;
+        private CheckBox chkAntTracking;
         private final I18nManager i18n = I18nManager.getInstance();
 
         private boolean isVideoRecording = false;
@@ -556,10 +557,22 @@ public class SwarmForgeClient extends Application {
                 statsTab.textProperty().bind(i18n.createStringBinding("tab.stats"));
                 statsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.BAR_CHART_2));
                 this.statisticsDashboard = new org.swarmforge.client.ui.StatisticsDashboard();
+                this.statisticsDashboard.setOnSelectAnt(antId -> {
+                    if (this.simWorldViewer != null) {
+                        this.simWorldViewer.setFollowedAntById(antId);
+                    }
+                });
                 this.statisticsDashboard.setOnTrackAnt(antId -> {
                     if (this.simWorldViewer != null) {
                         this.simWorldViewer.setFollowedAntById(antId);
                         this.simWorldViewer.setFollowAntCameraEnabled(true);
+                        this.simWorldViewer.setAntTrackingEnabled(true);
+                        if (this.chkAntTracking != null) {
+                            this.chkAntTracking.setSelected(true);
+                        }
+                        if (this.simWorldViewer.getTrackedAntPane() != null) {
+                            this.simWorldViewer.getTrackedAntPane().setVisible(true);
+                        }
                         if (this.simSubTabs != null && this.visualTab != null) {
                             this.simSubTabs.getSelectionModel().select(this.visualTab);
                         }
@@ -1389,10 +1402,22 @@ public class SwarmForgeClient extends Application {
                     }
                 });
                 if (this.statisticsDashboard != null) {
+                    this.statisticsDashboard.setOnSelectAnt(antId -> {
+                        if (this.simWorldViewer != null) {
+                            this.simWorldViewer.setFollowedAntById(antId);
+                        }
+                    });
                     this.statisticsDashboard.setOnTrackAnt(antId -> {
                         if (this.simWorldViewer != null) {
                             this.simWorldViewer.setFollowedAntById(antId);
                             this.simWorldViewer.setFollowAntCameraEnabled(true);
+                            this.simWorldViewer.setAntTrackingEnabled(true);
+                            if (this.chkAntTracking != null) {
+                                this.chkAntTracking.setSelected(true);
+                            }
+                            if (this.simWorldViewer.getTrackedAntPane() != null) {
+                                this.simWorldViewer.getTrackedAntPane().setVisible(true);
+                            }
                             if (this.simSubTabs != null && this.visualTab != null) {
                                 this.simSubTabs.getSelectionModel().select(this.visualTab);
                             }
@@ -2005,7 +2030,7 @@ public class SwarmForgeClient extends Application {
                 chkVoxelInfo.setTooltip(ttVoxelInfo);
                 chkVoxelInfo.selectedProperty().addListener((o, a, b) -> simWorldViewer.setVoxelInfoVisible(b));
 
-                CheckBox chkAntTracking = new CheckBox();
+                this.chkAntTracking = new CheckBox();
                 chkAntTracking.textProperty().bind(i18n.createStringBinding("world.render.ant_tracking"));
                 chkAntTracking.setSelected(true);
                 chkAntTracking.setStyle("-fx-font-size: 11px;");
@@ -2023,11 +2048,34 @@ public class SwarmForgeClient extends Application {
                 chkWeatherOverlay.setTooltip(ttWeatherOverlay);
                 chkWeatherOverlay.selectedProperty().addListener((o, a, b) -> simWorldViewer.setWeatherOverlayVisible(b));
 
+                CheckBox chkElevationIsolines = new CheckBox("📈 Isolignes Élévation");
+                chkElevationIsolines.setSelected(false);
+                chkElevationIsolines.setStyle("-fx-font-size: 11px;");
+                chkElevationIsolines.selectedProperty().addListener((o, a, b) -> {
+                    if (simWorldViewer != null) simWorldViewer.setShowElevationIsolines(b);
+                });
+
+                CheckBox chkClimateIsolines = new CheckBox("🌡️ Isolignes Microclimat");
+                chkClimateIsolines.setSelected(false);
+                chkClimateIsolines.setStyle("-fx-font-size: 11px;");
+                chkClimateIsolines.selectedProperty().addListener((o, a, b) -> {
+                    if (simWorldViewer != null) simWorldViewer.setShowClimateIsolines(b);
+                });
+
+                CheckBox chkPheromoneIsolines = new CheckBox("🧪 Isolignes Phéromones");
+                chkPheromoneIsolines.setSelected(false);
+                chkPheromoneIsolines.setStyle("-fx-font-size: 11px;");
+                chkPheromoneIsolines.selectedProperty().addListener((o, a, b) -> {
+                    if (simWorldViewer != null) simWorldViewer.setShowPheromoneIsolines(b);
+                });
+
                 renderSection.getChildren().addAll(
                     lblRenderMode, comboRenderMode,
                     chkMinimap, chkSyncMinimap, chkShowLegend,
                     new Separator(),
                     chkTerrain, chkTrees, chkSkirt, sliceBox, chkNid, chkPheromonesLayer, comboPheromoneType, chkAntsLayer, chkWeatherLayer,
+                    new Separator(),
+                    chkElevationIsolines, chkClimateIsolines, chkPheromoneIsolines,
                     new Separator(),
                     chkVoxelInfo, chkAntTracking, chkWeatherOverlay
                 );
