@@ -37,16 +37,24 @@ public class FungusGarden implements java.io.Serializable {
         float rh = 85.0f; // Baseline subterranean relative humidity
         boolean idealClimate = (nestTemp >= 20.0f && nestTemp <= 29.0f && rh >= 70.0f);
 
-        // 2. Consume Mulch
+        // 2. Consume Mulch & Ecological Stoichiometry (C:N ratio)
         float mulchAvailable = colony.getResourceAmount(ResourceType.MULCH);
 
         if (mulchAvailable > 0) {
             float mulchConsumed = colony.consumeResource(ResourceType.MULCH, Math.min(mulchAvailable, 0.1f));
 
-            // Produce Fungus modulated by climate efficiency
+            // Stoichiometric efficiency: optimal leaf C:N ~ 24:1 supports max fungal staphylae / gongylidia differentiation
+            float carbonNitrogenRatio = 22.5f;
+            float stoichiometricEfficiency = Math.max(0.4f, Math.min(1.2f, 25.0f / carbonNitrogenRatio));
+
+            // Produce Fungus modulated by climate & stoichiometric efficiency
             float climateMult = idealClimate ? 1.5f : 0.6f;
-            float fungusProduced = mulchConsumed * 2.0f * health * climateMult;
+            float fungusProduced = mulchConsumed * 2.0f * health * climateMult * stoichiometricEfficiency;
             colony.addResource(ResourceType.FUNGUS, fungusProduced);
+
+            // Synthesize nutrient-dense gongylidia / staphylae (enriched protein & lipid reservoirs)
+            float gongylidiaYield = fungusProduced * 0.25f;
+            colony.setProteinStored(colony.getProteinStored() + gongylidiaYield);
 
             // Health increases if fed under good microclimate
             if (idealClimate) {
@@ -66,6 +74,11 @@ public class FungusGarden implements java.io.Serializable {
                 }
             }
         }
+
+        // 3. Escovopsis parasitic mold impact
+        if (contaminationLevel > 0.001f) {
+            health = Math.max(0.0f, health - 0.005f * contaminationLevel);
+        }
     }
 
     public float getHealth() {
@@ -75,4 +88,11 @@ public class FungusGarden implements java.io.Serializable {
     private float contaminationLevel = 0.0f; // Escovopsis mold contamination
     public float getContaminationLevel() { return contaminationLevel; }
     public void setContaminationLevel(float level) { this.contaminationLevel = Math.max(0f, level); }
+
+    public void treatWithActinobacteria(float antibioticAmount) {
+        if (antibioticAmount > 0) {
+            this.contaminationLevel = Math.max(0.0f, this.contaminationLevel - antibioticAmount * 0.02f);
+            this.health = Math.min(1.0f, this.health + antibioticAmount * 0.01f);
+        }
+    }
 }

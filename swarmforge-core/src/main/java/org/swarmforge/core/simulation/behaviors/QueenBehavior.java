@@ -140,10 +140,35 @@ public class QueenBehavior {
         }
     }
 
+    /**
+     * Checks if current micrometeorological conditions meet the academic threshold for alate nuptial flight:
+     * - Temperature window: 19°C - 35°C
+     * - High relative humidity (RH >= 50%) for soil excavation by newly mated gynes
+     * - No active rainfall (prevents wing damage)
+     * - Calm to moderate wind (<= 5.0 m/s) allowing controlled dispersal flights
+     */
+    public boolean isAtmosphericConditionFavorableForNuptialFlight() {
+        if (simulation == null || simulation.getWeather() == null) {
+            return true; // Default fallback in headless/isolated test environments
+        }
+        var weather = simulation.getWeather();
+        float temp = weather.getTemperature();
+        float humidity = weather.getHumidity();
+        float windSpeed = weather.getWindSpeed();
+        boolean isRaining = weather.isRaining();
+
+        return (temp >= 19.0f && temp <= 35.0f) &&
+               (humidity >= 50.0f) &&
+               !isRaining &&
+               (windSpeed <= 5.0f);
+    }
+
     private void processVirginState(Individual queen) {
-        // Check if it's time for mating flight
+        // Check if it's time for mating flight and meteorological envelope is favorable
         if (queen.getAgeInSeconds() >= matingFlightAgeSeconds && !matingFlightComplete) {
-            attemptMatingFlight(queen);
+            if (isAtmosphericConditionFavorableForNuptialFlight()) {
+                attemptMatingFlight(queen);
+            }
         }
     }
 

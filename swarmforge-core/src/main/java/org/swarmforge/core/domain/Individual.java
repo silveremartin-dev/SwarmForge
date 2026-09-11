@@ -44,7 +44,7 @@ public class Individual implements java.io.Serializable, AgentView {
 
     private final UUID id;
     private final Caste caste;
-    private final UUID colonyId;
+    private UUID colonyId;
 
     // Position
     private float x, y, z;
@@ -304,6 +304,123 @@ public class Individual implements java.io.Serializable, AgentView {
         }
     }
 
+    // --- Formic Acid Artillery Spray & Chemical Blindness ---
+    private float formicAcidGland = 100.0f;
+    private int chemotacticBlindnessTicks = 0;
+
+    public float getFormicAcidGland() { return formicAcidGland; }
+    public void refillFormicAcid(float amount) { this.formicAcidGland = Math.min(100.0f, this.formicAcidGland + amount); }
+    public int getChemotacticBlindnessTicks() { return chemotacticBlindnessTicks; }
+    public void setChemotacticBlindnessTicks(int ticks) { this.chemotacticBlindnessTicks = Math.max(0, ticks); }
+    public boolean isChemotacticallyBlind() { return chemotacticBlindnessTicks > 0; }
+
+    public boolean sprayFormicAcid(Individual target, float distance) {
+        if (target == null || !target.isAlive() || distance > 1.5f || formicAcidGland < 20.0f) {
+            return false;
+        }
+        formicAcidGland -= 20.0f;
+        target.takeDamage(15.0f, "Formic Acid Chemical Burn");
+        target.setChemotacticBlindnessTicks(120); // 2s blindness
+        return true;
+    }
+
+    // --- Endogenous Circadian Clock & Polyphasic Sleep Rhythm ---
+    private float circadianPhase = 0.0f; // [0, 2pi]
+    private boolean polyphasicSleeping = false;
+
+    public float getCircadianPhase() { return circadianPhase; }
+    public void setCircadianPhase(float phase) { this.circadianPhase = phase; }
+    public boolean isPolyphasicSleeping() { return polyphasicSleeping; }
+    public void setPolyphasicSleeping(boolean sleeping) { this.polyphasicSleeping = sleeping; }
+
+    // --- Tripartite Symbiosis: Actinobacteria Bio-Weeding ---
+    private float actinobacteriaResin = 100.0f;
+
+    public float getActinobacteriaResin() { return actinobacteriaResin; }
+    public void refillActinobacteriaResin(float amt) { this.actinobacteriaResin = Math.min(100.0f, this.actinobacteriaResin + amt); }
+
+    public boolean applyActinobacteriaBioWeeding(org.swarmforge.core.simulation.FungusGarden garden) {
+        if (garden == null || actinobacteriaResin < 15.0f) return false;
+        actinobacteriaResin -= 15.0f;
+        garden.setContaminationLevel(Math.max(0.0f, garden.getContaminationLevel() - 0.3f));
+        garden.treatWithActinobacteria(10.0f);
+        return true;
+    }
+
+    // --- 1. Necrophoresis & Cemetery Refuse Deposition ---
+    private float decompositionAgeSeconds = 0.0f;
+
+    public float getDecompositionAgeSeconds() { return decompositionAgeSeconds; }
+    public void setDecompositionAgeSeconds(float age) { this.decompositionAgeSeconds = Math.max(0.0f, age); }
+    public boolean isOleicAcidEmitted() { return !alive && decompositionAgeSeconds >= 180.0f; }
+
+    public boolean pickUpCorpse(Individual corpse) {
+        if (corpse == null || corpse.isAlive() || this.carriedItem != CarriedItem.NONE) {
+            return false;
+        }
+        this.carriedItem = CarriedItem.DEAD_ANT;
+        return true;
+    }
+
+    public boolean depositCorpseAtRefuse(float cemeteryX, float cemeteryY, float cemeteryZ) {
+        if (this.carriedItem != CarriedItem.DEAD_ANT) {
+            return false;
+        }
+        this.carriedItem = CarriedItem.NONE;
+        return true;
+    }
+
+    // --- 2. Active Social Thermoregulation ---
+    private boolean shiveringThermogenesis = false;
+    private boolean wingFanning = false;
+    private float thoraxTemperatureC = 25.0f;
+
+    public boolean isShiveringThermogenesis() { return shiveringThermogenesis; }
+    public void setShiveringThermogenesis(boolean s) { this.shiveringThermogenesis = s; }
+    public boolean isWingFanning() { return wingFanning; }
+    public void setWingFanning(boolean f) { this.wingFanning = f; }
+    public float getThoraxTemperatureC() { return thoraxTemperatureC; }
+    public void setThoraxTemperatureC(float t) { this.thoraxTemperatureC = t; }
+
+    // --- 3. Dulosis & Slave-Making Raids ---
+    private boolean enslaved = false;
+    private UUID hostColonyId = null;
+
+    public boolean isEnslaved() { return enslaved; }
+    public void setEnslaved(boolean enslaved) { this.enslaved = enslaved; }
+    public UUID getHostColonyId() { return hostColonyId; }
+    public void setHostColonyId(UUID id) { this.hostColonyId = id; }
+
+    public boolean stealBrood(Individual broodTarget) {
+        if (broodTarget == null || this.carriedItem != CarriedItem.NONE) {
+            return false;
+        }
+        this.carriedItem = CarriedItem.BROOD;
+        return true;
+    }
+
+    public void integrateAsEnslavedWorker(UUID masterColonyId) {
+        this.enslaved = true;
+        this.hostColonyId = this.colonyId;
+        this.colonyId = masterColonyId;
+        this.lifeStage = LifeStage.ADULT;
+        this.job = Job.NURSE;
+    }
+
+    // --- 4. Bio-Acoustic Stridulation Rescue Call ---
+    private boolean stridulatingRescueCall = false;
+    private float stridulationFrequencyHz = 850.0f;
+    private float stridulationIntensityDb = 80.0f;
+
+    public boolean isStridulatingRescueCall() { return stridulatingRescueCall; }
+    public void setStridulatingRescueCall(boolean s) { this.stridulatingRescueCall = s; }
+    public float getStridulationFrequencyHz() { return stridulationFrequencyHz; }
+    public float getStridulationIntensityDb() { return stridulationIntensityDb; }
+
+    public void triggerStridulationRescue() {
+        this.stridulatingRescueCall = true;
+    }
+
     public boolean isClimbingTree() {
         return climbingTree;
     }
@@ -409,6 +526,7 @@ public class Individual implements java.io.Serializable, AgentView {
         BUILDER,
         FORAGER,
         GUARD,
+        UNDERTAKER,
         IDLE
     }
 
@@ -493,6 +611,10 @@ public class Individual implements java.io.Serializable, AgentView {
 
     public float getFatigue() {
         return fatigue;
+    }
+
+    public void setFatigue(float fatigue) {
+        this.fatigue = Math.max(0f, fatigue);
     }
 
     public boolean canFly() {
@@ -778,8 +900,10 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     public void tick(float deltaSeconds) {
-        if (!alive)
+        if (!alive) {
+            decompositionAgeSeconds += deltaSeconds;
             return;
+        }
         ageInSeconds += deltaSeconds;
         age = ageInSeconds;
 
@@ -871,6 +995,32 @@ public class Individual implements java.io.Serializable, AgentView {
             octopamine = Math.min(1.0f, octopamine + 0.1f * deltaSeconds);
         } else {
             octopamine = octopamine + (0.5f - octopamine) * Math.min(1.0f, 0.05f * deltaSeconds);
+        }
+
+        // Chemotactic blindness timer
+        if (chemotacticBlindnessTicks > 0) {
+            chemotacticBlindnessTicks--;
+        }
+
+        // Formic acid reservoir biochemical regeneration
+        formicAcidGland = Math.min(100.0f, formicAcidGland + 0.1f * deltaSeconds);
+
+        // Circadian Molecular Pacemaker & Polyphasic Sleep Recovery
+        circadianPhase = (float) ((circadianPhase + (2.0 * Math.PI / 86400.0) * deltaSeconds) % (2.0 * Math.PI));
+        if (polyphasicSleeping) {
+            energy = Math.min(maxEnergy, energy + 2.0f * deltaSeconds);
+            fatigue = Math.max(0.0f, fatigue - 4.0f * deltaSeconds);
+        }
+
+        // Active Social Thermoregulation (Shivering & Fanning)
+        if (shiveringThermogenesis) {
+            energy = Math.max(0.0f, energy - 0.3f * deltaSeconds);
+            thoraxTemperatureC = Math.min(40.0f, thoraxTemperatureC + 2.5f * deltaSeconds);
+        } else if (wingFanning) {
+            energy = Math.max(0.0f, energy - 0.15f * deltaSeconds);
+            thoraxTemperatureC = Math.max(18.0f, thoraxTemperatureC - 3.0f * deltaSeconds);
+        } else {
+            thoraxTemperatureC += (25.0f - thoraxTemperatureC) * 0.05f * deltaSeconds;
         }
     }
 

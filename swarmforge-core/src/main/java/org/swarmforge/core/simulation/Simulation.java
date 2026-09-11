@@ -100,6 +100,10 @@ public class Simulation {
         return dayNightCycle;
     }
 
+    public org.swarmforge.core.world.WeatherSystem getWeatherSystem() {
+        return weather;
+    }
+
     public Simulation(Terrarium terrarium) {
         this.terrarium = terrarium;
         this.pheromoneGrid = new SparsePheromoneGrid(

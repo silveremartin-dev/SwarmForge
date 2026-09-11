@@ -27,6 +27,8 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
     private static final Logger LOG = LoggerFactory.getLogger(SwarmForgeWebSocketServer.class);
     private final org.swarmforge.server.simulation.SimulationManager simulationManager;
     private final Map<WebSocket, String> clientSubscriptions = new ConcurrentHashMap<>();
+    private final Map<WebSocket, java.util.concurrent.atomic.AtomicInteger> clientMessageCounters = new ConcurrentHashMap<>();
+    private final Map<WebSocket, Long> clientWindowTimestamps = new ConcurrentHashMap<>();
 
     public SwarmForgeWebSocketServer(int port, org.swarmforge.server.simulation.SimulationManager simulationManager) {
         super(new InetSocketAddress(port));
@@ -38,6 +40,8 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
         LOG.info("New WebSocket connection: " + conn.getRemoteSocketAddress());
         // Default subscription to main
         clientSubscriptions.put(conn, "main");
+        clientMessageCounters.put(conn, new java.util.concurrent.atomic.AtomicInteger(0));
+        clientWindowTimestamps.put(conn, System.currentTimeMillis());
         conn.send("{\"type\": \"WELCOME\", \"message\": \"Connected to SwarmForge Server\"}");
     }
 
@@ -45,12 +49,27 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         LOG.info("Closed WebSocket connection: " + conn.getRemoteSocketAddress());
         clientSubscriptions.remove(conn);
+        clientMessageCounters.remove(conn);
+        clientWindowTimestamps.remove(conn);
     }
 
     @Override
     public void onMessage(WebSocket conn, String message) {
         if (message == null || message.length() > 65536) {
             conn.close(1009, "Payload too large (>64KB)");
+            return;
+        }
+
+        // Rate Limiter: Max 100 messages per 1-second sliding window per connection
+        long now = System.currentTimeMillis();
+        long windowStart = clientWindowTimestamps.computeIfAbsent(conn, k -> now);
+        if (now - windowStart > 1000) {
+            clientWindowTimestamps.put(conn, now);
+            clientMessageCounters.computeIfAbsent(conn, k -> new java.util.concurrent.atomic.AtomicInteger(0)).set(0);
+        }
+        var counter = clientMessageCounters.computeIfAbsent(conn, k -> new java.util.concurrent.atomic.AtomicInteger(0));
+        if (counter.incrementAndGet() > 100) {
+            conn.close(1008, "Rate limit exceeded (Max 100 msg/sec)");
             return;
         }
         try {

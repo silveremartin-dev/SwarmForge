@@ -6,8 +6,6 @@
  */
 package org.swarmforge.client;
 
-import org.swarmforge.client.util.I18nManager;
-
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -16,13 +14,23 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import org.swarmforge.client.network.SimulationClient;
+import org.swarmforge.client.ui.WorldEditorPane;
+import org.swarmforge.client.util.I18nManager;
+import org.swarmforge.core.domain.Colony;
+import org.swarmforge.core.domain.Individual;
+import org.swarmforge.core.domain.Terrarium;
+import org.swarmforge.core.domain.TerrariumCell;
+import org.swarmforge.core.simulation.Simulation;
+import org.swarmforge.core.species.*;
+import org.swarmforge.core.world.Biome;
 
+import java.util.UUID;
 import java.util.logging.Logger;
 
 /**
- * SwarmForge Client - Simulation Viewer
- * Connects to a SwarmForge Server and displays running simulations.
- * Supports God Mode for interventions.
+ * SwarmForge Client - High-Fidelity 3D Simulation Viewer & God Mode Controller.
+ * Connects to a SwarmForge Server via gRPC or runs local simulated terrariums with full JME3 PBR graphics.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
@@ -33,13 +41,17 @@ public class ClientApp extends Application {
 
     private String serverHost = "localhost";
     private int serverPort = 50051;
-    private boolean godModeEnabled = false;
+    private boolean godModeEnabled = true;
+
+    private SimulationClient networkClient;
+    private Simulation localSimulation;
+    private WorldEditorPane worldEditorPane;
 
     @Override
     public void start(Stage primaryStage) {
-        LOG.info("Starting SwarmForge Client...");
+        LOG.info("Starting SwarmForge Dedicated Client...");
 
-        // Load Application Icon (multi-resolution for Windows taskbar and titlebar)
+        // Load multi-resolution application icons
         try {
             java.net.URL iconUrl = getClass().getResource("/icons/icon.png");
             if (iconUrl != null) {
@@ -47,56 +59,43 @@ public class ClientApp extends Application {
                 primaryStage.getIcons().clear();
                 primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 16, 16, true, true));
                 primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 32, 32, true, true));
-                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 48, 48, true, true));
                 primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 64, 64, true, true));
-                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 128, 128, true, true));
-                primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr, 256, 256, true, true));
                 primaryStage.getIcons().add(new javafx.scene.image.Image(urlStr));
-            }
-        } catch (Exception e) {
-            LOG.warning("Could not load application icon: " + e.getMessage());
-        }
-
-        // Connection Dialog
-        VBox root = new VBox(20);
-        root.setPadding(new Insets(30));
-        root.setAlignment(Pos.CENTER);
-
-        // Header with Icon
-        HBox titleBox = new HBox(12);
-        titleBox.setAlignment(Pos.CENTER);
-        
-        try {
-            java.io.InputStream headerIconStream = getClass().getResourceAsStream("/icons/icon.png");
-            if (headerIconStream != null) {
-                javafx.scene.image.ImageView logoView = new javafx.scene.image.ImageView(new javafx.scene.image.Image(headerIconStream));
-                logoView.setFitWidth(40);
-                logoView.setFitHeight(40);
-                logoView.setPreserveRatio(true);
-                titleBox.getChildren().add(logoView);
             }
         } catch (Exception ignored) {}
 
-        // Title
+        showConnectionDialog(primaryStage);
+    }
+
+    private void showConnectionDialog(Stage primaryStage) {
+        VBox root = new VBox(18);
+        root.setPadding(new Insets(25));
+        root.setAlignment(Pos.CENTER);
+        root.setStyle("-fx-background-color: #0d1117;");
+
+        // Header Title
+        HBox titleBox = new HBox(12);
+        titleBox.setAlignment(Pos.CENTER);
         Label title = new Label(I18nManager.getInstance().get("client.title"));
-        title.setStyle("-fx-font-size: 28px; -fx-font-weight: bold;");
+        title.setStyle("-fx-font-size: 26px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
         titleBox.getChildren().add(title);
 
         Label subtitle = new Label(I18nManager.getInstance().get("client.subtitle"));
-        subtitle.setStyle("-fx-font-size: 14px;");
+        subtitle.setStyle("-fx-font-size: 13px; -fx-text-fill: #94a3b8;");
 
-        // Server Connection Form
+        // Connection Form
         GridPane form = new GridPane();
         form.setHgap(10);
         form.setVgap(10);
         form.setAlignment(Pos.CENTER);
 
         Label lblHost = new Label(I18nManager.getInstance().get("client.host"));
+        lblHost.setStyle("-fx-text-fill: #e2e8f0;");
         TextField txtHost = new TextField(serverHost);
         txtHost.setPromptText("localhost");
 
         Label lblPort = new Label(I18nManager.getInstance().get("client.port"));
-        lblPort.setId("lblPort");
+        lblPort.setStyle("-fx-text-fill: #e2e8f0;");
         TextField txtPort = new TextField(String.valueOf(serverPort));
         txtPort.setPromptText("50051");
 
@@ -107,216 +106,268 @@ public class ClientApp extends Application {
 
         // God Mode Toggle
         CheckBox chkGodMode = new CheckBox(I18nManager.getInstance().get("client.godmode"));
-        chkGodMode.setId("godModeToggle");
-        chkGodMode.setSelected(false);
+        chkGodMode.setSelected(true);
+        chkGodMode.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold;");
 
-        // Simulation List (placeholder)
+        // Simulation Selector
         ListView<String> simList = new ListView<>();
         simList.getItems().addAll(
-                "⏳ Connect to see available simulations...");
-        simList.setPrefHeight(150);
-        simList.setId("simulationList");
+                "🌍 Simulation Locale : Forêt Tempérée (Formica rufa)",
+                "🏜️ Simulation Locale : Désert Saharien (Cataglyphis bombycina)",
+                "🌴 Simulation Locale : Jungle Tropicale (Atta cephalotes)",
+                "🏔️ Simulation Locale : Forêt Boréale (Camponotus pennsylvanicus)"
+        );
+        simList.getSelectionModel().select(0);
+        simList.setPrefHeight(130);
+        simList.setStyle("-fx-control-inner-background: #1e293b; -fx-text-fill: white;");
 
-        // Buttons
+        // Action Buttons
         HBox buttons = new HBox(15);
         buttons.setAlignment(Pos.CENTER);
 
-        Button btnRefresh = new Button(I18nManager.getInstance().get("client.refresh"));
-        btnRefresh.setId("btnRefresh");
-        btnRefresh.setOnAction(e -> {
-            serverHost = txtHost.getText();
-            serverPort = Integer.parseInt(txtPort.getText());
-            refreshSimulationList(simList);
-        });
-
-        Button btnConnect = new Button(I18nManager.getInstance().get("client.connect"));
-        btnConnect.setStyle("-fx-font-weight: bold;");
-        btnConnect.setOnAction(e -> {
-            serverHost = txtHost.getText();
-            serverPort = Integer.parseInt(txtPort.getText());
-            godModeEnabled = chkGodMode.isSelected();
-            String selected = simList.getSelectionModel().getSelectedItem();
-            if (selected != null && !selected.startsWith("⏳")) {
-                launchViewer(primaryStage, selected);
-            } else {
-                Alert alert = new Alert(Alert.AlertType.WARNING, "Please select a simulation first");
-                alert.show();
+        Button btnConnectServer = new Button("🌐 " + I18nManager.getInstance().get("client.connect"));
+        btnConnectServer.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 16;");
+        btnConnectServer.setOnAction(e -> {
+            serverHost = txtHost.getText().trim();
+            try {
+                serverPort = Integer.parseInt(txtPort.getText().trim());
+            } catch (Exception ex) {
+                serverPort = 50051;
             }
+            godModeEnabled = chkGodMode.isSelected();
+            connectToServer(primaryStage, serverHost, serverPort);
         });
 
-        buttons.getChildren().addAll(btnRefresh, btnConnect);
+        Button btnLaunchLocal = new Button("🚀 Lancer Simulation");
+        btnLaunchLocal.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 16;");
+        btnLaunchLocal.setOnAction(e -> {
+            godModeEnabled = chkGodMode.isSelected();
+            int selectedIdx = simList.getSelectionModel().getSelectedIndex();
+            launchLocalSimulation(primaryStage, selectedIdx);
+        });
 
-        // Status
-        Label status = new Label(I18nManager.getInstance().get("status.ready"));
-        status.setId("statusLabel");
+        buttons.getChildren().addAll(btnLaunchLocal, btnConnectServer);
 
-        Label availableSimsLabel = new Label(I18nManager.getInstance().get("client.available_sims"));
-        availableSimsLabel.setId("availableSimsLabel");
+        Label status = new Label("Prêt - Choisissez une simulation ou connectez-vous au serveur.");
+        status.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
 
         root.getChildren().addAll(titleBox, subtitle, new Separator(), form, chkGodMode,
-                availableSimsLabel,
-                simList, buttons, status);
+                new Label("Simulations disponibles :"), simList, buttons, status);
 
-        Scene scene = new Scene(root, 500, 570);
-        primaryStage.setTitle("SwarmForge Viewer");
+        Scene scene = new Scene(root, 540, 580);
+        primaryStage.setTitle("SwarmForge Client - Sélecteur de Simulation");
         primaryStage.setScene(scene);
-        primaryStage.setOnCloseRequest(e -> {
-            Platform.exit();
-            System.exit(0);
-        });
         primaryStage.show();
     }
 
-    private void refreshSimulationList(ListView<String> simList) {
-        LOG.info("Connecting to " + serverHost + ":" + serverPort);
-        simList.getItems().clear();
-        simList.getItems().add("🔄 Connecting to server...");
+    private void launchLocalSimulation(Stage primaryStage, int scenarioIdx) {
+        LOG.info("Initializing high-fidelity local simulation scenario #" + scenarioIdx);
 
-        // Placeholder: In a real implementation, this would call ListSimulations gRPC
-        if (serverHost.equals("localhost")) {
-            Platform.runLater(() -> {
-                simList.getItems().clear();
-                simList.getItems().addAll(
-                        "🌍 Demo World - Tick: 12,450 - Pop: 342",
-                        "🏜️ Desert Simulation - Tick: 5,200 - Pop: 89",
-                        "🌲 Forest Colony - Tick: 45,000 - Pop: 1,234");
-            });
-        } else {
-            simList.getItems().add("❌ Connection failed (Mock)");
-        }
-    }
-
-    private org.swarmforge.client.view.SwarmViewerApp viewerApp;
-    private boolean isBridgeRunning = false;
-
-    private void launchViewer(Stage primaryStage, String simulationName) {
-        LOG.info("Launching viewer for: " + simulationName + " (God Mode: " + godModeEnabled + ")");
-
-        // 1. Launch JMonkeyEngine Window (if not already running)
-        if (viewerApp == null) {
-            viewerApp = new org.swarmforge.client.view.SwarmViewerApp();
-            viewerApp.start(); // Spawns JME thread and window
-        }
-
-        // 2. Start Mock Data Bridge
-        startMockDataBridge();
-
-        // 3. Setup JavaFX Controller Window (God Mode)
-        BorderPane viewerRoot = new BorderPane();
-        viewerRoot.setId("viewerRoot");
-
-        // Info Panel instead of 3D placeholder
-        VBox infoPanel = new VBox(10);
-        infoPanel.setAlignment(Pos.CENTER);
-        infoPanel.setPadding(new Insets(20));
-        Label infoTitle = new Label(I18nManager.getInstance().get("client.controller_active"));
-        infoTitle.setStyle("-fx-font-size: 24px;");
-        Label infoDesc = new Label(
-                "3D Simulation is running in a separate window.\nUse this window for God Mode controls.");
-        infoDesc.setStyle("-fx-text-alignment: center;");
-        infoPanel.getChildren().addAll(infoTitle, infoDesc);
-
-        viewerRoot.setCenter(infoPanel);
-
-        // God Mode Panel (right side)
-        if (godModeEnabled) {
-            VBox godPanel = createGodModePanel();
-            viewerRoot.setRight(godPanel);
-        }
-
-        Scene viewerScene = new Scene(viewerRoot, 400, 600); // Smaller controller window
-        primaryStage.setScene(viewerScene);
-        primaryStage.setTitle("SwarmForge Controller - " + simulationName);
-        primaryStage.setX(100);
-        primaryStage.setY(100);
-    }
-
-    private void startMockDataBridge() {
-        if (isBridgeRunning)
-            return;
-        isBridgeRunning = true;
-
-        Thread bridgeThread = new Thread(() -> {
-            java.util.Random rand = new java.util.Random();
-            // Mock ants
-            String[] antIds = new String[50];
-            float[] antX = new float[50];
-            float[] antZ = new float[50];
-            float[] antDirX = new float[50];
-            float[] antDirZ = new float[50];
-
-            for (int i = 0; i < 50; i++) {
-                antIds[i] = "ant_" + i;
-                antX[i] = 50 + (rand.nextFloat() - 0.5f) * 20;
-                antZ[i] = 50 + (rand.nextFloat() - 0.5f) * 20;
-                antDirX[i] = (rand.nextFloat() - 0.5f) * 0.2f;
-                antDirZ[i] = (rand.nextFloat() - 0.5f) * 0.2f;
+        int width = 64, height = 64, depth = 20;
+        Terrarium terrarium = new Terrarium(width, height, depth);
+        int surfaceLevel = 5;
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                for (int z = 0; z < depth; z++) {
+                    TerrariumCell.Material mat = (z < surfaceLevel) ? TerrariumCell.Material.AIR : TerrariumCell.Material.EARTH;
+                    terrarium.setCell(new TerrariumCell(
+                            x, y, z, mat,
+                            new float[TerrariumCell.PHEROMONE_TYPES], 22.0f, 60.0f));
+                }
             }
+        }
 
-            while (isBridgeRunning) {
-                if (viewerApp != null) {
-                    for (int i = 0; i < 50; i++) {
-                        // Move
-                        antX[i] += antDirX[i];
-                        antZ[i] += antDirZ[i];
+        Biome biome = switch (scenarioIdx) {
+            case 1 -> Biome.DESERT;
+            case 2 -> Biome.TROPICAL;
+            case 3 -> Biome.ALPINE_SNOW;
+            default -> Biome.FOREST;
+        };
+        terrarium.setLatitude(biome.getTypicalLatitude());
 
-                        // Bounce
-                        if (antX[i] < 0 || antX[i] > 100)
-                            antDirX[i] *= -1;
-                        if (antZ[i] < 0 || antZ[i] > 100)
-                            antDirZ[i] *= -1;
+        this.localSimulation = new Simulation(terrarium);
+        Species species = switch (scenarioIdx) {
+            case 1 -> new CataglyphisBombycina();
+            case 2 -> new AttaCephalotes();
+            case 3 -> new CamponotusPennsylvanicus();
+            default -> new FormicaRufa();
+        };
 
-                        viewerApp.updateEntity(antIds[i], antX[i], 0.5f, antZ[i]);
-                    }
-                }
-                try {
-                    Thread.sleep(16); // ~60 updates/sec
-                } catch (InterruptedException e) {
-                    break;
-                }
+        Colony colony = new Colony(species, width / 2.0f, height / 2.0f, 5.0f);
+        colony.addProtein(5000.0f);
+        colony.addCarbohydrate(5000.0f);
+        colony.setWaterStored(5000.0f);
+        colony.createQueens(1);
+
+        // Demographics
+        int pop = 50;
+        for (int i = 0; i < pop; i++) {
+            Individual.Caste caste = (i % 6 == 0) ? Individual.Caste.SOLDIER : Individual.Caste.WORKER;
+            float x = width / 2.0f + (float) (Math.random() * 8 - 4);
+            float y = height / 2.0f + (float) (Math.random() * 8 - 4);
+            Individual ind = new Individual(UUID.randomUUID(), caste, x, y, 5.0f);
+            ind.setHeading((float) (Math.random() * Math.PI * 2));
+            colony.addIndividual(ind);
+        }
+
+        this.localSimulation.addColony(colony);
+        this.localSimulation.start();
+
+        setupClientSimulationUI(primaryStage, "Simulation Locale (" + biome.getDisplayName() + ")");
+    }
+
+    private void connectToServer(Stage primaryStage, String host, int port) {
+        LOG.info("Connecting to gRPC Server at " + host + ":" + port);
+        try {
+            this.networkClient = new SimulationClient();
+            this.networkClient.connect(host, port);
+            setupClientSimulationUI(primaryStage, "Serveur SwarmForge (" + host + ":" + port + ")");
+        } catch (Exception e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Impossible de se connecter au serveur " + host + ":" + port + "\n" + e.getMessage());
+            alert.showAndWait();
+        }
+    }
+
+    private void setupClientSimulationUI(Stage primaryStage, String sessionTitle) {
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: #0b0f19;");
+
+        // Main 3D World Viewport
+        this.worldEditorPane = new WorldEditorPane();
+        this.worldEditorPane.setSimulationMode(true);
+        this.worldEditorPane.setActive(true);
+
+        if (localSimulation != null) {
+            this.worldEditorPane.setSimulation(localSimulation);
+        }
+
+        root.setCenter(this.worldEditorPane);
+
+        // God Mode Control Panel (Right dock)
+        if (godModeEnabled) {
+            VBox godPanel = createGodModeSidebar();
+            root.setRight(godPanel);
+        }
+
+        Scene scene = new Scene(root, 1280, 800);
+        primaryStage.setTitle("SwarmForge Client - " + sessionTitle);
+        primaryStage.setScene(scene);
+        primaryStage.setMaximized(true);
+
+        primaryStage.setOnCloseRequest(e -> {
+            if (localSimulation != null) {
+                localSimulation.stop();
+            }
+            if (networkClient != null) {
+                networkClient.disconnect();
+            }
+            Platform.exit();
+            System.exit(0);
+        });
+    }
+
+    private VBox createGodModeSidebar() {
+        VBox panel = new VBox(12);
+        panel.setPadding(new Insets(15));
+        panel.setPrefWidth(260);
+        panel.setStyle("-fx-background-color: #111827; -fx-border-color: #1f2937; -fx-border-width: 0 0 0 1;");
+
+        Label title = new Label("⚡ GOD MODE CONTROLLER");
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 15px; -fx-text-fill: #f59e0b;");
+
+        // Spawn Interventions
+        Label lblSpawn = new Label("🌱 Ressources & Individus");
+        lblSpawn.setStyle("-fx-font-weight: bold; -fx-text-fill: #94a3b8;");
+
+        Button btnAddFood = new Button("🍯 Nourriture (+1000)");
+        btnAddFood.setMaxWidth(Double.MAX_VALUE);
+        btnAddFood.setStyle("-fx-background-color: #065f46; -fx-text-fill: #34d399; -fx-font-weight: bold;");
+        btnAddFood.setOnAction(e -> {
+            if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
+                Colony col = localSimulation.getColonies().get(0);
+                col.addCarbohydrate(1000.0f);
+                col.addProtein(1000.0f);
+                LOG.info("God Mode: 1000 food added to colony");
             }
         });
-        bridgeThread.setDaemon(true);
-        bridgeThread.start();
-    }
 
-    private VBox createGodModePanel() {
-        VBox panel = new VBox(10);
-        panel.setId("godModePanel");
-        panel.setPadding(new Insets(10));
-        panel.setMinWidth(250);
+        Button btnSpawnWorkers = new Button("🐜 Invoquer 10 Ouvrières");
+        btnSpawnWorkers.setMaxWidth(Double.MAX_VALUE);
+        btnSpawnWorkers.setStyle("-fx-background-color: #1e3a8a; -fx-text-fill: #60a5fa; -fx-font-weight: bold;");
+        btnSpawnWorkers.setOnAction(e -> {
+            if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
+                Colony col = localSimulation.getColonies().get(0);
+                for (int i = 0; i < 10; i++) {
+                    Individual ind = new Individual(UUID.randomUUID(), Individual.Caste.WORKER, col.getNestX() + (float)(Math.random() * 4 - 2), col.getNestY() + (float)(Math.random() * 4 - 2), col.getNestZ());
+                    col.addIndividual(ind);
+                }
+                LOG.info("God Mode: 10 workers spawned");
+            }
+        });
 
-        Label title = new Label(I18nManager.getInstance().get("godmode.title"));
-        title.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
+        // Climate & Disaster Interventions
+        Label lblClimate = new Label("⛈️ Climat & Phénomènes");
+        lblClimate.setStyle("-fx-font-weight: bold; -fx-text-fill: #94a3b8;");
 
-        // Intervention buttons
-        Button btnAddFood = new Button(I18nManager.getInstance().get("godmode.add_food"));
-        Button btnSpawnAnts = new Button(I18nManager.getInstance().get("godmode.spawn_ants"));
-        Button btnTriggerRain = new Button(I18nManager.getInstance().get("godmode.trigger_rain"));
-        Button btnTriggerHeat = new Button(I18nManager.getInstance().get("godmode.heat_wave"));
-        Button btnKillSelected = new Button(I18nManager.getInstance().get("godmode.kill_selected"));
+        Button btnTriggerRain = new Button("🌧️ Déclencher Averse");
+        btnTriggerRain.setMaxWidth(Double.MAX_VALUE);
+        btnTriggerRain.setStyle("-fx-background-color: #075985; -fx-text-fill: #38bdf8;");
+        btnTriggerRain.setOnAction(e -> {
+            if (localSimulation != null && localSimulation.getWeather() != null) {
+                localSimulation.getWeather().setRainfall(15.0f);
+                LOG.info("God Mode: Rainstorm triggered");
+            }
+        });
 
-        btnKillSelected.setId("btnKillSelected");
+        Button btnTriggerHeat = new Button("☀️ Vague de Chaleur (35°C)");
+        btnTriggerHeat.setMaxWidth(Double.MAX_VALUE);
+        btnTriggerHeat.setStyle("-fx-background-color: #9a3412; -fx-text-fill: #fb923c;");
+        btnTriggerHeat.setOnAction(e -> {
+            if (localSimulation != null && localSimulation.getWeather() != null) {
+                localSimulation.getWeather().setTemperature(35.0f);
+                localSimulation.getWeather().setRainfall(0.0f);
+                LOG.info("God Mode: Heat wave triggered");
+            }
+        });
 
-        Label heightLabel = new Label("Spawn");
-        heightLabel.setId("spawnLabel");
+        Button btnFlight = new Button("👑 Vol Nuptial");
+        btnFlight.setMaxWidth(Double.MAX_VALUE);
+        btnFlight.setStyle("-fx-background-color: #701a75; -fx-text-fill: #f472b6; -fx-font-weight: bold;");
+        btnFlight.setOnAction(e -> {
+            if (localSimulation != null && localSimulation.getWeather() != null) {
+                localSimulation.getWeather().setTemperature(26.0f);
+                localSimulation.getWeather().setHumidity(75.0f);
+                LOG.info("God Mode: Nuptial flight conditions activated");
+            }
+        });
 
-        Label eventsLabel = new Label("Events");
-        eventsLabel.setId("eventsLabel");
+        // Destruction / Population Control
+        Label lblDestroy = new Label("⚡ Contrôle de Population");
+        lblDestroy.setStyle("-fx-font-weight: bold; -fx-text-fill: #94a3b8;");
 
-        Label destroyLabel = new Label("Destroy");
-        destroyLabel.setId("destroyLabel");
+        Button btnCullHalf = new Button("💀 Réduire Population (-50%)");
+        btnCullHalf.setMaxWidth(Double.MAX_VALUE);
+        btnCullHalf.setStyle("-fx-background-color: #7f1d1d; -fx-text-fill: #f87171;");
+        btnCullHalf.setOnAction(e -> {
+            if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
+                Colony col = localSimulation.getColonies().get(0);
+                var living = col.getLivingIndividuals();
+                int toKill = living.size() / 2;
+                for (int i = 0; i < toKill && i < living.size(); i++) {
+                    living.get(i).setHealth(0);
+                }
+                LOG.info("God Mode: Culled " + toKill + " individuals");
+            }
+        });
 
         panel.getChildren().addAll(
                 title, new Separator(),
-                heightLabel,
-                btnAddFood, btnSpawnAnts,
+                lblSpawn, btnAddFood, btnSpawnWorkers,
                 new Separator(),
-                eventsLabel,
-                btnTriggerRain, btnTriggerHeat,
+                lblClimate, btnTriggerRain, btnTriggerHeat, btnFlight,
                 new Separator(),
-                destroyLabel,
-                btnKillSelected);
+                lblDestroy, btnCullHalf
+        );
 
         return panel;
     }

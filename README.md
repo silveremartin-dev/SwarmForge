@@ -57,18 +57,18 @@ Built-in interactive documentation, domain definitions, biological equations, an
 
 | Feature Subsystem | Technical Capabilities & Implementation |
 |-------------------|------------------------------------------|
-| **Biological Engine** | **100% Data-Driven Architecture** (Zero hardcoded constants). Lifespans, walking/flight speeds, oviposition rates, development stage durations (days $\rightarrow$ 1440 ticks/day), Q10 thermal kinetics, mandibular biting forces (MPa), and caste protein thresholds dynamically driven by `CustomSpecies` & `CasteTemplate` presets. |
-| **Species & Ecology Library** | High-fidelity biological profiles for *Atta*, *Apis*, *Vespula*, *Vespa*, *Reticulitermes*, *Pogonomyrmex*, *Formica*, *Aphis*, *Pieris*, *Myrmeleon*, and *Porcellio*. |
-| **Predator-Prey AI & Pathology** | 4 distinct hunting styles (`AMBUSH`, `TRAP`, `CHASE`, `SWOOP`), specialized raid behaviors, boss predator events, trophobiosis mutualism, and SIR epidemic dynamics ($R_0$, incubation, grooming defense). |
-| **Core Compute & Spatial Query** | SwarmForge v2.0 **Artemis-odb ECS Engine** (`org.swarmforge.core.ecs.*`), **256-Bit Bitmask Ethology Engine** (`EthologyComponent` covering 220+ eusocial behaviors across 4 primitive `long` words), zero-allocation open-addressing `SpatialPartitioningSystem` ($O(1)$ spatial queries), Z-curve Z-order coding. *(Legacy 1.0 OOP individual simulation marked as @Deprecated)*. |
+| **Biological Engine** | **100% Data-Driven Architecture** (Zero hardcoded constants). Lifespans, walking/flight speeds, oviposition rates, development stage durations (days $\rightarrow$ 1440 ticks/day), Arrhenius $Q_{10} = 2.2$ thermal kinetics, mandibular biting forces (MPa), caste protein thresholds, and stoichiometric $C:N$ (22.5:1) fungal gongylidia synthesis dynamically driven by `CustomSpecies` & `CasteTemplate` presets. |
+| **Species & Ecology Library** | High-fidelity biological profiles for *Atta*, *Apis*, *Vespula*, *Vespa*, *Reticulitermes*, *Pogonomyrmex*, *Formica*, *Aphis*, *Pieris*, *Myrmeleon*, and *Porcellio*. Nuptial flight synchronization conditioned on aerological/meteorological windows (temperature, humidity, wind shear, barometric pressure). |
+| **Predator-Prey AI & Pathology** | 4 distinct hunting styles (`AMBUSH`, `TRAP`, `CHASE`, `SWOOP`), specialized raid behaviors, boss predator events, trophobiosis mutualism, Bray-Curtis Cuticular Hydrocarbon (CHC) profile discrimination, and SIR epidemic dynamics ($R_0$, incubation, grooming defense). |
+| **Core Compute & Zero-Legacy Architecture** | SwarmForge v2.0 **Zero Legacy Architecture**: Canonical `Individual` domain model implementing zero-cost `AgentView` bridging to the **Artemis-odb ECS Engine** (`org.swarmforge.core.ecs.*`), **256-Bit Bitmask Ethology Engine** (`EthologyComponent` covering 220+ eusocial behaviors across 4 primitive `long` words), and zero-allocation open-addressing `SpatialPartitioningSystem` ($O(1)$ spatial queries). |
 | **GPU Acceleration** | OpenCL / TornadoVM for 3D pheromone decay, evaporation, and gradient diffusion matrix calculations. |
-| **Cognitive Architectures** | BDI (Belief-Desire-Intention), Finite State Machines (FSM), Reinforcement Learning (Q-Learning / PyTorch ONNX Bridge), Fuzzy Logic, Behavior Trees. |
+| **Cognitive Architectures** | Multi-rate decision cycles in FSM Architecture (staggered 3–5 tick evaluation for perception/navigation, 1-tick for locomotion/kinematics), BDI (Belief-Desire-Intention), Reinforcement Learning (Q-Learning / PyTorch ONNX Bridge), Fuzzy Logic, Behavior Trees. |
 | **Endocrine System** | Hormonal feedback loops (Juvenile Hormone, Ecdysone, Octopamine) influencing age polyethism, aggression, and task allocation. |
-| **Nest Thermodynamics** | Stack-effect buoyancy ventilation, passive thermal regulation, metabolic $CO_2$ feedback grids. |
+| **Nest Thermodynamics & Fluid Mechanics** | 1D Fourier thermal diffusion, Darcy-Weisbach friction head losses, stack-effect buoyancy ventilation, passive thermal regulation, and metabolic $CO_2$ feedback grids. |
 | **Persistence Tier** | Dual-mode persistence: **PostgreSQL** relational database with automatic fallback to **H2 In-Memory** database (local standalone mode) and local **JSON Presets** (`~/.swarmforge/presets/`). |
-| **State Checkpointing** | Binary GZIP compressed snapshots (`SimulationCheckpoint`) recording physical grid states and God Mode intervention journals for 100% deterministic reproducibility. |
-| **Weather & Climate** | Dynamic solar angle, precipitation, humidity, ambient temperature, seasonal transitions, magnetic field vectors. |
-| **Security & Protocol** | gRPC over TLS, Protobuf/FlatBuffers zero-copy streaming, JWT authentication (`JwtServerInterceptor`), REST API with CORS. |
+| **State Checkpointing** | Binary GZIP compressed snapshots (`SimulationCheckpoint`) recording physical grid states and God Mode intervention journals for 100% deterministic reproducibility with path-traversal prevention (`Path.normalize()`). |
+| **Weather & Climate** | Dynamic solar angle, precipitation, humidity, ambient temperature, seasonal transitions, magnetic field vectors, and Markov chain weather state transitions. |
+| **Security & Protocol** | gRPC over TLS with 16 MB bounded message frames and Gzip compression, Protobuf/FlatBuffers zero-copy streaming, sliding-window WebSocket rate limiting (100 msg/s/client) with connection tracking, JWT authentication (`JwtServerInterceptor`), REST API with CORS. |
 
 ---
 
@@ -93,8 +93,8 @@ For large-scale research modeling up to **1,000,000+ agents**, SwarmForge v2.0 u
 - **RAM Footprint Stability (Zero OOM Crashes)**:
   - **v2.0 Artemis ECS Mode**: ~148 MB RAM for 10,000 agents ($\le$ 850 MB JVM heap at 1M scale).
   - **Headless SoA Mode (`CrowdSimulator` Buffer)**: ~32 bytes/agent $\rightarrow$ **32 MB RAM for 1,000,000 agents**.
-- **Legacy 1.0 Codebase Deprecation**:
-  - The legacy 1.0 individual OOP simulation model (`org.swarmforge.core.simulation.Individual`, `org.swarmforge.core.simulation.*System`) has been deprecated in favor of the v2.0 data-driven ECS pipeline (`org.swarmforge.core.ecs.*`).
+- **Zero Legacy Codebase Policy**:
+  - The codebase has completely eliminated all obsolete and legacy models in favor of the high-throughput v2.0 data-driven ECS pipeline (`org.swarmforge.core.ecs.*`) with zero-cost `AgentView` wrappers.
 
 > 📖 See [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md) for full latency percentiles (min, p95, max), species-specific comparisons, and hardware profiling details.
 

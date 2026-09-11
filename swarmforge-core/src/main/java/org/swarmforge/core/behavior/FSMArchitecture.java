@@ -268,7 +268,14 @@ public class FSMArchitecture implements ReasoningArchitecture {
             transitionTo(State.EXPLORING);
             return randomMove(agent);
         }
-        return Action.attack(ctx.getNearestEnemy(agent));
+        var enemy = ctx.getNearestEnemy(agent);
+        if (agent instanceof Individual ind && enemy instanceof Individual enemyInd) {
+            float dist = (float) Math.hypot(enemyInd.getX() - ind.getX(), enemyInd.getY() - ind.getY());
+            if (dist <= 1.5f && ind.getFormicAcidGland() >= 20.0f && (ind.getSpecies() == null || ind.getSpecies().canFireFormicAcidArtilleryJet() || ind.isSoldier())) {
+                ind.sprayFormicAcid(enemyInd, dist);
+            }
+        }
+        return Action.attack(enemy);
     }
 
     private Action handleFleeing(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {

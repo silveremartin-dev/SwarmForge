@@ -109,27 +109,30 @@ class ColonyTest {
         assertEquals(1, colony.countByCaste(Individual.Caste.SOLDIER));
     }
 
+    static class TestListener implements ColonyListener {
+        boolean birthCalled = false;
+        boolean deathCalled = false;
+
+        @Override
+        public void onBirth(Colony c, Individual ind) {
+            birthCalled = true;
+        }
+
+        @Override
+        public void onDeath(Colony c, Individual ind) {
+            deathCalled = true;
+        }
+    }
+
     @Test
     void testColonyListener() {
-        final boolean[] birthCalled = { false };
-        final boolean[] deathCalled = { false };
-
-        colony.addListener(new ColonyListener() {
-            @Override
-            public void onBirth(Colony c, Individual ind) {
-                birthCalled[0] = true;
-            }
-
-            @Override
-            public void onDeath(Colony c, Individual ind) {
-                deathCalled[0] = true;
-            }
-        });
+        TestListener listener = new TestListener();
+        colony.addListener(listener);
 
         Individual worker = new Individual(colony.getId(), Individual.Caste.WORKER, 50f, 50f, 5f);
         colony.addIndividual(worker);
 
-        assertTrue(birthCalled[0]);
+        assertTrue(listener.birthCalled);
     }
 
     @Test
