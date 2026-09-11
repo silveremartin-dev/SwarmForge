@@ -19,10 +19,10 @@ import java.util.List;
 public class PolyergusRufescens extends CustomSpecies {
 
     public PolyergusRufescens() {
+        super("Polyergus", InsectOrder.ANT);
         setPresetName("Fourmi Amazone Duloce (Polyergus rufescens)");
         setCommonName("Amazon Slave-Making Ant");
         setScientificName("Polyergus rufescens");
-        setInsectType("ANT");
         setDescription("Obligate slave-making ant with sickle mandibles, conducting summer raids to capture Formica brood.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -36,12 +36,16 @@ public class PolyergusRufescens extends CustomSpecies {
         setPrimaryDiet("HONEYDEW");
         setSecondaryDiet("INSECTS_MEAT");
         setOptimalTempCelsius(22.0f);
-        setMinTempCelsius(0.0f);
-        setMaxTempCelsius(40.0f);
+        setMinTempCelsius(6.0f);
+        setMaxTempCelsius(36.0f);
         setNestType("UNDERGROUND_BURROW");
-        setVenomType("NONE");
+        setVenomType("POWERFUL_MANDIBLES");
         setAggression(0.95f);
-        setCanPerformSocialThermoregulation(false);
+
+        // Ethological capabilities
+        setIsSlaveMakingSpecies(true);
+        setCanHarmonizeChcGestalt(true);
+        setHasPreySizeSelectivePheromones(true);
 
         CasteTemplate queen = new CasteTemplate("Reine Amazone", 550f, 20f);
         queen.setLifespan(365 * 15);

@@ -114,6 +114,51 @@ public class EcsAgentAdapter implements AgentView {
     }
 
     @Override
+    public boolean isQueen() {
+        if (mLife != null && mLife.has(entityId)) {
+            String caste = mLife.get(entityId).casteName;
+            if (caste != null) {
+                String c = caste.toLowerCase();
+                return c.contains("queen") || c.contains("reine") || c.contains("gyne");
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isNurse() {
+        if (mLife != null && mLife.has(entityId)) {
+            String caste = mLife.get(entityId).casteName;
+            if (caste != null) {
+                String c = caste.toLowerCase();
+                return c.contains("nurse") || c.contains("nourrice") || c.contains("minima") || c.contains("minime");
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isDrone() {
+        if (mLife != null && mLife.has(entityId)) {
+            String caste = mLife.get(entityId).casteName;
+            if (caste != null) {
+                String c = caste.toLowerCase();
+                return c.contains("male") || c.contains("mâle") || c.contains("drone") || c.contains("king") || c.contains("roi");
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public org.swarmforge.core.species.Species getSpecies() {
+        if (mColony != null && mColony.has(entityId)) {
+            var col = org.swarmforge.core.ecs.ColonyRegistry.getColony(mColony.get(entityId).colonyId);
+            if (col != null) return col.getSpecies();
+        }
+        return null;
+    }
+
+    @Override
     public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
         return java.util.Set.of(org.swarmforge.core.domain.ResourceType.SEED); // Standard forager payload
     }

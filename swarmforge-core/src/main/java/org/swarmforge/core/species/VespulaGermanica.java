@@ -20,10 +20,10 @@ import java.util.List;
 public class VespulaGermanica extends CustomSpecies {
 
     public VespulaGermanica() {
+        super("Vespula", InsectOrder.WASP);
         setPresetName("Guêpe Commune (Vespula germanica)");
         setCommonName("European Yellowjacket Wasp");
         setScientificName("Vespula germanica");
-        setInsectType("WASP");
         setDescription("Flying carnivorous hunter constructing paper nests from woody pulp.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -34,12 +34,20 @@ public class VespulaGermanica extends CustomSpecies {
         setViewDistance(6.0f);
         setWorkersCanFly(true);
         setTypicalColonySize(4000);
-        setPrimaryDiet("INSECTS_MEAT");
-        setSecondaryDiet("SUGARS_NECTAR");
-        setNestType("PAPER_NEST");
-        setVenomType("VENOMOUS_STING");
         setAggression(0.85f);
+        setOptimalTempCelsius(25.0f);
+        setMinTempCelsius(12.0f);
+        setMaxTempCelsius(38.0f);
+
+        // Ethological capabilities
         setCanPerformLarvalSalivaryTrophallaxis(true);
+        setCanMasticatePaperPulpCarton(true);
+        setCanScrapeWoodPulpCarton(true);
+        setCanHarvestLarvalSalivaDroplets(true);
+        setCanApplyPedicelAntRepellent(true);
+        setCanCoatWaspPedicelAntRepellent(true);
+        setCanRecognizeFacialVisualPatterns(true);
+        setCanDrumAbdomenWaspCellRim(true);
 
         CasteTemplate queen = new CasteTemplate("Fondatrice (Reine)", 450f, 20f);
         queen.setLifespan(365);

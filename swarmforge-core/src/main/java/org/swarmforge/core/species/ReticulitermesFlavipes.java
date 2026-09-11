@@ -20,10 +20,10 @@ import java.util.List;
 public class ReticulitermesFlavipes extends CustomSpecies {
 
     public ReticulitermesFlavipes() {
+        super("Reticulitermes", InsectOrder.TERMITE);
         setPresetName("Termite Souterrain (Reticulitermes flavipes)");
         setCommonName("Eastern Subterranean Termite");
         setScientificName("Reticulitermes flavipes");
-        setInsectType("TERMITE");
         setDescription("Eusocial insect of the order Isoptera. Queen and King present in royal chamber, feeding on cellulose.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -35,14 +35,21 @@ public class ReticulitermesFlavipes extends CustomSpecies {
         setWorkerSpeed(0.35f);
         setViewDistance(1.5f);
         setTypicalColonySize(250000);
-        setPrimaryDiet("WOOD_CELLULOSE");
-        setSecondaryDiet("FUNGUS");
-        setNestType("WOOD_TUNNELS");
-        setVenomType("POWERFUL_MANDIBLES");
         setAggression(0.4f);
+        setOptimalTempCelsius(25.0f);
+        setMinTempCelsius(10.0f);
+        setMaxTempCelsius(36.0f);
 
+        // Ethological capabilities
         setHasTermiteGutSymbiosis(true);
         setHasProctodealTrophallaxis(true);
+        setCanTrophallaxisProtozoa(true);
+        setCanDrumSubstrate(true);
+        setCanSynchronizeSoldierAlarmDrumming(true);
+        setCanBlockRoyalChamberSentry(true);
+        setCanPlasterWoodWallGallery(true);
+        setCanPerformQueenPhysogastricPeristalsis(true);
+        setCanExchangeRoyalPairGrooming(true);
         setHasMagnetoreception(true);
         setMagnetoreceptionSensitivity(2.5f); // High sensitivity to geomagnetic field
         setThermoreceptionSensitivity(0.2f); // High thermal gradient sensitivity for subterranean chambers

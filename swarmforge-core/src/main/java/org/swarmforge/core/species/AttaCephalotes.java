@@ -20,10 +20,10 @@ import java.util.List;
 public class AttaCephalotes extends CustomSpecies {
 
     public AttaCephalotes() {
+        super("Atta", InsectOrder.ANT);
         setPresetName("Leafcutter Ant (Atta cephalotes)");
         setCommonName("Leafcutter Ant");
         setScientificName("Atta cephalotes");
-        setInsectType("ANT");
         setDescription("Harvests foliage to cultivate a symbiotic fungus garden inside immense subterranean nests.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -38,7 +38,20 @@ public class AttaCephalotes extends CustomSpecies {
         setNestType("UNDERGROUND_BURROW");
         setVenomType("POWERFUL_MANDIBLES");
         setAggression(0.5f);
+        setOptimalTempCelsius(26.0f);
+        setMinTempCelsius(18.0f);
+        setMaxTempCelsius(36.0f);
+
+        // Ethological capabilities
+        setCanFarmFungus(true);
         setCanWeedFungusGarden(true);
+        setCanShearLeafCrescentMandible(true);
+        setCanInoculateLeafPulpEnzymes(true);
+        setCanGroomLeafPulpParasitesMinim(true);
+        setCanExcavateGardenWasteChambers(true);
+        setCanAerateFungalCombChambers(true);
+        setCanStridulateRescueCall(true);
+        setCanCultivateStreptomycesAntibiotics(true);
 
         CasteTemplate queen = new CasteTemplate("Reine Géante", 1000f, 20f);
         queen.setLifespan(365 * 20);

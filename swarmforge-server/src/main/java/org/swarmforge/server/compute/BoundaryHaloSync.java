@@ -82,7 +82,8 @@ public class BoundaryHaloSync {
             }
 
             float[] remoteVals = entry.getValue();
-            float[] localVals = grid.getPheromones(localX, localY, z);
+            float[] existing = grid.readAll(localX, localY, z);
+            float[] localVals = existing != null ? existing : new float[SparsePheromoneGrid.PHEROMONE_TYPES];
 
             float[] blended = new float[Math.max(localVals.length, remoteVals.length)];
             for (int ch = 0; ch < blended.length; ch++) {
@@ -91,7 +92,7 @@ public class BoundaryHaloSync {
                 blended[ch] = loc * (1.0f - weight) + rem * weight;
             }
 
-            grid.setPheromones(localX, localY, z, blended);
+            grid.putEntry(Morton3D.encode(localX, localY, z), blended);
         }
     }
 }

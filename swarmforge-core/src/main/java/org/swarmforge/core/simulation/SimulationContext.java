@@ -120,6 +120,50 @@ public interface SimulationContext {
     }
 
     /**
+     * Species-specific biometeorological adverse flight evaluation.
+     * Takes into account species thermal envelope, cold flight traits (e.g. Bombus at 4°C), and flight speed vs wind.
+     */
+    default boolean isAdverseWeatherForFlight(org.swarmforge.core.species.Species species) {
+        if (isRaining()) return true;
+        float temp = getTemperature();
+        if (species != null) {
+            float minFlightTemp = species.canForageSubZeroBumblebee() ? 4.0f :
+                    ("WASP".equalsIgnoreCase(species.getInsectType()) ? 12.0f :
+                    ("BEE".equalsIgnoreCase(species.getInsectType()) ? 10.0f : Math.max(8.0f, species.getMinTempCelsius() + 4.0f)));
+            if (temp < minFlightTemp) return true;
+            if (temp > species.getMaxTempCelsius()) return true;
+        } else {
+            if (temp < 10.0f) return true;
+        }
+        return false;
+    }
+
+    default boolean isAdverseWeatherForFlight(org.swarmforge.core.behavior.AgentView agent) {
+        if (agent != null && agent.getSpecies() != null) {
+            return isAdverseWeatherForFlight(agent.getSpecies());
+        }
+        return isAdverseWeatherForFlight();
+    }
+
+    /**
+     * Calculates air dynamic viscosity in Pa.s as a function of air temperature in Celsius (Sutherland approximation).
+     */
+    default float getAirDynamicViscosity(float tempCelsius) {
+        double tKelvin = 273.15 + tempCelsius;
+        return (float) (1.716e-5 * Math.pow(tKelvin / 273.15, 0.76));
+    }
+
+    /**
+     * Calculates flight Reynolds number Re = (rho * v * L) / mu.
+     */
+    default float getReynoldsNumber(float speedMps, float lengthMm, float tempCelsius) {
+        float mu = getAirDynamicViscosity(tempCelsius);
+        float rho = (float) (1.293 * (273.15 / (273.15 + tempCelsius))); // Air density kg/m^3
+        float lengthM = lengthMm / 1000.0f;
+        return (rho * Math.max(0.01f, speedMps) * lengthM) / (mu + 1e-9f);
+    }
+
+    /**
      * Get light level (0=dark, 1=bright).
      */
     float getLightLevel();
@@ -137,22 +181,22 @@ public interface SimulationContext {
     /**
      * Get CO2 concentration in ppm (ambient baseline ~400 ppm).
      */
-    float getCo2Ppm(float x, float y, float z);
+    default float getCo2Ppm(float x, float y, float z) { return 400.0f; }
 
     /**
      * Get geomagnetic inclination angle (degrees) for magnetoreceptive species orientation.
      */
-    float getGeomagneticHeading(float x, float y, float z);
+    default float getGeomagneticHeading(float x, float y, float z) { return 0.0f; }
 
     /**
      * Get local thermal gradient X component for thermoreception navigation.
      */
-    float getThermalGradientX(float x, float y, float z);
+    default float getThermalGradientX(float x, float y, float z) { return 0.0f; }
 
     /**
      * Get local thermal gradient Y component for thermoreception navigation.
      */
-    float getThermalGradientY(float x, float y, float z);
+    default float getThermalGradientY(float x, float y, float z) { return 0.0f; }
 
     /**
      * Get deterministic navigation flow vector components [dx, dy, dz] towards a target cell.

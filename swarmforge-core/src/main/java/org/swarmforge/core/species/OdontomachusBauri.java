@@ -20,10 +20,10 @@ import java.util.List;
 public class OdontomachusBauri extends CustomSpecies {
 
     public OdontomachusBauri() {
+        super("Odontomachus", InsectOrder.ANT);
         setPresetName("Fourmi Mâchoire-Piège (Odontomachus bauri)");
         setCommonName("Trap-Jaw Ant");
         setScientificName("Odontomachus bauri");
-        setInsectType("ANT");
         setDescription("Predatory ant with spring-loaded catapult mandibles snapping shut at ultra-high velocity for predation and escape jumps.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -49,6 +49,7 @@ public class OdontomachusBauri extends CustomSpecies {
         // Ethological & Biomechanical specializations
         setHasTrapJawMechanism(true);
         setCanSnapTrapMandiblesCatapult(true);
+        setCanPerformGamergateDominanceTournament(true);
 
         CasteTemplate queen = new CasteTemplate("Reine Trap-Jaw", 500f, 25f);
         queen.setLifespan(365 * 8);

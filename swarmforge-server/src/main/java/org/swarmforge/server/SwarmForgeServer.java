@@ -405,6 +405,96 @@ public class SwarmForgeServer {
     }
 
     /**
+     * Load and configure an academic research scenario into the main simulation.
+     */
+    public void loadAcademicScenario(org.swarmforge.core.scenario.Scenario scenario) {
+        if (scenario == null) return;
+        LOG.info("Loading Academic Scenario: {} ({})", scenario.getTitle(), scenario.getId());
+
+        Simulation simulation = getSimulation();
+        if (simulation == null) return;
+
+        simulation.stop();
+        terrarium.clear();
+        simulation.reset(0);
+        simulation.setMasterSeed(scenario.getMasterSeed());
+
+        // 1. Terrain generation according to Biome
+        org.swarmforge.core.world.TerrainGenerator terrainGen = new org.swarmforge.core.world.TerrainGenerator();
+        int groundLevel = terrarium.getDepth() - 10;
+        float roughness = 8f;
+        float scale = 0.03f;
+
+        String biome = scenario.getBiomeName() != null ? scenario.getBiomeName().toUpperCase() : "TEMPERATE";
+        if (biome.contains("DESERT") || biome.contains("STEPPE") || biome.contains("ARID")) {
+            roughness = 4f;
+            scale = 0.02f;
+        } else if (biome.contains("ALPINE") || biome.contains("MOUNTAIN") || biome.contains("HILLS") || biome.contains("TAIGA")) {
+            roughness = 14f;
+            scale = 0.05f;
+        } else if (biome.contains("WETLAND") || biome.contains("SAVANNA")) {
+            roughness = 3f;
+            scale = 0.01f;
+        }
+
+        terrainGen.generate(terrarium, groundLevel, roughness, scale);
+
+        // 2. Weather & Day/Night
+        if (simulation.getWeather() != null) {
+            simulation.getWeather().setTemperature(scenario.getInitialTemperature());
+            simulation.getWeather().setHumidity(scenario.getInitialHumidity() * 100f);
+        }
+
+        // 3. Colonies & Species
+        int totalColonies = scenario.getColonies().size();
+        for (int i = 0; i < totalColonies; i++) {
+            var colSetup = scenario.getColonies().get(i);
+            String spName = colSetup.speciesName();
+            org.swarmforge.core.species.Species species = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies(spName);
+
+            // Position calculation
+            int posX = (totalColonies == 1) ? (terrarium.getWidth() / 2) : (int) ((i + 1) * (terrarium.getWidth() / (totalColonies + 1.0f)));
+            int posY = (totalColonies == 1) ? (terrarium.getHeight() / 2) : (int) ((i + 1) * (terrarium.getHeight() / (totalColonies + 1.0f)));
+
+            // Nest Generation
+            NestGenerator nestGen = new NestGenerator(terrarium);
+            nestGen.generate(posX, posY, groundLevel - 5, NestGenerator.NestType.MATURE, 1.0f);
+
+            Colony colony = new Colony(species, posX, posY, groundLevel - 5);
+            for (int q = 0; q < colSetup.queenCount(); q++) {
+                colony.addIndividual(colony.createQueen());
+            }
+            for (int w = 0; w < colSetup.workerCount(); w++) {
+                Individual worker = colony.createWorker();
+                worker.setPosition(posX, posY, groundLevel - 2);
+                colony.addIndividual(worker);
+            }
+            for (int s = 0; s < colSetup.soldierCount(); s++) {
+                Individual soldier = colony.createSoldier();
+                soldier.setPosition(posX, posY, groundLevel - 2);
+                colony.addIndividual(soldier);
+            }
+
+            simulation.addColony(colony);
+        }
+
+        // 4. Food Patches
+        int foodCount = Math.max(10, scenario.getFoodPatchesCount());
+        java.util.Random rand = new java.util.Random(scenario.getMasterSeed());
+        for (int f = 0; f < foodCount; f++) {
+            float fx = 10 + rand.nextFloat() * (terrarium.getWidth() - 20);
+            float fy = 10 + rand.nextFloat() * (terrarium.getHeight() - 20);
+            simulation.spawnFood(fx, fy, groundLevel, 15 + rand.nextFloat() * 30, org.swarmforge.core.domain.ResourceType.SUGAR);
+        }
+
+        // 5. Start simulation
+        simulation.start();
+        LOG.info("Scenario '{}' initialized and running (Colonies: {}, Population: {})",
+                scenario.getTitle(), simulation.getColonies().size(),
+                simulation.getColonies().stream().mapToInt(Colony::getPopulation).sum());
+    }
+
+    /**
      * Create a demo world with a colony.
      */
     public void createDemoWorld() {
@@ -636,13 +726,27 @@ public class SwarmForgeServer {
         return clusterManager;
     }
 
+    public void listAcademicScenarios() {
+        System.out.println("\n=== Scénarios Académiques & Scientifiques Disponibles (SwarmForge) ===");
+        var list = org.swarmforge.core.scenario.AcademicScenarios.getAllAcademicScenarios(42L);
+        for (int i = 0; i < list.size(); i++) {
+            var s = list.get(i);
+            System.out.printf(" [%2d] %-34s | %s\n      Catégorie : %s (Colonies: %d, Biome: %s)\n",
+                    (i + 1), s.getId(), s.getTitle(), s.getAcademicCategory(), s.getColonies().size(), s.getBiomeName());
+        }
+        System.out.println("=======================================================================\n");
+    }
+
     public static void main(String[] args) {
         // Parse command-line arguments
         boolean createDemo = false;
         boolean listSims = false;
+        boolean listScenarios = false;
         boolean noGui = false;
         String dbMode = "local"; // default: local H2 fallback
         String runSimulation = null;
+        String scenarioArg = null;
+        long masterSeed = 42L;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -652,10 +756,28 @@ public class SwarmForgeServer {
                 }
                 case "--create-demo"         -> createDemo = true;
                 case "--list"               -> listSims = true;
+                case "--list-scenarios"     -> listScenarios = true;
                 case "--local", "--no-db"   -> dbMode = "local";
                 case "--postgres"           -> dbMode = "postgres";
                 case "--offline"            -> dbMode = "offline";
                 case "--nogui"              -> noGui = true;
+                case "--seed" -> {
+                    if (i + 1 < args.length) {
+                        try {
+                            masterSeed = Long.parseLong(args[++i]);
+                        } catch (NumberFormatException e) {
+                            System.err.println("Invalid seed: " + args[i]);
+                        }
+                    }
+                }
+                case "--scenario", "-s" -> {
+                    if (i + 1 < args.length) {
+                        scenarioArg = args[++i];
+                    } else {
+                        System.err.println("Error: --scenario requires a scenario ID or index (1-16)");
+                        System.exit(1);
+                    }
+                }
                 case "--run" -> {
                     if (i + 1 < args.length) {
                         runSimulation = args[++i];
@@ -674,6 +796,11 @@ public class SwarmForgeServer {
             }
         }
 
+        if (listScenarios) {
+            new SwarmForgeServer(ServerConfig.offline()).listAcademicScenarios();
+            return;
+        }
+
         try {
             ServerConfig config = switch (dbMode) {
                 case "postgres" -> ServerConfig.fromEnvironment();
@@ -690,7 +817,37 @@ public class SwarmForgeServer {
                 return;
             }
 
-            if (createDemo || runSimulation == null) {
+            if (scenarioArg != null) {
+                var scenarios = org.swarmforge.core.scenario.AcademicScenarios.getAllAcademicScenarios(masterSeed);
+                org.swarmforge.core.scenario.Scenario matchedScenario = null;
+
+                // Try index first (e.g. 1 to 16)
+                try {
+                    int idx = Integer.parseInt(scenarioArg);
+                    if (idx >= 1 && idx <= scenarios.size()) {
+                        matchedScenario = scenarios.get(idx - 1);
+                    }
+                } catch (NumberFormatException ignored) {}
+
+                // Try ID or name matching
+                if (matchedScenario == null) {
+                    for (var sc : scenarios) {
+                        if (sc.getId().equalsIgnoreCase(scenarioArg) ||
+                            sc.getTitle().toLowerCase().contains(scenarioArg.toLowerCase()) ||
+                            scenarioArg.toLowerCase().contains(sc.getId().toLowerCase())) {
+                            matchedScenario = sc;
+                            break;
+                        }
+                    }
+                }
+
+                if (matchedScenario != null) {
+                    server.loadAcademicScenario(matchedScenario);
+                } else {
+                    LOG.warn("Scenario '{}' not found. Falling back to demo world.", scenarioArg);
+                    server.createDemoWorld();
+                }
+            } else if (createDemo || runSimulation == null) {
                 server.createDemoWorld();
             } else {
                 server.loadWorld(runSimulation);
@@ -726,6 +883,7 @@ public class SwarmForgeServer {
                         }
                         case "status" -> server.printStatusBanner();
                         case "list" -> server.listSimulations();
+                        case "scenarios" -> server.listAcademicScenarios();
                         case "save" -> server.saveWorld("console_save");
                         case "info" -> server.printSimulationInfo();
                         default -> System.out.println("Unknown command: " + cmd + " (type 'help' for usage)");
@@ -745,6 +903,8 @@ public class SwarmForgeServer {
                   status      - Show server health and connection status
                   info        - Show current simulation statistics
                   list        - List available simulations in database
+                  scenarios   - List all 16 academic research scenario presets
+                  save        - Save current simulation state
                   stop / exit - Stop the server and exit
                   help        - Show this message
                 """);
@@ -771,18 +931,20 @@ public class SwarmForgeServer {
                 |  Usage: java -jar swarmforge-server.jar [OPTIONS]    |
                 +------------------------------------------------------+
                 |  Database mode (choose one):                         |
-                |    --local     Local mode: H2 fallback if no PG      |
-                |                (DEFAULT — ideal for dev/monoposte)   |
-                |    --postgres  PostgreSQL + Redis (production)        |
-                |    --offline   No database at all                     |
-                |    --no-db     Alias for --local (legacy)             |
+                |    --local          Local mode: H2 fallback if no PG |
+                |                     (DEFAULT — dev/monoposte)        |
+                |    --postgres       PostgreSQL + Redis (production)  |
+                |    --offline        No database at all               |
                 |                                                      |
-                |  Other options:                                      |
-                |    --nogui         Disable server GUI panel          |
-                |    --create-demo   Create and run demo world         |
-                |    --run <name>    Run named simulation from DB      |
-                |    --list          List available simulations        |
-                |    --help, -h      Show this help message            |
+                |  Scenario & Simulation options:                      |
+                |    --scenario, -s <id|1-16> Run academic scenario    |
+                |    --list-scenarios         List all 16 presets      |
+                |    --seed <num>             Master simulation seed   |
+                |    --create-demo            Create & run demo world  |
+                |    --run <name>             Run simulation from DB   |
+                |    --list                   List DB simulations      |
+                |    --nogui                  Disable server GUI       |
+                |    --help, -h               Show this help message   |
                 +------------------------------------------------------+
                 """);
     }

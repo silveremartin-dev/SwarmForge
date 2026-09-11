@@ -20,10 +20,10 @@ import java.util.List;
 public class LinepithemaHumile extends CustomSpecies {
 
     public LinepithemaHumile() {
+        super("Linepithema", InsectOrder.ANT);
         setPresetName("Fourmi d'Argentine (Linepithema humile)");
         setCommonName("Argentine Ant");
         setScientificName("Linepithema humile");
-        setInsectType("ANT");
         setDescription("Invasive species forming massive supercolonies with zero inter-nest aggression.");
         setQueenCountMode("POLYGYNE");
         setQueenCount(20);
@@ -37,7 +37,14 @@ public class LinepithemaHumile extends CustomSpecies {
         setSecondaryDiet("INSECTS_MEAT");
         setNestType("UNDERGROUND_BURROW");
         setAggression(0.6f);
+        setOptimalTempCelsius(24.0f);
+        setMinTempCelsius(8.0f);
+        setMaxTempCelsius(38.0f);
+
+        // Ethological capabilities
         setIsUnicolonial(true);
+        setHasThermalTrailDecay(true);
+        setHasTerritorialRepellentPheromone(true);
 
         CasteTemplate queen = new CasteTemplate("Reine", 300f, 8f);
         queen.setLifespan(365 * 10);

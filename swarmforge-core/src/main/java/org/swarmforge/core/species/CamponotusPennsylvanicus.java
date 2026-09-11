@@ -20,14 +20,15 @@ import java.util.List;
 public class CamponotusPennsylvanicus extends CustomSpecies {
 
     public CamponotusPennsylvanicus() {
+        super("Camponotus", InsectOrder.ANT);
         setPresetName("Fourmi Charpentière Noire (Camponotus pennsylvanicus)");
         setCommonName("Black Carpenter Ant");
         setScientificName("Camponotus pennsylvanicus");
-        setInsectType("ANT");
         setDescription("Large North American species nesting in decaying wood.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
         setQueenLifespan(365 * 25);
+        setQueenEggLayingRate(35.0f);
         setWorkerLifespan(365 * 7);
         setWorkerSpeed(0.4f);
         setViewDistance(5.0f);
@@ -36,8 +37,17 @@ public class CamponotusPennsylvanicus extends CustomSpecies {
         setPrimaryDiet("HONEYDEW");
         setSecondaryDiet("INSECTS_MEAT");
         setNestType("WOOD_TUNNELS");
-        setVenomType("POWERFUL_MANDIBLES");
+        setVenomType("FORMIC_ACID");
+        setAggression(0.45f);
+        setOptimalTempCelsius(23.0f);
+        setMinTempCelsius(6.0f);
+        setMaxTempCelsius(36.0f);
+
+        // Ethological capabilities
         setCanDrumSubstrate(true);
+        setCanSnapMandibleAcousticAlarm(true);
+        setCanPlasterWoodWallGallery(true);
+        setHasTermiteGutSymbiosis(true); // Blochmannia endosymbiosis
 
         CasteTemplate queen = new CasteTemplate("Reine", 750f, 15f);
         queen.setLifespan(365 * 25);

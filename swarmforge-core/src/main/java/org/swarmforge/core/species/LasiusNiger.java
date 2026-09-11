@@ -20,10 +20,10 @@ import java.util.List;
 public class LasiusNiger extends CustomSpecies {
 
     public LasiusNiger() {
+        super("Lasius", InsectOrder.ANT);
         setPresetName("Black Garden Ant (Lasius niger)");
         setCommonName("Black Garden Ant");
         setScientificName("Lasius niger");
-        setInsectType("ANT");
         setDescription("Widespread European monogyne ant species. Tends aphids and harvests honeydew.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -39,7 +39,16 @@ public class LasiusNiger extends CustomSpecies {
         setNestType("UNDERGROUND_BURROW");
         setVenomType("FORMIC_ACID");
         setAggression(0.3f);
+        setOptimalTempCelsius(22.0f);
+        setMinTempCelsius(6.0f);
+        setMaxTempCelsius(35.0f);
+
+        // Ethological capabilities
         setCanPerformTandemRunning(true);
+        setCanFarmAphids(true);
+        setCanMilkAphidHoneydewStroking(true);
+        setCanEnforceAphidSanitaryCordon(true);
+        setCanPlugContaminatedGalleries(true);
 
         CasteTemplate queen = new CasteTemplate("Reine", 500f, 10f);
         queen.setDescription("Reine fondatrice (9mm)");

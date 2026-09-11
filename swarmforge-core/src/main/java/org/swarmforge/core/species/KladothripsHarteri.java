@@ -19,10 +19,10 @@ import java.util.List;
 public class KladothripsHarteri extends CustomSpecies {
 
     public KladothripsHarteri() {
+        super("Kladothrips", InsectOrder.THRIPS);
         setPresetName("Thrips Eusocial (Kladothrips harteri)");
         setCommonName("Acacia Gall Thrips");
         setScientificName("Kladothrips harteri");
-        setInsectType("THRIPS");
         setDescription("Australian gall thrips featuring a wingless soldier caste defending acacia galls against parasites.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -32,11 +32,13 @@ public class KladothripsHarteri extends CustomSpecies {
         setViewDistance(2.0f);
         setWorkersCanFly(true);
         setTypicalColonySize(300);
-        setPrimaryDiet("PLANT_SAP");
-        setSecondaryDiet("LEAF");
-        setNestType("PLANT_GALL");
-        setVenomType("POWERFUL_FORELEGS");
         setAggression(0.7f);
+
+        // Ethological capabilities
+        setCanSqueezeGallIntrudersThrips(true);
+        setCanRepairGallSubstratalSecretion(true);
+        setCanPlugGallWithChitinousTube(true);
+        setCanSecreteGallClosingFluid(true);
 
         CasteTemplate foundress = new CasteTemplate("Gall Foundress", 180f, 3f);
         foundress.setLifespan(200);

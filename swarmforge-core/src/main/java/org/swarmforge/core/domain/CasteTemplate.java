@@ -19,8 +19,30 @@ import java.util.Map;
 public class CasteTemplate implements java.io.Serializable {
     private static final long serialVersionUID = 1L;
 
+    public enum CasteCategory {
+        PRIMARY_REPRODUCTIVE,    // Queen (Gyne), King
+        SECONDARY_REPRODUCTIVE,  // Neotenics, Gamergates
+        QUEEN_DICHTHADIIGYNE,    // Permanently apterous blind army ant queens (Eciton, Dorylus) with massive cyclical physogastry
+        QUEEN_ERGATOGYNE,        // Worker-like reproductive queens (Monomorium, Megalomyrmex)
+        MALE_DRONE,              // Classical alate reproductive males
+        MALE_ERGATANDROUS,       // Apterous fighting males with lethal mandibles (Cardiocondyla, Hypoponera, Agaonidae)
+        WORKER_MINIMA,           // Brood nurse, fungus micro-cultivator, minim (Atta)
+        WORKER_MEDIA,            // General worker, excavator, leaf-cutter
+        WORKER_MAJOR,            // Heavy transport, seed cracker, sub-soldier
+        SUPER_SOLDIER,           // Hypertrophied cephalic capsule super-soldiers (Pheidole rhea, P. harrisonfordi)
+        SOLDIER_DEFENSIVE,       // Combat soldier, mandibles
+        SOLDIER_PHRAGMOTIC,      // Disk-headed doorkeeper (Colobopsis, Cephalotes, Cryptotermes)
+        SOLDIER_NASUTE,          // Terpene glue nozzle sprayer (Nasutitermitinae)
+        SOLDIER_GALL_NYMPH,      // Sterile gall-defending soldier nymphs (Pseudoregma, Pemphigus, Kladothrips)
+        WORKER_AUTOTHYSIS,       // Kamikaze self-rupturing defense worker (Neocapritermes taracua, Colobopsis saundersi)
+        METABOLIC_REPLETE,       // Living honey/water storage pot - Plérogates (Myrmecocystus, Camponotus inflatus)
+        PSEUDERGATE,             // Totipotent nymph workers with regressive/stationary molts (Kalotermitidae, Termopsidae)
+        GENERAL_WORKER           // Default generalist worker
+    }
+
     private String name;
     private String description;
+    private CasteCategory category = CasteCategory.GENERAL_WORKER;
 
     // Stats
     private float baseHealth;
@@ -55,6 +77,10 @@ public class CasteTemplate implements java.io.Serializable {
     private float taskNursingWeight = 0.15f;
     private float taskQueenCareWeight = 0.10f;
     private float taskSanitationWeight = 0.05f;
+    private float taskStorageWeight = 0.0f; // For Plérogates / Honeypots
+    private float taskGateKeepingWeight = 0.0f; // For Phragmotic Doorkeepers
+    private float taskKamikazeWeight = 0.0f; // For Autothysis kamikaze workers
+    private float taskGallDefenseWeight = 0.0f; // For Gall-defending soldier nymphs
 
     // Target Caste Population Ratio in Colony (0.0 to 1.0)
     private float targetRatio = 0.25f;
@@ -325,6 +351,21 @@ public class CasteTemplate implements java.io.Serializable {
     public Boolean getHasSubstrateAdhesionArolia() { return hasSubstrateAdhesionArolia; }
     public boolean isHasSubstrateAdhesionArolia() { return hasSubstrateAdhesionArolia != null ? hasSubstrateAdhesionArolia : true; }
     public void setHasSubstrateAdhesionArolia(Boolean hasSubstrateAdhesionArolia) { this.hasSubstrateAdhesionArolia = hasSubstrateAdhesionArolia; }
+
+    public CasteCategory getCategory() { return category; }
+    public void setCategory(CasteCategory category) { this.category = category; }
+
+    public float getTaskStorageWeight() { return taskStorageWeight; }
+    public void setTaskStorageWeight(float taskStorageWeight) { this.taskStorageWeight = taskStorageWeight; }
+
+    public float getTaskGateKeepingWeight() { return taskGateKeepingWeight; }
+    public void setTaskGateKeepingWeight(float taskGateKeepingWeight) { this.taskGateKeepingWeight = taskGateKeepingWeight; }
+
+    public float getTaskKamikazeWeight() { return taskKamikazeWeight; }
+    public void setTaskKamikazeWeight(float taskKamikazeWeight) { this.taskKamikazeWeight = taskKamikazeWeight; }
+
+    public float getTaskGallDefenseWeight() { return taskGallDefenseWeight; }
+    public void setTaskGallDefenseWeight(float taskGallDefenseWeight) { this.taskGallDefenseWeight = taskGallDefenseWeight; }
 
     public void setAttribute(String key, float value) {
         attributes.put(key, value);

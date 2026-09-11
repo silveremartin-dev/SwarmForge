@@ -22,10 +22,10 @@ public class BombusTerrestris extends CustomSpecies {
     private static final long serialVersionUID = 1L;
 
     public BombusTerrestris() {
+        super("Bombus", InsectOrder.BEE);
         setPresetName("Bourdon Terrestre (Bombus terrestris)");
         setCommonName("Buff-Tailed Bumblebee");
         setScientificName("Bombus terrestris");
-        setInsectType("BEE");
         setDescription("Robust eusocial bumblebee capable of endothermic thermoregulation and buzz pollination.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -35,11 +35,21 @@ public class BombusTerrestris extends CustomSpecies {
         setViewDistance(7.0f);
         setWorkersCanFly(true);
         setTypicalColonySize(400);
-        setPrimaryDiet("SUGARS_NECTAR");
-        setSecondaryDiet("SEEDS");
-        setNestType("WAX_COMB");
-        setVenomType("VENOMOUS_STING");
         setAggression(0.15f);
+        setOptimalTempCelsius(22.0f);
+        setMinTempCelsius(4.0f);
+        setMaxTempCelsius(34.0f);
+
+        // Ethological capabilities
+        setCanPerformBuzzPollination(true);
+        setCanPerformBuzzPollinationSonication(true);
+        setCanForageSubZeroBumblebee(true);
+        setCanIncubateBroodAbdominalHeat(true);
+        setCanConstructNectarWaxPots(true);
+        setCanLearnTrapliningFlightRoutes(true);
+        setCanPackCorbiculaPollenBaskets(true);
+        setCanPerformSocialThermoregulation(true);
+        setCanPerformEvaporativeCooling(true);
 
         // Queen
         CasteTemplate queen = new CasteTemplate("Reine Bourdon", 250f, 15f);

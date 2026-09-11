@@ -367,6 +367,216 @@ public class CustomSpecies implements Species {
     public CustomSpecies() {
     }
 
+    public CustomSpecies(String genus, InsectOrder order) {
+        applyTaxonomicArchetype(genus, order);
+    }
+
+    /**
+     * Applies baseline taxonomic archetype parameters and ethological capabilities based on
+     * the taxonomic order and genus, establishing a biologically sound foundation that specific species
+     * can specialize or override.
+     */
+    public void applyTaxonomicArchetype(String genus, InsectOrder order) {
+        if (genus != null && !genus.isBlank()) {
+            this.genus = genus;
+        }
+        if (order != null) {
+            this.insectType = switch (order) {
+                case BEE -> "BEE";
+                case WASP -> "WASP";
+                case TERMITE -> "TERMITE";
+                case APHID -> "APHID";
+                case THRIPS -> "THRIPS";
+                case BEETLE -> "BEETLE";
+                default -> "ANT";
+            };
+        }
+
+        // 1. Order-Level Archetypes
+        if (order == InsectOrder.BEE || "BEE".equalsIgnoreCase(insectType)) {
+            this.workersCanFly = true;
+            this.primaryDiet = "SUGARS_NECTAR";
+            this.secondaryDiet = "SEEDS";
+            this.nestType = "WAX_COMB";
+            this.venomType = "VENOMOUS_STING";
+            this.queenCountMode = "MONOGYNE";
+            this.optimalTempCelsius = 25.0f;
+            this.minTempCelsius = 10.0f;
+            this.maxTempCelsius = 38.0f;
+            this.flyingSpeed = 6.0f;
+            this.walkingSpeed = 0.25f;
+            this.wingbeatFrequencyHz = 220.0f;
+            this.hasHoveringCapability = true;
+            this.hasElectrosensing = true;
+            this.hasPolarizedLightNavigation = true;
+            this.canPerformSocialThermoregulation = true;
+            this.canPerformNecrophoresis = true;
+            this.canPerformEvaporativeCooling = true;
+            this.canLapNectarTongueExtension = true;
+            this.canPackCorbiculaPollenBaskets = true;
+            this.canFanWingsForBroodThermoregulation = true;
+            this.canPerformThoracicIncubation = true;
+            this.canApplyBeeBreadHydrophobicCoating = true;
+            this.canHarvestDewCondensation = true;
+        } else if (order == InsectOrder.WASP || "WASP".equalsIgnoreCase(insectType)) {
+            this.workersCanFly = true;
+            this.primaryDiet = "INSECTS_MEAT";
+            this.secondaryDiet = "SUGARS_NECTAR";
+            this.nestType = "PAPER_NEST";
+            this.venomType = "VENOMOUS_STING";
+            this.optimalTempCelsius = 26.0f;
+            this.minTempCelsius = 12.0f;
+            this.maxTempCelsius = 40.0f;
+            this.flyingSpeed = 6.5f;
+            this.walkingSpeed = 0.28f;
+            this.wingbeatFrequencyHz = 160.0f;
+            this.hasHoveringCapability = true;
+            this.hasPolarizedLightNavigation = true;
+            this.canMasticatePaperPulpCarton = true;
+            this.canScrapeWoodPulpCarton = true;
+            this.canHarvestLarvalSalivaDroplets = true;
+            this.canApplyPedicelAntRepellent = true;
+            this.canCoatWaspPedicelAntRepellent = true;
+            this.canRecognizeFacialVisualPatterns = true;
+            this.canDrumAbdomenWaspCellRim = true;
+            this.canPerformNecrophoresis = true;
+        } else if (order == InsectOrder.TERMITE || "TERMITE".equalsIgnoreCase(insectType)) {
+            this.workersCanFly = false;
+            this.hasKing = true;
+            this.primaryDiet = "WOOD_CELLULOSE";
+            this.secondaryDiet = "FUNGUS";
+            this.nestType = "WOOD_TUNNELS";
+            this.venomType = "POWERFUL_MANDIBLES";
+            this.optimalTempCelsius = 25.0f;
+            this.minTempCelsius = 10.0f;
+            this.maxTempCelsius = 36.0f;
+            this.walkingSpeed = 0.25f;
+            this.hasTermiteGutSymbiosis = true;
+            this.hasProctodealTrophallaxis = true;
+            this.canTrophallaxisProtozoa = true;
+            this.canDrumSubstrate = true;
+            this.canSynchronizeSoldierAlarmDrumming = true;
+            this.canBlockRoyalChamberSentry = true;
+            this.canPlasterWoodWallGallery = true;
+            this.canPerformQueenPhysogastricPeristalsis = true;
+            this.canExchangeRoyalPairGrooming = true;
+            this.hasMagnetoreception = true;
+            this.hasHygroreception = true;
+        } else if (order == InsectOrder.APHID || "APHID".equalsIgnoreCase(insectType)) {
+            this.workersCanFly = false;
+            this.primaryDiet = "SUGARS_NECTAR";
+            this.secondaryDiet = "SUGARS_NECTAR";
+            this.nestType = "ARBOREAL_LEAF";
+            this.venomType = "CHEMICAL_SPRAY";
+            this.canEjectHoneydewSignalingDroplets = true;
+            this.canStabFrontalHornsAphid = true;
+        } else if (order == InsectOrder.THRIPS || "THRIPS".equalsIgnoreCase(insectType)) {
+            this.workersCanFly = false;
+            this.primaryDiet = "SUGARS_NECTAR";
+            this.nestType = "WOOD_TUNNELS";
+            this.canSqueezeGallIntrudersThrips = true;
+            this.canRepairGallSubstratalSecretion = true;
+            this.canPlugGallWithChitinousTube = true;
+            this.canSecreteGallClosingFluid = true;
+        } else { // Formicidae (Ants)
+            this.workersCanFly = false;
+            this.primaryDiet = "SUGARS_NECTAR";
+            this.secondaryDiet = "INSECTS_MEAT";
+            this.nestType = "UNDERGROUND_BURROW";
+            this.canPerformNecrophoresis = true;
+            this.canPerformAllogrooming = true;
+            this.hasSubstrateAdhesionArolia = true;
+            this.canHarvestDewCondensation = true;
+            this.canTransportChainBrood = true;
+            this.canPerformExoskeletonAntiFungalPatrol = true;
+            this.canRepairBreachesClay = true;
+            this.hasThermalTrailDecay = true;
+        }
+
+        // 2. Genus-Level Archetypes
+        String g = (genus != null) ? genus.trim().toLowerCase() : "";
+        if (g.startsWith("apis")) {
+            this.canPerformWaggleDance = true;
+            this.canEncodeWaggleDanceSunCompass = true;
+            this.canPerformTrembleDance = true;
+            this.canCollectPropolis = true;
+            this.canSealNestGapsWithPropolis = true;
+            this.canPerformQueenPiping = true;
+            this.canDouseNestWaterCooling = true;
+            this.canShieldSwarmCoreHeat = true;
+        } else if (g.startsWith("bombus")) {
+            this.canPerformBuzzPollination = true;
+            this.canPerformBuzzPollinationSonication = true;
+            this.canForageSubZeroBumblebee = true;
+            this.canIncubateBroodAbdominalHeat = true;
+            this.canConstructNectarWaxPots = true;
+            this.canLearnTrapliningFlightRoutes = true;
+            this.minTempCelsius = 4.0f;
+        } else if (g.startsWith("vespa")) {
+            this.canEmitHornetGroupAlarmPheromone = true;
+            this.aggression = 0.8f;
+        } else if (g.startsWith("formica")) {
+            this.venomType = "FORMIC_ACID";
+            this.canSprayFormicResinDisinfectant = true;
+            this.canFireFormicAcidArtilleryJet = true;
+            this.canFarmAphids = true;
+            this.canMilkAphidHoneydewStroking = true;
+            this.canClusterSolarHeatCollector = true;
+            this.hasSolarOrientedMound = true;
+            this.canPerformThoracicIncubation = true;
+        } else if (g.startsWith("atta") || g.startsWith("acromyrmex")) {
+            this.primaryDiet = "FUNGUS";
+            this.venomType = "POWERFUL_MANDIBLES";
+            this.canFarmFungus = true;
+            this.canWeedFungusGarden = true;
+            this.canShearLeafCrescentMandible = true;
+            this.canInoculateLeafPulpEnzymes = true;
+            this.canGroomLeafPulpParasitesMinim = true;
+            this.canExcavateGardenWasteChambers = true;
+            this.canAerateFungalCombChambers = true;
+            this.canStridulateRescueCall = true;
+            this.canCultivateStreptomycesAntibiotics = true;
+        } else if (g.startsWith("camponotus")) {
+            this.nestType = "WOOD_TUNNELS";
+            this.canDrumSubstrate = true;
+            this.canSnapMandibleAcousticAlarm = true;
+            this.canPlasterWoodWallGallery = true;
+            this.hasTermiteGutSymbiosis = true; // Blochmannia endosymbiont
+        } else if (g.startsWith("solenopsis")) {
+            this.venomType = "VENOMOUS_STING";
+            this.canFormFloatingAntRaft = true;
+            this.canFormLivingRaft = true;
+            this.hasTerritorialRepellentPheromone = true;
+            this.canPerformBiostructures = true;
+        } else if (g.startsWith("cataglyphis")) {
+            this.optimalTempCelsius = 42.0f;
+            this.minTempCelsius = 16.0f;
+            this.maxTempCelsius = 53.6f;
+            this.canStiltWalkThermalRegim = true;
+            this.hasUVPolarizedLightNavigation = true;
+            this.canNavigatePolarizedTwilightUV = true;
+            this.hasPolarizedLightNavigation = true;
+        } else if (g.startsWith("odontomachus")) {
+            this.venomType = "POWERFUL_MANDIBLES";
+            this.hasTrapJawMechanism = true;
+            this.canSnapTrapMandiblesCatapult = true;
+            this.canPerformGamergateDominanceTournament = true;
+        } else if (g.startsWith("linepithema")) {
+            this.isUnicolonial = true;
+            this.formsMegaColonies = true;
+            this.hasThermalTrailDecay = true;
+            this.hasTerritorialRepellentPheromone = true;
+        } else if (g.startsWith("lasius")) {
+            this.canFarmAphids = true;
+            this.canMilkAphidHoneydewStroking = true;
+            this.canEnforceAphidSanitaryCordon = true;
+            this.canPlugContaminatedGalleries = true;
+        } else if (g.startsWith("polyergus")) {
+            this.isSlaveMakingSpecies = true;
+            this.canHarmonizeChcGestalt = true;
+        }
+    }
+
     public String getPresetName() {
         return presetName;
     }

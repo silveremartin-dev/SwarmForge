@@ -91,6 +91,7 @@ public class SimulationControlPanel extends VBox {
     private final ComboBox<String> comboMeta = new ComboBox<>();
     private final ComboBox<String> comboWorld = new ComboBox<>();
     private final ComboBox<String> comboWeather = new ComboBox<>();
+    private final ComboBox<String> comboExecutionMode = new ComboBox<>();
     private final TextField txtSeed = new TextField("12345");
     private final TextArea areaDescription = new TextArea();
 
@@ -694,6 +695,24 @@ public class SimulationControlPanel extends VBox {
 
         btnApplyPresets.setOnAction(e -> handleApplyScenario());
 
+        // Execution Engine Selector (Local In-Process vs Remote Server / Cluster)
+        HBox execModeBox = new HBox(8);
+        execModeBox.setAlignment(Pos.CENTER_LEFT);
+        Label lblExecMode = new Label("Moteur d'exécution :");
+        lblExecMode.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
+        lblExecMode.getStyleClass().add("accent-title");
+        lblExecMode.setTooltip(new Tooltip("Choisissez si la simulation tourne localement ou est déléguée au serveur SwarmForge gRPC"));
+
+        comboExecutionMode.getItems().setAll(
+            "● Mode Local Embarqué (In-Process CPU)",
+            "● Mode Serveur SwarmForge (Distant / Cluster gRPC)"
+        );
+        comboExecutionMode.getSelectionModel().selectFirst();
+        comboExecutionMode.setMaxWidth(Double.MAX_VALUE);
+        comboExecutionMode.setStyle("-fx-font-size: 11px;");
+        HBox.setHgrow(comboExecutionMode, Priority.ALWAYS);
+        execModeBox.getChildren().addAll(lblExecMode, comboExecutionMode);
+
         scenarioCard.getChildren().addAll(
             metaRow,
             presetActionsRow,
@@ -710,6 +729,8 @@ public class SimulationControlPanel extends VBox {
             section3Container,
             validationPanel,
             checkpointsPane,
+            new Separator(),
+            execModeBox,
             btnApplyPresets,
             applyProgressBox
         );
@@ -1620,6 +1641,19 @@ public class SimulationControlPanel extends VBox {
     public void setOnRestoreCheckpoint(Consumer<org.swarmforge.core.simulation.SimulationCheckpoint> cb) { this.onRestoreCheckpoint = cb; }
     public void setOnApplyPresets(Consumer<Long> callback) { this.onApplyPresets = callback; }
     public void setOnStartDateTimeChange(Consumer<LocalDateTime> callback) { this.onStartDateTimeChange = callback; }
+
+    public boolean isServerExecutionMode() {
+        String val = comboExecutionMode.getValue();
+        return val != null && (val.contains("Serveur") || val.contains("gRPC") || val.contains("Cluster"));
+    }
+
+    public void setExecutionMode(boolean serverMode) {
+        if (serverMode && comboExecutionMode.getItems().size() > 1) {
+            comboExecutionMode.getSelectionModel().select(1);
+        } else {
+            comboExecutionMode.getSelectionModel().selectFirst();
+        }
+    }
 
     public void updateCheckpoints(List<org.swarmforge.core.simulation.SimulationCheckpoint> checkpoints) {
         comboCheckpoints.getItems().clear();

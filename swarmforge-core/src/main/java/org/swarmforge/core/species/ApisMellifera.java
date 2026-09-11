@@ -20,10 +20,10 @@ import java.util.List;
 public class ApisMellifera extends CustomSpecies {
 
     public ApisMellifera() {
+        super("Apis", InsectOrder.BEE);
         setPresetName("Abeille à Miel (Apis mellifera)");
         setCommonName("Western Honey Bee");
         setScientificName("Apis mellifera");
-        setInsectType("BEE");
         setDescription("Eusocial flying insect constructing wax combs. Forages nectar and pollen.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -35,18 +35,29 @@ public class ApisMellifera extends CustomSpecies {
         setViewDistance(8.0f);
         setWorkersCanFly(true);
         setTypicalColonySize(50000);
-        setPrimaryDiet("SUGARS_NECTAR");
-        setSecondaryDiet("SEEDS");
-        setNestType("WAX_COMB");
-        setVenomType("VENOMOUS_STING");
         setAggression(0.2f);
+        setOptimalTempCelsius(25.0f);
+        setMinTempCelsius(10.0f);
+        setMaxTempCelsius(38.0f);
+
+        // Ethological capabilities
         setCanPerformWaggleDance(true);
+        setCanEncodeWaggleDanceSunCompass(true);
+        setCanPerformTrembleDance(true);
+        setCanCollectPropolis(true);
+        setCanSealNestGapsWithPropolis(true);
+        setCanPerformQueenPiping(true);
+        setCanDouseNestWaterCooling(true);
+        setCanShieldSwarmCoreHeat(true);
         setCanPerformSocialThermoregulation(true);
-        setCanPerformNecrophoresis(true);
+        setCanFanWingsForBroodThermoregulation(true);
+        setCanPerformThoracicIncubation(true);
+        setCanPackCorbiculaPollenBaskets(true);
+        setCanLapNectarTongueExtension(true);
         setHasElectrosensing(true);
         setHasPolarizedLightNavigation(true);
         setCanPerformEvaporativeCooling(true);
-        setCanPerformTrembleDance(true);
+        setCanPerformNecrophoresis(true);
 
         CasteTemplate queen = new CasteTemplate("Reine Abeille", 400f, 5f);
         queen.setLifespan(365 * 4);

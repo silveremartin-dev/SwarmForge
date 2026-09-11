@@ -20,10 +20,10 @@ import java.util.List;
 public class FormicaRufa extends CustomSpecies {
 
     public FormicaRufa() {
+        super("Formica", InsectOrder.ANT);
         setPresetName("Red Wood Ant (Formica rufa)");
         setCommonName("Wood Ant");
         setScientificName("Formica rufa");
-        setInsectType("ANT");
         setDescription("Large coniferous forest ant constructing large mounds of pine needles.");
         setQueenCountMode("POLYGYNE");
         setQueenCount(5);
@@ -39,6 +39,19 @@ public class FormicaRufa extends CustomSpecies {
         setNestType("MOUND");
         setVenomType("FORMIC_ACID");
         setAggression(0.75f);
+        setOptimalTempCelsius(22.0f);
+        setMinTempCelsius(6.0f);
+        setMaxTempCelsius(34.0f);
+
+        // Ethological capabilities
+        setCanSprayFormicResinDisinfectant(true);
+        setCanFireFormicAcidArtilleryJet(true);
+        setCanFarmAphids(true);
+        setCanMilkAphidHoneydewStroking(true);
+        setCanClusterSolarHeatCollector(true);
+        setHasSolarOrientedMound(true);
+        setIsPolycalic(true);
+        setCanPerformThoracicIncubation(true);
         setCanPerformSocialThermoregulation(true);
 
         CasteTemplate queen = new CasteTemplate("Reine", 600f, 15f);

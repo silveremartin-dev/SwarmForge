@@ -21,6 +21,11 @@ public interface AgentView {
     float getHunger();
     UUID getColonyId();
     boolean isSoldier();
+    default boolean isQueen() { return false; }
+    default boolean isNurse() { return false; }
+    default boolean isDrone() { return false; }
+    default boolean isMajor() { return isSoldier(); }
+    default org.swarmforge.core.species.Species getSpecies() { return null; }
     default java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() { return java.util.Collections.emptySet(); }
     default String getAgentId() { return ""; }
     default boolean canFly() { return false; }

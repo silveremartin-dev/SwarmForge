@@ -20,10 +20,10 @@ import java.util.List;
 public class SolenopsisInvicta extends CustomSpecies {
 
     public SolenopsisInvicta() {
+        super("Solenopsis", InsectOrder.ANT);
         setPresetName("Red Imported Fire Ant (Solenopsis invicta)");
         setCommonName("Fire Ant");
         setScientificName("Solenopsis invicta");
-        setInsectType("ANT");
         setDescription("Highly aggressive species with venomous stings, often polygyne colonies forming raised mounds.");
         setQueenCountMode("POLYGYNE");
         setQueenCount(12);
@@ -39,7 +39,15 @@ public class SolenopsisInvicta extends CustomSpecies {
         setNestType("MOUND");
         setVenomType("VENOMOUS_STING");
         setAggression(0.9f);
+        setOptimalTempCelsius(27.0f);
+        setMinTempCelsius(10.0f);
+        setMaxTempCelsius(42.0f);
+
+        // Ethological capabilities
         setCanPerformBiostructures(true);
+        setCanFormFloatingAntRaft(true);
+        setCanFormLivingRaft(true);
+        setHasTerritorialRepellentPheromone(true);
 
         CasteTemplate queen = new CasteTemplate("Reine", 450f, 15f);
         queen.setLifespan(365 * 7);

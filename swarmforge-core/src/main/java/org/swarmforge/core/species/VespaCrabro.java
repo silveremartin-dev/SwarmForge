@@ -22,10 +22,10 @@ public class VespaCrabro extends CustomSpecies {
     private static final long serialVersionUID = 1L;
 
     public VespaCrabro() {
+        super("Vespa", InsectOrder.WASP);
         setPresetName("European Hornet (Vespa crabro)");
         setCommonName("European Hornet");
         setScientificName("Vespa crabro");
-        setInsectType("WASP");
         setDescription("Large eusocial vespid, apex aerial predator constructing paper nests.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -35,11 +35,20 @@ public class VespaCrabro extends CustomSpecies {
         setViewDistance(9.0f);
         setWorkersCanFly(true);
         setTypicalColonySize(2000);
-        setPrimaryDiet("INSECTS_MEAT");
-        setSecondaryDiet("SUGARS_NECTAR");
-        setNestType("PAPER_NEST");
-        setVenomType("VENOMOUS_STING");
         setAggression(0.9f);
+        setOptimalTempCelsius(26.0f);
+        setMinTempCelsius(12.0f);
+        setMaxTempCelsius(40.0f);
+
+        // Ethological capabilities
+        setCanEmitHornetGroupAlarmPheromone(true);
+        setCanDrumAbdomenWaspCellRim(true);
+        setCanMasticatePaperPulpCarton(true);
+        setCanScrapeWoodPulpCarton(true);
+        setCanHarvestLarvalSalivaDroplets(true);
+        setCanApplyPedicelAntRepellent(true);
+        setCanCoatWaspPedicelAntRepellent(true);
+        setCanRecognizeFacialVisualPatterns(true);
 
         // Fondatrice / Reine
         CasteTemplate queen = new CasteTemplate("Reine Frelon", 350f, 30f);

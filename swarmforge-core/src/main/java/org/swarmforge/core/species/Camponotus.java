@@ -20,10 +20,10 @@ import java.util.List;
 public class Camponotus extends CustomSpecies {
 
     public Camponotus() {
+        super("Camponotus", InsectOrder.ANT);
         setPresetName("Fourmi Charpentière (Camponotus)");
         setCommonName("Carpenter Ant");
         setScientificName("Camponotus");
-        setInsectType("ANT");
         setDescription("Large ants nesting in dead wood, primarily nocturnal.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -37,8 +37,17 @@ public class Camponotus extends CustomSpecies {
         setPrimaryDiet("HONEYDEW");
         setSecondaryDiet("INSECTS_MEAT");
         setNestType("WOOD_TUNNELS");
-        setVenomType("POWERFUL_MANDIBLES");
+        setVenomType("FORMIC_ACID");
         setAggression(0.4f);
+        setOptimalTempCelsius(23.0f);
+        setMinTempCelsius(6.0f);
+        setMaxTempCelsius(36.0f);
+
+        // Ethological capabilities
+        setCanDrumSubstrate(true);
+        setCanSnapMandibleAcousticAlarm(true);
+        setCanPlasterWoodWallGallery(true);
+        setHasTermiteGutSymbiosis(true); // Blochmannia endosymbiosis
 
         CasteTemplate queen = new CasteTemplate("Reine", 700f, 15f);
         queen.setLifespan(365 * 25);

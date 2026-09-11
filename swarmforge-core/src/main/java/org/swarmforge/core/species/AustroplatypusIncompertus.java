@@ -19,10 +19,10 @@ import java.util.List;
 public class AustroplatypusIncompertus extends CustomSpecies {
 
     public AustroplatypusIncompertus() {
+        super("Austroplatypus", InsectOrder.BEETLE);
         setPresetName("Scolyte Eusocial (Austroplatypus incompertus)");
         setCommonName("Ambrosia Wood Beetle");
         setScientificName("Austroplatypus incompertus");
-        setInsectType("BEETLE");
         setDescription("Only known eusocial beetle species. Excavates galleries in eucalyptus trees and cultivates ambrosia fungi.");
         setQueenCountMode("MONOGYNE");
         setQueenCount(1);
@@ -34,10 +34,15 @@ public class AustroplatypusIncompertus extends CustomSpecies {
         setWorkersCanFly(false);
         setTypicalColonySize(200);
         setPrimaryDiet("FUNGUS");
-        setSecondaryDiet("MULCH");
+        setSecondaryDiet("WOOD_CELLULOSE");
         setNestType("WOOD_TUNNELS");
-        setVenomType("HARDENED_ELyTRA");
+        setVenomType("HARDENED_ELYTRA");
         setAggression(0.5f);
+
+        // Ethological capabilities
+        setCanFarmFungus(true);
+        setCanCultivateWoodFungus(true);
+        setCanPlasterWoodWallGallery(true);
 
         CasteTemplate queen = new CasteTemplate("Reine Reproductrice", 250f, 8f);
         queen.setCanDig(true);

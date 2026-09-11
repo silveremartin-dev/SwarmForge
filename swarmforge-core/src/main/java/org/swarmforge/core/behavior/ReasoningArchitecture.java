@@ -127,7 +127,10 @@ public interface ReasoningArchitecture extends java.io.Serializable {
             EXPLORE,
             FOLLOW_TRAIL,
             COMMUNICATE,
-            ABORT_AND_RETURN
+            ABORT_AND_RETURN,
+            LAY_EGG,
+            DEFEND_PATROL,
+            TEND_BROOD
         }
 
         public static Action move(float dx, float dy, float dz) {
@@ -152,6 +155,10 @@ public interface ReasoningArchitecture extends java.io.Serializable {
 
         public static Action rest() {
             return new Action(ActionType.REST, 0, 0, 0, 1.0f, null);
+        }
+
+        public static Action layEgg() {
+            return new Action(ActionType.LAY_EGG, 0, 0, 0, 1.0f, null);
         }
 
         public static Action followTrail(float dx, float dy, float dz) {

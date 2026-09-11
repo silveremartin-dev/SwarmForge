@@ -634,7 +634,19 @@ public class SwarmForgeClient extends Application {
                         }
                         org.swarmforge.core.domain.Individual.resetAntNumberGenerator();
 
-                        System.out.println("[INFO] [SwarmForge Engine] Création du terrarium et de la simulation locale...");
+                        if (this.simControlPanel != null && this.simControlPanel.isServerExecutionMode()) {
+                            System.out.println("[INFO] [SwarmForge Engine] Mode d'exécution Serveur SwarmForge (gRPC :50051) activé.");
+                            if (this.networkClient != null && !this.networkClient.isConnected()) {
+                                try {
+                                    this.networkClient.connect("localhost", 50051);
+                                    this.networkClient.startStreaming();
+                                } catch (Exception ex) {
+                                    System.out.println("[WARN] Serveur distant non disponible à localhost:50051 (" + ex.getMessage() + "), exécution en mode local fallback.");
+                                }
+                            }
+                        } else {
+                            System.out.println("[INFO] [SwarmForge Engine] Création du terrarium et de la simulation locale in-process...");
+                        }
                         if (this.lastGeneratedTerrarium == null) {
                                 this.lastGeneratedTerrarium = new org.swarmforge.core.domain.Terrarium(64, 32, 64);
                         }

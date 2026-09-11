@@ -19,10 +19,10 @@ import java.util.List;
 public class PseudoregmaBambucicola extends CustomSpecies {
 
     public PseudoregmaBambucicola() {
+        super("Pseudoregma", InsectOrder.APHID);
         setPresetName("Bamboo Aphid (Pseudoregma bambucicola)");
         setCommonName("Social Bamboo Aphid");
         setScientificName("Pseudoregma bambucicola");
-        setInsectType("APHID");
         setDescription("Gall aphid producing sterile 1st-instar soldiers equipped with frontal horns to pierce predators.");
         setQueenCountMode("PARTHENOGENETIC_COLONY");
         setQueenCount(1);
@@ -33,11 +33,11 @@ public class PseudoregmaBambucicola extends CustomSpecies {
         setViewDistance(2.0f);
         setWorkersCanFly(false);
         setTypicalColonySize(5000);
-        setPrimaryDiet("PLANT_SAP");
-        setSecondaryDiet("SUGARS_NECTAR");
-        setNestType("PLANT_GALL");
-        setVenomType("FRONTAL_HORNS");
         setAggression(0.6f);
+
+        // Ethological capabilities
+        setCanEjectHoneydewSignalingDroplets(true);
+        setCanStabFrontalHornsAphid(true);
 
         CasteTemplate matriarch = new CasteTemplate("Matriarche Parthénogénétique", 200f, 1f);
         matriarch.setLifespan(180);

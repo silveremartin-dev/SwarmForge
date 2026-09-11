@@ -19,10 +19,10 @@ import java.util.List;
 public class FormicaFusca extends CustomSpecies {
 
     public FormicaFusca() {
+        super("Formica", InsectOrder.ANT);
         setPresetName("Fourmi Cendrée Hôte (Formica fusca)");
         setCommonName("Dusky Slave Ant");
         setScientificName("Formica fusca");
-        setInsectType("ANT");
         setDescription("Common European woodland host species, primary target of Polyergus rufescens slave raids.");
         setQueenCountMode("POLYGYNE");
         setQueenCount(3);
@@ -36,12 +36,13 @@ public class FormicaFusca extends CustomSpecies {
         setPrimaryDiet("HONEYDEW");
         setSecondaryDiet("INSECTS_MEAT");
         setOptimalTempCelsius(22.0f);
-        setMinTempCelsius(0.0f);
-        setMaxTempCelsius(40.0f);
-        setNestType("SUBTERRANEAN");
+        setMinTempCelsius(4.0f);
+        setMaxTempCelsius(36.0f);
+        setNestType("UNDERGROUND_BURROW");
         setVenomType("FORMIC_ACID");
         setAggression(0.35f);
-        setCanPerformSocialThermoregulation(false);
+        setCanFarmAphids(true);
+        setCanMilkAphidHoneydewStroking(true);
 
         CasteTemplate queen = new CasteTemplate("Reine Cendrée", 450f, 15f);
         queen.setLifespan(365 * 10);
