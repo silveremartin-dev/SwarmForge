@@ -39,8 +39,17 @@ if "%START_DOCKER%"=="true" (
 )
 
 echo.
-echo [2/2] Launching SwarmForge Server...
-call mvn compile exec:java -pl swarmforge-server -q %DEBUG_OPT% -Dexec.args="%PASSED_ARGS%"
+echo [2/3] Compiling SwarmForge Core & Server...
+call mvn compile -pl swarmforge-server -am -q
+if errorlevel 1 (
+    echo ERROR: Compilation failed.
+    pause
+    exit /b 1
+)
+
+echo.
+echo [3/3] Launching SwarmForge Server...
+call mvn exec:java -pl swarmforge-server -q %DEBUG_OPT% -Dexec.args="%PASSED_ARGS%"
 
 if errorlevel 1 (
     echo ERROR: Failed to start SwarmForge Server.

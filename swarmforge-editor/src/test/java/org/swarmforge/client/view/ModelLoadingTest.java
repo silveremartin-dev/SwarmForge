@@ -26,6 +26,7 @@ public class ModelLoadingTest {
 
     @BeforeAll
     public static void setUp() {
+        org.swarmforge.client.util.IconUtils.silenceJme3Warnings();
         assetManager = JmeSystem.newAssetManager(
                 Thread.currentThread().getContextClassLoader().getResource("com/jme3/asset/Desktop.cfg"));
     }

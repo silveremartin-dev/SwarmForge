@@ -39,9 +39,24 @@ public class IconUtils {
     private static File cachedIcoFile = null;
 
     /**
+     * Suppresses noisy, benign warnings from jME3 third-party asset loaders (OBJLoader, Material color space).
+     */
+    public static void silenceJme3Warnings() {
+        try {
+            java.util.logging.Logger.getLogger("com.jme3.scene.plugins.OBJLoader").setLevel(java.util.logging.Level.SEVERE);
+            java.util.logging.Logger.getLogger("com.jme3.scene.plugins.MTLLoader").setLevel(java.util.logging.Level.SEVERE);
+            java.util.logging.Logger.getLogger("com.jme3.material.Material").setLevel(java.util.logging.Level.SEVERE);
+            java.util.logging.Logger.getLogger("com.jme3.scene.plugins").setLevel(java.util.logging.Level.SEVERE);
+            java.util.logging.Logger.getLogger("com.jme3.asset.DesktopAssetManager").setLevel(java.util.logging.Level.WARNING);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
      * Initializes early AppUserModelID on Windows OS before any GUI components are created.
      */
     public static void initEarlyTaskbarAppId() {
+        silenceJme3Warnings();
         if (!appUserModelIdSet) {
             setWindowsAppUserModelID(APP_USER_MODEL_ID);
             appUserModelIdSet = true;

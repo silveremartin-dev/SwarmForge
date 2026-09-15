@@ -601,7 +601,7 @@ function VoxelHollowStump({ position = [56, 0, 48], scale = 1.0, terrainConfig }
     }, [scale])
 
     return (
-        <group position={[gridX, groundY, gridZ]} frustumCulled={false}>
+        <group position={[gridX, groundY, gridZ]} scale={[0.25, 0.25, 0.25]} frustumCulled={false}>
             {stumpVoxels.map((v, i) => (
                 <mesh key={`stump_${i}`} position={[v.x, v.y, v.z]} castShadow receiveShadow frustumCulled={false}>
                     <boxGeometry args={[1, 1, 1]} />

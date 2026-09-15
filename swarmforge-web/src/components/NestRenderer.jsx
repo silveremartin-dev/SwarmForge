@@ -455,44 +455,6 @@ function SingleNest({ nest, isGhost = false }) {
                                 </mesh>
                             </group>
                         ))}
-                        {/* ── Subterranean Section (Queen Chamber & Underground Galleries at Y < 0) ── */}
-                        <group position={[0, -0.8 * scale, 0]}>
-                            {/* Main Royal Queen Chamber Vault */}
-                            <mesh position={[0, -0.3 * scale, 0]}>
-                                <sphereGeometry args={[0.9 * scale, 16, 12]} />
-                                <meshStandardMaterial
-                                    color={isPhantomMode ? '#0284c7' : '#7c2d12'}
-                                    roughness={0.8}
-                                    transparent={true}
-                                    opacity={0.85}
-                                    wireframe={isPhantomMode}
-                                />
-                            </mesh>
-                            {/* Queen Model Figure inside Queen Chamber */}
-                            <mesh position={[0, -0.35 * scale, 0]} rotation={[0, 0.5, 0]}>
-                                <capsuleGeometry args={[0.14 * scale, 0.5 * scale, 8, 8]} />
-                                <meshStandardMaterial color="#ffd700" roughness={0.3} metalness={0.6} />
-                            </mesh>
-                            {/* Subterranean Vertical Tunnel Shaft */}
-                            <mesh position={[0, 0.4 * scale, 0]}>
-                                <cylinderGeometry args={[0.22 * scale, 0.28 * scale, 0.9 * scale, 12]} />
-                                <meshStandardMaterial color="#3a2312" roughness={0.95} wireframe={isPhantomMode} />
-                            </mesh>
-                            {/* Lateral Brood Nursery Chambers */}
-                            <mesh position={[0.9 * scale, -0.15 * scale, 0.3 * scale]}>
-                                <sphereGeometry args={[0.55 * scale, 12, 10]} />
-                                <meshStandardMaterial color="#854d0e" roughness={0.9} transparent opacity={0.85} />
-                            </mesh>
-                            <mesh position={[-0.9 * scale, -0.2 * scale, -0.25 * scale]}>
-                                <sphereGeometry args={[0.5 * scale, 12, 10]} />
-                                <meshStandardMaterial color="#854d0e" roughness={0.9} transparent opacity={0.85} />
-                            </mesh>
-                            {/* Translucent Subterranean Glass/X-Ray Indicator Halo */}
-                            <mesh position={[0, -0.2 * scale, 0]}>
-                                <sphereGeometry args={[1.5 * scale, 16, 16]} />
-                                <meshBasicMaterial color="#38bdf8" transparent opacity={0.3} wireframe />
-                            </mesh>
-                        </group>
                     </group>
                 )
         }

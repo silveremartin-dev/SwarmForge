@@ -28,8 +28,15 @@ for arg in "$@"; do
     esac
 done
 
-echo "Starting SwarmForge Compute Node..."
-mvn compile exec:java -pl swarmforge-compute -q $DEBUG_OPT $HEADLESS_OPT -Dexec.args="$PASSED_ARGS"
+echo "[1/2] Compiling SwarmForge Core & Compute Node..."
+mvn compile -pl swarmforge-compute -am -q
+if [ $? -ne 0 ]; then
+    echo "ERROR: Compilation failed."
+    exit 1
+fi
+
+echo "[2/2] Starting SwarmForge Compute Node..."
+mvn exec:java -pl swarmforge-compute -q $DEBUG_OPT $HEADLESS_OPT -Dexec.args="$PASSED_ARGS"
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to start Compute Node."

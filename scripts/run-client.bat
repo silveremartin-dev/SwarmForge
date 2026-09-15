@@ -32,8 +32,16 @@ shift
 goto parse_args
 
 :run_client
-echo Launching SwarmForge Client...
-call mvn compile exec:java -pl swarmforge-client -q %DEBUG_OPT% %HEADLESS_OPT% -Dexec.args="%PASSED_ARGS%"
+echo [1/2] Compiling SwarmForge Core & Client...
+call mvn compile -pl swarmforge-client -am -q
+if errorlevel 1 (
+    echo ERROR: Compilation failed.
+    pause
+    exit /b 1
+)
+
+echo [2/2] Launching SwarmForge Client...
+call mvn exec:java -pl swarmforge-client -q %DEBUG_OPT% %HEADLESS_OPT% -Dexec.args="%PASSED_ARGS%"
 
 if errorlevel 1 (
     echo ERROR: Failed to start SwarmForge Client.

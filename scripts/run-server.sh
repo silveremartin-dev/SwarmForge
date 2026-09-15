@@ -35,8 +35,16 @@ else
 fi
 
 echo ""
-echo "[2/2] Launching SwarmForge Server..."
-mvn compile exec:java -pl swarmforge-server -q $DEBUG_OPT -Dexec.args="$PASSED_ARGS"
+echo "[2/3] Compiling SwarmForge Core & Server..."
+mvn compile -pl swarmforge-server -am -q
+if [ $? -ne 0 ]; then
+    echo "ERROR: Compilation failed."
+    exit 1
+fi
+
+echo ""
+echo "[3/3] Launching SwarmForge Server..."
+mvn exec:java -pl swarmforge-server -q $DEBUG_OPT -Dexec.args="$PASSED_ARGS"
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to start SwarmForge Server."

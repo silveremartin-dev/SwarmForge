@@ -22,7 +22,8 @@ import {
     Zap,
     Map,
     Activity,
-    Compass
+    Compass,
+    BookOpen
 } from 'lucide-react'
 
 export default function SimulationRightSidebar() {
@@ -64,6 +65,7 @@ export default function SimulationRightSidebar() {
     } = useSimulationStore()
 
     const [collapsed, setCollapsed] = useState(false)
+    const [activeTab, setActiveTab] = useState('OPTIONS') // 'OPTIONS' | 'LEGENDS'
     const [legendSubstratesOpen, setLegendSubstratesOpen] = useState(true)
     const [legendCastesOpen, setLegendCastesOpen] = useState(true)
     const [legendPheroOpen, setLegendPheroOpen] = useState(true)
@@ -72,18 +74,18 @@ export default function SimulationRightSidebar() {
     const t = (key, fallback) => getTranslation(language, key, fallback)
 
     const substrates = [
-        { name: 'Humus Organique', color: '#523219' },
-        { name: 'Terre Végétale', color: '#3d2817' },
-        { name: 'Sable Fin', color: '#eab308' },
-        { name: 'Argile Compacte', color: '#9a3412' },
-        { name: 'Limon Humide', color: '#ca8a04' },
-        { name: 'Tourbe Noire', color: '#451a03' },
-        { name: 'Gravier / Cailloux', color: '#94a3b8' },
-        { name: 'Roche-Mère', color: '#64748b' },
-        { name: 'Cavités / Galeries', color: '#0f172a' },
-        { name: 'Racines Végétales', color: '#78350f' },
-        { name: 'Nappe Phréatique', color: '#0284c7' },
-        { name: 'Flore de Surface', color: '#15803d' },
+        { name: 'Humus Organique', color: '#523219', desc: 'Couche superficielle riche en litière' },
+        { name: 'Terre Végétale', color: '#3d2817', desc: 'Sol meuble propice aux galeries' },
+        { name: 'Sable Fin', color: '#eab308', desc: 'Berges et zones meubles perméables' },
+        { name: 'Argile Compacte', color: '#9a3412', desc: 'Chambres royales et stabilisation' },
+        { name: 'Limon Humide', color: '#ca8a04', desc: 'Substrat alluvial hydraté' },
+        { name: 'Tourbe Noire', color: '#451a03', desc: 'Matière organique dense et acide' },
+        { name: 'Gravier / Cailloux', color: '#94a3b8', desc: 'Drainage naturel et barrière' },
+        { name: 'Roche-Mère', color: '#64748b', desc: 'Socle rocheux infranchissable' },
+        { name: 'Cavités / Galeries', color: '#0f172a', desc: 'Tunnels creusés par la colonie' },
+        { name: 'Racines Végétales', color: '#78350f', desc: 'Ancrage et conduits de sève' },
+        { name: 'Nappe Phréatique', color: '#0284c7', desc: 'Source hydrique souterraine' },
+        { name: 'Flore de Surface', color: '#15803d', desc: 'Végétation et canopée' },
     ]
 
     const castes = [
@@ -119,7 +121,7 @@ export default function SimulationRightSidebar() {
             fontFamily: 'system-ui, -apple-system, sans-serif'
         },
         card: {
-            background: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.94)',
+            background: isDark ? 'rgba(15, 23, 42, 0.96)' : 'rgba(255, 255, 255, 0.96)',
             backdropFilter: 'blur(16px)',
             border: isDark ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(56, 189, 248, 0.5)',
             borderRadius: 12,
@@ -131,6 +133,28 @@ export default function SimulationRightSidebar() {
             gap: 10,
             overflowY: 'auto'
         },
+        tabBtn: (active) => ({
+            flex: 1,
+            padding: '6px 8px',
+            fontSize: 10,
+            fontWeight: 800,
+            borderRadius: 6,
+            border: active
+                ? '1px solid #38bdf8'
+                : isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
+            background: active
+                ? (isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(56, 189, 248, 0.15)')
+                : 'transparent',
+            color: active
+                ? (isDark ? '#38bdf8' : '#0284c7')
+                : (isDark ? '#94a3b8' : '#64748b'),
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 5,
+            transition: 'all 0.15s ease'
+        }),
         sectionTitle: {
             fontSize: 11,
             fontWeight: 800,
@@ -178,8 +202,10 @@ export default function SimulationRightSidebar() {
             alignItems: 'center',
             gap: 6,
             fontSize: 10,
-            color: isDark ? '#94a3b8' : '#475569',
-            padding: '3px 0'
+            color: isDark ? '#cbd5e1' : '#334155',
+            padding: '4px 6px',
+            borderRadius: 4,
+            background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'
         },
         modeBtn: (active) => ({
             flex: 1,
@@ -222,7 +248,7 @@ export default function SimulationRightSidebar() {
                         }}
                     >
                         <Layers size={20} />
-                        <span style={{ fontSize: 9, writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>OPTIONS 3D</span>
+                        <span style={{ fontSize: 9, writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontWeight: 700 }}>OPTIONS 3D</span>
                     </button>
                 </div>
             </div>
@@ -232,287 +258,291 @@ export default function SimulationRightSidebar() {
     return (
         <div style={styles.container}>
             <div style={styles.card}>
-                {/* Header with Collapse Button */}
+                {/* Header with Tab Switcher and Collapse Button */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', paddingBottom: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 800, color: isDark ? '#38bdf8' : '#0284c7' }}>
-                        <Sliders size={14} />
-                        <span>{t('renderOptionsTitle', 'OPTIONS DE RENDU 3D')}</span>
+                    <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+                        <button
+                            style={styles.tabBtn(activeTab === 'OPTIONS')}
+                            onClick={() => setActiveTab('OPTIONS')}
+                        >
+                            <Sliders size={13} />
+                            <span>{t('renderOptionsTitle', 'RENDU & FILTRES')}</span>
+                        </button>
+                        <button
+                            style={styles.tabBtn(activeTab === 'LEGENDS')}
+                            onClick={() => setActiveTab('LEGENDS')}
+                        >
+                            <BookOpen size={13} />
+                            <span>{t('legendTitle', 'LÉGENDES')}</span>
+                        </button>
                     </div>
                     <button
                         onClick={() => setCollapsed(true)}
                         title="Réduire le panneau"
-                        style={{ background: 'transparent', border: 'none', color: isDark ? '#94a3b8' : '#64748b', cursor: 'pointer', padding: 2 }}
+                        style={{ background: 'transparent', border: 'none', color: isDark ? '#94a3b8' : '#64748b', cursor: 'pointer', padding: '4px 6px', marginLeft: 4 }}
                     >
                         <ChevronUp size={16} />
                     </button>
                 </div>
 
-                {/* 1. View Mode Switcher */}
-                <div>
-                    <div style={{ ...styles.sectionTitle, marginBottom: 6 }}>
-                        <span>{t('viewMode', 'Mode de Vue 3D')}</span>
-                        <span style={{ fontSize: 9, color: '#10b981', fontWeight: 'bold' }}>● 60 FPS</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                        <button
-                            style={styles.modeBtn(lookAndFeel === 'SCIENTIFIC')}
-                            onClick={() => setLookAndFeel('SCIENTIFIC')}
-                            title="Vue analytique et thermique scientifique"
-                        >
-                            {t('modeScientific', '🔬 Scientifique')}
-                        </button>
-                        <button
-                            style={styles.modeBtn(lookAndFeel === 'REALISTIC')}
-                            onClick={() => setLookAndFeel('REALISTIC')}
-                            title="Textures PBR et ombres solaires"
-                        >
-                            {t('modeRealistic', '🌿 Réaliste')}
-                        </button>
-                        <button
-                            style={styles.modeBtn(lookAndFeel === 'GAMING')}
-                            onClick={() => setLookAndFeel('GAMING')}
-                            title="Rendu toon et stylisé"
-                        >
-                            {t('modeGamified', '🎮 Gamifié')}
-                        </button>
-                    </div>
-                </div>
-
-                {/* 2. Layer Visibility Checkboxes */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div style={styles.sectionTitle}>
-                        <span>Calques Visibles</span>
-                    </div>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Layers size={12} color="#ca8a04" />
-                            <span>{t('layerTerrain', 'Sol & Relief')}</span>
-                        </span>
-                        <input type="checkbox" checked={showTerrain} onChange={toggleTerrain} />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Layers size={12} color="#f59e0b" />
-                            <span>{t('layerSkirt', 'Jupe 3D Géologique')}</span>
-                        </span>
-                        <input type="checkbox" checked={show3DSkirt} onChange={toggle3DSkirt} />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Trees size={12} color="#22c55e" />
-                            <span>{t('layerVegetation', 'Végétation')}</span>
-                        </span>
-                        <input type="checkbox" checked={showVegetation} onChange={toggleVegetation} />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Shield size={12} color="#a855f7" />
-                            <span>{t('layerChambers', 'Cavités & Nids')}</span>
-                        </span>
-                        <input type="checkbox" checked={showChambers} onChange={toggleChambers} />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Sparkles size={12} color="#38bdf8" />
-                            <span>{t('layerPheromones', 'Phéromones')}</span>
-                        </span>
-                        <input type="checkbox" checked={showPheromones} onChange={togglePheromones} />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Zap size={12} color="#ef4444" />
-                            <span>{t('layerAnts', 'Fourmis & Castes')}</span>
-                        </span>
-                        <input type="checkbox" checked={showAnts} onChange={toggleAnts} />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <CloudRain size={12} color="#60a5fa" />
-                            <span>{t('layerWeather', 'Météo & Ciel')}</span>
-                        </span>
-                        <input type="checkbox" checked={showWeather} onChange={toggleWeather} />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Map size={12} color="#10b981" />
-                            <span>{t('showMinimap', 'Minimap 2D Radar')}</span>
-                        </span>
-                        <input type="checkbox" checked={showMinimap} onChange={toggleMinimap} />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <GridIcon size={12} color="#818cf8" />
-                            <span>{t('showGrid', 'Grille de Référence')}</span>
-                        </span>
-                        <input type="checkbox" checked={showGrid} onChange={toggleGrid} />
-                    </label>
-                </div>
-
-                {/* 3. Axial Slicing Plane Slider (Coupe Axiale) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, fontWeight: 700 }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: isDark ? '#38bdf8' : '#0284c7' }}>
-                            <Scissors size={13} />
-                            <span>Coupe Axiale (Slice Plane)</span>
-                        </span>
-                        <span style={{ color: '#f59e0b', fontSize: 10 }}>{(slicePlaneRatio * 100).toFixed(0)}%</span>
-                    </div>
-                    <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        value={slicePlaneRatio}
-                        onChange={(e) => setSlicePlaneRatio(parseFloat(e.target.value))}
-                        style={styles.sliderTrack}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: isDark ? '#64748b' : '#94a3b8' }}>
-                        <span>Profondeur 0%</span>
-                        <span>Surface 100%</span>
-                    </div>
-                </div>
-
-                {/* 4. Scientific Mode Isolines & UV Vision */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div style={styles.sectionTitle}>
-                        <span>{t('scientificFilters', 'Filtres Scientifiques')}</span>
-                    </div>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <GridIcon size={12} color="#eab308" />
-                            <span>{t('isolineTopo', 'Isolines Topographiques')}</span>
-                        </span>
-                        <input
-                            type="checkbox"
-                            checked={showScientificIsolinesTopo}
-                            onChange={toggleScientificIsolinesTopo}
-                        />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Thermometer size={12} color="#f97316" />
-                            <span>{t('isolineClimate', 'Isolines Microclimat')}</span>
-                        </span>
-                        <input
-                            type="checkbox"
-                            checked={showScientificIsolinesMicroclimate}
-                            onChange={toggleScientificIsolinesMicroclimate}
-                        />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Sparkles size={12} color="#06b6d4" />
-                            <span>{t('isolinePhero', 'Isolines Phéromones')}</span>
-                        </span>
-                        <input
-                            type="checkbox"
-                            checked={showScientificIsolinesPheromones}
-                            onChange={toggleScientificIsolinesPheromones}
-                        />
-                    </label>
-
-                    <label style={styles.toggleRow}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Eye size={12} color="#ec4899" />
-                            <span>{t('uvMode', 'Mode Ultraviolet (UV)')}</span>
-                        </span>
-                        <input
-                            type="checkbox"
-                            checked={isUVVisionMode}
-                            onChange={toggleUVVisionMode}
-                        />
-                    </label>
-                </div>
-
-                {/* 5. Complete Accordion Legend */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                    <div style={{ ...styles.sectionTitle, borderTop: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)', paddingTop: 8 }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Info size={12} />
-                            <span>{t('legendTitle', 'Légendes & Glossaire')}</span>
-                        </span>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 10, textTransform: 'none', color: isDark ? '#94a3b8' : '#64748b' }}>
-                            <input type="checkbox" checked={showLegend} onChange={toggleLegend} />
-                            <span>Afficher</span>
-                        </label>
-                    </div>
-
-                    {showLegend && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {/* Substrats */}
-                            <div>
-                                <div style={styles.accordionHeader} onClick={() => setLegendSubstratesOpen(!legendSubstratesOpen)}>
-                                    <span>{t('legendSubstrates', 'Substrats Géologiques')}</span>
-                                    {legendSubstratesOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                                </div>
-                                {legendSubstratesOpen && (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 3, padding: '6px 4px' }}>
-                                        {substrates.map((s, idx) => (
-                                            <div key={idx} style={styles.legendItem}>
-                                                <span style={{ width: 8, height: 8, borderRadius: 2, background: s.color, display: 'inline-block', flexShrink: 0 }} />
-                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                {activeTab === 'OPTIONS' ? (
+                    <>
+                        {/* 1. View Mode Switcher */}
+                        <div>
+                            <div style={{ ...styles.sectionTitle, marginBottom: 6 }}>
+                                <span>{t('viewMode', 'Mode de Vue 3D')}</span>
+                                <span style={{ fontSize: 9, color: '#10b981', fontWeight: 'bold' }}>● 60 FPS</span>
                             </div>
-
-                            {/* Castes */}
-                            <div>
-                                <div style={styles.accordionHeader} onClick={() => setLegendCastesOpen(!legendCastesOpen)}>
-                                    <span>{t('legendCastes', 'Castes & Organismes')}</span>
-                                    {legendCastesOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                                </div>
-                                {legendCastesOpen && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '6px 4px' }}>
-                                        {castes.map((c, idx) => (
-                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: isDark ? '#cbd5e1' : '#334155' }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                    <span>{c.icon}</span>
-                                                    <span style={{ color: c.color, fontWeight: 700 }}>{c.name}</span>
-                                                </span>
-                                                <span style={{ fontSize: 9, color: isDark ? '#64748b' : '#94a3b8' }}>{c.desc}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Phéromones */}
-                            <div>
-                                <div style={styles.accordionHeader} onClick={() => setLegendPheroOpen(!legendPheroOpen)}>
-                                    <span>{t('legendPheromones', 'Phéromones Chimiques')}</span>
-                                    {legendPheroOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                                </div>
-                                {legendPheroOpen && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '6px 4px' }}>
-                                        {pheromones.map((p, idx) => (
-                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: isDark ? '#cbd5e1' : '#334155' }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                    <span>{p.icon}</span>
-                                                    <span style={{ color: p.color, fontWeight: 700 }}>{p.name}</span>
-                                                </span>
-                                                <span style={{ fontSize: 9, color: isDark ? '#64748b' : '#94a3b8' }}>{p.desc}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                            <div style={{ display: 'flex', gap: 4 }}>
+                                <button
+                                    style={styles.modeBtn(lookAndFeel === 'SCIENTIFIC')}
+                                    onClick={() => setLookAndFeel('SCIENTIFIC')}
+                                    title="Vue analytique et thermique scientifique"
+                                >
+                                    {t('modeScientific', '🔬 Scientifique')}
+                                </button>
+                                <button
+                                    style={styles.modeBtn(lookAndFeel === 'REALISTIC')}
+                                    onClick={() => setLookAndFeel('REALISTIC')}
+                                    title="Textures PBR et ombres solaires"
+                                >
+                                    {t('modeRealistic', '🌿 Réaliste')}
+                                </button>
+                                <button
+                                    style={styles.modeBtn(lookAndFeel === 'GAMING' || lookAndFeel === 'GAMIFIED')}
+                                    onClick={() => setLookAndFeel('GAMING')}
+                                    title="Rendu voxel et stylisé"
+                                >
+                                    {t('modeGamified', '🎮 Gamifié')}
+                                </button>
                             </div>
                         </div>
-                    )}
-                </div>
+
+                        {/* 2. Layer Visibility Checkboxes */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={styles.sectionTitle}>
+                                <span>Calques Visibles</span>
+                            </div>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Layers size={12} color="#ca8a04" />
+                                    <span>{t('layerTerrain', 'Sol & Relief')}</span>
+                                </span>
+                                <input type="checkbox" checked={Boolean(showTerrain)} onChange={toggleTerrain} />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Layers size={12} color="#f59e0b" />
+                                    <span>{t('layerSkirt', 'Jupe 3D Géologique')}</span>
+                                </span>
+                                <input type="checkbox" checked={Boolean(show3DSkirt)} onChange={toggle3DSkirt} />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Trees size={12} color="#22c55e" />
+                                    <span>{t('layerVegetation', 'Végétation')}</span>
+                                </span>
+                                <input type="checkbox" checked={Boolean(showVegetation)} onChange={toggleVegetation} />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Shield size={12} color="#a855f7" />
+                                    <span>{t('layerChambers', 'Cavités & Nids')}</span>
+                                </span>
+                                <input type="checkbox" checked={Boolean(showChambers)} onChange={toggleChambers} />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Sparkles size={12} color="#38bdf8" />
+                                    <span>{t('layerPheromones', 'Phéromones')}</span>
+                                </span>
+                                <input type="checkbox" checked={Boolean(showPheromones)} onChange={togglePheromones} />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Zap size={12} color="#ef4444" />
+                                    <span>{t('layerAnts', 'Fourmis & Castes')}</span>
+                                </span>
+                                <input type="checkbox" checked={Boolean(showAnts)} onChange={toggleAnts} />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <CloudRain size={12} color="#60a5fa" />
+                                    <span>{t('layerWeather', 'Météo & Ciel')}</span>
+                                </span>
+                                <input type="checkbox" checked={Boolean(showWeather)} onChange={toggleWeather} />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Map size={12} color="#10b981" />
+                                    <span>{t('showMinimap', 'Minimap 2D Radar')}</span>
+                                </span>
+                                <input type="checkbox" checked={Boolean(showMinimap)} onChange={toggleMinimap} />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <GridIcon size={12} color="#818cf8" />
+                                    <span>{t('showGrid', 'Grille de Référence')}</span>
+                                </span>
+                                <input type="checkbox" checked={Boolean(showGrid)} onChange={toggleGrid} />
+                            </label>
+                        </div>
+
+                        {/* 3. Axial Slicing Plane Slider (Coupe Axiale) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, fontWeight: 700 }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: isDark ? '#38bdf8' : '#0284c7' }}>
+                                    <Scissors size={13} />
+                                    <span>Coupe Axiale (Slice Plane)</span>
+                                </span>
+                                <span style={{ color: '#f59e0b', fontSize: 10 }}>{((slicePlaneRatio ?? 1.0) * 100).toFixed(0)}%</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={slicePlaneRatio ?? 1.0}
+                                onChange={(e) => setSlicePlaneRatio(parseFloat(e.target.value))}
+                                style={styles.sliderTrack}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: isDark ? '#64748b' : '#94a3b8' }}>
+                                <span>Profondeur 0%</span>
+                                <span>Surface 100%</span>
+                            </div>
+                        </div>
+
+                        {/* 4. Scientific Mode Isolines & UV Vision */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={styles.sectionTitle}>
+                                <span>{t('scientificFilters', 'Filtres Scientifiques')}</span>
+                            </div>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <GridIcon size={12} color="#eab308" />
+                                    <span>{t('isolineTopo', 'Isolines Topographiques')}</span>
+                                </span>
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(showScientificIsolinesTopo)}
+                                    onChange={toggleScientificIsolinesTopo}
+                                />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Thermometer size={12} color="#f97316" />
+                                    <span>{t('isolineClimate', 'Isolines Microclimat')}</span>
+                                </span>
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(showScientificIsolinesMicroclimate)}
+                                    onChange={toggleScientificIsolinesMicroclimate}
+                                />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Sparkles size={12} color="#06b6d4" />
+                                    <span>{t('isolinePhero', 'Isolines Phéromones')}</span>
+                                </span>
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(showScientificIsolinesPheromones)}
+                                    onChange={toggleScientificIsolinesPheromones}
+                                />
+                            </label>
+
+                            <label style={styles.toggleRow}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Eye size={12} color="#ec4899" />
+                                    <span>{t('uvMode', 'Mode Ultraviolet (UV)')}</span>
+                                </span>
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(isUVVisionMode)}
+                                    onChange={toggleUVVisionMode}
+                                />
+                            </label>
+                        </div>
+                    </>
+                ) : (
+                    /* 5. Complete Rich Legend & Glossary */
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {/* Substrats */}
+                        <div>
+                            <div style={styles.accordionHeader} onClick={() => setLegendSubstratesOpen(!legendSubstratesOpen)}>
+                                <span>{t('legendSubstrates', 'Substrats Géologiques')} (12)</span>
+                                {legendSubstratesOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                            </div>
+                            {legendSubstratesOpen && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                                    {substrates.map((s, idx) => (
+                                        <div key={idx} style={styles.legendItem}>
+                                            <span style={{ width: 10, height: 10, borderRadius: 3, background: s.color, display: 'inline-block', flexShrink: 0, border: '1px solid rgba(255,255,255,0.2)' }} />
+                                            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                                <span style={{ fontWeight: 700, fontSize: 10 }}>{s.name}</span>
+                                                <span style={{ fontSize: 8.5, color: isDark ? '#94a3b8' : '#64748b' }}>{s.desc}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Castes */}
+                        <div>
+                            <div style={styles.accordionHeader} onClick={() => setLegendCastesOpen(!legendCastesOpen)}>
+                                <span>{t('legendCastes', 'Castes & Organismes')} (7)</span>
+                                {legendCastesOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                            </div>
+                            {legendCastesOpen && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                                    {castes.map((c, idx) => (
+                                        <div key={idx} style={styles.legendItem}>
+                                            <span style={{ fontSize: 13, flexShrink: 0 }}>{c.icon}</span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                                <span style={{ color: c.color, fontWeight: 800, fontSize: 10 }}>{c.name}</span>
+                                                <span style={{ fontSize: 8.5, color: isDark ? '#94a3b8' : '#64748b' }}>{c.desc}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Phéromones */}
+                        <div>
+                            <div style={styles.accordionHeader} onClick={() => setLegendPheroOpen(!legendPheroOpen)}>
+                                <span>{t('legendPheromones', 'Phéromones Chimiques')} (4)</span>
+                                {legendPheroOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                            </div>
+                            {legendPheroOpen && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                                    {pheromones.map((p, idx) => (
+                                        <div key={idx} style={styles.legendItem}>
+                                            <span style={{ fontSize: 13, flexShrink: 0 }}>{p.icon}</span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                                <span style={{ color: p.color, fontWeight: 800, fontSize: 10 }}>{p.name}</span>
+                                                <span style={{ fontSize: 8.5, color: isDark ? '#94a3b8' : '#64748b' }}>{p.desc}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )

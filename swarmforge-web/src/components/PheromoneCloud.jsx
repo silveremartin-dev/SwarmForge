@@ -30,9 +30,12 @@ function createGlowDiscTexture() {
 }
 
 export default function PheromoneCloud() {
-    const { pheromones, ants, terrainConfig } = useSimulationStore()
+    const { pheromones, ants, terrainConfig, showPheromones } = useSimulationStore()
     const pointsRef = useRef()
     const glowTexture = useMemo(() => createGlowDiscTexture(), [])
+
+    // If disabled in options, do not render pheromones
+    if (!showPheromones) return null
 
     // Max capacity for cloud points
     const MAX_POINTS = 3000

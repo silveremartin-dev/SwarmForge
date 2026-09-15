@@ -16,7 +16,10 @@ import { soundEngine } from '../utils/soundEngine'
  * - Vision Nocturne (Night vision soft ambient illumination toggle)
  */
 export default function WeatherRenderer() {
-    const { environment, weatherToggles, environmentLighting, climateEngine } = useSimulationStore()
+    const { showWeather, environment, weatherToggles, environmentLighting, climateEngine } = useSimulationStore()
+
+    // If disabled in options, do not render weather / sky effects
+    if (!showWeather) return null
 
     // Environment parameters with fallbacks
     const temp = environmentLighting?.currentCalculatedTempC ?? environment.temperature ?? 20

@@ -32,8 +32,16 @@ shift
 goto parse_args
 
 :run_compute
-echo Starting SwarmForge Compute Node...
-call mvn compile exec:java -pl swarmforge-compute -q %DEBUG_OPT% %HEADLESS_OPT% -Dexec.args="%PASSED_ARGS%"
+echo [1/2] Compiling SwarmForge Core & Compute Node...
+call mvn compile -pl swarmforge-compute -am -q
+if errorlevel 1 (
+    echo ERROR: Compilation failed.
+    pause
+    exit /b 1
+)
+
+echo [2/2] Starting SwarmForge Compute Node...
+call mvn exec:java -pl swarmforge-compute -q %DEBUG_OPT% %HEADLESS_OPT% -Dexec.args="%PASSED_ARGS%"
 
 if errorlevel 1 (
     echo ERROR: Failed to start Compute Node.

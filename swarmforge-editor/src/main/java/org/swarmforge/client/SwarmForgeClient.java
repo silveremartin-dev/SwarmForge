@@ -93,9 +93,23 @@ public class SwarmForgeClient extends Application {
         });
         private volatile boolean simLoopActive = false;
 
+        public static boolean isClientOnlyMode = false;
+
+        public static void setClientOnlyMode(boolean clientOnly) {
+            isClientOnlyMode = clientOnly;
+        }
+
+        public static void silenceJme3Loggers() {
+            org.swarmforge.client.util.IconUtils.silenceJme3Warnings();
+        }
+
+        static {
+            silenceJme3Loggers();
+        }
+
         @Override
     public void start(Stage primaryStage) {
-        LOG.info("Starting SwarmForge Editor...");
+        LOG.info(isClientOnlyMode ? "Starting SwarmForge Dedicated Client..." : "Starting SwarmForge Editor...");
 
         // 1. Immediately bind window icons to primary stage for OS taskbar registration
         org.swarmforge.client.util.IconUtils.applyWindowIcons(primaryStage);
@@ -112,22 +126,32 @@ public class SwarmForgeClient extends Application {
         org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
 
         // title binding
-        primaryStage.titleProperty().bind(I18nManager.getInstance().createStringBinding("app.title"));
+        if (isClientOnlyMode) {
+            primaryStage.titleProperty().bind(I18nManager.getInstance().createStringBinding("client.title"));
+        } else {
+            primaryStage.titleProperty().bind(I18nManager.getInstance().createStringBinding("app.title"));
+        }
 
         // Root Layout
         BorderPane root = new BorderPane();
 
         // Menu bar removed per user request
 
-        // 2. Main Tab Pane
-        this.mainTabs = new TabPane();
-        this.mainTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        if (isClientOnlyMode) {
+            // Dedicated Client mode: directly display Simulation Manager full screen
+            Node simManager = createSimulationManager();
+            root.setCenter(simManager);
+            primaryStage.setMaximized(true);
+        } else {
+            // 2. Main Tab Pane
+            this.mainTabs = new TabPane();
+            this.mainTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        // --- TAB 1: SIMULATION MANAGER (Control, God Mode, Event Log) ---
-        this.simTab = new Tab();
-        simTab.textProperty().bind(i18n.createStringBinding("tab.simulation"));
-        simTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SLIDERS));
-        simTab.setContent(createSimulationManager());
+            // --- TAB 1: SIMULATION MANAGER (Control, God Mode, Event Log) ---
+            this.simTab = new Tab();
+            simTab.textProperty().bind(i18n.createStringBinding("tab.simulation"));
+            simTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SLIDERS));
+            simTab.setContent(createSimulationManager());
 
         // --- TAB 2: WORLD EDITOR (3D View + Terrain Tools) ---
         this.worldTab = new Tab();
@@ -237,6 +261,7 @@ public class SwarmForgeClient extends Application {
         mainTabs.getSelectionModel().select(simTab);
 
         root.setCenter(mainTabs);
+        }
 
         // Scene Setup & Theme Registration
         Scene scene = new Scene(root, 1280, 800);
@@ -2358,7 +2383,7 @@ public class SwarmForgeClient extends Application {
         }
 
         private boolean isSim3DFocused() {
-                boolean isSimTabSelected = (mainTabs != null && mainTabs.getSelectionModel().getSelectedItem() == simTab);
+                boolean isSimTabSelected = (mainTabs == null || mainTabs.getSelectionModel().getSelectedItem() == simTab);
                 boolean isVisualSubTabSelected = (simSubTabs == null || simSubTabs.getSelectionModel().getSelectedItem() == visualTab);
                 return isSimTabSelected && isVisualSubTabSelected;
         }
@@ -3207,6 +3232,14 @@ public class SwarmForgeClient extends Application {
 
         public static void main(String[] args) {
                 org.swarmforge.client.util.IconUtils.initEarlyTaskbarAppId();
+                if (args != null) {
+                    for (String arg : args) {
+                        if ("--client".equalsIgnoreCase(arg) || "--client-only".equalsIgnoreCase(arg) || "--viewer".equalsIgnoreCase(arg)) {
+                            setClientOnlyMode(true);
+                            break;
+                        }
+                    }
+                }
                 launch(args);
         }
 }
