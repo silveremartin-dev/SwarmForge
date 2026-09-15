@@ -564,18 +564,75 @@ function VoxelTerrain({ terrainConfig }) {
             ))}
         </group>
     )
+/**
+ * 3D Ant Selection Target Spotlight Reticle (Neon Cyan + Amber Rotating Double Ring)
+ */
+function AntSelectionReticle3D({ ant, terrainConfig }) {
+    const groupRef = useRef()
+
+    useFrame((state, delta) => {
+        if (groupRef.current) {
+            groupRef.current.rotation.y += delta * 2.2
+            const t = state.clock.getElapsedTime()
+            const pulse = 1.0 + Math.sin(t * 5.0) * 0.12
+            groupRef.current.scale.set(pulse, pulse, pulse)
+        }
+    })
+
+    if (!ant) return null
+
+    const antX = ant.x ?? 50
+    const antZ = ant.z ?? (ant.y ?? 50)
+    const antY = getTerrainHeight(antX, antZ, terrainConfig) + 0.12
+
+    return (
+        <group ref={groupRef} position={[antX, antY, antZ]}>
+            {/* Outer Cyan Glowing Ring */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                <torusGeometry args={[0.55, 0.03, 16, 32]} />
+                <meshBasicMaterial color="#38bdf8" transparent opacity={0.85} />
+            </mesh>
+            {/* Inner Amber Glowing Ring */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                <torusGeometry args={[0.32, 0.02, 16, 32]} />
+                <meshBasicMaterial color="#f59e0b" transparent opacity={0.90} />
+            </mesh>
+            {/* 4 Crosshairs */}
+            {[0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2].map((angle, idx) => (
+                <mesh key={idx} position={[Math.cos(angle) * 0.55, 0, Math.sin(angle) * 0.55]} rotation={[0, -angle, 0]}>
+                    <boxGeometry args={[0.02, 0.02, 0.12]} />
+                    <meshBasicMaterial color="#38bdf8" />
+                </mesh>
+            ))}
+        </group>
+    )
 }
 
-
 export default function Terrarium() {
-    const { ants, foodSources, predators, environment, terrainConfig, lookAndFeel, environmentLighting, disasterState, climateEngine } = useSimulationStore()
+    const {
+        ants,
+        foodSources,
+        predators,
+        environment,
+        terrainConfig,
+        lookAndFeel,
+        environmentLighting,
+        disasterState,
+        climateEngine,
+        showTerrain,
+        show3DSkirt,
+        showVegetation,
+        showAnts,
+        slicePlaneRatio,
+        selectedEntity
+    } = useSimulationStore()
     const groupRef = useRef()
     const riverMeshRef = useRef()
     const floodMeshRef = useRef()
     const { camera } = useThree()
 
-    // Gamified mode is strictly 'GAMING'. Scientific mode uses standard realistic 3D mesh rendering.
-    const isGamified = lookAndFeel === 'GAMING'
+    // Gamified mode is strictly 'GAMING' or 'GAMIFIED'.
+    const isGamified = lookAndFeel === 'GAMING' || lookAndFeel === 'GAMIFIED'
 
     // Realtime spatial listener & river audio update based on 3D camera distance
     useFrame((state) => {
@@ -891,40 +948,42 @@ export default function Terrarium() {
             <fogExp2 attach="fog" args={[fogColor, 0.008]} />
 
             {/* Ground Surface: Solid Voxel Block Grid in Gamified mode vs Smooth Displaced Mesh in Realistic mode */}
-            {isGamified ? (
-                <VoxelTerrain terrainConfig={terrainConfig} />
-            ) : (
-                <group>
-                    <mesh
-                        geometry={groundGeometry}
-                        material={groundMaterial}
-                        position={[50, 0, 50]}
-                        receiveShadow
-                    />
-                    {/* River Pebble & Cobble Bed underneath water */}
-                    {realisticTextures?.riverCobbleMap && (
+            {showTerrain && (
+                isGamified ? (
+                    <VoxelTerrain terrainConfig={terrainConfig} />
+                ) : (
+                    <group>
                         <mesh
-                            rotation={[-Math.PI / 2, 0, 0]}
-                            position={[25, -0.1, 50]}
+                            geometry={groundGeometry}
+                            material={groundMaterial}
+                            position={[50, 0, 50]}
                             receiveShadow
-                        >
-                            <planeGeometry args={[12, 100]} />
-                            <meshStandardMaterial
-                                map={realisticTextures.riverCobbleMap}
-                                normalMap={realisticTextures.riverCobbleNormalMap}
-                                roughness={0.9}
-                            />
-                        </mesh>
-                    )}
-                    <mesh
-                        ref={riverMeshRef}
-                        geometry={riverGeometry}
-                        material={riverMaterial}
-                        rotation={[-Math.PI / 2, 0, 0]}
-                        position={[25, 0.02, 50]}
-                        receiveShadow
-                    />
-                </group>
+                        />
+                        {/* River Pebble & Cobble Bed underneath water */}
+                        {realisticTextures?.riverCobbleMap && (
+                            <mesh
+                                rotation={[-Math.PI / 2, 0, 0]}
+                                position={[25, -0.1, 50]}
+                                receiveShadow
+                            >
+                                <planeGeometry args={[12, 100]} />
+                                <meshStandardMaterial
+                                    map={realisticTextures.riverCobbleMap}
+                                    normalMap={realisticTextures.riverCobbleNormalMap}
+                                    roughness={0.9}
+                                />
+                            </mesh>
+                        )}
+                        <mesh
+                            ref={riverMeshRef}
+                            geometry={riverGeometry}
+                            material={riverMaterial}
+                            rotation={[-Math.PI / 2, 0, 0]}
+                            position={[25, 0.02, 50]}
+                            receiveShadow
+                        />
+                    </group>
+                )
             )}
 
             {/* Scientific Mode: 3D Topographic, Pheromones & Micro-climate Isolines */}
@@ -941,7 +1000,7 @@ export default function Terrarium() {
             )}
 
             {/* Geological Skirt Strata (Realistic & Scientific Modes only) */}
-            {!isGamified && (
+            {show3DSkirt && !isGamified && (
                 <group>
                     {hasRiver ? (
                         <>
@@ -975,7 +1034,7 @@ export default function Terrarium() {
             )}
 
             {/* CUBIC OUTER BORDER / VOXEL RIM (Bordure cubique en blocs 3D - Gamified Mode Only) */}
-            {isGamified && (
+            {show3DSkirt && isGamified && (
                 <group>
                     {voxelRimBlocks.map((b) => (
                         <mesh key={b.id} position={b.pos} castShadow receiveShadow>
@@ -998,8 +1057,8 @@ export default function Terrarium() {
                 </mesh>
             ))}
 
-            {/* Trees & Ground Flora Renderer (Voxel Trees for Gamified vs Realistic Anchored Trees & Flora for Realistic) */}
-            <VegetationRenderer />
+            {/* Trees & Ground Flora Renderer */}
+            {showVegetation && <VegetationRenderer />}
 
             {/* Gamified Mode Voxel Floating Pheromone Particles */}
             {isGamified && (
@@ -1037,13 +1096,14 @@ export default function Terrarium() {
             {/* Nests Renderer */}
             <NestRenderer />
 
-            {/* Ants (LOD System) */}
-            <LODAnts ants={ants} />
+            {/* Ants (LOD System) & Selection Target Reticle 3D */}
+            {showAnts && <LODAnts ants={ants} />}
+            <AntSelectionReticle3D ant={selectedEntity} terrainConfig={terrainConfig} />
 
             {/* Food Sources (Aligned to Terrain Height) */}
             {foodSources.map((food, i) => {
-                const foodX = food.x <= 5 ? food.x * 50 : food.x
-                const foodZ = food.y <= 5 ? food.y * 50 : food.y
+                const foodX = food.x ?? 50
+                const foodZ = food.y ?? 50
                 const foodY = getTerrainHeight(foodX, foodZ, terrainConfig) + 0.3
                 return (
                     <FoodSource
@@ -1057,8 +1117,8 @@ export default function Terrarium() {
 
             {/* Predators (Aligned to Terrain Height) */}
             {predators.map((pred, i) => {
-                const predX = pred.x <= 5 ? pred.x * 50 : pred.x
-                const predZ = pred.y <= 5 ? pred.y * 50 : pred.y
+                const predX = pred.x ?? 50
+                const predZ = pred.y ?? 50
                 const predY = getTerrainHeight(predX, predZ, terrainConfig) + 0.3
                 return (
                     <Predator

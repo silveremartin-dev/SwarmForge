@@ -81,9 +81,22 @@ public class JmeGameApp extends SimpleApplication {
     public interface ObjectSelectionListener {
         void onVoxelSelected(int x, int y, int z, String material, float moisture, float temp, float compaction);
         void onAntSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job);
+        default void onChamberSelected(String chamberId) {}
     }
 
     private ObjectSelectionListener selectionListener;
+    private boolean isAntTrackingEnabled = true;
+
+    public boolean isAntTrackingEnabled() {
+        return isAntTrackingEnabled;
+    }
+
+    public void setAntTrackingEnabled(boolean enabled) {
+        this.isAntTrackingEnabled = enabled;
+        if (!enabled) {
+            this.followedAntId = null;
+        }
+    }
 
     public void setSelectionListener(ObjectSelectionListener listener) {
         this.selectionListener = listener;
@@ -167,6 +180,9 @@ public class JmeGameApp extends SimpleApplication {
             this.terrainNode = new com.jme3.scene.Node("TerrainNode");
             rootNode.attachChild(terrainNode);
 
+            // Initialize 3D Target Spotlight Selection Reticle
+            initSelectionReticle();
+
             // Initialize simple buffer
             pixelBuffer = BufferUtils.createByteBuffer(width * height * 4);
             pixelData = new byte[width * height * 4];
@@ -240,22 +256,41 @@ public class JmeGameApp extends SimpleApplication {
                     com.jme3.collision.CollisionResult closes = results.getClosestCollision();
                     Geometry geom = closes.getGeometry();
 
-                    // Check if clicked spatial or parent is an ANT
-                    com.jme3.scene.Spatial antSpatial = geom;
-                    while (antSpatial != null && antSpatial.getUserData("ID") == null) {
-                        antSpatial = antSpatial.getParent();
+                    // Check if clicked spatial or parent is an ANT (only if ant tracking is enabled)
+                    if (isAntTrackingEnabled) {
+                        com.jme3.scene.Spatial antSpatial = geom;
+                        while (antSpatial != null && antSpatial.getUserData("ID") == null) {
+                            antSpatial = antSpatial.getParent();
+                        }
+
+                        if (antSpatial != null && antSpatial.getUserData("ID") != null) {
+                            followedAntId = (String) antSpatial.getUserData("ID");
+                            String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                            System.out.println("Following Ant: " + followedAntId);
+                            if (selectionListener != null) {
+                                final String id = followedAntId;
+                                final String fStage = stage;
+                                Platform.runLater(() -> selectionListener.onAntSelected(id, "Ouvrière (Worker)", fStage, 95.0f, 88.0f, 12.0f, 450.0f, "Forager"));
+                            }
+                            return;
+                        }
                     }
 
-                    if (antSpatial != null && antSpatial.getUserData("ID") != null) {
-                        followedAntId = (String) antSpatial.getUserData("ID");
-                        String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
-                        System.out.println("Following Ant: " + followedAntId);
-                        if (selectionListener != null) {
-                            final String id = followedAntId;
-                            final String fStage = stage;
-                            Platform.runLater(() -> selectionListener.onAntSelected(id, "Ouvrière (Worker)", fStage, 95.0f, 88.0f, 12.0f, 450.0f, "Forager"));
+                    // Check if clicked spatial or parent is a Chamber Node
+                    com.jme3.scene.Spatial chamberSpatial = geom;
+                    while (chamberSpatial != null && chamberSpatial.getUserData("ChamberID") == null && (chamberSpatial.getName() == null || !chamberSpatial.getName().startsWith("Node_"))) {
+                        chamberSpatial = chamberSpatial.getParent();
+                    }
+                    if (chamberSpatial != null) {
+                        String chamberIdStr = (String) chamberSpatial.getUserData("ChamberID");
+                        if (chamberIdStr == null && chamberSpatial.getName() != null && chamberSpatial.getName().startsWith("Node_")) {
+                            chamberIdStr = chamberSpatial.getName().substring(5);
                         }
-                        return;
+                        if (chamberIdStr != null && selectionListener != null) {
+                            final String fChamberId = chamberIdStr;
+                            Platform.runLater(() -> selectionListener.onChamberSelected(fChamberId));
+                            return;
+                        }
                     }
 
                     // Parse name "Voxel_x_y_z"
@@ -358,6 +393,41 @@ public class JmeGameApp extends SimpleApplication {
         }
     };
 
+    private float slicePlaneRatio = 1.0f;
+    private boolean showSkirt = true;
+    private boolean showElevationIsolines = false;
+
+    public void setSlicePlaneRatio(float ratio) {
+        this.slicePlaneRatio = Math.max(0.05f, Math.min(1.0f, ratio));
+        rebuildTerrainMesh();
+    }
+
+    public void setShowSkirt(boolean show) {
+        this.showSkirt = show;
+        rebuildTerrainMesh();
+    }
+
+    public void setShowElevationIsolines(boolean show) {
+        this.showElevationIsolines = show;
+        rebuildTerrainMesh();
+    }
+
+    public void setShowClimateIsolines(boolean show) {
+        // Climate isolines handled via overlay/weather system
+    }
+
+    public void setShowPheromoneIsolines(boolean show) {
+        if (pheromoneVisualizer != null) {
+            pheromoneVisualizer.setShowIsolines(show);
+        }
+    }
+
+    public void rebuildTerrainMesh() {
+        if (simulation != null && simulation.getTerrarium() != null) {
+            renderTerrarium(simulation.getTerrarium());
+        }
+    }
+
     public void renderTerrarium(org.swarmforge.core.domain.Terrarium terrarium) {
         enqueueTask(() -> {
             if (terrainNode != null) {
@@ -373,8 +443,8 @@ public class JmeGameApp extends SimpleApplication {
             Material soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             soilMat.setBoolean("UseMaterialColors", true);
             soilMat.setColor("Diffuse", ColorRGBA.White);
-            soilMat.setColor("Ambient", new ColorRGBA(0.35f, 0.35f, 0.35f, 1f));
-            soilMat.setColor("Specular", new ColorRGBA(0.1f, 0.1f, 0.1f, 1f));
+            soilMat.setColor("Ambient", new ColorRGBA(0.40f, 0.40f, 0.40f, 1f));
+            soilMat.setColor("Specular", new ColorRGBA(0.12f, 0.12f, 0.12f, 1f));
             soilMat.setFloat("Shininess", 8f);
 
             // Select appropriate high-res 1K PBR texture set based on terrain biome & latitude
@@ -409,11 +479,27 @@ public class JmeGameApp extends SimpleApplication {
             } catch (Exception ignored) {}
 
             TerrainMeshGenerator generator = new TerrainMeshGenerator();
-            com.jme3.scene.Mesh terrainMesh = generator.generateMesh(terrarium);
+            com.jme3.scene.Mesh terrainMesh = generator.generateMesh(terrarium, slicePlaneRatio, showSkirt, isGamifiedVoxelMode);
+            try {
+                com.jme3.util.TangentBinormalGenerator.generate(terrainMesh);
+            } catch (Exception ignored) {}
             Geometry terrainGeom = new Geometry("TerrainMesh", terrainMesh);
             terrainGeom.setMaterial(soilMat);
             terrainGeom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Receive);
             terrainNode.attachChild(terrainGeom);
+
+            // 3D Elevation Isolines Contour Mesh
+            if (showElevationIsolines) {
+                com.jme3.scene.Mesh isoMesh = generator.generateIsolinesMesh(terrarium, slicePlaneRatio, 2.0f);
+                if (isoMesh != null) {
+                    Geometry isoGeom = new Geometry("ElevationIsolines", isoMesh);
+                    Material isoMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+                    isoMat.setColor("Color", new ColorRGBA(0.35f, 0.85f, 1.0f, 0.9f));
+                    isoGeom.setMaterial(isoMat);
+                    terrainNode.attachChild(isoGeom);
+                }
+            }
+
             rootNode.attachChild(terrainNode);
 
             if (vegetationVisualizer != null) {
@@ -422,6 +508,7 @@ public class JmeGameApp extends SimpleApplication {
             }
 
             if (tunnelVisualizer != null) {
+                tunnelVisualizer.setTerrarium(terrarium);
                 tunnelVisualizer.setTerrainDimensions(10.0f, w);
             }
             if (antVisualizer != null) {
@@ -438,20 +525,19 @@ public class JmeGameApp extends SimpleApplication {
                 pheromoneVisualizer.initialize(w, h, surfaceY);
             }
 
-            // Recenter camera
-            cam.setLocation(new Vector3f(w / 2f, d + 20, h + 20)); // h is height (vertical), d is depth (Z), w is width
-                                                                   // (X)
-            // Wait, standard convention in this app seems Y is vertical? JME Y is vertical.
-            // w=width, h=height?
-            // "cam.setLocation(new Vector3f(w / 2f, d + 20, h + 20));"
-            // If Y is up, then h should be Y.
-            // In renderTerrarium args: (Terrarium terrarium)
-            // int w = getWidth, int d = getDepth, int h = getHeight.
-            // Usually Height is Y.
-            // cam loc logic seems odd if h is Z.
-            // Let's stick to existing cam logic but ensure visualizer is attached.
-
-            cam.lookAt(new Vector3f(w / 2f, d / 2f, h / 2f), Vector3f.UNIT_Y);
+            // Auto-Focus & Camera Centering on Colony Nest or World Center
+            float targetX = w / 2f;
+            float targetZ = h / 2f;
+            float targetY = surfaceY;
+            if (simulation != null && !simulation.getColonies().isEmpty()) {
+                org.swarmforge.core.domain.Colony colony = simulation.getColonies().get(0);
+                targetX = colony.getNestX();
+                targetZ = colony.getNestY();
+                targetY = terrarium.getSurfaceElevation(targetX, targetZ);
+            }
+            cameraTarget.set(targetX, targetY, targetZ);
+            cam.setLocation(new Vector3f(targetX, targetY + 16.0f, targetZ + 22.0f));
+            cam.lookAt(new Vector3f(targetX, targetY + 0.5f, targetZ), Vector3f.UNIT_Y);
         });
     }
 
@@ -469,6 +555,26 @@ public class JmeGameApp extends SimpleApplication {
 
             if (pheromoneVisualizer != null && simulation.getPheromoneGrid() != null) {
                 pheromoneVisualizer.update(simulation.getPheromoneGrid());
+            }
+
+            // 3D Ant Selection & Target Spotlight Reticle Animation
+            reticleAnimationTimer += tpf;
+            if (selectionReticleNode != null) {
+                if (followedAntId != null && antVisuals.containsKey(followedAntId)) {
+                    com.jme3.scene.Spatial antSpatial = antVisuals.get(followedAntId);
+                    if (antSpatial != null) {
+                        selectionReticleNode.setCullHint(com.jme3.scene.Spatial.CullHint.Never);
+                        Vector3f antPos = antSpatial.getWorldTranslation();
+                        selectionReticleNode.setLocalTranslation(antPos.x, antPos.y + 0.08f, antPos.z);
+                        selectionReticleNode.rotate(0, tpf * 2.2f, 0);
+                        float pulse = 1.0f + 0.12f * (float) Math.sin(reticleAnimationTimer * 5.0f);
+                        selectionReticleNode.setLocalScale(pulse);
+                    } else {
+                        selectionReticleNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+                    }
+                } else {
+                    selectionReticleNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+                }
             }
 
             // Camera Follow (FREE, TPS, FPS)
@@ -544,6 +650,15 @@ public class JmeGameApp extends SimpleApplication {
                     updateSingleAntVisual(id, caste, stage, ind.getX(), ind.getZ(), ind.getY(), ind.getHeading(), activeIds, ind.getSpecies());
                 }
             }
+            if (simulation.getPredatorManager() != null) {
+                for (org.swarmforge.core.domain.Predator pred : simulation.getPredatorManager().getPredators()) {
+                    if (pred != null && pred.isAlive()) {
+                        String id = "Predator_" + pred.getId();
+                        updateSingleAntVisual(id, org.swarmforge.core.domain.Individual.Caste.SOLDIER, org.swarmforge.core.domain.Individual.LifeStage.ADULT,
+                                pred.getX(), pred.getZ(), pred.getY(), pred.getHeading(), activeIds, null);
+                    }
+                }
+            }
         }
 
         // Cleanup
@@ -555,6 +670,61 @@ public class JmeGameApp extends SimpleApplication {
                 it.remove();
             }
         }
+    }
+
+    public void pick(double fxX, double fxY, double paneW, double paneH) {
+        enqueueTask(() -> {
+            float jmeX = (float) ((fxX / Math.max(1.0, paneW)) * width);
+            float jmeY = (float) ((1.0 - (fxY / Math.max(1.0, paneH))) * height);
+
+            Vector3f click3d = cam.getWorldCoordinates(new com.jme3.math.Vector2f(jmeX, jmeY), 0f).clone();
+            Vector3f dir = cam.getWorldCoordinates(new com.jme3.math.Vector2f(jmeX, jmeY), 1f).subtractLocal(click3d).normalizeLocal();
+            com.jme3.math.Ray ray = new com.jme3.math.Ray(click3d, dir);
+
+            com.jme3.collision.CollisionResults results = new com.jme3.collision.CollisionResults();
+            rootNode.collideWith(ray, results);
+
+            if (results.size() > 0) {
+                com.jme3.collision.CollisionResult closes = results.getClosestCollision();
+                Geometry geom = closes.getGeometry();
+
+                // 1. Check if clicked spatial is an ANT
+                if (isAntTrackingEnabled) {
+                    com.jme3.scene.Spatial antSpatial = geom;
+                    while (antSpatial != null && antSpatial.getUserData("ID") == null) {
+                        antSpatial = antSpatial.getParent();
+                    }
+
+                    if (antSpatial != null && antSpatial.getUserData("ID") != null) {
+                        followedAntId = (String) antSpatial.getUserData("ID");
+                        String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                        if (selectionListener != null) {
+                            final String id = followedAntId;
+                            final String fStage = stage;
+                            Platform.runLater(() -> selectionListener.onAntSelected(id, "Ouvrière (Worker)", fStage, 95.0f, 88.0f, 12.0f, 450.0f, "Forager"));
+                        }
+                        return;
+                    }
+                }
+
+                // 2. Check if clicked spatial is a Chamber Node
+                com.jme3.scene.Spatial chamberSpatial = geom;
+                while (chamberSpatial != null && chamberSpatial.getUserData("ChamberID") == null && (chamberSpatial.getName() == null || !chamberSpatial.getName().startsWith("Node_"))) {
+                    chamberSpatial = chamberSpatial.getParent();
+                }
+                if (chamberSpatial != null) {
+                    String chamberIdStr = (String) chamberSpatial.getUserData("ChamberID");
+                    if (chamberIdStr == null && chamberSpatial.getName() != null && chamberSpatial.getName().startsWith("Node_")) {
+                        chamberIdStr = chamberSpatial.getName().substring(5);
+                    }
+                    if (chamberIdStr != null && selectionListener != null) {
+                        final String fChamberId = chamberIdStr;
+                        Platform.runLater(() -> selectionListener.onChamberSelected(fChamberId));
+                        return;
+                    }
+                }
+            }
+        });
     }
 
     private void updateSingleAntVisual(String id, org.swarmforge.core.domain.Individual.Caste caste,
@@ -583,10 +753,10 @@ public class JmeGameApp extends SimpleApplication {
 
             // Deterministic individual size polymorphism (±6% subtle variation around CasteTemplate average)
             int hash = id != null ? Math.abs(id.hashCode()) : 0;
-            float variance = 1.0f + (((hash % 1000) / 1000.0f) - 0.5f) * 0.12f;
+            float variance = (1.0f + (((hash % 1000) / 1000.0f) - 0.5f) * 0.12f) * antVisualScaleMultiplier;
             antGeom.setLocalScale(variance);
 
-            com.jme3.scene.instancing.InstancedNode node = antVisualizer.getInstancedNode(caste);
+            com.jme3.scene.Node node = antVisualizer.getInstancedNode(caste);
             if (node != null) {
                 node.attachChild(antGeom);
             } else {
@@ -595,15 +765,29 @@ public class JmeGameApp extends SimpleApplication {
             antVisuals.put(id, antGeom);
         }
 
+        // Ground elevation snapping for walking ants:
+        // In JME coordinates, X is x, Y is altitude (vertical up), Z is z (Terrarium Y depth).
+        if (simulation != null && simulation.getTerrarium() != null) {
+            float surfaceElevation = simulation.getTerrarium().getSurfaceElevation(x, z);
+            boolean isUndergroundChamber = false;
+            if (y < surfaceElevation - 1.0f) {
+                org.swarmforge.core.domain.TerrariumCell cell = simulation.getTerrarium().getCell((int) x, (int) z, (int) y);
+                if (cell != null && cell.isPassable()) {
+                    isUndergroundChamber = true;
+                }
+            }
+            if (!isUndergroundChamber) {
+                y = surfaceElevation + 0.5f + 0.05f;
+            }
+        }
+
         antGeom.setLocalTranslation(x, y, z);
         antGeom.setLocalRotation(new com.jme3.math.Quaternion().fromAngles(0, heading, 0));
     }
 
     private void initializeInstancing() {
         for (org.swarmforge.core.domain.Individual.Caste caste : org.swarmforge.core.domain.Individual.Caste.values()) {
-            com.jme3.scene.instancing.InstancedNode node = new com.jme3.scene.instancing.InstancedNode(
-                    "Instanced_" + caste);
-            node.setMaterial(antVisualizer.getMaterial(caste)); // InstancedNode requires Material
+            com.jme3.scene.Node node = new com.jme3.scene.Node("CasteNode_" + caste);
             antVisualizer.registerInstancedNode(caste, node);
             rootNode.attachChild(node);
         }
@@ -615,7 +799,7 @@ public class JmeGameApp extends SimpleApplication {
     public void rotateCamera(float x, float y) {
         enqueueTask(() -> {
             Vector3f offset = cam.getLocation().subtract(cameraTarget);
-            float dist = Math.max(1.5f, offset.length());
+            float dist = Math.max(0.5f, offset.length());
 
             com.jme3.math.Quaternion qYaw = new com.jme3.math.Quaternion().fromAngleAxis(-x * 0.006f, Vector3f.UNIT_Y);
             Vector3f camLeft = cam.getLeft();
@@ -623,7 +807,7 @@ public class JmeGameApp extends SimpleApplication {
 
             Vector3f newOffset = qYaw.mult(qPitch.mult(offset));
             // Prevent camera from flipping under ground or passing straight overhead
-            if (newOffset.y < 1.0f) newOffset.y = 1.0f;
+            if (newOffset.y < 0.2f) newOffset.y = 0.2f;
             cam.setLocation(cameraTarget.add(newOffset));
             cam.lookAt(cameraTarget, Vector3f.UNIT_Y);
         });
@@ -642,11 +826,14 @@ public class JmeGameApp extends SimpleApplication {
         enqueueTask(() -> {
             Vector3f toTarget = cameraTarget.subtract(cam.getLocation());
             float dist = toTarget.length();
-            float move = delta * (dist * 0.08f + 0.5f);
+            float move = delta * (dist * 0.08f + 0.4f);
             Vector3f dir = cam.getDirection().mult(move);
-            if (delta > 0 && dist - move < 1.5f) {
-                // Minimum distance clamp so user doesn't jump past target
-                cam.setLocation(cameraTarget.subtract(cam.getDirection().mult(1.5f)));
+            if (delta > 0 && dist - move < 0.35f) {
+                // Minimum distance clamp for macro ant inspection
+                cam.setLocation(cameraTarget.subtract(cam.getDirection().mult(0.35f)));
+            } else if (delta < 0 && dist + Math.abs(move) > 150.0f) {
+                // Maximum distance clamp
+                cam.setLocation(cameraTarget.subtract(cam.getDirection().mult(150.0f)));
             } else {
                 cam.setLocation(cam.getLocation().add(dir));
             }
@@ -864,62 +1051,55 @@ public class JmeGameApp extends SimpleApplication {
     public void setGamifiedVoxelMode(boolean gamified) {
         this.isGamifiedVoxelMode = gamified;
         enqueueTask(() -> {
-            if (viewPort != null) {
-                if (gamified) {
-                    // Vibrant stylized arcade voxel mode
-                    viewPort.setBackgroundColor(new ColorRGBA(0.12f, 0.08f, 0.25f, 1.0f));
-                    if (sunLight != null) {
-                        sunLight.setColor(new ColorRGBA(1.2f, 0.9f, 1.3f, 1.0f));
-                    }
-                } else {
-                    // Realistic natural 3D mode
-                    viewPort.setBackgroundColor(new ColorRGBA(0.06f, 0.09f, 0.16f, 1.0f));
-                    if (sunLight != null) {
-                        sunLight.setColor(ColorRGBA.White);
-                    }
-                }
-            }
-            if (vegetationVisualizer != null) {
-                vegetationVisualizer.setRenderMode(gamified ? org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED : org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC);
-            }
+            applyRenderModeInternal(gamified ? org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED : org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC);
         });
     }
 
     public void setScientificMode(boolean scientific) {
         enqueueTask(() -> {
-            if (viewPort != null) {
-                if (scientific) {
-                    viewPort.setBackgroundColor(new ColorRGBA(0.02f, 0.04f, 0.08f, 1.0f));
-                } else {
-                    viewPort.setBackgroundColor(new ColorRGBA(0.06f, 0.09f, 0.16f, 1.0f));
-                }
-            }
-            if (vegetationVisualizer != null) {
-                vegetationVisualizer.setRenderMode(scientific ? org.swarmforge.client.ui.WorldEditorPane.RenderMode.SCIENTIFIC : org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC);
-            }
+            applyRenderModeInternal(scientific ? org.swarmforge.client.ui.WorldEditorPane.RenderMode.SCIENTIFIC : org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC);
         });
     }
 
     public void setRenderMode(org.swarmforge.client.ui.WorldEditorPane.RenderMode mode) {
         enqueueTask(() -> {
-            if (vegetationVisualizer != null) {
-                vegetationVisualizer.setRenderMode(mode);
-            }
-            if (weatherVisualizer != null) {
-                weatherVisualizer.setRenderMode(mode);
-            }
-            if (pheromoneVisualizer != null) {
-                pheromoneVisualizer.setRenderMode(mode);
-            }
-            if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
-                setGamifiedVoxelMode(true);
-            } else if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.SCIENTIFIC) {
-                setScientificMode(true);
-            } else {
-                setGamifiedVoxelMode(false);
-                setScientificMode(false);
-            }
+            applyRenderModeInternal(mode);
         });
+    }
+
+    private void applyRenderModeInternal(org.swarmforge.client.ui.WorldEditorPane.RenderMode mode) {
+        if (mode == null) mode = org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC;
+        this.isGamifiedVoxelMode = (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED);
+
+        if (viewPort != null) {
+            if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
+                // Vibrant stylized arcade voxel mode
+                viewPort.setBackgroundColor(new ColorRGBA(0.12f, 0.08f, 0.25f, 1.0f));
+                if (sunLight != null) {
+                    sunLight.setColor(new ColorRGBA(1.2f, 0.9f, 1.3f, 1.0f));
+                }
+            } else if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.SCIENTIFIC) {
+                viewPort.setBackgroundColor(new ColorRGBA(0.02f, 0.04f, 0.08f, 1.0f));
+                if (sunLight != null) {
+                    sunLight.setColor(ColorRGBA.White);
+                }
+            } else {
+                // Realistic natural 3D mode
+                viewPort.setBackgroundColor(new ColorRGBA(0.06f, 0.09f, 0.16f, 1.0f));
+                if (sunLight != null) {
+                    sunLight.setColor(ColorRGBA.White);
+                }
+            }
+        }
+        if (vegetationVisualizer != null) {
+            vegetationVisualizer.setRenderMode(mode);
+        }
+        if (weatherVisualizer != null) {
+            weatherVisualizer.setRenderMode(mode);
+        }
+        if (pheromoneVisualizer != null) {
+            pheromoneVisualizer.setRenderMode(mode);
+        }
     }
 
     private boolean terrainVisible = true;
@@ -959,7 +1139,7 @@ public class JmeGameApp extends SimpleApplication {
         enqueueTask(() -> {
             if (antVisualizer != null) {
                 for (org.swarmforge.core.domain.Individual.Caste caste : org.swarmforge.core.domain.Individual.Caste.values()) {
-                    com.jme3.scene.instancing.InstancedNode node = antVisualizer.getInstancedNode(caste);
+                    com.jme3.scene.Node node = antVisualizer.getInstancedNode(caste);
                     if (node != null) {
                         if (visible) {
                             if (node.getParent() == null) rootNode.attachChild(node);
@@ -999,6 +1179,66 @@ public class JmeGameApp extends SimpleApplication {
                     if (weatherVisualizer.getRootNode().getParent() == null) rootNode.attachChild(weatherVisualizer.getRootNode());
                 } else {
                     weatherVisualizer.getRootNode().removeFromParent();
+                }
+            }
+        });
+    }
+
+    private com.jme3.scene.Node selectionReticleNode;
+    private float reticleAnimationTimer = 0.0f;
+
+    private void initSelectionReticle() {
+        selectionReticleNode = new com.jme3.scene.Node("SelectionReticle");
+
+        // Outer Ring (Glowing Cyan)
+        com.jme3.scene.shape.Torus outerTorus = new com.jme3.scene.shape.Torus(16, 24, 0.025f, 0.45f);
+        com.jme3.scene.Geometry outerGeom = new com.jme3.scene.Geometry("OuterRing", outerTorus);
+        com.jme3.material.Material matOuter = new com.jme3.material.Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        matOuter.setColor("Color", new ColorRGBA(0.22f, 0.74f, 0.97f, 0.85f));
+        matOuter.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+        matOuter.getAdditionalRenderState().setDepthWrite(false);
+        outerGeom.setMaterial(matOuter);
+        outerGeom.rotate((float) Math.PI / 2f, 0, 0);
+        selectionReticleNode.attachChild(outerGeom);
+
+        // Inner Ring (Glowing Amber)
+        com.jme3.scene.shape.Torus innerTorus = new com.jme3.scene.shape.Torus(16, 24, 0.018f, 0.28f);
+        com.jme3.scene.Geometry innerGeom = new com.jme3.scene.Geometry("InnerRing", innerTorus);
+        com.jme3.material.Material matInner = new com.jme3.material.Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        matInner.setColor("Color", new ColorRGBA(0.96f, 0.62f, 0.04f, 0.90f));
+        matInner.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+        matInner.getAdditionalRenderState().setDepthWrite(false);
+        innerGeom.setMaterial(matInner);
+        innerGeom.rotate((float) Math.PI / 2f, 0, 0);
+        selectionReticleNode.attachChild(innerGeom);
+
+        // 4 Crosshairs
+        for (int i = 0; i < 4; i++) {
+            com.jme3.scene.shape.Box tickBox = new com.jme3.scene.shape.Box(0.015f, 0.015f, 0.07f);
+            com.jme3.scene.Geometry tickGeom = new com.jme3.scene.Geometry("Tick_" + i, tickBox);
+            tickGeom.setMaterial(matOuter);
+            float angle = i * ((float) Math.PI / 2.0f);
+            float dist = 0.45f;
+            tickGeom.setLocalTranslation((float) Math.cos(angle) * dist, 0, (float) Math.sin(angle) * dist);
+            tickGeom.rotate(0, angle, 0);
+            selectionReticleNode.attachChild(tickGeom);
+        }
+
+        selectionReticleNode.setQueueBucket(com.jme3.renderer.queue.RenderQueue.Bucket.Transparent);
+        selectionReticleNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+        rootNode.attachChild(selectionReticleNode);
+    }
+
+    private boolean vegetationVisible = true;
+
+    public void setVegetationVisible(boolean visible) {
+        this.vegetationVisible = visible;
+        enqueueTask(() -> {
+            if (vegetationVisualizer != null && vegetationVisualizer.getRootNode() != null) {
+                if (visible) {
+                    if (vegetationVisualizer.getRootNode().getParent() == null) rootNode.attachChild(vegetationVisualizer.getRootNode());
+                } else {
+                    vegetationVisualizer.getRootNode().removeFromParent();
                 }
             }
         });

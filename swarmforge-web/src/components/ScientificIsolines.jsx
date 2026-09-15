@@ -182,8 +182,8 @@ function PheromoneIsolines({ pheromones, ants, terrainConfig }) {
         if (pheromones && pheromones.length > 0) {
             for (const p of pheromones.slice(-100)) {
                 activeSources.push({
-                    x: p.x <= 5 ? p.x * 50 : p.x,
-                    z: p.y <= 5 ? (p.y * 50) : (p.z || p.y || 50),
+                    x: p.x ?? 50,
+                    z: p.y ?? 50,
                     strength: p.intensity || 1.0
                 })
             }
@@ -195,8 +195,8 @@ function PheromoneIsolines({ pheromones, ants, terrainConfig }) {
                 const a = ants[i]
                 if (a.carriedItem && a.carriedItem !== 'NONE') {
                     activeSources.push({
-                        x: a.x <= 5 ? a.x * 50 : a.x,
-                        z: a.y <= 5 ? (a.y * 50) : (a.z || a.y || 50),
+                        x: a.x ?? 50,
+                        z: a.y ?? 50,
                         strength: 1.5
                     })
                 }

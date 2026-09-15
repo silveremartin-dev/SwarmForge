@@ -183,7 +183,7 @@ public class BehaviorTreeArchitecture implements ReasoningArchitecture {
         public NodeStatus tick(AgentView agent, SimulationContext ctx) {
             Action action = switch (type) {
                 case MOVE, EXPLORE -> randomMove(agent);
-                case ATTACK -> Action.attack(ctx != null ? ctx.getNearestEnemy(agent) : null);
+                case ATTACK -> Action.attack(ctx != null ? ctx.getNearestEnemyTarget(agent) : null);
                 case FOLLOW_TRAIL -> followTrail(agent, ctx);
                 case FORAGE -> Action.forage();
                 case RETURN_HOME -> Action.returnHome();

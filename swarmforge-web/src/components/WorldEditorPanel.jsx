@@ -500,19 +500,13 @@ export default function WorldEditorPanel() {
                 <div style={styles.section}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginBottom: 10 }}>🔥 Superposition de Cartes de Chaleur & Couleurs</div>
                     <div style={{ marginBottom: 12 }}>
-                        <label style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>Mode de Visualization :</label>
+                        <label style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>Mode de Visualisation Topologique :</label>
                         <select style={{ ...styles.input, marginTop: 4 }}>
-                            <option>🟢 Pheromone: Nourriture</option>
-                            <option>🔵 Pheromone: Nid / Homing</option>
-                            <option>🔴 Pheromone: Alarme</option>
-                            <option>🟡 Pheromone: Piste</option>
-                            <option>🟣 Pheromone: Reine</option>
-                            <option>🟠 Pheromone: Couvain</option>
-                            <option>⚪ Pheromone: Nécrophorèse</option>
-                            <option>🔥 Occupation & Trafic des Tunnels</option>
-                            <option>🏛️ Spécialisation des Chambres</option>
-                            <option>⛰️ Stabilité du Sol (Mohr-Coulomb)</option>
-                            <option>💧 Humidité du Sol</option>
+                            <option>🔥 Densité & Capacité des Tunnels</option>
+                            <option>🏛️ Rôles & Spécialisation des Chambres</option>
+                            <option>⛰️ Stabilité Mécanique du Sol (Mohr-Coulomb)</option>
+                            <option>💧 Porosité & Teneur en Eau du Substrat</option>
+                            <option>🪨 Gradient de Compacité Géologique</option>
                         </select>
                     </div>
 
@@ -523,7 +517,7 @@ export default function WorldEditorPanel() {
                     <input type="range" min="10" max="100" defaultValue="70" style={styles.slider} />
 
                     <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 10 }}>
-                        💡 Affiche en temps réel la densité de trafic dans les galeries, les rôles des chambres et la contrainte de cisaillement du sol.
+                        💡 Visualise la stabilité mécanique des cavités, la porosité du substrat et la contrainte de cisaillement du sol dans l'éditeur de monde. <em>(Les isolignes phéromonales et micro-climatiques dynamiques sont gérées en direct dans la vue Simulation 3D).</em>
                     </div>
                 </div>
             )}

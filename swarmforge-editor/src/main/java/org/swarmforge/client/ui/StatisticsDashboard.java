@@ -55,6 +55,7 @@ public class StatisticsDashboard extends VBox {
         public double rainfall = 0.0;     // mm/h
         public double pheromones = 100.0;
         public double tickRate;
+        public double targetTickRate = 60.0;
         public int births;
         public int deaths;
         public String activeEvent = "AUCUN";
@@ -841,7 +842,7 @@ public class StatisticsDashboard extends VBox {
             lblSoldiers.setText(String.valueOf(stats.soldiers));
             lblFood.setText(String.format("%.1f", stats.food));
             lblWater.setText(String.format("%.1f", stats.water));
-            lblTickRate.setText(String.format("%.1f tps", stats.tickRate));
+            lblTickRate.setText(String.format(java.util.Locale.US, "%.1f / %.0f TPS", stats.tickRate, stats.targetTickRate > 0 ? stats.targetTickRate : 60.0));
             lblSimTime.setText(formatTime(stats.simTicks, stats.stepTimeSeconds));
 
             if (updateGraphsNow) {

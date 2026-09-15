@@ -130,10 +130,15 @@ public class VegetationVisualizer {
         beehiveModel = safeLoadModel("models/beehive/beehive_low.glb");
         if (beehiveModel == null) beehiveModel = safeLoadModel("models/beehive/beehive_box.glb");
 
-        // 10. Load Low-Poly Variants for Palms & Jungle
-        for (int i = 1; i <= 30; i++) {
-            Spatial lp = safeLoadModel(String.format("models/nature_pack_obj/lp_Plane_%03d_Plane_%03d.obj", i, i));
-            if (lp != null) palmTrees.add(lp);
+        // 10. Load Tropical Banana / Palm Trees
+        loadIntoList(palmTrees, "models/nature_pack_obj/lp_banan_1_Plane_003.obj");
+        loadIntoList(palmTrees, "models/nature_pack_obj/lp_banan_2_Plane_002.obj");
+        loadIntoList(palmTrees, "models/nature_pack_obj/lp_banan_3_Plane_001.obj");
+
+        // 11. Load Low-Poly Ground Foliage into Bushes
+        for (int i = 10; i <= 17; i++) {
+            Spatial lp = safeLoadModel(String.format("models/nature_pack_obj/lp_Plane_%03d_Plane_%03d.obj", i, i + 9));
+            if (lp != null) bushes.add(lp);
         }
     }
 
@@ -161,7 +166,13 @@ public class VegetationVisualizer {
         if (spatial instanceof Geometry geom) {
             Material mat = geom.getMaterial();
             if (mat != null) {
-                mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
+                // Ensure double-sided shadow depth rendering for foliage and leaves
+                String name = geom.getName() != null ? geom.getName().toLowerCase() : "";
+                if (name.contains("leaf") || name.contains("leaves") || name.contains("plane") || name.contains("branch") || name.contains("bush")) {
+                    mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+                } else {
+                    mat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
+                }
             }
         } else if (spatial instanceof Node node) {
             for (Spatial child : node.getChildren()) {
@@ -242,19 +253,39 @@ public class VegetationVisualizer {
                 }
             }
         } else {
-            // Procedural landscape distribution across full terrarium footprint (0..gridWidth, 0..gridHeight)
-            int count = Math.min(65, (gridWidth * gridHeight) / 45);
-            for (int i = 0; i < count; i++) {
-                float x = 3 + rand.nextFloat() * (gridWidth - 6);
-                float z = 3 + rand.nextFloat() * (gridHeight - 6);
-                float y = (terrarium != null) ? terrarium.getSurfaceElevation(x, z) : 0.5f;
+            // Procedural landscape distribution across full terrarium footprint with natural biological spacing
+            int count = Math.min(250, (gridWidth * gridHeight) / 12);
+            List<Vector3f> placedPositions = new ArrayList<>();
+            float minSpacingSq = 2.0f * 2.0f;
 
-                if (currentRenderMode == RenderMode.REALISTIC) {
-                    createRealisticFlora(x, y, z, biome, effectiveSeason, rand, i);
-                } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
-                    createProceduralTreeScientific(x, y, z, biome, rand);
-                } else if (currentRenderMode == RenderMode.GAMIFIED) {
-                    createProceduralTreeGamified(x, y, z, biome, effectiveSeason, rand);
+            for (int i = 0; i < count; i++) {
+                float x = 3, z = 3;
+                boolean valid = false;
+                for (int attempts = 0; attempts < 20; attempts++) {
+                    x = 3 + rand.nextFloat() * (gridWidth - 6);
+                    z = 3 + rand.nextFloat() * (gridHeight - 6);
+                    valid = true;
+                    for (Vector3f pos : placedPositions) {
+                        float dx = pos.x - x;
+                        float dz = pos.z - z;
+                        if (dx * dx + dz * dz < minSpacingSq) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if (valid) break;
+                }
+                if (valid || placedPositions.isEmpty()) {
+                    float y = (terrarium != null) ? (terrarium.getSurfaceElevation(x, z) + 0.5f) : 0.5f;
+                    placedPositions.add(new Vector3f(x, y, z));
+
+                    if (currentRenderMode == RenderMode.REALISTIC) {
+                        createRealisticFlora(x, y, z, biome, effectiveSeason, rand, i);
+                    } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
+                        createProceduralTreeScientific(x, y, z, biome, rand);
+                    } else if (currentRenderMode == RenderMode.GAMIFIED) {
+                        createProceduralTreeGamified(x, y, z, biome, effectiveSeason, rand);
+                    }
                 }
             }
         }
@@ -267,20 +298,20 @@ public class VegetationVisualizer {
         switch (plant.type) {
             case TREE -> {
                 targetHeight = (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA)
-                        ? (8.0f + rand.nextFloat() * 4.0f) * plant.growth
-                        : (9.5f + rand.nextFloat() * 3.5f) * plant.growth;
+                        ? (12.5f + rand.nextFloat() * 4.0f) * plant.growth
+                        : (14.0f + rand.nextFloat() * 4.5f) * plant.growth;
                 chosenModel = pickModelForBiome(biome, rand, true);
             }
             case SHRUB -> {
-                targetHeight = (1.5f + rand.nextFloat() * 1.5f) * plant.growth;
+                targetHeight = (1.8f + rand.nextFloat() * 1.5f) * plant.growth;
                 chosenModel = pickRandomFromList(bushes, rand);
             }
             case FLOWER -> {
-                targetHeight = (0.5f + rand.nextFloat() * 0.6f) * plant.growth;
+                targetHeight = (0.7f + rand.nextFloat() * 0.6f) * plant.growth;
                 chosenModel = pickRandomFromList(flowers, rand);
             }
             case MOSS, GRASS -> {
-                targetHeight = (0.4f + rand.nextFloat() * 0.5f) * plant.growth;
+                targetHeight = (0.5f + rand.nextFloat() * 0.5f) * plant.growth;
                 chosenModel = pickRandomFromList(flowers, rand);
             }
         }
@@ -297,14 +328,20 @@ public class VegetationVisualizer {
 
     private void createRealisticFlora(float x, float y, float z, Biome biome, Season season, Random rand, int index) {
         Spatial chosenModel = pickModelForBiome(biome, rand, false);
-        float targetHeight = 9.0f + rand.nextFloat() * 3.5f;
+        float targetHeight;
 
         if (biome == Biome.DESERT && chosenModel == cactusModel) {
-            targetHeight = 2.8f + rand.nextFloat() * 2.2f;
-        } else if (chosenModel != null && (rocks.contains(chosenModel) || flowers.contains(chosenModel))) {
-            targetHeight = 0.8f + rand.nextFloat() * 1.2f;
+            targetHeight = 3.0f + rand.nextFloat() * 2.0f;
+        } else if (chosenModel == bambooModel) {
+            targetHeight = 3.2f + rand.nextFloat() * 1.8f;
+        } else if (chosenModel != null && (rocks.contains(chosenModel) || flowers.contains(chosenModel) || mushrooms.contains(chosenModel))) {
+            targetHeight = 0.7f + rand.nextFloat() * 0.7f;
         } else if (chosenModel != null && bushes.contains(chosenModel)) {
-            targetHeight = 1.6f + rand.nextFloat() * 1.2f;
+            targetHeight = 1.4f + rand.nextFloat() * 1.0f;
+        } else if (chosenModel != null && palmTrees.contains(chosenModel)) {
+            targetHeight = 4.0f + rand.nextFloat() * 2.5f;
+        } else {
+            targetHeight = 8.5f + rand.nextFloat() * 4.0f;
         }
 
         if (chosenModel != null) {
@@ -506,10 +543,13 @@ public class VegetationVisualizer {
         float rotY = rand.nextFloat() * FastMath.TWO_PI;
         treeNode.setUserData("BaseRotY", rotY);
 
-        Material trunkMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        trunkMat.setColor("Color", new ColorRGBA(0.40f, 0.25f, 0.12f, 1.0f));
+        Material trunkMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        trunkMat.setBoolean("UseMaterialColors", true);
+        trunkMat.setColor("Diffuse", new ColorRGBA(0.40f, 0.25f, 0.12f, 1.0f));
+        trunkMat.setColor("Ambient", new ColorRGBA(0.25f, 0.15f, 0.08f, 1.0f));
+        trunkMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-        Cylinder trunkMesh = new Cylinder(4, 8, 0.15f, 0.15f, 6.0f, true, false);
+        Cylinder trunkMesh = new Cylinder(8, 12, 0.15f, 0.15f, 6.0f, true, false);
         Geometry trunkGeom = new Geometry("SciTrunk", trunkMesh);
         trunkGeom.setMaterial(trunkMat);
         trunkGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
@@ -517,19 +557,25 @@ public class VegetationVisualizer {
         trunkGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
         treeNode.attachChild(trunkGeom);
 
-        Material dbhMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        dbhMat.setColor("Color", new ColorRGBA(0.1f, 0.8f, 1.0f, 1.0f));
+        Material dbhMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        dbhMat.setBoolean("UseMaterialColors", true);
+        dbhMat.setColor("Diffuse", new ColorRGBA(0.1f, 0.8f, 1.0f, 1.0f));
+        dbhMat.setColor("Ambient", new ColorRGBA(0.05f, 0.4f, 0.5f, 1.0f));
         Cylinder dbhRing = new Cylinder(8, 12, 0.22f, 0.22f, 0.10f, true, false);
         Geometry dbhGeom = new Geometry("DBHMarker", dbhRing);
         dbhGeom.setMaterial(dbhMat);
+        dbhGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
         dbhGeom.setLocalTranslation(0, 1.3f, 0);
         dbhGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
         treeNode.attachChild(dbhGeom);
 
-        Material leafMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        leafMat.setColor("Color", new ColorRGBA(0.12f, 0.65f, 0.28f, 0.75f));
+        Material leafMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        leafMat.setBoolean("UseMaterialColors", true);
+        leafMat.setColor("Diffuse", new ColorRGBA(0.12f, 0.65f, 0.28f, 1.0f));
+        leafMat.setColor("Ambient", new ColorRGBA(0.08f, 0.40f, 0.18f, 1.0f));
+        leafMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
 
-        com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(10, 10, 1.8f);
+        com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(12, 12, 1.8f);
         Geometry crownGeom = new Geometry("SciCrownLAI", crownMesh);
         crownGeom.setMaterial(leafMat);
         crownGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);

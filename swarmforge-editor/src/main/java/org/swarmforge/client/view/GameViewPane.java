@@ -28,6 +28,10 @@ public class GameViewPane extends Pane {
 
         writableImage = new WritableImage(width, height);
         imageView = new ImageView(writableImage);
+        imageView.fitWidthProperty().bind(this.widthProperty());
+        imageView.fitHeightProperty().bind(this.heightProperty());
+        imageView.setPreserveRatio(false);
+        imageView.setScaleY(-1); // OpenGL Framebuffer is bottom-up, flip Y to match JavaFX top-down
         getChildren().add(imageView);
 
         gameApp = new JmeGameApp(width, height);

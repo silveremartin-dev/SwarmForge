@@ -62,6 +62,13 @@ public class PluginManager {
         }
 
         File canonicalJar = jarFile.getCanonicalFile();
+
+        // 1. Load-time bytecode static security validation
+        PluginSecurityValidator.ValidationResult validation = PluginSecurityValidator.validateJar(canonicalJar);
+        if (!validation.isSecure()) {
+            throw new SecurityException("Plugin JAR failed security validation: " + String.join(", ", validation.securityViolations()));
+        }
+
         URL jarUrl = canonicalJar.toURI().toURL();
         URLClassLoader loader = new URLClassLoader(new URL[] { jarUrl }, getClass().getClassLoader());
 

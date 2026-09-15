@@ -92,6 +92,15 @@ public class SimulationControlPanel extends VBox {
     private final ComboBox<String> comboWorld = new ComboBox<>();
     private final ComboBox<String> comboWeather = new ComboBox<>();
     private final ComboBox<String> comboExecutionMode = new ComboBox<>();
+    private final VBox serverNetworkBox = new VBox(8);
+    private final TextField txtServerHost = new TextField("localhost");
+    private final TextField txtServerPort = new TextField("50051");
+    private final Button btnServerConnect = new Button("🌐 Connecter");
+    private final Button btnServerDiscover = new Button("🔍 Détecter");
+    private final Label lblServerConnectionStatus = new Label("○ Hors-ligne");
+    private Runnable onServerConnectAction;
+    private Runnable onServerDisconnectAction;
+    private Runnable onServerDiscoverAction;
     private final TextField txtSeed = new TextField("12345");
     private final TextArea areaDescription = new TextArea();
 
@@ -347,8 +356,15 @@ public class SimulationControlPanel extends VBox {
         ToggleButton btnWeatherSim = new ToggleButton("Simulée");
         btnWeatherSim.setSelected(true);
         btnWeatherSim.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
+        btnWeatherSim.setTooltip(new Tooltip("🌦️ Météo Simulée (Cycles Déterministes & Presets Bioclimatiques)\n" +
+                "Génère des conditions atmosphériques et saisonnières selon le preset sélectionné et l'algorithme interne."));
+
         ToggleButton btnWeatherReal = new ToggleButton("Réelle");
         btnWeatherReal.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
+        btnWeatherReal.setTooltip(new Tooltip("🛰️ Météo Réelle en Direct (API Open-Meteo)\n" +
+                "Récupère les observations météorologiques terrestres en temps réel (température, humidité, pression, vent, pluie)\n" +
+                "pour la ville ou les coordonnées géographiques saisies."));
+
         ToggleGroup weatherToggleGroup = new ToggleGroup();
         btnWeatherSim.setToggleGroup(weatherToggleGroup);
         btnWeatherReal.setToggleGroup(weatherToggleGroup);
@@ -713,6 +729,38 @@ public class SimulationControlPanel extends VBox {
         HBox.setHgrow(comboExecutionMode, Priority.ALWAYS);
         execModeBox.getChildren().addAll(lblExecMode, comboExecutionMode);
 
+        // Server Network Sub-Panel (Integrated for Mode Serveur)
+        serverNetworkBox.setStyle("-fx-background-color: rgba(2, 132, 199, 0.08); -fx-border-color: rgba(2, 132, 199, 0.3); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8;");
+        txtServerHost.setPrefWidth(110);
+        txtServerPort.setPrefWidth(65);
+        btnServerConnect.getStyleClass().add("btn-primary");
+        btnServerDiscover.setStyle("-fx-font-size: 11px;");
+        btnServerConnect.setOnAction(e -> {
+            if (btnServerConnect.getText().contains("Déconnecter")) {
+                if (onServerDisconnectAction != null) onServerDisconnectAction.run();
+            } else {
+                if (onServerConnectAction != null) onServerConnectAction.run();
+            }
+        });
+        btnServerDiscover.setOnAction(e -> {
+            if (onServerDiscoverAction != null) onServerDiscoverAction.run();
+        });
+
+        HBox serverInputsRow = new HBox(6, new Label("Hôte :"), txtServerHost, new Label("Port :"), txtServerPort, btnServerConnect, btnServerDiscover);
+        serverInputsRow.setAlignment(Pos.CENTER_LEFT);
+        lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #f87171;");
+        HBox serverStatusRow = new HBox(6, new Label("Statut gRPC :"), lblServerConnectionStatus);
+        serverStatusRow.setAlignment(Pos.CENTER_LEFT);
+        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow);
+        serverNetworkBox.setVisible(false);
+        serverNetworkBox.setManaged(false);
+
+        comboExecutionMode.valueProperty().addListener((obs, oldV, newV) -> {
+            boolean isServer = newV != null && (newV.contains("Serveur") || newV.contains("gRPC") || newV.contains("Cluster"));
+            serverNetworkBox.setVisible(isServer);
+            serverNetworkBox.setManaged(isServer);
+        });
+
         scenarioCard.getChildren().addAll(
             metaRow,
             presetActionsRow,
@@ -731,6 +779,7 @@ public class SimulationControlPanel extends VBox {
             checkpointsPane,
             new Separator(),
             execModeBox,
+            serverNetworkBox,
             btnApplyPresets,
             applyProgressBox
         );
@@ -1654,6 +1703,44 @@ public class SimulationControlPanel extends VBox {
             comboExecutionMode.getSelectionModel().selectFirst();
         }
     }
+
+    public String getServerHost() {
+        return txtServerHost.getText().trim();
+    }
+
+    public int getServerPort() {
+        try {
+            return Integer.parseInt(txtServerPort.getText().trim());
+        } catch (Exception e) {
+            return 50051;
+        }
+    }
+
+    public void setServerHost(String host) {
+        txtServerHost.setText(host != null ? host : "localhost");
+    }
+
+    public void setServerPort(int port) {
+        txtServerPort.setText(String.valueOf(port));
+    }
+
+    public void setServerConnectionStatus(boolean connected, String message) {
+        javafx.application.Platform.runLater(() -> {
+            if (connected) {
+                lblServerConnectionStatus.setText("● Connecté (" + message + ")");
+                lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #4ade80; -fx-font-weight: bold;");
+                btnServerConnect.setText("❌ Déconnecter");
+            } else {
+                lblServerConnectionStatus.setText("○ " + (message != null ? message : "Hors-ligne"));
+                lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #f87171;");
+                btnServerConnect.setText("🌐 Connecter");
+            }
+        });
+    }
+
+    public void setOnServerConnect(Runnable r) { this.onServerConnectAction = r; }
+    public void setOnServerDisconnect(Runnable r) { this.onServerDisconnectAction = r; }
+    public void setOnServerDiscover(Runnable r) { this.onServerDiscoverAction = r; }
 
     public void updateCheckpoints(List<org.swarmforge.core.simulation.SimulationCheckpoint> checkpoints) {
         comboCheckpoints.getItems().clear();

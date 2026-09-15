@@ -9,6 +9,7 @@ package org.swarmforge.core.simulation;
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
+import org.swarmforge.core.domain.TerrariumCell;
 import org.swarmforge.core.domain.FoodSource;
 import org.swarmforge.core.gpu.SparsePheromoneGrid;
 import org.swarmforge.core.event.SimulationEvent;
@@ -55,6 +56,37 @@ public class Simulation {
     private Thread simulationThread;
     private float speedMultiplier = 1.0f;
     private final SimulationHistory history;
+
+    private volatile double measuredTps = 0.0;
+    private long lastTpsSampleTime = System.nanoTime();
+    private long ticksSinceLastSample = 0;
+
+    public double getMeasuredTps() {
+        return getActualTicksPerSecond();
+    }
+
+    public double getActualTicksPerSecond() {
+        if (state.get() != State.RUNNING) {
+            return 0.0;
+        }
+        if (System.nanoTime() - lastTpsSampleTime > 2_000_000_000L) {
+            return 0.0;
+        }
+        return measuredTps;
+    }
+
+    public int getTicksPerSecond() {
+        return ticksPerSecond;
+    }
+
+    public int getTargetTicksPerSecond() {
+        return ticksPerSecond;
+    }
+
+    public void setTicksPerSecond(int tps) {
+        this.ticksPerSecond = Math.max(1, Math.min(240, tps));
+        this.tickDurationNanos = (long) (1_000_000_000L / (this.ticksPerSecond * speedMultiplier));
+    }
 
     private final org.swarmforge.core.spatial.SpatialPartition<Individual> spatialIndex;
     private final CopyOnWriteArrayList<FoodSource> foodSources;
@@ -216,7 +248,11 @@ public class Simulation {
             default -> species = new org.swarmforge.core.species.LasiusNiger();
         }
 
-        Colony colony = new Colony(species, x, y, 0); // Z=0 surface
+        float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(x, y) : 0f;
+        Colony colony = new Colony(species, x, y, surfaceZ);
+        if (this.terrarium != null) {
+            colony.setTerrarium(this.terrarium);
+        }
         if (this.random != null) {
             colony.setRandom(new java.util.Random(this.random.nextLong()));
         }
@@ -483,6 +519,16 @@ public class Simulation {
     public void tick() {
         long currentTick = tickCount.incrementAndGet();
         accumulatedSimulationSeconds += this.simulationStepSeconds;
+
+        ticksSinceLastSample++;
+        long now = System.nanoTime();
+        long elapsedNano = now - lastTpsSampleTime;
+        if (elapsedNano >= 1_000_000_000L) {
+            measuredTps = (ticksSinceLastSample * 1_000_000_000.0) / elapsedNano;
+            ticksSinceLastSample = 0;
+            lastTpsSampleTime = now;
+        }
+
         updateEnvironment(currentTick);
         ecsWorldManager.step(this.simulationStepSeconds);
 
@@ -683,19 +729,41 @@ public class Simulation {
                         }
                     }
 
+                    // Ground-snapping for non-flying terrestrial ants (eliminate floating at Z=10)
+                    if (!individual.canFly() && !individual.isClimbingTree() && terrarium != null) {
+                        if (individual.getZ() >= surfaceZ - 0.2f) {
+                            individual.setZ(surfaceZ);
+                        }
+                    }
+
                     livingIndividuals.add(individual);
 
-                    // Check environmental hazards (Floods, damage per second scaled by simulationStepSeconds)
+                    // Check environmental hazards (Floods & River water cells, lethal danger with drowning damage)
                     float waterLevel = context.getWaterLevel(individual.getX(), individual.getY(), individual.getZ());
-                    if (waterLevel > 0.5f) {
-                        float drownDamage = 40.0f * simulationStepSeconds;
-                        if (individual.getHealth() <= drownDamage) {
-                            individual.die("Drowning / Flash Flood");
+                    boolean isWaterVoxel = false;
+                    if (terrarium != null) {
+                        int ix = Math.max(0, Math.min(terrarium.getWidth() - 1, Math.round(individual.getX())));
+                        int iy = Math.max(0, Math.min(terrarium.getHeight() - 1, Math.round(individual.getY())));
+                        int iz = Math.max(0, Math.min(terrarium.getDepth() - 1, Math.round(individual.getZ())));
+                        TerrariumCell cell = terrarium.getCell(ix, iy, iz);
+                        if (cell != null && cell.material() == TerrariumCell.Material.WATER) {
+                            isWaterVoxel = true;
                         }
-                        individual.setHealth(individual.getHealth() - drownDamage);
+                    }
+
+                    if ((waterLevel > 0.3f || isWaterVoxel) && !individual.canFly()) {
+                        // Water avoidance steering
+                        individual.setHeading(individual.getHeading() + (float) Math.PI * 0.75f);
+
+                        // Drowning mortality
+                        float drownDamage = 50.0f * simulationStepSeconds;
+                        if (individual.getHealth() <= drownDamage) {
+                            individual.die("Noyade / Cours d'eau (Drowning)");
+                        }
+                        individual.setHealth(Math.max(0.0f, individual.getHealth() - drownDamage));
                         if (!individual.isAlive()) {
                             eventQueue.offer(new SimulationEvent(SimulationEvent.EventType.DEATH,
-                                    tickCount.get(), "Drowned in flood"));
+                                    tickCount.get(), "Noyade dans le cours d'eau"));
                         }
                     }
                 }
@@ -1037,16 +1105,6 @@ public class Simulation {
         return state.get() == State.RUNNING;
     }
 
-    public int getTicksPerSecond() {
-        return ticksPerSecond;
-    }
-
-    // Setters
-    public void setTicksPerSecond(int tps) {
-        this.ticksPerSecond = tps;
-        this.tickDurationNanos = 1_000_000_000L / tps;
-    }
-
     public void setDiffusionInterval(int interval) {
         this.diffusionInterval = Math.max(1, interval);
     }
@@ -1095,6 +1153,15 @@ public class Simulation {
     public void setMasterSeed(long seed) {
         this.masterSeed = seed;
         this.random = new java.util.Random(seed);
+        if (this.vegetationSystem != null) {
+            this.vegetationSystem.setSeed(seed ^ 0x5DEECE66DL);
+            this.vegetationSystem.getPlants().clear();
+        }
+        this.foodSources.clear();
+        if (this.predatorManager != null) {
+            this.predatorManager.clearPredators();
+        }
+        seedInitialEnvironmentResources();
     }
 
     public long getMasterSeed() {

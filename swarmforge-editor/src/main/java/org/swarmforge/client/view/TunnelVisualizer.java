@@ -23,10 +23,15 @@ public class TunnelVisualizer {
     private final AssetManager assetManager;
     private final Node rootNode;
     private final Map<java.util.UUID, Geometry> nodeGeometries = new HashMap<>();
+    private org.swarmforge.core.domain.Terrarium terrarium;
 
     public TunnelVisualizer(AssetManager assetManager) {
         this.assetManager = assetManager;
         this.rootNode = new Node("TunnelNetwork");
+    }
+
+    public void setTerrarium(org.swarmforge.core.domain.Terrarium terrarium) {
+        this.terrarium = terrarium;
     }
 
     public Node getRootNode() {
@@ -53,16 +58,11 @@ public class TunnelVisualizer {
         }
 
         // Edges (draw as cylinders)
-        // Ideally we cache edges too, but for now just clear and redraw edges or check
-        // count
-        // Let's assume edges are static once added
-        // Draw edges
         for (TunnelEdge edge : network.getEdges()) {
-            // Check if edge already drawn? naming convention?
             String edgeName = "Edge_" + edge.fromNode() + "_" + edge.toNode();
             if (rootNode.getChild(edgeName) == null) {
-                TunnelNode n1 = findNode(network, edge.fromNode());
-                TunnelNode n2 = findNode(network, edge.toNode());
+                TunnelNode n1 = network.getNode(edge.fromNode());
+                TunnelNode n2 = network.getNode(edge.toNode());
                 if (n1 != null && n2 != null) {
                     Geometry edgeGeom = createEdgeGeometry(n1, n2, edgeName);
                     rootNode.attachChild(edgeGeom);
@@ -110,7 +110,11 @@ public class TunnelVisualizer {
 
         Sphere shape = new Sphere(8, 8, radius3D);
         Geometry geom = new Geometry("Node_" + node.id(), shape);
-        geom.setLocalTranslation(node.x(), node.z(), node.y());
+        float surfaceY = terrarium != null ? terrarium.getSurfaceElevation(node.x(), node.y()) : 0f;
+        float posY = (node.z() <= 0) ? (surfaceY + node.z()) : node.z();
+        geom.setLocalTranslation(node.x(), posY, node.y());
+        geom.setUserData("ChamberID", node.id().toString());
+        geom.setUserData("ChamberType", node.type().name());
 
         Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         mat.setBoolean("UseMaterialColors", true);
@@ -129,8 +133,13 @@ public class TunnelVisualizer {
     }
 
     private Geometry createEdgeGeometry(TunnelNode n1, TunnelNode n2, String name) {
-        Vector3f p1 = new Vector3f(n1.x(), n1.z(), n1.y());
-        Vector3f p2 = new Vector3f(n2.x(), n2.z(), n2.y());
+        float surfaceY1 = terrarium != null ? terrarium.getSurfaceElevation(n1.x(), n1.y()) : 0f;
+        float posY1 = (n1.z() <= 0) ? (surfaceY1 + n1.z()) : n1.z();
+        float surfaceY2 = terrarium != null ? terrarium.getSurfaceElevation(n2.x(), n2.y()) : 0f;
+        float posY2 = (n2.z() <= 0) ? (surfaceY2 + n2.z()) : n2.z();
+
+        Vector3f p1 = new Vector3f(n1.x(), posY1, n1.y());
+        Vector3f p2 = new Vector3f(n2.x(), posY2, n2.y());
         Vector3f diff = p2.subtract(p1);
         float len = diff.length();
 
@@ -139,14 +148,16 @@ public class TunnelVisualizer {
         float galleryRadius3D = Math.max(0.04f, (galleryRadiusMm / mmPerWorldUnit) * 1.25f);
 
         // Cylinder aligned Z
-        Cylinder shape = new Cylinder(4, 8, galleryRadius3D, len, true);
+        Cylinder shape = new Cylinder(4, 8, galleryRadius3D, Math.max(0.05f, len), true);
         Geometry geom = new Geometry(name, shape);
 
         // Position at midpoint
         geom.setLocalTranslation(p1.add(diff.mult(0.5f)));
 
         // Rotate to match direction
-        geom.lookAt(p2, Vector3f.UNIT_Y);
+        if (len > 0.001f) {
+            geom.lookAt(p2, Vector3f.UNIT_Y);
+        }
 
         Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         mat.setBoolean("UseMaterialColors", true);

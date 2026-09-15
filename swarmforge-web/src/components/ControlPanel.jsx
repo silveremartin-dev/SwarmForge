@@ -33,6 +33,12 @@ export default function ControlPanel({ inline = false }) {
         stepSingleTick,
         showChamberOverlay,
         toggleChamberOverlay,
+        antTrackingEnabled,
+        toggleAntTracking,
+        showChambers,
+        toggleShowChambers,
+        showChamberInfo,
+        toggleShowChamberInfo,
     } = useSimulationStore()
 
     const [paramCategoryTab, setParamCategoryTab] = useState('pheromones')
@@ -474,7 +480,7 @@ export default function ControlPanel({ inline = false }) {
                             <button
                                 onClick={() => setWeatherMode('SIMULATED')}
                                 style={{
-                                    padding: '3px 8px',
+                                    padding: '4px 9px',
                                     fontSize: 10,
                                     fontWeight: 700,
                                     border: 'none',
@@ -483,14 +489,14 @@ export default function ControlPanel({ inline = false }) {
                                     cursor: 'pointer',
                                     transition: 'all 0.15s ease'
                                 }}
-                                title="Utiliser les presets météo simulés"
+                                title="🔵 Météo Simulée : Cycle solaire et climatique 100% déterministe généré par le moteur interne (saisons, vent, précipitations paramétrables)."
                             >
                                 🔵 Simulée
                             </button>
                             <button
                                 onClick={() => setWeatherMode('REAL_WORLD')}
                                 style={{
-                                    padding: '3px 8px',
+                                    padding: '4px 9px',
                                     fontSize: 10,
                                     fontWeight: 700,
                                     border: 'none',
@@ -500,7 +506,7 @@ export default function ControlPanel({ inline = false }) {
                                     cursor: 'pointer',
                                     transition: 'all 0.15s ease'
                                 }}
-                                title="Synchroniser la météo en direct avec Open-Meteo API"
+                                title="🟢 Météo Réelle : Synchronisation en direct avec les conditions météo terrestres réelles via l'API Open-Meteo. Données horodatées et persistées dans l'historique et les snapshots pour garantir un replay déterministe."
                             >
                                 🟢 Météo Réelle
                             </button>
@@ -508,15 +514,20 @@ export default function ControlPanel({ inline = false }) {
                     </div>
 
                     {weatherMode === 'SIMULATED' ? (
-                        <select
-                            value={selectedWeatherId}
-                            onChange={(e) => handlePresetChange(setSelectedWeather, e.target.value)}
-                            style={styles.select}
-                        >
-                            {weatherPresets.map(w => (
-                                <option key={w.id} value={w.id}>{w.name}</option>
-                            ))}
-                        </select>
+                        <div>
+                            <select
+                                value={selectedWeatherId}
+                                onChange={(e) => handlePresetChange(setSelectedWeather, e.target.value)}
+                                style={styles.select}
+                            >
+                                {weatherPresets.map(w => (
+                                    <option key={w.id} value={w.id}>{w.name}</option>
+                                ))}
+                            </select>
+                            <div style={{ marginTop: 4, fontSize: 9.5, color: '#94a3b8', lineHeight: 1.3 }}>
+                                ℹ️ <em>Simulation déterministe autonome (cycle circadien, température, humidité et vent synthétiques).</em>
+                            </div>
+                        </div>
                     ) : (
                         <div style={{ background: 'rgba(22, 163, 74, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: 6, padding: 8, fontSize: 11 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -546,7 +557,7 @@ export default function ControlPanel({ inline = false }) {
                                 </div>
                             )}
                             <div style={{ marginTop: 6, padding: '4px 6px', background: 'rgba(0,0,0,0.3)', borderRadius: 4, fontSize: 9.5, color: '#a7f3d0', lineHeight: 1.3 }}>
-                                ℹ️ <em>Météo réelle sous réserve d'accès API. Chaque mesure est enregistrée dans l'historique et les snapshots pour garantir un replay déterministe.</em>
+                                ℹ️ <em>Météo réelle via Open-Meteo API. Chaque mesure est archivée dans les snapshots pour garantir un replay déterministe.</em>
                             </div>
                         </div>
                     )}
@@ -715,19 +726,67 @@ export default function ControlPanel({ inline = false }) {
                     </button>
                 </div>
 
-                {/* Chamber View & Overlay Checkbox */}
-                <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <label style={{ ...styles.label, cursor: 'pointer', margin: 0 }}>
-                        <Home size={13} style={{ color: '#a855f7' }} />
-                        <span>Overlay Chambres de Nid</span>
-                    </label>
-                    <input
-                        type="checkbox"
-                        checked={showChamberOverlay}
-                        onChange={toggleChamberOverlay}
-                        style={{ accentColor: '#38bdf8', cursor: 'pointer', width: 15, height: 15 }}
-                        title="Activer ou désactiver l'affichage 3D et les overlays d'informations des chambres souterraines"
-                    />
+                {/* Simulation Display & Tracking Toggles */}
+                <div style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 6, padding: '8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {/* 1. Ant Tracking Toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <label style={{ ...styles.label, cursor: 'pointer', margin: 0 }}>
+                            <Bug size={13} style={{ color: '#38bdf8' }} />
+                            <span>Suivi des Fourmis (Ant Tracking)</span>
+                        </label>
+                        <input
+                            type="checkbox"
+                            checked={antTrackingEnabled}
+                            onChange={toggleAntTracking}
+                            style={{ accentColor: '#38bdf8', cursor: 'pointer', width: 15, height: 15 }}
+                            title="Activer ou désactiver la sélection et le panneau d'inspection en direct d'une fourmi"
+                        />
+                    </div>
+
+                    {/* 2. 3D Chambers Display */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <label style={{ ...styles.label, cursor: 'pointer', margin: 0 }}>
+                            <Home size={13} style={{ color: '#a855f7' }} />
+                            <span>Chambres 3D Souterraines</span>
+                        </label>
+                        <input
+                            type="checkbox"
+                            checked={showChambers}
+                            onChange={toggleShowChambers}
+                            style={{ accentColor: '#a855f7', cursor: 'pointer', width: 15, height: 15 }}
+                            title="Afficher ou masquer la géométrie 3D des chambres du nid souterrain"
+                        />
+                    </div>
+
+                    {/* 3. Chamber Info Labels */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <label style={{ ...styles.label, cursor: 'pointer', margin: 0 }}>
+                            <Bookmark size={13} style={{ color: '#f59e0b' }} />
+                            <span>Étiquettes d'Infos des Chambres</span>
+                        </label>
+                        <input
+                            type="checkbox"
+                            checked={showChamberInfo}
+                            onChange={toggleShowChamberInfo}
+                            style={{ accentColor: '#f59e0b', cursor: 'pointer', width: 15, height: 15 }}
+                            title="Afficher ou masquer les étiquettes flottantes d'informations (nom, population, ressources) au-dessus des chambres"
+                        />
+                    </div>
+
+                    {/* 4. Global Subterranean Overlay */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <label style={{ ...styles.label, cursor: 'pointer', margin: 0 }}>
+                            <Globe size={13} style={{ color: '#10b981' }} />
+                            <span>Overlay Vue Globale du Nid</span>
+                        </label>
+                        <input
+                            type="checkbox"
+                            checked={showChamberOverlay}
+                            onChange={toggleChamberOverlay}
+                            style={{ accentColor: '#10b981', cursor: 'pointer', width: 15, height: 15 }}
+                            title="Activer ou désactiver l'overlay souterrain global avec les tunnels et connexions"
+                        />
+                    </div>
                 </div>
 
                 {/* Speed Controls: 1:1 Real-Time Seconds Calibrated */}

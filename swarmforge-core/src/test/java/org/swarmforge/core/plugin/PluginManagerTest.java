@@ -115,4 +115,15 @@ public class PluginManagerTest {
         assertDoesNotThrow(() -> pluginManager.loadPluginsFromDirectory(fakeDir),
                 "Should safely handle non-existent plugin directory");
     }
+
+    @Test
+    void testPluginSecurityValidatorWithNullAndInvalidFiles() {
+        PluginSecurityValidator.ValidationResult nullRes = PluginSecurityValidator.validateJar(null);
+        assertFalse(nullRes.isSecure(), "Null JAR should fail validation");
+
+        File fakeJar = new File("non_existent_file.jar");
+        PluginSecurityValidator.ValidationResult fakeRes = PluginSecurityValidator.validateJar(fakeJar);
+        assertFalse(fakeRes.isSecure(), "Non-existent JAR should fail validation");
+    }
 }
+

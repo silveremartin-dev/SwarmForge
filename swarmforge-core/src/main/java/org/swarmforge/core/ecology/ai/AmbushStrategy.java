@@ -28,25 +28,28 @@ public class AmbushStrategy implements HuntingStrategy {
             return;
         }
 
-        // Check for prey in trap
-        Individual trapped = findTrappedAnt(predator, simulation);
+        // Check for prey in trap or within direct strike reach
+        Individual target = findTargetAnt(predator, simulation);
 
-        if (trapped != null) {
-            predator.setCurrentTarget(trapped);
+        if (target != null) {
+            predator.setCurrentTarget(target);
             predator.setState(HuntingState.ATTACKING);
-            predator.attack(trapped);
+            predator.attack(target);
         } else {
             predator.setState(HuntingState.IDLE);
         }
     }
 
-    private Individual findTrappedAnt(Predator predator, Simulation simulation) {
-        // Only verify very close ants
+    private Individual findTargetAnt(Predator predator, Simulation simulation) {
+        float attackReach = Math.max(1.8f, predator.getType().getAttackRadius() * 1.5f);
+        float queryRadius = Math.max(predator.getTrapRadius(), attackReach);
         List<Individual> nearby = simulation.getSpatialIndex().queryRadius(
-                predator.getX(), predator.getY(), predator.getZ(), 3.0f);
+                predator.getX(), predator.getY(), predator.getZ(), queryRadius);
 
         for (Individual ant : nearby) {
-            if (predator.isInTrap(ant)) {
+            if (ant == null || !ant.isAlive()) continue;
+            // Strike if trapped in web/pit OR if within immediate physical reach
+            if (predator.isInTrap(ant) || predator.distanceTo(ant) <= attackReach) {
                 return ant;
             }
         }

@@ -35,22 +35,16 @@ function SingleNest({ nest, isGhost = false }) {
         }
     })
 
-    const scale = nest.scale || 1.0
-    const terrariumWidth = useSimulationStore(state => state.environment?.terrariumWidth || 2.0)
-    const terrariumDepth = useSimulationStore(state => state.environment?.terrariumDepth || 2.0)
+    const scale = (nest.scale || 1.0) * 0.75
 
     // Accurate normalized world coordinate mapper [0..100]m
-    const toWorldCoord = (val, maxMetric) => {
+    const toWorldCoord = (val) => {
         if (val === undefined || val === null) return 50
-        // If within terrarium metric bounds [0..maxMetric], convert from meters to 100m terrarium world
-        if (typeof val === 'number' && val <= maxMetric && val >= 0) {
-            return (val / maxMetric) * 100
-        }
-        return Math.max(0, Math.min(100, Number(val) || 50))
+        return Math.max(2, Math.min(98, Number(val) || 50))
     }
 
-    const posX = toWorldCoord(nest.x, terrariumWidth)
-    const posZ = toWorldCoord(nest.y !== undefined ? nest.y : nest.z, terrariumDepth)
+    const posX = toWorldCoord(nest.x)
+    const posZ = toWorldCoord(nest.y !== undefined ? nest.y : nest.z)
     const groundY = getTerrainHeight(posX, posZ, terrainConfig)
 
     const isPhantomMode = nest.isPhantom || isGhost
@@ -59,8 +53,8 @@ function SingleNest({ nest, isGhost = false }) {
     const exitPortals = useMemo(() => {
         const offsets = nest.exits || [
             { offsetX: 0, offsetZ: 0, isMain: true },
-            { offsetX: 1.4 * scale, offsetZ: 1.0 * scale, isMain: false },
-            { offsetX: -1.5 * scale, offsetZ: -1.2 * scale, isMain: false }
+            { offsetX: 0.9 * scale, offsetZ: 0.6 * scale, isMain: false },
+            { offsetX: -0.9 * scale, offsetZ: -0.7 * scale, isMain: false }
         ]
 
         return offsets.map((exit, idx) => {
@@ -511,7 +505,7 @@ function SingleNest({ nest, isGhost = false }) {
             {/* Phantom Hologram Pulsing Ring Indicator if in Ghost / Phantom Mode */}
             {(isPhantomMode || isGhost) && (
                 <mesh ref={phantomMeshRef} position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                    <ringGeometry args={[1.8 * scale, 2.5 * scale, 32]} />
+                    <ringGeometry args={[1.0 * scale, 1.35 * scale, 32]} />
                     <meshBasicMaterial color="#38bdf8" transparent opacity={0.5} side={THREE.DoubleSide} />
                 </mesh>
             )}

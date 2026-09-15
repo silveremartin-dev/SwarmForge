@@ -246,4 +246,8 @@ public enum PredatorType {
     public boolean requiresSandTerrain() {
         return this == ANTLION;
     }
+
+    public float getAttackRadius() {
+        return 1.5f;
+    }
 }

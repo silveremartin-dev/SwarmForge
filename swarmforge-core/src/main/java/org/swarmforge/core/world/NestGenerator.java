@@ -86,6 +86,7 @@ public class NestGenerator {
             case CARTON_NEST -> generateCartonNest(x, y, z, size);
             case BAMBOO_STEM_NEST -> generateBambooStemNest(x, y, z, size);
             case BIVOUAC_LIVING_NEST -> generateBivouacLivingNest(x, y, z, size);
+            case TREE -> generateHollowTreeTrunk(x, y, z, size);
             default -> {
                 String axiom = getAxiom(type);
                 String rules = applyRules(axiom, type, (int) (3 * size));
@@ -438,6 +439,60 @@ public class NestGenerator {
             }
         }
         return Math.max(1, chamberCount / 15);
+    }
+
+    /**
+     * Generates a realistic hollow tree trunk nest (arboreal species like Camponotus,
+     * wild Apis mellifera colonies, or arboricole termites) with bark layer, rotten heartwood cavity,
+     * knot-hole entrances, and internal habitable chambers.
+     */
+    public int generateHollowTreeTrunk(int startX, int startY, int startZ, float scale) {
+        int height = (int) (24 * scale);
+        int outerRadius = Math.max(4, (int) (9 * scale));
+        int innerRadius = Math.max(2, outerRadius - 3);
+        int chamberCount = 0;
+
+        for (int dz = 0; dz < height; dz++) {
+            int currentZ = startZ + dz;
+            float taper = 1.0f - (dz / (float) height) * 0.2f; // Slight natural upward taper
+            int curOuterR = Math.max(3, (int) (outerRadius * taper));
+            int curInnerR = Math.max(1, (int) (innerRadius * taper));
+
+            for (int dx = -curOuterR; dx <= curOuterR; dx++) {
+                for (int dy = -curOuterR; dy <= curOuterR; dy++) {
+                    float dist = (float) Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist <= curOuterR) {
+                        if (dist > curOuterR - 1.2f) {
+                            // Outer protective bark / living tree trunk
+                            setMaterial(startX + dx, startY + dy, currentZ, TerrariumCell.Material.TREE_TRUNK);
+                        } else if (dist > curInnerR) {
+                            // Rotten / soft dead wood inner layer (excavatable by ants/termites)
+                            setMaterial(startX + dx, startY + dy, currentZ, TerrariumCell.Material.DEAD_WOOD);
+                        } else {
+                            // Central hollow heartwood cavity
+                            if (dz % 6 == 0 && dist < curInnerR * 0.8f) {
+                                // Horizontal propolis / chewed carton partition platform
+                                setMaterial(startX + dx, startY + dy, currentZ, TerrariumCell.Material.PROPOLIS);
+                            } else {
+                                setMaterial(startX + dx, startY + dy, currentZ, TerrariumCell.Material.CHAMBER);
+                                chamberCount++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Knothole entrance holes through the bark at 1/3 and 2/3 height
+        int entranceZ1 = startZ + Math.max(2, height / 3);
+        int entranceZ2 = startZ + Math.max(4, (2 * height) / 3);
+        for (int r = innerRadius; r <= outerRadius + 1; r++) {
+            setMaterial(startX + r, startY, entranceZ1, TerrariumCell.Material.AIR);
+            setMaterial(startX - r, startY, entranceZ2, TerrariumCell.Material.AIR);
+        }
+
+        return Math.max(1, chamberCount / 12);
     }
 
     private void carveEllipsoidChamber(int cx, int cy, int cz, int rx, int ry, int rz) {

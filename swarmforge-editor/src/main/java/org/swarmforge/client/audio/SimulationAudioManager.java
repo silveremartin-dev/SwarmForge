@@ -557,8 +557,14 @@ public class SimulationAudioManager {
             } catch (Exception ignored) {}
         }
 
+        private double lastAppliedVol = -1.0;
+
         private void applyVolume(double vol) {
             final double v = Math.max(0.0, Math.min(1.0, vol));
+            if (Math.abs(lastAppliedVol - v) < 0.005) {
+                return; // Throttle redundant volume calls
+            }
+            lastAppliedVol = v;
             if (fxPlayer != null) {
                 runOnFx(() -> {
                     if (fxPlayer != null) {
@@ -572,6 +578,7 @@ public class SimulationAudioManager {
         }
 
         public synchronized void stopImmediately() {
+            lastAppliedVol = -1.0;
             if (fxPlayer != null) {
                 final MediaPlayer p = fxPlayer;
                 fxPlayer = null;

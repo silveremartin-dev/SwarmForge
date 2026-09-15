@@ -121,6 +121,15 @@ public class TunnelNetwork implements java.io.Serializable {
     public float getBedrockDepth() { return bedrockDepth; }
     public void setBedrockDepth(float depth) { this.bedrockDepth = Math.max(3.0f, depth); }
 
+    public TunnelNode getNode(UUID id) { return nodes.get(id); }
+    public TunnelNode getNode(String id) {
+        try {
+            return nodes.get(UUID.fromString(id));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public TunnelNetwork(Colony colony) {
         float nx = colony != null ? colony.getNestX() : 32.0f;
         float ny = colony != null ? colony.getNestY() : 32.0f;

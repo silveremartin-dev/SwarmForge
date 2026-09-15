@@ -332,12 +332,14 @@ public class AntVisualizer {
             };
         }
 
-        // Millimeters per 3D scene voxel unit = (terrainSideMeters * 1000 mm) / gridWidth
-        float mmPerWorldUnit = (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
-        float physicalScale = lengthMm / mmPerWorldUnit;
-
-        // Clean calibrated visual scale level (1.0x exact physical scale factor)
-        return Math.max(0.08f, physicalScale * 1.0f);
+        // Calibrated visual scale level for macro natural view
+        float baseScale = switch (caste) {
+            case QUEEN -> 1.25f;
+            case SOLDIER -> 0.85f;
+            case MALE -> 0.70f;
+            default -> 0.55f;
+        };
+        return baseScale * visualScaleMultiplier;
     }
 
     private int addBox(java.util.List<Vector3f> pos, java.util.List<Vector3f> norm, java.util.List<Integer> idx,
@@ -392,14 +394,14 @@ public class AntVisualizer {
         idx.add(offset + 2);
     }
 
-    private final java.util.Map<Individual.Caste, com.jme3.scene.instancing.InstancedNode> instancedNodes = new java.util.EnumMap<>(
+    private final java.util.Map<Individual.Caste, com.jme3.scene.Node> instancedNodes = new java.util.EnumMap<>(
             Individual.Caste.class);
 
-    public void registerInstancedNode(Individual.Caste caste, com.jme3.scene.instancing.InstancedNode node) {
+    public void registerInstancedNode(Individual.Caste caste, com.jme3.scene.Node node) {
         instancedNodes.put(caste, node);
     }
 
-    public com.jme3.scene.instancing.InstancedNode getInstancedNode(Individual.Caste caste) {
+    public com.jme3.scene.Node getInstancedNode(Individual.Caste caste) {
         return instancedNodes.get(caste);
     }
 }

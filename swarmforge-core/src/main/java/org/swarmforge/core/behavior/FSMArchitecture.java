@@ -178,7 +178,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
         if (ctx != null && ctx.hasEnemyNearby(agent)) {
             if (agent.isSoldier()) {
                 transitionTo(State.ATTACKING);
-                return Action.attack(ctx.getNearestEnemy(agent));
+                return Action.attack(ctx.getNearestEnemyTarget(agent));
             } else {
                 transitionTo(State.FLEEING);
                 return fleeHome(agent);
@@ -208,34 +208,33 @@ public class FSMArchitecture implements ReasoningArchitecture {
                     // Pick up food
                     org.swarmforge.core.domain.FoodSource food = ctx.getNearestFood(agent, types);
                     if (food != null) {
-                        // Cast for now as setCarriedItem is NOT in AgentView (Action should handle this in pure ECS)
-                        if (agent instanceof Individual ind) {
-                            ind.setCarriedItem(Individual.CarriedItem.FOOD);
-                            ind.setCarriedResourceType(food.getType());
-                        }
-                        food.take(1.0f);
-                        transitionTo(State.RETURNING_HOME);
-                        return Action.returnHome();
+                        return Action.forage();
                     }
                 }
                 // Move towards food
-                return Action.move(dx, dy, 0);
-            }
-
-            // Pheromone usage (generic fallback)
-            float px = ctx.getFoodPheromoneGradientX(agent.getX(), agent.getY(), agent.getZ());
-            float py = ctx.getFoodPheromoneGradientY(agent.getX(), agent.getY(), agent.getZ());
-            if (Math.abs(px) > 0.01f || Math.abs(py) > 0.01f) {
-                return Action.followTrail(px, py, 0);
+                float dist = (float) Math.sqrt(dx * dx + dy * dy);
+                if (dist > 0.01f) {
+                    return Action.move(dx / dist, dy / dist, 0);
+                }
             }
         }
 
+        // Default: keep foraging (search)
         return randomMove(agent);
     }
 
     private Action handleReturningHome(AgentView agent, SimulationContext ctx, FSMArchitecture fsm) {
-        // Check if home
+        // Check if arrived at nest
         if (isNearHome(agent)) {
+            if (agent.isCarryingFood()) {
+                transitionTo(State.DEPOSITING);
+                return Action.depositFood();
+            }
+            transitionTo(State.RESTING);
+            return Action.rest();
+        }
+
+        if (agent.isAtNest()) {
             transitionTo(State.DEPOSITING);
             return new Action(Action.ActionType.DEPOSIT_FOOD, 0, 0, 0, 1.0f, null);
         }
@@ -274,7 +273,7 @@ public class FSMArchitecture implements ReasoningArchitecture {
             transitionTo(State.EXPLORING);
             return randomMove(agent);
         }
-        var enemy = ctx.getNearestEnemy(agent);
+        var enemy = ctx.getNearestEnemyTarget(agent);
         if (agent instanceof Individual ind && enemy instanceof Individual enemyInd) {
             float dist = (float) Math.hypot(enemyInd.getX() - ind.getX(), enemyInd.getY() - ind.getY());
             if (dist <= 1.5f && ind.getFormicAcidGland() >= 20.0f && (ind.getSpecies() == null || ind.getSpecies().canFireFormicAcidArtilleryJet() || ind.isSoldier())) {

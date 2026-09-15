@@ -146,24 +146,18 @@ public class SparsePheromoneGrid {
         if (!inBounds(x, y, z))
             return false;
 
-        TerrariumCell cell = terrarium.getCell(x, y, z);
-        if (!passabilityChecker.test(pheromoneType, cell))
-            return false;
-
-        // Check height limit above ground
+        // Check height limit above ground on vertical axis Z
         if (maxHeightAboveGround > 0) {
-            int groundY = findGroundLevel(x, y, z);
-            if (y - groundY > maxHeightAboveGround)
+            int groundZ = findGroundLevel(x, y, z);
+            if (z - groundZ > maxHeightAboveGround)
                 return false;
         }
         return true;
     }
 
-    private int findGroundLevel(int x, int startY, int z) {
-        for (int y = startY; y >= 0; y--) {
-            TerrariumCell cell = terrarium.getCell(x, y, z);
-            if (!cell.isPassable())
-                return y;
+    private int findGroundLevel(int x, int y, int startZ) {
+        if (terrarium != null) {
+            return (int) terrarium.getSurfaceElevation(x, y);
         }
         return 0;
     }

@@ -72,6 +72,22 @@ public interface SimulationContext {
     Individual getNearestEnemy(AgentView agent);
 
     /**
+     * Get the nearest hostile enemy individual or predator target.
+     */
+    default Object getNearestEnemyTarget(AgentView agent) {
+        Individual ind = getNearestEnemy(agent);
+        if (ind != null) return ind;
+        return getNearestPredator(agent);
+    }
+
+    /**
+     * Get the nearest hostile predator within detection range.
+     */
+    default Object getNearestPredator(AgentView agent) {
+        return null;
+    }
+
+    /**
      * Check if there's food nearby.
      */
     boolean hasFoodNearby(AgentView agent);

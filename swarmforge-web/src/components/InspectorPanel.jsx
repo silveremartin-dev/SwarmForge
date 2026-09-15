@@ -1,6 +1,7 @@
 import React from 'react'
 import { useSimulationStore } from '../store/simulationStore'
-import { Bug, Home, Heart, Zap, MapPin, Briefcase, Package, Clock, ChevronLeft, ChevronRight, Droplets, Thermometer, Shield, Users, Info } from 'lucide-react'
+import { getTerrainHeight } from '../utils/terrainUtils'
+import { Bug, Home, Heart, Zap, MapPin, Briefcase, Package, Clock, ChevronLeft, ChevronRight, Droplets, Thermometer, Shield, Users, Info, X } from 'lucide-react'
 
 export default function InspectorPanel() {
     const {
@@ -10,7 +11,8 @@ export default function InspectorPanel() {
         setSelectedChamber,
         selectNextAnt,
         selectPreviousAnt,
-        colonies
+        colonies,
+        terrainConfig,
     } = useSimulationStore()
 
     if (!selectedEntity && !selectedChamber) return null
@@ -19,14 +21,16 @@ export default function InspectorPanel() {
         panel: {
             position: 'absolute',
             top: 60,
-            right: 20,
+            right: 360,
             width: 330,
+            maxHeight: 'calc(100vh - 80px)',
+            overflowY: 'auto',
             background: 'rgba(15, 23, 42, 0.94)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
             borderRadius: 12,
             padding: 16,
             color: '#fff',
-            backdropFilter: 'blur(12px)',
+            backdropFilter: 'blur(16px)',
             boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
             zIndex: 95,
             fontFamily: 'system-ui, -apple-system, sans-serif',
@@ -53,7 +57,7 @@ export default function InspectorPanel() {
             border: '1px solid #334155',
             color: '#38bdf8',
             cursor: 'pointer',
-            padding: '3px 6px',
+            padding: '4px 8px',
             borderRadius: 6,
             display: 'flex',
             alignItems: 'center',
@@ -63,17 +67,18 @@ export default function InspectorPanel() {
             transition: 'all 0.15s ease'
         },
         closeBtn: {
-            background: '#1e293b',
-            border: '1px solid #334155',
-            color: '#94a3b8',
+            background: 'rgba(239, 68, 68, 0.2)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            color: '#fca5a5',
             cursor: 'pointer',
             fontSize: 12,
-            width: 24,
-            height: 24,
+            width: 26,
+            height: 26,
             borderRadius: 6,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            transition: 'all 0.15s ease',
         },
         badge: (bg, color) => ({
             background: bg,
@@ -130,7 +135,13 @@ export default function InspectorPanel() {
                         <span>{selectedChamber.icon || '🏛️'}</span>
                         <span style={{ color: '#f59e0b' }}>{selectedChamber.name}</span>
                     </div>
-                    <button style={styles.closeBtn} onClick={() => setSelectedChamber(null)}>✕</button>
+                    <button
+                        style={styles.closeBtn}
+                        onClick={() => setSelectedChamber(null)}
+                        title="Fermer l'inspecteur de chambre"
+                    >
+                        <X size={15} />
+                    </button>
                 </div>
 
                 {/* Nid & Type Badges */}
@@ -229,16 +240,18 @@ export default function InspectorPanel() {
     }
 
     const shortId = selectedEntity.id ? selectedEntity.id.replace('ant_', '').slice(0, 10) : '001'
+    const antGroundY = getTerrainHeight(selectedEntity.x, selectedEntity.y, terrainConfig)
+    const antAltitudeY = antGroundY + 0.12 + (selectedEntity.treeClimbHeight || 0)
 
     return (
         <div style={styles.panel}>
             <div style={styles.header}>
                 <div style={styles.title}>
                     <Bug size={16} className="text-sky-400" />
-                    <span>Fourmi #{shortId}</span>
+                    <span>Suivi Fourmi #{shortId}</span>
                 </div>
 
-                {/* Previous / Next Ant Cycle Navigation Buttons */}
+                {/* Previous / Next Ant Cycle Navigation & Prominent Close Button */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <button
                         style={styles.navBtn}
@@ -256,7 +269,13 @@ export default function InspectorPanel() {
                         <span>Suiv.</span>
                         <ChevronRight size={13} />
                     </button>
-                    <button style={styles.closeBtn} onClick={() => setSelectedEntity(null)}>✕</button>
+                    <button
+                        style={styles.closeBtn}
+                        onClick={() => setSelectedEntity(null)}
+                        title="Fermer le suivi de la fourmi"
+                    >
+                        <X size={15} />
+                    </button>
                 </div>
             </div>
 
@@ -298,8 +317,8 @@ export default function InspectorPanel() {
 
             <div style={styles.row}>
                 <span style={styles.label}><MapPin size={12} /> Position 3D</span>
-                <span style={{ ...styles.value, color: '#94a3b8', fontSize: 11 }}>
-                    X:{selectedEntity.x.toFixed(1)}m, Z:{selectedEntity.y.toFixed(1)}m
+                <span style={{ ...styles.value, color: '#94a3b8', fontSize: 10.5 }}>
+                    X:{selectedEntity.x.toFixed(1)}m, Y (Alt):{antAltitudeY.toFixed(1)}m, Z:{selectedEntity.y.toFixed(1)}m
                 </span>
             </div>
 

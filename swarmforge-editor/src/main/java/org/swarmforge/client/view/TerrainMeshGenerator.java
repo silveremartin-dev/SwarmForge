@@ -10,73 +10,89 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * optimized mesh generator for voxel terrain.
- * Uses exposed face culling to reduce geometry.
+ * Optimized mesh generator for voxel terrain and natural landscapes in JME.
+ * Supports:
+ * - Exposed face culling
+ * - Continuous seamless world UV coordinates
+ * - 3D Subterranean Skirt ("Jupe 3D") along outer boundaries
+ * - Live Cross-Section Slice Plane ("Vue en coupe") at sliceRatio
+ * - 3D Elevation Isoline contour line mesh generation
+ *
+ * @author Silvère Martin-Michiellot
+ * @author Gemini AI Assistant
  */
 public class TerrainMeshGenerator {
 
+    private static final float UV_SCALE = 0.25f; // 4 meters per texture tile repeat
+
     public Mesh generateMesh(Terrarium terrarium) {
+        return generateMesh(terrarium, 1.0f, true, false);
+    }
+
+    public Mesh generateMesh(Terrarium terrarium, float sliceRatio, boolean showSkirt, boolean isGamified) {
         List<Float> vertices = new ArrayList<>();
         List<Float> normals = new ArrayList<>();
         List<Float> texCoords = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
 
         int width = terrarium.getWidth();
-        int height = terrarium.getHeight(); // Y-axis in Terrarium (horizontal North/South -> JME Z)
-        int depth = terrarium.getDepth();   // Z-axis in Terrarium (vertical altitude -> JME Y)
+        int height = terrarium.getHeight(); // Horizontal Y in domain -> JME Z (Depth)
+        int depth = terrarium.getDepth();   // Vertical Z in domain -> JME Y (Altitude)
 
+        int cutX = Math.max(1, Math.min(width, (int) Math.ceil(width * Math.max(0.05f, Math.min(1.0f, sliceRatio)))));
         int indexOffset = 0;
 
-        for (int x = 0; x < width; x++) {
+        for (int x = 0; x < cutX; x++) {
             for (int y = 0; y < height; y++) {
                 for (int z = 0; z < depth; z++) {
                     TerrariumCell cell = terrarium.getCell(x, y, z);
-                    if (cell.material() == TerrariumCell.Material.AIR)
+                    if (cell.material() == TerrariumCell.Material.AIR || cell.material() == TerrariumCell.Material.CAVITY) {
                         continue;
+                    }
 
                     // JME Coords: X=x, Y=z (Up, altitude), Z=y (North/South depth)
                     float jmeX = x;
                     float jmeY = z;
                     float jmeZ = y;
 
-                    // Top Face (JME +Y, Domain +Z)
-                    if (isTransparent(terrarium, x, y, z + 1)) {
+                    // 1. Top Face (+Y in JME, +Z in domain)
+                    if (z == depth - 1 || isAir(terrarium, x, y, z + 1)) {
                         addUpFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
-                    // Bottom Face (JME -Y, Domain -Z)
-                    if (isTransparent(terrarium, x, y, z - 1)) {
+                    // 2. Bottom Face (-Y in JME, -Z in domain)
+                    if (showSkirt && (z == 0 || isAir(terrarium, x, y, z - 1))) {
                         addDownFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
-                    // Front Face (JME +Z, Domain +Y)
-                    if (isTransparent(terrarium, x, y + 1, z)) {
+                    // 3. Front Face (+Z in JME, +Y in domain)
+                    if ((y == height - 1 && showSkirt) || isAir(terrarium, x, y + 1, z)) {
                         addFrontFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
-                    // Back Face (JME -Z, Domain -Y)
-                    if (isTransparent(terrarium, x, y - 1, z)) {
+                    // 4. Back Face (-Z in JME, -Y in domain)
+                    if ((y == 0 && showSkirt) || isAir(terrarium, x, y - 1, z)) {
                         addBackFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
-                    // Right Face (JME +X, Domain +X)
-                    if (isTransparent(terrarium, x + 1, y, z)) {
-                        addRightFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
+                    // 5. Left Face (-X in JME, -X in domain)
+                    if ((x == 0 && showSkirt) || isAir(terrarium, x - 1, y, z)) {
+                        addLeftFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
-                    // Left Face (JME -X, Domain -X)
-                    if (isTransparent(terrarium, x - 1, y, z)) {
-                        addLeftFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
+                    // 6. Right Face (+X in JME, +X in domain) - Also represents the Cut Wall on slice plane!
+                    if ((x == cutX - 1) || isAir(terrarium, x + 1, y, z)) {
+                        addRightFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
@@ -94,17 +110,90 @@ public class TerrainMeshGenerator {
         return mesh;
     }
 
-    private boolean isTransparent(Terrarium terrarium, int x, int y, int z) {
-        if (x < 0 || x >= terrarium.getWidth() ||
-                y < 0 || y >= terrarium.getHeight() ||
-                z < 0 || z >= terrarium.getDepth()) {
-            return true; // Boundary faces visible
+    /**
+     * Generates a 3D Elevation Isoline contour line mesh.
+     */
+    public Mesh generateIsolinesMesh(Terrarium terrarium, float sliceRatio, float stepHeight) {
+        List<Float> vertices = new ArrayList<>();
+        List<Integer> indices = new ArrayList<>();
+
+        int width = terrarium.getWidth();
+        int height = terrarium.getHeight();
+        int cutX = Math.max(1, Math.min(width, (int) Math.ceil(width * Math.max(0.05f, Math.min(1.0f, sliceRatio)))));
+        float step = Math.max(1.0f, stepHeight);
+
+        int idx = 0;
+        for (int x = 0; x < cutX - 1; x++) {
+            for (int y = 0; y < height - 1; y++) {
+                float e00 = terrarium.getSurfaceElevation(x, y);
+                float e10 = terrarium.getSurfaceElevation(x + 1, y);
+                float e01 = terrarium.getSurfaceElevation(x, y + 1);
+                float e11 = terrarium.getSurfaceElevation(x + 1, y + 1);
+
+                float minE = Math.min(Math.min(e00, e10), Math.min(e01, e11));
+                float maxE = Math.max(Math.max(e00, e10), Math.max(e01, e11));
+
+                int kStart = (int) Math.ceil(minE / step);
+                int kEnd = (int) Math.floor(maxE / step);
+
+                for (int k = kStart; k <= kEnd; k++) {
+                    float isoLevel = k * step;
+                    // Horizontal segment in quad
+                    if ((e00 - isoLevel) * (e10 - isoLevel) <= 0) {
+                        float t = (isoLevel - e00) / Math.max(0.001f, (e10 - e00));
+                        float lx1 = x + t;
+                        float ly1 = y;
+                        float lz1 = isoLevel + 0.08f; // slightly above surface to prevent z-fighting
+
+                        float lx2 = x + 0.5f;
+                        float ly2 = y + 0.5f;
+                        float lz2 = (e00 + e10 + e01 + e11) / 4.0f + 0.08f;
+
+                        vertices.add(lx1); vertices.add(lz1); vertices.add(ly1);
+                        vertices.add(lx2); vertices.add(lz2); vertices.add(ly2);
+                        indices.add(idx++);
+                        indices.add(idx++);
+                    }
+                    if ((e00 - isoLevel) * (e01 - isoLevel) <= 0) {
+                        float t = (isoLevel - e00) / Math.max(0.001f, (e01 - e00));
+                        float lx1 = x;
+                        float ly1 = y + t;
+                        float lz1 = isoLevel + 0.08f;
+
+                        float lx2 = x + 0.5f;
+                        float ly2 = y + 0.5f;
+                        float lz2 = (e00 + e10 + e01 + e11) / 4.0f + 0.08f;
+
+                        vertices.add(lx1); vertices.add(lz1); vertices.add(ly1);
+                        vertices.add(lx2); vertices.add(lz2); vertices.add(ly2);
+                        indices.add(idx++);
+                        indices.add(idx++);
+                    }
+                }
+            }
         }
-        return terrarium.getCell(x, y, z).material() == TerrariumCell.Material.AIR;
+
+        if (vertices.isEmpty()) {
+            return null;
+        }
+
+        Mesh lineMesh = new Mesh();
+        lineMesh.setMode(Mesh.Mode.Lines);
+        lineMesh.setBuffer(Type.Position, 3, BufferUtils.createFloatBuffer(toFloatArray(vertices)));
+        lineMesh.setBuffer(Type.Index, 1, BufferUtils.createIntBuffer(toIntArray(indices)));
+        lineMesh.updateBound();
+        return lineMesh;
     }
 
-    // --- Face Generation Helpers with Continuous Seamless World UVs (No Tile Seams) ---
-    private static final float UV_SCALE = 0.25f; // 4 meters per full texture repeat for realistic natural look
+    private boolean isAir(Terrarium terrarium, int x, int y, int z) {
+        if (!terrarium.inBounds(x, y, z)) {
+            return true;
+        }
+        TerrariumCell cell = terrarium.getCell(x, y, z);
+        return cell.material() == TerrariumCell.Material.AIR || cell.material() == TerrariumCell.Material.CAVITY;
+    }
+
+    // --- Face Generation Helpers with Continuous Seamless World UVs ---
 
     private void addUpFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
         float x0 = x - 0.5f, x1 = x + 0.5f;
@@ -120,7 +209,6 @@ public class TerrainMeshGenerator {
             n.add(0f); n.add(1f); n.add(0f);
         }
 
-        // Continuous World-Space UVs on Horizontal Plane (eliminates individual voxel tile borders)
         t.add(x0 * UV_SCALE); t.add(z0 * UV_SCALE);
         t.add(x0 * UV_SCALE); t.add(z1 * UV_SCALE);
         t.add(x1 * UV_SCALE); t.add(z1 * UV_SCALE);
@@ -148,7 +236,6 @@ public class TerrainMeshGenerator {
     }
 
     private void addFrontFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
-        // JME +Z
         float x0 = x - 0.5f, x1 = x + 0.5f;
         float y0 = y - 0.5f, y1 = y + 0.5f;
         float z0 = z + 0.5f;
@@ -169,7 +256,6 @@ public class TerrainMeshGenerator {
     }
 
     private void addBackFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
-        // JME -Z
         float x0 = x - 0.5f, x1 = x + 0.5f;
         float y0 = y - 0.5f, y1 = y + 0.5f;
         float z0 = z - 0.5f;
@@ -190,7 +276,6 @@ public class TerrainMeshGenerator {
     }
 
     private void addRightFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
-        // JME +X
         float x0 = x + 0.5f;
         float y0 = y - 0.5f, y1 = y + 0.5f;
         float z0 = z - 0.5f, z1 = z + 0.5f;
@@ -211,7 +296,6 @@ public class TerrainMeshGenerator {
     }
 
     private void addLeftFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
-        // JME -X
         float x0 = x - 0.5f;
         float y0 = y - 0.5f, y1 = y + 0.5f;
         float z0 = z - 0.5f, z1 = z + 0.5f;
@@ -232,7 +316,6 @@ public class TerrainMeshGenerator {
     }
 
     private void addIndices(List<Integer> indices, int offset) {
-        // Quad 0,1,2, 2,3,0
         indices.add(offset + 0);
         indices.add(offset + 1);
         indices.add(offset + 2);

@@ -145,15 +145,44 @@ public class VegetationSystem {
     }
 
     /**
-     * Spawn initial vegetation.
+     * Spawn initial vegetation with biological spacing constraints.
      */
     public void populate(int count, PlantType type) {
+        float minSpacing = switch (type) {
+            case TREE -> 4.0f;
+            case SHRUB -> 1.5f;
+            default -> 0.6f;
+        };
+        float minSpacingSq = minSpacing * minSpacing;
+
         for (int i = 0; i < count; i++) {
-            int x = rng.nextInt(worldWidth);
-            int y = rng.nextInt(worldDepth);
-            Plant p = new Plant(type, x, y, 0);
-            p.growth = 1.0f; // Initial plants are mature
-            plants.add(p);
+            int attempts = 0;
+            int x = 0, y = 0;
+            boolean valid = false;
+
+            while (attempts < 25 && !valid) {
+                x = rng.nextInt(worldWidth);
+                y = rng.nextInt(worldDepth);
+                valid = true;
+
+                for (Plant existing : plants) {
+                    if (existing.type == type || (type == PlantType.TREE && existing.type == PlantType.SHRUB)) {
+                        float dx = existing.x - x;
+                        float dy = existing.y - y;
+                        if (dx * dx + dy * dy < minSpacingSq) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                }
+                attempts++;
+            }
+
+            if (valid || type == PlantType.GRASS || type == PlantType.MOSS) {
+                Plant p = new Plant(type, x, y, 0);
+                p.growth = 1.0f; // Initial plants are mature
+                plants.add(p);
+            }
         }
     }
 

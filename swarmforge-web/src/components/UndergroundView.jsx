@@ -43,9 +43,9 @@ function Tunnel({ start, end, terrainConfig }) {
     return (
         <mesh position={position} rotation={rotation}>
             {isGamified ? (
-                <boxGeometry args={[0.5, length, 0.5]} />
+                <boxGeometry args={[0.35, length, 0.35]} />
             ) : (
-                <cylinderGeometry args={[0.3, 0.3, length, 10]} />
+                <cylinderGeometry args={[0.18, 0.18, length, 8]} />
             )}
             <meshStandardMaterial color="#451a03" roughness={0.9} transparent opacity={0.85} />
         </mesh>
@@ -54,11 +54,11 @@ function Tunnel({ start, end, terrainConfig }) {
 
 function ChamberMesh({ chamber, isSelected, onClick, terrainConfig }) {
     const [hovered, setHovered] = useState(false)
-    const { showChamberOverlay, lookAndFeel } = useSimulationStore()
+    const { showChamberInfo, lookAndFeel } = useSimulationStore()
     const isGamified = lookAndFeel === 'GAMING'
     const color = CHAMBER_COLORS[chamber.type] || '#38bdf8'
     const icon = CHAMBER_ICONS[chamber.type] || '🏛️'
-    const radius = chamber.radius || 1.2
+    const radius = chamber.radius || 0.85
 
     const groundY = getTerrainHeight(chamber.position.x, chamber.position.z, terrainConfig)
     const worldY = groundY + chamber.position.y
@@ -83,7 +83,7 @@ function ChamberMesh({ chamber, isSelected, onClick, terrainConfig }) {
                 }}
             >
                 {isGamified ? (
-                    <boxGeometry args={[radius * 1.6 * (hovered ? 1.08 : 1.0), radius * 1.4 * (hovered ? 1.08 : 1.0), radius * 1.6 * (hovered ? 1.08 : 1.0)]} />
+                    <boxGeometry args={[radius * 1.4 * (hovered ? 1.08 : 1.0), radius * 1.2 * (hovered ? 1.08 : 1.0), radius * 1.4 * (hovered ? 1.08 : 1.0)]} />
                 ) : (
                     <sphereGeometry args={[radius * (hovered ? 1.08 : 1.0), 16, 16]} />
                 )}
@@ -94,22 +94,22 @@ function ChamberMesh({ chamber, isSelected, onClick, terrainConfig }) {
                     transparent
                     opacity={isSelected ? 0.95 : (hovered ? 0.85 : 0.70)}
                     emissive={isSelected ? color : (hovered ? '#ffffff' : '#000000')}
-                    emissiveIntensity={isSelected ? 0.4 : (hovered ? 0.2 : 0)}
+                    emissiveIntensity={isSelected ? 0.5 : (hovered ? 0.25 : 0)}
                 />
             </mesh>
 
             {/* Selection Pulsing Ring */}
             {isSelected && (
                 <mesh rotation={[-Math.PI / 2, 0, 0]}>
-                    <ringGeometry args={[radius * 1.2, radius * 1.4, 24]} />
-                    <meshBasicMaterial color="#38bdf8" side={THREE.DoubleSide} transparent opacity={0.85} />
+                    <ringGeometry args={[radius * 1.2, radius * 1.45, 24]} />
+                    <meshBasicMaterial color="#38bdf8" side={THREE.DoubleSide} transparent opacity={0.9} />
                 </mesh>
             )}
 
-            {/* 3D Floating Chamber Tag */}
-            {showChamberOverlay && (
+            {/* 3D Floating Chamber Tag / Tooltip */}
+            {showChamberInfo && (
                 <Html
-                    position={[0, radius + 0.6, 0]}
+                    position={[0, radius + 0.5, 0]}
                     center
                     distanceFactor={45}
                     style={{ pointerEvents: 'none' }}
@@ -146,9 +146,9 @@ function ChamberMesh({ chamber, isSelected, onClick, terrainConfig }) {
 }
 
 export default function UndergroundView() {
-    const { nests, showChamberOverlay, selectedChamber, setSelectedChamber, terrainConfig } = useSimulationStore()
+    const { nests, showChambers, selectedChamber, setSelectedChamber, terrainConfig } = useSimulationStore()
 
-    if (!showChamberOverlay || !nests || nests.length === 0) return null
+    if (!showChambers || !nests || nests.length === 0) return null
 
     return (
         <group>

@@ -842,52 +842,52 @@ export default function VegetationRenderer() {
     const treePositions = useMemo(() => {
         if (climateType === 'ARID' || climateType === 'SAVANNA' || climateType === 'DESERT') {
             return [
-                { id: 1, pos: [15, 0, 30], scale: 1.0, targetHeight: 5.5, variant: 0, url: '/3d/cactus.obj', objectName: '0_lowpoly_Circle.034' },
-                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 8.5, variant: 1, url: '/3d/nature_pack/Dead Trees.glb', objectName: 'DeadTree_1' },
-                { id: 3, pos: [82, 0, 75], scale: 1.0, targetHeight: 6.0, variant: 2, url: '/3d/cactus.obj', objectName: '1_lowpoly_Circle.035' },
-                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 9.0, variant: 0, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_1' },
-                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 8.5, variant: 1, url: '/3d/nature_pack/Dead Trees.glb', objectName: 'DeadTree_3' },
-                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 9.5, variant: 2, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_2' },
+                { id: 1, pos: [15, 0, 30], scale: 1.0, targetHeight: 8.5, variant: 0, url: '/3d/cactus.obj', objectName: '0_lowpoly_Circle.034' },
+                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 13.5, variant: 1, url: '/3d/nature_pack/Dead Trees.glb', objectName: 'DeadTree_1' },
+                { id: 3, pos: [82, 0, 75], scale: 1.0, targetHeight: 9.0, variant: 2, url: '/3d/cactus.obj', objectName: '1_lowpoly_Circle.035' },
+                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 14.5, variant: 0, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_1' },
+                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 13.5, variant: 1, url: '/3d/nature_pack/Dead Trees.glb', objectName: 'DeadTree_3' },
+                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 15.0, variant: 2, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_2' },
             ]
         }
         if (climateType === 'TROPICAL') {
             return [
-                { id: 1, pos: [15, 0, 30], scale: 1.05, targetHeight: 9.5, variant: 0, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_1' },
-                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 8.5, variant: 1, url: '/3d/bamboo_set.obj', objectName: 'bamboo_tree_1_Cylinder' },
-                { id: 3, pos: [82, 0, 75], scale: 1.0, targetHeight: 9.5, variant: 2, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_3' },
-                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 10.0, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_1' },
-                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 8.5, variant: 1, url: '/3d/bamboo_set.obj', objectName: 'bamboo_tree_2_Cylinder.001' },
-                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 10.0, variant: 2, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_5' },
+                { id: 1, pos: [15, 0, 30], scale: 1.05, targetHeight: 15.0, variant: 0, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_1' },
+                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 13.0, variant: 1, url: '/3d/bamboo_set.obj', objectName: 'bamboo_tree_1_Cylinder' },
+                { id: 3, pos: [82, 0, 75], scale: 1.0, targetHeight: 15.5, variant: 2, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_3' },
+                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 16.0, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_1' },
+                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 13.5, variant: 1, url: '/3d/bamboo_set.obj', objectName: 'bamboo_tree_2_Cylinder.001' },
+                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 15.5, variant: 2, url: '/3d/nature_pack/Palm Trees.glb', objectName: 'PalmTree_5' },
             ]
         }
         if (climateType === 'MEDITERRANEAN') {
             return [
-                { id: 1, pos: [15, 0, 30], scale: 1.0, targetHeight: 9.0, variant: 0, url: '/3d/nature_pack/Maple Trees.glb', objectName: 'MapleTree_1' },
-                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 9.5, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_1' },
-                { id: 3, pos: [82, 0, 75], scale: 1.05, targetHeight: 8.5, variant: 2, url: '/3d/nature_pack/Maple Trees.glb', objectName: 'MapleTree_2' },
-                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 9.0, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_4' },
-                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 8.5, variant: 1, url: '/3d/nature_pack/Dead Trees.glb', objectName: 'DeadTree_2' },
-                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 9.5, variant: 2, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_3' },
+                { id: 1, pos: [15, 0, 30], scale: 1.0, targetHeight: 14.0, variant: 0, url: '/3d/nature_pack/Maple Trees.glb', objectName: 'MapleTree_1' },
+                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 15.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_1' },
+                { id: 3, pos: [82, 0, 75], scale: 1.05, targetHeight: 13.5, variant: 2, url: '/3d/nature_pack/Maple Trees.glb', objectName: 'MapleTree_2' },
+                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 14.5, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_4' },
+                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 13.0, variant: 1, url: '/3d/nature_pack/Dead Trees.glb', objectName: 'DeadTree_2' },
+                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 15.5, variant: 2, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_3' },
             ]
         }
         if (climateType === 'ALPINE' || climateType === 'CONTINENTAL') {
             return [
-                { id: 1, pos: [15, 0, 30], scale: 1.05, targetHeight: 10.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_2' },
-                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 9.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_1' },
-                { id: 3, pos: [82, 0, 75], scale: 1.05, targetHeight: 10.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_4' },
-                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 9.5, variant: 0, url: '/3d/nature_pack/Maple Trees.glb', objectName: 'MapleTree_3' },
-                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 10.5, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_5' },
-                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 9.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_3' },
+                { id: 1, pos: [15, 0, 30], scale: 1.05, targetHeight: 16.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_2' },
+                { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 14.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_1' },
+                { id: 3, pos: [82, 0, 75], scale: 1.05, targetHeight: 15.5, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_4' },
+                { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 14.5, variant: 0, url: '/3d/nature_pack/Maple Trees.glb', objectName: 'MapleTree_3' },
+                { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 16.5, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_5' },
+                { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 14.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_3' },
             ]
         }
         // Default Oceanic / Temperate
         return [
-            { id: 1, pos: [15, 0, 30], scale: 1.0, targetHeight: 9.5, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_1' },
-            { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 10.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_2' },
-            { id: 3, pos: [82, 0, 75], scale: 1.05, targetHeight: 9.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_1' },
-            { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 9.5, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_3' },
-            { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 10.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_4' },
-            { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 9.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_4' },
+            { id: 1, pos: [15, 0, 30], scale: 1.0, targetHeight: 15.0, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_1' },
+            { id: 2, pos: [78, 0, 25], scale: 1.1, targetHeight: 16.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_2' },
+            { id: 3, pos: [82, 0, 75], scale: 1.05, targetHeight: 14.0, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_1' },
+            { id: 4, pos: [18, 0, 80], scale: 1.1, targetHeight: 15.0, variant: 0, url: '/3d/nature_pack/Trees.glb', objectName: 'NormalTree_3' },
+            { id: 5, pos: [55, 0, 15], scale: 1.15, targetHeight: 16.0, variant: 1, url: '/3d/nature_pack/Pine Trees.glb', objectName: 'PineTree_4' },
+            { id: 6, pos: [88, 0, 88], scale: 1.0, targetHeight: 14.5, variant: 2, url: '/3d/nature_pack/Birch Trees.glb', objectName: 'BirchTree_4' },
         ]
     }, [climateType])
 

@@ -44,6 +44,15 @@ public class PheromoneVisualizer {
     private float groundElevation = 0.0f;
     private boolean initialized = false;
     private RenderMode currentRenderMode = RenderMode.REALISTIC;
+    private boolean showIsolines = false;
+
+    public void setShowIsolines(boolean show) {
+        this.showIsolines = show;
+    }
+
+    public boolean isShowIsolines() {
+        return showIsolines;
+    }
 
     public PheromoneVisualizer(AssetManager assetManager) {
         this.assetManager = assetManager;

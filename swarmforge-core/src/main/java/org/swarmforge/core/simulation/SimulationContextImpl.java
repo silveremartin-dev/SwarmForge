@@ -69,6 +69,19 @@ public class SimulationContextImpl implements SimulationContext {
                 return true;
             }
         }
+        // Also check nearby live predators
+        if (simulation.getPredatorManager() != null) {
+            for (org.swarmforge.core.domain.Predator predator : simulation.getPredatorManager().getPredators()) {
+                if (predator != null && predator.isAlive()) {
+                    float dx = predator.getX() - agent.getX();
+                    float dy = predator.getY() - agent.getY();
+                    float dz = predator.getZ() - agent.getZ();
+                    if (dx * dx + dy * dy + dz * dz <= 25.0f) { // 5.0m radius
+                        return true;
+                    }
+                }
+            }
+        }
         return false;
     }
 
@@ -93,6 +106,47 @@ public class SimulationContextImpl implements SimulationContext {
             }
         }
         return nearest;
+    }
+
+    @Override
+    public Object getNearestPredator(AgentView agent) {
+        if (simulation.getPredatorManager() == null) return null;
+        org.swarmforge.core.domain.Predator nearest = null;
+        float minDistSq = 100.0f; // 10.0m range max
+        for (org.swarmforge.core.domain.Predator predator : simulation.getPredatorManager().getPredators()) {
+            if (predator != null && predator.isAlive()) {
+                float dx = predator.getX() - agent.getX();
+                float dy = predator.getY() - agent.getY();
+                float dz = predator.getZ() - agent.getZ();
+                float distSq = dx * dx + dy * dy + dz * dz;
+                if (distSq < minDistSq) {
+                    minDistSq = distSq;
+                    nearest = predator;
+                }
+            }
+        }
+        return nearest;
+    }
+
+    @Override
+    public Object getNearestEnemyTarget(AgentView agent) {
+        Individual ind = getNearestEnemy(agent);
+        Object pred = getNearestPredator(agent);
+        if (ind == null) return pred;
+        if (pred == null) return ind;
+
+        float dxInd = ind.getX() - agent.getX();
+        float dyInd = ind.getY() - agent.getY();
+        float dzInd = ind.getZ() - agent.getZ();
+        float distSqInd = dxInd * dxInd + dyInd * dyInd + dzInd * dzInd;
+
+        org.swarmforge.core.domain.Predator p = (org.swarmforge.core.domain.Predator) pred;
+        float dxP = p.getX() - agent.getX();
+        float dyP = p.getY() - agent.getY();
+        float dzP = p.getZ() - agent.getZ();
+        float distSqP = dxP * dxP + dyP * dyP + dzP * dzP;
+
+        return distSqP < distSqInd ? p : ind;
     }
 
     private boolean isEnemy(org.swarmforge.core.domain.Colony agentColony, AgentView agent, Individual neighbor) {

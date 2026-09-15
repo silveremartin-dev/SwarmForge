@@ -228,6 +228,14 @@ public class Predator {
         }
     }
 
+    public float getTrapRadius() {
+        return trapRadius;
+    }
+
+    public void setTrapRadius(float trapRadius) {
+        this.trapRadius = trapRadius;
+    }
+
     /**
      * Check if an ant is caught in this predator's trap.
      */
