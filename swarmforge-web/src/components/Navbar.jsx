@@ -1,12 +1,21 @@
-import React, { useState, useEffect } from 'react'
-import { Maximize, Minimize, Sliders, Settings, Sun, Moon } from 'lucide-react'
+import React from 'react'
+import {
+    Sliders,
+    Eye,
+    Zap,
+    BarChart2,
+    List,
+    Settings,
+    Sun,
+    Moon
+} from 'lucide-react'
 import { useSimulationStore } from '../store/simulationStore'
 import { getTranslation } from '../i18n/translations'
 
 export default function Navbar() {
     const {
-        activeMainTab,
-        setActiveMainTab,
+        activeTab,
+        setActiveTab,
         connected,
         serverStatusText,
         simTimeFormatted,
@@ -18,28 +27,17 @@ export default function Navbar() {
         language
     } = useSimulationStore()
 
-    const [isFullscreen, setIsFullscreen] = useState(false)
     const isDark = theme === 'dark'
-
     const t = (key, fallback) => getTranslation(language, key, fallback)
 
-    useEffect(() => {
-        const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement)
-        }
-        document.addEventListener('fullscreenchange', handleFullscreenChange)
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    }, [])
-
-    const toggleFullscreen = () => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(() => {})
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen().catch(() => {})
-            }
-        }
-    }
+    const navTabs = [
+        { id: 'SIMULATION', label: t('tabSimulationManager', 'Gestionnaire de Simulation'), icon: Sliders },
+        { id: 'VISUAL_3D', label: t('tabVisualView', 'Vue 3D'), icon: Eye },
+        { id: 'GOD_MODE', label: t('tabGodMode', 'Mode Divin'), icon: Zap },
+        { id: 'STATISTICS', label: t('tabStats', 'Statistiques'), icon: BarChart2 },
+        { id: 'EVENT_LOG', label: t('tabLogs', 'Journal d\'événements'), icon: List },
+        { id: 'SETTINGS', label: t('tabSettings', 'Paramètres'), icon: Settings }
+    ]
 
     const popCount = ants?.length || 0
 
@@ -56,9 +54,9 @@ export default function Navbar() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             flexShrink: 0
         }}>
-            {/* Left: Brand + Main Tab Buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Left: Brand + All Main Tabs (1:1 JavaFX top tabs) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginRight: 4 }}>
                     <span style={{ fontSize: 20 }}>🐜</span>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{
@@ -77,60 +75,50 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                {/* Main Tabs (1:1 JavaFX top tabs) */}
-                <div style={{
+                {/* Direct Main Tabs Bar */}
+                <nav style={{
                     display: 'flex',
                     background: isDark ? '#1e293b' : '#f1f5f9',
                     padding: 3,
                     borderRadius: 8,
-                    gap: 4
+                    gap: 3
                 }}>
-                    <button
-                        onClick={() => setActiveMainTab('SIMULATION')}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '6px 14px',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            borderRadius: 6,
-                            border: 'none',
-                            cursor: 'pointer',
-                            background: activeMainTab === 'SIMULATION' ? (isDark ? '#0284c7' : '#0284c7') : 'transparent',
-                            color: activeMainTab === 'SIMULATION' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b'),
-                            transition: 'all 0.15s ease'
-                        }}
-                    >
-                        <Sliders size={14} />
-                        {t('tabSimulationManager', 'Gestionnaire de Simulation')}
-                    </button>
-
-                    <button
-                        onClick={() => setActiveMainTab('SETTINGS')}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '6px 14px',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            borderRadius: 6,
-                            border: 'none',
-                            cursor: 'pointer',
-                            background: activeMainTab === 'SETTINGS' ? (isDark ? '#0284c7' : '#0284c7') : 'transparent',
-                            color: activeMainTab === 'SETTINGS' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b'),
-                            transition: 'all 0.15s ease'
-                        }}
-                    >
-                        <Settings size={14} />
-                        {t('tabSettings', 'Paramètres')}
-                    </button>
-                </div>
+                    {navTabs.map(tab => {
+                        const Icon = tab.icon
+                        const isActive = activeTab === tab.id
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    padding: '6px 12px',
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    borderRadius: 6,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: isActive
+                                        ? (isDark ? '#0284c7' : '#0284c7')
+                                        : 'transparent',
+                                    color: isActive
+                                        ? '#ffffff'
+                                        : (isDark ? '#94a3b8' : '#64748b'),
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                <Icon size={14} />
+                                <span>{tab.label}</span>
+                            </button>
+                        )
+                    })}
+                </nav>
             </div>
 
-            {/* Right: Telemetry Banner & Controls */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Right: Telemetry Banner & Theme Switcher */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {/* Telemetry Status Banner (1:1 JavaFX Header) */}
                 <div style={{
                     display: 'flex',
@@ -198,25 +186,6 @@ export default function Navbar() {
                     }}
                 >
                     {isDark ? <Sun size={15} color="#f59e0b" /> : <Moon size={15} color="#6366f1" />}
-                </button>
-
-                {/* Fullscreen Button */}
-                <button
-                    onClick={toggleFullscreen}
-                    title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
-                    style={{
-                        background: 'transparent',
-                        border: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
-                        borderRadius: 6,
-                        padding: '6px 8px',
-                        cursor: 'pointer',
-                        color: isDark ? '#cbd5e1' : '#475569',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}
-                >
-                    {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
                 </button>
             </div>
         </header>

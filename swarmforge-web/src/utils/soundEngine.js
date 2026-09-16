@@ -63,19 +63,15 @@ class ProceduralSoundEngine {
         this.masterGain.gain.setValueAtTime(this.volumes.master, this.ctx.currentTime);
         this.masterGain.connect(this.ctx.destination);
 
-        // Create Channel Gains
+        // Create Channel Gains (initialized to 0.0 until simulation starts in 3D)
         Object.keys(this.gains).forEach(key => {
             const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(this.volumes[key], this.ctx.currentTime);
+            gain.gain.setValueAtTime(0.0, this.ctx.currentTime);
             gain.connect(this.masterGain);
             this.gains[key] = gain;
         });
 
         this.isInitialized = true;
-        this.startWindAmbiance();
-        this.startRiverAmbiance();
-        this.scheduleNextBirdChirp();
-        this.scheduleNextLeavesRustle();
     }
 
     async ensureContext() {
@@ -584,10 +580,10 @@ class ProceduralSoundEngine {
         }
     }
 
-    updateSimulationState({ isDay = true, lightLevel = 1.0, simRunning = true, speed = 1.0 } = {}) {
+    updateSimulationState({ isDay = true, lightLevel = 1.0, simRunning = false, speed = 1.0, is3DActive = false } = {}) {
         this.isDay = isDay;
         this.lightLevel = lightLevel;
-        this.simRunning = simRunning && speed > 0;
+        this.simRunning = Boolean(simRunning && speed > 0 && is3DActive);
 
         if (!this.simRunning) {
             if (this.birdTimer) clearTimeout(this.birdTimer);
@@ -598,9 +594,24 @@ class ProceduralSoundEngine {
             if (this.gains.weather && this.ctx) {
                 this.gains.weather.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
             }
+            if (this.gains.river && this.ctx) {
+                this.gains.river.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+            }
         } else {
+            if (!this.windNode) {
+                this.startWindAmbiance();
+            }
+            if (!this.riverNode) {
+                this.startRiverAmbiance();
+            }
             if (this.gains.ambiance && this.ctx) {
                 this.gains.ambiance.gain.setTargetAtTime(this.volumes.ambiance, this.ctx.currentTime, 0.2);
+            }
+            if (this.gains.weather && this.ctx) {
+                this.gains.weather.gain.setTargetAtTime(this.volumes.weather, this.ctx.currentTime, 0.2);
+            }
+            if (this.gains.river && this.ctx) {
+                this.gains.river.gain.setTargetAtTime(this.volumes.river, this.ctx.currentTime, 0.2);
             }
             this.scheduleNextBirdChirp();
             this.scheduleNextLeavesRustle();

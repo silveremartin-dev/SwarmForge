@@ -83,6 +83,21 @@
                 <artifactId>swarmforge-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.swarmforge</groupId>
+                <artifactId>swarmforge-server</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.swarmforge</groupId>
+                <artifactId>swarmforge-editor</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.swarmforge</groupId>
+                <artifactId>swarmforge-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- jMonkeyEngine -->
             <dependency>

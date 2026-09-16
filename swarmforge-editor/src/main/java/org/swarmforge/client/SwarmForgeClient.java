@@ -76,6 +76,7 @@ public class SwarmForgeClient extends Application {
         private Label statsLabel;
         private Label syncLabel;
         private CheckBox chkAntTracking;
+        private CheckBox chkShowScoreboard;
         private final I18nManager i18n = I18nManager.getInstance();
 
         private boolean isVideoRecording = false;
@@ -315,6 +316,58 @@ public class SwarmForgeClient extends Application {
         alert.setHeaderText(i18n.get("dialog.about.header"));
         alert.setContentText(i18n.get("dialog.about.content"));
         alert.show();
+    }
+
+    private void promptAndStartLocalServer(String targetHost, int targetPort, Runnable onServerReady) {
+        if (!javafx.application.Platform.isFxApplicationThread()) {
+            javafx.application.Platform.runLater(() -> promptAndStartLocalServer(targetHost, targetPort, onServerReady));
+            return;
+        }
+        org.swarmforge.client.ui.ServerLauncherDialog dialog = new org.swarmforge.client.ui.ServerLauncherDialog(
+            targetHost != null ? targetHost : "localhost",
+            targetPort > 0 ? targetPort : 50051
+        );
+        java.util.Optional<org.swarmforge.server.ServerConfig> optConfig = dialog.showAndWait();
+        optConfig.ifPresent(config -> {
+            if (simControlPanel != null) {
+                simControlPanel.setServerConnectionStatus(false, "Démarrage du serveur local...");
+            }
+            org.swarmforge.client.network.LocalServerManager.getInstance().startServer(
+                config,
+                () -> {
+                    if (simControlPanel != null) {
+                        simControlPanel.setServerHost("localhost");
+                        simControlPanel.setServerPort(config.grpcPort());
+                    }
+                    try {
+                        networkClient.connect("localhost", config.grpcPort());
+                        networkClient.startStreaming();
+                        if (simControlPanel != null) {
+                            simControlPanel.setServerConnectionStatus(true, "localhost:" + config.grpcPort() + " (Serveur Local)");
+                        }
+                        if (gameView != null) {
+                            gameView.getGameApp().setNetworkClient(networkClient);
+                        }
+                        if (onServerReady != null) {
+                            onServerReady.run();
+                        }
+                    } catch (Exception ex) {
+                        if (simControlPanel != null) {
+                            simControlPanel.setServerConnectionStatus(false, "Erreur connexion: " + ex.getMessage());
+                        }
+                    }
+                },
+                err -> {
+                    if (simControlPanel != null) {
+                        simControlPanel.setServerConnectionStatus(false, "Erreur démarrage: " + err.getMessage());
+                    }
+                    org.swarmforge.client.util.ThemeManager.createAlert(
+                        Alert.AlertType.ERROR,
+                        "Échec du démarrage du serveur SwarmForge : " + err.getMessage()
+                    ).showAndWait();
+                }
+            );
+        });
     }
 
         private Node createSimulationManager() {
@@ -640,13 +693,32 @@ public class SwarmForgeClient extends Application {
                         org.swarmforge.core.domain.Individual.resetAntNumberGenerator();
 
                         if (this.simControlPanel != null && this.simControlPanel.isServerExecutionMode()) {
-                            System.out.println("[INFO] [SwarmForge Engine] Mode d'exécution Serveur SwarmForge (gRPC :50051) activé.");
+                            String host = this.simControlPanel.getServerHost();
+                            int port = this.simControlPanel.getServerPort();
+                            System.out.println("[INFO] [SwarmForge Engine] Mode d'exécution Serveur SwarmForge (" + host + ":" + port + ") activé.");
                             if (this.networkClient != null && !this.networkClient.isConnected()) {
-                                try {
-                                    this.networkClient.connect("localhost", 50051);
-                                    this.networkClient.startStreaming();
-                                } catch (Exception ex) {
-                                    System.out.println("[WARN] Serveur distant non disponible à localhost:50051 (" + ex.getMessage() + "), exécution en mode local fallback.");
+                                boolean isOpen = org.swarmforge.client.network.LocalServerManager.isPortOpen(host, port);
+                                if (!isOpen) {
+                                    String hLower = host != null ? host.toLowerCase().trim() : "";
+                                    if (hLower.equals("localhost") || hLower.equals("127.0.0.1") || hLower.equals("0.0.0.0") || hLower.isEmpty()) {
+                                        System.out.println("[INFO] Serveur local inactif, affichage du dialogue de configuration...");
+                                        promptAndStartLocalServer(host, port, null);
+                                    } else {
+                                        System.out.println("[WARN] Serveur distant non disponible à " + host + ":" + port + ", exécution en mode local fallback.");
+                                    }
+                                } else {
+                                    try {
+                                        this.networkClient.connect(host, port);
+                                        this.networkClient.startStreaming();
+                                        if (simControlPanel != null) {
+                                            simControlPanel.setServerConnectionStatus(true, host + ":" + port);
+                                        }
+                                        if (gameView != null) {
+                                            gameView.getGameApp().setNetworkClient(networkClient);
+                                        }
+                                    } catch (Exception ex) {
+                                        System.out.println("[WARN] Échec de connexion au serveur à " + host + ":" + port + " (" + ex.getMessage() + ")");
+                                    }
                                 }
                             }
                         } else {
@@ -1072,9 +1144,25 @@ public class SwarmForgeClient extends Application {
                 // SimulationControlPanel Server Networking Callbacks
                 if (simControlPanel != null) {
                     simControlPanel.setOnServerConnect(() -> {
+                        String host = simControlPanel.getServerHost();
+                        int port = simControlPanel.getServerPort();
+                        boolean isOpen = org.swarmforge.client.network.LocalServerManager.isPortOpen(host, port);
+                        if (!isOpen) {
+                            String hLower = host != null ? host.toLowerCase().trim() : "";
+                            if (hLower.equals("localhost") || hLower.equals("127.0.0.1") || hLower.equals("0.0.0.0") || hLower.isEmpty()) {
+                                promptAndStartLocalServer(host, port, null);
+                                return;
+                            } else {
+                                simControlPanel.setServerConnectionStatus(false, "Injoignable (" + host + ":" + port + ")");
+                                org.swarmforge.client.util.ThemeManager.createAlert(
+                                    Alert.AlertType.WARNING,
+                                    "Impossible de joindre le serveur SwarmForge distant à " + host + ":" + port + ".\nVérifiez l'adresse IP et le port."
+                                ).showAndWait();
+                                return;
+                            }
+                        }
+
                         try {
-                            String host = simControlPanel.getServerHost();
-                            int port = simControlPanel.getServerPort();
                             networkClient.connect(host, port);
                             networkClient.startStreaming();
                             simControlPanel.setServerConnectionStatus(true, host + ":" + port);
@@ -1084,6 +1172,10 @@ public class SwarmForgeClient extends Application {
                         } catch (Exception ex) {
                             simControlPanel.setServerConnectionStatus(false, "Erreur: " + ex.getMessage());
                         }
+                    });
+
+                    simControlPanel.setOnServerStart(() -> {
+                        promptAndStartLocalServer(simControlPanel.getServerHost(), simControlPanel.getServerPort(), null);
                     });
 
                     simControlPanel.setOnServerDisconnect(() -> {
@@ -1194,60 +1286,91 @@ public class SwarmForgeClient extends Application {
                                 double stepDt = simControlPanel != null ? simControlPanel.getSimulationStepSeconds() : 0.05;
                                 String formattedTime = org.swarmforge.client.ui.SimulationControlPanel.formatSimulationTime(tick, stepDt);
 
-                                if (simControlPanel != null && simControlPanel.isServerExecutionMode()) {
-                                    String scName = simControlPanel.getSelectedScenarioName();
-                                    boolean joinMode = simControlPanel.isServerJoinMode();
-                                    String roleLabel = joinMode ? "Rejoindre (Autorité Serveur)" : "Hôte Déporté";
-                                    statsLabel.setText(String.format("🌐 Serveur: %s:%d | %s | Scénario: %s | %s (Step #%d)",
-                                            simControlPanel.getServerHost(), simControlPanel.getServerPort(), roleLabel, scName, formattedTime, tick));
-                                    simControlPanel.setServerSessionStats(isConnected ? "En Ligne (Ping ~15ms) | 1 Session" : "Déconnecté");
-                                } else {
-                                    statsLabel.setText(String.format("🌐 Moteur Local In-Process | %s (Step #%d)", formattedTime, tick));
-                                }
+                                boolean isServerMode = simControlPanel != null && simControlPanel.isServerExecutionMode();
+                                boolean isMatchmaking = isServerMode && simControlPanel.isServerJoinMode();
 
-                                if (syncLabel != null) {
+                                if (isServerMode) {
+                                    String scName = simControlPanel.getSelectedScenarioName();
+                                    String roleLabel = isMatchmaking ? "Rejoindre (Matchmaking)" : "Hôte Déporté";
                                     if (isConnected) {
-                                        syncLabel.setText("● Synchronisé Cluster (gRPC Stream)");
-                                        syncLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-size: 11px;");
+                                        statsLabel.setText(String.format("🌐 Serveur SwarmForge (%s:%d) | %s | %s | %s (Step #%d)",
+                                                simControlPanel.getServerHost(), simControlPanel.getServerPort(), roleLabel, scName, formattedTime, tick));
+                                        if (syncLabel != null) {
+                                            syncLabel.setText("● Connecté au Serveur (gRPC Stream)");
+                                            syncLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-size: 11px;");
+                                        }
+                                        simControlPanel.setServerSessionStats("En Ligne (~15ms)");
                                     } else {
+                                        statsLabel.setText(String.format("🌐 Mode Serveur SwarmForge (%s:%d - Hors-Ligne) | %s",
+                                                simControlPanel.getServerHost(), simControlPanel.getServerPort(), formattedTime));
+                                        if (syncLabel != null) {
+                                            syncLabel.setText("○ Serveur Déconnecté");
+                                            syncLabel.setStyle("-fx-text-fill: #f87171; -fx-font-size: 11px;");
+                                        }
+                                        simControlPanel.setServerSessionStats("Hors-Ligne");
+                                    }
+                                } else {
+                                    statsLabel.setText(String.format("💻 Moteur Local In-Process | %s (Step #%d)", formattedTime, tick));
+                                    if (syncLabel != null) {
                                         syncLabel.setText("● Moteur Local Autonome");
                                         syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
                                     }
                                 }
 
-                                // Update Live Multiplayer Scoreboard Overlay
-                                if (scoreboardOverlay != null && scoreboardOverlay.isVisible()) {
-                                    java.util.List<org.swarmforge.client.ui.MultiplayerScoreboardOverlay.ColonyEntry> entries = new java.util.ArrayList<>();
-                                    String[] palette = new String[] { "#38bdf8", "#f87171", "#4ade80", "#fbbf24", "#c084fc", "#f472b6" };
+                                // Sync Scoreboard HUD & Checkbox Visibility (ONLY in Matchmaking / Server Join Mode)
+                                if (chkShowScoreboard != null) {
+                                    if (chkShowScoreboard.isVisible() != isMatchmaking) {
+                                        chkShowScoreboard.setVisible(isMatchmaking);
+                                        chkShowScoreboard.setManaged(isMatchmaking);
+                                    }
+                                }
 
-                                    if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
-                                        int idx = 0;
-                                        for (org.swarmforge.core.domain.Colony col : localSimulation.getColonies()) {
-                                            int cPop = col.getPopulation();
-                                            int cW = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.WORKER);
-                                            int cS = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.SOLDIER);
-                                            int cQ = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.QUEEN);
-                                            float cFood = col.getFoodStored();
-                                            boolean queenAlive = cQ > 0;
-                                            String colName = col.getSpeciesName() != null && !col.getSpeciesName().isEmpty() ? col.getSpeciesName() : "Colonie #" + (idx + 1);
-                                            String pName = (idx == 0 && simControlPanel != null) ? simControlPanel.getPlayerAlias() : "Adversaire #" + (idx + 1);
-                                            String color = palette[idx % palette.length];
+                                if (scoreboardOverlay != null) {
+                                    if (!isMatchmaking) {
+                                        if (scoreboardOverlay.isVisible()) {
+                                            scoreboardOverlay.setVisible(false);
+                                            scoreboardOverlay.setManaged(false);
+                                        }
+                                    } else {
+                                        boolean shouldShow = (chkShowScoreboard == null || chkShowScoreboard.isSelected());
+                                        if (scoreboardOverlay.isVisible() != shouldShow) {
+                                            scoreboardOverlay.setVisible(shouldShow);
+                                            scoreboardOverlay.setManaged(shouldShow);
+                                        }
+                                        if (scoreboardOverlay.isVisible()) {
+                                            java.util.List<org.swarmforge.client.ui.MultiplayerScoreboardOverlay.ColonyEntry> entries = new java.util.ArrayList<>();
+                                            String[] palette = new String[] { "#38bdf8", "#f87171", "#4ade80", "#fbbf24", "#c084fc", "#f472b6" };
 
-                                            entries.add(new org.swarmforge.client.ui.MultiplayerScoreboardOverlay.ColonyEntry(
-                                                String.valueOf(idx + 1),
-                                                pName,
-                                                colName,
-                                                color,
-                                                cPop, cW, cS, cQ,
-                                                cFood,
-                                                queenAlive,
-                                                col.getNestX(), col.getNestY(), col.getNestZ(),
-                                                idx == 0
-                                            ));
-                                            idx++;
+                                            if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
+                                                int idx = 0;
+                                                for (org.swarmforge.core.domain.Colony col : localSimulation.getColonies()) {
+                                                    int cPop = col.getPopulation();
+                                                    int cW = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.WORKER);
+                                                    int cS = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.SOLDIER);
+                                                    int cQ = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.QUEEN);
+                                                    float cFood = col.getFoodStored();
+                                                    boolean queenAlive = cQ > 0;
+                                                    String colName = col.getSpeciesName() != null && !col.getSpeciesName().isEmpty() ? col.getSpeciesName() : "Colonie #" + (idx + 1);
+                                                    String pName = (idx == 0 && simControlPanel != null) ? simControlPanel.getPlayerAlias() : "Adversaire #" + (idx + 1);
+                                                    String color = palette[idx % palette.length];
+
+                                                    entries.add(new org.swarmforge.client.ui.MultiplayerScoreboardOverlay.ColonyEntry(
+                                                        String.valueOf(idx + 1),
+                                                        pName,
+                                                        colName,
+                                                        color,
+                                                        cPop, cW, cS, cQ,
+                                                        cFood,
+                                                        queenAlive,
+                                                        col.getNestX(), col.getNestY(), col.getNestZ(),
+                                                        idx == 0
+                                                    ));
+                                                    idx++;
+                                                }
+                                            }
+                                            scoreboardOverlay.updateColonies(entries);
                                         }
                                     }
-                                    scoreboardOverlay.updateColonies(entries);
                                 }
 
                                 // Sync audio synthesizer with live simulation state
@@ -1596,18 +1719,24 @@ public class SwarmForgeClient extends Application {
                 lblSideTitle.textProperty().bind(i18n.createStringBinding("sidebar.title"));
                 lblSideTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
 
-                CheckBox chkShowScoreboard = new CheckBox("👥 Scoreboard des Colonies");
-                chkShowScoreboard.setStyle("-fx-font-size: 11px; -fx-text-fill: #e2e8f0;");
-                chkShowScoreboard.setSelected(true);
-                chkShowScoreboard.selectedProperty().addListener((obs, oldV, newV) -> {
-                    if (newV) {
-                        scoreboardOverlay.showWithAnimation();
-                    } else {
-                        scoreboardOverlay.hideWithAnimation();
+                this.chkShowScoreboard = new CheckBox();
+                this.chkShowScoreboard.textProperty().bind(i18n.createStringBinding("multiplayer.scoreboard.chk"));
+                this.chkShowScoreboard.setTooltip(new Tooltip(i18n.get("multiplayer.scoreboard.chk.tooltip", "Afficher ou masquer l'overlay du tableau des scores et colonies multijoueur")));
+                this.chkShowScoreboard.setStyle("-fx-font-size: 11px; -fx-text-fill: #e2e8f0;");
+                this.chkShowScoreboard.setSelected(true);
+                this.chkShowScoreboard.setVisible(false);
+                this.chkShowScoreboard.setManaged(false);
+                this.chkShowScoreboard.selectedProperty().addListener((obs, oldV, newV) -> {
+                    if (scoreboardOverlay != null) {
+                        if (newV) {
+                            scoreboardOverlay.showWithAnimation();
+                        } else {
+                            scoreboardOverlay.hideWithAnimation();
+                        }
                     }
                 });
 
-                HBox sideHeaderBox = new HBox(8, lblSideTitle, chkShowScoreboard);
+                HBox sideHeaderBox = new HBox(8, lblSideTitle, this.chkShowScoreboard);
                 sideHeaderBox.setAlignment(Pos.CENTER_LEFT);
 
                 // 2. Moved Controls from Simulation Manager: Date & Time, VCR Playback (Rewind/FastForward), Speed & Multipliers
@@ -2289,21 +2418,7 @@ public class SwarmForgeClient extends Application {
 
                 audioSection.getChildren().addAll(lblAudio, volBox, chkAmbientSound, chkRiverSound, chkWeatherSound, chkInsectSound);
 
-                // Dedicated Legend Section in Right Sidebar
-                VBox legendSection = new VBox(6);
-                legendSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
-                Label lblLegendSec = new Label("📖 Légende & Glossaire");
-                lblLegendSec.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
-                Node legendPanelNode = simWorldViewer.createStandaloneLegendPanel();
-                if (legendPanelNode != null) {
-                    legendSection.getChildren().addAll(lblLegendSec, legendPanelNode);
-                }
-                chkShowLegend.selectedProperty().addListener((o, a, b) -> {
-                    legendSection.setVisible(b);
-                    legendSection.setManaged(b);
-                });
-
-                sideControls.getChildren().addAll(sideHeaderBox, playbackAndSpeedNode, new Separator(), mediaSection, renderSection, legendSection, audioSection);
+                sideControls.getChildren().addAll(sideHeaderBox, playbackAndSpeedNode, new Separator(), mediaSection, renderSection, audioSection);
 
                 ScrollPane sideScroll = new ScrollPane(sideControls);
                 sideScroll.setMinWidth(350);

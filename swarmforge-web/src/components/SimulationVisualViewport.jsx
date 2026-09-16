@@ -1,17 +1,10 @@
-﻿import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid } from '@react-three/drei'
 import {
-    Camera,
-    Eye,
-    Layers,
-    Compass,
-    Image as ImageIcon,
     RotateCcw,
-    User,
     X,
     Crosshair,
-    Users,
     BookOpen
 } from 'lucide-react'
 import { useSimulationStore } from '../store/simulationStore'
@@ -22,6 +15,7 @@ import UndergroundView from './UndergroundView'
 import MinimapOverlay from './MinimapOverlay'
 import MultiplayerScoreboardOverlay from './MultiplayerScoreboardOverlay'
 import LegendGlossaryModal from './LegendGlossaryModal'
+import SimulationRightSidebar from './SimulationRightSidebar'
 import { showToast } from '../store/toastStore'
 
 function CameraController({ resetTrigger, followAntPosition, customTarget }) {
@@ -99,15 +93,9 @@ export default function SimulationVisualViewport() {
     const {
         environment,
         showGrid,
-        setShowGrid,
         showPheromones,
-        setShowPheromones,
         showMinimap,
-        setShowMinimap,
         showChambers,
-        setShowChambers,
-        sliceY,
-        setSliceY,
         theme,
         ants,
         trackedAntId,
@@ -123,26 +111,6 @@ export default function SimulationVisualViewport() {
     const [showGlossaryModal, setShowGlossaryModal] = useState(false)
     const [isFlashing, setIsFlashing] = useState(false)
     const isDark = theme === 'dark'
-
-    const handleScreenshot = () => {
-        try {
-            // Trigger visual camera flash
-            setIsFlashing(true)
-            setTimeout(() => setIsFlashing(false), 350)
-
-            const canvas = document.querySelector('canvas')
-            if (canvas) {
-                const dataUrl = canvas.toDataURL('image/png')
-                const a = document.createElement('a')
-                a.href = dataUrl
-                a.download = `swarmforge_capture_${Date.now()}.png`
-                a.click()
-                showToast('📷 Capture d\'écran HD enregistrée !', 'success')
-            }
-        } catch (e) {
-            showToast('Erreur lors de la capture d\'écran', 'error')
-        }
-    }
 
     const handleFocusColony = (x, y, z) => {
         setFollowAntCamera(false)
@@ -268,23 +236,22 @@ export default function SimulationVisualViewport() {
                 </div>
             )}
 
-            {/* Viewport Control Bar Overlay */}
+            {/* Quick Viewport Floating Tools Bar (Bottom Center) */}
             <div style={{
                 position: 'absolute',
-                bottom: 20,
+                bottom: 16,
                 left: '50%',
                 transform: 'translateX(-50%)',
                 background: isDark ? 'rgba(15, 23, 42, 0.88)' : 'rgba(255, 255, 255, 0.92)',
                 border: isDark ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(56, 189, 248, 0.5)',
                 borderRadius: 10,
-                padding: '8px 16px',
+                padding: '6px 14px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
+                gap: 10,
                 backdropFilter: 'blur(10px)',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                zIndex: 50,
-                flexWrap: 'wrap'
+                zIndex: 50
             }}>
                 {/* Reset Camera */}
                 <button
@@ -301,103 +268,15 @@ export default function SimulationVisualViewport() {
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
-                        fontSize: 12,
+                        gap: 5,
+                        fontSize: 11,
                         fontWeight: 700
                     }}
                 >
-                    <RotateCcw size={15} color="#38bdf8" /> Vue Initiale
+                    <RotateCcw size={14} color="#38bdf8" /> Vue Initiale
                 </button>
 
-                <div style={{ width: 1, height: 18, background: isDark ? '#334155' : '#cbd5e1' }} />
-
-                {/* Subterranean Slice Plane Slider */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#cbd5e1' : '#475569' }}>Coupe Z :</span>
-                    <input
-                        type="range"
-                        min="-2.5"
-                        max="2.0"
-                        step="0.1"
-                        value={sliceY}
-                        onChange={(e) => setSliceY(parseFloat(e.target.value))}
-                        style={{ width: 65, accentColor: '#f59e0b' }}
-                    />
-                </div>
-
-                <div style={{ width: 1, height: 18, background: isDark ? '#334155' : '#cbd5e1' }} />
-
-                {/* Toggle Scoreboard */}
-                <button
-                    onClick={() => setShowScoreboard(!showScoreboard)}
-                    title="Afficher/Masquer le tableau des colonies"
-                    style={{
-                        background: showScoreboard ? '#0284c7' : 'transparent',
-                        color: showScoreboard ? '#fff' : (isDark ? '#94a3b8' : '#64748b'),
-                        border: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
-                        borderRadius: 6,
-                        padding: '4px 8px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4
-                    }}
-                >
-                    <Users size={12} /> Scoreboard
-                </button>
-
-                {/* Toggle Grid */}
-                <button
-                    onClick={() => setShowGrid(!showGrid)}
-                    style={{
-                        background: showGrid ? '#0284c7' : 'transparent',
-                        color: showGrid ? '#fff' : (isDark ? '#94a3b8' : '#64748b'),
-                        border: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
-                        borderRadius: 6,
-                        padding: '4px 8px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                    }}
-                >
-                    Grille 3D
-                </button>
-
-                {/* Toggle Pheromones */}
-                <button
-                    onClick={() => setShowPheromones(!showPheromones)}
-                    style={{
-                        background: showPheromones ? '#7c3aed' : 'transparent',
-                        color: showPheromones ? '#fff' : (isDark ? '#94a3b8' : '#64748b'),
-                        border: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
-                        borderRadius: 6,
-                        padding: '4px 8px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                    }}
-                >
-                    Phéromones
-                </button>
-
-                {/* Toggle Minimap */}
-                <button
-                    onClick={() => setShowMinimap(!showMinimap)}
-                    style={{
-                        background: showMinimap ? '#059669' : 'transparent',
-                        color: showMinimap ? '#fff' : (isDark ? '#94a3b8' : '#64748b'),
-                        border: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
-                        borderRadius: 6,
-                        padding: '4px 8px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: 'pointer'
-                    }}
-                >
-                    Minimap
-                </button>
+                <div style={{ width: 1, height: 16, background: isDark ? '#334155' : '#cbd5e1' }} />
 
                 {/* Open Legend / Glossary Guide */}
                 <button
@@ -405,45 +284,30 @@ export default function SimulationVisualViewport() {
                     title="Ouvrir le guide scientifique et la légende"
                     style={{
                         background: 'transparent',
-                        border: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
-                        color: isDark ? '#cbd5e1' : '#475569',
-                        borderRadius: 6,
-                        padding: '4px 8px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4
-                    }}
-                >
-                    <BookOpen size={12} color="#f59e0b" /> Guide
-                </button>
-
-                <div style={{ width: 1, height: 18, background: isDark ? '#334155' : '#cbd5e1' }} />
-
-                {/* Screenshot Button */}
-                <button
-                    onClick={handleScreenshot}
-                    title="Prendre une capture d'écran HD"
-                    style={{
-                        background: 'transparent',
                         border: 'none',
                         color: isDark ? '#cbd5e1' : '#475569',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
-                        fontSize: 12,
+                        gap: 5,
+                        fontSize: 11,
                         fontWeight: 700
                     }}
                 >
-                    <ImageIcon size={15} color="#10b981" /> Capture PNG
+                    <BookOpen size={14} color="#f59e0b" /> Guide & Lexique
                 </button>
             </div>
 
             {/* Minimap Overlay (Top-Right) */}
             {showMinimap && <MinimapOverlay />}
+
+            {/* Complete Right Sidebar: VCR, Speed, Media, Render Layers, Audio Mixer, Substrates */}
+            <SimulationRightSidebar
+                onTriggerFlash={() => {
+                    setIsFlashing(true)
+                    setTimeout(() => setIsFlashing(false), 350)
+                }}
+            />
 
             {/* Scientific Guide & Legend Modal */}
             <LegendGlossaryModal
@@ -453,3 +317,4 @@ export default function SimulationVisualViewport() {
         </div>
     )
 }
+

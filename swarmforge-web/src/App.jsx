@@ -1,7 +1,11 @@
-﻿import React, { useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { useSimulationStore } from './store/simulationStore'
 import Navbar from './components/Navbar'
-import SimulationManagerView from './components/SimulationManagerView'
+import SimulationControlPanel from './components/SimulationControlPanel'
+import SimulationVisualViewport from './components/SimulationVisualViewport'
+import GodModePanel from './components/GodModePanel'
+import StatisticsDashboardPanel from './components/StatisticsDashboardPanel'
+import EventLogPanel from './components/EventLogPanel'
 import SettingsPanel from './components/SettingsPanel'
 import ToastContainer from './components/ToastContainer'
 import { soundEngine } from './utils/soundEngine'
@@ -9,9 +13,7 @@ import { showToast } from './store/toastStore'
 
 export default function App() {
     const {
-        activeMainTab,
-        activeSubTab,
-        setActiveSubTab,
+        activeTab,
         theme,
         running,
         play,
@@ -118,10 +120,34 @@ export default function App() {
             {/* Non-intrusive Toast Notifications */}
             <ToastContainer />
 
-            {/* Main Content Area: Simulation Manager or Settings */}
-            <main style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-                {activeMainTab === 'SIMULATION' && <SimulationManagerView />}
-                {activeMainTab === 'SETTINGS' && (
+            {/* Main Content Area: Direct 6 Tabs (1:1 JavaFX Client) */}
+            <main style={{ flex: 1, overflow: 'hidden', display: 'flex', position: 'relative' }}>
+                {activeTab === 'SIMULATION' && (
+                    <div style={{ flex: 1, overflowY: 'auto' }}>
+                        <SimulationControlPanel />
+                    </div>
+                )}
+                {activeTab === 'VISUAL_3D' && (
+                    <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+                        <SimulationVisualViewport />
+                    </div>
+                )}
+                {activeTab === 'GOD_MODE' && (
+                    <div style={{ flex: 1, overflowY: 'auto' }}>
+                        <GodModePanel />
+                    </div>
+                )}
+                {activeTab === 'STATISTICS' && (
+                    <div style={{ flex: 1, overflowY: 'auto' }}>
+                        <StatisticsDashboardPanel />
+                    </div>
+                )}
+                {activeTab === 'EVENT_LOG' && (
+                    <div style={{ flex: 1, overflowY: 'auto' }}>
+                        <EventLogPanel />
+                    </div>
+                )}
+                {activeTab === 'SETTINGS' && (
                     <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
                         <SettingsPanel />
                     </div>

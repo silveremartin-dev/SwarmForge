@@ -69,46 +69,64 @@ public class MultiplayerScoreboardOverlay extends VBox {
         }
     }
 
-    private final VBox coloniesContainer = new VBox(6);
-    private final Label lblSessionTitle = new Label("👥 Session & Colonies en Direct");
-    private final Label lblSessionSubtitle = new Label("Matchmaking / Monde Persistant");
+    private final VBox coloniesContainer = new VBox(5);
+    private final ScrollPane scrollPane = new ScrollPane();
+    private final Label lblSessionTitle = new Label();
+    private final Label lblSessionSubtitle = new Label();
     private final Button btnToggleCollapse = new Button();
     private final Button btnClose = new Button();
     private boolean isCollapsed = false;
     private Consumer<ColonyEntry> onFocusColonyListener;
 
     public MultiplayerScoreboardOverlay() {
-        setSpacing(8);
-        setPadding(new Insets(10));
-        setMaxWidth(340);
-        setMinWidth(280);
-        setStyle("-fx-background-color: rgba(15, 23, 42, 0.88); " +
-                "-fx-background-radius: 10; " +
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+
+        setSpacing(6);
+        setPadding(new Insets(8));
+        setMaxWidth(300);
+        setMinWidth(260);
+        setStyle("-fx-background-color: rgba(15, 23, 42, 0.92); " +
+                "-fx-background-radius: 8; " +
                 "-fx-border-color: rgba(56, 189, 248, 0.4); " +
-                "-fx-border-radius: 10; " +
+                "-fx-border-radius: 8; " +
                 "-fx-border-width: 1.2; " +
-                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 12, 0, 0, 4);");
+                "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 10, 0, 0, 3);");
 
         // Header
-        HBox header = new HBox(8);
+        HBox header = new HBox(6);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        VBox titleBox = new VBox(2);
-        lblSessionTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 12px;");
-        lblSessionSubtitle.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px;");
+        VBox titleBox = new VBox(1);
+        lblSessionTitle.textProperty().bind(i18n.createStringBinding("multiplayer.scoreboard.title"));
+        lblSessionTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+
+        lblSessionSubtitle.textProperty().bind(i18n.createStringBinding("multiplayer.scoreboard.subtitle"));
+        lblSessionSubtitle.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 9.5px;");
         titleBox.getChildren().addAll(lblSessionTitle, lblSessionSubtitle);
         HBox.setHgrow(titleBox, Priority.ALWAYS);
 
         btnToggleCollapse.setGraphic(new FontIcon(Feather.MINUS));
-        btnToggleCollapse.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-cursor: hand; -fx-padding: 4;");
+        btnToggleCollapse.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-cursor: hand; -fx-padding: 2;");
         btnToggleCollapse.setOnAction(e -> toggleCollapse());
 
         btnClose.setGraphic(new FontIcon(Feather.X));
-        btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #f87171; -fx-cursor: hand; -fx-padding: 4;");
+        btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #f87171; -fx-cursor: hand; -fx-padding: 2;");
         btnClose.setOnAction(e -> hideWithAnimation());
 
         header.getChildren().addAll(new FontIcon(Feather.USERS), titleBox, btnToggleCollapse, btnClose);
-        getChildren().addAll(header, new Separator(), coloniesContainer);
+
+        // Scrollable colonies list
+        scrollPane.setContent(coloniesContainer);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setMaxHeight(230);
+        scrollPane.setStyle("-fx-background: transparent; -fx-background-color: transparent; -fx-padding: 0;");
+        coloniesContainer.setStyle("-fx-background-color: transparent;");
+
+        getChildren().addAll(header, new Separator(), scrollPane);
+
+        // Hidden by default until explicit multiplayer mode
+        setVisible(false);
+        setManaged(false);
     }
 
     public void setOnFocusColony(Consumer<ColonyEntry> listener) {
@@ -116,15 +134,21 @@ public class MultiplayerScoreboardOverlay extends VBox {
     }
 
     public void setSessionInfo(String title, String subtitle) {
-        if (title != null) lblSessionTitle.setText(title);
-        if (subtitle != null) lblSessionSubtitle.setText(subtitle);
+        if (title != null) {
+            lblSessionTitle.textProperty().unbind();
+            lblSessionTitle.setText(title);
+        }
+        if (subtitle != null) {
+            lblSessionSubtitle.textProperty().unbind();
+            lblSessionSubtitle.setText(subtitle);
+        }
     }
 
     public void updateColonies(List<ColonyEntry> entries) {
         coloniesContainer.getChildren().clear();
         if (entries == null || entries.isEmpty()) {
-            Label lblEmpty = new Label("Aucune colonie active détectée.");
-            lblEmpty.setStyle("-fx-text-fill: #64748b; -fx-font-style: italic; -fx-font-size: 11px;");
+            Label lblEmpty = new Label(org.swarmforge.client.util.I18nManager.getInstance().get("multiplayer.scoreboard.empty"));
+            lblEmpty.setStyle("-fx-text-fill: #64748b; -fx-font-style: italic; -fx-font-size: 10px; -fx-padding: 4;");
             coloniesContainer.getChildren().add(lblEmpty);
             return;
         }
@@ -135,14 +159,14 @@ public class MultiplayerScoreboardOverlay extends VBox {
     }
 
     private Node createColonyCard(ColonyEntry entry) {
-        VBox card = new VBox(4);
-        card.setPadding(new Insets(6, 8, 6, 8));
-        card.setStyle("-fx-background-color: rgba(30, 41, 59, 0.7); -fx-background-radius: 6; -fx-border-color: rgba(255,255,255,0.08); -fx-border-radius: 6;");
+        VBox card = new VBox(3);
+        card.setPadding(new Insets(4, 6, 4, 6));
+        card.setStyle("-fx-background-color: rgba(30, 41, 59, 0.75); -fx-background-radius: 5; -fx-border-color: rgba(255,255,255,0.08); -fx-border-radius: 5;");
 
-        HBox topRow = new HBox(6);
+        HBox topRow = new HBox(5);
         topRow.setAlignment(Pos.CENTER_LEFT);
 
-        Circle teamCircle = new Circle(5);
+        Circle teamCircle = new Circle(4);
         try {
             teamCircle.setFill(Color.web(entry.teamColorHex != null ? entry.teamColorHex : "#38bdf8"));
         } catch (Exception e) {
@@ -150,10 +174,10 @@ public class MultiplayerScoreboardOverlay extends VBox {
         }
 
         Label lblName = new Label(entry.playerName != null ? entry.playerName : "Colonie " + entry.id);
-        lblName.setStyle("-fx-text-fill: " + (entry.isLocalPlayer ? "#38bdf8" : "#f1f5f9") + "; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lblName.setStyle("-fx-text-fill: " + (entry.isLocalPlayer ? "#38bdf8" : "#f1f5f9") + "; -fx-font-weight: bold; -fx-font-size: 10.5px;");
         if (entry.isLocalPlayer) {
             Label lblYou = new Label("(Vous)");
-            lblYou.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 9px; -fx-font-weight: bold;");
+            lblYou.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 8.5px; -fx-font-weight: bold;");
             topRow.getChildren().addAll(teamCircle, lblName, lblYou);
         } else {
             topRow.getChildren().addAll(teamCircle, lblName);
@@ -163,8 +187,8 @@ public class MultiplayerScoreboardOverlay extends VBox {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button btnFocus = new Button("", new FontIcon(Feather.CROSSHAIR));
-        btnFocus.setTooltip(new Tooltip("Centrer la caméra 3D sur ce nid"));
-        btnFocus.setStyle("-fx-background-color: rgba(56, 189, 248, 0.15); -fx-text-fill: #38bdf8; -fx-cursor: hand; -fx-padding: 3 6; -fx-background-radius: 4;");
+        btnFocus.setTooltip(new Tooltip(org.swarmforge.client.util.I18nManager.getInstance().get("multiplayer.scoreboard.focus.tt", "Centrer la caméra 3D sur ce nid")));
+        btnFocus.setStyle("-fx-background-color: rgba(56, 189, 248, 0.2); -fx-text-fill: #38bdf8; -fx-cursor: hand; -fx-padding: 2 5; -fx-background-radius: 3; -fx-font-size: 9px;");
         btnFocus.setOnAction(e -> {
             if (onFocusColonyListener != null) {
                 onFocusColonyListener.accept(entry);
@@ -175,19 +199,19 @@ public class MultiplayerScoreboardOverlay extends VBox {
 
         // Species & Stats Row
         Label lblSpecies = new Label(entry.speciesName != null ? entry.speciesName : "Espèce Inconnue");
-        lblSpecies.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px;");
+        lblSpecies.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 9.5px;");
 
-        HBox statsRow = new HBox(10);
+        HBox statsRow = new HBox(8);
         statsRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label lblPop = new Label(String.format("🐜 %d ind. (O:%d / S:%d)", entry.population, entry.workers, entry.soldiers));
-        lblPop.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+        Label lblPop = new Label(String.format("🐜 %d (O:%d/S:%d)", entry.population, entry.workers, entry.soldiers));
+        lblPop.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 9.5px;");
 
         Label lblFood = new Label(String.format("🍯 %.0f mg", entry.foodStored));
-        lblFood.setStyle("-fx-text-fill: #fbbf24; -fx-font-size: 10px;");
+        lblFood.setStyle("-fx-text-fill: #fbbf24; -fx-font-size: 9.5px;");
 
         Label lblQueen = new Label(entry.isQueenAlive ? "👑 Reine" : "💀 Orpheline");
-        lblQueen.setStyle("-fx-text-fill: " + (entry.isQueenAlive ? "#4ade80" : "#ef4444") + "; -fx-font-size: 10px;");
+        lblQueen.setStyle("-fx-text-fill: " + (entry.isQueenAlive ? "#4ade80" : "#ef4444") + "; -fx-font-size: 9.5px;");
 
         statsRow.getChildren().addAll(lblPop, lblFood, lblQueen);
         card.getChildren().addAll(topRow, lblSpecies, statsRow);
@@ -196,13 +220,13 @@ public class MultiplayerScoreboardOverlay extends VBox {
 
     public void toggleCollapse() {
         isCollapsed = !isCollapsed;
-        coloniesContainer.setVisible(!isCollapsed);
-        coloniesContainer.setManaged(!isCollapsed);
+        scrollPane.setVisible(!isCollapsed);
+        scrollPane.setManaged(!isCollapsed);
         btnToggleCollapse.setGraphic(new FontIcon(isCollapsed ? Feather.PLUS : Feather.MINUS));
     }
 
     public void hideWithAnimation() {
-        FadeTransition ft = new FadeTransition(Duration.millis(200), this);
+        FadeTransition ft = new FadeTransition(Duration.millis(150), this);
         ft.setFromValue(1.0);
         ft.setToValue(0.0);
         ft.setOnFinished(e -> {
@@ -217,7 +241,7 @@ public class MultiplayerScoreboardOverlay extends VBox {
         setVisible(true);
         setManaged(true);
         setOpacity(0.0);
-        FadeTransition ft = new FadeTransition(Duration.millis(200), this);
+        FadeTransition ft = new FadeTransition(Duration.millis(150), this);
         ft.setFromValue(0.0);
         ft.setToValue(1.0);
         ft.play();

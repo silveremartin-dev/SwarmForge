@@ -1,12 +1,5 @@
 import React, { useState } from 'react'
 import {
-    Play,
-    Pause,
-    SkipBack,
-    SkipForward,
-    Rewind,
-    FastForward,
-    RotateCcw,
     Plus,
     Trash2,
     CheckCircle,
@@ -20,7 +13,8 @@ import {
     Bookmark,
     Save,
     Sparkles,
-    ShieldAlert
+    ShieldAlert,
+    Cpu
 } from 'lucide-react'
 import { useSimulationStore } from '../store/simulationStore'
 import {
@@ -36,23 +30,7 @@ import { showToast } from '../store/toastStore'
 
 export default function SimulationControlPanel() {
     const {
-        ticks,
-        highestRecordedTick,
-        simTimeFormatted,
-        running,
-        isPaused,
-        speed,
         stepSeconds,
-        play,
-        pause,
-        stepForward,
-        stepBackward,
-        rewind,
-        fastForward,
-        goToBeginning,
-        goToEnd,
-        seekToTick,
-        setSpeed,
         setStepSeconds,
         selectedScenarioPresetId,
         setScenarioPresetId,
@@ -90,7 +68,15 @@ export default function SimulationControlPanel() {
         disconnect,
         discover,
         theme,
-        language
+        language,
+        exportScenarioJson,
+        importScenarioJson,
+        isRealWeatherMode,
+        realWeatherCity,
+        realWeatherStatus,
+        setRealWeatherMode,
+        setRealWeatherCity,
+        fetchRealWeather
     } = useSimulationStore()
 
     const isDark = theme === 'dark'
@@ -819,7 +805,51 @@ export default function SimulationControlPanel() {
                 </div>
             </div>
 
-            {/* 4. Server Connection Box */}
+            {/* 4. Engine Configuration (Default dt) */}
+            <div style={{
+                background: cardBg,
+                border: `1px solid ${borderCol}`,
+                borderRadius: 10,
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#38bdf8' }}>
+                    <Cpu size={18} />
+                    <span style={{ fontSize: 14, fontWeight: 800 }}>Paramètres du Moteur Physique & Pas de Temps (dt)</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, color: textMuted }}>Pas temporel standard (\(\Delta t\)) :</span>
+                        <select
+                            value={stepSeconds}
+                            onChange={(e) => setStepSeconds(parseFloat(e.target.value))}
+                            style={{
+                                background: inputBg,
+                                color: textMain,
+                                border: `1px solid ${borderCol}`,
+                                borderRadius: 6,
+                                padding: '6px 12px',
+                                fontSize: 13,
+                                fontWeight: 700
+                            }}
+                        >
+                            <option value="0.01">0.01 s (100 ticks/s — Ultra Haute Résolution)</option>
+                            <option value="0.05">0.05 s (20 ticks/s — Standard SwarmForge)</option>
+                            <option value="0.1">0.10 s (10 ticks/s — Économie CPU)</option>
+                            <option value="0.5">0.50 s (2 ticks/s — Vue Macro)</option>
+                            <option value="1.0">1.00 s (1 tick/s — Vue Longue Durée)</option>
+                        </select>
+                    </div>
+                    <span style={{ fontSize: 11, color: textMuted }}>
+                        Cadence cible standard : 20 TPS. Le pas de temps détermine la précision de l'intégration comportementale des insectes.
+                    </span>
+                </div>
+            </div>
+
+            {/* 5. Server Connection Box */}
             <div style={{
                 background: cardBg,
                 border: `1px solid ${borderCol}`,

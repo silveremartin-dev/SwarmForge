@@ -145,31 +145,44 @@ public class IconUtils {
     }
 
     private static void loadCachedIcons() {
-        BufferedImage baseAwt = loadAwtIconImage();
+        CACHED_ICONS.clear();
+        URL iconUrl = IconUtils.class.getResource(ICON_PATH);
         int[] sizes = {16, 24, 32, 48, 64, 128, 256};
 
-        if (baseAwt != null) {
+        if (iconUrl != null) {
+            String urlStr = iconUrl.toExternalForm();
             for (int s : sizes) {
                 try {
-                    BufferedImage scaled = scaleImage(baseAwt, s, s);
-                    Image fxImg = convertToFxImage(scaled);
-                    if (fxImg != null && !fxImg.isError()) {
+                    Image fxImg = new Image(urlStr, s, s, true, true);
+                    if (!fxImg.isError()) {
                         CACHED_ICONS.add(fxImg);
                     }
                 } catch (Exception e) {
-                    LOG.fine("Could not rasterize icon size " + s + ": " + e.getMessage());
+                    LOG.fine("Could not load icon size " + s + ": " + e.getMessage());
                 }
             }
-        }
-
-        URL iconUrl = IconUtils.class.getResource(ICON_PATH);
-        if (iconUrl != null) {
             try {
-                Image fullImg = new Image(iconUrl.toExternalForm());
+                Image fullImg = new Image(urlStr);
                 if (!fullImg.isError()) {
                     CACHED_ICONS.add(fullImg);
                 }
             } catch (Exception ignored) {}
+        } else {
+            // Fallback from disk/AWT
+            BufferedImage baseAwt = loadAwtIconImage();
+            if (baseAwt != null) {
+                for (int s : sizes) {
+                    try {
+                        BufferedImage scaled = scaleImage(baseAwt, s, s);
+                        Image fxImg = convertToFxImage(scaled);
+                        if (fxImg != null && !fxImg.isError()) {
+                            CACHED_ICONS.add(fxImg);
+                        }
+                    } catch (Exception e) {
+                        LOG.fine("Could not rasterize fallback icon size " + s + ": " + e.getMessage());
+                    }
+                }
+            }
         }
     }
 

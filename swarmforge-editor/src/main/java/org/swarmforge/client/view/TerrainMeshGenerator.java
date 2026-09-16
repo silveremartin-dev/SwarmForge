@@ -1,5 +1,6 @@
 package org.swarmforge.client.view;
 
+import com.jme3.math.Vector3f;
 import com.jme3.scene.Mesh;
 import com.jme3.scene.VertexBuffer.Type;
 import com.jme3.util.BufferUtils;
@@ -10,26 +11,35 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Optimized mesh generator for voxel terrain and natural landscapes in JME.
- * Supports:
- * - Exposed face culling
- * - Continuous seamless world UV coordinates
- * - 3D Subterranean Skirt ("Jupe 3D") along outer boundaries
- * - Live Cross-Section Slice Plane ("Vue en coupe") at sliceRatio
- * - 3D Elevation Isoline contour line mesh generation
+ * Optimized dual-mode terrain mesh generator for JMonkeyEngine:
+ * - REALISTIC MODE: Continuous, smooth natural heightfield surface with interpolated normals,
+ *   seamless world UVs, multi-biome vertex colors (grass, sand, rock, snow) and clean 3D strata skirt.
+ * - GAMIFIED MODE: Discrete Minecraft-style cubic voxel blocks with stylized vibrant block colors.
+ * - ELEVATION ISOLINES: 3D vector contour lines for topographical analysis.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
 public class TerrainMeshGenerator {
 
-    private static final float UV_SCALE = 0.25f; // 4 meters per texture tile repeat
+    private static final float UV_SCALE = 0.20f; // 5 meters per texture tile repeat
 
     public Mesh generateMesh(Terrarium terrarium) {
         return generateMesh(terrarium, 1.0f, true, false);
     }
 
     public Mesh generateMesh(Terrarium terrarium, float sliceRatio, boolean showSkirt, boolean isGamified) {
+        if (isGamified) {
+            return generateVoxelMesh(terrarium, sliceRatio, showSkirt);
+        } else {
+            return generateRealisticMesh(terrarium, sliceRatio, showSkirt);
+        }
+    }
+
+    /**
+     * Generates a continuous, smooth natural heightfield landscape for Realistic Mode.
+     */
+    private Mesh generateRealisticMesh(Terrarium terrarium, float sliceRatio, boolean showSkirt) {
         List<Float> vertices = new ArrayList<>();
         List<Float> normals = new ArrayList<>();
         List<Float> texCoords = new ArrayList<>();
@@ -38,11 +48,166 @@ public class TerrainMeshGenerator {
 
         int width = terrarium.getWidth();
         int height = terrarium.getHeight(); // Horizontal Y in domain -> JME Z (Depth)
-        int depth = terrarium.getDepth();   // Vertical Z in domain -> JME Y (Altitude)
+        int depth = terrarium.getDepth();
+
+        int cutX = Math.max(2, Math.min(width, (int) Math.ceil(width * Math.max(0.05f, Math.min(1.0f, sliceRatio)))));
+        double lat = Math.abs(terrarium.getLatitude());
+
+        // 1. Surface Heightfield Grid Vertices
+        int[][] vertexIndexGrid = new int[cutX][height];
+        int vertexCounter = 0;
+
+        for (int x = 0; x < cutX; x++) {
+            for (int y = 0; y < height; y++) {
+                float elev = terrarium.getSurfaceElevation(x, y);
+
+                // Calculate smooth surface normal from neighbors
+                float eL = terrarium.getSurfaceElevation(Math.max(0, x - 1), y);
+                float eR = terrarium.getSurfaceElevation(Math.min(width - 1, x + 1), y);
+                float eD = terrarium.getSurfaceElevation(x, Math.max(0, y - 1));
+                float eU = terrarium.getSurfaceElevation(x, Math.min(height - 1, y + 1));
+                Vector3f norm = new Vector3f((eL - eR) * 0.5f, 1.0f, (eD - eU) * 0.5f).normalizeLocal();
+
+                // Multi-biome natural coloration
+                TerrariumCell topCell = terrarium.getCell(x, y, Math.min(depth - 1, Math.max(0, (int) elev)));
+                TerrariumCell.Material mat = topCell != null ? topCell.material() : TerrariumCell.Material.PEAT;
+
+                float r, g, b;
+                if (lat > 60.0) {
+                    // Snow / Alpine frost
+                    r = 0.90f; g = 0.93f; b = 0.97f;
+                } else if (lat < 23.5 || mat == TerrariumCell.Material.SAND) {
+                    // Golden Sand / Beach / Desert
+                    r = 0.88f; g = 0.78f; b = 0.48f;
+                } else if (mat == TerrariumCell.Material.ROCK) {
+                    // Mountain Granite
+                    r = 0.55f; g = 0.58f; b = 0.60f;
+                } else if (mat == TerrariumCell.Material.CLAY) {
+                    // Clay / Terracotta
+                    r = 0.72f; g = 0.40f; b = 0.22f;
+                } else {
+                    // Temperate lush meadow grass
+                    r = 0.28f; g = 0.62f; b = 0.22f;
+                }
+
+                vertices.add((float) x);
+                vertices.add(elev);
+                vertices.add((float) y);
+
+                normals.add(norm.x);
+                normals.add(norm.y);
+                normals.add(norm.z);
+
+                texCoords.add(x * UV_SCALE);
+                texCoords.add(y * UV_SCALE);
+
+                colors.add(r); colors.add(g); colors.add(b); colors.add(1.0f);
+
+                vertexIndexGrid[x][y] = vertexCounter++;
+            }
+        }
+
+        // 2. Surface Triangles (Quads)
+        for (int x = 0; x < cutX - 1; x++) {
+            for (int y = 0; y < height - 1; y++) {
+                int i00 = vertexIndexGrid[x][y];
+                int i10 = vertexIndexGrid[x + 1][y];
+                int i01 = vertexIndexGrid[x][y + 1];
+                int i11 = vertexIndexGrid[x + 1][y + 1];
+
+                // Triangle 1
+                indices.add(i00);
+                indices.add(i01);
+                indices.add(i10);
+
+                // Triangle 2
+                indices.add(i10);
+                indices.add(i01);
+                indices.add(i11);
+            }
+        }
+
+        // 3. Geological Strata Skirt & Slice Plane Wall
+        if (showSkirt) {
+            // Front Boundary Wall (y = height - 1)
+            addWallStrip(vertices, normals, texCoords, colors, indices, cutX, (i) -> (float) i, (i) -> (float) (height - 1), (i) -> terrarium.getSurfaceElevation(i, height - 1), 0f, 0f, 1f);
+            // Back Boundary Wall (y = 0)
+            addWallStrip(vertices, normals, texCoords, colors, indices, cutX, (i) -> (float) i, (i) -> 0f, (i) -> terrarium.getSurfaceElevation(i, 0), 0f, 0f, -1f);
+            // Left Boundary Wall (x = 0)
+            addWallStrip(vertices, normals, texCoords, colors, indices, height, (i) -> 0f, (i) -> (float) i, (i) -> terrarium.getSurfaceElevation(0, i), -1f, 0f, 0f);
+            // Right Slice Plane Cut Wall (x = cutX - 1)
+            addWallStrip(vertices, normals, texCoords, colors, indices, height, (i) -> (float) (cutX - 1), (i) -> (float) i, (i) -> terrarium.getSurfaceElevation(cutX - 1, i), 1f, 0f, 0f);
+        }
+
+        Mesh mesh = new Mesh();
+        mesh.setBuffer(Type.Position, 3, BufferUtils.createFloatBuffer(toFloatArray(vertices)));
+        mesh.setBuffer(Type.Normal, 3, BufferUtils.createFloatBuffer(toFloatArray(normals)));
+        mesh.setBuffer(Type.TexCoord, 2, BufferUtils.createFloatBuffer(toFloatArray(texCoords)));
+        mesh.setBuffer(Type.Color, 4, BufferUtils.createFloatBuffer(toFloatArray(colors)));
+        mesh.setBuffer(Type.Index, 1, BufferUtils.createIntBuffer(toIntArray(indices)));
+        mesh.updateBound();
+
+        return mesh;
+    }
+
+    private interface CoordFunc { float get(int i); }
+
+    private void addWallStrip(List<Float> vertices, List<Float> normals, List<Float> texCoords, List<Float> colors,
+                              List<Integer> indices, int count, CoordFunc getX, CoordFunc getZ, CoordFunc getTopY,
+                              float nx, float ny, float nz) {
+        int baseIdx = vertices.size() / 3;
+        float bottomY = 0f;
+
+        for (int i = 0; i < count; i++) {
+            float px = getX.get(i);
+            float pz = getZ.get(i);
+            float topY = getTopY.get(i);
+
+            // Top vertex
+            vertices.add(px); vertices.add(topY); vertices.add(pz);
+            normals.add(nx); normals.add(ny); normals.add(nz);
+            texCoords.add((px + pz) * UV_SCALE); texCoords.add(topY * UV_SCALE);
+            colors.add(0.45f); colors.add(0.30f); colors.add(0.18f); colors.add(1.0f);
+
+            // Bottom vertex (Bedrock)
+            vertices.add(px); vertices.add(bottomY); vertices.add(pz);
+            normals.add(nx); normals.add(ny); normals.add(nz);
+            texCoords.add((px + pz) * UV_SCALE); texCoords.add(bottomY * UV_SCALE);
+            colors.add(0.20f); colors.add(0.25f); colors.add(0.32f); colors.add(1.0f);
+        }
+
+        for (int i = 0; i < count - 1; i++) {
+            int iTop1 = baseIdx + i * 2;
+            int iBot1 = baseIdx + i * 2 + 1;
+            int iTop2 = baseIdx + (i + 1) * 2;
+            int iBot2 = baseIdx + (i + 1) * 2 + 1;
+
+            if (nx > 0 || nz < 0) {
+                indices.add(iTop1); indices.add(iBot1); indices.add(iTop2);
+                indices.add(iTop2); indices.add(iBot1); indices.add(iBot2);
+            } else {
+                indices.add(iTop1); indices.add(iTop2); indices.add(iBot1);
+                indices.add(iTop2); indices.add(iBot2); indices.add(iBot1);
+            }
+        }
+    }
+
+    /**
+     * Generates discrete voxel block cubic meshes for Gamified Mode (Minecraft style).
+     */
+    private Mesh generateVoxelMesh(Terrarium terrarium, float sliceRatio, boolean showSkirt) {
+        List<Float> vertices = new ArrayList<>();
+        List<Float> normals = new ArrayList<>();
+        List<Float> texCoords = new ArrayList<>();
+        List<Float> colors = new ArrayList<>();
+        List<Integer> indices = new ArrayList<>();
+
+        int width = terrarium.getWidth();
+        int height = terrarium.getHeight();
+        int depth = terrarium.getDepth();
 
         int cutX = Math.max(1, Math.min(width, (int) Math.ceil(width * Math.max(0.05f, Math.min(1.0f, sliceRatio)))));
         int indexOffset = 0;
-        double lat = Math.abs(terrarium.getLatitude());
 
         for (int x = 0; x < cutX; x++) {
             for (int y = 0; y < height; y++) {
@@ -52,102 +217,66 @@ public class TerrainMeshGenerator {
                         continue;
                     }
 
-                    // JME Coords: X=x, Y=z (Up, altitude), Z=y (North/South depth)
+                    boolean isSurface = (z == depth - 1 || isAir(terrarium, x, y, z + 1));
+
+                    // Vibrant voxel colors
+                    float r = 0.45f, g = 0.30f, b = 0.18f, a = 1.0f;
+                    if (cell.material() == TerrariumCell.Material.SAND) {
+                        r = 0.92f; g = 0.85f; b = 0.48f;
+                    } else if (cell.material() == TerrariumCell.Material.CLAY) {
+                        r = 0.80f; g = 0.40f; b = 0.20f;
+                    } else if (cell.material() == TerrariumCell.Material.ROCK) {
+                        r = 0.55f; g = 0.58f; b = 0.62f;
+                    } else if (cell.material() == TerrariumCell.Material.GRAVEL) {
+                        r = 0.68f; g = 0.70f; b = 0.72f;
+                    } else if (cell.material() == TerrariumCell.Material.PEAT) {
+                        r = 0.28f; g = 0.18f; b = 0.10f;
+                    }
+
+                    float topR = isSurface ? 0.22f : r;
+                    float topG = isSurface ? 0.75f : g;
+                    float topB = isSurface ? 0.20f : b;
+
                     float jmeX = x;
                     float jmeY = z;
                     float jmeZ = y;
 
-                    boolean isSurface = (z == depth - 1 || isAir(terrarium, x, y, z + 1));
-
-                    // Base Substrate / Biome color
-                    float r = 0.40f, g = 0.28f, b = 0.16f, a = 1.0f;
-                    if (isGamified) {
-                        if (cell.material() == TerrariumCell.Material.SAND) {
-                            r = 0.90f; g = 0.82f; b = 0.48f;
-                        } else if (cell.material() == TerrariumCell.Material.CLAY) {
-                            r = 0.78f; g = 0.38f; b = 0.20f;
-                        } else if (cell.material() == TerrariumCell.Material.ROCK) {
-                            r = 0.52f; g = 0.54f; b = 0.56f;
-                        } else if (cell.material() == TerrariumCell.Material.GRAVEL) {
-                            r = 0.65f; g = 0.67f; b = 0.70f;
-                        } else if (cell.material() == TerrariumCell.Material.PEAT) {
-                            r = 0.28f; g = 0.18f; b = 0.10f;
-                        } else {
-                            r = 0.45f; g = 0.30f; b = 0.18f;
-                        }
-                    } else {
-                        if (lat > 60.0) {
-                            r = 0.88f; g = 0.92f; b = 0.95f; // Tundra snow / frost
-                        } else if (lat < 23.5) {
-                            r = 0.86f; g = 0.74f; b = 0.46f; // Tropical / desert sand
-                        } else if (cell.material() == TerrariumCell.Material.SAND) {
-                            r = 0.84f; g = 0.74f; b = 0.46f;
-                        } else if (cell.material() == TerrariumCell.Material.CLAY) {
-                            r = 0.70f; g = 0.36f; b = 0.20f;
-                        } else if (cell.material() == TerrariumCell.Material.ROCK) {
-                            r = 0.54f; g = 0.56f; b = 0.58f;
-                        } else if (cell.material() == TerrariumCell.Material.GRAVEL) {
-                            r = 0.62f; g = 0.64f; b = 0.66f;
-                        } else if (cell.material() == TerrariumCell.Material.PEAT) {
-                            r = 0.35f; g = 0.22f; b = 0.12f;
-                        } else {
-                            r = 0.48f; g = 0.34f; b = 0.22f;
-                        }
-                    }
-
-                    // Surface face color (Green meadow grass unless desert/snow)
-                    float topR = r, topG = g, topB = b;
-                    if (isSurface) {
-                        if (lat > 60.0) {
-                            topR = 0.92f; topG = 0.95f; topB = 0.98f;
-                        } else if (lat < 23.5 || cell.material() == TerrariumCell.Material.SAND) {
-                            topR = 0.88f; topG = 0.78f; topB = 0.48f;
-                        } else {
-                            // Temperate lush green grass
-                            if (isGamified) {
-                                topR = 0.22f; topG = 0.72f; topB = 0.20f;
-                            } else {
-                                topR = 0.32f; topG = 0.65f; topB = 0.24f;
-                            }
-                        }
-                    }
-
-                    // 1. Top Face (+Y in JME, +Z in domain)
+                    // 1. Top Face
                     if (z == depth - 1 || isAir(terrarium, x, y, z + 1)) {
                         addUpFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, topR, topG, topB, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
-                    // 2. Bottom Face (-Y in JME, -Z in domain)
+                    // 2. Bottom Face
                     if (showSkirt && (z == 0 || isAir(terrarium, x, y, z - 1))) {
                         addDownFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, r * 0.7f, g * 0.7f, b * 0.7f, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
-                    // 3. Front Face (+Z in JME, +Y in domain)
+                    // 3. Front Face
                     if ((y == height - 1 && showSkirt) || isAir(terrarium, x, y + 1, z)) {
                         addFrontFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, r * 0.85f, g * 0.85f, b * 0.85f, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
-                    // 4. Back Face (-Z in JME, -Y in domain)
+                    // 4. Back Face
                     if ((y == 0 && showSkirt) || isAir(terrarium, x, y - 1, z)) {
                         addBackFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, r * 0.80f, g * 0.80f, b * 0.80f, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
-                    // 5. Left Face (-X in JME, -X in domain)
+                    // 5. Left Face
                     if ((x == 0 && showSkirt) || isAir(terrarium, x - 1, y, z)) {
                         addLeftFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, r * 0.90f, g * 0.90f, b * 0.90f, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
-                    // 6. Right Face (+X in JME, +X in domain) - Also represents the Cut Wall on slice plane!
+                    // 6. Right Face (Cut Wall)
                     if ((x == cutX - 1) || isAir(terrarium, x + 1, y, z)) {
                         addRightFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, r * 0.95f, g * 0.95f, b * 0.95f, a);
                         addIndices(indices, indexOffset);
@@ -196,12 +325,11 @@ public class TerrainMeshGenerator {
 
                 for (int k = kStart; k <= kEnd; k++) {
                     float isoLevel = k * step;
-                    // Horizontal segment in quad
                     if ((e00 - isoLevel) * (e10 - isoLevel) <= 0) {
                         float t = (isoLevel - e00) / Math.max(0.001f, (e10 - e00));
                         float lx1 = x + t;
                         float ly1 = y;
-                        float lz1 = isoLevel + 0.08f; // slightly above surface to prevent z-fighting
+                        float lz1 = isoLevel + 0.08f;
 
                         float lx2 = x + 0.5f;
                         float ly2 = y + 0.5f;
@@ -251,8 +379,7 @@ public class TerrainMeshGenerator {
         return cell.material() == TerrariumCell.Material.AIR || cell.material() == TerrariumCell.Material.CAVITY;
     }
 
-    // --- Face Generation Helpers with Continuous Seamless World UVs and Vertex Colors ---
-
+    // --- Face Helpers ---
     private void addColors(List<Float> c, float r, float g, float b, float a) {
         for (int i = 0; i < 4; i++) {
             c.add(r); c.add(g); c.add(b); c.add(a);

@@ -203,6 +203,39 @@ export default function GodModePanel() {
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: textMuted }}>
                     Manipulation directe des entités, biocénose, désastres, physique abiotique relative/absolue et calendrier d'interventions.
                 </p>
+
+                {/* Quick Macro Presets Bar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#f59e0b' }}>⚡ Macros Rapides :</span>
+                    {[
+                        { label: '🔥 Grand Incendie', cat: 'DISASTER', setup: () => { setActiveCategory('DISASTER'); setDisasterType('WILDFIRE'); setDisasterIntensity(0.85); setDisasterDurationMinutes(40); } },
+                        { label: '🌊 Inondation Crue', cat: 'DISASTER', setup: () => { setActiveCategory('DISASTER'); setDisasterType('FLOOD'); setDisasterIntensity(0.75); setDisasterDurationMinutes(30); } },
+                        { label: '🍯 Manne Sucrée', cat: 'RESOURCE', setup: () => { setActiveCategory('RESOURCE'); setResourceType('SUGAR'); setFoodNature('Nectar & Honeydew'); setResourceAmount(500); } },
+                        { label: '🚨 Alerte Chimique', cat: 'PHEROMONE', setup: () => { setActiveCategory('PHEROMONE'); setPheromoneType('ALARM'); setPheromoneIntensity(100); setPheromoneRadius(15); } },
+                        { label: '🦗 Nuée de Criquets', cat: 'INVASION', setup: () => { setActiveCategory('INVASION'); setInvasionType('LOCUST'); setInvasionCount(25); } },
+                        { label: '👑 Renfort Reines', cat: 'ENTITIES', setup: () => { setActiveCategory('ENTITIES'); setEntityAction('SPAWN'); setCaste('QUEEN'); setAntCount(2); } }
+                    ].map((macro, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => {
+                                macro.setup()
+                                showToast(`⚡ Macro sélectionnée : ${macro.label}`, 'info')
+                            }}
+                            style={{
+                                background: isDark ? '#334155' : '#e2e8f0',
+                                color: textMain,
+                                border: `1px solid ${borderCol}`,
+                                borderRadius: 5,
+                                padding: '4px 8px',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {macro.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Category Navigation Bar */}

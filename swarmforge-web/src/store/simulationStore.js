@@ -229,17 +229,21 @@ export const useSimulationStore = create((set, get) => {
     const initialTheme = loadLocalStorage('swarmforge_theme', 'dark')
 
     return {
-        // --- 1. App Mode & Top-Level Tab State ---
-        activeMainTab: 'SIMULATION', // 'SIMULATION' | 'SETTINGS'
-        activeSubTab: 'CONTROLS',    // 'CONTROLS' | 'VISUAL_3D' | 'GOD_MODE' | 'STATISTICS' | 'EVENT_LOG'
+        // --- 1. App Mode & Top-Level Tab State (1:1 JavaFX Tabs) ---
+        activeTab: 'SIMULATION', // 'SIMULATION' | 'VISUAL_3D' | 'GOD_MODE' | 'STATISTICS' | 'EVENT_LOG' | 'SETTINGS'
+        activeMainTab: 'SIMULATION', // backwards compatibility
+        activeSubTab: 'CONTROLS',    // backwards compatibility
         language: initialLanguage,
         theme: initialTheme,
         isScenarioApplied: true, // Whether scenario has been initialized
 
-        setActiveMainTab: (tab) => set({ activeMainTab: tab }),
-        setActiveSubTab: (tab) => {
+        slicePlaneRatio: 1.0,
+        setSlicePlaneRatio: (ratio) => set({ slicePlaneRatio: typeof ratio === 'number' && !isNaN(ratio) ? ratio : 1.0 }),
+
+        setActiveTab: (tab) => {
+            const currentRunning = get().running
             // Auto-pause when entering God Mode (1:1 with SwarmForgeClient.java line 1052)
-            if (tab === 'GOD_MODE' && get().running) {
+            if (tab === 'GOD_MODE' && currentRunning) {
                 get().pause()
                 get().addEventLog({
                     severity: 'WARNING',
@@ -248,8 +252,16 @@ export const useSimulationStore = create((set, get) => {
                     message: '⏸️ Simulation mise en pause automatique pour agencement des interventions.'
                 })
             }
-            set({ activeSubTab: tab })
+            // Update audio engine to ensure sound only plays when 3D tab is active
+            soundEngine.updateSimulationState(get().running, get().speed, tab === 'VISUAL_3D')
+            set({
+                activeTab: tab,
+                activeMainTab: tab === 'SETTINGS' ? 'SETTINGS' : 'SIMULATION',
+                activeSubTab: tab === 'SIMULATION' ? 'CONTROLS' : tab
+            })
         },
+        setActiveMainTab: (tab) => get().setActiveTab(tab),
+        setActiveSubTab: (tab) => get().setActiveTab(tab === 'CONTROLS' ? 'SIMULATION' : tab),
         setLanguage: (lang) => {
             saveLocalStorage('swarmforge_lang', lang)
             set({ language: lang })
@@ -699,7 +711,11 @@ export const useSimulationStore = create((set, get) => {
             })
 
             // Switch to 3D view on apply (1:1 with SwarmForgeClient.java line 916)
-            set({ activeSubTab: 'VISUAL_3D' })
+            set({
+                activeTab: 'VISUAL_3D',
+                activeSubTab: 'VISUAL_3D'
+            })
+            soundEngine.updateSimulationState(false, get().speed, true)
         },
 
         play: () => {
@@ -707,7 +723,7 @@ export const useSimulationStore = create((set, get) => {
             if (state.running) return
 
             set({ running: true, isPaused: false })
-            soundEngine.resumeAmbient()
+            soundEngine.updateSimulationState(true, state.speed, get().activeTab === 'VISUAL_3D')
 
             get().addEventLog({
                 severity: 'INFO',
@@ -747,7 +763,7 @@ export const useSimulationStore = create((set, get) => {
 
         pause: () => {
             set({ running: false, isPaused: true })
-            soundEngine.pauseAmbient()
+            soundEngine.updateSimulationState(false, get().speed, get().activeTab === 'VISUAL_3D')
             clearInterval(simLoopInterval)
             get().addEventLog({
                 severity: 'INFO',
@@ -975,7 +991,11 @@ export const useSimulationStore = create((set, get) => {
             })
         },
 
-        setSpeed: (spd) => set({ speed: Math.max(0.1, Math.min(100, Number(spd) || 1.0)) }),
+        setSpeed: (spd) => {
+            const newSpeed = Math.max(0.1, Math.min(100, Number(spd) || 1.0))
+            set({ speed: newSpeed })
+            soundEngine.updateSimulationState(get().running, newSpeed, get().activeTab === 'VISUAL_3D')
+        },
         setStepSeconds: (dt) => set({ stepSeconds: Math.max(0.001, Math.min(10.0, Number(dt) || 0.05)) }),
 
         // --- 10. Real Weather Live API (Open-Meteo) ---

@@ -324,8 +324,9 @@ export default function Terrarium() {
 
     // Clipping plane slicing along Z axis (0 to 100m)
     const clippingPlanes = useMemo(() => {
-        if (slicePlaneRatio >= 0.999) return []
-        const sliceZ = 100 * Math.max(0.01, Math.min(1.0, slicePlaneRatio))
+        const ratio = typeof slicePlaneRatio === 'number' && !isNaN(slicePlaneRatio) ? slicePlaneRatio : 1.0
+        if (ratio >= 0.999) return []
+        const sliceZ = 100 * Math.max(0.01, Math.min(1.0, ratio))
         return [new THREE.Plane(new THREE.Vector3(0, 0, -1), sliceZ)]
     }, [slicePlaneRatio])
 

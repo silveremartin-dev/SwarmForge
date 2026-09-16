@@ -510,9 +510,6 @@ public class JmeGameApp extends SimpleApplication {
 
             TerrainMeshGenerator generator = new TerrainMeshGenerator();
             com.jme3.scene.Mesh terrainMesh = generator.generateMesh(terrarium, slicePlaneRatio, showSkirt, isGamifiedVoxelMode);
-            try {
-                com.jme3.util.TangentBinormalGenerator.generate(terrainMesh);
-            } catch (Exception ignored) {}
             Geometry terrainGeom = new Geometry("TerrainMesh", terrainMesh);
             terrainGeom.setMaterial(soilMat);
             terrainGeom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Receive);

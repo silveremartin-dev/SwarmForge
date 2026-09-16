@@ -166,17 +166,45 @@ export default function EventLogPanel() {
                                 background: isDark ? '#047857' : '#10b981',
                                 color: '#fff',
                                 border: 'none',
-                                padding: '5px 12px',
+                                padding: '5px 10px',
                                 borderRadius: 6,
                                 fontSize: 11,
                                 fontWeight: 700,
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 6
+                                gap: 5
                             }}
                         >
-                            <Download size={13} /> Exporter Logs
+                            <Download size={13} /> CSV
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                const logs = eventLogs
+                                const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' })
+                                const url = URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = `swarmforge_eventlog_${Date.now()}.json`
+                                a.click()
+                                showToast('📋 Journal JSON exporté avec succès !', 'success')
+                            }}
+                            style={{
+                                background: isDark ? '#334155' : '#e2e8f0',
+                                color: textMain,
+                                border: `1px solid ${borderCol}`,
+                                padding: '5px 10px',
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 5
+                            }}
+                        >
+                            <Download size={13} /> JSON
                         </button>
 
                         <button

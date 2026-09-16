@@ -3794,9 +3794,80 @@ public class WorldEditorPane extends BorderPane {
             substrateItemsPane
         );
 
+        // 2. Castes & Roles
+        Label titleCastes = new Label("🐜 Castes & Rôles");
+        titleCastes.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #fbbf24;");
+        FlowPane castesFlow = new FlowPane(4, 4);
+        castesFlow.setPrefWrapLength(220);
+        String[][] castes = {
+            {"👑 Reine (Gyne)", "#e11d48"},
+            {"🐜 Ouvrière", "#f97316"},
+            {"🛡️ Soldat / Major", "#ef4444"},
+            {"⚖️ Media", "#ca8a04"},
+            {"🔍 Minor", "#84cc16"},
+            {"🪽 Mâle / Drone", "#06b6d4"},
+            {"🥚 Couvain / Larve", "#e2e8f0"}
+        };
+        for (String[] c : castes) {
+            HBox b = new HBox(4);
+            b.setAlignment(Pos.CENTER_LEFT);
+            b.setPadding(new Insets(2, 4, 2, 4));
+            b.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 4;");
+            Canvas dot = new Canvas(8, 8);
+            GraphicsContext g = dot.getGraphicsContext2D();
+            g.setFill(Color.web(c[1]));
+            g.fillOval(0, 0, 8, 8);
+            g.setStroke(Color.WHITE);
+            g.setLineWidth(0.6);
+            g.strokeOval(0, 0, 8, 8);
+            Label lbl = new Label(c[0]);
+            lbl.setStyle("-fx-font-size: 10px;");
+            b.getChildren().addAll(dot, lbl);
+            castesFlow.getChildren().add(b);
+        }
+
+        // 3. Canaux Phéromonaux
+        Label titlePhero = new Label("📡 Canaux Phéromonaux");
+        titlePhero.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #a855f7;");
+        FlowPane pheroFlow = new FlowPane(4, 4);
+        pheroFlow.setPrefWrapLength(220);
+        String[][] pheros = {
+            {"🍏 Nourriture", "#22c55e"},
+            {"🏠 Retour Nid", "#3b82f6"},
+            {"⚠️ Alerte Danger", "#ef4444"},
+            {"👑 Royale", "#ec4899"},
+            {"☠️ Nécrophorique", "#64748b"}
+        };
+        for (String[] p : pheros) {
+            HBox b = new HBox(4);
+            b.setAlignment(Pos.CENTER_LEFT);
+            b.setPadding(new Insets(2, 4, 2, 4));
+            b.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 4;");
+            Canvas dot = new Canvas(8, 8);
+            GraphicsContext g = dot.getGraphicsContext2D();
+            g.setFill(Color.web(p[1]));
+            g.fillOval(0, 0, 8, 8);
+            g.setStroke(Color.WHITE);
+            g.setLineWidth(0.6);
+            g.strokeOval(0, 0, 8, 8);
+            Label lbl = new Label(p[0]);
+            lbl.setStyle("-fx-font-size: 10px;");
+            b.getChildren().addAll(dot, lbl);
+            pheroFlow.getChildren().add(b);
+        }
+
+        legendContentBox.getChildren().addAll(
+            new Separator(),
+            titleCastes,
+            castesFlow,
+            new Separator(),
+            titlePhero,
+            pheroFlow
+        );
+
         panel.getChildren().add(legendContentBox);
 
-        // 2. Nest Interior & Chamber Galleries Full Multi-Species Legend (Visible in Simulation mode)
+        // 4. Nest Interior & Chamber Galleries Full Multi-Species Legend (Visible in Simulation mode)
         Label titleNestInterior = new Label();
         titleNestInterior.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.nest.title"));
         titleNestInterior.getStyleClass().add("legend-title");

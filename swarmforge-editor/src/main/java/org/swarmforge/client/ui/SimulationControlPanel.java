@@ -101,11 +101,13 @@ public class SimulationControlPanel extends VBox {
     private final TextField txtServerHost = new TextField("localhost");
     private final TextField txtServerPort = new TextField("50051");
     private final Button btnServerConnect = new Button("🌐 Connecter");
+    private final Button btnServerStart = new Button("🚀 Démarrer Serveur...");
     private final Button btnServerDiscover = new Button("🔍 Détecter");
     private final Label lblServerConnectionStatus = new Label("○ Hors-ligne");
     private Runnable onServerConnectAction;
     private Runnable onServerDisconnectAction;
     private Runnable onServerDiscoverAction;
+    private Runnable onServerStartAction;
     private final TextField txtSeed = new TextField("12345");
     private final TextArea areaDescription = new TextArea();
 
@@ -358,17 +360,16 @@ public class SimulationControlPanel extends VBox {
         btnAlignWeather.tooltipProperty().bind(i18n.createTooltipBinding("sim.btn.align_weather.tt"));
         btnAlignWeather.setOnAction(e -> alignWeatherWithWorld(true));
 
-        ToggleButton btnWeatherSim = new ToggleButton("Simulée");
+        ToggleButton btnWeatherSim = new ToggleButton();
+        btnWeatherSim.textProperty().bind(i18n.createStringBinding("sim.weather.simulated.btn"));
         btnWeatherSim.setSelected(true);
         btnWeatherSim.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
-        btnWeatherSim.setTooltip(new Tooltip("🌦️ Météo Simulée (Cycles Déterministes & Presets Bioclimatiques)\n" +
-                "Génère des conditions atmosphériques et saisonnières selon le preset sélectionné et l'algorithme interne."));
+        btnWeatherSim.tooltipProperty().bind(i18n.createTooltipBinding("sim.weather.simulated.tt"));
 
-        ToggleButton btnWeatherReal = new ToggleButton("Réelle");
+        ToggleButton btnWeatherReal = new ToggleButton();
+        btnWeatherReal.textProperty().bind(i18n.createStringBinding("sim.weather.real.btn"));
         btnWeatherReal.setStyle("-fx-font-size: 10px; -fx-padding: 2 6;");
-        btnWeatherReal.setTooltip(new Tooltip("🛰️ Météo Réelle en Direct (API Open-Meteo)\n" +
-                "Récupère les observations météorologiques terrestres en temps réel (température, humidité, pression, vent, pluie)\n" +
-                "pour la ville ou les coordonnées géographiques saisies."));
+        btnWeatherReal.tooltipProperty().bind(i18n.createTooltipBinding("sim.weather.real.tt"));
 
         ToggleGroup weatherToggleGroup = new ToggleGroup();
         btnWeatherSim.setToggleGroup(weatherToggleGroup);
@@ -719,76 +720,105 @@ public class SimulationControlPanel extends VBox {
         // Execution Engine Selector (Local In-Process vs Remote Server / Cluster)
         HBox execModeBox = new HBox(8);
         execModeBox.setAlignment(Pos.CENTER_LEFT);
-        Label lblExecMode = new Label("Moteur d'exécution :");
+        Label lblExecMode = new Label();
+        lblExecMode.textProperty().bind(i18n.createStringBinding("sim.exec_mode.title"));
         lblExecMode.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
         lblExecMode.getStyleClass().add("accent-title");
-        lblExecMode.setTooltip(new Tooltip("Choisissez si la simulation tourne localement ou est déléguée au serveur SwarmForge gRPC"));
+        lblExecMode.tooltipProperty().bind(i18n.createTooltipBinding("sim.exec_mode.title.tt"));
 
         comboExecutionMode.getItems().setAll(
-            "● Mode Local Embarqué (In-Process CPU)",
-            "● Mode Serveur SwarmForge (Distant / Cluster gRPC)"
+            i18n.get("sim.exec_mode.local", "● Mode Local Embarqué (In-Process CPU)"),
+            i18n.get("sim.exec_mode.server", "● Mode Serveur SwarmForge (Distant / Cluster gRPC)")
         );
         comboExecutionMode.getSelectionModel().selectFirst();
         comboExecutionMode.setMaxWidth(Double.MAX_VALUE);
         comboExecutionMode.setStyle("-fx-font-size: 11px;");
+        comboExecutionMode.setTooltip(new Tooltip(i18n.get("sim.exec_mode.tt")));
         HBox.setHgrow(comboExecutionMode, Priority.ALWAYS);
         execModeBox.getChildren().addAll(lblExecMode, comboExecutionMode);
 
         // Server Network Sub-Panel (Integrated for Mode Serveur)
         serverNetworkBox.setStyle("-fx-background-color: rgba(2, 132, 199, 0.08); -fx-border-color: rgba(2, 132, 199, 0.3); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8;");
         txtServerHost.setPrefWidth(110);
+        txtServerHost.setTooltip(new Tooltip(i18n.get("sim.server.host.tt")));
         txtServerPort.setPrefWidth(65);
+        txtServerPort.setTooltip(new Tooltip(i18n.get("sim.server.port.tt")));
         btnServerConnect.getStyleClass().add("btn-primary");
+        btnServerConnect.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.btn.connect.tt"));
+        btnServerStart.setStyle("-fx-font-size: 11px;");
+        btnServerStart.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.btn.start.tt"));
         btnServerDiscover.setStyle("-fx-font-size: 11px;");
+        btnServerDiscover.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.btn.discover.tt"));
         btnServerConnect.setOnAction(e -> {
-            if (btnServerConnect.getText().contains("Déconnecter")) {
+            if (btnServerConnect.getText().contains("Déconnecter") || btnServerConnect.getText().contains("Disconnect")) {
                 if (onServerDisconnectAction != null) onServerDisconnectAction.run();
             } else {
                 if (onServerConnectAction != null) onServerConnectAction.run();
             }
         });
+        btnServerStart.setOnAction(e -> {
+            if (onServerStartAction != null) onServerStartAction.run();
+        });
         btnServerDiscover.setOnAction(e -> {
             if (onServerDiscoverAction != null) onServerDiscoverAction.run();
         });
 
-        HBox serverInputsRow = new HBox(6, new Label("Hôte :"), txtServerHost, new Label("Port :"), txtServerPort, btnServerConnect, btnServerDiscover);
+        Label lblHost = new Label();
+        lblHost.textProperty().bind(i18n.createStringBinding("sim.server.host"));
+        Label lblPort = new Label();
+        lblPort.textProperty().bind(i18n.createStringBinding("sim.server.port"));
+        HBox serverInputsRow = new HBox(6, lblHost, txtServerHost, lblPort, txtServerPort, btnServerConnect, btnServerStart, btnServerDiscover);
         serverInputsRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblStatusHead = new Label();
+        lblStatusHead.textProperty().bind(i18n.createStringBinding("sim.server.status"));
+        lblStatusHead.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.status.tt"));
         lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #f87171;");
         lblServerSessionStats.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
-        HBox serverStatusRow = new HBox(6, new Label("Statut gRPC :"), lblServerConnectionStatus, lblServerSessionStats);
+        HBox serverStatusRow = new HBox(6, lblStatusHead, lblServerConnectionStatus, lblServerSessionStats);
         serverStatusRow.setAlignment(Pos.CENTER_LEFT);
 
         // Server Role (Join vs Host)
         comboServerRole.getItems().setAll(
-            "● Rejoindre (Matchmaking / Mégaterrarium - Autorité Serveur)",
-            "● Héberger / Déployer Scénario (Mode Chercheur - Autorité Client)"
+            i18n.get("sim.server.role.join", "● Rejoindre (Matchmaking / Mégaterrarium - Autorité Serveur)"),
+            i18n.get("sim.server.role.host", "● Héberger / Déployer Scénario (Mode Chercheur - Autorité Client)")
         );
         comboServerRole.getSelectionModel().selectFirst();
         comboServerRole.setStyle("-fx-font-size: 11px;");
         comboServerRole.setMaxWidth(Double.MAX_VALUE);
+        comboServerRole.setTooltip(new Tooltip(i18n.get("sim.server.role.tt")));
 
-        HBox serverRoleRow = new HBox(6, new Label("Rôle Serveur :"), comboServerRole);
+        Label lblRole = new Label();
+        lblRole.textProperty().bind(i18n.createStringBinding("sim.server.role"));
+        HBox serverRoleRow = new HBox(6, lblRole, comboServerRole);
         serverRoleRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(comboServerRole, Priority.ALWAYS);
 
         // Player profile fields for Server Join Mode
         txtPlayerAlias.setPrefWidth(120);
-        comboPlayerSpecies.getItems().setAll(
-            "Lasius niger (Black Garden Ant)",
-            "Atta cephalotes (Leafcutter Ant)",
-            "Formica rufa (Red Wood Ant)",
-            "Solenopsis invicta (Red Fire Ant)",
-            "Camponotus ligniperda (Carpenter Ant)",
-            "Apis mellifera (Western Honeybee)"
-        );
+        txtPlayerAlias.setTooltip(new Tooltip(i18n.get("sim.server.alias.tt")));
+
+        // Populate player species dynamically from SpeciesPresetManager
+        List<String> dynamicSpecies = new ArrayList<>(speciesPresetManager.getPresetNames());
+        if (dynamicSpecies.isEmpty()) {
+            dynamicSpecies.addAll(List.of("Lasius niger", "Atta cephalotes", "Formica rufa", "Solenopsis invicta", "Camponotus ligniperda", "Apis mellifera"));
+        }
+        comboPlayerSpecies.getItems().setAll(dynamicSpecies);
         comboPlayerSpecies.getSelectionModel().selectFirst();
         comboPlayerSpecies.setStyle("-fx-font-size: 11px;");
+        comboPlayerSpecies.setTooltip(new Tooltip(i18n.get("sim.server.species.tt")));
 
-        HBox playerProfileRow = new HBox(6, new Label("Pseudo :"), txtPlayerAlias, new Label("Espèce :"), comboPlayerSpecies);
+        Label lblAlias = new Label();
+        lblAlias.textProperty().bind(i18n.createStringBinding("sim.server.alias"));
+        Label lblSpecies = new Label();
+        lblSpecies.textProperty().bind(i18n.createStringBinding("sim.server.species"));
+        HBox playerProfileRow = new HBox(6, lblAlias, txtPlayerAlias, lblSpecies, comboPlayerSpecies);
         playerProfileRow.setAlignment(Pos.CENTER_LEFT);
 
         lblServerAuthorityNotice.setStyle("-fx-background-color: rgba(56, 189, 248, 0.12); -fx-text-fill: #38bdf8; -fx-font-size: 10px; -fx-padding: 4 8; -fx-background-radius: 4;");
         lblServerAuthorityNotice.setWrapText(true);
+        lblServerAuthorityNotice.textProperty().bind(i18n.createStringBinding("sim.server.authority_notice"));
+        lblServerAuthorityNotice.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.authority_notice.tt"));
 
         serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow, serverRoleRow, playerProfileRow, lblServerAuthorityNotice);
         serverNetworkBox.setVisible(false);
@@ -796,8 +826,8 @@ public class SimulationControlPanel extends VBox {
 
         Runnable updateAuthorityLock = () -> {
             boolean isServer = comboExecutionMode.getValue() != null && 
-                (comboExecutionMode.getValue().contains("Serveur") || comboExecutionMode.getValue().contains("gRPC") || comboExecutionMode.getValue().contains("Cluster"));
-            boolean isJoin = comboServerRole.getValue() == null || comboServerRole.getValue().contains("Rejoindre");
+                (comboExecutionMode.getValue().contains("Serveur") || comboExecutionMode.getValue().contains("Server") || comboExecutionMode.getValue().contains("gRPC") || comboExecutionMode.getValue().contains("Cluster"));
+            boolean isJoin = comboServerRole.getValue() == null || comboServerRole.getValue().contains("Rejoindre") || comboServerRole.getValue().contains("Join");
 
             serverNetworkBox.setVisible(isServer);
             serverNetworkBox.setManaged(isServer);
@@ -810,6 +840,8 @@ public class SimulationControlPanel extends VBox {
             lblServerAuthorityNotice.setManaged(lockLocalWorld);
             playerProfileRow.setVisible(lockLocalWorld);
             playerProfileRow.setManaged(lockLocalWorld);
+            updateApplyPresetsButtonState(isCreatingScenario);
+            updateValidationPanel();
         };
 
         comboExecutionMode.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
@@ -983,6 +1015,14 @@ public class SimulationControlPanel extends VBox {
             btnApplyPresets.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.btn.cancel_creation"));
             btnApplyPresets.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5; -fx-cursor: hand;");
             btnApplyPresets.getTooltip().textProperty().bind(I18nManager.getInstance().createStringBinding("sim.btn.cancel_creation.tt"));
+        } else if (isServerExecutionMode()) {
+            btnApplyPresets.setText(isServerJoinMode() ? 
+                I18nManager.getInstance().get("sim.server.btn.join", "🌐 Rejoindre la Partie Serveur") : 
+                I18nManager.getInstance().get("sim.server.btn.deploy", "🚀 Déployer Scénario sur Serveur"));
+            btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5; -fx-cursor: hand;");
+            btnApplyPresets.getTooltip().setText(isServerJoinMode() ? 
+                I18nManager.getInstance().get("sim.server.role.join", "Rejoint la simulation partagée sur le serveur SwarmForge.") : 
+                I18nManager.getInstance().get("sim.server.role.host", "Déploie le scénario et initialise le monde sur le serveur SwarmForge."));
         } else {
             btnApplyPresets.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.btn.apply_create"));
             btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5;");
@@ -1778,17 +1818,25 @@ public class SimulationControlPanel extends VBox {
         txtServerPort.setText(String.valueOf(port));
     }
 
+    private boolean isServerConnected = false;
+
+    public boolean isServerConnected() {
+        return isServerConnected;
+    }
+
     public void setServerConnectionStatus(boolean connected, String message) {
+        this.isServerConnected = connected;
         javafx.application.Platform.runLater(() -> {
             if (connected) {
                 lblServerConnectionStatus.setText("● Connecté (" + message + ")");
                 lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #4ade80; -fx-font-weight: bold;");
-                btnServerConnect.setText("❌ Déconnecter");
+                btnServerConnect.setText(I18nManager.getInstance().get("sim.server.btn.disconnect", "❌ Déconnecter"));
             } else {
                 lblServerConnectionStatus.setText("○ " + (message != null ? message : "Hors-ligne"));
                 lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #f87171;");
-                btnServerConnect.setText("🌐 Connecter");
+                btnServerConnect.setText(I18nManager.getInstance().get("sim.server.btn.connect", "🌐 Connecter"));
             }
+            updateValidationPanel();
         });
     }
 
@@ -1816,6 +1864,7 @@ public class SimulationControlPanel extends VBox {
     public void setOnServerConnect(Runnable r) { this.onServerConnectAction = r; }
     public void setOnServerDisconnect(Runnable r) { this.onServerDisconnectAction = r; }
     public void setOnServerDiscover(Runnable r) { this.onServerDiscoverAction = r; }
+    public void setOnServerStart(Runnable r) { this.onServerStartAction = r; }
 
     public void updateCheckpoints(List<org.swarmforge.core.simulation.SimulationCheckpoint> checkpoints) {
         comboCheckpoints.getItems().clear();
@@ -2457,6 +2506,18 @@ public class SimulationControlPanel extends VBox {
 
     public List<ScenarioWarning> evaluateScenarioWarnings() {
         List<ScenarioWarning> list = new ArrayList<>();
+
+        // 0. Mode Serveur & Connexion Réseau
+        if (isServerExecutionMode() && !isServerConnected) {
+            list.add(new ScenarioWarning(
+                "RÉSEAU", "HIGH",
+                I18nManager.getInstance().get("sim.warn.server_disconnected", "⚠️ Mode Serveur sélectionné mais aucun serveur gRPC n'est connecté."),
+                I18nManager.getInstance().get("sim.warn.server_connect_action", "🚀 Démarrer / Connecter Serveur"),
+                () -> {
+                    if (onServerConnectAction != null) onServerConnectAction.run();
+                }
+            ));
+        }
 
         if (speciesCardList == null) return list;
 
