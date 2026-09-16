@@ -7582,7 +7582,8 @@ public class WorldEditorPane extends BorderPane {
                     org.swarmforge.core.simulation.TunnelNetwork tn = colony.getTunnelNetwork();
                     if (tn != null && !tn.getNodes().isEmpty()) {
                         for (org.swarmforge.core.simulation.TunnelNetwork.TunnelNode n : tn.getNodes()) {
-                            if (n.type() == org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE || n.z() >= -0.5f) {
+                            float sY = activeSimulation.getTerrarium().getSurfaceElevation(n.x(), n.y());
+                            if (n.type() == org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE || Math.abs(n.z() - sY) < 0.6f) {
                                 double egx = (n.x() / (double) tWidth) * GRID_SIZE;
                                 double egy = (n.y() / (double) tHeight) * GRID_SIZE;
                                 entrancePositions.add(new double[]{egx, egy});

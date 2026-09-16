@@ -61,6 +61,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class SimulationControlPanel extends VBox {
 
+    private final org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
+
     private final Button btnGoToBeginning;
     private final Button btnRewind;
     private final Button btnStepBack;
@@ -93,7 +95,7 @@ public class SimulationControlPanel extends VBox {
     private final ComboBox<String> comboWeather = new ComboBox<>();
     private final ComboBox<String> comboExecutionMode = new ComboBox<>();
     private final ComboBox<String> comboServerRole = new ComboBox<>();
-    private final TextField txtPlayerAlias = new TextField("Joueur_1");
+    private final TextField txtPlayerAlias = new TextField(I18nManager.getInstance().get("sim.server.alias.default", "Player_1"));
     private final ComboBox<String> comboPlayerSpecies = new ComboBox<>();
     private final Label lblServerAuthorityNotice = new Label("ℹ️ Mode Joueur : Le monde, le biome, l'heure et la météo sont imposés par le serveur distant.");
     private final Label lblServerSessionStats = new Label("");
@@ -1827,14 +1829,17 @@ public class SimulationControlPanel extends VBox {
     public void setServerConnectionStatus(boolean connected, String message) {
         this.isServerConnected = connected;
         javafx.application.Platform.runLater(() -> {
+            I18nManager i18n = I18nManager.getInstance();
             if (connected) {
-                lblServerConnectionStatus.setText("● Connecté (" + message + ")");
+                lblServerConnectionStatus.setText("● " + i18n.get("sim.server.connected", "Connecté") + (message != null && !message.isEmpty() ? " (" + message + ")" : ""));
                 lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #4ade80; -fx-font-weight: bold;");
-                btnServerConnect.setText(I18nManager.getInstance().get("sim.server.btn.disconnect", "❌ Déconnecter"));
+                btnServerConnect.setText(i18n.get("sim.server.btn.disconnect", "❌ Déconnecter"));
+                lblServerSessionStats.setText(" | " + i18n.get("sim.server.online", "En Ligne (~15ms)"));
             } else {
-                lblServerConnectionStatus.setText("○ " + (message != null ? message : "Hors-ligne"));
+                lblServerConnectionStatus.setText("○ " + (message != null && !message.isEmpty() ? message : i18n.get("sim.server.offline", "Hors-ligne")));
                 lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #f87171;");
-                btnServerConnect.setText(I18nManager.getInstance().get("sim.server.btn.connect", "🌐 Connecter"));
+                btnServerConnect.setText(i18n.get("sim.server.btn.connect", "🌐 Connecter"));
+                lblServerSessionStats.setText(" | " + i18n.get("sim.server.offline", "Hors-Ligne"));
             }
             updateValidationPanel();
         });
@@ -1842,12 +1847,12 @@ public class SimulationControlPanel extends VBox {
 
     public boolean isServerJoinMode() {
         String val = comboServerRole.getValue();
-        return val == null || val.contains("Rejoindre");
+        return val == null || val.contains("Rejoindre") || val.contains("Join") || val.contains("Beitreten") || val.contains("Unirse") || val.contains("加入");
     }
 
     public String getPlayerAlias() {
         String alias = txtPlayerAlias.getText();
-        return (alias != null && !alias.trim().isEmpty()) ? alias.trim() : "Joueur_1";
+        return (alias != null && !alias.trim().isEmpty()) ? alias.trim() : I18nManager.getInstance().get("sim.server.alias.default", "Player_1");
     }
 
     public String getPlayerSpecies() {
@@ -2382,15 +2387,39 @@ public class SimulationControlPanel extends VBox {
         box.getStyleClass().add("card-pane");
         box.setStyle("-fx-border-color: #d97706; -fx-border-width: 1;");
 
-        Label lblTitle = new Label("7. 🔖 Checkpoints & Divine Mode Intervention Log :");
+        Label lblTitle = new Label();
+        lblTitle.textProperty().bind(i18n.createStringBinding("sim.checkpoints.title"));
         lblTitle.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 11px;");
 
-        comboCheckpoints.setPrefWidth(160);
-        comboCheckpoints.setPromptText("No checkpoints recorded");
+        comboCheckpoints.setPrefWidth(220);
+        comboCheckpoints.promptTextProperty().bind(i18n.createStringBinding("sim.checkpoints.none"));
+        comboCheckpoints.setCellFactory(lv -> new ListCell<>() {
+            @Override
+            protected void updateItem(org.swarmforge.core.simulation.SimulationCheckpoint item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(formatCheckpointLabel(item));
+                }
+            }
+        });
+        comboCheckpoints.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(org.swarmforge.core.simulation.SimulationCheckpoint item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                } else {
+                    setText(formatCheckpointLabel(item));
+                }
+            }
+        });
 
-        Button bRestore = new Button("⏪ Restore Checkpoint");
+        Button bRestore = new Button();
+        bRestore.textProperty().bind(i18n.createStringBinding("sim.checkpoints.btn.restore"));
         bRestore.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-cursor: hand;");
-        bRestore.setTooltip(new Tooltip("Restores simulation to exact tick timestamp of checkpoint."));
+        bRestore.tooltipProperty().bind(i18n.createTooltipBinding("sim.checkpoints.btn.restore.tt"));
         bRestore.setOnAction(e -> {
             org.swarmforge.core.simulation.SimulationCheckpoint sel = comboCheckpoints.getValue();
             if (sel != null && onRestoreCheckpoint != null) {
@@ -2398,14 +2427,35 @@ public class SimulationControlPanel extends VBox {
             }
         });
 
-        HBox row = new HBox(8, new Label("Checkpoints:") {{ setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;"); }}, comboCheckpoints, bRestore);
+        Label lblCp = new Label();
+        lblCp.textProperty().bind(i18n.createStringBinding("sim.checkpoints.label"));
+        lblCp.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+
+        HBox row = new HBox(8, lblCp, comboCheckpoints, bRestore);
         row.setAlignment(Pos.CENTER_LEFT);
 
-        Label lblInfo = new Label("💡 Each checkpoint saves exact physical state and Divine Mode intervention log.");
+        Label lblInfo = new Label();
+        lblInfo.textProperty().bind(i18n.createStringBinding("sim.checkpoints.info"));
         lblInfo.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
 
         box.getChildren().addAll(lblTitle, row, lblInfo);
         return box;
+    }
+
+    private String formatCheckpointLabel(org.swarmforge.core.simulation.SimulationCheckpoint cp) {
+        if (cp == null) return "";
+        String rawName = cp.getName();
+        String displayName = rawName;
+        if (rawName != null && (rawName.startsWith("Départ") || rawName.contains("Initial Setup") || cp.getTick() == 0)) {
+            displayName = i18n.get("checkpoint.initial_setup", "Initial Setup") + " (#0)";
+        } else if (rawName != null && rawName.startsWith("Auto-Snapshot")) {
+            displayName = i18n.get("checkpoint.auto_snapshot", "Auto-Snapshot") + " (Tick #" + cp.getTick() + ")";
+        }
+        return String.format("%s (Tick #%d, %d %s)",
+                displayName,
+                cp.getTick(),
+                cp.getInterventionsRecorded().size(),
+                i18n.get("checkpoint.interventions", "interventions"));
     }
 
     private static void selectComboIfPresent(ComboBox<String> combo, String val) {

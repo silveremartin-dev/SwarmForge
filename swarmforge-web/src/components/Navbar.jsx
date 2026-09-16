@@ -85,7 +85,7 @@ export default function Navbar() {
                 }}>
                     {navTabs.map(tab => {
                         const Icon = tab.icon
-                        const isActive = activeTab === tab.id
+                        const isActive = activeTab === tab.id || (tab.id === 'SIMULATION' && !['VISUAL_3D', 'GOD_MODE', 'STATISTICS', 'EVENT_LOG', 'SETTINGS'].includes(activeTab))
                         return (
                             <button
                                 key={tab.id}

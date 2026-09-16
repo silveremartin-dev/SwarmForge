@@ -1181,27 +1181,48 @@ public class SwarmForgeClient extends Application {
                     simControlPanel.setOnServerDisconnect(() -> {
                         try {
                             networkClient.disconnect();
-                            simControlPanel.setServerConnectionStatus(false, "Déconnecté");
+                            simControlPanel.setServerConnectionStatus(false, i18n.get("sim.server.sync.disconnected", "Déconnecté"));
                         } catch (Exception ex) {
-                            simControlPanel.setServerConnectionStatus(false, "Déconnecté");
+                            simControlPanel.setServerConnectionStatus(false, i18n.get("sim.server.sync.disconnected", "Déconnecté"));
                         }
                     });
 
                     simControlPanel.setOnServerDiscover(() -> {
                         new Thread(() -> {
-                            javafx.application.Platform.runLater(() -> simControlPanel.setServerConnectionStatus(false, "Détection en cours..."));
+                            javafx.application.Platform.runLater(() -> simControlPanel.setServerConnectionStatus(false, i18n.get("sim.server.status.detecting", "Détection en cours...")));
                             try {
-                                java.net.Socket socket = new java.net.Socket();
-                                socket.connect(new java.net.InetSocketAddress("localhost", 50051), 1000);
-                                socket.close();
-                                javafx.application.Platform.runLater(() -> {
-                                    simControlPanel.setServerHost("localhost");
-                                    simControlPanel.setServerPort(50051);
-                                    simControlPanel.setServerConnectionStatus(false, "Serveur local détecté (localhost:50051)");
-                                });
+                                String host = simControlPanel.getServerHost();
+                                int port = simControlPanel.getServerPort();
+                                boolean open = org.swarmforge.client.network.LocalServerManager.isPortOpen(host, port);
+                                if (!open && (!"localhost".equalsIgnoreCase(host) && !"127.0.0.1".equals(host))) {
+                                    // Check localhost as well
+                                    if (org.swarmforge.client.network.LocalServerManager.isPortOpen("localhost", 50051)) {
+                                        host = "localhost";
+                                        port = 50051;
+                                        open = true;
+                                    }
+                                }
+                                if (open) {
+                                    final String finalHost = host;
+                                    final int finalPort = port;
+                                    networkClient.connect(finalHost, finalPort);
+                                    networkClient.startStreaming();
+                                    javafx.application.Platform.runLater(() -> {
+                                        simControlPanel.setServerHost(finalHost);
+                                        simControlPanel.setServerPort(finalPort);
+                                        simControlPanel.setServerConnectionStatus(true, finalHost + ":" + finalPort);
+                                        if (gameView != null) {
+                                            gameView.getGameApp().setNetworkClient(networkClient);
+                                        }
+                                    });
+                                } else {
+                                    javafx.application.Platform.runLater(() -> {
+                                        simControlPanel.setServerConnectionStatus(false, i18n.get("sim.server.status.none_detected", "Aucun serveur actif détecté"));
+                                    });
+                                }
                             } catch (Exception e) {
                                 javafx.application.Platform.runLater(() -> {
-                                    simControlPanel.setServerConnectionStatus(false, "Aucun serveur actif détecté");
+                                    simControlPanel.setServerConnectionStatus(false, i18n.get("sim.server.status.none_detected", "Aucun serveur actif détecté"));
                                 });
                             }
                         }).start();
@@ -1291,28 +1312,31 @@ public class SwarmForgeClient extends Application {
 
                                 if (isServerMode) {
                                     String scName = simControlPanel.getSelectedScenarioName();
-                                    String roleLabel = isMatchmaking ? "Rejoindre (Matchmaking)" : "Hôte Déporté";
+                                    String roleLabel = isMatchmaking ? i18n.get("sim.server.role.join_short", "Rejoindre (Matchmaking)") : i18n.get("sim.server.role.host_short", "Hôte Déporté");
                                     if (isConnected) {
-                                        statsLabel.setText(String.format("🌐 Serveur SwarmForge (%s:%d) | %s | %s | %s (Step #%d)",
+                                        statsLabel.setText(String.format("🌐 %s (%s:%d) | %s | %s | %s (Step #%d)",
+                                                i18n.get("sim.server.title_short", "Serveur SwarmForge"),
                                                 simControlPanel.getServerHost(), simControlPanel.getServerPort(), roleLabel, scName, formattedTime, tick));
                                         if (syncLabel != null) {
-                                            syncLabel.setText("● Connecté au Serveur (gRPC Stream)");
+                                            syncLabel.setText("● " + i18n.get("sim.server.sync.connected", "Connecté au Serveur (gRPC Stream)"));
                                             syncLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-size: 11px;");
                                         }
-                                        simControlPanel.setServerSessionStats("En Ligne (~15ms)");
+                                        simControlPanel.setServerSessionStats(i18n.get("sim.server.online", "En Ligne (~15ms)"));
                                     } else {
-                                        statsLabel.setText(String.format("🌐 Mode Serveur SwarmForge (%s:%d - Hors-Ligne) | %s",
-                                                simControlPanel.getServerHost(), simControlPanel.getServerPort(), formattedTime));
+                                        statsLabel.setText(String.format("🌐 %s (%s:%d - %s) | %s",
+                                                i18n.get("sim.server.mode_short", "Mode Serveur SwarmForge"),
+                                                simControlPanel.getServerHost(), simControlPanel.getServerPort(),
+                                                i18n.get("sim.server.offline", "Hors-Ligne"), formattedTime));
                                         if (syncLabel != null) {
-                                            syncLabel.setText("○ Serveur Déconnecté");
+                                            syncLabel.setText("○ " + i18n.get("sim.server.sync.disconnected", "Serveur Déconnecté"));
                                             syncLabel.setStyle("-fx-text-fill: #f87171; -fx-font-size: 11px;");
                                         }
-                                        simControlPanel.setServerSessionStats("Hors-Ligne");
+                                        simControlPanel.setServerSessionStats(i18n.get("sim.server.offline", "Hors-Ligne"));
                                     }
                                 } else {
-                                    statsLabel.setText(String.format("💻 Moteur Local In-Process | %s (Step #%d)", formattedTime, tick));
+                                    statsLabel.setText(String.format("💻 %s | %s (Step #%d)", i18n.get("engine.mode.local.short", "Moteur Local In-Process"), formattedTime, tick));
                                     if (syncLabel != null) {
-                                        syncLabel.setText("● Moteur Local Autonome");
+                                        syncLabel.setText("● " + i18n.get("engine.mode.local.sync", "Moteur Local Autonome"));
                                         syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
                                     }
                                 }

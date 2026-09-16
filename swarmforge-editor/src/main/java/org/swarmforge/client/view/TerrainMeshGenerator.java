@@ -182,10 +182,12 @@ public class TerrainMeshGenerator {
             int iTop2 = baseIdx + (i + 1) * 2;
             int iBot2 = baseIdx + (i + 1) * 2 + 1;
 
-            if (nx > 0 || nz < 0) {
+            if (nz > 0 || nx < 0) {
+                // Front (+Z) and Left (-X) outward facing winding
                 indices.add(iTop1); indices.add(iBot1); indices.add(iTop2);
                 indices.add(iTop2); indices.add(iBot1); indices.add(iBot2);
             } else {
+                // Back (-Z) and Right (+X / Slice Plane) outward facing winding
                 indices.add(iTop1); indices.add(iTop2); indices.add(iBot1);
                 indices.add(iTop2); indices.add(iBot2); indices.add(iBot1);
             }

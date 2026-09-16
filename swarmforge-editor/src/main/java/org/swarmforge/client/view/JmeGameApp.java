@@ -271,22 +271,45 @@ public class JmeGameApp extends SimpleApplication {
                     com.jme3.collision.CollisionResult closes = results.getClosestCollision();
                     Geometry geom = closes.getGeometry();
 
-                    // Check if clicked spatial or parent is an ANT (only if ant tracking is enabled)
+                    // Check for ant selection (both direct mesh hit and proximity raycasting)
                     if (isAntTrackingEnabled) {
-                        com.jme3.scene.Spatial antSpatial = geom;
-                        while (antSpatial != null && antSpatial.getUserData("ID") == null) {
-                            antSpatial = antSpatial.getParent();
+                        for (int i = 0; i < results.size(); i++) {
+                            Geometry hitGeom = results.getCollision(i).getGeometry();
+                            com.jme3.scene.Spatial antSpatial = hitGeom;
+                            while (antSpatial != null && antSpatial.getUserData("ID") == null) {
+                                antSpatial = antSpatial.getParent();
+                            }
+                            if (antSpatial != null && antSpatial.getUserData("ID") != null) {
+                                selectAndFollowAnt((String) antSpatial.getUserData("ID"), (String) antSpatial.getUserData("LifeStage"));
+                                return;
+                            }
                         }
 
-                        if (antSpatial != null && antSpatial.getUserData("ID") != null) {
-                            followedAntId = (String) antSpatial.getUserData("ID");
-                            String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
-                            System.out.println("Following Ant: " + followedAntId);
-                            if (selectionListener != null) {
-                                final String id = followedAntId;
-                                final String fStage = stage;
-                                Platform.runLater(() -> selectionListener.onAntSelected(id, "Ouvrière (Worker)", fStage, 95.0f, 88.0f, 12.0f, 450.0f, "Forager"));
+                        // Proximity check to all active ants along ray (1.8m selection radius)
+                        String closestAntId = null;
+                        String closestAntStage = null;
+                        float minRayDist = 1.8f;
+
+                        for (java.util.Map.Entry<String, com.jme3.scene.Spatial> entry : antVisuals.entrySet()) {
+                            com.jme3.scene.Spatial antSpatial = entry.getValue();
+                            if (antSpatial != null && antSpatial.getCullHint() != com.jme3.scene.Spatial.CullHint.Always) {
+                                Vector3f antPos = antSpatial.getWorldTranslation();
+                                Vector3f v = antPos.subtract(click3d);
+                                float proj = v.dot(dir);
+                                if (proj > 0) {
+                                    Vector3f closestPointOnRay = click3d.add(dir.mult(proj));
+                                    float dist = antPos.distance(closestPointOnRay);
+                                    if (dist < minRayDist) {
+                                        minRayDist = dist;
+                                        closestAntId = entry.getKey();
+                                        closestAntStage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                                    }
+                                }
                             }
+                        }
+
+                        if (closestAntId != null) {
+                            selectAndFollowAnt(closestAntId, closestAntStage);
                             return;
                         }
                     }
@@ -357,6 +380,36 @@ public class JmeGameApp extends SimpleApplication {
         }
     };
 
+    private void selectAndFollowAnt(String antId, String stage) {
+        followedAntId = antId;
+        String fStage = stage != null ? stage : "ADULT";
+        System.out.println("Following Ant: " + followedAntId);
+        if (selectionListener != null) {
+            String roleName = "Ouvrière (Worker)";
+            String taskName = "Forager";
+            float health = 95.0f, energy = 88.0f, hydration = 80.0f, distanceTravelled = 450.0f;
+            if (simulation != null && !simulation.getColonies().isEmpty()) {
+                for (org.swarmforge.core.domain.Colony colony : simulation.getColonies()) {
+                    for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
+                        if (ind.getId().toString().equals(antId)) {
+                            health = (float) ind.getEnergy();
+                            energy = (float) ind.getEnergy();
+                            if (ind.getCaste() != null) roleName = ind.getCaste().name();
+                            break;
+                        }
+                    }
+                }
+            }
+            final String finalRole = roleName;
+            final String finalTask = taskName;
+            final float finalHealth = health;
+            final float finalEnergy = energy;
+            final float finalHydration = hydration;
+            final float finalDistance = distanceTravelled;
+            Platform.runLater(() -> selectionListener.onAntSelected(antId, finalRole, fStage, finalHealth, finalEnergy, finalHydration, finalDistance, finalTask));
+        }
+    }
+
     public String getFollowedAntId() {
         return followedAntId;
     }
@@ -423,6 +476,9 @@ public class JmeGameApp extends SimpleApplication {
 
     public void setSlicePlaneRatio(float ratio) {
         this.slicePlaneRatio = Math.max(0.05f, Math.min(1.0f, ratio));
+        if (vegetationVisualizer != null) {
+            vegetationVisualizer.setSlicePlaneRatio(this.slicePlaneRatio);
+        }
         rebuildTerrainMesh();
     }
 
@@ -468,45 +524,48 @@ public class JmeGameApp extends SimpleApplication {
             int d = terrarium.getDepth();
             int h = terrarium.getHeight();
 
-            // High-fidelity PBR Terrain Lighting & Texturing with Multi-Biome Vertex Color
-            Material soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
-            soilMat.setBoolean("UseMaterialColors", true);
-            soilMat.setBoolean("UseVertexColor", true);
-            soilMat.setColor("Diffuse", ColorRGBA.White);
-            soilMat.setColor("Ambient", isGamifiedVoxelMode ? new ColorRGBA(0.85f, 0.85f, 0.85f, 1f) : new ColorRGBA(0.40f, 0.40f, 0.40f, 1f));
-            soilMat.setColor("Specular", new ColorRGBA(0.12f, 0.12f, 0.12f, 1f));
-            soilMat.setFloat("Shininess", 8f);
+            Material soilMat;
+            if (isGamifiedVoxelMode) {
+                soilMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+                soilMat.setBoolean("VertexColor", true);
+            } else {
+                soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+                soilMat.setBoolean("UseMaterialColors", true);
+                soilMat.setBoolean("UseVertexColor", true);
+                soilMat.setColor("Diffuse", ColorRGBA.White);
+                soilMat.setColor("Ambient", new ColorRGBA(0.60f, 0.60f, 0.60f, 1f));
+                soilMat.setColor("Specular", new ColorRGBA(0.12f, 0.12f, 0.12f, 1f));
+                soilMat.setFloat("Shininess", 4f);
 
-            // Select appropriate high-res 1K PBR texture set based on terrain biome & latitude
-            double lat = Math.abs(terrarium.getLatitude());
-            String pbrFolder = "Ground037"; // Rich organic humus / forest
-            if (lat < 23.5) {
-                pbrFolder = "Ground025"; // Desert / tropical sand
-            } else if (lat > 60.0) {
-                pbrFolder = "Ground061"; // Alpine / tundra snow
-            } else if (lat >= 30.0 && lat <= 50.0) {
-                pbrFolder = "Ground049A"; // Temperate meadow grass
-            }
+                // Select appropriate high-res 1K PBR texture set based on terrain biome & latitude
+                double lat = Math.abs(terrarium.getLatitude());
+                String pbrFolder = "Ground049A"; // Temperate lush meadow grass default
+                if (lat < 23.5) {
+                    pbrFolder = "Ground025"; // Desert / tropical sand
+                } else if (lat > 60.0) {
+                    pbrFolder = "Ground061"; // Alpine / tundra snow
+                }
 
-            try {
-                com.jme3.texture.Texture diffuseTex = assetManager.loadTexture("models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_Color.jpg");
-                diffuseTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
-                diffuseTex.setMinFilter(com.jme3.texture.Texture.MinFilter.BilinearNearestMipMap);
-                diffuseTex.setMagFilter(com.jme3.texture.Texture.MagFilter.Bilinear);
-                soilMat.setTexture("DiffuseMap", diffuseTex);
-            } catch (Exception e) {
                 try {
-                    com.jme3.texture.Texture fallbackTex = assetManager.loadTexture("models/textures/pbr/Ground037/Ground037_1K-JPG_Color.jpg");
-                    fallbackTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
-                    soilMat.setTexture("DiffuseMap", fallbackTex);
+                    com.jme3.texture.Texture diffuseTex = assetManager.loadTexture("models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_Color.jpg");
+                    diffuseTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
+                    diffuseTex.setMinFilter(com.jme3.texture.Texture.MinFilter.BilinearNearestMipMap);
+                    diffuseTex.setMagFilter(com.jme3.texture.Texture.MagFilter.Bilinear);
+                    soilMat.setTexture("DiffuseMap", diffuseTex);
+                } catch (Exception e) {
+                    try {
+                        com.jme3.texture.Texture fallbackTex = assetManager.loadTexture("models/textures/pbr/Ground049A/Ground049A_1K-JPG_Color.jpg");
+                        fallbackTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
+                        soilMat.setTexture("DiffuseMap", fallbackTex);
+                    } catch (Exception ignored) {}
+                }
+
+                try {
+                    com.jme3.texture.Texture normalTex = assetManager.loadTexture("models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_NormalGL.jpg");
+                    normalTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
+                    soilMat.setTexture("NormalMap", normalTex);
                 } catch (Exception ignored) {}
             }
-
-            try {
-                com.jme3.texture.Texture normalTex = assetManager.loadTexture("models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_NormalGL.jpg");
-                normalTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
-                soilMat.setTexture("NormalMap", normalTex);
-            } catch (Exception ignored) {}
 
             TerrainMeshGenerator generator = new TerrainMeshGenerator();
             com.jme3.scene.Mesh terrainMesh = generator.generateMesh(terrarium, slicePlaneRatio, showSkirt, isGamifiedVoxelMode);

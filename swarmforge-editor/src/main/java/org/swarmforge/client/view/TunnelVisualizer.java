@@ -102,11 +102,9 @@ public class TunnelVisualizer {
             default -> 20.0f;
         };
 
-        // If node has explicit dimensions from lenticular model
-        float baseRadius3D = (node.radius() > 0 && node.radius() < 5.0f)
-                ? node.radius() * 0.45f
-                : (radiusMm / mmPerWorldUnit) * 1.3f;
-        float radius3D = Math.max(0.12f, baseRadius3D);
+        // Calibrated biological chamber sizes (Queen: ~60-80mm, Brood: ~40-50mm, Entrance: ~30-35mm)
+        float baseRadius3D = (radiusMm / mmPerWorldUnit) * 1.15f;
+        float radius3D = Math.max(0.12f, Math.min(0.70f, baseRadius3D));
 
         Sphere shape = new Sphere(8, 8, radius3D);
         Geometry geom = new Geometry("Node_" + node.id(), shape);

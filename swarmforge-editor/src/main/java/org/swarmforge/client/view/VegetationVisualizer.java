@@ -220,6 +220,13 @@ public class VegetationVisualizer {
         return currentSeason;
     }
 
+    private float slicePlaneRatio = 1.0f;
+
+    public void setSlicePlaneRatio(float ratio) {
+        this.slicePlaneRatio = Math.max(0.05f, Math.min(1.0f, ratio));
+        rebuildVegetation(currentGridWidth, currentGridHeight, activeTerrarium, activeVegetationSystem);
+    }
+
     public void rebuildVegetation(int gridWidth, int gridHeight) {
         rebuildVegetation(gridWidth, gridHeight, activeTerrarium, activeVegetationSystem);
     }
@@ -236,13 +243,15 @@ public class VegetationVisualizer {
         Biome biome = Biome.forLatitude(currentLatitude);
         Season effectiveSeason = getEffectiveSeason();
         Random rand = new Random(42);
+        int cutX = Math.max(2, Math.min(gridWidth, (int) Math.ceil(gridWidth * Math.max(0.05f, Math.min(1.0f, slicePlaneRatio)))));
 
         if (vegSystem != null && !vegSystem.getPlants().isEmpty()) {
             // Position flora according to real simulation plants
             for (VegetationSystem.Plant plant : vegSystem.getPlants()) {
                 float x = plant.x;
                 float z = plant.y; // Horizontal Y in domain -> JME Z
-                float y = (terrarium != null) ? terrarium.getSurfaceElevation(x, z) : 0.5f;
+                if (x >= cutX - 0.5f) continue; // Respect 3D geological cutaway slice
+                float y = (terrarium != null) ? terrarium.getSurfaceElevation(x, z) : 0.0f;
 
                 if (currentRenderMode == RenderMode.REALISTIC) {
                     createRealisticFloraForPlant(x, y, z, plant, biome, effectiveSeason, rand);
@@ -253,17 +262,18 @@ public class VegetationVisualizer {
                 }
             }
         } else {
-            // Procedural landscape distribution across full terrarium footprint with natural biological spacing
-            int count = Math.min(250, (gridWidth * gridHeight) / 12);
+            // Procedural landscape distribution with natural biological spacing and reasonable density
+            int count = Math.min(22, Math.max(6, (gridWidth * gridHeight) / 160));
             List<Vector3f> placedPositions = new ArrayList<>();
-            float minSpacingSq = 2.0f * 2.0f;
+            float minSpacingSq = 3.5f * 3.5f;
+            float maxSpawnX = Math.max(3.5f, cutX - 2.5f);
 
             for (int i = 0; i < count; i++) {
                 float x = 3, z = 3;
                 boolean valid = false;
-                for (int attempts = 0; attempts < 20; attempts++) {
-                    x = 3 + rand.nextFloat() * (gridWidth - 6);
-                    z = 3 + rand.nextFloat() * (gridHeight - 6);
+                for (int attempts = 0; attempts < 30; attempts++) {
+                    x = 3 + rand.nextFloat() * Math.max(1.0f, maxSpawnX - 3.0f);
+                    z = 3 + rand.nextFloat() * Math.max(1.0f, gridHeight - 6.0f);
                     valid = true;
                     for (Vector3f pos : placedPositions) {
                         float dx = pos.x - x;
@@ -276,7 +286,7 @@ public class VegetationVisualizer {
                     if (valid) break;
                 }
                 if (valid || placedPositions.isEmpty()) {
-                    float y = (terrarium != null) ? (terrarium.getSurfaceElevation(x, z) + 0.5f) : 0.5f;
+                    float y = (terrarium != null) ? terrarium.getSurfaceElevation(x, z) : 0.0f;
                     placedPositions.add(new Vector3f(x, y, z));
 
                     if (currentRenderMode == RenderMode.REALISTIC) {
@@ -648,16 +658,14 @@ public class VegetationVisualizer {
             treeNode.attachChild(gR2);
 
         } else if (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
-            // Authentic Minecraft Spruce/Pine Tree (7-8 block trunk + multi-tiered cross canopy)
-            int trunkHeight = 8;
-            for (int h = 0; h < trunkHeight; h++) {
-                Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-                Geometry g = new Geometry("PineLog_" + h, box);
-                g.setMaterial(woodMat);
-                g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-                g.setLocalTranslation(0, h * voxelSize + voxelSize / 2, 0);
-                treeNode.attachChild(g);
-            }
+            // Authentic Minecraft Spruce/Pine Tree (Optimized cubic voxel layers)
+            int trunkHeight = 7;
+            Box trunkBox = new Box(voxelSize / 2, trunkHeight * voxelSize / 2, voxelSize / 2);
+            Geometry trunkGeom = new Geometry("PineTrunk", trunkBox);
+            trunkGeom.setMaterial(woodMat);
+            trunkGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            trunkGeom.setLocalTranslation(0, trunkHeight * voxelSize / 2, 0);
+            treeNode.attachChild(trunkGeom);
 
             Material pineLeafMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             pineLeafMat.setBoolean("UseMaterialColors", true);
@@ -666,54 +674,41 @@ public class VegetationVisualizer {
             pineLeafMat.setColor("Ambient", pineCol.mult(0.6f));
             pineLeafMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-            float canopyBaseY = 4 * voxelSize;
+            float canopyBaseY = 3.5f * voxelSize;
 
-            // Tier 1: 5x5 Cross at Y=4
-            for (int bx = -2; bx <= 2; bx++) {
-                for (int bz = -2; bz <= 2; bz++) {
-                    if (Math.abs(bx) == 2 && Math.abs(bz) == 2) continue;
-                    Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-                    Geometry g = new Geometry("PineLeaf_T1_" + bx + "_" + bz, box);
-                    g.setMaterial(pineLeafMat);
-                    g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-                    g.setLocalTranslation(bx * voxelSize, canopyBaseY + voxelSize / 2, bz * voxelSize);
-                    treeNode.attachChild(g);
-                }
-            }
+            // Tier 1: Wide Lower Canopy
+            Box t1Box = new Box(1.8f * voxelSize, 0.7f * voxelSize, 1.8f * voxelSize);
+            Geometry t1Geom = new Geometry("PineLeaf_T1", t1Box);
+            t1Geom.setMaterial(pineLeafMat);
+            t1Geom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            t1Geom.setLocalTranslation(0, canopyBaseY + 0.7f * voxelSize, 0);
+            treeNode.attachChild(t1Geom);
 
-            // Tier 2: 3x3 Cross at Y=6
-            for (int bx = -1; bx <= 1; bx++) {
-                for (int bz = -1; bz <= 1; bz++) {
-                    Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-                    Geometry g = new Geometry("PineLeaf_T2_" + bx + "_" + bz, box);
-                    g.setMaterial(pineLeafMat);
-                    g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-                    g.setLocalTranslation(bx * voxelSize, canopyBaseY + 2 * voxelSize + voxelSize / 2, bz * voxelSize);
-                    treeNode.attachChild(g);
-                }
-            }
+            // Tier 2: Mid Tier
+            Box t2Box = new Box(1.2f * voxelSize, 0.7f * voxelSize, 1.2f * voxelSize);
+            Geometry t2Geom = new Geometry("PineLeaf_T2", t2Box);
+            t2Geom.setMaterial(pineLeafMat);
+            t2Geom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            t2Geom.setLocalTranslation(0, canopyBaseY + 2.0f * voxelSize, 0);
+            treeNode.attachChild(t2Geom);
 
-            // Tier 3: 1x1 Peak at Y=7 & Y=8
-            for (int by = 3; by <= 4; by++) {
-                Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-                Geometry g = new Geometry("PineLeaf_Peak_" + by, box);
-                g.setMaterial(pineLeafMat);
-                g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-                g.setLocalTranslation(0, canopyBaseY + by * voxelSize + voxelSize / 2, 0);
-                treeNode.attachChild(g);
-            }
+            // Tier 3: Peak
+            Box t3Box = new Box(0.6f * voxelSize, 0.6f * voxelSize, 0.6f * voxelSize);
+            Geometry t3Geom = new Geometry("PineLeaf_Peak", t3Box);
+            t3Geom.setMaterial(pineLeafMat);
+            t3Geom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            t3Geom.setLocalTranslation(0, canopyBaseY + 3.2f * voxelSize, 0);
+            treeNode.attachChild(t3Geom);
 
         } else {
-            // Authentic Minecraft Oak / Birch Tree (6 block trunk + 5x5 / 3x3 canopy with corner notches)
-            int trunkHeight = 6;
-            for (int h = 0; h < trunkHeight; h++) {
-                Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-                Geometry g = new Geometry("OakLog_" + h, box);
-                g.setMaterial(woodMat);
-                g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-                g.setLocalTranslation(0, h * voxelSize + voxelSize / 2, 0);
-                treeNode.attachChild(g);
-            }
+            // Authentic Minecraft Oak / Birch Tree (Optimized cubic voxel layers)
+            int trunkHeight = 5;
+            Box trunkBox = new Box(voxelSize / 2, trunkHeight * voxelSize / 2, voxelSize / 2);
+            Geometry trunkGeom = new Geometry("OakTrunk", trunkBox);
+            trunkGeom.setMaterial(woodMat);
+            trunkGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            trunkGeom.setLocalTranslation(0, trunkHeight * voxelSize / 2, 0);
+            treeNode.attachChild(trunkGeom);
 
             ColorRGBA baseCol = getSeasonFoliageColor(season, biome);
             Material leafMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
@@ -722,43 +717,31 @@ public class VegetationVisualizer {
             leafMat.setColor("Ambient", baseCol.mult(0.6f));
             leafMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-            float canopyBaseY = (trunkHeight - 2) * voxelSize;
+            float canopyBaseY = 3.0f * voxelSize;
 
-            // Canopy Layers 0 and 1: 5x5 with 4 corners omitted
-            for (int by = 0; by < 2; by++) {
-                for (int bx = -2; bx <= 2; bx++) {
-                    for (int bz = -2; bz <= 2; bz++) {
-                        if (Math.abs(bx) == 2 && Math.abs(bz) == 2) continue; // Minecraft corner notch
-                        Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-                        Geometry g = new Geometry("OakLeaf_" + by + "_" + bx + "_" + bz, box);
-                        g.setMaterial(leafMat);
-                        g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-                        g.setLocalTranslation(bx * voxelSize, canopyBaseY + by * voxelSize + voxelSize / 2, bz * voxelSize);
-                        treeNode.attachChild(g);
-                    }
-                }
-            }
+            // Canopy Lower Layer (5x5 voxel equivalent volume)
+            Box mainCanopyBox = new Box(2.0f * voxelSize, 0.9f * voxelSize, 2.0f * voxelSize);
+            Geometry mainCanopyGeom = new Geometry("OakLeaf_Main", mainCanopyBox);
+            mainCanopyGeom.setMaterial(leafMat);
+            mainCanopyGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            mainCanopyGeom.setLocalTranslation(0, canopyBaseY + 0.9f * voxelSize, 0);
+            treeNode.attachChild(mainCanopyGeom);
 
-            // Canopy Layer 2: 3x3
-            for (int bx = -1; bx <= 1; bx++) {
-                for (int bz = -1; bz <= 1; bz++) {
-                    if (Math.abs(bx) == 1 && Math.abs(bz) == 1) continue;
-                    Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-                    Geometry g = new Geometry("OakLeaf_Top_" + bx + "_" + bz, box);
-                    g.setMaterial(leafMat);
-                    g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-                    g.setLocalTranslation(bx * voxelSize, canopyBaseY + 2 * voxelSize + voxelSize / 2, bz * voxelSize);
-                    treeNode.attachChild(g);
-                }
-            }
+            // Canopy Upper Layer (3x3 voxel equivalent volume)
+            Box topCanopyBox = new Box(1.3f * voxelSize, 0.7f * voxelSize, 1.3f * voxelSize);
+            Geometry topCanopyGeom = new Geometry("OakLeaf_Top", topCanopyBox);
+            topCanopyGeom.setMaterial(leafMat);
+            topCanopyGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            topCanopyGeom.setLocalTranslation(0, canopyBaseY + 2.3f * voxelSize, 0);
+            treeNode.attachChild(topCanopyGeom);
 
-            // Top Cap (1x1)
-            Box topBox = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-            Geometry topGeom = new Geometry("OakLeaf_Cap", topBox);
-            topGeom.setMaterial(leafMat);
-            topGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            topGeom.setLocalTranslation(0, canopyBaseY + 3 * voxelSize + voxelSize / 2, 0);
-            treeNode.attachChild(topGeom);
+            // Top Cap (1x1 voxel equivalent)
+            Box capBox = new Box(0.6f * voxelSize, 0.4f * voxelSize, 0.6f * voxelSize);
+            Geometry capGeom = new Geometry("OakLeaf_Cap", capBox);
+            capGeom.setMaterial(leafMat);
+            capGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+            capGeom.setLocalTranslation(0, canopyBaseY + 3.2f * voxelSize, 0);
+            treeNode.attachChild(capGeom);
         }
 
         treeNode.setLocalRotation(new Quaternion().fromAngles(0, rotY, 0));

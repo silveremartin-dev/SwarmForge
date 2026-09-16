@@ -122,7 +122,7 @@ export default function App() {
 
             {/* Main Content Area: Direct 6 Tabs (1:1 JavaFX Client) */}
             <main style={{ flex: 1, overflow: 'hidden', display: 'flex', position: 'relative' }}>
-                {activeTab === 'SIMULATION' && (
+                {(activeTab === 'SIMULATION' || !['VISUAL_3D', 'GOD_MODE', 'STATISTICS', 'EVENT_LOG', 'SETTINGS'].includes(activeTab)) && (
                     <div style={{ flex: 1, overflowY: 'auto' }}>
                         <SimulationControlPanel />
                     </div>
