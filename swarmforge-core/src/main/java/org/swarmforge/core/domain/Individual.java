@@ -3037,7 +3037,7 @@ public class Individual implements java.io.Serializable, AgentView {
         if (random != null) {
             return random;
         }
-        long seed = id != null ? id.getLeastSignificantBits() : (antNumber > 0 ? antNumber : 1337L);
+        long seed = (antNumber > 0 ? (antNumber * 31L + 1337L) : (id != null ? id.getLeastSignificantBits() : 1337L));
         this.random = new java.util.Random(seed);
         return this.random;
     }

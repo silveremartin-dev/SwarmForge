@@ -226,6 +226,9 @@ public class Colony implements java.io.Serializable {
             Individual ind = new Individual(this.id, Individual.Caste.QUEEN, pos[0], pos[1], pos[2]);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            if (getRandom() != null) {
+                ind.setRandom(new java.util.Random(getRandom().nextLong()));
+            }
             applyGaussianHealth(ind, isFoundingQueen);
             if (applyAgeDistribution) {
                 applyGaussianAge(ind, isFoundingQueen);
@@ -596,6 +599,9 @@ public class Colony implements java.io.Serializable {
             ind.setSpecies(this.species);
             ind.setJob(job);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            if (getRandom() != null) {
+                ind.setRandom(new java.util.Random(getRandom().nextLong()));
+            }
             applyGaussianHealth(ind, false);
             if (applyAgeDistribution) {
                 applyGaussianAge(ind, false);
@@ -621,6 +627,9 @@ public class Colony implements java.io.Serializable {
             ind.setHomePosition(this.nestX, this.nestY, this.nestZ);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            if (getRandom() != null) {
+                ind.setRandom(new java.util.Random(getRandom().nextLong()));
+            }
             applyGaussianHealth(ind, false);
             if (applyAgeDistribution) {
                 applyGaussianAge(ind, false);
@@ -646,6 +655,9 @@ public class Colony implements java.io.Serializable {
             ind.setHomePosition(this.nestX, this.nestY, this.nestZ);
             ind.setSpecies(this.species);
             ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            if (getRandom() != null) {
+                ind.setRandom(new java.util.Random(getRandom().nextLong()));
+            }
             applyGaussianHealth(ind, false);
             if (applyAgeDistribution) {
                 applyGaussianAge(ind, false);

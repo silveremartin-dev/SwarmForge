@@ -69,6 +69,15 @@ public class MinimapOverlay extends VBox {
     private boolean syncViews = true;
     private boolean showLegend = true;
     private boolean isCollapsed = false;
+    private boolean showMegaterrariumBorders = true;
+    private int tileCoordX = 0;
+    private int tileCoordY = 0;
+
+    public void setMegaterrariumTile(int tileX, int tileY) {
+        this.tileCoordX = tileX;
+        this.tileCoordY = tileY;
+        this.showMegaterrariumBorders = true;
+    }
 
     public MinimapOverlay(int width) {
         setSpacing(4);
@@ -307,6 +316,20 @@ public class MinimapOverlay extends VBox {
             gcTop.strokeRect(w * 0.73, lgY + 4, 7, 7);
             gcTop.setFill(Color.rgb(203, 213, 225));
             gcTop.fillText(i18n.get("minimap.legend.camera"), w * 0.73 + 10, lgY + 10);
+        }
+
+        // Megaterrarium Boundary Directional Indicators (Cluster Nodes)
+        if (showMegaterrariumBorders) {
+            gcTop.setFont(javafx.scene.text.Font.font("SansSerif", 8));
+            gcTop.setFill(Color.rgb(56, 189, 248, 0.75));
+            // North indicator
+            gcTop.fillText(String.format("▲ [%d,%d]", tileCoordX, tileCoordY + 1), w / 2 - 14, 9);
+            // South indicator
+            gcTop.fillText(String.format("▼ [%d,%d]", tileCoordX, Math.max(0, tileCoordY - 1)), w / 2 - 14, h - (showLegend ? 20 : 3));
+            // West indicator
+            gcTop.fillText(String.format("◀[%d,%d]", Math.max(0, tileCoordX - 1), tileCoordY), 3, h / 2 + 3);
+            // East indicator
+            gcTop.fillText(String.format("[%d,%d]▶", tileCoordX + 1, tileCoordY), w - 28, h / 2 + 3);
         }
 
         // Clean outer border (drawn LAST to avoid stray overlapping grid lines)

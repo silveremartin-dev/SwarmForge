@@ -631,6 +631,32 @@ class ProceduralSoundEngine {
         }
         return this.muted;
     }
+    resumeAmbient() {
+        try {
+            this.updateSimulationState({ simRunning: true, speed: 1.0 })
+        } catch {}
+    }
+
+    pauseAmbient() {
+        try {
+            this.updateSimulationState({ simRunning: false, speed: 0.0 })
+        } catch {}
+    }
+
+    setAmbientVolume(val) {
+        this.setChannelVolume('ambiance', val)
+    }
+
+    ensureContext() {
+        try {
+            if (!this.isInitialized) {
+                this.init()
+            }
+            if (this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume()
+            }
+        } catch {}
+    }
 }
 
 export const soundEngine = new ProceduralSoundEngine();

@@ -410,6 +410,13 @@ class CustomHTTPHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=WEB_DIST_DIR, **kwargs)
 
+    def do_GET(self):
+        # SPA routing fallback: serve index.html for non-asset routes
+        path = self.translate_path(self.path)
+        if not os.path.exists(path) and not self.path.startswith("/assets/") and not self.path.startswith("/sounds/") and not self.path.startswith("/3d/"):
+            self.path = "/index.html"
+        return super().do_GET()
+
     def end_headers(self):
         # Enable CORS and caching headers
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -439,6 +446,7 @@ def run_server():
     print(f"{GREEN}✓ Serveur WebSocket actif :{RESET} {BOLD}ws://localhost:{WS_PORT}{RESET} (Simulation vivante 20 FPS)")
 
     # 2. Démarrer le serveur HTTP (5173)
+    ThreadingHTTPServer.allow_reuse_address = True
     httpd = ThreadingHTTPServer(("0.0.0.0", HTTP_PORT), CustomHTTPHandler)
     http_thread = threading.Thread(target=httpd.serve_forever, daemon=True, name="http-server")
     http_thread.start()

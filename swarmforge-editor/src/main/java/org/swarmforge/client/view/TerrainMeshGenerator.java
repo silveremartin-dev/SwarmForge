@@ -33,6 +33,7 @@ public class TerrainMeshGenerator {
         List<Float> vertices = new ArrayList<>();
         List<Float> normals = new ArrayList<>();
         List<Float> texCoords = new ArrayList<>();
+        List<Float> colors = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
 
         int width = terrarium.getWidth();
@@ -41,6 +42,7 @@ public class TerrainMeshGenerator {
 
         int cutX = Math.max(1, Math.min(width, (int) Math.ceil(width * Math.max(0.05f, Math.min(1.0f, sliceRatio)))));
         int indexOffset = 0;
+        double lat = Math.abs(terrarium.getLatitude());
 
         for (int x = 0; x < cutX; x++) {
             for (int y = 0; y < height; y++) {
@@ -55,44 +57,99 @@ public class TerrainMeshGenerator {
                     float jmeY = z;
                     float jmeZ = y;
 
+                    boolean isSurface = (z == depth - 1 || isAir(terrarium, x, y, z + 1));
+
+                    // Base Substrate / Biome color
+                    float r = 0.40f, g = 0.28f, b = 0.16f, a = 1.0f;
+                    if (isGamified) {
+                        if (cell.material() == TerrariumCell.Material.SAND) {
+                            r = 0.90f; g = 0.82f; b = 0.48f;
+                        } else if (cell.material() == TerrariumCell.Material.CLAY) {
+                            r = 0.78f; g = 0.38f; b = 0.20f;
+                        } else if (cell.material() == TerrariumCell.Material.ROCK) {
+                            r = 0.52f; g = 0.54f; b = 0.56f;
+                        } else if (cell.material() == TerrariumCell.Material.GRAVEL) {
+                            r = 0.65f; g = 0.67f; b = 0.70f;
+                        } else if (cell.material() == TerrariumCell.Material.PEAT) {
+                            r = 0.28f; g = 0.18f; b = 0.10f;
+                        } else {
+                            r = 0.45f; g = 0.30f; b = 0.18f;
+                        }
+                    } else {
+                        if (lat > 60.0) {
+                            r = 0.88f; g = 0.92f; b = 0.95f; // Tundra snow / frost
+                        } else if (lat < 23.5) {
+                            r = 0.86f; g = 0.74f; b = 0.46f; // Tropical / desert sand
+                        } else if (cell.material() == TerrariumCell.Material.SAND) {
+                            r = 0.84f; g = 0.74f; b = 0.46f;
+                        } else if (cell.material() == TerrariumCell.Material.CLAY) {
+                            r = 0.70f; g = 0.36f; b = 0.20f;
+                        } else if (cell.material() == TerrariumCell.Material.ROCK) {
+                            r = 0.54f; g = 0.56f; b = 0.58f;
+                        } else if (cell.material() == TerrariumCell.Material.GRAVEL) {
+                            r = 0.62f; g = 0.64f; b = 0.66f;
+                        } else if (cell.material() == TerrariumCell.Material.PEAT) {
+                            r = 0.35f; g = 0.22f; b = 0.12f;
+                        } else {
+                            r = 0.48f; g = 0.34f; b = 0.22f;
+                        }
+                    }
+
+                    // Surface face color (Green meadow grass unless desert/snow)
+                    float topR = r, topG = g, topB = b;
+                    if (isSurface) {
+                        if (lat > 60.0) {
+                            topR = 0.92f; topG = 0.95f; topB = 0.98f;
+                        } else if (lat < 23.5 || cell.material() == TerrariumCell.Material.SAND) {
+                            topR = 0.88f; topG = 0.78f; topB = 0.48f;
+                        } else {
+                            // Temperate lush green grass
+                            if (isGamified) {
+                                topR = 0.22f; topG = 0.72f; topB = 0.20f;
+                            } else {
+                                topR = 0.32f; topG = 0.65f; topB = 0.24f;
+                            }
+                        }
+                    }
+
                     // 1. Top Face (+Y in JME, +Z in domain)
                     if (z == depth - 1 || isAir(terrarium, x, y, z + 1)) {
-                        addUpFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
+                        addUpFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, topR, topG, topB, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
                     // 2. Bottom Face (-Y in JME, -Z in domain)
                     if (showSkirt && (z == 0 || isAir(terrarium, x, y, z - 1))) {
-                        addDownFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
+                        addDownFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, r * 0.7f, g * 0.7f, b * 0.7f, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
                     // 3. Front Face (+Z in JME, +Y in domain)
                     if ((y == height - 1 && showSkirt) || isAir(terrarium, x, y + 1, z)) {
-                        addFrontFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
+                        addFrontFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, r * 0.85f, g * 0.85f, b * 0.85f, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
                     // 4. Back Face (-Z in JME, -Y in domain)
                     if ((y == 0 && showSkirt) || isAir(terrarium, x, y - 1, z)) {
-                        addBackFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
+                        addBackFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, r * 0.80f, g * 0.80f, b * 0.80f, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
                     // 5. Left Face (-X in JME, -X in domain)
                     if ((x == 0 && showSkirt) || isAir(terrarium, x - 1, y, z)) {
-                        addLeftFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
+                        addLeftFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, r * 0.90f, g * 0.90f, b * 0.90f, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
 
                     // 6. Right Face (+X in JME, +X in domain) - Also represents the Cut Wall on slice plane!
                     if ((x == cutX - 1) || isAir(terrarium, x + 1, y, z)) {
-                        addRightFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords);
+                        addRightFace(jmeX, jmeY, jmeZ, vertices, normals, texCoords, colors, r * 0.95f, g * 0.95f, b * 0.95f, a);
                         addIndices(indices, indexOffset);
                         indexOffset += 4;
                     }
@@ -104,6 +161,7 @@ public class TerrainMeshGenerator {
         mesh.setBuffer(Type.Position, 3, BufferUtils.createFloatBuffer(toFloatArray(vertices)));
         mesh.setBuffer(Type.Normal, 3, BufferUtils.createFloatBuffer(toFloatArray(normals)));
         mesh.setBuffer(Type.TexCoord, 2, BufferUtils.createFloatBuffer(toFloatArray(texCoords)));
+        mesh.setBuffer(Type.Color, 4, BufferUtils.createFloatBuffer(toFloatArray(colors)));
         mesh.setBuffer(Type.Index, 1, BufferUtils.createIntBuffer(toIntArray(indices)));
         mesh.updateBound();
 
@@ -193,9 +251,15 @@ public class TerrainMeshGenerator {
         return cell.material() == TerrariumCell.Material.AIR || cell.material() == TerrariumCell.Material.CAVITY;
     }
 
-    // --- Face Generation Helpers with Continuous Seamless World UVs ---
+    // --- Face Generation Helpers with Continuous Seamless World UVs and Vertex Colors ---
 
-    private void addUpFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
+    private void addColors(List<Float> c, float r, float g, float b, float a) {
+        for (int i = 0; i < 4; i++) {
+            c.add(r); c.add(g); c.add(b); c.add(a);
+        }
+    }
+
+    private void addUpFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t, List<Float> c, float r, float g, float b, float a) {
         float x0 = x - 0.5f, x1 = x + 0.5f;
         float y0 = y + 0.5f;
         float z0 = z - 0.5f, z1 = z + 0.5f;
@@ -213,9 +277,11 @@ public class TerrainMeshGenerator {
         t.add(x0 * UV_SCALE); t.add(z1 * UV_SCALE);
         t.add(x1 * UV_SCALE); t.add(z1 * UV_SCALE);
         t.add(x1 * UV_SCALE); t.add(z0 * UV_SCALE);
+
+        addColors(c, r, g, b, a);
     }
 
-    private void addDownFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
+    private void addDownFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t, List<Float> c, float r, float g, float b, float a) {
         float x0 = x - 0.5f, x1 = x + 0.5f;
         float y0 = y - 0.5f;
         float z0 = z - 0.5f, z1 = z + 0.5f;
@@ -233,9 +299,11 @@ public class TerrainMeshGenerator {
         t.add(x1 * UV_SCALE); t.add(z0 * UV_SCALE);
         t.add(x1 * UV_SCALE); t.add(z1 * UV_SCALE);
         t.add(x0 * UV_SCALE); t.add(z1 * UV_SCALE);
+
+        addColors(c, r, g, b, a);
     }
 
-    private void addFrontFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
+    private void addFrontFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t, List<Float> c, float r, float g, float b, float a) {
         float x0 = x - 0.5f, x1 = x + 0.5f;
         float y0 = y - 0.5f, y1 = y + 0.5f;
         float z0 = z + 0.5f;
@@ -253,9 +321,11 @@ public class TerrainMeshGenerator {
         t.add(x0 * UV_SCALE); t.add(y0 * UV_SCALE);
         t.add(x1 * UV_SCALE); t.add(y0 * UV_SCALE);
         t.add(x1 * UV_SCALE); t.add(y1 * UV_SCALE);
+
+        addColors(c, r, g, b, a);
     }
 
-    private void addBackFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
+    private void addBackFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t, List<Float> c, float r, float g, float b, float a) {
         float x0 = x - 0.5f, x1 = x + 0.5f;
         float y0 = y - 0.5f, y1 = y + 0.5f;
         float z0 = z - 0.5f;
@@ -273,9 +343,11 @@ public class TerrainMeshGenerator {
         t.add(x1 * UV_SCALE); t.add(y0 * UV_SCALE);
         t.add(x0 * UV_SCALE); t.add(y0 * UV_SCALE);
         t.add(x0 * UV_SCALE); t.add(y1 * UV_SCALE);
+
+        addColors(c, r, g, b, a);
     }
 
-    private void addRightFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
+    private void addRightFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t, List<Float> c, float r, float g, float b, float a) {
         float x0 = x + 0.5f;
         float y0 = y - 0.5f, y1 = y + 0.5f;
         float z0 = z - 0.5f, z1 = z + 0.5f;
@@ -293,9 +365,11 @@ public class TerrainMeshGenerator {
         t.add(z1 * UV_SCALE); t.add(y0 * UV_SCALE);
         t.add(z0 * UV_SCALE); t.add(y0 * UV_SCALE);
         t.add(z0 * UV_SCALE); t.add(y1 * UV_SCALE);
+
+        addColors(c, r, g, b, a);
     }
 
-    private void addLeftFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t) {
+    private void addLeftFace(float x, float y, float z, List<Float> v, List<Float> n, List<Float> t, List<Float> c, float r, float g, float b, float a) {
         float x0 = x - 0.5f;
         float y0 = y - 0.5f, y1 = y + 0.5f;
         float z0 = z - 0.5f, z1 = z + 0.5f;
@@ -313,6 +387,8 @@ public class TerrainMeshGenerator {
         t.add(z0 * UV_SCALE); t.add(y0 * UV_SCALE);
         t.add(z1 * UV_SCALE); t.add(y0 * UV_SCALE);
         t.add(z1 * UV_SCALE); t.add(y1 * UV_SCALE);
+
+        addColors(c, r, g, b, a);
     }
 
     private void addIndices(List<Integer> indices, int offset) {

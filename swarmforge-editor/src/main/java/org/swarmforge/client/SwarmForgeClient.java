@@ -52,6 +52,7 @@ public class SwarmForgeClient extends Application {
         private MinimapOverlay minimapOverlay;
         private PheromoneOverlay pheromoneOverlay;
         private StatisticsDashboard statisticsDashboard;
+        private org.swarmforge.client.ui.MultiplayerScoreboardOverlay scoreboardOverlay;
         private org.swarmforge.client.ui.EventLogPane eventLogPane;
         private org.swarmforge.client.ui.InterventionPanel interventionPanel;
         private org.swarmforge.client.ui.SimulationControlPanel simControlPanel;
@@ -1190,19 +1191,63 @@ public class SwarmForgeClient extends Application {
                                 }
 
                                 long tick = isConnected ? networkClient.getLatestTick() : (localSimulation != null ? localSimulation.getTickCount() : 0);
-                                String modeStr = isConnected ? "Dedicated Server (Connected & Synced)" : "Standalone Local Mode";
                                 double stepDt = simControlPanel != null ? simControlPanel.getSimulationStepSeconds() : 0.05;
                                 String formattedTime = org.swarmforge.client.ui.SimulationControlPanel.formatSimulationTime(tick, stepDt);
-                                statsLabel.setText(String.format("🌐 Simulation Engine: %s | Elapsed Time: %s (Step #%d)", modeStr, formattedTime, tick));
+
+                                if (simControlPanel != null && simControlPanel.isServerExecutionMode()) {
+                                    String scName = simControlPanel.getSelectedScenarioName();
+                                    boolean joinMode = simControlPanel.isServerJoinMode();
+                                    String roleLabel = joinMode ? "Rejoindre (Autorité Serveur)" : "Hôte Déporté";
+                                    statsLabel.setText(String.format("🌐 Serveur: %s:%d | %s | Scénario: %s | %s (Step #%d)",
+                                            simControlPanel.getServerHost(), simControlPanel.getServerPort(), roleLabel, scName, formattedTime, tick));
+                                    simControlPanel.setServerSessionStats(isConnected ? "En Ligne (Ping ~15ms) | 1 Session" : "Déconnecté");
+                                } else {
+                                    statsLabel.setText(String.format("🌐 Moteur Local In-Process | %s (Step #%d)", formattedTime, tick));
+                                }
 
                                 if (syncLabel != null) {
                                     if (isConnected) {
-                                        syncLabel.setText("● Active Remote Persistence (PostgreSQL Server)");
+                                        syncLabel.setText("● Synchronisé Cluster (gRPC Stream)");
                                         syncLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-size: 11px;");
                                     } else {
-                                        syncLabel.setText("● Active Local Persistence (Autonomous SQLite)");
+                                        syncLabel.setText("● Moteur Local Autonome");
                                         syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
                                     }
+                                }
+
+                                // Update Live Multiplayer Scoreboard Overlay
+                                if (scoreboardOverlay != null && scoreboardOverlay.isVisible()) {
+                                    java.util.List<org.swarmforge.client.ui.MultiplayerScoreboardOverlay.ColonyEntry> entries = new java.util.ArrayList<>();
+                                    String[] palette = new String[] { "#38bdf8", "#f87171", "#4ade80", "#fbbf24", "#c084fc", "#f472b6" };
+
+                                    if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
+                                        int idx = 0;
+                                        for (org.swarmforge.core.domain.Colony col : localSimulation.getColonies()) {
+                                            int cPop = col.getPopulation();
+                                            int cW = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.WORKER);
+                                            int cS = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.SOLDIER);
+                                            int cQ = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.QUEEN);
+                                            float cFood = col.getFoodStored();
+                                            boolean queenAlive = cQ > 0;
+                                            String colName = col.getSpeciesName() != null && !col.getSpeciesName().isEmpty() ? col.getSpeciesName() : "Colonie #" + (idx + 1);
+                                            String pName = (idx == 0 && simControlPanel != null) ? simControlPanel.getPlayerAlias() : "Adversaire #" + (idx + 1);
+                                            String color = palette[idx % palette.length];
+
+                                            entries.add(new org.swarmforge.client.ui.MultiplayerScoreboardOverlay.ColonyEntry(
+                                                String.valueOf(idx + 1),
+                                                pName,
+                                                colName,
+                                                color,
+                                                cPop, cW, cS, cQ,
+                                                cFood,
+                                                queenAlive,
+                                                col.getNestX(), col.getNestY(), col.getNestZ(),
+                                                idx == 0
+                                            ));
+                                            idx++;
+                                        }
+                                    }
+                                    scoreboardOverlay.updateColonies(entries);
                                 }
 
                                 // Sync audio synthesizer with live simulation state
@@ -1518,11 +1563,21 @@ public class SwarmForgeClient extends Application {
                 btnExitFullscreen.setVisible(false);
                 btnExitFullscreen.setManaged(false);
 
-                StackPane viewportStack = new StackPane(simWorldViewer, simulationInactiveOverlay, btnExitFullscreen);
+                // Multiplayer Scoreboard & Colony Inspection HUD Overlay
+                this.scoreboardOverlay = new org.swarmforge.client.ui.MultiplayerScoreboardOverlay();
+                this.scoreboardOverlay.setOnFocusColony(entry -> {
+                    if (this.simWorldViewer != null) {
+                        this.simWorldViewer.focusOnLocation(entry.nestX, entry.nestY, entry.nestZ);
+                    }
+                });
+
+                StackPane viewportStack = new StackPane(simWorldViewer, simulationInactiveOverlay, btnExitFullscreen, scoreboardOverlay);
                 StackPane.setAlignment(simulationInactiveOverlay, Pos.TOP_CENTER);
                 StackPane.setMargin(simulationInactiveOverlay, new Insets(15));
                 StackPane.setAlignment(btnExitFullscreen, Pos.TOP_RIGHT);
                 StackPane.setMargin(btnExitFullscreen, new Insets(15));
+                StackPane.setAlignment(scoreboardOverlay, Pos.TOP_LEFT);
+                StackPane.setMargin(scoreboardOverlay, new Insets(15));
 
                 simulationInactiveOverlay.setVisible(false);
                 simulationInactiveOverlay.setManaged(false);
@@ -1541,7 +1596,18 @@ public class SwarmForgeClient extends Application {
                 lblSideTitle.textProperty().bind(i18n.createStringBinding("sidebar.title"));
                 lblSideTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
 
-                HBox sideHeaderBox = new HBox(8, lblSideTitle);
+                CheckBox chkShowScoreboard = new CheckBox("👥 Scoreboard des Colonies");
+                chkShowScoreboard.setStyle("-fx-font-size: 11px; -fx-text-fill: #e2e8f0;");
+                chkShowScoreboard.setSelected(true);
+                chkShowScoreboard.selectedProperty().addListener((obs, oldV, newV) -> {
+                    if (newV) {
+                        scoreboardOverlay.showWithAnimation();
+                    } else {
+                        scoreboardOverlay.hideWithAnimation();
+                    }
+                });
+
+                HBox sideHeaderBox = new HBox(8, lblSideTitle, chkShowScoreboard);
                 sideHeaderBox.setAlignment(Pos.CENTER_LEFT);
 
                 // 2. Moved Controls from Simulation Manager: Date & Time, VCR Playback (Rewind/FastForward), Speed & Multipliers
@@ -2226,9 +2292,9 @@ public class SwarmForgeClient extends Application {
                 // Dedicated Legend Section in Right Sidebar
                 VBox legendSection = new VBox(6);
                 legendSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
-                Label lblLegendSec = new Label("📖 Légende (Substrats, Castes, Phéromones)");
+                Label lblLegendSec = new Label("📖 Légende & Glossaire");
                 lblLegendSec.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
-                Node legendPanelNode = simWorldViewer.getLegendPanel();
+                Node legendPanelNode = simWorldViewer.createStandaloneLegendPanel();
                 if (legendPanelNode != null) {
                     legendSection.getChildren().addAll(lblLegendSec, legendPanelNode);
                 }

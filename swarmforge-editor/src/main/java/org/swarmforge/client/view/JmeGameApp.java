@@ -62,6 +62,7 @@ public class JmeGameApp extends SimpleApplication {
     private VegetationVisualizer vegetationVisualizer;
     private DirectionalLight sunLight;
     private float antVisualScaleMultiplier = 1.0f;
+    private org.swarmforge.client.ui.WorldEditorPane.RenderMode currentRenderMode = org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC;
 
     public enum CameraFollowMode { FREE, TPS, FPS }
     private CameraFollowMode cameraFollowMode = CameraFollowMode.FREE;
@@ -174,11 +175,25 @@ public class JmeGameApp extends SimpleApplication {
             }
             cam.setLocation(new Vector3f(32, 45, 65));
             cam.lookAt(new Vector3f(32, 10, 32), Vector3f.UNIT_Y);
-            viewPort.setBackgroundColor(new ColorRGBA(0.06f, 0.09f, 0.16f, 1.0f));
+            viewPort.setBackgroundColor(ColorRGBA.Black);
 
             // Attach empty terrain node; terrain will be rendered when simulation or terrarium is loaded
             this.terrainNode = new com.jme3.scene.Node("TerrainNode");
             rootNode.attachChild(terrainNode);
+
+            // Initialize visualizers
+            this.vegetationVisualizer = new VegetationVisualizer(assetManager);
+            this.vegetationVisualizer.setRenderMode(currentRenderMode);
+            rootNode.attachChild(this.vegetationVisualizer.getRootNode());
+
+            this.tunnelVisualizer = new TunnelVisualizer(assetManager);
+            rootNode.attachChild(this.tunnelVisualizer.getRootNode());
+
+            this.antVisualizer = new AntVisualizer(assetManager);
+            initializeInstancing();
+
+            this.weatherVisualizer = new WeatherVisualizer(assetManager, this.sunLight);
+            rootNode.attachChild(this.weatherVisualizer.getRootNode());
 
             // Initialize 3D Target Spotlight Selection Reticle
             initSelectionReticle();
@@ -393,6 +408,15 @@ public class JmeGameApp extends SimpleApplication {
         }
     };
 
+    public void focusOnPosition(float targetX, float targetY, float targetZ) {
+        enqueueTask(() -> {
+            if (cam != null) {
+                cam.setLocation(new Vector3f(targetX, targetZ + 30, targetY + 30));
+                cam.lookAt(new Vector3f(targetX, targetZ, targetY), Vector3f.UNIT_Y);
+            }
+        });
+    };
+
     private float slicePlaneRatio = 1.0f;
     private boolean showSkirt = true;
     private boolean showElevationIsolines = false;
@@ -422,13 +446,18 @@ public class JmeGameApp extends SimpleApplication {
         }
     }
 
+    private org.swarmforge.core.domain.Terrarium lastTerrarium;
+
     public void rebuildTerrainMesh() {
         if (simulation != null && simulation.getTerrarium() != null) {
             renderTerrarium(simulation.getTerrarium());
+        } else if (lastTerrarium != null) {
+            renderTerrarium(lastTerrarium);
         }
     }
 
     public void renderTerrarium(org.swarmforge.core.domain.Terrarium terrarium) {
+        this.lastTerrarium = terrarium;
         enqueueTask(() -> {
             if (terrainNode != null) {
                 terrainNode.removeFromParent();
@@ -439,11 +468,12 @@ public class JmeGameApp extends SimpleApplication {
             int d = terrarium.getDepth();
             int h = terrarium.getHeight();
 
-            // High-fidelity PBR Terrain Lighting & Texturing
+            // High-fidelity PBR Terrain Lighting & Texturing with Multi-Biome Vertex Color
             Material soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             soilMat.setBoolean("UseMaterialColors", true);
+            soilMat.setBoolean("UseVertexColor", true);
             soilMat.setColor("Diffuse", ColorRGBA.White);
-            soilMat.setColor("Ambient", new ColorRGBA(0.40f, 0.40f, 0.40f, 1f));
+            soilMat.setColor("Ambient", isGamifiedVoxelMode ? new ColorRGBA(0.85f, 0.85f, 0.85f, 1f) : new ColorRGBA(0.40f, 0.40f, 0.40f, 1f));
             soilMat.setColor("Specular", new ColorRGBA(0.12f, 0.12f, 0.12f, 1f));
             soilMat.setFloat("Shininess", 8f);
 
@@ -1072,21 +1102,11 @@ public class JmeGameApp extends SimpleApplication {
         this.isGamifiedVoxelMode = (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED);
 
         if (viewPort != null) {
-            if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
-                // Vibrant stylized arcade voxel mode
-                viewPort.setBackgroundColor(new ColorRGBA(0.12f, 0.08f, 0.25f, 1.0f));
-                if (sunLight != null) {
-                    sunLight.setColor(new ColorRGBA(1.2f, 0.9f, 1.3f, 1.0f));
-                }
-            } else if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.SCIENTIFIC) {
-                viewPort.setBackgroundColor(new ColorRGBA(0.02f, 0.04f, 0.08f, 1.0f));
-                if (sunLight != null) {
-                    sunLight.setColor(ColorRGBA.White);
-                }
-            } else {
-                // Realistic natural 3D mode
-                viewPort.setBackgroundColor(new ColorRGBA(0.06f, 0.09f, 0.16f, 1.0f));
-                if (sunLight != null) {
+            viewPort.setBackgroundColor(ColorRGBA.Black);
+            if (sunLight != null) {
+                if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
+                    sunLight.setColor(new ColorRGBA(1.3f, 1.25f, 1.2f, 1.0f));
+                } else {
                     sunLight.setColor(ColorRGBA.White);
                 }
             }
@@ -1100,6 +1120,7 @@ public class JmeGameApp extends SimpleApplication {
         if (pheromoneVisualizer != null) {
             pheromoneVisualizer.setRenderMode(mode);
         }
+        rebuildTerrainMesh();
     }
 
     private boolean terrainVisible = true;

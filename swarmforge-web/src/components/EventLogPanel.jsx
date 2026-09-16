@@ -1,226 +1,396 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useSimulationStore } from '../store/simulationStore';
-import { Terminal, Download, Trash2, Search } from 'lucide-react';
+import React, { useState, useMemo } from 'react'
+import {
+    List,
+    Filter,
+    Search,
+    Trash2,
+    Download,
+    CheckSquare,
+    Square,
+    AlertCircle,
+    Info,
+    AlertTriangle,
+    XCircle,
+    FileText,
+    ChevronUp,
+    ChevronDown,
+    RotateCcw,
+    X
+} from 'lucide-react'
+import { useSimulationStore } from '../store/simulationStore'
+import { getTranslation } from '../i18n/translations'
+import { showToast } from '../store/toastStore'
 
 export default function EventLogPanel() {
-    const { eventLogs, clearEventLogs, running, tick, play, pause } = useSimulationStore();
-    const [levelFilter, setLevelFilter] = useState('ALL'); // 'ALL' | 'INFO' | 'DEBUG' | 'VERBOSE'
-    const [searchTerm, setSearchTerm] = useState('');
-    const [collapsed, setCollapsed] = useState(false);
-    const logEndRef = useRef(null);
+    const {
+        eventsLog,
+        clearEventLogs,
+        theme,
+        language
+    } = useSimulationStore()
 
-    // Auto-scroll to bottom of log when new events arrive
-    useEffect(() => {
-        if (!collapsed && logEndRef.current) {
-            logEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [eventLogs.length, collapsed]);
+    const isDark = theme === 'dark'
+    const t = (key, fallback) => getTranslation(language, key, fallback)
 
-    const filteredLogs = eventLogs.filter(log => {
-        const matchesLevel = levelFilter === 'ALL' || log.level === levelFilter;
-        const matchesSearch = !searchTerm || 
-            log.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            String(log.tick).includes(searchTerm);
-        return matchesLevel && matchesSearch;
-    });
+    const [typeFilter, setTypeFilter] = useState('ALL')
+    const [severityFilter, setSeverityFilter] = useState('ALL')
+    const [searchTerm, setSearchTerm] = useState('')
+    const [autoScroll, setAutoScroll] = useState(true)
+    const [sortField, setSortField] = useState('tick')
+    const [sortDirection, setSortDirection] = useState('desc') // 'asc' | 'desc'
+    const [selectedEvent, setSelectedEvent] = useState(null)
 
-    const handleExportLog = (format = 'json') => {
-        let content, filename, mime;
-        if (format === 'json') {
-            content = JSON.stringify(eventLogs, null, 2);
-            filename = `simulation_events_tick_${tick}_${new Date().toISOString().slice(0, 10)}.json`;
-            mime = 'application/json';
+    const handleSort = (field) => {
+        if (sortField === field) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
         } else {
-            content = eventLogs.map(l => `[${l.simTimeFormatted || 'J+0 00:00:00'}] [Tick #${l.tick}] [${l.level}] [${l.category}] ${l.message}`).join('\n');
-            filename = `simulation_events_tick_${tick}_${new Date().toISOString().slice(0, 10)}.txt`;
-            mime = 'text/plain';
+            setSortField(field)
+            setSortDirection('asc')
         }
-        const blob = new Blob([content], { type: mime });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-    };
+    }
 
-    const getLevelBadge = (level) => {
-        switch (level) {
-            case 'INFO':
-                return <span style={{ color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '1px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700 }}>INFO</span>;
-            case 'DEBUG':
-                return <span style={{ color: '#fbbf24', background: 'rgba(251, 191, 36, 0.15)', padding: '1px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700 }}>DEBUG</span>;
-            case 'VERBOSE':
-                return <span style={{ color: '#a78bfa', background: 'rgba(167, 139, 250, 0.15)', padding: '1px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700 }}>DENSE</span>;
-            case 'WARN':
-                return <span style={{ color: '#f97316', background: 'rgba(249, 115, 22, 0.15)', padding: '1px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700 }}>WARN</span>;
+    const filteredEvents = useMemo(() => {
+        let list = eventsLog.filter(evt => {
+            if (typeFilter !== 'ALL' && evt.type !== typeFilter) return false
+            if (severityFilter !== 'ALL' && evt.severity !== severityFilter) return false
+            if (searchTerm.trim()) {
+                const term = searchTerm.toLowerCase()
+                const matchMsg = (evt.message || '').toLowerCase().includes(term)
+                const matchSrc = (evt.source || '').toLowerCase().includes(term)
+                const matchType = (evt.type || '').toLowerCase().includes(term)
+                if (!matchMsg && !matchSrc && !matchType) return false
+            }
+            return true
+        })
+
+        list.sort((a, b) => {
+            let valA = a[sortField]
+            let valB = b[sortField]
+            if (typeof valA === 'string') {
+                return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA)
+            }
+            return sortDirection === 'asc' ? valA - valB : valB - valA
+        })
+
+        return list
+    }, [eventsLog, typeFilter, severityFilter, searchTerm, sortField, sortDirection])
+
+    const exportLogs = () => {
+        if (filteredEvents.length === 0) {
+            showToast('Aucun événement à exporter', 'warning')
+            return
+        }
+
+        let content = 'Timestamp;Tick;Severite;Type;Source;Message\n'
+        filteredEvents.forEach(e => {
+            content += `${e.simCalendarTime};${e.tick};${e.severity};${e.type};${e.source};"${e.message.replace(/"/g, '""')}"\n`
+        })
+
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `swarmforge_eventlog_${Date.now()}.csv`
+        a.click()
+        showToast('📋 Journal d\'événements exporté avec succès !', 'success')
+    }
+
+    const cardBg = isDark ? '#1e293b' : '#ffffff'
+    const borderCol = isDark ? '#334155' : '#e2e8f0'
+    const inputBg = isDark ? '#0f172a' : '#f8fafc'
+    const textMain = isDark ? '#f1f5f9' : '#0f172a'
+    const textMuted = isDark ? '#94a3b8' : '#64748b'
+
+    const getSeverityBadge = (sev) => {
+        switch (sev) {
+            case 'CRITICAL':
+                return <span style={{ background: 'rgba(239, 68, 68, 0.25)', color: '#ef4444', padding: '2px 6px', borderRadius: 4, fontWeight: 800, fontSize: 10 }}>CRITIQUE</span>
             case 'ERROR':
-                return <span style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.15)', padding: '1px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700 }}>ERROR</span>;
+                return <span style={{ background: 'rgba(244, 63, 94, 0.25)', color: '#f43f5e', padding: '2px 6px', borderRadius: 4, fontWeight: 800, fontSize: 10 }}>ERREUR</span>
+            case 'WARNING':
+                return <span style={{ background: 'rgba(245, 158, 11, 0.25)', color: '#f59e0b', padding: '2px 6px', borderRadius: 4, fontWeight: 800, fontSize: 10 }}>AVERT.</span>
             default:
-                return <span style={{ color: '#94a3b8', background: 'rgba(148, 163, 184, 0.15)', padding: '1px 5px', borderRadius: 4, fontSize: 9 }}>LOG</span>;
+                return <span style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', padding: '2px 6px', borderRadius: 4, fontWeight: 800, fontSize: 10 }}>INFO</span>
         }
-    };
-
-    const styles = {
-        container: {
-            background: 'rgba(15, 23, 42, 0.94)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(56, 189, 248, 0.25)',
-            borderRadius: 12,
-            padding: 12,
-            color: '#f8fafc',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
-            marginBottom: 10,
-        },
-        header: {
-            fontSize: 13,
-            fontWeight: 800,
-            color: '#38bdf8',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: collapsed ? 0 : 8,
-            cursor: 'pointer',
-        },
-        toolbar: {
-            display: 'flex',
-            gap: 6,
-            alignItems: 'center',
-            marginBottom: 8,
-            flexWrap: 'wrap',
-        },
-        searchInput: {
-            flex: 1,
-            background: '#0f172a',
-            border: '1px solid #334155',
-            color: '#38bdf8',
-            padding: '4px 8px',
-            borderRadius: 6,
-            fontSize: 11,
-            outline: 'none',
-        },
-        filterBtn: (active) => ({
-            padding: '3px 7px',
-            fontSize: 10,
-            fontWeight: 700,
-            border: active ? '1px solid #38bdf8' : '1px solid #334155',
-            borderRadius: 4,
-            background: active ? '#1e293b' : 'transparent',
-            color: active ? '#38bdf8' : '#94a3b8',
-            cursor: 'pointer',
-        }),
-        logList: {
-            maxHeight: 220,
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            background: '#090d16',
-            border: '1px solid #1e293b',
-            borderRadius: 6,
-            padding: 8,
-            fontFamily: 'Consolas, Monaco, monospace',
-            fontSize: 11,
-        },
-        logItem: {
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 6,
-            lineHeight: 1.35,
-            borderBottom: '1px dotted rgba(255,255,255,0.05)',
-            paddingBottom: 3,
-        },
-        actionBtn: {
-            padding: '3px 6px',
-            fontSize: 10,
-            background: '#1e293b',
-            border: '1px solid #334155',
-            color: '#cbd5e1',
-            borderRadius: 4,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-        }
-    };
+    }
 
     return (
-        <div style={styles.container}>
-            <div style={styles.header} onClick={() => setCollapsed(!collapsed)}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Terminal size={15} className="text-sky-400" />
-                    <span>📜 Journal d'Événements (Live Log)</span>
-                    <span style={{ fontSize: 10, background: '#0284c7', color: '#fff', padding: '1px 6px', borderRadius: 4 }}>
-                        {filteredLogs.length} / {eventLogs.length} évts
-                    </span>
+        <div style={{
+            maxWidth: 1150,
+            margin: '0 auto',
+            padding: '20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            height: 'calc(100% - 40px)',
+            boxSizing: 'border-box'
+        }}>
+            {/* Header & Filter Toolbar */}
+            <div style={{
+                background: cardBg,
+                border: `1px solid ${borderCol}`,
+                borderRadius: 10,
+                padding: '14px 18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                    <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <List size={18} /> Journal d'Événements de la Simulation
+                    </h2>
+
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <button
+                            onClick={() => setAutoScroll(!autoScroll)}
+                            style={{
+                                background: 'transparent',
+                                border: `1px solid ${borderCol}`,
+                                color: textMain,
+                                padding: '5px 10px',
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6
+                            }}
+                        >
+                            {autoScroll ? <CheckSquare size={13} color="#10b981" /> : <Square size={13} />} Défilement Auto
+                        </button>
+
+                        <button
+                            onClick={exportLogs}
+                            style={{
+                                background: isDark ? '#047857' : '#10b981',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '5px 12px',
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6
+                            }}
+                        >
+                            <Download size={13} /> Exporter Logs
+                        </button>
+
+                        <button
+                            onClick={clearEventLogs}
+                            style={{
+                                background: 'transparent',
+                                border: `1px solid ${borderCol}`,
+                                color: '#ef4444',
+                                padding: '5px 10px',
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6
+                            }}
+                        >
+                            <Trash2 size={13} /> Effacer
+                        </button>
+                    </div>
                 </div>
-                <span style={{ fontSize: 10, color: '#94a3b8' }}>{collapsed ? '▶ Déplier' : '▼ Réduire'}</span>
+
+                {/* Filters Row */}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: textMuted }}>Type :</span>
+                        <select
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                            style={{ background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '4px 8px', fontSize: 11 }}
+                        >
+                            <option value="ALL">TOUS LES TYPES</option>
+                            <option value="SYSTEM">SYSTÈME</option>
+                            <option value="ENTITY">ENTITÉ</option>
+                            <option value="COLONY">COLONIE</option>
+                            <option value="ENVIRONMENT">ENVIRONNEMENT</option>
+                            <option value="DISASTER">DÉSASTRE</option>
+                            <option value="COMBAT">COMBAT</option>
+                            <option value="PHEROMONE">PHÉROMONE</option>
+                            <option value="GENETICS">GÉNÉTIQUE</option>
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: textMuted }}>Sévérité :</span>
+                        <select
+                            value={severityFilter}
+                            onChange={(e) => setSeverityFilter(e.target.value)}
+                            style={{ background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '4px 8px', fontSize: 11 }}
+                        >
+                            <option value="ALL">TOUTES LES SÉVÉRITÉS</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARNING">AVERTISSEMENT</option>
+                            <option value="ERROR">ERREUR</option>
+                            <option value="CRITICAL">CRITIQUE</option>
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 200 }}>
+                        <Search size={14} color={textMuted} />
+                        <input
+                            type="text"
+                            placeholder="Rechercher dans les messages, sources..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            style={{ width: '100%', background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '5px 8px', fontSize: 11 }}
+                        />
+                    </div>
+                </div>
             </div>
 
-            {!collapsed && (
-                <>
-                    {/* Toolbar with Filter & Export */}
-                    <div style={styles.toolbar}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
-                            <Search size={12} className="text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Rechercher événements (tick, ouvrière, météo)..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                style={styles.searchInput}
-                            />
-                        </div>
+            {/* Events Table Container */}
+            <div style={{
+                flex: 1,
+                background: cardBg,
+                border: `1px solid ${borderCol}`,
+                borderRadius: 10,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
+                        <thead style={{ position: 'sticky', top: 0, background: isDark ? '#0f172a' : '#f1f5f9', zIndex: 10 }}>
+                            <tr style={{ borderBottom: `2px solid ${borderCol}`, color: textMuted }}>
+                                <th style={{ padding: '8px 12px', width: 145, cursor: 'pointer' }} onClick={() => handleSort('simCalendarTime')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <span>Date Calendrier</span>
+                                        {sortField === 'simCalendarTime' && (sortDirection === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                                    </div>
+                                </th>
+                                <th style={{ padding: '8px 10px', width: 75, cursor: 'pointer' }} onClick={() => handleSort('tick')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <span>Tick</span>
+                                        {sortField === 'tick' && (sortDirection === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                                    </div>
+                                </th>
+                                <th style={{ padding: '8px 10px', width: 90, cursor: 'pointer' }} onClick={() => handleSort('severity')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <span>Sévérité</span>
+                                        {sortField === 'severity' && (sortDirection === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                                    </div>
+                                </th>
+                                <th style={{ padding: '8px 10px', width: 110, cursor: 'pointer' }} onClick={() => handleSort('type')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <span>Type</span>
+                                        {sortField === 'type' && (sortDirection === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                                    </div>
+                                </th>
+                                <th style={{ padding: '8px 12px', width: 140, cursor: 'pointer' }} onClick={() => handleSort('source')}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <span>Source</span>
+                                        {sortField === 'source' && (sortDirection === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                                    </div>
+                                </th>
+                                <th style={{ padding: '8px 12px' }}>Message & Données</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredEvents.length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} style={{ padding: 32, textAlign: 'center', color: textMuted }}>
+                                        Aucun événement correspondant aux critères de recherche.
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredEvents.map(evt => (
+                                    <tr
+                                        key={evt.id}
+                                        onClick={() => setSelectedEvent(evt)}
+                                        style={{
+                                            borderBottom: `1px solid ${borderCol}`,
+                                            cursor: 'pointer',
+                                            background: selectedEvent?.id === evt.id ? (isDark ? 'rgba(56, 189, 248, 0.1)' : 'rgba(2, 132, 199, 0.08)') : 'transparent'
+                                        }}
+                                    >
+                                        <td style={{ padding: '7px 12px', fontFamily: 'monospace', fontSize: 11 }}>
+                                            {evt.simCalendarTime}
+                                        </td>
+                                        <td style={{ padding: '7px 10px', fontWeight: 700, color: '#38bdf8', fontSize: 11 }}>
+                                            {evt.tick}
+                                        </td>
+                                        <td style={{ padding: '7px 10px' }}>
+                                            {getSeverityBadge(evt.severity)}
+                                        </td>
+                                        <td style={{ padding: '7px 10px', fontSize: 11, fontWeight: 600, color: textMuted }}>
+                                            {evt.type}
+                                        </td>
+                                        <td style={{ padding: '7px 12px', fontSize: 11, fontWeight: 700 }}>
+                                            {evt.source}
+                                        </td>
+                                        <td style={{ padding: '7px 12px', color: textMain }}>
+                                            {evt.message}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-                        <div style={{ display: 'flex', gap: 3 }}>
-                            {['ALL', 'INFO', 'DEBUG', 'VERBOSE'].map(lvl => (
-                                <button
-                                    key={lvl}
-                                    style={styles.filterBtn(levelFilter === lvl)}
-                                    onClick={() => setLevelFilter(lvl)}
-                                >
-                                    {lvl === 'VERBOSE' ? 'DENSE' : lvl}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 4 }}>
-                            <button style={styles.actionBtn} onClick={() => handleExportLog('json')} title="Exporter le log en JSON">
-                                <Download size={11} /> JSON
+                {/* Event Detail Drawer if row selected */}
+                {selectedEvent && (
+                    <div style={{
+                        padding: '12px 16px',
+                        borderTop: `2px solid #38bdf8`,
+                        background: inputBg,
+                        fontSize: 11,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 800, color: '#38bdf8' }}>
+                                🔍 Détail de l'Événement (Tick {selectedEvent.tick} - {selectedEvent.simCalendarTime})
+                            </span>
+                            <button
+                                onClick={() => setSelectedEvent(null)}
+                                style={{ background: 'transparent', border: 'none', color: textMuted, cursor: 'pointer', padding: 2 }}
+                            >
+                                <X size={14} />
                             </button>
-                            <button style={styles.actionBtn} onClick={clearEventLogs} title="Effacer le journal">
-                                <Trash2 size={11} />
-                            </button>
                         </div>
-                    </div>
-
-                    {/* Live Log Area */}
-                    <div style={styles.logList}>
-                        {filteredLogs.length === 0 ? (
-                            <div style={{ color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: 12, fontSize: 11 }}>
-                                Aucun événement journalisé. Cliquez sur "▶ LANCER SIMULATION" pour démarrer l'émission des événements bas niveau !
+                        <div style={{ color: textMain }}>
+                            <strong>Message :</strong> {selectedEvent.message}
+                        </div>
+                        {selectedEvent.metadata && Object.keys(selectedEvent.metadata).length > 0 && (
+                            <div style={{ color: textMuted, fontFamily: 'monospace', fontSize: 10 }}>
+                                <strong>Métadonnées :</strong> {JSON.stringify(selectedEvent.metadata)}
                             </div>
-                        ) : (
-                            filteredLogs.map(log => (
-                                <div key={log.id} style={styles.logItem}>
-                                    <span style={{ color: '#f59e0b', fontSize: 10, fontWeight: 700, minWidth: 46 }}>
-                                        #{log.tick}
-                                    </span>
-                                    {getLevelBadge(log.level)}
-                                    <span style={{ color: '#38bdf8', fontSize: 9, minWidth: 70 }}>
-                                        {log.simTimeFormatted || 'J+0 00:00:00'}
-                                    </span>
-                                    <span style={{ color: log.level === 'WARN' ? '#fbbf24' : log.level === 'ERROR' ? '#f87171' : '#e2e8f0', flex: 1 }}>
-                                        {log.message}
-                                    </span>
-                                </div>
-                            ))
                         )}
-                        <div ref={logEndRef} />
                     </div>
-                </>
-            )}
+                )}
+
+                {/* Bottom Status Bar */}
+                <div style={{
+                    padding: '8px 16px',
+                    borderTop: `1px solid ${borderCol}`,
+                    background: inputBg,
+                    fontSize: 11,
+                    color: textMuted,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <span>
+                        Événements affichés : <strong>{filteredEvents.length}</strong> / {eventsLog.length} total
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <FileText size={12} /> Stockage journal : mémoire locale (1000 événements max)
+                    </span>
+                </div>
+            </div>
         </div>
-    );
+    )
 }

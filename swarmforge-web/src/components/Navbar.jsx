@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from 'react'
-import { Maximize, Minimize, Clock, Sparkles } from 'lucide-react'
+import { Maximize, Minimize, Sliders, Settings, Sun, Moon } from 'lucide-react'
 import { useSimulationStore } from '../store/simulationStore'
-import { showToast } from '../store/toastStore'
+import { getTranslation } from '../i18n/translations'
 
-export default function Navbar({ activeMode, setActiveMode }) {
+export default function Navbar() {
     const {
-        lookAndFeel,
-        setLookAndFeel,
-        timeSyncMode,
-        setTimeSyncMode,
-        realWorldTimeStr,
-        realWorldDateStr,
-        showScientificSensoryVectors,
-        toggleScientificSensoryVectors,
-        showScientificIsolinesTopo,
-        toggleScientificIsolinesTopo,
-        showScientificIsolinesPheromones,
-        toggleScientificIsolinesPheromones,
-        showScientificIsolinesMicroclimate,
-        toggleScientificIsolinesMicroclimate
+        activeMainTab,
+        setActiveMainTab,
+        connected,
+        serverStatusText,
+        simTimeFormatted,
+        speed,
+        measuredTps,
+        ants,
+        theme,
+        setTheme,
+        language
     } = useSimulationStore()
+
     const [isFullscreen, setIsFullscreen] = useState(false)
+    const isDark = theme === 'dark'
+
+    const t = (key, fallback) => getTranslation(language, key, fallback)
 
     useEffect(() => {
         const handleFullscreenChange = () => {
@@ -32,252 +33,192 @@ export default function Navbar({ activeMode, setActiveMode }) {
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().then(() => {
-                setIsFullscreen(true)
-                showToast('⛶ Mode Plein Écran activé', 'info')
-            }).catch(err => {
-                showToast('Plein écran non supporté par le navigateur: ' + err.message, 'error')
-            })
+            document.documentElement.requestFullscreen().catch(() => {})
         } else {
             if (document.exitFullscreen) {
-                document.exitFullscreen().then(() => {
-                    setIsFullscreen(false)
-                    showToast('Sortie du mode Plein Écran', 'info')
-                })
+                document.exitFullscreen().catch(() => {})
             }
         }
     }
 
-    const styles = {
-        nav: {
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 50,
-            background: 'var(--bg-panel, rgba(15, 23, 42, 0.85))',
-            backdropFilter: 'blur(16px)',
-            borderBottom: '1px solid var(--bg-panel-border, rgba(255, 255, 255, 0.1))',
+    const popCount = ants?.length || 0
+
+    return (
+        <header style={{
+            height: 52,
+            background: isDark ? '#0f172a' : '#ffffff',
+            borderBottom: isDark ? '1px solid #1e293b' : '1px solid #e2e8f0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 20px',
+            padding: '0 16px',
             zIndex: 1000,
-            fontFamily: 'var(--font-family, system-ui, sans-serif)',
-        },
-        brand: {
-            fontSize: 16,
-            fontWeight: 800,
-            letterSpacing: '0.5px',
-            background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-        },
-        modeGroup: {
-            display: 'flex',
-            gap: 6,
-            background: 'rgba(0, 0, 0, 0.4)',
-            padding: 4,
-            borderRadius: 8,
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-        },
-        modeBtn: (active, activeColor) => ({
-            padding: '6px 14px',
-            fontSize: 12,
-            fontWeight: 700,
-            border: 'none',
-            borderRadius: 6,
-            cursor: 'pointer',
-            background: active ? activeColor : 'transparent',
-            color: active ? '#ffffff' : '#94a3b8',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            boxShadow: active ? '0 2px 8px rgba(0,0,0,0.3)' : 'none',
-        }),
-        actionBtn: {
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '5px 12px',
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            borderRadius: 6,
-            color: '#fff',
-            fontSize: 11,
-            fontWeight: 600,
-            cursor: 'pointer',
-        }
-    }
-
-    return (
-        <div style={styles.nav}>
-            <div style={styles.brand}>
-                <span>🐜 Studio SwarmForge</span>
-            </div>
-
-            <div style={styles.modeGroup}>
-                <button
-                    style={styles.modeBtn(activeMode === 'WORLD_EDITOR', '#0284c7')}
-                    onClick={() => setActiveMode('WORLD_EDITOR')}
-                >
-                    🌍 Éditeur de Monde
-                </button>
-                <button
-                    style={styles.modeBtn(activeMode === 'CLIMATE_STUDIO', '#d97706')}
-                    onClick={() => setActiveMode('CLIMATE_STUDIO')}
-                >
-                    ⛅ Studio Climat
-                </button>
-                <button
-                    style={styles.modeBtn(activeMode === 'SIMULATION', '#16a34a')}
-                    onClick={() => setActiveMode('SIMULATION')}
-                >
-                    🚀 Vue Simulation Live
-                </button>
-            </div>
-
-            {/* Look & Feel Switcher, Real World Clock Sync & Fullscreen (Only in 3D Simulation Mode) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {/* Look and Feel 3D Rendering Mode Selector */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.4)', padding: 3, borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <span style={{ fontSize: 11, color: '#94a3b8', padding: '0 6px', fontWeight: 600 }}>Rendu 3D:</span>
-                    <button
-                        onClick={() => setLookAndFeel('REALISTIC')}
-                        title="Style Réaliste: Brins d'herbe 3D, arbres feuillus, textures sols biologiques"
-                        style={styles.modeBtn(lookAndFeel === 'REALISTIC', '#84cc16')}
-                    >
-                        🌿 Réaliste
-                    </button>
-                    <button
-                        onClick={() => setLookAndFeel('SCIENTIFIC')}
-                        title="Style Scientifique: Rendu voxels & géométries abstraites épurées pour l'analyse de données"
-                        style={styles.modeBtn(lookAndFeel === 'SCIENTIFIC', '#2563eb')}
-                    >
-                        🔬 Scientifique
-                    </button>
-                    <button
-                        onClick={() => setLookAndFeel('GAMING')}
-                        title="Style Gaming: Esthétique blocs Voxels style Minecraft"
-                        style={styles.modeBtn(lookAndFeel === 'GAMING', '#0284c7')}
-                    >
-                        🎮 Gaming (Minecraft)
-                    </button>
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            flexShrink: 0
+        }}>
+            {/* Left: Brand + Main Tab Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 20 }}>🐜</span>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{
+                            fontSize: 15,
+                            fontWeight: 800,
+                            letterSpacing: '0.3px',
+                            background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent'
+                        }}>
+                            SwarmForge
+                        </span>
+                        <span style={{ fontSize: 9, color: isDark ? '#64748b' : '#94a3b8', fontWeight: 600, marginTop: -2 }}>
+                            Visualiseur de Simulation
+                        </span>
+                    </div>
                 </div>
 
-                {/* Scientific Mode: Vectors, FOV & Isolines toggles */}
-                {lookAndFeel === 'SCIENTIFIC' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        {/* Vectors & FOV */}
-                        <button
-                            onClick={toggleScientificSensoryVectors}
-                            title="Activer / Désactiver les vecteurs cinématiques de vitesse et les cônes de détection sensorielle (FOV) des fourmis"
-                            style={{
-                                ...styles.actionBtn,
-                                borderColor: showScientificSensoryVectors ? '#38bdf8' : 'rgba(255,255,255,0.15)',
-                                background: showScientificSensoryVectors ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255,255,255,0.05)',
-                                color: showScientificSensoryVectors ? '#38bdf8' : '#94a3b8',
-                                fontSize: 11,
-                                fontWeight: 600,
-                                padding: '4px 8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4
-                            }}
-                        >
-                            <span>{showScientificSensoryVectors ? '🎯 Vecteurs: ON' : '🎯 Vecteurs: OFF'}</span>
-                        </button>
+                {/* Main Tabs (1:1 JavaFX top tabs) */}
+                <div style={{
+                    display: 'flex',
+                    background: isDark ? '#1e293b' : '#f1f5f9',
+                    padding: 3,
+                    borderRadius: 8,
+                    gap: 4
+                }}>
+                    <button
+                        onClick={() => setActiveMainTab('SIMULATION')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 14px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            borderRadius: 6,
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: activeMainTab === 'SIMULATION' ? (isDark ? '#0284c7' : '#0284c7') : 'transparent',
+                            color: activeMainTab === 'SIMULATION' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b'),
+                            transition: 'all 0.15s ease'
+                        }}
+                    >
+                        <Sliders size={14} />
+                        {t('tabSimulationManager', 'Gestionnaire de Simulation')}
+                    </button>
 
-                        {/* Isolignes Topo */}
-                        <button
-                            onClick={toggleScientificIsolinesTopo}
-                            title="Activer / Désactiver les courbes de niveau topographiques (Relief & Altitude IGN)"
-                            style={{
-                                ...styles.actionBtn,
-                                borderColor: showScientificIsolinesTopo ? '#fbbf24' : 'rgba(255,255,255,0.15)',
-                                background: showScientificIsolinesTopo ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255,255,255,0.05)',
-                                color: showScientificIsolinesTopo ? '#fbbf24' : '#94a3b8',
-                                fontSize: 11,
-                                fontWeight: 600,
-                                padding: '4px 8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4
-                            }}
-                        >
-                            <span>{showScientificIsolinesTopo ? '🏔️ Topo: ON' : '🏔️ Topo: OFF'}</span>
-                        </button>
+                    <button
+                        onClick={() => setActiveMainTab('SETTINGS')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 14px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            borderRadius: 6,
+                            border: 'none',
+                            cursor: 'pointer',
+                            background: activeMainTab === 'SETTINGS' ? (isDark ? '#0284c7' : '#0284c7') : 'transparent',
+                            color: activeMainTab === 'SETTINGS' ? '#ffffff' : (isDark ? '#94a3b8' : '#64748b'),
+                            transition: 'all 0.15s ease'
+                        }}
+                    >
+                        <Settings size={14} />
+                        {t('tabSettings', 'Paramètres')}
+                    </button>
+                </div>
+            </div>
 
-                        {/* Isolignes Phéromones */}
-                        <button
-                            onClick={toggleScientificIsolinesPheromones}
-                            title="Activer / Désactiver les isolignes de gradient chimique et équipotentielles de phéromones"
-                            style={{
-                                ...styles.actionBtn,
-                                borderColor: showScientificIsolinesPheromones ? '#c084fc' : 'rgba(255,255,255,0.15)',
-                                background: showScientificIsolinesPheromones ? 'rgba(192, 132, 252, 0.2)' : 'rgba(255,255,255,0.05)',
-                                color: showScientificIsolinesPheromones ? '#c084fc' : '#94a3b8',
-                                fontSize: 11,
-                                fontWeight: 600,
-                                padding: '4px 8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4
-                            }}
-                        >
-                            <span>{showScientificIsolinesPheromones ? '🧪 Phéro: ON' : '🧪 Phéro: OFF'}</span>
-                        </button>
+            {/* Right: Telemetry Banner & Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {/* Telemetry Status Banner (1:1 JavaFX Header) */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    background: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(241, 245, 249, 0.9)',
+                    border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1px solid rgba(56, 189, 248, 0.4)',
+                    padding: '4px 12px',
+                    borderRadius: 6,
+                    fontSize: 11
+                }}>
+                    <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        color: connected ? '#10b981' : '#38bdf8',
+                        fontWeight: 700
+                    }}>
+                        <span style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: '50%',
+                            background: connected ? '#10b981' : '#38bdf8'
+                        }} />
+                        {connected ? t('statusConnected', 'Connecté') : t('statusStandalone', 'Mode Autonome')}
+                    </span>
 
-                        {/* Isolignes Micro-Climat */}
-                        <button
-                            onClick={toggleScientificIsolinesMicroclimate}
-                            title="Activer / Désactiver les isothermes de surface du micro-climat (ombrage des arbres, refroidissement du cours d'eau)"
-                            style={{
-                                ...styles.actionBtn,
-                                borderColor: showScientificIsolinesMicroclimate ? '#34d399' : 'rgba(255,255,255,0.15)',
-                                background: showScientificIsolinesMicroclimate ? 'rgba(52, 211, 153, 0.2)' : 'rgba(255,255,255,0.05)',
-                                color: showScientificIsolinesMicroclimate ? '#34d399' : '#94a3b8',
-                                fontSize: 11,
-                                fontWeight: 600,
-                                padding: '4px 8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4
-                            }}
-                        >
-                            <span>{showScientificIsolinesMicroclimate ? '🌡️ Climat: ON' : '🌡️ Climat: OFF'}</span>
-                        </button>
-                    </div>
-                )}
+                    <span style={{ color: '#64748b' }}>|</span>
 
-                {/* Real-World Clock Sync Display */}
+                    <span style={{ color: isDark ? '#38bdf8' : '#0284c7', fontWeight: 700, fontFamily: 'monospace' }}>
+                        ⏱️ {simTimeFormatted}
+                    </span>
+
+                    <span style={{ color: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }}>
+                        ({speed}x)
+                    </span>
+
+                    <span style={{ color: '#64748b' }}>|</span>
+
+                    <span style={{ color: '#f59e0b', fontWeight: 700 }} title="Ticks Par Seconde réels">
+                        ⚡ {measuredTps || 20} TPS
+                    </span>
+
+                    <span style={{ color: '#64748b' }}>|</span>
+
+                    <span style={{ color: '#a855f7', fontWeight: 700 }}>
+                        🐜 Pop: {popCount}
+                    </span>
+                </div>
+
+                {/* Theme Switcher */}
                 <button
-                    onClick={() => setTimeSyncMode(timeSyncMode === 'REAL_WORLD' ? 'SIMULATED' : 'REAL_WORLD')}
-                    title={timeSyncMode === 'REAL_WORLD' ? 'Synchronisé sur le Monde Réel. Cliquer pour passer en temps simulé' : 'Temps Simulé. Cliquer pour synchroniser sur le Monde Réel'}
+                    onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                    title={isDark ? 'Passer au mode clair' : 'Passer au mode sombre'}
                     style={{
-                        ...styles.actionBtn,
-                        borderColor: timeSyncMode === 'REAL_WORLD' ? '#10b981' : 'rgba(255,255,255,0.15)',
-                        background: timeSyncMode === 'REAL_WORLD' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)',
-                        color: timeSyncMode === 'REAL_WORLD' ? '#34d399' : '#94a3b8'
+                        background: 'transparent',
+                        border: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
+                        borderRadius: 6,
+                        padding: '6px 8px',
+                        cursor: 'pointer',
+                        color: isDark ? '#cbd5e1' : '#475569',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                     }}
                 >
-                    <Clock size={13} />
-                    <span>{timeSyncMode === 'REAL_WORLD' ? `🕒 ${realWorldTimeStr}` : '⏱️ Temps Simulé'}</span>
+                    {isDark ? <Sun size={15} color="#f59e0b" /> : <Moon size={15} color="#6366f1" />}
                 </button>
 
-                {/* Fullscreen Toggle Button - Only visible in SIMULATION Mode */}
-                {activeMode === 'SIMULATION' && (
-                    <button
-                        onClick={toggleFullscreen}
-                        title="Basculer la vue Simulation 3D en Mode Plein Écran"
-                        style={styles.actionBtn}
-                    >
-                        {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-                        <span>{isFullscreen ? 'Quitter' : 'Plein Écran'}</span>
-                    </button>
-                )}
+                {/* Fullscreen Button */}
+                <button
+                    onClick={toggleFullscreen}
+                    title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+                    style={{
+                        background: 'transparent',
+                        border: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
+                        borderRadius: 6,
+                        padding: '6px 8px',
+                        cursor: 'pointer',
+                        color: isDark ? '#cbd5e1' : '#475569',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
+                >
+                    {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
+                </button>
             </div>
-        </div>
+        </header>
     )
 }

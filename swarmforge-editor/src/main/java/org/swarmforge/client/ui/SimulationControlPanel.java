@@ -92,6 +92,11 @@ public class SimulationControlPanel extends VBox {
     private final ComboBox<String> comboWorld = new ComboBox<>();
     private final ComboBox<String> comboWeather = new ComboBox<>();
     private final ComboBox<String> comboExecutionMode = new ComboBox<>();
+    private final ComboBox<String> comboServerRole = new ComboBox<>();
+    private final TextField txtPlayerAlias = new TextField("Joueur_1");
+    private final ComboBox<String> comboPlayerSpecies = new ComboBox<>();
+    private final Label lblServerAuthorityNotice = new Label("ℹ️ Mode Joueur : Le monde, le biome, l'heure et la météo sont imposés par le serveur distant.");
+    private final Label lblServerSessionStats = new Label("");
     private final VBox serverNetworkBox = new VBox(8);
     private final TextField txtServerHost = new TextField("localhost");
     private final TextField txtServerPort = new TextField("50051");
@@ -749,17 +754,66 @@ public class SimulationControlPanel extends VBox {
         HBox serverInputsRow = new HBox(6, new Label("Hôte :"), txtServerHost, new Label("Port :"), txtServerPort, btnServerConnect, btnServerDiscover);
         serverInputsRow.setAlignment(Pos.CENTER_LEFT);
         lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #f87171;");
-        HBox serverStatusRow = new HBox(6, new Label("Statut gRPC :"), lblServerConnectionStatus);
+        lblServerSessionStats.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
+        HBox serverStatusRow = new HBox(6, new Label("Statut gRPC :"), lblServerConnectionStatus, lblServerSessionStats);
         serverStatusRow.setAlignment(Pos.CENTER_LEFT);
-        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow);
+
+        // Server Role (Join vs Host)
+        comboServerRole.getItems().setAll(
+            "● Rejoindre (Matchmaking / Mégaterrarium - Autorité Serveur)",
+            "● Héberger / Déployer Scénario (Mode Chercheur - Autorité Client)"
+        );
+        comboServerRole.getSelectionModel().selectFirst();
+        comboServerRole.setStyle("-fx-font-size: 11px;");
+        comboServerRole.setMaxWidth(Double.MAX_VALUE);
+
+        HBox serverRoleRow = new HBox(6, new Label("Rôle Serveur :"), comboServerRole);
+        serverRoleRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(comboServerRole, Priority.ALWAYS);
+
+        // Player profile fields for Server Join Mode
+        txtPlayerAlias.setPrefWidth(120);
+        comboPlayerSpecies.getItems().setAll(
+            "Lasius niger (Black Garden Ant)",
+            "Atta cephalotes (Leafcutter Ant)",
+            "Formica rufa (Red Wood Ant)",
+            "Solenopsis invicta (Red Fire Ant)",
+            "Camponotus ligniperda (Carpenter Ant)",
+            "Apis mellifera (Western Honeybee)"
+        );
+        comboPlayerSpecies.getSelectionModel().selectFirst();
+        comboPlayerSpecies.setStyle("-fx-font-size: 11px;");
+
+        HBox playerProfileRow = new HBox(6, new Label("Pseudo :"), txtPlayerAlias, new Label("Espèce :"), comboPlayerSpecies);
+        playerProfileRow.setAlignment(Pos.CENTER_LEFT);
+
+        lblServerAuthorityNotice.setStyle("-fx-background-color: rgba(56, 189, 248, 0.12); -fx-text-fill: #38bdf8; -fx-font-size: 10px; -fx-padding: 4 8; -fx-background-radius: 4;");
+        lblServerAuthorityNotice.setWrapText(true);
+
+        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow, serverRoleRow, playerProfileRow, lblServerAuthorityNotice);
         serverNetworkBox.setVisible(false);
         serverNetworkBox.setManaged(false);
 
-        comboExecutionMode.valueProperty().addListener((obs, oldV, newV) -> {
-            boolean isServer = newV != null && (newV.contains("Serveur") || newV.contains("gRPC") || newV.contains("Cluster"));
+        Runnable updateAuthorityLock = () -> {
+            boolean isServer = comboExecutionMode.getValue() != null && 
+                (comboExecutionMode.getValue().contains("Serveur") || comboExecutionMode.getValue().contains("gRPC") || comboExecutionMode.getValue().contains("Cluster"));
+            boolean isJoin = comboServerRole.getValue() == null || comboServerRole.getValue().contains("Rejoindre");
+
             serverNetworkBox.setVisible(isServer);
             serverNetworkBox.setManaged(isServer);
-        });
+
+            boolean lockLocalWorld = isServer && isJoin;
+            gridWorldWeather.setDisable(lockLocalWorld);
+            gridDateTimeSeed.setDisable(lockLocalWorld);
+            gridLimits.setDisable(lockLocalWorld);
+            lblServerAuthorityNotice.setVisible(lockLocalWorld);
+            lblServerAuthorityNotice.setManaged(lockLocalWorld);
+            playerProfileRow.setVisible(lockLocalWorld);
+            playerProfileRow.setManaged(lockLocalWorld);
+        };
+
+        comboExecutionMode.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
+        comboServerRole.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
 
         scenarioCard.getChildren().addAll(
             metaRow,
@@ -1735,6 +1789,27 @@ public class SimulationControlPanel extends VBox {
                 lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #f87171;");
                 btnServerConnect.setText("🌐 Connecter");
             }
+        });
+    }
+
+    public boolean isServerJoinMode() {
+        String val = comboServerRole.getValue();
+        return val == null || val.contains("Rejoindre");
+    }
+
+    public String getPlayerAlias() {
+        String alias = txtPlayerAlias.getText();
+        return (alias != null && !alias.trim().isEmpty()) ? alias.trim() : "Joueur_1";
+    }
+
+    public String getPlayerSpecies() {
+        String sp = comboPlayerSpecies.getValue();
+        return sp != null ? sp : "Lasius niger";
+    }
+
+    public void setServerSessionStats(String stats) {
+        javafx.application.Platform.runLater(() -> {
+            lblServerSessionStats.setText(stats != null && !stats.isEmpty() ? " | " + stats : "");
         });
     }
 

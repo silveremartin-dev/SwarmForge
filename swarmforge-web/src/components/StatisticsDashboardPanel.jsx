@@ -1,269 +1,438 @@
-import React, { useState, useMemo } from 'react'
-import { useSimulationStore } from '../store/simulationStore'
-import { getTranslation } from '../i18n/translations'
+import React, { useState } from 'react'
 import {
-    BarChart3,
-    TrendingUp,
-    Users,
+    BarChart2,
+    Download,
+    Clock,
+    Search,
+    User,
     Heart,
-    Zap,
-    Utensils,
-    Shield,
-    Activity,
+    Battery,
     Compass,
+    Activity,
+    Users,
+    Package,
+    Sun,
+    ChevronLeft,
+    ChevronRight,
     Crosshair,
-    Maximize2,
-    ZoomIn,
-    ZoomOut,
     Eye
 } from 'lucide-react'
+import { useSimulationStore } from '../store/simulationStore'
+import { getTranslation } from '../i18n/translations'
+import { showToast } from '../store/toastStore'
+
+// SVG Line Chart Component for real-time telemetry
+function DynamicLineChart({ data, series, height = 150, title, unit = '' }) {
+    if (!data || data.length === 0) {
+        return (
+            <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 12 }}>
+                En attente de données télémétriques...
+            </div>
+        )
+    }
+
+    const padding = { top: 14, right: 16, bottom: 20, left: 40 }
+    const width = 460
+    const innerWidth = width - padding.left - padding.right
+    const innerHeight = height - padding.top - padding.bottom
+
+    let maxY = 1
+    series.forEach(s => {
+        data.forEach(d => {
+            const val = s.getValue(d)
+            if (val > maxY) maxY = val
+        })
+    })
+    maxY = Math.ceil(maxY * 1.15) || 10
+
+    const pointsBySeries = series.map(s => {
+        return data.map((d, idx) => {
+            const x = padding.left + (idx / Math.max(1, data.length - 1)) * innerWidth
+            const val = s.getValue(d)
+            const y = padding.top + innerHeight - (val / maxY) * innerHeight
+            return `${x},${y}`
+        }).join(' ')
+    })
+
+    return (
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, fontWeight: 700 }}>
+                <span>{title}</span>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {series.map(s => (
+                        <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: s.color }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color }} />
+                            <span>{s.name}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: height, background: 'rgba(0,0,0,0.15)', borderRadius: 6 }}>
+                <line x1={padding.left} y1={padding.top} x2={width - padding.right} y2={padding.top} stroke="rgba(255,255,255,0.06)" />
+                <line x1={padding.left} y1={padding.top + innerHeight / 2} x2={width - padding.right} y2={padding.top + innerHeight / 2} stroke="rgba(255,255,255,0.06)" />
+                <line x1={padding.left} y1={padding.top + innerHeight} x2={width - padding.right} y2={padding.top + innerHeight} stroke="rgba(255,255,255,0.1)" />
+
+                <text x={padding.left - 4} y={padding.top + 8} fill="#64748b" fontSize="9" textAnchor="end">{maxY}{unit}</text>
+                <text x={padding.left - 4} y={padding.top + innerHeight} fill="#64748b" fontSize="9" textAnchor="end">0{unit}</text>
+
+                {series.map((s, sIdx) => (
+                    <polyline
+                        key={s.name}
+                        fill="none"
+                        stroke={s.color}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={pointsBySeries[sIdx]}
+                    />
+                ))}
+            </svg>
+        </div>
+    )
+}
 
 export default function StatisticsDashboardPanel() {
     const {
-        stats,
-        tick,
+        statsHistory,
+        timeWindow,
+        setTimeWindow,
+        colonies,
         ants,
-        selectedEntity,
-        setSelectedEntity,
-        antTrackingEnabled,
-        setAntTrackingEnabled,
-        language,
-        theme
+        trackedAntId,
+        trackedAntData,
+        setTrackedAntId,
+        setFollowAntCamera,
+        setActiveSubTab,
+        theme,
+        language
     } = useSimulationStore()
 
-    const [zoomWindow, setZoomWindow] = useState(60)
-    const [selectedCasteFilter, setSelectedCasteFilter] = useState('ALL')
-    const [history, setHistory] = useState([])
-
+    const [searchAntId, setSearchAntId] = useState('')
     const isDark = theme === 'dark'
     const t = (key, fallback) => getTranslation(language, key, fallback)
 
-    // Collect historical ticks for charts
-    React.useEffect(() => {
-        if (tick === 0) {
-            setHistory([{
-                tick: 0,
-                total: stats.totalPopulation || 0,
-                workers: stats.totalWorkers || 0,
-                soldiers: stats.totalSoldiers || 0,
-                queens: stats.totalQueens || 1,
-                larvae: stats.totalLarvae || 0,
-                eggs: stats.totalEggs || 0,
-                biomass: stats.colonyBiomass || (stats.totalPopulation || 0) * 0.005,
-                food: stats.foodStored || 150
-            }])
+    const handleSearchAnt = () => {
+        if (!searchAntId.trim()) return
+        const ant = ants.find(a => a.id.toLowerCase().includes(searchAntId.trim().toLowerCase()))
+        if (ant) {
+            setTrackedAntId(ant.id)
+            showToast(`✓ Individu sélectionné : ${ant.id}`, 'info')
+        } else {
+            showToast(`Individu "${searchAntId}" introuvable`, 'error')
+        }
+    }
+
+    const cycleAnt = (direction) => {
+        if (!ants || ants.length === 0) return
+        const currentIndex = ants.findIndex(a => a.id === trackedAntId)
+        let nextIndex = 0
+        if (currentIndex !== -1) {
+            nextIndex = (currentIndex + direction + ants.length) % ants.length
+        }
+        const nextAnt = ants[nextIndex]
+        if (nextAnt) {
+            setTrackedAntId(nextAnt.id)
+            setSearchAntId(nextAnt.id)
+        }
+    }
+
+    const handleTrackIn3D = () => {
+        if (trackedAntId) {
+            setFollowAntCamera(true)
+            setActiveSubTab('VISUAL_3D')
+            showToast('🎥 Caméra 3D asservie sur l\'individu !', 'info')
+        }
+    }
+
+    const exportCSV = () => {
+        if (!statsHistory || statsHistory.length === 0) {
+            showToast('Aucune donnée télémétrique à exporter', 'warning')
             return
         }
 
-        setHistory(prev => {
-            const entry = {
-                tick,
-                total: stats.totalPopulation || ants.length || 0,
-                workers: stats.totalWorkers || 0,
-                soldiers: stats.totalSoldiers || 0,
-                queens: stats.totalQueens || 1,
-                larvae: stats.totalLarvae || 0,
-                eggs: stats.totalEggs || 0,
-                biomass: stats.colonyBiomass || (ants.length || 0) * 0.005,
-                food: stats.foodStored || 150
-            }
-            const updated = [...prev, entry]
-            return updated.length > 500 ? updated.slice(updated.length - 500) : updated
+        let csv = 'Tick;TempsSecondes;PopulationTotale;Reines;Ouvrieres;Soldats;Males;Nourriture;Eau;Proteines;Temperature;Pluie;TPS\n'
+        statsHistory.forEach(s => {
+            csv += `${s.tick};${s.simTimeSeconds.toFixed(1)};${s.totalPopulation};${s.casteBreakdown.queens};${s.casteBreakdown.workers};${s.casteBreakdown.soldiers};${s.casteBreakdown.males};${s.resources.food.toFixed(1)};${s.resources.water.toFixed(1)};${s.resources.protein.toFixed(1)};${s.weather.temp.toFixed(1)};${s.weather.rain.toFixed(1)};${s.performance.tps}\n`
         })
-    }, [tick, stats, ants])
 
-    const displayedHistory = useMemo(() => {
-        if (zoomWindow === -1 || history.length <= zoomWindow) return history
-        return history.slice(history.length - zoomWindow)
-    }, [history, zoomWindow])
-
-    // Scale calculation for SVG chart
-    const maxVal = useMemo(() => {
-        if (displayedHistory.length === 0) return 10
-        let m = 0
-        displayedHistory.forEach(h => {
-            if (h.total > m) m = h.total
-        })
-        return Math.max(m * 1.15, 10)
-    }, [displayedHistory])
-
-    const w = 340
-    const h = 130
-    const p = 10
-    const n = Math.max(displayedHistory.length, 2)
-    const getX = (i) => p + (i / (n - 1)) * (w - 2 * p)
-    const getY = (v) => h - p - ((v || 0) / maxVal) * (h - 2 * p)
-
-    const makePath = (key) => {
-        if (displayedHistory.length < 2) return ''
-        return displayedHistory.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(pt[key])}`).join(' ')
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `swarmforge_statistics_${Date.now()}.csv`
+        a.click()
+        showToast('📊 Export CSV téléchargé avec succès !', 'success')
     }
 
-    const currentAnt = selectedEntity || (ants && ants.length > 0 ? ants[0] : null)
+    const windowPointsCount = timeWindow === '1m' ? 12 : (timeWindow === '3m' ? 36 : (timeWindow === '10m' ? 120 : (timeWindow === '30m' ? 360 : 1000)))
+    const activeData = statsHistory.slice(-windowPointsCount)
+
+    const cardBg = isDark ? '#1e293b' : '#ffffff'
+    const borderCol = isDark ? '#334155' : '#e2e8f0'
+    const inputBg = isDark ? '#0f172a' : '#f8fafc'
+    const textMain = isDark ? '#f1f5f9' : '#0f172a'
+    const textMuted = isDark ? '#94a3b8' : '#64748b'
 
     return (
         <div style={{
-            background: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.94)',
-            backdropFilter: 'blur(16px)',
-            border: isDark ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(56, 189, 248, 0.5)',
-            borderRadius: 12,
-            padding: 14,
-            color: isDark ? '#fff' : '#0f172a',
+            maxWidth: 1150,
+            margin: '0 auto',
+            padding: '20px 24px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
-            maxHeight: 'calc(100vh - 140px)',
-            overflowY: 'auto'
+            gap: 20
         }}>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)', paddingBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, color: isDark ? '#38bdf8' : '#0284c7', fontSize: 13 }}>
-                    <BarChart3 size={16} />
-                    <span>{t('statsTitle', 'Tableau de Bord & Télémétrie')}</span>
+            {/* Header & Window Controls Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <BarChart2 size={20} /> Tableau de Bord & Télémétrie Dynamique
+                    </h2>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: textMuted }}>
+                        Graphiques de population, castes, ressources biochimiques, climat, comportements éthologiques et TPS moteur.
+                    </p>
                 </div>
-                <div style={{ fontSize: 10, color: isDark ? '#94a3b8' : '#64748b', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', padding: '2px 8px', borderRadius: 4 }}>
-                    Tick #{tick}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', background: cardBg, padding: 3, borderRadius: 8, border: `1px solid ${borderCol}` }}>
+                        {['1m', '3m', '10m', '30m', '1h', 'all'].map(w => (
+                            <button
+                                key={w}
+                                onClick={() => setTimeWindow(w)}
+                                style={{
+                                    padding: '4px 10px',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    borderRadius: 5,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: timeWindow === w ? '#0284c7' : 'transparent',
+                                    color: timeWindow === w ? '#fff' : textMuted
+                                }}
+                            >
+                                {w}
+                            </button>
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={exportCSV}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            background: isDark ? '#047857' : '#10b981',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '7px 14px',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Download size={14} /> Exporter CSV
+                    </button>
                 </div>
             </div>
 
-            {/* Demographics Overview Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                <div style={{ background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.25)', borderRadius: 8, padding: '8px 6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: isDark ? '#38bdf8' : '#0284c7', fontWeight: 600 }}>🐜 {t('totalPop', 'Population')}</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: isDark ? '#fff' : '#0f172a' }}>{ants.length || stats.totalPopulation || 0}</div>
+            {/* 6 Grid Dynamic Line Charts */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+                gap: 16
+            }}>
+                {/* 1. Multi-Colony Population */}
+                <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
+                    <DynamicLineChart
+                        title="1. Population Multi-Colonies"
+                        data={activeData}
+                        series={colonies.map(c => ({
+                            name: c.name,
+                            color: c.color || '#38bdf8',
+                            getValue: (d) => d.coloniesPop?.[c.id] || 0
+                        }))}
+                    />
                 </div>
-                <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 8, padding: '8px 6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>🌾 {t('workers', 'Ouvrières')}</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: isDark ? '#fff' : '#0f172a' }}>{stats.totalWorkers || Math.floor((ants.length || 0) * 0.75)}</div>
+
+                {/* 2. Castes Breakdown */}
+                <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
+                    <DynamicLineChart
+                        title="2. Répartition des Castes"
+                        data={activeData}
+                        series={[
+                            { name: 'Ouvrières', color: '#38bdf8', getValue: (d) => d.casteBreakdown.workers },
+                            { name: 'Soldats', color: '#ef4444', getValue: (d) => d.casteBreakdown.soldiers },
+                            { name: 'Reines', color: '#eab308', getValue: (d) => d.casteBreakdown.queens },
+                            { name: 'Mâles', color: '#a855f7', getValue: (d) => d.casteBreakdown.males }
+                        ]}
+                    />
                 </div>
-                <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: 8, padding: '8px 6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 600 }}>⚔️ {t('soldiers', 'Soldats')}</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: isDark ? '#fff' : '#0f172a' }}>{stats.totalSoldiers || Math.floor((ants.length || 0) * 0.20)}</div>
+
+                {/* 3. Bio-Resources & Vital Dynamics */}
+                <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
+                    <DynamicLineChart
+                        title="3. Bio-Ressources (Nourriture & Eau)"
+                        data={activeData}
+                        unit="u"
+                        series={[
+                            { name: 'Nourriture', color: '#f59e0b', getValue: (d) => d.resources.food },
+                            { name: 'Eau', color: '#06b6d4', getValue: (d) => d.resources.water },
+                            { name: 'Protéines', color: '#ec4899', getValue: (d) => d.resources.protein }
+                        ]}
+                    />
                 </div>
-                <div style={{ background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.25)', borderRadius: 8, padding: '8px 6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: '#a855f7', fontWeight: 600 }}>👑 {t('queens', 'Reines')}</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: isDark ? '#fff' : '#0f172a' }}>{stats.totalQueens || 1}</div>
+
+                {/* 4. Climate & Ecosystem */}
+                <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
+                    <DynamicLineChart
+                        title="4. Météo & Écosystème"
+                        data={activeData}
+                        series={[
+                            { name: 'Température (°C)', color: '#f97316', getValue: (d) => d.weather.temp },
+                            { name: 'Précipitations (mm)', color: '#3b82f6', getValue: (d) => d.weather.rain }
+                        ]}
+                    />
                 </div>
-                <div style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.25)', borderRadius: 8, padding: '8px 6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>🍼 {t('brood', 'Couvain')}</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: isDark ? '#fff' : '#0f172a' }}>{(stats.totalEggs || 0) + (stats.totalLarvae || 0)}</div>
+
+                {/* 5. Ethological Behaviors Breakdown */}
+                <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
+                    <DynamicLineChart
+                        title="5. Comportements Éthologiques"
+                        data={activeData}
+                        series={[
+                            { name: 'Récolte', color: '#10b981', getValue: (d) => d.behaviors.foraging },
+                            { name: 'Excavation', color: '#d97706', getValue: (d) => d.behaviors.digging },
+                            { name: 'Soins Couvain', color: '#ec4899', getValue: (d) => d.behaviors.nursing },
+                            { name: 'Garde / Sentinelle', color: '#ef4444', getValue: (d) => d.behaviors.guarding }
+                        ]}
+                    />
                 </div>
-                <div style={{ background: 'rgba(148, 163, 184, 0.1)', border: '1px solid rgba(148, 163, 184, 0.25)', borderRadius: 8, padding: '8px 6px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>🍯 {t('biomass', 'Biomasse')}</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: isDark ? '#fff' : '#0f172a' }}>{((ants.length || 0) * 0.005).toFixed(2)}g</div>
+
+                {/* 6. Simulation Engine TPS Performance */}
+                <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
+                    <DynamicLineChart
+                        title="6. Performance Moteur (TPS)"
+                        data={activeData}
+                        unit=" TPS"
+                        series={[
+                            { name: 'TPS Réel', color: '#10b981', getValue: (d) => d.performance.tps },
+                            { name: 'TPS Cible', color: '#64748b', getValue: (d) => d.performance.targetTps }
+                        ]}
+                    />
                 </div>
             </div>
 
-            {/* Dynamic Multi-Caste Population Chart */}
-            <div style={{ background: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.04)', border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)', borderRadius: 8, padding: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#94a3b8' : '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <TrendingUp size={13} color="#38bdf8" />
-                        <span>{t('popHistory', 'Courbe Démographique')}</span>
+            {/* 7. Individual Ant Telemetry Inspector (1:1 with JavaFX createIndividualAntCard) */}
+            <div style={{
+                background: cardBg,
+                border: `1px solid ${borderCol}`,
+                borderRadius: 10,
+                padding: '16px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#a855f7' }}>
+                        <User size={18} />
+                        <span style={{ fontSize: 14, fontWeight: 800 }}>
+                            7. Inspection & Télémétrie d'un Individu Spécifique
+                        </span>
                     </div>
-                    <div style={{ display: 'flex', gap: 4 }}>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input
+                            type="text"
+                            placeholder="Identifiant de fourmi..."
+                            value={searchAntId}
+                            onChange={(e) => setSearchAntId(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearchAnt()}
+                            style={{ width: 170, background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '5px 8px', fontSize: 12 }}
+                        />
+
                         <button
-                            onClick={() => setZoomWindow(w => w === -1 ? 60 : Math.max(15, Math.floor(w / 1.5)))}
-                            style={{ background: isDark ? '#1e293b' : '#e2e8f0', border: isDark ? '1px solid #334155' : '1px solid #cbd5e1', color: isDark ? '#38bdf8' : '#0369a1', padding: '2px 6px', borderRadius: 4, cursor: 'pointer', fontSize: 10 }}
-                            title="Zoom avant"
+                            onClick={() => cycleAnt(-1)}
+                            title="Fourmi précédente"
+                            style={{ background: isDark ? '#334155' : '#e2e8f0', border: 'none', color: textMain, padding: '5px 8px', borderRadius: 4, cursor: 'pointer' }}
                         >
-                            +
+                            <ChevronLeft size={14} />
                         </button>
+
                         <button
-                            onClick={() => setZoomWindow(w => w === -1 ? -1 : (w * 1.5 > 600 ? -1 : Math.floor(w * 1.5)))}
-                            style={{ background: isDark ? '#1e293b' : '#e2e8f0', border: isDark ? '1px solid #334155' : '1px solid #cbd5e1', color: isDark ? '#38bdf8' : '#0369a1', padding: '2px 6px', borderRadius: 4, cursor: 'pointer', fontSize: 10 }}
-                            title="Zoom arrière"
+                            onClick={() => cycleAnt(1)}
+                            title="Fourmi suivante"
+                            style={{ background: isDark ? '#334155' : '#e2e8f0', border: 'none', color: textMain, padding: '5px 8px', borderRadius: 4, cursor: 'pointer' }}
                         >
-                            -
+                            <ChevronRight size={14} />
                         </button>
+
+                        <button
+                            onClick={handleSearchAnt}
+                            style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                        >
+                            <Search size={13} /> Rechercher
+                        </button>
+
+                        {trackedAntData && (
+                            <button
+                                onClick={handleTrackIn3D}
+                                title="Suivre dans la vue 3D"
+                                style={{ background: '#10b981', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                            >
+                                <Crosshair size={13} /> Suivre en 3D
+                            </button>
+                        )}
                     </div>
                 </div>
 
-                <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
-                    {/* Background grid lines */}
-                    <line x1={p} y1={p} x2={w - p} y2={p} stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} strokeDasharray="3 3" />
-                    <line x1={p} y1={h / 2} x2={w - p} y2={h / 2} stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} strokeDasharray="3 3" />
-                    <line x1={p} y1={h - p} x2={w - p} y2={h - p} stroke={isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'} />
-
-                    {/* Series Paths */}
-                    <path d={makePath('total')} fill="none" stroke="#38bdf8" strokeWidth={2} />
-                    <path d={makePath('workers')} fill="none" stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="2 2" />
-                    <path d={makePath('soldiers')} fill="none" stroke="#ef4444" strokeWidth={1.5} />
-
-                    {/* Max Pop Label */}
-                    <text x={w - p - 2} y={p + 8} fill={isDark ? '#64748b' : '#94a3b8'} fontSize={9} textAnchor="end">{Math.round(maxVal)}</text>
-                </svg>
-
-                {/* Legend */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 4, fontSize: 10 }}>
-                    <span style={{ color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 3 }}>● {t('filterAll', 'Total')}</span>
-                    <span style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 3 }}>-- {t('workers', 'Ouvrières')}</span>
-                    <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 3 }}>━ {t('soldiers', 'Soldats')}</span>
-                </div>
-            </div>
-
-            {/* Individual Ant Live Telemetry Card */}
-            {currentAnt && (
-                <div style={{ background: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(241, 245, 249, 0.9)', border: isDark ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(56, 189, 248, 0.4)', borderRadius: 8, padding: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 12, color: '#f59e0b' }}>
-                            <Crosshair size={14} color="#f59e0b" />
-                            <span>{t('antInspector', 'Télémétrie')} #{currentAnt.id || 'A-01'}</span>
-                        </div>
-                        <button
-                            onClick={() => {
-                                setAntTrackingEnabled(true)
-                                setSelectedEntity(currentAnt)
-                            }}
-                            style={{
-                                background: antTrackingEnabled && selectedEntity?.id === currentAnt.id ? '#0284c7' : (isDark ? '#334155' : '#e2e8f0'),
-                                border: '1px solid #38bdf8',
-                                color: antTrackingEnabled && selectedEntity?.id === currentAnt.id ? '#fff' : (isDark ? '#fff' : '#0f172a'),
-                                padding: '3px 8px',
-                                borderRadius: 4,
-                                fontSize: 10,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4
-                            }}
-                        >
-                            <Eye size={12} />
-                            <span>{antTrackingEnabled && selectedEntity?.id === currentAnt.id ? t('followCamera', 'Suivie (Caméra)') : t('followCamera', 'Suivre en 3D')}</span>
-                        </button>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px', fontSize: 11 }}>
-                        <div style={{ color: isDark ? '#94a3b8' : '#64748b' }}>{t('caste', 'Caste')}: <span style={{ color: isDark ? '#fff' : '#0f172a', fontWeight: 600 }}>{currentAnt.caste || 'Ouvrière'}</span></div>
-                        <div style={{ color: isDark ? '#94a3b8' : '#64748b' }}>Stade: <span style={{ color: isDark ? '#fff' : '#0f172a', fontWeight: 600 }}>{currentAnt.lifeStage || 'Adulte'}</span></div>
-                        <div style={{ color: isDark ? '#94a3b8' : '#64748b' }}>{t('job', 'Tâche')}: <span style={{ color: isDark ? '#38bdf8' : '#0284c7', fontWeight: 600 }}>{currentAnt.task || 'Fourrageuse (Collecte)'}</span></div>
-                        <div style={{ color: isDark ? '#94a3b8' : '#64748b' }}>Pos: <span style={{ color: isDark ? '#fff' : '#0f172a', fontWeight: 600 }}>({Math.round(currentAnt.x || 50)}, {Math.round(currentAnt.z || currentAnt.y || 50)})</span></div>
-                    </div>
-
-                    {/* Vitals Progress Bars */}
-                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {trackedAntData ? (
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                        gap: 12,
+                        background: inputBg,
+                        padding: '14px',
+                        borderRadius: 8,
+                        border: `1px solid ${borderCol}`
+                    }}>
                         <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 2 }}>
-                                <span>{t('health', 'Santé')}</span>
-                                <span style={{ color: '#4ade80' }}>{Math.round(currentAnt.health ?? 100)}%</span>
-                            </div>
-                            <div style={{ height: 5, background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-                                <div style={{ width: `${Math.max(0, Math.min(100, currentAnt.health ?? 100))}%`, height: '100%', background: '#22c55e' }} />
-                            </div>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Identifiant :</span>
+                            <strong style={{ fontSize: 13, color: '#38bdf8' }}>{trackedAntData.id}</strong>
                         </div>
+
                         <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: isDark ? '#94a3b8' : '#64748b', marginBottom: 2 }}>
-                                <span>{t('energy', 'Énergie')}</span>
-                                <span style={{ color: '#38bdf8' }}>{Math.round(currentAnt.energy ?? 85)}%</span>
-                            </div>
-                            <div style={{ height: 5, background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-                                <div style={{ width: `${Math.max(0, Math.min(100, currentAnt.energy ?? 85))}%`, height: '100%', background: '#0284c7' }} />
-                            </div>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Colonie & Espèce :</span>
+                            <strong style={{ fontSize: 12 }}>{trackedAntData.colonyName} ({trackedAntData.species})</strong>
+                        </div>
+
+                        <div>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Caste & Tâche :</span>
+                            <strong style={{ fontSize: 12, color: '#10b981' }}>{trackedAntData.caste} ({trackedAntData.task})</strong>
+                        </div>
+
+                        <div>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Santé & Énergie :</span>
+                            <strong style={{ fontSize: 12 }}>{trackedAntData.health.toFixed(1)}% | {trackedAntData.energy.toFixed(1)}%</strong>
+                        </div>
+
+                        <div>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Distance Parcourue :</span>
+                            <strong style={{ fontSize: 12 }}>{(trackedAntData.distanceTraveled || 0).toFixed(1)} m</strong>
+                        </div>
+
+                        <div>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Position (X, Z) :</span>
+                            <strong style={{ fontSize: 12 }}>({trackedAntData.x.toFixed(1)}, {trackedAntData.z.toFixed(1)})</strong>
                         </div>
                     </div>
-                </div>
-            )}
+                ) : (
+                    <div style={{ textAlign: 'center', padding: '16px', color: textMuted, fontSize: 12 }}>
+                        Aucun individu sélectionné. Utilisez la recherche ou les flèches pour inspecter un individu en temps réel.
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

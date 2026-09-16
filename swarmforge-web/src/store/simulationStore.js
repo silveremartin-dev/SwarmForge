@@ -1,73 +1,49 @@
 import { create } from 'zustand'
 import { soundEngine } from '../utils/soundEngine'
+import {
+    DEFAULT_WORLD_PRESETS,
+    DEFAULT_SPECIES_PRESETS,
+    DEFAULT_NEST_PRESETS,
+    DEFAULT_PREY_PREDATOR_PRESETS,
+    DEFAULT_WEATHER_PRESETS,
+    DEFAULT_SCENARIO_META_PRESETS
+} from './presetStore'
 
-const WMO_WEATHER_CODES = {
-    0: { label: 'Ciel dégagé', state: 'CLEAR', icon: '☀️' },
-    1: { label: 'Principalement dégagé', state: 'CLEAR', icon: '🌤️' },
-    2: { label: 'Partiellement nuageux', state: 'CLOUDY', icon: '⛅' },
-    3: { label: 'Couvert', state: 'CLOUDY', icon: '☁️' },
-    45: { label: 'Brouillard', state: 'FOG', icon: '🌫️' },
-    48: { label: 'Brouillard givrant', state: 'FOG', icon: '🌫️' },
-    51: { label: 'Bruine légère', state: 'RAIN', icon: '🌦️' },
-    53: { label: 'Bruine modérée', state: 'RAIN', icon: '🌦️' },
-    55: { label: 'Bruine dense', state: 'RAIN', icon: '🌧️' },
-    61: { label: 'Pluie faible', state: 'RAIN', icon: '🌧️' },
-    63: { label: 'Pluie modérée', state: 'RAIN', icon: '🌧️' },
-    65: { label: 'Pluie forte', state: 'TEMPEST', icon: '🌧️' },
-    71: { label: 'Neige légère', state: 'SNOW', icon: '🌨️' },
-    73: { label: 'Neige modérée', state: 'SNOW', icon: '🌨️' },
-    75: { label: 'Blizzard / Neige forte', state: 'BLIZZARD', icon: '❄️' },
-    80: { label: 'Averses faibles', state: 'RAIN', icon: '🌦️' },
-    81: { label: 'Averses modérées', state: 'RAIN', icon: '🌧️' },
-    82: { label: 'Averses violentes', state: 'TEMPEST', icon: '⛈️' },
-    95: { label: 'Orage', state: 'THUNDERSTORM', icon: '⚡' },
-    96: { label: 'Orage avec grêle légère', state: 'HAIL', icon: '⛈️' },
-    99: { label: 'Orage avec forte grêle', state: 'HAIL', icon: '⛈️' },
-}
-
-const loadLocalCheckpoints = () => {
+const loadLocalStorage = (key, fallback) => {
     try {
-        const saved = localStorage.getItem('swarmforge_checkpoints')
-        return saved ? JSON.parse(saved) : []
+        const saved = localStorage.getItem(key)
+        return saved ? JSON.parse(saved) : fallback
     } catch {
-        return []
+        return fallback
     }
 }
 
-const detectInitialLanguage = () => {
+const saveLocalStorage = (key, value) => {
     try {
-        const saved = localStorage.getItem('swarmforge_lang')
-        if (saved && ['fr', 'en', 'de', 'es', 'zh'].includes(saved)) return saved
-        const browser = (typeof navigator !== 'undefined' ? (navigator.language || navigator.userLanguage || '') : '').toLowerCase()
-        if (browser.startsWith('fr')) return 'fr'
-        if (browser.startsWith('de')) return 'de'
-        if (browser.startsWith('es')) return 'es'
-        if (browser.startsWith('zh')) return 'zh'
-        return 'fr'
-    } catch {
-        return 'fr'
-    }
-}
-
-const detectInitialTheme = () => {
-    try {
-        const saved = localStorage.getItem('swarmforge_theme')
-        if (saved && (saved === 'dark' || saved === 'light')) return saved
-        return 'dark'
-    } catch {
-        return 'dark'
-    }
-}
-
-const saveLocalCheckpoints = (checkpoints) => {
-    try {
-        localStorage.setItem('swarmforge_checkpoints', JSON.stringify(checkpoints.slice(0, 20)))
+        localStorage.setItem(key, JSON.stringify(value))
     } catch (e) {
-        console.error('Failed to save checkpoints', e)
+        console.error('Failed to save to localStorage:', key, e)
     }
 }
 
-export function formatSimTime(totalSeconds) {
+export function formatSimCalendarTime(startDateTimeIso, simTimeSeconds) {
+    try {
+        const startDate = new Date(startDateTimeIso || '2026-03-20T08:00:00')
+        const currentMs = startDate.getTime() + (simTimeSeconds || 0) * 1000
+        const curDate = new Date(currentMs)
+        const y = curDate.getFullYear()
+        const m = String(curDate.getMonth() + 1).padStart(2, '0')
+        const d = String(curDate.getDate()).padStart(2, '0')
+        const hh = String(curDate.getHours()).padStart(2, '0')
+        const mm = String(curDate.getMinutes()).padStart(2, '0')
+        const ss = String(curDate.getSeconds()).padStart(2, '0')
+        return `${y}-${m}-${d} ${hh}:${mm}:${ss}`
+    } catch {
+        return '2026-03-20 08:00:00'
+    }
+}
+
+export function formatSimRelativeTime(totalSeconds) {
     const totalSec = Math.floor(Math.max(0, totalSeconds || 0))
     const days = Math.floor(totalSec / 86400)
     const rem = totalSec % 86400
@@ -77,1535 +53,1124 @@ export function formatSimTime(totalSeconds) {
     return `J+${days} ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-export function generateDefaultChambersForNest(nest) {
-    const scale = nest.scale || 1.0
-    const nx = typeof nest.x === 'number' ? Math.max(5, Math.min(95, nest.x)) : 50
-    const nz = typeof nest.y === 'number' ? Math.max(5, Math.min(95, nest.y)) : (typeof nest.z === 'number' ? Math.max(5, Math.min(95, nest.z)) : 50)
+const createDefaultSpeciesCards = () => [
+    {
+        id: 'card_col_1',
+        name: 'Colonie Principale (Formica fusca)',
+        speciesId: 'species_formica_fusca',
+        nestType: 'DOME_AND_SUBTERRANEAN',
+        color: '#38bdf8',
+        initialQueens: 1,
+        initialWorkers: 80,
+        initialSoldiers: 15,
+        initialMales: 0,
+        aiArchitecture: 'BEHAVIOR_TREE',
+        preyPredatorPresetId: 'prey_pred_pucerons_fourmilion'
+    },
+    {
+        id: 'card_col_2',
+        name: 'Colonie Rivale (Linepithema humile)',
+        speciesId: 'species_linepithema_humile',
+        nestType: 'ARBOREAL_WOOD',
+        color: '#f43f5e',
+        initialQueens: 2,
+        initialWorkers: 50,
+        initialSoldiers: 10,
+        initialMales: 0,
+        aiArchitecture: 'HYBRID_RULE_UTILITY',
+        preyPredatorPresetId: 'prey_pred_peaceful_abundance'
+    }
+]
 
-    return [
-        {
-            id: `${nest.id}_ch_queen`,
-            nestId: nest.id,
-            nestName: nest.name,
-            name: 'Chambre Royale (Reine)',
-            type: 'QUEEN_QUARTERS',
-            position: { x: nx, y: -1.2 * scale, z: nz },
-            radius: 0.9 * scale,
-            capacity: 15,
-            occupants: 1,
-            humidity: 84,
-            temperature: 24.8,
-            foodStored: 50,
-            safetyLevel: 'MAXIMALE (Cœur)',
-            caste: 'Reine & Gardes Royales',
-            icon: '👑',
-            description: 'Chambre centrale la plus profonde, maintenue à hygrométrie et température stables pour la ponte.'
-        },
-        {
-            id: `${nest.id}_ch_nursery`,
-            nestId: nest.id,
-            nestName: nest.name,
-            name: 'Nurserie & Couvain',
-            type: 'NURSERY',
-            position: { x: nx + 1.2 * scale, y: -0.8 * scale, z: nz + 0.6 * scale },
-            radius: 0.8 * scale,
-            capacity: 80,
-            occupants: 45,
-            humidity: 90,
-            temperature: 25.2,
-            foodStored: 80,
-            safetyLevel: 'ÉLEVÉE',
-            caste: 'Nourrices & Larves',
-            icon: '🍼',
-            description: 'Incubation des œufs et développement des larves régulés par les ouvrières nourrices.'
-        },
-        {
-            id: `${nest.id}_ch_food`,
-            nestId: nest.id,
-            nestName: nest.name,
-            name: 'Grenier à Graines & Miellat',
-            type: 'FOOD_STORAGE',
-            position: { x: nx - 1.1 * scale, y: -0.6 * scale, z: nz - 0.8 * scale },
-            radius: 0.85 * scale,
-            capacity: 160,
-            occupants: 20,
-            humidity: 62,
-            temperature: 21.5,
-            foodStored: 240,
-            safetyLevel: 'SÉCURISÉE',
-            caste: 'Magasinières & Butineuses',
-            icon: '🍯',
-            description: 'Stockage des réserves énergétiques (glucides, graines et lipides) à l\'abri des moisissures.'
-        },
-        {
-            id: `${nest.id}_ch_waste`,
-            nestId: nest.id,
-            nestName: nest.name,
-            name: 'Dépotoir & Chambre Sanitaire',
-            type: 'WASTE_DUMP',
-            position: { x: nx + 1.0 * scale, y: -1.5 * scale, z: nz - 1.2 * scale },
-            radius: 0.7 * scale,
-            capacity: 50,
-            occupants: 8,
-            humidity: 48,
-            temperature: 19.8,
-            foodStored: 0,
-            safetyLevel: 'BASSE (Isolée)',
-            caste: 'Éboueuses Sanitaires',
-            icon: '☣️',
-            description: 'Zone de confinement des débris organiques et individus défunts pour éviter les épidémies.'
-        },
-        {
-            id: `${nest.id}_ch_entrance`,
-            nestId: nest.id,
-            nestName: nest.name,
-            name: 'Poste de Garde & Entrée',
-            type: 'ENTRANCE',
-            position: { x: nx, y: -0.2 * scale, z: nz },
-            radius: 0.75 * scale,
-            capacity: 50,
-            occupants: 28,
-            humidity: 58,
-            temperature: 22.0,
-            foodStored: 20,
-            safetyLevel: 'FRONTALIÈRE',
-            caste: 'Soldats & Sentinelles',
-            icon: '🛡️',
-            description: 'Accès vers l\'extérieur et zone de filtrage des odeurs cuticulaires coloniales (CHC).'
+function spawnInitialAntsFromCards(speciesCards) {
+    const ants = []
+    const cards = speciesCards && speciesCards.length > 0 ? speciesCards : createDefaultSpeciesCards()
+
+    cards.forEach((card, cIdx) => {
+        const baseX = cIdx === 0 ? 35 : 65
+        const baseY = cIdx === 0 ? 35 : 65
+        const speciesPreset = DEFAULT_SPECIES_PRESETS.find(s => s.id === card.speciesId) || DEFAULT_SPECIES_PRESETS[0]
+
+        // Queens
+        for (let i = 0; i < (card.initialQueens || 1); i++) {
+            ants.push({
+                id: `ant_${card.id}_queen_${i + 1}`,
+                colonyId: card.id,
+                colonyName: card.name,
+                species: speciesPreset.name,
+                caste: 'QUEEN',
+                job: 'LAYING_EGGS',
+                x: baseX + (Math.random() - 0.5) * 4,
+                y: -1.2,
+                z: baseY + (Math.random() - 0.5) * 4,
+                vx: 0, vy: 0, vz: 0,
+                health: 100,
+                energy: 100,
+                age: 180 + Math.floor(Math.random() * 100),
+                carriedItem: 'NONE',
+                task: 'Royal Care & Egg Laying',
+                color: card.color
+            })
         }
-    ]
-}
 
-// Helper to generate realistic starting ants with species and colony metadata
-function generateInitialAnts(colonies = [], count = 80) {
-    const list = []
-    const cols = colonies && colonies.length > 0 ? colonies : [
-        { id: 'COLONY_1', name: 'Colonie #1 (Native)', species: 'Formica fusca', color: '#38bdf8' },
-        { id: 'COLONY_2', name: 'Colonie #2 (Rivale)', species: 'Linepithema humile', color: '#f43f5e' }
-    ]
+        // Soldiers
+        for (let i = 0; i < (card.initialSoldiers || 10); i++) {
+            ants.push({
+                id: `ant_${card.id}_soldier_${i + 1}`,
+                colonyId: card.id,
+                colonyName: card.name,
+                species: speciesPreset.name,
+                caste: 'SOLDIER',
+                job: 'GUARD',
+                x: baseX + (Math.random() - 0.5) * 12,
+                y: 0.1,
+                z: baseY + (Math.random() - 0.5) * 12,
+                vx: (Math.random() - 0.5) * 0.2,
+                vy: 0,
+                vz: (Math.random() - 0.5) * 0.2,
+                health: 100,
+                energy: 90 + Math.random() * 10,
+                age: 30 + Math.floor(Math.random() * 60),
+                carriedItem: 'NONE',
+                task: 'Nest Perimeter Defense',
+                color: card.color
+            })
+        }
 
-    cols.forEach((col, cIdx) => {
-        const nestBaseX = cIdx === 0 ? 35 : 65
-        const nestBaseY = cIdx === 0 ? 35 : 65
-        const perColonyCount = Math.floor(count / cols.length)
+        // Workers
+        for (let i = 0; i < (card.initialWorkers || 40); i++) {
+            const isForager = i % 2 === 0
+            const isBuilder = i % 4 === 1
+            const job = isForager ? 'FORAGER' : (isBuilder ? 'BUILDER' : 'NURSE')
+            const task = isForager ? 'Searching for Nectar/Seeds' : (isBuilder ? 'Tunnel Excavation' : 'Tending Brood')
 
-        // 1 Queen
-        list.push({
-            id: `ant_${col.id}_queen`,
-            colonyId: col.id,
-            colonyName: col.name,
-            species: col.species || 'Formica fusca',
-            caste: 'QUEEN',
-            job: 'LAYING_EGGS',
-            x: nestBaseX,
-            y: nestBaseY,
-            z: 0,
-            health: 100,
-            energy: 100,
-            ageInDays: 365 + Math.floor(Math.random() * 200), // ~1-2 years
-            maxLifespanDays: 365 * 10,
-            bodyLengthMm: 11.0,
-            heading: Math.random() * Math.PI * 2,
-            carriedItem: 'NONE',
-            diseaseState: 'HEALTHY'
-        })
+            ants.push({
+                id: `ant_${card.id}_worker_${i + 1}`,
+                colonyId: card.id,
+                colonyName: card.name,
+                species: speciesPreset.name,
+                caste: 'WORKER',
+                job: job,
+                x: baseX + (Math.random() - 0.5) * 20,
+                y: isBuilder ? -0.8 : 0.1,
+                z: baseY + (Math.random() - 0.5) * 20,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: 0,
+                vz: (Math.random() - 0.5) * 0.3,
+                health: 100,
+                energy: 85 + Math.random() * 15,
+                age: 15 + Math.floor(Math.random() * 45),
+                carriedItem: isForager && Math.random() > 0.6 ? 'SUGAR' : 'NONE',
+                task: task,
+                color: card.color
+            })
+        }
 
-        // Soldiers & Workers
-        for (let i = 0; i < perColonyCount; i++) {
-            const isSoldier = i < Math.floor(perColonyCount * 0.25)
-            const caste = isSoldier ? 'SOLDIER' : 'WORKER'
-            const jobs = isSoldier ? ['GUARDING', 'PATROLLING'] : ['FORAGING', 'EXCAVATING', 'NURSING', 'EXPLORING']
-            const job = jobs[Math.floor(Math.random() * jobs.length)]
-            const angle = Math.random() * Math.PI * 2
-            const dist = Math.random() * 15
-
-            list.push({
-                id: `ant_${col.id}_${i}`,
-                colonyId: col.id,
-                colonyName: col.name,
-                species: col.species || 'Formica fusca',
-                caste,
-                job,
-                x: Math.max(5, Math.min(95, nestBaseX + Math.cos(angle) * dist)),
-                y: Math.max(5, Math.min(95, nestBaseY + Math.sin(angle) * dist)),
-                z: 0,
-                health: 90 + Math.floor(Math.random() * 10),
-                energy: 70 + Math.floor(Math.random() * 30),
-                ageInDays: Math.floor(Math.random() * 15) + 3, // 3 to 18 days (healthy prime youth)
-                maxLifespanDays: isSoldier ? 180 : 120,
-                bodyLengthMm: isSoldier ? 7.5 : 5.0,
-                heading: Math.random() * Math.PI * 2,
-                carriedItem: Math.random() < 0.2 ? 'SEEDS' : (Math.random() < 0.1 ? 'SUGAR_NECTAR' : 'NONE'),
-                diseaseState: 'HEALTHY'
+        // Males
+        for (let i = 0; i < (card.initialMales || 0); i++) {
+            ants.push({
+                id: `ant_${card.id}_male_${i + 1}`,
+                colonyId: card.id,
+                colonyName: card.name,
+                species: speciesPreset.name,
+                caste: 'MALE',
+                job: 'RESTING',
+                x: baseX + (Math.random() - 0.5) * 6,
+                y: -0.5,
+                z: baseY + (Math.random() - 0.5) * 6,
+                vx: 0, vy: 0, vz: 0,
+                health: 100,
+                energy: 95,
+                age: 10 + Math.floor(Math.random() * 20),
+                carriedItem: 'NONE',
+                task: 'Resting in Queen Chamber',
+                color: card.color
             })
         }
     })
 
-    return list
+    return ants
 }
 
-export const useSimulationStore = create((set, get) => ({
-    // Connection state
-    connected: false,
-    ws: null,
+function generateInitialColonies(speciesCards) {
+    const cards = speciesCards && speciesCards.length > 0 ? speciesCards : createDefaultSpeciesCards()
+    return cards.map(c => ({
+        id: c.id,
+        name: c.name,
+        speciesId: c.speciesId,
+        color: c.color,
+        food: 250,
+        water: 150,
+        protein: 80,
+        population: (c.initialQueens || 1) + (c.initialWorkers || 40) + (c.initialSoldiers || 10) + (c.initialMales || 0),
+        queens: c.initialQueens || 1,
+        workers: c.initialWorkers || 40,
+        soldiers: c.initialSoldiers || 10,
+        males: c.initialMales || 0
+    }))
+}
 
-    // Simulation state & Real TPS Engine Metrics
-    tick: 0,
-    running: false,
-    speed: 1.0,
-    simSeconds: 0,
-    simTimeFormatted: 'J+0 00:00:00',
-    simulationSeed: 12345,
-    measuredTps: 0,
-    tickTimestamps: [],
+function generateInitialFoodSources() {
+    return [
+        { id: 'food_1', x: 25, y: 0.2, z: 25, type: 'SUGAR', name: 'Miellat de Pucerons', amount: 350, maxAmount: 500, color: '#f59e0b' },
+        { id: 'food_2', x: 75, y: 0.2, z: 75, type: 'SEEDS', name: 'Graines de Graminées', amount: 600, maxAmount: 800, color: '#eab308' },
+        { id: 'food_3', x: 70, y: 0.2, z: 30, type: 'PREY', name: 'Cadavre de Scarabée', amount: 400, maxAmount: 400, color: '#ef4444' },
+        { id: 'food_4', x: 30, y: 0.2, z: 70, type: 'WATER', name: 'Gouttelettes de Rosée', amount: 200, maxAmount: 300, color: '#38bdf8' }
+    ]
+}
 
-    // Ant Tracking & Selection Toggle
-    antTrackingEnabled: true,
-    setAntTrackingEnabled: (enabled) => set({
-        antTrackingEnabled: enabled,
-        selectedEntity: enabled ? get().selectedEntity : null
-    }),
-    toggleAntTracking: () => set(state => ({
-        antTrackingEnabled: !state.antTrackingEnabled,
-        selectedEntity: !state.antTrackingEnabled ? null : state.selectedEntity
-    })),
+export const useSimulationStore = create((set, get) => {
+    let simLoopInterval = null
+    let lastTickTime = performance.now()
+    let tickCountInWindow = 0
+    let lastTpsMeasureTime = performance.now()
 
-    // Subterranean Chambers 3D Mesh Rendering Toggle
-    showChambers: true,
-    setShowChambers: (show) => set({ showChambers: show }),
-    toggleChambers: () => set(state => ({ showChambers: !state.showChambers })),
+    const initialLanguage = loadLocalStorage('swarmforge_lang', 'fr')
+    const initialTheme = loadLocalStorage('swarmforge_theme', 'dark')
 
-    // Chamber 3D Floating Information Tooltip Tags Toggle
-    showChamberInfo: true,
-    setShowChamberInfo: (show) => set({ showChamberInfo: show }),
-    toggleChamberInfo: () => set(state => ({ showChamberInfo: !state.showChamberInfo })),
+    return {
+        // --- 1. App Mode & Top-Level Tab State ---
+        activeMainTab: 'SIMULATION', // 'SIMULATION' | 'SETTINGS'
+        activeSubTab: 'CONTROLS',    // 'CONTROLS' | 'VISUAL_3D' | 'GOD_MODE' | 'STATISTICS' | 'EVENT_LOG'
+        language: initialLanguage,
+        theme: initialTheme,
+        isScenarioApplied: true, // Whether scenario has been initialized
 
-    // Legacy alias for compatibility
-    showChamberOverlay: true,
-    setShowChamberOverlay: (show) => set({ showChamberOverlay: show, showChambers: show, showChamberInfo: show }),
-    toggleChamberOverlay: () => set(state => ({ showChamberOverlay: !state.showChamberOverlay, showChambers: !state.showChamberOverlay, showChamberInfo: !state.showChamberOverlay })),
-
-    // Chamber Selection
-    selectedChamber: null,
-    setSelectedChamber: (chamber) => set({ selectedChamber: chamber, selectedEntity: null }),
-
-    // Scientific Mode: Kinematic vectors, sensory FOV cones & Isolines toggles
-    showScientificSensoryVectors: true,
-    setShowScientificSensoryVectors: (show) => set({ showScientificSensoryVectors: show }),
-    toggleScientificSensoryVectors: () => set(state => ({ showScientificSensoryVectors: !state.showScientificSensoryVectors })),
-
-    showScientificIsolinesTopo: true,
-    setShowScientificIsolinesTopo: (show) => set({ showScientificIsolinesTopo: show }),
-    toggleScientificIsolinesTopo: () => set(state => ({ showScientificIsolinesTopo: !state.showScientificIsolinesTopo })),
-
-    showScientificIsolinesPheromones: true,
-    setShowScientificIsolinesPheromones: (show) => set({ showScientificIsolinesPheromones: show }),
-    toggleScientificIsolinesPheromones: () => set(state => ({ showScientificIsolinesPheromones: !state.showScientificIsolinesPheromones })),
-
-    showScientificIsolinesMicroclimate: true,
-    setShowScientificIsolinesMicroclimate: (show) => set({ showScientificIsolinesMicroclimate: show }),
-    toggleScientificIsolinesMicroclimate: () => set(state => ({ showScientificIsolinesMicroclimate: !state.showScientificIsolinesMicroclimate })),
-
-    // 3D Skirt, Axial Slicing & Layer Toggles (1:1 with Desktop Client)
-    show3DSkirt: true,
-    setShow3DSkirt: (show) => set({ show3DSkirt: show }),
-    toggle3DSkirt: () => set(state => ({ show3DSkirt: !state.show3DSkirt })),
-
-    slicePlaneRatio: 1.0,
-    setSlicePlaneRatio: (ratio) => set({ slicePlaneRatio: Math.max(0, Math.min(1.0, ratio)) }),
-
-    showTerrain: true,
-    setShowTerrain: (show) => set({ showTerrain: show }),
-    toggleTerrain: () => set(state => ({ showTerrain: !state.showTerrain })),
-
-    showVegetation: true,
-    setShowVegetation: (show) => set({ showVegetation: show }),
-    toggleVegetation: () => set(state => ({ showVegetation: !state.showVegetation })),
-
-    showAnts: true,
-    setShowAnts: (show) => set({ showAnts: show }),
-    toggleAnts: () => set(state => ({ showAnts: !state.showAnts })),
-
-    showPheromones: true,
-    setShowPheromones: (show) => set({ showPheromones: show }),
-    togglePheromones: () => set(state => ({ showPheromones: !state.showPheromones })),
-
-    showWeather: true,
-    setShowWeather: (show) => set({ showWeather: show }),
-    toggleWeather: () => set(state => ({ showWeather: !state.showWeather })),
-
-    showLegend: true,
-    setShowLegend: (show) => set({ showLegend: show }),
-    toggleLegend: () => set(state => ({ showLegend: !state.showLegend })),
-
-    showMinimap: true,
-    setShowMinimap: (show) => set({ showMinimap: show }),
-    toggleMinimap: () => set(state => ({ showMinimap: !state.showMinimap })),
-
-    showGrid: false,
-    setShowGrid: (show) => set({ showGrid: show }),
-    toggleGrid: () => set(state => ({ showGrid: !state.showGrid })),
-
-    // Language & Internationalization
-    language: detectInitialLanguage(),
-    setLanguage: (lang) => {
-        try {
-            localStorage.setItem('swarmforge_lang', lang)
-        } catch (e) {
-            console.error('Could not save language', e)
-        }
-        set({ language: lang })
-    },
-
-    // UI Theme (dark / light)
-    theme: detectInitialTheme(),
-    setTheme: (theme) => {
-        try {
-            localStorage.setItem('swarmforge_theme', theme)
-        } catch (e) {
-            console.error('Could not save theme', e)
-        }
-        set({ theme })
-    },
-    toggleTheme: () => {
-        const nextTheme = get().theme === 'dark' ? 'light' : 'dark'
-        get().setTheme(nextTheme)
-    },
-
-    isUVVisionMode: false,
-    setUVVisionMode: (enabled) => set({ isUVVisionMode: enabled }),
-    toggleUVVisionMode: () => set(state => ({ isUVVisionMode: !state.isUVVisionMode })),
-
-    // Ant navigation & cycling
-    selectNextAnt: () => {
-        const { ants, selectedEntity, antTrackingEnabled } = get()
-        if (!antTrackingEnabled || !ants || ants.length === 0) return
-        let currentIdx = -1
-        if (selectedEntity && selectedEntity.id) {
-            currentIdx = ants.findIndex(a => a.id === selectedEntity.id)
-        }
-        const nextIdx = (currentIdx + 1) % ants.length
-        set({ selectedEntity: ants[nextIdx], selectedChamber: null })
-    },
-    selectPreviousAnt: () => {
-        const { ants, selectedEntity, antTrackingEnabled } = get()
-        if (!antTrackingEnabled || !ants || ants.length === 0) return
-        let currentIdx = 0
-        if (selectedEntity && selectedEntity.id) {
-            currentIdx = ants.findIndex(a => a.id === selectedEntity.id)
-        }
-        const prevIdx = (currentIdx - 1 + ants.length) % ants.length
-        set({ selectedEntity: ants[prevIdx], selectedChamber: null })
-    },
-
-    stepSingleTick: () => {
-        get().stepSimulationTick()
-    },
-
-    // Camera 3D Viewport Reset Trigger
-    cameraResetTrigger: 0,
-    triggerCameraReset: () => {
-        set(state => ({
-            cameraResetTrigger: state.cameraResetTrigger + 1,
-            selectedEntity: null
-        }))
-        get().addEventLog({
-            level: 'INFO',
-            category: 'VIEWPORT',
-            message: '🎥 Caméra 3D repositionnée aux coordonnées par défaut [50, 65, 125].'
-        })
-    },
-
-    // Checkpoint Management System
-    checkpoints: loadLocalCheckpoints(),
-    autoCheckpoint: true,
-    autoCheckpointInterval: 25000, // Save every 25,000 ticks (approx. 500-1000s)
-
-    createCheckpoint: (customLabel) => {
-        const state = get()
-        const newCheckpoint = {
-            id: `ckpt_${Date.now()}_${state.tick}`,
-            tick: state.tick,
-            timestamp: new Date().toISOString(),
-            label: customLabel || `Checkpoint Tick #${state.tick}`,
-            masterSeed: state.simulationSeed,
-            stats: { ...state.stats },
-            colonies: JSON.parse(JSON.stringify(state.colonies)),
-            antsCount: state.ants.length,
-            ants: JSON.parse(JSON.stringify(state.ants)),
-            foodSources: JSON.parse(JSON.stringify(state.foodSources)),
-            predators: JSON.parse(JSON.stringify(state.predators)),
-            nests: JSON.parse(JSON.stringify(state.nests)),
-            environment: { ...state.environment },
-            climateEngine: { ...state.climateEngine },
-            weatherMode: state.weatherMode,
-            realWeatherData: state.realWeatherData,
-            weatherQueryHistory: JSON.parse(JSON.stringify(state.weatherQueryHistory || [])),
-        }
-
-        const updated = [newCheckpoint, ...state.checkpoints.slice(0, 19)]
-        set({ checkpoints: updated })
-        saveLocalCheckpoints(updated)
-
-        get().addEventLog({
-            level: 'INFO',
-            category: 'CHECKPOINT',
-            message: `💾 Checkpoint "${newCheckpoint.label}" sauvegardé avec succès (Tick #${state.tick}, ${state.ants.length} individus).`
-        })
-        return newCheckpoint
-    },
-
-    restoreCheckpoint: (checkpointId) => {
-        const state = get()
-        const target = state.checkpoints.find(c => c.id === checkpointId)
-        if (!target) return false
-
-        const { localTickInterval } = state
-        if (localTickInterval) clearInterval(localTickInterval)
-
-        set({
-            tick: target.tick,
-            running: false,
-            localTickInterval: null,
-            simulationSeed: target.masterSeed || state.simulationSeed,
-            stats: target.stats || state.stats,
-            colonies: target.colonies || state.colonies,
-            ants: target.ants || [],
-            foodSources: target.foodSources || state.foodSources,
-            predators: target.predators || state.predators,
-            nests: target.nests || state.nests,
-            environment: target.environment || state.environment,
-            climateEngine: target.climateEngine || state.climateEngine,
-            weatherMode: target.weatherMode || 'SIMULATED',
-            realWeatherData: target.realWeatherData || null,
-            weatherQueryHistory: target.weatherQueryHistory || [],
-            selectedEntity: null,
-            cameraResetTrigger: state.cameraResetTrigger + 1,
-        })
-
-        get().addEventLog({
-            level: 'WARN',
-            category: 'CHECKPOINT',
-            message: `⏮️ Restauration réussie au Checkpoint "${target.label}" (Tick #${target.tick}).`
-        })
-        return true
-    },
-
-    deleteCheckpoint: (checkpointId) => {
-        const state = get()
-        const updated = state.checkpoints.filter(c => c.id !== checkpointId)
-        set({ checkpoints: updated })
-        saveLocalCheckpoints(updated)
-        get().addEventLog({
-            level: 'INFO',
-            category: 'CHECKPOINT',
-            message: `🗑️ Checkpoint supprimé.`
-        })
-    },
-
-    clearCheckpoints: () => {
-        set({ checkpoints: [] })
-        saveLocalCheckpoints([])
-    },
-
-    // Weather Engine Mode: 'SIMULATED' (Presets) vs 'REAL_WORLD' (Open-Meteo Live API)
-    weatherMode: 'SIMULATED',
-    realWeatherData: null,
-    realWeatherLoading: false,
-    realWeatherError: null,
-    weatherQueryHistory: [],
-
-    setWeatherMode: (mode) => {
-        set({ weatherMode: mode })
-        if (mode === 'REAL_WORLD') {
-            get().fetchRealWorldWeather()
-        }
-        get().addEventLog({
-            level: 'INFO',
-            category: 'WEATHER',
-            message: mode === 'REAL_WORLD'
-                ? '🟢 Météo basculée en mode Météo Réelle (Open-Meteo Live API).'
-                : '🔵 Météo basculée en mode Météo Simulée (Presets du Terrarium).'
-        })
-    },
-
-    fetchRealWorldWeather: async (customLat = 48.8566, customLon = 2.3522, customCity = 'Paris', forceLive = false) => {
-        const state = get()
-        const currentTick = state.tick || 0
-
-        // If recorded history has weather data for replay / determinism and not forcing live, use stored data
-        if (!forceLive && state.weatherQueryHistory && state.weatherQueryHistory.length > 0) {
-            const storedRecord = state.weatherQueryHistory.slice().reverse().find(r => r.tick === currentTick) ||
-                state.weatherQueryHistory.slice().reverse().find(r => r.tick <= currentTick)
-            
-            if (storedRecord && storedRecord.data) {
-                const realData = storedRecord.data
-                set(st => ({
-                    realWeatherData: realData,
-                    realWeatherLoading: false,
-                    realWeatherError: null,
-                    environment: {
-                        ...st.environment,
-                        temperature: realData.temp,
-                        humidity: realData.humidity,
-                        rainIntensity: realData.precipitation,
-                        windSpeed: realData.windSpeed,
-                        weatherState: realData.state,
-                    },
-                    climateEngine: {
-                        ...st.climateEngine,
-                        latitudeDeg: realData.latitude,
-                        cloudCover: realData.cloudCover,
-                        precipitationMm: realData.precipitation,
-                        windSpeedMs: realData.windSpeed,
-                        barometricPressureHpa: realData.pressure,
-                    }
-                }))
+        setActiveMainTab: (tab) => set({ activeMainTab: tab }),
+        setActiveSubTab: (tab) => {
+            // Auto-pause when entering God Mode (1:1 with SwarmForgeClient.java line 1052)
+            if (tab === 'GOD_MODE' && get().running) {
+                get().pause()
                 get().addEventLog({
-                    level: 'INFO',
-                    category: 'WEATHER',
-                    message: `⏮️ [Replay Déterministe] Météo réelle restaurée depuis l'historique enregistré (Tick #${storedRecord.tick}): ${realData.temp}°C, ${realData.condition} ${realData.icon}.`
+                    severity: 'WARNING',
+                    type: 'SYSTEM',
+                    source: 'Mode Divin',
+                    message: '⏸️ Simulation mise en pause automatique pour agencement des interventions.'
                 })
-                return realData
             }
-        }
+            set({ activeSubTab: tab })
+        },
+        setLanguage: (lang) => {
+            saveLocalStorage('swarmforge_lang', lang)
+            set({ language: lang })
+        },
+        setTheme: (theme) => {
+            saveLocalStorage('swarmforge_theme', theme)
+            set({ theme: theme })
+        },
 
-        set({ realWeatherLoading: true, realWeatherError: null })
-        try {
-            let lat = customLat
-            let lon = customLon
-            let cityName = customCity
+        // --- 2. Simulation Transport & Clocks ---
+        ticks: 0,
+        highestRecordedTick: 0,
+        simTimeSeconds: 0,
+        startDateTime: '2026-03-20T08:00:00',
+        stepSeconds: 0.05, // dt = 50ms (20 ticks/sec standard)
+        speed: 1.0,
+        running: false,
+        isPaused: false,
+        measuredTps: 0,
+        targetTps: 20,
+        simTimeFormatted: '2026-03-20 08:00:00',
+        simRelativeTimeFormatted: 'J+0 08:00:00',
 
-            if (navigator.geolocation && customCity === 'Paris') {
-                try {
-                    const pos = await new Promise((resolve, reject) => {
-                        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 })
+        // --- Checkpoints ---
+        checkpoints: [],
+        createCheckpoint: (name) => {
+            const state = get()
+            const cp = {
+                id: `cp_${Date.now()}`,
+                name: name || `Checkpoint @ Tick ${state.ticks}`,
+                tick: state.ticks,
+                simTimeSeconds: state.simTimeSeconds,
+                simCalendarTime: state.simTimeFormatted,
+                snapshot: {
+                    ants: JSON.parse(JSON.stringify(state.ants)),
+                    colonies: JSON.parse(JSON.stringify(state.colonies)),
+                    foodSources: JSON.parse(JSON.stringify(state.foodSources)),
+                    environment: { ...state.environment }
+                }
+            }
+            set({ checkpoints: [cp, ...state.checkpoints] })
+            get().addEventLog({
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Points de Contrôle',
+                message: `Point de contrôle "${cp.name}" créé au tick ${cp.tick}.`
+            })
+            return cp
+        },
+
+        restoreCheckpoint: (checkpointId) => {
+            const cp = get().checkpoints.find(c => c.id === checkpointId)
+            if (!cp) return false
+            get().pause()
+            set({
+                ticks: cp.tick,
+                simTimeSeconds: cp.simTimeSeconds,
+                simTimeFormatted: cp.simCalendarTime,
+                ants: JSON.parse(JSON.stringify(cp.snapshot.ants)),
+                colonies: JSON.parse(JSON.stringify(cp.snapshot.colonies)),
+                foodSources: JSON.parse(JSON.stringify(cp.snapshot.foodSources)),
+                environment: { ...cp.snapshot.environment }
+            })
+            get().addEventLog({
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Points de Contrôle',
+                message: `Restauration du point de contrôle "${cp.name}" au tick ${cp.tick}.`
+            })
+            return true
+        },
+
+        // --- 3. Scenario Configuration (1:1 with SimulationControlPanel.java) ---
+        selectedScenarioPresetId: 'scenario_mon_terrarium_1',
+        selectedWorldPresetId: 'world_terrarium_01',
+        selectedWeatherPresetId: 'weather_printemps_doux',
+        masterSeed: 12345,
+        scenarioDescription: 'Scénario standard de simulation multi-espèces et équilibre trophique.',
+        maxDuration: 100.0,
+        durationUnit: 'Days',
+        minPopStop: 0,
+        speciesCards: createDefaultSpeciesCards(),
+
+        setScenarioPresetId: (presetId) => {
+            const meta = DEFAULT_SCENARIO_META_PRESETS.find(p => p.id === presetId)
+            if (meta) {
+                set({
+                    selectedScenarioPresetId: presetId,
+                    selectedWorldPresetId: meta.worldPresetId || 'world_terrarium_01',
+                    selectedWeatherPresetId: meta.weatherPresetId || 'weather_printemps_doux',
+                    masterSeed: meta.masterSeed || 12345,
+                    scenarioDescription: meta.description || ''
+                })
+            }
+        },
+
+        setWorldPresetId: (id) => set({ selectedWorldPresetId: id }),
+        setWeatherPresetId: (id) => set({ selectedWeatherPresetId: id }),
+        setMasterSeed: (seed) => set({ masterSeed: Number(seed) || 12345 }),
+        setScenarioDescription: (desc) => set({ scenarioDescription: desc }),
+        setStartDateTime: (dt) => {
+            set({
+                startDateTime: dt,
+                simTimeFormatted: formatSimCalendarTime(dt, get().simTimeSeconds)
+            })
+        },
+        setMaxDuration: (dur) => set({ maxDuration: Number(dur) || 100 }),
+        setDurationUnit: (unit) => set({ durationUnit: unit }),
+        setMinPopStop: (pop) => set({ minPopStop: Number(pop) || 0 }),
+
+        addSpeciesCard: (card) => {
+            const current = get().speciesCards
+            const newCard = card || {
+                id: `card_col_${Date.now()}`,
+                name: `Colonie #${current.length + 1}`,
+                speciesId: DEFAULT_SPECIES_PRESETS[0].id,
+                nestType: DEFAULT_NEST_PRESETS[0].nestType,
+                color: ['#10b981', '#a855f7', '#f59e0b', '#ec4899', '#06b6d4'][current.length % 5],
+                initialQueens: 1,
+                initialWorkers: 40,
+                initialSoldiers: 10,
+                initialMales: 0,
+                aiArchitecture: 'BEHAVIOR_TREE',
+                preyPredatorPresetId: DEFAULT_PREY_PREDATOR_PRESETS[0].id
+            }
+            set({ speciesCards: [...current, newCard] })
+        },
+
+        removeSpeciesCard: (cardId) => {
+            set({ speciesCards: get().speciesCards.filter(c => c.id !== cardId) })
+        },
+
+        updateSpeciesCard: (cardId, updates) => {
+            set({
+                speciesCards: get().speciesCards.map(c => c.id === cardId ? { ...c, ...updates } : c)
+            })
+        },
+
+        // --- 4. Simulation Entities & Environment ---
+        colonies: generateInitialColonies(createDefaultSpeciesCards()),
+        ants: spawnInitialAntsFromCards(createDefaultSpeciesCards()),
+        foodSources: generateInitialFoodSources(),
+        predators: [],
+        environment: {
+            timeOfDay: 'DAY',
+            lightLevel: 1.0,
+            temperature: 22.0,
+            humidity: 65.0,
+            windSpeed: 1.5,
+            weatherState: 'CLEAR',
+            season: 'SPRING',
+            solarRadiation: 450.0
+        },
+
+        // --- 5. God Mode Interventions & Scheduled Events Queue ---
+        scheduledEvents: [
+            {
+                id: 'evt_init_1',
+                targetTick: 120,
+                scheduledCalendarTime: '2026-03-20 08:01:00',
+                category: 'RESOURCE',
+                eventType: 'Surface Food Deposit',
+                colonyTarget: 'TOUTES',
+                description: 'Dépôt automatique de graines de pissenlit (+150)',
+                action: 'SPAWN_FOOD',
+                amount: 150,
+                posX: 45, posY: 45, posZ: 0.2,
+                executed: false,
+                paused: false
+            }
+        ],
+
+        addScheduledEvent: (event) => {
+            const current = get().scheduledEvents
+            const newEvt = {
+                id: `evt_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                executed: false,
+                paused: false,
+                ...event
+            }
+            const updated = [...current, newEvt].sort((a, b) => a.targetTick - b.targetTick)
+            set({ scheduledEvents: updated })
+            get().addEventLog({
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'God Mode Scheduler',
+                message: `Événement planifié au tick ${newEvt.targetTick} : [${newEvt.category}] ${newEvt.eventType}`
+            })
+        },
+
+        removeScheduledEvent: (eventId) => {
+            set({ scheduledEvents: get().scheduledEvents.filter(e => e.id !== eventId) })
+        },
+
+        togglePauseScheduledEvent: (eventId) => {
+            set({
+                scheduledEvents: get().scheduledEvents.map(e => e.id === eventId ? { ...e, paused: !e.paused } : e)
+            })
+        },
+
+        duplicateScheduledEvent: (eventId, offsetTicks = 100) => {
+            const target = get().scheduledEvents.find(e => e.id === eventId)
+            if (!target) return
+            const newTargetTick = (target.targetTick || get().ticks) + offsetTicks
+            const stepSec = get().stepSeconds
+            const calTime = formatSimCalendarTime(get().startDateTime, newTargetTick * stepSec)
+            get().addScheduledEvent({
+                ...target,
+                id: `evt_${Date.now()}`,
+                targetTick: newTargetTick,
+                scheduledCalendarTime: calTime,
+                description: `${target.description} (Copie +${offsetTicks} ticks)`,
+                executed: false,
+                paused: false
+            })
+        },
+
+        executeInstantIntervention: (intervention) => {
+            const state = get()
+            const { category, type, posX, posY, posZ, count, amount, intensity, colonyId, caste } = intervention
+
+            get().addEventLog({
+                severity: 'WARNING',
+                type: category === 'DISASTER' ? 'DISASTER' : 'SYSTEM',
+                source: 'God Mode (Instant)',
+                message: `Intervention immédiate : [${category}] ${type || 'Action'} (Pos: ${posX ?? 32}, ${posY ?? 32})`
+            })
+
+            if (category === 'ENTITIES') {
+                if (intervention.action === 'SPAWN' || type?.includes('Spawn')) {
+                    const newAnts = []
+                    const targetColony = state.colonies.find(c => c.id === colonyId) || state.colonies[0]
+                    for (let i = 0; i < (count || 5); i++) {
+                        newAnts.push({
+                            id: `ant_spawned_${Date.now()}_${i}`,
+                            colonyId: targetColony?.id || 'col_1',
+                            colonyName: targetColony?.name || 'Colonie',
+                            species: targetColony?.speciesId || 'Formica fusca',
+                            caste: caste || 'WORKER',
+                            job: caste === 'SOLDIER' ? 'GUARD' : (caste === 'QUEEN' ? 'LAYING_EGGS' : 'FORAGER'),
+                            x: (posX || 32) + (Math.random() - 0.5) * 3,
+                            y: 0.1,
+                            z: (posY || 32) + (Math.random() - 0.5) * 3,
+                            vx: 0, vy: 0, vz: 0,
+                            health: 100,
+                            energy: 100,
+                            age: 1,
+                            carriedItem: 'NONE',
+                            task: 'Instant God Mode Injection',
+                            color: targetColony?.color || '#38bdf8'
+                        })
+                    }
+                    set({ ants: [...state.ants, ...newAnts] })
+                } else if (intervention.action === 'KILL') {
+                    const toKill = count || 5
+                    const updatedAnts = state.ants.slice(toKill)
+                    set({ ants: updatedAnts })
+                }
+            } else if (category === 'RESOURCE') {
+                const newFood = {
+                    id: `food_${Date.now()}`,
+                    x: posX || 32,
+                    y: 0.2,
+                    z: posY || 32,
+                    type: type?.includes('Sugar') ? 'SUGAR' : 'SEEDS',
+                    name: type || 'Dépôt Nourriture',
+                    amount: amount || 100,
+                    maxAmount: amount || 100,
+                    color: '#10b981'
+                }
+                set({ foodSources: [...state.foodSources, newFood] })
+            } else if (category === 'DISASTER') {
+                const upper = (type || '').toUpperCase()
+                if (upper.includes('RAIN') || upper.includes('FLOOD')) {
+                    set({
+                        environment: {
+                            ...state.environment,
+                            weatherState: 'TEMPEST',
+                            humidity: Math.min(100, state.environment.humidity + (intensity || 0.5) * 30),
+                            temperature: Math.max(5, state.environment.temperature - 4)
+                        }
                     })
-                    lat = pos.coords.latitude
-                    lon = pos.coords.longitude
-                    cityName = 'Position Locale'
-                } catch {
-                    // Fallback to default
+                } else if (upper.includes('HEAT') || upper.includes('FIRE')) {
+                    set({
+                        environment: {
+                            ...state.environment,
+                            weatherState: 'CLEAR',
+                            temperature: state.environment.temperature + (intensity || 0.5) * 15,
+                            humidity: Math.max(10, state.environment.humidity - 25)
+                        }
+                    })
                 }
+            } else if (category === 'ABIOTIC') {
+                set({
+                    environment: {
+                        ...state.environment,
+                        temperature: intervention.tempCelsius ?? state.environment.temperature,
+                        humidity: intervention.humidityPercent ?? state.environment.humidity,
+                        windSpeed: intervention.windMetersPerSec ?? state.environment.windSpeed
+                    }
+                })
             }
+        },
 
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure,cloud_cover`
-            const res = await fetch(url)
-            if (!res.ok) throw new Error(`Erreur API Open-Meteo (${res.status})`)
-            const data = await res.json()
+        // --- 6. Statistics History Buffers (7 Dynamic Real Charts) ---
+        timeWindow: '3m', // '1m' | '3m' | '10m' | '30m' | '1h' | 'all'
+        statsHistory: [],
+        trackedAntId: null,
+        trackedAntData: null,
+        followAntCamera: false,
 
-            const cur = data.current || {}
-            const wCode = cur.weather_code ?? 0
-            const wmo = WMO_WEATHER_CODES[wCode] || { label: 'Variable', state: 'CLEAR', icon: '🌤️' }
+        setTimeWindow: (w) => set({ timeWindow: w }),
+        setFollowAntCamera: (enabled) => set({ followAntCamera: enabled }),
+        setTrackedAntId: (id) => {
+            const ant = get().ants.find(a => a.id === id)
+            set({
+                trackedAntId: id,
+                trackedAntData: ant ? {
+                    ...ant,
+                    healthHistory: [ant.health],
+                    energyHistory: [ant.energy],
+                    distanceTraveled: 0
+                } : null
+            })
+        },
 
-            const realData = {
-                cityName,
-                latitude: lat,
-                longitude: lon,
-                temp: cur.temperature_2m ?? 20.0,
-                humidity: cur.relative_humidity_2m ?? 50,
-                precipitation: cur.precipitation ?? 0.0,
-                windSpeed: cur.wind_speed_10m ?? 3.5,
-                pressure: cur.surface_pressure ?? 1013.25,
-                cloudCover: (cur.cloud_cover ?? 20) / 100,
-                weatherCode: wCode,
-                condition: wmo.label,
-                state: wmo.state,
-                icon: wmo.icon,
-                lastUpdated: new Date().toLocaleTimeString('fr-FR')
+        // --- 7. Event Log Bus ---
+        eventsLog: [
+            {
+                id: 'evt_log_init',
+                tick: 0,
+                simCalendarTime: '2026-03-20 08:00:00',
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Moteur SwarmForge',
+                message: 'Simulation initialisée avec succès en mode autonome haute performance.',
+                metadata: { seed: 12345, world: 'world_terrarium_01' }
             }
+        ],
 
-            const newHistoryEntry = {
-                tick: currentTick,
-                simTime: state.stats?.simTime || currentTick,
-                timestamp: new Date().toISOString(),
-                data: realData
+        addEventLog: (log) => {
+            const current = get().eventsLog
+            const newLog = {
+                id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+                tick: get().ticks,
+                simCalendarTime: get().simTimeFormatted,
+                severity: log.severity || 'INFO',
+                type: log.type || 'SYSTEM',
+                source: log.source || 'Simulation Engine',
+                message: log.message || '',
+                metadata: log.metadata || {}
             }
+            set({ eventsLog: [newLog, ...current].slice(0, 1000) })
+        },
 
-            set(st => ({
-                realWeatherData: realData,
-                weatherQueryHistory: [...(st.weatherQueryHistory || []), newHistoryEntry],
-                realWeatherLoading: false,
+        clearEventLogs: () => set({ eventsLog: [] }),
+
+        // --- 8. Server Connection (gRPC / WebSocket) ---
+        serverHost: 'localhost',
+        serverPort: 50051,
+        connected: false,
+        serverStatusText: '○ Hors-ligne (Mode autonome local)',
+
+        setServerHost: (host) => set({ serverHost: host }),
+        setServerPort: (port) => set({ serverPort: Number(port) || 50051 }),
+
+        connect: () => {
+            const { serverHost, serverPort } = get()
+            set({ serverStatusText: '⟳ Connexion en cours...' })
+            try {
+                set({
+                    connected: false,
+                    serverStatusText: `○ Hors-ligne (${serverHost}:${serverPort} injoignable, mode autonome actif)`
+                })
+            } catch (e) {
+                set({
+                    connected: false,
+                    serverStatusText: '○ Hors-ligne (Mode autonome local)'
+                })
+            }
+        },
+
+        disconnect: () => {
+            set({
+                connected: false,
+                serverStatusText: '○ Hors-ligne'
+            })
+        },
+
+        discover: () => {
+            get().addEventLog({
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Réseau',
+                message: 'Détection automatique de serveurs SwarmForge locaux sur les ports 50051, 8080...'
+            })
+            setTimeout(() => {
+                get().addEventLog({
+                    severity: 'INFO',
+                    type: 'SYSTEM',
+                    source: 'Réseau',
+                    message: 'Détection terminée : Aucun serveur distant actif détecté. Mode autonome actif.'
+                })
+            }, 500)
+        },
+
+        // --- 9. Core Simulation Actions & Transport Controls ---
+        applyScenarioSetup: () => {
+            const { speciesCards, startDateTime, masterSeed, selectedWorldPresetId, selectedWeatherPresetId } = get()
+            const initialColonies = generateInitialColonies(speciesCards)
+            const initialAnts = spawnInitialAntsFromCards(speciesCards)
+            const initialFoods = generateInitialFoodSources()
+
+            const worldPreset = DEFAULT_WORLD_PRESETS.find(w => w.id === selectedWorldPresetId)
+            const weatherPreset = DEFAULT_WEATHER_PRESETS.find(w => w.id === selectedWeatherPresetId)
+
+            set({
+                ticks: 0,
+                highestRecordedTick: 0,
+                simTimeSeconds: 0,
+                running: false,
+                isPaused: false,
+                isScenarioApplied: true,
+                colonies: initialColonies,
+                ants: initialAnts,
+                foodSources: initialFoods,
+                statsHistory: [],
+                simTimeFormatted: formatSimCalendarTime(startDateTime, 0),
+                simRelativeTimeFormatted: formatSimRelativeTime(0),
                 environment: {
-                    ...st.environment,
-                    temperature: realData.temp,
-                    humidity: realData.humidity,
-                    rainIntensity: realData.precipitation,
-                    windSpeed: realData.windSpeed,
-                    weatherState: realData.state,
-                },
-                climateEngine: {
-                    ...st.climateEngine,
-                    latitudeDeg: lat,
-                    cloudCover: realData.cloudCover,
-                    precipitationMm: realData.precipitation,
-                    windSpeedMs: realData.windSpeed,
-                    barometricPressureHpa: realData.pressure,
+                    timeOfDay: 'DAY',
+                    lightLevel: 1.0,
+                    temperature: weatherPreset?.tempDay ?? 22.0,
+                    humidity: weatherPreset?.humidity ?? 65.0,
+                    windSpeed: 1.5,
+                    weatherState: 'CLEAR',
+                    season: weatherPreset?.season ?? 'SPRING',
+                    solarRadiation: 450.0
                 }
-            }))
+            })
 
             get().addEventLog({
-                level: 'INFO',
-                category: 'WEATHER',
-                message: `🛰️ Météo Réelle Open-Meteo synchronisée (${cityName}): ${realData.temp}°C, ${realData.condition} ${realData.icon}, Vent: ${realData.windSpeed} km/h, Humidité: ${realData.humidity}%.`
+                severity: 'INFO',
+                type: 'COLONY',
+                source: 'Gestionnaire de Scénario',
+                message: `Nouveau scénario appliqué : ${worldPreset?.name || 'Monde'} (${initialAnts.length} individus, ${initialColonies.length} colonies)`
             })
-        } catch (err) {
-            console.error('Failed to fetch real weather:', err)
-            set({ realWeatherLoading: false, realWeatherError: err.message })
+
+            // Switch to 3D view on apply (1:1 with SwarmForgeClient.java line 916)
+            set({ activeSubTab: 'VISUAL_3D' })
+        },
+
+        play: () => {
+            const state = get()
+            if (state.running) return
+
+            set({ running: true, isPaused: false })
+            soundEngine.resumeAmbient()
+
             get().addEventLog({
-                level: 'WARN',
-                category: 'WEATHER',
-                message: `⚠️ Échec de récupération de la Météo Réelle: ${err.message}`
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Moteur de Simulation',
+                message: `Simulation lancée à vitesse ${state.speed}x (dt=${state.stepSeconds}s)`
             })
-        }
-    },
 
-    // Dynamic Pheromones Field
-    pheromones: [],
+            lastTickTime = performance.now()
+            lastTpsMeasureTime = performance.now()
+            tickCountInWindow = 0
 
-    // Entity data
-    colonies: [
-        { id: 'COLONY_1', name: 'Colonie #1 (Native)', species: 'Formica fusca', color: '#38bdf8', foodStored: 250, queenCount: 1, workerCount: 120 },
-        { id: 'COLONY_2', name: 'Colonie #2 (Rivale)', species: 'Linepithema humile', color: '#f43f5e', foodStored: 180, queenCount: 2, workerCount: 90 },
-    ],
-    ants: generateInitialAnts([
-        { id: 'COLONY_1', name: 'Colonie #1 (Native)', species: 'Formica fusca', color: '#38bdf8' },
-        { id: 'COLONY_2', name: 'Colonie #2 (Rivale)', species: 'Linepithema humile', color: '#f43f5e' }
-    ], 60),
-    predators: [],
-    foodSources: [
-        { id: 'food_init_1', x: 45, y: 55, quantity: 200, type: 'SUGAR_NECTAR' },
-        { id: 'food_init_2', x: 60, y: 40, quantity: 150, type: 'SEEDS' },
-    ],
+            clearInterval(simLoopInterval)
+            simLoopInterval = setInterval(() => {
+                const current = get()
+                if (!current.running || current.isPaused) return
 
-    lookAndFeel: 'SCIENTIFIC',
-    setLookAndFeel: (mode) => {
-        const themeAttr = mode === 'SCIENTIFIC' ? 'scientific' : mode === 'REALISTIC' ? 'realistic' : 'gaming'
-        document.documentElement.setAttribute('data-theme', themeAttr)
-        set({ lookAndFeel: mode })
-        get().addEventLog({
-            level: 'INFO',
-            category: 'THEME',
-            message: `🎨 Theme graphique basculé sur: ${mode} (${mode === 'GAMING' ? 'Jeu Vidéo Neon' : mode === 'SCIENTIFIC' ? 'Scientifique Épuré' : 'Réaliste / Naturel'})`
-        })
-    },
+                const now = performance.now()
+                const elapsedMs = now - lastTickTime
+                lastTickTime = now
 
-    timeSyncMode: 'REAL_WORLD',
-    realWorldTimeStr: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-    realWorldDateStr: new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-    
-    setTimeSyncMode: (mode) => {
-        set({ timeSyncMode: mode })
-        if (mode === 'REAL_WORLD') {
-            get().updateRealWorldTime()
-        }
-        get().addEventLog({
-            level: 'INFO',
-            category: 'TIME_SYNC',
-            message: mode === 'REAL_WORLD' 
-                ? '🕒 Horloge synchronisée sur la date & heure du Monde Réel.' 
-                : '⏱️ Horloge basculée en mode Temps Simulé autonome.'
-        })
-    },
+                const ticksToAdvance = Math.max(1, Math.round((current.speed * (elapsedMs / 1000)) / current.stepSeconds))
 
-    updateRealWorldTime: () => {
-        const now = new Date()
-        const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-        const dateStr = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-        
-        const hours = now.getHours() + now.getMinutes() / 60
-        const sunAngle = (hours / 24)
-        
-        let lightLevel = Math.max(0.08, Math.sin((hours - 6) / 12 * Math.PI))
-        let timeOfDay = 'NIGHT'
-        if (hours >= 6 && hours < 8) timeOfDay = 'DAWN'
-        else if (hours >= 8 && hours < 18) timeOfDay = 'DAY'
-        else if (hours >= 18 && hours < 21) timeOfDay = 'DUSK'
+                for (let i = 0; i < Math.min(ticksToAdvance, 20); i++) {
+                    get().stepTick()
+                }
 
-        set(state => ({
-            realWorldTimeStr: timeStr,
-            realWorldDateStr: dateStr,
-            environment: {
-                ...state.environment,
-                sunAngle,
-                lightLevel,
-                timeOfDay
+                tickCountInWindow += Math.min(ticksToAdvance, 20)
+                if (now - lastTpsMeasureTime >= 500) {
+                    const actualTps = Math.round((tickCountInWindow / (now - lastTpsMeasureTime)) * 1000)
+                    set({ measuredTps: actualTps })
+                    tickCountInWindow = 0
+                    lastTpsMeasureTime = now
+                }
+            }, 33)
+        },
+
+        pause: () => {
+            set({ running: false, isPaused: true })
+            soundEngine.pauseAmbient()
+            clearInterval(simLoopInterval)
+            get().addEventLog({
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Moteur de Simulation',
+                message: `Simulation mise en pause au tick ${get().ticks}`
+            })
+        },
+
+        stepTick: () => {
+            const state = get()
+            const newTick = state.ticks + 1
+            const newHighestTick = Math.max(state.highestRecordedTick, newTick)
+            const newSimTime = newTick * state.stepSeconds
+            const calendarTime = formatSimCalendarTime(state.startDateTime, newSimTime)
+            const relativeTime = formatSimRelativeTime(newSimTime)
+
+            // 1. Check & Execute Scheduled Events
+            const pendingEvents = state.scheduledEvents.filter(e => !e.executed && !e.paused && e.targetTick <= newTick)
+            if (pendingEvents.length > 0) {
+                pendingEvents.forEach(evt => {
+                    get().executeInstantIntervention(evt)
+                    evt.executed = true
+                })
+                set({
+                    scheduledEvents: state.scheduledEvents.map(e => {
+                        const matched = pendingEvents.find(p => p.id === e.id)
+                        return matched ? { ...e, executed: true } : e
+                    })
+                })
             }
-        }))
-    },
 
-    phantomNestsVisible: true,
-    togglePhantomNests: () => set(state => ({ phantomNestsVisible: !state.phantomNestsVisible })),
+            // 2. Simulate Ant movement and behaviors
+            let foragingCount = 0
+            let diggingCount = 0
+            let nursingCount = 0
+            let guardingCount = 0
+            let royalCareCount = 0
+            let restingCount = 0
+            let workersCount = 0
+            let soldiersCount = 0
+            let queensCount = 0
+            let malesCount = 0
 
-    ghostNest: {
-        active: false,
-        type: 'PINE_NEEDLES',
-        x: 50,
-        y: 50,
-        z: 0,
-        scale: 1.0,
-        species: 'Formica fusca'
-    },
-    setGhostNest: (data) => set(state => ({ ghostNest: { ...state.ghostNest, ...data } })),
+            const updatedAnts = state.ants.map(ant => {
+                if (ant.caste === 'QUEEN') {
+                    queensCount++
+                    royalCareCount++
+                } else if (ant.caste === 'SOLDIER') {
+                    soldiersCount++
+                    guardingCount++
+                } else if (ant.caste === 'MALE') {
+                    malesCount++
+                    restingCount++
+                } else {
+                    workersCount++
+                    if (ant.job === 'FORAGER') foragingCount++
+                    else if (ant.job === 'BUILDER') diggingCount++
+                    else nursingCount++
+                }
 
-    nests: [
-        {
-            id: 'nest_pine_1',
-            name: 'Dôme d\'Épines de Pin',
-            type: 'PINE_NEEDLES',
-            x: 35, y: 35, z: 0,
-            scale: 1.2,
-            species: 'Formica rufa',
-            population: 140,
-            isPhantom: false,
-            chambers: generateDefaultChambersForNest({ id: 'nest_pine_1', name: 'Dôme d\'Épines de Pin', x: 35, y: 35, scale: 1.2 }),
-            tunnels: [
-                { startChamberId: 'nest_pine_1_ch_entrance', endChamberId: 'nest_pine_1_ch_nursery' },
-                { startChamberId: 'nest_pine_1_ch_entrance', endChamberId: 'nest_pine_1_ch_food' },
-                { startChamberId: 'nest_pine_1_ch_nursery', endChamberId: 'nest_pine_1_ch_queen' },
-                { startChamberId: 'nest_pine_1_ch_food', endChamberId: 'nest_pine_1_ch_queen' },
-                { startChamberId: 'nest_pine_1_ch_queen', endChamberId: 'nest_pine_1_ch_waste' },
-            ]
-        },
-        {
-            id: 'nest_termite_1',
-            name: 'Termitière Cathédrale',
-            type: 'TERMITE_MOUND',
-            x: 75, y: 30, z: 0,
-            scale: 1.5,
-            species: 'Macrotermes',
-            population: 310,
-            isPhantom: false,
-            chambers: generateDefaultChambersForNest({ id: 'nest_termite_1', name: 'Termitière Cathédrale', x: 75, y: 30, scale: 1.5 }),
-            tunnels: [
-                { startChamberId: 'nest_termite_1_ch_entrance', endChamberId: 'nest_termite_1_ch_nursery' },
-                { startChamberId: 'nest_termite_1_ch_entrance', endChamberId: 'nest_termite_1_ch_food' },
-                { startChamberId: 'nest_termite_1_ch_nursery', endChamberId: 'nest_termite_1_ch_queen' },
-                { startChamberId: 'nest_termite_1_ch_food', endChamberId: 'nest_termite_1_ch_queen' },
-                { startChamberId: 'nest_termite_1_ch_queen', endChamberId: 'nest_termite_1_ch_waste' },
-            ]
-        },
-        { id: 'nest_wasp_1', name: 'Guêpier Suspendu sur Branche', type: 'WASP_BRANCH', x: 40, y: 70, z: 1.8, scale: 1.1, species: 'Vespula vulgaris', population: 85, isPhantom: false },
-        { id: 'nest_beehive_1', name: 'Ruche Ruche Traditionnelle', type: 'WOODEN_BEEHIVE', x: 65, y: 65, z: 0, scale: 1.3, species: 'Apis mellifera', population: 220, isPhantom: false },
-        { id: 'nest_trunk_1', name: 'Cavité dans Tronc d\'Arbre', type: 'TREE_TRUNK', x: 20, y: 55, z: 0, scale: 1.4, species: 'Camponotus herculeanus', population: 95, isPhantom: false },
-    ],
+                const speedMult = ant.caste === 'SOLDIER' ? 0.25 : 0.4
+                const newX = Math.max(5, Math.min(95, ant.x + (Math.random() - 0.5) * speedMult))
+                const newZ = Math.max(5, Math.min(95, ant.z + (Math.random() - 0.5) * speedMult))
+                const newEnergy = Math.max(10, ant.energy - 0.005)
 
-    addNest: (newNest) => set(state => {
-        const id = newNest.id || `nest_${Date.now()}`
-        const updated = [...state.nests, { ...newNest, id, isPhantom: false }]
-        get().addEventLog({
-            level: 'INFO',
-            category: 'NEST',
-            message: `🏗️ Nouveau Nid construit: "${newNest.name || newNest.type}" à (X:${newNest.x}m, Y:${newNest.y}m)`,
-        })
-        return { nests: updated }
-    }),
-
-    removeNest: (nestId) => set(state => {
-        return { nests: state.nests.filter(n => n.id !== nestId) }
-    }),
-
-    climateEngine: {
-        latitudeDeg: 45.0,
-        hemisphere: 'NORTHERN',
-        climateType: 'OCEANIC',
-        season: 'SUMMER',
-        dayOfYear: 200,
-        cloudCover: 0.25,
-        precipitationMm: 0.0,
-        barometricPressureHpa: 1013.25,
-        windSpeedMs: 2.4,
-        windDirectionDeg: 225,
-        soilMoisture: 0.45,
-    },
-
-    terrainConfig: {
-        baseElevation: 0,
-        slopeX: 0.0,
-        slopeZ: 0.0,
-        roughness: 0.45,
-        hasRiver: true,
-        riverX: 25,
-        riverWidth: 10,
-        riverDepth: 0.6
-    },
-    updateTerrainConfig: (config) => set(state => ({ terrainConfig: { ...state.terrainConfig, ...config } })),
-    setHemisphere: (hemisphere) => set(state => ({ climateEngine: { ...state.climateEngine, hemisphere } })),
-    setClimateType: (climateType) => set(state => ({ climateEngine: { ...state.climateEngine, climateType } })),
-    updateClimateEngine: (config) => set(state => ({ climateEngine: { ...state.climateEngine, ...config } })),
-
-    environmentLighting: {
-        sunAzimuthDeg: 145,
-        sunElevationDeg: 42,
-        slopeExposure: 'SOUTH',
-        isNight: false,
-        moonPhase: 'FULL_MOON',
-        moonlightIntensity: 0.4,
-        currentCalculatedTempC: 22.5,
-    },
-
-    disasterState: {
-        activeDisaster: null,
-        intensity: 0,
-        floodWaterLevelMm: 0,
-    },
-
-    trophallaxisEvents: [],
-    trophallaxisActive: true,
-
-    predatorCatalog: [
-        { id: 'TAMANDUA', name: 'Fourmilier (Tamandua)', target: 'ALL_ANTS', threat: 'CRITICAL', icon: '🦥' },
-        { id: 'PICUS_VIRIDIS', name: 'Pic-vert (Picus viridis)', target: 'PINE_NEEDLES', threat: 'HIGH', icon: '🐦' },
-        { id: 'PSEUDACTEON', name: 'Mouche Phoride Parasite', target: 'WORKER_ANTS', threat: 'MEDIUM', icon: '🪰' },
-        { id: 'SPIDER_MYRMECOPHAGE', name: 'Araignée Myrmécophage', target: 'FORAGERS', threat: 'MEDIUM', icon: '🕷️' },
-    ],
-
-    diseaseParams: {
-        activeOutbreak: false,
-        diseaseType: 'CORDYCEPS',
-        contagionRate: 0.35,
-    },
-    epidemicStats: {
-        healthy: 210,
-        incubating: 0,
-        infected: 0,
-        contagious: 0,
-        immune: 0,
-        totalDeaths: 0,
-    },
-
-    triggerEpidemic: (type = 'CORDYCEPS', patientZeroCount = 3) => {
-        const ants = [...get().ants]
-        let infectedCount = 0
-        const updatedAnts = ants.map((ant, idx) => {
-            if (idx < patientZeroCount || Math.random() < 0.05) {
-                infectedCount++
                 return {
                     ...ant,
-                    diseaseState: 'INFECTED',
-                    diseaseType: type,
-                    health: ant.health || 100,
-                    contagionTimer: 0
+                    x: newX,
+                    z: newZ,
+                    energy: newEnergy
                 }
-            }
-            return ant
-        })
-
-        set(state => ({
-            ants: updatedAnts,
-            diseaseParams: {
-                ...state.diseaseParams,
-                activeOutbreak: true,
-                diseaseType: type
-            },
-            epidemicStats: {
-                ...state.epidemicStats,
-                infected: infectedCount,
-                contagious: infectedCount,
-                healthy: Math.max(0, state.ants.length - infectedCount)
-            }
-        }))
-
-        get().addEventLog({
-            level: 'WARN',
-            category: 'DISEASE',
-            message: `☣️ ÉPIDÉMIE DÉCLENCHÉE: Pathogène ${type} propagé dans la colonie ! (${infectedCount} cas initiaux)`,
-        })
-    },
-
-    cureEpidemic: () => {
-        const updatedAnts = get().ants.map(ant => ({
-            ...ant,
-            diseaseState: 'HEALTHY',
-            diseaseType: null,
-            health: 100
-        }))
-
-        set(state => ({
-            ants: updatedAnts,
-            diseaseParams: {
-                ...state.diseaseParams,
-                activeOutbreak: false
-            },
-            epidemicStats: {
-                healthy: updatedAnts.length,
-                incubating: 0,
-                infected: 0,
-                contagious: 0,
-                immune: state.epidemicStats.immune + state.epidemicStats.infected,
-                totalDeaths: state.epidemicStats.totalDeaths
-            }
-        }))
-
-        get().addEventLog({
-            level: 'INFO',
-            category: 'DISEASE',
-            message: `💉 TRAITEMENT FONGICIDE DIVIN APPLIQUÉ: Épidémie éradiquée, individus soignés.`,
-        })
-    },
-
-    simulationParams: {
-        pheromones: {
-            dissipationRate: { value: 0.50, unit: '%/s', min: 0.01, max: 5.00, label: 'Taux de Dissipation des Phéromones' },
-            diffusionRadius: { value: 1.20, unit: 'm', min: 0.20, max: 5.00, label: 'Rayon de Diffusion Évaporative' },
-            alarmThreshold: { value: 40, unit: '%', min: 5, max: 100, label: 'Seuil d\'Intensité d\'Alarme' },
-        },
-        resources: {
-            foodSpawnRate: { value: 12, unit: 'g/min', min: 1, max: 100, label: 'Taux d\'Apparition de Nourriture' },
-            foodDecayRate: { value: 0.20, unit: '%/h', min: 0.0, max: 2.0, label: 'Taux de Décomposition Organique' },
-            honeydewRate: { value: 2.50, unit: 'mg/h', min: 0.1, max: 10.0, label: 'Production de Miellat (Pucerons)' },
-        },
-        species: {
-            queenFecundity: { value: 60, unit: 'œufs/jour', min: 5, max: 300, label: 'Fécondité Reine (Taux de Ponte)' },
-            workerLifespan: { value: 90, unit: 'jours', min: 10, max: 365, label: 'Espérance de Vie des Ouvrières' },
-            soldierRatio: { value: 25, unit: '%', min: 0, max: 60, label: 'Proportion de Soldats dans la Colonie' },
-        },
-        economics: {
-            metabolicCost: { value: 0.50, unit: 'mW', min: 0.05, max: 5.00, label: 'Puissance Métabolique de Base' },
-            harvestEfficiency: { value: 85, unit: '%', min: 20, max: 100, label: 'Rendement de Récolte Énergétique' },
-        }
-    },
-
-    setSimulationParam: (category, key, newValue) => set(state => ({
-        simulationParams: {
-            ...state.simulationParams,
-            [category]: {
-                ...state.simulationParams[category],
-                [key]: {
-                    ...state.simulationParams[category][key],
-                    value: Number(newValue)
-                }
-            }
-        }
-    })),
-
-    addColony: (newColony) => set(state => {
-        const id = newColony.id || `COLONY_${Date.now()}`
-        const updated = [...state.colonies, { ...newColony, id }]
-        get().addEventLog({
-            level: 'INFO',
-            category: 'COLONY',
-            message: `🏛️ Colonie "${newColony.name}" (${newColony.species}) créée et enregistrée dans le monde.`,
-        })
-        return { colonies: updated }
-    }),
-
-    removeColony: (colonyId) => set(state => {
-        const col = state.colonies.find(c => c.id === colonyId)
-        get().addEventLog({
-            level: 'WARN',
-            category: 'COLONY',
-            message: `🗑️ Colonie "${col?.name || colonyId}" supprimée.`,
-        })
-        return { colonies: state.colonies.filter(c => c.id !== colonyId) }
-    }),
-
-    eventLogs: [
-        {
-            id: `evt_init_${Date.now()}`,
-            tick: 0,
-            simTimeFormatted: 'J+0 00:00:00',
-            timestamp: new Date().toISOString(),
-            level: 'INFO',
-            category: 'SYSTEM',
-            message: '🎬 Session de simulation initialisée (Horloge 1:1). Prêt pour le démarrage.',
-        }
-    ],
-
-    addEventLog: (logObj) => set(state => {
-        const simTimeStr = logObj.simTimeFormatted || state.simTimeFormatted || formatSimTime(state.simSeconds || state.tick || 0)
-        const newLog = {
-            id: `evt_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
-            tick: state.tick,
-            simTimeFormatted: simTimeStr,
-            timestamp: new Date().toISOString(),
-            level: logObj.level || 'INFO',
-            category: logObj.category || 'SIMULATION',
-            message: logObj.message || '',
-            details: logObj.details || null,
-        }
-        const updated = [newLog, ...state.eventLogs.slice(0, 499)]
-        return { eventLogs: updated }
-    }),
-
-    clearEventLogs: () => set({ eventLogs: [] }),
-
-    interventionsLog: [],
-
-    recordDivineIntervention: (actionData) => set(state => {
-        const intervention = {
-            id: `god_act_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-            tick: state.tick,
-            timestamp: new Date().toISOString(),
-            ...actionData
-        }
-
-        let newFood = [...state.foodSources]
-        let newPredators = [...state.predators]
-
-        if (actionData.type === 'SPAWN_FOOD') {
-            newFood.push({
-                id: `food_god_${Date.now()}`,
-                x: actionData.x || 50,
-                y: actionData.y || 50,
-                quantity: actionData.quantity || 100,
-                type: actionData.foodType || 'SUGAR_NECTAR'
             })
-        } else if (actionData.type === 'SPAWN_PREDATOR') {
-            newPredators.push({
-                id: `pred_god_${Date.now()}`,
-                x: actionData.x || 50,
-                y: actionData.y || 50,
-                type: actionData.predatorType || 'SPIDER',
-                state: 'HUNTING'
+
+            // 3. Update Colonies stats & Demographics
+            const updatedColonies = state.colonies.map(col => {
+                const colAnts = updatedAnts.filter(a => a.colonyId === col.id)
+                return {
+                    ...col,
+                    population: colAnts.length,
+                    food: Math.max(0, col.food + (foragingCount > 0 ? 0.05 : -0.02)),
+                    queens: colAnts.filter(a => a.caste === 'QUEEN').length,
+                    workers: colAnts.filter(a => a.caste === 'WORKER').length,
+                    soldiers: colAnts.filter(a => a.caste === 'SOLDIER').length,
+                    males: colAnts.filter(a => a.caste === 'MALE').length
+                }
             })
-        }
 
-        if (state.ws && state.connected) {
-            state.ws.send(JSON.stringify({
-                type: 'GOD_MODE_INTERVENTION',
-                intervention
-            }))
-        }
-
-        get().addEventLog({
-            level: 'WARN',
-            category: 'GOD_MODE',
-            message: `⚡ Intervention Divinement: ${actionData.actionName}`,
-            details: actionData
-        })
-
-        return {
-            interventionsLog: [intervention, ...state.interventionsLog],
-            foodSources: newFood,
-            predators: newPredators
-        }
-    }),
-
-    clearInterventionsLog: () => set({ interventionsLog: [] }),
-
-    localTickInterval: null,
-
-    stats: {
-        totalPopulation: 210,
-        totalWorkers: 150,
-        totalSoldiers: 60,
-        totalFood: 430,
-    },
-
-    environment: {
-        terrariumWidth: 2.0,
-        terrariumDepth: 2.0,
-        terrariumHeight: 1.0,
-        lightLevel: 1.0,
-        timeOfDay: 'DAY',
-        sunAngle: 0.5,
-        temperature: 20,
-        humidity: 50,
-        rainIntensity: 0,
-        windSpeed: 5,
-        weatherState: 'CLEAR',
-    },
-
-    updateEnvironment: (newEnv) => {
-        set(state => ({
-            environment: { ...state.environment, ...newEnv }
-        }))
-        get().addEventLog({
-            level: 'INFO',
-            category: 'ENVIRONMENT',
-            message: `🌍 Mise à jour environnementale: Météo=${newEnv.weatherState || get().environment.weatherState}, Temp=${(newEnv.temperature ?? get().environment.temperature).toFixed(1)}°C`
-        })
-    },
-
-    weatherToggles: {
-        showSun: true,
-        showLightning: true,
-        showClouds: true,
-        showPrecipitation: true,
-        showFog: true,
-        showWindDust: true,
-        nightVision: false,
-        lightningTrigger: 0,
-    },
-    setWeatherToggle: (key, value) => set(state => ({
-        weatherToggles: { ...state.weatherToggles, [key]: value }
-    })),
-    triggerLightning: () => {
-        set(state => ({
-            weatherToggles: { ...state.weatherToggles, lightningTrigger: state.weatherToggles.lightningTrigger + 1 }
-        }))
-        get().addEventLog({
-            level: 'WARN',
-            category: 'WEATHER',
-            message: '⚡ Éclair atmosphérique déclenché par l\'utilisateur.'
-        })
-    },
-
-    selectedEntity: null,
-    setSelectedEntity: (entity) => set({ selectedEntity: entity }),
-
-    connect: () => {
-        try {
-            const ws = new WebSocket('ws://localhost:8081')
-
-            ws.onopen = () => {
-                set({ connected: true, ws })
-                get().addEventLog({
-                    level: 'INFO',
-                    category: 'SYSTEM',
-                    message: '🟢 Connecté au serveur de simulation haute performance (WebSocket: 8081)'
-                })
-                ws.send(JSON.stringify({ type: 'SUBSCRIBE', viewport: { x: 0, y: 0, width: 100, height: 100 } }))
-            }
-
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data)
-                get().handleMessage(data)
-            }
-
-            ws.onclose = () => {
-                set({ connected: false, ws: null })
-            }
-
-            ws.onerror = () => {
-                set({ connected: false, ws: null })
-            }
-        } catch {
-            set({ connected: false, ws: null })
-        }
-    },
-
-    disconnect: () => {
-        const { ws } = get()
-        if (ws) {
-            ws.close()
-            set({ connected: false, ws: null })
-        }
-    },
-
-    handleMessage: (data) => {
-        switch (data.type) {
-            case 'STATE':
-                set({
-                    tick: data.tick,
-                    running: data.running,
-                    ants: data.individuals || [],
-                    colonies: data.colonies && data.colonies.length > 0 ? data.colonies : get().colonies,
-                    foodSources: data.foodSources || get().foodSources,
-                    predators: data.predators || get().predators,
-                    stats: {
-                        totalPopulation: data.individuals?.length || 0,
-                        totalWorkers: data.individuals?.filter(a => a.caste === 'WORKER').length || 0,
-                        totalSoldiers: data.individuals?.filter(a => a.caste === 'SOLDIER').length || 0,
-                        totalFood: data.colonies?.reduce((sum, c) => sum + (c.foodStored || 0), 0) || 0,
-                    },
-                })
-                break
-            case 'UPDATE':
-                if (data.individuals) {
-                    set(state => ({
-                        ants: state.ants.map(ant => {
-                            const update = data.individuals.find(u => u.id === ant.id)
-                            return update ? { ...ant, ...update } : ant
-                        }),
-                    }))
-                }
-                if (data.tick) set({ tick: data.tick })
-                if (data.environment) set({ environment: data.environment })
-                if (data.nests) set({ nests: data.nests })
-                break
-            default:
-                console.log('Unknown message:', data)
-        }
-    },
-
-    resetSimulation: (sessionData) => {
-        const { localTickInterval, colonies, cameraResetTrigger } = get()
-        if (localTickInterval) clearInterval(localTickInterval)
-        
-        const newAnts = generateInitialAnts(colonies, 75)
-
-        set(state => ({
-            tick: 0,
-            simSeconds: 0,
-            simTimeFormatted: 'J+0 00:00:00',
-            running: false,
-            localTickInterval: null,
-            ants: newAnts,
-            pheromones: [],
-            selectedEntity: null,
-            selectedChamber: null,
-            interventionsLog: [],
-            eventLogs: [
-                {
-                    id: `evt_init_${Date.now()}`,
-                    tick: 0,
-                    simTimeFormatted: 'J+0 00:00:00',
-                    timestamp: new Date().toISOString(),
-                    level: 'INFO',
-                    category: 'SYSTEM',
-                    message: '🎬 Nouvelle session initialisée à Tick #0 (Temps: J+0 00:00:00).',
-                }
-            ],
-            cameraResetTrigger: cameraResetTrigger + 1,
-            simulationSeed: sessionData?.masterSeed || state.simulationSeed || 12345,
-            stats: {
-                totalPopulation: newAnts.length,
-                totalWorkers: newAnts.filter(a => a.caste === 'WORKER').length,
-                totalSoldiers: newAnts.filter(a => a.caste === 'SOLDIER').length,
-                totalFood: 430,
-            }
-        }))
-    },
-
-    stepSimulationTick: () => {
-        const state = get()
-        const nextTick = state.tick + 1
-        const nextSimSeconds = (state.simSeconds || 0) + 1.0
-        const nextSimTimeFormatted = formatSimTime(nextSimSeconds)
-
-        let currentSeed = (state.simulationSeed || 42) + nextTick * 10007
-        const getSeededRandom = () => {
-            const x = Math.sin(currentSeed++) * 10000
-            return x - Math.floor(x)
-        }
-
-        if (state.timeSyncMode === 'REAL_WORLD') {
-            state.updateRealWorldTime()
-        }
-
-        if (state.weatherMode === 'REAL_WORLD') {
-            if (state.weatherQueryHistory && state.weatherQueryHistory.length > 0) {
-                const recordedEntry = state.weatherQueryHistory.slice().reverse().find(r => r.tick <= nextTick)
-                if (recordedEntry && recordedEntry.data && (!state.realWeatherData || state.realWeatherData.lastUpdated !== recordedEntry.data.lastUpdated)) {
-                    const realData = recordedEntry.data
-                    set(s => ({
-                        realWeatherData: realData,
-                        environment: {
-                            ...s.environment,
-                            temperature: realData.temp,
-                            humidity: realData.humidity,
-                            rainIntensity: realData.precipitation,
-                            windSpeed: realData.windSpeed,
-                            weatherState: realData.state,
-                        },
-                        climateEngine: {
-                            ...s.climateEngine,
-                            latitudeDeg: realData.latitude,
-                            cloudCover: realData.cloudCover,
-                            precipitationMm: realData.precipitation,
-                            windSpeedMs: realData.windSpeed,
-                            barometricPressureHpa: realData.pressure,
-                        }
-                    }))
+            // 4. Record Snapshot into Statistics History
+            const statsSnapshot = {
+                tick: newTick,
+                simTimeSeconds: newSimTime,
+                totalPopulation: updatedAnts.length,
+                coloniesPop: updatedColonies.reduce((acc, c) => ({ ...acc, [c.id]: c.population }), {}),
+                casteBreakdown: {
+                    queens: queensCount,
+                    workers: workersCount,
+                    soldiers: soldiersCount,
+                    males: malesCount
+                },
+                resources: {
+                    food: updatedColonies.reduce((sum, c) => sum + c.food, 0),
+                    water: updatedColonies.reduce((sum, c) => sum + c.water, 0),
+                    protein: updatedColonies.reduce((sum, c) => sum + c.protein, 0),
+                    births: Math.floor(newTick / 300),
+                    deaths: Math.floor(newTick / 600)
+                },
+                weather: {
+                    temp: state.environment.temperature,
+                    rain: state.environment.weatherState === 'TEMPEST' ? 25.0 : 0.0,
+                    phero: 100 + (updatedAnts.length * 2.5)
+                },
+                behaviors: {
+                    foraging: foragingCount,
+                    digging: diggingCount,
+                    nursing: nursingCount,
+                    guarding: guardingCount,
+                    royalCare: royalCareCount,
+                    resting: restingCount
+                },
+                performance: {
+                    tps: state.measuredTps || 20,
+                    targetTps: 20
                 }
             }
-        }
 
-        if (state.weatherMode === 'SIMULATED') {
-            // Realistic day-night solar progression: 24h = 86400 sim seconds
-            const simHourOfDay = ((nextSimSeconds % 86400) / 3600)
-            const dayOfYear = state.climateEngine?.dayOfYear || 200
-            const latRad = ((state.climateEngine?.latitudeDeg || 45.0) * (state.climateEngine?.hemisphere === 'SOUTHERN' ? -1 : 1) * Math.PI) / 180.0
-
-            const declinationRad = ((23.45 * Math.sin(((360 / 365) * (dayOfYear - 81) * Math.PI) / 180.0)) * Math.PI) / 180.0
-            const hourAngleRad = ((15 * (simHourOfDay - 12)) * Math.PI) / 180.0
-
-            const sinElevation = Math.sin(latRad) * Math.sin(declinationRad) + Math.cos(latRad) * Math.cos(declinationRad) * Math.cos(hourAngleRad)
-            const solarElevationDeg = (Math.asin(Math.max(-1, Math.min(1, sinElevation))) * 180) / Math.PI
-            const isNightTime = solarElevationDeg < -0.833
-
-            const climatePresets = {
-                OCEANIC: { baseTemp: 18.0, amplitude: 4.5, humidityBase: 75 },
-                CONTINENTAL: { baseTemp: 21.0, amplitude: 14.0, humidityBase: 50 },
-                MEDITERRANEAN: { baseTemp: 25.0, amplitude: 9.0, humidityBase: 45 },
-                ALPINE: { baseTemp: 12.0, amplitude: 11.0, humidityBase: 65 },
-                TROPICAL: { baseTemp: 28.0, amplitude: 3.5, humidityBase: 85 },
-                ARID: { baseTemp: 32.0, amplitude: 16.0, humidityBase: 20 },
-                SAVANNA: { baseTemp: 30.0, amplitude: 12.0, humidityBase: 35 },
-                DESERT: { baseTemp: 35.0, amplitude: 18.0, humidityBase: 15 },
-            }
-            const activePreset = climatePresets[state.climateEngine?.climateType || 'OCEANIC'] || climatePresets.OCEANIC
-            const cloudFactor = 1.0 - 0.55 * (state.climateEngine?.cloudCover || 0.25)
-            const solarHeatingGain = Math.max(0, Math.sin((solarElevationDeg * Math.PI) / 180.0)) * activePreset.amplitude * cloudFactor
-            const nightCoolingLoss = isNightTime ? activePreset.amplitude * 0.75 : 0.0
-            const calculatedDiurnalTemp = (activePreset.baseTemp + solarHeatingGain - nightCoolingLoss).toFixed(1)
-
-            set(s => ({
-                environmentLighting: {
-                    ...s.environmentLighting,
-                    sunElevationDeg: parseFloat(solarElevationDeg.toFixed(1)),
-                    sunAzimuthDeg: parseFloat(((180 + 15 * (simHourOfDay - 12)) % 360).toFixed(1)),
-                    isNight: isNightTime,
-                    currentCalculatedTempC: parseFloat(calculatedDiurnalTemp)
-                }
-            }))
-        }
-
-        // Real-time TPS Calculation (sliding window of timestamps in last 1000ms)
-        const now = performance.now()
-        const recentTimestamps = [...(state.tickTimestamps || []).filter(t => now - t <= 1000), now]
-        const currentMeasuredTps = recentTimestamps.length
-
-        const newPheromones = state.pheromones || []
-        const dissipationFactor = 0.980
-
-        const decayedPheros = newPheromones
-            .map(p => ({ ...p, intensity: p.intensity * dissipationFactor }))
-            .filter(p => p.intensity > 0.08)
-            .slice(-400) // Cap to prevent memory retention
-
-        let currentAnts = state.ants || []
-        if (currentAnts.length === 0) {
-            currentAnts = generateInitialAnts(state.colonies, 60)
-        }
-
-        // River boundary parameters for mortal water hazard & avoidance
-        const hasRiver = state.terrainConfig?.hasRiver ?? true
-        const riverX = state.terrainConfig?.riverX ?? 25
-        const riverWidth = state.terrainConfig?.riverWidth ?? 12
-        const riverLeft = riverX - riverWidth / 2
-        const riverRight = riverX + riverWidth / 2
-
-        const updatedAnts = []
-        let drownedCount = 0
-
-        for (let i = 0; i < currentAnts.length; i++) {
-            const ant = currentAnts[i]
-
-            if (ant.caste === 'QUEEN') {
-                updatedAnts.push({ ...ant, ageInDays: ant.ageInDays + (1.0 / 86400.0) })
-                continue
+            let updatedHistory = state.statsHistory
+            if (newTick % 5 === 0 || updatedHistory.length === 0) {
+                updatedHistory = [...state.statsHistory, statsSnapshot].slice(-1200)
             }
 
-            const stepDist = 0.4 + getSeededRandom() * 0.6
-            let turnAngle = (getSeededRandom() - 0.5) * 0.6
-            let heading = (ant.heading || 0) + turnAngle
-
-            let nx = ant.x + Math.cos(heading) * stepDist
-            let ny = ant.y + Math.sin(heading) * stepDist
-
-            // Terrarium borders
-            if (nx < 2 || nx > 98) {
-                nx = Math.max(2, Math.min(98, nx))
-                heading = Math.PI - heading
-            }
-            if (ny < 2 || ny > 98) {
-                ny = Math.max(2, Math.min(98, ny))
-                heading = -heading
-            }
-
-            // River Water Hazard & Steering Avoidance
-            let health = ant.health !== undefined ? ant.health : 100
-            let inWater = false
-
-            if (hasRiver) {
-                // If approaching river bank, sense water danger and steer away
-                if (nx >= riverLeft - 1.5 && nx <= riverRight + 1.5) {
-                    if (getSeededRandom() < 0.88) {
-                        // Steer away from river
-                        if (ant.x < riverX) {
-                            nx = Math.min(nx, riverLeft - 0.3)
-                            heading = Math.PI + (getSeededRandom() - 0.5) * 0.6
-                        } else {
-                            nx = Math.max(nx, riverRight + 0.3)
-                            heading = 0 + (getSeededRandom() - 0.5) * 0.6
-                        }
+            // 5. Update Tracked Individual Ant Telemetry if active
+            let updatedTrackedAntData = state.trackedAntData
+            if (state.trackedAntId) {
+                const currentTracked = updatedAnts.find(a => a.id === state.trackedAntId)
+                if (currentTracked) {
+                    updatedTrackedAntData = {
+                        ...currentTracked,
+                        distanceTraveled: (state.trackedAntData?.distanceTraveled || 0) + 0.15,
+                        healthHistory: [...(state.trackedAntData?.healthHistory || []), currentTracked.health].slice(-100),
+                        energyHistory: [...(state.trackedAntData?.energyHistory || []), currentTracked.energy].slice(-100)
                     }
                 }
+            }
 
-                // If inside river water, apply lethal drowning damage
-                if (nx >= riverLeft && nx <= riverRight) {
-                    inWater = true
-                    health -= 35 // Lethal drowning hazard in water
+            set({
+                ticks: newTick,
+                highestRecordedTick: newHighestTick,
+                simTimeSeconds: newSimTime,
+                simTimeFormatted: calendarTime,
+                simRelativeTimeFormatted: relativeTime,
+                ants: updatedAnts,
+                colonies: updatedColonies,
+                statsHistory: updatedHistory,
+                trackedAntData: updatedTrackedAntData
+            })
+        },
+
+        seekToTick: (targetTick) => {
+            const state = get()
+            const clampedTick = Math.max(0, Math.min(state.highestRecordedTick || 1000, Number(targetTick) || 0))
+            const newSimTime = clampedTick * state.stepSeconds
+            const calendarTime = formatSimCalendarTime(state.startDateTime, newSimTime)
+            const relativeTime = formatSimRelativeTime(newSimTime)
+
+            // Reset executed status of scheduled events that are ahead of clampedTick
+            const updatedEvents = state.scheduledEvents.map(e => {
+                if (e.targetTick > clampedTick) {
+                    return { ...e, executed: false }
                 }
-            }
-
-            // If health drops to 0, ant drowns/dies
-            if (health <= 0) {
-                drownedCount++
-                continue // Do not keep dead ant in active population
-            }
-
-            // Pheromone deposition (support 3D coordinate)
-            if (getSeededRandom() < 0.25 && decayedPheros.length < 400 && !inWater) {
-                const pType = ant.carriedItem !== 'NONE' ? 'FOOD' : (ant.job === 'GUARDING' ? 'ALARM' : 'HOME')
-                decayedPheros.push({
-                    id: `ph_${nextTick}_${ant.id}`,
-                    x: nx,
-                    y: ny,
-                    z: ant.z || 0,
-                    intensity: pType === 'FOOD' ? 1.0 : (pType === 'ALARM' ? 0.9 : 0.6),
-                    type: pType,
-                    colonyId: ant.colonyId
-                })
-            }
-
-            updatedAnts.push({
-                ...ant,
-                x: nx,
-                y: ny,
-                heading,
-                health,
-                energy: Math.max(10, (ant.energy || 100) - 0.005),
-                ageInDays: (ant.ageInDays || 10) + (1.0 / 86400.0),
+                return e
             })
-        }
 
-        if (drownedCount > 0 && nextTick % 10 === 0) {
-            state.addEventLog({
-                level: 'WARN',
-                category: 'ECOLOGY',
-                simTimeFormatted: nextSimTimeFormatted,
-                message: `🌊 [Mortalité] ${drownedCount} fourmi(s) noyée(s) dans le cours d'eau (zone létale).`
+            // Truncate stats history after clampedTick
+            const updatedHistory = state.statsHistory.filter(s => s.tick <= clampedTick)
+
+            set({
+                ticks: clampedTick,
+                simTimeSeconds: newSimTime,
+                simTimeFormatted: calendarTime,
+                simRelativeTimeFormatted: relativeTime,
+                scheduledEvents: updatedEvents,
+                statsHistory: updatedHistory
             })
-        }
+        },
 
-        if (state.autoCheckpoint && nextTick > 0 && nextTick % state.autoCheckpointInterval === 0) {
-            state.createCheckpoint(`Auto-Checkpoint #${nextTick}`)
-        }
+        stepForward: () => {
+            get().stepTick()
+        },
 
-        // Generate biological simulation events periodically (every 10 ticks to avoid GC thrashing)
-        const rand = getSeededRandom()
-        if (updatedAnts.length > 0 && nextTick % 10 === 0) {
-            const sampleAnt = updatedAnts[Math.floor(rand * updatedAnts.length)]
-            const antShortId = sampleAnt.id.replace('ant_', '').slice(0, 8)
+        stepBackward: () => {
+            const currentTicks = get().ticks
+            if (currentTicks <= 0) return
+            get().seekToTick(currentTicks - 1)
+        },
 
-            // Trigger subtle procedural sound cues
-            if (rand < 0.25) {
-                const foodAmt = (0.3 + getSeededRandom() * 1.2).toFixed(2)
-                soundEngine.triggerInsectStep()
-                state.addEventLog({
-                    level: 'INFO',
-                    category: 'FORAGING',
-                    simTimeFormatted: nextSimTimeFormatted,
-                    message: `🍓 [${nextSimTimeFormatted}] ${sampleAnt.species} (#${antShortId}): Récolte de ${foodAmt}mg de miellat ramenée au grenier (X:${sampleAnt.x.toFixed(1)}m, Z:${sampleAnt.y.toFixed(1)}m).`
-                })
-            } else if (rand < 0.50) {
-                soundEngine.triggerNestDiggingSound()
-                state.addEventLog({
-                    level: 'DEBUG',
-                    category: 'PHEROMONE',
-                    simTimeFormatted: nextSimTimeFormatted,
-                    message: `🧪 [${nextSimTimeFormatted}] Piste de recrutement d'attraction (${sampleAnt.colonyName}) tracée à (X:${sampleAnt.x.toFixed(1)}, Z:${sampleAnt.y.toFixed(1)}).`
-                })
-            } else if (rand < 0.75) {
-                const larvaCount = Math.floor(1 + getSeededRandom() * 4)
-                soundEngine.triggerInsectStep()
-                state.addEventLog({
-                    level: 'INFO',
-                    category: 'NURSERY',
-                    simTimeFormatted: nextSimTimeFormatted,
-                    message: `🍼 [${nextSimTimeFormatted}] Soins du Couvain : Une ouvrière nourrice a alimenté ${larvaCount} larves dans la Nurserie principale.`
-                })
-            } else {
-                soundEngine.triggerInsectStep()
-                state.addEventLog({
-                    level: 'INFO',
-                    category: 'QUEEN',
-                    simTimeFormatted: nextSimTimeFormatted,
-                    message: `👑 [${nextSimTimeFormatted}] Ponte Royale : La Reine fondatrice (${sampleAnt.species}) a pondu 2 nouveaux œufs dans la Chambre Royale.`
-                })
+        rewind: (ticksCount = 10) => {
+            const currentTicks = get().ticks
+            const newTicks = Math.max(0, currentTicks - ticksCount)
+            get().seekToTick(newTicks)
+            get().addEventLog({
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Transport',
+                message: `Recul temporel de ${ticksCount} ticks (Tick actuel : ${newTicks})`
+            })
+        },
+
+        fastForward: () => {
+            set({ speed: Math.min(100, get().speed * 2) })
+        },
+
+        goToBeginning: () => {
+            get().pause()
+            get().applyScenarioSetup()
+        },
+
+        goToEnd: () => {
+            get().pause()
+            get().addEventLog({
+                severity: 'WARNING',
+                type: 'SYSTEM',
+                source: 'Transport',
+                message: 'Atteinte de la fin du scénario.'
+            })
+        },
+
+        setSpeed: (spd) => set({ speed: Math.max(0.1, Math.min(100, Number(spd) || 1.0)) }),
+        setStepSeconds: (dt) => set({ stepSeconds: Math.max(0.001, Math.min(10.0, Number(dt) || 0.05)) }),
+
+        // --- 10. Real Weather Live API (Open-Meteo) ---
+        isRealWeatherMode: false,
+        realWeatherCity: 'Paris',
+        realWeatherStatus: 'Cliquez pour charger Open-Meteo',
+        setRealWeatherMode: (val) => set({ isRealWeatherMode: val }),
+        setRealWeatherCity: (city) => set({ realWeatherCity: city }),
+        fetchRealWeather: async (queryCity) => {
+            const city = queryCity || get().realWeatherCity || 'Paris'
+            set({ realWeatherStatus: 'Chargement météo en cours...' })
+            try {
+                let lat = 48.8566
+                let lon = 2.3522
+                const coords = city.split(',')
+                if (coords.length === 2 && !isNaN(parseFloat(coords[0])) && !isNaN(parseFloat(coords[1]))) {
+                    lat = parseFloat(coords[0])
+                    lon = parseFloat(coords[1])
+                } else {
+                    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=fr&format=json`)
+                    const geoData = await geoRes.json()
+                    if (geoData.results && geoData.results.length > 0) {
+                        lat = geoData.results[0].latitude
+                        lon = geoData.results[0].longitude
+                    }
+                }
+                const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,direct_radiation`)
+                const data = await weatherRes.json()
+                if (data.current) {
+                    const temp = data.current.temperature_2m ?? 20.0
+                    const hum = data.current.relative_humidity_2m ?? 60.0
+                    const wind = data.current.wind_speed_10m ?? 8.0
+                    const radiation = data.current.direct_radiation ?? 400.0
+
+                    set(state => ({
+                        environment: {
+                            ...state.environment,
+                            temperature: temp,
+                            humidity: hum,
+                            windSpeed: wind,
+                            solarRadiation: radiation
+                        },
+                        realWeatherStatus: `✓ ${city} : ${temp.toFixed(1)}°C, ${hum}% Hum, ${wind.toFixed(1)} km/h`
+                    }))
+                    get().addEventLog({
+                        severity: 'INFO',
+                        type: 'ENVIRONMENT',
+                        source: 'Open-Meteo API',
+                        message: `🛰️ Conditions réelles appliquées pour ${city} : ${temp.toFixed(1)}°C, ${hum}% Humidité, Vent ${wind.toFixed(1)} km/h.`
+                    })
+                }
+            } catch (e) {
+                set({ realWeatherStatus: 'Erreur lors de la récupération Open-Meteo' })
             }
-        }
+        },
 
-        const updatedStats = {
-            totalPopulation: updatedAnts.length,
-            totalWorkers: updatedAnts.filter(a => a.caste === 'WORKER').length,
-            totalSoldiers: updatedAnts.filter(a => a.caste === 'SOLDIER').length,
-            totalFood: Math.max(10, 430 + Math.floor(Math.sin(nextTick * 0.05) * 30)),
-        }
-
-        // If an ant is currently selected in the Inspector, update its live position/health/energy
-        let updatedSelectedEntity = state.selectedEntity
-        if (state.selectedEntity && state.selectedEntity.id) {
-            const found = updatedAnts.find(a => a.id === state.selectedEntity.id)
-            updatedSelectedEntity = found || null // Deselect if dead
-        }
-
-        set({
-            tick: nextTick,
-            simSeconds: nextSimSeconds,
-            simTimeFormatted: nextSimTimeFormatted,
-            ants: updatedAnts,
-            pheromones: decayedPheros,
-            stats: updatedStats,
-            selectedEntity: updatedSelectedEntity,
-            measuredTps: currentMeasuredTps,
-            tickTimestamps: recentTimestamps,
-        })
-    },
-
-    play: () => {
-        const { ws, localTickInterval, speed, environment } = get()
-        if (ws) ws.send(JSON.stringify({ type: 'CONTROL', action: 'PLAY' }))
-
-        soundEngine.ensureContext()
-        soundEngine.updateSimulationState({
-            simRunning: true,
-            speed: speed || 1.0,
-            isDay: (environment?.lightLevel ?? 1.0) >= 0.3,
-            lightLevel: environment?.lightLevel ?? 1.0,
-        })
-
-        if (localTickInterval) clearInterval(localTickInterval)
-
-        const intervalMs = Math.max(16, Math.floor(1000 / (speed || 1.0)))
-        const newInterval = setInterval(() => {
-            if (get().running) {
-                get().stepSimulationTick()
+        // --- 11. Scenario Import / Export ---
+        exportScenarioJson: () => {
+            const s = get()
+            const scenario = {
+                title: s.selectedScenarioPresetId,
+                description: s.scenarioDescription,
+                worldPresetId: s.selectedWorldPresetId,
+                weatherPresetId: s.selectedWeatherPresetId,
+                masterSeed: s.masterSeed,
+                startDateTime: s.startDateTime,
+                maxDuration: s.maxDuration,
+                durationUnit: s.durationUnit,
+                minPopStop: s.minPopStop,
+                speciesCards: s.speciesCards
             }
-        }, intervalMs)
+            const blob = new Blob([JSON.stringify(scenario, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `swarmforge_scenario_${Date.now()}.json`
+            a.click()
+            URL.revokeObjectURL(url)
+        },
 
-        set({ running: true, localTickInterval: newInterval })
+        importScenarioJson: (jsonString) => {
+            try {
+                const data = JSON.parse(jsonString)
+                set({
+                    scenarioDescription: data.description || '',
+                    selectedWorldPresetId: data.worldPresetId || 'world_terrarium_01',
+                    selectedWeatherPresetId: data.weatherPresetId || 'weather_printemps_doux',
+                    masterSeed: data.masterSeed ?? 12345,
+                    startDateTime: data.startDateTime || '2026-03-20T08:00:00',
+                    maxDuration: data.maxDuration ?? 0,
+                    durationUnit: data.durationUnit || 'minutes',
+                    minPopStop: data.minPopStop ?? 0,
+                    speciesCards: data.speciesCards || createDefaultSpeciesCards()
+                })
+                get().applyScenarioSetup()
+                return true
+            } catch (e) {
+                return false
+            }
+        },
 
-        get().addEventLog({
-            level: 'INFO',
-            category: 'SIMULATION',
-            simTimeFormatted: get().simTimeFormatted,
-            message: `▶ LANCEMENT DE SIMULATION (Tick #${get().tick}, Vitesse: ${(speed || 1.0).toFixed(1)}x) - Moteur 1:1 actif.`
-        })
-    },
+        // --- 12. Metrics & Event Log CSV/JSON Exports ---
+        exportStatsCsv: () => {
+            const history = get().statsHistory
+            if (history.length === 0) return
+            const headers = ['Tick', 'SimTimeSeconds', 'TotalPopulation', 'Queens', 'Workers', 'Soldiers', 'Males', 'Food', 'Water', 'Protein', 'Foraging', 'Digging', 'Nursing', 'Guarding', 'Resting', 'TempC', 'Rain', 'TPS']
+            const rows = history.map(h => [
+                h.tick,
+                h.simTimeSeconds.toFixed(2),
+                h.totalPopulation,
+                h.casteBreakdown?.queens ?? 0,
+                h.casteBreakdown?.workers ?? 0,
+                h.casteBreakdown?.soldiers ?? 0,
+                h.casteBreakdown?.males ?? 0,
+                h.resources?.food?.toFixed(1) ?? 0,
+                h.resources?.water?.toFixed(1) ?? 0,
+                h.resources?.protein?.toFixed(1) ?? 0,
+                h.ethology?.foraging ?? 0,
+                h.ethology?.digging ?? 0,
+                h.ethology?.nursing ?? 0,
+                h.ethology?.guarding ?? 0,
+                h.ethology?.resting ?? 0,
+                h.weather?.temp?.toFixed(1) ?? 0,
+                h.weather?.rain?.toFixed(1) ?? 0,
+                h.performance?.tps?.toFixed(1) ?? 0
+            ].join(','))
 
-    pause: () => {
-        const { ws, localTickInterval } = get()
-        if (ws) ws.send(JSON.stringify({ type: 'CONTROL', action: 'PAUSE' }))
-        if (localTickInterval) clearInterval(localTickInterval)
+            const csvContent = [headers.join(','), ...rows].join('\n')
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `swarmforge_statistics_${Date.now()}.csv`
+            a.click()
+            URL.revokeObjectURL(url)
+        },
 
-        soundEngine.updateSimulationState({ simRunning: false, speed: 0 })
+        exportLogsCsv: () => {
+            const logs = get().eventLogs
+            if (logs.length === 0) return
+            const headers = ['Id', 'Timestamp', 'Tick', 'Severity', 'Type', 'Source', 'Message']
+            const rows = logs.map(l => [
+                l.id,
+                `"${l.timestamp}"`,
+                l.tick,
+                l.severity,
+                l.type,
+                `"${l.source || ''}"`,
+                `"${(l.message || '').replace(/"/g, '""')}"`
+            ].join(','))
 
-        set({ running: false, localTickInterval: null, measuredTps: 0 })
+            const csvContent = [headers.join(','), ...rows].join('\n')
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `swarmforge_event_logs_${Date.now()}.csv`
+            a.click()
+            URL.revokeObjectURL(url)
+        },
 
-        get().addEventLog({
-            level: 'INFO',
-            category: 'SIMULATION',
-            simTimeFormatted: get().simTimeFormatted,
-            message: `⏸️ SIMULATION INTERROMPUE / PAUSE (Tick #${get().tick}).`
-        })
-    },
+        exportLogsJson: () => {
+            const logs = get().eventLogs
+            const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `swarmforge_event_logs_${Date.now()}.json`
+            a.click()
+            URL.revokeObjectURL(url)
+        },
 
-    setSpeed: (newSpeed) => {
-        const { ws, running, environment } = get()
-        if (ws) ws.send(JSON.stringify({ type: 'CONTROL', action: 'SPEED', speed: newSpeed }))
-        set({ speed: newSpeed })
+        // --- 13. Viewport & Rendering Options ---
+        sliceY: 0.0,
+        showPheromones: true,
+        showMinimap: true,
+        showGrid: true,
+        showChambers: true,
+        masterVolume: 0.8,
+        ambientVolume: 0.6,
+        sfxVolume: 0.7,
 
-        soundEngine.updateSimulationState({
-            simRunning: running,
-            speed: newSpeed,
-            isDay: (environment?.lightLevel ?? 1.0) >= 0.3,
-            lightLevel: environment?.lightLevel ?? 1.0,
-        })
-
-        if (running) {
-            get().play()
-        }
-
-        get().addEventLog({
-            level: 'INFO',
-            category: 'SIMULATION',
-            simTimeFormatted: get().simTimeFormatted,
-            message: `⚡ Vitesse de simulation ajustée à ${newSpeed.toFixed(1)}x (1s réelle = ${newSpeed.toFixed(1)}s simulées)`
-        })
-    },
-}))
+        setSliceY: (val) => set({ sliceY: Number(val) }),
+        setShowPheromones: (v) => set({ showPheromones: v }),
+        setShowMinimap: (v) => set({ showMinimap: v }),
+        setShowGrid: (v) => set({ showGrid: v }),
+        setShowChambers: (v) => set({ showChambers: v }),
+        setMasterVolume: (v) => {
+            soundEngine.setMasterVolume(v)
+            set({ masterVolume: v })
+        },
+        setAmbientVolume: (v) => {
+            soundEngine.setAmbientVolume(v)
+            set({ ambientVolume: v })
+        },
+        setSfxVolume: (v) => set({ sfxVolume: v })
+    }
+})

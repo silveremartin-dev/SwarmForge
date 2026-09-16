@@ -463,6 +463,155 @@ public class WorldEditorPane extends BorderPane {
         return legendPanel;
     }
 
+    public VBox createStandaloneLegendPanel() {
+        VBox panel = new VBox(8);
+        panel.setPadding(new Insets(6));
+        panel.setStyle("-fx-background-color: transparent;");
+
+        // 1. Substrates
+        Label titleSub = new Label("🧱 Substrats Géologiques");
+        titleSub.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        FlowPane subFlow = new FlowPane(4, 4);
+        subFlow.setPrefWrapLength(240);
+        String[][] subs = {
+            {"organic", "#523219", "Organique"},
+            {"earth", "#3d2817", "Terre / Humus"},
+            {"sand", "#eab308", "Sable"},
+            {"clay", "#9a3412", "Argile"},
+            {"silt", "#ca8a04", "Limon"},
+            {"peat", "#451a03", "Tourbe"},
+            {"gravel", "#94a3b8", "Gravier"},
+            {"stone", "#64748b", "Roche"},
+            {"cavities", "#0f172a", "Cavités"},
+            {"roots", "#78350f", "Racines"},
+            {"river", "#0284c7", "Eau / Rivière"},
+            {"vegetation", "#15803d", "Végétation"}
+        };
+        for (String[] s : subs) {
+            HBox b = new HBox(4);
+            b.setAlignment(Pos.CENTER_LEFT);
+            b.setPadding(new Insets(2, 5, 2, 5));
+            b.setStyle("-fx-background-color: rgba(255,255,255,0.06); -fx-background-radius: 4; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 4; -fx-border-width: 0.5;");
+            Canvas dot = new Canvas(8, 8);
+            GraphicsContext g = dot.getGraphicsContext2D();
+            g.setFill(Color.web(s[1]));
+            g.fillOval(0, 0, 8, 8);
+            g.setStroke(Color.WHITE);
+            g.setLineWidth(0.6);
+            g.strokeOval(0, 0, 8, 8);
+            Label lbl = new Label(s[2]);
+            lbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #e2e8f0;");
+            b.getChildren().addAll(dot, lbl);
+            subFlow.getChildren().add(b);
+        }
+
+        // 2. Castes
+        Label titleCastes = new Label("🐜 Castes & Rôles");
+        titleCastes.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #fbbf24;");
+        FlowPane castesFlow = new FlowPane(4, 4);
+        castesFlow.setPrefWrapLength(240);
+        String[][] castes = {
+            {"👑 Reine (Gyne)", "#e11d48"},
+            {"🐜 Ouvrière", "#f97316"},
+            {"🛡️ Soldat / Major", "#ef4444"},
+            {"⚖️ Media", "#ca8a04"},
+            {"🔍 Minor", "#84cc16"},
+            {"🪽 Mâle / Drone", "#06b6d4"},
+            {"🥚 Couvain / Larve", "#e2e8f0"}
+        };
+        for (String[] c : castes) {
+            HBox b = new HBox(4);
+            b.setAlignment(Pos.CENTER_LEFT);
+            b.setPadding(new Insets(2, 5, 2, 5));
+            b.setStyle("-fx-background-color: rgba(255,255,255,0.06); -fx-background-radius: 4; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 4; -fx-border-width: 0.5;");
+            Canvas dot = new Canvas(8, 8);
+            GraphicsContext g = dot.getGraphicsContext2D();
+            g.setFill(Color.web(c[1]));
+            g.fillOval(0, 0, 8, 8);
+            g.setStroke(Color.WHITE);
+            g.setLineWidth(0.6);
+            g.strokeOval(0, 0, 8, 8);
+            Label lbl = new Label(c[0]);
+            lbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #e2e8f0;");
+            b.getChildren().addAll(dot, lbl);
+            castesFlow.getChildren().add(b);
+        }
+
+        // 3. Phéromones
+        Label titlePhero = new Label("📡 Canaux Phéromonaux");
+        titlePhero.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #a855f7;");
+        FlowPane pheroFlow = new FlowPane(4, 4);
+        pheroFlow.setPrefWrapLength(240);
+        String[][] pheros = {
+            {"🍏 Nourriture (Recrutement)", "#22c55e"},
+            {"🏠 Retour Nid (Piste)", "#3b82f6"},
+            {"⚠️ Danger / Alarme", "#ef4444"},
+            {"👑 Phéromone Royale", "#ec4899"},
+            {"☠️ Nécrophorique", "#64748b"}
+        };
+        for (String[] p : pheros) {
+            HBox b = new HBox(4);
+            b.setAlignment(Pos.CENTER_LEFT);
+            b.setPadding(new Insets(2, 5, 2, 5));
+            b.setStyle("-fx-background-color: rgba(255,255,255,0.06); -fx-background-radius: 4; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 4; -fx-border-width: 0.5;");
+            Canvas dot = new Canvas(8, 8);
+            GraphicsContext g = dot.getGraphicsContext2D();
+            g.setFill(Color.web(p[1]));
+            g.fillOval(0, 0, 8, 8);
+            g.setStroke(Color.WHITE);
+            g.setLineWidth(0.6);
+            g.strokeOval(0, 0, 8, 8);
+            Label lbl = new Label(p[0]);
+            lbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #e2e8f0;");
+            b.getChildren().addAll(dot, lbl);
+            pheroFlow.getChildren().add(b);
+        }
+
+        // 4. Chambres & Nids
+        Label titleNest = new Label("🏰 Galeries & Chambres");
+        titleNest.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #10b981;");
+        FlowPane nestFlow = new FlowPane(4, 4);
+        nestFlow.setPrefWrapLength(240);
+        String[][] chambers = {
+            {"👑 Chambre Royale", "#d946ef"},
+            {"🥚 Couvain", "#f8fafc"},
+            {"🍄 Meule Champignon", "#a855f7"},
+            {"🌿 Étable à Pucerons", "#ec4899"},
+            {"🌾 Grenier à Graines", "#22c55e"},
+            {"❄️ Salle Diapause", "#0284c7"},
+            {"🗑️ Dépotoir", "#eab308"},
+            {"🚪 Entrées / Puits", "#9a3412"}
+        };
+        for (String[] ch : chambers) {
+            HBox b = new HBox(4);
+            b.setAlignment(Pos.CENTER_LEFT);
+            b.setPadding(new Insets(2, 5, 2, 5));
+            b.setStyle("-fx-background-color: rgba(255,255,255,0.06); -fx-background-radius: 4; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 4; -fx-border-width: 0.5;");
+            Canvas dot = new Canvas(8, 8);
+            GraphicsContext g = dot.getGraphicsContext2D();
+            g.setFill(Color.web(ch[1]));
+            g.fillOval(0, 0, 8, 8);
+            g.setStroke(Color.WHITE);
+            g.setLineWidth(0.6);
+            g.strokeOval(0, 0, 8, 8);
+            Label lbl = new Label(ch[0]);
+            lbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #e2e8f0;");
+            b.getChildren().addAll(dot, lbl);
+            nestFlow.getChildren().add(b);
+        }
+
+        panel.getChildren().addAll(
+            titleSub, subFlow,
+            new Separator(),
+            titleCastes, castesFlow,
+            new Separator(),
+            titlePhero, pheroFlow,
+            new Separator(),
+            titleNest, nestFlow
+        );
+        return panel;
+    }
+
     public void setRenderMode(RenderMode mode) {
         this.currentRenderMode = mode != null ? mode : RenderMode.REALISTIC;
         boolean isSci = (currentRenderMode == RenderMode.SCIENTIFIC);
@@ -474,6 +623,9 @@ public class WorldEditorPane extends BorderPane {
             gameView.setVisible(!isSci);
             gameView.setManaged(!isSci);
             gameView.setRenderMode(currentRenderMode);
+            if (!isSci && gameView.getGameApp() != null) {
+                gameView.getGameApp().renderTerrarium(exportToTerrarium());
+            }
         }
         repaintAllViews();
     }
@@ -1948,6 +2100,21 @@ public class WorldEditorPane extends BorderPane {
 
     public org.swarmforge.core.domain.Individual getFollowedAnt() {
         return followedAnt;
+    }
+
+    public void focusOnLocation(float x, float y, float z) {
+        if (gameView != null && gameView.getGameApp() != null) {
+            gameView.getGameApp().focusOnPosition(x, y, z);
+        }
+        repaintAllViews();
+    }
+
+    public void focusOnLocation(float x, float y) {
+        float z = 0f;
+        if (activeSimulation != null && activeSimulation.getTerrarium() != null) {
+            z = activeSimulation.getTerrarium().getSurfaceElevation(x, y);
+        }
+        focusOnLocation(x, y, z);
     }
 
     public void setFollowAntCameraEnabled(boolean enabled) {
