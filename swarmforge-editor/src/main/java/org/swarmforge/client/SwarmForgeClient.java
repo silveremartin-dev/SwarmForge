@@ -3327,18 +3327,25 @@ public class SwarmForgeClient extends Application {
 
                                 if (isPlaying && !isConnected) {
                                         if (localSimulation == null) {
-                                                if (simWorldViewer != null) {
-                                                        lastGeneratedTerrarium = simWorldViewer.exportToTerrarium();
-                                                } else {
+                                                // Create default terrarium on background thread (pure data, no FX)
+                                                if (lastGeneratedTerrarium == null) {
                                                         lastGeneratedTerrarium = new org.swarmforge.core.domain.Terrarium(64, 64, 32);
                                                         org.swarmforge.core.world.TerrainGenerator gen = new org.swarmforge.core.world.TerrainGenerator(12345L);
                                                         gen.generate(lastGeneratedTerrarium, 16, 6.0f, 0.08f);
                                                 }
                                                 localSimulation = new org.swarmforge.core.simulation.Simulation(lastGeneratedTerrarium);
                                                 localSimulation.addColony("LasiusNiger");
+                                                final org.swarmforge.core.simulation.Simulation finalSim = localSimulation;
                                                 javafx.application.Platform.runLater(() -> {
                                                         if (simWorldViewer != null) {
-                                                                simWorldViewer.setSimulation(localSimulation);
+                                                                // Export terrarium from UI thread and reinitialize simulation if better data is available
+                                                                org.swarmforge.core.domain.Terrarium uiTerrarium = simWorldViewer.exportToTerrarium();
+                                                                if (uiTerrarium != null) {
+                                                                        lastGeneratedTerrarium = uiTerrarium;
+                                                                        localSimulation = new org.swarmforge.core.simulation.Simulation(uiTerrarium);
+                                                                        localSimulation.addColony("LasiusNiger");
+                                                                }
+                                                                simWorldViewer.setSimulation(localSimulation != null ? localSimulation : finalSim);
                                                                 simWorldViewer.setSlicePlane(100.0);
                                                                 if (sliceSlider != null) sliceSlider.setValue(100.0);
                                                         }

@@ -97,7 +97,8 @@ public class SimulationControlPanel extends VBox {
     private final ComboBox<String> comboServerRole = new ComboBox<>();
     private final TextField txtPlayerAlias = new TextField(I18nManager.getInstance().get("sim.server.alias.default", "Player_1"));
     private final ComboBox<String> comboPlayerSpecies = new ComboBox<>();
-    private final Label lblServerAuthorityNotice = new Label("ℹ️ Mode Joueur : Le monde, le biome, l'heure et la météo sont imposés par le serveur distant.");
+    private final Label lblServerAuthorityNotice = new Label(); // kept for API compat (hidden)
+    private final VBox pnlModeExplainer = new VBox(4);        // Rich mode explanation card
     private final Label lblServerSessionStats = new Label("");
     private final VBox serverNetworkBox = new VBox(8);
     private final TextField txtServerHost = new TextField("localhost");
@@ -817,19 +818,21 @@ public class SimulationControlPanel extends VBox {
         HBox playerProfileRow = new HBox(6, lblAlias, txtPlayerAlias, lblSpecies, comboPlayerSpecies);
         playerProfileRow.setAlignment(Pos.CENTER_LEFT);
 
-        lblServerAuthorityNotice.setStyle("-fx-background-color: rgba(56, 189, 248, 0.12); -fx-text-fill: #38bdf8; -fx-font-size: 10px; -fx-padding: 4 8; -fx-background-radius: 4;");
-        lblServerAuthorityNotice.setWrapText(true);
-        lblServerAuthorityNotice.textProperty().bind(i18n.createStringBinding("sim.server.authority_notice"));
-        lblServerAuthorityNotice.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.authority_notice.tt"));
+        // Mode Explainer card — updated dynamically by updateAuthorityLock
+        pnlModeExplainer.setMaxWidth(Double.MAX_VALUE);
 
-        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow, serverRoleRow, playerProfileRow, lblServerAuthorityNotice);
+        lblServerAuthorityNotice.setVisible(false);
+        lblServerAuthorityNotice.setManaged(false);
+
+        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow, serverRoleRow, playerProfileRow, pnlModeExplainer);
         serverNetworkBox.setVisible(false);
         serverNetworkBox.setManaged(false);
 
         Runnable updateAuthorityLock = () -> {
-            boolean isServer = comboExecutionMode.getValue() != null && 
+            boolean isServer = comboExecutionMode.getValue() != null &&
                 (comboExecutionMode.getValue().contains("Serveur") || comboExecutionMode.getValue().contains("Server") || comboExecutionMode.getValue().contains("gRPC") || comboExecutionMode.getValue().contains("Cluster"));
-            boolean isJoin = comboServerRole.getValue() == null || comboServerRole.getValue().contains("Rejoindre") || comboServerRole.getValue().contains("Join");
+            boolean isJoin = comboServerRole.getValue() == null || comboServerRole.getValue().contains("Rejoindre") || comboServerRole.getValue().contains("Join")
+                || comboServerRole.getValue().contains("Beitreten") || comboServerRole.getValue().contains("Unirse") || comboServerRole.getValue().contains("加入");
 
             serverNetworkBox.setVisible(isServer);
             serverNetworkBox.setManaged(isServer);
@@ -838,16 +841,20 @@ public class SimulationControlPanel extends VBox {
             gridWorldWeather.setDisable(lockLocalWorld);
             gridDateTimeSeed.setDisable(lockLocalWorld);
             gridLimits.setDisable(lockLocalWorld);
-            lblServerAuthorityNotice.setVisible(lockLocalWorld);
-            lblServerAuthorityNotice.setManaged(lockLocalWorld);
+
             playerProfileRow.setVisible(lockLocalWorld);
             playerProfileRow.setManaged(lockLocalWorld);
+
+            // Rebuild mode explainer card
+            refreshModeExplainerCard(isServer, isJoin);
+
             updateApplyPresetsButtonState(isCreatingScenario);
             updateValidationPanel();
         };
 
         comboExecutionMode.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
         comboServerRole.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
+        updateAuthorityLock.run();
 
         scenarioCard.getChildren().addAll(
             metaRow,
@@ -1870,6 +1877,59 @@ public class SimulationControlPanel extends VBox {
     public void setOnServerDisconnect(Runnable r) { this.onServerDisconnectAction = r; }
     public void setOnServerDiscover(Runnable r) { this.onServerDiscoverAction = r; }
     public void setOnServerStart(Runnable r) { this.onServerStartAction = r; }
+
+    /**
+     * Rebuilds the mode explainer card shown below the role selector.
+     * Color-coded card changes dynamically as the user switches between modes.
+     *
+     * @param isServer true when server execution mode is selected
+     * @param isJoin   true when "Join" role is selected (vs. "Host")
+     */
+    private void refreshModeExplainerCard(boolean isServer, boolean isJoin) {
+        pnlModeExplainer.getChildren().clear();
+        pnlModeExplainer.setVisible(isServer);
+        pnlModeExplainer.setManaged(isServer);
+        if (!isServer) return;
+
+        String bgColor, borderColor, textColor, headerKey, bodyKey;
+        if (isJoin) {
+            // Join / Matchmaking — amber warning palette
+            bgColor     = "rgba(251, 191, 36, 0.10)";
+            borderColor = "rgba(251, 191, 36, 0.40)";
+            textColor   = "#fbbf24";
+            headerKey   = "sim.mode_card.join.title";
+            bodyKey     = "sim.mode_card.join.body";
+        } else {
+            // Host / Deploy Scenario — teal/blue-green palette
+            bgColor     = "rgba(52, 211, 153, 0.10)";
+            borderColor = "rgba(52, 211, 153, 0.40)";
+            textColor   = "#34d399";
+            headerKey   = "sim.mode_card.host.title";
+            bodyKey     = "sim.mode_card.host.body";
+        }
+
+        pnlModeExplainer.setStyle(
+            "-fx-background-color: " + bgColor + "; " +
+            "-fx-border-color: " + borderColor + "; " +
+            "-fx-border-radius: 6; -fx-background-radius: 6; " +
+            "-fx-padding: 8 10;"
+        );
+
+        Label lblHeader = new Label(i18n.get(headerKey, isJoin ? "▶ Join Mode — Matchmaking / Megaterrarium" : "▶ Host Mode — Deploy Custom Scenario"));
+        lblHeader.setStyle("-fx-font-size: 10.5px; -fx-font-weight: bold; -fx-text-fill: " + textColor + ";");
+        lblHeader.setWrapText(true);
+
+        Label lblBody = new Label(i18n.get(bodyKey, ""));
+        lblBody.setStyle("-fx-font-size: 10px; -fx-text-fill: #cbd5e1; -fx-line-spacing: 2;");
+        lblBody.setWrapText(true);
+
+        Tooltip cardTooltip = new Tooltip(i18n.get(bodyKey + ".tt", i18n.get(bodyKey, "")));
+        cardTooltip.setWrapText(true);
+        cardTooltip.setMaxWidth(420);
+        Tooltip.install(pnlModeExplainer, cardTooltip);
+
+        pnlModeExplainer.getChildren().addAll(lblHeader, lblBody);
+    }
 
     public void updateCheckpoints(List<org.swarmforge.core.simulation.SimulationCheckpoint> checkpoints) {
         comboCheckpoints.getItems().clear();

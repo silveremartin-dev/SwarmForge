@@ -262,42 +262,8 @@ public class VegetationVisualizer {
                 }
             }
         } else {
-            // Procedural landscape distribution with natural biological spacing and reasonable density
-            int count = Math.min(22, Math.max(6, (gridWidth * gridHeight) / 160));
-            List<Vector3f> placedPositions = new ArrayList<>();
-            float minSpacingSq = 3.5f * 3.5f;
-            float maxSpawnX = Math.max(3.5f, cutX - 2.5f);
-
-            for (int i = 0; i < count; i++) {
-                float x = 3, z = 3;
-                boolean valid = false;
-                for (int attempts = 0; attempts < 30; attempts++) {
-                    x = 3 + rand.nextFloat() * Math.max(1.0f, maxSpawnX - 3.0f);
-                    z = 3 + rand.nextFloat() * Math.max(1.0f, gridHeight - 6.0f);
-                    valid = true;
-                    for (Vector3f pos : placedPositions) {
-                        float dx = pos.x - x;
-                        float dz = pos.z - z;
-                        if (dx * dx + dz * dz < minSpacingSq) {
-                            valid = false;
-                            break;
-                        }
-                    }
-                    if (valid) break;
-                }
-                if (valid || placedPositions.isEmpty()) {
-                    float y = (terrarium != null) ? terrarium.getSurfaceElevation(x, z) : 0.0f;
-                    placedPositions.add(new Vector3f(x, y, z));
-
-                    if (currentRenderMode == RenderMode.REALISTIC) {
-                        createRealisticFlora(x, y, z, biome, effectiveSeason, rand, i);
-                    } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
-                        createProceduralTreeScientific(x, y, z, biome, rand);
-                    } else if (currentRenderMode == RenderMode.GAMIFIED) {
-                        createProceduralTreeGamified(x, y, z, biome, effectiveSeason, rand);
-                    }
-                }
-            }
+            // No vegetation system or empty plant list: no trees rendered.
+            // Trees are strictly driven by simulation data only.
         }
     }
 

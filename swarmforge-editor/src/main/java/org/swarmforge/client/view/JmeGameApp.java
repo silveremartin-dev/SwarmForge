@@ -526,42 +526,68 @@ public class JmeGameApp extends SimpleApplication {
 
             Material soilMat;
             if (isGamifiedVoxelMode) {
+                // GAMIFIED: Unshaded with per-voxel vertex colors (authentic Minecraft palette)
                 soilMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
                 soilMat.setBoolean("VertexColor", true);
             } else {
+                // REALISTIC: Lit with vertex color multiplied by diffuse texture
                 soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
                 soilMat.setBoolean("UseMaterialColors", true);
                 soilMat.setBoolean("UseVertexColor", true);
                 soilMat.setColor("Diffuse", ColorRGBA.White);
-                soilMat.setColor("Ambient", new ColorRGBA(0.60f, 0.60f, 0.60f, 1f));
-                soilMat.setColor("Specular", new ColorRGBA(0.12f, 0.12f, 0.12f, 1f));
-                soilMat.setFloat("Shininess", 4f);
+                soilMat.setColor("Ambient", new ColorRGBA(0.55f, 0.58f, 0.62f, 1f));
+                soilMat.setColor("Specular", new ColorRGBA(0.08f, 0.08f, 0.08f, 1f));
+                soilMat.setFloat("Shininess", 3f);
 
-                // Select appropriate high-res 1K PBR texture set based on terrain biome & latitude
+                // Pick dominant substrate texture from terrarium top-layer material distribution
                 double lat = Math.abs(terrarium.getLatitude());
-                String pbrFolder = "Ground049A"; // Temperate lush meadow grass default
-                if (lat < 23.5) {
-                    pbrFolder = "Ground025"; // Desert / tropical sand
-                } else if (lat > 60.0) {
-                    pbrFolder = "Ground061"; // Alpine / tundra snow
+                int sandCount = 0, rockCount = 0, snowCount = 0, grassCount = 0;
+                int sampleStep = Math.max(1, terrarium.getWidth() / 16);
+                for (int sx = 0; sx < terrarium.getWidth(); sx += sampleStep) {
+                    for (int sy = 0; sy < terrarium.getHeight(); sy += sampleStep) {
+                        float elev = terrarium.getSurfaceElevation(sx, sy);
+                        int sz = Math.max(0, Math.min(terrarium.getDepth() - 1, (int) elev));
+                        org.swarmforge.core.domain.TerrariumCell cell = terrarium.getCell(sx, sy, sz);
+                        if (cell != null) {
+                            switch (cell.material()) {
+                                case SAND -> sandCount++;
+                                case ROCK, GRAVEL -> rockCount++;
+                                default -> grassCount++;
+                            }
+                        }
+                    }
+                }
+                if (lat > 60.0) snowCount = 999; // polar override
+
+                String pbrFolder;
+                if (snowCount > 0) {
+                    pbrFolder = "Ground061"; // Alpine / snow
+                } else if (sandCount > grassCount && sandCount > rockCount) {
+                    pbrFolder = "Ground025"; // Desert / sand
+                } else if (rockCount > grassCount) {
+                    pbrFolder = "Ground037"; // Rocky / humus
+                } else {
+                    pbrFolder = "Ground049A"; // Default: temperate grass
                 }
 
                 try {
-                    com.jme3.texture.Texture diffuseTex = assetManager.loadTexture("models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_Color.jpg");
+                    com.jme3.texture.Texture diffuseTex = assetManager.loadTexture(
+                        "models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_Color.jpg");
                     diffuseTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
-                    diffuseTex.setMinFilter(com.jme3.texture.Texture.MinFilter.BilinearNearestMipMap);
+                    diffuseTex.setMinFilter(com.jme3.texture.Texture.MinFilter.Trilinear);
                     diffuseTex.setMagFilter(com.jme3.texture.Texture.MagFilter.Bilinear);
                     soilMat.setTexture("DiffuseMap", diffuseTex);
                 } catch (Exception e) {
                     try {
-                        com.jme3.texture.Texture fallbackTex = assetManager.loadTexture("models/textures/pbr/Ground049A/Ground049A_1K-JPG_Color.jpg");
+                        com.jme3.texture.Texture fallbackTex = assetManager.loadTexture(
+                            "models/textures/pbr/Ground049A/Ground049A_1K-JPG_Color.jpg");
                         fallbackTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
                         soilMat.setTexture("DiffuseMap", fallbackTex);
                     } catch (Exception ignored) {}
                 }
-
                 try {
-                    com.jme3.texture.Texture normalTex = assetManager.loadTexture("models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_NormalGL.jpg");
+                    com.jme3.texture.Texture normalTex = assetManager.loadTexture(
+                        "models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_NormalGL.jpg");
                     normalTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
                     soilMat.setTexture("NormalMap", normalTex);
                 } catch (Exception ignored) {}
@@ -1158,10 +1184,18 @@ public class JmeGameApp extends SimpleApplication {
         this.isGamifiedVoxelMode = (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED);
 
         if (viewPort != null) {
-            viewPort.setBackgroundColor(ColorRGBA.Black);
+            if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
+                viewPort.setBackgroundColor(new ColorRGBA(0.22f, 0.47f, 0.88f, 1.0f)); // Minecraft vibrant sky
+            } else if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC) {
+                viewPort.setBackgroundColor(new ColorRGBA(0.48f, 0.68f, 0.85f, 1.0f)); // Natural atmosphere sky
+            } else {
+                viewPort.setBackgroundColor(ColorRGBA.Black); // Scientific dark background
+            }
             if (sunLight != null) {
                 if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
                     sunLight.setColor(new ColorRGBA(1.3f, 1.25f, 1.2f, 1.0f));
+                } else if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC) {
+                    sunLight.setColor(new ColorRGBA(1.35f, 1.30f, 1.18f, 1.0f));
                 } else {
                     sunLight.setColor(ColorRGBA.White);
                 }
