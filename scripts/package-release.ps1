@@ -5,6 +5,8 @@
 param (
     [string]$Version = "2.0.0",
     [string]$AppName = "SwarmForge",
+    [string]$OutputDir = "",
+    [string]$InstallDir = "",
     [switch]$SkipBuild = $false,
     [switch]$CreateMsi = $false
 )
@@ -65,13 +67,20 @@ New-Item -ItemType Directory -Force -Path $ReleaseDir | Out-Null
 
 Write-Host "`n[3/6] Staging runtime JARs..." -ForegroundColor Yellow
 Copy-Item "swarmforge-editor/target/libs/*.jar" $StagingJars -Force
-Copy-Item "swarmforge-editor/target/swarmforge-editor-$Version-SNAPSHOT.jar" $StagingJars -Force
-if (Test-Path "swarmforge-core/target/swarmforge-core-$Version-SNAPSHOT.jar") {
-    Copy-Item "swarmforge-core/target/swarmforge-core-$Version-SNAPSHOT.jar" $StagingJars -Force
+
+$editorJar = Get-ChildItem -Path "swarmforge-editor/target" -Filter "swarmforge-editor-*.jar" | Where-Object { $_.Name -notmatch "original" } | Select-Object -First 1
+if (-not $editorJar) {
+    Write-Error "Could not find built swarmforge-editor JAR in swarmforge-editor/target."
+    exit 1
 }
-if (Test-Path "swarmforge-server/target/swarmforge-server-$Version-SNAPSHOT.jar") {
-    Copy-Item "swarmforge-server/target/swarmforge-server-$Version-SNAPSHOT.jar" $StagingJars -Force
-}
+Copy-Item $editorJar.FullName $StagingJars -Force
+$MainJarName = $editorJar.Name
+
+$coreJar = Get-ChildItem -Path "swarmforge-core/target" -Filter "swarmforge-core-*.jar" -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch "original" } | Select-Object -First 1
+if ($coreJar) { Copy-Item $coreJar.FullName $StagingJars -Force }
+
+$serverJar = Get-ChildItem -Path "swarmforge-server/target" -Filter "swarmforge-server-*.jar" -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch "original" } | Select-Object -First 1
+if ($serverJar) { Copy-Item $serverJar.FullName $StagingJars -Force }
 
 # 4. Generate Windows .ico icon from source png
 Write-Host "`n[4/6] Creating application icon..." -ForegroundColor Yellow
@@ -101,11 +110,17 @@ Write-Host "`n[5/6] Generating Standalone Native App with jpackage (Embedded JRE
 $AppImageOut = Join-Path $StagingDir "app-build"
 if (Test-Path $AppImageOut) { Remove-Item -Recurse -Force $AppImageOut }
 
+# jpackage requires purely numeric version format (e.g. 1.0.0)
+$NumericVersion = ($Version -split '-')[0]
+if ($NumericVersion -notmatch '^\d+(\.\d+)*$') {
+    $NumericVersion = "1.0.0"
+}
+
 $jpackageArgs = @(
     "--name", $AppName,
-    "--app-version", $Version,
+    "--app-version", $NumericVersion,
     "--input", $StagingJars,
-    "--main-jar", "swarmforge-editor-$Version-SNAPSHOT.jar",
+    "--main-jar", $MainJarName,
     "--main-class", "org.swarmforge.client.Launcher",
     "--type", "app-image",
     "--dest", $AppImageOut,
@@ -225,8 +240,8 @@ Compress-Archive -Path "$BundleRoot\*" -DestinationPath $ZipStandalonePath -Comp
 # Create Dedicated Server Headless Package
 $ServerStage = Join-Path $StagingDir "server-bundle"
 New-Item -ItemType Directory -Force -Path (Join-Path $ServerStage "lib") | Out-Null
-Copy-Item "swarmforge-server/target/swarmforge-server-$Version-SNAPSHOT.jar" (Join-Path $ServerStage "swarmforge-server.jar") -Force
-Copy-Item "swarmforge-core/target/swarmforge-core-$Version-SNAPSHOT.jar" (Join-Path $ServerStage "lib") -Force
+if ($serverJar) { Copy-Item $serverJar.FullName (Join-Path $ServerStage "swarmforge-server.jar") -Force }
+if ($coreJar) { Copy-Item $coreJar.FullName (Join-Path $ServerStage "lib") -Force }
 Copy-Item "swarmforge-editor/target/libs/*.jar" (Join-Path $ServerStage "lib") -Force
 if (Test-Path "Dockerfile") { Copy-Item "Dockerfile" $ServerStage -Force }
 if (Test-Path "docker-compose.yml") { Copy-Item "docker-compose.yml" $ServerStage -Force }
@@ -266,7 +281,28 @@ Get-ChildItem -Path $ReleaseDir -Filter "*.zip" | ForEach-Object {
 }
 $Checksums | Out-File -FilePath $ChecksumFile -Encoding utf8
 
+# 7. Optional Custom Directory Export / Direct Install
+if ($OutputDir) {
+    Write-Host "`n[Export] Copying release packages to custom OutputDir: $OutputDir" -ForegroundColor Yellow
+    if (-not (Test-Path $OutputDir)) {
+        New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+    }
+    Copy-Item (Join-Path $ReleaseDir "*") -Destination $OutputDir -Force
+    Write-Host " [OK] Release archives copied to $OutputDir" -ForegroundColor Green
+}
+
+if ($InstallDir) {
+    Write-Host "`n[Install] Installing standalone app directly to: $InstallDir" -ForegroundColor Yellow
+    if (-not (Test-Path $InstallDir)) {
+        New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+    }
+    Copy-Item "$BundleRoot\*" -Destination $InstallDir -Recurse -Force
+    Write-Host " [OK] Standalone SwarmForge installed at $InstallDir" -ForegroundColor Green
+}
+
 Write-Host "`n================================================================" -ForegroundColor Green
 Write-Host " [COMPLETED] Release bundles successfully created in:" -ForegroundColor Green
 Write-Host "  $ReleaseDir" -ForegroundColor White
+if ($OutputDir) { Write-Host "  $OutputDir (Custom Export)" -ForegroundColor White }
+if ($InstallDir) { Write-Host "  $InstallDir (Direct Installation)" -ForegroundColor White }
 Write-Host "================================================================" -ForegroundColor Green
