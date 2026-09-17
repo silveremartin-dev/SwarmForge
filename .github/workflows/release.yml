@@ -1,0 +1,55 @@
+﻿name: SwarmForge Release Build & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 2.0.0)'
+        required: false
+        default: '2.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    name: Build Standalone Windows Distribution (jpackage)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build SwarmForge Modules & Dependencies
+        run: |
+          mvn clean package -pl swarmforge-editor -am -DskipTests
+          mvn dependency:copy-dependencies -pl swarmforge-editor -DincludeScope=runtime -DoutputDirectory=target/libs
+
+      - name: Package Standalone JRE & Native Release Bundles
+        shell: powershell
+        run: |
+          $ver = if ("${{ github.ref_name }}" -match '^v(?<v>.+)') { $Matches.v } else { "${{ github.event.inputs.version }}" }
+          if (-not $ver) { $ver = "2.0.0" }
+          Write-Host "Building release for version: $ver"
+          .\scripts\package-release.ps1 -Version $ver -SkipBuild
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          files: |
+            dist/release/*.zip
+            dist/release/SHA256SUMS.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false

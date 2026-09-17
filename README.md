@@ -127,21 +127,35 @@ SwarmForge v2.0 includes a comprehensive distributed architecture for multi-clie
 
 ---
 
-## 🚀 Quick Start & Setup Guide
+## 🚀 Instant Download & Quick Start
 
-### Prerequisites
+### ⚡ 1. Autonomous Standalone Release (Zero Prerequisites / No Java Needed)
+
+For end-users, researchers, and quick exploration, download the fully bundled standalone application:
+
+1. Download **[SwarmForge-v2.0.0-Windows-x64-Standalone.zip](https://github.com/swarmforge/swarmforge/releases)** from the latest release.
+2. Extract the archive to any folder.
+3. Launch `SwarmForge.exe` (or run `Install-Shortcuts.bat` to create Desktop and Start Menu shortcuts).
+
+> 💡 **Standalone package includes**: An embedded lightweight Java runtime, all pre-configured native libraries (LWJGL 3, jMonkeyEngine 3.6, OpenCL), sample terrarium nests, and full documentation.
+
+---
+
+### 🛠️ 2. Developer Setup & Source Compilation
+
+#### Prerequisites
 - **Java 21 LTS** or higher
 - **Maven 3.9+**
 - **Node.js 18+** *(optional, for web client)*
 - **OpenCL / CUDA compatible GPU** *(optional, for TornadoVM hardware acceleration)*
 
-### Compilation & Build
+#### Compilation & Build
 ```bash
 # Build the entire multi-module platform
 mvn clean install -DskipTests
 
-# Generate complete internal Javadoc
-mvn javadoc:javadoc
+# Build the Standalone Windows Release & Installer locally:
+.\scripts\package-release.bat
 ```
 
 ### Running Components
