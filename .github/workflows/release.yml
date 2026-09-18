@@ -25,16 +25,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
 
       - name: Build SwarmForge Modules & Dependencies
+        shell: powershell
         run: |
-          mvn clean package -pl swarmforge-editor -am -DskipTests
-          mvn dependency:copy-dependencies -pl swarmforge-editor -DincludeScope=runtime -DoutputDirectory=target/libs
+          mvn -B clean install -pl swarmforge-editor -am -DskipTests
+          mvn -B dependency:copy-dependencies -pl swarmforge-editor -am -DincludeScope=runtime -DoutputDirectory=target/libs
 
       - name: Package Standalone JRE & Native Release Bundles
         shell: powershell

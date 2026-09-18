@@ -38,14 +38,14 @@ Write-Host " [OK] Using jpackage: $jpackage" -ForegroundColor Green
 # 2. Build Maven modules
 if (-not $SkipBuild) {
     Write-Host "`n[1/6] Building Maven modules (Core, Server, Editor)..." -ForegroundColor Yellow
-    mvn package -pl swarmforge-editor -am -DskipTests
+    mvn clean install -pl swarmforge-editor -am -DskipTests
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Maven build failed."
         exit 1
     }
     
     Write-Host "`n[2/6] Copying runtime dependencies..." -ForegroundColor Yellow
-    mvn dependency:copy-dependencies -pl swarmforge-editor -DincludeScope=runtime -DoutputDirectory=target/libs
+    mvn dependency:copy-dependencies -pl swarmforge-editor -am -DincludeScope=runtime -DoutputDirectory=target/libs
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to copy dependencies."
         exit 1
@@ -150,7 +150,7 @@ if (Test-Path "samplenests") {
     Copy-Item "samplenests" -Destination $BundleRoot -Recurse -Force
 }
 if (Test-Path "docs") {
-    Copy-Item "docs" -Destination (Join-Path $BundleRoot "docs") -Recurse -Force
+    Copy-Item "docs" -Destination $BundleRoot -Recurse -Force
 }
 Copy-Item "README.md" -Destination $BundleRoot -Force
 Copy-Item "LICENSE" -Destination $BundleRoot -Force
