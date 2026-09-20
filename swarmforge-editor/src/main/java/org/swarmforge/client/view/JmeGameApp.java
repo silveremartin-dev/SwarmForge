@@ -1028,6 +1028,13 @@ public class JmeGameApp extends SimpleApplication {
             pixelBuffer.get(pixelData);
             pixelBuffer.clear();
 
+            // Swap R and B channels: OpenGL framebuffer reads GL_RGBA, while JavaFX ByteBgra expects BGRA
+            for (int i = 0; i < pixelData.length; i += 4) {
+                byte r = pixelData[i];
+                pixelData[i] = pixelData[i + 2];
+                pixelData[i + 2] = r;
+            }
+
             Platform.runLater(() -> {
                 if (targetImage != null) {
                     PixelWriter pw = targetImage.getPixelWriter();

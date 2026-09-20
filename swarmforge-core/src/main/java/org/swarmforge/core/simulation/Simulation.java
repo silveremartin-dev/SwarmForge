@@ -261,6 +261,9 @@ public class Simulation {
         if (soldiers > 0) colony.createSoldiers(soldiers);
         if (brood > 0) colony.createBrood(brood);
         colony.bootstrapDefaultResources();
+        if (colony.getTunnelNetwork() != null) {
+            colony.getTunnelNetwork().rebuildForArchitecture(x, y, surfaceZ, species != null ? species.getNestType() : "BURROW_UNDERGROUND", colony);
+        }
         addColony(colony);
         return colony;
     }

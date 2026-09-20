@@ -246,6 +246,140 @@ public class SimulationControlPanel extends VBox {
         VBox scenarioCard = new VBox(10);
         scenarioCard.getStyleClass().add("card-pane");
 
+        // Execution Engine Selector (Local In-Process vs Remote Server / Cluster)
+        HBox execModeBox = new HBox(8);
+        execModeBox.setAlignment(Pos.CENTER_LEFT);
+        Label lblExecMode = new Label();
+        lblExecMode.textProperty().bind(i18n.createStringBinding("sim.exec_mode.title"));
+        lblExecMode.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
+        lblExecMode.getStyleClass().add("accent-title");
+        lblExecMode.tooltipProperty().bind(i18n.createTooltipBinding("sim.exec_mode.title.tt"));
+
+        comboExecutionMode.getItems().setAll(
+            i18n.get("sim.exec_mode.local", "● Mode Local Embarqué (In-Process CPU)"),
+            i18n.get("sim.exec_mode.server", "● Mode Serveur SwarmForge (Distant / Cluster gRPC)")
+        );
+        comboExecutionMode.getSelectionModel().selectFirst();
+        comboExecutionMode.setMaxWidth(Double.MAX_VALUE);
+        comboExecutionMode.setStyle("-fx-font-size: 11px;");
+        comboExecutionMode.setTooltip(new Tooltip(i18n.get("sim.exec_mode.tt")));
+        HBox.setHgrow(comboExecutionMode, Priority.ALWAYS);
+        execModeBox.getChildren().addAll(lblExecMode, comboExecutionMode);
+
+        // Server Network Sub-Panel (Integrated for Mode Serveur)
+        serverNetworkBox.setStyle("-fx-background-color: rgba(2, 132, 199, 0.08); -fx-border-color: rgba(2, 132, 199, 0.3); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8;");
+        txtServerHost.setPrefWidth(110);
+        txtServerHost.setTooltip(new Tooltip(i18n.get("sim.server.host.tt")));
+        txtServerPort.setPrefWidth(65);
+        txtServerPort.setTooltip(new Tooltip(i18n.get("sim.server.port.tt")));
+        btnServerConnect.getStyleClass().add("btn-primary");
+        btnServerConnect.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.btn.connect.tt"));
+        btnServerStart.setStyle("-fx-font-size: 11px;");
+        btnServerStart.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.btn.start.tt"));
+        btnServerDiscover.setStyle("-fx-font-size: 11px;");
+        btnServerDiscover.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.btn.discover.tt"));
+        btnServerConnect.setOnAction(e -> {
+            if (btnServerConnect.getText().contains("Déconnecter") || btnServerConnect.getText().contains("Disconnect")) {
+                if (onServerDisconnectAction != null) onServerDisconnectAction.run();
+            } else {
+                if (onServerConnectAction != null) onServerConnectAction.run();
+            }
+        });
+        btnServerStart.setOnAction(e -> {
+            if (onServerStartAction != null) onServerStartAction.run();
+        });
+        btnServerDiscover.setOnAction(e -> {
+            if (onServerDiscoverAction != null) onServerDiscoverAction.run();
+        });
+
+        Label lblHost = new Label();
+        lblHost.textProperty().bind(i18n.createStringBinding("sim.server.host"));
+        Label lblPort = new Label();
+        lblPort.textProperty().bind(i18n.createStringBinding("sim.server.port"));
+        HBox serverInputsRow = new HBox(6, lblHost, txtServerHost, lblPort, txtServerPort, btnServerConnect, btnServerStart, btnServerDiscover);
+        serverInputsRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label lblStatusHead = new Label();
+        lblStatusHead.textProperty().bind(i18n.createStringBinding("sim.server.status"));
+        lblStatusHead.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.status.tt"));
+        lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #f87171;");
+        lblServerSessionStats.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
+        HBox serverStatusRow = new HBox(6, lblStatusHead, lblServerConnectionStatus, lblServerSessionStats);
+        serverStatusRow.setAlignment(Pos.CENTER_LEFT);
+
+        // Server Role (Join vs Host)
+        comboServerRole.getItems().setAll(
+            i18n.get("sim.server.role.join", "● Rejoindre (Matchmaking / Mégaterrarium - Autorité Serveur)"),
+            i18n.get("sim.server.role.host", "● Héberger / Déployer Scénario (Mode Chercheur - Autorité Client)")
+        );
+        comboServerRole.getSelectionModel().selectFirst();
+        comboServerRole.setStyle("-fx-font-size: 11px;");
+        comboServerRole.setMaxWidth(Double.MAX_VALUE);
+        comboServerRole.setTooltip(new Tooltip(i18n.get("sim.server.role.tt")));
+
+        Label lblRole = new Label();
+        lblRole.textProperty().bind(i18n.createStringBinding("sim.server.role"));
+        HBox serverRoleRow = new HBox(6, lblRole, comboServerRole);
+        serverRoleRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(comboServerRole, Priority.ALWAYS);
+
+        // Player profile fields for Server Join Mode
+        txtPlayerAlias.setPrefWidth(120);
+        txtPlayerAlias.setTooltip(new Tooltip(i18n.get("sim.server.alias.tt")));
+
+        // Populate player species dynamically from SpeciesPresetManager
+        List<String> dynamicSpecies = new ArrayList<>(speciesPresetManager.getPresetNames());
+        if (dynamicSpecies.isEmpty()) {
+            dynamicSpecies.addAll(List.of("Lasius niger", "Atta cephalotes", "Formica rufa", "Solenopsis invicta", "Camponotus ligniperda", "Apis mellifera"));
+        }
+        comboPlayerSpecies.getItems().setAll(dynamicSpecies);
+        comboPlayerSpecies.getSelectionModel().selectFirst();
+        comboPlayerSpecies.setStyle("-fx-font-size: 11px;");
+        comboPlayerSpecies.setTooltip(new Tooltip(i18n.get("sim.server.species.tt")));
+
+        Label lblAlias = new Label();
+        lblAlias.textProperty().bind(i18n.createStringBinding("sim.server.alias"));
+        Label lblSpecies = new Label();
+        lblSpecies.textProperty().bind(i18n.createStringBinding("sim.server.species"));
+        HBox playerProfileRow = new HBox(6, lblAlias, txtPlayerAlias, lblSpecies, comboPlayerSpecies);
+        playerProfileRow.setAlignment(Pos.CENTER_LEFT);
+
+        // Mode Explainer card — updated dynamically by updateAuthorityLock
+        pnlModeExplainer.setMaxWidth(Double.MAX_VALUE);
+
+        lblServerAuthorityNotice.setVisible(false);
+        lblServerAuthorityNotice.setManaged(false);
+
+        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow, serverRoleRow, playerProfileRow, pnlModeExplainer);
+        serverNetworkBox.setVisible(false);
+        serverNetworkBox.setManaged(false);
+
+        // Scenario Configuration Container (enabled in Local / Server Host modes, locked in Server Join mode)
+        VBox scenarioBodyBox = new VBox(10);
+
+        Runnable updateAuthorityLock = () -> {
+            boolean isServer = isServerExecutionMode();
+            boolean isJoin = isServerJoinMode();
+
+            serverNetworkBox.setVisible(isServer);
+            serverNetworkBox.setManaged(isServer);
+
+            boolean lockLocalWorld = isServer && isJoin;
+            scenarioBodyBox.setDisable(lockLocalWorld);
+
+            playerProfileRow.setVisible(lockLocalWorld);
+            playerProfileRow.setManaged(lockLocalWorld);
+
+            // Rebuild mode explainer card
+            refreshModeExplainerCard(isServer, isJoin);
+
+            updateApplyPresetsButtonState(isCreatingScenario);
+            updateValidationPanel();
+        };
+
+        comboExecutionMode.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
+        comboServerRole.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
+
         Button bSaveScenario = new Button();
         bSaveScenario.textProperty().bind(I18nManager.getInstance().createStringBinding("common.btn.save"));
         bSaveScenario.setGraphic(new FontIcon(Feather.SAVE));
@@ -720,143 +854,7 @@ public class SimulationControlPanel extends VBox {
 
         btnApplyPresets.setOnAction(e -> handleApplyScenario());
 
-        // Execution Engine Selector (Local In-Process vs Remote Server / Cluster)
-        HBox execModeBox = new HBox(8);
-        execModeBox.setAlignment(Pos.CENTER_LEFT);
-        Label lblExecMode = new Label();
-        lblExecMode.textProperty().bind(i18n.createStringBinding("sim.exec_mode.title"));
-        lblExecMode.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
-        lblExecMode.getStyleClass().add("accent-title");
-        lblExecMode.tooltipProperty().bind(i18n.createTooltipBinding("sim.exec_mode.title.tt"));
-
-        comboExecutionMode.getItems().setAll(
-            i18n.get("sim.exec_mode.local", "● Mode Local Embarqué (In-Process CPU)"),
-            i18n.get("sim.exec_mode.server", "● Mode Serveur SwarmForge (Distant / Cluster gRPC)")
-        );
-        comboExecutionMode.getSelectionModel().selectFirst();
-        comboExecutionMode.setMaxWidth(Double.MAX_VALUE);
-        comboExecutionMode.setStyle("-fx-font-size: 11px;");
-        comboExecutionMode.setTooltip(new Tooltip(i18n.get("sim.exec_mode.tt")));
-        HBox.setHgrow(comboExecutionMode, Priority.ALWAYS);
-        execModeBox.getChildren().addAll(lblExecMode, comboExecutionMode);
-
-        // Server Network Sub-Panel (Integrated for Mode Serveur)
-        serverNetworkBox.setStyle("-fx-background-color: rgba(2, 132, 199, 0.08); -fx-border-color: rgba(2, 132, 199, 0.3); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8;");
-        txtServerHost.setPrefWidth(110);
-        txtServerHost.setTooltip(new Tooltip(i18n.get("sim.server.host.tt")));
-        txtServerPort.setPrefWidth(65);
-        txtServerPort.setTooltip(new Tooltip(i18n.get("sim.server.port.tt")));
-        btnServerConnect.getStyleClass().add("btn-primary");
-        btnServerConnect.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.btn.connect.tt"));
-        btnServerStart.setStyle("-fx-font-size: 11px;");
-        btnServerStart.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.btn.start.tt"));
-        btnServerDiscover.setStyle("-fx-font-size: 11px;");
-        btnServerDiscover.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.btn.discover.tt"));
-        btnServerConnect.setOnAction(e -> {
-            if (btnServerConnect.getText().contains("Déconnecter") || btnServerConnect.getText().contains("Disconnect")) {
-                if (onServerDisconnectAction != null) onServerDisconnectAction.run();
-            } else {
-                if (onServerConnectAction != null) onServerConnectAction.run();
-            }
-        });
-        btnServerStart.setOnAction(e -> {
-            if (onServerStartAction != null) onServerStartAction.run();
-        });
-        btnServerDiscover.setOnAction(e -> {
-            if (onServerDiscoverAction != null) onServerDiscoverAction.run();
-        });
-
-        Label lblHost = new Label();
-        lblHost.textProperty().bind(i18n.createStringBinding("sim.server.host"));
-        Label lblPort = new Label();
-        lblPort.textProperty().bind(i18n.createStringBinding("sim.server.port"));
-        HBox serverInputsRow = new HBox(6, lblHost, txtServerHost, lblPort, txtServerPort, btnServerConnect, btnServerStart, btnServerDiscover);
-        serverInputsRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label lblStatusHead = new Label();
-        lblStatusHead.textProperty().bind(i18n.createStringBinding("sim.server.status"));
-        lblStatusHead.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.status.tt"));
-        lblServerConnectionStatus.setStyle("-fx-font-size: 11px; -fx-text-fill: #f87171;");
-        lblServerSessionStats.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
-        HBox serverStatusRow = new HBox(6, lblStatusHead, lblServerConnectionStatus, lblServerSessionStats);
-        serverStatusRow.setAlignment(Pos.CENTER_LEFT);
-
-        // Server Role (Join vs Host)
-        comboServerRole.getItems().setAll(
-            i18n.get("sim.server.role.join", "● Rejoindre (Matchmaking / Mégaterrarium - Autorité Serveur)"),
-            i18n.get("sim.server.role.host", "● Héberger / Déployer Scénario (Mode Chercheur - Autorité Client)")
-        );
-        comboServerRole.getSelectionModel().selectFirst();
-        comboServerRole.setStyle("-fx-font-size: 11px;");
-        comboServerRole.setMaxWidth(Double.MAX_VALUE);
-        comboServerRole.setTooltip(new Tooltip(i18n.get("sim.server.role.tt")));
-
-        Label lblRole = new Label();
-        lblRole.textProperty().bind(i18n.createStringBinding("sim.server.role"));
-        HBox serverRoleRow = new HBox(6, lblRole, comboServerRole);
-        serverRoleRow.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(comboServerRole, Priority.ALWAYS);
-
-        // Player profile fields for Server Join Mode
-        txtPlayerAlias.setPrefWidth(120);
-        txtPlayerAlias.setTooltip(new Tooltip(i18n.get("sim.server.alias.tt")));
-
-        // Populate player species dynamically from SpeciesPresetManager
-        List<String> dynamicSpecies = new ArrayList<>(speciesPresetManager.getPresetNames());
-        if (dynamicSpecies.isEmpty()) {
-            dynamicSpecies.addAll(List.of("Lasius niger", "Atta cephalotes", "Formica rufa", "Solenopsis invicta", "Camponotus ligniperda", "Apis mellifera"));
-        }
-        comboPlayerSpecies.getItems().setAll(dynamicSpecies);
-        comboPlayerSpecies.getSelectionModel().selectFirst();
-        comboPlayerSpecies.setStyle("-fx-font-size: 11px;");
-        comboPlayerSpecies.setTooltip(new Tooltip(i18n.get("sim.server.species.tt")));
-
-        Label lblAlias = new Label();
-        lblAlias.textProperty().bind(i18n.createStringBinding("sim.server.alias"));
-        Label lblSpecies = new Label();
-        lblSpecies.textProperty().bind(i18n.createStringBinding("sim.server.species"));
-        HBox playerProfileRow = new HBox(6, lblAlias, txtPlayerAlias, lblSpecies, comboPlayerSpecies);
-        playerProfileRow.setAlignment(Pos.CENTER_LEFT);
-
-        // Mode Explainer card — updated dynamically by updateAuthorityLock
-        pnlModeExplainer.setMaxWidth(Double.MAX_VALUE);
-
-        lblServerAuthorityNotice.setVisible(false);
-        lblServerAuthorityNotice.setManaged(false);
-
-        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow, serverRoleRow, playerProfileRow, pnlModeExplainer);
-        serverNetworkBox.setVisible(false);
-        serverNetworkBox.setManaged(false);
-
-        Runnable updateAuthorityLock = () -> {
-            boolean isServer = comboExecutionMode.getValue() != null &&
-                (comboExecutionMode.getValue().contains("Serveur") || comboExecutionMode.getValue().contains("Server") || comboExecutionMode.getValue().contains("gRPC") || comboExecutionMode.getValue().contains("Cluster"));
-            boolean isJoin = comboServerRole.getValue() == null || comboServerRole.getValue().contains("Rejoindre") || comboServerRole.getValue().contains("Join")
-                || comboServerRole.getValue().contains("Beitreten") || comboServerRole.getValue().contains("Unirse") || comboServerRole.getValue().contains("加入");
-
-            serverNetworkBox.setVisible(isServer);
-            serverNetworkBox.setManaged(isServer);
-
-            boolean lockLocalWorld = isServer && isJoin;
-            gridWorldWeather.setDisable(lockLocalWorld);
-            gridDateTimeSeed.setDisable(lockLocalWorld);
-            gridLimits.setDisable(lockLocalWorld);
-
-            playerProfileRow.setVisible(lockLocalWorld);
-            playerProfileRow.setManaged(lockLocalWorld);
-
-            // Rebuild mode explainer card
-            refreshModeExplainerCard(isServer, isJoin);
-
-            updateApplyPresetsButtonState(isCreatingScenario);
-            updateValidationPanel();
-        };
-
-        comboExecutionMode.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
-        comboServerRole.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
-        updateAuthorityLock.run();
-
-        scenarioCard.getChildren().addAll(
+        scenarioBodyBox.getChildren().addAll(
             metaRow,
             presetActionsRow,
             descBox,
@@ -870,11 +868,18 @@ public class SimulationControlPanel extends VBox {
             gridLimits,
             new Separator(),
             section3Container,
-            validationPanel,
-            checkpointsPane,
             new Separator(),
+            checkpointsPane
+        );
+
+        updateAuthorityLock.run();
+
+        scenarioCard.getChildren().addAll(
             execModeBox,
             serverNetworkBox,
+            new Separator(),
+            scenarioBodyBox,
+            validationPanel,
             btnApplyPresets,
             applyProgressBox
         );
@@ -1796,7 +1801,7 @@ public class SimulationControlPanel extends VBox {
 
     public boolean isServerExecutionMode() {
         String val = comboExecutionMode.getValue();
-        return val != null && (val.contains("Serveur") || val.contains("gRPC") || val.contains("Cluster"));
+        return val != null && (val.contains("Serveur") || val.contains("Server") || val.contains("gRPC") || val.contains("Cluster") || val.contains("Servidor") || val.contains("服务器"));
     }
 
     public void setExecutionMode(boolean serverMode) {
@@ -2627,6 +2632,11 @@ public class SimulationControlPanel extends VBox {
                     if (onServerConnectAction != null) onServerConnectAction.run();
                 }
             ));
+        }
+
+        // In Server Join mode, the physical world & local species cards are bypassed (governed by the remote server)
+        if (isServerExecutionMode() && isServerJoinMode()) {
+            return list;
         }
 
         if (speciesCardList == null) return list;

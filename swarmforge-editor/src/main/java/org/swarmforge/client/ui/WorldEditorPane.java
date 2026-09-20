@@ -1216,6 +1216,26 @@ public class WorldEditorPane extends BorderPane {
 
     private List<BotanicalTreeData> getBotanicalTreeInstances() {
         List<BotanicalTreeData> list = new ArrayList<>();
+        if (activeSimulation != null && activeSimulation.getVegetationSystem() != null) {
+            org.swarmforge.core.domain.Terrarium terr = activeSimulation.getTerrarium();
+            int tW = terr != null ? terr.getWidth() : GRID_SIZE;
+            int tH = terr != null ? terr.getHeight() : GRID_SIZE;
+            for (org.swarmforge.core.world.VegetationSystem.Plant plant : activeSimulation.getVegetationSystem().getPlants()) {
+                if (plant.type != org.swarmforge.core.world.VegetationSystem.PlantType.TREE && plant.type != org.swarmforge.core.world.VegetationSystem.PlantType.SHRUB) {
+                    continue;
+                }
+                int gx = Math.max(0, Math.min(GRID_SIZE - 1, (int) Math.round((plant.x / (double) tW) * GRID_SIZE)));
+                int gy = Math.max(0, Math.min(GRID_SIZE - 1, (int) Math.round((plant.y / (double) tH) * GRID_SIZE)));
+                BotanicalTreeData tree = new BotanicalTreeData();
+                tree.gx = gx;
+                tree.gy = gy;
+                tree.ageScale = Math.max(0.35, Math.min(1.2, (double) plant.growth));
+                tree.speciesIdx = (plant.type == org.swarmforge.core.world.VegetationSystem.PlantType.SHRUB) ? 4 : 5; // Pin / Shrub
+                list.add(tree);
+            }
+            return list;
+        }
+
         if (treeCountSlider == null) return list;
         int count = (int) treeCountSlider.getValue();
 

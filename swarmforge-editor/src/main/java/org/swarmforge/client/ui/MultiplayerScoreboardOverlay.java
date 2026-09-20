@@ -73,10 +73,10 @@ public class MultiplayerScoreboardOverlay extends VBox {
     private final ScrollPane scrollPane = new ScrollPane();
     private final Label lblSessionTitle = new Label();
     private final Label lblSessionSubtitle = new Label();
-    private final Button btnToggleCollapse = new Button();
+    private final CheckBox chkActive = new CheckBox();
     private final Button btnClose = new Button();
-    private boolean isCollapsed = false;
     private Consumer<ColonyEntry> onFocusColonyListener;
+    private Runnable onCloseListener;
 
     public MultiplayerScoreboardOverlay() {
         org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
@@ -105,15 +105,24 @@ public class MultiplayerScoreboardOverlay extends VBox {
         titleBox.getChildren().addAll(lblSessionTitle, lblSessionSubtitle);
         HBox.setHgrow(titleBox, Priority.ALWAYS);
 
-        btnToggleCollapse.setGraphic(new FontIcon(Feather.MINUS));
-        btnToggleCollapse.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-cursor: hand; -fx-padding: 2;");
-        btnToggleCollapse.setOnAction(e -> toggleCollapse());
+        chkActive.setSelected(true);
+        chkActive.setStyle("-fx-font-size: 10px; -fx-text-fill: #38bdf8;");
+        chkActive.setTooltip(new Tooltip(i18n.get("multiplayer.scoreboard.active.tt", "Activer ou désactiver l'affichage de ce panneau")));
+        chkActive.selectedProperty().addListener((o, oldV, newV) -> {
+            scrollPane.setVisible(newV);
+            scrollPane.setManaged(newV);
+        });
 
         btnClose.setGraphic(new FontIcon(Feather.X));
         btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #f87171; -fx-cursor: hand; -fx-padding: 2;");
-        btnClose.setOnAction(e -> hideWithAnimation());
+        btnClose.setOnAction(e -> {
+            hideWithAnimation();
+            if (onCloseListener != null) {
+                onCloseListener.run();
+            }
+        });
 
-        header.getChildren().addAll(new FontIcon(Feather.USERS), titleBox, btnToggleCollapse, btnClose);
+        header.getChildren().addAll(new FontIcon(Feather.USERS), titleBox, chkActive, btnClose);
 
         // Scrollable colonies list
         scrollPane.setContent(coloniesContainer);
@@ -127,6 +136,14 @@ public class MultiplayerScoreboardOverlay extends VBox {
         // Hidden by default until explicit multiplayer mode
         setVisible(false);
         setManaged(false);
+    }
+
+    public void setOnClose(Runnable listener) {
+        this.onCloseListener = listener;
+    }
+
+    public CheckBox getActiveCheckBox() {
+        return chkActive;
     }
 
     public void setOnFocusColony(Consumer<ColonyEntry> listener) {
@@ -216,13 +233,6 @@ public class MultiplayerScoreboardOverlay extends VBox {
         statsRow.getChildren().addAll(lblPop, lblFood, lblQueen);
         card.getChildren().addAll(topRow, lblSpecies, statsRow);
         return card;
-    }
-
-    public void toggleCollapse() {
-        isCollapsed = !isCollapsed;
-        scrollPane.setVisible(!isCollapsed);
-        scrollPane.setManaged(!isCollapsed);
-        btnToggleCollapse.setGraphic(new FontIcon(isCollapsed ? Feather.PLUS : Feather.MINUS));
     }
 
     public void hideWithAnimation() {

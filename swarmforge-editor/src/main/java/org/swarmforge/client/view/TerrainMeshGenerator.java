@@ -101,7 +101,8 @@ public class TerrainMeshGenerator {
                 texCoords.add(x * UV_SCALE);
                 texCoords.add(y * UV_SCALE);
 
-                colors.add(r); colors.add(g); colors.add(b); colors.add(1.0f);
+                // Pure neutral base color for realistic PBR lighting so textures are vibrant and un-dimmed
+                colors.add(1.0f); colors.add(1.0f); colors.add(1.0f); colors.add(1.0f);
 
                 vertexIndexGrid[x][y] = vertexCounter++;
             }
@@ -221,7 +222,7 @@ public class TerrainMeshGenerator {
 
                     boolean isSurface = (z == depth - 1 || isAir(terrarium, x, y, z + 1));
 
-                    // Vibrant voxel colors
+                    // Vibrant substrate voxel colors
                     float r = 0.45f, g = 0.30f, b = 0.18f, a = 1.0f;
                     if (cell.material() == TerrariumCell.Material.SAND) {
                         r = 0.92f; g = 0.85f; b = 0.48f;
@@ -235,9 +236,30 @@ public class TerrainMeshGenerator {
                         r = 0.28f; g = 0.18f; b = 0.10f;
                     }
 
-                    float topR = isSurface ? 0.22f : r;
-                    float topG = isSurface ? 0.75f : g;
-                    float topB = isSurface ? 0.20f : b;
+                    // Deterministic subtle noise variation per voxel block to eliminate flat color boredom
+                    float var = (float) (((x * 17 + y * 31 + z * 7) % 9) - 4) * 0.015f;
+                    float topR = r + var;
+                    float topG = g + var;
+                    float topB = b + var;
+
+                    if (isSurface) {
+                        double lat = Math.abs(terrarium.getLatitude());
+                        if (lat > 60.0) {
+                            topR = 0.92f + var; topG = 0.94f + var; topB = 0.98f; // Arctic snow cover
+                        } else if (cell.material() == TerrariumCell.Material.EARTH || cell.material() == TerrariumCell.Material.SILT) {
+                            topR = 0.20f + var; topG = 0.72f + var; topB = 0.18f; // Lush meadow grass
+                        } else if (cell.material() == TerrariumCell.Material.PEAT) {
+                            topR = 0.32f + var; topG = 0.22f + var; topB = 0.12f; // Rich organic humus / dark peat
+                        } else if (cell.material() == TerrariumCell.Material.SAND) {
+                            topR = 0.95f + var; topG = 0.88f + var; topB = 0.52f; // Golden sand dune top
+                        } else if (cell.material() == TerrariumCell.Material.CLAY) {
+                            topR = 0.82f + var; topG = 0.44f + var; topB = 0.22f; // Terracotta clay top
+                        } else if (cell.material() == TerrariumCell.Material.ROCK) {
+                            topR = 0.60f + var; topG = 0.62f + var; topB = 0.65f; // Granite outcropping top
+                        } else if (cell.material() == TerrariumCell.Material.GRAVEL) {
+                            topR = 0.72f + var; topG = 0.74f + var; topB = 0.76f; // River pebble gravel top
+                        }
+                    }
 
                     float jmeX = x;
                     float jmeY = z;

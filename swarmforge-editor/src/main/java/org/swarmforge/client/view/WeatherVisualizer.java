@@ -319,13 +319,17 @@ public class WeatherVisualizer {
         iceGroundGeom.setLocalTranslation(-13, 0.22f, -13);
         iceGroundNode.attachChild(iceGroundGeom);
 
+        snowGroundNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+        iceGroundNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
         rootNode.attachChild(snowGroundNode);
         rootNode.attachChild(iceGroundNode);
     }
 
     private void initMistAndFire() {
         mistNode = new Node("MistNode");
+        mistNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
         fireNode = new Node("FireNode");
+        fireNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
 
         // Ground Mist Particle Layer (Realistic Mode)
         Material mistMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");

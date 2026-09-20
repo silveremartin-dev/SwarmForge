@@ -274,20 +274,20 @@ public class VegetationVisualizer {
         switch (plant.type) {
             case TREE -> {
                 targetHeight = (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA)
-                        ? (12.5f + rand.nextFloat() * 4.0f) * plant.growth
-                        : (14.0f + rand.nextFloat() * 4.5f) * plant.growth;
+                        ? (4.0f + rand.nextFloat() * 2.0f) * Math.max(0.35f, plant.growth)
+                        : (5.0f + rand.nextFloat() * 2.5f) * Math.max(0.35f, plant.growth);
                 chosenModel = pickModelForBiome(biome, rand, true);
             }
             case SHRUB -> {
-                targetHeight = (1.8f + rand.nextFloat() * 1.5f) * plant.growth;
+                targetHeight = (1.2f + rand.nextFloat() * 0.8f) * Math.max(0.35f, plant.growth);
                 chosenModel = pickRandomFromList(bushes, rand);
             }
             case FLOWER -> {
-                targetHeight = (0.7f + rand.nextFloat() * 0.6f) * plant.growth;
+                targetHeight = (0.45f + rand.nextFloat() * 0.35f) * Math.max(0.35f, plant.growth);
                 chosenModel = pickRandomFromList(flowers, rand);
             }
             case MOSS, GRASS -> {
-                targetHeight = (0.5f + rand.nextFloat() * 0.5f) * plant.growth;
+                targetHeight = (0.25f + rand.nextFloat() * 0.25f) * Math.max(0.35f, plant.growth);
                 chosenModel = pickRandomFromList(flowers, rand);
             }
         }

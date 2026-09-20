@@ -1717,6 +1717,11 @@ public class SwarmForgeClient extends Application {
                         this.simWorldViewer.focusOnLocation(entry.nestX, entry.nestY, entry.nestZ);
                     }
                 });
+                this.scoreboardOverlay.setOnClose(() -> {
+                    if (this.chkShowScoreboard != null) {
+                        this.chkShowScoreboard.setSelected(false);
+                    }
+                });
 
                 StackPane viewportStack = new StackPane(simWorldViewer, simulationInactiveOverlay, btnExitFullscreen, scoreboardOverlay);
                 StackPane.setAlignment(simulationInactiveOverlay, Pos.TOP_CENTER);
@@ -2377,12 +2382,11 @@ public class SwarmForgeClient extends Application {
                 renderSection.getChildren().addAll(
                     lblRenderMode, comboRenderMode,
                     chkMinimap, chkSyncMinimap, chkShowLegend,
+                    chkVoxelInfo, chkAntTracking, chkChamberOverlay, chkWeatherOverlay,
                     new Separator(),
                     chkTerrain, chkTrees, chkSkirt, sliceBox, chkNid, chkPheromonesLayer, comboPheromoneType, chkAntsLayer, chkWeatherLayer,
                     new Separator(),
-                    chkElevationIsolines, chkClimateIsolines, chkPheromoneIsolines, chkUVVision,
-                    new Separator(),
-                    chkVoxelInfo, chkAntTracking, chkChamberOverlay, chkWeatherOverlay
+                    chkElevationIsolines, chkClimateIsolines, chkPheromoneIsolines, chkUVVision
                 );
 
                 // Audio Controls Section

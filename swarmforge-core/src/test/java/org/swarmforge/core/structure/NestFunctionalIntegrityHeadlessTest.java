@@ -70,7 +70,7 @@ public class NestFunctionalIntegrityHeadlessTest {
         nest.addChamber(entranceChamber);
 
         Chamber foundEntrance = nest.getChambers().stream()
-                .filter(c -> c.getType() == Chamber.Type.ENTRANCE)
+                .filter(c -> "entrance_0".equals(c.getId()))
                 .findFirst()
                 .orElse(null);
 
