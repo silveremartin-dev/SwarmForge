@@ -350,7 +350,6 @@ function MicroclimateIsolines({ environment, terrainConfig }) {
  */
 export default function ScientificIsolines() {
     const {
-        lookAndFeel,
         showScientificIsolinesTopo,
         showScientificIsolinesPheromones,
         showScientificIsolinesMicroclimate,
@@ -360,7 +359,9 @@ export default function ScientificIsolines() {
         environment
     } = useSimulationStore()
 
-    if (lookAndFeel !== 'SCIENTIFIC') return null
+    if (!showScientificIsolinesTopo && !showScientificIsolinesPheromones && !showScientificIsolinesMicroclimate) {
+        return null
+    }
 
     return (
         <group frustumCulled={false}>

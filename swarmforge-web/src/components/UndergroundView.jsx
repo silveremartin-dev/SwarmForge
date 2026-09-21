@@ -20,17 +20,39 @@ const CHAMBER_ICONS = {
     ENTRANCE: '🛡️'
 }
 
+function getCoord(obj) {
+    if (!obj) return { x: 50, y: -1, z: 50 }
+    if (obj.position) {
+        return {
+            x: obj.position.x ?? obj.x ?? 50,
+            y: obj.position.y ?? obj.y ?? -1,
+            z: obj.position.z !== undefined ? obj.position.z : (obj.position.y ?? obj.z ?? 50)
+        }
+    }
+    if (Array.isArray(obj)) {
+        return { x: obj[0] ?? 50, y: obj[1] ?? -1, z: obj[2] ?? 50 }
+    }
+    return {
+        x: obj.x ?? 50,
+        y: obj.y ?? -1,
+        z: obj.z !== undefined ? obj.z : (obj.y ?? 50)
+    }
+}
+
 function Tunnel({ start, end, terrainConfig }) {
     const { lookAndFeel } = useSimulationStore()
     const isGamified = lookAndFeel === 'GAMING'
 
     const { position, rotation, length } = useMemo(() => {
-        const startGroundY = getTerrainHeight(start.x, start.z, terrainConfig)
-        const endGroundY = getTerrainHeight(end.x, end.z, terrainConfig)
-        const startVec = new THREE.Vector3(start.x, startGroundY + start.y, start.z)
-        const endVec = new THREE.Vector3(end.x, endGroundY + end.y, end.z)
+        const s = getCoord(start)
+        const e = getCoord(end)
 
-        const length = startVec.distanceTo(endVec)
+        const startGroundY = getTerrainHeight(s.x, s.z, terrainConfig)
+        const endGroundY = getTerrainHeight(e.x, e.z, terrainConfig)
+        const startVec = new THREE.Vector3(s.x, startGroundY + s.y, s.z)
+        const endVec = new THREE.Vector3(e.x, endGroundY + e.y, e.z)
+
+        const length = Math.max(0.1, startVec.distanceTo(endVec))
         const position = startVec.clone().add(endVec).multiplyScalar(0.5)
 
         const direction = endVec.clone().sub(startVec).normalize()
@@ -55,16 +77,19 @@ function Tunnel({ start, end, terrainConfig }) {
 function ChamberMesh({ chamber, isSelected, onClick, terrainConfig }) {
     const [hovered, setHovered] = useState(false)
     const { showChamberInfo, lookAndFeel } = useSimulationStore()
+    if (!chamber) return null
+
     const isGamified = lookAndFeel === 'GAMING'
     const color = CHAMBER_COLORS[chamber.type] || '#38bdf8'
     const icon = CHAMBER_ICONS[chamber.type] || '🏛️'
     const radius = chamber.radius || 0.85
 
-    const groundY = getTerrainHeight(chamber.position.x, chamber.position.z, terrainConfig)
-    const worldY = groundY + chamber.position.y
+    const cPos = getCoord(chamber)
+    const groundY = getTerrainHeight(cPos.x, cPos.z, terrainConfig)
+    const worldY = groundY + cPos.y
 
     return (
-        <group position={[chamber.position.x, worldY, chamber.position.z]}>
+        <group position={[cPos.x, worldY, cPos.z]}>
             {/* Main Chamber Shape (Voxel Cube in Gaming vs Sphere in Realistic) */}
             <mesh
                 onClick={(e) => {
@@ -134,7 +159,7 @@ function ChamberMesh({ chamber, isSelected, onClick, terrainConfig }) {
                         }}
                     >
                         <span>{icon}</span>
-                        <span>{chamber.name.split('(')[0].trim()}</span>
+                        <span>{(chamber.name || 'Chambre').split('(')[0].trim()}</span>
                         <span style={{ fontSize: 9, opacity: 0.8, color: '#f59e0b' }}>
                             ({chamber.occupants || 0}/{chamber.capacity || 50})
                         </span>
@@ -152,38 +177,40 @@ export default function UndergroundView() {
 
     return (
         <group>
-            {nests.map(nest => (
-                <group key={nest.id}>
-                    {/* Render Chambers */}
-                    {nest.chambers && nest.chambers.map(chamber => (
-                        <ChamberMesh
-                            key={chamber.id}
-                            chamber={chamber}
-                            isSelected={selectedChamber?.id === chamber.id}
-                            onClick={setSelectedChamber}
-                            terrainConfig={terrainConfig}
-                        />
-                    ))}
+            {(nests || []).map(nest => {
+                if (!nest) return null
+                return (
+                    <group key={nest.id}>
+                        {/* Render Chambers */}
+                        {nest.chambers && nest.chambers.map(chamber => (
+                            <ChamberMesh
+                                key={chamber.id}
+                                chamber={chamber}
+                                isSelected={selectedChamber?.id === chamber.id}
+                                onClick={setSelectedChamber}
+                                terrainConfig={terrainConfig}
+                            />
+                        ))}
 
-                    {/* Render Tunnels */}
-                    {nest.tunnels && nest.tunnels.map((tunnel, idx) => {
-                        const startChamber = nest.chambers?.find(c => c.id === tunnel.startChamberId)
-                        const endChamber = nest.chambers?.find(c => c.id === tunnel.endChamberId)
+                        {/* Render Tunnels */}
+                        {nest.tunnels && nest.tunnels.map((tunnel, idx) => {
+                            const startChamber = nest.chambers?.find(c => c.id === tunnel.startChamberId)
+                            const endChamber = nest.chambers?.find(c => c.id === tunnel.endChamberId)
+                            const startPos = startChamber || tunnel.from || tunnel.start || { x: nest.x ?? 50, y: 0, z: nest.z ?? 50 }
+                            const endPos = endChamber || tunnel.to || tunnel.end || { x: nest.x ?? 50, y: -1.2, z: nest.z ?? 50 }
 
-                        if (startChamber && endChamber) {
                             return (
                                 <Tunnel
                                     key={`${nest.id}-tunnel-${idx}`}
-                                    start={startChamber.position}
-                                    end={endChamber.position}
+                                    start={startPos}
+                                    end={endPos}
                                     terrainConfig={terrainConfig}
                                 />
                             )
-                        }
-                        return null
-                    })}
-                </group>
-            ))}
+                        })}
+                    </group>
+                )
+            })}
         </group>
     )
 }

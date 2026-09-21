@@ -75,19 +75,22 @@ public class TerrainMeshGenerator {
                 float r, g, b;
                 if (lat > 60.0) {
                     // Snow / Alpine frost
-                    r = 0.90f; g = 0.93f; b = 0.97f;
-                } else if (lat < 23.5 || mat == TerrariumCell.Material.SAND) {
+                    r = 0.94f; g = 0.96f; b = 1.0f;
+                } else if (mat == TerrariumCell.Material.SAND || lat < 23.5) {
                     // Golden Sand / Beach / Desert
-                    r = 0.88f; g = 0.78f; b = 0.48f;
-                } else if (mat == TerrariumCell.Material.ROCK) {
-                    // Mountain Granite
-                    r = 0.55f; g = 0.58f; b = 0.60f;
+                    r = 0.95f; g = 0.86f; b = 0.55f;
+                } else if (mat == TerrariumCell.Material.ROCK || mat == TerrariumCell.Material.GRAVEL) {
+                    // Mountain Granite / Pebble
+                    r = 0.62f; g = 0.64f; b = 0.66f;
                 } else if (mat == TerrariumCell.Material.CLAY) {
                     // Clay / Terracotta
-                    r = 0.72f; g = 0.40f; b = 0.22f;
+                    r = 0.78f; g = 0.44f; b = 0.24f;
+                } else if (mat == TerrariumCell.Material.PEAT) {
+                    // Peat / Rich dark humus
+                    r = 0.35f; g = 0.24f; b = 0.15f;
                 } else {
-                    // Temperate lush meadow grass
-                    r = 0.28f; g = 0.62f; b = 0.22f;
+                    // Temperate lush meadow grass / fertile earth
+                    r = 0.35f; g = 0.72f; b = 0.25f;
                 }
 
                 vertices.add((float) x);
@@ -101,8 +104,8 @@ public class TerrainMeshGenerator {
                 texCoords.add(x * UV_SCALE);
                 texCoords.add(y * UV_SCALE);
 
-                // Pure neutral base color for realistic PBR lighting so textures are vibrant and un-dimmed
-                colors.add(1.0f); colors.add(1.0f); colors.add(1.0f); colors.add(1.0f);
+                // Modulate PBR texture by substrate vertex color for rich multi-material terrain
+                colors.add(r); colors.add(g); colors.add(b); colors.add(1.0f);
 
                 vertexIndexGrid[x][y] = vertexCounter++;
             }

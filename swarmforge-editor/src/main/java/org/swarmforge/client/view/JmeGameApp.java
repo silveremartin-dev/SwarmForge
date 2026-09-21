@@ -476,20 +476,26 @@ public class JmeGameApp extends SimpleApplication {
 
     public void setSlicePlaneRatio(float ratio) {
         this.slicePlaneRatio = Math.max(0.05f, Math.min(1.0f, ratio));
-        if (vegetationVisualizer != null) {
-            vegetationVisualizer.setSlicePlaneRatio(this.slicePlaneRatio);
-        }
-        rebuildTerrainMesh();
+        enqueueTask(() -> {
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.setSlicePlaneRatio(this.slicePlaneRatio);
+            }
+            rebuildTerrainMesh();
+        });
     }
 
     public void setShowSkirt(boolean show) {
         this.showSkirt = show;
-        rebuildTerrainMesh();
+        enqueueTask(() -> {
+            rebuildTerrainMesh();
+        });
     }
 
     public void setShowElevationIsolines(boolean show) {
         this.showElevationIsolines = show;
-        rebuildTerrainMesh();
+        enqueueTask(() -> {
+            rebuildTerrainMesh();
+        });
     }
 
     public void setShowClimateIsolines(boolean show) {
@@ -497,9 +503,11 @@ public class JmeGameApp extends SimpleApplication {
     }
 
     public void setShowPheromoneIsolines(boolean show) {
-        if (pheromoneVisualizer != null) {
-            pheromoneVisualizer.setShowIsolines(show);
-        }
+        enqueueTask(() -> {
+            if (pheromoneVisualizer != null) {
+                pheromoneVisualizer.setShowIsolines(show);
+            }
+        });
     }
 
     private org.swarmforge.core.domain.Terrarium lastTerrarium;
@@ -1156,9 +1164,11 @@ public class JmeGameApp extends SimpleApplication {
     }
 
     public void setUVVisionMode(boolean enabled) {
-        if (vegetationVisualizer != null) {
-            vegetationVisualizer.setUVVisionMode(enabled);
-        }
+        enqueueTask(() -> {
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.setUVVisionMode(enabled);
+            }
+        });
     }
 
     public boolean isUVVisionMode() {

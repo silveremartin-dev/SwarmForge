@@ -340,7 +340,7 @@ export default function GodModePanel() {
                                 onChange={(e) => setTargetColonyId(e.target.value)}
                                 style={{ width: '100%', background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
                             >
-                                {colonies.map(c => (
+                                {(colonies || []).map(c => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
@@ -813,7 +813,7 @@ export default function GodModePanel() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {scheduledEvents.map(evt => {
+                                {(scheduledEvents || []).map(evt => {
                                     const isExecuted = evt.executed
                                     const isPaused = evt.paused
                                     return (

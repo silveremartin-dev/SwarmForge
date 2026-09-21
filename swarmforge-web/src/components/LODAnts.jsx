@@ -26,8 +26,9 @@ export default function LODAnts({ ants = [] }) {
 
         for (let i = 0; i < ants.length; i++) {
             const ant = ants[i]
-            const antX = ant.x
-            const antZ = ant.y // Y in 2D is Z in 3D terrarium
+            if (!ant) continue
+            const antX = ant.x ?? 50
+            const antZ = ant.z !== undefined ? ant.z : (ant.y ?? 50)
 
             const groundY = getTerrainHeight(antX, antZ, terrainConfig)
             const isClimbing = Boolean(ant.isClimbingTree || ant.climbingTree || (ant.treeClimbHeight && ant.treeClimbHeight > 0))
@@ -72,10 +73,9 @@ export default function LODAnts({ ants = [] }) {
         if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true
     })
 
-    // Interaction (Only allowed if antTrackingEnabled is true)
+    // Interaction: Click to inspect and track ant
     const handleClick = (e) => {
         e.stopPropagation()
-        if (!antTrackingEnabled) return
         const instanceId = e.instanceId
         if (instanceId !== undefined && ants[instanceId]) {
             setSelectedEntity(ants[instanceId])

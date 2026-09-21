@@ -1341,16 +1341,60 @@ public class SwarmForgeClient extends Application {
                                     }
                                 }
 
-                                // Sync Scoreboard HUD & Checkbox Visibility (ONLY in Matchmaking / Server Join Mode)
+                                // Sync Scoreboard HUD & Checkbox Visibility (ONLY in Matchmaking AND when there are other participants)
+                                java.util.List<org.swarmforge.client.ui.MultiplayerScoreboardOverlay.ColonyEntry> entries = new java.util.ArrayList<>();
+                                String[] palette = new String[] { "#38bdf8", "#f87171", "#4ade80", "#fbbf24", "#c084fc", "#f472b6" };
+
+                                if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
+                                    int idx = 0;
+                                    for (org.swarmforge.core.domain.Colony col : localSimulation.getColonies()) {
+                                        int cPop = col.getPopulation();
+                                        int cW = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.WORKER);
+                                        int cS = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.SOLDIER);
+                                        int cQ = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.QUEEN);
+                                        float cFood = col.getFoodStored();
+                                        boolean queenAlive = cQ > 0;
+                                        String colName = col.getSpeciesName() != null && !col.getSpeciesName().isEmpty() ? col.getSpeciesName() : "Colonie #" + (idx + 1);
+                                        String pName;
+                                        if (idx == 0) {
+                                            pName = (simControlPanel != null) ? simControlPanel.getPlayerAlias() : org.swarmforge.client.util.I18nManager.getInstance().get("sim.server.alias.default", "Participant_1");
+                                        } else {
+                                            String assignedName = col.getParticipantName();
+                                            if (assignedName != null && !assignedName.trim().isEmpty()) {
+                                                pName = assignedName.trim();
+                                            } else {
+                                                pName = org.swarmforge.client.util.I18nManager.getInstance().get("multiplayer.scoreboard.participant", "Participant") + " #" + (idx + 1);
+                                            }
+                                        }
+                                        String color = palette[idx % palette.length];
+
+                                        entries.add(new org.swarmforge.client.ui.MultiplayerScoreboardOverlay.ColonyEntry(
+                                            String.valueOf(idx + 1),
+                                            pName,
+                                            colName,
+                                            color,
+                                            cPop, cW, cS, cQ,
+                                            cFood,
+                                            queenAlive,
+                                            col.getNestX(), col.getNestY(), col.getNestZ(),
+                                            idx == 0
+                                        ));
+                                        idx++;
+                                    }
+                                }
+
+                                boolean hasOtherParticipants = entries.size() > 1;
+                                boolean showScoreboardOption = isMatchmaking && hasOtherParticipants;
+
                                 if (chkShowScoreboard != null) {
-                                    if (chkShowScoreboard.isVisible() != isMatchmaking) {
-                                        chkShowScoreboard.setVisible(isMatchmaking);
-                                        chkShowScoreboard.setManaged(isMatchmaking);
+                                    if (chkShowScoreboard.isVisible() != showScoreboardOption) {
+                                        chkShowScoreboard.setVisible(showScoreboardOption);
+                                        chkShowScoreboard.setManaged(showScoreboardOption);
                                     }
                                 }
 
                                 if (scoreboardOverlay != null) {
-                                    if (!isMatchmaking) {
+                                    if (!showScoreboardOption) {
                                         if (scoreboardOverlay.isVisible()) {
                                             scoreboardOverlay.setVisible(false);
                                             scoreboardOverlay.setManaged(false);
@@ -1362,36 +1406,6 @@ public class SwarmForgeClient extends Application {
                                             scoreboardOverlay.setManaged(shouldShow);
                                         }
                                         if (scoreboardOverlay.isVisible()) {
-                                            java.util.List<org.swarmforge.client.ui.MultiplayerScoreboardOverlay.ColonyEntry> entries = new java.util.ArrayList<>();
-                                            String[] palette = new String[] { "#38bdf8", "#f87171", "#4ade80", "#fbbf24", "#c084fc", "#f472b6" };
-
-                                            if (localSimulation != null && !localSimulation.getColonies().isEmpty()) {
-                                                int idx = 0;
-                                                for (org.swarmforge.core.domain.Colony col : localSimulation.getColonies()) {
-                                                    int cPop = col.getPopulation();
-                                                    int cW = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.WORKER);
-                                                    int cS = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.SOLDIER);
-                                                    int cQ = col.countByCaste(org.swarmforge.core.domain.Individual.Caste.QUEEN);
-                                                    float cFood = col.getFoodStored();
-                                                    boolean queenAlive = cQ > 0;
-                                                    String colName = col.getSpeciesName() != null && !col.getSpeciesName().isEmpty() ? col.getSpeciesName() : "Colonie #" + (idx + 1);
-                                                    String pName = (idx == 0 && simControlPanel != null) ? simControlPanel.getPlayerAlias() : "Adversaire #" + (idx + 1);
-                                                    String color = palette[idx % palette.length];
-
-                                                    entries.add(new org.swarmforge.client.ui.MultiplayerScoreboardOverlay.ColonyEntry(
-                                                        String.valueOf(idx + 1),
-                                                        pName,
-                                                        colName,
-                                                        color,
-                                                        cPop, cW, cS, cQ,
-                                                        cFood,
-                                                        queenAlive,
-                                                        col.getNestX(), col.getNestY(), col.getNestZ(),
-                                                        idx == 0
-                                                    ));
-                                                    idx++;
-                                                }
-                                            }
                                             scoreboardOverlay.updateColonies(entries);
                                         }
                                     }

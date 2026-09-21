@@ -64,15 +64,15 @@ export default function PheromoneCloud() {
             for (let i = 0; i < pheromones.length && idx < MAX_POINTS; i++) {
                 const p = pheromones[i]
                 const x = p.x ?? 50
-                const z = p.y ?? 50 // Y in 2D is Z in 3D
+                const z = p.z !== undefined ? p.z : (p.y ?? 50)
                 const groundY = getTerrainHeight(x, z, terrainConfig)
 
                 // Add subtle floating shimmer drift
                 const shimmer = Math.sin(elapsed * 2 + i) * 0.05
                 let y = groundY + 0.15 + shimmer
-                if (p.z !== undefined && p.z < 0) {
+                if (p.depth !== undefined && p.depth > 0) {
                     // Underground pheromone at depth
-                    y = groundY + p.z
+                    y = groundY - p.depth
                 }
 
                 positions[idx * 3] = x
@@ -108,11 +108,11 @@ export default function PheromoneCloud() {
             for (let j = 0; j < ants.length && idx < MAX_POINTS; j++) {
                 const ant = ants[j]
                 const antX = ant.x ?? 50
-                const antZ = ant.y ?? 50
+                const antZ = ant.z !== undefined ? ant.z : (ant.y ?? 50)
                 const groundY = getTerrainHeight(antX, antZ, terrainConfig)
                 let antY = groundY + 0.12
-                if (ant.isUnderground || (ant.z !== undefined && ant.z < 0)) {
-                    antY = groundY + (ant.z || -1.5)
+                if (ant.isUnderground || (ant.y !== undefined && ant.y < 0)) {
+                    antY = groundY + (ant.y || -1.2)
                 }
 
                 positions[idx * 3] = antX

@@ -34,7 +34,7 @@ public class MultiplayerScoreboardOverlay extends VBox {
 
     public static class ColonyEntry {
         public final String id;
-        public final String playerName;
+        public final String participantName;
         public final String speciesName;
         public final String teamColorHex;
         public final int population;
@@ -46,14 +46,14 @@ public class MultiplayerScoreboardOverlay extends VBox {
         public final float nestX;
         public final float nestY;
         public final float nestZ;
-        public final boolean isLocalPlayer;
+        public final boolean isLocalParticipant;
 
-        public ColonyEntry(String id, String playerName, String speciesName, String teamColorHex,
+        public ColonyEntry(String id, String participantName, String speciesName, String teamColorHex,
                            int population, int workers, int soldiers, int queens,
                            float foodStored, boolean isQueenAlive,
-                           float nestX, float nestY, float nestZ, boolean isLocalPlayer) {
+                           float nestX, float nestY, float nestZ, boolean isLocalParticipant) {
             this.id = id;
-            this.playerName = playerName;
+            this.participantName = participantName;
             this.speciesName = speciesName;
             this.teamColorHex = teamColorHex;
             this.population = population;
@@ -65,7 +65,15 @@ public class MultiplayerScoreboardOverlay extends VBox {
             this.nestX = nestX;
             this.nestY = nestY;
             this.nestZ = nestZ;
-            this.isLocalPlayer = isLocalPlayer;
+            this.isLocalParticipant = isLocalParticipant;
+        }
+
+        public String getPlayerName() {
+            return participantName;
+        }
+
+        public boolean isLocalPlayer() {
+            return isLocalParticipant;
         }
     }
 
@@ -176,6 +184,7 @@ public class MultiplayerScoreboardOverlay extends VBox {
     }
 
     private Node createColonyCard(ColonyEntry entry) {
+        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
         VBox card = new VBox(3);
         card.setPadding(new Insets(4, 6, 4, 6));
         card.setStyle("-fx-background-color: rgba(30, 41, 59, 0.75); -fx-background-radius: 5; -fx-border-color: rgba(255,255,255,0.08); -fx-border-radius: 5;");
@@ -190,10 +199,10 @@ public class MultiplayerScoreboardOverlay extends VBox {
             teamCircle.setFill(Color.web("#38bdf8"));
         }
 
-        Label lblName = new Label(entry.playerName != null ? entry.playerName : "Colonie " + entry.id);
-        lblName.setStyle("-fx-text-fill: " + (entry.isLocalPlayer ? "#38bdf8" : "#f1f5f9") + "; -fx-font-weight: bold; -fx-font-size: 10.5px;");
-        if (entry.isLocalPlayer) {
-            Label lblYou = new Label("(Vous)");
+        Label lblName = new Label(entry.participantName != null ? entry.participantName : "Colonie " + entry.id);
+        lblName.setStyle("-fx-text-fill: " + (entry.isLocalParticipant ? "#38bdf8" : "#f1f5f9") + "; -fx-font-weight: bold; -fx-font-size: 10.5px;");
+        if (entry.isLocalParticipant) {
+            Label lblYou = new Label(i18n.get("multiplayer.scoreboard.you", "(Vous)"));
             lblYou.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 8.5px; -fx-font-weight: bold;");
             topRow.getChildren().addAll(teamCircle, lblName, lblYou);
         } else {
@@ -204,7 +213,7 @@ public class MultiplayerScoreboardOverlay extends VBox {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button btnFocus = new Button("", new FontIcon(Feather.CROSSHAIR));
-        btnFocus.setTooltip(new Tooltip(org.swarmforge.client.util.I18nManager.getInstance().get("multiplayer.scoreboard.focus.tt", "Centrer la caméra 3D sur ce nid")));
+        btnFocus.setTooltip(new Tooltip(i18n.get("multiplayer.scoreboard.focus.tt", "Centrer la caméra 3D sur ce nid")));
         btnFocus.setStyle("-fx-background-color: rgba(56, 189, 248, 0.2); -fx-text-fill: #38bdf8; -fx-cursor: hand; -fx-padding: 2 5; -fx-background-radius: 3; -fx-font-size: 9px;");
         btnFocus.setOnAction(e -> {
             if (onFocusColonyListener != null) {
@@ -221,13 +230,18 @@ public class MultiplayerScoreboardOverlay extends VBox {
         HBox statsRow = new HBox(8);
         statsRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label lblPop = new Label(String.format("🐜 %d (O:%d/S:%d)", entry.population, entry.workers, entry.soldiers));
+        String casteW = i18n.get("multiplayer.scoreboard.caste_w", "O");
+        String casteS = i18n.get("multiplayer.scoreboard.caste_s", "S");
+        String queenAliveText = i18n.get("multiplayer.scoreboard.queen_alive", "👑 Reine");
+        String queenDeadText = i18n.get("multiplayer.scoreboard.queen_dead", "💀 Orpheline");
+
+        Label lblPop = new Label(String.format("🐜 %d (%s:%d/%s:%d)", entry.population, casteW, entry.workers, casteS, entry.soldiers));
         lblPop.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 9.5px;");
 
         Label lblFood = new Label(String.format("🍯 %.0f mg", entry.foodStored));
         lblFood.setStyle("-fx-text-fill: #fbbf24; -fx-font-size: 9.5px;");
 
-        Label lblQueen = new Label(entry.isQueenAlive ? "👑 Reine" : "💀 Orpheline");
+        Label lblQueen = new Label(entry.isQueenAlive ? queenAliveText : queenDeadText);
         lblQueen.setStyle("-fx-text-fill: " + (entry.isQueenAlive ? "#4ade80" : "#ef4444") + "; -fx-font-size: 9.5px;");
 
         statsRow.getChildren().addAll(lblPop, lblFood, lblQueen);

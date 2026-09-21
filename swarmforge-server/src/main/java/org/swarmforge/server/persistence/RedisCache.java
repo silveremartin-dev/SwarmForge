@@ -43,13 +43,18 @@ public class RedisCache {
      * Connect to Redis.
      */
     public void connect() {
+        if (host == null || host.trim().isEmpty() || port <= 0) {
+            LOG.info("Redis host/port not configured (offline/standalone mode) — skipping Redis connection.");
+            connected = false;
+            return;
+        }
         try {
-            client = RedisClient.create("redis://" + host + ":" + port);
+            client = RedisClient.create("redis://" + host.trim() + ":" + port);
             connection = client.connect();
-            LOG.info("Redis cache connected to " + host + ":" + port);
+            LOG.info("Redis cache connected to " + host.trim() + ":" + port);
             connected = true;
         } catch (Exception e) {
-            LOG.warning("Failed to connect to Redis: " + e.getMessage());
+            LOG.warning("Failed to connect to Redis (" + host.trim() + ":" + port + "): " + e.getMessage());
             connected = false;
         }
     }

@@ -173,3 +173,59 @@ graph TD
 - **Docker & Compose**: Production containerized multi-service configuration (`Dockerfile`, `docker-compose.yml`, `envoy.yaml`) packaging SwarmForge Server, Envoy Proxy, PostgreSQL, Redis, Compute Node, and Web UI.
 - **Kubernetes**: Helm deployment charts available in `charts/` for scalable cluster orchestration.
 
+---
+
+## 10. Execution Modes & Deployment Topologies
+
+SwarmForge supports 5 distinct operational topologies depending on the deployment scale, hardware setup, and network model:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        SWARMFORGE TOPOLOGY MATRIX                                      │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1. Standalone Monolith (Java Desktop)   : [Core Engine + 3D Desktop UI]                │
+│ 2. Federation / Megaterrarium Matching : [Client A Terrarium] ◄─(Halo Sync)─► [Client B]│
+│ 3. Distributed Compute Cluster          : [Master Server] ───► [N Compute Worker Nodes]│
+│ 4. Authoritative Central Server         : [Master Simulation] ───► [N Web/3D Viewers]  │
+│ 5. Web Client Standalone / Offline      : [Vite/React Dashboard + Local Kinematics]   │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Mode 1: Standalone Monolithic Desktop (Heavy Client)
+- **Topology**: Single-machine, zero network overhead.
+- **Components**: `swarmforge-editor` / `swarmforge-client` executing `swarmforge-core` in-process.
+- **Persistence**: Embedded H2 database and local file checkpoints.
+- **Use Case**: Research labs, offline sandbox experimentation, species/world editing, and maximum tick throughput on local multi-core CPUs.
+
+### Mode 2: Federated Multi-Terrarium & Boundary Stitching (Megaterrarium Matchmaking)
+- **Topology**: Multiple player/colony terrariums coordinated by a central referee server.
+- **Components**: `BoundaryHaloSync`, `BorderMigrationSystem`, `MatchmakingServiceImpl`, `LeaderboardServiceImpl`.
+- **Mechanism**:
+  - Each participant runs their own Terrarium tile (or spawns their own colony in an adjacent grid segment).
+  - The server acts as a **referee and boundary synchronizer** ("couture de frontières"), performing real-time exchange of pheromone boundary slices (North, South, East, West) via Morton3D coordinates.
+  - Individuals reaching world edges migrate seamlessly across adjacent client instances without losing health, genetic lineage, or carried resources.
+- **Use Case**: Competitive colony battles (1v1 matchmaking), cooperative multi-nest alliances, and federated regional simulations.
+
+### Mode 3: Distributed Compute Cluster (Master-Worker Grid / GPU Offloading)
+- **Topology**: 1 Master Orchestrator (`SwarmForgeServer`) + $M$ Headless Compute Worker Nodes (`swarmforge-compute` / TornadoVM GPU) + $K$ Visualizer Clients.
+- **Components**: `ComputeClusterManager`, `ComputeServiceGrpc`, `SparsePheromoneGrid`.
+- **Mechanism**:
+  - For massive worlds (100,000 to 1,000,000+ entities), heavy tasks (3D pheromone matrix diffusion, mass A* pathfinding, RL model evaluations) are offloaded to dedicated GPU worker nodes via high-speed gRPC streams.
+  - The master consolidates the simulation state and broadcasts updates to connected viewing clients.
+- **Use Case**: Supercolony modeling, academic supercomputer clusters, high-resolution 3D environmental grids.
+
+### Mode 4: Authoritative Central Server & Multi-Spectator (Web / Desktop Viewers)
+- **Topology**: 1 Authoritative Central Server (`SwarmForgeServer`) + $N$ Connected Viewers (`swarmforge-web` / desktop spectators).
+- **Components**: `SwarmForgeWebSocketServer` (Port 8081 streaming 20 FPS JSON/Proto), `RestApiServer` (Port 51051), `SimulationServiceImpl` (gRPC Port 50051).
+- **Mechanism**:
+  - The simulation runs exclusively on the Java server.
+  - Real-time updates (individuals, nests, weather, day/night cycles, telemetry) are multicast to all connected web dashboards and visualizers.
+  - Clients send interactive control commands (Play, Pause, Speed, God Mode interventions).
+- **Use Case**: Live university lectures, public dashboards, collaborative monitoring, browser-based remote control.
+
+### Mode 5: Web Client Standalone / Offline Fallback (Light Client Sandbox)
+- **Topology**: Browser-only client served via local HTTP server (`py scripts/mock_server.py` or Vite preview).
+- **Components**: `swarmforge-web` with integrated lightweight kinematic fallback engine.
+- **Use Case**: UI/UX prototyping, frontend design testing, and immediate visualization verification without spinning up the backend infrastructure.
+
+

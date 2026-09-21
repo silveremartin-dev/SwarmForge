@@ -580,7 +580,25 @@ class ProceduralSoundEngine {
         }
     }
 
-    updateSimulationState({ isDay = true, lightLevel = 1.0, simRunning = false, speed = 1.0, is3DActive = false } = {}) {
+    updateSimulationState(arg1, arg2, arg3) {
+        let isDay = true;
+        let lightLevel = 1.0;
+        let simRunning = false;
+        let speed = 1.0;
+        let is3DActive = false;
+
+        if (typeof arg1 === 'object' && arg1 !== null) {
+            isDay = arg1.isDay ?? true;
+            lightLevel = arg1.lightLevel ?? 1.0;
+            simRunning = arg1.simRunning ?? false;
+            speed = arg1.speed ?? 1.0;
+            is3DActive = arg1.is3DActive ?? false;
+        } else {
+            simRunning = Boolean(arg1);
+            speed = typeof arg2 === 'number' ? arg2 : 1.0;
+            is3DActive = Boolean(arg3);
+        }
+
         this.isDay = isDay;
         this.lightLevel = lightLevel;
         this.simRunning = Boolean(simRunning && speed > 0 && is3DActive);

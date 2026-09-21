@@ -23,23 +23,26 @@ export default function Navbar() {
         measuredTps,
         ants,
         theme,
-        setTheme,
-        language
+        language,
+        isScenarioApplied,
+        running
     } = useSimulationStore()
 
     const isDark = theme === 'dark'
     const t = (key, fallback) => getTranslation(language, key, fallback)
 
+    const isSimReady = Boolean(isScenarioApplied || connected)
+
     const navTabs = [
-        { id: 'SIMULATION', label: t('tabSimulationManager', 'Gestionnaire de Simulation'), icon: Sliders },
-        { id: 'VISUAL_3D', label: t('tabVisualView', 'Vue 3D'), icon: Eye },
-        { id: 'GOD_MODE', label: t('tabGodMode', 'Mode Divin'), icon: Zap },
-        { id: 'STATISTICS', label: t('tabStats', 'Statistiques'), icon: BarChart2 },
-        { id: 'EVENT_LOG', label: t('tabLogs', 'Journal d\'événements'), icon: List },
-        { id: 'SETTINGS', label: t('tabSettings', 'Paramètres'), icon: Settings }
+        { id: 'SIMULATION', label: t('tabSimulationManager', 'Gestionnaire de Simulation'), icon: Sliders, requiresReady: false },
+        { id: 'VISUAL_3D', label: t('tabVisualView', 'Vue 3D'), icon: Eye, requiresReady: true },
+        { id: 'GOD_MODE', label: t('tabGodMode', 'Mode Divin'), icon: Zap, requiresReady: true },
+        { id: 'STATISTICS', label: t('tabStats', 'Statistiques'), icon: BarChart2, requiresReady: true },
+        { id: 'EVENT_LOG', label: t('tabLogs', 'Journal d\'événements'), icon: List, requiresReady: true },
+        { id: 'SETTINGS', label: t('tabSettings', 'Paramètres'), icon: Settings, requiresReady: false }
     ]
 
-    const popCount = ants?.length || 0
+    const popCount = isSimReady ? (ants?.length || 0) : '--'
 
     return (
         <header style={{
@@ -86,10 +89,16 @@ export default function Navbar() {
                     {navTabs.map(tab => {
                         const Icon = tab.icon
                         const isActive = activeTab === tab.id || (tab.id === 'SIMULATION' && !['VISUAL_3D', 'GOD_MODE', 'STATISTICS', 'EVENT_LOG', 'SETTINGS'].includes(activeTab))
+                        const isLocked = tab.requiresReady && !isSimReady
+
                         return (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
+                                disabled={isLocked}
+                                onClick={() => {
+                                    if (!isLocked) setActiveTab(tab.id)
+                                }}
+                                title={isLocked ? 'Initialisez ou appliquez le scénario pour accéder à cette vue' : tab.label}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -99,9 +108,10 @@ export default function Navbar() {
                                     fontWeight: 700,
                                     borderRadius: 6,
                                     border: 'none',
-                                    cursor: 'pointer',
+                                    cursor: isLocked ? 'not-allowed' : 'pointer',
+                                    opacity: isLocked ? 0.45 : 1.0,
                                     background: isActive
-                                        ? (isDark ? '#0284c7' : '#0284c7')
+                                        ? '#0284c7'
                                         : 'transparent',
                                     color: isActive
                                         ? '#ffffff'
@@ -111,13 +121,14 @@ export default function Navbar() {
                             >
                                 <Icon size={14} />
                                 <span>{tab.label}</span>
+                                {isLocked && <span style={{ fontSize: 10 }}>🔒</span>}
                             </button>
                         )
                     })}
                 </nav>
             </div>
 
-            {/* Right: Telemetry Banner & Theme Switcher */}
+            {/* Right: Telemetry Banner (Strictly Synchronized with Simulation State) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {/* Telemetry Status Banner (1:1 JavaFX Header) */}
                 <div style={{
@@ -126,7 +137,7 @@ export default function Navbar() {
                     gap: 10,
                     background: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(241, 245, 249, 0.9)',
                     border: isDark ? '1px solid rgba(56, 189, 248, 0.2)' : '1px solid rgba(56, 189, 248, 0.4)',
-                    padding: '4px 12px',
+                    padding: '5px 14px',
                     borderRadius: 6,
                     fontSize: 11
                 }}>
@@ -134,59 +145,40 @@ export default function Navbar() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 4,
-                        color: connected ? '#10b981' : '#38bdf8',
+                        color: connected ? '#10b981' : (isSimReady ? '#38bdf8' : '#94a3b8'),
                         fontWeight: 700
                     }}>
                         <span style={{
                             width: 7,
                             height: 7,
                             borderRadius: '50%',
-                            background: connected ? '#10b981' : '#38bdf8'
+                            background: connected ? '#10b981' : (isSimReady ? '#38bdf8' : '#94a3b8')
                         }} />
-                        {connected ? t('statusConnected', 'Connecté') : t('statusStandalone', 'Mode Autonome')}
+                        {connected ? t('statusConnected', 'Connecté Serveur') : (isSimReady ? t('statusStandalone', 'Prêt / Local') : 'En attente d\'initialisation')}
                     </span>
 
                     <span style={{ color: '#64748b' }}>|</span>
 
-                    <span style={{ color: isDark ? '#38bdf8' : '#0284c7', fontWeight: 700, fontFamily: 'monospace' }}>
-                        ⏱️ {simTimeFormatted}
+                    <span style={{ color: isSimReady ? (isDark ? '#38bdf8' : '#0284c7') : '#64748b', fontWeight: 700, fontFamily: 'monospace' }}>
+                        ⏱️ {isSimReady ? simTimeFormatted : '--:--:--'}
                     </span>
 
                     <span style={{ color: isDark ? '#94a3b8' : '#64748b', fontSize: 10 }}>
-                        ({speed}x)
+                        ({isSimReady ? `${speed}x` : '1x'})
                     </span>
 
                     <span style={{ color: '#64748b' }}>|</span>
 
-                    <span style={{ color: '#f59e0b', fontWeight: 700 }} title="Ticks Par Seconde réels">
-                        ⚡ {measuredTps || 20} TPS
+                    <span style={{ color: isSimReady ? '#f59e0b' : '#64748b', fontWeight: 700 }} title="Nombre de pas de calcul par seconde réels">
+                        ⚡ {isSimReady ? `${measuredTps || (running ? 20 : 0)} pas/s` : '-- pas/s'}
                     </span>
 
                     <span style={{ color: '#64748b' }}>|</span>
 
-                    <span style={{ color: '#a855f7', fontWeight: 700 }}>
+                    <span style={{ color: isSimReady ? '#a855f7' : '#64748b', fontWeight: 700 }}>
                         🐜 Pop: {popCount}
                     </span>
                 </div>
-
-                {/* Theme Switcher */}
-                <button
-                    onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                    title={isDark ? 'Passer au mode clair' : 'Passer au mode sombre'}
-                    style={{
-                        background: 'transparent',
-                        border: isDark ? '1px solid #334155' : '1px solid #cbd5e1',
-                        borderRadius: 6,
-                        padding: '6px 8px',
-                        cursor: 'pointer',
-                        color: isDark ? '#cbd5e1' : '#475569',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}
-                >
-                    {isDark ? <Sun size={15} color="#f59e0b" /> : <Moon size={15} color="#6366f1" />}
-                </button>
             </div>
         </header>
     )

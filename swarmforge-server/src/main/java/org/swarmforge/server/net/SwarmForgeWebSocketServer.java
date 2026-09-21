@@ -32,6 +32,7 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
 
     public SwarmForgeWebSocketServer(int port, org.swarmforge.server.simulation.SimulationManager simulationManager) {
         super(new InetSocketAddress(port));
+        setReuseAddr(true);
         this.simulationManager = simulationManager;
     }
 

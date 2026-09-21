@@ -10,7 +10,7 @@ import NestRenderer from './NestRenderer'
 import VegetationRenderer from './VegetationRenderer'
 import ScientificIsolines from './ScientificIsolines'
 import { soundEngine } from '../utils/soundEngine'
-import { getTerrainHeight } from '../utils/terrainUtils'
+import { getTerrainHeight, getSubstrateAt } from '../utils/terrainUtils'
 import {
     getPixelGrassTopTexture,
     getPixelGrassSideTexture,
@@ -383,7 +383,7 @@ export default function Terrarium() {
             }
 
             if (isUVVisionMode) {
-                col = new THREE.Color('#ec4899')
+                col = new THREE.Color('#7c3aed')
             }
 
             colors[i * 3] = col.r
@@ -445,6 +445,32 @@ export default function Terrarium() {
         clippingPlanes: clippingPlanes
     }), [clippingPlanes])
 
+    const handleGroundPointerMove = (e) => {
+        e.stopPropagation()
+        if (e.point) {
+            const wx = e.point.x
+            const wy = e.point.y
+            const wz = e.point.z
+            const substrate = getSubstrateAt(wx, wy, wz, terrainConfig)
+            setHoveredVoxel({
+                x: wx,
+                y: wy,
+                z: wz,
+                screenX: e.clientX,
+                screenY: e.clientY,
+                substrate,
+                temp: (environment?.temperature ?? 22.0) - wy * 0.4,
+                humidity: environment?.humidity ?? 65.0,
+                phero: 0.0,
+                isHovering: true
+            })
+        }
+    }
+
+    const handleGroundPointerOut = () => {
+        setHoveredVoxel(null)
+    }
+
     return (
         <group ref={groupRef}>
             {/* Ground Surface */}
@@ -462,6 +488,8 @@ export default function Terrarium() {
                             material={groundMaterial}
                             position={[50, 0, 50]}
                             receiveShadow
+                            onPointerMove={handleGroundPointerMove}
+                            onPointerOut={handleGroundPointerOut}
                         />
                         <mesh
                             ref={riverMeshRef}
@@ -475,10 +503,8 @@ export default function Terrarium() {
                 )
             )}
 
-            {/* Scientific Mode: 3D Topographic, Pheromones & Micro-climate Isolines */}
-            {lookAndFeel === 'SCIENTIFIC' && (
-                <ScientificIsolines />
-            )}
+            {/* Scientific Isolines: 3D Topographic, Pheromones & Micro-climate Isolines */}
+            <ScientificIsolines />
 
             {/* Geological Skirt Strata (Realistic & Scientific Modes) */}
             {show3DSkirt && !isGamified && (
@@ -506,11 +532,6 @@ export default function Terrarium() {
                 <GamifiedVoxelParticles terrainConfig={terrainConfig} />
             )}
 
-            {/* Realistic Mode: Atmosphere & Dewdrop reflections */}
-            {lookAndFeel === 'REALISTIC' && (
-                <MacroAtmosphere isNight={(environment?.lightLevel ?? 1.0) < 0.3} terrainConfig={terrainConfig} />
-            )}
-
             {/* Nests Renderer */}
             <NestRenderer />
 
@@ -519,24 +540,26 @@ export default function Terrarium() {
             <AntSelectionReticle3D ant={selectedEntity} terrainConfig={terrainConfig} />
 
             {/* Food Sources (Aligned to Terrain Height) */}
-            {foodSources.map((food, i) => {
+            {(foodSources || []).map((food, i) => {
+                if (!food) return null
                 const foodX = food.x ?? 50
-                const foodZ = food.y ?? 50
+                const foodZ = food.z !== undefined ? food.z : (food.y ?? 50)
                 const foodY = getTerrainHeight(foodX, foodZ, terrainConfig) + 0.3
                 return (
                     <FoodSource
                         key={food.id || i}
                         position={[foodX, foodY, foodZ]}
-                        quantity={food.quantity}
+                        quantity={food.quantity || food.amount || 100}
                         type={food.type}
                     />
                 )
             })}
 
             {/* Predators (Aligned to Terrain Height) */}
-            {predators.map((pred, i) => {
+            {(predators || []).map((pred, i) => {
+                if (!pred) return null
                 const predX = pred.x ?? 50
-                const predZ = pred.y ?? 50
+                const predZ = pred.z !== undefined ? pred.z : (pred.y ?? 50)
                 const predY = getTerrainHeight(predX, predZ, terrainConfig) + 0.3
                 return (
                     <Predator

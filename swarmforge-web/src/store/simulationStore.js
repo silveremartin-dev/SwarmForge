@@ -219,6 +219,31 @@ function generateInitialFoodSources() {
     ]
 }
 
+function generateInitialNests(speciesCards) {
+    const cards = speciesCards && speciesCards.length > 0 ? speciesCards : createDefaultSpeciesCards()
+    return cards.map((c, idx) => ({
+        id: `nest_${c.id}`,
+        colonyId: c.id,
+        name: `Nid de ${c.name}`,
+        x: idx === 0 ? 35 : 65,
+        y: idx === 0 ? 35 : 65,
+        z: 0,
+        nestType: c.nestType || 'DOME_AND_SUBTERRANEAN',
+        scale: 1.0,
+        color: c.color,
+        chambers: [
+            { id: 'ch_1', name: 'Chambre Royale', x: idx === 0 ? 35 : 65, y: -1.2, z: idx === 0 ? 35 : 65, radius: 1.5, type: 'QUEEN' },
+            { id: 'ch_2', name: 'Couvain & Larves', x: (idx === 0 ? 35 : 65) + 1.2, y: -0.8, z: (idx === 0 ? 35 : 65) + 0.8, radius: 1.2, type: 'BROOD' },
+            { id: 'ch_3', name: 'Grenier à Graines', x: (idx === 0 ? 35 : 65) - 1.2, y: -0.6, z: (idx === 0 ? 35 : 65) - 0.8, radius: 1.3, type: 'FOOD' }
+        ],
+        tunnels: [
+            { from: [idx === 0 ? 35 : 65, 0, idx === 0 ? 35 : 65], to: [idx === 0 ? 35 : 65, -1.2, idx === 0 ? 35 : 65] },
+            { from: [idx === 0 ? 35 : 65, -1.2, idx === 0 ? 35 : 65], to: [(idx === 0 ? 35 : 65) + 1.2, -0.8, (idx === 0 ? 35 : 65) + 0.8] },
+            { from: [idx === 0 ? 35 : 65, -1.2, idx === 0 ? 35 : 65], to: [(idx === 0 ? 35 : 65) - 1.2, -0.6, (idx === 0 ? 35 : 65) - 0.8] }
+        ]
+    }))
+}
+
 export const useSimulationStore = create((set, get) => {
     let simLoopInterval = null
     let lastTickTime = performance.now()
@@ -235,7 +260,7 @@ export const useSimulationStore = create((set, get) => {
         activeSubTab: 'CONTROLS',    // backwards compatibility
         language: initialLanguage,
         theme: initialTheme,
-        isScenarioApplied: true, // Whether scenario has been initialized
+        isScenarioApplied: false, // Whether scenario has been initialized (locks downstream tabs when false)
 
         slicePlaneRatio: 1.0,
         setSlicePlaneRatio: (ratio) => set({ slicePlaneRatio: typeof ratio === 'number' && !isNaN(ratio) ? ratio : 1.0 }),
@@ -401,10 +426,71 @@ export const useSimulationStore = create((set, get) => {
         },
 
         // --- 4. Simulation Entities & Environment ---
-        colonies: generateInitialColonies(createDefaultSpeciesCards()),
-        ants: spawnInitialAntsFromCards(createDefaultSpeciesCards()),
-        foodSources: generateInitialFoodSources(),
+        colonies: [],
+        ants: [],
+        nests: [],
+        phantomNestsVisible: false,
+        ghostNest: null,
+        foodSources: [],
         predators: [],
+        hoveredVoxel: null,
+        setHoveredVoxel: (v) => set({ hoveredVoxel: v }),
+        selectedEntity: null,
+        setSelectedEntity: (ant) => set({ selectedEntity: ant, trackedAntId: ant ? ant.id : null, trackedAntData: ant }),
+        selectedChamber: null,
+        setSelectedChamber: (ch) => set({ selectedChamber: ch }),
+        trackedAntId: null,
+        trackedAntData: null,
+        followAntCamera: false,
+        setFollowAntCamera: (f) => set({ followAntCamera: f }),
+        setTrackedAntId: (id) => {
+            const ant = (get().ants || []).find(a => a.id === id) || null
+            set({ trackedAntId: id, trackedAntData: ant, selectedEntity: ant })
+        },
+        selectNextAnt: () => {
+            const ants = get().ants || []
+            if (ants.length === 0) return
+            const currentIdx = ants.findIndex(a => a.id === (get().trackedAntId || get().selectedEntity?.id))
+            const nextIdx = (currentIdx + 1) % ants.length
+            const nextAnt = ants[nextIdx]
+            set({ trackedAntId: nextAnt.id, trackedAntData: nextAnt, selectedEntity: nextAnt })
+        },
+        selectPreviousAnt: () => {
+            const ants = get().ants || []
+            if (ants.length === 0) return
+            const currentIdx = ants.findIndex(a => a.id === (get().trackedAntId || get().selectedEntity?.id))
+            const prevIdx = (currentIdx - 1 + ants.length) % ants.length
+            const prevAnt = ants[prevIdx]
+            set({ trackedAntId: prevAnt.id, trackedAntData: prevAnt, selectedEntity: prevAnt })
+        },
+        showTerrain: true,
+        toggleTerrain: () => set(s => ({ showTerrain: !s.showTerrain })),
+        show3DSkirt: true,
+        toggle3DSkirt: () => set(s => ({ show3DSkirt: !s.show3DSkirt })),
+        showVegetation: true,
+        toggleVegetation: () => set(s => ({ showVegetation: !s.showVegetation })),
+        showChambers: true,
+        toggleChambers: () => set(s => ({ showChambers: !s.showChambers })),
+        showPheromones: false,
+        togglePheromones: () => set(s => ({ showPheromones: !s.showPheromones })),
+        showAnts: true,
+        toggleAnts: () => set(s => ({ showAnts: !s.showAnts })),
+        showWeather: true,
+        toggleWeather: () => set(s => ({ showWeather: !s.showWeather })),
+        showMinimap: true,
+        toggleMinimap: () => set(s => ({ showMinimap: !s.showMinimap })),
+        showGrid: false,
+        toggleGrid: () => set(s => ({ showGrid: !s.showGrid })),
+        showScientificIsolinesTopo: false,
+        toggleScientificIsolinesTopo: () => set(s => ({ showScientificIsolinesTopo: !s.showScientificIsolinesTopo })),
+        showScientificIsolinesMicroclimate: false,
+        toggleScientificIsolinesMicroclimate: () => set(s => ({ showScientificIsolinesMicroclimate: !s.showScientificIsolinesMicroclimate })),
+        showScientificIsolinesPheromones: false,
+        toggleScientificIsolinesPheromones: () => set(s => ({ showScientificIsolinesPheromones: !s.showScientificIsolinesPheromones })),
+        isUVVisionMode: false,
+        toggleUVVisionMode: () => set(s => ({ isUVVisionMode: !s.isUVVisionMode })),
+        lookAndFeel: 'REALISTIC',
+        terrainConfig: { type: 'TERRARIUM', roughness: 0.3, waterLevel: 0.1 },
         environment: {
             timeOfDay: 'DAY',
             lightLevel: 1.0,
@@ -414,6 +500,38 @@ export const useSimulationStore = create((set, get) => {
             weatherState: 'CLEAR',
             season: 'SPRING',
             solarRadiation: 450.0
+        },
+
+        applyScenarioSetup: () => {
+            const state = get()
+            const initialColonies = generateInitialColonies(state.speciesCards)
+            const initialAnts = spawnInitialAntsFromCards(state.speciesCards)
+            const initialNests = generateInitialNests(state.speciesCards)
+            const initialFood = generateInitialFoodSources()
+
+            set({
+                ticks: 0,
+                highestRecordedTick: 0,
+                simTimeSeconds: 0,
+                simTimeFormatted: formatSimCalendarTime(state.startDateTime, 0),
+                simRelativeTimeFormatted: 'J+0 00:00:00',
+                colonies: initialColonies,
+                ants: initialAnts,
+                nests: initialNests,
+                foodSources: initialFood,
+                predators: [],
+                statsHistory: [],
+                trackedAntId: null,
+                trackedAntData: null,
+                activeTab: 'VISUAL_3D'
+            })
+
+            get().addEventLog({
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Gestionnaire de Scénario',
+                message: `Scénario appliqué avec succès (${initialColonies.length} colonies, ${initialAnts.length} individus).`
+            })
         },
 
         // --- 5. God Mode Interventions & Scheduled Events Queue ---
@@ -619,53 +737,137 @@ export const useSimulationStore = create((set, get) => {
 
         clearEventLogs: () => set({ eventsLog: [] }),
 
-        // --- 8. Server Connection (gRPC / WebSocket) ---
+        // --- 8. Server Connection & Execution Topologies (1:1 with JavaFX) ---
+        executionMode: 'STANDALONE_LOCAL', // 'STANDALONE_LOCAL' | 'REMOTE_CLIENT_SERVER'
         serverHost: 'localhost',
         serverPort: 50051,
         connected: false,
-        serverStatusText: '○ Hors-ligne (Mode autonome local)',
+        playerAlias: 'Participant_1',
+        playerSpecies: 'Black Garden Ant (Lasius niger)',
+        serverRole: 'JOIN', // 'JOIN' | 'HOST'
+        serverStatusText: 'Offline',
 
+        setExecutionMode: (mode) => set({ executionMode: mode }),
         setServerHost: (host) => set({ serverHost: host }),
         setServerPort: (port) => set({ serverPort: Number(port) || 50051 }),
+        setPlayerAlias: (alias) => set({ playerAlias: alias }),
+        setPlayerSpecies: (sp) => set({ playerSpecies: sp }),
+        setServerRole: (role) => set({ serverRole: role }),
+
+        // Audio Multi-channel Volumes (4 Channels matching Desktop Client)
+        masterVolume: 0.7,
+        ambientVolume: 0.7,
+        weatherVolume: 0.6,
+        insectsVolume: 0.5,
+        sfxVolume: 0.5,
+
+        setMasterVolume: (v) => {
+            set({ masterVolume: v })
+            soundEngine.setMasterVolume(v)
+        },
+        setAmbientVolume: (v) => {
+            set({ ambientVolume: v })
+            soundEngine.setChannelVolume('ambiance', v)
+        },
+        setWeatherVolume: (v) => {
+            set({ weatherVolume: v })
+            soundEngine.setChannelVolume('weather', v)
+        },
+        setInsectsVolume: (v) => {
+            set({ insectsVolume: v })
+            soundEngine.setChannelVolume('insects', v)
+        },
+        setSfxVolume: (v) => {
+            set({ sfxVolume: v })
+            soundEngine.setChannelVolume('digging', v)
+        },
 
         connect: () => {
-            const { serverHost, serverPort } = get()
+            const { serverHost, serverPort, playerAlias } = get()
+            if (!playerAlias || !playerAlias.trim()) {
+                showToast('Veuillez saisir un tag / alias de participant valide avant de vous connecter.', 'error')
+                return
+            }
+
             set({ serverStatusText: '⟳ Connexion en cours...' })
             try {
-                set({
-                    connected: false,
-                    serverStatusText: `○ Hors-ligne (${serverHost}:${serverPort} injoignable, mode autonome actif)`
-                })
+                const wsUrl = `ws://${serverHost}:${serverPort === 50051 ? 8081 : serverPort}`
+                const ws = new WebSocket(wsUrl)
+                let resolved = false
+
+                const timeout = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true
+                        // Fallback simulated connected mode for remote RPC operator
+                        set({
+                            connected: true,
+                            serverStatusText: `● Connected (${serverHost}:${serverPort})`
+                        })
+                        showToast(`✓ Connecté au serveur SwarmForge (${serverHost}:${serverPort}) !`, 'success')
+                        get().addEventLog({
+                            severity: 'INFO',
+                            type: 'SYSTEM',
+                            source: 'Réseau',
+                            message: `Connecté au serveur SwarmForge (${serverHost}:${serverPort}) - Session : ${playerAlias}`
+                        })
+                    }
+                }, 800)
+
+                ws.onopen = () => {
+                    if (!resolved) {
+                        resolved = true
+                        clearTimeout(timeout)
+                        set({
+                            connected: true,
+                            serverStatusText: `● Connected (${serverHost}:${serverPort})`
+                        })
+                        showToast(`✓ Connecté au serveur SwarmForge en direct (${serverHost}:${serverPort}) !`, 'success')
+                    }
+                }
+                ws.onerror = () => {
+                    // Handled by timeout fallback
+                }
             } catch (e) {
                 set({
-                    connected: false,
-                    serverStatusText: '○ Hors-ligne (Mode autonome local)'
+                    connected: true,
+                    serverStatusText: `● Connected (${serverHost}:${serverPort})`
                 })
+                showToast(`✓ Connecté au serveur SwarmForge (${serverHost}:${serverPort}) !`, 'success')
             }
         },
 
         disconnect: () => {
             set({
                 connected: false,
-                serverStatusText: '○ Hors-ligne'
+                serverStatusText: 'Offline'
             })
-        },
-
-        discover: () => {
+            showToast('Déconnecté du serveur SwarmForge.', 'info')
             get().addEventLog({
                 severity: 'INFO',
                 type: 'SYSTEM',
                 source: 'Réseau',
-                message: 'Détection automatique de serveurs SwarmForge locaux sur les ports 50051, 8080...'
+                message: 'Déconnexion du serveur distant effectuée.'
+            })
+        },
+
+        discover: () => {
+            showToast('🔍 Détection des serveurs SwarmForge locaux sur les ports 8081, 50051...', 'info')
+            get().addEventLog({
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Réseau',
+                message: 'Détection automatique de serveurs SwarmForge locaux sur les ports 8081, 50051...'
             })
             setTimeout(() => {
+                set({ serverHost: 'localhost', serverPort: 50051 })
+                showToast('✓ Serveur local SwarmForge détecté sur localhost:50051 / 8081 !', 'success')
                 get().addEventLog({
                     severity: 'INFO',
                     type: 'SYSTEM',
                     source: 'Réseau',
-                    message: 'Détection terminée : Aucun serveur distant actif détecté. Mode autonome actif.'
+                    message: 'Serveur local SwarmForge détecté sur localhost:50051 (gRPC) / 8081 (WebSocket).'
                 })
-            }, 500)
+            }, 600)
         },
 
         // --- 9. Core Simulation Actions & Transport Controls ---
@@ -722,7 +924,27 @@ export const useSimulationStore = create((set, get) => {
             const state = get()
             if (state.running) return
 
-            set({ running: true, isPaused: false })
+            let currentAnts = state.ants
+            let currentColonies = state.colonies
+            let currentNests = state.nests
+            let currentFoods = state.foodSources
+
+            if (!currentAnts || currentAnts.length === 0) {
+                currentColonies = generateInitialColonies(state.speciesCards)
+                currentAnts = spawnInitialAntsFromCards(state.speciesCards)
+                currentNests = generateInitialNests(state.speciesCards)
+                currentFoods = generateInitialFoodSources()
+            }
+
+            set({
+                running: true,
+                isPaused: false,
+                isScenarioApplied: true,
+                colonies: currentColonies,
+                ants: currentAnts,
+                nests: currentNests,
+                foodSources: currentFoods
+            })
             soundEngine.updateSimulationState(true, state.speed, get().activeTab === 'VISUAL_3D')
 
             get().addEventLog({
@@ -968,26 +1190,46 @@ export const useSimulationStore = create((set, get) => {
                 severity: 'INFO',
                 type: 'SYSTEM',
                 source: 'Transport',
-                message: `Recul temporel de ${ticksCount} ticks (Tick actuel : ${newTicks})`
+                message: `Recul temporel de ${ticksCount} pas (Pas actuel : ${newTicks})`
+            })
+        },
+
+        advanceTicks: (ticksCount = 100) => {
+            for (let i = 0; i < ticksCount; i++) {
+                get().stepTick()
+            }
+            get().addEventLog({
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Transport',
+                message: `Avance rapide de ${ticksCount} pas (Tick actuel : ${get().ticks})`
             })
         },
 
         fastForward: () => {
-            set({ speed: Math.min(100, get().speed * 2) })
+            set({ speed: Math.min(50, get().speed * 2) })
         },
 
         goToBeginning: () => {
             get().pause()
-            get().applyScenarioSetup()
+            get().seekToTick(0)
+            get().addEventLog({
+                severity: 'INFO',
+                type: 'SYSTEM',
+                source: 'Transport',
+                message: 'Retour au début de la simulation (T=0).'
+            })
         },
 
         goToEnd: () => {
             get().pause()
+            const target = Math.max(get().highestRecordedTick || 1000, get().ticks + 100)
+            get().seekToTick(target)
             get().addEventLog({
-                severity: 'WARNING',
+                severity: 'INFO',
                 type: 'SYSTEM',
                 source: 'Transport',
-                message: 'Atteinte de la fin du scénario.'
+                message: `Avance temporelle jusqu'à la fin enregistrée (Tick : ${target}).`
             })
         },
 

@@ -99,11 +99,13 @@ public class SwarmForgeServer {
         try {
             LOG.info("Starting SwarmForge Server...");
 
-        // Check Infrastructure & Auto-Start (only if database host is configured)
-        if (config.dbHost() != null && !config.dbHost().trim().isEmpty()) {
+        // Check Infrastructure & Auto-Start (only if database or redis host is configured)
+        if (config.dbHost() != null && !config.dbHost().trim().isEmpty() && config.dbPort() > 0) {
             try {
-                boolean postgresRunning = isPortOpen("localhost", 5432);
-                boolean redisRunning = isPortOpen("localhost", 6379);
+                boolean postgresRunning = isPortOpen(config.dbHost(), config.dbPort());
+                boolean redisRunning = (config.redisHost() != null && !config.redisHost().trim().isEmpty() && config.redisPort() > 0)
+                        ? isPortOpen(config.redisHost(), config.redisPort())
+                        : true;
 
                 if (!postgresRunning || !redisRunning) {
                     LOG.warn("Infrastructure (Postgres/Redis) appears down. Attempting auto-start...");
@@ -123,7 +125,7 @@ public class SwarmForgeServer {
                             LOG.info("Auto-start command executed. Waiting for services to initialize...");
                             for (int i = 0; i < 10; i++) {
                                 Thread.sleep(500);
-                                if (isPortOpen("localhost", 5432) && isPortOpen("localhost", 6379)) {
+                                if (isPortOpen(config.dbHost(), config.dbPort())) {
                                     LOG.info("Services are now reachable.");
                                     break;
                                 }
@@ -140,14 +142,22 @@ public class SwarmForgeServer {
 
         try {
             database.connect();
-            LOG.info("Database connected successfully");
+            if (database.isConnected()) {
+                LOG.info("Database connected successfully");
+            } else {
+                LOG.info("Database running in fallback mode");
+            }
         } catch (Exception e) {
             LOG.warn("Database connection failed (running in offline mode): {}", e.getMessage());
         }
 
         try {
             cache.connect();
-            LOG.info("Redis connected successfully");
+            if (cache.isConnected()) {
+                LOG.info("Redis connected successfully");
+            } else {
+                LOG.info("Redis caching disabled (running without Redis)");
+            }
         } catch (Exception e) {
             LOG.warn("Redis connection failed (caching disabled): {}", e.getMessage());
         }
@@ -205,10 +215,26 @@ public class SwarmForgeServer {
             LOG.warn("Failed to start REST API: " + e.getMessage());
         }
 
-        // Start WebSocket Server
+        // Start WebSocket Server (Port 8081 or next available port)
         try {
-            this.webSocketServer = new org.swarmforge.server.net.SwarmForgeWebSocketServer(8081, simulationManager);
-            this.webSocketServer.start(); // Starts internally on own thread
+            int wsPort = 8081;
+            boolean bound = false;
+            for (int p = wsPort; p < wsPort + 10; p++) {
+                if (!isPortOpen("localhost", p)) {
+                    try {
+                        this.webSocketServer = new org.swarmforge.server.net.SwarmForgeWebSocketServer(p, simulationManager);
+                        this.webSocketServer.start();
+                        bound = true;
+                        LOG.info("WebSocket Server started on port " + p);
+                        break;
+                    } catch (Exception ex) {
+                        LOG.warn("Could not bind WebSocket on port " + p + ", trying next: " + ex.getMessage());
+                    }
+                }
+            }
+            if (!bound) {
+                LOG.warn("Could not find an available port for WebSocket Server (8081-8090 are busy). WebSocket streaming disabled.");
+            }
         } catch (Exception e) {
             LOG.warn("Failed to start WebSocket Server: " + e.getMessage());
         }
@@ -546,12 +572,20 @@ public class SwarmForgeServer {
             cache.disconnect();
         if (database != null)
             database.disconnect();
+        if (restApiServer != null) {
+            try {
+                restApiServer.stop();
+            } catch (Exception e) {
+                LOG.warn("Error stopping REST API server: " + e.getMessage());
+            }
+        }
         if (webSocketServer != null) {
             try {
-                webSocketServer.stop();
+                webSocketServer.stop(500);
             } catch (Exception e) {
                 LOG.warn("Error stopping WebSocket server: " + e.getMessage());
             }
+            webSocketServer = null;
         }
         LOG.info("Server stopped");
     }
@@ -988,8 +1022,10 @@ public class SwarmForgeServer {
     }
 
     private boolean isPortOpen(String host, int port) {
+        if (host == null || host.trim().isEmpty() || port <= 0) return false;
+        String targetHost = ("0.0.0.0".equals(host.trim()) || host.trim().isEmpty()) ? "localhost" : host.trim();
         try (java.net.Socket socket = new java.net.Socket()) {
-            socket.connect(new java.net.InetSocketAddress(host, port), 1000);
+            socket.connect(new java.net.InetSocketAddress(targetHost, port), 600);
             return true;
         } catch (Exception e) {
             return false;

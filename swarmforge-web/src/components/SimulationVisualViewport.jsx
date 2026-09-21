@@ -1,12 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid } from '@react-three/drei'
-import {
-    RotateCcw,
-    X,
-    Crosshair,
-    BookOpen
-} from 'lucide-react'
 import { useSimulationStore } from '../store/simulationStore'
 import Terrarium from './Terrarium'
 import PheromoneCloud from './PheromoneCloud'
@@ -14,7 +8,9 @@ import WeatherRenderer from './WeatherRenderer'
 import UndergroundView from './UndergroundView'
 import MinimapOverlay from './MinimapOverlay'
 import MultiplayerScoreboardOverlay from './MultiplayerScoreboardOverlay'
-import LegendGlossaryModal from './LegendGlossaryModal'
+import VoxelMouseHoverHUD from './VoxelMouseHoverHUD'
+import TrackedAntInspectorHUD from './TrackedAntInspectorHUD'
+import ChamberInspectorHUD from './ChamberInspectorHUD'
 import SimulationRightSidebar from './SimulationRightSidebar'
 import { showToast } from '../store/toastStore'
 
@@ -99,8 +95,6 @@ export default function SimulationVisualViewport() {
         theme,
         ants,
         trackedAntId,
-        trackedAntData,
-        setTrackedAntId,
         followAntCamera,
         setFollowAntCamera
     } = useSimulationStore()
@@ -108,21 +102,30 @@ export default function SimulationVisualViewport() {
     const [resetCamTrigger, setResetCamTrigger] = useState(0)
     const [customTarget, setCustomTarget] = useState(null)
     const [showScoreboard, setShowScoreboard] = useState(true)
-    const [showGlossaryModal, setShowGlossaryModal] = useState(false)
     const [isFlashing, setIsFlashing] = useState(false)
     const isDark = theme === 'dark'
 
-    const handleFocusColony = (x, y, z) => {
+    const handleFocusPosition = (x, y, z) => {
         setFollowAntCamera(false)
         setCustomTarget([x, y, z])
-        showToast(`📍 Caméra 3D centrée sur la colonie (${Math.round(x)}, ${Math.round(z)})`, 'info')
+        showToast(`📍 Caméra 3D centrée sur (${Math.round(x)}, ${Math.round(z)})`, 'info')
     }
 
-    const currentTrackedAnt = ants.find(a => a.id === trackedAntId)
+    const handleDoubleClickReset = () => {
+        setFollowAntCamera(false)
+        setCustomTarget(null)
+        setResetCamTrigger(prev => prev + 1)
+        showToast('🔄 Caméra 3D réinitialisée à la vue initiale', 'info')
+    }
+
+    const currentTrackedAnt = (ants || []).find(a => a.id === trackedAntId)
     const followPos = (followAntCamera && currentTrackedAnt) ? [currentTrackedAnt.x, currentTrackedAnt.y, currentTrackedAnt.z] : null
 
     return (
-        <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
+        <div
+            onDoubleClick={handleDoubleClickReset}
+            style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}
+        >
             {/* Shutter Camera Flash Effect Overlay */}
             {isFlashing && (
                 <div style={{
@@ -170,151 +173,32 @@ export default function SimulationVisualViewport() {
                 />
             </Canvas>
 
-            {/* Multiplayer Scoreboard HUD Overlay (Top-Left) 1:1 with JavaFX */}
+            {/* 1. Multiplayer Scoreboard HUD Overlay (Top-Left) 1:1 with JavaFX */}
             <MultiplayerScoreboardOverlay
                 isVisible={showScoreboard}
                 onClose={() => setShowScoreboard(false)}
-                onFocusColony={handleFocusColony}
+                onFocusColony={handleFocusPosition}
             />
 
-            {/* Tracked Ant HUD Overlay (Bottom-Left) 1:1 with JavaFX TrackedAntPane */}
-            {trackedAntData && (
-                <div style={{
-                    position: 'absolute',
-                    bottom: 20,
-                    left: 20,
-                    background: isDark ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.95)',
-                    border: isDark ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(56, 189, 248, 0.6)',
-                    borderRadius: 10,
-                    padding: '12px 16px',
-                    color: isDark ? '#fff' : '#0f172a',
-                    zIndex: 100,
-                    backdropFilter: 'blur(10px)',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                    maxWidth: 320,
-                    fontSize: 11
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 6 }}>
-                        <span style={{ fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            🐜 {trackedAntData.id}
-                        </span>
-                        <button
-                            onClick={() => setTrackedAntId(null)}
-                            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 2 }}
-                        >
-                            <X size={14} />
-                        </button>
-                    </div>
+            {/* 2. Floating Mouse-Hovered Voxel Inspector HUD */}
+            <VoxelMouseHoverHUD />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div><strong>Colonie :</strong> {trackedAntData.colonyName}</div>
-                        <div><strong>Caste & Tâche :</strong> <span style={{ color: '#10b981' }}>{trackedAntData.caste} ({trackedAntData.task})</span></div>
-                        <div><strong>Santé :</strong> {trackedAntData.health.toFixed(0)}% | <strong>Énergie :</strong> {trackedAntData.energy.toFixed(0)}%</div>
-                        <div><strong>Position :</strong> ({trackedAntData.x.toFixed(1)}, {trackedAntData.z.toFixed(1)})</div>
+            {/* 3. Collapsible Tracked Ant Inspector HUD (Bottom-Left) */}
+            <TrackedAntInspectorHUD />
 
-                        <div style={{ marginTop: 6, display: 'flex', gap: 6 }}>
-                            <button
-                                onClick={() => setFollowAntCamera(!followAntCamera)}
-                                style={{
-                                    background: followAntCamera ? '#0284c7' : 'transparent',
-                                    color: followAntCamera ? '#fff' : (isDark ? '#38bdf8' : '#0284c7'),
-                                    border: '1px solid #0284c7',
-                                    borderRadius: 5,
-                                    padding: '4px 8px',
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 4
-                                }}
-                            >
-                                <Crosshair size={12} /> {followAntCamera ? 'Caméra Fixée' : 'Suivre l\'Insecte'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* 4. Collapsible Subterranean Chamber Inspector HUD (Bottom-Left) */}
+            <ChamberInspectorHUD onFocusChamber={handleFocusPosition} />
 
-            {/* Quick Viewport Floating Tools Bar (Bottom Center) */}
-            <div style={{
-                position: 'absolute',
-                bottom: 16,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                background: isDark ? 'rgba(15, 23, 42, 0.88)' : 'rgba(255, 255, 255, 0.92)',
-                border: isDark ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(56, 189, 248, 0.5)',
-                borderRadius: 10,
-                padding: '6px 14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                backdropFilter: 'blur(10px)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                zIndex: 50
-            }}>
-                {/* Reset Camera */}
-                <button
-                    onClick={() => {
-                        setFollowAntCamera(false)
-                        setCustomTarget(null)
-                        setResetCamTrigger(prev => prev + 1)
-                    }}
-                    title="Réinitialiser la caméra 3D"
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: isDark ? '#cbd5e1' : '#475569',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        fontSize: 11,
-                        fontWeight: 700
-                    }}
-                >
-                    <RotateCcw size={14} color="#38bdf8" /> Vue Initiale
-                </button>
-
-                <div style={{ width: 1, height: 16, background: isDark ? '#334155' : '#cbd5e1' }} />
-
-                {/* Open Legend / Glossary Guide */}
-                <button
-                    onClick={() => setShowGlossaryModal(true)}
-                    title="Ouvrir le guide scientifique et la légende"
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: isDark ? '#cbd5e1' : '#475569',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 5,
-                        fontSize: 11,
-                        fontWeight: 700
-                    }}
-                >
-                    <BookOpen size={14} color="#f59e0b" /> Guide & Lexique
-                </button>
-            </div>
-
-            {/* Minimap Overlay (Top-Right) */}
+            {/* 5. Dual Minimap Overlay (Top-Right) */}
             {showMinimap && <MinimapOverlay />}
 
-            {/* Complete Right Sidebar: VCR, Speed, Media, Render Layers, Audio Mixer, Substrates */}
+            {/* 6. Complete Right Sidebar: VCR, Speed, Media, Render Layers, Audio Mixer, Substrates */}
             <SimulationRightSidebar
                 onTriggerFlash={() => {
                     setIsFlashing(true)
                     setTimeout(() => setIsFlashing(false), 350)
                 }}
             />
-
-            {/* Scientific Guide & Legend Modal */}
-            <LegendGlossaryModal
-                isOpen={showGlossaryModal}
-                onClose={() => setShowGlossaryModal(false)}
-            />
         </div>
     )
 }
-

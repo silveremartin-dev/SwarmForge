@@ -5273,8 +5273,8 @@ public class WorldEditorPane extends BorderPane {
             drawStratigraphySideWalls3D(cx, cy, scale, radAz, radEl, maxDepthPx, step, false);
         }
 
-        // Draw Hollow Log Stumps in 3D
-        if (hollowLogsSlider != null && (showVegetationCheck == null || showVegetationCheck.isSelected())) {
+        // Draw Hollow Log Stumps in 3D (editor mode only)
+        if (!isSimulationMode && hollowLogsSlider != null && (showVegetationCheck == null || showVegetationCheck.isSelected())) {
             int stumpCount = (int) hollowLogsSlider.getValue();
             Random sRand = new Random(99);
             for (int i = 0; i < stumpCount; i++) {
@@ -5284,8 +5284,8 @@ public class WorldEditorPane extends BorderPane {
                 double sz = heightGrid[sx][sy] * 40.0;
                 if (isPointOccluded(sx, sy, sz, radAz, radEl)) continue;
                 double[] sp = project3DPoint(sx, sy, sz, cx, cy, scale, radAz, radEl);
-                double stW = Math.max(7.0, 10.0 * (zoom / 7.5));
-                double stH = Math.max(8.0, 12.0 * (zoom / 7.5));
+                double stW = Math.max(3.0, 4.5 * (zoom / 7.5));
+                double stH = Math.max(2.5, 4.0 * (zoom / 7.5));
                 draw3DVolumetricStump(sp[0], sp[1], stW, stH);
             }
         }
@@ -5884,10 +5884,12 @@ public class WorldEditorPane extends BorderPane {
                     case 1 -> { // Souche / Bois Mort & Champignons (Dead Stump 3D OBJ Model)
                         if (currentRenderMode == RenderMode.REALISTIC && (stumpMesh != null || deadTreeMesh != null)) {
                             org.swarmforge.client.util.ObjModelLoader.ObjMesh sMesh = stumpMesh != null ? stumpMesh : deadTreeMesh;
-                            double sScale = (1.2 * ti.ageScale * gridPerM) / Math.max(0.1, sMesh.height);
+                            double sScale = (0.55 * ti.ageScale * gridPerM) / Math.max(0.1, sMesh.height);
                             drawObjSingleMesh3D(sMesh, ti.gx, ti.gy, z, sScale, Color.web("#78350f"), Color.web("#451a03"), cx, cy, scale, radAz, radEl);
                         } else {
-                            draw3DVolumetricStump(p[0], p[1], trunkW * 1.8, trunkH * 0.6);
+                            double stumpW = Math.max(3.0, (0.45 * ti.ageScale * gridPerM) * (zoom / 7.5) * 8.0);
+                            double stumpH = Math.max(2.5, (0.35 * ti.ageScale * gridPerM) * (zoom / 7.5) * 8.0);
+                            draw3DVolumetricStump(p[0], p[1], stumpW, stumpH);
                         }
                     }
                     case 2 -> { // Bouleau (Betula - Birch 3D OBJ Model)
@@ -7535,13 +7537,13 @@ public class WorldEditorPane extends BorderPane {
         double volScale = Math.max(0.75, Math.min(2.5, Math.cbrt(Math.max(40, carvedVoxCount) / 80.0)));
 
         // Real physical chamber radii (cm converted to projected 3D screen px)
-        double rQueen   = Math.max(6.0, 11.0 * zSc * volScale);   // Loge Royale (~25cm real diameter)
-        double rBrood   = Math.max(5.0, 9.5 * zSc * volScale);    // Loge Couvain (~20cm real diameter)
-        double rFood    = Math.max(4.5, 8.5 * zSc * volScale);    // Grenier / Stock (~18cm real diameter)
-        double rFungus  = Math.max(5.5, 10.0 * zSc * volScale);   // Champignonnière Atta / Termites (~22cm diameter)
-        double rAphid   = Math.max(4.5, 8.0 * zSc * volScale);    // Laiterie à Pucerons / Élevage
-        double rHibern  = Math.max(5.0, 9.0 * zSc * volScale);    // Chambre Hibernation / Diapause
-        double rTrash   = Math.max(4.0, 7.0 * zSc * volScale);    // Dépotoir / Déchets
+        double rQueen   = Math.max(3.5, 6.0 * zSc * volScale);   // Loge Royale (~60-80mm real diameter)
+        double rBrood   = Math.max(3.0, 5.0 * zSc * volScale);   // Loge Couvain (~40-50mm real diameter)
+        double rFood    = Math.max(2.8, 4.5 * zSc * volScale);   // Grenier / Stock (~40mm real diameter)
+        double rFungus  = Math.max(3.2, 5.5 * zSc * volScale);   // Champignonnière Atta / Termites (~55mm diameter)
+        double rAphid   = Math.max(2.8, 4.5 * zSc * volScale);   // Laiterie à Pucerons / Élevage
+        double rHibern  = Math.max(3.0, 5.0 * zSc * volScale);   // Chambre Hibernation / Diapause
+        double rTrash   = Math.max(2.5, 4.0 * zSc * volScale);   // Dépotoir / Déchets
 
         boolean isWinter = simSeason != null && (simSeason.toLowerCase().contains("hiver") || simSeason.toLowerCase().contains("winter"));
         double wtDepth = waterTableDepthSlider != null ? waterTableDepthSlider.getValue() : 15.0;
@@ -7721,9 +7723,9 @@ public class WorldEditorPane extends BorderPane {
                             gc3D.setStroke(tunnelCol);
                             gc3D.setLineWidth(Math.max(2.2, 4.0 * zSc * (tn.getTunnelWidthSetting() / 2.0)));
 
+                            int tDepth = Math.max(1, activeSimulation.getTerrarium().getDepth());
                             java.util.List<float[]> pts = edge.pathPoints();
                             if (pts != null && pts.size() >= 2) {
-                                double totalDepthM = depthSlider != null ? depthSlider.getValue() : 3.0;
                                 for (int pi = 0; pi < pts.size() - 1; pi++) {
                                     float[] ptA = pts.get(pi);
                                     float[] ptB = pts.get(pi + 1);
@@ -7731,31 +7733,34 @@ public class WorldEditorPane extends BorderPane {
                                     double gaY = (ptA[1] / (double) tHeight) * GRID_SIZE;
                                     int igaX = Math.max(0, Math.min(GRID_SIZE - 1, (int) gaX));
                                     int igaY = Math.max(0, Math.min(GRID_SIZE - 1, (int) gaY));
-                                    double gaZ = heightGrid[igaX][igaY] * 40.0 + (ptA[2] / Math.max(0.5, totalDepthM)) * 32.0;
+                                    float sElevA = activeSimulation.getTerrarium().getSurfaceElevation(ptA[0], ptA[1]);
+                                    double gaZ = heightGrid[igaX][igaY] * 40.0 + ((ptA[2] - sElevA) / (double) tDepth) * 40.0;
 
                                     double gbX = (ptB[0] / (double) tWidth) * GRID_SIZE;
                                     double gbY = (ptB[1] / (double) tHeight) * GRID_SIZE;
                                     int igbX = Math.max(0, Math.min(GRID_SIZE - 1, (int) gbX));
                                     int igbY = Math.max(0, Math.min(GRID_SIZE - 1, (int) gbY));
-                                    double gbZ = heightGrid[igbX][igbY] * 40.0 + (ptB[2] / Math.max(0.5, totalDepthM)) * 32.0;
+                                    float sElevB = activeSimulation.getTerrarium().getSurfaceElevation(ptB[0], ptB[1]);
+                                    double gbZ = heightGrid[igbX][igbY] * 40.0 + ((ptB[2] - sElevB) / (double) tDepth) * 40.0;
 
                                     double[] pa = project3DPoint(gaX, gaY, gaZ, cx, cy, scale, radAz, radEl);
                                     double[] pb = project3DPoint(gbX, gbY, gbZ, cx, cy, scale, radAz, radEl);
                                     gc3D.strokeLine(pa[0], pa[1], pb[0], pb[1]);
                                 }
                             } else {
-                                double totalDepthM = depthSlider != null ? depthSlider.getValue() : 3.0;
                                 double g1x = (n1.x() / (double) tWidth) * GRID_SIZE;
                                 double g1y = (n1.y() / (double) tHeight) * GRID_SIZE;
                                 int ig1x = Math.max(0, Math.min(GRID_SIZE - 1, (int) g1x));
                                 int ig1y = Math.max(0, Math.min(GRID_SIZE - 1, (int) g1y));
-                                double g1z = heightGrid[ig1x][ig1y] * 40.0 + (n1.z() / Math.max(0.5, totalDepthM)) * 32.0;
+                                float sElev1 = activeSimulation.getTerrarium().getSurfaceElevation(n1.x(), n1.y());
+                                double g1z = heightGrid[ig1x][ig1y] * 40.0 + ((n1.z() - sElev1) / (double) tDepth) * 40.0;
 
                                 double g2x = (n2.x() / (double) tWidth) * GRID_SIZE;
                                 double g2y = (n2.y() / (double) tHeight) * GRID_SIZE;
                                 int ig2x = Math.max(0, Math.min(GRID_SIZE - 1, (int) g2x));
                                 int ig2y = Math.max(0, Math.min(GRID_SIZE - 1, (int) g2y));
-                                double g2z = heightGrid[ig2x][ig2y] * 40.0 + (n2.z() / Math.max(0.5, totalDepthM)) * 32.0;
+                                float sElev2 = activeSimulation.getTerrarium().getSurfaceElevation(n2.x(), n2.y());
+                                double g2z = heightGrid[ig2x][ig2y] * 40.0 + ((n2.z() - sElev2) / (double) tDepth) * 40.0;
 
                                 double[] p1 = project3DPoint(g1x, g1y, g1z, cx, cy, scale, radAz, radEl);
                                 double[] p2 = project3DPoint(g2x, g2y, g2z, cx, cy, scale, radAz, radEl);
@@ -7764,18 +7769,19 @@ public class WorldEditorPane extends BorderPane {
                         }
 
                         // 2. Draw chamber nodes with biological lenticular geometry and color palette
-                        double totalDepthM = depthSlider != null ? depthSlider.getValue() : 3.0;
+                        int tDepth = Math.max(1, activeSimulation.getTerrarium().getDepth());
                         for (org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node : tn.getNodes()) {
                             double gx = (node.x() / (double) tWidth) * GRID_SIZE;
                             double gy = (node.y() / (double) tHeight) * GRID_SIZE;
                             int igx = Math.max(0, Math.min(GRID_SIZE - 1, (int) gx));
                             int igy = Math.max(0, Math.min(GRID_SIZE - 1, (int) gy));
-                            double gz = heightGrid[igx][igy] * 40.0 + (node.z() / Math.max(0.5, totalDepthM)) * 32.0;
+                            float sElev = activeSimulation.getTerrarium().getSurfaceElevation(node.x(), node.y());
+                            double gz = heightGrid[igx][igy] * 40.0 + ((node.z() - sElev) / (double) tDepth) * 40.0;
 
                             double[] pNode = project3DPoint(gx, gy, gz, cx, cy, scale, radAz, radEl);
 
-                            double rxChamber = Math.max(2.5, (node.radiusX() / (double) tWidth) * GRID_SIZE * (scale / 10.0));
-                            double rzChamber = Math.max(1.8, (node.radiusZ() / Math.max(0.5, totalDepthM)) * (scale / 10.0) * 2.5);
+                            double rxChamber = Math.max(2.5, (node.radiusX() / (double) tWidth) * GRID_SIZE * (scale / 4.0) * (zoom / 7.5));
+                            double rzChamber = Math.max(1.8, (node.radiusZ() / (double) tDepth) * 40.0 * (scale / 6.0) * (zoom / 7.5));
 
                             Color fillCol = switch (node.type()) {
                                 case QUEEN_CHAMBER, BIVOUAC_CORE -> Color.web("#d946ef", 0.80);

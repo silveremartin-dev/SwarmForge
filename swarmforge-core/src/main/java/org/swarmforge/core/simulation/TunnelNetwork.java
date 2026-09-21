@@ -69,20 +69,20 @@ public class TunnelNetwork implements java.io.Serializable {
 
         private static float defaultRadius(ChamberType type, boolean horizontal) {
             return switch (type) {
-                case QUEEN_CHAMBER -> horizontal ? 4.8f : 2.4f;
-                case FUNGUS_GARDEN -> horizontal ? 4.2f : 2.2f;
-                case BROOD_CHAMBER -> horizontal ? 3.4f : 1.8f;
-                case FOOD_STORAGE, LEAF_CACHE -> horizontal ? 3.6f : 1.9f;
-                case WASTE_DUMP -> horizontal ? 3.2f : 1.6f;
-                case HIBERNATION -> horizontal ? 3.8f : 2.0f;
-                case BIVOUAC_CORE -> horizontal ? 4.5f : 2.5f;
-                case SOLARIUM -> horizontal ? 4.0f : 2.0f;
-                case HONEYCOMB -> horizontal ? 3.5f : 2.5f;
-                case POLLEN_POT -> horizontal ? 2.8f : 2.0f;
-                case VENTILATION_CHIMNEY -> horizontal ? 1.5f : 3.5f;
-                case GALL_NURSERY -> horizontal ? 2.5f : 1.5f;
-                case ENTRANCE -> horizontal ? 2.0f : 1.5f;
-                case TUNNEL -> 1.2f;
+                case QUEEN_CHAMBER -> horizontal ? 0.55f : 0.30f;
+                case FUNGUS_GARDEN -> horizontal ? 0.50f : 0.28f;
+                case BROOD_CHAMBER -> horizontal ? 0.40f : 0.22f;
+                case FOOD_STORAGE, LEAF_CACHE -> horizontal ? 0.40f : 0.22f;
+                case WASTE_DUMP -> horizontal ? 0.35f : 0.20f;
+                case HIBERNATION -> horizontal ? 0.45f : 0.24f;
+                case BIVOUAC_CORE -> horizontal ? 0.50f : 0.30f;
+                case SOLARIUM -> horizontal ? 0.45f : 0.24f;
+                case HONEYCOMB -> horizontal ? 0.40f : 0.25f;
+                case POLLEN_POT -> horizontal ? 0.35f : 0.22f;
+                case VENTILATION_CHIMNEY -> horizontal ? 0.22f : 0.45f;
+                case GALL_NURSERY -> horizontal ? 0.30f : 0.20f;
+                case ENTRANCE -> horizontal ? 0.25f : 0.18f;
+                case TUNNEL -> 0.15f;
             };
         }
 
@@ -594,15 +594,16 @@ public class TunnelNetwork implements java.io.Serializable {
             int cy = Math.round(node.y());
             int cz = Math.round(node.z());
 
-            float rx = Math.max(1.2f, node.radiusX() * scaleFactorSetting);
-            float ry = Math.max(1.2f, node.radiusY() * scaleFactorSetting);
-            float rz = Math.max(1.0f, node.radiusZ() * scaleFactorSetting);
+            float rx = Math.max(0.6f, node.radiusX() * scaleFactorSetting);
+            float ry = Math.max(0.6f, node.radiusY() * scaleFactorSetting);
+            float rz = Math.max(0.5f, node.radiusZ() * scaleFactorSetting);
 
             int irx = (int) Math.ceil(rx);
             int iry = (int) Math.ceil(ry);
             int irz = (int) Math.ceil(rz);
 
-            org.swarmforge.core.domain.TerrariumCell.Material mat = (node.type() == ChamberType.ENTRANCE || node.z() >= 0)
+            float surfElev = terrarium.getSurfaceElevation(cx, cy);
+            org.swarmforge.core.domain.TerrariumCell.Material mat = (node.type() == ChamberType.ENTRANCE || node.z() >= surfElev)
                     ? org.swarmforge.core.domain.TerrariumCell.Material.AIR
                     : org.swarmforge.core.domain.TerrariumCell.Material.CHAMBER;
 

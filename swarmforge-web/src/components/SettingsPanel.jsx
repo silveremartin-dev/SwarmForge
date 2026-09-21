@@ -52,24 +52,6 @@ export default function SettingsPanel() {
                         Personnalisation de la langue et de l'apparence visuelle.
                     </p>
                 </div>
-
-                <button
-                    onClick={handleResetDefaults}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        background: 'transparent',
-                        color: textMuted,
-                        border: `1px solid ${borderCol}`,
-                        padding: '6px 12px',
-                        borderRadius: 6,
-                        fontSize: 12,
-                        cursor: 'pointer'
-                    }}
-                >
-                    <RotateCcw size={13} /> {t('resetSettings', 'Rétablir par défaut')}
-                </button>
             </div>
 
             {/* 1. Language Row */}

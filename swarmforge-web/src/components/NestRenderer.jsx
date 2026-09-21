@@ -29,11 +29,13 @@ function SingleNest({ nest, isGhost = false }) {
 
     // Pulse effect for Phantom / Ghost rendering
     useFrame((state) => {
-        if ((nest.isPhantom || isGhost) && phantomMeshRef.current) {
+        if ((nest?.isPhantom || isGhost) && phantomMeshRef.current) {
             const time = state.clock.getElapsedTime()
             phantomMeshRef.current.material.opacity = 0.35 + Math.sin(time * 3) * 0.25
         }
     })
+
+    if (!nest) return null
 
     const scale = (nest.scale || 1.0) * 0.75
 
@@ -44,14 +46,14 @@ function SingleNest({ nest, isGhost = false }) {
     }
 
     const posX = toWorldCoord(nest.x)
-    const posZ = toWorldCoord(nest.y !== undefined ? nest.y : nest.z)
+    const posZ = toWorldCoord(nest.z !== undefined ? nest.z : nest.y)
     const groundY = getTerrainHeight(posX, posZ, terrainConfig)
 
     const isPhantomMode = nest.isPhantom || isGhost
 
     // Multi-exit surface portals for subterranean / mound nests (ensures all exits snap to ground altitude Y)
     const exitPortals = useMemo(() => {
-        const offsets = nest.exits || [
+        const offsets = nest?.exits || [
             { offsetX: 0, offsetZ: 0, isMain: true },
             { offsetX: 0.9 * scale, offsetZ: 0.6 * scale, isMain: false },
             { offsetX: -0.9 * scale, offsetZ: -0.7 * scale, isMain: false }
@@ -481,7 +483,7 @@ export default function NestRenderer() {
     return (
         <group>
             {/* Active Nests in Simulation */}
-            {nests.map((nest) => (
+            {(nests || []).map((nest) => (
                 <SingleNest
                     key={nest.id}
                     nest={{

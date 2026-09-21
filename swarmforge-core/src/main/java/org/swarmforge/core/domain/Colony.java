@@ -1028,9 +1028,19 @@ public class Colony implements java.io.Serializable {
                 .anyMatch(i -> i.isAlive() && i.getCaste() == Individual.Caste.QUEEN);
     }
 
+    private String participantName;
+
     // Getters
     public UUID getId() {
         return id;
+    }
+
+    public String getParticipantName() {
+        return participantName;
+    }
+
+    public void setParticipantName(String participantName) {
+        this.participantName = participantName;
     }
 
     public String getSpeciesName() {

@@ -7,6 +7,7 @@ import GodModePanel from './components/GodModePanel'
 import StatisticsDashboardPanel from './components/StatisticsDashboardPanel'
 import EventLogPanel from './components/EventLogPanel'
 import SettingsPanel from './components/SettingsPanel'
+import { useSimulationStore } from './store/simulationStore'
 
 describe('Component Rendering Smoke Tests', () => {
     it('renders App without crashing', () => {
@@ -37,5 +38,12 @@ describe('Component Rendering Smoke Tests', () => {
     it('renders SettingsPanel without ReferenceError', () => {
         const html = ReactDOMServer.renderToString(<SettingsPanel />)
         expect(html).toContain('Configuration &amp; Préférences')
+    })
+
+    it('renders App when switched to VISUAL_3D tab without crashing', () => {
+        useSimulationStore.getState().setActiveTab('VISUAL_3D')
+        const html = ReactDOMServer.renderToString(<App />)
+        expect(html).toBeTruthy()
+        expect(html).toContain('SwarmForge')
     })
 })
