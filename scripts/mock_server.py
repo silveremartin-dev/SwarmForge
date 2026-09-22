@@ -267,6 +267,9 @@ class MockWebSocketServer:
         self.lock = threading.Lock()
         self.server_sock = None
         self.running = False
+        self.lobby_status = "LOBBY_WAITING"  # LOBBY_WAITING, ACTIVE, INACTIVE
+        self.selected_scenario_id = "ACAD_01_LEVY_BROWNIAN"
+        self.lobby_players = []
 
     def start(self):
         self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -361,25 +364,222 @@ class MockWebSocketServer:
             print(f"{YELLOW}[WebSocket] Client déconnecté : {addr[0]}:{addr[1]}{RESET}")
 
     def _handle_client_message(self, msg, client_sock):
-        msg_type = msg.get("type")
-        if msg_type == "CONTROL":
-            action = msg.get("action")
-            if action == "PLAY":
+        msg_type = (msg.get("type") or "").upper()
+        if msg_type == "PING":
+            pong = json.dumps({"type": "PONG", "timestamp": int(time.time() * 1000)})
+            try:
+                client_sock.sendall(build_ws_text_frame(pong))
+            except Exception:
+                pass
+        elif msg_type in ("CONTROL", "CONTROL_COMMAND"):
+            action = (msg.get("action") or "").upper()
+            if action in ("PLAY", "START"):
                 self.sim_state.running = True
                 print(f"{CYAN}[Commande] Reprise de la simulation (PLAY){RESET}")
             elif action == "PAUSE":
                 self.sim_state.running = False
                 print(f"{CYAN}[Commande] Pause de la simulation (PAUSE){RESET}")
-            elif action == "SPEED":
-                self.sim_state.speed = float(msg.get("speed", 1.0))
+            elif action == "STEP":
+                self.sim_state.update_tick()
+                print(f"{CYAN}[Commande] Avance d'un pas (STEP -> Tick #{self.sim_state.tick}){RESET}")
+            elif action in ("SPEED", "SET_SPEED"):
+                self.sim_state.speed = float(msg.get("value") or msg.get("speed", 1.0))
                 print(f"{CYAN}[Commande] Vitesse réglée à {self.sim_state.speed}x{RESET}")
-        elif msg_type == "SUBSCRIBE":
-            # Renvoie l'état complet au client abonné
-            full_state = json.dumps(self.sim_state.get_full_state())
+            elif action == "RESET":
+                self.sim_state.tick = 0
+                self.sim_state.init_ants()
+                print(f"{CYAN}[Commande] Réinitialisation de la simulation (RESET){RESET}")
+        elif msg_type == "DEPLOY_SCENARIO":
+            scenario = msg.get("scenario", {})
+            print(f"{GREEN}[Scénario] Déploiement d'un nouveau scénario maître depuis le client distant !{RESET}")
+            cards = scenario.get("speciesCards")
+            if cards:
+                self.sim_state.colonies = [
+                    {
+                        "id": c.get("id", f"COL_{idx}"),
+                        "name": c.get("name", f"Colonie #{idx+1}"),
+                        "species": c.get("speciesId", "Formica fusca"),
+                        "color": c.get("color", "#38bdf8"),
+                        "foodStored": 250,
+                        "queenCount": c.get("initialQueens", 1),
+                        "workerCount": c.get("initialWorkers", 40)
+                    }
+                    for idx, c in enumerate(cards)
+                ]
+            self.sim_state.tick = 0
+            self.sim_state.init_ants()
+            
+            # Répond avec la confirmation de scénario
+            sc_state = json.dumps({"type": "SCENARIO_STATE", "scenario": scenario})
             try:
-                client_sock.sendall(build_ws_text_frame(full_state))
+                client_sock.sendall(build_ws_text_frame(sc_state))
             except Exception:
                 pass
+        elif msg_type == "LIST_SERVER_SCENARIOS" or msg_type == "GET_SCENARIOS":
+            sc_list = self._build_scenarios_list()
+            payload = json.dumps({"type": "SERVER_SCENARIOS_LIST", "scenarios": sc_list})
+            try:
+                client_sock.sendall(build_ws_text_frame(payload))
+            except Exception:
+                pass
+        elif msg_type == "PLAYER_READY":
+            ready = bool(msg.get("ready", True))
+            for p in self.lobby_players:
+                if p.get("sock") == client_sock:
+                    p["isReady"] = ready
+            self._broadcast_lobby_state()
+        elif msg_type == "START_MATCH":
+            if self.lobby_status != "ACTIVE":
+                self.lobby_status = "ACTIVE"
+                self.sim_state.running = True
+                print(f"{GREEN}[Matchmaking] Partie démarrée par l'Hôte ! Simulation active.{RESET}")
+                self._broadcast_lobby_state()
+        elif msg_type == "SELECT_SCENARIO":
+            if self.lobby_status != "ACTIVE":
+                sc_id = msg.get("scenarioId")
+                if sc_id:
+                    self.selected_scenario_id = sc_id
+                    print(f"{CYAN}[Catalogue] Scénario sélectionné : {sc_id}{RESET}")
+                    self._broadcast_lobby_state()
+                    self._broadcast_scenarios_list()
+        elif msg_type in ("SUBSCRIBE", "JOIN_SESSION"):
+            alias = msg.get("participantTag", "Joueur")
+            species = msg.get("species", "Formica fusca")
+            role = msg.get("role", "JOIN")
+            
+            # Register player in lobby
+            existing = [p for p in self.lobby_players if p.get("sock") == client_sock]
+            if not existing:
+                self.lobby_players.append({
+                    "sock": client_sock,
+                    "tag": alias,
+                    "species": species,
+                    "role": role,
+                    "isReady": False,
+                    "joinedAt": int(time.time() * 1000)
+                })
+
+            # Send full state, scenario catalog, and lobby state
+            full_state = json.dumps(self.sim_state.get_full_state())
+            sc_list = json.dumps({"type": "SERVER_SCENARIOS_LIST", "scenarios": self._build_scenarios_list()})
+            try:
+                client_sock.sendall(build_ws_text_frame(full_state))
+                client_sock.sendall(build_ws_text_frame(sc_list))
+            except Exception:
+                pass
+            self._broadcast_lobby_state()
+        elif msg_type == "GOD_MODE_INTERVENTION":
+            intervention = msg.get("intervention", {})
+            cat = intervention.get("category", "SYSTEM")
+            typ = intervention.get("type", "Action")
+            print(f"{MAGENTA}[God Mode] Intervention divine reçue : [{cat}] {typ}{RESET}")
+        elif msg_type == "SCHEDULE_EVENT":
+            evt = msg.get("scheduledEvent", {})
+            target = evt.get("targetTick", 0)
+            desc = evt.get("description", "Événement planifié")
+            print(f"{MAGENTA}[God Mode] Événement programmé pour le tick #{target} : {desc}{RESET}")
+
+    def _build_scenarios_list(self):
+        catalog = [
+            {
+                "id": "ACAD_01_LEVY_BROWNIAN",
+                "title": "Exploration Strategy: Lévy Flights vs Brownian Walk",
+                "description": "Comparative study of foraging harvesting efficiency between Neural/RL and Brownian FSM ants.",
+                "academicCategory": "Ethology / Optimal Foraging Theory",
+                "biomeName": "TEMPERATE_FOREST",
+                "requiredPlayerCount": 2,
+                "isMultiplayerOnly": False,
+                "maxDurationValue": 100.0,
+                "maxDurationUnit": "Days (d)",
+                "status": self.lobby_status if self.selected_scenario_id == "ACAD_01_LEVY_BROWNIAN" else "INACTIVE"
+            },
+            {
+                "id": "ACAD_02_POLYETHISM_BDI",
+                "title": "Polyethism and Division of Labor (BDI)",
+                "description": "Analysis of the emergence of division of labor driven by adaptive BDI cognitive engines.",
+                "academicCategory": "Sociobiology / Division of Labor",
+                "biomeName": "MEDITERRANEAN",
+                "requiredPlayerCount": 1,
+                "isMultiplayerOnly": False,
+                "maxDurationValue": 100.0,
+                "maxDurationUnit": "Days (d)",
+                "status": self.lobby_status if self.selected_scenario_id == "ACAD_02_POLYETHISM_BDI" else "INACTIVE"
+            },
+            {
+                "id": "MP_BATTLE_ARENA_1V1",
+                "title": "Multiplayer Competitive Arena (1v1)",
+                "description": "Direct territorial competition between two equal colonies with resource contested hotspots.",
+                "academicCategory": "Competition / Game Theory",
+                "biomeName": "TEMPERATE_FOREST",
+                "requiredPlayerCount": 2,
+                "isMultiplayerOnly": True,
+                "maxDurationValue": 30.0,
+                "maxDurationUnit": "Days (d)",
+                "status": self.lobby_status if self.selected_scenario_id == "MP_BATTLE_ARENA_1V1" else "INACTIVE"
+            },
+            {
+                "id": "MP_COOP_TRIBUTE_TRADE",
+                "title": "Multiplayer Cooperative Tributary Trade (Co-op)",
+                "description": "Cooperative ecosystem management with complementary ecological niches and symbiotic exchanges.",
+                "academicCategory": "Symbiosis / Mutualism",
+                "biomeName": "TROPICAL_RAINFOREST",
+                "requiredPlayerCount": 2,
+                "isMultiplayerOnly": True,
+                "maxDurationValue": 60.0,
+                "maxDurationUnit": "Days (d)",
+                "status": self.lobby_status if self.selected_scenario_id == "MP_COOP_TRIBUTE_TRADE" else "INACTIVE"
+            },
+            {
+                "id": "MP_MEGATERRARIUM_SHARDED_4NODE",
+                "title": "Megaterrarium 4-Node Sharded Federation (4 Players)",
+                "description": "Large-scale sharded simulation across 4 contiguous spatial nodes for high-density multi-colony colonies.",
+                "academicCategory": "Distributed Systems / Spatial Ecology",
+                "biomeName": "TEMPERATE_FOREST",
+                "requiredPlayerCount": 4,
+                "isMultiplayerOnly": True,
+                "maxDurationValue": 180.0,
+                "maxDurationUnit": "Days (d)",
+                "status": self.lobby_status if self.selected_scenario_id == "MP_MEGATERRARIUM_SHARDED_4NODE" else "INACTIVE"
+            }
+        ]
+        return catalog
+
+    def _broadcast_lobby_state(self):
+        players_payload = [
+            {
+                "tag": p["tag"],
+                "species": p["species"],
+                "role": p["role"],
+                "isReady": p["isReady"],
+                "joinedAt": p["joinedAt"]
+            }
+            for p in self.lobby_players
+        ]
+        msg = json.dumps({
+            "type": "LOBBY_STATE",
+            "status": self.lobby_status,
+            "selectedScenarioId": self.selected_scenario_id,
+            "players": players_payload,
+            "playerCount": len(players_payload)
+        })
+        frame = build_ws_text_frame(msg)
+        with self.lock:
+            for c in list(self.clients):
+                try:
+                    c.sendall(frame)
+                except Exception:
+                    pass
+
+    def _broadcast_scenarios_list(self):
+        sc_list = self._build_scenarios_list()
+        msg = json.dumps({"type": "SERVER_SCENARIOS_LIST", "scenarios": sc_list})
+        frame = build_ws_text_frame(msg)
+        with self.lock:
+            for c in list(self.clients):
+                try:
+                    c.sendall(frame)
+                except Exception:
+                    pass
 
     def _simulation_loop(self):
         fps = 20

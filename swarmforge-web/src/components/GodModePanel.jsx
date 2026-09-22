@@ -39,16 +39,16 @@ export default function GodModePanel() {
     } = useSimulationStore()
 
     const isDark = theme === 'dark'
-    const t = (key, fallback) => getTranslation(language, key, fallback)
+    const t = (key, fallbackOrParams, params) => getTranslation(language, key, fallbackOrParams, params)
 
     const categories = [
-        { id: 'ENTITIES', label: '1. Entités & Couvain', icon: Users, color: '#3b82f6' },
-        { id: 'RESOURCE', label: '2. Ressources & Taxonomie', icon: Package, color: '#10b981' },
-        { id: 'DISASTER', label: '3. Désastres Climatiques', icon: AlertTriangle, color: '#ef4444' },
-        { id: 'ABIOTIC', label: '4. Physique Abiotique (+/-)', icon: Thermometer, color: '#f59e0b' },
-        { id: 'PHEROMONE', label: '5. Phéromones & Pistes', icon: Wind, color: '#8b5cf6' },
-        { id: 'INVASION', label: '6. Invasions & Prédateurs', icon: ShieldAlert, color: '#dc2626' },
-        { id: 'MUTATION', label: '7. Génétique & Mutagènes', icon: Activity, color: '#ec4899' }
+        { id: 'ENTITIES', label: t('catEntities', '1. Entités & Couvain'), icon: Users, color: '#3b82f6' },
+        { id: 'RESOURCE', label: t('catResource', '2. Ressources & Taxonomie'), icon: Package, color: '#10b981' },
+        { id: 'DISASTER', label: t('catDisaster', '3. Désastres Climatiques'), icon: AlertTriangle, color: '#ef4444' },
+        { id: 'ABIOTIC', label: t('catAbiotic', '4. Physique Abiotique (+/-)'), icon: Thermometer, color: '#f59e0b' },
+        { id: 'PHEROMONE', label: t('catPheromone', '5. Phéromones & Pistes'), icon: Wind, color: '#8b5cf6' },
+        { id: 'INVASION', label: t('catInvasion', '6. Invasions & Prédateurs'), icon: ShieldAlert, color: '#dc2626' },
+        { id: 'MUTATION', label: t('catMutation', '7. Génétique & Mutagènes'), icon: Activity, color: '#ec4899' }
     ]
 
     const [activeCategory, setActiveCategory] = useState('ENTITIES')
@@ -198,28 +198,28 @@ export default function GodModePanel() {
             {/* Header */}
             <div>
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Zap size={20} /> God Mode (Interventions Divines & File d'Événements)
+                    <Zap size={20} /> {t('godModePanelTitle', "God Mode (Interventions Divines & File d'Événements)")}
                 </h2>
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: textMuted }}>
-                    Manipulation directe des entités, biocénose, désastres, physique abiotique relative/absolue et calendrier d'interventions.
+                    {t('godModePanelSubtitle', "Manipulation directe des entités, biocénose, désastres, physique abiotique relative/absolue et calendrier d'interventions.")}
                 </p>
 
                 {/* Quick Macro Presets Bar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#f59e0b' }}>⚡ Macros Rapides :</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: '#f59e0b' }}>{t('quickMacrosLabel', '⚡ Macros Rapides :')}</span>
                     {[
-                        { label: '🔥 Grand Incendie', cat: 'DISASTER', setup: () => { setActiveCategory('DISASTER'); setDisasterType('WILDFIRE'); setDisasterIntensity(0.85); setDisasterDurationMinutes(40); } },
-                        { label: '🌊 Inondation Crue', cat: 'DISASTER', setup: () => { setActiveCategory('DISASTER'); setDisasterType('FLOOD'); setDisasterIntensity(0.75); setDisasterDurationMinutes(30); } },
-                        { label: '🍯 Manne Sucrée', cat: 'RESOURCE', setup: () => { setActiveCategory('RESOURCE'); setResourceType('SUGAR'); setFoodNature('Nectar & Honeydew'); setResourceAmount(500); } },
-                        { label: '🚨 Alerte Chimique', cat: 'PHEROMONE', setup: () => { setActiveCategory('PHEROMONE'); setPheromoneType('ALARM'); setPheromoneIntensity(100); setPheromoneRadius(15); } },
-                        { label: '🦗 Nuée de Criquets', cat: 'INVASION', setup: () => { setActiveCategory('INVASION'); setInvasionType('LOCUST'); setInvasionCount(25); } },
-                        { label: '👑 Renfort Reines', cat: 'ENTITIES', setup: () => { setActiveCategory('ENTITIES'); setEntityAction('SPAWN'); setCaste('QUEEN'); setAntCount(2); } }
+                        { label: t('macroWildfire', '🔥 Grand Incendie'), cat: 'DISASTER', setup: () => { setActiveCategory('DISASTER'); setDisasterType('WILDFIRE'); setDisasterIntensity(0.85); setDisasterDurationMinutes(40); } },
+                        { label: t('macroFlood', '🌊 Inondation Crue'), cat: 'DISASTER', setup: () => { setActiveCategory('DISASTER'); setDisasterType('FLOOD'); setDisasterIntensity(0.75); setDisasterDurationMinutes(30); } },
+                        { label: t('macroSugar', '🍯 Manne Sucrée'), cat: 'RESOURCE', setup: () => { setActiveCategory('RESOURCE'); setResourceType('SUGAR'); setFoodNature('Nectar & Honeydew'); setResourceAmount(500); } },
+                        { label: t('macroAlarm', '🚨 Alerte Chimique'), cat: 'PHEROMONE', setup: () => { setActiveCategory('PHEROMONE'); setPheromoneType('ALARM'); setPheromoneIntensity(100); setPheromoneRadius(15); } },
+                        { label: t('macroLocusts', '🦗 Nuée de Criquets'), cat: 'INVASION', setup: () => { setActiveCategory('INVASION'); setInvasionType('LOCUST'); setInvasionCount(25); } },
+                        { label: t('macroQueens', '👑 Renfort Reines'), cat: 'ENTITIES', setup: () => { setActiveCategory('ENTITIES'); setEntityAction('SPAWN'); setCaste('QUEEN'); setAntCount(2); } }
                     ].map((macro, idx) => (
                         <button
                             key={idx}
                             onClick={() => {
                                 macro.setup()
-                                showToast(`⚡ Macro sélectionnée : ${macro.label}`, 'info')
+                                showToast(`⚡ ${macro.label}`, 'info')
                             }}
                             style={{
                                 background: isDark ? '#334155' : '#e2e8f0',
@@ -291,38 +291,38 @@ export default function GodModePanel() {
                 {activeCategory === 'ENTITIES' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Action :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('actionLabel', 'Action :')}</label>
                             <select
                                 value={entityAction}
                                 onChange={(e) => setEntityAction(e.target.value)}
                                 style={{ width: '100%', background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
                             >
-                                <option value="SPAWN">Faire Apparaître (Spawn)</option>
-                                <option value="KILL">Éliminer Sélectivement (Kill)</option>
-                                <option value="EXTINCT">Extinction Totale (Extinct)</option>
-                                <option value="BROOD_SPAWN">Injecter Couvain (Larves/Œufs)</option>
-                                <option value="BROOD_KILL">Détruire Couvain</option>
+                                <option value="SPAWN">{t('actionSpawn', 'Faire Apparaître (Spawn)')}</option>
+                                <option value="KILL">{t('actionKill', 'Éliminer Sélectivement (Kill)')}</option>
+                                <option value="EXTINCT">{t('actionExtinct', 'Extinction Totale (Extinct)')}</option>
+                                <option value="BROOD_SPAWN">{t('actionBroodSpawn', 'Injecter Couvain (Larves/Œufs)')}</option>
+                                <option value="BROOD_KILL">{t('actionBroodKill', 'Détruire Couvain')}</option>
                             </select>
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Caste Cible :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('targetCasteLabel', 'Caste Cible :')}</label>
                             <select
                                 value={caste}
                                 onChange={(e) => setCaste(e.target.value)}
                                 style={{ width: '100%', background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
                             >
-                                <option value="WORKER">Ouvrière (Worker)</option>
-                                <option value="SOLDIER">Soldat (Soldier)</option>
-                                <option value="QUEEN">Reine (Queen)</option>
-                                <option value="MALE">Mâle Alé (Male)</option>
-                                <option value="BROOD_LARVAE">Couvain - Larves</option>
-                                <option value="BROOD_EGGS">Couvain - Œufs</option>
+                                <option value="WORKER">{t('casteWorker', 'Ouvrière (Worker)')}</option>
+                                <option value="SOLDIER">{t('casteSoldier', 'Soldat (Soldier)')}</option>
+                                <option value="QUEEN">{t('casteQueen', 'Reine (Queen)')}</option>
+                                <option value="MALE">{t('casteMale', 'Mâle (Male)')}</option>
+                                <option value="BROOD_LARVAE">{t('casteBroodLarvae', 'Couvain - Larves')}</option>
+                                <option value="BROOD_EGGS">{t('casteBroodEggs', 'Couvain - Œufs')}</option>
                             </select>
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Quantité :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('quantityLabel', 'Quantité :')}</label>
                             <input
                                 type="number"
                                 min="1"
@@ -334,7 +334,7 @@ export default function GodModePanel() {
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Colonie Cible :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('targetColonyLabel', 'Colonie Cible :')}</label>
                             <select
                                 value={targetColonyId}
                                 onChange={(e) => setTargetColonyId(e.target.value)}
@@ -352,36 +352,36 @@ export default function GodModePanel() {
                 {activeCategory === 'RESOURCE' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Catégorie Trophique :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('trophicCategoryLabel', 'Catégorie Trophique :')}</label>
                             <select
                                 value={resourceType}
                                 onChange={(e) => setResourceType(e.target.value)}
                                 style={{ width: '100%', background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
                             >
-                                <option value="SUGAR">Miellat & Glucides (Surface)</option>
-                                <option value="SEEDS">Graines de Graminées (Messor)</option>
-                                <option value="PREY">Cadavre d'Insecte (Protéines)</option>
-                                <option value="WATER">Point d'Eau / Rosée</option>
-                                <option value="FUNGI">Mycélium Champignon (Atta)</option>
+                                <option value="SUGAR">{t('trophicSugar', 'Miellat & Glucides (Surface)')}</option>
+                                <option value="SEEDS">{t('trophicSeeds', 'Graines de Graminées (Messor)')}</option>
+                                <option value="PREY">{t('trophicPrey', "Cadavre d'Insecte (Protéines)")}</option>
+                                <option value="WATER">{t('trophicWater', "Point d'Eau / Rosée")}</option>
+                                <option value="FUNGI">{t('trophicFungi', 'Mycélium Champignon (Atta)')}</option>
                             </select>
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Nature Biologique :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('biologicalNatureLabel', 'Nature Biologique :')}</label>
                             <select
                                 value={foodNature}
                                 onChange={(e) => setFoodNature(e.target.value)}
                                 style={{ width: '100%', background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
                             >
-                                <option value="Nectar & Honeydew">Miellat de Pucerons & Nectar Floral</option>
-                                <option value="Grass Seeds">Graines Végétales Oléagineuses</option>
-                                <option value="Protein Biomass">Biomasse Protéique Animale</option>
-                                <option value="Fungal Mycelium">Champignon Symbiotique</option>
+                                <option value="Nectar & Honeydew">{t('natureSugar', 'Miellat de Pucerons & Nectar Floral')}</option>
+                                <option value="Grass Seeds">{t('natureSeeds', 'Graines Végétales Oléagineuses')}</option>
+                                <option value="Protein Biomass">{t('naturePrey', 'Biomasse Protéique Animale')}</option>
+                                <option value="Fungal Mycelium">{t('natureFungi', 'Champignon Symbiotique')}</option>
                             </select>
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Quantité d'Énergie :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('energyAmountLabel', "Quantité d'Énergie :")}</label>
                             <input
                                 type="number"
                                 min="10"
@@ -398,23 +398,23 @@ export default function GodModePanel() {
                 {activeCategory === 'DISASTER' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Désastre Climatique :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('climateDisasterLabel', 'Désastre Climatique :')}</label>
                             <select
                                 value={disasterType}
                                 onChange={(e) => setDisasterType(e.target.value)}
                                 style={{ width: '100%', background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
                             >
-                                <option value="WILDFIRE">🔥 Incendie & Feux de Forêt</option>
-                                <option value="FLOOD">🌊 Inondation & Pluie Torrentielle</option>
-                                <option value="DROUGHT">☀️ Sécheresse & Canicule Critique</option>
-                                <option value="COLD_SNAP">❄️ Vague de Froid & Gel Substrat</option>
-                                <option value="EARTHQUAKE">⛰️ Séisme & Éboulement Souterrain</option>
+                                <option value="WILDFIRE">{t('disasterWildfire', '🔥 Incendie & Feux de Forêt')}</option>
+                                <option value="FLOOD">{t('disasterFlood', '🌊 Inondation & Pluie Torrentielle')}</option>
+                                <option value="DROUGHT">{t('disasterDrought', '☀️ Sécheresse & Canicule Critique')}</option>
+                                <option value="COLD_SNAP">{t('disasterColdSnap', '❄️ Vague de Froid & Gel Substrat')}</option>
+                                <option value="EARTHQUAKE">{t('disasterEarthquake', '⛰️ Séisme & Éboulement Souterrain')}</option>
                             </select>
                         </div>
 
                         <div>
                             <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>
-                                Intensité ({(disasterIntensity * 100).toFixed(0)}%) :
+                                {t('intensityLabel', 'Intensité')} ({(disasterIntensity * 100).toFixed(0)}%) :
                             </label>
                             <input
                                 type="range"
@@ -428,7 +428,7 @@ export default function GodModePanel() {
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Durée (minutes) :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('durationMinutesLabel', 'Durée (minutes) :')}</label>
                             <input
                                 type="number"
                                 min="1"
@@ -445,7 +445,7 @@ export default function GodModePanel() {
                 {activeCategory === 'ABIOTIC' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                            <label style={{ fontSize: 12, fontWeight: 700, color: textMuted }}>Mode Abiotique :</label>
+                            <label style={{ fontSize: 12, fontWeight: 700, color: textMuted }}>{t('abioticModeLabel', 'Mode Abiotique :')}</label>
                             <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                                 <input
                                     type="radio"
@@ -453,7 +453,7 @@ export default function GodModePanel() {
                                     checked={isRelativeAbiotic}
                                     onChange={() => setIsRelativeAbiotic(true)}
                                 />
-                                Modificateur Relatif (Delta +/-)
+                                {t('modeRelativeDelta', 'Modificateur Relatif (Delta +/-)')}
                             </label>
                             <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                                 <input
@@ -462,7 +462,7 @@ export default function GodModePanel() {
                                     checked={!isRelativeAbiotic}
                                     onChange={() => setIsRelativeAbiotic(false)}
                                 />
-                                Valeur Absolue Cible
+                                {t('modeAbsoluteTarget', 'Valeur Absolue Cible')}
                             </label>
                         </div>
 
@@ -470,7 +470,7 @@ export default function GodModePanel() {
                             {isRelativeAbiotic ? (
                                 <>
                                     <div>
-                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Δ Température (+/- °C) :</label>
+                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('deltaTempLabel', 'Δ Température (°C) :')}</label>
                                         <input
                                             type="number"
                                             value={deltaTemp}
@@ -479,7 +479,7 @@ export default function GodModePanel() {
                                         />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Δ Hygrométrie (+/- %) :</label>
+                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('deltaHumidityLabel', 'Δ Hygrométrie (%) :')}</label>
                                         <input
                                             type="number"
                                             value={deltaHumidity}
@@ -488,7 +488,7 @@ export default function GodModePanel() {
                                         />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Δ Vent (+/- m/s) :</label>
+                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('deltaWindLabel', 'Δ Vent (m/s) :')}</label>
                                         <input
                                             type="number"
                                             value={deltaWind}
@@ -500,7 +500,7 @@ export default function GodModePanel() {
                             ) : (
                                 <>
                                     <div>
-                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Température Cible (°C) :</label>
+                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('targetTempLabel', 'Température Cible (°C) :')}</label>
                                         <input
                                             type="number"
                                             value={tempCelsius}
@@ -509,7 +509,7 @@ export default function GodModePanel() {
                                         />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Hygrométrie Cible (%) :</label>
+                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('targetHumidityLabel', 'Hygrométrie Cible (%) :')}</label>
                                         <input
                                             type="number"
                                             value={humidityPercent}
@@ -518,7 +518,7 @@ export default function GodModePanel() {
                                         />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Vitesse Vent (m/s) :</label>
+                                        <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('targetWindLabel', 'Vitesse Vent (m/s) :')}</label>
                                         <input
                                             type="number"
                                             value={windSpeed}
@@ -529,7 +529,7 @@ export default function GodModePanel() {
                                 </>
                             )}
                             <div>
-                                <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Durée (minutes) :</label>
+                                <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('durationMinutesLabel', 'Durée (minutes) :')}</label>
                                 <input
                                     type="number"
                                     value={abioticDurationMinutes}
@@ -545,23 +545,23 @@ export default function GodModePanel() {
                 {activeCategory === 'PHEROMONE' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Type de Phéromone :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('pheromoneTypeLabel', 'Type de Phéromone :')}</label>
                             <select
                                 value={pheromoneType}
                                 onChange={(e) => setPheromoneType(e.target.value)}
                                 style={{ width: '100%', background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
                             >
-                                <option value="FOOD_TRAIL">Piste Alimentaire (Attracteur)</option>
-                                <option value="HOME_TRAIL">Piste de Retour au Nid</option>
-                                <option value="ALARM">Signal d'Alarme (Agressivité)</option>
-                                <option value="QUEEN_SCENT">Odeur Royale (Ralliement)</option>
-                                <option value="RECRUITMENT">Recrutement Massif</option>
-                                <option value="DISPERSION">Gomme / Dissolvant de Piste</option>
+                                <option value="FOOD_TRAIL">{t('pheroTypeFood', 'Piste Alimentaire (Attracteur)')}</option>
+                                <option value="HOME_TRAIL">{t('pheroTypeHome', 'Piste de Retour au Nid')}</option>
+                                <option value="ALARM">{t('pheroTypeAlarm', "Signal d'Alarme (Agressivité)")}</option>
+                                <option value="QUEEN_SCENT">{t('pheroTypeQueen', 'Odeur Royale (Ralliement)')}</option>
+                                <option value="RECRUITMENT">{t('pheroTypeRecruitment', 'Recrutement Massif')}</option>
+                                <option value="DISPERSION">{t('pheroTypeDispersion', 'Gomme / Dissolvant de Piste')}</option>
                             </select>
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Concentration (0-100) :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('concentrationLabel', 'Concentration (0-100) :')}</label>
                             <input
                                 type="number"
                                 min="10"
@@ -573,7 +573,7 @@ export default function GodModePanel() {
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Rayon d'Action (m) :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('actionRadiusLabel', "Rayon d'Action (m) :")}</label>
                             <input
                                 type="number"
                                 min="1"
@@ -590,23 +590,23 @@ export default function GodModePanel() {
                 {activeCategory === 'INVASION' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Organisme Envahisseur :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('invadingOrganismLabel', 'Organisme Envahisseur :')}</label>
                             <select
                                 value={invasionType}
                                 onChange={(e) => setInvasionType(e.target.value)}
                                 style={{ width: '100%', background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
                             >
-                                <option value="MEGAPONERA">Fourmis Légionnaires Pillardes (Megaponera)</option>
-                                <option value="VARROA">Acariens Parasites du Couvain (Varroa)</option>
-                                <option value="LOCUSTS">Criquets Ravageurs de Biomasse</option>
-                                <option value="WASP">Guêpe Solitaire Chasseresse (Vespula)</option>
-                                <option value="SPIDER">Araignée Chasseresse (Salticidae)</option>
-                                <option value="BEETLE">Coléoptère Blindé Carnassier</option>
+                                <option value="MEGAPONERA">{t('invaderMegaponera', 'Fourmis Légionnaires Pillardes (Megaponera)')}</option>
+                                <option value="VARROA">{t('invaderVarroa', 'Acariens Parasites du Couvain (Varroa)')}</option>
+                                <option value="LOCUSTS">{t('invaderLocusts', 'Criquets Ravageurs de Biomasse')}</option>
+                                <option value="WASP">{t('invaderWasp', 'Guêpe Solitaire Chasseresse (Vespula)')}</option>
+                                <option value="SPIDER">{t('invaderSpider', 'Araignée Chasseresse (Salticidae)')}</option>
+                                <option value="BEETLE">{t('invaderBeetle', 'Coléoptère Blindé Carnassier')}</option>
                             </select>
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Effectif :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('headcountLabel', 'Effectif :')}</label>
                             <input
                                 type="number"
                                 min="1"
@@ -618,7 +618,7 @@ export default function GodModePanel() {
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Durée Présence (min) :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('presenceDurationLabel', 'Durée Présence (min) :')}</label>
                             <input
                                 type="number"
                                 min="5"
@@ -635,22 +635,22 @@ export default function GodModePanel() {
                 {activeCategory === 'MUTATION' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Type de Mutation :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('mutationTypeLabel', 'Type de Mutation :')}</label>
                             <select
                                 value={mutationType}
                                 onChange={(e) => setMutationType(e.target.value)}
                                 style={{ width: '100%', background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '6px 8px', fontSize: 12 }}
                             >
-                                <option value="SPEED_BOOST">Vitesse de Déplacement (+50%)</option>
-                                <option value="AGGRESSION">Agressivité & Dégâts de Mandibules (x2)</option>
-                                <option value="FORAGING">Efficacité & Vitesse de Récolte (+80%)</option>
-                                <option value="LONGEVITY">Espérance de Vie Décuplée (x3)</option>
-                                <option value="THERMAL_RESISTANCE">Résistance Thermique Extrême (-10°C à +50°C)</option>
+                                <option value="SPEED_BOOST">{t('mutationSpeed', 'Vitesse de Déplacement (+50%)')}</option>
+                                <option value="AGGRESSION">{t('mutationAggression', 'Agressivité & Dégâts de Mandibules (x2)')}</option>
+                                <option value="FORAGING">{t('mutationForaging', 'Efficacité & Vitesse de Récolte (+80%)')}</option>
+                                <option value="LONGEVITY">{t('mutationLongevity', 'Espérance de Vie Décuplée (x3)')}</option>
+                                <option value="THERMAL_RESISTANCE">{t('mutationThermal', 'Résistance Thermique Extrême (-10°C à +50°C)')}</option>
                             </select>
                         </div>
 
                         <div>
-                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>Multiplicateur d'Effet :</label>
+                            <label style={{ fontSize: 12, color: textMuted, display: 'block', marginBottom: 4 }}>{t('effectMultiplierLabel', "Multiplicateur d'Effet :")}</label>
                             <input
                                 type="number"
                                 min="1.1"
@@ -677,7 +677,7 @@ export default function GodModePanel() {
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Crosshair size={14} color="#38bdf8" />
-                        <span style={{ fontSize: 12, fontWeight: 700 }}>X (Ouest-Est) :</span>
+                        <span style={{ fontSize: 12, fontWeight: 700 }}>{t('posXLabel', 'X (Ouest-Est) :')}</span>
                         <input
                             type="range"
                             min="5"
@@ -690,7 +690,7 @@ export default function GodModePanel() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700 }}>Y (Sud-Nord) :</span>
+                        <span style={{ fontSize: 12, fontWeight: 700 }}>{t('posYLabel', 'Y (Sud-Nord) :')}</span>
                         <input
                             type="range"
                             min="5"
@@ -703,7 +703,7 @@ export default function GodModePanel() {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700 }}>Z (Altitude) :</span>
+                        <span style={{ fontSize: 12, fontWeight: 700 }}>{t('posZLabel', 'Z (Altitude) :')}</span>
                         <input
                             type="range"
                             min="-2.5"
@@ -716,6 +716,7 @@ export default function GodModePanel() {
                     </div>
                 </div>
 
+                {/* Action Trigger Buttons */}
                 {/* Action Trigger Buttons */}
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                     <button
@@ -734,11 +735,11 @@ export default function GodModePanel() {
                             cursor: 'pointer'
                         }}
                     >
-                        <Zap size={16} /> ⚡ EXÉCUTER MAINTENANT
+                        <Zap size={16} /> {t('executeNowBtn', '⚡ EXÉCUTER MAINTENANT')}
                     </button>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 12, color: textMuted }}>dans</span>
+                        <span style={{ fontSize: 12, color: textMuted }}>{t('inLabel', 'dans')}</span>
                         <input
                             type="number"
                             min="5"
@@ -747,7 +748,7 @@ export default function GodModePanel() {
                             onChange={(e) => setTargetOffsetSeconds(parseInt(e.target.value) || 30)}
                             style={{ width: 65, background: inputBg, color: textMain, border: `1px solid ${borderCol}`, borderRadius: 4, padding: '5px 6px', fontSize: 12 }}
                         />
-                        <span style={{ fontSize: 12, color: textMuted }}>secondes</span>
+                        <span style={{ fontSize: 12, color: textMuted }}>{t('inSecondsLabel', 'secondes')}</span>
                         <button
                             onClick={handleScheduleEvent}
                             style={{
@@ -764,7 +765,7 @@ export default function GodModePanel() {
                                 cursor: 'pointer'
                             }}
                         >
-                            <Calendar size={14} /> 📅 Planifier l'événement
+                            <Calendar size={14} /> {t('scheduleEventBtn', "📅 Planifier l'événement")}
                         </button>
                     </div>
                 </div>
@@ -784,32 +785,32 @@ export default function GodModePanel() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#38bdf8' }}>
                         <Clock size={18} />
                         <span style={{ fontSize: 14, fontWeight: 800 }}>
-                            File d'Événements Programmés ({scheduledEvents.length})
+                            {t('scheduledEventsTitle', "File d'Événements Programmés")} ({scheduledEvents.length})
                         </span>
                     </div>
 
                     <span style={{ fontSize: 11, color: textMuted }}>
-                        Tick actuel : <strong>{ticks}</strong>
+                        {t('currentTickLabel', 'Tick actuel :')} <strong>{ticks}</strong>
                     </span>
                 </div>
 
                 {scheduledEvents.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '24px', color: textMuted, fontSize: 12 }}>
-                        Aucun événement planifié dans la file d'attente.
+                        {t('noScheduledEventsMsg', "Aucun événement planifié dans la file d'attente.")}
                     </div>
                 ) : (
                     <div style={{ overflowX: 'auto' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
                             <thead>
                                 <tr style={{ borderBottom: `2px solid ${borderCol}`, color: textMuted }}>
-                                    <th style={{ padding: '8px 10px' }}>Tick</th>
-                                    <th style={{ padding: '8px 10px' }}>Heure Calendrier</th>
-                                    <th style={{ padding: '8px 10px' }}>Catégorie</th>
-                                    <th style={{ padding: '8px 10px' }}>Type / Action</th>
-                                    <th style={{ padding: '8px 10px' }}>Cible</th>
-                                    <th style={{ padding: '8px 10px' }}>Description</th>
-                                    <th style={{ padding: '8px 10px' }}>Statut</th>
-                                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Actions</th>
+                                    <th style={{ padding: '8px 10px' }}>{t('tickLabel', 'Tick')}</th>
+                                    <th style={{ padding: '8px 10px' }}>{t('colCalendarTime', 'Heure Calendrier')}</th>
+                                    <th style={{ padding: '8px 10px' }}>{t('categoryCol', 'Catégorie')}</th>
+                                    <th style={{ padding: '8px 10px' }}>{t('colTypeAction', 'Type / Action')}</th>
+                                    <th style={{ padding: '8px 10px' }}>{t('colTarget', 'Cible')}</th>
+                                    <th style={{ padding: '8px 10px' }}>{t('colDescription', 'Description')}</th>
+                                    <th style={{ padding: '8px 10px' }}>{t('colStatus', 'Statut')}</th>
+                                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>{t('colActions', 'Actions')}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -847,11 +848,11 @@ export default function GodModePanel() {
                                             </td>
                                             <td style={{ padding: '8px 10px' }}>
                                                 {isExecuted ? (
-                                                    <span style={{ color: '#10b981', fontWeight: 700, fontSize: 11 }}>✓ Exécuté</span>
+                                                    <span style={{ color: '#10b981', fontWeight: 700, fontSize: 11 }}>{t('statusExecuted', '✓ Exécuté')}</span>
                                                 ) : isPaused ? (
-                                                    <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 11 }}>⏸ Suspendu</span>
+                                                    <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 11 }}>{t('statusPaused', '⏸ Suspendu')}</span>
                                                 ) : (
-                                                    <span style={{ color: '#f59e0b', fontWeight: 700, fontSize: 11 }}>⏳ En attente</span>
+                                                    <span style={{ color: '#f59e0b', fontWeight: 700, fontSize: 11 }}>{t('statusPending', '⏳ En attente')}</span>
                                                 )}
                                             </td>
                                             <td style={{ padding: '8px 10px', textAlign: 'right' }}>
@@ -859,7 +860,7 @@ export default function GodModePanel() {
                                                     {!isExecuted && (
                                                         <button
                                                             onClick={() => togglePauseScheduledEvent(evt.id)}
-                                                            title={isPaused ? 'Reprendre' : 'Suspendre'}
+                                                            title={isPaused ? t('btnResumeEvent', 'Reprendre') : t('btnPauseEvent', 'Suspendre')}
                                                             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: textMuted }}
                                                         >
                                                             {isPaused ? <Play size={14} color="#10b981" /> : <Pause size={14} color="#ef4444" />}
@@ -867,14 +868,18 @@ export default function GodModePanel() {
                                                     )}
                                                     <button
                                                         onClick={() => duplicateScheduledEvent(evt.id, 100)}
-                                                        title="Dupliquer (+100 ticks)"
+                                                        title={t('btnDuplicate100', 'Dupliquer (+100 ticks)')}
                                                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: textMuted }}
                                                     >
                                                         <Copy size={14} color="#38bdf8" />
                                                     </button>
                                                     <button
-                                                        onClick={() => removeScheduledEvent(evt.id)}
-                                                        title="Supprimer l'événement"
+                                                        onClick={() => {
+                                                            if (window.confirm(t('confirmDeleteEvent', 'Confirmer la suppression de cet événement ?'))) {
+                                                                removeScheduledEvent(evt.id)
+                                                            }
+                                                        }}
+                                                        title={t('btnDeleteEvent', "Supprimer l'événement")}
                                                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444' }}
                                                     >
                                                         <Trash2 size={14} />

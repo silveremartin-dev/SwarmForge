@@ -50,6 +50,12 @@ class ProceduralSoundEngine {
         this.leavesTimer = null;
         this.raindropTimer = null;
         this.spatialAudioEnabled = true;
+        this.enabled = {
+            ambient: true,
+            river: true,
+            weather: true,
+            insect: true,
+        };
     }
 
     init() {
@@ -634,30 +640,61 @@ class ProceduralSoundEngine {
                 this.startRiverAmbiance();
             }
             if (this.gains.ambiance && this.ctx) {
-                this.gains.ambiance.gain.setTargetAtTime(this.volumes.ambiance, this.ctx.currentTime, 0.2);
+                this.gains.ambiance.gain.setTargetAtTime(this.enabled.ambient ? this.volumes.ambiance : 0, this.ctx.currentTime, 0.2);
             }
             if (this.gains.weather && this.ctx) {
-                this.gains.weather.gain.setTargetAtTime(this.volumes.weather, this.ctx.currentTime, 0.2);
+                this.gains.weather.gain.setTargetAtTime(this.enabled.weather ? this.volumes.weather : 0, this.ctx.currentTime, 0.2);
             }
             if (this.gains.river && this.ctx) {
-                this.gains.river.gain.setTargetAtTime(this.volumes.river, this.ctx.currentTime, 0.2);
+                this.gains.river.gain.setTargetAtTime(this.enabled.river ? this.volumes.river : 0, this.ctx.currentTime, 0.2);
             }
             if (this.gains.insects && this.ctx) {
-                this.gains.insects.gain.setTargetAtTime(this.volumes.insects, this.ctx.currentTime, 0.2);
+                this.gains.insects.gain.setTargetAtTime(this.enabled.insect ? this.volumes.insects : 0, this.ctx.currentTime, 0.2);
             }
             if (this.gains.digging && this.ctx) {
-                this.gains.digging.gain.setTargetAtTime(this.volumes.digging, this.ctx.currentTime, 0.2);
+                this.gains.digging.gain.setTargetAtTime(this.enabled.insect ? this.volumes.digging : 0, this.ctx.currentTime, 0.2);
             }
             this.scheduleNextBirdChirp();
             this.scheduleNextLeavesRustle();
         }
     }
 
-    // --- CONTROLS & VOLUME MANAGEMENT ---
+    // --- 1:1 CONTROLS & CHANNEL MANAGEMENT (Matching SimulationAudioManager.java) ---
     setMasterVolume(val) {
         this.volumes.master = val;
         if (this.masterGain && this.ctx) {
             this.masterGain.gain.setValueAtTime(this.muted ? 0 : val, this.ctx.currentTime);
+        }
+    }
+
+    setAmbientEnabled(enabled) {
+        this.enabled.ambient = Boolean(enabled);
+        if (this.gains.ambiance && this.ctx) {
+            this.gains.ambiance.gain.setTargetAtTime(this.enabled.ambient ? this.volumes.ambiance : 0, this.ctx.currentTime, 0.05);
+        }
+    }
+
+    setRiverEnabled(enabled) {
+        this.enabled.river = Boolean(enabled);
+        if (this.gains.river && this.ctx) {
+            this.gains.river.gain.setTargetAtTime(this.enabled.river ? this.volumes.river : 0, this.ctx.currentTime, 0.05);
+        }
+    }
+
+    setWeatherEnabled(enabled) {
+        this.enabled.weather = Boolean(enabled);
+        if (this.gains.weather && this.ctx) {
+            this.gains.weather.gain.setTargetAtTime(this.enabled.weather ? this.volumes.weather : 0, this.ctx.currentTime, 0.05);
+        }
+    }
+
+    setInsectEnabled(enabled) {
+        this.enabled.insect = Boolean(enabled);
+        if (this.gains.insects && this.ctx) {
+            this.gains.insects.gain.setTargetAtTime(this.enabled.insect ? this.volumes.insects : 0, this.ctx.currentTime, 0.05);
+        }
+        if (this.gains.digging && this.ctx) {
+            this.gains.digging.gain.setTargetAtTime(this.enabled.insect ? this.volumes.digging : 0, this.ctx.currentTime, 0.05);
         }
     }
 

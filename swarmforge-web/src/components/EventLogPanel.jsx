@@ -208,7 +208,11 @@ export default function EventLogPanel() {
                         </button>
 
                         <button
-                            onClick={clearEventLogs}
+                            onClick={() => {
+                                if (window.confirm(t('confirmClearLogs', 'Confirmer l\'effacement de tous les journaux d\'événements ?'))) {
+                                    clearEventLogs()
+                                }
+                            }}
                             style={{
                                 background: 'transparent',
                                 border: `1px solid ${borderCol}`,
@@ -353,6 +357,8 @@ export default function EventLogPanel() {
                                 filteredEvents.map(evt => {
                                     const seqStr = `EVT-${String(evt.sequenceId || 1).padStart(6, '0')}`
                                     const localizedType = t(`evt_${evt.type}`, evt.type)
+                                    const localizedMsg = evt.messageKey ? t(evt.messageKey, evt.messageParams || {}, evt.message) : (t(evt.message, evt.message) || evt.message)
+                                    const localizedSource = evt.sourceKey ? t(evt.sourceKey, evt.source) : (t(evt.source, evt.source) || evt.source)
                                     return (
                                         <tr
                                             key={evt.id}
@@ -379,10 +385,10 @@ export default function EventLogPanel() {
                                                 {localizedType}
                                             </td>
                                             <td style={{ padding: '7px 12px', fontSize: 11, fontWeight: 600 }}>
-                                                {evt.source}
+                                                {localizedSource}
                                             </td>
                                             <td style={{ padding: '7px 12px', color: textMain }}>
-                                                <span>{evt.message}</span>
+                                                <span>{localizedMsg}</span>
                                                 {evt.metadata && Object.keys(evt.metadata).length > 0 && (
                                                     <span style={{ marginLeft: 8, fontSize: 10, color: '#38bdf8', fontFamily: 'monospace' }}>
                                                         [{Object.entries(evt.metadata).map(([k, v]) => `${k}: ${v}`).join(', ')}]
@@ -421,13 +427,13 @@ export default function EventLogPanel() {
                         </div>
 
                         <div style={{ color: textMain, fontSize: 12 }}>
-                            <strong>{t('colMessage', 'Message')} :</strong> {selectedEvent.message}
+                            <strong>{t('colMessage', 'Message')} :</strong> {selectedEvent.messageKey ? t(selectedEvent.messageKey, selectedEvent.messageParams || {}, selectedEvent.message) : (t(selectedEvent.message, selectedEvent.message) || selectedEvent.message)}
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 6, background: cardBg, padding: 10, borderRadius: 6, border: `1px solid ${borderCol}` }}>
                             <div><strong>{t('colType', 'Type')} :</strong> <span style={{ color: '#38bdf8', fontWeight: 700 }}>{t(`evt_${selectedEvent.type}`, selectedEvent.type)} ({selectedEvent.type})</span></div>
                             <div><strong>{t('colSeverity', 'Sévérité')} :</strong> {getSeverityBadge(selectedEvent.severity)}</div>
-                            <div><strong>{t('colSource', 'Source')} :</strong> <span style={{ color: isDark ? '#e2e8f0' : '#1e293b', fontWeight: 600 }}>{selectedEvent.source}</span></div>
+                            <div><strong>{t('colSource', 'Source')} :</strong> <span style={{ color: isDark ? '#e2e8f0' : '#1e293b', fontWeight: 600 }}>{selectedEvent.sourceKey ? t(selectedEvent.sourceKey, selectedEvent.source) : (t(selectedEvent.source, selectedEvent.source) || selectedEvent.source)}</span></div>
                             <div><strong>{t('colTick', 'Tick')} :</strong> <span style={{ fontFamily: 'monospace' }}>#{selectedEvent.tick}</span></div>
                         </div>
 

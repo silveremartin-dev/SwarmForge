@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from 'react'
-import { Volume2, VolumeX, Bird, CloudRain, Bug, Zap, Wind, Waves, BellRing, Sparkles } from 'lucide-react'
+import { Volume2, VolumeX, Bird, CloudRain, Bug, Waves, CheckSquare, Square } from 'lucide-react'
 import { soundEngine } from '../utils/soundEngine'
 import { useSimulationStore } from '../store/simulationStore'
 import { getTranslation } from '../i18n/translations'
 
+/**
+ * AudioMixerWidget.jsx - Procedural Sound & Audio Controls
+ * Strictly matches SwarmForgeClient.java / SimulationAudioManager.java:
+ * - 1 Master Volume Slider (0 - 100%)
+ * - 4 Channel Toggle Checkboxes:
+ *   1. Biome Ambience (Birds / Fauna)
+ *   2. River Water Sound
+ *   3. Weather Audio (Rain / Hail / Thunder)
+ *   4. Insect Activity & Nest (Digging)
+ */
 export default function AudioMixerWidget() {
     const [muted, setMuted] = useState(false)
-    const [masterVol, setMasterVol] = useState(0.85)
-    const [ambianceVol, setAmbianceVol] = useState(0.70)
-    const [weatherVol, setWeatherVol] = useState(0.60)
-    const [insectsVol, setInsectsVol] = useState(0.55)
-    const [diggingVol, setDiggingVol] = useState(0.50)
-    const [riverVol, setRiverVol] = useState(0.65)
+    const [masterVol, setMasterVol] = useState(0.70)
+    const [ambientEnabled, setAmbientEnabled] = useState(true)
+    const [riverEnabled, setRiverEnabled] = useState(true)
+    const [weatherEnabled, setWeatherEnabled] = useState(true)
+    const [insectEnabled, setInsectEnabled] = useState(true)
     const [collapsed, setCollapsed] = useState(false)
 
     const {
@@ -27,11 +36,10 @@ export default function AudioMixerWidget() {
     const t = (key, fallback) => getTranslation(language, key, fallback)
 
     useEffect(() => {
-        // Initialize WebAudio synthesizer context
         soundEngine.init()
     }, [])
 
-    // Sync sound engine state (simulation running, day/night light level, speed)
+    // Sync simulation runtime state with sound synthesis engine
     useEffect(() => {
         soundEngine.updateSimulationState({
             isDay: (environment?.lightLevel ?? 1.0) >= 0.3,
@@ -41,24 +49,23 @@ export default function AudioMixerWidget() {
         })
     }, [running, speed, environment?.lightLevel])
 
-    // Update procedural rain sound dynamically as weather intensity changes
+    // Weather audio dynamics (rain & thunderstorm)
     useEffect(() => {
-        if (environment && running && speed > 0) {
+        if (environment && running && speed > 0 && weatherEnabled) {
             const isRaining = environment.weatherState === 'RAIN' || environment.weatherState === 'TEMPEST' || environment.weatherState === 'THUNDERSTORM'
             const rainIntensity = environment.rainIntensity || (isRaining ? 15 : 0)
             soundEngine.updateRainSound(rainIntensity)
         } else {
             soundEngine.updateRainSound(0)
         }
-    }, [environment?.rainIntensity, environment?.weatherState, running, speed])
+    }, [environment?.rainIntensity, environment?.weatherState, running, speed, weatherEnabled])
 
-    // Trigger thunder audio synthesis when storm occurs or lightning is triggered
     useEffect(() => {
-        if (weatherToggles?.lightningTrigger > 0 || environment?.weatherState === 'THUNDERSTORM') {
+        if (weatherEnabled && (weatherToggles?.lightningTrigger > 0 || environment?.weatherState === 'THUNDERSTORM')) {
             soundEngine.ensureContext()
             soundEngine.triggerThunder()
         }
-    }, [weatherToggles?.lightningTrigger, environment?.weatherState])
+    }, [weatherToggles?.lightningTrigger, environment?.weatherState, weatherEnabled])
 
     const handleToggleMute = () => {
         const isMuted = soundEngine.toggleMute()
@@ -69,25 +76,33 @@ export default function AudioMixerWidget() {
         const val = parseFloat(e.target.value)
         setMasterVol(val)
         soundEngine.setMasterVolume(val)
+        if (muted && val > 0) {
+            setMuted(false)
+        }
     }
 
-    const handleChannelVolChange = (channel, setLocalFn, val) => {
-        setLocalFn(val)
-        soundEngine.setChannelVolume(channel, val)
+    const handleToggleAmbient = () => {
+        const next = !ambientEnabled
+        setAmbientEnabled(next)
+        soundEngine.setAmbientEnabled(next)
     }
 
-    const handleTestSound = (type) => {
-        soundEngine.ensureContext()
-        if (type === 'BIRD') soundEngine.triggerBirdChirp()
-        if (type === 'LEAVES') soundEngine.triggerLeavesRustle()
-        if (type === 'CRICKET') soundEngine.triggerNightCricket()
-        if (type === 'RAIN') soundEngine.updateRainSound(12)
-        if (type === 'THUNDER') soundEngine.triggerThunder()
-        if (type === 'STORM') soundEngine.triggerStormGust()
-        if (type === 'INSECT') soundEngine.triggerInsectStep()
-        if (type === 'DIG') soundEngine.triggerNestDiggingSound()
-        if (type === 'RIVER') soundEngine.startRiverAmbiance()
-        if (type === 'ALERT') soundEngine.triggerDiseaseOutbreakSound()
+    const handleToggleRiver = () => {
+        const next = !riverEnabled
+        setRiverEnabled(next)
+        soundEngine.setRiverEnabled(next)
+    }
+
+    const handleToggleWeather = () => {
+        const next = !weatherEnabled
+        setWeatherEnabled(next)
+        soundEngine.setWeatherEnabled(next)
+    }
+
+    const handleToggleInsect = () => {
+        const next = !insectEnabled
+        setInsectEnabled(next)
+        soundEngine.setInsectEnabled(next)
     }
 
     const styles = {
@@ -109,13 +124,12 @@ export default function AudioMixerWidget() {
             justifyContent: 'space-between',
             fontSize: 12,
             fontWeight: 700,
-            color: isDark ? '#38bdf8' : '#0284c7',
+            color: isDark ? '#a78bfa' : '#7c3aed',
             cursor: 'pointer',
         },
         channelRow: {
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
             gap: 8,
             fontSize: 11,
             color: isDark ? '#cbd5e1' : '#334155',
@@ -123,50 +137,47 @@ export default function AudioMixerWidget() {
         },
         slider: {
             flex: 1,
-            accentColor: '#38bdf8',
+            accentColor: '#a78bfa',
             height: 4,
             cursor: 'pointer',
         },
-        btnGroup: {
-            display: 'flex',
-            gap: 4,
-            flexWrap: 'wrap',
-            marginTop: 2,
-        },
-        testBtn: {
-            background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-            border: isDark ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(0,0,0,0.12)',
-            color: isDark ? '#e2e8f0' : '#334155',
-            borderRadius: 4,
-            padding: '3px 6px',
-            fontSize: 9,
-            fontWeight: 600,
-            cursor: 'pointer',
+        checkRow: {
             display: 'flex',
             alignItems: 'center',
-            gap: 3,
+            gap: 8,
+            fontSize: 11,
+            padding: '4px 6px',
+            borderRadius: 6,
+            cursor: 'pointer',
+            userSelect: 'none',
+            background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+            border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.06)',
             transition: 'all 0.15s ease'
         }
     }
 
     return (
         <div style={styles.container}>
+            {/* Section Header */}
             <div style={styles.header} onClick={() => setCollapsed(!collapsed)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {muted ? <VolumeX size={15} color="#ef4444" /> : <Volume2 size={15} color="#38bdf8" />}
-                    <span>🔊 {t('audioTitle', 'Mixer Audio & Ambiances')}</span>
+                    {muted ? <VolumeX size={15} color="#ef4444" /> : <Volume2 size={15} color="#a78bfa" />}
+                    <span>{t('audioSectionTitle', 'Sons :')}</span>
                 </div>
-                <span style={{ fontSize: 10, color: isDark ? '#94a3b8' : '#64748b' }}>{collapsed ? '▶ Déplier' : '▼ Réduire'}</span>
+                <span style={{ fontSize: 10, color: isDark ? '#94a3b8' : '#64748b' }}>
+                    {collapsed ? '▶' : '▼'}
+                </span>
             </div>
 
             {!collapsed && (
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {/* Master Volume */}
+                    {/* Single Master Volume Slider (1:1 with JavaFX SwarmForgeClient.java) */}
                     <div style={styles.channelRow}>
                         <button
                             onClick={handleToggleMute}
+                            title={muted ? t('unmute', 'Réactiver le son') : t('mute', 'Couper le son')}
                             style={{
-                                background: muted ? '#ef4444' : '#0284c7',
+                                background: muted ? '#ef4444' : '#7c3aed',
                                 border: 'none',
                                 color: '#fff',
                                 padding: '4px 8px',
@@ -180,96 +191,76 @@ export default function AudioMixerWidget() {
                             }}
                         >
                             {muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
-                            <span>{muted ? 'MUET' : 'MASTER'}</span>
+                            <span>{t('audioVolume', 'Volume :')}</span>
                         </button>
                         <input
-                            type="range" min="0" max="1" step="0.05"
-                            value={masterVol}
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={muted ? 0 : masterVol}
                             onChange={handleMasterVolChange}
                             style={styles.slider}
                         />
-                        <span style={{ fontSize: 10, width: 28, textAlign: 'right', fontWeight: 700, color: isDark ? '#38bdf8' : '#0284c7' }}>
-                            {Math.round(masterVol * 100)}%
+                        <span style={{ fontSize: 10, width: 32, textAlign: 'right', fontWeight: 700, color: isDark ? '#a78bfa' : '#7c3aed' }}>
+                            {muted ? '0%' : `${Math.round(masterVol * 100)}%`}
                         </span>
                     </div>
 
                     <div style={{ height: 1, background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }} />
 
-                    {/* Channel 1: Biome & Tree Canopy */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={styles.channelRow}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, width: 130, fontSize: 11, color: isDark ? '#38bdf8' : '#0284c7' }}>
-                                <Bird size={12} /> {t('biomeAmbience', 'Biome & Faune')}
+                    {/* 4 Checkboxes conforming 1:1 to heavy client */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        {/* 1. Biome Ambience Checkbox */}
+                        <div
+                            style={styles.checkRow}
+                            onClick={handleToggleAmbient}
+                            title={t('audioAmbientTt', 'Activer le paysage sonore d\'ambiance naturelle (faune, oiseaux, forêt).')}
+                        >
+                            {ambientEnabled ? <CheckSquare size={14} color="#a78bfa" /> : <Square size={14} color={isDark ? '#64748b' : '#94a3b8'} />}
+                            <Bird size={13} color="#38bdf8" />
+                            <span style={{ fontSize: 10.5, fontWeight: ambientEnabled ? 600 : 400, color: ambientEnabled ? (isDark ? '#f8fafc' : '#0f172a') : (isDark ? '#64748b' : '#94a3b8') }}>
+                                {t('audioAmbient', 'Ambiance Biome (Oiseaux/Faune)')}
                             </span>
-                            <input
-                                type="range" min="0" max="1" step="0.05"
-                                value={ambianceVol}
-                                onChange={(e) => handleChannelVolChange('ambiance', setAmbianceVol, parseFloat(e.target.value))}
-                                style={styles.slider}
-                            />
                         </div>
-                        <div style={styles.btnGroup}>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('BIRD')}>🎵 Oiseaux</button>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('LEAVES')}>🍃 Feuillage</button>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('CRICKET')}>🦗 Grillons</button>
-                        </div>
-                    </div>
 
-                    {/* Channel 2: Weather & Wind */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={styles.channelRow}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, width: 130, fontSize: 11, color: '#60a5fa' }}>
-                                <CloudRain size={12} /> {t('layerWeather', 'Météo & Vent')}
+                        {/* 2. River Water Sound Checkbox */}
+                        <div
+                            style={styles.checkRow}
+                            onClick={handleToggleRiver}
+                            title={t('audioRiverTt', 'Activer le son du courant d’eau et clapotis de rivière.')}
+                        >
+                            {riverEnabled ? <CheckSquare size={14} color="#a78bfa" /> : <Square size={14} color={isDark ? '#64748b' : '#94a3b8'} />}
+                            <Waves size={13} color="#06b6d4" />
+                            <span style={{ fontSize: 10.5, fontWeight: riverEnabled ? 600 : 400, color: riverEnabled ? (isDark ? '#f8fafc' : '#0f172a') : (isDark ? '#64748b' : '#94a3b8') }}>
+                                {t('audioRiver', 'Bruit Eau Rivière')}
                             </span>
-                            <input
-                                type="range" min="0" max="1" step="0.05"
-                                value={weatherVol}
-                                onChange={(e) => handleChannelVolChange('weather', setWeatherVol, parseFloat(e.target.value))}
-                                style={styles.slider}
-                            />
                         </div>
-                        <div style={styles.btnGroup}>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('RAIN')}>🌧️ Pluie</button>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('THUNDER')}>⚡ Tonnerre</button>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('STORM')}>💨 Vent</button>
-                        </div>
-                    </div>
 
-                    {/* Channel 3: Insect Activity & Digging */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={styles.channelRow}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, width: 130, fontSize: 11, color: '#f59e0b' }}>
-                                <Bug size={12} /> {t('swarmChatter', 'Insectes & Galeries')}
+                        {/* 3. Weather Sound Checkbox */}
+                        <div
+                            style={styles.checkRow}
+                            onClick={handleToggleWeather}
+                            title={t('audioWeatherTt', 'Activer les effets sonores météorologiques synchrone.')}
+                        >
+                            {weatherEnabled ? <CheckSquare size={14} color="#a78bfa" /> : <Square size={14} color={isDark ? '#64748b' : '#94a3b8'} />}
+                            <CloudRain size={13} color="#60a5fa" />
+                            <span style={{ fontSize: 10.5, fontWeight: weatherEnabled ? 600 : 400, color: weatherEnabled ? (isDark ? '#f8fafc' : '#0f172a') : (isDark ? '#64748b' : '#94a3b8') }}>
+                                {t('audioWeather', 'Sons Météo (Pluie/Grêle/Orage)')}
                             </span>
-                            <input
-                                type="range" min="0" max="1" step="0.05"
-                                value={insectsVol}
-                                onChange={(e) => handleChannelVolChange('insects', setInsectsVol, parseFloat(e.target.value))}
-                                style={styles.slider}
-                            />
                         </div>
-                        <div style={styles.btnGroup}>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('INSECT')}>🐜 Pas Fourmis</button>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('DIG')}>⛏️ Creusement</button>
-                        </div>
-                    </div>
 
-                    {/* Channel 4: River & Water Flow */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <div style={styles.channelRow}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, width: 130, fontSize: 11, color: '#06b6d4' }}>
-                                <Waves size={12} /> Cours d'Eau & Rivière
+                        {/* 4. Insect & Nest Digging Sound Checkbox */}
+                        <div
+                            style={styles.checkRow}
+                            onClick={handleToggleInsect}
+                            title={t('audioInsectTt', 'Activer les sons procéduraux d\'activité des insectes et d\'excavation.')}
+                        >
+                            {insectEnabled ? <CheckSquare size={14} color="#a78bfa" /> : <Square size={14} color={isDark ? '#64748b' : '#94a3b8'} />}
+                            <Bug size={13} color="#f59e0b" />
+                            <span style={{ fontSize: 10.5, fontWeight: insectEnabled ? 600 : 400, color: insectEnabled ? (isDark ? '#f8fafc' : '#0f172a') : (isDark ? '#64748b' : '#94a3b8') }}>
+                                {t('audioInsect', 'Activité Insectes & Nid (Creusement)')}
                             </span>
-                            <input
-                                type="range" min="0" max="1" step="0.05"
-                                value={riverVol}
-                                onChange={(e) => handleChannelVolChange('river', setRiverVol, parseFloat(e.target.value))}
-                                style={styles.slider}
-                            />
-                        </div>
-                        <div style={styles.btnGroup}>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('RIVER')}>🌊 Écoulement</button>
-                            <button style={styles.testBtn} onClick={() => handleTestSound('ALERT')}>🚨 Alerte Épidémie</button>
                         </div>
                     </div>
                 </div>

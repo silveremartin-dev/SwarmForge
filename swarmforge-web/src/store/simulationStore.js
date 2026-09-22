@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { soundEngine } from '../utils/soundEngine'
 import { showToast } from './toastStore'
+import { networkClient } from '../services/networkClient'
 import {
     DEFAULT_WORLD_PRESETS,
     DEFAULT_SPECIES_PRESETS,
@@ -567,6 +568,9 @@ export const useSimulationStore = create((set, get) => {
                 paused: false,
                 ...event
             }
+            if (get().connected) {
+                networkClient.sendScheduledEvent(newEvt)
+            }
             const updated = [...current, newEvt].sort((a, b) => a.targetTick - b.targetTick)
             set({ scheduledEvents: updated })
             get().addEventLog({
@@ -607,6 +611,10 @@ export const useSimulationStore = create((set, get) => {
         executeInstantIntervention: (intervention) => {
             const state = get()
             const { category, type, posX, posY, posZ, count, amount, intensity, colonyId, caste } = intervention
+
+            if (state.connected) {
+                networkClient.sendGodModeIntervention(intervention)
+            }
 
             get().addEventLog({
                 severity: 'WARNING',
@@ -743,8 +751,10 @@ export const useSimulationStore = create((set, get) => {
                 simCalendarTime: '2026-03-20 08:00:00',
                 severity: 'INFO',
                 type: 'SYSTEM',
-                source: 'Moteur SwarmForge',
+                source: 'SwarmForge Engine',
+                sourceKey: 'sourceEngine',
                 message: 'Simulation initialisée avec succès en mode autonome haute performance.',
+                messageKey: 'evt_SIMULATION_INITIALIZED',
                 metadata: { seed: 12345, world: 'world_terrarium_01' }
             }
         ],
@@ -760,7 +770,10 @@ export const useSimulationStore = create((set, get) => {
                 severity: log.severity || 'INFO',
                 type: log.type || 'SYSTEM',
                 source: log.source || 'Simulation Engine',
+                sourceKey: log.sourceKey,
                 message: log.message || '',
+                messageKey: log.messageKey,
+                messageParams: log.messageParams,
                 metadata: log.metadata || {}
             }
             set({
@@ -781,12 +794,37 @@ export const useSimulationStore = create((set, get) => {
         serverRole: 'JOIN', // 'JOIN' | 'HOST'
         serverStatusText: 'Offline',
 
+        // Server Scenario Browser & Matchmaking Lobby State
+        serverScenarios: [],
+        lobbyStatus: 'LOBBY_WAITING', // 'LOBBY_WAITING' | 'ACTIVE' | 'INACTIVE'
+        lobbyPlayers: [],
+        selectedServerScenarioId: 'ACAD_01_LEVY_BROWNIAN',
+        isPlayerReady: false,
+
         setExecutionMode: (mode) => set({ executionMode: mode }),
         setServerHost: (host) => set({ serverHost: host }),
         setServerPort: (port) => set({ serverPort: Number(port) || 50051 }),
         setPlayerAlias: (alias) => set({ playerAlias: alias }),
         setPlayerSpecies: (sp) => set({ playerSpecies: sp }),
         setServerRole: (role) => set({ serverRole: role }),
+
+        requestServerScenarios: () => networkClient.requestServerScenarios(),
+        togglePlayerReady: () => {
+            const current = get().isPlayerReady
+            const next = !current
+            set({ isPlayerReady: next })
+            networkClient.setPlayerReady(next)
+            showToast(next ? '✓ Vous êtes prêt pour la partie !' : 'Statut prêt désactivé.', 'info')
+        },
+        startServerMatch: () => {
+            networkClient.startMatch()
+            showToast('🚀 Lancement de la partie sur le serveur...', 'success')
+        },
+        selectServerScenario: (scenarioId) => {
+            set({ selectedServerScenarioId: scenarioId })
+            networkClient.selectServerScenario(scenarioId)
+            showToast(`Scénario sélectionné : ${scenarioId}`, 'info')
+        },
 
         // Audio Multi-channel Volumes (4 Channels matching Desktop Client)
         masterVolume: 0.7,
@@ -817,60 +855,17 @@ export const useSimulationStore = create((set, get) => {
         },
 
         connect: () => {
-            const { serverHost, serverPort, playerAlias } = get()
+            const { serverHost, serverPort, playerAlias, playerSpecies, serverRole } = get()
             if (!playerAlias || !playerAlias.trim()) {
                 showToast('Veuillez saisir un tag / alias de participant valide avant de vous connecter.', 'error')
                 return
             }
 
-            set({ serverStatusText: '⟳ Connexion en cours...' })
-            try {
-                const wsUrl = `ws://${serverHost}:${serverPort === 50051 ? 8081 : serverPort}`
-                const ws = new WebSocket(wsUrl)
-                let resolved = false
-
-                const timeout = setTimeout(() => {
-                    if (!resolved) {
-                        resolved = true
-                        // Fallback simulated connected mode for remote RPC operator
-                        set({
-                            connected: true,
-                            serverStatusText: `● Connected (${serverHost}:${serverPort})`
-                        })
-                        showToast(`✓ Connecté au serveur SwarmForge (${serverHost}:${serverPort}) !`, 'success')
-                        get().addEventLog({
-                            severity: 'INFO',
-                            type: 'SYSTEM',
-                            source: 'Réseau',
-                            message: `Connecté au serveur SwarmForge (${serverHost}:${serverPort}) - Session : ${playerAlias}`
-                        })
-                    }
-                }, 800)
-
-                ws.onopen = () => {
-                    if (!resolved) {
-                        resolved = true
-                        clearTimeout(timeout)
-                        set({
-                            connected: true,
-                            serverStatusText: `● Connected (${serverHost}:${serverPort})`
-                        })
-                        showToast(`✓ Connecté au serveur SwarmForge en direct (${serverHost}:${serverPort}) !`, 'success')
-                    }
-                }
-                ws.onerror = () => {
-                    // Handled by timeout fallback
-                }
-            } catch (e) {
-                set({
-                    connected: true,
-                    serverStatusText: `● Connected (${serverHost}:${serverPort})`
-                })
-                showToast(`✓ Connecté au serveur SwarmForge (${serverHost}:${serverPort}) !`, 'success')
-            }
+            networkClient.connect(serverHost, serverPort, playerAlias, playerSpecies, serverRole)
         },
 
         disconnect: () => {
+            networkClient.disconnect()
             set({
                 connected: false,
                 serverStatusText: 'Offline'
@@ -906,13 +901,35 @@ export const useSimulationStore = create((set, get) => {
 
         // --- 9. Core Simulation Actions & Transport Controls ---
         applyScenarioSetup: () => {
-            const { speciesCards, startDateTime, masterSeed, selectedWorldPresetId, selectedWeatherPresetId } = get()
+            const state = get()
+            const { speciesCards, startDateTime, masterSeed, selectedWorldPresetId, selectedWeatherPresetId, connected, serverRole, playerAlias, playerSpecies } = state
             const initialColonies = generateInitialColonies(speciesCards)
             const initialAnts = spawnInitialAntsFromCards(speciesCards)
             const initialFoods = generateInitialFoodSources()
+            const initialNests = generateInitialNests(speciesCards)
 
             const worldPreset = DEFAULT_WORLD_PRESETS.find(w => w.id === selectedWorldPresetId)
             const weatherPreset = DEFAULT_WEATHER_PRESETS.find(w => w.id === selectedWeatherPresetId)
+
+            // If connected to SwarmForge Server: deploy scenario or join session
+            if (connected) {
+                if (serverRole === 'HOST') {
+                    networkClient.deployScenario({
+                        selectedWorldPresetId,
+                        selectedWeatherPresetId,
+                        startDateTime,
+                        masterSeed,
+                        stepSeconds: state.stepSeconds,
+                        maxDurationSeconds: state.maxDuration,
+                        minPopulationStop: state.minPopStop,
+                        speciesCards,
+                        colonies: initialColonies,
+                        nests: initialNests
+                    })
+                } else {
+                    networkClient.joinSession(playerAlias, playerSpecies)
+                }
+            }
 
             set({
                 ticks: 0,
@@ -923,6 +940,7 @@ export const useSimulationStore = create((set, get) => {
                 isScenarioApplied: true,
                 colonies: initialColonies,
                 ants: initialAnts,
+                nests: initialNests,
                 pheromones: [],
                 foodSources: initialFoods,
                 statsHistory: [],
@@ -944,6 +962,7 @@ export const useSimulationStore = create((set, get) => {
                 severity: 'INFO',
                 type: 'SIMULATION_STARTED',
                 source: 'Gestionnaire de Scénario',
+                sourceKey: 'sourceScenario',
                 message: `Nouveau scénario appliqué : ${worldPreset?.name || 'Monde'} (${initialAnts.length} individus, ${initialColonies.length} colonies)`,
                 metadata: { world: worldPreset?.name, initialPopulation: initialAnts.length, coloniesCount: initialColonies.length }
             })
@@ -970,6 +989,10 @@ export const useSimulationStore = create((set, get) => {
         play: () => {
             const state = get()
             if (state.running) return
+
+            if (state.connected) {
+                networkClient.sendControlCommand('PLAY')
+            }
 
             let currentAnts = state.ants
             let currentColonies = state.colonies
@@ -1032,6 +1055,9 @@ export const useSimulationStore = create((set, get) => {
         },
 
         pause: () => {
+            if (get().connected) {
+                networkClient.sendControlCommand('PAUSE')
+            }
             set({ running: false, isPaused: true })
             soundEngine.updateSimulationState(false, get().speed, get().activeTab === 'VISUAL_3D')
             clearInterval(simLoopInterval)
@@ -1046,6 +1072,9 @@ export const useSimulationStore = create((set, get) => {
 
         stepTick: () => {
             const state = get()
+            if (state.connected) {
+                networkClient.sendControlCommand('STEP')
+            }
             const newTick = state.ticks + 1
             const newHighestTick = Math.max(state.highestRecordedTick, newTick)
             const newSimTime = newTick * state.stepSeconds
@@ -1482,6 +1511,9 @@ export const useSimulationStore = create((set, get) => {
 
         setSpeed: (spd) => {
             const newSpeed = Math.max(0.1, Math.min(100, Number(spd) || 1.0))
+            if (get().connected) {
+                networkClient.sendControlCommand('SET_SPEED', newSpeed)
+            }
             set({ speed: newSpeed })
             soundEngine.updateSimulationState(get().running, newSpeed, get().activeTab === 'VISUAL_3D')
         },
@@ -1683,3 +1715,192 @@ export const useSimulationStore = create((set, get) => {
         setSfxVolume: (v) => set({ sfxVolume: v })
     }
 })
+
+// --- Reactive Network Client Event Binding ---
+networkClient.onStateChange((netState) => {
+    useSimulationStore.setState({
+        connected: Boolean(netState.isConnected),
+        serverStatusText: netState.text || (netState.isConnected ? `● Connecté (${netState.host}:${netState.port})` : 'Hors ligne')
+    })
+})
+
+networkClient.onEventLog((evt) => {
+    useSimulationStore.getState().addEventLog(evt)
+})
+
+networkClient.onServerScenariosReceived((scenarios) => {
+    if (scenarios && Array.isArray(scenarios)) {
+        useSimulationStore.setState({ serverScenarios: scenarios })
+    }
+})
+
+networkClient.onLobbyStateReceived((lobbyState) => {
+    if (lobbyState) {
+        useSimulationStore.setState({
+            lobbyStatus: lobbyState.status || 'LOBBY_WAITING',
+            selectedServerScenarioId: lobbyState.selectedScenarioId || 'ACAD_01_LEVY_BROWNIAN',
+            lobbyPlayers: lobbyState.players || []
+        })
+    }
+})
+
+networkClient.onScenarioReceived((scenario) => {
+    if (scenario) {
+        useSimulationStore.setState(state => ({
+            selectedWorldPresetId: scenario.worldPresetId || state.selectedWorldPresetId,
+            selectedWeatherPresetId: scenario.weatherPresetId || state.selectedWeatherPresetId,
+            startDateTime: scenario.startDateTime || state.startDateTime,
+            masterSeed: scenario.masterSeed ?? state.masterSeed,
+            stepSeconds: scenario.stepSeconds ?? state.stepSeconds,
+            maxDuration: scenario.maxDurationSeconds ?? state.maxDuration,
+            speciesCards: scenario.speciesCards || state.speciesCards,
+            colonies: scenario.colonies || state.colonies,
+            nests: scenario.nests || state.nests,
+            isScenarioApplied: true
+        }))
+        useSimulationStore.getState().addEventLog({
+            severity: 'INFO',
+            type: 'SYSTEM',
+            source: 'SwarmForge Server',
+            sourceKey: 'sourceEngine',
+            message: `Scénario reçu du serveur hôte (${scenario.speciesCards?.length || 0} espèces configurées).`
+        })
+    }
+})
+
+networkClient.onSimulationUpdate((update) => {
+    const state = useSimulationStore.getState()
+    const newTick = update.tick !== undefined ? update.tick : (state.ticks + 1)
+    const newSimTime = update.simTimeSeconds !== undefined ? update.simTimeSeconds : (newTick * (state.stepSeconds || 0.05))
+    const calendarTime = formatSimCalendarTime(state.startDateTime, newSimTime)
+    const relativeTime = formatSimRelativeTime(newSimTime)
+
+    // Parse individuals / ants from server
+    let updatedAnts = state.ants
+    if (update.individuals && Array.isArray(update.individuals)) {
+        updatedAnts = update.individuals.map(ind => {
+            const existing = state.ants.find(a => a.id === ind.id)
+            const colony = state.colonies.find(c => c.id === ind.colonyId)
+            return {
+                ...existing,
+                id: ind.id,
+                colonyId: ind.colonyId || existing?.colonyId || 'col_1',
+                colonyName: ind.colonyName || colony?.name || existing?.colonyName || 'Colonie',
+                species: ind.species || existing?.species || 'Formica fusca',
+                caste: ind.caste || existing?.caste || 'WORKER',
+                job: ind.job || existing?.job || 'FORAGER',
+                x: ind.x ?? ind.posX ?? existing?.x ?? 50,
+                y: ind.y ?? ind.posY ?? existing?.y ?? 0.1,
+                z: ind.z ?? ind.posZ ?? existing?.z ?? 50,
+                heading: ind.heading ?? existing?.heading ?? 0,
+                speedMms: ind.speedMms ?? existing?.speedMms ?? 20.0,
+                health: ind.health ?? existing?.health ?? 100,
+                energy: ind.energy ?? existing?.energy ?? 100,
+                carriedItem: ind.carriedItem ?? existing?.carriedItem ?? 'NONE',
+                task: ind.task ?? existing?.task || 'Activité en cours',
+                color: ind.color || colony?.color || existing?.color || '#38bdf8'
+            }
+        })
+    }
+
+    // Parse environment from server
+    let updatedEnv = state.environment
+    if (update.environment) {
+        updatedEnv = {
+            ...state.environment,
+            temperature: update.environment.temperature ?? state.environment.temperature,
+            humidity: update.environment.humidity ?? state.environment.humidity,
+            windSpeed: update.environment.wind ?? update.environment.windSpeed ?? state.environment.windSpeed,
+            weatherState: update.environment.weather ?? update.environment.weatherState ?? state.environment.weatherState,
+            season: update.environment.season ?? state.environment.season,
+            lightLevel: update.environment.light ?? update.environment.lightLevel ?? state.environment.lightLevel
+        }
+    }
+
+    // Parse nests if provided
+    let updatedNests = state.nests
+    if (update.nests && Array.isArray(update.nests)) {
+        updatedNests = update.nests
+    }
+
+    // Parse colonies if provided
+    let updatedColonies = state.colonies
+    if (update.colonies && Array.isArray(update.colonies)) {
+        updatedColonies = update.colonies
+    }
+
+    // Tracked Ant telemetry update
+    let updatedTrackedAntData = state.trackedAntData
+    if (state.trackedAntId) {
+        const currentTracked = updatedAnts.find(a => a.id === state.trackedAntId)
+        if (currentTracked) {
+            const dt = state.stepSeconds || 0.05
+            const deltaMeters = ((currentTracked.speedMms || 20.0) * dt) / 1000.0
+            updatedTrackedAntData = {
+                ...currentTracked,
+                distanceTraveled: (state.trackedAntData?.distanceTraveled || 0) + deltaMeters,
+                healthHistory: [...(state.trackedAntData?.healthHistory || []), currentTracked.health].slice(-100),
+                energyHistory: [...(state.trackedAntData?.energyHistory || []), currentTracked.energy].slice(-100)
+            }
+        }
+    }
+
+    // Append telemetry snapshot to statsHistory
+    const statsSnapshot = {
+        tick: newTick,
+        simTimeSeconds: newSimTime,
+        totalPopulation: updatedAnts.length,
+        coloniesPop: updatedColonies.reduce((acc, c) => ({ ...acc, [c.id]: updatedAnts.filter(a => a.colonyId === c.id).length }), {}),
+        casteBreakdown: {
+            queens: updatedAnts.filter(a => a.caste === 'QUEEN').length,
+            workers: updatedAnts.filter(a => a.caste === 'WORKER').length,
+            soldiers: updatedAnts.filter(a => a.caste === 'SOLDIER').length,
+            males: updatedAnts.filter(a => a.caste === 'MALE').length
+        },
+        resources: {
+            food: updatedColonies.reduce((sum, c) => sum + (c.food || 0), 0),
+            water: updatedColonies.reduce((sum, c) => sum + (c.water || 0), 0),
+            protein: updatedColonies.reduce((sum, c) => sum + (c.protein || 0), 0),
+            births: Math.floor(newTick / 300),
+            deaths: Math.floor(newTick / 600)
+        },
+        weather: {
+            temp: updatedEnv.temperature,
+            rain: updatedEnv.weatherState === 'TEMPEST' ? 25.0 : 0.0,
+            phero: (update.pheromones || state.pheromones || []).length
+        },
+        behaviors: {
+            foraging: updatedAnts.filter(a => a.job === 'FORAGER').length,
+            digging: updatedAnts.filter(a => a.job === 'BUILDER').length,
+            nursing: updatedAnts.filter(a => a.job === 'NURSE').length,
+            guarding: updatedAnts.filter(a => a.job === 'GUARD').length,
+            royalCare: updatedAnts.filter(a => a.caste === 'QUEEN').length,
+            resting: updatedAnts.filter(a => a.job === 'RESTING').length
+        },
+        performance: {
+            tps: update.tps ?? state.measuredTps ?? 20,
+            targetTps: 20
+        }
+    }
+
+    let updatedHistory = state.statsHistory
+    if (newTick % 3 === 0 || updatedHistory.length === 0) {
+        updatedHistory = [...state.statsHistory, statsSnapshot].slice(-7200)
+    }
+
+    useSimulationStore.setState({
+        ticks: newTick,
+        highestRecordedTick: Math.max(state.highestRecordedTick, newTick),
+        simTimeSeconds: newSimTime,
+        simTimeFormatted: calendarTime,
+        simRelativeTimeFormatted: relativeTime,
+        ants: updatedAnts,
+        environment: updatedEnv,
+        nests: updatedNests,
+        colonies: updatedColonies,
+        statsHistory: updatedHistory,
+        trackedAntData: updatedTrackedAntData,
+        measuredTps: update.tps ?? state.measuredTps
+    })
+})
+

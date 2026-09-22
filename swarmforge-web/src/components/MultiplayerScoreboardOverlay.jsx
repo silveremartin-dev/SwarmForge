@@ -42,8 +42,8 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
         const nestY = nest?.y ?? 0
         const nestZ = nest?.z ?? (nest?.y ?? (idx === 0 ? 35 : 65))
 
-        const participantName = isLocal ? (playerAlias || 'Joueur Local') : (col.participantName || `IA Rival #${idx}`)
-        const speciesName = isLocal ? (playerSpecies || col.speciesId || 'Formica fusca') : (col.speciesId || col.speciesName || 'Espèce Rivale')
+        const participantName = isLocal ? (playerAlias || t('localPlayerDefault', 'Joueur Local')) : (col.participantName || `${t('aiRivalPrefix', 'IA Rival')} #${idx}`)
+        const speciesName = isLocal ? (playerSpecies || col.speciesId || 'Formica fusca') : (col.speciesId || col.speciesName || t('rivalSpeciesDefault', 'Espèce Rivale'))
 
         return {
             id: col.id || `col_${idx}`,

@@ -22,11 +22,11 @@ import { getTranslation } from '../i18n/translations'
 import { showToast } from '../store/toastStore'
 
 // SVG Line Chart Component for real-time telemetry
-function DynamicLineChart({ data, series, height = 150, title, unit = '' }) {
+function DynamicLineChart({ data, series, height = 150, title, unit = '', emptyMsg = 'En attente de données télémétriques...' }) {
     if (!data || data.length === 0) {
         return (
             <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 12 }}>
-                En attente de données télémétriques...
+                {emptyMsg}
             </div>
         )
     }
@@ -110,7 +110,7 @@ export default function StatisticsDashboardPanel() {
 
     const [searchAntId, setSearchAntId] = useState('')
     const isDark = theme === 'dark'
-    const t = (key, fallback) => getTranslation(language, key, fallback)
+    const t = (key, fallbackOrParams, params) => getTranslation(language, key, fallbackOrParams, params)
 
     const handleSearchAnt = () => {
         if (!searchAntId.trim()) return
@@ -187,10 +187,10 @@ export default function StatisticsDashboardPanel() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                 <div>
                     <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <BarChart2 size={20} /> Tableau de Bord & Télémétrie Dynamique
+                        <BarChart2 size={20} /> {t('statsDashboardTitle', 'Tableau de Bord & Télémétrie Dynamique')}
                     </h2>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: textMuted }}>
-                        Graphiques de population, castes, ressources biochimiques, climat, comportements éthologiques et TPS moteur.
+                        {t('statsDashboardSubtitle', 'Graphiques de population, castes, ressources biochimiques, climat, comportements éthologiques et TPS moteur.')}
                     </p>
                 </div>
 
@@ -232,7 +232,7 @@ export default function StatisticsDashboardPanel() {
                             cursor: 'pointer'
                         }}
                     >
-                        <Download size={14} /> Exporter CSV
+                        <Download size={14} /> {t('exportCsvBtn', 'Exporter CSV')}
                     </button>
                 </div>
             </div>
@@ -246,7 +246,8 @@ export default function StatisticsDashboardPanel() {
                 {/* 1. Multi-Colony Population */}
                 <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
                     <DynamicLineChart
-                        title="1. Population Multi-Colonies"
+                        title={t('chartColoniesPop', '1. Population Multi-Colonies')}
+                        emptyMsg={t('waitingTelemetry', 'En attente de données télémétriques...')}
                         data={activeData}
                         series={colonies.map(c => ({
                             name: c.name,
@@ -259,13 +260,14 @@ export default function StatisticsDashboardPanel() {
                 {/* 2. Castes Breakdown */}
                 <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
                     <DynamicLineChart
-                        title="2. Répartition des Castes"
+                        title={t('chartCastesBreakdown', '2. Répartition des Castes')}
+                        emptyMsg={t('waitingTelemetry', 'En attente de données télémétriques...')}
                         data={activeData}
                         series={[
-                            { name: 'Ouvrières', color: '#38bdf8', getValue: (d) => d.casteBreakdown.workers },
-                            { name: 'Soldats', color: '#ef4444', getValue: (d) => d.casteBreakdown.soldiers },
-                            { name: 'Reines', color: '#eab308', getValue: (d) => d.casteBreakdown.queens },
-                            { name: 'Mâles', color: '#a855f7', getValue: (d) => d.casteBreakdown.males }
+                            { name: t('seriesWorkers', 'Ouvrières'), color: '#38bdf8', getValue: (d) => d.casteBreakdown.workers },
+                            { name: t('seriesSoldiers', 'Soldats'), color: '#ef4444', getValue: (d) => d.casteBreakdown.soldiers },
+                            { name: t('seriesQueens', 'Reines'), color: '#eab308', getValue: (d) => d.casteBreakdown.queens },
+                            { name: t('seriesMales', 'Mâles'), color: '#a855f7', getValue: (d) => d.casteBreakdown.males }
                         ]}
                     />
                 </div>
@@ -273,13 +275,14 @@ export default function StatisticsDashboardPanel() {
                 {/* 3. Bio-Resources & Vital Dynamics */}
                 <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
                     <DynamicLineChart
-                        title="3. Bio-Ressources (Nourriture & Eau)"
+                        title={t('chartBioResources', '3. Bio-Ressources (Nourriture & Eau)')}
+                        emptyMsg={t('waitingTelemetry', 'En attente de données télémétriques...')}
                         data={activeData}
                         unit="u"
                         series={[
-                            { name: 'Nourriture', color: '#f59e0b', getValue: (d) => d.resources.food },
-                            { name: 'Eau', color: '#06b6d4', getValue: (d) => d.resources.water },
-                            { name: 'Protéines', color: '#ec4899', getValue: (d) => d.resources.protein }
+                            { name: t('seriesFood', 'Nourriture'), color: '#f59e0b', getValue: (d) => d.resources.food },
+                            { name: t('seriesWater', 'Eau'), color: '#06b6d4', getValue: (d) => d.resources.water },
+                            { name: t('seriesProtein', 'Protéines'), color: '#ec4899', getValue: (d) => d.resources.protein }
                         ]}
                     />
                 </div>
@@ -287,11 +290,12 @@ export default function StatisticsDashboardPanel() {
                 {/* 4. Climate & Ecosystem */}
                 <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
                     <DynamicLineChart
-                        title="4. Météo & Écosystème"
+                        title={t('chartClimateEcosystem', '4. Météo & Écosystème')}
+                        emptyMsg={t('waitingTelemetry', 'En attente de données télémétriques...')}
                         data={activeData}
                         series={[
-                            { name: 'Température (°C)', color: '#f97316', getValue: (d) => d.weather.temp },
-                            { name: 'Précipitations (mm)', color: '#3b82f6', getValue: (d) => d.weather.rain }
+                            { name: t('seriesTemp', 'Température (°C)'), color: '#f97316', getValue: (d) => d.weather.temp },
+                            { name: t('seriesRain', 'Précipitations (mm)'), color: '#3b82f6', getValue: (d) => d.weather.rain }
                         ]}
                     />
                 </div>
@@ -299,13 +303,14 @@ export default function StatisticsDashboardPanel() {
                 {/* 5. Ethological Behaviors Breakdown */}
                 <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
                     <DynamicLineChart
-                        title="5. Comportements Éthologiques"
+                        title={t('chartEthologicalBehaviors', '5. Comportements Éthologiques')}
+                        emptyMsg={t('waitingTelemetry', 'En attente de données télémétriques...')}
                         data={activeData}
                         series={[
-                            { name: 'Récolte', color: '#10b981', getValue: (d) => d.behaviors.foraging },
-                            { name: 'Excavation', color: '#d97706', getValue: (d) => d.behaviors.digging },
-                            { name: 'Soins Couvain', color: '#ec4899', getValue: (d) => d.behaviors.nursing },
-                            { name: 'Garde / Sentinelle', color: '#ef4444', getValue: (d) => d.behaviors.guarding }
+                            { name: t('seriesForaging', 'Récolte'), color: '#10b981', getValue: (d) => d.behaviors.foraging },
+                            { name: t('seriesDigging', 'Excavation'), color: '#d97706', getValue: (d) => d.behaviors.digging },
+                            { name: t('seriesNursing', 'Soins Couvain'), color: '#ec4899', getValue: (d) => d.behaviors.nursing },
+                            { name: t('seriesGuarding', 'Garde / Sentinelle'), color: '#ef4444', getValue: (d) => d.behaviors.guarding }
                         ]}
                     />
                 </div>
@@ -313,12 +318,13 @@ export default function StatisticsDashboardPanel() {
                 {/* 6. Simulation Engine TPS Performance */}
                 <div style={{ background: cardBg, border: `1px solid ${borderCol}`, borderRadius: 10, padding: 16 }}>
                     <DynamicLineChart
-                        title="6. Performance Moteur (TPS)"
+                        title={t('chartTpsPerformance', '6. Performance Moteur (TPS)')}
+                        emptyMsg={t('waitingTelemetry', 'En attente de données télémétriques...')}
                         data={activeData}
                         unit=" TPS"
                         series={[
-                            { name: 'TPS Réel', color: '#10b981', getValue: (d) => d.performance.tps },
-                            { name: 'TPS Cible', color: '#64748b', getValue: (d) => d.performance.targetTps }
+                            { name: t('seriesTpsReal', 'TPS Réel'), color: '#10b981', getValue: (d) => d.performance.tps },
+                            { name: t('seriesTpsTarget', 'TPS Cible'), color: '#64748b', getValue: (d) => d.performance.targetTps }
                         ]}
                     />
                 </div>
@@ -338,14 +344,14 @@ export default function StatisticsDashboardPanel() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#a855f7' }}>
                         <User size={18} />
                         <span style={{ fontSize: 14, fontWeight: 800 }}>
-                            7. Inspection & Télémétrie d'un Individu Spécifique
+                            {t('antInspectorTitle', "7. Inspection & Télémétrie d'un Individu Spécifique")}
                         </span>
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <input
                             type="text"
-                            placeholder="Identifiant de fourmi..."
+                            placeholder={t('searchAntPlaceholder', 'Identifiant de fourmi...')}
                             value={searchAntId}
                             onChange={(e) => setSearchAntId(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSearchAnt()}
@@ -354,7 +360,7 @@ export default function StatisticsDashboardPanel() {
 
                         <button
                             onClick={() => cycleAnt(-1)}
-                            title="Fourmi précédente"
+                            title={t('prevAntBtn', 'Fourmi précédente')}
                             style={{ background: isDark ? '#334155' : '#e2e8f0', border: 'none', color: textMain, padding: '5px 8px', borderRadius: 4, cursor: 'pointer' }}
                         >
                             <ChevronLeft size={14} />
@@ -362,7 +368,7 @@ export default function StatisticsDashboardPanel() {
 
                         <button
                             onClick={() => cycleAnt(1)}
-                            title="Fourmi suivante"
+                            title={t('nextAntBtn', 'Fourmi suivante')}
                             style={{ background: isDark ? '#334155' : '#e2e8f0', border: 'none', color: textMain, padding: '5px 8px', borderRadius: 4, cursor: 'pointer' }}
                         >
                             <ChevronRight size={14} />
@@ -372,16 +378,16 @@ export default function StatisticsDashboardPanel() {
                             onClick={handleSearchAnt}
                             style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                         >
-                            <Search size={13} /> Rechercher
+                            <Search size={13} /> {t('btnSearchAnt', 'Rechercher')}
                         </button>
 
                         {trackedAntData && (
                             <button
                                 onClick={handleTrackIn3D}
-                                title="Suivre dans la vue 3D"
+                                title={t('btnTrack3D', 'Suivre en 3D')}
                                 style={{ background: '#10b981', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                             >
-                                <Crosshair size={13} /> Suivre en 3D
+                                <Crosshair size={13} /> {t('btnTrack3D', 'Suivre en 3D')}
                             </button>
                         )}
                     </div>
@@ -398,34 +404,34 @@ export default function StatisticsDashboardPanel() {
                         border: `1px solid ${borderCol}`
                     }}>
                         <div>
-                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Identifiant :</span>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>{t('lblAntId', 'Identifiant :')}</span>
                             <strong style={{ fontSize: 13, color: '#38bdf8' }}>{trackedAntData.id}</strong>
                         </div>
 
                         <div>
-                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Colonie & Espèce :</span>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>{t('lblAntColonySpecies', 'Colonie & Espèce :')}</span>
                             <strong style={{ fontSize: 12 }}>{trackedAntData.colonyName} ({trackedAntData.species})</strong>
                         </div>
 
                         <div>
-                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Caste & Tâche :</span>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>{t('lblAntCasteTask', 'Caste & Tâche :')}</span>
                             <strong style={{ fontSize: 12, color: '#10b981' }}>{trackedAntData.caste} ({trackedAntData.task})</strong>
                         </div>
 
                         <div>
-                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Santé & Énergie :</span>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>{t('lblAntHealthEnergy', 'Santé & Énergie :')}</span>
                             <strong style={{ fontSize: 12 }}>{trackedAntData.health.toFixed(1)}% | {trackedAntData.energy.toFixed(1)}%</strong>
                         </div>
 
                         <div>
-                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Distance & Vitesse :</span>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>{t('lblAntDistanceSpeed', 'Distance & Vitesse :')}</span>
                             <strong style={{ fontSize: 12 }}>
                                 {(trackedAntData.distanceTraveled || 0).toFixed(2)} m ({(trackedAntData.speedMms || 22.5).toFixed(1)} mm/s)
                             </strong>
                         </div>
 
                         <div>
-                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Position (X, Z) & Charge :</span>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>{t('lblAntPosLoad', 'Position (X, Z) & Charge :')}</span>
                             <strong style={{ fontSize: 12 }}>
                                 ({trackedAntData.x.toFixed(1)}, {trackedAntData.z.toFixed(1)}) | {trackedAntData.carriedItem && trackedAntData.carriedItem !== 'NONE' ? '5.2 mg' : '0.0 mg'}
                             </strong>
@@ -433,7 +439,7 @@ export default function StatisticsDashboardPanel() {
                     </div>
                 ) : (
                     <div style={{ textAlign: 'center', padding: '16px', color: textMuted, fontSize: 12 }}>
-                        Aucun individu sélectionné. Utilisez la recherche ou les flèches pour inspecter un individu en temps réel.
+                        {t('noAntSelectedDetailed', 'Aucun individu sélectionné. Utilisez la recherche ou les flèches pour inspecter un individu en temps réel.')}
                     </div>
                 )}
             </div>

@@ -107,6 +107,19 @@ public class SimulationControlPanel extends VBox {
     private final Button btnServerStart = new Button("🚀 Démarrer Serveur...");
     private final Button btnServerDiscover = new Button("🔍 Détecter");
     private final Label lblServerConnectionStatus = new Label("○ Hors-ligne");
+    
+    // Server Scenario Catalog (Host Mode)
+    private final ComboBox<String> comboServerCatalogScenarios = new ComboBox<>();
+    private final Button btnLoadServerCatalogScenario = new Button();
+    private final Button btnStartServerMatch = new Button();
+
+    // Matchmaking Lobby (Join Mode)
+    private final Label lblLobbyStatus = new Label();
+    private final Label lblLobbySlots = new Label();
+    private final Button btnPlayerReady = new Button();
+    private boolean isLocalPlayerReady = false;
+    private String currentLobbyStatus = "LOBBY_WAITING";
+
     private Runnable onServerConnectAction;
     private Runnable onServerDisconnectAction;
     private Runnable onServerDiscoverAction;
@@ -344,13 +357,82 @@ public class SimulationControlPanel extends VBox {
         HBox playerProfileRow = new HBox(6, lblAlias, txtPlayerAlias, lblSpecies, comboPlayerSpecies);
         playerProfileRow.setAlignment(Pos.CENTER_LEFT);
 
+        // Host Mode: Server Scenario Catalog Selection Row
+        Label lblCatalog = new Label();
+        lblCatalog.textProperty().bind(i18n.createStringBinding("sim.server.catalog", "Catalogue Scénarios :"));
+        lblCatalog.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
+
+        List<String> scenarioTitles = new ArrayList<>(List.of(
+            "ACAD_01: Lévy Flights vs Brownian Walk (Ethology)",
+            "ACAD_02: Polyethism & Division of Labor (BDI)",
+            "ACAD_03: Nest Morphogenesis & Subterranean Microclimate",
+            "ACAD_04: Interspecific Competition & Territory",
+            "ACAD_05: Trophallaxis & Nutrient Flow",
+            "ACAD_06: Epidemiology & Social Immunity",
+            "ACAD_07: Attine Fungi Symbiosis (Leafcutters)",
+            "ACAD_08: Stigmergic Construction & Soil Excavation",
+            "ACAD_09: Dulosis & Slave-Making Raids (Polyergus)",
+            "ACAD_10: Savanna Acacia Coevolution & Pseudomyrmex",
+            "ACAD_11: Alpine Microclimate & Thermoregulation",
+            "ACAD_12: Boreal Solar Domes (Formica rufa)",
+            "ACAD_13: Steppe Granivory & Seed Harvesters (Messor)",
+            "ACAD_14: Wetland Flood Rafting (Solenopsis invicta)",
+            "ACAD_15: Predator Raid: Vespa velutina vs Apis mellifera",
+            "ACAD_16: Apicultural Apiary & Foraging Honey Flow",
+            "MP_01: Multiplayer Battle Arena 1v1 (Competitive)",
+            "MP_02: Multiplayer Coop Tribute & Symbiotic Trade (2P)",
+            "MP_03: Megaterrarium 4-Node Sharded Federation (4P)"
+        ));
+
+        comboServerCatalogScenarios.getItems().setAll(scenarioTitles);
+        comboServerCatalogScenarios.getSelectionModel().selectFirst();
+        comboServerCatalogScenarios.setStyle("-fx-font-size: 11px;");
+        comboServerCatalogScenarios.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(comboServerCatalogScenarios, Priority.ALWAYS);
+
+        btnLoadServerCatalogScenario.setText(i18n.get("sim.server.btn.load_catalog", "📋 Charger"));
+        btnLoadServerCatalogScenario.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
+        btnLoadServerCatalogScenario.setOnAction(e -> handleLoadServerCatalogScenario());
+
+        btnStartServerMatch.setText(i18n.get("sim.server.btn.start_match", "🚀 Lancer la Partie"));
+        btnStartServerMatch.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #059669; -fx-text-fill: white;");
+        btnStartServerMatch.setOnAction(e -> handleStartServerMatch());
+
+        HBox hostCatalogRow = new HBox(6, lblCatalog, comboServerCatalogScenarios, btnLoadServerCatalogScenario, btnStartServerMatch);
+        hostCatalogRow.setAlignment(Pos.CENTER_LEFT);
+
+        // Join Mode: Matchmaking Lobby & Player Readiness Row
+        lblLobbyStatus.setText("⏳ " + i18n.get("sim.lobby.waiting", "EN ATTENTE DE DÉMARRAGE (LOBBY)"));
+        lblLobbyStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #f59e0b; -fx-background-color: rgba(245, 158, 11, 0.15); -fx-padding: 3 8; -fx-background-radius: 4;");
+
+        lblLobbySlots.setText("1/2 " + i18n.get("sim.lobby.slots_count", "Joueur(s) Connecté(s)"));
+        lblLobbySlots.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+
+        btnPlayerReady.setText(i18n.get("sim.lobby.btn_ready", "✓ Je suis Prêt"));
+        btnPlayerReady.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #d97706; -fx-text-fill: white;");
+        btnPlayerReady.setOnAction(e -> {
+            isLocalPlayerReady = !isLocalPlayerReady;
+            if (isLocalPlayerReady) {
+                btnPlayerReady.setText(i18n.get("sim.lobby.btn_unready", "✕ Pas Prêt"));
+                btnPlayerReady.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #059669; -fx-text-fill: white;");
+                org.swarmforge.client.util.NotificationOverlay.show(this, "✓ Vous êtes prêt pour la partie !", org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS);
+            } else {
+                btnPlayerReady.setText(i18n.get("sim.lobby.btn_ready", "✓ Je suis Prêt"));
+                btnPlayerReady.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #d97706; -fx-text-fill: white;");
+                org.swarmforge.client.util.NotificationOverlay.show(this, "Statut prêt désactivé.", org.swarmforge.client.util.NotificationOverlay.NotificationType.INFO);
+            }
+        });
+
+        HBox joinLobbyRow = new HBox(8, lblLobbyStatus, lblLobbySlots, btnPlayerReady);
+        joinLobbyRow.setAlignment(Pos.CENTER_LEFT);
+
         // Mode Explainer card — updated dynamically by updateAuthorityLock
         pnlModeExplainer.setMaxWidth(Double.MAX_VALUE);
 
         lblServerAuthorityNotice.setVisible(false);
         lblServerAuthorityNotice.setManaged(false);
 
-        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow, serverRoleRow, playerProfileRow, pnlModeExplainer);
+        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow, serverRoleRow, hostCatalogRow, playerProfileRow, joinLobbyRow, pnlModeExplainer);
         serverNetworkBox.setVisible(false);
         serverNetworkBox.setManaged(false);
 
@@ -367,8 +449,14 @@ public class SimulationControlPanel extends VBox {
             boolean lockLocalWorld = isServer && isJoin;
             scenarioBodyBox.setDisable(lockLocalWorld);
 
+            hostCatalogRow.setVisible(isServer && !isJoin);
+            hostCatalogRow.setManaged(isServer && !isJoin);
+
             playerProfileRow.setVisible(lockLocalWorld);
             playerProfileRow.setManaged(lockLocalWorld);
+
+            joinLobbyRow.setVisible(lockLocalWorld);
+            joinLobbyRow.setManaged(lockLocalWorld);
 
             // Rebuild mode explainer card
             refreshModeExplainerCard(isServer, isJoin);
@@ -1882,6 +1970,67 @@ public class SimulationControlPanel extends VBox {
     public void setOnServerDisconnect(Runnable r) { this.onServerDisconnectAction = r; }
     public void setOnServerDiscover(Runnable r) { this.onServerDiscoverAction = r; }
     public void setOnServerStart(Runnable r) { this.onServerStartAction = r; }
+
+    private void handleLoadServerCatalogScenario() {
+        int idx = comboServerCatalogScenarios.getSelectionModel().getSelectedIndex();
+        org.swarmforge.core.scenario.Scenario sc;
+        try {
+            if (idx >= 0 && idx < 16) {
+                sc = org.swarmforge.core.scenario.AcademicScenarios.getAllAcademicScenarios(42L).get(idx);
+            } else if (idx >= 16 && idx < 19) {
+                sc = org.swarmforge.core.scenario.AcademicScenarios.getAllMultiplayerScenarios(42L).get(idx - 16);
+            } else {
+                sc = org.swarmforge.core.scenario.AcademicScenarios.createLevyVsBrownianScenario(42L);
+            }
+
+            if (sc != null) {
+                txtSeed.setText(String.valueOf(sc.getMasterSeed()));
+                if (areaDescription != null) {
+                    areaDescription.setText(sc.getDescription());
+                }
+                if (sc.getBiomeName() != null) {
+                    for (String wName : comboWorld.getItems()) {
+                        if (wName.toUpperCase().contains(sc.getBiomeName().toUpperCase())) {
+                            comboWorld.getSelectionModel().select(wName);
+                            break;
+                        }
+                    }
+                }
+                if (getScene() != null) {
+                    org.swarmforge.client.util.NotificationOverlay.showNotification(
+                        getScene(),
+                        "✓ Scénario chargé : " + sc.getTitle(),
+                        org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS
+                    );
+                }
+            }
+        } catch (Exception ex) {
+            if (getScene() != null) {
+                org.swarmforge.client.util.NotificationOverlay.showNotification(
+                    getScene(),
+                    "Erreur chargement scénario : " + ex.getMessage(),
+                    org.swarmforge.client.util.NotificationOverlay.NotificationType.ERROR
+                );
+            }
+        }
+    }
+
+    private void handleStartServerMatch() {
+        if (onServerStartAction != null) {
+            onServerStartAction.run();
+        }
+        currentLobbyStatus = "ACTIVE";
+        lblLobbyStatus.setText("🟢 " + i18n.get("sim.lobby.active", "PARTIE EN COURS (ACTIVE)"));
+        lblLobbyStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.15); -fx-padding: 3 8; -fx-background-radius: 4;");
+        btnStartServerMatch.setDisable(true);
+        if (getScene() != null) {
+            org.swarmforge.client.util.NotificationOverlay.showNotification(
+                getScene(),
+                "🚀 Lancement de la partie sur le serveur...",
+                org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS
+            );
+        }
+    }
 
     /**
      * Rebuilds the mode explainer card shown below the role selector.

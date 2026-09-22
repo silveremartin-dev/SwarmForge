@@ -80,6 +80,14 @@ export default function SimulationControlPanel() {
         connect,
         disconnect,
         discover,
+        serverScenarios,
+        lobbyStatus,
+        lobbyPlayers,
+        selectedServerScenarioId,
+        isPlayerReady,
+        togglePlayerReady,
+        startServerMatch,
+        selectServerScenario,
         theme,
         language,
         exportScenarioJson,
@@ -201,7 +209,11 @@ export default function SimulationControlPanel() {
                     }}
                 >
                     <CheckCircle size={15} />
-                    {isApplied ? t('scenarioAppliedBadge', '✓ Scénario Appliqué !') : t('applyInitScenarioBtn', '🚀 APPLIQUER & INITIALISER LE SCÉNARIO')}
+                    {isApplied
+                        ? t('scenarioAppliedBadge', '✓ Scénario Appliqué !')
+                        : (serverRole === 'HOST'
+                            ? t('btnDeployScenarioServer', '🚀 Déployer le Scénario sur SwarmForge Server')
+                            : t('btnJoinServerSimulation', '🌐 Rejoindre la Simulation Serveur'))}
                 </button>
             </div>
 
@@ -443,6 +455,230 @@ export default function SimulationControlPanel() {
                                 </div>
                                 <div>{t('hostModeExplainer1', '• Scénario Maître : Tous vos paramètres ci-dessous (Monde, Climat, Espèces, Nids, Démographie) sont déployés sur le serveur.')}</div>
                                 <div>{t('hostModeExplainer2', '• Rôle : Vous définissez l\'écosystème complet. D\'autres participants peuvent rejoindre votre simulation et piloter des colonies.')}</div>
+                            </div>
+                        {/* Row 6: Matchmaking Lobby & Scenario Status Banner (Visible when connected) */}
+                        {connected && (
+                            <div style={{
+                                marginTop: 8,
+                                padding: '12px 14px',
+                                borderRadius: 8,
+                                background: isDark ? '#0f172a' : '#f1f5f9',
+                                border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 10
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Server size={16} color="#38bdf8" />
+                                        <span style={{ fontSize: 12, fontWeight: 800, color: textMain }}>
+                                            {t('serverScenariosTitle', 'Catalogue des Scénarios Serveur & Matchmaking')}
+                                        </span>
+                                    </div>
+                                    <span style={{
+                                        fontSize: 10,
+                                        fontWeight: 800,
+                                        padding: '3px 8px',
+                                        borderRadius: 4,
+                                        background: lobbyStatus === 'ACTIVE' ? '#059669' : (lobbyStatus === 'LOBBY_WAITING' ? '#d97706' : '#64748b'),
+                                        color: '#ffffff',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        {lobbyStatus === 'ACTIVE' 
+                                            ? t('lobbyStatusActive', '🟢 PARTIE EN COURS (ACTIVE)') 
+                                            : (lobbyStatus === 'LOBBY_WAITING' 
+                                                ? t('lobbyStatusWaiting', '⏳ EN ATTENTE DE DÉMARRAGE (LOBBY)') 
+                                                : t('lobbyStatusInactive', '⚪ INACTIF'))}
+                                    </span>
+                                </div>
+
+                                {/* Colony Slots & Connected Players */}
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 6,
+                                    background: isDark ? '#1e293b' : '#ffffff',
+                                    padding: '8px 10px',
+                                    borderRadius: 6,
+                                    border: `1px solid ${borderCol}`
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, color: textMuted }}>
+                                        <span>{t('lobbySlotsTitle', 'Slots de Colonies & Participants :')}</span>
+                                        <span style={{ color: '#38bdf8' }}>
+                                            {lobbyPlayers.length} {t('lobbySlotsCount', 'Joueur(s) Connecté(s)')}
+                                        </span>
+                                    </div>
+
+                                    {lobbyPlayers.length === 0 ? (
+                                        <div style={{ fontSize: 11, fontStyle: 'italic', color: textMuted }}>
+                                            {t('slotWaitingPlayer', 'En attente d\'un joueur...')}
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            {lobbyPlayers.map((p, idx) => (
+                                                <div key={idx} style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    fontSize: 11,
+                                                    padding: '4px 6px',
+                                                    borderRadius: 4,
+                                                    background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <span style={{ fontWeight: 700, color: textMain }}>#{idx + 1} {p.tag || 'Participant'}</span>
+                                                        <span style={{ color: textMuted }}>({p.species || 'Espèce'})</span>
+                                                        <span style={{
+                                                            fontSize: 9,
+                                                            padding: '1px 4px',
+                                                            borderRadius: 3,
+                                                            background: p.role === 'HOST' ? '#0284c7' : '#64748b',
+                                                            color: '#fff',
+                                                            fontWeight: 600
+                                                        }}>
+                                                            {p.role || 'JOIN'}
+                                                        </span>
+                                                    </div>
+                                                    <span style={{
+                                                        fontSize: 10,
+                                                        fontWeight: 700,
+                                                        color: p.isReady ? '#10b981' : '#f59e0b'
+                                                    }}>
+                                                        {p.isReady ? '✓ Prêt' : '○ En attente'}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Lobby Action Bar (Ready toggle for Join, Start Match for Host) */}
+                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                    {isJoin ? (
+                                        <button
+                                            onClick={togglePlayerReady}
+                                            style={{
+                                                flex: 1,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: 6,
+                                                background: isPlayerReady ? '#059669' : '#d97706',
+                                                color: '#ffffff',
+                                                border: 'none',
+                                                borderRadius: 6,
+                                                padding: '8px 14px',
+                                                fontSize: 12,
+                                                fontWeight: 800,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {isPlayerReady ? t('btnToggleReady', '✓ Je suis Prêt') : t('btnToggleNotReady', '✕ Pas Prêt')}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={startServerMatch}
+                                            disabled={lobbyStatus === 'ACTIVE'}
+                                            style={{
+                                                flex: 1,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: 6,
+                                                background: lobbyStatus === 'ACTIVE' ? '#475569' : '#059669',
+                                                color: '#ffffff',
+                                                border: 'none',
+                                                borderRadius: 6,
+                                                padding: '8px 14px',
+                                                fontSize: 12,
+                                                fontWeight: 800,
+                                                cursor: lobbyStatus === 'ACTIVE' ? 'not-allowed' : 'pointer',
+                                                opacity: lobbyStatus === 'ACTIVE' ? 0.6 : 1.0
+                                            }}
+                                        >
+                                            <Zap size={14} />
+                                            {t('btnStartServerMatch', '🚀 Lancer la Partie (Hôte)')}
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Server Known Scenarios List */}
+                                {serverScenarios && serverScenarios.length > 0 && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: textMuted }}>
+                                            {t('serverScenariosTitle', 'Scénarios Disponibles sur le Serveur :')}
+                                        </div>
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 4,
+                                            maxHeight: 180,
+                                            overflowY: 'auto',
+                                            paddingRight: 4
+                                        }}>
+                                            {serverScenarios.map(sc => {
+                                                const isSelected = sc.id === selectedServerScenarioId
+                                                return (
+                                                    <div
+                                                        key={sc.id}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            padding: '6px 8px',
+                                                            borderRadius: 5,
+                                                            background: isSelected 
+                                                                ? (isDark ? 'rgba(56, 189, 248, 0.15)' : '#e0f2fe')
+                                                                : (isDark ? '#1e293b' : '#ffffff'),
+                                                            border: `1px solid ${isSelected ? '#38bdf8' : borderCol}`,
+                                                            fontSize: 11
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0, paddingRight: 8 }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <span style={{ fontWeight: 800, color: textMain, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                    {sc.title}
+                                                                </span>
+                                                                <span style={{
+                                                                    fontSize: 9,
+                                                                    padding: '1px 5px',
+                                                                    borderRadius: 3,
+                                                                    background: isDark ? '#334155' : '#e2e8f0',
+                                                                    color: textMuted,
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                    {sc.requiredPlayerCount || 1}P {sc.isMultiplayerOnly ? 'Multijoueur' : 'Solo/Multi'}
+                                                                </span>
+                                                            </div>
+                                                            <span style={{ fontSize: 10, color: textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {sc.academicCategory} • Biome : {sc.biomeName}
+                                                            </span>
+                                                        </div>
+
+                                                        {!isJoin && lobbyStatus !== 'ACTIVE' && (
+                                                            <button
+                                                                onClick={() => selectServerScenario(sc.id)}
+                                                                disabled={isSelected}
+                                                                style={{
+                                                                    background: isSelected ? '#0284c7' : (isDark ? '#334155' : '#cbd5e1'),
+                                                                    color: isSelected ? '#ffffff' : textMain,
+                                                                    border: 'none',
+                                                                    borderRadius: 4,
+                                                                    padding: '4px 8px',
+                                                                    fontSize: 10,
+                                                                    fontWeight: 700,
+                                                                    cursor: isSelected ? 'default' : 'pointer'
+                                                                }}
+                                                            >
+                                                                {isSelected ? '✓ Actif' : t('btnSelectScenario', 'Sélectionner')}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

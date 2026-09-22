@@ -1,19 +1,23 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useSimulationStore } from '../store/simulationStore'
 import { getTranslation } from '../i18n/translations'
-import { Map, ZoomIn, ZoomOut, ChevronDown, ChevronUp } from 'lucide-react'
+import { Map, ChevronDown, ChevronUp } from 'lucide-react'
+import { getTerrainHeight, getSubstrateAt } from '../utils/terrainUtils'
 
 /**
- * Minimap overlay matching the World Editor & SwarmForgeClient dual 2D maps system:
- * - Top-Down View: Ant density heatmap, nests, camera viewport rect, directional borders with interactive zoom.
- * - Side Profile View: Stratigraphy bands (Humus, Argile, Bedrock), water table, subterranean ant depth & nests.
- * - Positioned to the left of the right sidebar without overlapping.
+ * MinimapOverlay.jsx - 2D Dual Minimap
+ * Strictly conforms with heavy client (MinimapOverlay.java & WorldEditorPane.java):
+ * - Top-Down View (Vue Zénithale): Renders ONLY the physical terrain (elevation, substrate shading, river channel),
+ *   colony nest locations, and camera viewport rectangle. No ant density overlay.
+ * - Side Profile View (Profil Géologique & Profondeur): Stratigraphy layers (Humus, Argile, Bedrock), water table line,
+ *   subterranean nest chambers, and camera depth indicator.
+ * - Zoom & Pan controlled directly via mouse wheel and direct mouse manipulation (zoom buttons removed).
  */
 export default function MinimapOverlay() {
     const {
-        ants,
         colonies,
         nests,
+        terrainConfig,
         showMinimap,
         language,
         theme
@@ -23,6 +27,9 @@ export default function MinimapOverlay() {
     const canvasSideRef = useRef(null)
     const [collapsed, setCollapsed] = useState(false)
     const [zoom, setZoom] = useState(1.0)
+    const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+    const isDraggingRef = useRef(false)
+    const lastMouseRef = useRef({ x: 0, y: 0 })
 
     const isDark = theme === 'dark'
     const t = (key, fallback) => getTranslation(language, key, fallback)
@@ -43,101 +50,103 @@ export default function MinimapOverlay() {
         const gcSide = canvasSide.getContext('2d')
         if (!gcTop || !gcSide) return
 
-        // 1. TOP-DOWN VIEW RENDERING
+        const worldW = 100
+        const worldH = 100
+        const worldD = 4 // Subterranean depth in meters
+
+        // 1. TOP-DOWN TERRAIN VIEW RENDERING (Vue Zénithale - Terrain Exclusif)
         const wTop = canvasTop.width
         const hTop = canvasTop.height
 
-        // Clear Background (Dark Slate)
         gcTop.save()
         gcTop.fillStyle = '#0f172a'
         gcTop.fillRect(0, 0, wTop, hTop)
 
-        // Apply Zoom Transform centered on (wTop/2, hTop/2)
-        if (zoom > 1.0) {
-            gcTop.translate(wTop / 2, hTop / 2)
+        // Apply Zoom & Pan centered
+        if (zoom !== 1.0 || panOffset.x !== 0 || panOffset.y !== 0) {
+            gcTop.translate(wTop / 2 + panOffset.x, hTop / 2 + panOffset.y)
             gcTop.scale(zoom, zoom)
             gcTop.translate(-wTop / 2, -hTop / 2)
         }
 
-        // Subdued Grid Lines
-        gcTop.strokeStyle = 'rgba(51, 65, 85, 0.4)'
-        gcTop.lineWidth = 0.5
-        for (let i = 1; i < 4; i++) {
-            gcTop.beginPath()
-            gcTop.moveTo(i * wTop / 4, 1)
-            gcTop.lineTo(i * wTop / 4, hTop - 1)
-            gcTop.stroke()
-
-            gcTop.beginPath()
-            gcTop.moveTo(1, i * hTop / 4)
-            gcTop.lineTo(wTop - 1, i * hTop / 4)
-            gcTop.stroke()
-        }
-
-        // Density Top Grid Calculation
-        const densityTop = Array.from({ length: GRID_RES }, () => Array(GRID_RES).fill(0))
-        const densitySide = Array.from({ length: GRID_RES }, () => Array(GRID_RES).fill(0))
-
-        const worldW = 100
-        const worldH = 100
-        const worldD = 4 // Depth in meters
-
-        if (ants && Array.isArray(ants)) {
-            ants.forEach(ant => {
-                const ax = ant.x ?? 50
-                const ay = ant.z !== undefined ? ant.z : (ant.y ?? 50)
-                const az = Math.abs(ant.y ?? 0)
-
-                const gx = Math.min(GRID_RES - 1, Math.max(0, Math.floor((ax / worldW) * GRID_RES)))
-                const gy = Math.min(GRID_RES - 1, Math.max(0, Math.floor((ay / worldH) * GRID_RES)))
-                const gz = Math.min(GRID_RES - 1, Math.max(0, Math.floor((az / worldD) * GRID_RES)))
-
-                densityTop[gx][gy]++
-                densitySide[gx][gz]++
-            })
-        }
-
-        // Top Heatmap
-        let maxDensityTop = 1
-        for (let x = 0; x < GRID_RES; x++) {
-            for (let y = 0; y < GRID_RES; y++) {
-                if (densityTop[x][y] > maxDensityTop) maxDensityTop = densityTop[x][y]
-            }
-        }
-
+        // Render pure physical terrain grid (Relief, Substrates, River Bed)
         const cellW = wTop / GRID_RES
         const cellH = hTop / GRID_RES
 
-        for (let x = 0; x < GRID_RES; x++) {
-            for (let y = 0; y < GRID_RES; y++) {
-                const count = densityTop[x][y]
-                if (count > 0) {
-                    const intensity = Math.min(1.0, count / maxDensityTop)
-                    const r = Math.round(50 + 205 * intensity)
-                    const g = Math.round(180 + 75 * intensity)
-                    const b = 50
-                    gcTop.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.4 + 0.5 * intensity})`
-                    gcTop.fillRect(x * cellW, y * cellH, cellW + 0.5, cellH + 0.5)
+        for (let gx = 0; gx < GRID_RES; gx++) {
+            for (let gy = 0; gy < GRID_RES; gy++) {
+                const wx = (gx / GRID_RES) * worldW
+                const wz = (gy / GRID_RES) * worldH
+                const heightY = getTerrainHeight(wx, wz, terrainConfig)
+                const substrate = getSubstrateAt(wx, heightY, wz, terrainConfig)
+
+                let baseColor = '#2e4a1f' // Default surface humus/vegetation green
+                if (substrate.type === 'WATER') {
+                    baseColor = '#0284c7'
+                } else if (substrate.type === 'SAND') {
+                    baseColor = '#ca8a04'
+                } else if (substrate.type === 'BEDROCK') {
+                    baseColor = '#475569'
+                } else {
+                    // Organic elevation-shaded terrain
+                    const altShade = Math.min(1.0, Math.max(0.0, (heightY + 2.0) / 5.0))
+                    const r = Math.round(35 + altShade * 25)
+                    const g = Math.round(70 + altShade * 45)
+                    const b = Math.round(25 + altShade * 20)
+                    baseColor = `rgb(${r}, ${g}, ${b})`
                 }
+
+                gcTop.fillStyle = baseColor
+                gcTop.fillRect(gx * cellW, gy * cellH, cellW + 0.5, cellH + 0.5)
             }
         }
 
-        // Colony Nests Top View (Radial Glow + Circle)
+        // Subdued Topographic Contour Lines & Grid
+        gcTop.strokeStyle = 'rgba(255, 255, 255, 0.08)'
+        gcTop.lineWidth = 0.5
+        for (let i = 1; i < 4; i++) {
+            gcTop.beginPath()
+            gcTop.moveTo(i * wTop / 4, 0)
+            gcTop.lineTo(i * wTop / 4, hTop)
+            gcTop.stroke()
+
+            gcTop.beginPath()
+            gcTop.moveTo(0, i * hTop / 4)
+            gcTop.lineTo(wTop, i * hTop / 4)
+            gcTop.stroke()
+        }
+
+        // River Channel Overlay (if river enabled in terrainConfig)
+        const hasRiver = terrainConfig?.hasRiver ?? true
+        const riverX = terrainConfig?.riverX ?? 25
+        const riverWidth = terrainConfig?.riverWidth ?? 12
+        if (hasRiver) {
+            const rxPix = (riverX / worldW) * wTop
+            const rwPix = (riverWidth / worldW) * wTop
+            gcTop.fillStyle = 'rgba(2, 132, 199, 0.75)'
+            gcTop.fillRect(rxPix - rwPix / 2, 0, rwPix, hTop)
+            gcTop.strokeStyle = 'rgba(56, 189, 248, 0.6)'
+            gcTop.lineWidth = 1
+            gcTop.beginPath()
+            gcTop.moveTo(rxPix, 0)
+            gcTop.lineTo(rxPix, hTop)
+            gcTop.stroke()
+        }
+
+        // Colony Nests Top View (Orange Ring + Radial Glow)
         const nestList = nests && nests.length > 0 ? nests : (colonies || [])
         nestList.forEach((n, idx) => {
             const nx = ((n.x ?? (idx === 0 ? 35 : 65)) / worldW) * wTop
             const ny = (((n.z !== undefined ? n.z : n.y) ?? (idx === 0 ? 35 : 65)) / worldH) * hTop
 
-            // Radial Glow
-            const radGrad = gcTop.createRadialGradient(nx, ny, 1, nx, ny, 12)
-            radGrad.addColorStop(0, 'rgba(251, 191, 36, 0.85)')
+            const radGrad = gcTop.createRadialGradient(nx, ny, 1, nx, ny, 10)
+            radGrad.addColorStop(0, 'rgba(251, 191, 36, 0.9)')
             radGrad.addColorStop(1, 'rgba(251, 191, 36, 0)')
             gcTop.fillStyle = radGrad
             gcTop.beginPath()
-            gcTop.arc(nx, ny, 12, 0, Math.PI * 2)
+            gcTop.arc(nx, ny, 10, 0, Math.PI * 2)
             gcTop.fill()
 
-            // Solid Ring
             gcTop.fillStyle = n.color || '#f59e0b'
             gcTop.beginPath()
             gcTop.arc(nx, ny, 3.5, 0, Math.PI * 2)
@@ -147,7 +156,7 @@ export default function MinimapOverlay() {
             gcTop.stroke()
         })
 
-        // Camera Viewport Indicator Box (Centered on default 50, 50)
+        // Camera Viewport Indicator Box
         const vpX = (50 / worldW) * wTop
         const vpY = (50 / worldH) * hTop
         const vpW = (35 / worldW) * wTop
@@ -157,9 +166,9 @@ export default function MinimapOverlay() {
         gcTop.lineWidth = 1.5
         gcTop.strokeRect(vpX - vpW / 2, vpY - vpH / 2, vpW, vpH)
 
-        // Megaterrarium Boundary Indicators
+        // Cluster / Megaterrarium Boundary Indicators
         gcTop.font = '8px sans-serif'
-        gcTop.fillStyle = 'rgba(56, 189, 248, 0.75)'
+        gcTop.fillStyle = 'rgba(56, 189, 248, 0.85)'
         gcTop.fillText('▲ [0,1]', wTop / 2 - 12, 8)
         gcTop.fillText('▼ [0,0]', wTop / 2 - 12, hTop - 3)
         gcTop.fillText('◀[0,0]', 2, hTop / 2 + 3)
@@ -167,28 +176,28 @@ export default function MinimapOverlay() {
 
         gcTop.restore()
 
-        // 2. SIDE PROFILE VIEW RENDERING (Stratigraphy & Depth)
+        // 2. SIDE PROFILE VIEW RENDERING (Profil Géologique & Profondeur)
         const wSide = canvasSide.width
         const hSide = canvasSide.height
 
         gcSide.fillStyle = '#0f172a'
         gcSide.fillRect(0, 0, wSide, hSide)
 
-        // Stratigraphy Color Bands
-        // Topsoil (0 - 0.8m)
-        gcSide.fillStyle = 'rgba(82, 50, 25, 0.85)'
+        // Stratigraphy Geological Bands
+        // Topsoil Humus (0 - 0.8m)
+        gcSide.fillStyle = 'rgba(82, 50, 25, 0.9)'
         gcSide.fillRect(0, 0, wSide, hSide * 0.25)
 
-        // Subsoil Clay (0.8m - 2.5m)
-        gcSide.fillStyle = 'rgba(154, 52, 18, 0.75)'
+        // Clay Subsoil (0.8m - 2.5m)
+        gcSide.fillStyle = 'rgba(154, 52, 18, 0.85)'
         gcSide.fillRect(0, hSide * 0.25, wSide, hSide * 0.45)
 
-        // Deep Bedrock (2.5m - 4m)
-        gcSide.fillStyle = 'rgba(51, 65, 85, 0.9)'
+        // Bedrock Base (2.5m - 4m)
+        gcSide.fillStyle = 'rgba(51, 65, 85, 0.95)'
         gcSide.fillRect(0, hSide * 0.70, wSide, hSide * 0.30)
 
-        // Water Table Blue Shimmer Line at Y = -3.2m
-        gcSide.strokeStyle = 'rgba(2, 132, 199, 0.8)'
+        // Water Table Line at Depth = -3.2m
+        gcSide.strokeStyle = 'rgba(2, 132, 199, 0.9)'
         gcSide.lineWidth = 1.5
         gcSide.setLineDash([3, 2])
         gcSide.beginPath()
@@ -197,11 +206,11 @@ export default function MinimapOverlay() {
         gcSide.stroke()
         gcSide.setLineDash([])
 
-        // Subterranean Chambers on Profile
+        // Subterranean Nest Chambers on Geological Profile
         nestList.forEach((n, idx) => {
             const nx = ((n.x ?? (idx === 0 ? 35 : 65)) / worldW) * wSide
-            const nyCh1 = hSide * 0.35 // Brood
-            const nyCh2 = hSide * 0.55 // Queen
+            const nyCh1 = hSide * 0.35 // Brood chamber
+            const nyCh2 = hSide * 0.55 // Queen chamber
 
             gcSide.fillStyle = 'rgba(168, 85, 247, 0.9)'
             gcSide.beginPath()
@@ -214,26 +223,22 @@ export default function MinimapOverlay() {
             gcSide.fill()
         })
 
-        // Subterranean Ants Depth Points
-        if (ants && Array.isArray(ants)) {
-            ants.forEach(ant => {
-                const ax = ((ant.x ?? 50) / worldW) * wSide
-                const depthNorm = Math.min(1.0, Math.max(0, Math.abs(ant.y ?? 0) / worldD))
-                const ay = depthNorm * hSide
-
-                gcSide.fillStyle = ant.color || '#38bdf8'
-                gcSide.fillRect(ax - 0.5, ay - 0.5, 1.2, 1.2)
-            })
-        }
+        // Camera Depth Position Line
+        gcSide.strokeStyle = 'rgba(56, 189, 248, 0.9)'
+        gcSide.lineWidth = 1.5
+        gcSide.beginPath()
+        gcSide.moveTo((50 / worldW) * wSide, 0)
+        gcSide.lineTo((50 / worldW) * wSide, hSide)
+        gcSide.stroke()
 
         // Depth Axis Ticks
         gcSide.font = '7px sans-serif'
-        gcSide.fillStyle = 'rgba(203, 213, 225, 0.6)'
+        gcSide.fillStyle = 'rgba(203, 213, 225, 0.7)'
         gcSide.fillText('0m', 2, 8)
         gcSide.fillText('-2m', 2, hSide * 0.5)
         gcSide.fillText('-4m', 2, hSide - 2)
 
-    }, [showMinimap, collapsed, ants, colonies, nests, zoom])
+    }, [showMinimap, collapsed, colonies, nests, terrainConfig, zoom, panOffset])
 
     if (!showMinimap) return null
 
@@ -244,6 +249,24 @@ export default function MinimapOverlay() {
 
     const handleDoubleClick = () => {
         setZoom(1.0)
+        setPanOffset({ x: 0, y: 0 })
+    }
+
+    const handleMouseDown = (e) => {
+        isDraggingRef.current = true
+        lastMouseRef.current = { x: e.clientX, y: e.clientY }
+    }
+
+    const handleMouseMove = (e) => {
+        if (!isDraggingRef.current) return
+        const dx = e.clientX - lastMouseRef.current.x
+        const dy = e.clientY - lastMouseRef.current.y
+        lastMouseRef.current = { x: e.clientX, y: e.clientY }
+        setPanOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }))
+    }
+
+    const handleMouseUp = () => {
+        isDraggingRef.current = false
     }
 
     return (
@@ -251,7 +274,7 @@ export default function MinimapOverlay() {
             style={{
                 position: 'absolute',
                 top: 12,
-                right: 355, // Positioned neatly to the left of the right sidebar (330px width + 12px margin)
+                right: 355,
                 zIndex: 85,
                 background: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.95)',
                 backdropFilter: 'blur(16px)',
@@ -264,8 +287,9 @@ export default function MinimapOverlay() {
                 userSelect: 'none',
                 pointerEvents: 'auto'
             }}
+            onMouseUp={handleMouseUp}
         >
-            {/* Header Bar */}
+            {/* Header Bar (Zoom in/out buttons removed per specification, direct mouse control) */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -276,52 +300,18 @@ export default function MinimapOverlay() {
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, color: '#38bdf8' }}>
                     <Map size={12} />
-                    <span>RADAR TOPOGRAPHIQUE 2D</span>
+                    <span>{t('minimapTitle', 'RADAR TOPOGRAPHIQUE 2D')}</span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    {/* Zoom In Button */}
-                    <button
-                        onClick={() => setZoom(z => Math.min(4.0, z + 0.25))}
-                        title="Zoom avant (+)"
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: isDark ? '#cbd5e1' : '#334155',
-                            cursor: 'pointer',
-                            padding: 2,
-                            display: 'flex',
-                            alignItems: 'center'
-                        }}
-                    >
-                        <ZoomIn size={12} />
-                    </button>
-
-                    {/* Zoom Out Button */}
-                    <button
-                        onClick={() => setZoom(z => Math.max(1.0, z - 0.25))}
-                        title="Zoom arrière (-)"
-                        style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: isDark ? '#cbd5e1' : '#334155',
-                            cursor: 'pointer',
-                            padding: 2,
-                            display: 'flex',
-                            alignItems: 'center'
-                        }}
-                    >
-                        <ZoomOut size={12} />
-                    </button>
-
-                    <span style={{ fontSize: 8, fontWeight: 700, color: '#38bdf8', minWidth: 20, textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontSize: 8.5, fontWeight: 700, color: '#38bdf8' }}>
                         {zoom.toFixed(1)}x
                     </span>
 
-                    {/* Collapse Button */}
+                    {/* Collapse / Expand Button */}
                     <button
                         onClick={() => setCollapsed(!collapsed)}
-                        title={collapsed ? 'Agrandir' : 'Réduire'}
+                        title={collapsed ? t('expand', 'Agrandir') : t('collapse', 'Réduire')}
                         style={{
                             background: 'transparent',
                             border: 'none',
@@ -337,15 +327,17 @@ export default function MinimapOverlay() {
                 </div>
             </div>
 
-            {/* Map Canvases (Top-Down + Side Profile) */}
+            {/* Map Canvases (Top-Down Terrain + Side Profile Stratigraphy) */}
             {!collapsed && (
                 <div
                     onWheel={handleWheel}
                     onDoubleClick={handleDoubleClick}
-                    title="Molette souris pour zoomer / Double-clic pour réinitialiser"
-                    style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 6 }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    title={t('minimapZoomWheelTt', 'Molette souris pour zoomer / Glisser pour déplacer / Double-clic pour réinitialiser')}
+                    style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 6, cursor: isDraggingRef.current ? 'grabbing' : 'grab' }}
                 >
-                    {/* 1. Top-Down Map Canvas */}
+                    {/* 1. Top-Down Terrain Map Canvas */}
                     <div style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>
                         <canvas
                             ref={canvasTopRef}
@@ -359,10 +351,10 @@ export default function MinimapOverlay() {
                             left: 5,
                             fontSize: 8,
                             fontWeight: 800,
-                            color: 'rgba(255,255,255,0.7)',
+                            color: 'rgba(255,255,255,0.85)',
                             textShadow: '0 1px 2px #000'
                         }}>
-                            Vue Zénithale (Densité)
+                            {t('minimapTopdown', 'Vue Zénithale (Terrain)')}
                         </div>
                     </div>
 
@@ -380,10 +372,10 @@ export default function MinimapOverlay() {
                             left: 5,
                             fontSize: 8,
                             fontWeight: 800,
-                            color: 'rgba(255,255,255,0.7)',
+                            color: 'rgba(255,255,255,0.85)',
                             textShadow: '0 1px 2px #000'
                         }}>
-                            Profil Géologique & Profondeur
+                            {t('minimapSideview', 'Profil Géologique & Profondeur')}
                         </div>
                     </div>
                 </div>
