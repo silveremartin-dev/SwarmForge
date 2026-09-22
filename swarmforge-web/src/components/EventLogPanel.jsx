@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import {
     List,
     Filter,
@@ -37,8 +37,15 @@ export default function EventLogPanel() {
     const [searchTerm, setSearchTerm] = useState('')
     const [autoScroll, setAutoScroll] = useState(true)
     const [sortField, setSortField] = useState('tick')
-    const [sortDirection, setSortDirection] = useState('desc') // 'asc' | 'desc'
+    const [sortDirection, setSortDirection] = useState('asc') // 'asc' chronological | 'desc'
     const [selectedEvent, setSelectedEvent] = useState(null)
+    const tableContainerRef = useRef(null)
+
+    useEffect(() => {
+        if (autoScroll && tableContainerRef.current) {
+            tableContainerRef.current.scrollTop = tableContainerRef.current.scrollHeight
+        }
+    }, [eventsLog.length, autoScroll, sortDirection])
 
     const handleSort = (field) => {
         if (sortField === field) {
@@ -303,7 +310,7 @@ export default function EventLogPanel() {
                 display: 'flex',
                 flexDirection: 'column'
             }}>
-                <div style={{ flex: 1, overflowY: 'auto' }}>
+                <div ref={tableContainerRef} style={{ flex: 1, overflowY: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
                         <thead style={{ position: 'sticky', top: 0, background: isDark ? '#0f172a' : '#f1f5f9', zIndex: 10 }}>
                             <tr style={{ borderBottom: `2px solid ${borderCol}`, color: textMuted }}>

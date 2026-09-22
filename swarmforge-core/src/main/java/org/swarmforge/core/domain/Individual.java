@@ -2926,6 +2926,21 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     @Override
+    public boolean isQueen() {
+        return caste == Caste.QUEEN;
+    }
+
+    @Override
+    public boolean isNurse() {
+        return caste == Caste.NURSE;
+    }
+
+    @Override
+    public boolean isDrone() {
+        return caste == Caste.MALE;
+    }
+
+    @Override
     public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
         if (species != null) {
             return species.getForagingTypes();

@@ -273,10 +273,15 @@ public class VegetationVisualizer {
 
         switch (plant.type) {
             case TREE -> {
-                targetHeight = (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA)
-                        ? (4.0f + rand.nextFloat() * 2.0f) * Math.max(0.35f, plant.growth)
-                        : (5.0f + rand.nextFloat() * 2.5f) * Math.max(0.35f, plant.growth);
                 chosenModel = pickModelForBiome(biome, rand, true);
+                String name = (chosenModel != null && chosenModel.getName() != null) ? chosenModel.getName().toLowerCase() : "";
+                if (name.contains("stump") || name.contains("log")) {
+                    targetHeight = (0.7f + rand.nextFloat() * 0.4f) * Math.max(0.35f, plant.growth);
+                } else if (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
+                    targetHeight = (4.0f + rand.nextFloat() * 2.0f) * Math.max(0.35f, plant.growth);
+                } else {
+                    targetHeight = (5.5f + rand.nextFloat() * 2.5f) * Math.max(0.35f, plant.growth);
+                }
             }
             case SHRUB -> {
                 targetHeight = (1.2f + rand.nextFloat() * 0.8f) * Math.max(0.35f, plant.growth);
@@ -294,7 +299,7 @@ public class VegetationVisualizer {
 
         if (chosenModel != null) {
             Spatial instance = chosenModel.clone();
-            normalizeAndPositionModel(instance, x, y, z, Math.max(0.4f, targetHeight), rand);
+            normalizeAndPositionModel(instance, x, y, z, Math.max(0.35f, targetHeight), rand);
             applySeasonalTint(instance, season, biome);
             rootNode.attachChild(instance);
         } else {
@@ -499,18 +504,22 @@ public class VegetationVisualizer {
     }
 
     private void normalizeAndPositionModel(Spatial spatial, float x, float y, float z, float targetHeight, Random rand) {
-        spatial.updateModelBound();
-        BoundingBox bbox = (BoundingBox) spatial.getWorldBound();
+        spatial.updateGeometricState();
+        com.jme3.bounding.BoundingVolume bv = spatial.getWorldBound();
 
-        float modelHeight = bbox != null ? bbox.getYExtent() * 2f : 2.0f;
-        float scale = (modelHeight > 0.001f) ? (targetHeight / modelHeight) : 1.0f;
-
+        float modelHeight = 2.0f;
         float baseYOffset = 0.0f;
-        if (bbox != null) {
-            baseYOffset = -(bbox.getCenter().y - bbox.getYExtent()) * scale;
+
+        if (bv instanceof BoundingBox bbox) {
+            modelHeight = Math.max(0.1f, bbox.getYExtent() * 2.0f);
+            float scale = targetHeight / modelHeight;
+            float minY = bbox.getCenter().y - bbox.getYExtent();
+            baseYOffset = -minY * scale;
+            spatial.setLocalScale(scale);
+        } else {
+            spatial.setLocalScale(targetHeight / 2.0f);
         }
 
-        spatial.setLocalScale(scale);
         spatial.setLocalTranslation(x, y + baseYOffset, z);
         spatial.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
 

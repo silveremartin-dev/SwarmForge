@@ -814,47 +814,72 @@ public class JmeGameApp extends SimpleApplication {
             com.jme3.collision.CollisionResults results = new com.jme3.collision.CollisionResults();
             rootNode.collideWith(ray, results);
 
+            // 1. Ant Selection (Direct Mesh Collision)
+            for (int i = 0; i < results.size(); i++) {
+                Geometry hitGeom = results.getCollision(i).getGeometry();
+                com.jme3.scene.Spatial antSpatial = hitGeom;
+                while (antSpatial != null && antSpatial.getUserData("ID") == null) {
+                    antSpatial = antSpatial.getParent();
+                }
+                if (antSpatial != null && antSpatial.getUserData("ID") != null) {
+                    String antId = (String) antSpatial.getUserData("ID");
+                    String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                    selectAndFollowAnt(antId, stage);
+                    return;
+                }
+            }
+
+            // 2. Ant Selection (Ray Proximity Check within 2.0m tolerance)
+            String closestAntId = null;
+            String closestAntStage = null;
+            float minRayDist = 2.0f;
+
+            for (java.util.Map.Entry<String, com.jme3.scene.Spatial> entry : antVisuals.entrySet()) {
+                com.jme3.scene.Spatial antSpatial = entry.getValue();
+                if (antSpatial != null && antSpatial.getCullHint() != com.jme3.scene.Spatial.CullHint.Always) {
+                    Vector3f antPos = antSpatial.getWorldTranslation();
+                    Vector3f v = antPos.subtract(click3d);
+                    float proj = v.dot(dir);
+                    if (proj > 0) {
+                        Vector3f closestPointOnRay = click3d.add(dir.mult(proj));
+                        float dist = antPos.distance(closestPointOnRay);
+                        if (dist < minRayDist) {
+                            minRayDist = dist;
+                            closestAntId = entry.getKey();
+                            closestAntStage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                        }
+                    }
+                }
+            }
+
+            if (closestAntId != null) {
+                selectAndFollowAnt(closestAntId, closestAntStage);
+                return;
+            }
+
             if (results.size() > 0) {
                 com.jme3.collision.CollisionResult closes = results.getClosestCollision();
-                Geometry geom = closes.getGeometry();
 
-                // 1. Check if clicked spatial is an ANT
-                if (isAntTrackingEnabled) {
-                    com.jme3.scene.Spatial antSpatial = geom;
-                    while (antSpatial != null && antSpatial.getUserData("ID") == null) {
-                        antSpatial = antSpatial.getParent();
+                // 3. Chamber Node Selection
+                for (int i = 0; i < results.size(); i++) {
+                    com.jme3.scene.Spatial chamberSpatial = results.getCollision(i).getGeometry();
+                    while (chamberSpatial != null && chamberSpatial.getUserData("ChamberID") == null && (chamberSpatial.getName() == null || !chamberSpatial.getName().startsWith("Node_"))) {
+                        chamberSpatial = chamberSpatial.getParent();
                     }
-
-                    if (antSpatial != null && antSpatial.getUserData("ID") != null) {
-                        followedAntId = (String) antSpatial.getUserData("ID");
-                        String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
-                        if (selectionListener != null) {
-                            final String id = followedAntId;
-                            final String fStage = stage;
-                            Platform.runLater(() -> selectionListener.onAntSelected(id, "Ouvrière (Worker)", fStage, 95.0f, 88.0f, 12.0f, 450.0f, "Forager"));
+                    if (chamberSpatial != null) {
+                        String chamberIdStr = (String) chamberSpatial.getUserData("ChamberID");
+                        if (chamberIdStr == null && chamberSpatial.getName() != null && chamberSpatial.getName().startsWith("Node_")) {
+                            chamberIdStr = chamberSpatial.getName().substring(5);
                         }
-                        return;
+                        if (chamberIdStr != null && selectionListener != null) {
+                            final String fChamberId = chamberIdStr;
+                            Platform.runLater(() -> selectionListener.onChamberSelected(fChamberId));
+                            return;
+                        }
                     }
                 }
 
-                // 2. Check if clicked spatial is a Chamber Node
-                com.jme3.scene.Spatial chamberSpatial = geom;
-                while (chamberSpatial != null && chamberSpatial.getUserData("ChamberID") == null && (chamberSpatial.getName() == null || !chamberSpatial.getName().startsWith("Node_"))) {
-                    chamberSpatial = chamberSpatial.getParent();
-                }
-                if (chamberSpatial != null) {
-                    String chamberIdStr = (String) chamberSpatial.getUserData("ChamberID");
-                    if (chamberIdStr == null && chamberSpatial.getName() != null && chamberSpatial.getName().startsWith("Node_")) {
-                        chamberIdStr = chamberSpatial.getName().substring(5);
-                    }
-                    if (chamberIdStr != null && selectionListener != null) {
-                        final String fChamberId = chamberIdStr;
-                        Platform.runLater(() -> selectionListener.onChamberSelected(fChamberId));
-                        return;
-                    }
-                }
-
-                // 3. Check if clicked spatial is Terrain or Voxel
+                // 4. Terrain Voxel Selection
                 Vector3f contact = closes.getContactPoint();
                 if (contact != null && simulation != null && simulation.getTerrarium() != null && selectionListener != null) {
                     org.swarmforge.core.domain.Terrarium terr = simulation.getTerrarium();
@@ -1055,12 +1080,7 @@ public class JmeGameApp extends SimpleApplication {
         // Post-render: Read pixels
         if (targetImage != null) {
             renderer.readFrameBuffer(null, pixelBuffer);
-
-            // Invert Y axis (not handled here, JME does bottom-up, FX needs top-down...
-            // usually need flip)
-            // But let's assume it works for FX transfer.
-            // For recording, we might need a flip.
-
+            pixelBuffer.rewind();
             pixelBuffer.get(pixelData);
             pixelBuffer.clear();
 

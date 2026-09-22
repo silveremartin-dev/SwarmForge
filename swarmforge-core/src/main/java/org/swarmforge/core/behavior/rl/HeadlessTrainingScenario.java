@@ -113,21 +113,26 @@ public class HeadlessTrainingScenario {
     }
 
     /**
-     * Phase 2: Closed-Loop Double-DQN Multi-Task Fine-Tuning.
+     * Phase 2: Closed-Loop Multi-Caste Double-DQN Fine-Tuning.
+     * Simulates agent exploration across all castes while maintaining multi-task stability.
      *
      * @param steps Number of simulation ticks
      */
     public void runDqnPhase(int steps) {
-        Individual learner = getSampleLearner();
-        if (learner == null) {
-            setupColony(1, 10, 1);
-            learner = getSampleLearner();
+        Individual.Caste[] castes = {Individual.Caste.QUEEN, Individual.Caste.SOLDIER, Individual.Caste.NURSE, Individual.Caste.WORKER};
+        List<Individual> learners = new ArrayList<>();
+        for (Individual.Caste c : castes) {
+            Individual ind = new Individual(colonyId, c, 0, 0, 0);
+            ind.setHomePosition(0, 0, 0);
+            learners.add(ind);
         }
 
         float totalReward = 0.0f;
         int rewardCount = 0;
 
         for (int t = 0; t < steps; t++) {
+            Individual learner = learners.get(t % learners.size());
+
             float[] state = OnnxBrainArchitecture.buildObservationVector(learner, context);
             int actionIdx = dqnTrainer.selectAction(state);
 
@@ -140,6 +145,14 @@ public class HeadlessTrainingScenario {
 
             dqnTrainer.recordTransition(state, actionIdx, reward, nextState, done);
             dqnTrainer.trainStep();
+
+            // Multi-task imitation regularization to prevent catastrophic forgetting
+            if (t % 2 == 0) {
+                MockAgentView regAgent = generateSyntheticAgentState();
+                int expAct = computeMultiCasteExpertAction(regAgent, context);
+                float[] regObs = OnnxBrainArchitecture.buildObservationVector(regAgent, context);
+                network.trainImitationStep(regObs, expAct);
+            }
 
             if (done) {
                 learner.setEnergy(100.0f);
@@ -237,27 +250,25 @@ public class HeadlessTrainingScenario {
 
     private MockAgentView generateSyntheticAgentState() {
         MockAgentView view = new MockAgentView();
-        view.energy = 0.1f + rng.nextFloat() * 0.9f;
-        view.carryingFood = rng.nextBoolean();
-        view.atNest = rng.nextBoolean();
-        view.x = (rng.nextFloat() - 0.5f) * 40.0f;
-        view.y = (rng.nextFloat() - 0.5f) * 40.0f;
-        view.heading = (float) (rng.nextFloat() * 2 * Math.PI);
+        view.energy = 0.3f + rng.nextFloat() * 0.7f;
 
-        // Even distribution across castes
-        Individual.Caste[] castes = Individual.Caste.values();
+        // Balanced caste selection
+        Individual.Caste[] castes = {Individual.Caste.QUEEN, Individual.Caste.SOLDIER, Individual.Caste.NURSE, Individual.Caste.WORKER};
         view.caste = castes[rng.nextInt(castes.length)];
 
         // Insect order distribution
         String[] insectTypes = {"ANT", "BEE", "WASP", "TERMITE"};
         view.insectType = insectTypes[rng.nextInt(insectTypes.length)];
 
-        // Sensory triggers
-        view.hasFoodNearby = rng.nextFloat() < 0.35f;
-        view.hasEnemyNearby = rng.nextFloat() < 0.20f;
-        view.alarmPheromone = view.hasEnemyNearby ? 0.8f : (rng.nextFloat() < 0.1f ? 0.5f : 0.0f);
-        view.foodPheromoneGradientX = (rng.nextFloat() - 0.5f) * 2.0f;
-        view.foodPheromoneGradientY = (rng.nextFloat() - 0.5f) * 2.0f;
+        view.atNest = rng.nextBoolean();
+        view.carryingFood = (view.caste == Individual.Caste.WORKER || view.caste == Individual.Caste.NURSE) && rng.nextBoolean();
+        view.hasFoodNearby = (view.caste == Individual.Caste.WORKER) && !view.carryingFood && rng.nextBoolean();
+        view.hasEnemyNearby = (view.caste == Individual.Caste.SOLDIER) && rng.nextBoolean();
+        view.alarmPheromone = view.hasEnemyNearby ? (0.6f + rng.nextFloat() * 0.4f) : 0.0f;
+
+        view.heading = (float) (rng.nextFloat() * 2 * Math.PI);
+        view.x = view.atNest ? 0f : (rng.nextFloat() - 0.5f) * 30.0f;
+        view.y = view.atNest ? 0f : (rng.nextFloat() - 0.5f) * 30.0f;
 
         return view;
     }
@@ -276,24 +287,21 @@ public class HeadlessTrainingScenario {
             if (!atNest) {
                 return 5; // RETURN_HOME
             }
-            if (agent.getEnergyLevel() > 0.35f) {
-                return 9; // LAY_EGG (Oviposition in royal chamber)
+            if (agent.getEnergyLevel() > 0.30f) {
+                return 9; // LAY_EGG (Royal Chamber Oviposition)
             }
-            if (agent.getEnergyLevel() < 0.25f) {
-                return 13; // REST
-            }
-            return 11; // GROOM / Court interaction
+            return 13; // REST
         }
 
         // 2. SOLDIER BEHAVIOR
         if (agent.isSoldier() || agent.isMajor()) {
-            if (hasEnemy || alarm > 0.25f) {
+            if (hasEnemy || alarm > 0.20f) {
                 return 6; // ATTACK
             }
             if (atNest) {
-                return 7; // DEFEND_PATROL (Nest entrance / rampart guarding)
+                return 7; // DEFEND_PATROL
             }
-            return 0; // MOVE_FORWARD (Patrol territory)
+            return 0; // MOVE_FORWARD (Patrol perimeter)
         }
 
         // 3. NURSE BEHAVIOR
@@ -301,13 +309,7 @@ public class HeadlessTrainingScenario {
             if (!atNest) {
                 return 5; // RETURN_HOME to nursery
             }
-            if (agent.isCarryingFood()) {
-                return 8; // TEND_BROOD (Feed larvae with social crop)
-            }
-            if (agent.getHunger() > 0.7f) {
-                return 11; // GROOM / Trophallaxis
-            }
-            return 8; // TEND_BROOD / NURSE
+            return 8; // TEND_BROOD (Care for larvae/eggs)
         }
 
         // 4. WORKER / FORAGER BEHAVIOR

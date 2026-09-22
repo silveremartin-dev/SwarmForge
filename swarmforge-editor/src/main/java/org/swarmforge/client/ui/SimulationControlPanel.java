@@ -67,7 +67,6 @@ public class SimulationControlPanel extends VBox {
     private final Button btnRewind;
     private final Button btnStepBack;
     private final Button btnPlay;
-    private final Button btnPause;
     private final Button btnStepForward;
     private final Button btnFastForward;
     private final Button btnGoToEnd;
@@ -993,7 +992,6 @@ public class SimulationControlPanel extends VBox {
         btnRewind = createIconButton(Feather.REWIND, "sim.btn.rewind.tt");
         btnStepBack = createIconButton(Feather.CHEVRON_LEFT, "sim.btn.stepback.tt");
         btnPlay = createIconButton(Feather.PLAY, "sim.btn.play.tt");
-        btnPause = createIconButton(Feather.PAUSE, "sim.btn.pause.tt");
         btnStepForward = createIconButton(Feather.CHEVRON_RIGHT, "sim.btn.stepforward.tt");
         btnFastForward = createIconButton(Feather.FAST_FORWARD, "sim.btn.fastforward.tt");
         btnGoToEnd = createIconButton(Feather.SKIP_FORWARD, "sim.btn.gotoend.tt");
@@ -1001,13 +999,12 @@ public class SimulationControlPanel extends VBox {
         setupAutoRepeat(btnGoToBeginning, this::doGoToBeginning);
         setupAutoRepeat(btnRewind, this::doRewind);
         setupAutoRepeat(btnStepBack, this::doStepBack);
-        setupAutoRepeat(btnPlay, this::doPlay);
-        setupAutoRepeat(btnPause, this::doPause);
+        setupAutoRepeat(btnPlay, this::doTogglePlayPause);
         setupAutoRepeat(btnStepForward, this::doStepForward);
         setupAutoRepeat(btnFastForward, this::doFastForward);
         setupAutoRepeat(btnGoToEnd, this::doGoToEnd);
 
-        playbackRow1.getChildren().addAll(btnGoToBeginning, btnRewind, btnStepBack, btnPlay, btnPause, btnStepForward, btnFastForward, btnGoToEnd);
+        playbackRow1.getChildren().addAll(btnGoToBeginning, btnRewind, btnStepBack, btnPlay, btnStepForward, btnFastForward, btnGoToEnd);
 
         // Line 3: Speed Slider & Readout Label
         HBox speedSliderRow = new HBox(8);
@@ -1588,6 +1585,14 @@ public class SimulationControlPanel extends VBox {
         if (onRewind != null) onRewind.accept(100);
     }
 
+    private void doTogglePlayPause() {
+        if (isPlaying) {
+            doPause();
+        } else {
+            doPlay();
+        }
+    }
+
     private void doPlay() {
         if (!isPlaying) {
             isPlaying = true;
@@ -1764,19 +1769,30 @@ public class SimulationControlPanel extends VBox {
     }
 
     private void updateButtonStates() {
-        if (btnPlay != null && btnPause != null) {
+        if (btnPlay != null) {
             FontIcon playIcon = (btnPlay.getGraphic() instanceof FontIcon) ? (FontIcon) btnPlay.getGraphic() : null;
-            FontIcon pauseIcon = (btnPause.getGraphic() instanceof FontIcon) ? (FontIcon) btnPause.getGraphic() : null;
             if (isPlaying) {
-                btnPlay.setStyle("-fx-background-color: #16a34a; -fx-background-radius: 4; -fx-min-width: 32px; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #22c55e; -fx-border-width: 2px; -fx-border-radius: 4;");
-                btnPause.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 4; -fx-min-width: 32px; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 4;");
-                if (playIcon != null) playIcon.setIconColor(javafx.scene.paint.Color.web("#ffffff"));
-                if (pauseIcon != null) pauseIcon.setIconColor(javafx.scene.paint.Color.web("#94a3b8"));
+                btnPlay.setStyle("-fx-background-color: #d97706; -fx-background-radius: 4; -fx-min-width: 32px; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #f59e0b; -fx-border-width: 2px; -fx-border-radius: 4;");
+                if (playIcon != null) {
+                    playIcon.setIconCode(Feather.PAUSE);
+                    playIcon.setIconColor(javafx.scene.paint.Color.web("#ffffff"));
+                }
+                Tooltip tt = btnPlay.getTooltip();
+                if (tt != null) {
+                    tt.textProperty().unbind();
+                    tt.textProperty().bind(i18n.createStringBinding("sim.btn.pause.tt"));
+                }
             } else {
-                btnPlay.setStyle("-fx-background-color: #0284c7; -fx-background-radius: 4; -fx-min-width: 32px; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #38bdf8; -fx-border-width: 2px; -fx-border-radius: 4;");
-                btnPause.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 4; -fx-min-width: 32px; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #334155; -fx-border-radius: 4;");
-                if (playIcon != null) playIcon.setIconColor(javafx.scene.paint.Color.web("#ffffff"));
-                if (pauseIcon != null) pauseIcon.setIconColor(javafx.scene.paint.Color.web("#f8fafc"));
+                btnPlay.setStyle("-fx-background-color: #16a34a; -fx-background-radius: 4; -fx-min-width: 32px; -fx-min-height: 28px; -fx-padding: 3px 6px; -fx-cursor: hand; -fx-border-color: #22c55e; -fx-border-width: 2px; -fx-border-radius: 4;");
+                if (playIcon != null) {
+                    playIcon.setIconCode(Feather.PLAY);
+                    playIcon.setIconColor(javafx.scene.paint.Color.web("#ffffff"));
+                }
+                Tooltip tt = btnPlay.getTooltip();
+                if (tt != null) {
+                    tt.textProperty().unbind();
+                    tt.textProperty().bind(i18n.createStringBinding("sim.btn.play.tt"));
+                }
             }
         }
 
@@ -1787,7 +1803,6 @@ public class SimulationControlPanel extends VBox {
         if (btnGoToBeginning != null) btnGoToBeginning.setDisable(false);
         if (btnGoToEnd != null) btnGoToEnd.setDisable(false);
         if (btnPlay != null) btnPlay.setDisable(false);
-        if (btnPause != null) btnPause.setDisable(false);
 
         boolean isSimulationActive = isPlaying || currentTick > 0 || highestRecordedTick > 0;
         if (scenarioStepCombo != null) scenarioStepCombo.setDisable(isSimulationActive);
@@ -1997,8 +2012,8 @@ public class SimulationControlPanel extends VBox {
                     }
                 }
                 if (getScene() != null) {
-                    org.swarmforge.client.util.NotificationOverlay.showNotification(
-                        getScene(),
+                    org.swarmforge.client.util.NotificationOverlay.show(
+                        this,
                         "✓ Scénario chargé : " + sc.getTitle(),
                         org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS
                     );
@@ -2006,8 +2021,8 @@ public class SimulationControlPanel extends VBox {
             }
         } catch (Exception ex) {
             if (getScene() != null) {
-                org.swarmforge.client.util.NotificationOverlay.showNotification(
-                    getScene(),
+                org.swarmforge.client.util.NotificationOverlay.show(
+                    this,
                     "Erreur chargement scénario : " + ex.getMessage(),
                     org.swarmforge.client.util.NotificationOverlay.NotificationType.ERROR
                 );
@@ -2024,8 +2039,8 @@ public class SimulationControlPanel extends VBox {
         lblLobbyStatus.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #10b981; -fx-background-color: rgba(16, 185, 129, 0.15); -fx-padding: 3 8; -fx-background-radius: 4;");
         btnStartServerMatch.setDisable(true);
         if (getScene() != null) {
-            org.swarmforge.client.util.NotificationOverlay.showNotification(
-                getScene(),
+            org.swarmforge.client.util.NotificationOverlay.show(
+                this,
                 "🚀 Lancement de la partie sur le serveur...",
                 org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS
             );

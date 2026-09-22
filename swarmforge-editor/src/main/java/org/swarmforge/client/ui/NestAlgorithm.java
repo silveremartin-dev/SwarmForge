@@ -82,7 +82,7 @@ public final class NestAlgorithm {
     public static void applyToTunnelNetwork(NestGeneratorPane.GeneratedNest genNest, float nx, float ny, float nz, org.swarmforge.core.simulation.TunnelNetwork tn, org.swarmforge.core.domain.Colony colony) {
         if (genNest == null || tn == null) return;
 
-        // Determine ground elevation if nz is 0
+        // Determine ground elevation if nz is not set
         if (nz <= 0.5f && colony != null && colony.getTerrarium() != null) {
             nz = colony.getTerrarium().getSurfaceElevation(nx, ny);
         }
@@ -90,11 +90,19 @@ public final class NestAlgorithm {
             nz = 10.0f; // Standard baseline ground elevation
         }
 
-        // Preserve true biological scale and vertical distances as designed in the nest editor.
-        // If excavation encounters bedrock (z <= 1.15m), excavation redirects horizontally (lateral epilithic expansion)
-        // along the rock interface, preserving 100% of chamber capacity to house all ants without piercing rock.
-        float bedrockLimitZ = 1.15f;
-        float maxExcavatableSoil = Math.max(0.5f, nz - bedrockLimitZ);
+        // Measure maximum vertical subterranean extent designed in the nest preset
+        float maxNestDepth = 0.0f;
+        for (NestGeneratorPane.NestNode n : genNest.nodes) {
+            if (n.z > maxNestDepth) {
+                maxNestDepth = (float) n.z;
+            }
+        }
+
+        // Available subterranean soil depth between ground surface and bedrock floor (1.0m)
+        float availableSoil = Math.max(1.0f, nz - 1.0f);
+        float depthScale = (maxNestDepth > availableSoil && maxNestDepth > 0.001f)
+                ? (availableSoil / maxNestDepth)
+                : 1.0f;
 
         Map<NestGeneratorPane.NestNode, UUID> nodeMap = new HashMap<>();
         Map<UUID, org.swarmforge.core.simulation.TunnelNetwork.TunnelNode> simNodeMap = new HashMap<>();
@@ -109,24 +117,10 @@ public final class NestAlgorithm {
             float wz;
 
             if (n.z >= 0) {
-                // Subterranean excavation
-                float rawDepth = (float) n.z;
-                if (rawDepth > maxExcavatableSoil) {
-                    // Bedrock encounter: Excavation redirects laterally along the soil-rock boundary
-                    float excessDepth = rawDepth - maxExcavatableSoil;
-                    wz = bedrockLimitZ + (float) (Math.sin(simNodes.size() * 0.75) * 0.12f); // Gentle natural floor variance
-                    
-                    double angle = (Math.abs(n.x) > 0.001 || Math.abs(n.y) > 0.001)
-                            ? Math.atan2(n.y, n.x)
-                            : (simNodes.size() * 1.6180339887); // Golden angle radial distribution
-                    float lateralRadius = excessDepth * 1.10f;
-                    wx += (float) (lateralRadius * Math.cos(angle));
-                    wy += (float) (lateralRadius * Math.sin(angle));
-                } else {
-                    wz = nz - rawDepth;
-                }
+                // Subterranean excavation: descends smoothly into the soil column
+                wz = nz - (float) n.z * depthScale;
             } else {
-                // Epigeic / mound / arboreal above ground
+                // Epigeic / mound / arboreal above ground: rises above ground surface
                 wz = nz + (float) (-n.z);
             }
 
