@@ -73,7 +73,10 @@ public class TerrainMeshGenerator {
                 TerrariumCell.Material mat = topCell != null ? topCell.material() : TerrariumCell.Material.PEAT;
 
                 float r, g, b;
-                if (lat > 60.0) {
+                if (mat == TerrariumCell.Material.WATER) {
+                    // River / Stream / Water Body
+                    r = 0.12f; g = 0.45f; b = 0.88f;
+                } else if (lat > 60.0) {
                     // Snow / Alpine frost
                     r = 0.94f; g = 0.96f; b = 1.0f;
                 } else if (mat == TerrariumCell.Material.SAND || lat < 23.5) {
@@ -227,7 +230,9 @@ public class TerrainMeshGenerator {
 
                     // Vibrant substrate voxel colors
                     float r = 0.45f, g = 0.30f, b = 0.18f, a = 1.0f;
-                    if (cell.material() == TerrariumCell.Material.SAND) {
+                    if (cell.material() == TerrariumCell.Material.WATER) {
+                        r = 0.12f; g = 0.48f; b = 0.92f; a = 0.85f;
+                    } else if (cell.material() == TerrariumCell.Material.SAND) {
                         r = 0.92f; g = 0.85f; b = 0.48f;
                     } else if (cell.material() == TerrariumCell.Material.CLAY) {
                         r = 0.80f; g = 0.40f; b = 0.20f;
@@ -247,7 +252,9 @@ public class TerrainMeshGenerator {
 
                     if (isSurface) {
                         double lat = Math.abs(terrarium.getLatitude());
-                        if (lat > 60.0) {
+                        if (cell.material() == TerrariumCell.Material.WATER) {
+                            topR = 0.16f + var; topG = 0.55f + var; topB = 0.96f;
+                        } else if (lat > 60.0) {
                             topR = 0.92f + var; topG = 0.94f + var; topB = 0.98f; // Arctic snow cover
                         } else if (cell.material() == TerrariumCell.Material.EARTH || cell.material() == TerrariumCell.Material.SILT) {
                             topR = 0.20f + var; topG = 0.72f + var; topB = 0.18f; // Lush meadow grass

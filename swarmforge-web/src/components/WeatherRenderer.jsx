@@ -78,7 +78,7 @@ export default function WeatherRenderer() {
     }, [])
 
     useFrame((state, delta) => {
-        if (!precipRef.current || !showPrecipitation || (intensity < 0.1 && !isSnow && !isHail)) return
+        if (!precipRef.current || !precipRef.current.geometry?.attributes?.position?.array || !showPrecipitation || (intensity < 0.1 && !isSnow && !isHail)) return
 
         const positions = precipRef.current.geometry.attributes.position.array
         const windX = windSpeed * 0.15
@@ -105,7 +105,6 @@ export default function WeatherRenderer() {
 
     // ── 3. LIGHTNING & SPEED OF SOUND PROPAGATION DELAY ───────────────────────
     const [lightningActive, setLightningActive] = useState(false)
-    const [lightningMesh, setLightningMesh] = useState(null)
     const prevTriggerRef = useRef(lightningTrigger)
 
     useEffect(() => {
@@ -138,19 +137,6 @@ export default function WeatherRenderer() {
 
         const startX = (Math.random() - 0.5) * 70
         const startZ = (Math.random() - 0.5) * 70
-        const points = []
-        let currentPos = new THREE.Vector3(startX, 55, startZ)
-        points.push(currentPos.clone())
-
-        while (currentPos.y > 0) {
-            currentPos.y -= 3 + Math.random() * 4
-            currentPos.x += (Math.random() - 0.5) * 7
-            currentPos.z += (Math.random() - 0.5) * 7
-            points.push(currentPos.clone())
-        }
-
-        const geometry = new THREE.BufferGeometry().setFromPoints(points)
-        setLightningMesh(geometry)
 
         setTimeout(() => {
             setLightningActive(false)
@@ -161,7 +147,6 @@ export default function WeatherRenderer() {
         const soundDelayMs = 350 + Math.floor((distFromCenter / 50) * 2000)
 
         setTimeout(() => {
-            soundEngine.ensureContext()
             soundEngine.triggerThunder()
         }, soundDelayMs)
     }
@@ -285,12 +270,6 @@ export default function WeatherRenderer() {
                 <group>
                     <ambientLight intensity={4.5} color="#b0c4de" />
                     <pointLight position={[0, 45, 0]} intensity={25.0} color="#e0ffff" distance={150} />
-
-                    {lightningMesh && (
-                        <line geometry={lightningMesh}>
-                            <lineBasicMaterial color="#ffffff" linewidth={4} />
-                        </line>
-                    )}
                 </group>
             )}
 

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, Grid } from '@react-three/drei'
 import { useSimulationStore } from '../store/simulationStore'
 import Terrarium from './Terrarium'
@@ -17,6 +17,9 @@ import { showToast } from '../store/toastStore'
 function CameraController({ resetTrigger, followAntPosition, customTarget }) {
     const { camera } = useThree()
     const controlsRef = useRef()
+    const { cameraFollowMode, selectedEntity, trackedAntData, customCameraTarget, setCustomCameraTarget } = useSimulationStore()
+
+    const ant = trackedAntData || selectedEntity
 
     useEffect(() => {
         if (resetTrigger > 0) {
@@ -30,22 +33,48 @@ function CameraController({ resetTrigger, followAntPosition, customTarget }) {
     }, [resetTrigger, camera])
 
     useEffect(() => {
-        if (customTarget && controlsRef.current) {
-            const [cx, cy, cz] = customTarget
+        const target = customTarget || customCameraTarget
+        if (target && controlsRef.current) {
+            const [cx, cy, cz] = target
             controlsRef.current.target.set(cx, cy, cz)
             camera.position.set(cx + 20, cy + 18, cz + 25)
             controlsRef.current.update()
+            if (customCameraTarget) {
+                setCustomCameraTarget(null)
+            }
         }
-    }, [customTarget, camera])
+    }, [customTarget, customCameraTarget, camera, setCustomCameraTarget])
 
-    useEffect(() => {
-        if (followAntPosition && controlsRef.current) {
-            const [ax, ay, az] = followAntPosition
-            controlsRef.current.target.set(ax, ay, az)
-            camera.position.set(ax + 15, ay + 12, az + 20)
-            controlsRef.current.update()
+    useFrame(() => {
+        if (!ant || !cameraFollowMode) return
+
+        const ax = ant.x ?? 50
+        const az = ant.z !== undefined ? ant.z : (ant.y ?? 50)
+        const ay = (ant.y !== undefined && ant.z !== undefined ? ant.y : 0.15)
+        const heading = ant.heading !== undefined ? ant.heading : 0
+
+        if (cameraFollowMode === 'TPS') {
+            const camDist = 12
+            const camHeight = 7
+            const targetX = ax - Math.sin(heading) * camDist
+            const targetZ = az - Math.cos(heading) * camDist
+            const targetY = ay + camHeight
+
+            camera.position.lerp(new THREE.Vector3(targetX, targetY, targetZ), 0.08)
+            if (controlsRef.current) {
+                controlsRef.current.target.lerp(new THREE.Vector3(ax, ay + 0.5, az), 0.1)
+                controlsRef.current.update()
+            }
+        } else if (cameraFollowMode === 'FPS') {
+            camera.position.set(ax, ay + 0.35, az)
+            const lookX = ax + Math.sin(heading) * 10
+            const lookZ = az + Math.cos(heading) * 10
+            if (controlsRef.current) {
+                controlsRef.current.target.set(lookX, ay + 0.35, lookZ)
+                controlsRef.current.update()
+            }
         }
-    }, [followAntPosition, camera])
+    })
 
     return (
         <OrbitControls
@@ -58,6 +87,171 @@ function CameraController({ resetTrigger, followAntPosition, customTarget }) {
             maxDistance={300}
         />
     )
+}
+
+/**
+ * 2D Screen-space pixel picking handler (1:1 with heavy client WorldEditorPane.java).
+ * Projects ant/chamber 3D coordinates to screen pixels and matches clicks within 25-30px.
+ */
+function ScreenSpaceInteractionHandler() {
+    const { camera, size, gl } = useThree()
+    const {
+        ants,
+        nests,
+        terrainConfig,
+        setSelectedEntity,
+        setSelectedChamber
+    } = useSimulationStore()
+
+    const tempVec = useMemo(() => new THREE.Vector3(), [])
+
+    useEffect(() => {
+        const dom = gl.domElement
+        if (!dom) return
+
+        const handlePointerMove = (e) => {
+            const rect = dom.getBoundingClientRect()
+            const mouseX = e.clientX - rect.left
+            const mouseY = e.clientY - rect.top
+
+            // 1. Check Ants (Screen-Space threshold: 25px, 1:1 with heavy client)
+            let closestAnt = null
+            let minAntDistSq = 25 * 25
+            if (ants && ants.length > 0) {
+                for (let i = 0; i < ants.length; i++) {
+                    const a = ants[i]
+                    const ax = a.x ?? 50
+                    const az = a.z !== undefined ? a.z : (a.y ?? 50)
+                    const ay = getTerrainHeight(ax, az, terrainConfig) + 0.15
+
+                    tempVec.set(ax, ay, az).project(camera)
+                    if (tempVec.z < 1.0) {
+                        const sx = ((tempVec.x + 1) * size.width) / 2
+                        const sy = ((-tempVec.y + 1) * size.height) / 2
+                        const dSq = (sx - mouseX) * (sx - mouseX) + (sy - mouseY) * (sy - mouseY)
+                        if (dSq < minAntDistSq) {
+                            minAntDistSq = dSq
+                            closestAnt = a
+                        }
+                    }
+                }
+            }
+
+            if (closestAnt) {
+                dom.style.cursor = 'pointer'
+                return
+            }
+
+            // 2. Check Chambers (Screen-Space threshold: 30px, 1:1 with heavy client)
+            let closestChamber = null
+            let minChamberDistSq = 30 * 30
+            if (nests && nests.length > 0) {
+                for (const nest of nests) {
+                    if (nest.chambers) {
+                        for (const ch of nest.chambers) {
+                            const cx = ch.x ?? nest.x ?? 50
+                            const cy = ch.y ?? -1.2
+                            const cz = ch.z ?? nest.z ?? 50
+
+                            tempVec.set(cx, cy, cz).project(camera)
+                            if (tempVec.z < 1.0) {
+                                const sx = ((tempVec.x + 1) * size.width) / 2
+                                const sy = ((-tempVec.y + 1) * size.height) / 2
+                                const dSq = (sx - mouseX) * (sx - mouseX) + (sy - mouseY) * (sy - mouseY)
+                                if (dSq < minChamberDistSq) {
+                                    minChamberDistSq = dSq
+                                    closestChamber = ch
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (closestChamber) {
+                dom.style.cursor = 'pointer'
+                return
+            }
+
+            dom.style.cursor = 'default'
+        }
+
+        const handlePointerDown = (e) => {
+            if (e.button !== 0) return
+            const rect = dom.getBoundingClientRect()
+            const mouseX = e.clientX - rect.left
+            const mouseY = e.clientY - rect.top
+
+            // 1. Check Ants (Screen-Space 25px threshold)
+            let closestAnt = null
+            let minAntDistSq = 25 * 25
+            if (ants && ants.length > 0) {
+                for (let i = 0; i < ants.length; i++) {
+                    const a = ants[i]
+                    const ax = a.x ?? 50
+                    const az = a.z !== undefined ? a.z : (a.y ?? 50)
+                    const ay = getTerrainHeight(ax, az, terrainConfig) + 0.15
+
+                    tempVec.set(ax, ay, az).project(camera)
+                    if (tempVec.z < 1.0) {
+                        const sx = ((tempVec.x + 1) * size.width) / 2
+                        const sy = ((-tempVec.y + 1) * size.height) / 2
+                        const dSq = (sx - mouseX) * (sx - mouseX) + (sy - mouseY) * (sy - mouseY)
+                        if (dSq < minAntDistSq) {
+                            minAntDistSq = dSq
+                            closestAnt = a
+                        }
+                    }
+                }
+            }
+
+            if (closestAnt) {
+                setSelectedEntity(closestAnt)
+                return
+            }
+
+            // 2. Check Chambers (Screen-Space 30px threshold)
+            let closestChamber = null
+            let minChamberDistSq = 30 * 30
+            if (nests && nests.length > 0) {
+                for (const nest of nests) {
+                    if (nest.chambers) {
+                        for (const ch of nest.chambers) {
+                            const cx = ch.x ?? nest.x ?? 50
+                            const cy = ch.y ?? -1.2
+                            const cz = ch.z ?? nest.z ?? 50
+
+                            tempVec.set(cx, cy, cz).project(camera)
+                            if (tempVec.z < 1.0) {
+                                const sx = ((tempVec.x + 1) * size.width) / 2
+                                const sy = ((-tempVec.y + 1) * size.height) / 2
+                                const dSq = (sx - mouseX) * (sx - mouseX) + (sy - mouseY) * (sy - mouseY)
+                                if (dSq < minChamberDistSq) {
+                                    minChamberDistSq = dSq
+                                    closestChamber = { ...ch, nestName: nest.name, colonyId: nest.colonyId }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (closestChamber) {
+                setSelectedChamber(closestChamber)
+                return
+            }
+        }
+
+        dom.addEventListener('pointermove', handlePointerMove)
+        dom.addEventListener('pointerdown', handlePointerDown)
+
+        return () => {
+            dom.removeEventListener('pointermove', handlePointerMove)
+            dom.removeEventListener('pointerdown', handlePointerDown)
+        }
+    }, [ants, nests, camera, size, gl, terrainConfig, setSelectedEntity, setSelectedChamber])
+
+    return null
 }
 
 function SunLighting({ environment, isDark }) {
@@ -166,6 +360,8 @@ export default function SimulationVisualViewport() {
                     />
                 )}
 
+                <ScreenSpaceInteractionHandler />
+
                 <CameraController
                     resetTrigger={resetCamTrigger}
                     followAntPosition={followPos}
@@ -180,13 +376,13 @@ export default function SimulationVisualViewport() {
                 onFocusColony={handleFocusPosition}
             />
 
-            {/* 2. Floating Mouse-Hovered Voxel Inspector HUD */}
+            {/* 2. Floating Mouse-Hovered Voxel Inspector HUD (1:1 with WorldEditorPane.java) */}
             <VoxelMouseHoverHUD />
 
-            {/* 3. Collapsible Tracked Ant Inspector HUD (Bottom-Left) */}
-            <TrackedAntInspectorHUD />
+            {/* 3. Tracked Ant Inspector HUD (Bottom-Left 1:1 with TrackedAntPane.java) */}
+            <TrackedAntInspectorHUD onFocusAnt={handleFocusPosition} />
 
-            {/* 4. Collapsible Subterranean Chamber Inspector HUD (Bottom-Left) */}
+            {/* 4. Subterranean Chamber Inspector HUD (Bottom-Left 1:1 with ChamberInfoPane.java) */}
             <ChamberInspectorHUD onFocusChamber={handleFocusPosition} />
 
             {/* 5. Dual Minimap Overlay (Top-Right) */}

@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { BookOpen, X, Search, Layers, Compass, HelpCircle, Shield, Crown, HardHat, Sparkles } from 'lucide-react'
 import { useSimulationStore } from '../store/simulationStore'
 
@@ -209,18 +209,21 @@ export default function LegendGlossaryModal({ isOpen, onClose }) {
                                 </div>
                             </div>
 
-                            {/* Phéromones */}
+                            {/* Phéromones (8 Canaux Canoniques 1:1 avec PheromoneType.java & PheromoneOverlay.java) */}
                             <div>
                                 <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: '#a855f7', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <Sparkles size={15} /> Gradients de Phéromones
+                                    <Sparkles size={15} /> Gradients de Phéromones (8 Canaux)
                                 </h4>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
                                     {[
-                                        { name: 'Piste de Nourriture', color: '#06b6d4', desc: 'Cyan (#06b6d4) : Guide vers la biomasse' },
-                                        { name: 'Alarme & Attaque', color: '#ef4444', desc: 'Rouge (#ef4444) : Mobilisation défensive urgente' },
-                                        { name: 'Homing & Retour Nid', color: '#f59e0b', desc: 'Ambre (#f59e0b) : Orientation vers les chambres' },
-                                        { name: 'Recrutement de Masse', color: '#8b5cf6', desc: 'Violet (#8b5cf6) : Renfort de travail' },
-                                        { name: 'Phéromone Royale', color: '#ec4899', desc: 'Rose (#ec4899) : Inhibiteur de ponte ouvrière' },
+                                        { name: '1. Piste de Nourriture (Food)', color: '#4caf50', desc: 'Vert (#4caf50) : Guide vers la biomasse et le miellat' },
+                                        { name: '2. Retour au Nid (Home)', color: '#2196f3', desc: 'Bleu (#2196f3) : Orientation vectorielle vers les entrées' },
+                                        { name: '3. Alarme Chimique (Alarm)', color: '#f44336', desc: 'Rouge (#f44336) : Mobilisation défensive et alerte de danger' },
+                                        { name: '4. Recrutement de Masse (Trail)', color: '#ffc107', desc: 'Jaune (#ffc107) : Amplification du flux d\'ouvrières' },
+                                        { name: '5. Phéromone Royale (Queen)', color: '#9c27b0', desc: 'Violet (#9c27b0) : Fertilité et cohésion coloniale' },
+                                        { name: '6. Soin du Couvain (Brood)', color: '#ff9800', desc: 'Orange (#ff9800) : Reconnaissance des larves et œufs' },
+                                        { name: '7. Nécrophorèse & Déchets (Death)', color: '#607d8b', desc: 'Gris/Ardoise (#607d8b) : Transport vers le dépotoir' },
+                                        { name: '8. Marquage Territorial (Territory)', color: '#009688', desc: 'Sarcelle (#009688) : Délimitation des frontières du nid' },
                                     ].map((phero, i) => (
                                         <div key={i} style={{
                                             display: 'flex',

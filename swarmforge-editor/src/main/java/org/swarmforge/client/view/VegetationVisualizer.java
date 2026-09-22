@@ -256,9 +256,9 @@ public class VegetationVisualizer {
                 if (currentRenderMode == RenderMode.REALISTIC) {
                     createRealisticFloraForPlant(x, y, z, plant, biome, effectiveSeason, rand);
                 } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
-                    createProceduralTreeScientific(x, y, z, biome, rand);
+                    createScientificFloraForPlant(x, y, z, plant, biome, rand);
                 } else if (currentRenderMode == RenderMode.GAMIFIED) {
-                    createProceduralTreeGamified(x, y, z, biome, effectiveSeason, rand);
+                    createGamifiedFloraForPlant(x, y, z, plant, biome, effectiveSeason, rand);
                 }
             }
         } else {
@@ -300,6 +300,127 @@ public class VegetationVisualizer {
         } else {
             createProceduralTree3D(x, y, z, (biome == Biome.ALPINE_SNOW) ? 4 : 0, rand, season);
         }
+    }
+
+    private void createGamifiedFloraForPlant(float x, float y, float z, VegetationSystem.Plant plant, Biome biome, Season season, Random rand) {
+        if (plant.type == VegetationSystem.PlantType.TREE) {
+            createProceduralTreeGamified(x, y, z, biome, season, rand);
+            return;
+        }
+
+        Node floraNode = new Node("GamifiedFlora");
+        floraNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+        floraNode.setLocalTranslation(x, y, z);
+        float rotY = rand.nextFloat() * FastMath.TWO_PI;
+        floraNode.setUserData("BaseRotY", rotY);
+
+        switch (plant.type) {
+            case SHRUB -> {
+                Material shrubMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+                shrubMat.setBoolean("UseMaterialColors", true);
+                ColorRGBA shrubCol = getSeasonFoliageColor(season, biome);
+                shrubMat.setColor("Diffuse", shrubCol);
+                shrubMat.setColor("Ambient", shrubCol.mult(0.6f));
+                shrubMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
+
+                float bSize = 0.5f * Math.max(0.4f, plant.growth);
+                Box bushBox = new Box(bSize, bSize, bSize);
+                Geometry bushGeom = new Geometry("GamifiedBush", bushBox);
+                bushGeom.setMaterial(shrubMat);
+                bushGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+                bushGeom.setLocalTranslation(0, bSize, 0);
+                floraNode.attachChild(bushGeom);
+            }
+            case FLOWER -> {
+                Material stemMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+                stemMat.setBoolean("UseMaterialColors", true);
+                stemMat.setColor("Diffuse", new ColorRGBA(0.15f, 0.65f, 0.20f, 1f));
+                stemMat.setColor("Ambient", new ColorRGBA(0.10f, 0.40f, 0.12f, 1f));
+
+                Box stemBox = new Box(0.04f, 0.15f, 0.04f);
+                Geometry stemGeom = new Geometry("FlowerStem", stemBox);
+                stemGeom.setMaterial(stemMat);
+                stemGeom.setLocalTranslation(0, 0.15f, 0);
+                floraNode.attachChild(stemGeom);
+
+                Material flowerMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+                flowerMat.setBoolean("UseMaterialColors", true);
+                ColorRGBA blossomCol = switch (rand.nextInt(3)) {
+                    case 0 -> new ColorRGBA(0.95f, 0.25f, 0.25f, 1f); // Red Poppy
+                    case 1 -> new ColorRGBA(0.95f, 0.85f, 0.15f, 1f); // Dandelion
+                    default -> new ColorRGBA(0.25f, 0.60f, 0.95f, 1f); // Blue Orchid
+                };
+                flowerMat.setColor("Diffuse", blossomCol);
+                flowerMat.setColor("Ambient", blossomCol.mult(0.6f));
+
+                Box bloomBox = new Box(0.12f, 0.10f, 0.12f);
+                Geometry bloomGeom = new Geometry("FlowerBloom", bloomBox);
+                bloomGeom.setMaterial(flowerMat);
+                bloomGeom.setLocalTranslation(0, 0.35f, 0);
+                floraNode.attachChild(bloomGeom);
+            }
+            case MOSS, GRASS -> {
+                Material grassMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+                grassMat.setBoolean("UseMaterialColors", true);
+                ColorRGBA grassCol = (season == Season.WINTER) ? new ColorRGBA(0.75f, 0.82f, 0.80f, 1f) : new ColorRGBA(0.28f, 0.72f, 0.22f, 1f);
+                grassMat.setColor("Diffuse", grassCol);
+                grassMat.setColor("Ambient", grassCol.mult(0.6f));
+
+                Box tuftBox = new Box(0.15f, 0.08f, 0.15f);
+                Geometry tuftGeom = new Geometry("GrassTuft", tuftBox);
+                tuftGeom.setMaterial(grassMat);
+                tuftGeom.setLocalTranslation(0, 0.08f, 0);
+                floraNode.attachChild(tuftGeom);
+            }
+        }
+        floraNode.setLocalRotation(new Quaternion().fromAngles(0, rotY, 0));
+        rootNode.attachChild(floraNode);
+    }
+
+    private void createScientificFloraForPlant(float x, float y, float z, VegetationSystem.Plant plant, Biome biome, Random rand) {
+        if (plant.type == VegetationSystem.PlantType.TREE) {
+            createProceduralTreeScientific(x, y, z, biome, rand);
+            return;
+        }
+
+        Node floraNode = new Node("ScientificFlora");
+        floraNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+        floraNode.setLocalTranslation(x, y, z);
+
+        Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        mat.setBoolean("UseMaterialColors", true);
+
+        switch (plant.type) {
+            case SHRUB -> {
+                mat.setColor("Diffuse", new ColorRGBA(0.20f, 0.70f, 0.30f, 1.0f));
+                mat.setColor("Ambient", new ColorRGBA(0.12f, 0.45f, 0.20f, 1.0f));
+                com.jme3.scene.shape.Sphere bushSphere = new com.jme3.scene.shape.Sphere(8, 8, 0.45f * Math.max(0.4f, plant.growth));
+                Geometry g = new Geometry("SciShrub", bushSphere);
+                g.setMaterial(mat);
+                g.setLocalTranslation(0, 0.45f * Math.max(0.4f, plant.growth), 0);
+                floraNode.attachChild(g);
+            }
+            case FLOWER -> {
+                mat.setColor("Diffuse", new ColorRGBA(0.95f, 0.80f, 0.20f, 1.0f));
+                mat.setColor("Ambient", new ColorRGBA(0.60f, 0.50f, 0.10f, 1.0f));
+                com.jme3.scene.shape.Sphere flowerSphere = new com.jme3.scene.shape.Sphere(6, 6, 0.20f);
+                Geometry g = new Geometry("SciFlower", flowerSphere);
+                g.setMaterial(mat);
+                g.setLocalTranslation(0, 0.20f, 0);
+                floraNode.attachChild(g);
+            }
+            case MOSS, GRASS -> {
+                mat.setColor("Diffuse", new ColorRGBA(0.35f, 0.85f, 0.35f, 1.0f));
+                mat.setColor("Ambient", new ColorRGBA(0.20f, 0.55f, 0.20f, 1.0f));
+                Cylinder tuftCyl = new Cylinder(6, 6, 0.15f, 0.10f, true);
+                Geometry g = new Geometry("SciGrass", tuftCyl);
+                g.setMaterial(mat);
+                g.setLocalTranslation(0, 0.05f, 0);
+                g.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
+                floraNode.attachChild(g);
+            }
+        }
+        rootNode.attachChild(floraNode);
     }
 
     private void createRealisticFlora(float x, float y, float z, Biome biome, Season season, Random rand, int index) {

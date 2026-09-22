@@ -161,9 +161,9 @@ public class WeatherVisualizer {
 
             Sphere cloudPuff = new Sphere(12, 12, 6.5f);
             for (int cluster = 0; cluster < 6; cluster++) {
-                float cx = (float) ((Math.random() - 0.5) * 100.0);
-                float cz = (float) ((Math.random() - 0.5) * 100.0);
-                float cy = 42.0f + (float) (Math.random() * 6.0);
+                float cx = 32.0f + (float) ((Math.random() - 0.5) * 50.0);
+                float cz = 32.0f + (float) ((Math.random() - 0.5) * 50.0);
+                float cy = 38.0f + (float) (Math.random() * 5.0);
 
                 for (int p = 0; p < 4; p++) {
                     Geometry puff = new Geometry("CloudPuff_" + cluster + "_" + p, cloudPuff);
@@ -188,7 +188,9 @@ public class WeatherVisualizer {
             for (int i = 0; i < 8; i++) {
                 Geometry g = new Geometry("SciCloud_" + i, wireCloud);
                 g.setMaterial(cloudMat);
-                g.setLocalTranslation((float) ((Math.random() - 0.5) * 110.0), 45.0f, (float) ((Math.random() - 0.5) * 110.0));
+                float cx = 32.0f + (float) ((Math.random() - 0.5) * 50.0);
+                float cz = 32.0f + (float) ((Math.random() - 0.5) * 50.0);
+                g.setLocalTranslation(cx, 38.0f, cz);
                 cloudsNode.attachChild(g);
             }
 
@@ -199,9 +201,9 @@ public class WeatherVisualizer {
 
             float cubeSize = 3.5f;
             for (int c = 0; c < 5; c++) {
-                float baseCylinderX = (float) ((Math.random() - 0.5) * 90.0);
-                float baseCylinderZ = (float) ((Math.random() - 0.5) * 90.0);
-                float baseCylinderY = 40.0f;
+                float baseCylinderX = 32.0f + (float) ((Math.random() - 0.5) * 45.0);
+                float baseCylinderZ = 32.0f + (float) ((Math.random() - 0.5) * 45.0);
+                float baseCylinderY = 36.0f;
 
                 for (int bx = -2; bx <= 2; bx++) {
                     for (int bz = -1; bz <= 1; bz++) {
@@ -331,17 +333,22 @@ public class WeatherVisualizer {
         fireNode = new Node("FireNode");
         fireNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
 
-        // Ground Mist Particle Layer (Realistic Mode)
+        // Volumetric Low-Hanging Mist Puffs (Realistic & Atmospheric)
         Material mistMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        mistMat.setColor("Color", new ColorRGBA(0.9f, 0.95f, 1.0f, 0.18f));
+        mistMat.setColor("Color", new ColorRGBA(0.92f, 0.96f, 1.0f, 0.22f));
         mistMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
 
-        Quad mistQuad = new Quad(80, 80);
-        Geometry mistGeom = new Geometry("GroundMistOverlay", mistQuad);
-        mistGeom.setMaterial(mistMat);
-        mistGeom.rotate(1.5708f, 0, 0); // Flat on ground XZ
-        mistGeom.setLocalTranslation(-10, 0.4f, -10);
-        mistNode.attachChild(mistGeom);
+        Sphere mistPuff = new Sphere(8, 8, 4.5f);
+        for (int i = 0; i < 6; i++) {
+            Geometry g = new Geometry("MistPuff_" + i, mistPuff);
+            g.setMaterial(mistMat);
+            float mx = 32f + (float) ((Math.random() - 0.5) * 45.0);
+            float mz = 32f + (float) ((Math.random() - 0.5) * 45.0);
+            float my = 16f + (float) (Math.random() * 4.0);
+            g.setLocalTranslation(mx, my, mz);
+            g.setLocalScale(1.4f, 0.5f, 1.4f);
+            mistNode.attachChild(g);
+        }
         rootNode.attachChild(mistNode);
 
         // Fire & Smoke Disaster Node
@@ -350,7 +357,7 @@ public class WeatherVisualizer {
         Sphere fireSpike = new Sphere(8, 8, 1.2f);
         Geometry fireGeom = new Geometry("FireSpike", fireSpike);
         fireGeom.setMaterial(fireMat);
-        fireGeom.setLocalTranslation(32f, 1.0f, 32f);
+        fireGeom.setLocalTranslation(32f, 16.0f, 32f);
         fireNode.attachChild(fireGeom);
         rootNode.attachChild(fireNode);
 

@@ -3482,11 +3482,17 @@ public class WorldEditorPane extends BorderPane {
             @Override
             public void onAntSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {
                 setFollowedAntById(id);
+                if (trackedAntPane != null) {
+                    trackedAntPane.setVisible(true);
+                }
             }
 
             @Override
             public void onChamberSelected(String chamberId) {
                 selectChamberById(chamberId);
+                if (chamberInfoPane != null) {
+                    chamberInfoPane.setVisible(true);
+                }
             }
         });
 
@@ -3534,6 +3540,13 @@ public class WorldEditorPane extends BorderPane {
         h3d.setStyle("-fx-border-color: #555; -fx-border-width: 1; -fx-background-color: #0b0f19;");
         HBox.setHgrow(h3d, Priority.ALWAYS);
         VBox.setVgrow(h3d, Priority.ALWAYS);
+
+        h3d.setOnScroll(e -> {
+            if (gameView != null && gameView.isVisible() && gameView.getGameApp() != null) {
+                gameView.getGameApp().zoomCamera((float) e.getDeltaY() * 0.05f);
+                repaintAllViews();
+            }
+        });
 
         canvas3D.widthProperty().bind(h3d.widthProperty());
         canvas3D.heightProperty().bind(h3d.heightProperty());

@@ -1,12 +1,13 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { useSimulationStore } from '../store/simulationStore'
 import { getTranslation } from '../i18n/translations'
-import { Map, Crosshair, ChevronDown, ChevronUp } from 'lucide-react'
+import { Map, ZoomIn, ZoomOut, ChevronDown, ChevronUp } from 'lucide-react'
 
 /**
  * Minimap overlay matching the World Editor & SwarmForgeClient dual 2D maps system:
- * - Top-Down View: Ant density heatmap, nests, camera viewport rect, directional borders.
+ * - Top-Down View: Ant density heatmap, nests, camera viewport rect, directional borders with interactive zoom.
  * - Side Profile View: Stratigraphy bands (Humus, Argile, Bedrock), water table, subterranean ant depth & nests.
+ * - Positioned to the left of the right sidebar without overlapping.
  */
 export default function MinimapOverlay() {
     const {
@@ -15,21 +16,19 @@ export default function MinimapOverlay() {
         nests,
         showMinimap,
         language,
-        theme,
-        triggerCameraReset
+        theme
     } = useSimulationStore()
 
     const canvasTopRef = useRef(null)
     const canvasSideRef = useRef(null)
     const [collapsed, setCollapsed] = useState(false)
-    const [showLegend, setShowLegend] = useState(true)
-    const [syncViews, setSyncViews] = useState(true)
+    const [zoom, setZoom] = useState(1.0)
 
     const isDark = theme === 'dark'
     const t = (key, fallback) => getTranslation(language, key, fallback)
 
-    const mapWidth = 200
-    const topHeight = 140
+    const mapWidth = 210
+    const topHeight = 145
     const sideHeight = 90
     const GRID_RES = 32
 
@@ -49,8 +48,16 @@ export default function MinimapOverlay() {
         const hTop = canvasTop.height
 
         // Clear Background (Dark Slate)
+        gcTop.save()
         gcTop.fillStyle = '#0f172a'
         gcTop.fillRect(0, 0, wTop, hTop)
+
+        // Apply Zoom Transform centered on (wTop/2, hTop/2)
+        if (zoom > 1.0) {
+            gcTop.translate(wTop / 2, hTop / 2)
+            gcTop.scale(zoom, zoom)
+            gcTop.translate(-wTop / 2, -hTop / 2)
+        }
 
         // Subdued Grid Lines
         gcTop.strokeStyle = 'rgba(51, 65, 85, 0.4)'
@@ -154,265 +161,231 @@ export default function MinimapOverlay() {
         gcTop.font = '8px sans-serif'
         gcTop.fillStyle = 'rgba(56, 189, 248, 0.75)'
         gcTop.fillText('▲ [0,1]', wTop / 2 - 12, 8)
-        gcTop.fillText('▼ [0,0]', wTop / 2 - 12, hTop - (showLegend ? 18 : 3))
+        gcTop.fillText('▼ [0,0]', wTop / 2 - 12, hTop - 3)
         gcTop.fillText('◀[0,0]', 2, hTop / 2 + 3)
         gcTop.fillText('[0,1]▶', wTop - 26, hTop / 2 + 3)
 
-        // Top Legend Overlay
-        if (showLegend) {
-            const lgH = 15
-            const lgY = hTop - lgH - 2
-            gcTop.fillStyle = 'rgba(15, 23, 42, 0.88)'
-            gcTop.fillRect(3, lgY, wTop - 6, lgH)
-            gcTop.strokeStyle = 'rgba(51, 65, 85, 0.6)'
-            gcTop.lineWidth = 1
-            gcTop.strokeRect(3, lgY, wTop - 6, lgH)
+        gcTop.restore()
 
-            gcTop.font = '8.5px sans-serif'
-            // Density swatch
-            gcTop.fillStyle = '#f59e0b'
-            gcTop.fillRect(6, lgY + 4, 6, 6)
-            gcTop.fillStyle = '#cbd5e1'
-            gcTop.fillText('Densité', 15, lgY + 9)
-
-            // Nest swatch
-            gcTop.fillStyle = '#f59e0b'
-            gcTop.beginPath()
-            gcTop.arc(wTop * 0.44, lgY + 7, 3, 0, Math.PI * 2)
-            gcTop.fill()
-            gcTop.fillStyle = '#cbd5e1'
-            gcTop.fillText('Nids', wTop * 0.44 + 6, lgY + 9)
-
-            // Camera swatch
-            gcTop.strokeStyle = '#38bdf8'
-            gcTop.lineWidth = 1
-            gcTop.strokeRect(wTop * 0.72, lgY + 4, 6, 6)
-            gcTop.fillStyle = '#cbd5e1'
-            gcTop.fillText('Caméra', wTop * 0.72 + 9, lgY + 9)
-        }
-
-        // Clean Outer Border
-        gcTop.strokeStyle = '#334155'
-        gcTop.lineWidth = 1
-        gcTop.strokeRect(0.5, 0.5, wTop - 1, hTop - 1)
-
-        // 2. SIDE PROFILE VIEW RENDERING (Coupe Géologique)
+        // 2. SIDE PROFILE VIEW RENDERING (Stratigraphy & Depth)
         const wSide = canvasSide.width
         const hSide = canvasSide.height
 
-        // Background Dark Slate
         gcSide.fillStyle = '#0f172a'
         gcSide.fillRect(0, 0, wSide, hSide)
 
-        // Stratigraphy bands (Humus, Argile, Bedrock)
-        gcSide.fillStyle = '#3d2817' // Humus surface
+        // Stratigraphy Color Bands
+        // Topsoil (0 - 0.8m)
+        gcSide.fillStyle = 'rgba(82, 50, 25, 0.85)'
         gcSide.fillRect(0, 0, wSide, hSide * 0.25)
-        gcSide.fillStyle = '#9a3412' // Argile subsoil
+
+        // Subsoil Clay (0.8m - 2.5m)
+        gcSide.fillStyle = 'rgba(154, 52, 18, 0.75)'
         gcSide.fillRect(0, hSide * 0.25, wSide, hSide * 0.45)
-        gcSide.fillStyle = '#64748b' // Pierre / Bedrock
+
+        // Deep Bedrock (2.5m - 4m)
+        gcSide.fillStyle = 'rgba(51, 65, 85, 0.9)'
         gcSide.fillRect(0, hSide * 0.70, wSide, hSide * 0.30)
 
-        // Water Table Line
-        gcSide.strokeStyle = '#0284c7'
-        gcSide.lineWidth = 1.2
+        // Water Table Blue Shimmer Line at Y = -3.2m
+        gcSide.strokeStyle = 'rgba(2, 132, 199, 0.8)'
+        gcSide.lineWidth = 1.5
+        gcSide.setLineDash([3, 2])
         gcSide.beginPath()
-        gcSide.moveTo(0, hSide * 0.75)
-        gcSide.lineTo(wSide, hSide * 0.75)
+        gcSide.moveTo(0, hSide * 0.8)
+        gcSide.lineTo(wSide, hSide * 0.8)
         gcSide.stroke()
+        gcSide.setLineDash([])
 
-        // Side Ant Density Heatmap
-        for (let x = 0; x < GRID_RES; x++) {
-            for (let z = 0; z < GRID_RES; z++) {
-                const count = densitySide[x][z]
-                if (count > 0) {
-                    gcSide.fillStyle = 'rgba(250, 204, 21, 0.75)'
-                    gcSide.fillRect(x * (wSide / GRID_RES), z * (hSide / GRID_RES), (wSide / GRID_RES) + 0.5, (hSide / GRID_RES) + 0.5)
-                }
-            }
-        }
-
-        // Nests Depth Markers
+        // Subterranean Chambers on Profile
         nestList.forEach((n, idx) => {
             const nx = ((n.x ?? (idx === 0 ? 35 : 65)) / worldW) * wSide
-            const nz = (1.2 / worldD) * hSide // Queen chamber depth ~ 1.2m
+            const nyCh1 = hSide * 0.35 // Brood
+            const nyCh2 = hSide * 0.55 // Queen
 
-            gcSide.fillStyle = '#d97706'
+            gcSide.fillStyle = 'rgba(168, 85, 247, 0.9)'
             gcSide.beginPath()
-            gcSide.arc(nx, nz, 4, 0, Math.PI * 2)
+            gcSide.arc(nx, nyCh1, 3, 0, Math.PI * 2)
             gcSide.fill()
-            gcSide.strokeStyle = '#ffffff'
-            gcSide.lineWidth = 1
-            gcSide.stroke()
+
+            gcSide.fillStyle = 'rgba(245, 158, 11, 0.9)'
+            gcSide.beginPath()
+            gcSide.arc(nx + 3, nyCh2, 3.5, 0, Math.PI * 2)
+            gcSide.fill()
         })
 
-        // Camera Depth Line
-        gcSide.strokeStyle = 'rgba(56, 189, 248, 0.9)'
-        gcSide.lineWidth = 1.5
-        gcSide.beginPath()
-        gcSide.moveTo(vpX, 0)
-        gcSide.lineTo(vpX, hSide)
-        gcSide.stroke()
+        // Subterranean Ants Depth Points
+        if (ants && Array.isArray(ants)) {
+            ants.forEach(ant => {
+                const ax = ((ant.x ?? 50) / worldW) * wSide
+                const depthNorm = Math.min(1.0, Math.max(0, Math.abs(ant.y ?? 0) / worldD))
+                const ay = depthNorm * hSide
 
-        // Side Legend Overlay
-        if (showLegend) {
-            const lgH = 15
-            const lgY = hSide - lgH - 2
-            gcSide.fillStyle = 'rgba(15, 23, 42, 0.88)'
-            gcSide.fillRect(3, lgY, wSide - 6, lgH)
-            gcSide.strokeStyle = 'rgba(51, 65, 85, 0.6)'
-            gcSide.lineWidth = 1
-            gcSide.strokeRect(3, lgY, wSide - 6, lgH)
-
-            gcSide.font = '8.5px sans-serif'
-            // Humus / Argile swatches
-            gcSide.fillStyle = '#3d2817'
-            gcSide.fillRect(6, lgY + 4, 4, 6)
-            gcSide.fillStyle = '#9a3412'
-            gcSide.fillRect(11, lgY + 4, 4, 6)
-            gcSide.fillStyle = '#64748b'
-            gcSide.fillRect(16, lgY + 4, 4, 6)
-            gcSide.fillStyle = '#cbd5e1'
-            gcSide.fillText('Humus / Argile', 24, lgY + 9)
-
-            // Nappe phréatique line
-            gcSide.strokeStyle = '#0284c7'
-            gcSide.lineWidth = 1.5
-            gcSide.beginPath()
-            gcSide.moveTo(wSide * 0.65, lgY + 7)
-            gcSide.lineTo(wSide * 0.65 + 10, lgY + 7)
-            gcSide.stroke()
-            gcSide.fillStyle = '#cbd5e1'
-            gcSide.fillText('Nappe', wSide * 0.65 + 13, lgY + 9)
+                gcSide.fillStyle = ant.color || '#38bdf8'
+                gcSide.fillRect(ax - 0.5, ay - 0.5, 1.2, 1.2)
+            })
         }
 
-        // Clean Outer Border
-        gcSide.strokeStyle = '#334155'
-        gcSide.lineWidth = 1
-        gcSide.strokeRect(0.5, 0.5, wSide - 1, hSide - 1)
+        // Depth Axis Ticks
+        gcSide.font = '7px sans-serif'
+        gcSide.fillStyle = 'rgba(203, 213, 225, 0.6)'
+        gcSide.fillText('0m', 2, 8)
+        gcSide.fillText('-2m', 2, hSide * 0.5)
+        gcSide.fillText('-4m', 2, hSide - 2)
 
-    }, [ants, colonies, nests, showMinimap, collapsed, showLegend, syncViews])
+    }, [showMinimap, collapsed, ants, colonies, nests, zoom])
 
     if (!showMinimap) return null
 
+    const handleWheel = (e) => {
+        e.stopPropagation()
+        setZoom(z => Math.max(1.0, Math.min(4.0, z + (e.deltaY < 0 ? 0.25 : -0.25))))
+    }
+
+    const handleDoubleClick = () => {
+        setZoom(1.0)
+    }
+
     return (
-        <div style={{
-            position: 'absolute',
-            bottom: 20,
-            right: 20,
-            zIndex: 92,
-            background: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-            border: isDark ? '1.5px solid #0284c7' : '1.5px solid #0284c7',
-            borderRadius: 8,
-            padding: 6,
-            boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(12px)',
-            color: isDark ? '#fff' : '#0f172a',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4
-        }}>
-            {/* Header (1:1 with MinimapOverlay.java) */}
+        <div
+            style={{
+                position: 'absolute',
+                top: 12,
+                right: 355, // Positioned neatly to the left of the right sidebar (330px width + 12px margin)
+                zIndex: 85,
+                background: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(16px)',
+                border: isDark ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(56, 189, 248, 0.5)',
+                borderRadius: 10,
+                color: isDark ? '#ffffff' : '#0f172a',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                overflow: 'hidden',
+                userSelect: 'none',
+                pointerEvents: 'auto'
+            }}
+        >
+            {/* Header Bar */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                paddingBottom: 3,
-                fontSize: 10.5,
-                fontWeight: 700,
-                color: '#38bdf8'
+                padding: '5px 8px',
+                borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
+                background: isDark ? 'rgba(30, 41, 59, 0.5)' : 'rgba(241, 245, 249, 0.8)'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Map size={13} />
-                    <span>{t('minimapTitle', 'Minimap 2D')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, color: '#38bdf8' }}>
+                    <Map size={12} />
+                    <span>RADAR TOPOGRAPHIQUE 2D</span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#00d4ff', cursor: 'pointer' }}>
-                        <input
-                            type="checkbox"
-                            checked={syncViews}
-                            onChange={(e) => setSyncViews(e.target.checked)}
-                            style={{ margin: 0, accentColor: '#00d4ff' }}
-                        />
-                        <span>Sync</span>
-                    </label>
-
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#38bdf8', cursor: 'pointer' }}>
-                        <input
-                            type="checkbox"
-                            checked={showLegend}
-                            onChange={(e) => setShowLegend(e.target.checked)}
-                            style={{ margin: 0, accentColor: '#38bdf8' }}
-                        />
-                        <span>Légende</span>
-                    </label>
-
+                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    {/* Zoom In Button */}
                     <button
-                        onClick={triggerCameraReset}
-                        title="Recentrer la caméra 3D"
+                        onClick={() => setZoom(z => Math.min(4.0, z + 0.25))}
+                        title="Zoom avant (+)"
                         style={{
                             background: 'transparent',
                             border: 'none',
+                            color: isDark ? '#cbd5e1' : '#334155',
                             cursor: 'pointer',
-                            color: isDark ? '#94a3b8' : '#64748b',
-                            padding: 1,
+                            padding: 2,
                             display: 'flex',
                             alignItems: 'center'
                         }}
                     >
-                        <Crosshair size={12} />
+                        <ZoomIn size={12} />
                     </button>
 
+                    {/* Zoom Out Button */}
                     <button
-                        onClick={() => setCollapsed(!collapsed)}
+                        onClick={() => setZoom(z => Math.max(1.0, z - 0.25))}
+                        title="Zoom arrière (-)"
                         style={{
                             background: 'transparent',
                             border: 'none',
+                            color: isDark ? '#cbd5e1' : '#334155',
                             cursor: 'pointer',
-                            color: isDark ? '#94a3b8' : '#64748b',
-                            padding: 1,
+                            padding: 2,
                             display: 'flex',
                             alignItems: 'center'
                         }}
                     >
-                        {collapsed ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                        <ZoomOut size={12} />
+                    </button>
+
+                    <span style={{ fontSize: 8, fontWeight: 700, color: '#38bdf8', minWidth: 20, textAlign: 'center' }}>
+                        {zoom.toFixed(1)}x
+                    </span>
+
+                    {/* Collapse Button */}
+                    <button
+                        onClick={() => setCollapsed(!collapsed)}
+                        title={collapsed ? 'Agrandir' : 'Réduire'}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: isDark ? '#94a3b8' : '#64748b',
+                            cursor: 'pointer',
+                            padding: 2,
+                            display: 'flex',
+                            alignItems: 'center'
+                        }}
+                    >
+                        {collapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
                     </button>
                 </div>
             </div>
 
-            {/* Dual Canvas Layout (Top-Down + Side Cross-Section) */}
+            {/* Map Canvases (Top-Down + Side Profile) */}
             {!collapsed && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {/* Top Down Label & Canvas */}
-                    <div style={{ fontSize: 9.5, fontWeight: 700, color: '#cbd5e1' }}>
-                        Vue du dessus (Top-Down)
+                <div
+                    onWheel={handleWheel}
+                    onDoubleClick={handleDoubleClick}
+                    title="Molette souris pour zoomer / Double-clic pour réinitialiser"
+                    style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 6 }}
+                >
+                    {/* 1. Top-Down Map Canvas */}
+                    <div style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>
+                        <canvas
+                            ref={canvasTopRef}
+                            width={mapWidth}
+                            height={topHeight}
+                            style={{ display: 'block', width: mapWidth, height: topHeight }}
+                        />
+                        <div style={{
+                            position: 'absolute',
+                            top: 3,
+                            left: 5,
+                            fontSize: 8,
+                            fontWeight: 800,
+                            color: 'rgba(255,255,255,0.7)',
+                            textShadow: '0 1px 2px #000'
+                        }}>
+                            Vue Zénithale (Densité)
+                        </div>
                     </div>
-                    <canvas
-                        ref={canvasTopRef}
-                        width={mapWidth}
-                        height={topHeight}
-                        style={{
-                            borderRadius: 4,
-                            cursor: 'crosshair',
-                            display: 'block'
-                        }}
-                    />
 
-                    {/* Side View Label & Canvas */}
-                    <div style={{ fontSize: 9.5, fontWeight: 700, color: '#cbd5e1', marginTop: 2 }}>
-                        Vue de profil / Coupe (Side Profile)
+                    {/* 2. Side Profile Stratigraphy Map Canvas */}
+                    <div style={{ position: 'relative', borderRadius: 6, overflow: 'hidden', border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>
+                        <canvas
+                            ref={canvasSideRef}
+                            width={mapWidth}
+                            height={sideHeight}
+                            style={{ display: 'block', width: mapWidth, height: sideHeight }}
+                        />
+                        <div style={{
+                            position: 'absolute',
+                            top: 3,
+                            left: 5,
+                            fontSize: 8,
+                            fontWeight: 800,
+                            color: 'rgba(255,255,255,0.7)',
+                            textShadow: '0 1px 2px #000'
+                        }}>
+                            Profil Géologique & Profondeur
+                        </div>
                     </div>
-                    <canvas
-                        ref={canvasSideRef}
-                        width={mapWidth}
-                        height={sideHeight}
-                        style={{
-                            borderRadius: 4,
-                            cursor: 'crosshair',
-                            display: 'block'
-                        }}
-                    />
                 </div>
             )}
         </div>

@@ -395,9 +395,14 @@ public class ChamberInfoPane extends VBox {
             lblStability.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: " + redColor + ";");
         }
 
-        lblArchitecture.setText("🏛️ Architecture : " + node.type().name());
-        double cavityVolume = (4.0 / 3.0) * Math.PI * node.radiusX() * node.radiusY() * node.radiusZ();
-        lblDimensions.setText(String.format(Locale.US, "📏 Cavité: Rx=%.2fm, Ry=%.2fm, Rz=%.2fm (~%.2f m³)", node.radiusX(), node.radiusY(), node.radiusZ(), cavityVolume));
+        lblArchitecture.setText("🏛️ Architecture : " + formatChamberTypeName(node.type()));
+        double rxMm = (node.radiusX() > 1.0f) ? node.radiusX() * 10.0 : node.radiusX() * 100.0;
+        double ryMm = (node.radiusY() > 1.0f) ? node.radiusY() * 10.0 : node.radiusY() * 100.0;
+        double rzMm = (node.radiusZ() > 1.0f) ? node.radiusZ() * 10.0 : node.radiusZ() * 100.0;
+        double volCm3 = (4.0 / 3.0) * Math.PI * (rxMm / 10.0) * (ryMm / 10.0) * (rzMm / 10.0);
+        double volL = volCm3 / 1000.0;
+
+        lblDimensions.setText(String.format(Locale.US, "📏 Cavité: Rx=%.0fmm, Ry=%.0fmm, Rz=%.0fmm (~%.1f cm³ / %.2f L)", rxMm, ryMm, rzMm, volCm3, volL));
 
         float baroPressure = (float) (1013.25 + (depthM * 0.12));
         String lightRegime = node.z() >= -0.2f ? "☀️ Crépusculaire (50 lux)" : "🌑 Aphotique (0 lux)";

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useSimulationStore } from '../store/simulationStore'
 import { getTranslation } from '../i18n/translations'
 import { soundEngine } from '../utils/soundEngine'
@@ -6,11 +6,8 @@ import { showToast } from '../store/toastStore'
 import {
     Play,
     Pause,
-    RotateCcw,
     SkipBack,
     SkipForward,
-    Rewind,
-    FastForward,
     Maximize,
     Minimize,
     Camera,
@@ -22,23 +19,16 @@ import {
     Sparkles,
     Sun,
     CloudRain,
-    Wind,
     Trees,
     Shield,
     Sliders,
-    ChevronDown,
     ChevronUp,
-    Info,
     Grid as GridIcon,
-    Flame,
-    Droplet,
     Thermometer,
     Zap,
     Map,
-    Activity,
-    Compass,
     BookOpen,
-    Users
+    Waves
 } from 'lucide-react'
 
 export default function SimulationRightSidebar({ onTriggerFlash }) {
@@ -56,15 +46,10 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
         goToBeginning,
         goToEnd,
         ticks,
-        highestRecordedTick,
-        seekToTick,
         speed,
         setSpeed,
-        stepSeconds,
-        simTimeFormatted,
         simRelativeTimeFormatted,
         lookAndFeel,
-        setLookAndFeel,
         showTerrain,
         toggleTerrain,
         show3DSkirt,
@@ -111,6 +96,11 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
     const [isRecording, setIsRecording] = useState(false)
     const [recSeconds, setRecSeconds] = useState(0)
     const [photoSaved, setPhotoSaved] = useState(false)
+    const [riverVolume, setLocalRiverVolume] = useState(0.60)
+    const [isMuted, setIsMuted] = useState(false)
+
+    const mediaRecorderRef = useRef(null)
+    const recordedChunksRef = useRef([])
 
     const isDark = theme === 'dark'
     const textMain = isDark ? '#f1f5f9' : '#0f172a'
@@ -136,7 +126,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
         }
     }
 
-    // HD Screenshot Capture with Visual Flash & 3s Checkmark
+    // HD Screenshot Capture with Visual Flash
     const handleScreenshot = () => {
         try {
             if (onTriggerFlash) onTriggerFlash()
@@ -156,7 +146,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
         }
     }
 
-    // Video Recording Timer Simulation
+    // Real Canvas Web MediaRecorder Video Recording
     useEffect(() => {
         let interval = null
         if (isRecording) {
@@ -171,11 +161,53 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
 
     const toggleVideoRecording = () => {
         if (isRecording) {
+            // Stop recording and save clip
+            try {
+                if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                    mediaRecorderRef.current.stop()
+                }
+            } catch (e) {}
             setIsRecording(false)
-            showToast(`🎥 Clip vidéo 3D enregistré (${recSeconds}s) !`, 'success')
         } else {
-            setIsRecording(true)
-            showToast('🔴 Enregistrement vidéo 3D démarré...', 'info')
+            // Start real canvas stream recording
+            try {
+                const canvas = document.querySelector('canvas')
+                if (!canvas) {
+                    showToast('Impossible de trouver le canvas 3D pour la capture vidéo', 'error')
+                    return
+                }
+
+                const stream = canvas.captureStream(30)
+                recordedChunksRef.current = []
+
+                const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+                    ? 'video/webm;codecs=vp9'
+                    : (MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : '')
+
+                const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {})
+                recorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) {
+                        recordedChunksRef.current.push(event.data)
+                    }
+                }
+                recorder.onstop = () => {
+                    const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `swarmforge_recording_${Date.now()}.webm`
+                    a.click()
+                    URL.revokeObjectURL(url)
+                    showToast(`🎥 Clip vidéo 3D enregistré (${recSeconds}s) !`, 'success')
+                }
+
+                recorder.start()
+                mediaRecorderRef.current = recorder
+                setIsRecording(true)
+                showToast('🔴 Enregistrement vidéo 3D démarré...', 'info')
+            } catch (e) {
+                showToast('Erreur lors de l\'enregistrement vidéo WebGL: ' + e.message, 'error')
+            }
         }
     }
 
@@ -202,13 +234,6 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
         { name: 'Larve en Incubation', icon: '🍼', color: '#86efac', desc: 'Nourrie par régurgitation' },
         { name: 'Œuf Colonial', icon: '🥚', color: '#fef08a', desc: 'Soin constant en chambre royale' },
         { name: 'Araignée / Prédateur', icon: '🕷️', color: '#e11d48', desc: 'Chasse les fourmis isolées' }
-    ]
-
-    const pheromones = [
-        { name: 'Piste Alimentaire', color: '#f59e0b', icon: '🟡', desc: 'Indique une source de miellat/graines' },
-        { name: 'Signal d\'Alerte', color: '#ef4444', icon: '🔴', desc: 'Mobilisation face à un danger' },
-        { name: 'Phéromone Royale', color: '#a855f7', icon: '🟣', desc: 'Cohésion coloniale et hiérarchie' },
-        { name: 'Recrutement Massif', color: '#0284c7', icon: '🔵', desc: 'Attaque ou transport de grosse proie' }
     ]
 
     const styles = {
@@ -290,26 +315,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
             background: isDark ? '#1e293b' : '#cbd5e1',
             accentColor: '#38bdf8',
             cursor: 'pointer'
-        },
-        modeBtn: (active) => ({
-            flex: 1,
-            padding: '5px 4px',
-            fontSize: 10,
-            fontWeight: 700,
-            borderRadius: 6,
-            border: active
-                ? '1px solid #38bdf8'
-                : isDark ? '1px solid #334155' : '1px solid #cbd5e1',
-            background: active
-                ? (isDark ? 'rgba(56, 189, 248, 0.2)' : 'rgba(56, 189, 248, 0.15)')
-                : (isDark ? '#0f172a' : '#ffffff'),
-            color: active
-                ? (isDark ? '#38bdf8' : '#0284c7')
-                : (isDark ? '#94a3b8' : '#64748b'),
-            cursor: 'pointer',
-            textAlign: 'center',
-            transition: 'all 0.15s ease'
-        })
+        }
     }
 
     if (collapsed) {
@@ -318,7 +324,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                 <div style={styles.card}>
                     <button
                         onClick={() => setCollapsed(false)}
-                        title="Ouvrir le panneau latéral de contrôle"
+                        title={t('sidebarControlsTitle', 'CONTRÔLES 3D')}
                         style={{
                             background: 'transparent',
                             border: 'none',
@@ -333,7 +339,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                     >
                         <Sliders size={20} />
                         <span style={{ fontSize: 9, writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontWeight: 700 }}>
-                            CONTRÔLES 3D
+                            {t('sidebarControlsTitle', 'CONTRÔLES 3D')}
                         </span>
                     </button>
                 </div>
@@ -350,39 +356,39 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                         <button
                             style={styles.tabBtn(activeSidebarTab === 'CONTROLS')}
                             onClick={() => setActiveSidebarTab('CONTROLS')}
-                            title="Lecture VCR, Vitesse & Média"
+                            title={t('tabVcr', 'VCR')}
                         >
                             <Play size={11} />
-                            <span>VCR</span>
+                            <span>{t('tabVcr', 'VCR')}</span>
                         </button>
                         <button
                             style={styles.tabBtn(activeSidebarTab === 'LAYERS')}
                             onClick={() => setActiveSidebarTab('LAYERS')}
-                            title="Calques 3D, Modes & Coupe"
+                            title={t('tabLayers', 'CALQUES')}
                         >
                             <Layers size={11} />
-                            <span>CALQUES</span>
+                            <span>{t('tabLayers', 'CALQUES')}</span>
                         </button>
                         <button
                             style={styles.tabBtn(activeSidebarTab === 'AUDIO')}
                             onClick={() => setActiveSidebarTab('AUDIO')}
-                            title="Mixer Audio Procédural"
+                            title={t('tabAudio', 'AUDIO')}
                         >
                             <Volume2 size={11} />
-                            <span>AUDIO</span>
+                            <span>{t('tabAudio', 'AUDIO')}</span>
                         </button>
                         <button
                             style={styles.tabBtn(activeSidebarTab === 'LEGENDS')}
                             onClick={() => setActiveSidebarTab('LEGENDS')}
-                            title="Légendes & Substrats"
+                            title={t('tabLegends', 'LÉGENDE')}
                         >
                             <BookOpen size={11} />
-                            <span>LÉGENDE</span>
+                            <span>{t('tabLegends', 'LÉGENDE')}</span>
                         </button>
                     </div>
                     <button
                         onClick={() => setCollapsed(true)}
-                        title="Réduire le panneau"
+                        title={t('collapse', 'Réduire le panneau')}
                         style={{ background: 'transparent', border: 'none', color: isDark ? '#94a3b8' : '#64748b', cursor: 'pointer', padding: '2px 4px', marginLeft: 4 }}
                     >
                         <ChevronUp size={16} />
@@ -392,128 +398,104 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                 {/* TAB 1: VCR CONTROLS & MEDIA */}
                 {activeSidebarTab === 'CONTROLS' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {/* Transport Bar (8 VCR Buttons) 1:1 JavaFX */}
+                        {/* Transport Bar (1:1 JavaFX SimulationControlPanel.java) */}
                         <div style={{ background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8' }}>LECTURE TEMPORELLE (VCR)</span>
-                                <span style={{ fontSize: 9, fontFamily: 'monospace', color: isDark ? '#94a3b8' : '#64748b' }}>Pas #{ticks}</span>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8' }}>{t('simPlaybackTitle', 'HORLOGE & LECTURE TEMPORELLE')}</span>
+                                <span style={{ fontSize: 9, fontFamily: 'monospace', color: isDark ? '#94a3b8' : '#64748b' }}>{t('stepLabel', 'Pas')} #{ticks} ({simRelativeTimeFormatted})</span>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, flexWrap: 'nowrap' }}>
-                                {/* 1. Reset / Beginning */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                                {/* 1. btnGoToBeginning (⏮) */}
                                 <button
                                     onClick={goToBeginning}
-                                    title="Aller au début (Pas 0)"
-                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '5px 6px', cursor: 'pointer', fontSize: 10, fontWeight: 800 }}
+                                    title={t('simBtnBeginningTt', "Début de la simulation (Retour à l'étape #0)")}
+                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '6px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}
                                 >
                                     ⏮
                                 </button>
 
-                                {/* 2. Rewind 1000 pas */}
+                                {/* 2. btnRewind (⏪ -10 000 pas) */}
                                 <button
-                                    onClick={() => rewind(1000)}
-                                    title="Reculer de 1000 pas"
-                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '5px 6px', cursor: 'pointer', fontSize: 9, fontWeight: 800 }}
+                                    onClick={() => rewind(10000)}
+                                    title={t('simBtnRewindTt', "Rembobiner (-10 000 étapes)")}
+                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '6px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}
                                 >
-                                    -1k
+                                    ⏪
                                 </button>
 
-                                {/* 3. Rewind 100 pas */}
+                                {/* 3. btnStepBack (◀ -100 pas) */}
                                 <button
                                     onClick={() => rewind(100)}
-                                    title="Reculer de 100 pas"
-                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '5px 6px', cursor: 'pointer', fontSize: 9, fontWeight: 800 }}
+                                    title={t('simBtnStepBackTt', "Reculer (-100 étapes)")}
+                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '6px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}
                                 >
-                                    -100
+                                    ◀
                                 </button>
 
-                                {/* 4. Step Backward -1 pas */}
-                                <button
-                                    onClick={stepBackward}
-                                    title="Reculer d'un pas (1 pas)"
-                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '5px 6px', cursor: 'pointer' }}
-                                >
-                                    <SkipBack size={12} />
-                                </button>
-
-                                {/* 5. Play / Pause */}
+                                {/* 4. btnPlay / btnPause (▶ / ⏸) */}
                                 <button
                                     onClick={running ? pause : play}
-                                    title={running ? 'Mettre en pause' : 'Lancer la simulation'}
+                                    title={running ? t('simBtnPauseTt', "Mettre la simulation en pause") : t('simBtnPlayTt', "Démarrer / Reprendre la simulation")}
                                     style={{
                                         background: running ? '#f59e0b' : '#0284c7',
                                         color: '#ffffff',
                                         border: 'none',
                                         borderRadius: 6,
-                                        padding: '6px 10px',
+                                        padding: '6px 12px',
                                         cursor: 'pointer',
                                         fontWeight: 800,
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 3
+                                        gap: 4
                                     }}
                                 >
                                     {running ? <Pause size={13} /> : <Play size={13} />}
                                     <span style={{ fontSize: 10 }}>{running ? 'PAUSE' : 'PLAY'}</span>
                                 </button>
 
-                                {/* 6. Step Forward +1 pas */}
-                                <button
-                                    onClick={stepForward}
-                                    title="Avancer d'un pas (1 pas)"
-                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '5px 6px', cursor: 'pointer' }}
-                                >
-                                    <SkipForward size={12} />
-                                </button>
-
-                                {/* 7. Advance +100 pas */}
+                                {/* 5. btnStepForward (▶ +100 pas) */}
                                 <button
                                     onClick={() => advanceTicks(100)}
-                                    title="Avancer de 100 pas"
-                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '5px 6px', cursor: 'pointer', fontSize: 9, fontWeight: 800 }}
+                                    title={t('simBtnStepForwardTt', "Avancer (+100 étapes)")}
+                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '6px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}
                                 >
-                                    +100
+                                    ▶
                                 </button>
 
-                                {/* 8. Go to End */}
+                                {/* 6. btnFastForward (⏩ +10 000 pas) */}
+                                <button
+                                    onClick={() => advanceTicks(10000)}
+                                    title={t('simBtnFastForwardTt', "Avance rapide (+10 000 étapes)")}
+                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '6px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}
+                                >
+                                    ⏩
+                                </button>
+
+                                {/* 7. btnGoToEnd (⏭) */}
                                 <button
                                     onClick={goToEnd}
-                                    title="Aller à la fin de la simulation (T_max)"
-                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '5px 6px', cursor: 'pointer', fontSize: 10, fontWeight: 800 }}
+                                    title={t('simBtnGoToEndTt', "Aller à la fin de la simulation (Dernière étape enregistrée)")}
+                                    style={{ background: isDark ? '#1e293b' : '#e2e8f0', color: isDark ? '#cbd5e1' : '#334155', border: 'none', borderRadius: 4, padding: '6px 8px', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}
                                 >
                                     ⏭
                                 </button>
                             </div>
-
-                            {/* Timeline Scrubber */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 }}>
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max={Math.max(100, highestRecordedTick || 100)}
-                                    value={ticks}
-                                    onChange={(e) => seekToTick(parseInt(e.target.value))}
-                                    style={styles.sliderTrack}
-                                />
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: isDark ? '#64748b' : '#94a3b8' }}>
-                                    <span>Pas 0</span>
-                                    <span>{simRelativeTimeFormatted}</span>
-                                    <span>Pas {Math.max(ticks, highestRecordedTick || 100)}</span>
-                                </div>
-                            </div>
                         </div>
 
-                        {/* Speed Slider & Quick Multipliers 1:1 JavaFX */}
+                        {/* Speed Slider & Quick Multipliers (with MAX 🚀) */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 8 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8' }}>VITESSE DE SIMULATION</span>
-                                <span style={{ fontSize: 11, fontWeight: 800, color: '#10b981' }}>{speed.toFixed(1)}x</span>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: '#38bdf8' }}>{t('simSpeedTitle', 'VITESSE DE SIMULATION')}</span>
+                                <span style={{ fontSize: 11, fontWeight: 800, color: speed >= 90 ? '#a855f7' : '#10b981' }}>
+                                    {speed >= 90 ? 'MAX 🚀' : `${speed.toFixed(1)}x`}
+                                </span>
                             </div>
 
                             <input
                                 type="range"
                                 min="0.1"
-                                max="50"
+                                max="100"
                                 step="0.1"
                                 value={speed}
                                 onChange={(e) => setSpeed(parseFloat(e.target.value))}
@@ -521,31 +503,44 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             />
 
                             <div style={{ display: 'flex', gap: 3 }}>
-                                {[0.5, 1.0, 2.0, 5.0, 10.0, 50.0].map(s => (
+                                {[
+                                    { label: '0.5x', val: 0.5 },
+                                    { label: '1.0x', val: 1.0 },
+                                    { label: '2.0x', val: 2.0 },
+                                    { label: '5.0x', val: 5.0 },
+                                    { label: '10x', val: 10.0 },
+                                    { label: 'MAX 🚀', val: 100.0, isMax: true }
+                                ].map(btn => (
                                     <button
-                                        key={s}
-                                        onClick={() => setSpeed(s)}
+                                        key={btn.label}
+                                        onClick={() => setSpeed(btn.val)}
                                         style={{
                                             flex: 1,
-                                            padding: '3px 0',
-                                            fontSize: 9,
-                                            fontWeight: 700,
+                                            padding: '4px 0',
+                                            fontSize: 8.5,
+                                            fontWeight: 800,
                                             borderRadius: 4,
-                                            border: speed === s ? '1px solid #38bdf8' : (isDark ? '1px solid #334155' : '1px solid #cbd5e1'),
-                                            background: speed === s ? '#0284c7' : 'transparent',
-                                            color: speed === s ? '#fff' : (isDark ? '#94a3b8' : '#64748b'),
+                                            border: (btn.isMax && speed >= 90) || (!btn.isMax && Math.abs(speed - btn.val) < 0.1)
+                                                ? (btn.isMax ? '1px solid #d946ef' : '1px solid #38bdf8')
+                                                : (isDark ? '1px solid #334155' : '1px solid #cbd5e1'),
+                                            background: (btn.isMax && speed >= 90)
+                                                ? '#7c3aed'
+                                                : ((!btn.isMax && Math.abs(speed - btn.val) < 0.1) ? '#0284c7' : 'transparent'),
+                                            color: ((btn.isMax && speed >= 90) || Math.abs(speed - btn.val) < 0.1)
+                                                ? '#ffffff'
+                                                : (isDark ? '#94a3b8' : '#64748b'),
                                             cursor: 'pointer'
                                         }}
                                     >
-                                        {s}x
+                                        {btn.label}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Media & Recording Section 1:1 JavaFX */}
+                        {/* Media & Recording Section */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 8 }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa' }}>MÉDIA & CAPTURES 3D</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#a78bfa' }}>{t('mediaTitle', 'MÉDIA & CAPTURES 3D')}</span>
 
                             {/* Fullscreen F11 */}
                             <button
@@ -566,7 +561,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                                 }}
                             >
                                 {isFullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
-                                <span>{isFullscreen ? 'Quitter Plein Écran (ESC)' : 'Mode Plein Écran (F11)'}</span>
+                                <span>{isFullscreen ? t('exitFullscreenBtn', 'Quitter Plein Écran (ESC)') : t('fullscreenBtn', 'Mode Plein Écran (F11)')}</span>
                             </button>
 
                             {/* HD Photo Capture */}
@@ -589,7 +584,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                                 }}
                             >
                                 <Camera size={13} />
-                                <span>{photoSaved ? '✓ Screenshot Enregistré !' : 'Capture d\'écran HD (PNG)'}</span>
+                                <span>{photoSaved ? t('screenshotSaved', '✓ Screenshot Enregistré !') : t('screenshotBtn', 'Capture d\'écran HD (PNG)')}</span>
                             </button>
 
                             {/* Video Recording */}
@@ -614,8 +609,8 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                                 <Video size={13} />
                                 <span>
                                     {isRecording
-                                        ? `🔴 Arrêter REC (${Math.floor(recSeconds / 60).toString().padStart(2, '0')}:${(recSeconds % 60).toString().padStart(2, '0')})`
-                                        : 'Enregistrement Vidéo 3D (MP4/GIF)'}
+                                        ? `${t('videoStopBtn', '🔴 Arrêter REC')} (${Math.floor(recSeconds / 60).toString().padStart(2, '0')}:${(recSeconds % 60).toString().padStart(2, '0')})`
+                                        : t('videoRecBtn', 'Enregistrement Vidéo 3D (WebM)')}
                                 </span>
                             </button>
                         </div>
@@ -630,7 +625,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, fontWeight: 700 }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: isDark ? '#38bdf8' : '#0284c7' }}>
                                     <Scissors size={12} />
-                                    <span>Coupe Axiale (Slice Scanner)</span>
+                                    <span>{t('sliceScannerTitle', 'Coupe Axiale (Slice Scanner)')}</span>
                                 </span>
                                 <span style={{ color: '#00d4ff', fontSize: 10, fontWeight: 800 }}>{((slicePlaneRatio ?? 1.0) * 100).toFixed(0)} %</span>
                             </div>
@@ -644,21 +639,21 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                                 style={styles.sliderTrack}
                             />
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 8, color: isDark ? '#64748b' : '#94a3b8' }}>
-                                <span>Profondeur 0%</span>
-                                <span>Surface 100%</span>
+                                <span>{t('depth0', 'Profondeur 0%')}</span>
+                                <span>{t('surface100', 'Surface 100%')}</span>
                             </div>
                         </div>
 
-                        {/* 3. Layer Visibility Checkboxes */}
+                        {/* 2. Layer Visibility Checkboxes */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             <div style={styles.sectionTitle}>
-                                <span>Calques Visibles</span>
+                                <span>{t('visibleLayersTitle', 'Calques Visibles')}</span>
                             </div>
 
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Layers size={12} color="#ca8a04" />
-                                    <span>Sol & Relief</span>
+                                    <span>{t('layerTerrain', 'Sol & Relief')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showTerrain)} onChange={toggleTerrain} />
                             </label>
@@ -666,7 +661,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Layers size={12} color="#f59e0b" />
-                                    <span>Jupe 3D Géologique</span>
+                                    <span>{t('layerSkirt', 'Jupe 3D Géologique')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(show3DSkirt)} onChange={toggle3DSkirt} />
                             </label>
@@ -674,7 +669,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Trees size={12} color="#22c55e" />
-                                    <span>Végétation</span>
+                                    <span>{t('layerVegetation', 'Végétation')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showVegetation)} onChange={toggleVegetation} />
                             </label>
@@ -682,7 +677,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Shield size={12} color="#a855f7" />
-                                    <span>Cavités & Nids</span>
+                                    <span>{t('layerChambers', 'Cavités & Nids')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showChambers)} onChange={toggleChambers} />
                             </label>
@@ -690,7 +685,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Sparkles size={12} color="#38bdf8" />
-                                    <span>Phéromones</span>
+                                    <span>{t('layerPheromones', 'Phéromones & Traces')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showPheromones)} onChange={togglePheromones} />
                             </label>
@@ -698,7 +693,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Zap size={12} color="#ef4444" />
-                                    <span>Fourmis & Castes</span>
+                                    <span>{t('layerAnts', 'Fourmis & Castes')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showAnts)} onChange={toggleAnts} />
                             </label>
@@ -706,7 +701,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <CloudRain size={12} color="#60a5fa" />
-                                    <span>Météo & Ciel</span>
+                                    <span>{t('layerWeather', 'Météo & Ciel')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showWeather)} onChange={toggleWeather} />
                             </label>
@@ -714,7 +709,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Map size={12} color="#10b981" />
-                                    <span>Minimap 2D Radar</span>
+                                    <span>{t('layerMinimap', 'Minimap 2D Radar')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showMinimap)} onChange={toggleMinimap} />
                             </label>
@@ -722,22 +717,22 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <GridIcon size={12} color="#818cf8" />
-                                    <span>Grille 3D</span>
+                                    <span>{t('layerGrid', 'Grille 3D')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showGrid)} onChange={toggleGrid} />
                             </label>
                         </div>
 
-                        {/* 4. Scientific Isolines & UV Vision */}
+                        {/* 3. Scientific Isolines & UV Vision */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             <div style={styles.sectionTitle}>
-                                <span>Filtres Scientifiques</span>
+                                <span>{t('sciFiltersTitle', 'Filtres Scientifiques')}</span>
                             </div>
 
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <GridIcon size={12} color="#eab308" />
-                                    <span>Isolines Topographiques</span>
+                                    <span>{t('isolinesTopo', 'Isolines Topographiques')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showScientificIsolinesTopo)} onChange={toggleScientificIsolinesTopo} />
                             </label>
@@ -745,7 +740,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Thermometer size={12} color="#f97316" />
-                                    <span>Isolines Microclimat</span>
+                                    <span>{t('isolinesMicroclimate', 'Isolines Microclimat')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showScientificIsolinesMicroclimate)} onChange={toggleScientificIsolinesMicroclimate} />
                             </label>
@@ -753,7 +748,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Sparkles size={12} color="#8b5cf6" />
-                                    <span>Isolines Phéromonales</span>
+                                    <span>{t('isolinesPhero', 'Isolines Phéromonales')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(showScientificIsolinesPheromones)} onChange={toggleScientificIsolinesPheromones} />
                             </label>
@@ -761,7 +756,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                             <label style={styles.toggleRow}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Sun size={12} color="#ec4899" />
-                                    <span>Spectre Vision UV</span>
+                                    <span>{t('uvVision', 'Spectre Vision UV')}</span>
                                 </span>
                                 <input type="checkbox" checked={Boolean(isUVVisionMode)} onChange={toggleUVVisionMode} />
                             </label>
@@ -769,18 +764,27 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                     </div>
                 )}
 
-                {/* TAB 3: PROCEDURAL AUDIO MIXER (4 Channels 1:1 JavaFX) */}
+                {/* TAB 3: PROCEDURAL AUDIO MIXER (5 Channels 1:1 JavaFX) */}
                 {activeSidebarTab === 'AUDIO' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <div style={styles.sectionTitle}>
-                            <span>MIXER AUDIO 4 CANAUX (1:1 JAVAFX)</span>
+                            <span>{t('audioProceduralTitle', 'MIXER AUDIO PROCÉDURAL (1:1 JAVAFX)')}</span>
+                            <button
+                                onClick={() => {
+                                    const m = soundEngine.toggleMute()
+                                    setIsMuted(m)
+                                }}
+                                style={{ background: 'transparent', border: 'none', color: isMuted ? '#ef4444' : '#38bdf8', cursor: 'pointer', padding: 2 }}
+                            >
+                                {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                            </button>
                         </div>
 
                         {/* Channel 1: Master Volume */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 8 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, fontWeight: 700 }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#38bdf8' }}>
-                                    <Volume2 size={12} /> 1. Volume Général (Master)
+                                    <Volume2 size={12} /> {t('channelMaster', '1. Volume Général (Master)')}
                                 </span>
                                 <span style={{ color: '#38bdf8', fontWeight: 800 }}>{Math.round(masterVolume * 100)}%</span>
                             </div>
@@ -796,7 +800,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 8 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, fontWeight: 700 }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#10b981' }}>
-                                    <Trees size={12} /> 2. Ambiance & Biome
+                                    <Trees size={12} /> {t('channelAmbient', '2. Ambiance & Biome')}
                                 </span>
                                 <span style={{ color: '#10b981', fontWeight: 800 }}>{Math.round(ambientVolume * 100)}%</span>
                             </div>
@@ -806,27 +810,33 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                                 onChange={(e) => setAmbientVolume(parseFloat(e.target.value))}
                                 style={styles.sliderTrack}
                             />
-                            <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
-                                <button
-                                    onClick={() => soundEngine.triggerBirdChirp()}
-                                    style={{ flex: 1, padding: '2px 4px', fontSize: 8, fontWeight: 700, borderRadius: 3, border: 'none', background: isDark ? '#1e293b' : '#e2e8f0', color: textMain, cursor: 'pointer' }}
-                                >
-                                    🎵 Oiseaux
-                                </button>
-                                <button
-                                    onClick={() => soundEngine.triggerLeavesRustle()}
-                                    style={{ flex: 1, padding: '2px 4px', fontSize: 8, fontWeight: 700, borderRadius: 3, border: 'none', background: isDark ? '#1e293b' : '#e2e8f0', color: textMain, cursor: 'pointer' }}
-                                >
-                                    🍃 Feuillage
-                                </button>
-                            </div>
                         </div>
 
-                        {/* Channel 3: Weather, Wind & Rain */}
+                        {/* Channel 3: River & Water Stream */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, fontWeight: 700 }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#06b6d4' }}>
+                                    <Waves size={12} /> {t('channelRiver', '3. Rivière & Écoulement d\'Eau')}
+                                </span>
+                                <span style={{ color: '#06b6d4', fontWeight: 800 }}>{Math.round(riverVolume * 100)}%</span>
+                            </div>
+                            <input
+                                type="range" min="0" max="1" step="0.01"
+                                value={riverVolume}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value)
+                                    setLocalRiverVolume(val)
+                                    soundEngine.setChannelVolume('river', val)
+                                }}
+                                style={styles.sliderTrack}
+                            />
+                        </div>
+
+                        {/* Channel 4: Weather, Wind & Rain */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 8 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, fontWeight: 700 }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#60a5fa' }}>
-                                    <CloudRain size={12} /> 3. Météo, Vent & Pluie
+                                    <CloudRain size={12} /> {t('channelWeather', '4. Météo, Vent & Pluie')}
                                 </span>
                                 <span style={{ color: '#60a5fa', fontWeight: 800 }}>{Math.round(weatherVolume * 100)}%</span>
                             </div>
@@ -836,27 +846,13 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                                 onChange={(e) => setWeatherVolume(parseFloat(e.target.value))}
                                 style={styles.sliderTrack}
                             />
-                            <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
-                                <button
-                                    onClick={() => soundEngine.updateRainSound(15)}
-                                    style={{ flex: 1, padding: '2px 4px', fontSize: 8, fontWeight: 700, borderRadius: 3, border: 'none', background: isDark ? '#1e293b' : '#e2e8f0', color: textMain, cursor: 'pointer' }}
-                                >
-                                    🌧️ Pluie
-                                </button>
-                                <button
-                                    onClick={() => soundEngine.triggerThunder()}
-                                    style={{ flex: 1, padding: '2px 4px', fontSize: 8, fontWeight: 700, borderRadius: 3, border: 'none', background: isDark ? '#1e293b' : '#e2e8f0', color: textMain, cursor: 'pointer' }}
-                                >
-                                    ⚡ Tonnerre
-                                </button>
-                            </div>
                         </div>
 
-                        {/* Channel 4: Bio-Acoustics & Ant Chatter */}
+                        {/* Channel 5: Bio-Acoustics & Ant Chatter */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: 8, borderRadius: 8 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, fontWeight: 700 }}>
                                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
-                                    <Zap size={12} /> 4. Bio-Acoustique & Nids
+                                    <Zap size={12} /> {t('channelInsects', '5. Bio-Acoustique & Nids')}
                                 </span>
                                 <span style={{ color: '#f59e0b', fontWeight: 800 }}>{Math.round(insectsVolume * 100)}%</span>
                             </div>
@@ -866,20 +862,6 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                                 onChange={(e) => setInsectsVolume(parseFloat(e.target.value))}
                                 style={styles.sliderTrack}
                             />
-                            <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
-                                <button
-                                    onClick={() => soundEngine.triggerInsectStep()}
-                                    style={{ flex: 1, padding: '2px 4px', fontSize: 8, fontWeight: 700, borderRadius: 3, border: 'none', background: isDark ? '#1e293b' : '#e2e8f0', color: textMain, cursor: 'pointer' }}
-                                >
-                                    🐜 Pas Fourmis
-                                </button>
-                                <button
-                                    onClick={() => soundEngine.triggerNestDiggingSound()}
-                                    style={{ flex: 1, padding: '2px 4px', fontSize: 8, fontWeight: 700, borderRadius: 3, border: 'none', background: isDark ? '#1e293b' : '#e2e8f0', color: textMain, cursor: 'pointer' }}
-                                >
-                                    ⛏️ Creusement
-                                </button>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -888,20 +870,20 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
                 {activeSidebarTab === 'LEGENDS' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <div style={styles.sectionTitle}>
-                            <span>LÉGENDE COMPLÈTE 1:1 JAVAFX</span>
+                            <span>{t('legendsFullTitle', 'LÉGENDE COMPLÈTE 1:1 JAVAFX')}</span>
                         </div>
 
                         {/* Nests & Chambers Legend */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <span style={{ fontSize: 10, fontWeight: 800, color: '#38bdf8' }}>Structure des Nids & Chambres :</span>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: '#38bdf8' }}>{t('nestChambersLegendTitle', 'Structure des Nids & Chambres :')}</span>
                             {[
-                                { name: 'Chambre Royale (Reine)', icon: '👑', color: '#a855f7', desc: 'Ponte & phéromone de fécondité' },
-                                { name: 'Couvain & Pouponnière', icon: '🍼', color: '#38bdf8', desc: 'Soins aux larves et œufs' },
-                                { name: 'Grenier à Graines / Aliments', icon: '🌾', color: '#f59e0b', desc: 'Stockage des ressources nutritives' },
-                                { name: 'Champignonnière (Symbiote)', icon: '🍄', color: '#22c55e', desc: 'Culture fongique (Atta/Acromyrmex)' },
-                                { name: 'Dépotoir / Décharge', icon: '🗑️', color: '#78350f', desc: 'Évacuation des déchets & cadavres' },
-                                { name: 'Dortoir & Repos', icon: '💤', color: '#6366f1', desc: 'Repos des ouvrières et alates' },
-                                { name: 'Tunnels & Galeries', icon: '🕳️', color: '#94a3b8', desc: 'Réseau de circulation souterrain' }
+                                { name: t('chamberRoyal', 'Chambre Royale (Reine)'), icon: '👑', color: '#a855f7', desc: t('descChamberRoyal', 'Ponte & phéromone de fécondité') },
+                                { name: t('chamberBrood', 'Couvain & Pouponnière'), icon: '🍼', color: '#38bdf8', desc: t('descChamberBrood', 'Soins aux larves et œufs') },
+                                { name: t('chamberFood', 'Grenier à Graines / Aliments'), icon: '🌾', color: '#f59e0b', desc: t('descChamberFood', 'Stockage des ressources nutritives') },
+                                { name: t('chamberFungus', 'Champignonnière (Symbiote)'), icon: '🍄', color: '#22c55e', desc: t('descChamberFungus', 'Culture fongique (Atta/Acromyrmex)') },
+                                { name: t('chamberWaste', 'Dépotoir / Décharge'), icon: '🗑️', color: '#78350f', desc: t('descChamberWaste', 'Évacuation des déchets & cadavres') },
+                                { name: t('chamberRest', 'Dortoir & Repos'), icon: '💤', color: '#6366f1', desc: t('descChamberRest', 'Repos des ouvrières et alates') },
+                                { name: t('chamberTunnels', 'Tunnels & Galeries'), icon: '🕳️', color: '#94a3b8', desc: t('descChamberTunnels', 'Réseau de circulation souterrain') }
                             ].map(nc => (
                                 <div key={nc.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, padding: '2px 4px', borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
                                     <span>{nc.icon}</span>
@@ -913,7 +895,7 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
 
                         {/* Substrates */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
-                            <span style={{ fontSize: 10, fontWeight: 800, color: '#f59e0b' }}>12 Couches Géologiques :</span>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: '#f59e0b' }}>{t('geologicalSubstratesTitle', '12 Couches Géologiques :')}</span>
                             {substrates.map(s => (
                                 <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, padding: '2px 4px', borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
                                     <div style={{ width: 10, height: 10, borderRadius: 2, background: s.color, border: '1px solid rgba(255,255,255,0.2)' }} />
@@ -925,12 +907,33 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
 
                         {/* Castes */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
-                            <span style={{ fontSize: 10, fontWeight: 800, color: '#a855f7' }}>Castes & Individus :</span>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: '#a855f7' }}>{t('castesTitle', 'Castes & Individus :')}</span>
                             {castes.map(c => (
                                 <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, padding: '2px 4px', borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
                                     <span>{c.icon}</span>
                                     <strong style={{ minWidth: 120, color: c.color }}>{c.name}</strong>
                                     <span style={{ fontSize: 9, color: isDark ? '#94a3b8' : '#64748b' }}>{c.desc}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* 8 Pheromones (1:1 with PheromoneType.java & PheromoneOverlay.java) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 4 }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: '#ec4899' }}>{t('pheromonesLegendTitle', '8 Phéromones Chimiques (1:1 JavaFX) :')}</span>
+                            {[
+                                { name: t('pheroFood', '1. Food (Nourriture)'), color: '#4caf50', desc: 'Vert (#4caf50) : Piste alimentaire & miellat' },
+                                { name: t('pheroHome', '2. Home (Retour Nid)'), color: '#2196f3', desc: 'Bleu (#2196f3) : Orientation vers entrées' },
+                                { name: t('pheroAlarm', '3. Alarm (Alerte Danger)'), color: '#f44336', desc: 'Rouge (#f44336) : Attaque & défense' },
+                                { name: t('pheroRecruitment', '4. Trail (Recrutement)'), color: '#ffc107', desc: 'Jaune (#ffc107) : Amplification flux de masse' },
+                                { name: t('pheroQueen', '5. Queen (Phéromone Royale)'), color: '#9c27b0', desc: 'Violet (#9c27b0) : Cohésion & fertilité' },
+                                { name: t('pheroBrood', '6. Brood (Couvain)'), color: '#ff9800', desc: 'Orange (#ff9800) : Soins larves & œufs' },
+                                { name: t('pheroDeath', '7. Death (Nécrophorèse)'), color: '#607d8b', desc: 'Gris (#607d8b) : Transport vers dépotoir' },
+                                { name: t('pheroTerritory', '8. Territory (Marquage)'), color: '#009688', desc: 'Sarcelle (#009688) : Limite territoriale' }
+                            ].map(p => (
+                                <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, padding: '2px 4px', borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
+                                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, border: '1px solid rgba(255,255,255,0.3)', flexShrink: 0 }} />
+                                    <strong style={{ minWidth: 120, color: p.color }}>{p.name}</strong>
+                                    <span style={{ fontSize: 9, color: isDark ? '#94a3b8' : '#64748b' }}>{p.desc}</span>
                                 </div>
                             ))}
                         </div>
@@ -940,4 +943,3 @@ export default function SimulationRightSidebar({ onTriggerFlash }) {
         </div>
     )
 }
-

@@ -292,9 +292,35 @@ function AntSelectionReticle3D({ ant, terrainConfig }) {
     )
 }
 
+/**
+ * 3D Voxel Cursor Highlight (Wireframe box + translucent planar indicator)
+ */
+function VoxelCursor3D({ hoveredVoxel, terrainConfig }) {
+    if (!hoveredVoxel || !hoveredVoxel.isHovering) return null
+    const vx = Math.round(hoveredVoxel.x ?? 50)
+    const vz = Math.round(hoveredVoxel.z ?? 50)
+    const vy = getTerrainHeight(vx, vz, terrainConfig) + 0.05
+
+    return (
+        <group position={[vx, vy, vz]}>
+            {/* Flat neon voxel tile indicator */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[1.0, 1.0]} />
+                <meshBasicMaterial color="#38bdf8" transparent opacity={0.4} depthWrite={false} side={THREE.DoubleSide} />
+            </mesh>
+            {/* Wireframe box border */}
+            <lineSegments>
+                <edgesGeometry args={[new THREE.BoxGeometry(1.0, 0.2, 1.0)]} />
+                <lineBasicMaterial color="#38bdf8" linewidth={2} />
+            </lineSegments>
+        </group>
+    )
+}
+
 export default function Terrarium() {
     const {
         ants,
+        pheromones,
         foodSources,
         predators,
         environment,
@@ -306,6 +332,9 @@ export default function Terrarium() {
         showAnts,
         slicePlaneRatio,
         selectedEntity,
+        setSelectedEntity,
+        hoveredVoxel,
+        setHoveredVoxel,
         isUVVisionMode
     } = useSimulationStore()
 
@@ -445,30 +474,93 @@ export default function Terrarium() {
         clippingPlanes: clippingPlanes
     }), [clippingPlanes])
 
+    const calculateLocalPheromone = (wx, wz) => {
+        if (!pheromones || pheromones.length === 0) return 0.0
+        let total = 0
+        for (let i = 0; i < pheromones.length; i++) {
+            const p = pheromones[i]
+            const px = p.x ?? 50
+            const pz = p.z !== undefined ? p.z : (p.y ?? 50)
+            const d2 = (px - wx) * (px - wx) + (pz - wz) * (pz - wz)
+            if (d2 < 25) { // within 5 meters
+                total += (p.intensity || 1.0) * (1.0 - Math.sqrt(d2) / 5.0)
+            }
+        }
+        return total
+    }
+
     const handleGroundPointerMove = (e) => {
-        e.stopPropagation()
         if (e.point) {
             const wx = e.point.x
             const wy = e.point.y
             const wz = e.point.z
             const substrate = getSubstrateAt(wx, wy, wz, terrainConfig)
+            const clientX = e.nativeEvent?.clientX ?? e.clientX ?? 200
+            const clientY = e.nativeEvent?.clientY ?? e.clientY ?? 200
             setHoveredVoxel({
                 x: wx,
                 y: wy,
                 z: wz,
-                screenX: e.clientX,
-                screenY: e.clientY,
+                screenX: clientX,
+                screenY: clientY,
                 substrate,
                 temp: (environment?.temperature ?? 22.0) - wy * 0.4,
                 humidity: environment?.humidity ?? 65.0,
-                phero: 0.0,
+                phero: calculateLocalPheromone(wx, wz),
                 isHovering: true
             })
         }
     }
 
+    const handleGroundClick = (e) => {
+        if (!e.point) return
+        const wx = e.point.x
+        const wz = e.point.z
+
+        // 1. Proximity check for nearby ants (within 2.2m)
+        if (ants && ants.length > 0) {
+            let closestAnt = null
+            let minDistSq = 2.2 * 2.2
+            for (let i = 0; i < ants.length; i++) {
+                const a = ants[i]
+                const ax = a.x ?? 50
+                const az = a.z !== undefined ? a.z : (a.y ?? 50)
+                const distSq = (ax - wx) * (ax - wx) + (az - wz) * (az - wz)
+                if (distSq < minDistSq) {
+                    minDistSq = distSq
+                    closestAnt = a
+                }
+            }
+            if (closestAnt) {
+                setSelectedEntity(closestAnt)
+                return
+            }
+        }
+
+        // 2. Otherwise pin/select the clicked voxel
+        const wy = e.point.y
+        const substrate = getSubstrateAt(wx, wy, wz, terrainConfig)
+        const clientX = e.nativeEvent?.clientX ?? e.clientX ?? 200
+        const clientY = e.nativeEvent?.clientY ?? e.clientY ?? 200
+        setHoveredVoxel({
+            x: wx,
+            y: wy,
+            z: wz,
+            screenX: clientX,
+            screenY: clientY,
+            substrate,
+            temp: (environment?.temperature ?? 22.0) - wy * 0.4,
+            humidity: environment?.humidity ?? 65.0,
+            phero: calculateLocalPheromone(wx, wz),
+            isHovering: true,
+            isPinned: true
+        })
+    }
+
     const handleGroundPointerOut = () => {
-        setHoveredVoxel(null)
+        if (hoveredVoxel && !hoveredVoxel.isPinned) {
+            setHoveredVoxel(null)
+        }
     }
 
     return (
@@ -489,6 +581,7 @@ export default function Terrarium() {
                             position={[50, 0, 50]}
                             receiveShadow
                             onPointerMove={handleGroundPointerMove}
+                            onClick={handleGroundClick}
                             onPointerOut={handleGroundPointerOut}
                         />
                         <mesh
@@ -498,6 +591,9 @@ export default function Terrarium() {
                             rotation={[-Math.PI / 2, 0, 0]}
                             position={[25, 0.02, 50]}
                             receiveShadow
+                            onPointerMove={handleGroundPointerMove}
+                            onClick={handleGroundClick}
+                            onPointerOut={handleGroundPointerOut}
                         />
                     </group>
                 )
@@ -510,15 +606,33 @@ export default function Terrarium() {
             {show3DSkirt && !isGamified && (
                 <group>
                     {/* Topsoil Layer (Y: -0.4, Height: 0.8) */}
-                    <mesh position={[50, -0.4, 50]} material={topsoilMat} receiveShadow>
+                    <mesh
+                        position={[50, -0.4, 50]}
+                        material={topsoilMat}
+                        receiveShadow
+                        onPointerMove={handleGroundPointerMove}
+                        onClick={handleGroundClick}
+                    >
                         <boxGeometry args={[100, 0.8, 100]} />
                     </mesh>
                     {/* Subsoil Clay Layer (Y: -1.8, Height: 2.0) */}
-                    <mesh position={[50, -1.8, 50]} material={subsoilMat} receiveShadow>
+                    <mesh
+                        position={[50, -1.8, 50]}
+                        material={subsoilMat}
+                        receiveShadow
+                        onPointerMove={handleGroundPointerMove}
+                        onClick={handleGroundClick}
+                    >
                         <boxGeometry args={[100, 2.0, 100]} />
                     </mesh>
                     {/* Bedrock Deep Stone Layer (Y: -3.8, Height: 2.0) */}
-                    <mesh position={[50, -3.8, 50]} material={bedrockMat} receiveShadow>
+                    <mesh
+                        position={[50, -3.8, 50]}
+                        material={bedrockMat}
+                        receiveShadow
+                        onPointerMove={handleGroundPointerMove}
+                        onClick={handleGroundClick}
+                    >
                         <boxGeometry args={[100, 2.0, 100]} />
                     </mesh>
                 </group>
@@ -534,6 +648,9 @@ export default function Terrarium() {
 
             {/* Nests Renderer */}
             <NestRenderer />
+
+            {/* 3D Voxel Cursor Highlight Marker */}
+            <VoxelCursor3D hoveredVoxel={hoveredVoxel} terrainConfig={terrainConfig} />
 
             {/* Ants (LOD System) & Selection Target Reticle 3D */}
             {showAnts && <LODAnts ants={ants} />}

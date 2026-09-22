@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { Users, Minus, ChevronDown, X, Crosshair, Crown, Shield, HardHat, Utensils } from 'lucide-react'
 import { useSimulationStore } from '../store/simulationStore'
+import { getTranslation } from '../i18n/translations'
 
 export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible, onClose }) {
     const { colonies, ants, nests, playerAlias, playerSpecies, theme, language } = useSimulationStore()
     const [isCollapsed, setIsCollapsed] = useState(false)
     const isDark = theme === 'dark'
+    const t = (key, fallback) => getTranslation(language, key, fallback)
 
     if (!isVisible) return null
 
@@ -93,11 +95,11 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
                     <Users size={16} color="#38bdf8" />
                     <div>
                         <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 12 }}>
-                            Scoreboard des Colonies
+                            {t('scoreboardTitle', 'Scoreboard des Colonies')}
                         </div>
                         {!isCollapsed && (
                             <div style={{ fontSize: 9.5, color: isDark ? '#94a3b8' : '#64748b' }}>
-                                Participants & Biomasse Active
+                                {t('scoreboardSubtitle', 'Participants & Biomasse Active')}
                             </div>
                         )}
                     </div>
@@ -115,7 +117,7 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
                             display: 'flex',
                             alignItems: 'center'
                         }}
-                        title={isCollapsed ? 'Déplier' : 'Réduire'}
+                        title={isCollapsed ? t('expand', 'Déplier') : t('collapse', 'Réduire')}
                     >
                         {isCollapsed ? <ChevronDown size={14} /> : <Minus size={14} />}
                     </button>
@@ -131,7 +133,7 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
                                 display: 'flex',
                                 alignItems: 'center'
                             }}
-                            title="Fermer le Scoreboard"
+                            title={t('close', 'Fermer')}
                         >
                             <X size={14} />
                         </button>
@@ -144,7 +146,7 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}>
                     {coloniesData.length === 0 ? (
                         <div style={{ color: isDark ? '#64748b' : '#94a3b8', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
-                            Aucune colonie active détectée.
+                            {t('noColoniesDetected', 'Aucune colonie active détectée.')}
                         </div>
                     ) : (
                         coloniesData.map((entry) => {
@@ -194,14 +196,14 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
                                                     background: '#0284c7',
                                                     color: '#ffffff'
                                                 }}>
-                                                    (Vous)
+                                                    {t('localPlayerTag', '(Vous)')}
                                                 </span>
                                             )}
                                         </div>
 
                                         <button
                                             onClick={() => onFocusColony && onFocusColony(entry.nestX, entry.nestY, entry.nestZ)}
-                                            title="Centrer la caméra 3D sur le nid"
+                                            title={t('centerCameraBtn', 'Centrer la caméra 3D sur le nid')}
                                             style={{
                                                 background: 'rgba(56, 189, 248, 0.15)',
                                                 border: `1px solid ${color}`,
@@ -216,7 +218,7 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
                                                 gap: 3
                                             }}
                                         >
-                                            <Crosshair size={10} /> Nid
+                                            <Crosshair size={10} /> {t('btnNest', 'Nid')}
                                         </button>
                                     </div>
 
@@ -228,24 +230,24 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
                                     {/* Metrics Grid (Pop, Ouvrières, Soldats, Stock) */}
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, fontSize: 10 }}>
                                         <div style={{ background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
-                                            <div style={{ fontSize: 8, color: isDark ? '#94a3b8' : '#64748b' }}>Pop</div>
+                                            <div style={{ fontSize: 8, color: isDark ? '#94a3b8' : '#64748b' }}>{t('colonyPop', 'Pop')}</div>
                                             <div style={{ fontWeight: 800, color: '#38bdf8' }}>{entry.population}</div>
                                         </div>
                                         <div style={{ background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
                                             <div style={{ fontSize: 8, color: isDark ? '#94a3b8' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                                                <HardHat size={8} /> Ouvr.
+                                                <HardHat size={8} /> {t('workersAbbr', 'Ouvr.')}
                                             </div>
                                             <div style={{ fontWeight: 700 }}>{entry.workers}</div>
                                         </div>
                                         <div style={{ background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
                                             <div style={{ fontSize: 8, color: isDark ? '#94a3b8' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                                                <Shield size={8} /> Sold.
+                                                <Shield size={8} /> {t('soldiersAbbr', 'Sold.')}
                                             </div>
                                             <div style={{ fontWeight: 700 }}>{entry.soldiers}</div>
                                         </div>
                                         <div style={{ background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
                                             <div style={{ fontSize: 8, color: isDark ? '#94a3b8' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-                                                <Utensils size={8} /> Stock
+                                                <Utensils size={8} /> {t('stockAbbr', 'Stock')}
                                             </div>
                                             <div style={{ fontWeight: 700, color: '#f59e0b' }}>{Math.round(entry.foodStored)} mg</div>
                                         </div>
@@ -256,11 +258,11 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                             <Crown size={10} color={entry.isQueenAlive ? '#fbbf24' : '#ef4444'} />
                                             <span style={{ color: entry.isQueenAlive ? '#4ade80' : '#ef4444', fontWeight: 700 }}>
-                                                {entry.isQueenAlive ? `Reine active (${entry.queens})` : '💀 Orpheline'}
+                                                {entry.isQueenAlive ? `${t('queenAliveBadge', 'Reine active')} (${entry.queens})` : t('queenDeadBadge', '💀 Orpheline')}
                                             </span>
                                         </div>
                                         <div style={{ color: isDark ? '#94a3b8' : '#64748b' }}>
-                                            Nid: ({Math.round(entry.nestX)}, {Math.round(entry.nestZ)})
+                                            {t('nestLabel', 'Nid :')} ({Math.round(entry.nestX)}, {Math.round(entry.nestZ)})
                                         </div>
                                     </div>
                                 </div>

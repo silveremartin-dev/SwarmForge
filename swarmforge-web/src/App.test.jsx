@@ -17,12 +17,13 @@ describe('Component Rendering Smoke Tests', () => {
 
     it('renders SimulationControlPanel without ReferenceError', () => {
         const html = ReactDOMServer.renderToString(<SimulationControlPanel />)
-        expect(html).toContain('Preset de Monde')
+        expect(html).toContain('Scénario')
+        expect(html).toContain('Serveur')
     })
 
     it('renders GodModePanel without ReferenceError', () => {
         const html = ReactDOMServer.renderToString(<GodModePanel />)
-        expect(html).toContain('Interventions Divines')
+        expect(html).toContain('Entités')
     })
 
     it('renders StatisticsDashboardPanel without ReferenceError', () => {
@@ -37,7 +38,7 @@ describe('Component Rendering Smoke Tests', () => {
 
     it('renders SettingsPanel without ReferenceError', () => {
         const html = ReactDOMServer.renderToString(<SettingsPanel />)
-        expect(html).toContain('Configuration &amp; Préférences')
+        expect(html).toContain('Paramètres')
     })
 
     it('renders App when switched to VISUAL_3D tab without crashing', () => {

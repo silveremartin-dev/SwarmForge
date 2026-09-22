@@ -31,7 +31,7 @@ export default function SettingsPanel() {
     const handleResetDefaults = () => {
         setLanguage('fr')
         setTheme('dark')
-        showToast('✓ Paramètres rétablis par défaut !', 'info')
+        showToast(t('resetSettingsBtn', '✓ Paramètres rétablis par défaut !'), 'info')
     }
 
     return (
@@ -46,10 +46,10 @@ export default function SettingsPanel() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#38bdf8' }}>
-                        ⚙️ {t('settingsTitle', 'Paramètres de l\'Application')}
+                        ⚙️ {t('settingsTitle', 'Paramètres de l\'Application & Préférences')}
                     </h2>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: textMuted }}>
-                        Personnalisation de la langue et de l'apparence visuelle.
+                        {t('settingsSubtitle', 'Personnalisation de la langue, de l\'affichage et du moteur 3D.')}
                     </p>
                 </div>
             </div>
@@ -68,6 +68,9 @@ export default function SettingsPanel() {
                     <Globe size={18} />
                     <span style={{ fontSize: 14, fontWeight: 800 }}>{t('langTitle', 'Langue de l\'Interface (Language)')}</span>
                 </div>
+                <p style={{ margin: 0, fontSize: 12, color: textMuted }}>
+                    {t('langDesc', 'Sélectionnez la langue d\'affichage de l\'application.')}
+                </p>
 
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     {SUPPORTED_LANGUAGES.map(lang => (
@@ -75,7 +78,7 @@ export default function SettingsPanel() {
                             key={lang.code}
                             onClick={() => {
                                 setLanguage(lang.code)
-                                showToast(`Langue changée en ${lang.name}`, 'info')
+                                showToast(`${lang.name}`, 'info')
                             }}
                             style={{
                                 display: 'flex',
@@ -113,6 +116,9 @@ export default function SettingsPanel() {
                     <Sun size={18} />
                     <span style={{ fontSize: 14, fontWeight: 800 }}>{t('themeTitle', 'Thème Graphique')}</span>
                 </div>
+                <p style={{ margin: 0, fontSize: 12, color: textMuted }}>
+                    {t('themeDesc', 'Basculez entre le thème sombre pour observation nocturne et le thème clair haute lisibilité.')}
+                </p>
 
                 <div style={{ display: 'flex', gap: 12 }}>
                     <button
@@ -131,7 +137,7 @@ export default function SettingsPanel() {
                             cursor: 'pointer'
                         }}
                     >
-                        <Moon size={16} /> Mode Sombre (Dark Theme)
+                        <Moon size={16} /> {t('themeDark', 'Mode Sombre (Dark Theme)')}
                     </button>
 
                     <button
@@ -150,7 +156,7 @@ export default function SettingsPanel() {
                             cursor: 'pointer'
                         }}
                     >
-                        <Sun size={16} /> Mode Clair (Light Theme)
+                        <Sun size={16} /> {t('themeLight', 'Mode Clair (Light Theme)')}
                     </button>
                 </div>
             </div>
@@ -169,11 +175,11 @@ export default function SettingsPanel() {
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#38bdf8', fontWeight: 800, fontSize: 13 }}>
                     <Info size={16} />
-                    <span>À propos de SwarmForge Web Visualizer</span>
+                    <span>{t('aboutTitle', 'À propos de SwarmForge Web Visualizer')}</span>
                 </div>
-                <div><strong>Version :</strong> 2.4.0 (Unified Simulation Studio Architecture)</div>
-                <div><strong>Architecture :</strong> Client Léger WebGL (Three.js / React Three Fiber) avec moteur sonore procédural WebAudio.</div>
-                <div><strong>Auteur :</strong> Silvère Martin-Michiellot & Gemini AI Assistant (Google DeepMind)</div>
+                <div><strong>{t('aboutVersion', 'Version :')}</strong> 2.4.0 (Unified Simulation Studio Architecture)</div>
+                <div><strong>{t('aboutArchitecture', 'Architecture :')}</strong> {t('engineModeDesc', 'Client Léger WebGL (Three.js / React Three Fiber) avec moteur sonore procédural WebAudio.')}</div>
+                <div><strong>{t('aboutAuthor', 'Auteur :')}</strong> Silvère Martin-Michiellot & Gemini AI Assistant (Google DeepMind)</div>
             </div>
         </div>
     )

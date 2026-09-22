@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { soundEngine } from '../utils/soundEngine'
+import { showToast } from './toastStore'
 import {
     DEFAULT_WORLD_PRESETS,
     DEFAULT_SPECIES_PRESETS,
@@ -428,6 +429,7 @@ export const useSimulationStore = create((set, get) => {
         // --- 4. Simulation Entities & Environment ---
         colonies: [],
         ants: [],
+        pheromones: [],
         nests: [],
         phantomNestsVisible: false,
         ghostNest: null,
@@ -442,10 +444,15 @@ export const useSimulationStore = create((set, get) => {
         trackedAntId: null,
         trackedAntData: null,
         followAntCamera: false,
-        setFollowAntCamera: (f) => set({ followAntCamera: f }),
+        cameraFollowMode: null, // null | 'TPS' | 'FPS'
+        customCameraTarget: null, // [x, y, z]
+        setFollowAntCamera: (f) => set({ followAntCamera: f, cameraFollowMode: f ? 'TPS' : null }),
+        setCameraFollowMode: (mode) => set({ cameraFollowMode: mode, followAntCamera: Boolean(mode) }),
+        setCustomCameraTarget: (pos) => set({ customCameraTarget: pos }),
         setTrackedAntId: (id) => {
-            const ant = (get().ants || []).find(a => a.id === id) || null
-            set({ trackedAntId: id, trackedAntData: ant, selectedEntity: ant })
+            const ant = (get().ants || []).find(a => a.id === id || a.id?.includes(id)) || null
+            set({ trackedAntId: ant ? ant.id : id, trackedAntData: ant, selectedEntity: ant })
+            return ant
         },
         selectNextAnt: () => {
             const ants = get().ants || []
@@ -681,6 +688,26 @@ export const useSimulationStore = create((set, get) => {
                         windSpeed: intervention.windMetersPerSec ?? state.environment.windSpeed
                     }
                 })
+            } else if (category === 'PHEROMONE') {
+                const pheroPoints = []
+                const centerXPhero = posX || 50
+                const centerZPhero = posY || 50
+                const radius = intervention.pheromoneRadius || 10
+                const countPhero = Math.min(30, Math.max(5, Math.floor(radius * 2)))
+                for (let i = 0; i < countPhero; i++) {
+                    const angle = Math.random() * Math.PI * 2
+                    const dist = Math.random() * radius
+                    pheroPoints.push({
+                        id: `phero_god_${Date.now()}_${i}`,
+                        x: Math.max(5, Math.min(95, centerXPhero + Math.cos(angle) * dist)),
+                        z: Math.max(5, Math.min(95, centerZPhero + Math.sin(angle) * dist)),
+                        type: intervention.pheromoneType || 'ALARM',
+                        intensity: Math.min(1.0, (intervention.pheromoneIntensity || 100) / 100),
+                        colonyId: colonyId || 'ALL',
+                        createdAtTick: state.ticks
+                    })
+                }
+                set({ pheromones: [...(state.pheromones || []), ...pheroPoints].slice(-1000) })
             }
         },
 
@@ -706,10 +733,12 @@ export const useSimulationStore = create((set, get) => {
             })
         },
 
-        // --- 7. Event Log Bus ---
+        // --- 7. Event Log Bus (1:1 with SimulationEvent.java & EventLogPane.java) ---
+        eventSequenceCounter: 1,
         eventsLog: [
             {
                 id: 'evt_log_init',
+                sequenceId: 1,
                 tick: 0,
                 simCalendarTime: '2026-03-20 08:00:00',
                 severity: 'INFO',
@@ -722,23 +751,28 @@ export const useSimulationStore = create((set, get) => {
 
         addEventLog: (log) => {
             const current = get().eventsLog
+            const nextSeq = (get().eventSequenceCounter || current.length) + 1
             const newLog = {
                 id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-                tick: get().ticks,
-                simCalendarTime: get().simTimeFormatted,
+                sequenceId: log.sequenceId || nextSeq,
+                tick: log.tick !== undefined ? log.tick : get().ticks,
+                simCalendarTime: log.simCalendarTime || get().simTimeFormatted,
                 severity: log.severity || 'INFO',
                 type: log.type || 'SYSTEM',
                 source: log.source || 'Simulation Engine',
                 message: log.message || '',
                 metadata: log.metadata || {}
             }
-            set({ eventsLog: [newLog, ...current].slice(0, 1000) })
+            set({
+                eventSequenceCounter: nextSeq,
+                eventsLog: [newLog, ...current].slice(0, 1000)
+            })
         },
 
         clearEventLogs: () => set({ eventsLog: [] }),
 
         // --- 8. Server Connection & Execution Topologies (1:1 with JavaFX) ---
-        executionMode: 'STANDALONE_LOCAL', // 'STANDALONE_LOCAL' | 'REMOTE_CLIENT_SERVER'
+        executionMode: 'REMOTE_CLIENT_SERVER', // 'REMOTE_CLIENT_SERVER' default architecture
         serverHost: 'localhost',
         serverPort: 50051,
         connected: false,
@@ -889,6 +923,7 @@ export const useSimulationStore = create((set, get) => {
                 isScenarioApplied: true,
                 colonies: initialColonies,
                 ants: initialAnts,
+                pheromones: [],
                 foodSources: initialFoods,
                 statsHistory: [],
                 simTimeFormatted: formatSimCalendarTime(startDateTime, 0),
@@ -907,9 +942,21 @@ export const useSimulationStore = create((set, get) => {
 
             get().addEventLog({
                 severity: 'INFO',
-                type: 'COLONY',
+                type: 'SIMULATION_STARTED',
                 source: 'Gestionnaire de Scénario',
-                message: `Nouveau scénario appliqué : ${worldPreset?.name || 'Monde'} (${initialAnts.length} individus, ${initialColonies.length} colonies)`
+                message: `Nouveau scénario appliqué : ${worldPreset?.name || 'Monde'} (${initialAnts.length} individus, ${initialColonies.length} colonies)`,
+                metadata: { world: worldPreset?.name, initialPopulation: initialAnts.length, coloniesCount: initialColonies.length }
+            })
+
+            // Generate canonical COLONY_FOUNDED events for each colony (1:1 with SimulationEvent.java)
+            initialColonies.forEach(col => {
+                get().addEventLog({
+                    severity: 'INFO',
+                    type: 'COLONY_FOUNDED',
+                    source: col.name,
+                    message: `Colonie "${col.name}" (${col.speciesId}) fondée avec ${col.population} individus (${col.queens} reine(s), ${col.workers} ouvrières, ${col.soldiers} soldats).`,
+                    metadata: { colonyId: col.id, species: col.speciesId, population: col.population, queens: col.queens, workers: col.workers, soldiers: col.soldiers }
+                })
             })
 
             // Switch to 3D view on apply (1:1 with SwarmForgeClient.java line 916)
@@ -949,9 +996,10 @@ export const useSimulationStore = create((set, get) => {
 
             get().addEventLog({
                 severity: 'INFO',
-                type: 'SYSTEM',
+                type: 'SIMULATION_STARTED',
                 source: 'Moteur de Simulation',
-                message: `Simulation lancée à vitesse ${state.speed}x (dt=${state.stepSeconds}s)`
+                message: `Simulation lancée à vitesse ${state.speed}x (dt=${state.stepSeconds}s)`,
+                metadata: { speed: state.speed, dt: state.stepSeconds, activeAnts: currentAnts.length }
             })
 
             lastTickTime = performance.now()
@@ -989,9 +1037,10 @@ export const useSimulationStore = create((set, get) => {
             clearInterval(simLoopInterval)
             get().addEventLog({
                 severity: 'INFO',
-                type: 'SYSTEM',
+                type: 'SIMULATION_PAUSED',
                 source: 'Moteur de Simulation',
-                message: `Simulation mise en pause au tick ${get().ticks}`
+                message: `Simulation mise en pause au tick ${get().ticks}`,
+                metadata: { tick: get().ticks, simTime: get().simTimeFormatted }
             })
         },
 
@@ -1018,7 +1067,7 @@ export const useSimulationStore = create((set, get) => {
                 })
             }
 
-            // 2. Simulate Ant movement and behaviors
+            // 2. Simulate Ant movement and behaviors with realistic bio-kinetics (15-30 mm/s)
             let foragingCount = 0
             let diggingCount = 0
             let nursingCount = 0
@@ -1030,6 +1079,7 @@ export const useSimulationStore = create((set, get) => {
             let queensCount = 0
             let malesCount = 0
 
+            const dt = state.stepSeconds || 0.05
             const updatedAnts = state.ants.map(ant => {
                 if (ant.caste === 'QUEEN') {
                     queensCount++
@@ -1047,18 +1097,211 @@ export const useSimulationStore = create((set, get) => {
                     else nursingCount++
                 }
 
-                const speedMult = ant.caste === 'SOLDIER' ? 0.25 : 0.4
-                const newX = Math.max(5, Math.min(95, ant.x + (Math.random() - 0.5) * speedMult))
-                const newZ = Math.max(5, Math.min(95, ant.z + (Math.random() - 0.5) * speedMult))
-                const newEnergy = Math.max(10, ant.energy - 0.005)
+                // Realistic ant speed: 15-28 mm/s in world coords (1 world unit = 1 cm = 10 mm)
+                const baseSpeedMms = ant.caste === 'SOLDIER' ? 18.5 : (ant.caste === 'QUEEN' ? 12.0 : 24.0)
+                const speedJitter = (Math.random() - 0.5) * 4.0
+                const speedMms = Math.max(5.0, baseSpeedMms + speedJitter)
+                const stepDistanceWorld = (speedMms * dt) / 10.0 // mm to cm (world units)
+
+                const headingJitter = (Math.random() - 0.5) * 0.35
+                const currentHeading = (ant.heading !== undefined ? ant.heading : (Math.random() * Math.PI * 2)) + headingJitter
+                const moveDist = ant.job === 'RESTING' ? 0 : stepDistanceWorld
+                const newX = Math.max(5, Math.min(95, ant.x + Math.cos(currentHeading) * moveDist))
+                const newZ = Math.max(5, Math.min(95, ant.z + Math.sin(currentHeading) * moveDist))
+                const newEnergy = Math.max(10, ant.energy - 0.003)
 
                 return {
                     ...ant,
                     x: newX,
                     z: newZ,
+                    heading: currentHeading,
+                    speedMms: speedMms,
                     energy: newEnergy
                 }
             })
+
+            // 2b. 8 Pheromone Types trail deposition and evaporation (1:1 with PheromoneType.java)
+            const currentPheromones = state.pheromones || []
+            const newPheromoneDrops = []
+            
+            // Foragers, scouts, soldiers & queens drop appropriate pheromone channels
+            if (newTick % 4 === 0) {
+                updatedAnts.forEach(ant => {
+                    if (ant.caste === 'QUEEN') {
+                        if (Math.random() < 0.25) {
+                            newPheromoneDrops.push({
+                                id: `phero_queen_${Date.now()}_${ant.id}_${newTick}`,
+                                x: ant.x,
+                                z: ant.z,
+                                type: 'QUEEN_SCENT',
+                                intensity: 0.95,
+                                colonyId: ant.colonyId,
+                                createdAtTick: newTick
+                            })
+                        }
+                    } else if (ant.caste === 'WORKER') {
+                        if (ant.carriedItem && ant.carriedItem !== 'NONE' && Math.random() < 0.45) {
+                            newPheromoneDrops.push({
+                                id: `phero_food_${Date.now()}_${ant.id}_${newTick}`,
+                                x: ant.x,
+                                z: ant.z,
+                                type: 'FOOD_TRAIL',
+                                intensity: 0.90,
+                                colonyId: ant.colonyId,
+                                createdAtTick: newTick
+                            })
+                        } else if (ant.job === 'FORAGER' && Math.random() < 0.30) {
+                            newPheromoneDrops.push({
+                                id: `phero_home_${Date.now()}_${ant.id}_${newTick}`,
+                                x: ant.x,
+                                z: ant.z,
+                                type: 'HOME_TRAIL',
+                                intensity: 0.75,
+                                colonyId: ant.colonyId,
+                                createdAtTick: newTick
+                            })
+                        }
+                    } else if (ant.caste === 'SOLDIER' && Math.random() < 0.20) {
+                        newPheromoneDrops.push({
+                            id: `phero_territory_${Date.now()}_${ant.id}_${newTick}`,
+                            x: ant.x,
+                            z: ant.z,
+                            type: 'TERRITORY',
+                            intensity: 0.80,
+                            colonyId: ant.colonyId,
+                            createdAtTick: newTick
+                        })
+                    }
+                })
+            }
+
+            // Evaporate existing pheromones
+            const decayedPheromones = currentPheromones
+                .map(p => ({
+                    ...p,
+                    intensity: p.intensity * 0.988
+                }))
+                .filter(p => p.intensity > 0.08)
+
+            const updatedPheromones = [...decayedPheromones, ...newPheromoneDrops].slice(-1000)
+
+            // 2c. Biological & Simulation Event Generation (1:1 with EventLogPane.java & SimulationEvent.java)
+            // Food Discovery (FOOD_DISCOVERED)
+            if (newTick % 45 === 0 && Math.random() < 0.45) {
+                const forager = updatedAnts.find(a => a.caste === 'WORKER' && a.job === 'FORAGER')
+                if (forager && state.foodSources && state.foodSources.length > 0) {
+                    const nearestFood = state.foodSources[Math.floor(Math.random() * state.foodSources.length)]
+                    get().addEventLog({
+                        severity: 'INFO',
+                        type: 'FOOD_DISCOVERED',
+                        source: forager.colonyName || 'Colonie',
+                        message: `Ouvrière prospectrice a localisé une ressource "${nearestFood.name}" (${nearestFood.type}) à (${Math.round(nearestFood.x)}, ${Math.round(nearestFood.z)}) : ${nearestFood.amount} unités.`,
+                        metadata: { colonyId: forager.colonyId, species: forager.species, x: Math.round(nearestFood.x), z: Math.round(nearestFood.z), amount: nearestFood.amount, resource: nearestFood.name },
+                        tick: newTick,
+                        simCalendarTime: calendarTime
+                    })
+                }
+            }
+
+            // Stomodeal Trophallaxis (TROPHALLAXIS)
+            if (newTick % 60 === 0 && Math.random() < 0.5) {
+                const forager = updatedAnts.find(a => a.carriedItem && a.carriedItem !== 'NONE')
+                const receiver = updatedAnts.find(a => (a.job === 'NURSE' || a.caste === 'QUEEN') && a.colonyId === forager?.colonyId)
+                if (forager && receiver) {
+                    get().addEventLog({
+                        severity: 'INFO',
+                        type: 'TROPHALLAXIS',
+                        source: forager.colonyName || 'Colonie',
+                        message: `Transfert stomodéal de nutriments et miellat entre fourrageuse (${forager.id}) et ${receiver.caste === 'QUEEN' ? 'la Reine' : 'nourrice'} (${receiver.id}).`,
+                        metadata: { colonyId: forager.colonyId, donorId: forager.id, receiverId: receiver.id, volumeUl: (1.5 + Math.random() * 2.0).toFixed(1) },
+                        tick: newTick,
+                        simCalendarTime: calendarTime
+                    })
+                }
+            }
+
+            // Worker / Soldier Emergence (WORKER_BORN, SOLDIER_BORN)
+            if (newTick % 90 === 0 && Math.random() < 0.6) {
+                const targetCol = state.colonies[Math.floor(Math.random() * state.colonies.length)]
+                if (targetCol) {
+                    const isSoldier = Math.random() < 0.2
+                    const casteType = isSoldier ? 'SOLDIER' : 'WORKER'
+                    const eventType = isSoldier ? 'SOLDIER_BORN' : 'WORKER_BORN'
+                    const newId = `ant_${targetCol.id}_${casteType.toLowerCase()}_${Date.now().toString().slice(-4)}`
+                    get().addEventLog({
+                        severity: 'INFO',
+                        type: eventType,
+                        source: targetCol.name,
+                        message: `Éclosion réussie dans la chambre à couvain : 1 nouvel individu ${isSoldier ? 'soldat (major)' : 'ouvrière (minor)'} [${newId}] a achevé sa nymphose.`,
+                        metadata: { colonyId: targetCol.id, species: targetCol.speciesId, caste: casteType, individualId: newId },
+                        tick: newTick,
+                        simCalendarTime: calendarTime
+                    })
+                }
+            }
+
+            // Natural Senescence & Necrophoresis (WORKER_DIED, SOLDIER_DIED)
+            if (newTick % 160 === 0 && Math.random() < 0.4) {
+                const targetCol = state.colonies[Math.floor(Math.random() * state.colonies.length)]
+                if (targetCol) {
+                    const isSoldier = Math.random() < 0.15
+                    const casteType = isSoldier ? 'SOLDIER' : 'WORKER'
+                    const eventType = isSoldier ? 'SOLDIER_DIED' : 'WORKER_DIED'
+                    get().addEventLog({
+                        severity: 'WARNING',
+                        type: eventType,
+                        source: targetCol.name,
+                        message: `Nécrophorèse : Individu ${casteType.toLowerCase()} décédé suite à l'épuisement physiologique (sénescence). Corps transporté vers la zone de dépotoir.`,
+                        metadata: { colonyId: targetCol.id, species: targetCol.speciesId, caste: casteType, cause: 'Sénescence physiologique' },
+                        tick: newTick,
+                        simCalendarTime: calendarTime
+                    })
+                }
+            }
+
+            // Territory Marking (TERRITORY_CLAIMED)
+            if (newTick % 180 === 0 && Math.random() < 0.45) {
+                const soldier = updatedAnts.find(a => a.caste === 'SOLDIER')
+                if (soldier) {
+                    get().addEventLog({
+                        severity: 'INFO',
+                        type: 'TERRITORY_CLAIMED',
+                        source: soldier.colonyName || 'Colonie',
+                        message: `Marquage de patrouille territoriale : Dépôt d'hydrocarbures cuticulaires et phéromone de territoire aux coordonnées (${Math.round(soldier.x)}, ${Math.round(soldier.z)}).`,
+                        metadata: { colonyId: soldier.colonyId, x: Math.round(soldier.x), z: Math.round(soldier.z), intensity: 0.85 },
+                        tick: newTick,
+                        simCalendarTime: calendarTime
+                    })
+                }
+            }
+
+            // Interspecific Combat (COMBAT_OCCURRED)
+            if (newTick % 220 === 0 && state.colonies.length > 1 && Math.random() < 0.4) {
+                const col1 = state.colonies[0]
+                const col2 = state.colonies[1]
+                get().addEventLog({
+                    severity: 'WARNING',
+                    type: 'COMBAT_OCCURRED',
+                    source: 'Zone Frontalière',
+                    message: `Escarmouche intercoloniale : Affrontement entre patrouilles de "${col1.name}" et "${col2.name}". Mandibules déployées et sécrétions d'acide formique.`,
+                    metadata: { colony1: col1.name, colony2: col2.name, damageDealt: Math.round(15 + Math.random() * 25), location: 'Secteur Central' },
+                    tick: newTick,
+                    simCalendarTime: calendarTime
+                })
+            }
+
+            // Demographic Milestones (MILESTONE_REACHED)
+            if (newTick === 100 || newTick === 300 || newTick === 600 || newTick === 1000 || newTick === 2000) {
+                get().addEventLog({
+                    severity: 'INFO',
+                    type: 'MILESTONE_REACHED',
+                    source: 'Moteur SwarmForge',
+                    message: `Cap franchi : ${newTick} cycles de simulation complétés (Population active : ${updatedAnts.length} individus, ${updatedPheromones.length} concentrations chimiques).`,
+                    metadata: { tick: newTick, totalPopulation: updatedAnts.length, pheromonesActive: updatedPheromones.length },
+                    tick: newTick,
+                    simCalendarTime: calendarTime
+                })
+            }
 
             // 3. Update Colonies stats & Demographics
             const updatedColonies = state.colonies.map(col => {
@@ -1096,7 +1339,7 @@ export const useSimulationStore = create((set, get) => {
                 weather: {
                     temp: state.environment.temperature,
                     rain: state.environment.weatherState === 'TEMPEST' ? 25.0 : 0.0,
-                    phero: 100 + (updatedAnts.length * 2.5)
+                    phero: updatedPheromones.length
                 },
                 behaviors: {
                     foraging: foragingCount,
@@ -1113,8 +1356,9 @@ export const useSimulationStore = create((set, get) => {
             }
 
             let updatedHistory = state.statsHistory
-            if (newTick % 5 === 0 || updatedHistory.length === 0) {
-                updatedHistory = [...state.statsHistory, statsSnapshot].slice(-1200)
+            if (newTick % 3 === 0 || updatedHistory.length === 0) {
+                // Keep up to 7200 data points (sufficient for 1 hour at full resolution)
+                updatedHistory = [...state.statsHistory, statsSnapshot].slice(-7200)
             }
 
             // 5. Update Tracked Individual Ant Telemetry if active
@@ -1122,9 +1366,11 @@ export const useSimulationStore = create((set, get) => {
             if (state.trackedAntId) {
                 const currentTracked = updatedAnts.find(a => a.id === state.trackedAntId)
                 if (currentTracked) {
+                    // Realistic incremental distance: (speedMms * dt) / 1000 meters
+                    const deltaMeters = ((currentTracked.speedMms || 20.0) * dt) / 1000.0
                     updatedTrackedAntData = {
                         ...currentTracked,
-                        distanceTraveled: (state.trackedAntData?.distanceTraveled || 0) + 0.15,
+                        distanceTraveled: (state.trackedAntData?.distanceTraveled || 0) + deltaMeters,
                         healthHistory: [...(state.trackedAntData?.healthHistory || []), currentTracked.health].slice(-100),
                         energyHistory: [...(state.trackedAntData?.energyHistory || []), currentTracked.energy].slice(-100)
                     }
@@ -1138,6 +1384,7 @@ export const useSimulationStore = create((set, get) => {
                 simTimeFormatted: calendarTime,
                 simRelativeTimeFormatted: relativeTime,
                 ants: updatedAnts,
+                pheromones: updatedPheromones,
                 colonies: updatedColonies,
                 statsHistory: updatedHistory,
                 trackedAntData: updatedTrackedAntData

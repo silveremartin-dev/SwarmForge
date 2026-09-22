@@ -6,23 +6,31 @@ import { getTerrainHeight } from '../utils/terrainUtils'
 
 export default function LODAnts({ ants = [] }) {
     const meshRef = useRef()
-    const { setSelectedEntity, terrainConfig, antTrackingEnabled } = useSimulationStore()
+    const hitMeshRef = useRef()
+    const { setSelectedEntity, terrainConfig } = useSimulationStore()
 
     const tempObject = useMemo(() => new THREE.Object3D(), [])
     const tempColor = useMemo(() => new THREE.Color(), [])
 
-    // Optimized instanced ant geometry (capsule + head shape)
-    const geometry = useMemo(() => new THREE.SphereGeometry(0.22, 8, 6), [])
+    // Visual ant geometry
+    const geometry = useMemo(() => new THREE.SphereGeometry(0.28, 8, 6), [])
     const material = useMemo(() => new THREE.MeshStandardMaterial({
         vertexColors: true,
-        roughness: 0.6,
+        roughness: 0.5,
         metalness: 0.2,
         depthTest: true,
         depthWrite: true
     }), [])
 
+    // Generous hitbox geometry for effortless 1-click ant selection
+    const hitGeometry = useMemo(() => new THREE.SphereGeometry(1.5, 8, 6), [])
+    const hitMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+        visible: false,
+        depthWrite: false
+    }), [])
+
     useFrame(() => {
-        if (!meshRef.current || !ants || ants.length === 0) return
+        if (!ants || ants.length === 0) return
 
         for (let i = 0; i < ants.length; i++) {
             const ant = ants[i]
@@ -33,12 +41,12 @@ export default function LODAnts({ ants = [] }) {
             const groundY = getTerrainHeight(antX, antZ, terrainConfig)
             const isClimbing = Boolean(ant.isClimbingTree || ant.climbingTree || (ant.treeClimbHeight && ant.treeClimbHeight > 0))
             const treeOffset = isClimbing ? (ant.treeClimbHeight || 2.2) : 0
-            const antY = groundY + 0.12 + treeOffset
+            const antY = groundY + 0.15 + treeOffset
 
             tempObject.position.set(antX, antY, antZ)
             const scale = ant.bodyLengthMm
                 ? (ant.bodyLengthMm / 6.0)
-                : (ant.caste === 'QUEEN' ? 2.2 : (ant.caste === 'SOLDIER' ? 1.4 : (ant.caste === 'MALE' ? 1.2 : 1.0)))
+                : (ant.caste === 'QUEEN' ? 2.4 : (ant.caste === 'SOLDIER' ? 1.5 : (ant.caste === 'MALE' ? 1.3 : 1.0)))
 
             tempObject.scale.setScalar(scale)
 
@@ -49,12 +57,17 @@ export default function LODAnts({ ants = [] }) {
             }
 
             tempObject.updateMatrix()
-            meshRef.current.setMatrixAt(i, tempObject.matrix)
+            if (meshRef.current) {
+                meshRef.current.setMatrixAt(i, tempObject.matrix)
+            }
+            if (hitMeshRef.current) {
+                hitMeshRef.current.setMatrixAt(i, tempObject.matrix)
+            }
 
             // Castes & order coloring
             let colorStr = ant.caste === 'QUEEN' ? '#ffd700' :
                 ant.caste === 'SOLDIER' ? '#ef4444' :
-                    ant.caste === 'MALE' ? '#38bdf8' : '#8b4513'
+                    ant.caste === 'MALE' ? '#38bdf8' : (ant.color || '#8b4513')
 
             if (ant.diseaseState && ant.diseaseState !== 'HEALTHY') {
                 colorStr = '#84cc16' // Infected sickly green
@@ -66,15 +79,22 @@ export default function LODAnts({ ants = [] }) {
             else if (orderStr.includes('WASP')) colorStr = '#facc15'
 
             tempColor.set(colorStr)
-            meshRef.current.setColorAt(i, tempColor)
+            if (meshRef.current) {
+                meshRef.current.setColorAt(i, tempColor)
+            }
         }
 
-        meshRef.current.instanceMatrix.needsUpdate = true
-        if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true
+        if (meshRef.current) {
+            meshRef.current.instanceMatrix.needsUpdate = true
+            if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true
+        }
+        if (hitMeshRef.current) {
+            hitMeshRef.current.instanceMatrix.needsUpdate = true
+        }
     })
 
     // Interaction: Click to inspect and track ant
-    const handleClick = (e) => {
+    const handleAntClick = (e) => {
         e.stopPropagation()
         const instanceId = e.instanceId
         if (instanceId !== undefined && ants[instanceId]) {
@@ -82,15 +102,33 @@ export default function LODAnts({ ants = [] }) {
         }
     }
 
+    const handlePointerOver = (e) => {
+        e.stopPropagation()
+        document.body.style.cursor = 'pointer'
+    }
+
+    const handlePointerOut = () => {
+        document.body.style.cursor = 'auto'
+    }
+
     return (
         <group>
+            {/* Visual instanced ants */}
             <instancedMesh
                 ref={meshRef}
                 args={[geometry, material, 10000]}
                 count={ants.length}
-                onClick={handleClick}
                 castShadow
                 receiveShadow
+            />
+            {/* Generous hitbox instanced mesh for direct raycasting */}
+            <instancedMesh
+                ref={hitMeshRef}
+                args={[hitGeometry, hitMaterial, 10000]}
+                count={ants.length}
+                onClick={handleAntClick}
+                onPointerOver={handlePointerOver}
+                onPointerOut={handlePointerOut}
             />
         </group>
     )

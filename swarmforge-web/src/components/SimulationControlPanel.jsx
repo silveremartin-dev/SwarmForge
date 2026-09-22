@@ -101,18 +101,17 @@ export default function SimulationControlPanel() {
     const handleApply = () => {
         applyScenarioSetup()
         setIsApplied(true)
-        showToast('✓ Scénario initialisé et appliqué avec succès !', 'success')
+        showToast(t('scenarioAppliedBadge', '✓ Scénario Appliqué !'), 'success')
         setTimeout(() => setIsApplied(false), 2500)
     }
 
-    const isServer = executionMode === 'REMOTE_CLIENT_SERVER'
     const isJoin = serverRole === 'JOIN'
-    const isScenarioDisabled = isServer && isJoin
+    const isScenarioDisabled = isJoin
 
     // Calculate equivalent duration text
     const getCalculatedDurationInfo = () => {
         if (durationUnit === '∞ Unlimited' || durationUnit === '∞ Illimité') {
-            return '🔄 Exécution continue sans limite de temps prédéfinie'
+            return `🔄 ${t('equivalentDurationLabel', 'Durée Équivalente :')} ∞`
         }
         let totalSeconds = 0
         const dur = Number(maxDuration) || 100
@@ -136,7 +135,7 @@ export default function SimulationControlPanel() {
         const dt = stepSeconds || 0.0166
         const steps = Math.round(totalSeconds / dt)
 
-        return `🔄 Equivalent Duration: ${days}j ${hours}h ${mins}m ${secs}s (${steps.toLocaleString()} steps at Δt = ${dt.toFixed(3)}s)`
+        return `🔄 ${t('equivalentDurationLabel', 'Durée Équivalente :')} ${days}d ${hours}h ${mins}m ${secs}s (${steps.toLocaleString()} steps @ Δt = ${dt.toFixed(3)}s)`
     }
 
     // Time parsing for Start Date & Time
@@ -181,7 +180,7 @@ export default function SimulationControlPanel() {
             {/* Header: Title & Apply Button */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${borderCol}`, paddingBottom: 12 }}>
                 <h1 style={{ margin: 0, fontSize: 19, fontWeight: 700, letterSpacing: '-0.2px' }}>
-                    Scenario Configuration & Multi-Species Ecosystem
+                    {t('simControlsTitle', 'Configuration du Scénario & Écosystème Multi-Espèces')}
                 </h1>
 
                 <button
@@ -202,57 +201,33 @@ export default function SimulationControlPanel() {
                     }}
                 >
                     <CheckCircle size={15} />
-                    {isApplied ? 'Scénario Appliqué !' : '🚀 APPLIQUER & INITIALISER LE SCÉNARIO'}
+                    {isApplied ? t('scenarioAppliedBadge', '✓ Scénario Appliqué !') : t('applyInitScenarioBtn', '🚀 APPLIQUER & INITIALISER LE SCÉNARIO')}
                 </button>
             </div>
 
-            {/* 1. Execution Engine Row */}
+            {/* 1. SwarmForge Remote Server gRPC Cluster Connection Panel */}
             <div style={{
                 background: cardBg,
                 border: `1px solid ${borderCol}`,
                 borderRadius: 8,
-                padding: '12px 16px',
+                padding: '14px 16px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 12
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 120 }}>Execution Engine:</span>
-                    <select
-                        value={executionMode}
-                        onChange={(e) => setExecutionMode(e.target.value)}
-                        style={{
-                            flex: 1,
-                            background: inputBg,
-                            color: textMain,
-                            border: `1px solid ${borderCol}`,
-                            borderRadius: 6,
-                            padding: '7px 12px',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            outline: 'none'
-                        }}
-                    >
-                        <option value="STANDALONE_LOCAL">● Embedded Local Mode (In-Process CPU)</option>
-                        <option value="REMOTE_CLIENT_SERVER">● SwarmForge Server Mode (Remote / gRPC Cluster)</option>
-                    </select>
-                </div>
-
-                {/* Server Network Subpanel (Shown ONLY when Server Mode is selected) */}
-                {isServer && (
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 12,
-                        padding: '14px 16px',
-                        borderRadius: 8,
-                        background: isDark ? '#111827' : '#f0f9ff',
-                        border: '1px solid rgba(2, 132, 199, 0.35)'
-                    }}>
-                        {/* Row 1: Host, Port, Connect/Disconnect, Start Server, Discover */}
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                    padding: '14px 16px',
+                    borderRadius: 8,
+                    background: isDark ? '#111827' : '#f0f9ff',
+                    border: '1px solid rgba(2, 132, 199, 0.35)'
+                }}>
+                        {/* Row 1: Host, Port, Connect/Disconnect, Discover */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: textMuted }}>Host:</span>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: textMuted }}>{t('hostLabel', 'Hôte :')}</span>
                                 <input
                                     type="text"
                                     value={serverHost}
@@ -271,7 +246,7 @@ export default function SimulationControlPanel() {
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: textMuted }}>Port:</span>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: textMuted }}>{t('portLabel', 'Port :')}</span>
                                 <input
                                     type="number"
                                     value={serverPort}
@@ -306,7 +281,7 @@ export default function SimulationControlPanel() {
                                         cursor: 'pointer'
                                     }}
                                 >
-                                    ✕ Disconnect
+                                    {t('btnDisconnect', '✕ Déconnecter')}
                                 </button>
                             ) : (
                                 <button
@@ -325,28 +300,9 @@ export default function SimulationControlPanel() {
                                         cursor: 'pointer'
                                     }}
                                 >
-                                    🌐 Connect
+                                    {t('btnConnect', '🌐 Connecter')}
                                 </button>
                             )}
-
-                            <button
-                                onClick={() => showToast('🚀 Démarrage du serveur local SwarmForge...', 'info')}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 5,
-                                    background: isDark ? '#1e293b' : '#e2e8f0',
-                                    color: textMain,
-                                    border: `1px solid ${borderCol}`,
-                                    borderRadius: 6,
-                                    padding: '6px 12px',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                🚀 Démarrer Serveur...
-                            </button>
 
                             <button
                                 onClick={discover}
@@ -364,27 +320,27 @@ export default function SimulationControlPanel() {
                                     cursor: 'pointer'
                                 }}
                             >
-                                🔍 Détecter
+                                {t('btnDiscover', '🔍 Détecter')}
                             </button>
                         </div>
 
                         {/* Row 2: Status */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
-                            <span style={{ fontWeight: 600, color: textMuted }}>gRPC Status:</span>
+                            <span style={{ fontWeight: 600, color: textMuted }}>{t('grpcStatusLabel', 'Statut gRPC :')}</span>
                             {connected ? (
                                 <span style={{ color: '#10b981', fontWeight: 700 }}>
-                                    ● Connected ({serverHost}:{serverPort})
+                                    {t('grpcStatusConnected', '● Connecté')} ({serverHost}:{serverPort})
                                 </span>
                             ) : (
                                 <span style={{ color: '#ef4444', fontWeight: 700 }}>
-                                    Offline
+                                    {t('grpcStatusOffline', 'Hors ligne')}
                                 </span>
                             )}
                         </div>
 
                         {/* Row 3: Server Role */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: textMuted, minWidth: 80 }}>Server Role:</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: textMuted, minWidth: 100 }}>{t('serverRoleLabel', 'Rôle Serveur :')}</span>
                             <select
                                 value={serverRole}
                                 onChange={(e) => setServerRole(e.target.value)}
@@ -399,8 +355,8 @@ export default function SimulationControlPanel() {
                                     fontWeight: 600
                                 }}
                             >
-                                <option value="JOIN">● Join (Matchmaking / Megaterrarium - Server Authority)</option>
-                                <option value="HOST">● Host / Deploy Scenario (Researcher Mode - Client Authority)</option>
+                                <option value="JOIN">{t('roleJoinLabel', '● Rejoindre (Matchmaking / Mégaterrarium - Autorité Serveur)')}</option>
+                                <option value="HOST">{t('roleHostLabel', '● Héberger / Déployer Scénario (Mode Chercheur - Autorité Client)')}</option>
                             </select>
                         </div>
 
@@ -408,7 +364,7 @@ export default function SimulationControlPanel() {
                         {isJoin && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span style={{ fontSize: 12, fontWeight: 600, color: textMuted }}>Participant Tag:</span>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: textMuted }}>{t('participantTagLabel', 'Tag / Alias du Participant :')}</span>
                                     <input
                                         type="text"
                                         value={playerAlias}
@@ -427,7 +383,7 @@ export default function SimulationControlPanel() {
                                 </div>
 
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                                    <span style={{ fontSize: 12, fontWeight: 600, color: textMuted }}>Species:</span>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: textMuted }}>{t('speciesLabel', 'Espèce Affectée :')}</span>
                                     <select
                                         value={playerSpecies}
                                         onChange={(e) => setPlayerSpecies(e.target.value)}
@@ -464,11 +420,11 @@ export default function SimulationControlPanel() {
                                 gap: 4
                             }}>
                                 <div style={{ fontWeight: 800, color: '#eab308' }}>
-                                    ▶ Join Mode — Matchmaking & Megaterrarium (Server Authority)
+                                    {t('joinModeExplainerTitle', '▶ Mode Rejoindre — Matchmaking & Mégaterrarium (Autorité Serveur)')}
                                 </div>
-                                <div>• World & Climate: Governed by the server host (local settings below are disabled).</div>
-                                <div>• Your Colony: The server assigns a balanced starting colony and nest location.</div>
-                                <div>• Species & Tag: Select the species you bring from your personal library (field above).</div>
+                                <div>{t('joinModeExplainer1', '• Monde & Climat : Régis par l\'hôte serveur distant (paramètres locaux désactivés).')}</div>
+                                <div>{t('joinModeExplainer2', '• Votre Colonie : Le serveur assigne une colonie équilibrée et l\'emplacement du nid.')}</div>
+                                <div>{t('joinModeExplainer3', '• Espèce & Tag : Sélectionnez l\'espèce que vous apportez depuis votre bibliothèque (champ ci-dessus).')}</div>
                             </div>
                         ) : (
                             <div style={{
@@ -483,14 +439,13 @@ export default function SimulationControlPanel() {
                                 gap: 4
                             }}>
                                 <div style={{ fontWeight: 800, color: '#10b981' }}>
-                                    ▶ Host Mode — Deploy Custom Scenario (Host Authority)
+                                    {t('hostModeExplainerTitle', '▶ Mode Hébergement — Contrôle Total du Chercheur (Autorité Client)')}
                                 </div>
-                                <div>• Master Scenario: All your settings below (World, Climate, Species, Nests, Demographics) are deployed to the server.</div>
-                                <div>• Role: You define the entire ecosystem. Other participants can join your simulation and take control of configured colonies.</div>
+                                <div>{t('hostModeExplainer1', '• Scénario Maître : Tous vos paramètres ci-dessous (Monde, Climat, Espèces, Nids, Démographie) sont déployés sur le serveur.')}</div>
+                                <div>{t('hostModeExplainer2', '• Rôle : Vous définissez l\'écosystème complet. D\'autres participants peuvent rejoindre votre simulation et piloter des colonies.')}</div>
                             </div>
                         )}
                     </div>
-                )}
             </div>
 
             {/* 2. Global Scenario Preset & Actions Container */}
@@ -503,7 +458,7 @@ export default function SimulationControlPanel() {
             }}>
                 {/* Global Preset Selector */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>Global Scenario Preset :</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>{t('globalScenarioPresetLabel', 'Méta-Preset de Scénario Global :')}</span>
                     <select
                         value={selectedScenarioPresetId}
                         onChange={(e) => setScenarioPresetId(e.target.value)}
@@ -542,7 +497,7 @@ export default function SimulationControlPanel() {
                             cursor: 'pointer'
                         }}
                     >
-                        <Save size={13} /> Save
+                        <Save size={13} /> {t('btnSave', 'Enregistrer')}
                     </button>
 
                     <button
@@ -561,7 +516,7 @@ export default function SimulationControlPanel() {
                             cursor: 'pointer'
                         }}
                     >
-                        <Trash2 size={13} /> Delete
+                        <Trash2 size={13} /> {t('btnDelete', 'Supprimer')}
                     </button>
 
                     <button
@@ -580,7 +535,7 @@ export default function SimulationControlPanel() {
                             cursor: 'pointer'
                         }}
                     >
-                        <Download size={13} /> Export...
+                        <Download size={13} /> {t('btnExport', 'Exporter...')}
                     </button>
 
                     <label
@@ -598,7 +553,7 @@ export default function SimulationControlPanel() {
                             cursor: 'pointer'
                         }}
                     >
-                        <Upload size={13} /> Import...
+                        <Upload size={13} /> {t('btnImport', 'Importer...')}
                         <input
                             type="file"
                             accept=".json"
@@ -621,7 +576,7 @@ export default function SimulationControlPanel() {
 
                 {/* Scenario Description */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: textMuted }}>Scientific Scenario Description :</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: textMuted }}>{t('scientificDescLabel', 'Description Scientifique du Scénario :')}</span>
                     <textarea
                         value={scenarioDescription}
                         onChange={(e) => setScenarioDescription(e.target.value)}
@@ -643,7 +598,7 @@ export default function SimulationControlPanel() {
 
                 {/* 1. World Preset */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>1. World Preset (Biotope) :</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>{t('worldPresetSectionLabel', '1. Biotope & Monde (World Preset) :')}</span>
                     <select
                         value={selectedWorldPresetId}
                         onChange={(e) => setWorldPresetId(e.target.value)}
@@ -666,7 +621,7 @@ export default function SimulationControlPanel() {
 
                 {/* 2. Weather & Climate Preset */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>2. Weather & Climate Preset :</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>{t('weatherPresetSectionLabel', '2. Profil Météo & Climat :')}</span>
 
                     <div style={{ display: 'flex', borderRadius: 5, overflow: 'hidden', border: `1px solid ${borderCol}` }}>
                         <button
@@ -681,7 +636,7 @@ export default function SimulationControlPanel() {
                                 cursor: 'pointer'
                             }}
                         >
-                            Simulated
+                            {t('weatherSimulated', 'Simulé')}
                         </button>
                         <button
                             onClick={() => setRealWeatherMode(true)}
@@ -695,7 +650,7 @@ export default function SimulationControlPanel() {
                                 cursor: 'pointer'
                             }}
                         >
-                            Real
+                            {t('weatherReal', 'Réel')}
                         </button>
                     </div>
 
@@ -733,7 +688,7 @@ export default function SimulationControlPanel() {
                                     cursor: 'pointer'
                                 }}
                             >
-                                Align
+                                {t('btnAlignWeather', '⛅ Aligner')}
                             </button>
                         </>
                     ) : (
@@ -742,7 +697,7 @@ export default function SimulationControlPanel() {
                                 type="text"
                                 value={realWeatherCity}
                                 onChange={(e) => setRealWeatherCity(e.target.value)}
-                                placeholder="Ville ou Lat, Lon..."
+                                placeholder={t('realWeatherPlaceholder', 'Ville ou Lat, Lon...')}
                                 style={{
                                     width: 140,
                                     background: inputBg,
@@ -766,7 +721,7 @@ export default function SimulationControlPanel() {
                                     cursor: 'pointer'
                                 }}
                             >
-                                Obtenir
+                                {t('btnGetWeather', 'Obtenir')}
                             </button>
                             <span style={{ fontSize: 10, color: textMuted }}>{realWeatherStatus}</span>
                         </div>
@@ -775,7 +730,7 @@ export default function SimulationControlPanel() {
 
                 {/* 3. Start Date & Time */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>3. Start Date & Time :</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>{t('startDateTimeSectionLabel', '3. Date & Heure de Démarrage :')}</span>
                     <input
                         type="date"
                         value={curDateStr}
@@ -824,7 +779,7 @@ export default function SimulationControlPanel() {
 
                 {/* 4. Master Random Seed */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>4. Master Random Seed :</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>{t('masterSeedSectionLabel', '4. Graine Aléatoire Maîtresse (RNG Master Seed) :')}</span>
                     <input
                         type="number"
                         value={masterSeed}
@@ -857,14 +812,14 @@ export default function SimulationControlPanel() {
                             cursor: 'pointer'
                         }}
                     >
-                        New
+                        {t('btnNew', '🎲 Nouvelle')}
                     </button>
                 </div>
 
                 {/* 5. Physics Step (Integration Δt) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>5. Physics Step (Integration Δt) :</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>{t('physicsStepSectionLabel', '5. Pas Physique (Intégration Δt) :')}</span>
                         <select
                             value={stepSeconds}
                             onChange={(e) => setStepSeconds(parseFloat(e.target.value))}
@@ -887,14 +842,14 @@ export default function SimulationControlPanel() {
                         </select>
                     </div>
                     <div style={{ fontSize: 10, fontStyle: 'italic', color: textMuted, marginLeft: 170 }}>
-                        Note: For a given Seed and Δt step, simulation execution is fully deterministic and reproducible.
+                        {t('physicsStepNote', 'Note : Pour une graine et un pas Δt donnés, l\'exécution de la simulation est strictement déterministe et reproductible.')}
                     </div>
                 </div>
 
                 {/* 6. Maximum Simulation Duration */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>6. Maximum Simulation Duration :</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>{t('maxDurationSectionLabel', '6. Durée Maximale de Simulation :')}</span>
                         <input
                             type="number"
                             min="1"
@@ -943,7 +898,7 @@ export default function SimulationControlPanel() {
 
                 {/* 7. Min Population Stop Threshold */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>7. Min Population Stop Threshold :</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, minWidth: 160 }}>{t('minPopStopSectionLabel', '7. Seuil d\'Arrêt Population Minimale :')}</span>
                     <input
                         type="number"
                         min="0"
@@ -974,7 +929,7 @@ export default function SimulationControlPanel() {
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: 13, fontWeight: 800, color: '#38bdf8' }}>
-                            Colonies & Castes IA de l'Écosystème ({speciesCards.length} colonies)
+                            {t('ecosystemColoniesTitle', 'Colonies & Castes IA de l\'Écosystème')} ({speciesCards.length} colonies)
                         </span>
 
                         <button
@@ -993,7 +948,7 @@ export default function SimulationControlPanel() {
                                 cursor: 'pointer'
                             }}
                         >
-                            <Plus size={13} /> Ajouter une Colonie
+                            <Plus size={13} /> {t('btnAddColony', '＋ Ajouter une Colonie')}
                         </button>
                     </div>
 
@@ -1041,7 +996,7 @@ export default function SimulationControlPanel() {
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <span style={{ fontSize: 10, color: textMuted }}>Espèce :</span>
+                                    <span style={{ fontSize: 10, color: textMuted }}>{t('speciesCardLabel', 'Espèce :')}</span>
                                     <select
                                         value={card.speciesId}
                                         onChange={(e) => updateSpeciesCard(card.id, { speciesId: e.target.value })}
@@ -1054,7 +1009,7 @@ export default function SimulationControlPanel() {
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <span style={{ fontSize: 10, color: textMuted }}>Type de Nid :</span>
+                                    <span style={{ fontSize: 10, color: textMuted }}>{t('nestTypeCardLabel', 'Type de Nid :')}</span>
                                     <select
                                         value={card.nestType}
                                         onChange={(e) => updateSpeciesCard(card.id, { nestType: e.target.value })}
@@ -1068,7 +1023,7 @@ export default function SimulationControlPanel() {
 
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, paddingTop: 4 }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        <span style={{ fontSize: 9, color: textMuted }}>Reines</span>
+                                        <span style={{ fontSize: 9, color: textMuted }}>{t('queensCardLabel', 'Reines')}</span>
                                         <input
                                             type="number"
                                             min="0"
@@ -1078,7 +1033,7 @@ export default function SimulationControlPanel() {
                                         />
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        <span style={{ fontSize: 9, color: textMuted }}>Ouvrières</span>
+                                        <span style={{ fontSize: 9, color: textMuted }}>{t('workersCardLabel', 'Ouvrières')}</span>
                                         <input
                                             type="number"
                                             min="0"
@@ -1088,7 +1043,7 @@ export default function SimulationControlPanel() {
                                         />
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        <span style={{ fontSize: 9, color: textMuted }}>Soldats</span>
+                                        <span style={{ fontSize: 9, color: textMuted }}>{t('soldiersCardLabel', 'Soldats')}</span>
                                         <input
                                             type="number"
                                             min="0"
@@ -1098,7 +1053,7 @@ export default function SimulationControlPanel() {
                                         />
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        <span style={{ fontSize: 9, color: textMuted }}>Mâles</span>
+                                        <span style={{ fontSize: 9, color: textMuted }}>{t('malesCardLabel', 'Mâles')}</span>
                                         <input
                                             type="number"
                                             min="0"

@@ -1,169 +1,243 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useSimulationStore } from '../store/simulationStore'
-import { Home, Users, Thermometer, Droplets, Package, Shield, MapPin, Info, Minus, ChevronDown, Crosshair, X } from 'lucide-react'
+import { getTranslation } from '../i18n/translations'
+import { Crosshair, X } from 'lucide-react'
 
 /**
- * Collapsible HUD Overlay Panel for subterranean chamber inspection.
+ * Dedicated HUD & Inspection Overlay Pane for Subterranean Nest Chambers.
+ * Aligned 1:1 with ChamberInfoPane.java.
  */
 export default function ChamberInspectorHUD({ onFocusChamber }) {
     const {
         selectedChamber,
         setSelectedChamber,
+        setCustomCameraTarget,
+        ants,
         colonies,
-        theme
+        theme,
+        language
     } = useSimulationStore()
 
-    const [isCollapsed, setIsCollapsed] = useState(false)
     const isDark = theme === 'dark'
+    const t = (key, fallback) => getTranslation(language, key, fallback)
 
     if (!selectedChamber) return null
 
-    const chamberTypeIcons = {
-        QUEEN: '👑',
-        BROOD: '🍼',
-        FOOD: '🌾',
-        FUNGUS: '🍄',
-        WASTE: '🗑️',
-        DORMITORY: '💤',
-        TUNNEL: '🚇'
+    const node = selectedChamber
+    const colony = colonies?.find(c => c.id === node.colonyId) || colonies?.[0] || {
+        name: 'Colony #1',
+        speciesId: 'Formica fusca',
+        food: 250
     }
 
-    const icon = chamberTypeIcons[selectedChamber.type] || selectedChamber.icon || '🏛️'
-    const occPct = Math.round(((selectedChamber.occupants || 0) / (selectedChamber.capacity || 50)) * 100)
-    const posX = selectedChamber.x ?? (selectedChamber.position?.x ?? 50)
-    const posY = selectedChamber.y ?? (selectedChamber.position?.y ?? -1.2)
-    const posZ = selectedChamber.z ?? (selectedChamber.position?.z ?? (selectedChamber.position?.y ?? 50))
+    const posX = node.x ?? 50
+    const posZ = node.z !== undefined ? node.z : (node.y ?? 50)
+    const posY = node.y !== undefined && node.z !== undefined ? node.y : -1.2
+    const depthM = Math.abs(posY)
+
+    // Format Chamber Type Name (1:1 with ChamberInfoPane.java)
+    const typeUpper = (node.type || 'CHAMBER').toUpperCase()
+    let chamberTypeName = t('chamberStandard', 'Chambre Standard')
+    let specialtyText = '🏛️ Standard'
+    let architectureType = 'Chambre Ovale Maçonnée'
+
+    if (typeUpper.includes('QUEEN') || typeUpper.includes('ROYAL')) {
+        chamberTypeName = t('chamberRoyal', 'Chambre Royale')
+        specialtyText = '👑 1 Reine(s) | Q Pheromone'
+        architectureType = 'Crypte Royale Renforcée'
+    } else if (typeUpper.includes('BROOD') || typeUpper.includes('NURSERY')) {
+        chamberTypeName = t('chamberBrood', 'Chambre de Couvain')
+        specialtyText = '🥚 Brood: 18 units | Survival: 98%'
+        architectureType = 'Alvéoles Thermorégulées'
+    } else if (typeUpper.includes('FOOD') || typeUpper.includes('GRAIN') || typeUpper.includes('STORAGE')) {
+        chamberTypeName = t('chamberFood', 'Grenier à Graines')
+        specialtyText = `🌾 ${(colony.food || 250).toFixed(1)} mg`
+        architectureType = 'Silo Hydrofuge Sécurisé'
+    } else if (typeUpper.includes('FUNGUS') || typeUpper.includes('GARDEN')) {
+        chamberTypeName = t('chamberFungus', 'Jardin Champignonnière')
+        specialtyText = '🍄 45.0g Leucoagaricus'
+        architectureType = 'Chambre Humide à Piliers'
+    } else if (typeUpper.includes('WASTE') || typeUpper.includes('DUMP')) {
+        chamberTypeName = t('chamberWaste', 'Dépotoir / Cloaque')
+        specialtyText = '🗑️ Refuse'
+        architectureType = 'Cavité Isolée de Décharge'
+    } else if (typeUpper.includes('VENTILATION') || typeUpper.includes('CHIMNEY')) {
+        chamberTypeName = t('chamberVent', 'Cheminée de Ventilation')
+        specialtyText = '🌪️ Ventilation Shaft'
+        architectureType = 'Puits Vertical Aérateur'
+    }
+
+    // Dynamic Occupant calculations
+    const radius = node.radius || node.radiusX || 1.4
+    let occupants = 0
+    let queens = 0, workers = 0, soldiers = 0, brood = 2
+    if (ants && ants.length > 0) {
+        for (const a of ants) {
+            const ax = a.x ?? 50
+            const az = a.z !== undefined ? a.z : (a.y ?? 50)
+            const d = Math.hypot(ax - posX, az - posZ)
+            if (d <= radius * 2.5) {
+                occupants++
+                if (a.caste === 'QUEEN') queens++
+                else if (a.caste === 'SOLDIER') soldiers++
+                else workers++
+            }
+        }
+    }
+    if (occupants === 0 && typeUpper.includes('QUEEN')) {
+        queens = 1; occupants = 4; workers = 3
+    }
+
+    const occProgress = Math.min(1.0, occupants / 40.0)
+    const foodStored = colony.food ?? 250.0
+
+    // Microclimate & Atmospheric Gas calculations (1:1 with ChamberInfoPane.java)
+    const tempC = (20.5 + Math.sin(posX * 0.1) * 1.5).toFixed(1)
+    const humPct = Math.min(95, Math.round(68 + depthM * 6.5))
+    const co2Ppm = Math.round(420 + depthM * 140 + occupants * 50)
+    const co2Pct = (co2Ppm / 10000.0).toFixed(3)
+    const o2Pct = (20.95 - (co2Ppm - 400) * 0.0006).toFixed(1)
+    const airFlowSpeed = typeUpper.includes('VENTILATION') ? '0.35' : (typeUpper.includes('FUNGUS') ? '0.14' : '0.08')
+    const hygieneScore = typeUpper.includes('WASTE') ? 45 : (typeUpper.includes('BROOD') ? 99 : 98)
+
+    const rx = radius.toFixed(1)
+    const ry = (radius * 0.7).toFixed(1)
+    const rz = radius.toFixed(1)
+
+    const handleCenter = () => {
+        if (onFocusChamber) {
+            onFocusChamber(posX, posY, posZ)
+        } else {
+            setCustomCameraTarget([posX, posY, posZ])
+        }
+    }
 
     return (
         <div style={{
             position: 'absolute',
             bottom: 20,
             left: 20,
-            width: isCollapsed ? 230 : 310,
+            width: 360,
+            maxWidth: 380,
             background: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-            border: isDark ? '1.2px solid rgba(245, 158, 11, 0.4)' : '1.2px solid rgba(245, 158, 11, 0.6)',
+            border: isDark ? '1.5px solid #38bdf8' : '1.5px solid #0284c7',
             borderRadius: 10,
-            padding: 10,
+            padding: '10px 12px',
             color: isDark ? '#fff' : '#0f172a',
             zIndex: 95,
             backdropFilter: 'blur(14px)',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.45)',
             fontFamily: 'system-ui, -apple-system, sans-serif',
             fontSize: 11,
-            transition: 'all 0.2s ease-in-out'
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6
         }}>
-            {/* Header */}
+            {/* Header: Title + Close Button (1:1 with ChamberInfoPane.java) */}
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                paddingBottom: isCollapsed ? 0 : 6,
-                borderBottom: isCollapsed ? 'none' : (isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)'),
-                marginBottom: isCollapsed ? 0 : 6
+                paddingBottom: 4
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 14 }}>{icon}</span>
-                    <span style={{ fontWeight: 800, color: '#f59e0b', fontSize: 12 }}>
-                        {selectedChamber.name || 'Chambre Souterraine'}
-                    </span>
+                <span style={{ fontWeight: 800, color: isDark ? '#38bdf8' : '#0369a1', fontSize: 13 }}>
+                    🏛️ {t('chamberTitle', 'Chambre')} : {chamberTypeName}
+                </span>
+
+                <button
+                    onClick={() => setSelectedChamber(null)}
+                    title={t('eventDetailsClose', 'Fermer')}
+                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontWeight: 'bold', fontSize: 12, cursor: 'pointer', padding: '0 4px' }}
+                >
+                    ✕
+                </button>
+            </div>
+
+            {/* Separator 1 */}
+            <div style={{ height: 1, background: 'rgba(56, 189, 248, 0.3)', width: '100%' }} />
+
+            {/* Telemetry Section (1:1 with ChamberInfoPane.java) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4.5 }}>
+                {/* 0. Species & Colony Row */}
+                <div style={{ fontSize: 11, fontWeight: 'bold', color: isDark ? '#38bdf8' : '#0284c7' }}>
+                    🧬 {colony.speciesId || 'Formica fusca'} | 🏛️ {colony.name || colony.id || 'Colony #1'}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <button
-                        onClick={() => setIsCollapsed(!isCollapsed)}
-                        title={isCollapsed ? 'Déplier' : 'Réduire'}
-                        style={{ background: 'transparent', border: 'none', color: isDark ? '#94a3b8' : '#64748b', cursor: 'pointer', padding: 2 }}
-                    >
-                        {isCollapsed ? <ChevronDown size={14} /> : <Minus size={14} />}
-                    </button>
-                    <button
-                        onClick={() => setSelectedChamber(null)}
-                        title="Fermer l'inspecteur de chambre"
-                        style={{ background: 'transparent', border: 'none', color: '#f87171', cursor: 'pointer', padding: 2 }}
-                    >
-                        <X size={14} />
-                    </button>
+                {/* 1. Occupants Row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 11, color: isDark ? '#cbd5e1' : '#334155' }}>
+                        👥 {t('chamberOccupants', 'Occupants')} : {occupants} (👑{queens} | ⚒️{workers} | ⚔️{soldiers} | 🥚{brood})
+                    </span>
+                    <div style={{ width: 90, height: 10, background: isDark ? '#1e293b' : '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.round(occProgress * 100)}%`, height: '100%', background: '#38bdf8', transition: 'width 0.3s' }} />
+                    </div>
+                </div>
+
+                {/* 2. Resources & Radius */}
+                <div style={{ fontSize: 11, color: isDark ? '#22c55e' : '#15803d' }}>
+                    📦 Stock: {foodStored.toFixed(1)} mg | R: {radius.toFixed(2)} m
+                </div>
+
+                {/* 3. Specialty Function */}
+                <div style={{ fontSize: 11, color: isDark ? '#f59e0b' : '#b45309' }}>
+                    {specialtyText}
+                </div>
+
+                {/* 4. Position & Depth */}
+                <div style={{ fontSize: 11, color: isDark ? '#e2e8f0' : '#1e293b' }}>
+                    📐 Pos: ({posX.toFixed(1)}m, {posZ.toFixed(1)}m) | {t('chamberDepth', 'Profondeur')}: -{depthM.toFixed(2)} m
+                </div>
+
+                {/* 5. Microclimate (Temp & Humidity) */}
+                <div style={{ fontSize: 11, color: isDark ? '#38bdf8' : '#0284c7' }}>
+                    🌡️ {t('voxelTemp', 'Température')}: {tempC}°C | 💧 {t('voxelHumidity', 'Humidité')}: {humPct}%
+                </div>
+
+                {/* 6. Atmospheric Gases */}
+                <div style={{ fontSize: 11, fontWeight: 'bold', color: isDark ? '#4ade80' : '#16a34a' }}>
+                    💨 {t('voxelGas', 'Gaz')} : CO₂: {co2Ppm} ppm ({co2Pct}%) | O₂: {o2Pct}%
+                </div>
+
+                {/* 7. Ventilation & Hygiene */}
+                <div style={{ fontSize: 11, color: isDark ? '#38bdf8' : '#0284c7' }}>
+                    🌬️ Flow: {airFlowSpeed} m/s | 🛡️ {t('chamberHygiene', 'Score de Salubrité')}: {hygieneScore}%
+                </div>
+
+                {/* 8. Architecture */}
+                <div style={{ fontSize: 11, color: isDark ? '#a78bfa' : '#6d28d9' }}>
+                    🏛️ {architectureType}
+                </div>
+
+                {/* 9. Dimensions */}
+                <div style={{ fontSize: 11, color: isDark ? '#cbd5e1' : '#334155' }}>
+                    📏 Rx={rx}m, Ry={ry}m, Rz={rz}m
                 </div>
             </div>
 
-            {/* Details Content */}
-            {!isCollapsed && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {/* Nest & Role Badges */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.04)', padding: '4px 6px', borderRadius: 6 }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, color: '#38bdf8' }}>
-                            <Home size={11} /> {selectedChamber.nestName || 'Nid Principal'}
-                        </span>
-                        <span style={{ fontSize: 9.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
-                            {selectedChamber.type || 'CHAMBER'}
-                        </span>
-                    </div>
+            {/* Separator 2 */}
+            <div style={{ height: 1, background: 'rgba(56, 189, 248, 0.3)', width: '100%' }} />
 
-                    {/* Population / Occupants Bar */}
-                    <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2 }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: '#38bdf8' }}>
-                                <Users size={10} /> Occupants Présents
-                            </span>
-                            <span style={{ fontWeight: 700 }}>
-                                {selectedChamber.occupants || 0} / {selectedChamber.capacity || 50} ({occPct}%)
-                            </span>
-                        </div>
-                        <div style={{ width: '100%', height: 4, background: isDark ? '#1e293b' : '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
-                            <div style={{ width: `${Math.min(100, occPct)}%`, height: '100%', background: occPct > 90 ? '#ef4444' : '#f59e0b', transition: 'width 0.3s' }} />
-                        </div>
-                    </div>
-
-                    {/* Microclimate: Temp, Humidity, Food */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, fontSize: 10 }}>
-                        <div style={{ background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.04)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
-                            <div style={{ fontSize: 8, color: isDark ? '#94a3b8' : '#64748b' }}>Temp</div>
-                            <div style={{ fontWeight: 700, color: '#f97316' }}>{selectedChamber.temperature ?? 22.5}°C</div>
-                        </div>
-                        <div style={{ background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.04)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
-                            <div style={{ fontSize: 8, color: isDark ? '#94a3b8' : '#64748b' }}>Humidité</div>
-                            <div style={{ fontWeight: 700, color: '#38bdf8' }}>{selectedChamber.humidity ?? 68}%</div>
-                        </div>
-                        <div style={{ background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.04)', padding: '3px 4px', borderRadius: 4, textAlign: 'center' }}>
-                            <div style={{ fontSize: 8, color: isDark ? '#94a3b8' : '#64748b' }}>Stock</div>
-                            <div style={{ fontWeight: 700, color: '#22c55e' }}>{selectedChamber.foodStored ?? 120} mg</div>
-                        </div>
-                    </div>
-
-                    {/* Depth & 3D Coordinates */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 10, color: isDark ? '#94a3b8' : '#64748b' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                            <MapPin size={10} /> Pos: ({Math.round(posX)}, {Math.round(posZ)})
-                        </span>
-                        <span style={{ fontWeight: 700, color: '#a855f7' }}>
-                            Prof: {Math.abs(posY).toFixed(1)}m
-                        </span>
-                    </div>
-
-                    {/* Focus Camera Button */}
-                    <button
-                        onClick={() => onFocusChamber && onFocusChamber(posX, posY, posZ)}
-                        style={{
-                            marginTop: 2,
-                            background: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)',
-                            color: '#f59e0b',
-                            border: '1px solid #f59e0b',
-                            borderRadius: 6,
-                            padding: '5px 8px',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 5
-                        }}
-                    >
-                        <Crosshair size={12} />
-                        Centrer la Caméra sur cette Chambre
-                    </button>
-                </div>
-            )}
+            {/* Action: Center Viewport Button (1:1 with ChamberInfoPane.java) */}
+            <button
+                onClick={handleCenter}
+                style={{
+                    background: '#059669',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: 4,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6
+                }}
+            >
+                <Crosshair size={12} />
+                {t('chamberCenterBtn', '🎯 Centrer la vue sur la chambre')}
+            </button>
         </div>
     )
 }

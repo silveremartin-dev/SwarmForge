@@ -146,13 +146,13 @@ public interface Species extends java.io.Serializable {
     }
 
     enum InsectOrder {
-        ANT("🐜 Formicidae (Ant)"),
-        BEE("🐝 Apidae (Bee)"),
-        WASP("🐝 Vespidae (Wasp/Hornet)"),
-        TERMITE("🪲 Isoptera (Termite)"),
-        APHID("🌿 Aphididae (Soldier Aphid)"),
-        THRIPS("🌾 Thysanoptera (Gall Thrips)"),
-        BEETLE("🌲 Coleoptera (Bark Beetle)");
+        ANT("🐜 Hymenoptera: Formicidae (Fourmis / Ants)"),
+        BEE("🐝 Hymenoptera: Apidae (Abeilles / Bees)"),
+        WASP("🐝 Hymenoptera: Vespidae (Guêpes & Frelons / Wasps)"),
+        TERMITE("🪵 Blattodea: Termitoidea (Termites)"),
+        APHID("🌿 Hemiptera: Aphididae (Pucerons / Aphids)"),
+        THRIPS("🌾 Thysanoptera (Thrips gallicoles)"),
+        BEETLE("🪲 Coleoptera (Coléoptères sociaux / Passalidae)");
 
         public final String label;
         InsectOrder(String label) { this.label = label; }
@@ -536,6 +536,70 @@ public interface Species extends java.io.Serializable {
     default boolean canMilkAphidHoneydewStroking() { return false; } // Rhythmic antennal stroking of aphid abdomens to solicit honeydew excretion
     default boolean canClusterSolarHeatCollector() { return false; } // Workers basking in morning sunlight on mound surfaces and carrying absorbed body heat back down into brood chambers
     default boolean canSerializeGlobalEthologicalBitSet() { return false; } // Compact binary BitSet state serialization supporting ultra-high throughput state sync
+
+    // ── Academic Ethological & Biological Aliases (Academic Rigor & Scientific Nomenclature) ──
+    /**
+     * Non-destructive larval hemolymph feeding (larval hemolymphophily / specialized haemolymph tapping).
+     */
+    default boolean canPerformLarvalHemolymphophily() {
+        return canFeedOnLarvalHemolymphDracula();
+    }
+
+    /**
+     * Mechanical eclosion vibratory stimulation of hatching pupae/larvae.
+     */
+    default boolean canPerformEclosionVibratoryStimulation() {
+        return canDanceVibratoHatchingEnthusiasm();
+    }
+
+    /**
+     * Low-amplitude stridulatory sentinel communication.
+     */
+    default boolean canPerformSubharmonicSentinelStridulation() {
+        return canPerformGuardShiftVibrationalWhisper();
+    }
+
+    /**
+     * Proboscis / glossal extension for nectar ingestion.
+     */
+    default boolean canExtendProboscisForNectar() {
+        return canLapNectarTongueExtension();
+    }
+
+    /**
+     * Cell sealing using wax/resin/mud opercula.
+     */
+    default boolean canSealCellsWithOpercula() {
+        return canPlugHoneyStoresBricks();
+    }
+
+    /**
+     * Construction of external midden / refuse deposits.
+     */
+    default boolean canConstructMiddenRefusePiles() {
+        return canConstructChaffGarbageDunes();
+    }
+
+    /**
+     * Abdominal Dufour's gland gelatinous secretion used for egg anchoring and support.
+     */
+    default boolean canSecreteAbdominalGelSupport() {
+        return canWeaveStenogastrinePaperJelly();
+    }
+
+    /**
+     * Salivary trophallactic nourishment pap delivery for brood.
+     */
+    default boolean canDeliverSalivaryLarvalPap() {
+        return canDeliverStenogastrinePapFood();
+    }
+
+    /**
+     * Queen oviposition rate (eggs / day).
+     */
+    default float getOvipositionRate() {
+        return 15.0f;
+    }
 
     /**
      * Returns a BitSet representing all enabled capability flags for high-performance bitwise operations.

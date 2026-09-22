@@ -79,20 +79,52 @@ export default function PheromoneCloud() {
                 positions[idx * 3 + 1] = y
                 positions[idx * 3 + 2] = z
 
-                // Color based on pheromone type
+                // Color based on 8 canonical pheromone types (1:1 with PheromoneType.java & PheromoneOverlay.java)
                 const intensity = p.intensity || 1.0
-                if (p.type === 'FOOD') {
-                    // Golden Amber / Flame Orange
-                    colors[idx * 3] = 0.98 * intensity
-                    colors[idx * 3 + 1] = 0.65 * intensity
-                    colors[idx * 3 + 2] = 0.10 * intensity
-                } else if (p.type === 'ALARM') {
-                    // Crimson / Purple
-                    colors[idx * 3] = 0.95 * intensity
+                const type = (p.type || '').toUpperCase()
+
+                if (type === 'FOOD' || type === 'FOOD_TRAIL') {
+                    // FOOD - Green (Color.rgb(76, 175, 80))
+                    colors[idx * 3] = 0.30 * intensity
+                    colors[idx * 3 + 1] = 0.69 * intensity
+                    colors[idx * 3 + 2] = 0.31 * intensity
+                } else if (type === 'HOME' || type === 'HOME_TRAIL') {
+                    // HOME - Blue (Color.rgb(33, 150, 243))
+                    colors[idx * 3] = 0.13 * intensity
+                    colors[idx * 3 + 1] = 0.59 * intensity
+                    colors[idx * 3 + 2] = 0.95 * intensity
+                } else if (type === 'ALARM') {
+                    // ALARM - Red (Color.rgb(244, 67, 54))
+                    colors[idx * 3] = 0.96 * intensity
+                    colors[idx * 3 + 1] = 0.26 * intensity
+                    colors[idx * 3 + 2] = 0.21 * intensity
+                } else if (type === 'RECRUITMENT' || type === 'TRAIL') {
+                    // RECRUITMENT/TRAIL - Yellow (Color.rgb(255, 193, 7))
+                    colors[idx * 3] = 1.00 * intensity
+                    colors[idx * 3 + 1] = 0.76 * intensity
+                    colors[idx * 3 + 2] = 0.03 * intensity
+                } else if (type === 'QUEEN' || type === 'QUEEN_SCENT') {
+                    // QUEEN - Purple (Color.rgb(156, 39, 176))
+                    colors[idx * 3] = 0.61 * intensity
                     colors[idx * 3 + 1] = 0.15 * intensity
-                    colors[idx * 3 + 2] = 0.40 * intensity
+                    colors[idx * 3 + 2] = 0.69 * intensity
+                } else if (type === 'BROOD' || type === 'BROOD_SCENT') {
+                    // BROOD - Orange (Color.rgb(255, 152, 0))
+                    colors[idx * 3] = 1.00 * intensity
+                    colors[idx * 3 + 1] = 0.60 * intensity
+                    colors[idx * 3 + 2] = 0.00 * intensity
+                } else if (type === 'DEATH' || type === 'DEATH_SCENT') {
+                    // DEATH - Gray/Slate (Color.rgb(96, 125, 139))
+                    colors[idx * 3] = 0.38 * intensity
+                    colors[idx * 3 + 1] = 0.49 * intensity
+                    colors[idx * 3 + 2] = 0.55 * intensity
+                } else if (type === 'TERRITORY') {
+                    // TERRITORY - Teal (Color.rgb(0, 150, 136))
+                    colors[idx * 3] = 0.00 * intensity
+                    colors[idx * 3 + 1] = 0.59 * intensity
+                    colors[idx * 3 + 2] = 0.53 * intensity
                 } else {
-                    // Home / Exploration (Cyan / Azure)
+                    // Default Trail (Cyan / Azure)
                     colors[idx * 3] = 0.15 * intensity
                     colors[idx * 3 + 1] = 0.75 * intensity
                     colors[idx * 3 + 2] = 0.98 * intensity

@@ -534,9 +534,19 @@ public class JmeGameApp extends SimpleApplication {
 
             Material soilMat;
             if (isGamifiedVoxelMode) {
-                // GAMIFIED: Unshaded with per-voxel vertex colors (authentic Minecraft palette)
-                soilMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-                soilMat.setBoolean("VertexColor", true);
+                // GAMIFIED: Stylized voxel block texturing with nearest-neighbor pixel sampling
+                soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+                soilMat.setBoolean("UseMaterialColors", true);
+                soilMat.setBoolean("UseVertexColor", true);
+                soilMat.setColor("Diffuse", ColorRGBA.White);
+                soilMat.setColor("Ambient", new ColorRGBA(0.85f, 0.85f, 0.85f, 1f));
+                try {
+                    com.jme3.texture.Texture diffuseTex = assetManager.loadTexture("models/textures/pbr/Ground049A/Ground049A_1K-JPG_Color.jpg");
+                    diffuseTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
+                    diffuseTex.setMinFilter(com.jme3.texture.Texture.MinFilter.NearestNearestMipMap);
+                    diffuseTex.setMagFilter(com.jme3.texture.Texture.MagFilter.Nearest);
+                    soilMat.setTexture("DiffuseMap", diffuseTex);
+                } catch (Exception ignored) {}
             } else {
                 // REALISTIC: Lit with vertex color multiplied by diffuse texture
                 soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
@@ -843,6 +853,24 @@ public class JmeGameApp extends SimpleApplication {
                         return;
                     }
                 }
+
+                // 3. Check if clicked spatial is Terrain or Voxel
+                Vector3f contact = closes.getContactPoint();
+                if (contact != null && simulation != null && simulation.getTerrarium() != null && selectionListener != null) {
+                    org.swarmforge.core.domain.Terrarium terr = simulation.getTerrarium();
+                    int vx = Math.max(0, Math.min(terr.getWidth() - 1, Math.round(contact.x)));
+                    int vz = Math.max(0, Math.min(terr.getDepth() - 1, Math.round(contact.y))); // In JME Y is vertical altitude
+                    int vy = Math.max(0, Math.min(terr.getHeight() - 1, Math.round(contact.z))); // In JME Z is horizontal Y
+                    org.swarmforge.core.domain.TerrariumCell cell = terr.getCell(vx, vy, vz);
+                    String mat = cell != null ? cell.material().name() : "HUMUS";
+                    float hum = cell != null ? cell.humidity() * 100.0f : 45.0f;
+                    float temp = cell != null ? cell.temperature() : 19.0f;
+                    float compaction = 60.0f;
+                    final int fx = vx, fy = vy, fz = vz;
+                    final String fMat = mat;
+                    final float fHum = hum, fTemp = temp, fComp = compaction;
+                    Platform.runLater(() -> selectionListener.onVoxelSelected(fx, fy, fz, fMat, fHum, fTemp, fComp));
+                }
             }
         });
     }
@@ -1043,11 +1071,12 @@ public class JmeGameApp extends SimpleApplication {
                 pixelData[i + 2] = r;
             }
 
+            final byte[] sendData = pixelData.clone();
             Platform.runLater(() -> {
                 if (targetImage != null) {
                     PixelWriter pw = targetImage.getPixelWriter();
                     pw.setPixels(0, 0, width, height, PixelFormat.getByteBgraInstance(),
-                            pixelData, 0, width * 4);
+                            sendData, 0, width * 4);
                 }
             });
 

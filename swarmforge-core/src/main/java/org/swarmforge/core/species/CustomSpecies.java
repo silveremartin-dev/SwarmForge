@@ -1825,6 +1825,34 @@ public class CustomSpecies implements Species {
     @Override public boolean canSerializeGlobalEthologicalBitSet() { return canSerializeGlobalEthologicalBitSet; }
     public void setCanSerializeGlobalEthologicalBitSet(boolean val) { this.canSerializeGlobalEthologicalBitSet = val; capabilitiesBitSet.set(220, val); }
 
+    // ── Academic Ethological & Biological Aliases (Academic Rigor & Scientific Nomenclature) ──
+    @Override public boolean canPerformLarvalHemolymphophily() { return canFeedOnLarvalHemolymphDracula; }
+    public void setCanPerformLarvalHemolymphophily(boolean val) { setCanFeedOnLarvalHemolymphDracula(val); }
+
+    @Override public boolean canPerformEclosionVibratoryStimulation() { return canDanceVibratoHatchingEnthusiasm; }
+    public void setCanPerformEclosionVibratoryStimulation(boolean val) { setCanDanceVibratoHatchingEnthusiasm(val); }
+
+    @Override public boolean canPerformSubharmonicSentinelStridulation() { return canPerformGuardShiftVibrationalWhisper; }
+    public void setCanPerformSubharmonicSentinelStridulation(boolean val) { setCanPerformGuardShiftVibrationalWhisper(val); }
+
+    @Override public boolean canExtendProboscisForNectar() { return canLapNectarTongueExtension; }
+    public void setCanExtendProboscisForNectar(boolean val) { setCanLapNectarTongueExtension(val); }
+
+    @Override public boolean canSealCellsWithOpercula() { return canPlugHoneyStoresBricks; }
+    public void setCanSealCellsWithOpercula(boolean val) { setCanPlugHoneyStoresBricks(val); }
+
+    @Override public boolean canConstructMiddenRefusePiles() { return canConstructChaffGarbageDunes; }
+    public void setCanConstructMiddenRefusePiles(boolean val) { setCanConstructChaffGarbageDunes(val); }
+
+    @Override public boolean canSecreteAbdominalGelSupport() { return canWeaveStenogastrinePaperJelly; }
+    public void setCanSecreteAbdominalGelSupport(boolean val) { setCanWeaveStenogastrinePaperJelly(val); }
+
+    @Override public boolean canDeliverSalivaryLarvalPap() { return canDeliverStenogastrinePapFood; }
+    public void setCanDeliverSalivaryLarvalPap(boolean val) { setCanDeliverStenogastrinePapFood(val); }
+
+    @Override public float getOvipositionRate() { return queenEggLayingRate; }
+    public void setOvipositionRate(float rate) { this.queenEggLayingRate = rate; }
+
     @Override
     public BitSet getCapabilitiesBitSet() {
         return capabilitiesBitSet;

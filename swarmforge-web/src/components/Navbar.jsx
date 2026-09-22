@@ -31,7 +31,7 @@ export default function Navbar() {
     const isDark = theme === 'dark'
     const t = (key, fallback) => getTranslation(language, key, fallback)
 
-    const isSimReady = Boolean(isScenarioApplied || connected)
+    const isSimReady = Boolean(isScenarioApplied)
 
     const navTabs = [
         { id: 'SIMULATION', label: t('tabSimulationManager', 'Gestionnaire de Simulation'), icon: Sliders, requiresReady: false },
@@ -42,7 +42,7 @@ export default function Navbar() {
         { id: 'SETTINGS', label: t('tabSettings', 'Paramètres'), icon: Settings, requiresReady: false }
     ]
 
-    const popCount = isSimReady ? (ants?.length || 0) : '--'
+    const popCount = isScenarioApplied ? (ants?.length || 0) : '--'
 
     return (
         <header style={{
@@ -89,7 +89,7 @@ export default function Navbar() {
                     {navTabs.map(tab => {
                         const Icon = tab.icon
                         const isActive = activeTab === tab.id || (tab.id === 'SIMULATION' && !['VISUAL_3D', 'GOD_MODE', 'STATISTICS', 'EVENT_LOG', 'SETTINGS'].includes(activeTab))
-                        const isLocked = tab.requiresReady && !isSimReady
+                        const isLocked = tab.requiresReady && !isScenarioApplied
 
                         return (
                             <button
@@ -98,7 +98,7 @@ export default function Navbar() {
                                 onClick={() => {
                                     if (!isLocked) setActiveTab(tab.id)
                                 }}
-                                title={isLocked ? 'Initialisez ou appliquez le scénario pour accéder à cette vue' : tab.label}
+                                title={isLocked ? 'Veuillez d\'abord appliquer et initialiser le scénario pour déverrouiller cette vue' : tab.label}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -109,7 +109,7 @@ export default function Navbar() {
                                     borderRadius: 6,
                                     border: 'none',
                                     cursor: isLocked ? 'not-allowed' : 'pointer',
-                                    opacity: isLocked ? 0.45 : 1.0,
+                                    opacity: isLocked ? 0.35 : 1.0,
                                     background: isActive
                                         ? '#0284c7'
                                         : 'transparent',

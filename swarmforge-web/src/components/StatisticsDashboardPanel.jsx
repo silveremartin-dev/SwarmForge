@@ -418,13 +418,17 @@ export default function StatisticsDashboardPanel() {
                         </div>
 
                         <div>
-                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Distance Parcourue :</span>
-                            <strong style={{ fontSize: 12 }}>{(trackedAntData.distanceTraveled || 0).toFixed(1)} m</strong>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Distance & Vitesse :</span>
+                            <strong style={{ fontSize: 12 }}>
+                                {(trackedAntData.distanceTraveled || 0).toFixed(2)} m ({(trackedAntData.speedMms || 22.5).toFixed(1)} mm/s)
+                            </strong>
                         </div>
 
                         <div>
-                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Position (X, Z) :</span>
-                            <strong style={{ fontSize: 12 }}>({trackedAntData.x.toFixed(1)}, {trackedAntData.z.toFixed(1)})</strong>
+                            <span style={{ fontSize: 11, color: textMuted, display: 'block' }}>Position (X, Z) & Charge :</span>
+                            <strong style={{ fontSize: 12 }}>
+                                ({trackedAntData.x.toFixed(1)}, {trackedAntData.z.toFixed(1)}) | {trackedAntData.carriedItem && trackedAntData.carriedItem !== 'NONE' ? '5.2 mg' : '0.0 mg'}
+                            </strong>
                         </div>
                     </div>
                 ) : (

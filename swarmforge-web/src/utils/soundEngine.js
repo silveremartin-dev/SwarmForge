@@ -15,6 +15,7 @@ class ProceduralSoundEngine {
         this.isInitialized = false;
         this.masterGain = null;
         this.muted = false;
+        this.simRunning = false;
 
         // Channel Gain Nodes
         this.gains = {
@@ -28,13 +29,13 @@ class ProceduralSoundEngine {
 
         // Volumes (0.0 to 1.0)
         this.volumes = {
-            master: 0.85,
-            ambiance: 0.90,
-            weather: 0.15,
-            insects: 0.55,
+            master: 0.70,
+            ambiance: 0.70,
+            weather: 0.60,
+            insects: 0.50,
             digging: 0.50,
-            river: 0.95,
-            disease: 0.80,
+            river: 0.60,
+            disease: 0.70,
         };
 
         // Active sound nodes & timers
@@ -58,9 +59,9 @@ class ProceduralSoundEngine {
 
         this.ctx = new AudioCtx();
         
-        // Master Gain Node
+        // Master Gain Node (initialized to 0.0 silence until simulation starts)
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.setValueAtTime(this.volumes.master, this.ctx.currentTime);
+        this.masterGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
         this.masterGain.connect(this.ctx.destination);
 
         // Create Channel Gains (initialized to 0.0 until simulation starts in 3D)
@@ -79,13 +80,13 @@ class ProceduralSoundEngine {
             this.init();
         }
         if (this.ctx && this.ctx.state === 'suspended') {
-            await this.ctx.resume();
+            await this.ctx.resume().catch(() => {});
         }
     }
 
     // --- 1. PROCEDURAL WIND & TREE CANOPY AMBIANCE ---
     startWindAmbiance() {
-        if (!this.ctx || !this.gains.ambiance) return;
+        if (!this.simRunning || this.muted || !this.ctx || !this.gains.weather) return;
 
         // 3-second buffer of smooth pink/brown noise for breeze
         const bufferSize = this.ctx.sampleRate * 3;
@@ -471,7 +472,7 @@ class ProceduralSoundEngine {
 
     // --- 8. PROCEDURAL RIVER WATER FLOW SYNTHESIS (Bruit de rivière qui coule) ---
     startRiverAmbiance() {
-        if (!this.ctx || !this.gains.river) return;
+        if (!this.simRunning || this.muted || !this.ctx || !this.gains.river) return;
 
         // Continuous bandpass filtered water flow noise with soft bubbling LFO
         const bufferSize = this.ctx.sampleRate * 4;
@@ -508,8 +509,7 @@ class ProceduralSoundEngine {
     }
 
     updateRiverSound(cameraPos, riverPos = { x: 25, y: 0, z: 50 }) {
-        this.ensureContext();
-        if (!this.ctx || !this.gains.river || !cameraPos) return;
+        if (!this.simRunning || this.muted || !this.ctx || !this.gains.river || !cameraPos) return;
 
         if (!this.riverNode) {
             this.startRiverAmbiance();
@@ -528,15 +528,14 @@ class ProceduralSoundEngine {
         // Max hearable distance = 450 meters
         const maxDist = 450;
         const proximity = Math.max(0.40, 1 - dist / maxDist);
-        const targetVol = Math.pow(proximity, 1.1) * (this.volumes.river || 0.95);
+        const targetVol = Math.pow(proximity, 1.1) * (this.volumes.river || 0.60);
 
         this.gains.river.gain.setTargetAtTime(targetVol, this.ctx.currentTime, 0.25);
     }
 
     // --- 9. DISEASE & EPIDEMIC OUTBREAK ALERT SOUND (Alerte maladie/épidémie) ---
     triggerDiseaseOutbreakSound() {
-        this.ensureContext();
-        if (!this.ctx || !this.gains.disease || this.muted) return;
+        if (!this.simRunning || this.muted || !this.ctx || !this.gains.disease) return;
 
         const now = this.ctx.currentTime;
         // Dissonant warning synth sweep (Fungal spore alert)
@@ -569,7 +568,7 @@ class ProceduralSoundEngine {
 
     // --- 10. 3D SPATIAL AUDIO LISTENER POSITIONAL UPDATE ---
     updateSpatialListener(cameraX, cameraY, cameraZ) {
-        if (!this.ctx || !this.ctx.listener || !this.spatialAudioEnabled) return;
+        if (!this.simRunning || !this.ctx || !this.ctx.listener || !this.spatialAudioEnabled) return;
         const listener = this.ctx.listener;
         if (listener.positionX) {
             listener.positionX.setTargetAtTime(cameraX, this.ctx.currentTime, 0.1);
@@ -606,16 +605,28 @@ class ProceduralSoundEngine {
         if (!this.simRunning) {
             if (this.birdTimer) clearTimeout(this.birdTimer);
             if (this.leavesTimer) clearTimeout(this.leavesTimer);
+            if (this.masterGain && this.ctx) {
+                this.masterGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+            }
             if (this.gains.ambiance && this.ctx) {
-                this.gains.ambiance.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+                this.gains.ambiance.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
             }
             if (this.gains.weather && this.ctx) {
-                this.gains.weather.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+                this.gains.weather.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
             }
             if (this.gains.river && this.ctx) {
-                this.gains.river.gain.setTargetAtTime(0, this.ctx.currentTime, 0.1);
+                this.gains.river.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+            }
+            if (this.gains.insects && this.ctx) {
+                this.gains.insects.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+            }
+            if (this.gains.digging && this.ctx) {
+                this.gains.digging.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
             }
         } else {
+            if (this.masterGain && this.ctx) {
+                this.masterGain.gain.setTargetAtTime(this.muted ? 0 : this.volumes.master, this.ctx.currentTime, 0.1);
+            }
             if (!this.windNode) {
                 this.startWindAmbiance();
             }
@@ -630,6 +641,12 @@ class ProceduralSoundEngine {
             }
             if (this.gains.river && this.ctx) {
                 this.gains.river.gain.setTargetAtTime(this.volumes.river, this.ctx.currentTime, 0.2);
+            }
+            if (this.gains.insects && this.ctx) {
+                this.gains.insects.gain.setTargetAtTime(this.volumes.insects, this.ctx.currentTime, 0.2);
+            }
+            if (this.gains.digging && this.ctx) {
+                this.gains.digging.gain.setTargetAtTime(this.volumes.digging, this.ctx.currentTime, 0.2);
             }
             this.scheduleNextBirdChirp();
             this.scheduleNextLeavesRustle();
