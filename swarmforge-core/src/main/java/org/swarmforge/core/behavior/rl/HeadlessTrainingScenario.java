@@ -99,9 +99,19 @@ public class HeadlessTrainingScenario {
         int count = 0;
 
         for (int s = 0; s < steps; s++) {
-            MockAgentView mockAgent = generateSyntheticAgentState();
-            int expertAction = computeMultiCasteExpertAction(mockAgent, context);
+            float currentLr = 0.003f * (1.0f - (float) s / steps) + 0.0003f;
+            network.setLearningRate(currentLr);
 
+            MockAgentView mockAgent = generateSyntheticAgentState();
+            if (context instanceof MockSimulationContext mockCtx) {
+                mockCtx.alarmIntensity = mockAgent.alarmPheromone;
+                mockCtx.foodGradX = mockAgent.foodPheromoneGradientX;
+                mockCtx.foodGradY = mockAgent.foodPheromoneGradientY;
+                mockCtx.enemyNearby = mockAgent.hasEnemyNearby;
+                mockCtx.foodNearby = mockAgent.hasFoodNearby;
+            }
+
+            int expertAction = computeMultiCasteExpertAction(mockAgent, context);
             float[] obs = OnnxBrainArchitecture.buildObservationVector(mockAgent, context);
             float loss = network.trainImitationStep(obs, expertAction);
 
@@ -119,7 +129,13 @@ public class HeadlessTrainingScenario {
      * @param steps Number of simulation ticks
      */
     public void runDqnPhase(int steps) {
-        Individual.Caste[] castes = {Individual.Caste.QUEEN, Individual.Caste.SOLDIER, Individual.Caste.NURSE, Individual.Caste.WORKER};
+        Individual.Caste[] castes = {
+                Individual.Caste.QUEEN,
+                Individual.Caste.SOLDIER,
+                Individual.Caste.NURSE,
+                Individual.Caste.WORKER,
+                Individual.Caste.MALE
+        };
         List<Individual> learners = new ArrayList<>();
         for (Individual.Caste c : castes) {
             Individual ind = new Individual(colonyId, c, 0, 0, 0);
@@ -149,6 +165,13 @@ public class HeadlessTrainingScenario {
             // Multi-task imitation regularization to prevent catastrophic forgetting
             if (t % 2 == 0) {
                 MockAgentView regAgent = generateSyntheticAgentState();
+                if (context instanceof MockSimulationContext mockCtx) {
+                    mockCtx.alarmIntensity = regAgent.alarmPheromone;
+                    mockCtx.foodGradX = regAgent.foodPheromoneGradientX;
+                    mockCtx.foodGradY = regAgent.foodPheromoneGradientY;
+                    mockCtx.enemyNearby = regAgent.hasEnemyNearby;
+                    mockCtx.foodNearby = regAgent.hasFoodNearby;
+                }
                 int expAct = computeMultiCasteExpertAction(regAgent, context);
                 float[] regObs = OnnxBrainArchitecture.buildObservationVector(regAgent, context);
                 network.trainImitationStep(regObs, expAct);
@@ -220,10 +243,8 @@ public class HeadlessTrainingScenario {
                 }
             }
             case 9 -> { // LAY_EGG
-                if (agent.isQueen() && agent.isAtNest() && agent.getEnergyLevel() > 0.4f) {
-                    reward += 100.0f;
-                } else {
-                    reward -= 5.0f;
+                if (agent.isQueen() && agent.isAtNest() && agent.getEnergyLevel() > 0.3f) {
+                    reward += 50.0f;
                 }
             }
             case 11 -> { // GROOM / TROPHALLAXIS
@@ -248,27 +269,84 @@ public class HeadlessTrainingScenario {
         return reward;
     }
 
-    private MockAgentView generateSyntheticAgentState() {
+    public MockAgentView generateSyntheticAgentState() {
         MockAgentView view = new MockAgentView();
-        view.energy = 0.3f + rng.nextFloat() * 0.7f;
 
-        // Balanced caste selection
-        Individual.Caste[] castes = {Individual.Caste.QUEEN, Individual.Caste.SOLDIER, Individual.Caste.NURSE, Individual.Caste.WORKER};
+        // Balanced caste selection across all 5 social castes
+        Individual.Caste[] castes = {
+                Individual.Caste.QUEEN,
+                Individual.Caste.SOLDIER,
+                Individual.Caste.NURSE,
+                Individual.Caste.WORKER,
+                Individual.Caste.MALE
+        };
         view.caste = castes[rng.nextInt(castes.length)];
 
-        // Insect order distribution
+        // Balanced insect order distribution across all 4 target families
         String[] insectTypes = {"ANT", "BEE", "WASP", "TERMITE"};
         view.insectType = insectTypes[rng.nextInt(insectTypes.length)];
 
-        view.atNest = rng.nextBoolean();
-        view.carryingFood = (view.caste == Individual.Caste.WORKER || view.caste == Individual.Caste.NURSE) && rng.nextBoolean();
-        view.hasFoodNearby = (view.caste == Individual.Caste.WORKER) && !view.carryingFood && rng.nextBoolean();
-        view.hasEnemyNearby = (view.caste == Individual.Caste.SOLDIER) && rng.nextBoolean();
-        view.alarmPheromone = view.hasEnemyNearby ? (0.6f + rng.nextFloat() * 0.4f) : 0.0f;
-
         view.heading = (float) (rng.nextFloat() * 2 * Math.PI);
-        view.x = view.atNest ? 0f : (rng.nextFloat() - 0.5f) * 30.0f;
-        view.y = view.atNest ? 0f : (rng.nextFloat() - 0.5f) * 30.0f;
+
+        // Stratified ecological scenario construction per caste
+        switch (view.caste) {
+            case QUEEN -> {
+                view.atNest = rng.nextFloat() < 0.85f;
+                view.energy = 0.2f + rng.nextFloat() * 0.8f;
+                view.carryingFood = false;
+                view.hasFoodNearby = false;
+                view.hasEnemyNearby = false;
+                view.alarmPheromone = 0.0f;
+            }
+            case SOLDIER -> {
+                view.atNest = rng.nextBoolean();
+                view.energy = 0.3f + rng.nextFloat() * 0.7f;
+                view.hasEnemyNearby = rng.nextBoolean();
+                view.alarmPheromone = view.hasEnemyNearby ? (0.6f + rng.nextFloat() * 0.4f) : (rng.nextFloat() < 0.2f ? 0.4f : 0.0f);
+                view.carryingFood = false;
+                view.hasFoodNearby = false;
+            }
+            case NURSE -> {
+                view.atNest = rng.nextFloat() < 0.85f;
+                view.energy = 0.3f + rng.nextFloat() * 0.7f;
+                view.carryingFood = false;
+                view.hasFoodNearby = false;
+                view.hasEnemyNearby = false;
+                view.alarmPheromone = 0.0f;
+            }
+            case MALE -> {
+                view.atNest = rng.nextBoolean();
+                view.energy = 0.15f + rng.nextFloat() * 0.85f;
+                view.carryingFood = false;
+                view.hasFoodNearby = false;
+                view.hasEnemyNearby = false;
+                view.alarmPheromone = 0.0f;
+            }
+            default -> { // WORKER / FORAGER
+                int workerScenario = rng.nextInt(4);
+                view.atNest = rng.nextBoolean();
+                view.energy = 0.2f + rng.nextFloat() * 0.8f;
+                if (workerScenario == 0) { // Returning with food
+                    view.carryingFood = true;
+                    view.hasFoodNearby = false;
+                } else if (workerScenario == 1) { // Discovered food source
+                    view.carryingFood = false;
+                    view.hasFoodNearby = !view.atNest;
+                } else if (workerScenario == 2) { // Trail tracking along chemical gradient
+                    view.carryingFood = false;
+                    view.hasFoodNearby = false;
+                    view.foodPheromoneGradientX = (rng.nextFloat() - 0.5f) * 2.0f;
+                    view.foodPheromoneGradientY = (rng.nextFloat() - 0.5f) * 2.0f;
+                } else { // Low energy rest or general exploration
+                    view.carryingFood = false;
+                    view.hasFoodNearby = false;
+                    if (view.atNest) view.energy = 0.1f + rng.nextFloat() * 0.14f;
+                }
+            }
+        }
+
+        view.x = view.atNest ? 0f : (10.0f + (rng.nextFloat() - 0.5f) * 20.0f);
+        view.y = view.atNest ? 0f : (10.0f + (rng.nextFloat() - 0.5f) * 20.0f);
 
         return view;
     }
@@ -312,7 +390,18 @@ public class HeadlessTrainingScenario {
             return 8; // TEND_BROOD (Care for larvae/eggs)
         }
 
-        // 4. WORKER / FORAGER BEHAVIOR
+        // 4. DRONE (MALE) BEHAVIOR
+        if (agent.isDrone()) {
+            if (!atNest && agent.getEnergyLevel() < 0.25f) {
+                return 5; // RETURN_HOME
+            }
+            if (atNest && agent.getEnergyLevel() < 0.35f) {
+                return 13; // REST
+            }
+            return 0; // MOVE_FORWARD (Nuptial flight / patrolling)
+        }
+
+        // 5. WORKER / FORAGER BEHAVIOR
         if (agent.isCarryingFood()) {
             if (atNest) {
                 return 4; // DEPOSIT_FOOD (Store in granary/comb)
@@ -380,9 +469,15 @@ public class HeadlessTrainingScenario {
         @Override public float getAlarmPheromone(float x, float y, float z) { return alarmIntensity; }
         @Override public float getFoodPheromoneGradientX(float x, float y, float z) { return foodGradX; }
         @Override public float getFoodPheromoneGradientY(float x, float y, float z) { return foodGradY; }
-        @Override public boolean hasEnemyNearby(AgentView agent) { return enemyNearby; }
+        @Override public boolean hasEnemyNearby(AgentView agent) {
+            if (agent instanceof MockAgentView mv) return mv.hasEnemyNearby || enemyNearby;
+            return enemyNearby;
+        }
         @Override public Individual getNearestEnemy(AgentView agent) { return null; }
-        @Override public boolean hasFoodNearby(AgentView agent) { return foodNearby || Math.hypot(agent.getX() - 10.0, agent.getY() - 10.0) < 3.0; }
+        @Override public boolean hasFoodNearby(AgentView agent) {
+            if (agent instanceof MockAgentView mv) return mv.hasFoodNearby || foodNearby;
+            return foodNearby || Math.hypot(agent.getX() - 10.0, agent.getY() - 10.0) < 3.0;
+        }
         @Override public float[] getNearestFoodPosition(AgentView agent) { return new float[]{10f, 10f, 0f}; }
         @Override public boolean hasFoodNearby(AgentView agent, Set<ResourceType> types) { return hasFoodNearby(agent); }
         @Override public float[] getNearestFoodPosition(AgentView agent, Set<ResourceType> types) { return getNearestFoodPosition(agent); }

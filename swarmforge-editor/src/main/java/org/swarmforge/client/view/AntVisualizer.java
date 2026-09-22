@@ -273,26 +273,86 @@ public class AntVisualizer {
             offset = addBox(pos, norm, idx, offset, new Vector3f(-0.08f * scale, 0.16f * scale, -0.15f * scale),
                     new Vector3f(0.06f * scale, 0.01f, 0.35f * scale));
         } else {
-            // Standard Ant / Formicidae morphology (Default Fallback)
-            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.1f * scale, 0),
-                    new Vector3f(0.15f * scale, 0.1f * scale, 0.2f * scale));
-            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.15f * scale, 0.3f * scale),
-                    new Vector3f(0.12f * scale, 0.12f * scale, 0.12f * scale));
-            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.15f * scale, -0.35f * scale),
-                    new Vector3f(0.2f * scale, 0.2f * scale, 0.25f * scale));
+            // Formicidae (Ant) - Complete Anatomical Morphology
+            float headW = 0.13f, headH = 0.13f, headL = 0.14f;
+            float thoraxW = 0.12f, thoraxH = 0.12f;
+            float gasterW = 0.18f, gasterH = 0.17f, gasterL = 0.28f;
+            boolean hasWings = (caste == Individual.Caste.MALE);
+
+            if (caste == Individual.Caste.QUEEN) {
+                headW = 0.17f; headH = 0.16f; headL = 0.17f;
+                thoraxW = 0.22f; thoraxH = 0.20f; // Hypertrophied wing muscle alitrunk
+                gasterW = 0.32f; gasterH = 0.30f; gasterL = 0.48f; // Physogastric distended gaster
+            } else if (caste == Individual.Caste.SOLDIER) {
+                headW = 0.22f; headH = 0.20f; headL = 0.22f; // Hypertrophied macrocephalic head
+                thoraxW = 0.15f; thoraxH = 0.14f;
+                gasterW = 0.20f; gasterH = 0.19f; gasterL = 0.30f;
+            } else if (caste == Individual.Caste.MALE) {
+                headW = 0.11f; headH = 0.11f; headL = 0.12f;
+                thoraxW = 0.14f; thoraxH = 0.14f;
+                gasterW = 0.14f; gasterH = 0.13f; gasterL = 0.32f; // Slender gaster
+            }
+
+            // 1. Head capsule (Cranium)
+            Vector3f headPos = new Vector3f(0, 0.15f * scale, 0.26f * scale);
+            offset = addBox(pos, norm, idx, offset, headPos, new Vector3f(headW * scale, headH * scale, headL * scale));
+
+            // 2. Mandibles (Pincers)
+            float mandLen = (caste == Individual.Caste.SOLDIER) ? 0.14f : 0.08f;
+            float mandThick = (caste == Individual.Caste.SOLDIER) ? 0.04f : 0.025f;
+            offset = addBox(pos, norm, idx, offset,
+                    new Vector3f(0.06f * scale, 0.11f * scale, (0.26f + headL + mandLen * 0.5f) * scale),
+                    new Vector3f(mandThick * scale, mandThick * scale, mandLen * 0.5f * scale));
+            offset = addBox(pos, norm, idx, offset,
+                    new Vector3f(-0.06f * scale, 0.11f * scale, (0.26f + headL + mandLen * 0.5f) * scale),
+                    new Vector3f(mandThick * scale, mandThick * scale, mandLen * 0.5f * scale));
+
+            // 3. Geniculate (Elbowed) Antennae
+            float antLen = (caste == Individual.Caste.SOLDIER) ? 0.18f : 0.24f;
+            offset = addBox(pos, norm, idx, offset,
+                    new Vector3f(0.08f * scale, 0.22f * scale, (0.26f + headL * 0.6f + antLen * 0.4f) * scale),
+                    new Vector3f(0.015f * scale, 0.015f * scale, antLen * 0.5f * scale));
+            offset = addBox(pos, norm, idx, offset,
+                    new Vector3f(-0.08f * scale, 0.22f * scale, (0.26f + headL * 0.6f + antLen * 0.4f) * scale),
+                    new Vector3f(0.015f * scale, 0.015f * scale, antLen * 0.5f * scale));
+
+            // 4. Promesonotum (Anterior Thorax)
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.14f * scale, 0.06f * scale),
+                    new Vector3f(thoraxW * scale, thoraxH * scale, 0.12f * scale));
+
+            // 5. Propodeum (Posterior Thorax)
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.12f * scale, -0.09f * scale),
+                    new Vector3f(thoraxW * 0.85f * scale, thoraxH * 0.85f * scale, 0.09f * scale));
+
+            // 6. Petiole (Articulated Waist Node)
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.11f * scale, -0.19f * scale),
+                    new Vector3f(0.045f * scale, 0.075f * scale, 0.045f * scale));
+
+            // 7. Gaster (Abdomen)
+            offset = addBox(pos, norm, idx, offset, new Vector3f(0, 0.13f * scale, -(0.21f + gasterL) * scale),
+                    new Vector3f(gasterW * scale, gasterH * scale, gasterL * scale));
+
+            // 8. Wings for Alates (Males & Flying Queens)
+            if (hasWings) {
+                offset = addBox(pos, norm, idx, offset, new Vector3f(0.18f * scale, 0.25f * scale, -0.08f * scale),
+                        new Vector3f(0.18f * scale, 0.01f, 0.28f * scale));
+                offset = addBox(pos, norm, idx, offset, new Vector3f(-0.18f * scale, 0.25f * scale, -0.08f * scale),
+                        new Vector3f(0.18f * scale, 0.01f, 0.28f * scale));
+            }
         }
 
-        // 6 Legs (Shared across all hexapods)
-        float legLen = 0.3f * scale;
-        float legThick = 0.03f * scale;
-        float legY = 0.1f * scale;
+        // 6 Articulated Bent Hexapod Legs (Femur rises + Tibia angles down to floor)
+        // Prothoracic Legs (Forelegs - Angled Forward)
+        offset = addBentLeg(pos, norm, idx, offset, new Vector3f(0.10f * scale, 0.12f * scale, 0.08f * scale), 0.50f, scale, true);
+        offset = addBentLeg(pos, norm, idx, offset, new Vector3f(-0.10f * scale, 0.12f * scale, 0.08f * scale), 0.50f, scale, false);
 
-        offset = addBox(pos, norm, idx, offset, new Vector3f(0.2f * scale, legY - 0.1f * scale, 0.1f * scale), new Vector3f(legLen, legThick, legThick));
-        offset = addBox(pos, norm, idx, offset, new Vector3f(-0.2f * scale, legY - 0.1f * scale, 0.1f * scale), new Vector3f(legLen, legThick, legThick));
-        offset = addBox(pos, norm, idx, offset, new Vector3f(0.25f * scale, legY - 0.1f * scale, 0), new Vector3f(legLen, legThick, legThick));
-        offset = addBox(pos, norm, idx, offset, new Vector3f(-0.25f * scale, legY - 0.1f * scale, 0), new Vector3f(legLen, legThick, legThick));
-        offset = addBox(pos, norm, idx, offset, new Vector3f(0.2f * scale, legY - 0.1f * scale, -0.1f * scale), new Vector3f(legLen, legThick, legThick));
-        offset = addBox(pos, norm, idx, offset, new Vector3f(-0.2f * scale, legY - 0.1f * scale, -0.1f * scale), new Vector3f(legLen, legThick, legThick));
+        // Mesothoracic Legs (Midlegs - Lateral)
+        offset = addBentLeg(pos, norm, idx, offset, new Vector3f(0.12f * scale, 0.12f * scale, 0.0f), 0.0f, scale, true);
+        offset = addBentLeg(pos, norm, idx, offset, new Vector3f(-0.12f * scale, 0.12f * scale, 0.0f), 0.0f, scale, false);
+
+        // Metathoracic Legs (Hindlegs - Angled Rearward)
+        offset = addBentLeg(pos, norm, idx, offset, new Vector3f(0.10f * scale, 0.11f * scale, -0.08f * scale), -0.55f, scale, true);
+        offset = addBentLeg(pos, norm, idx, offset, new Vector3f(-0.10f * scale, 0.11f * scale, -0.08f * scale), -0.55f, scale, false);
 
         Mesh mesh = new Mesh();
         mesh.setBuffer(com.jme3.scene.VertexBuffer.Type.Position, 3, com.jme3.util.BufferUtils.createFloatBuffer(pos.toArray(new Vector3f[0])));
@@ -300,6 +360,35 @@ public class AntVisualizer {
         mesh.setBuffer(com.jme3.scene.VertexBuffer.Type.Index, 1, com.jme3.util.BufferUtils.createIntBuffer(idx.stream().mapToInt(i -> i).toArray()));
         mesh.updateBound();
         return mesh;
+    }
+
+    private int addBentLeg(java.util.List<Vector3f> pos, java.util.List<Vector3f> norm, java.util.List<Integer> idx,
+            int offset, Vector3f origin, float angleRad, float scale, boolean isRight) {
+        float signX = isRight ? 1.0f : -1.0f;
+        float sinA = (float) Math.sin(angleRad);
+
+        Vector3f jointKnee = new Vector3f(
+            origin.x + signX * 0.14f * scale,
+            origin.y + 0.08f * scale,
+            origin.z + sinA * 0.10f * scale
+        );
+        Vector3f footPos = new Vector3f(
+            origin.x + signX * 0.26f * scale,
+            0.0f,
+            origin.z + sinA * 0.20f * scale
+        );
+
+        // Femur (Upper leg)
+        Vector3f femurCenter = origin.add(jointKnee).mult(0.5f);
+        Vector3f femurExt = new Vector3f(0.08f * scale, 0.022f * scale, 0.022f * scale);
+        offset = addBox(pos, norm, idx, offset, femurCenter, femurExt);
+
+        // Tibia (Lower leg reaching down)
+        Vector3f tibiaCenter = jointKnee.add(footPos).mult(0.5f);
+        Vector3f tibiaExt = new Vector3f(0.07f * scale, 0.05f * scale, 0.018f * scale);
+        offset = addBox(pos, norm, idx, offset, tibiaCenter, tibiaExt);
+
+        return offset;
     }
 
     private float terrainSideMeters = 10.0f; // Default terrain side length in meters

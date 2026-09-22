@@ -83,6 +83,7 @@ public class JmeGameApp extends SimpleApplication {
         void onVoxelSelected(int x, int y, int z, String material, float moisture, float temp, float compaction);
         void onAntSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job);
         default void onChamberSelected(String chamberId) {}
+        default void onHoverInfo(String text) {}
     }
 
     private ObjectSelectionListener selectionListener;
@@ -151,12 +152,12 @@ public class JmeGameApp extends SimpleApplication {
 
             DirectionalLight sun = new DirectionalLight();
             sun.setDirection(new Vector3f(-0.5f, -0.5f, -0.5f).normalizeLocal());
-            sun.setColor(new ColorRGBA(1.35f, 1.30f, 1.18f, 1.0f));
+            sun.setColor(new ColorRGBA(1.40f, 1.38f, 1.25f, 1.0f));
             rootNode.addLight(sun);
             this.sunLight = sun;
 
             com.jme3.light.AmbientLight al = new com.jme3.light.AmbientLight();
-            al.setColor(new ColorRGBA(0.55f, 0.58f, 0.65f, 1.0f));
+            al.setColor(new ColorRGBA(0.70f, 0.72f, 0.75f, 1.0f));
             rootNode.addLight(al);
 
             // Enhanced Soft Directional Shadows
@@ -534,19 +535,14 @@ public class JmeGameApp extends SimpleApplication {
 
             Material soilMat;
             if (isGamifiedVoxelMode) {
-                // GAMIFIED: Stylized voxel block texturing with nearest-neighbor pixel sampling
+                // GAMIFIED: Stylized voxel block texturing with nearest-neighbor pixel sampling from procedural Minecraft-fidelity Texture Atlas
                 soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
                 soilMat.setBoolean("UseMaterialColors", true);
-                soilMat.setBoolean("UseVertexColor", true);
+                soilMat.setBoolean("UseVertexColor", false);
                 soilMat.setColor("Diffuse", ColorRGBA.White);
-                soilMat.setColor("Ambient", new ColorRGBA(0.85f, 0.85f, 0.85f, 1f));
-                try {
-                    com.jme3.texture.Texture diffuseTex = assetManager.loadTexture("models/textures/pbr/Ground049A/Ground049A_1K-JPG_Color.jpg");
-                    diffuseTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
-                    diffuseTex.setMinFilter(com.jme3.texture.Texture.MinFilter.NearestNearestMipMap);
-                    diffuseTex.setMagFilter(com.jme3.texture.Texture.MagFilter.Nearest);
-                    soilMat.setTexture("DiffuseMap", diffuseTex);
-                } catch (Exception ignored) {}
+                soilMat.setColor("Ambient", new ColorRGBA(0.90f, 0.90f, 0.90f, 1f));
+                com.jme3.texture.Texture atlasTex = VoxelTextureAtlas.getAtlasTexture();
+                soilMat.setTexture("DiffuseMap", atlasTex);
             } else {
                 // REALISTIC: Lit with vertex color multiplied by diffuse texture
                 soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
@@ -655,19 +651,22 @@ public class JmeGameApp extends SimpleApplication {
                 pheromoneVisualizer.initialize(w, h, surfaceY);
             }
 
-            // Auto-Focus & Camera Centering on Colony Nest or World Center
-            float targetX = w / 2f;
-            float targetZ = h / 2f;
-            float targetY = surfaceY;
-            if (simulation != null && !simulation.getColonies().isEmpty()) {
-                org.swarmforge.core.domain.Colony colony = simulation.getColonies().get(0);
-                targetX = colony.getNestX();
-                targetZ = colony.getNestY();
-                targetY = terrarium.getSurfaceElevation(targetX, targetZ);
+            // Auto-Focus & Camera Centering on Colony Nest or World Center (Initial setup only)
+            if (!initialCameraConfigured) {
+                initialCameraConfigured = true;
+                float targetX = w / 2f;
+                float targetZ = h / 2f;
+                float targetY = surfaceY;
+                if (simulation != null && !simulation.getColonies().isEmpty()) {
+                    org.swarmforge.core.domain.Colony colony = simulation.getColonies().get(0);
+                    targetX = colony.getNestX();
+                    targetZ = colony.getNestY();
+                    targetY = terrarium.getSurfaceElevation(targetX, targetZ);
+                }
+                cameraTarget.set(targetX, targetY, targetZ);
+                cam.setLocation(new Vector3f(targetX, targetY + 16.0f, targetZ + 22.0f));
+                cam.lookAt(new Vector3f(targetX, targetY + 0.5f, targetZ), Vector3f.UNIT_Y);
             }
-            cameraTarget.set(targetX, targetY, targetZ);
-            cam.setLocation(new Vector3f(targetX, targetY + 16.0f, targetZ + 22.0f));
-            cam.lookAt(new Vector3f(targetX, targetY + 0.5f, targetZ), Vector3f.UNIT_Y);
         });
     }
 
@@ -967,10 +966,83 @@ public class JmeGameApp extends SimpleApplication {
     }
 
     private final Vector3f cameraTarget = new Vector3f(32, 10, 32);
+    private boolean initialCameraConfigured = false;
+
+    // Real-Time Hover Raycasting for 3D Viewport
+    public void hover(double fxX, double fxY, double paneW, double paneH) {
+        enqueueTask(() -> {
+            float jmeX = (float) ((fxX / Math.max(1.0, paneW)) * width);
+            float jmeY = (float) ((1.0 - (fxY / Math.max(1.0, paneH))) * height);
+
+            Vector3f click3d = cam.getWorldCoordinates(new com.jme3.math.Vector2f(jmeX, jmeY), 0f).clone();
+            Vector3f dir = cam.getWorldCoordinates(new com.jme3.math.Vector2f(jmeX, jmeY), 1f).subtractLocal(click3d).normalizeLocal();
+            com.jme3.math.Ray ray = new com.jme3.math.Ray(click3d, dir);
+
+            com.jme3.collision.CollisionResults results = new com.jme3.collision.CollisionResults();
+            rootNode.collideWith(ray, results);
+
+            // 1. Ant Hover Check
+            for (int i = 0; i < results.size(); i++) {
+                Geometry hitGeom = results.getCollision(i).getGeometry();
+                com.jme3.scene.Spatial antSpatial = hitGeom;
+                while (antSpatial != null && antSpatial.getUserData("ID") == null) {
+                    antSpatial = antSpatial.getParent();
+                }
+                if (antSpatial != null && antSpatial.getUserData("ID") != null) {
+                    String antId = (String) antSpatial.getUserData("ID");
+                    String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                    if (selectionListener != null) {
+                        Platform.runLater(() -> selectionListener.onHoverInfo("🐜 Fourmi #" + antId + " [" + stage + "]"));
+                    }
+                    return;
+                }
+            }
+
+            // 2. Chamber Node Hover Check
+            for (int i = 0; i < results.size(); i++) {
+                com.jme3.scene.Spatial chamberSpatial = results.getCollision(i).getGeometry();
+                while (chamberSpatial != null && chamberSpatial.getUserData("ChamberID") == null && (chamberSpatial.getName() == null || !chamberSpatial.getName().startsWith("Node_"))) {
+                    chamberSpatial = chamberSpatial.getParent();
+                }
+                if (chamberSpatial != null) {
+                    String typeStr = (String) chamberSpatial.getUserData("ChamberType");
+                    if (typeStr == null) typeStr = "CHAMBRE";
+                    final String fType = typeStr;
+                    if (selectionListener != null) {
+                        Platform.runLater(() -> selectionListener.onHoverInfo("🏛️ Cavité: " + fType));
+                    }
+                    return;
+                }
+            }
+
+            // 3. Terrain Voxel Hover Check
+            if (results.size() > 0) {
+                com.jme3.collision.CollisionResult closes = results.getClosestCollision();
+                Vector3f contact = closes.getContactPoint();
+                org.swarmforge.core.domain.Terrarium terr = (simulation != null && simulation.getTerrarium() != null)
+                        ? simulation.getTerrarium() : lastTerrarium;
+                if (contact != null && terr != null && selectionListener != null) {
+                    int vx = Math.max(0, Math.min(terr.getWidth() - 1, Math.round(contact.x)));
+                    int vz = Math.max(0, Math.min(terr.getDepth() - 1, Math.round(contact.y))); // In JME Y is vertical altitude
+                    int vy = Math.max(0, Math.min(terr.getHeight() - 1, Math.round(contact.z))); // In JME Z is horizontal Y
+                    org.swarmforge.core.domain.TerrariumCell cell = terr.getCell(vx, vy, vz);
+                    String mat = cell != null ? cell.material().name() : "HUMUS";
+                    float hum = cell != null ? cell.humidity() * 100.0f : 45.0f;
+                    float temp = cell != null ? cell.temperature() : 19.0f;
+                    float compaction = 60.0f;
+                    final int fx = vx, fy = vy, fz = vz;
+                    final String fMat = mat;
+                    final float fHum = hum, fTemp = temp, fComp = compaction;
+                    Platform.runLater(() -> selectionListener.onVoxelSelected(fx, fy, fz, fMat, fHum, fTemp, fComp));
+                }
+            }
+        });
+    }
 
     // Camera Controls (Orbit around camera target)
     public void rotateCamera(float x, float y) {
         enqueueTask(() -> {
+            followedAntId = null; // Break ant follow on manual user manipulation
             Vector3f offset = cam.getLocation().subtract(cameraTarget);
             float dist = Math.max(0.5f, offset.length());
 
@@ -988,6 +1060,7 @@ public class JmeGameApp extends SimpleApplication {
 
     public void panCamera(float dx, float dy) {
         enqueueTask(() -> {
+            followedAntId = null; // Break ant follow on manual user manipulation
             Vector3f left = cam.getLeft().mult(dx * 0.08f);
             Vector3f up = cam.getUp().mult(dy * 0.08f);
             cameraTarget.addLocal(left).addLocal(up);
@@ -997,6 +1070,7 @@ public class JmeGameApp extends SimpleApplication {
 
     public void zoomCamera(float delta) {
         enqueueTask(() -> {
+            followedAntId = null; // Break ant follow on manual user manipulation
             Vector3f toTarget = cameraTarget.subtract(cam.getLocation());
             float dist = toTarget.length();
             float move = delta * (dist * 0.08f + 0.4f);
@@ -1004,9 +1078,9 @@ public class JmeGameApp extends SimpleApplication {
             if (delta > 0 && dist - move < 0.35f) {
                 // Minimum distance clamp for macro ant inspection
                 cam.setLocation(cameraTarget.subtract(cam.getDirection().mult(0.35f)));
-            } else if (delta < 0 && dist + Math.abs(move) > 150.0f) {
+            } else if (delta < 0 && dist + Math.abs(move) > 250.0f) {
                 // Maximum distance clamp
-                cam.setLocation(cameraTarget.subtract(cam.getDirection().mult(150.0f)));
+                cam.setLocation(cameraTarget.subtract(cam.getDirection().mult(250.0f)));
             } else {
                 cam.setLocation(cam.getLocation().add(dir));
             }
@@ -1018,6 +1092,7 @@ public class JmeGameApp extends SimpleApplication {
      */
     public void panCameraTo(float x, float y, float z) {
         enqueueTask(() -> {
+            followedAntId = null;
             cameraTarget.set(x, y, z);
             float distance = Math.max(10.0f, cam.getLocation().distance(cameraTarget));
             // Keep roughly the same viewing distance
@@ -1038,12 +1113,13 @@ public class JmeGameApp extends SimpleApplication {
         panCameraTo(x, 15.0f, y);
     }
 
-
     /**
      * Reset camera to default 3D perspective position.
      */
     public void resetCamera() {
         enqueueTask(() -> {
+            followedAntId = null;
+            initialCameraConfigured = false;
             if (simulation != null && simulation.getTerrarium() != null) {
                 int w = simulation.getTerrarium().getWidth();
                 int d = simulation.getTerrarium().getDepth();

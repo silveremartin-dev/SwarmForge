@@ -124,6 +124,7 @@ public class WorldEditorPane extends BorderPane {
     private CheckBox showGalleriesCheck;
     private CheckBox showSubstrateStratigraphyCheck;
     private Label lblHoverInfo;
+    public Label getLblHoverInfo() { return lblHoverInfo; }
 
     // Controls: 1. Scale & Resolution
     private Slider surfaceSizeSlider; // Mètres (0.5 - 50.0m)
@@ -3494,6 +3495,20 @@ public class WorldEditorPane extends BorderPane {
                     chamberInfoPane.setVisible(true);
                 }
             }
+
+            @Override
+            public void onHoverInfo(String text) {
+                if (lblHoverInfo != null && text != null) {
+                    lblHoverInfo.setText(text);
+                }
+            }
+        });
+
+        // Mouse Hover Detection on GameView
+        gameView.setOnMouseMoved(e -> {
+            if (gameView.getGameApp() != null) {
+                gameView.getGameApp().hover(e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
+            }
         });
 
         // Complete Mouse Controls on GameView (Rotate, Pan, Zoom, Pick, Reset)
@@ -3514,6 +3529,9 @@ public class WorldEditorPane extends BorderPane {
             }
             lastJmeMouse[0] = e.getSceneX();
             lastJmeMouse[1] = e.getSceneY();
+            if (gameView.getGameApp() != null) {
+                gameView.getGameApp().hover(e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
+            }
             repaintAllViews();
         });
         gameView.setOnScroll(e -> {
@@ -3828,20 +3846,22 @@ public class WorldEditorPane extends BorderPane {
         );
 
         // 2. Castes & Roles
-        Label titleCastes = new Label("🐜 Castes & Rôles");
-        titleCastes.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #fbbf24;");
+        Label titleCastes = new Label();
+        titleCastes.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.castes.title"));
+        titleCastes.getStyleClass().add("legend-title");
         FlowPane castesFlow = new FlowPane(4, 4);
         castesFlow.setPrefWrapLength(220);
         String[][] castes = {
-            {"👑 Reine (Gyne)", "#e11d48"},
-            {"🐜 Ouvrière", "#f97316"},
-            {"🛡️ Soldat / Major", "#ef4444"},
-            {"⚖️ Media", "#ca8a04"},
-            {"🔍 Minor", "#84cc16"},
-            {"🪽 Mâle / Drone", "#06b6d4"},
-            {"🥚 Couvain / Larve", "#e2e8f0"}
+            {"queen", "#e11d48"},
+            {"worker", "#f97316"},
+            {"soldier", "#ef4444"},
+            {"media", "#ca8a04"},
+            {"minor", "#84cc16"},
+            {"drone", "#06b6d4"},
+            {"brood", "#e2e8f0"}
         };
         for (String[] c : castes) {
+            String key = c[0];
             HBox b = new HBox(4);
             b.setAlignment(Pos.CENTER_LEFT);
             b.setPadding(new Insets(2, 4, 2, 4));
@@ -3853,25 +3873,29 @@ public class WorldEditorPane extends BorderPane {
             g.setStroke(Color.WHITE);
             g.setLineWidth(0.6);
             g.strokeOval(0, 0, 8, 8);
-            Label lbl = new Label(c[0]);
+            Label lbl = new Label();
             lbl.setStyle("-fx-font-size: 10px;");
+            lbl.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.caste." + key));
+            lbl.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("legend.caste." + key + ".desc"));
             b.getChildren().addAll(dot, lbl);
             castesFlow.getChildren().add(b);
         }
 
         // 3. Canaux Phéromonaux
-        Label titlePhero = new Label("📡 Canaux Phéromonaux");
-        titlePhero.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #a855f7;");
+        Label titlePhero = new Label();
+        titlePhero.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.phero.title"));
+        titlePhero.getStyleClass().add("legend-title");
         FlowPane pheroFlow = new FlowPane(4, 4);
         pheroFlow.setPrefWrapLength(220);
         String[][] pheros = {
-            {"🍏 Nourriture", "#22c55e"},
-            {"🏠 Retour Nid", "#3b82f6"},
-            {"⚠️ Alerte Danger", "#ef4444"},
-            {"👑 Royale", "#ec4899"},
-            {"☠️ Nécrophorique", "#64748b"}
+            {"food", "#22c55e"},
+            {"home", "#3b82f6"},
+            {"danger", "#ef4444"},
+            {"queen", "#ec4899"},
+            {"necrophoric", "#64748b"}
         };
         for (String[] p : pheros) {
+            String key = p[0];
             HBox b = new HBox(4);
             b.setAlignment(Pos.CENTER_LEFT);
             b.setPadding(new Insets(2, 4, 2, 4));
@@ -3883,8 +3907,10 @@ public class WorldEditorPane extends BorderPane {
             g.setStroke(Color.WHITE);
             g.setLineWidth(0.6);
             g.strokeOval(0, 0, 8, 8);
-            Label lbl = new Label(p[0]);
+            Label lbl = new Label();
             lbl.setStyle("-fx-font-size: 10px;");
+            lbl.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.phero." + key));
+            lbl.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("legend.phero." + key + ".desc"));
             b.getChildren().addAll(dot, lbl);
             pheroFlow.getChildren().add(b);
         }
@@ -3900,13 +3926,13 @@ public class WorldEditorPane extends BorderPane {
 
         panel.getChildren().add(legendContentBox);
 
-        // 4. Nest Interior & Chamber Galleries Full Multi-Species Legend (Visible in Simulation mode)
+        // 4. Nest Interior & Chamber Galleries Legend (Visible in Simulation mode)
         Label titleNestInterior = new Label();
         titleNestInterior.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.nest.title"));
         titleNestInterior.getStyleClass().add("legend-title");
 
-        VBox nestItemsBox = new VBox(3);
-        nestItemsBox.setPadding(new Insets(2, 0, 2, 0));
+        FlowPane nestItemsFlow = new FlowPane(4, 4);
+        nestItemsFlow.setPrefWrapLength(220);
 
         List<String[]> nestList = new ArrayList<>();
         nestList.add(new String[]{"royal", "#d946ef", "dot"});
@@ -3922,18 +3948,18 @@ public class WorldEditorPane extends BorderPane {
 
         for (String[] it : nestList) {
             String key = it[0];
-            HBox item = new HBox(6);
+            HBox item = new HBox(4);
             item.setAlignment(Pos.CENTER_LEFT);
             item.setPadding(new Insets(2, 4, 2, 4));
-            item.getStyleClass().add("legend-item");
+            item.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 4;");
 
             javafx.scene.Node symbolNode;
             if ("line".equals(it[2])) {
-                Canvas lineCanvas = new Canvas(12, 8);
+                Canvas lineCanvas = new Canvas(10, 8);
                 GraphicsContext g = lineCanvas.getGraphicsContext2D();
                 g.setStroke(Color.web(it[1]));
-                g.setLineWidth(2.5);
-                g.strokeLine(0, 4, 12, 4);
+                g.setLineWidth(2.0);
+                g.strokeLine(0, 4, 10, 4);
                 symbolNode = lineCanvas;
             } else {
                 Canvas dot = new Canvas(8, 8);
@@ -3953,14 +3979,15 @@ public class WorldEditorPane extends BorderPane {
             }
 
             Label lbl = new Label();
+            lbl.setStyle("-fx-font-size: 10px;");
             lbl.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.nest." + key));
             lbl.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("legend.nest." + key + ".desc"));
             item.getChildren().addAll(symbolNode, lbl);
-            nestItemsBox.getChildren().add(item);
+            nestItemsFlow.getChildren().add(item);
         }
 
         this.nestLegendBox = new VBox(4);
-        this.nestLegendBox.getChildren().addAll(new Separator(), titleNestInterior, nestItemsBox);
+        this.nestLegendBox.getChildren().addAll(new Separator(), titleNestInterior, nestItemsFlow);
         this.nestLegendBox.setVisible(isSimulationMode);
         this.nestLegendBox.setManaged(isSimulationMode);
 
@@ -4112,6 +4139,7 @@ public class WorldEditorPane extends BorderPane {
                 if (clickedAnt == null && clickedPredator == null) {
                     int tWidth = Math.max(1, activeSimulation.getTerrarium().getWidth());
                     int tHeight = Math.max(1, activeSimulation.getTerrarium().getHeight());
+                    int tDepth = Math.max(1, activeSimulation.getTerrarium().getDepth());
                     for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
                         if (colony.getTunnelNetwork() != null && colony.getTunnelNetwork().getNodes() != null) {
                             for (org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node : colony.getTunnelNetwork().getNodes()) {
@@ -4119,11 +4147,8 @@ public class WorldEditorPane extends BorderPane {
                                 double gy = (node.y() / (double) tHeight) * GRID_SIZE;
                                 int igx = Math.max(0, Math.min(GRID_SIZE - 1, (int) gx));
                                 int igy = Math.max(0, Math.min(GRID_SIZE - 1, (int) gy));
-                                double totalDepthM = depthSlider != null ? depthSlider.getValue() : 3.0;
-                                if (activeSimulation != null && activeSimulation.getTerrarium() != null) {
-                                    totalDepthM = Math.max(0.5, (double) activeSimulation.getTerrarium().getDepth());
-                                }
-                                double gz = heightGrid[igx][igy] * 40.0 + (node.z() / Math.max(0.5, totalDepthM)) * 32.0;
+                                float sElev = activeSimulation.getTerrarium().getSurfaceElevation(node.x(), node.y());
+                                double gz = heightGrid[igx][igy] * 40.0 + ((node.z() - sElev) / (double) tDepth) * 40.0;
 
                                 double[] p = project3DPoint(gx, gy, gz, cx, cy, scale, radAz, radEl);
                                 double dSq = (p[0] - mx) * (p[0] - mx) + (p[1] - my) * (p[1] - my);
@@ -4525,6 +4550,7 @@ public class WorldEditorPane extends BorderPane {
             if (hoveredAnt == null && hoveredPredator == null) {
                 int tWidth = Math.max(1, activeSimulation.getTerrarium().getWidth());
                 int tHeight = Math.max(1, activeSimulation.getTerrarium().getHeight());
+                int tDepth = Math.max(1, activeSimulation.getTerrarium().getDepth());
                 for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
                     if (colony.getTunnelNetwork() != null && colony.getTunnelNetwork().getNodes() != null) {
                         for (org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node : colony.getTunnelNetwork().getNodes()) {
@@ -4532,7 +4558,8 @@ public class WorldEditorPane extends BorderPane {
                             double gyNode = (node.y() / (double) tHeight) * GRID_SIZE;
                             int igx = Math.max(0, Math.min(GRID_SIZE - 1, (int) gxNode));
                             int igy = Math.max(0, Math.min(GRID_SIZE - 1, (int) gyNode));
-                            double gz = heightGrid[igx][igy] * 40.0 + node.z() * 2.0;
+                            float sElev = activeSimulation.getTerrarium().getSurfaceElevation(node.x(), node.y());
+                            double gz = heightGrid[igx][igy] * 40.0 + ((node.z() - sElev) / (double) tDepth) * 40.0;
 
                             double[] p = project3DPoint(gxNode, gyNode, gz, cx, cy, scale, radAz, radEl);
                             double dSq = (p[0] - mx) * (p[0] - mx) + (p[1] - my) * (p[1] - my);
@@ -7793,8 +7820,8 @@ public class WorldEditorPane extends BorderPane {
 
                             double[] pNode = project3DPoint(gx, gy, gz, cx, cy, scale, radAz, radEl);
 
-                            double rxChamber = Math.max(2.5, (node.radiusX() / (double) tWidth) * GRID_SIZE * (scale / 4.0) * (zoom / 7.5));
-                            double rzChamber = Math.max(1.8, (node.radiusZ() / (double) tDepth) * 40.0 * (scale / 6.0) * (zoom / 7.5));
+                            double rxChamber = Math.max(3.0, Math.min(22.0, (Math.max(0.04, (double) node.radiusX()) / (double) tWidth) * GRID_SIZE * (scale * 0.45)));
+                            double rzChamber = Math.max(2.0, Math.min(15.0, (Math.max(0.025, (double) node.radiusZ()) / (double) tDepth) * 40.0 * (scale * 0.35)));
 
                             Color fillCol = switch (node.type()) {
                                 case QUEEN_CHAMBER, BIVOUAC_CORE -> Color.web("#d946ef", 0.80);

@@ -101,14 +101,15 @@ public class OnnxModelSerializer {
 
             graph.writeBytes(1, gemmNode.toByteArray());
 
-            // Activation (Relu) for hidden layers
+            // Activation (LeakyRelu) for hidden layers
             if (l < net.numLayers - 1) {
                 String outAct = "act_" + l;
                 ProtobufWriter reluNode = new ProtobufWriter();
                 reluNode.writeString(1, outGemm);
                 reluNode.writeString(2, outAct);
-                reluNode.writeString(3, "relu_node_" + l);
-                reluNode.writeString(4, "Relu");
+                reluNode.writeString(3, "leaky_relu_node_" + l);
+                reluNode.writeString(4, "LeakyRelu");
+                reluNode.writeBytes(5, buildFloatAttribute("alpha", 0.01f));
                 graph.writeBytes(1, reluNode.toByteArray());
             }
         }

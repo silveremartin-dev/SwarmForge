@@ -362,7 +362,7 @@ export const useSimulationStore = create((set, get) => {
         },
 
         // --- 3. Scenario Configuration (1:1 with SimulationControlPanel.java) ---
-        selectedScenarioPresetId: 'scenario_mon_terrarium_1',
+        selectedScenarioPresetId: 'ACAD_01_LEVY_BROWNIAN',
         selectedWorldPresetId: 'world_terrarium_01',
         selectedWeatherPresetId: 'weather_printemps_doux',
         masterSeed: 12345,
@@ -370,6 +370,10 @@ export const useSimulationStore = create((set, get) => {
         maxDuration: 100.0,
         durationUnit: 'Days',
         minPopStop: 0,
+        isMultiplayerOnly: false,
+        requiredPlayerCount: 1,
+        gridTilesX: 1,
+        gridTilesY: 1,
         speciesCards: createDefaultSpeciesCards(),
 
         setScenarioPresetId: (presetId) => {
@@ -380,8 +384,14 @@ export const useSimulationStore = create((set, get) => {
                     selectedWorldPresetId: meta.worldPresetId || 'world_terrarium_01',
                     selectedWeatherPresetId: meta.weatherPresetId || 'weather_printemps_doux',
                     masterSeed: meta.masterSeed || 12345,
-                    scenarioDescription: meta.description || ''
+                    scenarioDescription: meta.description || '',
+                    isMultiplayerOnly: Boolean(meta.isMultiplayerOnly),
+                    requiredPlayerCount: meta.requiredPlayerCount || 1,
+                    gridTilesX: meta.gridTilesX || 1,
+                    gridTilesY: meta.gridTilesY || 1
                 })
+            } else {
+                set({ selectedScenarioPresetId: presetId })
             }
         },
 
@@ -398,6 +408,10 @@ export const useSimulationStore = create((set, get) => {
         setMaxDuration: (dur) => set({ maxDuration: Number(dur) || 100 }),
         setDurationUnit: (unit) => set({ durationUnit: unit }),
         setMinPopStop: (pop) => set({ minPopStop: Number(pop) || 0 }),
+        setIsMultiplayerOnly: (val) => set({ isMultiplayerOnly: Boolean(val) }),
+        setRequiredPlayerCount: (cnt) => set({ requiredPlayerCount: Math.max(1, Math.min(16, Number(cnt) || 1)) }),
+        setGridTilesX: (x) => set({ gridTilesX: Math.max(1, Math.min(8, Number(x) || 1)) }),
+        setGridTilesY: (y) => set({ gridTilesY: Math.max(1, Math.min(8, Number(y) || 1)) }),
 
         addSpeciesCard: (card) => {
             const current = get().speciesCards
@@ -922,6 +936,10 @@ export const useSimulationStore = create((set, get) => {
                         stepSeconds: state.stepSeconds,
                         maxDurationSeconds: state.maxDuration,
                         minPopulationStop: state.minPopStop,
+                        isMultiplayerOnly: state.isMultiplayerOnly,
+                        requiredPlayerCount: state.requiredPlayerCount,
+                        gridTilesX: state.gridTilesX,
+                        gridTilesY: state.gridTilesY,
                         speciesCards,
                         colonies: initialColonies,
                         nests: initialNests
@@ -1586,6 +1604,10 @@ export const useSimulationStore = create((set, get) => {
                 maxDuration: s.maxDuration,
                 durationUnit: s.durationUnit,
                 minPopStop: s.minPopStop,
+                isMultiplayerOnly: s.isMultiplayerOnly,
+                requiredPlayerCount: s.requiredPlayerCount,
+                gridTilesX: s.gridTilesX,
+                gridTilesY: s.gridTilesY,
                 speciesCards: s.speciesCards
             }
             const blob = new Blob([JSON.stringify(scenario, null, 2)], { type: 'application/json' })
@@ -1607,8 +1629,12 @@ export const useSimulationStore = create((set, get) => {
                     masterSeed: data.masterSeed ?? 12345,
                     startDateTime: data.startDateTime || '2026-03-20T08:00:00',
                     maxDuration: data.maxDuration ?? 0,
-                    durationUnit: data.durationUnit || 'minutes',
+                    durationUnit: data.durationUnit || 'Days',
                     minPopStop: data.minPopStop ?? 0,
+                    isMultiplayerOnly: Boolean(data.isMultiplayerOnly),
+                    requiredPlayerCount: data.requiredPlayerCount ?? 1,
+                    gridTilesX: data.gridTilesX ?? 1,
+                    gridTilesY: data.gridTilesY ?? 1,
                     speciesCards: data.speciesCards || createDefaultSpeciesCards()
                 })
                 get().applyScenarioSetup()

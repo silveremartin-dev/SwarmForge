@@ -143,13 +143,19 @@ public class SimulationControlPanel extends VBox {
     private final Label lblDurationCalculatedInfo = new Label();
     private final Spinner<Integer> minPopStopSpinner = new Spinner<>(0, 1000, 0, 5);
 
+    // Multiplayer & Megaterrarium Fields
+    private final CheckBox chkMultiplayerOnly = new CheckBox();
+    private final Spinner<Integer> spinRequiredPlayers = new Spinner<>(1, 16, 1);
+    private final Spinner<Integer> spinGridTilesX = new Spinner<>(1, 8, 1);
+    private final Spinner<Integer> spinGridTilesY = new Spinner<>(1, 8, 1);
+    private final Label lblMegaterrariumShapeBadge = new Label();
+    private final Label lblMegaterrariumDesc = new Label();
+
     // 3. Multi-Species Scenario Config List
     private final ComboBox<String> comboAvailableSpecies = new ComboBox<>();
     private final VBox speciesListContainer = new VBox(10);
     private final List<SpeciesConfigCard> speciesCardList = new ArrayList<>();
     private volatile ScenarioSetupSnapshot lastSetupSnapshot;
-
-
 
     public boolean isCreatingScenario() {
         return isCreatingScenario;
@@ -165,6 +171,10 @@ public class SimulationControlPanel extends VBox {
         String maxUnit = durationUnitCombo != null && durationUnitCombo.getValue() != null ? durationUnitCombo.getValue() : "Days (d)";
         int minPop = minPopStopSpinner != null && minPopStopSpinner.getValue() != null ? minPopStopSpinner.getValue() : 0;
         String desc = areaDescription != null ? areaDescription.getText() : "";
+        boolean mpOnly = chkMultiplayerOnly != null && chkMultiplayerOnly.isSelected();
+        int reqPlayers = spinRequiredPlayers != null && spinRequiredPlayers.getValue() != null ? spinRequiredPlayers.getValue() : 1;
+        int tilesX = spinGridTilesX != null && spinGridTilesX.getValue() != null ? spinGridTilesX.getValue() : 1;
+        int tilesY = spinGridTilesY != null && spinGridTilesY.getValue() != null ? spinGridTilesY.getValue() : 1;
 
         return new ScenarioSetupSnapshot(
             getMasterSeed(),
@@ -182,7 +192,11 @@ public class SimulationControlPanel extends VBox {
             getWorkerCount(),
             getSoldierCount(),
             getBroodCount(),
-            snapshots
+            snapshots,
+            mpOnly,
+            reqPlayers,
+            tilesX,
+            tilesY
         );
     }
 
@@ -356,49 +370,14 @@ public class SimulationControlPanel extends VBox {
         HBox playerProfileRow = new HBox(6, lblAlias, txtPlayerAlias, lblSpecies, comboPlayerSpecies);
         playerProfileRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Host Mode: Server Scenario Catalog Selection Row
-        Label lblCatalog = new Label();
-        lblCatalog.textProperty().bind(i18n.createStringBinding("sim.server.catalog", "Catalogue Scénarios :"));
-        lblCatalog.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
-
-        List<String> scenarioTitles = new ArrayList<>(List.of(
-            "ACAD_01: Lévy Flights vs Brownian Walk (Ethology)",
-            "ACAD_02: Polyethism & Division of Labor (BDI)",
-            "ACAD_03: Nest Morphogenesis & Subterranean Microclimate",
-            "ACAD_04: Interspecific Competition & Territory",
-            "ACAD_05: Trophallaxis & Nutrient Flow",
-            "ACAD_06: Epidemiology & Social Immunity",
-            "ACAD_07: Attine Fungi Symbiosis (Leafcutters)",
-            "ACAD_08: Stigmergic Construction & Soil Excavation",
-            "ACAD_09: Dulosis & Slave-Making Raids (Polyergus)",
-            "ACAD_10: Savanna Acacia Coevolution & Pseudomyrmex",
-            "ACAD_11: Alpine Microclimate & Thermoregulation",
-            "ACAD_12: Boreal Solar Domes (Formica rufa)",
-            "ACAD_13: Steppe Granivory & Seed Harvesters (Messor)",
-            "ACAD_14: Wetland Flood Rafting (Solenopsis invicta)",
-            "ACAD_15: Predator Raid: Vespa velutina vs Apis mellifera",
-            "ACAD_16: Apicultural Apiary & Foraging Honey Flow",
-            "MP_01: Multiplayer Battle Arena 1v1 (Competitive)",
-            "MP_02: Multiplayer Coop Tribute & Symbiotic Trade (2P)",
-            "MP_03: Megaterrarium 4-Node Sharded Federation (4P)"
-        ));
-
-        comboServerCatalogScenarios.getItems().setAll(scenarioTitles);
-        comboServerCatalogScenarios.getSelectionModel().selectFirst();
-        comboServerCatalogScenarios.setStyle("-fx-font-size: 11px;");
-        comboServerCatalogScenarios.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(comboServerCatalogScenarios, Priority.ALWAYS);
-
-        btnLoadServerCatalogScenario.setText(i18n.get("sim.server.btn.load_catalog", "📋 Charger"));
-        btnLoadServerCatalogScenario.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
-        btnLoadServerCatalogScenario.setOnAction(e -> handleLoadServerCatalogScenario());
-
-        btnStartServerMatch.setText(i18n.get("sim.server.btn.start_match", "🚀 Lancer la Partie"));
-        btnStartServerMatch.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #059669; -fx-text-fill: white;");
+        // Host Mode: Server Match Launch Button
+        btnStartServerMatch.setText(i18n.get("sim.server.btn.start_match", "🚀 Lancer la Partie sur le Serveur"));
+        btnStartServerMatch.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #059669; -fx-text-fill: white; -fx-padding: 6 12; -fx-background-radius: 4; -fx-cursor: hand;");
+        btnStartServerMatch.tooltipProperty().bind(i18n.createTooltipBinding("sim.server.btn.start_match.tt", "Démarre la simulation active sur le serveur une fois que tous les participants ont rejoint le lobby."));
         btnStartServerMatch.setOnAction(e -> handleStartServerMatch());
 
-        HBox hostCatalogRow = new HBox(6, lblCatalog, comboServerCatalogScenarios, btnLoadServerCatalogScenario, btnStartServerMatch);
-        hostCatalogRow.setAlignment(Pos.CENTER_LEFT);
+        HBox hostMatchRow = new HBox(8, btnStartServerMatch);
+        hostMatchRow.setAlignment(Pos.CENTER_LEFT);
 
         // Join Mode: Matchmaking Lobby & Player Readiness Row
         lblLobbyStatus.setText("⏳ " + i18n.get("sim.lobby.waiting", "EN ATTENTE DE DÉMARRAGE (LOBBY)"));
@@ -408,16 +387,17 @@ public class SimulationControlPanel extends VBox {
         lblLobbySlots.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
 
         btnPlayerReady.setText(i18n.get("sim.lobby.btn_ready", "✓ Je suis Prêt"));
-        btnPlayerReady.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #d97706; -fx-text-fill: white;");
+        btnPlayerReady.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #d97706; -fx-text-fill: white; -fx-cursor: hand;");
+        btnPlayerReady.tooltipProperty().bind(i18n.createTooltipBinding("sim.lobby.btn_ready.tt", "Indique à l'hôte du serveur que votre colonie et vos paramètres sont prêts."));
         btnPlayerReady.setOnAction(e -> {
             isLocalPlayerReady = !isLocalPlayerReady;
             if (isLocalPlayerReady) {
                 btnPlayerReady.setText(i18n.get("sim.lobby.btn_unready", "✕ Pas Prêt"));
-                btnPlayerReady.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #059669; -fx-text-fill: white;");
+                btnPlayerReady.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #059669; -fx-text-fill: white; -fx-cursor: hand;");
                 org.swarmforge.client.util.NotificationOverlay.show(this, "✓ Vous êtes prêt pour la partie !", org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS);
             } else {
                 btnPlayerReady.setText(i18n.get("sim.lobby.btn_ready", "✓ Je suis Prêt"));
-                btnPlayerReady.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #d97706; -fx-text-fill: white;");
+                btnPlayerReady.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-background-color: #d97706; -fx-text-fill: white; -fx-cursor: hand;");
                 org.swarmforge.client.util.NotificationOverlay.show(this, "Statut prêt désactivé.", org.swarmforge.client.util.NotificationOverlay.NotificationType.INFO);
             }
         });
@@ -431,7 +411,7 @@ public class SimulationControlPanel extends VBox {
         lblServerAuthorityNotice.setVisible(false);
         lblServerAuthorityNotice.setManaged(false);
 
-        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow, serverRoleRow, hostCatalogRow, playerProfileRow, joinLobbyRow, pnlModeExplainer);
+        serverNetworkBox.getChildren().addAll(serverInputsRow, serverStatusRow, serverRoleRow, hostMatchRow, playerProfileRow, joinLobbyRow, pnlModeExplainer);
         serverNetworkBox.setVisible(false);
         serverNetworkBox.setManaged(false);
 
@@ -448,8 +428,8 @@ public class SimulationControlPanel extends VBox {
             boolean lockLocalWorld = isServer && isJoin;
             scenarioBodyBox.setDisable(lockLocalWorld);
 
-            hostCatalogRow.setVisible(isServer && !isJoin);
-            hostCatalogRow.setManaged(isServer && !isJoin);
+            hostMatchRow.setVisible(isServer && !isJoin);
+            hostMatchRow.setManaged(isServer && !isJoin);
 
             playerProfileRow.setVisible(lockLocalWorld);
             playerProfileRow.setManaged(lockLocalWorld);
@@ -508,23 +488,27 @@ public class SimulationControlPanel extends VBox {
         lblMeta.getStyleClass().add("purple-accent-title");
         lblMeta.setMinWidth(Region.USE_PREF_SIZE);
 
-        Set<String> scenarioSet = new TreeSet<>(scenarioPresetManager.getPresetNames());
-        for (org.swarmforge.core.scenario.Scenario sc : org.swarmforge.core.scenario.AcademicScenarios.getAllAcademicScenarios(12345L)) {
-            scenarioSet.add(sc.getTitle());
-        }
-        scenarioSet.add(I18nManager.getInstance().get("sim.preset.title.amazon"));
-        scenarioSet.add(I18nManager.getInstance().get("sim.preset.title.granivore"));
-        scenarioSet.add(I18nManager.getInstance().get("sim.preset.title.war"));
-        scenarioSet.add(I18nManager.getInstance().get("sim.preset.title.beehive"));
-        scenarioSet.add(I18nManager.getInstance().get("sim.preset.title.termites"));
-        scenarioSet.add(I18nManager.getInstance().get("sim.preset.title.taiga"));
-        scenarioSet.add(I18nManager.getInstance().get("sim.preset.title.claustral"));
-        scenarioSet.add(I18nManager.getInstance().get("sim.preset.title.supercolony"));
+        List<String> scenarioList = new ArrayList<>();
+        scenarioList.add(i18n.get("sim.preset.custom_new", "[➕ Scénario Personnalisé (Création libre)]"));
 
-        comboMeta.getItems().setAll(scenarioSet);
-        comboMeta.setEditable(true);
+        for (org.swarmforge.core.scenario.Scenario sc : org.swarmforge.core.scenario.AcademicScenarios.getAllAcademicScenarios(12345L)) {
+            scenarioList.add("🔬 " + sc.getTitle());
+        }
+
+        for (org.swarmforge.core.scenario.Scenario sc : org.swarmforge.core.scenario.AcademicScenarios.getAllMultiplayerScenarios(12345L)) {
+            scenarioList.add("⚔️ " + sc.getTitle());
+        }
+
+        for (String name : scenarioPresetManager.getPresetNames()) {
+            if (!name.startsWith("ACAD_") && !name.startsWith("MP_") && !scenarioList.contains(name) && !scenarioList.contains("🔬 " + name) && !scenarioList.contains("⚔️ " + name) && !scenarioList.contains("📁 " + name)) {
+                scenarioList.add("📁 " + name);
+            }
+        }
+
+        comboMeta.getItems().setAll(scenarioList);
+        comboMeta.setEditable(false);
         comboMeta.setMaxWidth(Double.MAX_VALUE);
-        comboMeta.setTooltip(new Tooltip("Select or create a global scenario preset combining biotope, climate, and fauna."));
+        comboMeta.setTooltip(new Tooltip(i18n.get("sim.preset.meta.tt", "Sélectionnez un scénario académique ou multijoueur, ou composez un scénario personnalisé.")));
         HBox.setHgrow(comboMeta, Priority.ALWAYS);
         comboMeta.setOnAction(e -> applyMetaPreset(comboMeta.getValue()));
 
@@ -535,7 +519,12 @@ public class SimulationControlPanel extends VBox {
         presetActionsRow.getChildren().addAll(bSaveScenario, bDeleteScenario, bExportScenario, bImportScenario);
 
         if (!comboMeta.getItems().isEmpty()) {
-            comboMeta.getSelectionModel().selectFirst();
+            // Default select the first academic scenario (index 1) or custom (index 0)
+            if (comboMeta.getItems().size() > 1) {
+                comboMeta.getSelectionModel().select(1);
+            } else {
+                comboMeta.getSelectionModel().selectFirst();
+            }
             applyMetaPreset(comboMeta.getValue());
         }
 
@@ -941,6 +930,8 @@ public class SimulationControlPanel extends VBox {
 
         btnApplyPresets.setOnAction(e -> handleApplyScenario());
 
+        VBox megaterrariumCard = createMultiplayerAndMegaterrariumCard();
+
         scenarioBodyBox.getChildren().addAll(
             metaRow,
             presetActionsRow,
@@ -953,6 +944,8 @@ public class SimulationControlPanel extends VBox {
             gridPhysics,
             new Separator(),
             gridLimits,
+            new Separator(),
+            megaterrariumCard,
             new Separator(),
             section3Container,
             new Separator(),
@@ -1099,6 +1092,98 @@ public class SimulationControlPanel extends VBox {
         for (SpeciesConfigCard card : speciesCardList) {
             speciesListContainer.getChildren().add(card.getCardPane());
         }
+    }
+
+    private VBox createMultiplayerAndMegaterrariumCard() {
+        VBox card = new VBox(8);
+        card.getStyleClass().add("card-pane");
+
+        Label lblTitle = new Label();
+        lblTitle.textProperty().bind(i18n.createStringBinding("sim.megaterrarium.card.title", "🌐 Topologie Mégaterrarium & Multijoueur"));
+        lblTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
+        lblTitle.getStyleClass().add("accent-title");
+        lblTitle.tooltipProperty().bind(i18n.createTooltipBinding("sim.megaterrarium.card.tt", "Configuration de la topologie multi-nœuds (sharding spatial) et des paramètres multijoueur."));
+
+        // Checkbox Multiplayer Only
+        chkMultiplayerOnly.textProperty().bind(i18n.createStringBinding("sim.multiplayer.only_chk", "Scénario Exclusivement Multijoueur"));
+        chkMultiplayerOnly.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
+        chkMultiplayerOnly.tooltipProperty().bind(i18n.createTooltipBinding("sim.multiplayer.only.tt", "Si coché, ce scénario nécessite plusieurs participants et un serveur/cluster pour s'exécuter."));
+
+        // Required Players Spinner
+        Label lblPlayers = new Label();
+        lblPlayers.textProperty().bind(i18n.createStringBinding("sim.multiplayer.required_players", "Nombre de Joueurs Requis :"));
+        lblPlayers.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
+        lblPlayers.tooltipProperty().bind(i18n.createTooltipBinding("sim.multiplayer.required_players.tt", "Nombre minimum de participants (slots de colonies) pour lancer la partie (1 à 16 joueurs)."));
+
+        spinRequiredPlayers.setPrefWidth(70);
+        spinRequiredPlayers.setEditable(true);
+        spinRequiredPlayers.setTooltip(new Tooltip(i18n.get("sim.multiplayer.required_players.tt", "Nombre de participants requis (1 à 16).")));
+
+        HBox playersRow = new HBox(8, chkMultiplayerOnly, new Region(), lblPlayers, spinRequiredPlayers);
+        playersRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(playersRow.getChildren().get(1), Priority.ALWAYS);
+
+        // Grid Tiles X & Y Spinners
+        Label lblGridX = new Label();
+        lblGridX.textProperty().bind(i18n.createStringBinding("sim.megaterrarium.tiles_x", "Tuiles X (Colonnes) :"));
+        lblGridX.setStyle("-fx-font-size: 11px;");
+        lblGridX.tooltipProperty().bind(i18n.createTooltipBinding("sim.megaterrarium.tiles_x.tt", "Nombre de sous-volumes shardés sur l'axe X (1 à 8)."));
+
+        spinGridTilesX.setPrefWidth(65);
+        spinGridTilesX.setEditable(true);
+        spinGridTilesX.setTooltip(new Tooltip(i18n.get("sim.megaterrarium.tiles_x.tt", "Nombre de tuiles spatiales sur l'axe X (1 à 8).")));
+
+        Label lblGridY = new Label();
+        lblGridY.textProperty().bind(i18n.createStringBinding("sim.megaterrarium.tiles_y", "Tuiles Y (Lignes) :"));
+        lblGridY.setStyle("-fx-font-size: 11px;");
+        lblGridY.tooltipProperty().bind(i18n.createTooltipBinding("sim.megaterrarium.tiles_y.tt", "Nombre de sous-volumes shardés sur l'axe Y (1 à 8)."));
+
+        spinGridTilesY.setPrefWidth(65);
+        spinGridTilesY.setEditable(true);
+        spinGridTilesY.setTooltip(new Tooltip(i18n.get("sim.megaterrarium.tiles_y.tt", "Nombre de tuiles spatiales sur l'axe Y (1 à 8).")));
+
+        HBox gridSpinnersRow = new HBox(8, lblGridX, spinGridTilesX, lblGridY, spinGridTilesY);
+        gridSpinnersRow.setAlignment(Pos.CENTER_LEFT);
+
+        // Shape Badge & Explanatory Text
+        lblMegaterrariumShapeBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-background-color: rgba(59, 130, 246, 0.15); -fx-text-fill: #38bdf8; -fx-padding: 3 8; -fx-background-radius: 4;");
+        lblMegaterrariumDesc.setStyle("-fx-font-size: 9.5px; -fx-text-fill: #94a3b8;");
+        lblMegaterrariumDesc.setWrapText(true);
+
+        Runnable updateTopologyVisuals = () -> {
+            int tx = spinGridTilesX.getValue() != null ? spinGridTilesX.getValue() : 1;
+            int ty = spinGridTilesY.getValue() != null ? spinGridTilesY.getValue() : 1;
+            int players = spinRequiredPlayers.getValue() != null ? spinRequiredPlayers.getValue() : 1;
+            int totalTiles = tx * ty;
+
+            if (totalTiles <= 1) {
+                lblMegaterrariumShapeBadge.setText(String.format("🗺️ %s (1 Tile) | %d %s",
+                    i18n.get("sim.megaterrarium.single_tile", "Monde Monolithique"),
+                    players,
+                    i18n.get("sim.megaterrarium.players_count", "Joueur(s)")));
+                lblMegaterrariumShapeBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-background-color: rgba(59, 130, 246, 0.15); -fx-text-fill: #38bdf8; -fx-padding: 3 8; -fx-background-radius: 4;");
+                lblMegaterrariumDesc.setText(i18n.get("sim.megaterrarium.single_tile_desc", "Simulation standard non shardée. Volume unique calculé sur un seul worker ou thread."));
+            } else {
+                lblMegaterrariumShapeBadge.setText(String.format("🌐 %s : %d × %d = %d %s | %d %s",
+                    i18n.get("sim.megaterrarium.sharded_title", "Mégaterrarium Shardé"),
+                    tx, ty, totalTiles,
+                    i18n.get("sim.megaterrarium.subvolumes", "Sous-Volumes Shardés"),
+                    players,
+                    i18n.get("sim.megaterrarium.players_count", "Joueur(s)")));
+                lblMegaterrariumShapeBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: bold; -fx-background-color: rgba(168, 85, 247, 0.15); -fx-text-fill: #c084fc; -fx-padding: 3 8; -fx-background-radius: 4;");
+                lblMegaterrariumDesc.setText(i18n.get("sim.megaterrarium.sharded_desc", "Topologie distribuée multi-nœuds : halo d'échange de phéromones (3 cellules) et migration continue des entités entre sous-volumes shardés."));
+            }
+            updateValidationPanel();
+        };
+
+        spinGridTilesX.valueProperty().addListener((o, oldV, newV) -> updateTopologyVisuals.run());
+        spinGridTilesY.valueProperty().addListener((o, oldV, newV) -> updateTopologyVisuals.run());
+        spinRequiredPlayers.valueProperty().addListener((o, oldV, newV) -> updateTopologyVisuals.run());
+        chkMultiplayerOnly.selectedProperty().addListener((o, oldV, newV) -> updateTopologyVisuals.run());
+        updateTopologyVisuals.run();
+
+        card.getChildren().addAll(lblTitle, playersRow, gridSpinnersRow, lblMegaterrariumShapeBadge, lblMegaterrariumDesc);
+        return card;
     }
 
     private void updateApplyPresetsButtonState(boolean isCreating) {
@@ -1345,15 +1430,31 @@ public class SimulationControlPanel extends VBox {
         });
     }
 
-    private void applyMetaPreset(String metaName) {
-        if (metaName == null) return;
+    private void applyMetaPreset(String rawMetaName) {
+        if (rawMetaName == null) return;
         speciesCardList.clear();
 
-        // 1. Try resolving exact or partial match from ScenarioPresetManager (Academic & Custom Scenarios)
+        // Check for Custom Scenario creation mode
+        if (rawMetaName.contains("[➕") || rawMetaName.contains("Personnalisé") || rawMetaName.contains("Custom")) {
+            if (areaDescription != null) {
+                areaDescription.setText(i18n.get("sim.preset.custom.desc", "Scénario personnalisé : définissez librement le biotope, le climat, les espèces et la topologie mégaterrarium."));
+            }
+            if (chkMultiplayerOnly != null) chkMultiplayerOnly.setSelected(false);
+            if (spinRequiredPlayers != null) spinRequiredPlayers.getValueFactory().setValue(1);
+            if (spinGridTilesX != null) spinGridTilesX.getValueFactory().setValue(1);
+            if (spinGridTilesY != null) spinGridTilesY.getValueFactory().setValue(1);
+            addSpeciesCard("Black Garden Ant (Lasius niger)");
+            updateValidationPanel();
+            return;
+        }
+
+        String metaName = rawMetaName.replace("🔬 ", "").replace("⚔️ ", "").replace("📁 ", "").trim();
+
+        // 1. Try resolving exact or partial match from ScenarioPresetManager (Academic, Multiplayer & Custom Scenarios)
         org.swarmforge.core.scenario.Scenario scenario = scenarioPresetManager.get(metaName);
         if (scenario == null) {
             for (org.swarmforge.core.scenario.Scenario s : scenarioPresetManager.getAll().values()) {
-                if (s.getTitle().equalsIgnoreCase(metaName) || s.getId().equalsIgnoreCase(metaName) || metaName.contains(s.getTitle())) {
+                if (s.getTitle().equalsIgnoreCase(metaName) || s.getId().equalsIgnoreCase(metaName) || metaName.contains(s.getTitle()) || s.getTitle().contains(metaName)) {
                     scenario = s;
                     break;
                 }
@@ -1362,7 +1463,8 @@ public class SimulationControlPanel extends VBox {
 
         if (scenario != null) {
             if (areaDescription != null) {
-                areaDescription.setText("🔬 ACADEMIC SCENARIO / PROFILE: " + scenario.getTitle() + "\n\n" + scenario.getDescription());
+                String prefix = scenario.isMultiplayerOnly() ? "⚔️ MULTIPLAYER SCENARIO: " : "🔬 ACADEMIC SCENARIO / PROFILE: ";
+                areaDescription.setText(prefix + scenario.getTitle() + "\n\n" + scenario.getDescription());
             }
             if (txtSeed != null) {
                 txtSeed.setText(String.valueOf(scenario.getMasterSeed()));
@@ -1375,6 +1477,20 @@ public class SimulationControlPanel extends VBox {
             }
             if (minPopStopSpinner != null && scenario.getMinPopulationStopThreshold() >= 0) {
                 minPopStopSpinner.getValueFactory().setValue(scenario.getMinPopulationStopThreshold());
+            }
+
+            // Multiplayer & Megaterrarium fields
+            if (chkMultiplayerOnly != null) {
+                chkMultiplayerOnly.setSelected(scenario.isMultiplayerOnly());
+            }
+            if (spinRequiredPlayers != null) {
+                spinRequiredPlayers.getValueFactory().setValue(Math.max(1, scenario.getRequiredPlayerCount()));
+            }
+            if (spinGridTilesX != null) {
+                spinGridTilesX.getValueFactory().setValue(Math.max(1, scenario.getGridTilesX()));
+            }
+            if (spinGridTilesY != null) {
+                spinGridTilesY.getValueFactory().setValue(Math.max(1, scenario.getGridTilesY()));
             }
 
             // Load simulation step size dt if present
@@ -1427,6 +1543,7 @@ public class SimulationControlPanel extends VBox {
                     }
                 }
             }
+            updateValidationPanel();
             return;
         }
 
@@ -2452,14 +2569,15 @@ public class SimulationControlPanel extends VBox {
             return;
         }
 
-        String name = comboMeta.getValue() != null ? comboMeta.getValue() : "New Scenario";
+        String name = comboMeta.getValue() != null ? comboMeta.getValue().replace("🔬 ", "").replace("⚔️ ", "").replace("📁 ", "") : "New Scenario";
         TextInputDialog dialog = org.swarmforge.client.util.ThemeManager.createTextInputDialog(name);
         dialog.setTitle("Save Scenario Preset");
         dialog.setHeaderText("Scenario preset name (Description captured):");
         dialog.showAndWait().ifPresent(scenarioName -> {
             if (!scenarioName.trim().isEmpty()) {
                 String clean = scenarioName.trim();
-                if ((scenarioPresetManager != null && scenarioPresetManager.getPresetNames().contains(clean)) || comboMeta.getItems().contains(clean)) {
+                String itemTitle = "📁 " + clean;
+                if ((scenarioPresetManager != null && scenarioPresetManager.getPresetNames().contains(clean)) || comboMeta.getItems().contains(itemTitle)) {
                     Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
                         Alert.AlertType.CONFIRMATION,
                         "Scenario preset '" + clean + "' already exists.\n\nDo you want to overwrite it with current configuration?"
@@ -2471,8 +2589,25 @@ public class SimulationControlPanel extends VBox {
                         return;
                     }
                 }
-                if (!comboMeta.getItems().contains(clean)) comboMeta.getItems().add(clean);
-                comboMeta.getSelectionModel().select(clean);
+
+                org.swarmforge.core.scenario.Scenario sc = new org.swarmforge.core.scenario.Scenario(clean.toLowerCase().replace(" ", "_"), clean, desc);
+                sc.setMasterSeed(getMasterSeed());
+                sc.setBiomeName(getSelectedWorld());
+                sc.setMaxDurationValue(maxDurationSpinner.getValue() != null ? maxDurationSpinner.getValue() : 100.0);
+                sc.setMaxDurationUnit(durationUnitCombo.getValue() != null ? durationUnitCombo.getValue() : "Days (d)");
+                sc.setMinPopulationStopThreshold(getMinPopulationStopThreshold());
+                sc.setSimulationStepSeconds(getSimulationStepSeconds());
+                sc.setMultiplayerOnly(chkMultiplayerOnly.isSelected());
+                sc.setRequiredPlayerCount(spinRequiredPlayers.getValue() != null ? spinRequiredPlayers.getValue() : 1);
+                sc.setGridTilesX(spinGridTilesX.getValue() != null ? spinGridTilesX.getValue() : 1);
+                sc.setGridTilesY(spinGridTilesY.getValue() != null ? spinGridTilesY.getValue() : 1);
+                for (SpeciesConfigCard card : speciesCardList) {
+                    sc.addColony(new org.swarmforge.core.scenario.Scenario.ColonySetup(card.getSpeciesName(), card.getSpeciesName().toLowerCase().replace(" ", "_"), card.getQueenCount(), card.getWorkerCount(), card.getSoldierCount(), card.getInitialFood(), java.util.Map.of()));
+                }
+                scenarioPresetManager.save(sc);
+
+                if (!comboMeta.getItems().contains(itemTitle)) comboMeta.getItems().add(itemTitle);
+                comboMeta.getSelectionModel().select(itemTitle);
                 org.swarmforge.client.util.NotificationOverlay.show(this, "Scenario preset saved: " + clean, org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS);
             }
         });
@@ -2571,6 +2706,19 @@ public class SimulationControlPanel extends VBox {
                     }
                     if (snapshot.selectedWorld() != null) selectComboIfPresent(comboWorld, snapshot.selectedWorld());
                     if (snapshot.selectedWeather() != null) selectComboIfPresent(comboWeather, snapshot.selectedWeather());
+
+                    if (chkMultiplayerOnly != null) {
+                        chkMultiplayerOnly.setSelected(snapshot.isMultiplayerOnly());
+                    }
+                    if (spinRequiredPlayers != null && snapshot.requiredPlayerCount() > 0) {
+                        spinRequiredPlayers.getValueFactory().setValue(snapshot.requiredPlayerCount());
+                    }
+                    if (spinGridTilesX != null && snapshot.gridTilesX() > 0) {
+                        spinGridTilesX.getValueFactory().setValue(snapshot.gridTilesX());
+                    }
+                    if (spinGridTilesY != null && snapshot.gridTilesY() > 0) {
+                        spinGridTilesY.getValueFactory().setValue(snapshot.gridTilesY());
+                    }
 
                     speciesCardList.clear();
                     if (snapshot.speciesSnapshots() != null && !snapshot.speciesSnapshots().isEmpty()) {
@@ -3241,7 +3389,16 @@ public class SimulationControlPanel extends VBox {
             Button btnRemove = new Button();
             btnRemove.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.btn.remove_species"));
             btnRemove.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-cursor: hand;");
-            btnRemove.setOnAction(e -> onRemove.run());
+            btnRemove.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("sim.btn.remove_species.tt", "Supprime cette colonie et cette espèce de la configuration du scénario."));
+            btnRemove.setOnAction(e -> {
+                Alert confirm = org.swarmforge.client.util.ThemeManager.createAlert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Voulez-vous vraiment retirer l'espèce '" + speciesName + "' de ce scénario ?"
+                );
+                confirm.showAndWait().ifPresent(btn -> {
+                    if (btn == ButtonType.OK) onRemove.run();
+                });
+            });
 
             header.getChildren().addAll(lblTitle, sp, btnRemove);
 

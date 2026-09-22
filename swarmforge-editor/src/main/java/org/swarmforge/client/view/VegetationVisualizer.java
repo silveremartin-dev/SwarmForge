@@ -22,6 +22,7 @@ import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Cylinder;
 import org.swarmforge.client.ui.WorldEditorPane.RenderMode;
 import org.swarmforge.core.domain.Terrarium;
+import org.swarmforge.core.domain.TerrariumCell;
 import org.swarmforge.core.world.Biome;
 import org.swarmforge.core.world.Season;
 import org.swarmforge.core.world.VegetationSystem;
@@ -248,9 +249,9 @@ public class VegetationVisualizer {
         if (vegSystem != null && !vegSystem.getPlants().isEmpty()) {
             // Position flora according to real simulation plants
             for (VegetationSystem.Plant plant : vegSystem.getPlants()) {
-                float x = plant.x;
-                float z = plant.y; // Horizontal Y in domain -> JME Z
-                if (x >= cutX - 0.5f) continue; // Respect 3D geological cutaway slice
+                if (plant.x >= cutX - 0.5f) continue; // Respect 3D geological cutaway slice
+                float x = Math.max(1.5f, Math.min(cutX - 1.5f, plant.x));
+                float z = Math.max(1.5f, Math.min(gridHeight - 1.5f, plant.y)); // Horizontal Y in domain -> JME Z
                 float y = (terrarium != null) ? terrarium.getSurfaceElevation(x, z) : 0.0f;
 
                 if (currentRenderMode == RenderMode.REALISTIC) {
@@ -261,9 +262,84 @@ public class VegetationVisualizer {
                     createGamifiedFloraForPlant(x, y, z, plant, biome, effectiveSeason, rand);
                 }
             }
-        } else {
-            // No vegetation system or empty plant list: no trees rendered.
-            // Trees are strictly driven by simulation data only.
+        }
+
+        // Realistic Mode Natural Ground Scatter Pass:
+        // Distributes pebbles, gravel, mossy rocks, mushrooms, and grass tufts
+        // based on simulation substrate and soil coverage.
+        if (currentRenderMode == RenderMode.REALISTIC && terrarium != null) {
+            spawnRealisticGroundScatter(terrarium, cutX, biome, effectiveSeason, rand);
+        }
+    }
+
+    private void spawnRealisticGroundScatter(Terrarium terrarium, int cutX, Biome biome, Season season, Random rand) {
+        int width = terrarium.getWidth();
+        int height = terrarium.getHeight();
+        int depth = terrarium.getDepth();
+
+        // Sample surface with biological jitter clamped inside terrain margins
+        int step = Math.max(2, Math.min(width, height) / 24);
+        for (int x = 2; x < cutX - 2; x += step) {
+            for (int y = 2; y < height - 2; y += step) {
+                float jx = Math.max(1.5f, Math.min(cutX - 1.5f, x + (rand.nextFloat() - 0.5f) * (step * 0.8f)));
+                float jz = Math.max(1.5f, Math.min(height - 1.5f, y + (rand.nextFloat() - 0.5f) * (step * 0.8f)));
+                if (jx >= cutX - 1.0f || jx < 1.0f || jz < 1.0f || jz >= height - 1.0f) continue;
+
+                float elev = terrarium.getSurfaceElevation(jx, jz);
+                int ix = Math.max(0, Math.min(width - 1, Math.round(jx)));
+                int iy = Math.max(0, Math.min(height - 1, Math.round(jz)));
+                int iz = Math.max(0, Math.min(depth - 1, Math.round(elev)));
+
+                TerrariumCell topCell = terrarium.getCell(ix, iy, iz);
+                if (topCell == null || topCell.material() == TerrariumCell.Material.AIR || topCell.material() == TerrariumCell.Material.WATER) {
+                    continue;
+                }
+
+                TerrariumCell.Material mat = topCell.material();
+                float roll = rand.nextFloat();
+
+                Spatial scatterModel = null;
+                float targetScale = 0.35f;
+
+                if (mat == TerrariumCell.Material.ROCK || mat == TerrariumCell.Material.GRAVEL) {
+                    // Pebble & Rock Scatter on stony ground
+                    if (roll < 0.45f && !rocks.isEmpty()) {
+                        scatterModel = pickRandomFromList(rocks, rand);
+                        targetScale = (mat == TerrariumCell.Material.GRAVEL) ? (0.18f + rand.nextFloat() * 0.25f) : (0.40f + rand.nextFloat() * 0.60f);
+                    }
+                } else if (mat == TerrariumCell.Material.PEAT || mat == TerrariumCell.Material.LEAF_LITTER) {
+                    // Mushrooms & Fallen Forest Detritus on rich organic soil
+                    if (roll < 0.30f && !mushrooms.isEmpty()) {
+                        scatterModel = pickRandomFromList(mushrooms, rand);
+                        targetScale = 0.25f + rand.nextFloat() * 0.25f;
+                    } else if (roll < 0.50f && !rocks.isEmpty()) {
+                        scatterModel = pickRandomFromList(rocks, rand); // Mossy stones
+                        targetScale = 0.30f + rand.nextFloat() * 0.30f;
+                    }
+                } else if (mat == TerrariumCell.Material.SAND) {
+                    // Desert Pebbles & Small Scrub
+                    if (roll < 0.25f && !rocks.isEmpty()) {
+                        scatterModel = pickRandomFromList(rocks, rand);
+                        targetScale = 0.20f + rand.nextFloat() * 0.30f;
+                    }
+                } else if (mat == TerrariumCell.Material.EARTH || mat == TerrariumCell.Material.SILT) {
+                    // Natural Wild Grass Tufts & Small Bushes
+                    if (roll < 0.35f && !flowers.isEmpty()) {
+                        scatterModel = pickRandomFromList(flowers, rand);
+                        targetScale = 0.30f + rand.nextFloat() * 0.35f;
+                    } else if (roll < 0.50f && !bushes.isEmpty()) {
+                        scatterModel = pickRandomFromList(bushes, rand);
+                        targetScale = 0.45f + rand.nextFloat() * 0.40f;
+                    }
+                }
+
+                if (scatterModel != null) {
+                    Spatial instance = scatterModel.clone();
+                    normalizeAndPositionModel(instance, jx, elev, jz, targetScale, rand);
+                    applySeasonalTint(instance, season, biome);
+                    rootNode.attachChild(instance);
+                }
+            }
         }
     }
 
@@ -276,23 +352,23 @@ public class VegetationVisualizer {
                 chosenModel = pickModelForBiome(biome, rand, true);
                 String name = (chosenModel != null && chosenModel.getName() != null) ? chosenModel.getName().toLowerCase() : "";
                 if (name.contains("stump") || name.contains("log")) {
-                    targetHeight = (0.7f + rand.nextFloat() * 0.4f) * Math.max(0.35f, plant.growth);
+                    targetHeight = (0.8f + rand.nextFloat() * 0.5f) * Math.max(0.4f, plant.growth);
                 } else if (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
-                    targetHeight = (4.0f + rand.nextFloat() * 2.0f) * Math.max(0.35f, plant.growth);
+                    targetHeight = (6.0f + rand.nextFloat() * 3.0f) * Math.max(0.4f, plant.growth);
                 } else {
-                    targetHeight = (5.5f + rand.nextFloat() * 2.5f) * Math.max(0.35f, plant.growth);
+                    targetHeight = (7.5f + rand.nextFloat() * 3.0f) * Math.max(0.4f, plant.growth);
                 }
             }
             case SHRUB -> {
-                targetHeight = (1.2f + rand.nextFloat() * 0.8f) * Math.max(0.35f, plant.growth);
+                targetHeight = (1.5f + rand.nextFloat() * 0.9f) * Math.max(0.4f, plant.growth);
                 chosenModel = pickRandomFromList(bushes, rand);
             }
             case FLOWER -> {
-                targetHeight = (0.45f + rand.nextFloat() * 0.35f) * Math.max(0.35f, plant.growth);
+                targetHeight = (0.50f + rand.nextFloat() * 0.40f) * Math.max(0.4f, plant.growth);
                 chosenModel = pickRandomFromList(flowers, rand);
             }
             case MOSS, GRASS -> {
-                targetHeight = (0.25f + rand.nextFloat() * 0.25f) * Math.max(0.35f, plant.growth);
+                targetHeight = (0.35f + rand.nextFloat() * 0.30f) * Math.max(0.4f, plant.growth);
                 chosenModel = pickRandomFromList(flowers, rand);
             }
         }
@@ -319,6 +395,8 @@ public class VegetationVisualizer {
         float rotY = rand.nextFloat() * FastMath.TWO_PI;
         floraNode.setUserData("BaseRotY", rotY);
 
+        float micro = 0.15f;
+
         switch (plant.type) {
             case SHRUB -> {
                 Material shrubMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
@@ -328,41 +406,36 @@ public class VegetationVisualizer {
                 shrubMat.setColor("Ambient", shrubCol.mult(0.6f));
                 shrubMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-                float bSize = 0.5f * Math.max(0.4f, plant.growth);
-                Box bushBox = new Box(bSize, bSize, bSize);
-                Geometry bushGeom = new Geometry("GamifiedBush", bushBox);
-                bushGeom.setMaterial(shrubMat);
-                bushGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-                bushGeom.setLocalTranslation(0, bSize, 0);
-                floraNode.attachChild(bushGeom);
+                // Multi-block stepped micro-voxel shrub
+                float scale = Math.max(0.5f, plant.growth);
+                floraNode.attachChild(createMicroVoxel("ShrubCore", 0.60f * scale, 0.50f * scale, 0.60f * scale, shrubMat, 0, 0.25f * scale, 0));
+                floraNode.attachChild(createMicroVoxel("ShrubL", 0.30f * scale, 0.35f * scale, 0.30f * scale, shrubMat, -0.30f * scale, 0.18f * scale, 0.10f * scale));
+                floraNode.attachChild(createMicroVoxel("ShrubR", 0.30f * scale, 0.35f * scale, 0.30f * scale, shrubMat, 0.28f * scale, 0.18f * scale, -0.10f * scale));
             }
             case FLOWER -> {
+                // Stem
                 Material stemMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
                 stemMat.setBoolean("UseMaterialColors", true);
-                stemMat.setColor("Diffuse", new ColorRGBA(0.15f, 0.65f, 0.20f, 1f));
+                stemMat.setColor("Diffuse", new ColorRGBA(0.18f, 0.68f, 0.22f, 1f));
                 stemMat.setColor("Ambient", new ColorRGBA(0.10f, 0.40f, 0.12f, 1f));
+                floraNode.attachChild(createMicroVoxel("FlowerStem", 0.06f, 0.32f, 0.06f, stemMat, 0, 0.16f, 0));
 
-                Box stemBox = new Box(0.04f, 0.15f, 0.04f);
-                Geometry stemGeom = new Geometry("FlowerStem", stemBox);
-                stemGeom.setMaterial(stemMat);
-                stemGeom.setLocalTranslation(0, 0.15f, 0);
-                floraNode.attachChild(stemGeom);
-
+                // Stepped 4-petal blossom
                 Material flowerMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
                 flowerMat.setBoolean("UseMaterialColors", true);
                 ColorRGBA blossomCol = switch (rand.nextInt(3)) {
                     case 0 -> new ColorRGBA(0.95f, 0.25f, 0.25f, 1f); // Red Poppy
-                    case 1 -> new ColorRGBA(0.95f, 0.85f, 0.15f, 1f); // Dandelion
-                    default -> new ColorRGBA(0.25f, 0.60f, 0.95f, 1f); // Blue Orchid
+                    case 1 -> new ColorRGBA(0.98f, 0.85f, 0.15f, 1f); // Dandelion
+                    default -> new ColorRGBA(0.25f, 0.62f, 0.98f, 1f); // Blue Orchid
                 };
                 flowerMat.setColor("Diffuse", blossomCol);
                 flowerMat.setColor("Ambient", blossomCol.mult(0.6f));
 
-                Box bloomBox = new Box(0.12f, 0.10f, 0.12f);
-                Geometry bloomGeom = new Geometry("FlowerBloom", bloomBox);
-                bloomGeom.setMaterial(flowerMat);
-                bloomGeom.setLocalTranslation(0, 0.35f, 0);
-                floraNode.attachChild(bloomGeom);
+                floraNode.attachChild(createMicroVoxel("BloomCenter", 0.14f, 0.10f, 0.14f, flowerMat, 0, 0.34f, 0));
+                floraNode.attachChild(createMicroVoxel("BloomPetalN", 0.10f, 0.08f, 0.10f, flowerMat, 0, 0.33f, 0.10f));
+                floraNode.attachChild(createMicroVoxel("BloomPetalS", 0.10f, 0.08f, 0.10f, flowerMat, 0, 0.33f, -0.10f));
+                floraNode.attachChild(createMicroVoxel("BloomPetalE", 0.10f, 0.08f, 0.10f, flowerMat, 0.10f, 0.33f, 0));
+                floraNode.attachChild(createMicroVoxel("BloomPetalW", 0.10f, 0.08f, 0.10f, flowerMat, -0.10f, 0.33f, 0));
             }
             case MOSS, GRASS -> {
                 Material grassMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
@@ -371,11 +444,11 @@ public class VegetationVisualizer {
                 grassMat.setColor("Diffuse", grassCol);
                 grassMat.setColor("Ambient", grassCol.mult(0.6f));
 
-                Box tuftBox = new Box(0.15f, 0.08f, 0.15f);
-                Geometry tuftGeom = new Geometry("GrassTuft", tuftBox);
-                tuftGeom.setMaterial(grassMat);
-                tuftGeom.setLocalTranslation(0, 0.08f, 0);
-                floraNode.attachChild(tuftGeom);
+                // Stepped multi-blade voxel grass tuft
+                floraNode.attachChild(createMicroVoxel("TuftCenter", 0.12f, 0.22f, 0.12f, grassMat, 0, 0.11f, 0));
+                floraNode.attachChild(createMicroVoxel("TuftBlade1", 0.08f, 0.16f, 0.08f, grassMat, 0.10f, 0.08f, 0.05f));
+                floraNode.attachChild(createMicroVoxel("TuftBlade2", 0.08f, 0.14f, 0.08f, grassMat, -0.08f, 0.07f, -0.06f));
+                floraNode.attachChild(createMicroVoxel("TuftBlade3", 0.08f, 0.18f, 0.08f, grassMat, -0.04f, 0.09f, 0.09f));
             }
         }
         floraNode.setLocalRotation(new Quaternion().fromAngles(0, rotY, 0));
@@ -692,6 +765,15 @@ public class VegetationVisualizer {
         rootNode.attachChild(treeNode);
     }
 
+    private Geometry createMicroVoxel(String name, float sizeX, float sizeY, float sizeZ, Material mat, float posX, float posY, float posZ) {
+        Box box = new Box(sizeX * 0.5f, sizeY * 0.5f, sizeZ * 0.5f);
+        Geometry g = new Geometry(name, box);
+        g.setMaterial(mat);
+        g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+        g.setLocalTranslation(posX, posY, posZ);
+        return g;
+    }
+
     private void createProceduralTreeGamified(float x, float y, float z, Biome biome, Season season, Random rand) {
         Node treeNode = new Node("TreeGamified");
         treeNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
@@ -699,69 +781,44 @@ public class VegetationVisualizer {
         float rotY = rand.nextFloat() * FastMath.TWO_PI;
         treeNode.setUserData("BaseRotY", rotY);
 
-        float voxelSize = 1.0f; // 1.0m per authentic Minecraft voxel block for realistic stature
-
         Material woodMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         woodMat.setBoolean("UseMaterialColors", true);
-        woodMat.setColor("Diffuse", new ColorRGBA(0.46f, 0.28f, 0.14f, 1f));
-        woodMat.setColor("Ambient", new ColorRGBA(0.28f, 0.18f, 0.08f, 1f));
+        woodMat.setColor("Diffuse", new ColorRGBA(0.42f, 0.26f, 0.12f, 1f));
+        woodMat.setColor("Ambient", new ColorRGBA(0.24f, 0.15f, 0.07f, 1f));
         woodMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
         if (biome == Biome.DESERT) {
-            // Authentic Minecraft Saguaro Cactus (5-block trunk + 2 staggered arms)
+            // Authentic Ribbed Micro-Voxel Saguaro Cactus
             Material cactusMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             cactusMat.setBoolean("UseMaterialColors", true);
-            cactusMat.setColor("Diffuse", new ColorRGBA(0.20f, 0.58f, 0.22f, 1f));
-            cactusMat.setColor("Ambient", new ColorRGBA(0.12f, 0.35f, 0.14f, 1f));
+            cactusMat.setColor("Diffuse", new ColorRGBA(0.22f, 0.60f, 0.24f, 1f));
+            cactusMat.setColor("Ambient", new ColorRGBA(0.12f, 0.36f, 0.14f, 1f));
             cactusMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-            for (int h = 0; h < 5; h++) {
-                Box box = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-                Geometry g = new Geometry("CactusVoxel_" + h, box);
-                g.setMaterial(cactusMat);
-                g.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-                g.setLocalTranslation(0, h * voxelSize + voxelSize / 2, 0);
-                treeNode.attachChild(g);
-            }
-            // Arm Left
-            Box armLeft1 = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-            Geometry gL1 = new Geometry("CactusArmL1", armLeft1);
-            gL1.setMaterial(cactusMat);
-            gL1.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            gL1.setLocalTranslation(-voxelSize, 2.0f * voxelSize + voxelSize / 2, 0);
-            treeNode.attachChild(gL1);
+            // Central Trunk (4.5m) with ribbed cross geometry
+            treeNode.attachChild(createMicroVoxel("CactusCore", 0.60f, 4.5f, 0.60f, cactusMat, 0, 2.25f, 0));
+            treeNode.attachChild(createMicroVoxel("CactusRibN", 0.30f, 4.2f, 0.20f, cactusMat, 0, 2.10f, 0.35f));
+            treeNode.attachChild(createMicroVoxel("CactusRibS", 0.30f, 4.2f, 0.20f, cactusMat, 0, 2.10f, -0.35f));
+            treeNode.attachChild(createMicroVoxel("CactusRibE", 0.20f, 4.2f, 0.30f, cactusMat, 0.35f, 2.10f, 0));
+            treeNode.attachChild(createMicroVoxel("CactusRibW", 0.20f, 4.2f, 0.30f, cactusMat, -0.35f, 2.10f, 0));
 
-            Box armLeft2 = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-            Geometry gL2 = new Geometry("CactusArmL2", armLeft2);
-            gL2.setMaterial(cactusMat);
-            gL2.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            gL2.setLocalTranslation(-voxelSize, 3.0f * voxelSize + voxelSize / 2, 0);
-            treeNode.attachChild(gL2);
+            // Left Arm (Joint + Upward column)
+            treeNode.attachChild(createMicroVoxel("CactusArmJointL", 0.60f, 0.40f, 0.40f, cactusMat, -0.55f, 2.2f, 0));
+            treeNode.attachChild(createMicroVoxel("CactusArmUpL", 0.40f, 1.8f, 0.40f, cactusMat, -0.85f, 3.1f, 0));
 
-            // Arm Right
-            Box armRight1 = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-            Geometry gR1 = new Geometry("CactusArmR1", armRight1);
-            gR1.setMaterial(cactusMat);
-            gR1.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            gR1.setLocalTranslation(voxelSize, 3.0f * voxelSize + voxelSize / 2, 0);
-            treeNode.attachChild(gR1);
-
-            Box armRight2 = new Box(voxelSize / 2, voxelSize / 2, voxelSize / 2);
-            Geometry gR2 = new Geometry("CactusArmR2", armRight2);
-            gR2.setMaterial(cactusMat);
-            gR2.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            gR2.setLocalTranslation(voxelSize, 4.0f * voxelSize + voxelSize / 2, 0);
-            treeNode.attachChild(gR2);
+            // Right Arm (Joint + Upward column at offset height)
+            treeNode.attachChild(createMicroVoxel("CactusArmJointR", 0.60f, 0.40f, 0.40f, cactusMat, 0.55f, 2.8f, 0));
+            treeNode.attachChild(createMicroVoxel("CactusArmUpR", 0.40f, 1.6f, 0.40f, cactusMat, 0.85f, 3.6f, 0));
 
         } else if (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
-            // Authentic Minecraft Spruce/Pine Tree (Optimized cubic voxel layers)
+            // Hierarchical Micro-Voxel Spruce/Pine Tree (4 stepped needle tiers)
             int trunkHeight = 7;
-            Box trunkBox = new Box(voxelSize / 2, trunkHeight * voxelSize / 2, voxelSize / 2);
-            Geometry trunkGeom = new Geometry("PineTrunk", trunkBox);
-            trunkGeom.setMaterial(woodMat);
-            trunkGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            trunkGeom.setLocalTranslation(0, trunkHeight * voxelSize / 2, 0);
-            treeNode.attachChild(trunkGeom);
+            treeNode.attachChild(createMicroVoxel("SpruceTrunk", 0.50f, 6.8f, 0.50f, woodMat, 0, 3.4f, 0));
+            // Base Root Flares
+            treeNode.attachChild(createMicroVoxel("RootN", 0.30f, 0.40f, 0.30f, woodMat, 0, 0.20f, 0.35f));
+            treeNode.attachChild(createMicroVoxel("RootS", 0.30f, 0.40f, 0.30f, woodMat, 0, 0.20f, -0.35f));
+            treeNode.attachChild(createMicroVoxel("RootE", 0.30f, 0.40f, 0.30f, woodMat, 0.35f, 0.20f, 0));
+            treeNode.attachChild(createMicroVoxel("RootW", 0.30f, 0.40f, 0.30f, woodMat, -0.35f, 0.20f, 0));
 
             Material pineLeafMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             pineLeafMat.setBoolean("UseMaterialColors", true);
@@ -770,41 +827,38 @@ public class VegetationVisualizer {
             pineLeafMat.setColor("Ambient", pineCol.mult(0.6f));
             pineLeafMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-            float canopyBaseY = 3.5f * voxelSize;
+            // Tier 1: Wide Lower Skirt (Stepped cross + overhangs)
+            treeNode.attachChild(createMicroVoxel("PineT1_Core", 2.4f, 0.60f, 2.4f, pineLeafMat, 0, 3.5f, 0));
+            treeNode.attachChild(createMicroVoxel("PineT1_OverN", 1.4f, 0.45f, 0.60f, pineLeafMat, 0, 3.3f, 1.4f));
+            treeNode.attachChild(createMicroVoxel("PineT1_OverS", 1.4f, 0.45f, 0.60f, pineLeafMat, 0, 3.3f, -1.4f));
+            treeNode.attachChild(createMicroVoxel("PineT1_OverE", 0.60f, 0.45f, 1.4f, pineLeafMat, 1.4f, 3.3f, 0));
+            treeNode.attachChild(createMicroVoxel("PineT1_OverW", 0.60f, 0.45f, 1.4f, pineLeafMat, -1.4f, 3.3f, 0));
 
-            // Tier 1: Wide Lower Canopy
-            Box t1Box = new Box(1.8f * voxelSize, 0.7f * voxelSize, 1.8f * voxelSize);
-            Geometry t1Geom = new Geometry("PineLeaf_T1", t1Box);
-            t1Geom.setMaterial(pineLeafMat);
-            t1Geom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            t1Geom.setLocalTranslation(0, canopyBaseY + 0.7f * voxelSize, 0);
-            treeNode.attachChild(t1Geom);
+            // Tier 2: Mid Skirt
+            treeNode.attachChild(createMicroVoxel("PineT2_Core", 1.8f, 0.60f, 1.8f, pineLeafMat, 0, 4.7f, 0));
+            treeNode.attachChild(createMicroVoxel("PineT2_OverN", 1.0f, 0.40f, 0.45f, pineLeafMat, 0, 4.5f, 1.05f));
+            treeNode.attachChild(createMicroVoxel("PineT2_OverS", 1.0f, 0.40f, 0.45f, pineLeafMat, 0, 4.5f, -1.05f));
+            treeNode.attachChild(createMicroVoxel("PineT2_OverE", 0.45f, 0.40f, 1.0f, pineLeafMat, 1.05f, 4.5f, 0));
+            treeNode.attachChild(createMicroVoxel("PineT2_OverW", 0.45f, 0.40f, 1.0f, pineLeafMat, -1.05f, 4.5f, 0));
 
-            // Tier 2: Mid Tier
-            Box t2Box = new Box(1.2f * voxelSize, 0.7f * voxelSize, 1.2f * voxelSize);
-            Geometry t2Geom = new Geometry("PineLeaf_T2", t2Box);
-            t2Geom.setMaterial(pineLeafMat);
-            t2Geom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            t2Geom.setLocalTranslation(0, canopyBaseY + 2.0f * voxelSize, 0);
-            treeNode.attachChild(t2Geom);
+            // Tier 3: Upper Tier
+            treeNode.attachChild(createMicroVoxel("PineT3_Core", 1.2f, 0.60f, 1.2f, pineLeafMat, 0, 5.8f, 0));
 
-            // Tier 3: Peak
-            Box t3Box = new Box(0.6f * voxelSize, 0.6f * voxelSize, 0.6f * voxelSize);
-            Geometry t3Geom = new Geometry("PineLeaf_Peak", t3Box);
-            t3Geom.setMaterial(pineLeafMat);
-            t3Geom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            t3Geom.setLocalTranslation(0, canopyBaseY + 3.2f * voxelSize, 0);
-            treeNode.attachChild(t3Geom);
+            // Tier 4: Spire Peak
+            treeNode.attachChild(createMicroVoxel("PinePeak", 0.50f, 0.80f, 0.50f, pineLeafMat, 0, 6.8f, 0));
 
         } else {
-            // Authentic Minecraft Oak / Birch Tree (Optimized cubic voxel layers)
-            int trunkHeight = 5;
-            Box trunkBox = new Box(voxelSize / 2, trunkHeight * voxelSize / 2, voxelSize / 2);
-            Geometry trunkGeom = new Geometry("OakTrunk", trunkBox);
-            trunkGeom.setMaterial(woodMat);
-            trunkGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            trunkGeom.setLocalTranslation(0, trunkHeight * voxelSize / 2, 0);
-            treeNode.attachChild(trunkGeom);
+            // Authentic Stepped Micro-Voxel Oak / Birch Tree
+            treeNode.attachChild(createMicroVoxel("OakTrunk", 0.55f, 4.8f, 0.55f, woodMat, 0, 2.4f, 0));
+            // Base Root Spurs
+            treeNode.attachChild(createMicroVoxel("OakRootN", 0.35f, 0.50f, 0.35f, woodMat, 0, 0.25f, 0.35f));
+            treeNode.attachChild(createMicroVoxel("OakRootS", 0.35f, 0.50f, 0.35f, woodMat, 0, 0.25f, -0.35f));
+            treeNode.attachChild(createMicroVoxel("OakRootE", 0.35f, 0.50f, 0.35f, woodMat, 0.35f, 0.25f, 0));
+            treeNode.attachChild(createMicroVoxel("OakRootW", 0.35f, 0.50f, 0.35f, woodMat, -0.35f, 0.25f, 0));
+
+            // Branches
+            treeNode.attachChild(createMicroVoxel("OakBranchL", 0.50f, 0.30f, 0.30f, woodMat, -0.45f, 3.5f, 0.15f));
+            treeNode.attachChild(createMicroVoxel("OakBranchR", 0.50f, 0.30f, 0.30f, woodMat, 0.45f, 3.8f, -0.15f));
 
             ColorRGBA baseCol = getSeasonFoliageColor(season, biome);
             Material leafMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
@@ -813,31 +867,32 @@ public class VegetationVisualizer {
             leafMat.setColor("Ambient", baseCol.mult(0.6f));
             leafMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-            float canopyBaseY = 3.0f * voxelSize;
+            Material leafHighlightMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            leafHighlightMat.setBoolean("UseMaterialColors", true);
+            ColorRGBA highlightCol = baseCol.mult(1.12f);
+            leafHighlightMat.setColor("Diffuse", highlightCol);
+            leafHighlightMat.setColor("Ambient", highlightCol.mult(0.6f));
+            leafHighlightMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-            // Canopy Lower Layer (5x5 voxel equivalent volume)
-            Box mainCanopyBox = new Box(2.0f * voxelSize, 0.9f * voxelSize, 2.0f * voxelSize);
-            Geometry mainCanopyGeom = new Geometry("OakLeaf_Main", mainCanopyBox);
-            mainCanopyGeom.setMaterial(leafMat);
-            mainCanopyGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            mainCanopyGeom.setLocalTranslation(0, canopyBaseY + 0.9f * voxelSize, 0);
-            treeNode.attachChild(mainCanopyGeom);
+            // Layer 1: Bottom Foliage Overhangs (y = 3.2 - 3.8)
+            treeNode.attachChild(createMicroVoxel("OakL1_Center", 2.2f, 0.60f, 2.2f, leafMat, 0, 3.5f, 0));
+            treeNode.attachChild(createMicroVoxel("OakL1_North", 1.4f, 0.50f, 0.60f, leafHighlightMat, 0, 3.4f, 1.25f));
+            treeNode.attachChild(createMicroVoxel("OakL1_South", 1.4f, 0.50f, 0.60f, leafMat, 0, 3.4f, -1.25f));
+            treeNode.attachChild(createMicroVoxel("OakL1_East", 0.60f, 0.50f, 1.4f, leafHighlightMat, 1.25f, 3.4f, 0));
+            treeNode.attachChild(createMicroVoxel("OakL1_West", 0.60f, 0.50f, 1.4f, leafMat, -1.25f, 3.4f, 0));
 
-            // Canopy Upper Layer (3x3 voxel equivalent volume)
-            Box topCanopyBox = new Box(1.3f * voxelSize, 0.7f * voxelSize, 1.3f * voxelSize);
-            Geometry topCanopyGeom = new Geometry("OakLeaf_Top", topCanopyBox);
-            topCanopyGeom.setMaterial(leafMat);
-            topCanopyGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            topCanopyGeom.setLocalTranslation(0, canopyBaseY + 2.3f * voxelSize, 0);
-            treeNode.attachChild(topCanopyGeom);
+            // Layer 2: Main Dense Stepped Canopy (y = 4.1 - 4.9)
+            treeNode.attachChild(createMicroVoxel("OakL2_Main", 2.8f, 0.80f, 2.8f, leafMat, 0, 4.3f, 0));
+            treeNode.attachChild(createMicroVoxel("OakL2_CornerNE", 0.70f, 0.65f, 0.70f, leafHighlightMat, 1.15f, 4.3f, 1.15f));
+            treeNode.attachChild(createMicroVoxel("OakL2_CornerSW", 0.70f, 0.65f, 0.70f, leafMat, -1.15f, 4.3f, -1.15f));
 
-            // Top Cap (1x1 voxel equivalent)
-            Box capBox = new Box(0.6f * voxelSize, 0.4f * voxelSize, 0.6f * voxelSize);
-            Geometry capGeom = new Geometry("OakLeaf_Cap", capBox);
-            capGeom.setMaterial(leafMat);
-            capGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-            capGeom.setLocalTranslation(0, canopyBaseY + 3.2f * voxelSize, 0);
-            treeNode.attachChild(capGeom);
+            // Layer 3: Upper Stepped Canopy (y = 5.0 - 5.6)
+            treeNode.attachChild(createMicroVoxel("OakL3_Core", 2.0f, 0.70f, 2.0f, leafHighlightMat, 0, 5.2f, 0));
+            treeNode.attachChild(createMicroVoxel("OakL3_SideN", 1.1f, 0.50f, 0.45f, leafMat, 0, 5.1f, 1.0f));
+            treeNode.attachChild(createMicroVoxel("OakL3_SideS", 1.1f, 0.50f, 0.45f, leafHighlightMat, 0, 5.1f, -1.0f));
+
+            // Layer 4: Crown Cap (y = 5.8 - 6.3)
+            treeNode.attachChild(createMicroVoxel("OakL4_Cap", 1.1f, 0.50f, 1.1f, leafMat, 0, 5.9f, 0));
         }
 
         treeNode.setLocalRotation(new Quaternion().fromAngles(0, rotY, 0));

@@ -125,7 +125,9 @@ public final class NestRenderer {
                 if (n == null) continue;
                 Color nodeColor = n.color != null ? n.color : Color.GRAY;
                 double[] p = proj.apply(new double[]{n.x, n.y, n.z});
-                double rx = n.rx * 2.2, rz = n.rz * 2.2, depth = p[2];
+                double rx = Math.max(3.0, (n.rx > 0 ? n.rx : n.radius) * zoom * 1.5);
+                double rz = Math.max(2.0, (n.rz > 0 ? n.rz : n.radius * 0.55) * zoom * 1.5);
+                double depth = p[2];
                 final boolean isSubterraneanNode = !"ENTRANCE".equals(n.type);
                 items.add(new Item(depth, () -> {
                     if ("ENTRANCE".equals(n.type)) {
@@ -243,7 +245,8 @@ public final class NestRenderer {
                 if (n == null) continue;
                 Color nodeColor = n.color != null ? n.color : Color.GRAY;
                 double nx=cx+n.x*sX, ny=groundY+n.z*sY;
-                double rx=n.rx*2.4*zoom, rz=n.rz*1.5*zoom;
+                double rx=Math.max(3.0, (n.rx > 0 ? n.rx : n.radius) * sX * 1.2);
+                double rz=Math.max(2.0, (n.rz > 0 ? n.rz : n.radius * 0.55) * sY * 1.2);
                 if ("ENTRANCE".equals(n.type)) {
                     gc.setFill(Color.LIMEGREEN);
                     gc.fillOval(nx-7*zoom, groundY-5*zoom, 14*zoom, 10*zoom);
@@ -301,7 +304,8 @@ public final class NestRenderer {
             for (NestGeneratorPane.NestNode n : nest.nodes) {
                 if (n == null) continue;
                 Color nodeColor = n.color != null ? n.color : Color.GRAY;
-                double nx=cx+n.x*sc, ny=cy+n.y*sc, r=n.radius*2.4*zoom;
+                double nx=cx+n.x*sc, ny=cy+n.y*sc;
+                double r=Math.max(3.0, (n.rx > 0 ? n.rx : n.radius) * sc * 1.2);
                 double depthRatio = n.z/Math.max(1,nest.maxDepth);
                 Color ring = Color.hsb(200-depthRatio*150, 0.8, 0.9);
                 gc.setFill(nodeColor); gc.fillOval(nx-r,ny-r,r*2,r*2);

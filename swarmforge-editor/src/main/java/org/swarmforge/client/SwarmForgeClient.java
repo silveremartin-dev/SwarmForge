@@ -2837,10 +2837,29 @@ public class SwarmForgeClient extends Application {
 
                         @Override
                         public void onChamberSelected(String chamberId) {
+                                if (simWorldViewer != null) {
+                                        simWorldViewer.selectChamberById(chamberId);
+                                }
                         }
 
                         @Override
                         public void onVoxelSelected(int x, int y, int z, String material, float moisture, float temp, float compaction) {
+                                if (simWorldViewer != null && simWorldViewer.getLblHoverInfo() != null) {
+                                        simWorldViewer.getLblHoverInfo().setText("📍 Voxel: (" + x + ", " + y + ", " + z + ") | " + material + " | Hum: " + (int) moisture + "% | Temp: " + String.format(java.util.Locale.US, "%.1f", temp) + "°C");
+                                }
+                        }
+
+                        @Override
+                        public void onHoverInfo(String text) {
+                                if (simWorldViewer != null && simWorldViewer.getLblHoverInfo() != null && text != null) {
+                                        simWorldViewer.getLblHoverInfo().setText(text);
+                                }
+                        }
+                });
+
+                view.setOnMouseMoved(e -> {
+                        if (view.getGameApp() != null) {
+                                view.getGameApp().hover(e.getX(), e.getY(), view.getWidth(), view.getHeight());
                         }
                 });
 

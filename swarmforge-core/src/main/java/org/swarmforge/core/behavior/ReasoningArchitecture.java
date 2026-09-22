@@ -65,6 +65,28 @@ public interface ReasoningArchitecture extends java.io.Serializable {
     }
 
     /**
+     * Factory method to create a new ReasoningArchitecture instance based on ArchitectureType.
+     */
+    static ReasoningArchitecture create(ArchitectureType type) {
+        if (type == null) return new FSMArchitecture();
+        return switch (type) {
+            case NEURAL_NETWORK -> new org.swarmforge.core.behavior.rl.OnnxBrainArchitecture();
+            case BDI -> new BDIArchitecture();
+            case BEHAVIOR_TREE -> new BehaviorTreeArchitecture();
+            case FUZZY_LOGIC -> new FuzzyLogicArchitecture();
+            case HYBRID -> new org.swarmforge.core.behavior.rl.RLArchitecture();
+            case FINITE_STATE_MACHINE, BLACKBOARD -> new FSMArchitecture();
+        };
+    }
+
+    /**
+     * Factory method to create a new ReasoningArchitecture instance based on type name string.
+     */
+    static ReasoningArchitecture create(String typeName) {
+        return create(ArchitectureType.parse(typeName));
+    }
+
+    /**
      * Get the architecture type.
      */
     ArchitectureType getType();

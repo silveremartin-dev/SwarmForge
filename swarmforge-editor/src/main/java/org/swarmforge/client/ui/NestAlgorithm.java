@@ -226,11 +226,11 @@ public final class NestAlgorithm {
     // ── Helper to build queued chamber specifications ────────────────────────
     private static List<ChamberSpec> buildChamberQueue(int queenCnt, int broodCnt, int foodCnt, int wasteCnt, int fungusCnt, double scale, Random rnd) {
         List<ChamberSpec> q = new ArrayList<>();
-        for (int i = 0; i < queenCnt; i++)  q.add(new ChamberSpec("QUEEN",  0.80, 4.8 * scale, 2.4 * scale, NestRenderer.CHAMBER_COLOR_QUEEN));
-        for (int i = 0; i < broodCnt; i++)  q.add(new ChamberSpec("BROOD",  0.30, 3.4 * scale, 1.8 * scale, NestRenderer.CHAMBER_COLOR_BROOD));
-        for (int i = 0; i < foodCnt; i++)   q.add(new ChamberSpec("FOOD",   0.20, 3.6 * scale, 1.9 * scale, NestRenderer.CHAMBER_COLOR_STORAGE));
-        for (int i = 0; i < fungusCnt; i++) q.add(new ChamberSpec("FUNGUS", 0.50, 4.2 * scale, 2.2 * scale, NestRenderer.CHAMBER_COLOR_FUNGUS));
-        for (int i = 0; i < wasteCnt; i++)  q.add(new ChamberSpec("WASTE",  0.65, 3.2 * scale, 1.6 * scale, NestRenderer.CHAMBER_COLOR_WASTE));
+        for (int i = 0; i < queenCnt; i++)  q.add(new ChamberSpec("QUEEN",  0.80, 0.15 * scale, 0.08 * scale, NestRenderer.CHAMBER_COLOR_QUEEN));
+        for (int i = 0; i < broodCnt; i++)  q.add(new ChamberSpec("BROOD",  0.30, 0.08 * scale, 0.04 * scale, NestRenderer.CHAMBER_COLOR_BROOD));
+        for (int i = 0; i < foodCnt; i++)   q.add(new ChamberSpec("FOOD",   0.20, 0.08 * scale, 0.04 * scale, NestRenderer.CHAMBER_COLOR_STORAGE));
+        for (int i = 0; i < fungusCnt; i++) q.add(new ChamberSpec("FUNGUS", 0.50, 0.12 * scale, 0.06 * scale, NestRenderer.CHAMBER_COLOR_FUNGUS));
+        for (int i = 0; i < wasteCnt; i++)  q.add(new ChamberSpec("WASTE",  0.65, 0.06 * scale, 0.03 * scale, NestRenderer.CHAMBER_COLOR_WASTE));
         return q;
     }
 
@@ -256,24 +256,24 @@ public final class NestAlgorithm {
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         if (hasSurfaceMound) {
             // Apex chimney entrance on top of the pine-needle thatch dome
-            entNodes.add(node(nest, 0, 0, -6.5 * scale, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN));
+            entNodes.add(node(nest, 0, 0, -0.65 * scale, "ENTRANCE", 0.05 * scale, Color.LIMEGREEN));
             for (int i = 1; i < entrances; i++) {
                 double ang = 2 * Math.PI * (i - 1) / Math.max(1, entrances - 1) + rnd.nextDouble() * 0.4;
-                double d = 4.0 * scale + rnd.nextDouble() * 3.0 * scale;
-                entNodes.add(node(nest, d * Math.cos(ang), d * Math.sin(ang), -2.0 * scale,
-                    "ENTRANCE", 1.8 * scale, Color.LIMEGREEN));
+                double d = (0.35 + rnd.nextDouble() * 0.25) * scale;
+                entNodes.add(node(nest, d * Math.cos(ang), d * Math.sin(ang), -0.20 * scale,
+                    "ENTRANCE", 0.045 * scale, Color.LIMEGREEN));
             }
         } else {
             for (int i = 0; i < entrances; i++) {
                 double ang = 2 * Math.PI * i / entrances + rnd.nextDouble() * 0.4;
-                double d   = entrances > 1 ? 4 + rnd.nextDouble() * 8 : 0;
+                double d   = entrances > 1 ? (0.20 + rnd.nextDouble() * 0.35) * scale : 0;
                 entNodes.add(node(nest, d * Math.cos(ang), d * Math.sin(ang), groundZ,
-                    "ENTRANCE", 2.0 * scale, Color.LIMEGREEN));
+                    "ENTRANCE", 0.045 * scale, Color.LIMEGREEN));
             }
         }
 
         // Hub
-        NestGeneratorPane.NestNode hub = node(nest, 0, 0, groundZ + 2.0, "JUNCTION", 1.2 * scale, Color.SLATEGRAY);
+        NestGeneratorPane.NestNode hub = node(nest, 0, 0, groundZ + 0.20 * scale, "JUNCTION", 0.035 * scale, Color.SLATEGRAY);
         for (NestGeneratorPane.NestNode en : entNodes) edge(nest, en, hub, rnd);
 
         // Epigeic Solarium Incubation Chambers inside the warm above-ground thatch mound (Formica rufa)
@@ -281,11 +281,11 @@ public final class NestAlgorithm {
             int solariumBrood = Math.min(broodCnt, 2);
             for (int s = 0; s < solariumBrood; s++) {
                 double ang = s * Math.PI + (rnd.nextDouble() - 0.5) * 0.5;
-                double rad = (2.5 + rnd.nextDouble() * 2.0) * scale;
-                double z = (-4.5 + s * 1.5) * scale;
+                double rad = (0.25 + rnd.nextDouble() * 0.20) * scale;
+                double z = (-0.40 + s * 0.15) * scale;
                 NestGeneratorPane.NestNode solarium = nodeLenticular(nest,
                     rad * Math.cos(ang), rad * Math.sin(ang), z,
-                    "BROOD", 3.8 * scale, 3.8 * scale, 1.8 * scale, NestRenderer.CHAMBER_COLOR_BROOD);
+                    "BROOD", 0.08 * scale, 0.08 * scale, 0.045 * scale, NestRenderer.CHAMBER_COLOR_BROOD);
                 edge(nest, entNodes.get(0), solarium, rnd);
                 edge(nest, hub, solarium, rnd);
             }
@@ -295,13 +295,13 @@ public final class NestAlgorithm {
         // Main subterranean shaft
         List<NestGeneratorPane.NestNode> shaft = new ArrayList<>();
         shaft.add(hub);
-        int steps = Math.max(4, (int)(maxDepth / 5.0));
+        int steps = Math.max(4, (int)(maxDepth / 0.50));
         NestGeneratorPane.NestNode prev = hub;
         for (int i = 1; i <= steps; i++) {
             double z   = groundZ + (i / (double) steps) * maxDepth * 0.95;
             double ang = i * 0.75 + rnd.nextDouble() * 0.5;
-            double r   = 1.5 + rnd.nextDouble() * 2.5;
-            NestGeneratorPane.NestNode sn = node(nest, r * Math.cos(ang), r * Math.sin(ang), z, "JUNCTION", 1.1 * scale, Color.SLATEGRAY);
+            double r   = (0.04 + rnd.nextDouble() * 0.12) * scale;
+            NestGeneratorPane.NestNode sn = node(nest, r * Math.cos(ang), r * Math.sin(ang), z, "JUNCTION", 0.035 * scale, Color.SLATEGRAY);
             edge(nest, prev, sn, rnd);
             shaft.add(sn);
             prev = sn;
@@ -317,10 +317,10 @@ public final class NestAlgorithm {
                 if (diff < best) { best = diff; par = sn; }
             }
             double ba = rnd.nextDouble() * Math.PI * 2;
-            double bl = 6 + rnd.nextDouble() * (5 + branching * 2.5);
+            double bl = (0.35 + rnd.nextDouble() * (0.35 + branching * 0.12)) * scale;
             NestGeneratorPane.NestNode cn = nodeLenticular(nest,
                 par.x + bl * Math.cos(ba), par.y + bl * Math.sin(ba),
-                Math.min(maxDepth, par.z + (rnd.nextDouble() - 0.3) * 3),
+                Math.min(maxDepth, par.z + (rnd.nextDouble() - 0.3) * 0.35),
                 cs.type, cs.rx, cs.rx, cs.rz, cs.color);
             edge(nest, par, cn, rnd);
         }
@@ -338,17 +338,17 @@ public final class NestAlgorithm {
         
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
-            double x = (i - (entrances - 1) / 2.0) * 4.0 * scale;
-            entNodes.add(node(nest, x, 0, 0, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN));
+            double x = (i - (entrances - 1) / 2.0) * 0.35 * scale;
+            entNodes.add(node(nest, x, 0, 0, "ENTRANCE", 0.045 * scale, Color.LIMEGREEN));
         }
 
-        double boxW = 12.0 * scale;
+        double boxW = 0.85 * scale;
         int frames = 4;
         List<NestGeneratorPane.NestNode> frameTops = new ArrayList<>();
 
         for (int f = 0; f < frames; f++) {
-            double yOff = (f - 1.5) * 3.5 * scale;
-            NestGeneratorPane.NestNode frameTop = node(nest, 0, yOff, 2.0 * scale, "JUNCTION", 1.8 * scale, Color.SIENNA);
+            double yOff = (f - 1.5) * 0.22 * scale;
+            NestGeneratorPane.NestNode frameTop = node(nest, 0, yOff, 0.15 * scale, "JUNCTION", 0.04 * scale, Color.SIENNA);
             for (NestGeneratorPane.NestNode en : entNodes) edge(nest, en, frameTop, rnd);
             if (f > 0 && !frameTops.isEmpty()) {
                 edge(nest, frameTops.get(f - 1), frameTop, rnd);
@@ -364,7 +364,7 @@ public final class NestAlgorithm {
             NestGeneratorPane.NestNode fTop = frameTops.get(frameIdx);
 
             double x = (-boxW / 2.5) + ((idx / frames) % 4) * (boxW / 3.5);
-            double z = 3.5 * scale + (idx / (frames * 4.0)) * 4.0 * scale;
+            double z = 0.25 * scale + (idx / (frames * 4.0)) * 0.35 * scale;
             double yOff = fTop.y;
 
             NestGeneratorPane.NestNode cell = nodeLenticular(nest, x, yOff, z, cs.type, cs.rx, cs.rx, cs.rz, cs.color);
@@ -379,15 +379,15 @@ public final class NestAlgorithm {
         
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
-            double x = (i - (entrances - 1) / 2.0) * 3.5 * scale;
-            entNodes.add(node(nest, x, 0, 0, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN));
+            double x = (i - (entrances - 1) / 2.0) * 0.25 * scale;
+            entNodes.add(node(nest, x, 0, 0, "ENTRANCE", 0.045 * scale, Color.LIMEGREEN));
         }
 
         List<ChamberSpec> queue = buildChamberQueue(queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, scale, rnd);
         int total = queue.size();
         if (total == 0) return;
 
-        double cellSize = 2.8 * scale;
+        double cellSize = 0.16 * scale;
         int cols = Math.max(3, (int) Math.ceil(Math.sqrt(total * 1.3)));
         int rows = (int) Math.ceil((double) total / cols);
 
@@ -422,10 +422,10 @@ public final class NestAlgorithm {
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
             double ang = i * (Math.PI * 2 / entrances);
-            entNodes.add(node(nest, 4.0 * scale * Math.cos(ang), 4.0 * scale * Math.sin(ang), 0, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN));
+            entNodes.add(node(nest, 0.35 * scale * Math.cos(ang), 0.35 * scale * Math.sin(ang), 0, "ENTRANCE", 0.045 * scale, Color.LIMEGREEN));
         }
 
-        NestGeneratorPane.NestNode centerHub = node(nest, 0, 0, 2.0 * scale, "JUNCTION", 1.8 * scale, Color.SIENNA);
+        NestGeneratorPane.NestNode centerHub = node(nest, 0, 0, 0.15 * scale, "JUNCTION", 0.04 * scale, Color.SIENNA);
         for (NestGeneratorPane.NestNode en : entNodes) edge(nest, en, centerHub, rnd);
 
         List<ChamberSpec> queue = buildChamberQueue(queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, scale, rnd);
@@ -435,8 +435,8 @@ public final class NestAlgorithm {
         for (int i = 0; i < total; i++) {
             ChamberSpec cs = queue.get(i);
             double ang = i * (Math.PI * 2 / Math.max(1, total)) + rnd.nextDouble() * 0.3;
-            double dist = (4.5 + (i % 3) * 2.0) * scale;
-            double z = (2.5 + rnd.nextDouble() * 3.0) * scale;
+            double dist = (0.35 + (i % 3) * 0.15) * scale;
+            double z = (0.15 + rnd.nextDouble() * 0.25) * scale;
 
             NestGeneratorPane.NestNode pot = nodeLenticular(nest, dist * Math.cos(ang), dist * Math.sin(ang), z, cs.type, cs.rx, cs.rx, cs.rz, cs.color);
             edge(nest, centerHub, pot, rnd);
@@ -450,12 +450,12 @@ public final class NestAlgorithm {
     private static void generatePaperNest(NestGeneratorPane.GeneratedNest nest, double maxDepth,
             int entrances, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, int fungusCnt, double scale, Random rnd) {
 
-        NestGeneratorPane.NestNode supportBranch = node(nest, -8 * scale, 0, -5 * scale, "JUNCTION", 1.8 * scale, Color.SIENNA);
+        NestGeneratorPane.NestNode supportBranch = node(nest, -0.6 * scale, 0, -0.4 * scale, "JUNCTION", 0.04 * scale, Color.SIENNA);
 
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
-            double offset = (i - (entrances - 1) / 2.0) * 2.0 * scale;
-            NestGeneratorPane.NestNode peduncle = node(nest, offset, 0, 0, "ENTRANCE", 1.8 * scale, Color.LIMEGREEN);
+            double offset = (i - (entrances - 1) / 2.0) * 0.18 * scale;
+            NestGeneratorPane.NestNode peduncle = node(nest, offset, 0, 0, "ENTRANCE", 0.045 * scale, Color.LIMEGREEN);
             edge(nest, supportBranch, peduncle, rnd);
             entNodes.add(peduncle);
         }
@@ -469,8 +469,8 @@ public final class NestAlgorithm {
 
         int qIdx = 0;
         for (int t = 1; t <= tiers; t++) {
-            double z = t * 4.5 * scale;
-            NestGeneratorPane.NestNode tierCenter = node(nest, 0, 0, z, "JUNCTION", 1.5 * scale, Color.DARKGRAY);
+            double z = t * 0.35 * scale;
+            NestGeneratorPane.NestNode tierCenter = node(nest, 0, 0, z, "JUNCTION", 0.035 * scale, Color.DARKGRAY);
             edge(nest, prevTier, tierCenter, rnd);
             prevTier = tierCenter;
 
@@ -480,7 +480,7 @@ public final class NestAlgorithm {
             for (int i = 0; i < cellsInTier; i++) {
                 ChamberSpec cs = queue.get(qIdx++);
                 double ang = i * (Math.PI * 2 / Math.max(1, cellsInTier));
-                double rad = (3.0 + (i % 2) * 2.5) * scale;
+                double rad = (0.22 + (i % 2) * 0.18) * scale;
 
                 NestGeneratorPane.NestNode cell = nodeLenticular(nest, rad * Math.cos(ang), rad * Math.sin(ang), z, cs.type, cs.rx, cs.rx, cs.rz, cs.color);
                 edge(nest, tierCenter, cell, rnd);
@@ -498,18 +498,18 @@ public final class NestAlgorithm {
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
             double ang = i * (Math.PI * 2 / entrances);
-            entNodes.add(node(nest, 3.5 * scale * Math.cos(ang), 3.5 * scale * Math.sin(ang), 0, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN));
+            entNodes.add(node(nest, 0.35 * scale * Math.cos(ang), 0.35 * scale * Math.sin(ang), 0, "ENTRANCE", 0.045 * scale, Color.LIMEGREEN));
         }
 
         NestGeneratorPane.NestNode prevTowerNode = entNodes.get(0);
-        for (int h = -3; h >= -18; h -= 3) {
-            double r = (18 + h) * 0.35 * scale;
-            NestGeneratorPane.NestNode tn = node(nest, (rnd.nextDouble() - 0.5) * 1.5, (rnd.nextDouble() - 0.5) * 1.5, h, "JUNCTION", Math.max(1.0, r), Color.CHOCOLATE);
+        for (double h = -0.25; h >= -1.4; h -= 0.25) {
+            double r = (1.4 + h) * 0.25 * scale;
+            NestGeneratorPane.NestNode tn = node(nest, (rnd.nextDouble() - 0.5) * 0.12, (rnd.nextDouble() - 0.5) * 0.12, h, "JUNCTION", Math.max(0.03, r), Color.CHOCOLATE);
             edge(nest, prevTowerNode, tn, rnd);
             prevTowerNode = tn;
         }
 
-        NestGeneratorPane.NestNode centralHub = node(nest, 0, 0, 3.0 * scale, "JUNCTION", 1.8 * scale, Color.CHOCOLATE);
+        NestGeneratorPane.NestNode centralHub = node(nest, 0, 0, 0.25 * scale, "JUNCTION", 0.04 * scale, Color.CHOCOLATE);
         for (NestGeneratorPane.NestNode en : entNodes) edge(nest, en, centralHub, rnd);
 
         List<ChamberSpec> queue = buildChamberQueue(queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, scale, rnd);
@@ -519,8 +519,8 @@ public final class NestAlgorithm {
         for (int i = 0; i < total; i++) {
             ChamberSpec cs = queue.get(i);
             double ang = i * (Math.PI * 2 / Math.max(1, total)) + (rnd.nextDouble() - 0.5) * 0.3;
-            double dist = (4.5 + (i % 3) * 3.5) * scale;
-            double z = 3.0 + (i / (double) Math.max(1, total)) * (maxDepth * 0.75);
+            double dist = (0.35 + (i % 3) * 0.25) * scale;
+            double z = 0.25 + (i / (double) Math.max(1, total)) * (maxDepth * 0.75);
 
             NestGeneratorPane.NestNode ch = nodeLenticular(nest, dist * Math.cos(ang), dist * Math.sin(ang), z, cs.type, cs.rx, cs.rx, cs.rz, cs.color);
             edge(nest, centralHub, ch, rnd);
@@ -534,12 +534,12 @@ public final class NestAlgorithm {
     private static void generateArborealLeafNest(NestGeneratorPane.GeneratedNest nest, double maxDepth,
             int entrances, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, int fungusCnt, double scale, Random rnd) {
 
-        NestGeneratorPane.NestNode mainCanopyBranch = node(nest, -10 * scale, 0, -8 * scale, "JUNCTION", 2.0 * scale, Color.FORESTGREEN);
+        NestGeneratorPane.NestNode mainCanopyBranch = node(nest, -0.8 * scale, 0, -0.6 * scale, "JUNCTION", 0.04 * scale, Color.FORESTGREEN);
 
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
-            double offset = (i - (entrances - 1) / 2.0) * 3.0 * scale;
-            NestGeneratorPane.NestNode branchAnchor = node(nest, offset, 0, 0, "ENTRANCE", 2.0 * scale, Color.LIMEGREEN);
+            double offset = (i - (entrances - 1) / 2.0) * 0.25 * scale;
+            NestGeneratorPane.NestNode branchAnchor = node(nest, offset, 0, 0, "ENTRANCE", 0.045 * scale, Color.LIMEGREEN);
             edge(nest, mainCanopyBranch, branchAnchor, rnd);
             entNodes.add(branchAnchor);
         }
@@ -551,8 +551,8 @@ public final class NestAlgorithm {
         for (int i = 0; i < total; i++) {
             ChamberSpec cs = queue.get(i);
             double ang = i * (Math.PI * 2 / Math.max(1, total)) + rnd.nextDouble() * 0.5;
-            double rad = (4.0 + rnd.nextDouble() * 6.0) * scale;
-            double z = (-4.0 + rnd.nextDouble() * 10.0) * scale;
+            double rad = (0.35 + rnd.nextDouble() * 0.45) * scale;
+            double z = (-0.35 + rnd.nextDouble() * 0.75) * scale;
 
             NestGeneratorPane.NestNode leafCh = nodeLenticular(nest, rad * Math.cos(ang), rad * Math.sin(ang), z, cs.type, cs.rx, cs.rx, cs.rz, cs.color);
             edge(nest, entNodes.get(0), leafCh, rnd);
@@ -569,13 +569,13 @@ public final class NestAlgorithm {
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
             double ang = i * (Math.PI * 2 / entrances) + rnd.nextDouble() * 0.4;
-            entNodes.add(node(nest, (5.0 + i * 2.0) * Math.cos(ang) * scale, (5.0 + i * 2.0) * Math.sin(ang) * scale, 0.0, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN));
+            entNodes.add(node(nest, (0.45 + i * 0.18) * Math.cos(ang) * scale, (0.45 + i * 0.18) * Math.sin(ang) * scale, 0.0, "ENTRANCE", 0.05 * scale, Color.LIMEGREEN));
         }
 
-        NestGeneratorPane.NestNode centralHub = node(nest, 0, 0, 3.0 * scale, "JUNCTION", 1.5 * scale, Color.SLATEGRAY);
+        NestGeneratorPane.NestNode centralHub = node(nest, 0, 0, 0.25 * scale, "JUNCTION", 0.04 * scale, Color.SLATEGRAY);
         for (NestGeneratorPane.NestNode c : entNodes) edge(nest, c, centralHub, rnd);
 
-        NestGeneratorPane.NestNode mainShaft = node(nest, 0, 0, maxDepth * 0.4, "JUNCTION", 1.8 * scale, Color.SLATEGRAY);
+        NestGeneratorPane.NestNode mainShaft = node(nest, 0, 0, maxDepth * 0.4, "JUNCTION", 0.04 * scale, Color.SLATEGRAY);
         edge(nest, centralHub, mainShaft, rnd);
 
         List<ChamberSpec> queue = buildChamberQueue(queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, scale, rnd);
@@ -585,7 +585,7 @@ public final class NestAlgorithm {
         for (int i = 0; i < total; i++) {
             ChamberSpec cs = queue.get(i);
             double ang = i * (Math.PI * 2 / Math.max(1, total));
-            double dist = (6.0 + (i % 3) * 4.0) * scale;
+            double dist = (0.50 + (i % 3) * 0.35) * scale;
             double z = maxDepth * 0.30 + (i / (double) Math.max(1, total)) * (maxDepth * 0.55);
 
             NestGeneratorPane.NestNode vault = nodeLenticular(nest, dist * Math.cos(ang), dist * Math.sin(ang), z, cs.type, cs.rx, cs.rx, cs.rz, cs.color);
@@ -600,12 +600,12 @@ public final class NestAlgorithm {
     private static void generateCartonNest(NestGeneratorPane.GeneratedNest nest, double maxDepth,
             int entrances, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, int fungusCnt, double scale, Random rnd) {
 
-        NestGeneratorPane.NestNode trunkAnchor = node(nest, 0, 0, -10.0 * scale, "JUNCTION", 2.5 * scale, Color.SIENNA);
+        NestGeneratorPane.NestNode trunkAnchor = node(nest, 0, 0, -0.80 * scale, "JUNCTION", 0.045 * scale, Color.SIENNA);
 
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
             double ang = i * (Math.PI * 2 / entrances);
-            NestGeneratorPane.NestNode nestCenter = node(nest, 3.0 * scale * Math.cos(ang), 3.0 * scale * Math.sin(ang), 0, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN);
+            NestGeneratorPane.NestNode nestCenter = node(nest, 0.25 * scale * Math.cos(ang), 0.25 * scale * Math.sin(ang), 0, "ENTRANCE", 0.045 * scale, Color.LIMEGREEN);
             edge(nest, trunkAnchor, nestCenter, rnd);
             entNodes.add(nestCenter);
         }
@@ -617,8 +617,8 @@ public final class NestAlgorithm {
         for (int i = 0; i < total; i++) {
             ChamberSpec cs = queue.get(i);
             double ang = i * (Math.PI * 2 / Math.max(1, total));
-            double rad = (4.0 + (i % 3) * 3.0) * scale;
-            double z = (-3.0 + (i % 4) * 2.5) * scale;
+            double rad = (0.30 + (i % 3) * 0.22) * scale;
+            double z = (-0.25 + (i % 4) * 0.20) * scale;
 
             NestGeneratorPane.NestNode cell = nodeLenticular(nest, rad * Math.cos(ang), rad * Math.sin(ang), z, cs.type, cs.rx, cs.rx, cs.rz, cs.color);
             edge(nest, entNodes.get(0), cell, rnd);
@@ -634,8 +634,8 @@ public final class NestAlgorithm {
 
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
-            double x = (-12.0 + i * 2.5) * scale;
-            entNodes.add(node(nest, x, 0, 0, "ENTRANCE", 1.5 * scale, Color.LIMEGREEN));
+            double x = (-0.80 + i * 0.20) * scale;
+            entNodes.add(node(nest, x, 0, 0, "ENTRANCE", 0.035 * scale, Color.LIMEGREEN));
         }
 
         List<ChamberSpec> queue = buildChamberQueue(queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, scale, rnd);
@@ -644,8 +644,8 @@ public final class NestAlgorithm {
 
         for (int i = 0; i < total; i++) {
             ChamberSpec cs = queue.get(i);
-            double x = (-9.0 + i * 4.5) * scale;
-            NestGeneratorPane.NestNode stemCell = nodeLenticular(nest, x, 0, 0, cs.type, cs.rx, 1.4 * scale, 1.2 * scale, cs.color);
+            double x = (-0.60 + i * 0.35) * scale;
+            NestGeneratorPane.NestNode stemCell = nodeLenticular(nest, x, 0, 0, cs.type, cs.rx, 0.12 * scale, 0.10 * scale, cs.color);
             edge(nest, prevChamber, stemCell, rnd);
             prevChamber = stemCell;
         }
@@ -656,12 +656,12 @@ public final class NestAlgorithm {
     private static void generateBivouacNest(NestGeneratorPane.GeneratedNest nest,
             int entrances, int queenCnt, int broodCnt, int foodCnt, int wasteCnt, int fungusCnt, double scale, Random rnd) {
 
-        NestGeneratorPane.NestNode logAnchor = node(nest, 0, 0, -8.0 * scale, "JUNCTION", 2.2 * scale, Color.SIENNA);
+        NestGeneratorPane.NestNode logAnchor = node(nest, 0, 0, -0.65 * scale, "JUNCTION", 0.045 * scale, Color.SIENNA);
 
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
             double ang = i * (Math.PI * 2 / entrances);
-            NestGeneratorPane.NestNode bivouacHead = node(nest, 2.5 * scale * Math.cos(ang), 2.5 * scale * Math.sin(ang), -4.0 * scale, "ENTRANCE", 2.5 * scale, Color.LIMEGREEN);
+            NestGeneratorPane.NestNode bivouacHead = node(nest, 0.20 * scale * Math.cos(ang), 0.20 * scale * Math.sin(ang), -0.30 * scale, "ENTRANCE", 0.045 * scale, Color.LIMEGREEN);
             edge(nest, logAnchor, bivouacHead, rnd);
             entNodes.add(bivouacHead);
         }
@@ -673,8 +673,8 @@ public final class NestAlgorithm {
         for (int i = 0; i < total; i++) {
             ChamberSpec cs = queue.get(i);
             double ang = i * (Math.PI * 2 / Math.max(1, total));
-            double rad = (3.5 + (i % 2) * 2.5) * scale;
-            double z = (-2.0 + (i / 2.0) * 2.0) * scale;
+            double rad = (0.28 + (i % 2) * 0.20) * scale;
+            double z = (-0.15 + (i / 2.0) * 0.15) * scale;
 
             NestGeneratorPane.NestNode bodyCluster = nodeLenticular(nest, rad * Math.cos(ang), rad * Math.sin(ang), z, cs.type, cs.rx, cs.rx, cs.rz, cs.color);
             edge(nest, entNodes.get(0), bodyCluster, rnd);
@@ -690,11 +690,11 @@ public final class NestAlgorithm {
         
         List<NestGeneratorPane.NestNode> entNodes = new ArrayList<>();
         for (int i = 0; i < entrances; i++) {
-            double y = (-5.5 + i * 2.0) * scale;
-            entNodes.add(node(nest, 0, y, -4.0 * scale, "ENTRANCE", 2.2 * scale, Color.LIMEGREEN));
+            double y = (-0.45 + i * 0.15) * scale;
+            entNodes.add(node(nest, 0, y, -0.30 * scale, "ENTRANCE", 0.045 * scale, Color.LIMEGREEN));
         }
 
-        NestGeneratorPane.NestNode cavityCenter = node(nest, 0, 0, 0, "JUNCTION", 2.0 * scale, Color.SIENNA);
+        NestGeneratorPane.NestNode cavityCenter = node(nest, 0, 0, 0, "JUNCTION", 0.04 * scale, Color.SIENNA);
         for (NestGeneratorPane.NestNode en : entNodes) edge(nest, en, cavityCenter, rnd);
 
         List<ChamberSpec> queue = buildChamberQueue(queenCnt, broodCnt, foodCnt, wasteCnt, fungusCnt, scale, rnd);
@@ -703,9 +703,9 @@ public final class NestAlgorithm {
 
         for (int l = 0; l < total; l++) {
             ChamberSpec cs = queue.get(l);
-            double z = (-10.0 + l * (20.0 / Math.max(1, total - 1))) * scale;
+            double z = (-0.80 + l * (1.60 / Math.max(1, total - 1))) * scale;
             double ang = l * 1.2 + rnd.nextDouble() * 0.4;
-            double rad = (2.0 + (l % 2) * 2.5) * scale;
+            double rad = (0.16 + (l % 2) * 0.20) * scale;
 
             NestGeneratorPane.NestNode cell = nodeLenticular(nest, rad * Math.cos(ang), rad * Math.sin(ang), z, cs.type, cs.rx, cs.rx, cs.rz, cs.color);
             edge(nest, cavityCenter, cell, rnd);
@@ -740,9 +740,9 @@ public final class NestAlgorithm {
         if (len > 0.001) { px /= len; py /= len; }
         for (int i = 1; i < seg; i++) {
             double f = Math.sin((i / (double) seg) * Math.PI);
-            double off = (rnd.nextDouble() - 0.5) * 2.5 * f;
+            double off = (rnd.nextDouble() - 0.5) * 0.08 * f;
             pts.add(new double[]{from.x + dx * i + px * off, from.y + dy * i + py * off,
-                from.z + dz * i + (rnd.nextDouble() - 0.5) * f});
+                from.z + dz * i + (rnd.nextDouble() - 0.5) * 0.04 * f});
         }
         pts.add(new double[]{to.x, to.y, to.z});
         nest.edges.add(new NestGeneratorPane.NestEdge(from, to, pts));

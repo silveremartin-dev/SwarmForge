@@ -757,7 +757,29 @@ export const translations = {
         'stats.ant_search.tt': 'Saisissez un identifiant (ex. ant_1) ou utilisez les flèches pour inspecter un individu en temps réel.',
         'inspector.prompt.id': 'ID fourmi (ex. ant_1)...',
         'inspector.btn.prev': '◀ Fourmi Préc.',
-        'inspector.btn.next': 'Fourmi Suiv. ▶'
+        'inspector.btn.next': 'Fourmi Suiv. ▶',
+
+        // Megaterrarium & Multiplayer
+        megaterrariumCardTitle: '🌐 Topologie Mégaterrarium & Multijoueur',
+        megaterrariumCardTt: 'Configuration de la topologie multi-nœuds (sharding spatial) et des paramètres multijoueur.',
+        multiplayerOnlyChk: 'Scénario Exclusivement Multijoueur',
+        multiplayerOnlyTt: 'Si coché, ce scénario nécessite plusieurs participants et un serveur/cluster pour s\'exécuter.',
+        requiredPlayersLabel: 'Nombre de Joueurs Requis :',
+        requiredPlayersTt: 'Nombre minimum de participants (slots de colonies) pour lancer la partie (1 à 16 joueurs).',
+        megaterrariumTilesXLabel: 'Tuiles X (Colonnes) :',
+        megaterrariumTilesXTt: 'Nombre de sous-volumes shardés sur l\'axe X (1 à 8).',
+        megaterrariumTilesYLabel: 'Tuiles Y (Lignes) :',
+        megaterrariumTilesYTt: 'Nombre de sous-volumes shardés sur l\'axe Y (1 à 8).',
+        megaterrariumMonolithic: 'Monde Monolithique (1 Tile)',
+        megaterrariumSharded: 'Mégaterrarium Shardé',
+        subvolumesUnit: 'Sous-Volumes',
+        playersCountUnit: 'Joueur(s)',
+        megaterrariumMonolithicDesc: 'Simulation standard non shardée. Volume unique calculé sur un seul worker ou thread.',
+        megaterrariumShardedDesc: 'Topologie distribuée multi-nœuds : halo d\'échange de phéromones (3 cellules) et migration continue des entités entre sous-volumes shardés.',
+        minPopStopSectionTt: 'Arrête automatiquement la simulation si la population totale tombe sous ce seuil (0 = désactivé).',
+        minPopStopInputTt: 'Nombre d\'individus minimum sous lequel la simulation se met automatiquement en pause.',
+        confirmDeleteColony: 'Confirmer la suppression de cette colonie ?',
+        btnDeleteColonyTt: 'Supprimer cette colonie du scénario (confirmation requise)'
     },
 
     en: {
@@ -1505,7 +1527,29 @@ export const translations = {
         'stats.ant_search.tt': 'Enter an ant identifier (e.g., ant_1) or use the arrows to inspect an individual in real time.',
         'inspector.prompt.id': 'Ant ID (e.g. ant_1)...',
         'inspector.btn.prev': '◀ Prev Ant',
-        'inspector.btn.next': 'Next Ant ▶'
+        'inspector.btn.next': 'Next Ant ▶',
+
+        // Megaterrarium & Multiplayer
+        megaterrariumCardTitle: '🌐 Megaterrarium Topology & Multiplayer',
+        megaterrariumCardTt: 'Configuration of multi-node spatial sharding topology and multiplayer session settings.',
+        multiplayerOnlyChk: 'Multiplayer-Only Scenario',
+        multiplayerOnlyTt: 'If checked, this scenario strictly requires multiple participants and a dedicated server/cluster.',
+        requiredPlayersLabel: 'Required Players Count:',
+        requiredPlayersTt: 'Minimum number of participants (colony slots) required to launch the simulation (1 to 16 players).',
+        megaterrariumTilesXLabel: 'Tiles X (Columns):',
+        megaterrariumTilesXTt: 'Number of spatial sub-volume shards along the X axis (1 to 8).',
+        megaterrariumTilesYLabel: 'Tiles Y (Rows):',
+        megaterrariumTilesYTt: 'Number of spatial sub-volume shards along the Y axis (1 to 8).',
+        megaterrariumMonolithic: 'Monolithic World (1 Tile)',
+        megaterrariumSharded: 'Sharded Megaterrarium',
+        subvolumesUnit: 'Sub-Volumes',
+        playersCountUnit: 'Player(s)',
+        megaterrariumMonolithicDesc: 'Standard monolithic simulation. Single spatial volume computed on a single worker or thread.',
+        megaterrariumShardedDesc: 'Distributed multi-node topology: 3-cell pheromone exchange halo and continuous entity migration across sharded sub-volumes.',
+        minPopStopSectionTt: 'Automatically pauses simulation if total population drops below this threshold (0 = disabled).',
+        minPopStopInputTt: 'Minimum individual count under which the simulation automatically pauses.',
+        confirmDeleteColony: 'Confirm deletion of this colony?',
+        btnDeleteColonyTt: 'Delete this colony from the scenario (confirmation required)'
     },
 
     de: {
@@ -2253,7 +2297,29 @@ export const translations = {
         'stats.ant_search.tt': 'Geben Sie eine Ameisen-ID (z. B. ant_1) ein oder verwenden Sie die Pfeile.',
         'inspector.prompt.id': 'Ameisen-ID (z. B. ant_1)...',
         'inspector.btn.prev': '◀ Vorherige Ameise',
-        'inspector.btn.next': 'Nächste Ameise ▶'
+        'inspector.btn.next': 'Nächste Ameise ▶',
+
+        // Megaterrarium & Multiplayer
+        megaterrariumCardTitle: '🌐 Megaterrarium-Topologie & Mehrspieler',
+        megaterrariumCardTt: 'Konfiguration der räumlichen Sharding-Topologie und der Mehrspieler-Sitzungsparameter.',
+        multiplayerOnlyChk: 'Ausschließlich Mehrspieler-Szenario',
+        multiplayerOnlyTt: 'Wenn aktiviert, erfordert dieses Szenario zwingend mehrere Teilnehmer und einen Server/Cluster.',
+        requiredPlayersLabel: 'Erforderliche Spieleranzahl:',
+        requiredPlayersTt: 'Mindestanzahl an Teilnehmern (Kolonie-Slots) zum Starten der Simulation (1 bis 16 Spieler).',
+        megaterrariumTilesXLabel: 'Kacheln X (Spalten):',
+        megaterrariumTilesXTt: 'Anzahl der räumlichen Sub-Volumen entlang der X-Achse (1 bis 8).',
+        megaterrariumTilesYLabel: 'Kacheln Y (Zeilen):',
+        megaterrariumTilesYTt: 'Anzahl der räumlichen Sub-Volumen entlang der Y-Achse (1 bis 8).',
+        megaterrariumMonolithic: 'Monolithische Welt (1 Kachel)',
+        megaterrariumSharded: 'Geshardetes Megaterrarium',
+        subvolumesUnit: 'Sub-Volumen',
+        playersCountUnit: 'Spieler',
+        megaterrariumMonolithicDesc: 'Standardmäßige monolithische Simulation. Einzelnes Volumen auf einem Worker oder Thread berechnet.',
+        megaterrariumShardedDesc: 'Verteilte Multi-Knoten-Topologie: 3-Zellen-Pheromon-Austauschhalo und kontinuierliche Entitätsmigration zwischen geshardeten Sub-Volumen.',
+        minPopStopSectionTt: 'Pausiert die Simulation automatisch, wenn die Gesamtpopulation unter diesen Schwellenwert fällt (0 = deaktiviert).',
+        minPopStopInputTt: 'Minimale Individuenanzahl, unter der die Simulation automatisch pausiert wird.',
+        confirmDeleteColony: 'Löschen dieser Kolonie bestätigen?',
+        btnDeleteColonyTt: 'Diese Kolonie aus dem Szenario löschen (Bestätigung erforderlich)'
     },
 
     es: {
@@ -3001,7 +3067,29 @@ export const translations = {
         'stats.ant_search.tt': 'Introduzca un ID de hormiga (ej. ant_1) o use las flechas para inspeccionar.',
         'inspector.prompt.id': 'ID hormiga (ej. ant_1)...',
         'inspector.btn.prev': '◀ Hormiga Ant.',
-        'inspector.btn.next': 'Hormiga Sig. ▶'
+        'inspector.btn.next': 'Hormiga Sig. ▶',
+
+        // Megaterrarium & Multiplayer
+        megaterrariumCardTitle: '🌐 Topología Megaterrario y Multijugador',
+        megaterrariumCardTt: 'Configuración de la topología de sharding espacial multinodo y parámetros de sesión multijugador.',
+        multiplayerOnlyChk: 'Escenario Exclusivamente Multijugador',
+        multiplayerOnlyTt: 'Si está marcado, este escenario requiere obligatoriamente varios participantes y un servidor/clúster.',
+        requiredPlayersLabel: 'Número de Jugadores Requeridos:',
+        requiredPlayersTt: 'Número mínimo de participantes (espacios de colonia) para iniciar la simulación (1 a 16 jugadores).',
+        megaterrariumTilesXLabel: 'Teselas X (Columnas):',
+        megaterrariumTilesXTt: 'Número de subvolúmenes espaciales en el eje X (1 a 8).',
+        megaterrariumTilesYLabel: 'Teselas Y (Filas):',
+        megaterrariumTilesYTt: 'Número de subvolúmenes espaciales en el eje Y (1 a 8).',
+        megaterrariumMonolithic: 'Mundo Monolítico (1 Tesela)',
+        megaterrariumSharded: 'Megaterrario Fragmentado (Sharded)',
+        subvolumesUnit: 'Subvolúmenes',
+        playersCountUnit: 'Jugador(es)',
+        megaterrariumMonolithicDesc: 'Simulación estándar no fragmentada. Volumen único calculado en un solo subproceso o worker.',
+        megaterrariumShardedDesc: 'Topología distribuida multinodo: halo de intercambio de feromonas (3 celdas) y migración continua de entidades entre subvolúmenes fragmentados.',
+        minPopStopSectionTt: 'Pausa automáticamente la simulación si la población total cae por debajo de este umbral (0 = desactivado).',
+        minPopStopInputTt: 'Número mínimo de individuos por debajo del cual la simulación se pausa automáticamente.',
+        confirmDeleteColony: '¿Confirmar la eliminación de esta colonia?',
+        btnDeleteColonyTt: 'Eliminar esta colonia del escenario (se requiere confirmación)'
     },
 
     zh: {
@@ -3749,7 +3837,29 @@ export const translations = {
         'stats.ant_search.tt': '输入蚂蚁标识符 (例如 ant_1) 或使用箭头浏览个体。',
         'inspector.prompt.id': '蚂蚁标识符 (例 ant_1)...',
         'inspector.btn.prev': '◀ 上一只个体',
-        'inspector.btn.next': '下一只个体 ▶'
+        'inspector.btn.next': '下一只个体 ▶',
+
+        // Megaterrarium & Multiplayer
+        megaterrariumCardTitle: '🌐 超级生态缸拓扑与多人联机',
+        megaterrariumCardTt: '配置分布式空间分片拓扑与多人联机模拟会话参数。',
+        multiplayerOnlyChk: '仅限多人联机场景',
+        multiplayerOnlyTt: '勾选后，该场景严格要求多个参与者并在集群/服务器环境下执行。',
+        requiredPlayersLabel: '所需玩家数量：',
+        requiredPlayersTt: '启动模拟所需的最小参与者（群落槽位）数量（1 至 16 名玩家）。',
+        megaterrariumTilesXLabel: 'X 轴分片 (列)：',
+        megaterrariumTilesXTt: '沿 X 轴划分的空间子体积数量 (1 至 8)。',
+        megaterrariumTilesYLabel: 'Y 轴分片 (行)：',
+        megaterrariumTilesYTt: '沿 Y 轴划分的空间子体积数量 (1 至 8)。',
+        megaterrariumMonolithic: '单体世界 (1 个分片)',
+        megaterrariumSharded: '分片超级生态缸 (Megaterrarium)',
+        subvolumesUnit: '个子体积',
+        playersCountUnit: '名玩家',
+        megaterrariumMonolithicDesc: '标准单体模拟。单个计算节点或线程内运行的统一空间体积。',
+        megaterrariumShardedDesc: '分布式多节点拓扑：3 格光环信息素交换区与分片子体积间的实体连续平滑迁移。',
+        minPopStopSectionTt: '当总种群数量低于此阈值时自动暂停模拟 (0 = 禁用)。',
+        minPopStopInputTt: '触发自动暂停的最低存活个体数。',
+        confirmDeleteColony: '确认删除该群落？',
+        btnDeleteColonyTt: '从当前场景中移除该群落 (需要二次确认)'
     }
 }
 

@@ -38,7 +38,12 @@ public class ScenarioPresetManager {
             presets.put(s.getTitle(), s);
         }
 
-        // 2. User-saved Custom Scenarios from file
+        // 2. Built-in Multiplayer & Sharded Megaterrarium Presets
+        for (Scenario s : AcademicScenarios.getAllMultiplayerScenarios(masterSeed)) {
+            presets.put(s.getTitle(), s);
+        }
+
+        // 3. User-saved Custom Scenarios from file
         if (PRESETS_FILE.exists()) {
             try {
                 Scenario[] customScenarios = objectMapper.readValue(PRESETS_FILE, Scenario[].class);
@@ -72,7 +77,7 @@ public class ScenarioPresetManager {
         try {
             List<Scenario> customList = new ArrayList<>();
             for (Scenario s : presets.values()) {
-                if (!s.getId().startsWith("ACAD_")) {
+                if (s.getId() != null && !s.getId().startsWith("ACAD_") && !s.getId().startsWith("MP_")) {
                     customList.add(s);
                 }
             }

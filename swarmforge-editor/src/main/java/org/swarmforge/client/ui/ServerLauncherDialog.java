@@ -29,11 +29,6 @@ public class ServerLauncherDialog extends Dialog<ServerConfig> {
     private final TextField txtRestPort = new TextField("51051");
     private final ComboBox<String> comboStorage = new ComboBox<>();
 
-    private final Spinner<Integer> spinWidth = new Spinner<>(64, 1024, 256, 32);
-    private final Spinner<Integer> spinHeight = new Spinner<>(64, 1024, 256, 32);
-    private final Spinner<Integer> spinDepth = new Spinner<>(32, 256, 128, 16);
-    private final Spinner<Integer> spinGround = new Spinner<>(16, 128, 64, 8);
-
     // Postgres / Redis fields
     private final VBox postgresConfigBox = new VBox(6);
     private final TextField txtDbHost = new TextField("localhost");
@@ -131,27 +126,16 @@ public class ServerLauncherDialog extends Dialog<ServerConfig> {
             postgresConfigBox.setManaged(isPg);
         });
 
-        // 3. World Dimensions Section
-        Label lblWorldTitle = new Label(i18n.get("sim.server.dialog.world.title", "🗺️ Dimensions du Monde Serveur :"));
-        lblWorldTitle.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
-
-        Tooltip ttWorldDim = new Tooltip(i18n.get("sim.server.dialog.world.dim.tt"));
-        spinWidth.setTooltip(ttWorldDim);
-        spinHeight.setTooltip(ttWorldDim);
-        spinDepth.setTooltip(ttWorldDim);
-        spinGround.setTooltip(ttWorldDim);
-
-        GridPane gridWorld = new GridPane();
-        gridWorld.setHgap(8);
-        gridWorld.setVgap(6);
-        gridWorld.add(new Label(i18n.get("sim.server.dialog.world.width", "Largeur (X) :")), 0, 0);
-        gridWorld.add(spinWidth, 1, 0);
-        gridWorld.add(new Label(i18n.get("sim.server.dialog.world.depth", "Profondeur (Y) :")), 2, 0);
-        gridWorld.add(spinHeight, 3, 0);
-        gridWorld.add(new Label(i18n.get("sim.server.dialog.world.height", "Hauteur (Z) :")), 0, 1);
-        gridWorld.add(spinDepth, 1, 1);
-        gridWorld.add(new Label(i18n.get("sim.server.dialog.world.ground", "Niveau du Sol :")), 2, 1);
-        gridWorld.add(spinGround, 3, 1);
+        // 3. Neutral Compute Daemon & Scenario Architecture Notice
+        VBox scenarioInfoCard = new VBox(4);
+        scenarioInfoCard.setStyle("-fx-background-color: rgba(16, 185, 129, 0.08); -fx-border-color: rgba(16, 185, 129, 0.3); -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8;");
+        Label lblInfoTitle = new Label(i18n.get("sim.server.dialog.neutral_server.title", "🗺️ Moteur Distribué & Déploiement de Scénario :"));
+        lblInfoTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #10b981;");
+        Label lblInfoText = new Label(i18n.get("sim.server.dialog.neutral_server.desc",
+                "Le serveur SwarmForge fonctionne comme un démon de calcul haute performance neutre. Les dimensions spatiales, le biotope, le climat et la topologie mégaterrarium (sharding) sont automatiquement transmis lors du déploiement du scénario par l'Hôte."));
+        lblInfoText.setStyle("-fx-font-size: 10px; -fx-text-fill: #cbd5e1;");
+        lblInfoText.setWrapText(true);
+        scenarioInfoCard.getChildren().addAll(lblInfoTitle, lblInfoText);
 
         // 4. Parameter Impact Explanation Card
         VBox impactCard = new VBox(4);
@@ -159,7 +143,7 @@ public class ServerLauncherDialog extends Dialog<ServerConfig> {
         Label lblImpactHeader = new Label(i18n.get("sim.server.dialog.impact.title", "ℹ️ Impact des Paramètres :"));
         lblImpactHeader.setStyle("-fx-font-weight: bold; -fx-font-size: 11px; -fx-text-fill: #38bdf8;");
         Label lblImpactText = new Label(i18n.get("sim.server.dialog.impact.desc",
-                "• L'interface '0.0.0.0' ouvre le serveur à vos amis sur le réseau local.\n• Les dimensions 256x256 nécessitent ~500 Mo de mémoire vive.\n• Le mode H2 ne nécessite aucun service externe installé."));
+                "• L'interface '0.0.0.0' ouvre le serveur à vos collègues/amis sur le réseau local LAN.\n• Le mode H2 ne nécessite aucun service externe installé.\n• Le mode PostgreSQL + Redis est recommandé pour les clusters de production multi-nœuds."));
         lblImpactText.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
         lblImpactText.setWrapText(true);
         impactCard.getChildren().addAll(lblImpactHeader, lblImpactText);
@@ -169,7 +153,7 @@ public class ServerLauncherDialog extends Dialog<ServerConfig> {
                 new Separator(),
                 lblStorageTitle, comboStorage, postgresConfigBox,
                 new Separator(),
-                lblWorldTitle, gridWorld,
+                scenarioInfoCard,
                 new Separator(),
                 impactCard
         );
@@ -193,10 +177,10 @@ public class ServerLauncherDialog extends Dialog<ServerConfig> {
                     grpcPort = Integer.parseInt(txtGrpcPort.getText().trim());
                 } catch (Exception ignored) {}
 
-                int w = spinWidth.getValue();
-                int h = spinHeight.getValue();
-                int d = spinDepth.getValue();
-                int g = spinGround.getValue();
+                int w = 256;
+                int h = 256;
+                int d = 128;
+                int g = 64;
 
                 boolean isPg = comboStorage.getValue() != null && comboStorage.getValue().contains("PostgreSQL");
                 if (isPg) {

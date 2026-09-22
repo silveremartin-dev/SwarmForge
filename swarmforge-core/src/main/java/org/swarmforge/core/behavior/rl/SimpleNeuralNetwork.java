@@ -48,6 +48,10 @@ public class SimpleNeuralNetwork implements Serializable {
     public float epsilon = 1e-8f;
     public float weightDecay = 1e-4f;
 
+    public void setLearningRate(float lr) {
+        this.learningRate = lr;
+    }
+
     // Transient activations for backpropagation
     private transient float[][] activations;
     private transient float[][] zValues;
@@ -111,11 +115,37 @@ public class SimpleNeuralNetwork implements Serializable {
     }
 
     /**
-     * Performs a forward pass through the network.
+     * Lock-free, thread-safe, zero-contention fast forward pass for high-throughput real-time simulation ticks.
      *
-     * @param input Input vector of length layerSizes[0]
-     * @return Output vector of length layerSizes[numLayers]
+     * @param input Input vector
+     * @return Output logits vector
      */
+    public float[] forwardFast(float[] input) {
+        if (input == null || input.length != layerSizes[0]) {
+            throw new IllegalArgumentException("Input dimension mismatch.");
+        }
+        float[] current = input;
+        for (int l = 0; l < numLayers; l++) {
+            int inDim = layerSizes[l];
+            int outDim = layerSizes[l + 1];
+            float[] next = new float[outDim];
+            float[][] w = weights[l];
+            float[] b = biases[l];
+            boolean isLastLayer = (l == numLayers - 1);
+
+            for (int j = 0; j < outDim; j++) {
+                float sum = b[j];
+                float[] wj = w[j];
+                for (int i = 0; i < inDim; i++) {
+                    sum += wj[i] * current[i];
+                }
+                next[j] = isLastLayer ? sum : ((sum > 0) ? sum : 0.01f * sum);
+            }
+            current = next;
+        }
+        return current;
+    }
+
     public synchronized float[] forward(float[] input) {
         if (activations == null) {
             initTransientBuffers();

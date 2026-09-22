@@ -784,7 +784,11 @@ public class Colony implements java.io.Serializable {
 
             Individual ind = new Individual(this.id, template, nestX, nestY, nestZ);
             ind.setSpecies(this.species);
-            ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            if (template != null && template.getDecisionArchitectureType() != null) {
+                ind.setBrain(org.swarmforge.core.behavior.ReasoningArchitecture.create(template.getDecisionArchitectureType()));
+            } else {
+                ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
+            }
             applyGaussianHealth(ind, false);
             addIndividual(ind);
             return ind;
