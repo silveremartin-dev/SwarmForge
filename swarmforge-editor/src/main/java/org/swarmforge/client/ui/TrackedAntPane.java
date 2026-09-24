@@ -361,7 +361,7 @@ public class TrackedAntPane extends VBox {
 
         titleLabel.textProperty().unbind();
         String statusText = following ? I18nManager.getInstance().get("tracked_ant.status_tracked") : I18nManager.getInstance().get("tracked_ant.status_selected");
-        titleLabel.setText(String.format("🎯 %s %s: %s [%s] (#%s)", I18nManager.getInstance().get("tracked_ant.title"), statusText, ant.getCaste(), formattedId, shortId));
+        titleLabel.setText(String.format("🎯 %s %s: %s [%s] (#%s)", I18nManager.getInstance().get("tracked_ant.title"), statusText, formatCaste(ant.getCaste()), formattedId, shortId));
 
         // Species & Colony
         String speciesName = ant.getSpecies() != null ? ant.getSpecies().getScientificName() : "Formica fusca";
@@ -390,12 +390,12 @@ public class TrackedAntPane extends VBox {
         // Age in Days (1 day = 86400 seconds)
         double ageDays = ant.getAge() / 86400.0;
         lblAgeStageJob.textProperty().unbind();
-        lblAgeStageJob.setText(I18nManager.getInstance().get("tracked_ant.age_job", ageDays, ant.getLifeStage(), ant.getJob()));
+        lblAgeStageJob.setText(I18nManager.getInstance().get("tracked_ant.age_job", ageDays, formatLifeStage(ant.getLifeStage()), formatJob(ant.getJob())));
 
         // AI State & Behaviors
         String rawBehaviors = ant.getActiveBehaviorsSummary();
         lblAiState.textProperty().unbind();
-        String stateStr = String.format("🧠 IA : %s | %s", ant.getState() != null ? ant.getState() : "PATROUILLE", ant.getJob() != null ? ant.getJob() : "Généraliste");
+        String stateStr = String.format("🧠 IA : %s | %s", ant.getState() != null ? ant.getState() : "PATROUILLE", formatJob(ant.getJob()));
         lblAiState.setText(stateStr);
 
         // Rich Mouse-over Tooltip with complete behavioral and ethological state
@@ -406,8 +406,8 @@ public class TrackedAntPane extends VBox {
             "📋 Capacités & Comportements IA Actifs :\n  • %s\n" +
             "🧬 Profil Éthologique : %s",
             ant.getState() != null ? ant.getState() : "PATROUILLE",
-            ant.getJob() != null ? ant.getJob() : "Généraliste",
-            ant.getCachedAction() != null && ant.getCachedAction().type() != null ? ant.getCachedAction().type().name() : "Recherche autonome",
+            formatJob(ant.getJob()),
+            ant.getCachedAction() != null && ant.getCachedAction().type() != null ? formatActionType(ant.getCachedAction().type()) : "Recherche autonome",
             (rawBehaviors != null && !rawBehaviors.isBlank()) ? rawBehaviors.replace(";", "\n  • ") : "Patrouille & navigation standard",
             ant.getSpecies() != null ? (ant.getSpecies().getCommonName() != null ? ant.getSpecies().getCommonName() : ant.getSpecies().getScientificName()) : "Standard"
         );
@@ -422,7 +422,7 @@ public class TrackedAntPane extends VBox {
         lblPos3D.setText(I18nManager.getInstance().get("tracked_ant.pos3d", ant.getX(), ant.getY(), ant.getZ()));
 
         // Heading & Cargo
-        String cargo = ant.getCarriedItem() != Individual.CarriedItem.NONE ? ant.getCarriedItem().name() : I18nManager.getInstance().get("tracked_ant.cargo_none");
+        String cargo = formatCarriedItem(ant.getCarriedItem());
         lblHeadingCargo.textProperty().unbind();
         lblHeadingCargo.setText(I18nManager.getInstance().get("tracked_ant.heading_cargo", Math.toDegrees(ant.getHeading()), cargo));
 
@@ -577,7 +577,7 @@ public class TrackedAntPane extends VBox {
         lblAgeStageJob.setText(String.format(Locale.US, "📐 Position: X=%.1f m, Y=%.1f m, Profondeur=%.1f m", node.x(), node.y(), -node.z()));
 
         lblAiState.textProperty().unbind();
-        lblAiState.setText("Type architectural : " + node.type().name());
+        lblAiState.setText("Type : " + formatNodeType(node.type()));
         lblAiState.setTooltip(new Tooltip("Chambre biogène souterraine\nVolume lenticulaire adapté à la régulation microclimatique"));
         lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
 
@@ -597,6 +597,101 @@ public class TrackedAntPane extends VBox {
         btnCenter.setManaged(true);
         btnCenter.setDisable(false);
         clearSearchStatus();
+    }
+
+    public static String formatCaste(Individual.Caste caste) {
+        if (caste == null) return "N/A";
+        I18nManager i18n = I18nManager.getInstance();
+        return switch (caste) {
+            case QUEEN -> i18n.get("legend.caste.queen", "👑 Reine (Gyne)");
+            case WORKER -> i18n.get("legend.caste.worker", "🐜 Ouvrière");
+            case SOLDIER -> i18n.get("legend.caste.soldier", "🛡️ Soldat / Major");
+            case NURSE -> i18n.get("god.caste.nurse", "🍼 Nourrice");
+            case FORAGER -> i18n.get("god.caste.forager", "🌿 Fourrageuse");
+            case MALE -> i18n.get("legend.caste.drone", "🪽 Mâle / Drone");
+            default -> caste.name();
+        };
+    }
+
+    public static String formatLifeStage(Individual.LifeStage stage) {
+        if (stage == null) return "Adulte";
+        I18nManager i18n = I18nManager.getInstance();
+        return switch (stage) {
+            case EGG -> i18n.get("god.caste.egg", "🥚 Œuf");
+            case LARVA -> i18n.get("god.caste.larva", "🐛 Larve");
+            case PUPA -> i18n.get("god.caste.pupa", "🥥 Nymphe / Cocon");
+            case ADULT -> i18n.get("species.tab.adult", "🐜 Adulte Imago");
+            default -> stage.name();
+        };
+    }
+
+    public static String formatJob(Individual.Job job) {
+        if (job == null || job == Individual.Job.NONE) return "Généraliste";
+        I18nManager i18n = I18nManager.getInstance();
+        return switch (job) {
+            case NURSE -> i18n.get("job.nurse", "🍼 Soins au couvain (Nourrice)");
+            case BUILDER -> i18n.get("job.builder", "🧱 Construction & Galerie");
+            case FORAGER -> i18n.get("job.forager", "🌿 Récolte & Fourrageage");
+            case GUARD -> i18n.get("job.guard", "🛡️ Garde & Sécurité");
+            case UNDERTAKER -> i18n.get("job.undertaker", "🧹 Éboueuse & Hygiène");
+            case DANCING -> i18n.get("job.dancing", "💃 Danse frétillante");
+            case IDLE -> i18n.get("job.idle", "💤 Repos / Inactive");
+            default -> job.name();
+        };
+    }
+
+    public static String formatCarriedItem(Individual.CarriedItem item) {
+        if (item == null || item == Individual.CarriedItem.NONE) {
+            return I18nManager.getInstance().get("tracked_ant.cargo_none", "Rien (Vide)");
+        }
+        I18nManager i18n = I18nManager.getInstance();
+        return switch (item) {
+            case FOOD -> i18n.get("resource.food", "🥩 Nourriture / Protéines");
+            case WATER -> i18n.get("resource.water", "💧 Gouttelette d'Eau");
+            case EARTH -> i18n.get("resource.earth", "🪨 Granule de Terre");
+            case BROOD -> i18n.get("resource.brood", "🥚 Couvain / Larve");
+            case DEAD_ANT -> i18n.get("resource.dead_ant", "💀 Cadavre / Déchet");
+            default -> item.name();
+        };
+    }
+
+    public static String formatActionType(Object actionType) {
+        if (actionType == null) return "Recherche autonome";
+        String s = actionType.toString().toUpperCase();
+        return switch (s) {
+            case "MOVE" -> "Déplacement & Orientation";
+            case "FORAGE" -> "Récolte & Recherche";
+            case "RETURN_HOME" -> "Retour à la colonie (Homing)";
+            case "DEPOSIT_FOOD" -> "Dépôt de nourriture au grenier";
+            case "DEPOSIT_PHEROMONE" -> "Marquage phéromonal";
+            case "ATTACK" -> "Combat & Attaque défensive";
+            case "FLEE" -> "Fuite & Évitement du danger";
+            case "GROOM" -> "Toilettage social (Allogrooming)";
+            case "NURSE", "TEND_BROOD" -> "Soins et alimentation du couvain";
+            case "REST" -> "Repos & Économie métabolique";
+            case "EXPLORE" -> "Exploration libre";
+            case "FOLLOW_TRAIL" -> "Suivi de piste phéromonale";
+            case "COMMUNICATE" -> "Antennation & Trophallaxie";
+            case "LAY_EGG" -> "Ponte d'ovocytes (Reine)";
+            case "DEFEND_PATROL" -> "Patrouille sentinelle";
+            case "DIG" -> "Excavation de galeries";
+            default -> actionType.toString();
+        };
+    }
+
+    public static String formatNodeType(Object type) {
+        if (type == null) return "Chambre Standard";
+        String s = type.toString().toUpperCase();
+        I18nManager i18n = I18nManager.getInstance();
+        if (s.contains("ENTRANCE") || s.contains("ENTREE")) return i18n.get("chamber.entrance", "🚪 Entrée Principale / Dôme");
+        if (s.contains("QUEEN") || s.contains("ROYAL")) return i18n.get("chamber.royal", "👑 Chambre Royale & Ponte");
+        if (s.contains("NURSERY") || s.contains("BROOD") || s.contains("COUVAIN")) return i18n.get("chamber.nursery", "🥚 Couvain & Pouponnière");
+        if (s.contains("FOOD") || s.contains("STORAGE") || s.contains("GRENIER")) return i18n.get("chamber.food", "🌾 Grenier à Graines & Réserves");
+        if (s.contains("FUNGUS") || s.contains("CHAMPIGNON")) return i18n.get("chamber.fungus", "🍄 Chambre à Meules Fongiques");
+        if (s.contains("WASTE") || s.contains("DUMP") || s.contains("DEPOTOIR")) return i18n.get("chamber.waste", "🗑️ Dépotoir & Décharge");
+        if (s.contains("VENTILATION") || s.contains("CHIMNEY")) return i18n.get("chamber.vent", "🌪️ Puits d'Aération & Cheminée");
+        if (s.contains("JUNCTION") || s.contains("TUNNEL") || s.contains("GALERIE")) return i18n.get("chamber.junction", "🔀 Jonction & Galerie de Transit");
+        return type.toString();
     }
 
     public void setOnFollowAnt(Consumer<Individual> handler) {

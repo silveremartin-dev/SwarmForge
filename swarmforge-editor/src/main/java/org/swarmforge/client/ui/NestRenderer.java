@@ -10,6 +10,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.*;
 import javafx.scene.text.Font;
 
+import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.ThemeManager;
 
 import java.util.*;
@@ -389,38 +390,40 @@ public final class NestRenderer {
 
     public static String formatArchitectureName(String arch) {
         String key = normalizeArchKey(arch);
+        I18nManager i18n = I18nManager.getInstance();
         return switch (key) {
-            case "CARTON_NEST" -> "Arboreal Carton Nest";
-            case "WAX_COMB_HEXAGONAL" -> "Hexagonal Wax Comb";
-            case "WAX_POTS_CLUSTER" -> "Wax Pots Cluster";
-            case "PAPER_PEDUNCULATE" -> "Hanging Paper Nest";
-            case "CATHEDRAL_MOUND" -> "Cathedral Mound";
-            case "ARBOREAL_SILK_LEAF" -> "Arboreal Silk Leaf";
-            case "SUBTERRANEAN_FUNGI_VAULT" -> "Subterranean Fungi Vault";
-            case "BAMBOO_STEM_NEST" -> "Bamboo Stem & Gall";
-            case "BIVOUAC_LIVING_NEST" -> "Bivouac Living Nest";
-            case "HOLLOW_TRUNK_NEST" -> "Hollow Trunk Cavity";
-            case "SURFACE_MOUND" -> "Surface Dome Mound";
-            case "WOODEN_BEEHIVE" -> "Wooden Beehive";
-            default -> "Subterranean Burrow";
+            case "CARTON_NEST" -> i18n.get("nest.arch.arboreal_carton", "Arboreal Carton Nest");
+            case "WAX_COMB_HEXAGONAL" -> i18n.get("nest.arch.wax_comb", "Hexagonal Wax Comb");
+            case "WAX_POTS_CLUSTER" -> i18n.get("nest.arch.wax_pots", "Wax Pots Cluster");
+            case "PAPER_PEDUNCULATE" -> i18n.get("nest.arch.hanging_paper", "Hanging Paper Nest");
+            case "CATHEDRAL_MOUND" -> i18n.get("nest.arch.cathedral", "Cathedral Mound");
+            case "ARBOREAL_SILK_LEAF" -> i18n.get("nest.arch.arboreal_silk", "Arboreal Silk Leaf");
+            case "SUBTERRANEAN_FUNGI_VAULT" -> i18n.get("nest.arch.fungi_vault", "Subterranean Fungi Vault");
+            case "BAMBOO_STEM_NEST" -> i18n.get("nest.arch.bamboo", "Bamboo Stem & Gall");
+            case "BIVOUAC_LIVING_NEST" -> i18n.get("nest.arch.bivouac", "Bivouac Living Nest");
+            case "HOLLOW_TRUNK_NEST" -> i18n.get("nest.arch.hollow_trunk", "Hollow Trunk Cavity");
+            case "SURFACE_MOUND" -> i18n.get("nest.arch.surface_dome", "Surface Dome Mound");
+            case "WOODEN_BEEHIVE" -> i18n.get("nest.arch.wooden_beehive", "Wooden Beehive");
+            default -> i18n.get("nest.arch.subterranean", "Subterranean Burrow");
         };
     }
 
     public static String formatMaterialName(String mat) {
         String key = normalizeMatKey(mat);
+        I18nManager i18n = I18nManager.getInstance();
         return switch (key) {
-            case "CARTON_PULP" -> "Carton & Wood Pulp";
-            case "BEESWAX" -> "Beeswax (Apidae)";
-            case "LIVING_INSECT_BODIES" -> "Living Insect Bodies (Bivouac)";
-            case "PROPOLIS" -> "Propolis & Tree Resin";
-            case "SILK_WEAVE" -> "Silk Weave (Oecophylla Larvae)";
-            case "STERCORAL_CEMENT" -> "Stercoral Cement (Termite Feces/Mud)";
-            case "TREE_BRANCH" -> "Tree Branch & Bark";
-            case "TREE_LEAF" -> "Tree Leaf Tissue";
-            case "TREE_TRUNK" -> "Tree Trunk & Hollow Wood";
-            case "WOOD_PLANK" -> "Wood Plank Construction";
-            case "WOOD_PULP_PAPER" -> "Wood Pulp Paper (Vespidae)";
-            default -> "Earth & Clay Soil";
+            case "CARTON_PULP" -> i18n.get("nest.mat.carton", "Carton & Wood Pulp");
+            case "BEESWAX" -> i18n.get("nest.mat.beeswax", "Beeswax (Apidae)");
+            case "LIVING_INSECT_BODIES" -> i18n.get("nest.mat.bivouac", "Living Insect Bodies (Bivouac)");
+            case "PROPOLIS" -> i18n.get("nest.mat.propolis", "Propolis & Tree Resin");
+            case "SILK_WEAVE" -> i18n.get("nest.mat.silk", "Silk Weave (Oecophylla Larvae)");
+            case "STERCORAL_CEMENT" -> i18n.get("nest.mat.stercoral", "Stercoral Cement (Termite Feces/Mud)");
+            case "TREE_BRANCH" -> i18n.get("nest.mat.bark", "Tree Branch & Bark");
+            case "TREE_LEAF" -> i18n.get("nest.mat.leaf", "Tree Leaf Tissue");
+            case "TREE_TRUNK" -> i18n.get("nest.mat.hollow_wood", "Tree Trunk & Hollow Wood");
+            case "WOOD_PLANK" -> i18n.get("nest.mat.planks", "Wood Plank Construction");
+            case "WOOD_PULP_PAPER" -> i18n.get("nest.mat.paper", "Wood Pulp Paper (Vespidae)");
+            default -> i18n.get("nest.mat.earth", "Earth & Clay Soil");
         };
     }
 

@@ -34,9 +34,6 @@ export default function PheromoneCloud() {
     const pointsRef = useRef()
     const glowTexture = useMemo(() => createGlowDiscTexture(), [])
 
-    // If disabled in options, do not render pheromones
-    if (!showPheromones) return null
-
     // Max capacity for cloud points
     const MAX_POINTS = 3000
 
@@ -54,7 +51,7 @@ export default function PheromoneCloud() {
     }, [])
 
     useFrame(({ clock }) => {
-        if (!pointsRef.current) return
+        if (!pointsRef.current || !showPheromones) return
 
         const elapsed = clock.getElapsedTime()
         let idx = 0
@@ -186,6 +183,8 @@ export default function PheromoneCloud() {
         geometry.attributes.size.needsUpdate = true
         geometry.setDrawRange(0, idx)
     })
+
+    if (!showPheromones) return null
 
     return (
         <points ref={pointsRef} geometry={geometry}>

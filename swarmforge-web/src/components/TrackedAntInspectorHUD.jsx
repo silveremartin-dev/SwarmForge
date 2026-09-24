@@ -73,7 +73,22 @@ export default function TrackedAntInspectorHUD({ onFocusAnt }) {
         : '12.4'
 
     const headingDeg = ant.heading !== undefined ? Math.round(ant.heading * (180 / Math.PI)) : 45
-    const carriedItem = ant.carriedItem && ant.carriedItem !== 'NONE' ? ant.carriedItem : t('noLoad', 'Aucun chargement')
+    
+    const formatCarriedItem = (item) => {
+        if (!item || item === 'NONE') return t('noLoad', 'Aucun chargement')
+        const u = String(item).toUpperCase()
+        if (u === 'FOOD') return t('food', 'Nourriture / Protéines')
+        if (u === 'WATER') return t('water', 'Gouttelette d\'Eau')
+        if (u === 'EARTH' || u === 'SOIL') return t('earth', 'Granule de Terre')
+        if (u === 'BROOD' || u === 'LARVA' || u === 'EGG') return t('brood', 'Couvain / Larve')
+        if (u === 'DEAD_ANT' || u === 'CORPSE') return t('deadAnt', 'Cadavre de fourmi')
+        if (u === 'WOOD' || u === 'CELLULOSE') return t('wood', 'Fibre Végétale / Bois')
+        if (u === 'SEED') return t('seed', 'Graine')
+        if (u === 'LEAF') return t('leaf', 'Fragment Foliaire')
+        if (u === 'FUNGUS') return t('fungus', 'Mycélium / Champignon')
+        return item
+    }
+    const carriedItem = formatCarriedItem(ant.carriedItem)
 
     const handleSearch = (e) => {
         if (e) e.preventDefault()
@@ -103,7 +118,17 @@ export default function TrackedAntInspectorHUD({ onFocusAnt }) {
         }
     }
 
-    const casteLabel = ant.caste === 'QUEEN' ? t('queens', 'REINE') : (ant.caste === 'SOLDIER' ? t('soldiers', 'SOLDAT') : (ant.caste === 'MALE' ? t('malesCardLabel', 'MÂLE') : t('workers', 'OUVRIÈRE')))
+    const casteLabel = (() => {
+        const c = String(ant.caste || '').toUpperCase()
+        if (c.includes('QUEEN') || c.includes('GYNE')) return t('queens', 'REINE')
+        if (c.includes('SOLDIER') || c.includes('MAJOR')) return t('soldiers', 'SOLDAT')
+        if (c.includes('MEDIA')) return t('media', 'MEDIA')
+        if (c.includes('MINOR')) return t('minor', 'MINOR')
+        if (c.includes('MALE') || c.includes('DRONE')) return t('malesCardLabel', 'MÂLE')
+        if (c.includes('NURSE')) return t('nurse', 'NOURRICE')
+        if (c.includes('FORAGER')) return t('forager', 'FOURRAGEUSE')
+        return t('workers', 'OUVRIÈRE')
+    })()
     const jobLabel = ant.job || ant.task || 'Patrouille & Forage'
     const stateLabel = ant.state || 'ACTIF / EXPLORATION'
 

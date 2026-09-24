@@ -70,7 +70,12 @@ The core engine balances object-oriented domain richness with data-oriented perf
 - **Simulation Event Bus**: High-throughput asynchronous event pipeline (`EventBus`) with non-blocking disk streaming and decoupled UI/telemetry broadcasting.
 
 ### 3.3 Behavioral & AI Systems
-- **Finite State Machines (FSM)**: Declarative state transitions (`FSMArchitecture`) governing individual agent behavior cycles (Foraging, Nesting, Defending, Nursing) with multi-rate decision cycles (staggered 3–5 ticks for cognitive/perception tasks, 1 tick for locomotion).
+- **Finite State Machines (FSM) & Cognitive Framework**: Declarative state transitions (`FSMArchitecture`) governing individual agent behavior cycles (Foraging, Nesting, Defending, Nursing) with multi-rate decision cycles (staggered 3–5 ticks for cognitive/perception tasks, 1 tick for locomotion).
+- **Dynamic Brain Plugin Subsystem (`BrainPluginRegistry`)**: Pluggable multi-paradigm cognitive runtime supporting:
+  - Pre-trained deep reinforcement learning models via ONNX runtime (`.onnx`, $d_{obs}=24, d_{act}=14$).
+  - Dynamic hot-loaded Java bytecode plugins (`.jar`/`.class`) via sandboxed `JavaBrainClassLoader`.
+  - Declarative JSON/Behavior Tree architectures (`.sfbrain`/`.json`) via `JsonBrainArchitecture`.
+  - Seamless import and registration directly through the Visual Studio UI.
 - **Cuticular Hydrocarbon (CHC) Discrimination**: Bray-Curtis dissimilarity metric applied to 32-compound cuticular hydrocarbon chemical signatures for precise nestmate/conspecific/interloper recognition.
 - **Arrhenius Thermal Kinetics & Ethology**: Full ECS integration of 220+ ethological capabilities modulated by voxel microclimate temperatures via the Arrhenius $Q_{10} = 2.2$ law and cold torpor triggers.
 - **Ecology, Stoichiometry & Symbiosis**: Symbiotic fungus garden (*Atta*, *Macrotermes*) cultivation governed by stoichiometric $C:N$ (22.5:1) dynamics yielding gongylidia/staphylae protein bodies, aphid farming, disease propagation (`DiseaseManager`), predator-prey hunting styles, and inter-colony diplomacy.

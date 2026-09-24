@@ -299,7 +299,17 @@ export default function InspectorPanel() {
             <div style={styles.row}>
                 <span style={styles.label}>Caste</span>
                 <span style={{ fontWeight: 700, color: selectedEntity.caste === 'QUEEN' ? '#ffd700' : (selectedEntity.caste === 'SOLDIER' ? '#f87171' : '#38bdf8') }}>
-                    {selectedEntity.caste === 'QUEEN' ? '👑 Reine' : (selectedEntity.caste === 'SOLDIER' ? '🛡️ Soldat' : '🐜 Ouvrière')}
+                    {(() => {
+                        const c = String(selectedEntity.caste || '').toUpperCase()
+                        if (c.includes('QUEEN') || c.includes('GYNE')) return '👑 Reine'
+                        if (c.includes('SOLDIER') || c.includes('MAJOR')) return '🛡️ Soldat'
+                        if (c.includes('MEDIA')) return '⚖️ Media'
+                        if (c.includes('MINOR')) return '🔍 Minor'
+                        if (c.includes('MALE') || c.includes('DRONE')) return '🪽 Mâle'
+                        if (c.includes('NURSE')) return '🍼 Nourrice'
+                        if (c.includes('FORAGER')) return '🌿 Fourrageuse'
+                        return '🐜 Ouvrière'
+                    })()}
                 </span>
             </div>
 
@@ -311,7 +321,21 @@ export default function InspectorPanel() {
             <div style={styles.row}>
                 <span style={styles.label}><Package size={12} /> Transport</span>
                 <span style={styles.value}>
-                    {selectedEntity.carriedItem && selectedEntity.carriedItem !== 'NONE' ? `🍯 ${selectedEntity.carriedItem}` : '—'}
+                    {(() => {
+                        const item = selectedEntity.carriedItem
+                        if (!item || item === 'NONE') return '—'
+                        const u = String(item).toUpperCase()
+                        if (u === 'FOOD') return '🥩 Nourriture'
+                        if (u === 'WATER') return '💧 Gouttelette d\'Eau'
+                        if (u === 'EARTH' || u === 'SOIL') return '🪨 Terre / Granule'
+                        if (u === 'BROOD' || u === 'LARVA' || u === 'EGG') return '🥚 Couvain / Larve'
+                        if (u === 'DEAD_ANT' || u === 'CORPSE') return '💀 Cadavre'
+                        if (u === 'WOOD' || u === 'CELLULOSE') return '🪵 Fibre de bois'
+                        if (u === 'SEED') return '🌾 Graine'
+                        if (u === 'LEAF') return '🍃 Feuille'
+                        if (u === 'FUNGUS') return '🍄 Champignon'
+                        return `🍯 ${item}`
+                    })()}
                 </span>
             </div>
 

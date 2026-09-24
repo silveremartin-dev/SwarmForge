@@ -35,9 +35,7 @@ function SingleNest({ nest, isGhost = false }) {
         }
     })
 
-    if (!nest) return null
-
-    const scale = (nest.scale || 1.0) * 0.75
+    const scale = (nest?.scale || 1.0) * 0.75
 
     // Accurate normalized world coordinate mapper [0..100]m
     const toWorldCoord = (val) => {
@@ -45,14 +43,15 @@ function SingleNest({ nest, isGhost = false }) {
         return Math.max(2, Math.min(98, Number(val) || 50))
     }
 
-    const posX = toWorldCoord(nest.x)
-    const posZ = toWorldCoord(nest.z !== undefined ? nest.z : nest.y)
+    const posX = toWorldCoord(nest?.x)
+    const posZ = toWorldCoord(nest?.z !== undefined ? nest?.z : nest?.y)
     const groundY = getTerrainHeight(posX, posZ, terrainConfig)
 
-    const isPhantomMode = nest.isPhantom || isGhost
+    const isPhantomMode = nest?.isPhantom || isGhost
 
     // Multi-exit surface portals for subterranean / mound nests (ensures all exits snap to ground altitude Y)
     const exitPortals = useMemo(() => {
+        if (!nest) return []
         const offsets = nest?.exits || [
             { offsetX: 0, offsetZ: 0, isMain: true },
             { offsetX: 0.9 * scale, offsetZ: 0.6 * scale, isMain: false },
@@ -461,6 +460,8 @@ function SingleNest({ nest, isGhost = false }) {
                 )
         }
     }
+
+    if (!nest) return null
 
     return (
         <group ref={groupRef} position={[posX, groundY, posZ]}>

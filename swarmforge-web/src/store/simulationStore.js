@@ -840,32 +840,52 @@ export const useSimulationStore = create((set, get) => {
             showToast(`Scénario sélectionné : ${scenarioId}`, 'info')
         },
 
-        // Audio Multi-channel Volumes (4 Channels matching Desktop Client)
+        // Audio Controls (1:1 with Desktop Client SwarmForgeClient.java / SimulationAudioManager.java)
         masterVolume: 0.7,
-        ambientVolume: 0.7,
-        weatherVolume: 0.6,
-        insectsVolume: 0.5,
-        sfxVolume: 0.5,
+        ambientEnabled: true,
+        riverEnabled: true,
+        weatherEnabled: true,
+        insectEnabled: true,
 
         setMasterVolume: (v) => {
             set({ masterVolume: v })
             soundEngine.setMasterVolume(v)
         },
-        setAmbientVolume: (v) => {
-            set({ ambientVolume: v })
-            soundEngine.setChannelVolume('ambiance', v)
+        setAmbientEnabled: (enabled) => {
+            set({ ambientEnabled: enabled })
+            soundEngine.setAmbientEnabled(enabled)
         },
-        setWeatherVolume: (v) => {
-            set({ weatherVolume: v })
-            soundEngine.setChannelVolume('weather', v)
+        toggleAmbient: () => {
+            const next = !get().ambientEnabled
+            set({ ambientEnabled: next })
+            soundEngine.setAmbientEnabled(next)
         },
-        setInsectsVolume: (v) => {
-            set({ insectsVolume: v })
-            soundEngine.setChannelVolume('insects', v)
+        setRiverEnabled: (enabled) => {
+            set({ riverEnabled: enabled })
+            soundEngine.setRiverEnabled(enabled)
         },
-        setSfxVolume: (v) => {
-            set({ sfxVolume: v })
-            soundEngine.setChannelVolume('digging', v)
+        toggleRiver: () => {
+            const next = !get().riverEnabled
+            set({ riverEnabled: next })
+            soundEngine.setRiverEnabled(next)
+        },
+        setWeatherEnabled: (enabled) => {
+            set({ weatherEnabled: enabled })
+            soundEngine.setWeatherEnabled(enabled)
+        },
+        toggleWeatherAudio: () => {
+            const next = !get().weatherEnabled
+            set({ weatherEnabled: next })
+            soundEngine.setWeatherEnabled(next)
+        },
+        setInsectEnabled: (enabled) => {
+            set({ insectEnabled: enabled })
+            soundEngine.setInsectEnabled(enabled)
+        },
+        toggleInsect: () => {
+            const next = !get().insectEnabled
+            set({ insectEnabled: next })
+            soundEngine.setInsectEnabled(next)
         },
 
         connect: () => {

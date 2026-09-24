@@ -83,6 +83,10 @@ public interface ReasoningArchitecture extends java.io.Serializable {
      * Factory method to create a new ReasoningArchitecture instance based on type name string.
      */
     static ReasoningArchitecture create(String typeName) {
+        if (typeName == null || typeName.isBlank()) return new FSMArchitecture();
+        if (BrainPluginRegistry.getInstance().hasBrain(typeName)) {
+            return BrainPluginRegistry.getInstance().createBrain(typeName);
+        }
         return create(ArchitectureType.parse(typeName));
     }
 

@@ -74,7 +74,9 @@ public class HivePlacementEvaluatorDialog extends Stage {
 
         header.getChildren().addAll(icon, title);
 
-        Label subTitle = new Label("Architecture: " + architecture + " | Material: " + material);
+        String formattedArch = NestRenderer.formatArchitectureName(architecture);
+        String formattedMat = NestRenderer.formatMaterialName(material);
+        Label subTitle = new Label(i18n.get("nest.eval.subtitle", "Architecture : {0} | Matériau : {1}", formattedArch, formattedMat));
         subTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
 
         // Left Panel: Environmental Controls

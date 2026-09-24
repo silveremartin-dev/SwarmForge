@@ -42,6 +42,8 @@ public class JmeGameApp extends SimpleApplication {
     private WritableImage targetImage;
     private ByteBuffer pixelBuffer;
     private byte[] pixelData;
+    private byte[] transferData;
+    private final java.util.concurrent.atomic.AtomicBoolean isTransferring = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     // Recording
     private boolean recording = false;
@@ -202,6 +204,7 @@ public class JmeGameApp extends SimpleApplication {
             // Initialize simple buffer
             pixelBuffer = BufferUtils.createByteBuffer(width * height * 4);
             pixelData = new byte[width * height * 4];
+            transferData = new byte[width * height * 4];
 
             // Input Mappings
             if (inputManager != null) {
@@ -1155,26 +1158,38 @@ public class JmeGameApp extends SimpleApplication {
     public void simpleRender(com.jme3.renderer.RenderManager rm) {
         // Post-render: Read pixels
         if (targetImage != null) {
-            renderer.readFrameBuffer(null, pixelBuffer);
-            pixelBuffer.rewind();
-            pixelBuffer.get(pixelData);
-            pixelBuffer.clear();
+            // Guard against JavaFX queue flood: only capture/transfer if previous frame finished painting
+            if (isTransferring.compareAndSet(false, true)) {
+                try {
+                    renderer.readFrameBuffer(null, pixelBuffer);
+                    pixelBuffer.rewind();
+                    pixelBuffer.get(pixelData);
+                    pixelBuffer.clear();
 
-            // Swap R and B channels: OpenGL framebuffer reads GL_RGBA, while JavaFX ByteBgra expects BGRA
-            for (int i = 0; i < pixelData.length; i += 4) {
-                byte r = pixelData[i];
-                pixelData[i] = pixelData[i + 2];
-                pixelData[i + 2] = r;
-            }
+                    // Swap R and B channels: OpenGL framebuffer reads GL_RGBA, while JavaFX ByteBgra expects BGRA
+                    for (int i = 0; i < pixelData.length; i += 4) {
+                        byte r = pixelData[i];
+                        pixelData[i] = pixelData[i + 2];
+                        pixelData[i + 2] = r;
+                    }
 
-            final byte[] sendData = pixelData.clone();
-            Platform.runLater(() -> {
-                if (targetImage != null) {
-                    PixelWriter pw = targetImage.getPixelWriter();
-                    pw.setPixels(0, 0, width, height, PixelFormat.getByteBgraInstance(),
-                            sendData, 0, width * 4);
+                    System.arraycopy(pixelData, 0, transferData, 0, pixelData.length);
+
+                    Platform.runLater(() -> {
+                        try {
+                            if (targetImage != null) {
+                                PixelWriter pw = targetImage.getPixelWriter();
+                                pw.setPixels(0, 0, width, height, PixelFormat.getByteBgraInstance(),
+                                        transferData, 0, width * 4);
+                            }
+                        } finally {
+                            isTransferring.set(false);
+                        }
+                    });
+                } catch (Throwable t) {
+                    isTransferring.set(false);
                 }
-            });
+            }
 
             // Timelapse Recording
             if (recording) {

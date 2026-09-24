@@ -15,11 +15,14 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.core.domain.CasteTemplate;
 import org.swarmforge.core.species.CustomSpecies;
 import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
+import org.swarmforge.core.behavior.BrainPluginRegistry;
+import org.swarmforge.core.behavior.CustomBrainDescriptor;
 
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.NotificationOverlay;
@@ -945,8 +948,31 @@ public class SpeciesEditorPane extends VBox {
         for (ArchitectureType type : ArchitectureType.values()) {
             decisionArchCombo.getItems().add(type.getDisplayName());
         }
+        for (CustomBrainDescriptor desc : BrainPluginRegistry.getInstance().getRegisteredBrains()) {
+            if (desc.getSourceType() != CustomBrainDescriptor.BrainSourceType.BUILTIN && !decisionArchCombo.getItems().contains(desc.getDisplayName())) {
+                decisionArchCombo.getItems().add(desc.getDisplayName());
+            }
+        }
         ComboBoxTooltipHelper.setupDescriptiveComboBox(decisionArchCombo, SpeciesEditorPane::getDecisionArchTitle, SpeciesEditorPane::getDecisionArchDescription);
         decisionArchCombo.setValue(ArchitectureType.BDI.getDisplayName());
+
+        Button btnImportBrain = new Button();
+        btnImportBrain.setGraphic(new FontIcon(Feather.CPU));
+        btnImportBrain.setTooltip(new Tooltip(i18n.get("species.brain.import_tt", "Import cognitive brain architecture (.onnx, .jar, .sfbrain)")));
+        btnImportBrain.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 4 8; -fx-background-radius: 4;");
+        btnImportBrain.setOnAction(e -> {
+            Stage owner = (Stage) getScene().getWindow();
+            new BrainImportDialog(owner, descriptor -> {
+                if (!decisionArchCombo.getItems().contains(descriptor.getDisplayName())) {
+                    decisionArchCombo.getItems().add(descriptor.getDisplayName());
+                }
+                decisionArchCombo.setValue(descriptor.getDisplayName());
+                NotificationOverlay.show(this, java.text.MessageFormat.format(i18n.get("species.brain.import_success", "Brain imported: {0}"), descriptor.getDisplayName()), NotificationOverlay.NotificationType.SUCCESS);
+            }).show();
+        });
+
+        HBox decisionArchBox = new HBox(6, decisionArchCombo, btnImportBrain);
+        decisionArchBox.setAlignment(Pos.CENTER_LEFT);
 
         TextField foragingWField = new TextField("0.30");
         TextField defenseWField = new TextField("0.20");
@@ -1043,7 +1069,7 @@ public class SpeciesEditorPane extends VBox {
 
         // Column 3: 🧠 IA & Allocation Tâches
         GridPane col3Grid = createColumnGrid();
-        col3Grid.addRow(0, createTooltipLabel("Decision Model:", "Cognitive architecture (BDI, Neural Network, FSM, Behavior Tree, Fuzzy Logic)", decisionArchCombo, "FSM"), decisionArchCombo);
+        col3Grid.addRow(0, createTooltipLabel("Decision Model:", "Cognitive architecture (BDI, Neural Network, FSM, Behavior Tree, Fuzzy Logic, or Imported ONNX/JAR/SFBrain)", decisionArchBox, "FSM"), decisionArchBox);
         col3Grid.addRow(1, createTooltipLabel("Target Ratio (%):", "Target percentage of this caste among workers.", targetRatioF), targetRatioF);
         col3Grid.addRow(2, createTooltipLabel("Foraging Weight:", "Task allocation weight for foraging", foragingWField), foragingWField);
         col3Grid.addRow(3, createTooltipLabel("Defense Weight:", "Task allocation weight for defense", defenseWField), defenseWField);
@@ -2344,8 +2370,8 @@ public class SpeciesEditorPane extends VBox {
             case "BIVOUAC_LIVING_NEST" -> i18n.get("species.nest.bivouac_living_nest");
             case "MOUND" -> i18n.get("species.nest.mound");
             case "TREE" -> i18n.get("species.nest.tree");
-            case "MATURE" -> i18n.get("species.nest.mature");
-            case "SIMPLE" -> i18n.get("species.nest.simple");
+            case "MATURE", "MATURE_BURROW", "SUBTERRANEAN" -> i18n.get("species.nest.mature");
+            case "SIMPLE", "UNDERGROUND_BURROW", "BURROW_UNDERGROUND", "SUBTERRANEAN_BURROW", "BURROW" -> i18n.get("species.nest.simple");
             default -> type;
         };
     }
@@ -2365,8 +2391,8 @@ public class SpeciesEditorPane extends VBox {
             case "BIVOUAC_LIVING_NEST" -> i18n.get("species.nest.bivouac_living_nest.desc");
             case "MOUND" -> i18n.get("species.nest.mound.desc");
             case "TREE" -> i18n.get("species.nest.tree.desc");
-            case "MATURE" -> i18n.get("species.nest.mature.desc");
-            case "SIMPLE" -> i18n.get("species.nest.simple.desc");
+            case "MATURE", "MATURE_BURROW", "SUBTERRANEAN" -> i18n.get("species.nest.mature.desc");
+            case "SIMPLE", "UNDERGROUND_BURROW", "BURROW_UNDERGROUND", "SUBTERRANEAN_BURROW", "BURROW" -> i18n.get("species.nest.simple.desc");
             default -> "";
         };
     }
@@ -2459,7 +2485,14 @@ public class SpeciesEditorPane extends VBox {
     }
 
     public static String getDecisionArchTitle(String arch) {
-        if (arch == null) return "";
+        if (arch == null || arch.isBlank()) return "";
+        if (BrainPluginRegistry.getInstance().hasBrain(arch)) {
+            var desc = BrainPluginRegistry.getInstance().getDescriptor(arch);
+            if (desc.isPresent()) return desc.get().getDisplayName();
+        }
+        for (CustomBrainDescriptor d : BrainPluginRegistry.getInstance().getRegisteredBrains()) {
+            if (d.getDisplayName().equalsIgnoreCase(arch)) return d.getDisplayName();
+        }
         ArchitectureType t = ArchitectureType.parse(arch);
         I18nManager i18n = I18nManager.getInstance();
         return switch (t) {
@@ -2474,7 +2507,14 @@ public class SpeciesEditorPane extends VBox {
     }
 
     public static String getDecisionArchDescription(String arch) {
-        if (arch == null) return "";
+        if (arch == null || arch.isBlank()) return "";
+        if (BrainPluginRegistry.getInstance().hasBrain(arch)) {
+            var desc = BrainPluginRegistry.getInstance().getDescriptor(arch);
+            if (desc.isPresent()) return desc.get().getDescription();
+        }
+        for (CustomBrainDescriptor d : BrainPluginRegistry.getInstance().getRegisteredBrains()) {
+            if (d.getDisplayName().equalsIgnoreCase(arch)) return d.getDescription();
+        }
         ArchitectureType t = ArchitectureType.parse(arch);
         I18nManager i18n = I18nManager.getInstance();
         return switch (t) {
@@ -2585,41 +2625,72 @@ public class SpeciesEditorPane extends VBox {
     }
 
     public static String mapTechnicalToReadable(String val) {
-        if (val == null) return "";
-        return switch (val.toUpperCase().trim()) {
-            case "ANT" -> I18nManager.getInstance().get("species.type.ant");
-            case "BEE" -> I18nManager.getInstance().get("species.type.bee");
-            case "OTHER" -> I18nManager.getInstance().get("species.type.other");
-            case "TERMITE" -> I18nManager.getInstance().get("species.type.termite");
-            case "WASP" -> I18nManager.getInstance().get("species.type.wasp");
+        if (val == null || val.isBlank()) return "";
+        I18nManager i18n = I18nManager.getInstance();
+        String u = val.toUpperCase().trim();
+        return switch (u) {
+            case "ANT" -> i18n.get("species.type.ant");
+            case "BEE" -> i18n.get("species.type.bee");
+            case "OTHER" -> i18n.get("species.type.other");
+            case "TERMITE" -> i18n.get("species.type.termite");
+            case "WASP" -> i18n.get("species.type.wasp");
 
-            case "GAMERGATES" -> I18nManager.getInstance().get("species.queen_mode.gamergates");
-            case "MONOGYNE" -> I18nManager.getInstance().get("species.queen_mode.monogyne");
-            case "POLYGYNE" -> I18nManager.getInstance().get("species.queen_mode.polygyne");
+            case "GAMERGATES" -> i18n.get("species.queen_mode.gamergates");
+            case "MONOGYNE" -> i18n.get("species.queen_mode.monogyne");
+            case "POLYGYNE" -> i18n.get("species.queen_mode.polygyne");
 
-            case "AERIAL_SWARM" -> I18nManager.getInstance().get("species.nuptial.aerial_swarm");
-            case "BUDDING" -> I18nManager.getInstance().get("species.nuptial.budding");
-            case "IN_NEST" -> I18nManager.getInstance().get("species.nuptial.in_nest");
-            case "SWARM_DIVISION" -> I18nManager.getInstance().get("species.nuptial.swarm_division");
+            case "AERIAL_SWARM" -> i18n.get("species.nuptial.aerial_swarm");
+            case "BUDDING" -> i18n.get("species.nuptial.budding");
+            case "IN_NEST" -> i18n.get("species.nuptial.in_nest");
+            case "SWARM_DIVISION" -> i18n.get("species.nuptial.swarm_division");
 
-            case "CELLULOSE" -> I18nManager.getInstance().get("species.larva_diet.cellulose");
-            case "FUNGUS" -> I18nManager.getInstance().get("species.larva_diet.fungus");
-            case "HIGH_PROTEIN_MEAT" -> I18nManager.getInstance().get("species.larva_diet.high_protein_meat");
-            case "OMNIVORE" -> I18nManager.getInstance().get("species.larva_diet.omnivore");
-            case "SEEDS" -> I18nManager.getInstance().get("species.larva_diet.seeds");
-            case "SUGAR_HONEY" -> I18nManager.getInstance().get("species.larva_diet.sugar_honey");
+            case "CELLULOSE" -> i18n.get("species.larva_diet.cellulose");
+            case "FUNGUS" -> i18n.get("species.larva_diet.fungus");
+            case "HIGH_PROTEIN_MEAT" -> i18n.get("species.larva_diet.high_protein_meat");
+            case "OMNIVORE" -> i18n.get("species.larva_diet.omnivore");
+            case "SEEDS" -> i18n.get("species.larva_diet.seeds");
+            case "SUGAR_HONEY" -> i18n.get("species.larva_diet.sugar_honey");
 
-            case "HONEYDEW" -> I18nManager.getInstance().get("species.diet.honeydew");
-            case "INSECTS_MEAT" -> I18nManager.getInstance().get("species.diet.insects_meat");
-            case "SUGARS_NECTAR" -> I18nManager.getInstance().get("species.diet.sugars_nectar");
-            case "WOOD_CELLULOSE" -> I18nManager.getInstance().get("species.diet.wood_cellulose");
-            case "NONE" -> I18nManager.getInstance().get("species.diet.none");
+            case "HONEYDEW" -> i18n.get("species.diet.honeydew");
+            case "INSECTS_MEAT" -> i18n.get("species.diet.insects_meat");
+            case "SUGARS_NECTAR" -> i18n.get("species.diet.sugars_nectar");
+            case "WOOD_CELLULOSE" -> i18n.get("species.diet.wood_cellulose");
+            case "NONE" -> i18n.get("species.diet.none");
 
-            case "BDI" -> I18nManager.getInstance().get("species.arch.bdi");
-            case "BEHAVIOR_TREE" -> I18nManager.getInstance().get("species.arch.behavior_tree");
-            case "FSM" -> I18nManager.getInstance().get("species.arch.fsm");
-            case "FUZZY_LOGIC" -> I18nManager.getInstance().get("species.arch.fuzzy_logic");
-            case "NEURAL_NETWORK" -> I18nManager.getInstance().get("species.arch.neural_network");
+            case "BDI" -> i18n.get("species.arch.bdi");
+            case "BEHAVIOR_TREE" -> i18n.get("species.arch.behavior_tree");
+            case "BLACKBOARD" -> i18n.get("species.arch.blackboard");
+            case "FSM", "FINITE_STATE_MACHINE" -> i18n.get("species.arch.fsm");
+            case "FUZZY_LOGIC" -> i18n.get("species.arch.fuzzy_logic");
+            case "HYBRID" -> i18n.get("species.arch.hybrid");
+            case "NEURAL_NETWORK" -> i18n.get("species.arch.neural_network");
+            case "REINFORCEMENT_LEARNING", "RL" -> i18n.get("species.arch.rl", "Apprentissage par Renforcement (RL)");
+
+            case "QUEEN" -> i18n.get("legend.caste.queen", "👑 Reine (Gyne)");
+            case "WORKER" -> i18n.get("legend.caste.worker", "🐜 Ouvrière");
+            case "SOLDIER", "WORKER_SOLDIER", "MAJOR" -> i18n.get("legend.caste.soldier", "🛡️ Soldat / Major");
+            case "MEDIA", "WORKER_MEDIA" -> i18n.get("legend.caste.media", "⚖️ Media");
+            case "MINOR", "WORKER_MINOR" -> i18n.get("legend.caste.minor", "🔍 Minor");
+            case "DRONE", "MALE" -> i18n.get("legend.caste.drone", "🪽 Mâle / Drone");
+            case "BROOD" -> i18n.get("legend.caste.brood", "🥚 Couvain");
+
+            case "EARTH", "SOIL", "CLAY" -> i18n.get("nest.mat.earth", "Terre / Argile & Humus");
+            case "BEESWAX", "WAX" -> i18n.get("nest.mat.beeswax", "Cire d'Abeille Sécrétée");
+            case "PROPOLIS" -> i18n.get("nest.mat.propolis", "Propolis & Résines Végétales");
+            case "CARTON_PULP", "CARTON" -> i18n.get("nest.mat.carton", "Carton Ligneux Mâché");
+            case "WOOD_PULP_PAPER", "PAPER" -> i18n.get("nest.mat.paper", "Papier Cartonné Vespien");
+            case "STERCORAL_CEMENT" -> i18n.get("nest.mat.stercoral", "Ciment Stercoral / Salivaire");
+            case "SILK_WEAVE", "SILK" -> i18n.get("nest.mat.silk", "Soie Larvaire Tissée");
+            case "TREE_BRANCH", "BARK" -> i18n.get("nest.mat.bark", "Écorce & Rameaux Végétaux");
+            case "TREE_LEAF", "LEAF" -> i18n.get("nest.mat.leaf", "Feuilles Vertes Assemblées");
+            case "TREE_TRUNK", "WOOD" -> i18n.get("nest.mat.hollow_wood", "Bois Creusé & Tronc Mort");
+            case "WOOD_PLANK" -> i18n.get("nest.mat.planks", "Planches de Bois Raboté");
+            case "LIVING_INSECT_BODIES", "BIVOUAC" -> i18n.get("nest.mat.bivouac", "Corps Entrelacés des Ouvrières");
+
+            case "UNDERGROUND_BURROW", "BURROW_UNDERGROUND", "SUBTERRANEAN_BURROW", "BURROW", "SIMPLE",
+                 "WAX_COMB_HEXAGONAL", "WAX_POTS_CLUSTER", "PAPER_PEDUNCULATE", "CATHEDRAL_MOUND",
+                 "ARBOREAL_SILK_LEAF", "SUBTERRANEAN_FUNGI_VAULT", "CARTON_NEST", "BAMBOO_STEM_NEST",
+                 "BIVOUAC_LIVING_NEST", "MOUND", "TREE", "MATURE", "MATURE_BURROW", "SUBTERRANEAN" -> getNestTypeTitle(u);
 
             default -> val;
         };

@@ -7,6 +7,7 @@ echo ========================================
 echo.
 
 cd /d "%~dp0.."
+if "%MAVEN_OPTS%"=="" set "MAVEN_OPTS=-Xmx4g -XX:+UseG1GC"
 
 echo [1/2] Ensuring Infrastructure is UP...
 docker-compose up -d postgres redis 2>nul

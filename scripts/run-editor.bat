@@ -11,6 +11,7 @@ cd /d "%~dp0.."
 set DEBUG_OPT=
 set HEADLESS_OPT=
 set PASSED_ARGS=
+if "%MAVEN_OPTS%"=="" set "MAVEN_OPTS=-Xmx4g -XX:+UseG1GC"
 
 :parse_args
 if "%~1"=="" goto run_editor
