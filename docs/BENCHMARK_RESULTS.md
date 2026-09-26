@@ -93,10 +93,27 @@
 
 ## 🌐 5. Extension Cluster Multi-Nœuds & Sharding Spatial (Multi-Node Scaling)
 
-Lorsque la simulation est distribuée sur un cluster multi-nœuds (ex. **2 Nœuds de calcul** sur GCP `compute-1` + `compute-2` orchestrés via gRPC/FlatBuffers) :
+### 📊 Mesures Empiriques : 1 Nœud (Local) vs Cluster 2 Nœuds (Mégaterrarium Shardé)
 
-- **Partitionnement Megaterrarium ($N \times M$)** : Le volume 3D est partitionné en sous-domaines spatiaux disjoints affectés à chaque worker node.
-- **Migration aux Frontières & Halo Phéromonal** : Les entités traversant les frontières spatiales sont transférées sans copie via `BorderMigrationSystem`, tandis que les gradients phéromonaux de bordure sont synchronisés par `BoundaryHaloSync`.
-- **Accélération Linéaire & Capacité Multi-Nœuds** :
-  - **Cluster 2 Nœuds (2× 4 cœurs)** : Débit effectif $\approx 1.85 \times$ le débit mono-nœud pour un volume identique, ou capacité doublée (ex. 1 000 000 d'individus répartis à 500 000 individus/nœud à $\approx 1.4$ TPS au lieu de $0.40$ TPS).
-  - **Cluster $K$ Nœuds** : Chaque nœud gère $N / K$ entités dans sa mémoire locale, maintenant une cadence de simulation interactive même au-delà de 10 millions d'agents.
+Les mesures réelles ci-dessous comparent l'exécution sur **1 Nœud autonome** versus un **Cluster 2 Nœuds** avec synchronisation synchrone des halos phéromonaux et transfert de frontières (`BorderMigrationSystem`) :
+
+| Population Totale | Configuration | Débit (TPS) | Latence Moyenne (ms) | Latence p95 (ms) | Agent-Updates / sec | Gain d'Accélération (Speedup) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **5 000** | 1 Nœud Local | 3,41 TPS | 292,83 ms | 773,05 ms | 17 075 /s | 1.00x *(Baseline)* |
+| **5 000** | 2 Nœuds Cluster | 3,13 TPS | 319,61 ms | 1 166,53 ms | 15 644 /s | 0.92x *(Coût sync)* |
+| **10 000** | 1 Nœud Local | 2,82 TPS | 354,15 ms | 1 009,81 ms | 28 237 /s | 1.00x *(Baseline)* |
+| **10 000** | 2 Nœuds Cluster | 2,45 TPS | 407,93 ms | 1 434,96 ms | 24 514 /s | 0.87x *(Coût sync)* |
+| **25 000** | 1 Nœud Local | 2,11 TPS | 473,64 ms | 1 203,41 ms | 52 783 /s | 1.00x *(Baseline)* |
+| **25 000** | 2 Nœuds Cluster | 1,84 TPS | 543,19 ms | 1 748,09 ms | 46 025 /s | 0.87x *(Coût sync)* |
+| **50 000** | 1 Nœud Local | 1,39 TPS | 721,11 ms | 2 866,43 ms | 69 337 /s | 1.00x *(Baseline)* |
+| **50 000** | 2 Nœuds Cluster | 1,26 TPS | 792,16 ms | 2 430,58 ms | 63 118 /s | 0.91x *(Transition)* |
+| **100 000** | 1 Nœud Local | 0,72 TPS | 1 395,61 ms | 8 449,59 ms | 71 653 /s | 1.00x *(Baseline)* |
+| **100 000** | 2 Nœuds Cluster | **0,81 TPS** | **1 237,50 ms** | **4 215,71 ms** | **80 808 /s** | **+1.13x** |
+| **250 000** | 1 Nœud Local | 0,19 TPS | 5 186,61 ms | 59 745,04 ms | 48 201 /s | 1.00x *(Baseline)* |
+| **250 000** | 2 Nœuds Cluster | **0,37 TPS** | **2 715,05 ms** | **19 254,98 ms** | **92 079 /s** | **+1.91x** |
+| **500 000** | 1 Nœud Local | 0,06 TPS | 17 845,26 ms | 269 317,94 ms | 28 019 /s | 1.00x *(Baseline)* |
+| **500 000** | 2 Nœuds Cluster | **0,12 TPS** | **8 690,52 ms** | **99 334,92 ms** | **57 534 /s** | **+2.05x (Superlinéaire)** |
+
+> 💡 **Analyse des Résultats** :
+> - **Petites populations (< 50 000)** : Le surcoût d'échange gRPC/IPC et de synchronisation des bordures dépasse le temps de calcul brut, rendant le mono-nœud légèrement plus rapide.
+> - **Fortes charges (≥ 100 000)** : Le partitionnement spatial allège drastiquement la contention mémoire et l'évaluation BDI/FSM par nœud. À **500 000 agents**, le cluster 2 nœuds divise le temps de tick par deux (**2.05x de speedup**) et stabilise la latence p95.

@@ -938,6 +938,14 @@ public class Colony implements java.io.Serializable {
     }
 
     /**
+     * Remove an individual (e.g. for cross-terrarium migration).
+     */
+    public boolean removeIndividual(Individual individual) {
+        if (individual == null) return false;
+        return individuals.remove(individual);
+    }
+
+    /**
      * Get count of individuals by caste.
      */
     public int countByCaste(Individual.Caste caste) {
