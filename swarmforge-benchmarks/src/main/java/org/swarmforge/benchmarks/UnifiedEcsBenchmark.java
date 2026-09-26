@@ -18,10 +18,10 @@ public class UnifiedEcsBenchmark {
         System.out.println(" SwarmForge v1.0.0-beta.1 Unified ECS Performance Benchmark");
         System.out.println("=================================================");
 
-        // Populations: 1k → 10k → 50k → 100k → 500k → 1M
-        int[] testPopulations = {1_000, 10_000, 50_000, 100_000, 500_000, 1_000_000};
-        int warmupTicks   = 10;
-        int benchmarkTicks = 50;
+        // Populations requested: 5k, 10k, 20k, 50k, 100k, 200k, 500k, 1M, 1.5M, 2M
+        int[] testPopulations = {5_000, 10_000, 20_000, 50_000, 100_000, 200_000, 500_000, 1_000_000, 1_500_000, 2_000_000};
+        int warmupTicks   = 5;
+        int benchmarkTicks = 30;
         float dt = 0.016666667f; // 60 Hz
 
         for (int popSize : testPopulations) {

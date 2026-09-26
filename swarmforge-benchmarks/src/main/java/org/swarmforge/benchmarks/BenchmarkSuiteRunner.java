@@ -154,6 +154,66 @@ public class BenchmarkSuiteRunner {
         markdownBuffer.add("\n> **Technical Note**: On systems without discrete GPU acceleration, Non-Headless GUI mode utilizes CPU software rasterization for 3D/2D views. Headless mode isolates pure simulation compute capacity for maximum throughput.\n");
 
         // ---------------------------------------------------------------------------------
+        // PHASE 4: Massive Population Scaling (Unified ECS Engine: 5K -> 2M Entities)
+        // ---------------------------------------------------------------------------------
+        System.out.println(">>> PHASE 4: BENCHMARKING MASSIVE POPULATION SCALING (5K -> 2M INDIVIDUALS) <<<");
+        int[] massivePopulations = { 5_000, 10_000, 20_000, 50_000, 100_000, 200_000, 500_000, 1_000_000, 1_500_000, 2_000_000 };
+        float deltaStep = 0.016666667f;
+
+        markdownBuffer.add("## 🚀 4. Massive Population Scaling Benchmarks (5,000 to 2,000,000 Individuals)\n");
+        markdownBuffer.add("| Population | Entities / Agents | TPS (ticks/s) | Avg Latency (ms) | p95 Latency (ms) | Agent-Updates / sec | Heap Memory (MB) |");
+        markdownBuffer.add("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |");
+
+        System.out.printf("%-12s | %-14s | %-14s | %-14s | %-20s | %-12s%n",
+                "Population", "TPS (ticks/s)", "Avg Lat (ms)", "p95 Lat (ms)", "Agent-Updates/s", "Heap (MB)");
+        System.out.println("------------------------------------------------------------------------------------------------------");
+
+        for (int popSize : massivePopulations) {
+            System.gc();
+            try { Thread.sleep(80); } catch (InterruptedException ignored) {}
+            long memBefore = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
+
+            org.swarmforge.core.ecs.EcsWorldManager ecsManager = new org.swarmforge.core.ecs.EcsWorldManager();
+            java.util.UUID colonyId = java.util.UUID.randomUUID();
+            ecsManager.getColonyFactory().createWorkersBatch(colonyId, popSize, 50f, 50f, 0f, null);
+
+            // Warmup
+            int warmup = (popSize >= 1_000_000) ? 2 : 5;
+            for (int w = 0; w < warmup; w++) {
+                ecsManager.step(deltaStep);
+            }
+
+            // Measure
+            int measured = (popSize >= 1_500_000) ? 10 : ((popSize >= 500_000) ? 15 : 25);
+            long[] tickNanos = new long[measured];
+            long startPhase = System.nanoTime();
+
+            for (int t = 0; t < measured; t++) {
+                long tStart = System.nanoTime();
+                ecsManager.step(deltaStep);
+                tickNanos[t] = System.nanoTime() - tStart;
+            }
+            long totalNanos = System.nanoTime() - startPhase;
+
+            long memAfter = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
+            long heapUsed = Math.max(0, memAfter - memBefore);
+
+            java.util.Arrays.sort(tickNanos);
+            double tps = (measured * 1_000_000_000.0) / totalNanos;
+            double avgLatMs = (totalNanos / (double) measured) / 1_000_000.0;
+            double p95LatMs = tickNanos[(int) (measured * 0.95)] / 1_000_000.0;
+            double agentUpdatesPerSec = (popSize * (double) measured) / (totalNanos / 1_000_000_000.0);
+
+            System.out.printf("%-12d | %-14.2f | %-14.4f | %-14.4f | %,20.0f | %-12d%n",
+                    popSize, tps, avgLatMs, p95LatMs, agentUpdatesPerSec, heapUsed);
+
+            markdownBuffer.add(String.format("| %,d | %,d ants | %.2f | %.4f | %.4f | %,.0f | %d MB |",
+                    popSize, popSize, tps, avgLatMs, p95LatMs, agentUpdatesPerSec, heapUsed));
+        }
+        System.out.println();
+        markdownBuffer.add("\n");
+
+        // ---------------------------------------------------------------------------------
         // Write Markdown Benchmark Report
         // ---------------------------------------------------------------------------------
         try {

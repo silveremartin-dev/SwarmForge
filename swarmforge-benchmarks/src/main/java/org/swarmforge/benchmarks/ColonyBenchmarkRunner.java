@@ -38,15 +38,15 @@ public class ColonyBenchmarkRunner {
         System.out.println("PredatorManager, TerritoryManager, BDI/FSM Cognitive Brains, Construction.      ");
         System.out.println("-------------------------------------------------------------------------------\n");
 
-        int[] colonySizes = { 100, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000 };
-        int warmupTicks = 20;
+        int[] colonySizes = { 5_000, 10_000, 20_000, 50_000, 100_000, 200_000, 500_000, 1_000_000, 1_500_000, 2_000_000 };
+        int warmupTicks = 5;
 
         System.out.printf("%-12s | %-12s | %-14s | %-12s | %-12s | %-12s%n",
                 "Colony Size", "TPS (ticks/s)", "Avg Latency (ms)", "Min (ms)", "p95 (ms)", "Max (ms)");
         System.out.println("---------------------------------------------------------------------------------");
 
         for (int size : colonySizes) {
-            int ticksToMeasure = (size >= 250_000) ? 30 : ((size >= 50_000) ? 50 : 150);
+            int ticksToMeasure = (size >= 1_000_000) ? 15 : ((size >= 200_000) ? 25 : 50);
             runBenchmarkForSize(size, warmupTicks, ticksToMeasure);
         }
 

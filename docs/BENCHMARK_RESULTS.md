@@ -7,61 +7,77 @@
 | **Operating System** | Windows 11 10.0 (amd64) |
 | **Java Runtime** | 25 (Oracle Corporation) |
 | **CPU Cores** | 4 Threads / Logical Cores |
-| **System RAM / JVM** | 5068 MB Max Heap |
+| **System RAM / JVM** | 8192 MB Max Heap |
 | **GPU Acceleration** | *Integrated Graphics / CPU Software Renderer (No Dedicated GPU)* |
 
 ## 🐜 1. Species Comparative Performance & Scaling
 
 | Species Name | Scientific Name | Population | TPS (ticks/s) | Avg Latency (ms) | p95 Latency (ms) | Memory (MB) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| Black Garden Ant | *Lasius niger* | 100 | 123,22 | 8,1150 | 41,4247 | 112 MB |
-| Black Garden Ant | *Lasius niger* | 500 | 79,69 | 12,5481 | 64,4241 | 209 MB |
-| Black Garden Ant | *Lasius niger* | 1 000 | 72,95 | 13,7073 | 70,2887 | 205 MB |
-| Black Garden Ant | *Lasius niger* | 2 500 | 38,99 | 25,6429 | 229,7813 | 224 MB |
-| Black Garden Ant | *Lasius niger* | 5 000 | 25,69 | 38,9210 | 602,3663 | 419 MB |
-| Wood Ant | *Formica rufa* | 100 | 275,77 | 3,6254 | 12,6994 | 224 MB |
-| Wood Ant | *Formica rufa* | 500 | 322,05 | 3,1041 | 8,3966 | 323 MB |
-| Wood Ant | *Formica rufa* | 1 000 | 216,24 | 4,6229 | 23,3210 | 362 MB |
-| Wood Ant | *Formica rufa* | 2 500 | 68,46 | 14,6053 | 168,2684 | 564 MB |
-| Wood Ant | *Formica rufa* | 5 000 | 27,69 | 36,1126 | 508,8555 | 388 MB |
-| Leafcutter Ant | *Atta cephalotes* | 100 | 369,45 | 2,7055 | 6,2542 | 340 MB |
-| Leafcutter Ant | *Atta cephalotes* | 500 | 176,59 | 5,6604 | 22,5223 | 438 MB |
-| Leafcutter Ant | *Atta cephalotes* | 1 000 | 145,92 | 6,8511 | 60,4411 | 476 MB |
-| Leafcutter Ant | *Atta cephalotes* | 2 500 | 58,88 | 16,9808 | 163,4328 | 677 MB |
-| Leafcutter Ant | *Atta cephalotes* | 5 000 | 32,85 | 30,4388 | 470,8100 | 601 MB |
-| Fire Ant | *Solenopsis invicta* | 100 | 1013,30 | 0,9858 | 4,5224 | 458 MB |
-| Fire Ant | *Solenopsis invicta* | 500 | 667,33 | 1,4975 | 4,9163 | 562 MB |
-| Fire Ant | *Solenopsis invicta* | 1 000 | 315,63 | 3,1665 | 16,2427 | 599 MB |
-| Fire Ant | *Solenopsis invicta* | 2 500 | 88,61 | 11,2842 | 119,4025 | 794 MB |
-| Fire Ant | *Solenopsis invicta* | 5 000 | 32,08 | 31,1720 | 464,3814 | 679 MB |
-| Black Carpenter Ant | *Camponotus pennsylvanicus* | 100 | 1154,69 | 0,8610 | 3,3844 | 579 MB |
-| Black Carpenter Ant | *Camponotus pennsylvanicus* | 500 | 578,46 | 1,7275 | 5,1619 | 680 MB |
-| Black Carpenter Ant | *Camponotus pennsylvanicus* | 1 000 | 227,23 | 4,3987 | 17,3772 | 719 MB |
-| Black Carpenter Ant | *Camponotus pennsylvanicus* | 2 500 | 78,35 | 12,7612 | 152,6890 | 917 MB |
-| Black Carpenter Ant | *Camponotus pennsylvanicus* | 5 000 | 29,99 | 33,3371 | 498,6719 | 897 MB |
-| Western Honey Bee | *Apis mellifera* | 100 | 899,75 | 1,1102 | 5,5505 | 695 MB |
-| Western Honey Bee | *Apis mellifera* | 500 | 241,12 | 4,1446 | 16,8787 | 797 MB |
-| Western Honey Bee | *Apis mellifera* | 1 000 | 209,38 | 4,7732 | 21,5971 | 836 MB |
-| Western Honey Bee | *Apis mellifera* | 2 500 | 92,06 | 10,8607 | 125,8539 | 1031 MB |
-| Western Honey Bee | *Apis mellifera* | 5 000 | 29,65 | 33,7198 | 501,4450 | 1239 MB |
+| Black Garden Ant | *Lasius niger* | 100 | 204,42 | 4,8909 | 16,0908 | 180 MB |
+| Black Garden Ant | *Lasius niger* | 500 | 153,33 | 6,5208 | 29,3972 | 218 MB |
+| Black Garden Ant | *Lasius niger* | 1 000 | 113,25 | 8,8267 | 42,0624 | 255 MB |
+| Black Garden Ant | *Lasius niger* | 2 500 | 71,02 | 14,0787 | 137,8218 | 355 MB |
+| Black Garden Ant | *Lasius niger* | 5 000 | 31,19 | 32,0570 | 450,9455 | 333 MB |
+| Wood Ant | *Formica rufa* | 100 | 401,40 | 2,4906 | 7,3322 | 235 MB |
+| Wood Ant | *Formica rufa* | 500 | 361,52 | 2,7649 | 10,2815 | 335 MB |
+| Wood Ant | *Formica rufa* | 1 000 | 402,79 | 2,4815 | 13,5238 | 376 MB |
+| Wood Ant | *Formica rufa* | 2 500 | 95,20 | 10,5020 | 120,8363 | 573 MB |
+| Wood Ant | *Formica rufa* | 5 000 | 25,89 | 38,6172 | 601,7467 | 1150 MB |
+| Leafcutter Ant | *Atta cephalotes* | 100 | 972,71 | 1,0276 | 4,2886 | 351 MB |
+| Leafcutter Ant | *Atta cephalotes* | 500 | 331,80 | 3,0118 | 10,7291 | 453 MB |
+| Leafcutter Ant | *Atta cephalotes* | 1 000 | 217,22 | 4,6017 | 34,4729 | 494 MB |
+| Leafcutter Ant | *Atta cephalotes* | 2 500 | 101,47 | 9,8532 | 101,7699 | 691 MB |
+| Leafcutter Ant | *Atta cephalotes* | 5 000 | 21,87 | 45,7322 | 681,0377 | 1264 MB |
+| Fire Ant | *Solenopsis invicta* | 100 | 1037,55 | 0,9627 | 4,1969 | 470 MB |
+| Fire Ant | *Solenopsis invicta* | 500 | 600,06 | 1,6649 | 5,1636 | 571 MB |
+| Fire Ant | *Solenopsis invicta* | 1 000 | 236,60 | 4,2240 | 22,2978 | 610 MB |
+| Fire Ant | *Solenopsis invicta* | 2 500 | 22,22 | 45,0092 | 299,3245 | 804 MB |
+| Fire Ant | *Solenopsis invicta* | 5 000 | 10,91 | 91,6932 | 1544,0723 | 1366 MB |
+| Black Carpenter Ant | *Camponotus pennsylvanicus* | 100 | 1799,18 | 0,5554 | 2,9676 | 588 MB |
+| Black Carpenter Ant | *Camponotus pennsylvanicus* | 500 | 849,86 | 1,1758 | 3,8721 | 689 MB |
+| Black Carpenter Ant | *Camponotus pennsylvanicus* | 1 000 | 334,69 | 2,9863 | 16,8221 | 728 MB |
+| Black Carpenter Ant | *Camponotus pennsylvanicus* | 2 500 | 82,93 | 12,0569 | 152,1118 | 928 MB |
+| Black Carpenter Ant | *Camponotus pennsylvanicus* | 5 000 | 21,36 | 46,8039 | 748,0578 | 1500 MB |
+| Western Honey Bee | *Apis mellifera* | 100 | 1307,69 | 0,7639 | 3,5387 | 706 MB |
+| Western Honey Bee | *Apis mellifera* | 500 | 180,99 | 5,5205 | 19,3616 | 807 MB |
+| Western Honey Bee | *Apis mellifera* | 1 000 | 277,40 | 3,6031 | 14,2010 | 846 MB |
+| Western Honey Bee | *Apis mellifera* | 2 500 | 97,83 | 10,2204 | 111,6712 | 1040 MB |
+| Western Honey Bee | *Apis mellifera* | 5 000 | 23,69 | 42,2086 | 661,8707 | 1602 MB |
 
 
 ## 🌐 2. Full 3D Virtual World Scenario Benchmarks
 
 | Scenario Name | Species | Nest Architecture | Entities | TPS (ticks/s) | Avg Latency (ms) | p95 Latency (ms) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| Jardin Tempéré (Lasius niger) | Lasius niger | Terrier Souterrain | 1 000 | 55,46 | 18,0300 | 125,9111 |
-| Forêt Épicéa (Formica rufa) | Formica rufa | Dôme de Pin | 2 500 | 44,89 | 22,2718 | 132,8745 |
-| Jungle Tropicale (Atta cephalotes) | Atta cephalotes | Chambres Fongiques | 3 500 | 48,30 | 20,7028 | 112,2270 |
-| Supercolonie Aride (Solenopsis invicta) | Solenopsis invicta | Supercolonie Mature | 5 000 | 31,98 | 31,2637 | 243,8492 |
+| Jardin Tempéré (Lasius niger) | Lasius niger | Terrier Souterrain | 1 000 | 81,30 | 12,2981 | 42,4487 |
+| Forêt Épicéa (Formica rufa) | Formica rufa | Dôme de Pin | 2 500 | 90,67 | 11,0257 | 55,1971 |
+| Jungle Tropicale (Atta cephalotes) | Atta cephalotes | Chambres Fongiques | 3 500 | 69,57 | 14,3725 | 77,5488 |
+| Supercolonie Aride (Solenopsis invicta) | Solenopsis invicta | Supercolonie Mature | 5 000 | 44,30 | 22,5730 | 236,3822 |
 
 
 ## 🖥️ 3. Headless vs Non-Headless (GUI 3D Interface) Mode Comparison
 
 | Execution Mode | Entities | TPS (ticks/s) | FPS (Render) | Avg Latency (ms) | p95 Latency (ms) | GUI Overhead |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Headless (Backend Compute)** | 2 000 | 81,68 | N/A | 12,2390 | 27,4057 | Baseline (0%) |
-| **Non-Headless (GUI Interface Graphique 3D)** | 2 000 | 9,65 | 11,2 FPS | 103,6780 | 183,5510 | **+88,19% Overhead** |
+| **Headless (Backend Compute)** | 2 000 | 108,53 | N/A | 9,2116 | 11,3737 | Baseline (0%) |
+| **Non-Headless (GUI Interface Graphique 3D)** | 2 000 | 131,74 | 152,4 FPS | 7,5907 | 18,4748 | **+-21,38% Overhead** |
 
 > **Technical Note**: On systems without discrete GPU acceleration, Non-Headless GUI mode utilizes CPU software rasterization for 3D/2D views. Headless mode isolates pure simulation compute capacity for maximum throughput.
+
+## 🚀 4. Massive Population Scaling Benchmarks (5,000 to 2,000,000 Individuals)
+
+| Population | Entities / Agents | TPS (ticks/s) | Avg Latency (ms) | p95 Latency (ms) | Agent-Updates / sec | Heap Memory (MB) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 5 000 | 5 000 ants | 53,24 | 18,7820 | 75,8948 | 266 213 | 220 MB |
+| 10 000 | 10 000 ants | 23,88 | 41,8811 | 192,7253 | 238 771 | 387 MB |
+| 20 000 | 20 000 ants | 19,72 | 50,7022 | 248,6791 | 394 460 | 721 MB |
+| 50 000 | 50 000 ants | 8,94 | 111,8237 | 559,4301 | 447 132 | 130 MB |
+| 100 000 | 100 000 ants | 4,12 | 242,7875 | 1178,6491 | 411 883 | 378 MB |
+| 200 000 | 200 000 ants | 2,15 | 464,6135 | 2260,5383 | 430 465 | 192 MB |
+| 500 000 | 500 000 ants | 0,76 | 1321,5526 | 6644,0627 | 378 343 | 956 MB |
+| 1 000 000 | 1 000 000 ants | 0,40 | 2519,0284 | 12791,5013 | 396 978 | 1828 MB |
+| 1 500 000 | 1 500 000 ants | 0,22 | 4638,8122 | 26105,0317 | 323 359 | 1176 MB |
+| 2 000 000 | 2 000 000 ants | 0,19 | 5374,5357 | 26724,4001 | 372 125 | 2578 MB |
+
 

@@ -127,6 +127,28 @@ SwarmForge v2.0 includes a comprehensive distributed architecture for multi-clie
 
 ---
 
+## 📊 High-Performance Simulation & Benchmarks (Up to 2,000,000 Entities)
+
+SwarmForge achieves industry-leading simulation throughput via its zero-allocation Unified ECS pipeline (`com.artemis-odb`), Morton3D spatial hashing, and hybrid multi-threading:
+
+| Scale (Individuals) | Pure ECS Throughput (TPS) | Tick Latency (Avg) | Agent-Updates / sec | JVM Heap Footprint |
+| :--- | :--- | :--- | :--- | :--- |
+| **5 000** | 53.2 TPS | 18.78 ms | **266 213** /s | 220 MB |
+| **10 000** | 23.9 TPS | 41.88 ms | **238 771** /s | 387 MB |
+| **20 000** | 19.7 TPS | 50.70 ms | **394 460** /s | 721 MB |
+| **50 000** | 8.94 TPS | 111.82 ms | **447 132** /s | 130 MB |
+| **100 000** | 4.12 TPS | 242.79 ms | **411 883** /s | 378 MB |
+| **200 000** | 2.15 TPS | 464.61 ms | **430 465** /s | 192 MB |
+| **500 000** | 0.76 TPS | 1.32 s | **378 343** /s | 956 MB |
+| **1 000 000** | 0.40 TPS | 2.52 s | **396 978** /s | 1 828 MB |
+| **1 500 000** | 0.22 TPS | 4.64 s | **323 359** /s | 1 176 MB |
+| **2 000 000** | 0.19 TPS | 5.37 s | **372 125** /s | 2 578 MB |
+
+👉 *Full detailed multi-species breakdowns, 3D scenario benchmarks, and Headless vs GUI metrics are available in [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md).*
+👉 *Cloud deployment and batch execution guide on GCP available in [docs/GCP_DEPLOYMENT_GUIDE.md](docs/GCP_DEPLOYMENT_GUIDE.md).*
+
+---
+
 ## 🚀 Instant Download & Quick Start
 
 ### ⚡ 1. Autonomous Standalone Release (Zero Prerequisites / No Java Needed)
