@@ -157,7 +157,7 @@ public class BenchmarkSuiteRunner {
         // Write Markdown Benchmark Report
         // ---------------------------------------------------------------------------------
         try {
-            File docsDir = new File("c:/Silvere/Encours/Developpement/SwarmForge/docs");
+            File docsDir = new File("docs");
             docsDir.mkdirs();
             File reportFile = new File(docsDir, "BENCHMARK_RESULTS.md");
             try (PrintWriter out = new PrintWriter(new FileWriter(reportFile))) {

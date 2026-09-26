@@ -52,7 +52,8 @@ public class SplashScreen {
         splashStage = new Stage();
         splashStage.initStyle(StageStyle.TRANSPARENT);
 
-        if (owner != null) {
+        // Do not attach unshown owner stage as it hides the splash window under Win32 / Glass
+        if (owner != null && owner.isShowing()) {
             splashStage.initOwner(owner);
         }
 
@@ -215,6 +216,8 @@ public class SplashScreen {
     public void show() {
         splashStage.show();
         splashStage.centerOnScreen();
+        splashStage.toFront();
+        splashStage.requestFocus();
     }
 
     /**

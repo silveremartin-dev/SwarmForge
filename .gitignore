@@ -1,18 +1,37 @@
+# ==============================================================================
+# SwarmForge .gitignore
+# ==============================================================================
+
+# Build & Compilation outputs
 **/target/
 **/*.class
 **/*.log
-.idea/
-**/*.iml
-.DS_Store
 **/*.jar
 **/*.war
 **/*.ear
 **/node_modules/
 **/dist/
+**/dist-app/
 **/build/
-.vscode/
+**/bin/
+**/dependency-reduced-pom.xml
+dependency-reduced-pom.xml
 
-# Secrets and Credentials
+# IDE & Editor files
+.idea/
+**/*.iml
+.vscode/
+.project
+.classpath
+.settings/
+.DS_Store
+Thumbs.db
+hs_err_pid*.log
+
+# Documentation build outputs
+**/javadoc/
+
+# Secrets, Keys and Cloud Credentials
 .env
 .env.*
 *.env
@@ -24,12 +43,33 @@
 *.jks
 credentials.json
 secrets.json
-**/javadoc/
+*credentials*.json
+*service-account*.json
+*gcp*.json
+google-credentials*.json
+client_secret*.json
+id_rsa*
+*.id_rsa
+*.pub
 
-# Media test outputs
+# Database Dumps, State Exports & Checkpoint Dumps
+*.sql
+*.dump
+*.rdb
+*.snapshot
+snapshots_export.sql
+export_*.sql
+backup_*.sql
+
+# Benchmark outputs and Profiles
+BENCHMARK_REPORT.md
+*.prof
+*.hprof
+**/benchmarks_output/
+
+# Media test outputs & captures
 *.mp4
 captures/
 logs/
 **/logs/
 in/
-

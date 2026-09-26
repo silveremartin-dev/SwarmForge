@@ -1,4 +1,4 @@
-﻿# SwarmForge Communication & Launch Kit (`/docs/posts`)
+# SwarmForge Communication & Launch Kit (`/docs/posts`)
 
 This folder contains ready-to-publish social media announcements and community posts for the release of **SwarmForge v2.0** and its autonomous standalone distribution packages.
 
@@ -33,8 +33,8 @@ When posting to Reddit or LinkedIn, attach the high-resolution screenshots from 
 ## 🚀 Release Packaging Links
 
 - **Standalone Portable Windows Bundle (Embedded JRE, 0 Prerequisites)**:
-  `SwarmForge-v2.0.0-Windows-x64-Standalone.zip` (available in GitHub Releases)
+  `SwarmForge-v1.0.0-beta.1-Windows-x64-Standalone.zip` (available in GitHub Releases)
 - **Headless Server & Multi-Node Cluster Package**:
-  `SwarmForge-v2.0.0-Server-CrossPlatform.zip`
+  `SwarmForge-v1.0.0-beta.1-Server-CrossPlatform.zip`
 - **Docker Instant Run**:
   `docker compose up -d`

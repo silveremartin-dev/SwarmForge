@@ -1,16 +1,29 @@
 apiVersion: v2
 name: swarmforge
-description: A Helm chart for deploying the SwarmForge ecosystem
+description: Helm chart for deploying the SwarmForge Eusocial Insect Simulation Platform (Server, Compute Workers, Web Dashboard, Database & Cache)
 type: application
-version: 0.1.0
-appVersion: "2.0.0"
+version: 1.0.0-beta.1
+appVersion: "1.0.0-beta.1"
+keywords:
+  - swarmforge
+  - simulation
+  - eusocial
+  - grpc
+  - threejs
+  - high-performance
+home: https://github.com/swarmforge/swarmforge
+sources:
+  - https://github.com/swarmforge/swarmforge
+maintainers:
+  - name: Silvère Martin-Michiellot
+    email: silvere@swarmforge.org
 
 dependencies:
   - name: postgresql
-    version: 12.5.1
+    version: 15.5.24
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
   - name: redis
-    version: 17.11.3
+    version: 19.6.4
     repository: https://charts.bitnami.com/bitnami
     condition: redis.enabled

@@ -16,7 +16,7 @@
 
 ## Diplomacy Actions
 
-New in v2.0.0.
+New in v1.0.0-beta.1.
 
 ### DiplomacyAction
 

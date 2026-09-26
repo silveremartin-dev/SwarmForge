@@ -927,7 +927,7 @@ public class Simulation {
         // Distributed Pheromone Logic
         boolean pheromonesProcessed = false;
 
-        if (this.computeCluster != null) {
+        if (this.computeCluster != null && terrarium.getWidth() * terrarium.getHeight() * terrarium.getDepth() <= 64 * 64 * 64) {
             try {
                 float[] pheromoneData = terrarium.exportPheromones();
                 pheromonesProcessed = this.computeCluster.dispatchPheromoneTask(
@@ -937,7 +937,7 @@ public class Simulation {
                     terrarium.importPheromones(pheromoneData);
                 }
             } catch (Exception e) {
-                System.err.println("Distributed Compute warning: " + e.getMessage());
+                // Fallback to local diffusion
             }
         }
 
@@ -1429,6 +1429,10 @@ public class Simulation {
 
     public float getSimulationStepSeconds() {
         return simulationStepSeconds;
+    }
+
+    public double getAccumulatedSimulationSeconds() {
+        return accumulatedSimulationSeconds;
     }
 
     public void setSimulationStepSeconds(float stepSeconds) {

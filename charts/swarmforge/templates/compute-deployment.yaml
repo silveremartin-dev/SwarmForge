@@ -1,0 +1,48 @@
+{{- if .Values.compute.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "swarmforge.compute.fullname" . }}
+  labels:
+    {{- include "swarmforge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: compute
+spec:
+  {{- if not .Values.compute.autoscaling.enabled }}
+  replicas: {{ .Values.compute.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "swarmforge.compute.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "swarmforge.compute.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: compute
+          image: "{{ .Values.global.imageRegistry }}{{ .Values.compute.image.repository }}:{{ .Values.compute.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.compute.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "swarmforge.fullname" . }}-config
+          resources:
+            {{- toYaml .Values.compute.resources | nindent 12 }}
+      {{- with .Values.compute.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.compute.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.compute.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

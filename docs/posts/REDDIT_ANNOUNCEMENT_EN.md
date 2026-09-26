@@ -1,4 +1,4 @@
-﻿# Reddit Announcement (English)
+# Reddit Announcement (English)
 
 **Suggested Subreddits:**
 - `r/cellular_automata`
@@ -60,7 +60,7 @@ Key capabilities include:
 You **do NOT need Java, Maven, or any build tools installed**. SwarmForge v2.0 comes bundled with its own optimized standalone runtime:
 
 1. **Download the Windows Standalone Bundle**:
-   👉 [SwarmForge-v2.0.0-Windows-x64-Standalone.zip](https://github.com/swarmforge/swarmforge/releases)
+   👉 [SwarmForge-v1.0.0-beta.1-Windows-x64-Standalone.zip](https://github.com/swarmforge/swarmforge/releases)
 2. **Extract anywhere** and double-click `SwarmForge.exe` (or run `Install-Shortcuts.bat` to create Desktop & Start Menu shortcuts).
 3. **Headless & Multi-Node Cluster**: Also available as Docker container (`docker compose up -d`) and cross-platform headless server zip for Linux/macOS.
 

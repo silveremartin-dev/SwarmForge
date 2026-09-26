@@ -833,7 +833,12 @@ public class SimulationAudioManager {
         running.set(false);
         stopAllClips();
         if (line != null && line.isOpen()) {
-            line.close();
+            try {
+                line.close();
+            } catch (Exception ignored) {}
         }
+        try {
+            audioExecutor.shutdownNow();
+        } catch (Exception ignored) {}
     }
 }

@@ -7,8 +7,6 @@ Expand the name of the chart.
 
 {{/*
 Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
 */}}
 {{- define "swarmforge.fullname" -}}
 {{- if .Values.fullnameOverride }}
@@ -21,6 +19,27 @@ If release name contains chart name it will be used as a full name.
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 {{- end }}
+{{- end }}
+
+{{/*
+Server component name
+*/}}
+{{- define "swarmforge.server.fullname" -}}
+{{- printf "%s-server" (include "swarmforge.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Compute component name
+*/}}
+{{- define "swarmforge.compute.fullname" -}}
+{{- printf "%s-compute" (include "swarmforge.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Web component name
+*/}}
+{{- define "swarmforge.web.fullname" -}}
+{{- printf "%s-web" (include "swarmforge.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
@@ -43,7 +62,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Selector labels
+Selector labels (global)
 */}}
 {{- define "swarmforge.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "swarmforge.name" . }}
@@ -51,12 +70,58 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Server selector labels
+*/}}
+{{- define "swarmforge.server.selectorLabels" -}}
+{{ include "swarmforge.selectorLabels" . }}
+app.kubernetes.io/component: server
+{{- end }}
+
+{{/*
+Compute selector labels
+*/}}
+{{- define "swarmforge.compute.selectorLabels" -}}
+{{ include "swarmforge.selectorLabels" . }}
+app.kubernetes.io/component: compute
+{{- end }}
+
+{{/*
+Web selector labels
+*/}}
+{{- define "swarmforge.web.selectorLabels" -}}
+{{ include "swarmforge.selectorLabels" . }}
+app.kubernetes.io/component: web
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "swarmforge.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "swarmforge.fullname" .) .Values.serviceAccount.name }}
+{{- if .Values.server.serviceAccount.create }}
+{{- default (include "swarmforge.server.fullname" .) .Values.server.serviceAccount.name }}
 {{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- default "default" .Values.server.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+{{/*
+PostgreSQL Host
+*/}}
+{{- define "swarmforge.databaseHost" -}}
+{{- if .Values.postgresql.enabled }}
+{{- printf "%s-postgresql" .Release.Name }}
+{{- else }}
+{{- .Values.externalDatabase.host }}
+{{- end }}
+{{- end }}
+
+{{/*
+Redis Host
+*/}}
+{{- define "swarmforge.redisHost" -}}
+{{- if .Values.redis.enabled }}
+{{- printf "%s-redis-master" .Release.Name }}
+{{- else }}
+{{- .Values.externalRedis.host }}
 {{- end }}
 {{- end }}

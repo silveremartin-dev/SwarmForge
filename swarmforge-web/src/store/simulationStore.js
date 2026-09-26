@@ -1843,7 +1843,7 @@ networkClient.onSimulationUpdate((update) => {
                 health: ind.health ?? existing?.health ?? 100,
                 energy: ind.energy ?? existing?.energy ?? 100,
                 carriedItem: ind.carriedItem ?? existing?.carriedItem ?? 'NONE',
-                task: ind.task ?? existing?.task || 'Activité en cours',
+                task: (ind.task ?? existing?.task) || 'Activité en cours',
                 color: ind.color || colony?.color || existing?.color || '#38bdf8'
             }
         })

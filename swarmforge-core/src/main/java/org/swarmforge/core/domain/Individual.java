@@ -79,20 +79,20 @@ public class Individual implements java.io.Serializable, AgentView {
     private float treeClimbHeight = 0.0f;
 
     // Brain
-    private org.swarmforge.core.behavior.ReasoningArchitecture brain;
+    private transient org.swarmforge.core.behavior.ReasoningArchitecture brain;
 
     // Personality & Genetics
     private Personality personality;
     private Genome genome;
     private org.swarmforge.core.genetics.HaplodiploidGenome haplodiploidGenome;
-    private org.swarmforge.core.species.Species species;
+    private transient org.swarmforge.core.species.Species species;
 
     // Memory optimization: Removed per-instance Random
     private AiState state = AiState.IDLE;
     private ResourceType carriedResourceType = null;
 
     // Cognitive LOD & Decision Caching Optimization
-    private Action cachedAction = null;
+    private transient Action cachedAction = null;
     private long lastDecisionTick = -100;
     private int decisionInterval = 6; // Evaluate brain cognitive decision every 6 ticks (10 Hz decision rate at 60 TPS)
 

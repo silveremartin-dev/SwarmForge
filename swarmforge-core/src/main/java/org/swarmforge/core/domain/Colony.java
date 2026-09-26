@@ -39,17 +39,17 @@ public class Colony implements java.io.Serializable {
     private int totalDied;
 
     private final ColonyStatistics statistics = new ColonyStatistics();
-    private final org.swarmforge.core.simulation.TunnelNetwork tunnelNetwork;
-    private final org.swarmforge.core.simulation.FungusGarden fungusGarden;
-    private final org.swarmforge.core.structure.Nest nest; // New Nest Structure
-    private final org.swarmforge.core.diplomacy.DiplomacyManager diplomacyManager;
-    private final org.swarmforge.core.structure.physics.NestVoxelGrid nestVoxelGrid;
-    private final org.swarmforge.core.epidemiology.SocialImmunityManager socialImmunityManager;
-    private final org.swarmforge.core.structure.physics.PassiveVentilationEngine ventilationEngine;
-    private final org.swarmforge.core.structure.physics.StructuralStabilityAnalyzer stabilityAnalyzer;
+    private transient final org.swarmforge.core.simulation.TunnelNetwork tunnelNetwork;
+    private transient final org.swarmforge.core.simulation.FungusGarden fungusGarden;
+    private transient final org.swarmforge.core.structure.Nest nest; // New Nest Structure
+    private transient final org.swarmforge.core.diplomacy.DiplomacyManager diplomacyManager;
+    private transient final org.swarmforge.core.structure.physics.NestVoxelGrid nestVoxelGrid;
+    private transient final org.swarmforge.core.epidemiology.SocialImmunityManager socialImmunityManager;
+    private transient final org.swarmforge.core.structure.physics.PassiveVentilationEngine ventilationEngine;
+    private transient final org.swarmforge.core.structure.physics.StructuralStabilityAnalyzer stabilityAnalyzer;
     private final java.util.Map<UUID, org.swarmforge.core.epidemiology.IndividualInfection> infectionRegistry = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.concurrent.atomic.AtomicLong COLONY_COUNTER = new java.util.concurrent.atomic.AtomicLong(1);
-    private java.util.Random random;
+    private transient java.util.Random random;
 
     public void setRandom(java.util.Random random) {
         this.random = random;
@@ -838,14 +838,25 @@ public class Colony implements java.io.Serializable {
 
     // Listeners
     @com.fasterxml.jackson.annotation.JsonIgnore
-    private final List<ColonyListener> listeners = new CopyOnWriteArrayList<>();
+    private transient List<ColonyListener> listeners = new CopyOnWriteArrayList<>();
+
+    private List<ColonyListener> getListeners() {
+        if (listeners == null) {
+            listeners = new CopyOnWriteArrayList<>();
+        }
+        return listeners;
+    }
 
     public void addListener(ColonyListener listener) {
-        listeners.add(listener);
+        if (listener != null) {
+            getListeners().add(listener);
+        }
     }
 
     public void removeListener(ColonyListener listener) {
-        listeners.remove(listener);
+        if (listener != null) {
+            getListeners().remove(listener);
+        }
     }
 
     public Individual createQueen() {
@@ -876,7 +887,7 @@ public class Colony implements java.io.Serializable {
         individual.setRandom(new java.util.Random(getRandom().nextLong()));
         individuals.add(individual);
         totalBorn++;
-        for (ColonyListener l : listeners) {
+        for (ColonyListener l : getListeners()) {
             l.onBirth(this, individual);
         }
     }
@@ -919,7 +930,7 @@ public class Colony implements java.io.Serializable {
         individuals.removeAll(dead);
         totalDied += dead.size();
         for (Individual ind : dead) {
-            for (ColonyListener l : listeners) {
+            for (ColonyListener l : getListeners()) {
                 l.onDeath(this, ind);
             }
         }

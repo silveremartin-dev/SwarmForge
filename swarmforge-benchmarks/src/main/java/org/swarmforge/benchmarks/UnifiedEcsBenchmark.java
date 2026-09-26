@@ -4,7 +4,7 @@ import org.swarmforge.core.ecs.EcsWorldManager;
 import java.util.UUID;
 
 /**
- * SwarmForge v2.0 Unified ECS Performance Benchmark.
+ * SwarmForge v1.0.0-beta.1 Unified ECS Performance Benchmark.
  * Measures entity throughput, frame latency, ant-updates/sec, and heap footprint
  * across populations from 1,000 to 1,000,000 entities.
  *
@@ -15,7 +15,7 @@ public class UnifiedEcsBenchmark {
 
     public static void main(String[] args) {
         System.out.println("=================================================");
-        System.out.println(" SwarmForge v2.0 Unified ECS Performance Benchmark");
+        System.out.println(" SwarmForge v1.0.0-beta.1 Unified ECS Performance Benchmark");
         System.out.println("=================================================");
 
         // Populations: 1k → 10k → 50k → 100k → 500k → 1M

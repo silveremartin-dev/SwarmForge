@@ -144,6 +144,10 @@ public class SwarmForgeServer {
             database.connect();
             if (database.isConnected()) {
                 LOG.info("Database connected successfully");
+                Simulation sim = getSimulation();
+                if (sim != null) {
+                    saveWorld("Initial World State");
+                }
             } else {
                 LOG.info("Database running in fallback mode");
             }
@@ -162,9 +166,9 @@ public class SwarmForgeServer {
             LOG.warn("Redis connection failed (caching disabled): {}", e.getMessage());
         }
 
-        // TLS Setup (only in online mode)
+        // TLS Setup (enabled when ENABLE_TLS=true)
         SslContext sslContext = null;
-        if (config.dbHost() != null && !config.dbHost().trim().isEmpty()) {
+        if ("true".equalsIgnoreCase(System.getenv("ENABLE_TLS"))) {
             try {
                 SelfSignedCertificate ssc = new SelfSignedCertificate();
                 sslContext = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey())
@@ -178,12 +182,12 @@ public class SwarmForgeServer {
                     sslContext = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey()).build();
                     LOG.info("TLS Enabled using JDK SSL");
                 } catch (Throwable e2) {
-                    LOG.warn("Could not initialize TLS, running insecure: " + e2.getMessage());
+                    LOG.warn("Could not initialize TLS, running plaintext: " + e2.getMessage());
                     sslContext = null;
                 }
             }
         } else {
-            LOG.info("Offline/Test Mode: gRPC Server running in plaintext mode");
+            LOG.info("gRPC Server running in plaintext mode (set ENABLE_TLS=true to activate TLS)");
         }
 
         NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(grpcPort)
@@ -269,6 +273,25 @@ public class SwarmForgeServer {
                     Thread.sleep(50); // 20 updates per second
                 } catch (InterruptedException e) {
                     break;
+                }
+            }
+        });
+
+        // Start Periodic Database Auto-Checkpointer (Every 10 seconds for replays)
+        Thread.ofVirtual().name("db-checkpointer").start(() -> {
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    Thread.sleep(10000);
+                    if (database.isConnected()) {
+                        Simulation sim = getSimulation();
+                        if (sim != null && sim.getState() == Simulation.State.RUNNING) {
+                            saveWorld("Autosave (Tick " + sim.getTickCount() + ")");
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    break;
+                } catch (Exception ex) {
+                    LOG.warn("Auto-checkpoint failed: " + ex.getMessage());
                 }
             }
         });
@@ -408,12 +431,12 @@ public class SwarmForgeServer {
         }
         simulation.addColony(colony);
 
-        // 4. Persistence
+        // 4. Persistence & Start
         if (database.isConnected()) {
             saveWorld(name);
         }
-
-        LOG.info("New world created and ready.");
+        simulation.start();
+        LOG.info("New world created, running and ready.");
     }
 
     public java.util.List<String> getAvailableWorlds() {
@@ -515,9 +538,121 @@ public class SwarmForgeServer {
 
         // 5. Start simulation
         simulation.start();
+        if (database.isConnected()) {
+            saveWorld(scenario.getTitle());
+        }
         LOG.info("Scenario '{}' initialized and running (Colonies: {}, Population: {})",
                 scenario.getTitle(), simulation.getColonies().size(),
                 simulation.getColonies().stream().mapToInt(Colony::getPopulation).sum());
+    }
+
+    /**
+     * Run an autonomous headless batch campaign for scientific experiments,
+     * recording snapshots to disk and database, then exiting.
+     */
+    public void runBatchCampaign(org.swarmforge.core.scenario.Scenario scenario, long targetTicks, String exportDir, int snapshotInterval) {
+        LOG.info("==========================================================");
+        LOG.info("   🐜 SWARMFORGE — HEADLESS BATCH SIMULATION CAMPAIGN     ");
+        LOG.info("==========================================================");
+        LOG.info("Scenario: {} ({})", scenario != null ? scenario.getTitle() : "Demo", scenario != null ? scenario.getId() : "demo");
+        LOG.info("Target Ticks: {} | Snapshot Interval: {} | Export Dir: {}", targetTicks, snapshotInterval, exportDir);
+
+        if (scenario != null) {
+            loadAcademicScenario(scenario);
+        } else {
+            createDemoWorld();
+        }
+
+        Simulation sim = getSimulation();
+        if (sim == null) {
+            LOG.error("No active simulation to run in batch mode!");
+            return;
+        }
+
+        java.io.File dir = new java.io.File(exportDir);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        long startNanos = System.nanoTime();
+        long lastReportNanos = startNanos;
+        long lastReportTick = 0;
+
+        java.util.List<java.util.Map<String, Object>> timeSeriesData = new java.util.ArrayList<>();
+
+        // Start persistence if available
+        try {
+            database.connect();
+        } catch (Exception ignored) {}
+
+        LOG.info("Executing batch simulation ticks...");
+        for (long t = 0; t < targetTicks; t++) {
+            sim.tick();
+
+            long currentTick = sim.getTickCount();
+            if (currentTick % snapshotInterval == 0 || currentTick == targetTicks) {
+                // Record telemetry metrics
+                int totalPop = sim.getColonies().stream().mapToInt(Colony::getPopulation).sum();
+                float totalFood = (float) sim.getColonies().stream().mapToDouble(Colony::getFoodStored).sum();
+                float totalBiomass = (float) sim.getColonies().stream().mapToDouble(Colony::getTotalBiomass).sum();
+
+                java.util.Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
+                snapshot.put("tick", currentTick);
+                snapshot.put("simTimeSeconds", sim.getAccumulatedSimulationSeconds());
+                snapshot.put("population", totalPop);
+                snapshot.put("foodStored", totalFood);
+                snapshot.put("totalBiomass", totalBiomass);
+                snapshot.put("coloniesCount", sim.getColonies().size());
+                timeSeriesData.add(snapshot);
+
+                // Save checkpoint to database
+                if (database.isConnected()) {
+                    try {
+                        saveWorld("Batch Save (Tick " + currentTick + ")");
+                    } catch (Exception ignored) {}
+                }
+
+                // Periodic console progress
+                long now = System.nanoTime();
+                if (now - lastReportNanos >= 2_000_000_000L || currentTick == targetTicks) {
+                    double tps = (currentTick - lastReportTick) / ((now - lastReportNanos) / 1_000_000_000.0);
+                    double progressPct = (currentTick * 100.0) / targetTicks;
+                    LOG.info(String.format(java.util.Locale.US, "Progress: %.1f%% (%d/%d ticks) | Speed: %.1f TPS | Population: %d | Biomass: %.2f g",
+                            progressPct, currentTick, targetTicks, tps, totalPop, totalBiomass));
+                    lastReportNanos = now;
+                    lastReportTick = currentTick;
+                }
+            }
+        }
+
+        long totalNanos = System.nanoTime() - startNanos;
+        double totalSeconds = totalNanos / 1_000_000_000.0;
+        double avgTps = targetTicks / Math.max(0.001, totalSeconds);
+
+        LOG.info("==========================================================");
+        LOG.info("   ✅ BATCH SIMULATION CAMPAIGN COMPLETED                 ");
+        LOG.info("==========================================================");
+        LOG.info(String.format(java.util.Locale.US, "Total Ticks: %d in %.2f s (Average Speed: %.1f TPS)", targetTicks, totalSeconds, avgTps));
+
+        // Export summary JSON
+        try {
+            java.util.Map<String, Object> runReport = new java.util.LinkedHashMap<>();
+            runReport.put("scenarioId", scenario != null ? scenario.getId() : "demo");
+            runReport.put("scenarioTitle", scenario != null ? scenario.getTitle() : "Demo World");
+            runReport.put("totalTicks", targetTicks);
+            runReport.put("elapsedSeconds", totalSeconds);
+            runReport.put("averageTPS", avgTps);
+            runReport.put("finalPopulation", sim.getColonies().stream().mapToInt(Colony::getPopulation).sum());
+            runReport.put("timeSeries", timeSeriesData);
+
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            mapper.enable(com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT);
+            java.io.File reportFile = new java.io.File(dir, "batch_report.json");
+            mapper.writeValue(reportFile, runReport);
+            LOG.info("Batch report exported to: {}", reportFile.getAbsolutePath());
+        } catch (Exception e) {
+            LOG.error("Failed to write batch report JSON: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -597,28 +732,38 @@ public class SwarmForgeServer {
         LOG.info("Saving world: " + name);
         try {
             Simulation simulation = getSimulation();
-            if (simulation == null)
+            if (simulation == null) {
+                LOG.warn("Cannot save world: simulation is null");
                 return;
+            }
+            Terrarium targetTerrarium = simulation.getTerrarium() != null ? simulation.getTerrarium() : this.terrarium;
+            if (targetTerrarium == null) {
+                LOG.warn("Cannot save world: terrarium is null");
+                return;
+            }
 
             org.swarmforge.server.persistence.SimulationSerializer serializer = new org.swarmforge.server.persistence.SimulationSerializer();
 
             // Serialize data
-            byte[] cellsData = serializer.serializeCells(terrarium);
+            byte[] cellsData = serializer.serializeCells(targetTerrarium);
             byte[] coloniesData = serializer.serializeColonies(simulation.getColonies());
-            // Individuals are inside colonies for JSON, but let's check repo expectation
-            // Repo takes separate individuals_data, but our serializer might bundle them.
-            // For now, pass null for separate individuals_data if colonies cover it,
-            // or implement separate serialization if needed.
             byte[] individualsData = serializer.serializeIndividuals(new java.util.ArrayList<>()); // Placeholder
 
             // Save world metadata
             java.util.UUID worldId = database.worldRepository().save(
-                    name, terrarium.getWidth(), terrarium.getHeight(), terrarium.getDepth(),
+                    name, targetTerrarium.getWidth(), targetTerrarium.getHeight(), targetTerrarium.getDepth(),
                     0, 0, 0); // Lat/Long/Alt placeholders
+
+            // Save colonies to colony repository
+            for (Colony col : simulation.getColonies()) {
+                try {
+                    database.colonyRepository().save(col, "System");
+                } catch (Exception ignored) {}
+            }
 
             // Save checkpoint
             database.checkpointRepository().save(
-                    worldId, simulation.getTickCount(), "Manual Save",
+                    worldId, simulation.getTickCount(), name,
                     cellsData, coloniesData, individualsData);
 
             LOG.info("World saved successfully: " + worldId);
@@ -776,18 +921,43 @@ public class SwarmForgeServer {
         boolean createDemo = false;
         boolean listSims = false;
         boolean listScenarios = false;
-        boolean noGui = false;
-        String dbMode = "local"; // default: local H2 fallback
+        boolean batchMode = "true".equalsIgnoreCase(System.getenv("BATCH_MODE")) || "batch".equalsIgnoreCase(System.getenv("MODE"));
+        long batchTicks = 1000;
+        int snapshotInterval = 50;
+        String exportDir = System.getenv().getOrDefault("EXPORT_DIR", "./saves/batch");
+        try {
+            String envTicks = System.getenv("TICKS");
+            if (envTicks != null && !envTicks.isBlank()) batchTicks = Long.parseLong(envTicks);
+        } catch (Exception ignored) {}
+
+        boolean noGui = "true".equalsIgnoreCase(System.getenv("NOGUI")) || Boolean.getBoolean("java.awt.headless") || batchMode;
+        String dbMode = (System.getenv("DB_HOST") != null && !System.getenv("DB_HOST").trim().isEmpty()) ? "postgres" : "local";
         String runSimulation = null;
-        String scenarioArg = null;
+        String scenarioArg = System.getenv("SCENARIO");
         long masterSeed = 42L;
 
         for (int i = 0; i < args.length; i++) {
-            switch (args[i]) {
+            String arg = args[i];
+            if (arg.startsWith("--ticks=")) {
+                batchTicks = Long.parseLong(arg.substring("--ticks=".length()));
+                batchMode = true;
+                continue;
+            }
+            if (arg.startsWith("--scenario=")) {
+                scenarioArg = arg.substring("--scenario=".length());
+                continue;
+            }
+            if (arg.startsWith("--export-dir=")) {
+                exportDir = arg.substring("--export-dir=".length());
+                continue;
+            }
+
+            switch (arg) {
                 case "--help", "-h" -> {
                     printHelp();
                     return;
                 }
+                case "--batch", "--headless" -> batchMode = true;
                 case "--create-demo"         -> createDemo = true;
                 case "--list"               -> listSims = true;
                 case "--list-scenarios"     -> listScenarios = true;
@@ -795,6 +965,22 @@ public class SwarmForgeServer {
                 case "--postgres"           -> dbMode = "postgres";
                 case "--offline"            -> dbMode = "offline";
                 case "--nogui"              -> noGui = true;
+                case "--ticks" -> {
+                    if (i + 1 < args.length) {
+                        batchTicks = Long.parseLong(args[++i]);
+                        batchMode = true;
+                    }
+                }
+                case "--snapshot-interval" -> {
+                    if (i + 1 < args.length) {
+                        snapshotInterval = Integer.parseInt(args[++i]);
+                    }
+                }
+                case "--export-dir" -> {
+                    if (i + 1 < args.length) {
+                        exportDir = args[++i];
+                    }
+                }
                 case "--seed" -> {
                     if (i + 1 < args.length) {
                         try {
@@ -842,7 +1028,7 @@ public class SwarmForgeServer {
                 default         -> ServerConfig.local(); // local = localhost PG → H2 fallback
             };
 
-            LOG.info("Server mode: {} | GUI: {}", dbMode, noGui ? "disabled" : "enabled");
+            LOG.info("Server mode: {} | GUI: {} | Batch: {}", dbMode, noGui ? "disabled" : "enabled", batchMode);
 
             SwarmForgeServer server = new SwarmForgeServer(config);
 
@@ -851,10 +1037,9 @@ public class SwarmForgeServer {
                 return;
             }
 
+            org.swarmforge.core.scenario.Scenario matchedScenario = null;
             if (scenarioArg != null) {
                 var scenarios = org.swarmforge.core.scenario.AcademicScenarios.getAllAcademicScenarios(masterSeed);
-                org.swarmforge.core.scenario.Scenario matchedScenario = null;
-
                 // Try index first (e.g. 1 to 16)
                 try {
                     int idx = Integer.parseInt(scenarioArg);
@@ -874,13 +1059,16 @@ public class SwarmForgeServer {
                         }
                     }
                 }
+            }
 
-                if (matchedScenario != null) {
-                    server.loadAcademicScenario(matchedScenario);
-                } else {
-                    LOG.warn("Scenario '{}' not found. Falling back to demo world.", scenarioArg);
-                    server.createDemoWorld();
-                }
+            if (batchMode) {
+                server.runBatchCampaign(matchedScenario, batchTicks, exportDir, snapshotInterval);
+                System.exit(0);
+                return;
+            }
+
+            if (matchedScenario != null) {
+                server.loadAcademicScenario(matchedScenario);
             } else if (createDemo || runSimulation == null) {
                 server.createDemoWorld();
             } else {

@@ -1,0 +1,33 @@
+{{- if and .Values.compute.enabled .Values.compute.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "swarmforge.compute.fullname" . }}
+  labels:
+    {{- include "swarmforge.labels" . | nindent 4 }}
+    app.kubernetes.io/component: compute
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "swarmforge.compute.fullname" . }}
+  minReplicas: {{ .Values.compute.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.compute.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.compute.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.compute.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.compute.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.compute.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+{{- end }}

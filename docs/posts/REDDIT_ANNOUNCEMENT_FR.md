@@ -1,4 +1,4 @@
-﻿# Annonce Reddit (Français)
+# Annonce Reddit (Français)
 
 **Subreddits recommandés :**
 - `r/france`
@@ -55,7 +55,7 @@ SwarmForge combine un Studio graphique complet (JavaFX + jMonkeyEngine 3.6) et u
 Aucun outil de dev requis :
 
 1. **Téléchargez l'archive autonome Windows** :
-   👉 [SwarmForge-v2.0.0-Windows-x64-Standalone.zip](https://github.com/swarmforge/swarmforge/releases)
+   👉 [SwarmForge-v1.0.0-beta.1-Windows-x64-Standalone.zip](https://github.com/swarmforge/swarmforge/releases)
 2. **Dézippez où vous voulez** et lancez `SwarmForge.exe` (ou exécutez `Install-Shortcuts.bat` pour créer automatiquement les raccourcis Bureau et Menu Démarrer).
 3. **Serveur & Docker** : Également disponible pour serveurs Linux/macOS via Docker (`docker compose up -d`) et archive serveur multi-plateforme.
 

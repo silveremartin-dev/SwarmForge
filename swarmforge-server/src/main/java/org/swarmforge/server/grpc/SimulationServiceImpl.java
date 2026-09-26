@@ -456,7 +456,7 @@ public class SimulationServiceImpl extends SimulationServiceGrpc.SimulationServi
                 .setRedisConnected(server != null && server.isRedisConnected())
                 .setRunningSimulations(simulationManager.getAllSimulations().size())
                 .setConnectedClients(connectedClientCount.get())
-                .setVersion("2.0.0-SNAPSHOT")
+                .setVersion("1.0.0-beta.1-SNAPSHOT")
                 .setUptimeSeconds(server != null ? server.getUptimeSeconds() : 0)
                 .build();
 
@@ -475,6 +475,21 @@ public class SimulationServiceImpl extends SimulationServiceGrpc.SimulationServi
             responseObserver.onNext(RegisterNodeResponse.newBuilder().setSuccess(true).build());
         } else {
             responseObserver.onNext(RegisterNodeResponse.newBuilder().setSuccess(false).build());
+        }
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void sendHeartbeat(HeartbeatRequest request, StreamObserver<HeartbeatResponse> responseObserver) {
+        if (server != null && server.getClusterManager() != null) {
+            server.getClusterManager().handleHeartbeat(
+                    request.getNodeId(),
+                    request.getCpuLoad(),
+                    request.getGpuLoad(),
+                    request.getTasksCompleted());
+            responseObserver.onNext(HeartbeatResponse.newBuilder().setAcknowledged(true).build());
+        } else {
+            responseObserver.onNext(HeartbeatResponse.newBuilder().setAcknowledged(false).build());
         }
         responseObserver.onCompleted();
     }

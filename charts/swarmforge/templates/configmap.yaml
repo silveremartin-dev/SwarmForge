@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "swarmforge.fullname" . }}-config
+  labels:
+    {{- include "swarmforge.labels" . | nindent 4 }}
+data:
+  PORT: {{ .Values.server.service.httpPort | quote }}
+  GRPC_PORT: {{ .Values.server.service.grpcPort | quote }}
+  DB_HOST: {{ include "swarmforge.databaseHost" . | quote }}
+  DB_PORT: {{ if .Values.postgresql.enabled }}"5432"{{ else }}{{ .Values.externalDatabase.port | quote }}{{ end }}
+  DB_NAME: {{ if .Values.postgresql.enabled }}{{ .Values.postgresql.auth.database | quote }}{{ else }}{{ .Values.externalDatabase.database | quote }}{{ end }}
+  DB_USER: {{ if .Values.postgresql.enabled }}{{ .Values.postgresql.auth.username | quote }}{{ else }}{{ .Values.externalDatabase.user | quote }}{{ end }}
+  REDIS_HOST: {{ include "swarmforge.redisHost" . | quote }}
+  REDIS_PORT: {{ if .Values.redis.enabled }}"6379"{{ else }}{{ .Values.externalRedis.port | quote }}{{ end }}
+  SCENARIO: {{ .Values.server.env.scenario | quote }}
+  NOGUI: {{ .Values.server.env.nogui | quote }}
+  WORLD_WIDTH: {{ .Values.server.env.worldWidth | quote }}
+  WORLD_HEIGHT: {{ .Values.server.env.worldHeight | quote }}
+  SERVER_HOST: {{ include "swarmforge.server.fullname" . | quote }}
+  SERVER_PORT: {{ .Values.server.service.grpcPort | quote }}

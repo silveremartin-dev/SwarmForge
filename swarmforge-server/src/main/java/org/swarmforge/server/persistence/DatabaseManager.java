@@ -83,16 +83,13 @@ public class DatabaseManager {
             );
             
             CREATE TABLE IF NOT EXISTS colonies (
-                id UUID PRIMARY KEY,
-                world_id UUID REFERENCES worlds(id) ON DELETE CASCADE,
-                species VARCHAR(255) NOT NULL,
-                nest_x REAL NOT NULL,
-                nest_y REAL NOT NULL,
-                nest_z REAL NOT NULL,
-                food_stored REAL DEFAULT 0,
-                water_stored REAL DEFAULT 0,
-                total_born INT DEFAULT 0,
-                total_died INT DEFAULT 0,
+                id VARCHAR(36) PRIMARY KEY,
+                owner_id VARCHAR(255),
+                name VARCHAR(255),
+                biomass FLOAT,
+                age INT,
+                wins INT DEFAULT 0,
+                data BYTEA,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             

@@ -464,6 +464,7 @@ export default function SimulationControlPanel() {
                                 <div>{t('hostModeExplainer1', '• Scénario Maître : Tous vos paramètres ci-dessous (Monde, Climat, Espèces, Nids, Démographie) sont déployés sur le serveur.')}</div>
                                 <div>{t('hostModeExplainer2', '• Rôle : Vous définissez l\'écosystème complet. D\'autres participants peuvent rejoindre votre simulation et piloter des colonies.')}</div>
                             </div>
+                        )}
                         {/* Row 6: Matchmaking Lobby & Scenario Status Banner (Visible when connected) */}
                         {connected && (
                             <div style={{

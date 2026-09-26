@@ -23,10 +23,13 @@ public class JwtServerInterceptor implements ServerInterceptor {
 
         String token = headers.get(AUTHORIZATION_KEY);
 
-        // Allow unauthenticated access to specific methods (like Login)
-        // This logic is simple: if "AuthService" is called, skip check
+        // Allow unauthenticated access to specific methods or when auth is not explicitly enabled
         String methodName = call.getMethodDescriptor().getFullMethodName();
-        if (methodName.contains("AuthService/Login")) {
+        boolean authEnabled = "true".equalsIgnoreCase(System.getenv("ENABLE_AUTH"));
+        if (!authEnabled 
+                || methodName.contains("AuthService/Login")
+                || methodName.contains("SimulationService/RegisterNode")
+                || methodName.contains("SimulationService/SendHeartbeat")) {
             return next.startCall(call, headers);
         }
 

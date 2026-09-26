@@ -118,10 +118,10 @@ public class SwarmForgeClient extends Application {
 
         boolean isTestMode = Boolean.getBoolean("testfx.headless") || Boolean.getBoolean("headless") || "true".equals(System.getProperty("swarmforge.test")) || "true".equals(System.getProperty("testfx.robot"));
 
-        // 2. Show Splash Screen on startup with progress bar, bound to primary stage owner
+        // 2. Show Splash Screen on startup with progress bar
         org.swarmforge.client.ui.SplashScreen splashScreen = null;
         if (!isTestMode) {
-            splashScreen = new org.swarmforge.client.ui.SplashScreen(primaryStage);
+            splashScreen = new org.swarmforge.client.ui.SplashScreen();
             splashScreen.show();
         }
 
@@ -3477,6 +3477,36 @@ public class SwarmForgeClient extends Application {
                 } catch (Throwable ignored) {
                 }
                 return -1.0;
+        }
+
+        @Override
+        public void stop() throws Exception {
+                simLoopActive = false;
+                try {
+                        simLoopExecutor.shutdownNow();
+                } catch (Exception ignored) {}
+                try {
+                        if (localSimulation != null) {
+                                localSimulation.stop();
+                        }
+                } catch (Exception ignored) {}
+                try {
+                        if (gameView != null) {
+                                gameView.stop();
+                        }
+                } catch (Exception ignored) {}
+                try {
+                        if (networkClient != null) {
+                                networkClient.disconnect();
+                        }
+                } catch (Exception ignored) {}
+                try {
+                        org.swarmforge.client.audio.SimulationAudioManager.getInstance().stop();
+                } catch (Exception ignored) {}
+                try {
+                        org.swarmforge.client.util.SoundEffectManager.getInstance().stopAmbience();
+                } catch (Exception ignored) {}
+                super.stop();
         }
 
         public static void main(String[] args) {

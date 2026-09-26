@@ -1,9 +1,9 @@
 # Package SwarmForge Client using jpackage
 # Requires Java 21+ JDK with jpackage
 
-$VERSION = "2.0.0"
+$VERSION = "1.0.0-beta.1"
 $APP_NAME = "SwarmForgeClient"
-$MAIN_JAR = "swarmforge-client-2.0.0-SNAPSHOT.jar"
+$MAIN_JAR = "swarmforge-client-1.0.0-beta.1-SNAPSHOT.jar"
 $INPUT_DIR = "target"
 $OUTPUT_DIR = "dist"
 

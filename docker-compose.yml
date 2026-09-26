@@ -43,6 +43,8 @@ services:
       - DB_PASSWORD=swarmforge
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - SCENARIO=${SCENARIO:-1}
+      - NOGUI=true
     depends_on:
       - postgres
       - redis

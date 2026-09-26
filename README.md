@@ -133,11 +133,34 @@ SwarmForge v2.0 includes a comprehensive distributed architecture for multi-clie
 
 For end-users, researchers, and quick exploration, download the fully bundled standalone application:
 
-1. Download **[SwarmForge-v2.0.0-Windows-x64-Standalone.zip](https://github.com/swarmforge/swarmforge/releases)** from the latest release.
+1. Download **[SwarmForge-v1.0.0-beta.1-Windows-x64-Standalone.zip](https://github.com/swarmforge/swarmforge/releases)** from the latest release.
 2. Extract the archive to any folder.
 3. Launch `SwarmForge.exe` (or run `Install-Shortcuts.bat` to create Desktop and Start Menu shortcuts).
 
-> 💡 **Standalone package includes**: An embedded lightweight Java runtime, all pre-configured native libraries (LWJGL 3, jMonkeyEngine 3.6, OpenCL), sample terrarium nests, and full documentation.
+> 💡 **Standalone package includes**: An embedded lightweight Java runtime (~200 MB, stripped JDK via `jpackage`), all pre-configured native libraries (LWJGL 3, jMonkeyEngine 3.6, OpenCL), sample terrarium nests, and full documentation.
+
+### 🖥️ 2. Server / Docker / Kubernetes Release (Cross-Platform, Java Required)
+
+For server deployments, cloud VMs (GCP, AWS, Azure), Docker, or Kubernetes clusters:
+
+1. Download **[SwarmForge-v1.0.0-beta.1-Server-CrossPlatform.zip](https://github.com/swarmforge/swarmforge/releases)** from the latest release.
+2. Extract and run:
+   - **Linux / macOS**: `chmod +x run-server.sh && ./run-server.sh`
+   - **Windows**: `run-server.bat`
+   - **Docker**: `docker compose up -d`
+
+> 💡 **Server package includes**: Server JAR, all dependency JARs (`/lib`), `Dockerfile`, `docker-compose.yml`, Linux and Windows launchers.
+>
+> ⚠️ **Requires Java 21+** installed on the target machine (no embedded JRE). Download: [https://adoptium.net/](https://adoptium.net/)
+
+#### Why is the Standalone larger than the Server package?
+
+| Package | Size | JRE embedded | Platform |
+|---|---|---|---|
+| Windows-x64-Standalone | ~650 MB | ✅ Yes (via `jpackage`, ~200 MB) | Windows x64 only |
+| Server-CrossPlatform | ~480 MB | ❌ No (BYOJRE) | Linux / macOS / Windows |
+
+The Windows Standalone is heavier **solely** because `jpackage` embeds a full stripped JRE so that end-users need no Java installation at all. The JARs inside both archives are otherwise identical.
 
 ---
 

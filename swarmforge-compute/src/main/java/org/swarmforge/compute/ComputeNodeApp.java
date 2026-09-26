@@ -77,7 +77,8 @@ public class ComputeNodeApp {
         // 3. Register
         registerWithServer();
 
-        // 4. Heartbeat started upon successful registration
+        // 4. Heartbeat & Auto-Registration Loop
+        startHeartbeat();
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
 
         LOG.info("Compute node ready. Waiting for tasks...");
@@ -99,7 +100,8 @@ public class ComputeNodeApp {
             try {
                 hostIp = InetAddress.getLocalHost().getHostAddress();
             } catch (Exception ignored) {}
-            String myAddress = hostIp + ":" + myPort;
+            String myHost = System.getenv().getOrDefault("COMPUTE_HOST", System.getenv().getOrDefault("MY_HOST", hostIp));
+            String myAddress = myHost + ":" + myPort;
             RegisterNodeResponse response = stub.registerNode(
                     RegisterNodeRequest.newBuilder()
                             .setNodeId(nodeId)
@@ -110,13 +112,13 @@ public class ComputeNodeApp {
 
             if (response.getSuccess()) {
                 registered = true;
-                LOG.info("✓ Registered successfully as " + nodeId);
+                LOG.info("✓ Registered successfully with server as " + nodeId + " (" + myAddress + ")");
                 startHeartbeat();
             } else {
-                LOG.warning("Registration failed!");
+                LOG.warning("Registration rejected by server, will retry...");
             }
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "Failed to register with server: " + e.getMessage(), e);
+            LOG.warning("Waiting for server at " + serverHost + ":" + serverPort + " (" + e.getMessage() + ")");
         }
     }
 
@@ -157,8 +159,11 @@ public class ComputeNodeApp {
     }
 
     private void sendHeartbeat() {
-        if (!registered || stub == null)
+        if (!registered) {
+            registerWithServer();
             return;
+        }
+        if (stub == null) return;
         try {
             double systemCpuLoad = com.sun.management.OperatingSystemMXBean.class.isInstance(
                     java.lang.management.ManagementFactory.getOperatingSystemMXBean())
@@ -172,7 +177,8 @@ public class ComputeNodeApp {
                     .setTasksCompleted(1)
                     .build());
         } catch (Exception e) {
-            LOG.warning("Heartbeat failed: " + e.getMessage());
+            LOG.warning("Heartbeat failed: " + e.getMessage() + ", re-registering...");
+            registered = false;
         }
     }
 
@@ -271,11 +277,22 @@ public class ComputeNodeApp {
     }
 
     public static void main(String[] args) {
-        String host = "localhost";
+        String host = System.getenv().getOrDefault("SERVER_HOST", "localhost");
         int serverPort = 50051;
-        int myPort = 50052; // Default diff from server
+        try {
+            String sp = System.getenv("SERVER_PORT");
+            if (sp != null && !sp.isBlank()) serverPort = Integer.parseInt(sp);
+        } catch (Exception ignored) {}
+
+        int myPort = 50052;
+        try {
+            String mp = System.getenv("COMPUTE_PORT");
+            if (mp == null || mp.isBlank()) mp = System.getenv("MY_PORT");
+            if (mp != null && !mp.isBlank()) myPort = Integer.parseInt(mp);
+        } catch (Exception ignored) {}
+
         int threads = Runtime.getRuntime().availableProcessors();
-        boolean gpu = false;
+        boolean gpu = "true".equalsIgnoreCase(System.getenv("GPU_ENABLED"));
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {

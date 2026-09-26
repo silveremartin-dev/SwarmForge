@@ -1,0 +1,18 @@
+# ==============================================================================
+# SwarmForge - Delete GCP VM & Firewall Rules (Windows PowerShell)
+# Project: swarmforge-509813 | VM: swarmforge-vm | Zone: europe-west1-b
+# ==============================================================================
+
+$PROJECT = "swarmforge-509813"
+$ZONE = "europe-west1-b"
+$INSTANCE = "swarmforge-vm"
+
+Write-Host "⚠️  Suppression de l'instance '$INSTANCE' et des règles pare-feu..." -ForegroundColor Yellow
+
+# Supprimer la VM
+gcloud compute instances delete $INSTANCE --project=$PROJECT --zone=$ZONE --quiet
+
+# Supprimer la règle de pare-feu
+gcloud compute firewall-rules delete allow-swarmforge --project=$PROJECT --quiet
+
+Write-Host "🧹 Nettoyage complet terminé !" -ForegroundColor Green

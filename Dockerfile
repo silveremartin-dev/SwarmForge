@@ -12,7 +12,7 @@ RUN ./mvnw clean package -DskipTests -pl swarmforge-server -am
 FROM eclipse-temurin:21-jre-alpine
 LABEL maintainer="Silvère Martin-Michiellot"
 LABEL description="SwarmForge Simulation Server"
-LABEL version="2.0.0"
+LABEL version="1.0.0-beta.1"
 
 WORKDIR /app
 

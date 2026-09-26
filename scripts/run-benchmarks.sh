@@ -17,4 +17,4 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Executing Benchmarks..."
-java -jar swarmforge-benchmarks/target/swarmforge-benchmarks-2.0.0-SNAPSHOT.jar "$@"
+java -jar swarmforge-benchmarks/target/swarmforge-benchmarks-1.0.0-beta.1-SNAPSHOT.jar "$@"

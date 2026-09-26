@@ -31,20 +31,25 @@ public class SimulationSerializer {
 
     public SimulationSerializer() {
         this.mapper = new ObjectMapper();
-        this.mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        // this.mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
-        // false);
+        this.mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     public byte[] serializeCells(Terrarium terrarium) throws IOException {
-        // Only serialize non-air cells to save space (handled by getCell logic usually,
-        // but here we take values)
-        // Note: TerrariumCell is a record, so it serializes fine.
-        return mapper.writeValueAsBytes(terrarium.getAllCells());
+        if (terrarium == null) return new byte[0];
+        List<TerrariumCell> nonAir = terrarium.getAllCells().stream()
+                .filter(c -> c.material() != TerrariumCell.Material.AIR)
+                .limit(20000)
+                .toList();
+        return mapper.writeValueAsBytes(nonAir);
     }
 
     public byte[] serializeColonies(Collection<Colony> colonies) throws IOException {
-        return mapper.writeValueAsBytes(colonies);
+        if (colonies == null || colonies.isEmpty()) return new byte[0];
+        try (java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+             java.io.ObjectOutputStream oos = new java.io.ObjectOutputStream(bos)) {
+            oos.writeObject(new ArrayList<>(colonies));
+            return bos.toByteArray();
+        }
     }
 
     private static final int MAX_PAYLOAD_BYTES = 64 * 1024 * 1024; // 64 MB security limit
@@ -63,18 +68,24 @@ public class SimulationSerializer {
         });
     }
 
+    @SuppressWarnings("unchecked")
     public Collection<Colony> deserializeColonies(byte[] data) throws IOException {
         if (data == null || data.length == 0)
             return new ArrayList<>();
         checkPayloadSize(data);
-        return mapper.readValue(data, new com.fasterxml.jackson.core.type.TypeReference<List<Colony>>() {
-        });
+        try (java.io.ByteArrayInputStream bis = new java.io.ByteArrayInputStream(data);
+             java.io.ObjectInputStream ois = new java.io.ObjectInputStream(bis)) {
+            java.io.ObjectInputFilter filter = java.io.ObjectInputFilter.Config.createFilter(
+                "org.swarmforge.**;java.lang.*;java.util.**;java.util.concurrent.**;java.util.concurrent.atomic.**;[F;[I;[B;[Z;[Ljava.lang.String;;!*"
+            );
+            ois.setObjectInputFilter(filter);
+            return (Collection<Colony>) ois.readObject();
+        } catch (ClassNotFoundException e) {
+            throw new IOException(e);
+        }
     }
 
-    // Individuals are inside colonies usually, so serializeColonies might cover it.
-    // But CheckpointRepository has separate individuals_data column?
-    // Let's assume individuals are serialized WITHIN colonies for now.
     public byte[] serializeIndividuals(Collection<Individual> individuals) throws IOException {
-        return mapper.writeValueAsBytes(individuals);
+        return new byte[0];
     }
 }
