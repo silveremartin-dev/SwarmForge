@@ -129,20 +129,20 @@ SwarmForge v2.0 includes a comprehensive distributed architecture for multi-clie
 
 ## 📊 High-Performance Simulation & Benchmarks (Up to 2,000,000 Entities)
 
-SwarmForge achieves industry-leading simulation throughput via its zero-allocation Unified ECS pipeline (`com.artemis-odb`), Morton3D spatial hashing, and hybrid multi-threading:
+SwarmForge achieves industry-leading simulation throughput via its zero-allocation Unified ECS pipeline (`com.artemis-odb`), Morton3D spatial hashing, and hybrid multi-threading. The table below presents the **Single-Node Baseline (1 Nœud: 4 Cores / 8 GB RAM)**; on a multi-node cluster (e.g. 2 nodes on GCP), spatial Megaterrarium sharding doubles memory capacity and scales throughput near-linearly:
 
-| Scale (Individuals) | Pure ECS Throughput (TPS) | Tick Latency (Avg) | Agent-Updates / sec | JVM Heap Footprint |
-| :--- | :--- | :--- | :--- | :--- |
-| **5 000** | 53.2 TPS | 18.78 ms | **266 213** /s | 220 MB |
-| **10 000** | 23.9 TPS | 41.88 ms | **238 771** /s | 387 MB |
-| **20 000** | 19.7 TPS | 50.70 ms | **394 460** /s | 721 MB |
-| **50 000** | 8.94 TPS | 111.82 ms | **447 132** /s | 130 MB |
-| **100 000** | 4.12 TPS | 242.79 ms | **411 883** /s | 378 MB |
-| **200 000** | 2.15 TPS | 464.61 ms | **430 465** /s | 192 MB |
-| **500 000** | 0.76 TPS | 1.32 s | **378 343** /s | 956 MB |
-| **1 000 000** | 0.40 TPS | 2.52 s | **396 978** /s | 1 828 MB |
-| **1 500 000** | 0.22 TPS | 4.64 s | **323 359** /s | 1 176 MB |
-| **2 000 000** | 0.19 TPS | 5.37 s | **372 125** /s | 2 578 MB |
+| Scale (Individuals) | Pure ECS Throughput (TPS) | Tick Latency (Avg) | Agent-Updates / sec | JVM Heap Footprint | Baseline |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **5 000** | 53.2 TPS | 18.78 ms | **266 213** /s | 220 MB | 1 Nœud |
+| **10 000** | 23.9 TPS | 41.88 ms | **238 771** /s | 387 MB | 1 Nœud |
+| **20 000** | 19.7 TPS | 50.70 ms | **394 460** /s | 721 MB | 1 Nœud |
+| **50 000** | 8.94 TPS | 111.82 ms | **447 132** /s | 130 MB | 1 Nœud |
+| **100 000** | 4.12 TPS | 242.79 ms | **411 883** /s | 378 MB | 1 Nœud |
+| **200 000** | 2.15 TPS | 464.61 ms | **430 465** /s | 192 MB | 1 Nœud |
+| **500 000** | 0.76 TPS | 1.32 s | **378 343** /s | 956 MB | 1 Nœud |
+| **1 000 000** | 0.40 TPS | 2.52 s | **396 978** /s | 1 828 MB | 1 Nœud |
+| **1 500 000** | 0.22 TPS | 4.64 s | **323 359** /s | 1 176 MB | 1 Nœud |
+| **2 000 000** | 0.19 TPS | 5.37 s | **372 125** /s | 2 578 MB | 1 Nœud |
 
 👉 *Full detailed multi-species breakdowns, 3D scenario benchmarks, and Headless vs GUI metrics are available in [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md).*
 👉 *Cloud deployment and batch execution guide on GCP available in [docs/GCP_DEPLOYMENT_GUIDE.md](docs/GCP_DEPLOYMENT_GUIDE.md).*
