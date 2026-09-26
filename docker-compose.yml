@@ -45,6 +45,7 @@ services:
       - REDIS_PORT=6379
       - SCENARIO=${SCENARIO:-1}
       - NOGUI=true
+      - JAVA_OPTS=-Xms2g -Xmx6g -XX:+UseZGC -XX:+ZGenerational -XX:+UnlockDiagnosticVMOptions -XX:+UseSuperWord -XX:LoopUnrollLimit=1000 --add-modules jdk.incubator.vector -XX:+UseCompressedOops
     depends_on:
       - postgres
       - redis
@@ -60,6 +61,7 @@ services:
     environment:
       - SERVER_HOST=server
       - SERVER_PORT=50051
+      - JAVA_OPTS=-Xms1g -Xmx4g -XX:+UseZGC -XX:+ZGenerational -XX:+UnlockDiagnosticVMOptions -XX:+UseSuperWord -XX:LoopUnrollLimit=1000 --add-modules jdk.incubator.vector -XX:+UseCompressedOops
     depends_on:
       - server
     networks:

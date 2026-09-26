@@ -30,6 +30,8 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/swarmforge-server/target/swarmforge-server-*.jar app.jar
 
+ENV JAVA_OPTS="-Xms2g -Xmx6g -XX:+UseZGC -XX:+ZGenerational -XX:+UnlockDiagnosticVMOptions -XX:+UseSuperWord -XX:LoopUnrollLimit=1000 --add-modules jdk.incubator.vector -XX:+UseCompressedOops"
+
 EXPOSE 8080 50051
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar \"$@\"", "--"]

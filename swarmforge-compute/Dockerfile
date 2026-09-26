@@ -32,7 +32,9 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/swarmforge-compute/target/swarmforge-compute-*.jar app.jar
 
+ENV JAVA_OPTS="-Xms2g -Xmx6g -XX:+UseZGC -XX:+ZGenerational -XX:+UnlockDiagnosticVMOptions -XX:+UseSuperWord -XX:LoopUnrollLimit=1000 --add-modules jdk.incubator.vector -XX:+UseCompressedOops"
+
 # Default Compute Port
 EXPOSE 50052
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar \"$@\"", "--"]

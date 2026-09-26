@@ -11,7 +11,7 @@ param(
     [string]$Scenario    = "1",
     [int]   $Ticks       = 2000,
     [int]   $Workers     = 1,
-    [string]$MachineType = "e2-standard-4",
+    [string]$MachineType = "c2-standard-4",
     [bool]  $UseSpot     = $true,
     [string]$ProjectId   = "swarmforge-509813",
     [string]$Region      = "europe-west1",

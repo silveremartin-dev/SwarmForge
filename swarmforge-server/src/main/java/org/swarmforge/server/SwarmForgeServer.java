@@ -93,6 +93,12 @@ public class SwarmForgeServer {
         this.restApiServer.setSimulation(mainSim); // REST API currently tied to main
     }
 
+    private final java.util.concurrent.ExecutorService dbAsyncExecutor = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "db-async-writer");
+        t.setDaemon(true);
+        return t;
+    });
+
     // ... constructors ...
 
     public void start() throws Exception {
@@ -729,7 +735,9 @@ public class SwarmForgeServer {
      * Save the current world state.
      */
     public void saveWorld(String name) {
-        LOG.info("Saving world: " + name);
+        if (!database.isConnected()) {
+            return;
+        }
         try {
             Simulation simulation = getSimulation();
             if (simulation == null) {
@@ -744,31 +752,39 @@ public class SwarmForgeServer {
 
             org.swarmforge.server.persistence.SimulationSerializer serializer = new org.swarmforge.server.persistence.SimulationSerializer();
 
-            // Serialize data
+            // 1. Serialize memory buffers rapidly (<1ms)
             byte[] cellsData = serializer.serializeCells(targetTerrarium);
             byte[] coloniesData = serializer.serializeColonies(simulation.getColonies());
-            byte[] individualsData = serializer.serializeIndividuals(new java.util.ArrayList<>()); // Placeholder
+            byte[] individualsData = serializer.serializeIndividuals(new java.util.ArrayList<>());
+            long tickCount = simulation.getTickCount();
+            int width = targetTerrarium.getWidth();
+            int height = targetTerrarium.getHeight();
+            int depth = targetTerrarium.getDepth();
+            java.util.List<Colony> coloniesCopy = new java.util.ArrayList<>(simulation.getColonies());
 
-            // Save world metadata
-            java.util.UUID worldId = database.worldRepository().save(
-                    name, targetTerrarium.getWidth(), targetTerrarium.getHeight(), targetTerrarium.getDepth(),
-                    0, 0, 0); // Lat/Long/Alt placeholders
-
-            // Save colonies to colony repository
-            for (Colony col : simulation.getColonies()) {
+            // 2. Offload PostgreSQL I/O to background async writer thread (Zero tick stall)
+            dbAsyncExecutor.submit(() -> {
                 try {
-                    database.colonyRepository().save(col, "System");
-                } catch (Exception ignored) {}
-            }
+                    java.util.UUID worldId = database.worldRepository().save(
+                            name, width, height, depth, 0, 0, 0);
 
-            // Save checkpoint
-            database.checkpointRepository().save(
-                    worldId, simulation.getTickCount(), name,
-                    cellsData, coloniesData, individualsData);
+                    for (Colony col : coloniesCopy) {
+                        try {
+                            database.colonyRepository().save(col, "System");
+                        } catch (Exception ignored) {}
+                    }
 
-            LOG.info("World saved successfully: " + worldId);
+                    database.checkpointRepository().save(
+                            worldId, tickCount, name,
+                            cellsData, coloniesData, individualsData);
+
+                    LOG.info("Async world save completed: " + worldId + " (Tick " + tickCount + ")");
+                } catch (Exception ex) {
+                    LOG.error("Failed to async save world to database: " + ex.getMessage(), ex);
+                }
+            });
         } catch (Exception e) {
-            LOG.error("Failed to save world: " + e.getMessage(), e);
+            LOG.error("Failed to serialize world for saving: " + e.getMessage(), e);
         }
     }
 

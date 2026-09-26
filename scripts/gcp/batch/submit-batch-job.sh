@@ -8,7 +8,7 @@ set -euo pipefail
 SCENARIO="${1:-1}"
 TICKS="${2:-2000}"
 WORKERS="${3:-1}"
-MACHINE_TYPE="${4:-e2-standard-4}"
+MACHINE_TYPE="${4:-c2-standard-4}"
 USE_SPOT="${5:-true}"
 PROJECT_ID="${6:-swarmforge-509813}"
 REGION="${7:-europe-west1}"

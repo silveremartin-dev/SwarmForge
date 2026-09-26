@@ -1,13 +1,13 @@
 #!/bin/bash
 # ==============================================================================
 # SwarmForge - Create GCP Infrastructure (Bash / Cloud Shell)
-# Project: swarmforge-509813 | Zone: europe-west1-b | Machine: e2-standard-4
+# Project: swarmforge-509813 | Zone: europe-west1-b | Machine: c2-standard-4 / c3-standard-4
 # ==============================================================================
 
 PROJECT="swarmforge-509813"
 ZONE="europe-west1-b"
-INSTANCE="swarmforge-vm"
-MACHINE_TYPE="e2-standard-4"
+INSTANCE="${1:-swarmforge-vm}"
+MACHINE_TYPE="${2:-c2-standard-4}"
 
 echo "=========================================================="
 echo "   🚀 Initialisation de l'infrastructure Google Cloud     "

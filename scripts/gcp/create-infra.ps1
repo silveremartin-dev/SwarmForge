@@ -1,12 +1,16 @@
 # ==============================================================================
 # SwarmForge - Create GCP Infrastructure (Windows PowerShell)
-# Project: swarmforge-509813 | Zone: europe-west1-b | Machine: e2-standard-4
+# Project: swarmforge-509813 | Zone: europe-west1-b | Machine: c2-standard-4 / c3-standard-4
 # ==============================================================================
+param (
+    [string]$MachineType = "c2-standard-4",
+    [string]$InstanceName = "swarmforge-vm"
+)
 
 $PROJECT = "swarmforge-509813"
 $ZONE = "europe-west1-b"
-$INSTANCE = "swarmforge-vm"
-$MACHINE_TYPE = "e2-standard-4"
+$INSTANCE = $InstanceName
+$MACHINE_TYPE = $MachineType
 
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "   🚀 Initialisation de l'infrastructure Google Cloud     " -ForegroundColor Cyan
