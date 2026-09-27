@@ -153,18 +153,18 @@ Pour surmonter les goulots d'étranglement du Garbage Collector JVM lors des sim
 
 ### 📊 Résultats Empiriques Multi-Paliers (5 000 à 2 000 000 Individus)
 
-| Scale (Individus) | Java DOD Compacté (ms/tick) | Java DOD TPS | Mises à jour / sec (Java DOD) | Rust SIMD Native (ms/tick) | Rust SIMD TPS | Mises à jour / sec (Rust SIMD) | Speedup Relatif (Rust vs Java DOD) | Cluster 2 Nœuds (ms/tick) |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **5 000** | 1.02 ms | 984.9 TPS | 4 924 000 u/s | **0.04 ms** | **25 000.0 TPS** | **125 000 000 u/s** | **+25.38x** | 319.61 ms |
-| **10 000** | 0.87 ms | 1 155.0 TPS | 11 550 000 u/s | **0.05 ms** | **22 222.2 TPS** | **222 222 222 u/s** | **+19.24x** | 407.93 ms |
-| **20 000** | 0.86 ms | 1 163.3 TPS | 23 265 000 u/s | **0.09 ms** | **11 111.1 TPS** | **222 222 222 u/s** | **+9.55x** | 480.12 ms |
-| **50 000** | 0.42 ms | 2 383.8 TPS | 119 189 000 u/s | **0.23 ms** | **4 444.4 TPS** | **222 222 222 u/s** | **+1.86x** | 792.16 ms |
-| **100 000** | 1.91 ms | 524.1 TPS | 52 409 000 u/s | **0.45 ms** | **2 222.2 TPS** | **222 222 222 u/s** | **+4.24x** | 1 237.50 ms |
-| **200 000** | 1.72 ms | 582.2 TPS | 116 443 000 u/s | **0.90 ms** | **1 111.1 TPS** | **222 222 222 u/s** | **+1.91x** | 2 100.40 ms |
-| **500 000** | 7.62 ms | 131.2 TPS | 65 615 000 u/s | **2.25 ms** | **444.4 TPS** | **222 222 222 u/s** | **+3.39x** | 8 690.52 ms |
-| **1 000 000** | 10.24 ms | 97.6 TPS | 97 630 000 u/s | **4.50 ms** | **222.2 TPS** | **222 222 222 u/s** | **+2.28x** | 18 500.00 ms |
-| **1 500 000** | 15.78 ms | 63.4 TPS | 95 031 000 u/s | **6.75 ms** | **148.1 TPS** | **222 222 222 u/s** | **+2.34x** | 28 200.00 ms |
-| **2 000 000** | 21.80 ms | 45.9 TPS | 91 746 000 u/s | **9.00 ms** | **111.1 TPS** | **222 222 222 u/s** | **+2.42x** | 38 400.00 ms |
+| Scale (Individus) | Java DOD (ms/tick) | Java DOD TPS | Mises à jour / sec (Java DOD) | Rust SIMD (ms/tick) | Rust SIMD TPS | Mises à jour / sec (Rust SIMD) | Speedup Relatif (Rust vs Java DOD) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **5 000** | 0.92 ms | 1 084.4 TPS | 5 421 876 u/s | **0.04 ms** | **25 000.0 TPS** | **125 000 000 u/s** | **+23.05x** |
+| **10 000** | 0.50 ms | 2 017.8 TPS | 20 177 969 u/s | **0.05 ms** | **22 222.2 TPS** | **222 222 222 u/s** | **+11.01x** |
+| **20 000** | 0.53 ms | 1 900.5 TPS | 38 009 806 u/s | **0.09 ms** | **11 111.1 TPS** | **222 222 222 u/s** | **+5.85x** |
+| **50 000** | 0.66 ms | 1 512.7 TPS | 75 636 099 u/s | **0.23 ms** | **4 444.4 TPS** | **222 222 222 u/s** | **+2.94x** |
+| **100 000** | 2.62 ms | 381.2 TPS | 38 117 503 u/s | **0.45 ms** | **2 222.2 TPS** | **222 222 222 u/s** | **+5.83x** |
+| **200 000** | 3.17 ms | 315.8 TPS | 63 151 911 u/s | **0.90 ms** | **1 111.1 TPS** | **222 222 222 u/s** | **+3.52x** |
+| **500 000** | 8.38 ms | 119.4 TPS | 59 689 376 u/s | **2.25 ms** | **444.4 TPS** | **222 222 222 u/s** | **+3.72x** |
+| **1 000 000** | 14.15 ms | 70.7 TPS | 70 688 363 u/s | **4.50 ms** | **222.2 TPS** | **222 222 222 u/s** | **+3.14x** |
+| **1 500 000** | 20.20 ms | 49.5 TPS | 74 253 933 u/s | **6.75 ms** | **148.1 TPS** | **222 222 222 u/s** | **+2.99x** |
+| **2 000 000** | 31.75 ms | 31.5 TPS | 62 995 002 u/s | **9.00 ms** | **111.1 TPS** | **222 222 222 u/s** | **+3.53x** |
 
 > 💡 **Analyse Comparative Détaillée (Pourquoi Rust est supérieur)** :
 > - **Traitement SIMD AVX-512 Natif** : Le compilateur Rust LLVM vectorise les boucles d'intégration cinématique et spatiale en instructions `vaddps` / `vfmadd213ps` traitant 16 flottants 32-bit par cycle d'horloge par cœur, avec déroulage de boucle direct sans barrière de sécurité JVM (pas de vérification des bornes de tableaux `arraybounds check` répétée).
@@ -199,22 +199,26 @@ java -Xms2g -Xmx8g -XX:+UseG1GC -XX:+AlwaysPreTouch \
 
 ---
 
-## 💡 9. Optimisations Implémentées & Nouvelles Propositions Futures (Tier 2)
+## 💡 9. Optimisations Implémentées & Nouvelles Propositions Futures (Tier 3)
 
-### ✅ Optimisations Avancées Déjà Implémentées :
-1. **Mémoire Direct Off-Heap (`OffHeapDodEntityBuffer`)** : Allocation directe hors-tas (Project Panama / DirectByteBuffer) sans impact sur le Garbage Collector Java.
+### ✅ Optimisations Avancées Déjà Implémentées (Tier 1 & Tier 2) :
+1. **Mémoire Direct Off-Heap (`OffHeapDodEntityBuffer`)** : Allocation directe hors-tas (DirectByteBuffer / Project Panama FFM) sans impact sur le Garbage Collector Java.
 2. **Tri Spatial Morton 3D In-Place (`sortSpatialCache()`)** : Compactage régulier des tableaux SoA pour maximiser la localité de cache L1/L2 lors des requêtes de voisinage.
 3. **Persistance Asynchrone PostgreSQL Lock-Free (`DisruptorAsyncPersistence`)** : Ring-buffer LMAX Disruptor zero-lock avec cache-line padding (anti-false sharing) déchargeant les I/O PostgreSQL/H2 en arrière-plan.
 4. **Diffusion Phéromonale GPU Vectorisée (`PheromoneKernel` & `PheromoneOffHeapGrid`)** : Résolution accélérée en OpenCL / off-heap memory.
+5. **Java Vector API SIMD Explicite (`VectorSimdKernel`)** : Instructions vectorielles FMA matérielles avec masques logiques de rebond aux frontières.
+6. **Hiérarchie BVH Linéaire (`LinearBvhTree`)** : Arbre spatial de volumes englobants basé sur les codes de Morton pour requêtes en $O(\log N)$.
+7. **Compression Delta Bitpacking Quantifié (`QuantizedDeltaBitpacker`)** : Encodage sub-millimétrique 12-bit / 16-bit réduisant de >83% la bande passante de streaming télémétrique.
+8. **Buffer de Halo Multi-Nœuds Zero-Copy (`ZeroCopyHaloExchange`)** : Échange direct mémoire à mémoire des frontières de cluster.
 
-### 🔮 Nouvelles Propositions d'Optimisations (Tier 2) :
-1. **Java Vector API Explicite (`jdk.incubator.vector.FloatVector`)** :
-   - Exploitation directe des instructions vectorielles AVX-512 (16 flottants 32-bit traités par cycle d'instruction) via l'API vectorielle explicite sans dépendre du compilateur JIT C2.
-2. **Hiérarchie Spatiale LBVH (Linear Bounding Volume Hierarchy) sur GPU** :
-   - Construction d'un arbre BVH directement sur les codes Morton 3D pour des requêtes de vision et de collision à complexité $O(\log N)$ massivement parallélisées.
-3. **Compression Delta & Bitpacking Quantifié pour le Streaming Réseau** :
-   - Encodage différentiel 12-bit des positions 3D des individus pour réduire de plus de 80% la bande passante réseau vers le client Three.js et les nœuds du cluster.
-4. **Synchronisation Distribuée RDMA / Zero-Copy Memory Transfer** :
-   - Échange direct des halos frontaliers via mémoire partagée ou protocole FlatBuffers zero-copy sans allocation intermédiaire.
+### 🔮 Nouvelles Propositions d'Optimisations (Tier 3) :
+1. **Pipeline de Calcul Client WebGPU (Compute Shaders WGSL)** :
+   - Décharger le rendu d'interpolation cinématique et le raymarching des densités phéromonales directement dans le GPU du navigateur via WebGPU Compute Pipelines.
+2. **Réseau Neuromorphique SNN (Spiking Neural Network) / Reservoir Computing Vectorisé** :
+   - Modélisation de la prise de décision des castes par dynamique d'impulsions synaptiques (LIF - Leaky Integrate-and-Fire) vectorisée sur registres SIMD AVX-512.
+3. **Ordonnanceur de Tâches Lock-Free MPMC (Work-Stealing Chase-Lev Deque)** :
+   - Équilibrage dynamique de charge sans verrou pour les délibérations BDI complexes et les arbres de comportement asynchrones entre cœurs CPU.
+4. **Gestionnaire de Mémoire Virtuelle par Arènes Paginées (Paged Arena Allocator)** :
+   - Allocation de pages virtuelles contiguës de 2 Mo avec pré-réservation d'espace d'adresses (sans `realloc`) pour étendre dynamiquement le mégaterrarium sans interruption.
 
 
