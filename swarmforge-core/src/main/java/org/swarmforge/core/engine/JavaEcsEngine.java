@@ -130,6 +130,17 @@ public class JavaEcsEngine implements SimulationEngine {
         log.info("JavaEcsEngine state reset.");
     }
 
+    private static final int MORTON_SORT_INTERVAL_TICKS = 50;
+    private int parallelThreads = Runtime.getRuntime().availableProcessors();
+
+    public void setParallelThreads(int threads) {
+        this.parallelThreads = Math.max(1, threads);
+    }
+
+    public int getParallelThreads() {
+        return parallelThreads;
+    }
+
     @Override
     public void step(float deltaSeconds) {
         if (!initialized) {
@@ -139,8 +150,17 @@ public class JavaEcsEngine implements SimulationEngine {
         long startNanos = System.nanoTime();
 
         if (useDodCompaction && dodBuffer.getCount() > 0) {
-            // High-throughput cache-aligned SIMD vectorized physical step
-            dodBuffer.step(deltaSeconds, (float) widthMeters, (float) depthMeters, (float) heightMeters);
+            // Periodic Morton 3D Z-order spatial cache line compaction (every 50 ticks)
+            if (globalTickCount > 0 && globalTickCount % MORTON_SORT_INTERVAL_TICKS == 0) {
+                dodBuffer.sortSpatialCache();
+            }
+
+            // High-throughput cache-aligned SIMD vectorized parallel physical step
+            if (parallelThreads > 1) {
+                dodBuffer.stepParallel(deltaSeconds, (float) widthMeters, (float) depthMeters, (float) heightMeters, parallelThreads);
+            } else {
+                dodBuffer.step(deltaSeconds, (float) widthMeters, (float) depthMeters, (float) heightMeters);
+            }
         } else if (worldManager != null) {
             worldManager.step(deltaSeconds);
         }

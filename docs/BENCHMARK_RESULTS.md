@@ -199,14 +199,22 @@ java -Xms2g -Xmx8g -XX:+UseG1GC -XX:+AlwaysPreTouch \
 
 ---
 
-## 💡 9. Propositions d'Optimisations & Améliorations Futures
+## 💡 9. Optimisations Implémentées & Nouvelles Propositions Futures (Tier 2)
 
-1. **Persistance Asynchrone PostgreSQL Lock-Free (LMAX Disruptor Ring-Buffer)** :
-   - Remplacer le pool de tâches classique par un ring-buffer lock-free (`Disruptor`) pour le streaming télémétrique et les snapshots DB à haute fréquence sans bloquer le thread de simulation principal.
-2. **Tri Spatio-Temporel Morton 3D In-Place (Z-Order Cache Compaction)** :
-   - Réordonner périodiquement les tableaux SoA selon leur code Morton 3D pour garantir que les entités spatialement proches occupent des lignes de cache L1 contiguës lors des requêtes de voisinage.
-3. **Offloading GPU Asynchrone de la Percolation Hydrologique & Biogéochimie** :
-   - Déléguer la résolution des équations de Richards 3D et du transport thermique de sol aux shaders WebGPU / OpenCL via des calculs asynchrones double-buffering.
-4. **Mémoire Off-Heap Direct ByteBuffers & Panama Arenas pour l'ECS Java** :
-   - Allouer directement les buffers SoA hors du tas JVM (`Arena.ofShared()`) pour atteindre 0 octet sur le tas Java et permettre un partage direct de mémoire à coût nul avec le moteur Rust et les compute shaders.
+### ✅ Optimisations Avancées Déjà Implémentées :
+1. **Mémoire Direct Off-Heap (`OffHeapDodEntityBuffer`)** : Allocation directe hors-tas (Project Panama / DirectByteBuffer) sans impact sur le Garbage Collector Java.
+2. **Tri Spatial Morton 3D In-Place (`sortSpatialCache()`)** : Compactage régulier des tableaux SoA pour maximiser la localité de cache L1/L2 lors des requêtes de voisinage.
+3. **Persistance Asynchrone PostgreSQL Lock-Free (`DisruptorAsyncPersistence`)** : Ring-buffer LMAX Disruptor zero-lock avec cache-line padding (anti-false sharing) déchargeant les I/O PostgreSQL/H2 en arrière-plan.
+4. **Diffusion Phéromonale GPU Vectorisée (`PheromoneKernel` & `PheromoneOffHeapGrid`)** : Résolution accélérée en OpenCL / off-heap memory.
+
+### 🔮 Nouvelles Propositions d'Optimisations (Tier 2) :
+1. **Java Vector API Explicite (`jdk.incubator.vector.FloatVector`)** :
+   - Exploitation directe des instructions vectorielles AVX-512 (16 flottants 32-bit traités par cycle d'instruction) via l'API vectorielle explicite sans dépendre du compilateur JIT C2.
+2. **Hiérarchie Spatiale LBVH (Linear Bounding Volume Hierarchy) sur GPU** :
+   - Construction d'un arbre BVH directement sur les codes Morton 3D pour des requêtes de vision et de collision à complexité $O(\log N)$ massivement parallélisées.
+3. **Compression Delta & Bitpacking Quantifié pour le Streaming Réseau** :
+   - Encodage différentiel 12-bit des positions 3D des individus pour réduire de plus de 80% la bande passante réseau vers le client Three.js et les nœuds du cluster.
+4. **Synchronisation Distribuée RDMA / Zero-Copy Memory Transfer** :
+   - Échange direct des halos frontaliers via mémoire partagée ou protocole FlatBuffers zero-copy sans allocation intermédiaire.
+
 
