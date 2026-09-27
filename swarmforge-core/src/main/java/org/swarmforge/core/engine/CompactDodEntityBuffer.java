@@ -135,7 +135,34 @@ public final class CompactDodEntityBuffer {
      * @param boundZ Domain maximum Z bound.
      */
     public void step(float dt, float boundX, float boundY, float boundZ) {
+        stepChunk(0, count, dt, boundX, boundY, boundZ);
+    }
+
+    /**
+     * Executes parallelized SIMD physical updates partitioned across available CPU worker threads.
+     */
+    public void stepParallel(float dt, float boundX, float boundY, float boundZ, int numThreads) {
         final int n = count;
+        if (n <= 10_000 || numThreads <= 1) {
+            stepChunk(0, n, dt, boundX, boundY, boundZ);
+            return;
+        }
+
+        int threads = Math.min(numThreads, Runtime.getRuntime().availableProcessors());
+        int chunkSize = (n + threads - 1) / threads;
+
+        java.util.concurrent.ForkJoinPool.commonPool().submit(() -> {
+            java.util.stream.IntStream.range(0, threads).parallel().forEach(t -> {
+                int start = t * chunkSize;
+                int end = Math.min(n, start + chunkSize);
+                if (start < end) {
+                    stepChunk(start, end, dt, boundX, boundY, boundZ);
+                }
+            });
+        }).join();
+    }
+
+    private void stepChunk(int start, int end, float dt, float boundX, float boundY, float boundZ) {
         final float[] px = posX;
         final float[] py = posY;
         final float[] pz = posZ;
@@ -148,7 +175,7 @@ public final class CompactDodEntityBuffer {
         final float energyDecay = 0.01f * dt;
 
         // Loop auto-vectorizable by JVM JIT into 256-bit AVX2 / 512-bit AVX-512 registers
-        for (int i = 0; i < n; i++) {
+        for (int i = start; i < end; i++) {
             float x = px[i] + vx[i] * dt;
             float y = py[i] + vy[i] * dt;
             float z = pz[i] + vz[i] * dt;
@@ -173,6 +200,64 @@ public final class CompactDodEntityBuffer {
             // Fast Morton 3D spatial indexing code
             m[i] = Morton3D.encode((int) x, (int) y, (int) z);
         }
+    }
+
+    /**
+     * Performs in-place Morton 3D Z-order curve sort compaction.
+     * Reorders all primitive SoA arrays so spatially proximate entities share adjacent L1/L2 cache lines.
+     */
+    public synchronized void sortSpatialCache() {
+        if (count <= 1) return;
+        Integer[] indices = new Integer[count];
+        for (int i = 0; i < count; i++) indices[i] = i;
+
+        final long[] m = this.mortonCodes;
+        Arrays.sort(indices, (a, b) -> Long.compare(m[a], m[b]));
+
+        float[] newPx = new float[capacity];
+        float[] newPy = new float[capacity];
+        float[] newPz = new float[capacity];
+        float[] newVx = new float[capacity];
+        float[] newVy = new float[capacity];
+        float[] newVz = new float[capacity];
+        float[] newHealth = new float[capacity];
+        float[] newEnergy = new float[capacity];
+        byte[] newCaste = new byte[capacity];
+        byte[] newJob = new byte[capacity];
+        long[] newMsb = new long[capacity];
+        long[] newLsb = new long[capacity];
+        long[] newMorton = new long[capacity];
+
+        for (int dst = 0; dst < count; dst++) {
+            int src = indices[dst];
+            newPx[dst] = posX[src];
+            newPy[dst] = posY[src];
+            newPz[dst] = posZ[src];
+            newVx[dst] = velX[src];
+            newVy[dst] = velY[src];
+            newVz[dst] = velZ[src];
+            newHealth[dst] = health[src];
+            newEnergy[dst] = energy[src];
+            newCaste[dst] = caste[src];
+            newJob[dst] = job[src];
+            newMsb[dst] = colonyMsb[src];
+            newLsb[dst] = colonyLsb[src];
+            newMorton[dst] = mortonCodes[src];
+        }
+
+        this.posX = newPx;
+        this.posY = newPy;
+        this.posZ = newPz;
+        this.velX = newVx;
+        this.velY = newVy;
+        this.velZ = newVz;
+        this.health = newHealth;
+        this.energy = newEnergy;
+        this.caste = newCaste;
+        this.job = newJob;
+        this.colonyMsb = newMsb;
+        this.colonyLsb = newLsb;
+        this.mortonCodes = newMorton;
     }
 
     /**

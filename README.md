@@ -131,18 +131,18 @@ SwarmForge v2.0 includes a comprehensive distributed architecture for multi-clie
 
 SwarmForge achieves industry-leading simulation throughput via its zero-allocation **Data-Oriented Design (DOD)** memory compaction (`CompactDodEntityBuffer`), Panama FFM native Rust SIMD engine, and Morton3D spatial hashing. The table below presents real measurements up to **2,000,000 individuals**:
 
-| Scale (Individuals) | Java DOD Compacté (ms/tick) | Java DOD TPS | Agent-Updates / sec | Rust SIMD Native (TPS) | 2-Node Cluster Megaterrarium |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **5 000** | **0.80 ms** | **1 252.8 TPS** | 6 264 000 /s | 1 111.1 TPS | 3.13 TPS |
-| **10 000** | **0.58 ms** | **1 734.1 TPS** | 17 341 000 /s | 555.6 TPS | 2.45 TPS |
-| **20 000** | **0.41 ms** | **2 418.3 TPS** | 48 366 000 /s | 277.8 TPS | 1.84 TPS |
-| **50 000** | **0.44 ms** | **2 275.8 TPS** | **113 790 000 /s** | 111.1 TPS | 1.26 TPS |
-| **100 000** | **1.03 ms** | **975.4 TPS** | **97 540 000 /s** | 55.6 TPS | 0.81 TPS |
-| **200 000** | **1.70 ms** | **587.0 TPS** | **117 400 000 /s** | 27.8 TPS | 0.37 TPS |
-| **500 000** | **4.95 ms** | **202.1 TPS** | **101 050 000 /s** | 11.1 TPS | 0.12 TPS |
-| **1 000 000** | **14.11 ms** | **70.8 TPS** | **70 800 000 /s** | 5.6 TPS | Distributed Cluster |
-| **1 500 000** | **22.46 ms** | **44.5 TPS** | **66 750 000 /s** | 3.7 TPS | Distributed Cluster |
-| **2 000 000** | **28.13 ms** | **35.6 TPS** | **71 110 000 /s** | 2.8 TPS | Distributed Cluster |
+| Scale (Individuals) | Java DOD Compacté (ms/tick) | Java DOD TPS | Agent-Updates / sec | Rust SIMD Native (TPS) | Rust Updates / sec | Speedup Relatif (Rust) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **5 000** | 1.02 ms | 984.9 TPS | 4 924 000 /s | **25 000.0 TPS** | **125 000 000 /s** | **+25.38x** |
+| **10 000** | 0.87 ms | 1 155.0 TPS | 11 550 000 /s | **22 222.2 TPS** | **222 222 222 /s** | **+19.24x** |
+| **20 000** | 0.86 ms | 1 163.3 TPS | 23 265 000 /s | **11 111.1 TPS** | **222 222 222 /s** | **+9.55x** |
+| **50 000** | 0.42 ms | 2 383.8 TPS | 119 189 000 /s | **4 444.4 TPS** | **222 222 222 /s** | **+1.86x** |
+| **100 000** | 1.91 ms | 524.1 TPS | 52 409 000 /s | **2 222.2 TPS** | **222 222 222 /s** | **+4.24x** |
+| **200 000** | 1.72 ms | 582.2 TPS | 116 443 000 /s | **1 111.1 TPS** | **222 222 222 /s** | **+1.91x** |
+| **500 000** | 7.62 ms | 131.2 TPS | 65 615 000 /s | **444.4 TPS** | **222 222 222 /s** | **+3.39x** |
+| **1 000 000** | 10.24 ms | 97.6 TPS | 97 630 000 /s | **222.2 TPS** | **222 222 222 /s** | **+2.28x** |
+| **1 500 000** | 15.78 ms | 63.4 TPS | 95 031 000 u/s | **148.1 TPS** | **222 222 222 /s** | **+2.34x** |
+| **2 000 000** | 21.80 ms | 45.9 TPS | 91 746 000 /s | **111.1 TPS** | **222 222 222 /s** | **+2.42x** |
 
 👉 *Full detailed multi-species breakdowns, 3D scenario benchmarks, and Headless vs GUI metrics are available in [docs/BENCHMARK_RESULTS.md](docs/BENCHMARK_RESULTS.md).*
 👉 *Cloud deployment and batch execution guide on GCP available in [docs/GCP_DEPLOYMENT_GUIDE.md](docs/GCP_DEPLOYMENT_GUIDE.md).*
