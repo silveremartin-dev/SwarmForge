@@ -1,0 +1,14 @@
+[package]
+name = "swarmforge_core_rust"
+version = "2.0.0"
+edition = "2021"
+authors = ["Silvère Martin-Michiellot", "SwarmForge Open-Source Contributors"]
+description = "High-performance SIMD Native Simulation Engine for SwarmForge Social Insect Modeling"
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "swarmforge_core_rust"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Zero required external dependencies for ultra-fast standalone build and maximum C ABI compatibility

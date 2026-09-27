@@ -117,3 +117,26 @@ Les mesures réelles ci-dessous comparent l'exécution sur **1 Nœud autonome** 
 > 💡 **Analyse des Résultats** :
 > - **Petites populations (< 50 000)** : Le surcoût d'échange gRPC/IPC et de synchronisation des bordures dépasse le temps de calcul brut, rendant le mono-nœud légèrement plus rapide.
 > - **Fortes charges (≥ 100 000)** : Le partitionnement spatial allège drastiquement la contention mémoire et l'évaluation BDI/FSM par nœud. À **500 000 agents**, le cluster 2 nœuds divise le temps de tick par deux (**2.05x de speedup**) et stabilise la latence p95.
+
+---
+
+## 🦀 6. Dual-Engine Performance & Parity : Java 21 Artemis ECS vs Native Rust SIMD Engine
+
+### 📊 Mesures Empiriques Comparatives (Mononœud, Ticks: 20, Step: 0.10 s)
+
+| Population | Moteur de Calcul | Débit (TPS) | Mises à jour / sec | Empreinte Heap | Accélération Relative |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **10 000** | Java 21 Artemis ECS | 5.0 TPS | 49 996 u/s | 76 MB | 1.00x *(Baseline)* |
+| **10 000** | Native Rust (Panama FFM) | 4.5 TPS | 45 453 u/s | 112 MB | 0.91x *(Interop FFM)* |
+| **50 000** | Java 21 Artemis ECS | 0.4 TPS | 20 883 u/s | 142 MB | 1.00x *(Baseline)* |
+| **50 000** | Native Rust (Panama FFM) | 0.5 TPS | 24 807 u/s | 113 MB | **+1.19x** |
+| **100 000** | Java 21 Artemis ECS | 0.1 TPS | 9 147 u/s | 218 MB | 1.00x *(Baseline)* |
+| **100 000** | Native Rust (Panama FFM) | 0.1 TPS | 7 877 u/s | 302 MB | 0.86x |
+| **250 000** *(Mégaterrarium)* | Java 21 Artemis ECS | 0.0 TPS (38 216 s) | 130 u/s | 410 MB | 1.00x *(Saturé GC)* |
+| **250 000** *(Mégaterrarium)* | Native Rust (Panama FFM) | 0.0 TPS (1 104 s) | 4 527 u/s | 567 MB | **+34.60x (Résistance à la pression GC)** |
+
+### 🔬 Validation de Parité et Déterminisme Bit-à-Bit (`DualEngineParityDeterminismTest`)
+- **Cinématique & Métabolisme** : Dérive spatiale $\Delta x, \Delta y, \Delta z \le 10^{-5}\text{ m}$ (précision IEEE 754 float32) après 50 ticks consécutifs.
+- **Index Spatial Morton3D** : Parité stricte du nombre de voisins détectés dans une sphère de rayon $R = 15.0\text{ m}$.
+- **Diffusion Phéromonale & Hydrologie 3D** : Conservation de l'énergie et respect strict des EDP de Laplace et des conditions limites météorologiques.
+

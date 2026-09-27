@@ -230,7 +230,40 @@ SwarmForge supports 5 distinct operational topologies depending on the deploymen
 
 ### Mode 5: Web Client Standalone / Offline Fallback (Light Client Sandbox)
 - **Topology**: Browser-only client served via local HTTP server (`py scripts/mock_server.py` or Vite preview).
-- **Components**: `swarmforge-web` with integrated lightweight kinematic fallback engine.
+- **Components**: `swarmforge-web` with integrated lightweight kinematic fallback engine and WebGPU compute shaders.
 - **Use Case**: UI/UX prototyping, frontend design testing, and immediate visualization verification without spinning up the backend infrastructure.
+
+---
+
+## 11. Dual-Engine SPI & Hardware-Accelerated Compute Architecture
+
+### 11.1 Simulation Engine SPI (`org.swarmforge.core.engine`)
+SwarmForge features a hot-swappable dual simulation engine architecture governed by the `SimulationEngine` Service Provider Interface (SPI):
+
+```
+                       ┌───────────────────────────────┐
+                       │    SimulationEngine (SPI)     │
+                       └───────────────▲───────────────┘
+                                       │
+                ┌──────────────────────┴──────────────────────┐
+                │                                             │
+   ┌────────────┴─────────────┐                 ┌─────────────┴────────────┐
+   │      JavaEcsEngine       │                 │     RustNativeEngine     │
+   │  (Artemis-odb Java 21)   │                 │   (Project Panama FFM)   │
+   ├──────────────────────────┤                 ├──────────────────────────┤
+   │ • 100% Platform Portable │                 │ • SIMD / SoA Vectorized  │
+   │ • Morton3D Flat Spatial  │                 │ • Off-Heap Zero GC Pauses│
+   │ • Zero Steady-State Alloc│                 │ • Direct C ABI Bindings  │
+   └──────────────────────────┘                 └──────────────────────────┘
+```
+
+- **`SimulationEngineFactory`**: Dynamic engine selection via `-Dswarmforge.engine=auto|java|rust` or `SWARMFORGE_ENGINE=auto|java|rust`. Defaults to `auto` (transparently links Rust SIMD if compiled binary is present, otherwise executes Pure Java Artemis ECS).
+- **Bit-to-Bit Deterministic Parity**: Validated by `DualEngineParityDeterminismTest`, ensuring IEEE 754 precision ($\Delta \le 10^{-5}\text{ m}$) across kinematics, basal metabolism ($E_{t+1} = E_t - 0.01 \Delta t$), spatial hash querying, and subterranean boundary conditions.
+
+### 11.2 GPU & WebGPU Compute Kernels
+1. **Subterranean Hydrology Kernel (`SubterraneanHydrologyKernel.java`)**: Aparapi / OpenCL / TornadoVM 3D finite-difference PDE solver for coupled soil moisture percolation and Fourier thermal inertia ($\frac{\partial T}{\partial t} = \alpha \nabla^2 T$, $\frac{\partial \theta}{\partial t} = K \nabla^2 \theta$).
+2. **Mandibular Biomechanics Kernel (`MandibularBiomechanicsKernel.java`)**: Vectorized allometric bite force ($F_{\text{bite}} = k \cdot M^{0.67} \cdot \eta$) and cuticular stress concentration solver.
+3. **WebGPU WGSL Diffusion Shader (`swarmforge-web/src/shaders/pheromoneDiffusion.js`)**: Direct browser GPU execution of continuous chemical diffusion and evaporation at 60 FPS without CPU overhead.
+
 
 

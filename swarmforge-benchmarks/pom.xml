@@ -12,6 +12,10 @@
     <name>SwarmForge Benchmarks</name>
     <description>Comprehensive performance benchmark suite and JMH tests for SwarmForge</description>
 
+    <properties>
+        <exec.mainClass>org.swarmforge.benchmarks.BenchmarkSuiteRunner</exec.mainClass>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.swarmforge</groupId>
@@ -60,7 +64,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
-                    <mainClass>org.swarmforge.benchmarks.BenchmarkSuiteRunner</mainClass>
+                    <mainClass>${exec.mainClass}</mainClass>
                 </configuration>
             </plugin>
 
