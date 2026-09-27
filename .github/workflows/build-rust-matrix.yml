@@ -1,0 +1,54 @@
+name: Build & Package Native Rust Simulation Engine
+
+on:
+  push:
+    paths:
+      - 'crates/swarmforge-core-rust/**'
+      - '.github/workflows/build-rust-matrix.yml'
+  pull_request:
+    paths:
+      - 'crates/swarmforge-core-rust/**'
+  workflow_dispatch:
+
+jobs:
+  build-native-binaries:
+    name: Build Native Engine on ${{ matrix.os }} (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: swarmforge_core_rust.dll
+            output_dir: swarmforge-core/src/main/resources/native/windows/
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: libswarmforge_core_rust.so
+            output_dir: swarmforge-core/src/main/resources/native/linux/
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: libswarmforge_core_rust.dylib
+            output_dir: swarmforge-core/src/main/resources/native/macos/
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build Rust Engine (${{ matrix.target }})
+        working-directory: crates/swarmforge-core-rust
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Run Native Rust Unit Tests
+        working-directory: crates/swarmforge-core-rust
+        run: cargo test --release
+
+      - name: Upload Native Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: crates/swarmforge-core-rust/target/${{ matrix.target }}/release/${{ matrix.artifact_name }}

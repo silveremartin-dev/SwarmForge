@@ -8,10 +8,13 @@ import org.swarmforge.core.gpu.SparsePheromoneGrid;
 import org.swarmforge.core.species.Species;
 
 import java.io.File;
+import java.io.InputStream;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -22,10 +25,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * (Foreign Function & Memory API).
  *
  * Provides direct C ABI invocation of SIMD vectorized routines in {@code libswarmforge_core_rust},
- * bypassing JVM GC pauses and providing zero-copy native memory sharing.
+ * supporting Windows (.dll), Linux (.so), and macOS (.dylib / Apple Silicon & Intel).
  *
- * Dynamically links at runtime, with automatic, transparent fallback to {@link JavaEcsEngine}
- * if the native library or Panama runtime is absent.
+ * Dynamically links at runtime, with automatic discovery from filesystem or embedded classpath
+ * native binaries, and transparent fallback to {@link JavaEcsEngine} if native library is absent.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant (Google DeepMind)
@@ -87,27 +90,44 @@ public class RustNativeEngine implements SimulationEngine {
             nativeArena = cArena.getMethod("ofShared").invoke(null);
 
             String osName = System.getProperty("os.name", "").toLowerCase();
+            String osArch = System.getProperty("os.arch", "").toLowerCase();
+
             String libFileName;
+            String osSubdir;
             if (osName.contains("win")) {
                 libFileName = LIB_BASE_NAME + ".dll";
-            } else if (osName.contains("mac")) {
+                osSubdir = "windows";
+            } else if (osName.contains("mac") || osName.contains("darwin")) {
                 libFileName = "lib" + LIB_BASE_NAME + ".dylib";
+                osSubdir = "macos";
             } else {
                 libFileName = "lib" + LIB_BASE_NAME + ".so";
+                osSubdir = "linux";
             }
 
-            List<Path> candidatePaths = List.of(
+            List<Path> candidatePaths = new ArrayList<>(List.of(
                     Path.of(libFileName),
                     Path.of("target", "release", libFileName),
                     Path.of("crates", "swarmforge-core-rust", "target", "release", libFileName),
+                    Path.of("crates", "swarmforge-core-rust", "target", "x86_64-pc-windows-msvc", "release", libFileName),
+                    Path.of("crates", "swarmforge-core-rust", "target", "x86_64-unknown-linux-gnu", "release", libFileName),
+                    Path.of("crates", "swarmforge-core-rust", "target", "x86_64-apple-darwin", "release", libFileName),
+                    Path.of("crates", "swarmforge-core-rust", "target", "aarch64-apple-darwin", "release", libFileName),
                     Path.of("swarmforge-rust", "target", "release", libFileName),
                     Path.of("..", "crates", "swarmforge-core-rust", "target", "release", libFileName),
-                    Path.of("libs", libFileName)
-            );
+                    Path.of("libs", libFileName),
+                    Path.of("libs", osSubdir, libFileName)
+            ));
+
+            // Also check embedded resource extraction
+            Path extractedResource = extractEmbeddedNativeLibrary(osSubdir, osArch, libFileName);
+            if (extractedResource != null) {
+                candidatePaths.add(0, extractedResource);
+            }
 
             Path resolvedLibPath = null;
             for (Path candidate : candidatePaths) {
-                if (new File(candidate.toUri()).exists()) {
+                if (candidate != null && new File(candidate.toUri()).exists()) {
                     resolvedLibPath = candidate.toAbsolutePath();
                     break;
                 }
@@ -117,13 +137,32 @@ public class RustNativeEngine implements SimulationEngine {
                 MethodHandle libraryLookup = lookup.findStatic(cSymbolLookup, "libraryLookup",
                         MethodType.methodType(cSymbolLookup, Path.class, cArena));
                 nativeLookup = libraryLookup.invoke(resolvedLibPath, nativeArena);
-                log.info("Successfully discovered and linked SwarmForge Rust Native Engine: {}", resolvedLibPath);
+                log.info("Successfully discovered and linked SwarmForge Rust Native Engine ({}/{}): {}", osSubdir, osArch, resolvedLibPath);
                 nativeAvailable = true;
             }
         } catch (Throwable t) {
             log.debug("Project Panama / Native Rust engine link skipped: {}", t.getMessage());
             nativeAvailable = false;
         }
+    }
+
+    private static Path extractEmbeddedNativeLibrary(String osSubdir, String osArch, String libFileName) {
+        try {
+            String resourcePath = "/native/" + osSubdir + "/" + libFileName;
+            InputStream in = RustNativeEngine.class.getResourceAsStream(resourcePath);
+            if (in == null) {
+                resourcePath = "/native/" + osSubdir + "/" + osArch + "/" + libFileName;
+                in = RustNativeEngine.class.getResourceAsStream(resourcePath);
+            }
+            if (in != null) {
+                Path tempDir = Files.createTempDirectory("swarmforge_native_");
+                Path targetPath = tempDir.resolve(libFileName);
+                Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                targetPath.toFile().deleteOnExit();
+                return targetPath;
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     public static boolean isNativeLibraryAvailable() {

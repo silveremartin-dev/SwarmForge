@@ -5,7 +5,11 @@ import {
     Sun,
     RotateCcw,
     Check,
-    Info
+    Info,
+    Cpu,
+    Zap,
+    Boxes,
+    Activity
 } from 'lucide-react'
 import { useSimulationStore } from '../store/simulationStore'
 import { SUPPORTED_LANGUAGES, getTranslation } from '../i18n/translations'
@@ -16,7 +20,11 @@ export default function SettingsPanel() {
         language,
         setLanguage,
         theme,
-        setTheme
+        setTheme,
+        engineBackend,
+        setEngineBackend,
+        computeAcceleration,
+        setComputeAcceleration
     } = useSimulationStore()
 
     const isDark = theme === 'dark'
@@ -31,8 +39,13 @@ export default function SettingsPanel() {
     const handleResetDefaults = () => {
         setLanguage('fr')
         setTheme('dark')
+        setEngineBackend('auto')
+        setComputeAcceleration('auto')
         showToast(t('resetSettingsBtn', '✓ Paramètres rétablis par défaut !'), 'info')
     }
+
+    const currentEngine = engineBackend || 'auto'
+    const currentAccel = computeAcceleration || 'auto'
 
     return (
         <div style={{
@@ -52,6 +65,26 @@ export default function SettingsPanel() {
                         {t('settingsSubtitle', 'Personnalisation de la langue, de l\'affichage et du moteur 3D.')}
                     </p>
                 </div>
+                <button
+                    onClick={handleResetDefaults}
+                    title={t('resetSettingsBtn', 'Rétablir les paramètres par défaut')}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '6px 14px',
+                        borderRadius: 6,
+                        border: `1px solid ${borderCol}`,
+                        background: inputBg,
+                        color: textMuted,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                    }}
+                >
+                    <RotateCcw size={14} />
+                    <span>{t('resetSettingsBtn', 'Rétablir par défaut')}</span>
+                </button>
             </div>
 
             {/* 1. Language Row */}
@@ -161,7 +194,217 @@ export default function SettingsPanel() {
                 </div>
             </div>
 
-            {/* 3. System & Engine Info Card */}
+            {/* 3. Simulation Compute Engine (Dual-Engine Selection) */}
+            <div style={{
+                background: cardBg,
+                border: `1px solid ${borderCol}`,
+                borderRadius: 10,
+                padding: '16px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#10b981' }}>
+                    <Boxes size={18} />
+                    <span style={{ fontSize: 14, fontWeight: 800 }}>{t('engineComputeTitle', 'Moteur de Calcul de la Simulation')}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: textMuted }}>
+                    {t('engineComputeDesc', 'Sélectionnez le backend d\'exécution de la simulation : Rust Natif haute performance ou Java Artemis ECS.')}
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <button
+                        onClick={() => {
+                            setEngineBackend('auto')
+                            showToast(t('engineBackendAuto', '⚡ Automatique (Rust SIMD si disponible / Repli Java ECS)'), 'info')
+                        }}
+                        title={t('engineComputeTt', 'Sélection automatique du backend le plus performant')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 16px',
+                            borderRadius: 6,
+                            border: currentEngine === 'auto' ? '2px solid #10b981' : `1px solid ${borderCol}`,
+                            background: currentEngine === 'auto' ? (isDark ? '#064e3b' : '#d1fae5') : inputBg,
+                            color: currentEngine === 'auto' ? (isDark ? '#34d399' : '#065f46') : textMain,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textAlign: 'left'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Zap size={16} />
+                            <span>{t('engineBackendAuto', '⚡ Automatique (Rust SIMD si disponible / Repli Java ECS)')}</span>
+                        </div>
+                        {currentEngine === 'auto' && <Check size={16} />}
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            setEngineBackend('rust_native')
+                            showToast(t('engineBackendRust', '🦀 Rust Natif SIMD (Zero-GC, Panama FFM, Morton 3D)'), 'info')
+                        }}
+                        title="Force l'utilisation du moteur natif compilé Rust cdylib via Project Panama FFM"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 16px',
+                            borderRadius: 6,
+                            border: currentEngine === 'rust_native' ? '2px solid #f97316' : `1px solid ${borderCol}`,
+                            background: currentEngine === 'rust_native' ? (isDark ? '#7c2d12' : '#ffedd5') : inputBg,
+                            color: currentEngine === 'rust_native' ? (isDark ? '#fb923c' : '#9a3412') : textMain,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textAlign: 'left'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Activity size={16} />
+                            <span>{t('engineBackendRust', '🦀 Rust Natif SIMD (Zero-GC, Panama FFM, Morton 3D)')}</span>
+                        </div>
+                        {currentEngine === 'rust_native' && <Check size={16} />}
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            setEngineBackend('java_ecs')
+                            showToast(t('engineBackendJava', '☕ Java 21 Artemis ECS (Moteur de Référence Standard)'), 'info')
+                        }}
+                        title="Utilise le moteur standard Java 21 Artemis-odb ECS"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 16px',
+                            borderRadius: 6,
+                            border: currentEngine === 'java_ecs' ? '2px solid #38bdf8' : `1px solid ${borderCol}`,
+                            background: currentEngine === 'java_ecs' ? (isDark ? '#0369a1' : '#e0f2fe') : inputBg,
+                            color: currentEngine === 'java_ecs' ? (isDark ? '#7dd3fc' : '#075985') : textMain,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textAlign: 'left'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Cpu size={16} />
+                            <span>{t('engineBackendJava', '☕ Java 21 Artemis ECS (Moteur de Référence Standard)')}</span>
+                        </div>
+                        {currentEngine === 'java_ecs' && <Check size={16} />}
+                    </button>
+                </div>
+            </div>
+
+            {/* 4. Hardware Acceleration Mode Card */}
+            <div style={{
+                background: cardBg,
+                border: `1px solid ${borderCol}`,
+                borderRadius: 10,
+                padding: '16px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#8b5cf6' }}>
+                    <Zap size={18} />
+                    <span style={{ fontSize: 14, fontWeight: 800 }}>{t('hardwareAccelTitle', 'Accélération Matérielle (Calculs GPU / CPU)')}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: textMuted }}>
+                    {t('hardwareAccelDesc', 'Configurez l\'accélération matérielle pour la diffusion des phéromones, l\'hydrologie 3D et la biomécanique.')}
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <button
+                        onClick={() => {
+                            setComputeAcceleration('auto')
+                            showToast(t('hardwareAccelAuto', '⚡ Automatique (GPU si disponible / Repli CPU Vectoriel)'), 'info')
+                        }}
+                        title={t('hardwareAccelTt', 'Détection automatique de l\'accélérateur matériel le plus rapide')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 16px',
+                            borderRadius: 6,
+                            border: currentAccel === 'auto' ? '2px solid #8b5cf6' : `1px solid ${borderCol}`,
+                            background: currentAccel === 'auto' ? (isDark ? '#4c1d95' : '#ede9fe') : inputBg,
+                            color: currentAccel === 'auto' ? (isDark ? '#c4b5fd' : '#5b21b6') : textMain,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textAlign: 'left'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Zap size={16} />
+                            <span>{t('hardwareAccelAuto', '⚡ Automatique (GPU si disponible / Repli CPU Vectoriel)')}</span>
+                        </div>
+                        {currentAccel === 'auto' && <Check size={16} />}
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            setComputeAcceleration('gpu')
+                            showToast(t('hardwareAccelGpu', '🎮 Accélération GPU (WebGPU / TornadoVM OpenCL)'), 'info')
+                        }}
+                        title="Force les calculs de grille matricielle continue sur le GPU"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 16px',
+                            borderRadius: 6,
+                            border: currentAccel === 'gpu' ? '2px solid #ec4899' : `1px solid ${borderCol}`,
+                            background: currentAccel === 'gpu' ? (isDark ? '#831843' : '#fce7f3') : inputBg,
+                            color: currentAccel === 'gpu' ? (isDark ? '#f472b6' : '#9d174d') : textMain,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textAlign: 'left'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Activity size={16} />
+                            <span>{t('hardwareAccelGpu', '🎮 Accélération GPU (WebGPU / TornadoVM OpenCL)')}</span>
+                        </div>
+                        {currentAccel === 'gpu' && <Check size={16} />}
+                    </button>
+
+                    <button
+                        onClick={() => {
+                            setComputeAcceleration('cpu')
+                            showToast(t('hardwareAccelCpu', '💻 Pur CPU Multithreadé (SIMD / Vector API)'), 'info')
+                        }}
+                        title="Force l'exécution des calculs continus sur CPU multithreadé"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 16px',
+                            borderRadius: 6,
+                            border: currentAccel === 'cpu' ? '2px solid #38bdf8' : `1px solid ${borderCol}`,
+                            background: currentAccel === 'cpu' ? (isDark ? '#0369a1' : '#e0f2fe') : inputBg,
+                            color: currentAccel === 'cpu' ? (isDark ? '#7dd3fc' : '#075985') : textMain,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            textAlign: 'left'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <Cpu size={16} />
+                            <span>{t('hardwareAccelCpu', '💻 Pur CPU Multithreadé (SIMD / Vector API)')}</span>
+                        </div>
+                        {currentAccel === 'cpu' && <Check size={16} />}
+                    </button>
+                </div>
+            </div>
+
+            {/* 5. System & Engine Info Card */}
             <div style={{
                 background: cardBg,
                 border: `1px solid ${borderCol}`,
@@ -184,3 +427,4 @@ export default function SettingsPanel() {
         </div>
     )
 }
+

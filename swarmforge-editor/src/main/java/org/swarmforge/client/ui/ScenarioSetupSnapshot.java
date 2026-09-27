@@ -24,7 +24,9 @@ public record ScenarioSetupSnapshot(
     boolean isMultiplayerOnly,
     int requiredPlayerCount,
     int gridTilesX,
-    int gridTilesY
+    int gridTilesY,
+    String engineBackend,
+    String computeAcceleration
 ) {
     public ScenarioSetupSnapshot(
         long seed,
@@ -38,7 +40,7 @@ public record ScenarioSetupSnapshot(
         int broodCount,
         List<SpeciesConfigSnapshot> speciesSnapshots
     ) {
-        this(seed, null, 0.0166f, 100.0, "Days (d)", 0, "", selectedWorld, selectedWeather, selectedSpecies, selectedNestType, queenCount, workerCount, soldierCount, broodCount, speciesSnapshots, false, 1, 1, 1);
+        this(seed, null, 0.0166f, 100.0, "Days (d)", 0, "", selectedWorld, selectedWeather, selectedSpecies, selectedNestType, queenCount, workerCount, soldierCount, broodCount, speciesSnapshots, false, 1, 1, 1, "AUTO", "AUTO");
     }
 
     public ScenarioSetupSnapshot(
@@ -59,6 +61,6 @@ public record ScenarioSetupSnapshot(
         int broodCount,
         List<SpeciesConfigSnapshot> speciesSnapshots
     ) {
-        this(seed, startDateTimeIso, simulationStepSeconds, maxDurationValue, maxDurationUnit, minPopStopThreshold, description, selectedWorld, selectedWeather, selectedSpecies, selectedNestType, queenCount, workerCount, soldierCount, broodCount, speciesSnapshots, false, 1, 1, 1);
+        this(seed, startDateTimeIso, simulationStepSeconds, maxDurationValue, maxDurationUnit, minPopStopThreshold, description, selectedWorld, selectedWeather, selectedSpecies, selectedNestType, queenCount, workerCount, soldierCount, broodCount, speciesSnapshots, false, 1, 1, 1, "AUTO", "AUTO");
     }
 }

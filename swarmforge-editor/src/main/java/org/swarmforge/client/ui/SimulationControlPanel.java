@@ -74,6 +74,8 @@ public class SimulationControlPanel extends VBox {
     private final Slider speedSlider;
     private Slider timelineSlider;
     private final ComboBox<String> scenarioStepCombo = new ComboBox<>();
+    private final ComboBox<String> engineBackendCombo = new ComboBox<>();
+    private final ComboBox<String> computeAccelerationCombo = new ComboBox<>();
 
     private final Label lblSpeed;
     private Label lblTick;
@@ -175,6 +177,8 @@ public class SimulationControlPanel extends VBox {
         int reqPlayers = spinRequiredPlayers != null && spinRequiredPlayers.getValue() != null ? spinRequiredPlayers.getValue() : 1;
         int tilesX = spinGridTilesX != null && spinGridTilesX.getValue() != null ? spinGridTilesX.getValue() : 1;
         int tilesY = spinGridTilesY != null && spinGridTilesY.getValue() != null ? spinGridTilesY.getValue() : 1;
+        String engineBackend = engineBackendCombo != null && engineBackendCombo.getValue() != null ? engineBackendCombo.getValue() : "AUTO";
+        String computeAccel = computeAccelerationCombo != null && computeAccelerationCombo.getValue() != null ? computeAccelerationCombo.getValue() : "AUTO";
 
         return new ScenarioSetupSnapshot(
             getMasterSeed(),
@@ -196,7 +200,9 @@ public class SimulationControlPanel extends VBox {
             mpOnly,
             reqPlayers,
             tilesX,
-            tilesY
+            tilesY,
+            engineBackend,
+            computeAccel
         );
     }
 
@@ -776,6 +782,63 @@ public class SimulationControlPanel extends VBox {
 
         VBox physicsBox = new VBox(4, scenarioStepCombo, lblDeterminismLegend);
         gridPhysics.add(lbl4Step, 0, 0); gridPhysics.add(physicsBox, 1, 0);
+
+        Label lblEngine = new Label();
+        lblEngine.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.engine.backend", "Moteur de Calcul (Engine)"));
+        lblEngine.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
+        lblEngine.getStyleClass().add("accent-title");
+        lblEngine.setTooltip(new Tooltip(I18nManager.getInstance().get("sim.engine.backend.tt", "Sélectionne le moteur de calcul : Auto (Optimal), Pure Java 21 ECS, ou Natif Rust SIMD.")));
+
+        engineBackendCombo.getItems().setAll(
+            "⚡ Auto-Detect (Optimal: Rust if present, Java ECS fallback)",
+            "☕ Pure Java 21 Artemis ECS (Portabilité absolue)",
+            "🦀 Native Rust SIMD Engine (Project Panama - Off-Heap)"
+        );
+        engineBackendCombo.getSelectionModel().selectFirst();
+        engineBackendCombo.setPrefWidth(240);
+        engineBackendCombo.setStyle("-fx-font-size: 10px;");
+        engineBackendCombo.setTooltip(new Tooltip(I18nManager.getInstance().get("sim.engine.backend.tt")));
+        engineBackendCombo.valueProperty().addListener((o, oldV, newV) -> {
+            if (newV != null) {
+                if (newV.contains("Java")) {
+                    org.swarmforge.core.engine.EnginePreferences.setSelectedEngineType(org.swarmforge.core.engine.SimulationEngineType.JAVA_ECS);
+                } else if (newV.contains("Rust")) {
+                    org.swarmforge.core.engine.EnginePreferences.setSelectedEngineType(org.swarmforge.core.engine.SimulationEngineType.RUST_NATIVE);
+                } else {
+                    org.swarmforge.core.engine.EnginePreferences.resetToDefaults();
+                }
+            }
+        });
+
+        Label lblAccel = new Label();
+        lblAccel.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.compute.acceleration", "Accélération Matérielle"));
+        lblAccel.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
+        lblAccel.getStyleClass().add("accent-title");
+        lblAccel.setTooltip(new Tooltip(I18nManager.getInstance().get("sim.compute.acceleration.tt", "Sélectionne le matériel pour les EDP 3D et la biomécanique : Auto GPU/CPU, GPU OpenCL/TornadoVM, ou CPU SIMD.")));
+
+        computeAccelerationCombo.getItems().setAll(
+            "🚀 Auto-Detect (GPU OpenCL / TornadoVM si dispo, sinon CPU SIMD)",
+            "🎮 GPU Hardware Acceleration (OpenCL / TornadoVM / WebGPU)",
+            "💻 Pure CPU Multithreaded (SIMD Vector API)"
+        );
+        computeAccelerationCombo.getSelectionModel().selectFirst();
+        computeAccelerationCombo.setPrefWidth(240);
+        computeAccelerationCombo.setStyle("-fx-font-size: 10px;");
+        computeAccelerationCombo.setTooltip(new Tooltip(I18nManager.getInstance().get("sim.compute.acceleration.tt")));
+        computeAccelerationCombo.valueProperty().addListener((o, oldV, newV) -> {
+            if (newV != null) {
+                if (newV.contains("GPU")) {
+                    org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.GPU_ACCELERATED);
+                } else if (newV.contains("CPU")) {
+                    org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.CPU_MULTITHREADED_SIMD);
+                } else {
+                    org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.AUTO);
+                }
+            }
+        });
+
+        gridPhysics.add(lblEngine, 0, 1); gridPhysics.add(engineBackendCombo, 1, 1);
+        gridPhysics.add(lblAccel, 0, 2);  gridPhysics.add(computeAccelerationCombo, 1, 2);
 
         // Section 4: Termination Limits & Duration Controls
         GridPane gridLimits = new GridPane();
@@ -2718,6 +2781,12 @@ public class SimulationControlPanel extends VBox {
                     }
                     if (spinGridTilesY != null && snapshot.gridTilesY() > 0) {
                         spinGridTilesY.getValueFactory().setValue(snapshot.gridTilesY());
+                    }
+                    if (snapshot.engineBackend() != null && engineBackendCombo != null) {
+                        selectComboIfPresent(engineBackendCombo, snapshot.engineBackend());
+                    }
+                    if (snapshot.computeAcceleration() != null && computeAccelerationCombo != null) {
+                        selectComboIfPresent(computeAccelerationCombo, snapshot.computeAcceleration());
                     }
 
                     speciesCardList.clear();

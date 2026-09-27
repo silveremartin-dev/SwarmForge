@@ -262,6 +262,16 @@ export const useSimulationStore = create((set, get) => {
         activeSubTab: 'CONTROLS',    // backwards compatibility
         language: initialLanguage,
         theme: initialTheme,
+        engineBackend: loadLocalStorage('swarmforge_engine_backend', 'auto'),
+        computeAcceleration: loadLocalStorage('swarmforge_compute_accel', 'auto'),
+        setEngineBackend: (backend) => {
+            saveLocalStorage('swarmforge_engine_backend', backend)
+            set({ engineBackend: backend })
+        },
+        setComputeAcceleration: (accel) => {
+            saveLocalStorage('swarmforge_compute_accel', accel)
+            set({ computeAcceleration: accel })
+        },
         isScenarioApplied: false, // Whether scenario has been initialized (locks downstream tabs when false)
 
         slicePlaneRatio: 1.0,
