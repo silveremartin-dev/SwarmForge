@@ -199,9 +199,9 @@ java -Xms2g -Xmx8g -XX:+UseG1GC -XX:+AlwaysPreTouch \
 
 ---
 
-## 💡 9. Optimisations Implémentées & Nouvelles Propositions Futures (Tier 3)
+## 💡 9. Optimisations Implémentées & Nouvelles Propositions Futures (Tier 4)
 
-### ✅ Optimisations Avancées Déjà Implémentées (Tier 1 & Tier 2) :
+### ✅ Optimisations Avancées Déjà Implémentées (Tier 1, Tier 2 & Tier 3) :
 1. **Mémoire Direct Off-Heap (`OffHeapDodEntityBuffer`)** : Allocation directe hors-tas (DirectByteBuffer / Project Panama FFM) sans impact sur le Garbage Collector Java.
 2. **Tri Spatial Morton 3D In-Place (`sortSpatialCache()`)** : Compactage régulier des tableaux SoA pour maximiser la localité de cache L1/L2 lors des requêtes de voisinage.
 3. **Persistance Asynchrone PostgreSQL Lock-Free (`DisruptorAsyncPersistence`)** : Ring-buffer LMAX Disruptor zero-lock avec cache-line padding (anti-false sharing) déchargeant les I/O PostgreSQL/H2 en arrière-plan.
@@ -210,15 +210,17 @@ java -Xms2g -Xmx8g -XX:+UseG1GC -XX:+AlwaysPreTouch \
 6. **Hiérarchie BVH Linéaire (`LinearBvhTree`)** : Arbre spatial de volumes englobants basé sur les codes de Morton pour requêtes en $O(\log N)$.
 7. **Compression Delta Bitpacking Quantifié (`QuantizedDeltaBitpacker`)** : Encodage sub-millimétrique 12-bit / 16-bit réduisant de >83% la bande passante de streaming télémétrique.
 8. **Buffer de Halo Multi-Nœuds Zero-Copy (`ZeroCopyHaloExchange`)** : Échange direct mémoire à mémoire des frontières de cluster.
+9. **Réseau Neuromorphique SNN Vectorisé (`SpikingNeuralReservoirEngine`)** : Dynamique synaptique Leaky Integrate-and-Fire (LIF) ultra-rapide pour l'intelligence des castes.
+10. **Ordonnanceur Lock-Free Chase-Lev (`ChaseLevWorkStealingPool`)** : Ordonnancement par vol de travail (work-stealing) sans verrous pour les délibérations cognitives BDI.
+11. **Allocateur d'Arènes Virtuelles Paginées (`PagedVirtualArenaAllocator`)** : Gestionnaire de mémoire paginé par blocs contigus de 2 Mo évitant toute réallocation de tableaux.
+12. **Pipeline de Calcul Client WebGPU (`WebGpuPheromonePipeline.ts` & `webgpu_pheromone_diffusion.wgsl`)** : Compute shaders WGSL exécutés dans le GPU du navigateur.
 
-### 🔮 Nouvelles Propositions d'Optimisations (Tier 3) :
-1. **Pipeline de Calcul Client WebGPU (Compute Shaders WGSL)** :
-   - Décharger le rendu d'interpolation cinématique et le raymarching des densités phéromonales directement dans le GPU du navigateur via WebGPU Compute Pipelines.
-2. **Réseau Neuromorphique SNN (Spiking Neural Network) / Reservoir Computing Vectorisé** :
-   - Modélisation de la prise de décision des castes par dynamique d'impulsions synaptiques (LIF - Leaky Integrate-and-Fire) vectorisée sur registres SIMD AVX-512.
-3. **Ordonnanceur de Tâches Lock-Free MPMC (Work-Stealing Chase-Lev Deque)** :
-   - Équilibrage dynamique de charge sans verrou pour les délibérations BDI complexes et les arbres de comportement asynchrones entre cœurs CPU.
-4. **Gestionnaire de Mémoire Virtuelle par Arènes Paginées (Paged Arena Allocator)** :
-   - Allocation de pages virtuelles contiguës de 2 Mo avec pré-réservation d'espace d'adresses (sans `realloc`) pour étendre dynamiquement le mégaterrarium sans interruption.
-
-
+### 🔮 Nouvelles Propositions d'Optimisations (Tier 4) :
+1. **Raymarching Volumétrique Hiérarchique 3D & Occlusion Ambiante Souterraine** :
+   - Shaders de propagation photonique souterraine calculant l'humidité et la pénombre des galeries en temps réel.
+2. **Distribution Hétérogène Multi-GPU OpenCL / Vulkan** :
+   - Répartition dynamique de la charge entre plusieurs cartes graphiques locales avec transferts pairs directs sans repasser par le CPU.
+3. **Logique BDI Asynchrone Événementielle par Fibres Virtuelles (Virtual Thread Pool continuations)** :
+   - Exécution asynchrone ultra-légère de millions d'arbres de comportement suspendus sans allocation de pile native.
+4. **Partitionnement Spatial Dynamique par Diagrammes de Voronoï & Graphe Métis** :
+   - Rééquilibrage automatique des frontières de sous-domaines selon la densité instantanée des colonies pour éliminer les points chauds sur le cluster.
