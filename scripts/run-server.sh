@@ -7,6 +7,8 @@ echo "========================================"
 
 cd "$(dirname "$0")/.."
 
+export MAVEN_OPTS="${MAVEN_OPTS:--Xms2g -Xmx8g -XX:+UseG1GC --add-modules jdk.incubator.vector --enable-native-access=ALL-UNNAMED -XX:+AlwaysPreTouch}"
+
 START_DOCKER=false
 DEBUG_OPT=""
 PASSED_ARGS=""

@@ -11,7 +11,7 @@ cd /d "%~dp0.."
 set START_DOCKER=false
 set DEBUG_OPT=
 set PASSED_ARGS=
-if "%MAVEN_OPTS%"=="" set "MAVEN_OPTS=-Xmx4g -XX:+UseG1GC"
+if "%MAVEN_OPTS%"=="" set "MAVEN_OPTS=-Xms2g -Xmx8g -XX:+UseG1GC --add-modules jdk.incubator.vector --enable-native-access=ALL-UNNAMED -XX:+AlwaysPreTouch"
 
 :parse_args
 if "%~1"=="" goto run_server

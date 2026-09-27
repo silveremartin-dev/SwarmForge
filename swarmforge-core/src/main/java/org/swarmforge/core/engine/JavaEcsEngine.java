@@ -51,8 +51,26 @@ public class JavaEcsEngine implements SimulationEngine {
     private ComponentMapper<PositionComponent> mPosition;
     private EntitySubscription allEntitiesSubscription;
 
+    private final CompactDodEntityBuffer dodBuffer = new CompactDodEntityBuffer();
+    private boolean useDodCompaction = true; // Enabled by default for maximum cache locality & zero GC
+
+    private final java.util.concurrent.atomic.AtomicInteger activeEntityCount = new java.util.concurrent.atomic.AtomicInteger(0);
+
     public JavaEcsEngine() {
         // Default constructor
+    }
+
+    public void setDodCompactionEnabled(boolean enabled) {
+        this.useDodCompaction = enabled;
+        log.info("JavaEcsEngine DOD Memory Compaction: {}", enabled ? "ENABLED (SoA Contiguous Layout)" : "DISABLED (Artemis OOP ECS)");
+    }
+
+    public boolean isDodCompactionEnabled() {
+        return useDodCompaction;
+    }
+
+    public CompactDodEntityBuffer getDodBuffer() {
+        return dodBuffer;
     }
 
     @Override
@@ -62,14 +80,15 @@ public class JavaEcsEngine implements SimulationEngine {
         this.heightMeters = worldHeightMeters;
         this.pheromoneGrid = pheromoneGrid;
 
+        this.dodBuffer.clear();
         this.worldManager = new EcsWorldManager(this.pheromoneGrid);
         World world = this.worldManager.getWorld();
         this.mPosition = world.getMapper(PositionComponent.class);
         this.allEntitiesSubscription = world.getAspectSubscriptionManager().get(Aspect.all());
 
         this.initialized = true;
-        log.info("JavaEcsEngine initialized: domain={}x{}x{}m, Artemis ECS world ready.",
-                worldWidthMeters, worldDepthMeters, worldHeightMeters);
+        log.info("JavaEcsEngine initialized: domain={}x{}x{}m, DOD Compaction={}, Artemis ECS world ready.",
+                worldWidthMeters, worldDepthMeters, worldHeightMeters, useDodCompaction);
     }
 
     @Override
@@ -96,6 +115,7 @@ public class JavaEcsEngine implements SimulationEngine {
     @Override
     public synchronized void reset() {
         stop();
+        dodBuffer.clear();
         if (worldManager != null) {
             this.worldManager = new EcsWorldManager(this.pheromoneGrid);
             World world = this.worldManager.getWorld();
@@ -118,7 +138,12 @@ public class JavaEcsEngine implements SimulationEngine {
 
         long startNanos = System.nanoTime();
 
-        worldManager.step(deltaSeconds);
+        if (useDodCompaction && dodBuffer.getCount() > 0) {
+            // High-throughput cache-aligned SIMD vectorized physical step
+            dodBuffer.step(deltaSeconds, (float) widthMeters, (float) depthMeters, (float) heightMeters);
+        } else if (worldManager != null) {
+            worldManager.step(deltaSeconds);
+        }
 
         long endNanos = System.nanoTime();
         double durationMs = (endNanos - startNanos) / 1_000_000.0;
@@ -134,18 +159,22 @@ public class JavaEcsEngine implements SimulationEngine {
         this.accumulatedSimTimeSec += deltaSeconds;
     }
 
-    private final java.util.concurrent.atomic.AtomicInteger activeEntityCount = new java.util.concurrent.atomic.AtomicInteger(0);
-
     @Override
     public int spawnAnt(UUID colonyId, Individual.Caste caste, Individual.Job job,
                         float x, float y, float z, Species species) {
         if (!initialized) return -1;
-        EcsColonyFactory colonyFactory = worldManager.getColonyFactory();
-        int entityId = colonyFactory.createAnt(colonyId, caste, job, x, y, z, species);
-        if (entityId >= 0) {
+        if (useDodCompaction) {
+            int entityId = dodBuffer.spawn(colonyId, caste, job, x, y, z);
             activeEntityCount.incrementAndGet();
+            return entityId;
+        } else {
+            EcsColonyFactory colonyFactory = worldManager.getColonyFactory();
+            int entityId = colonyFactory.createAnt(colonyId, caste, job, x, y, z, species);
+            if (entityId >= 0) {
+                activeEntityCount.incrementAndGet();
+            }
+            return entityId;
         }
-        return entityId;
     }
 
     @Override
@@ -182,21 +211,44 @@ public class JavaEcsEngine implements SimulationEngine {
     @Override
     public List<Integer> queryEntitiesInRadius(Vector3f center, float radius) {
         if (!initialized || center == null) return List.of();
-        SpatialPartitioningSystem spatial = worldManager.getSpatialPartitioningSystem();
-        if (spatial == null) return List.of();
-
-        List<Integer> nearby = spatial.getNearbyEntities(center.x(), center.y(), center.z());
-        return new ArrayList<>(nearby);
+        if (useDodCompaction) {
+            List<Integer> list = new ArrayList<>();
+            float r2 = radius * radius;
+            int n = dodBuffer.getCount();
+            float[] px = dodBuffer.posX;
+            float[] py = dodBuffer.posY;
+            float[] pz = dodBuffer.posZ;
+            for (int i = 0; i < n; i++) {
+                float dx = px[i] - center.x();
+                float dy = py[i] - center.y();
+                float dz = pz[i] - center.z();
+                if ((dx * dx + dy * dy + dz * dz) <= r2) {
+                    list.add(i);
+                }
+            }
+            return list;
+        } else {
+            SpatialPartitioningSystem spatial = worldManager.getSpatialPartitioningSystem();
+            if (spatial == null) return List.of();
+            List<Integer> nearby = spatial.getNearbyEntities(center.x(), center.y(), center.z());
+            return new ArrayList<>(nearby);
+        }
     }
 
     @Override
     public Vector3f getEntityPosition(int entityId) {
-        if (!initialized || entityId < 0 || mPosition == null) return null;
-        if (!worldManager.getWorld().getEntityManager().isActive(entityId)) return null;
-
-        PositionComponent pos = mPosition.get(entityId);
-        if (pos == null) return null;
-        return new Vector3f(pos.x, pos.y, pos.z);
+        if (!initialized || entityId < 0) return null;
+        if (useDodCompaction) {
+            if (entityId < dodBuffer.getCount()) {
+                return new Vector3f(dodBuffer.posX[entityId], dodBuffer.posY[entityId], dodBuffer.posZ[entityId]);
+            }
+            return null;
+        } else {
+            if (mPosition == null || !worldManager.getWorld().getEntityManager().isActive(entityId)) return null;
+            PositionComponent pos = mPosition.get(entityId);
+            if (pos == null) return null;
+            return new Vector3f(pos.x, pos.y, pos.z);
+        }
     }
 
     @Override

@@ -3512,6 +3512,7 @@ public class SwarmForgeClient extends Application {
         public static void main(String[] args) {
                 org.swarmforge.client.util.IconUtils.initEarlyTaskbarAppId();
                 if (args != null) {
+                    org.swarmforge.core.engine.EnginePreferences.applyCommandLineArgs(args);
                     for (String arg : args) {
                         if ("--client".equalsIgnoreCase(arg) || "--client-only".equalsIgnoreCase(arg) || "--viewer".equalsIgnoreCase(arg)) {
                             setClientOnlyMode(true);

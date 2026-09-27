@@ -952,6 +952,9 @@ public class SwarmForgeServer {
         String scenarioArg = System.getenv("SCENARIO");
         long masterSeed = 42L;
 
+        // Parse global engine preferences and acceleration options first
+        org.swarmforge.core.engine.EnginePreferences.applyCommandLineArgs(args);
+
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             if (arg.startsWith("--ticks=")) {
@@ -965,6 +968,9 @@ public class SwarmForgeServer {
             }
             if (arg.startsWith("--export-dir=")) {
                 exportDir = arg.substring("--export-dir=".length());
+                continue;
+            }
+            if (arg.startsWith("--engine=") || arg.startsWith("--accel=") || arg.startsWith("--threads=")) {
                 continue;
             }
 
@@ -981,6 +987,12 @@ public class SwarmForgeServer {
                 case "--postgres"           -> dbMode = "postgres";
                 case "--offline"            -> dbMode = "offline";
                 case "--nogui"              -> noGui = true;
+                case "--engine", "--accel", "--threads" -> {
+                    if (i + 1 < args.length) i++; // skipped because processed in applyCommandLineArgs
+                }
+                case "--rust", "--java", "--gpu", "--cpu", "--single-core", "--multi-core", "--monocoeur", "--multicoeur" -> {
+                    // processed in applyCommandLineArgs
+                }
                 case "--ticks" -> {
                     if (i + 1 < args.length) {
                         batchTicks = Long.parseLong(args[++i]);
@@ -1168,6 +1180,15 @@ public class SwarmForgeServer {
                 +------------------------------------------------------+
                 |  Usage: java -jar swarmforge-server.jar [OPTIONS]    |
                 +------------------------------------------------------+
+                |  Compute Engine & Acceleration options:              |
+                |    --engine <auto|java|rust> Engine backend selector |
+                |    --rust / --java           Shortcut engine flags   |
+                |    --accel <auto|gpu|cpu>    Hardware compute accel  |
+                |    --gpu / --cpu             Shortcut accel flags    |
+                |    --threads <N>             Worker thread count     |
+                |    --single-core / --monocoeur Force 1 core          |
+                |    --multi-core / --multicoeur Max available cores   |
+                |                                                      |
                 |  Database mode (choose one):                         |
                 |    --local          Local mode: H2 fallback if no PG |
                 |                     (DEFAULT — dev/monoposte)        |
