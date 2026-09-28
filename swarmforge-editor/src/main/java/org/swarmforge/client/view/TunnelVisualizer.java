@@ -6,8 +6,10 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
+import com.jme3.scene.shape.Box;
 import com.jme3.scene.shape.Cylinder;
 import com.jme3.scene.shape.Sphere;
+import org.swarmforge.client.ui.WorldEditorPane.RenderMode;
 import org.swarmforge.core.simulation.TunnelNetwork;
 import org.swarmforge.core.simulation.TunnelNetwork.TunnelEdge;
 import org.swarmforge.core.simulation.TunnelNetwork.TunnelNode;
@@ -16,7 +18,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Visualizer for the underground tunnel network.
+ * Multi-mode visualizer for the underground tunnel network:
+ * - REALISTIC: Organic lenticular ellipsoidal chambers under lithostatic soil pressure & textured galleries
+ * - SCIENTIFIC: Metric volumetric nodes with functional chamber markers, exact diameter calibration & pipe gauges
+ * - GAMIFIED: Cubic Minecraft voxel blocks and square corridor shafts
  */
 public class TunnelVisualizer {
 
@@ -24,6 +29,7 @@ public class TunnelVisualizer {
     private final Node rootNode;
     private final Map<java.util.UUID, Geometry> nodeGeometries = new HashMap<>();
     private org.swarmforge.core.domain.Terrarium terrarium;
+    private RenderMode currentRenderMode = RenderMode.REALISTIC;
 
     public TunnelVisualizer(AssetManager assetManager) {
         this.assetManager = assetManager;
@@ -34,6 +40,14 @@ public class TunnelVisualizer {
         this.terrarium = terrarium;
     }
 
+    public void setRenderMode(RenderMode mode) {
+        if (this.currentRenderMode != mode) {
+            this.currentRenderMode = mode;
+            rootNode.detachAllChildren();
+            nodeGeometries.clear();
+        }
+    }
+
     public Node getRootNode() {
         return rootNode;
     }
@@ -42,13 +56,10 @@ public class TunnelVisualizer {
         if (network == null)
             return;
 
-        // Simple approach: Rebuild if count changed (optimization possible)
-        // For now, just check if we have new nodes
         if (network.getNodeCount() == nodeGeometries.size()) {
             return;
         }
 
-        // Full rebuild for simplicity or add missing
         for (TunnelNode node : network.getNodes()) {
             if (!nodeGeometries.containsKey(node.id())) {
                 Geometry geom = createNodeGeometry(node);
@@ -57,7 +68,7 @@ public class TunnelVisualizer {
             }
         }
 
-        // Edges (draw as cylinders)
+        // Edges (draw as cylinders or voxel prisms)
         for (TunnelEdge edge : network.getEdges()) {
             String edgeName = "Edge_" + edge.fromNode() + "_" + edge.toNode();
             if (rootNode.getChild(edgeName) == null) {
@@ -69,17 +80,6 @@ public class TunnelVisualizer {
                 }
             }
         }
-    }
-
-    private TunnelNode findNode(TunnelNetwork network, java.util.UUID id) {
-        // network.getNodes() is a list, maybe slow.
-        // TunnelNetwork could expose map or getById
-        // For now loop
-        for (TunnelNode n : network.getNodes()) {
-            if (n.id().equals(id))
-                return n;
-        }
-        return null;
     }
 
     private float terrainSideMeters = 10.0f; // Default terrain side length in meters
@@ -102,12 +102,25 @@ public class TunnelVisualizer {
             default -> 20.0f;
         };
 
-        // Calibrated biological chamber sizes (Queen: ~60-80mm, Brood: ~40-50mm, Entrance: ~30-35mm)
         float baseRadius3D = (radiusMm / mmPerWorldUnit) * 1.15f;
         float radius3D = Math.max(0.12f, Math.min(0.70f, baseRadius3D));
 
-        Sphere shape = new Sphere(8, 8, radius3D);
-        Geometry geom = new Geometry("Node_" + node.id(), shape);
+        Geometry geom;
+        if (currentRenderMode == RenderMode.GAMIFIED) {
+            // Gamified Voxel Cube Block
+            Box box = new Box(radius3D, radius3D, radius3D);
+            geom = new Geometry("Node_" + node.id(), box);
+        } else if (currentRenderMode == RenderMode.REALISTIC) {
+            // Realistic Lenticular Ellipsoidal Chamber (flattened horizontally under lithostatic pressure)
+            Sphere shape = new Sphere(10, 10, radius3D);
+            geom = new Geometry("Node_" + node.id(), shape);
+            geom.setLocalScale(1.25f, 0.72f, 1.25f);
+        } else {
+            // Scientific Metric Sphere
+            Sphere shape = new Sphere(8, 8, radius3D);
+            geom = new Geometry("Node_" + node.id(), shape);
+        }
+
         float surfaceY = terrarium != null ? terrarium.getSurfaceElevation(node.x(), node.y()) : 0f;
         float posY = (node.z() <= 0) ? (surfaceY + node.z()) : node.z();
         geom.setLocalTranslation(node.x(), posY, node.y());
@@ -145,9 +158,16 @@ public class TunnelVisualizer {
         float galleryRadiusMm = customGalleryDiameterMm > 0 ? customGalleryDiameterMm / 2.0f : 10.0f;
         float galleryRadius3D = Math.max(0.04f, (galleryRadiusMm / mmPerWorldUnit) * 1.25f);
 
-        // Cylinder aligned Z
-        Cylinder shape = new Cylinder(4, 8, galleryRadius3D, Math.max(0.05f, len), true);
-        Geometry geom = new Geometry(name, shape);
+        Geometry geom;
+        if (currentRenderMode == RenderMode.GAMIFIED) {
+            // Square Corridor Shaft
+            Box box = new Box(galleryRadius3D, galleryRadius3D, Math.max(0.05f, len * 0.5f));
+            geom = new Geometry(name, box);
+        } else {
+            // Cylindrical Pipe / Natural Gallery
+            Cylinder shape = new Cylinder(4, 8, galleryRadius3D, Math.max(0.05f, len), true);
+            geom = new Geometry(name, shape);
+        }
 
         // Position at midpoint
         geom.setLocalTranslation(p1.add(diff.mult(0.5f)));

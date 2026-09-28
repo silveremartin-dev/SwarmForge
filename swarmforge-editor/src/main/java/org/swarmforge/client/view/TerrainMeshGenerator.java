@@ -68,23 +68,64 @@ public class TerrainMeshGenerator {
                 float eU = terrarium.getSurfaceElevation(x, Math.min(height - 1, y + 1));
                 Vector3f norm = new Vector3f((eL - eR) * 0.5f, 1.0f, (eD - eU) * 0.5f).normalizeLocal();
 
-                // Multi-biome natural coloration (bright, sunny illumination)
+                // Multi-substrate natural coloration and biome blending
                 TerrariumCell topCell = terrarium.getCell(x, y, Math.min(depth - 1, Math.max(0, (int) elev)));
-                TerrariumCell.Material mat = topCell != null ? topCell.material() : TerrariumCell.Material.PEAT;
+                TerrariumCell.Material mat = topCell != null ? topCell.material() : TerrariumCell.Material.EARTH;
 
-                float r = 0.95f, g = 1.0f, b = 0.90f; // Lush meadow default
+                float r = 0.52f, g = 0.88f, b = 0.40f; // Lush green meadow default
                 if (mat == TerrariumCell.Material.WATER) {
-                    r = 0.40f; g = 0.70f; b = 1.0f;
+                    r = 0.22f; g = 0.62f; b = 0.98f; // Crystalline azure water
                 } else if (lat > 60.0) {
-                    r = 1.0f; g = 1.0f; b = 1.0f;
+                    r = 0.98f; g = 0.98f; b = 1.0f;  // Alpine snow
                 } else if (mat == TerrariumCell.Material.SAND || lat < 23.5) {
-                    r = 1.0f; g = 0.95f; b = 0.75f;
-                } else if (mat == TerrariumCell.Material.ROCK || mat == TerrariumCell.Material.GRAVEL) {
-                    r = 0.92f; g = 0.92f; b = 0.94f;
+                    r = 0.98f; g = 0.86f; b = 0.48f; // Golden desert sand
+                } else if (mat == TerrariumCell.Material.ROCK) {
+                    r = 0.65f; g = 0.68f; b = 0.72f; // Granite grey rock
+                } else if (mat == TerrariumCell.Material.GRAVEL) {
+                    r = 0.75f; g = 0.72f; b = 0.65f; // River gravel & pebbles
                 } else if (mat == TerrariumCell.Material.CLAY) {
-                    r = 0.95f; g = 0.78f; b = 0.65f;
+                    r = 0.85f; g = 0.48f; b = 0.28f; // Terracotta clay
                 } else if (mat == TerrariumCell.Material.PEAT) {
-                    r = 0.75f; g = 0.65f; b = 0.55f;
+                    r = 0.42f; g = 0.28f; b = 0.16f; // Dark rich organic humus
+                } else {
+                    r = 0.48f; g = 0.85f; b = 0.38f; // Temperate meadow
+                }
+
+                // Pedological Moisture Shading: Higher soil humidity darkens albedo
+                if (mat != TerrariumCell.Material.WATER && mat != TerrariumCell.Material.ROCK && topCell != null) {
+                    float hum = topCell.humidity();
+                    float moistureDarken = 1.0f - (hum * 0.28f);
+                    r *= moistureDarken;
+                    g *= moistureDarken;
+                    b *= moistureDarken;
+
+                    // Water Proximity: Darken immediate shoreline edges (wet bank effect)
+                    boolean nearWater = false;
+                    for (int dx = -1; dx <= 1 && !nearWater; dx++) {
+                        for (int dy = -1; dy <= 1 && !nearWater; dy++) {
+                            int nx = Math.max(0, Math.min(width - 1, x + dx));
+                            int ny = Math.max(0, Math.min(height - 1, y + dy));
+                            float nElev = terrarium.getSurfaceElevation(nx, ny);
+                            TerrariumCell nCell = terrarium.getCell(nx, ny, Math.min(depth - 1, Math.max(0, (int) nElev)));
+                            if (nCell != null && nCell.material() == TerrariumCell.Material.WATER) {
+                                nearWater = true;
+                            }
+                        }
+                    }
+                    if (nearWater) {
+                        r *= 0.78f;
+                        g *= 0.80f;
+                        b *= 0.76f;
+                    }
+                }
+
+                // Geomorphological Slope Scree (Éboulis de pente / Falaises rocheuses):
+                // On steep slopes, topsoil erodes, transitioning terrain albedo to exposed rock/slate
+                if (mat != TerrariumCell.Material.WATER && norm.y < 0.78f) {
+                    float slopeFactor = Math.min(1.0f, Math.max(0.0f, (0.78f - norm.y) / 0.28f));
+                    r = r * (1.0f - slopeFactor) + 0.58f * slopeFactor;
+                    g = g * (1.0f - slopeFactor) + 0.60f * slopeFactor;
+                    b = b * (1.0f - slopeFactor) + 0.63f * slopeFactor;
                 }
 
                 vertices.add((float) x);

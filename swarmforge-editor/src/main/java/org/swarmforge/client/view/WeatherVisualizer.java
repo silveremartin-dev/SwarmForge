@@ -46,15 +46,21 @@ public class WeatherVisualizer {
 
     // Visual nodes
     private Geometry sunMesh;
+    private Geometry coronaHaloGeom;
+    private Material coronaHaloMat;
     private Geometry moonMesh;
     private Node starsNode;
     private Node cloudsNode;
     private Node lightningNode;
     private Node precipitationNode;
     private Node mistNode;
+    private Node godRaysNode;
+    private final List<Geometry> godRays = new ArrayList<>();
+    private final List<Geometry> groundMistPuffs = new ArrayList<>();
     private Node fireNode;
     private Node snowGroundNode;
     private Node iceGroundNode;
+    private Node hoarfrostNode;
 
     // Geometries for precipitation particles
     private final List<Geometry> rainDrops = new ArrayList<>();
@@ -67,6 +73,8 @@ public class WeatherVisualizer {
     private Material snowGroundMat;
     private Geometry iceGroundGeom;
     private Material iceGroundMat;
+    private Geometry hoarfrostGeom;
+    private Material hoarfrostMat;
 
     // Scientific Mode Vector & Isoline Indicators
     private Node scientificVectorNode;
@@ -92,6 +100,7 @@ public class WeatherVisualizer {
         rebuildClouds();
         rebuildPrecipitation();
         initMistAndFire();
+        initGodRays();
         initGroundSnowAndIceCover();
         initLightningNode();
         initScientificVectors();
@@ -108,6 +117,9 @@ public class WeatherVisualizer {
             rebuildPrecipitation();
             updateMistAndFireVisibility();
             initGroundSnowAndIceCover();
+            if (godRaysNode != null) {
+                godRaysNode.setCullHint(mode == RenderMode.REALISTIC ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
+            }
         }
     }
 
@@ -119,6 +131,16 @@ public class WeatherVisualizer {
         sunMat.setColor("Color", new ColorRGBA(1.0f, 0.95f, 0.4f, 1.0f));
         sunMesh.setMaterial(sunMat);
         rootNode.attachChild(sunMesh);
+
+        // Soft Solar Corona Halo Disc
+        Sphere haloSphere = new Sphere(16, 16, 12.0f);
+        coronaHaloGeom = new Geometry("SunCoronaHalo", haloSphere);
+        coronaHaloMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        coronaHaloMat.setColor("Color", new ColorRGBA(1.0f, 0.92f, 0.50f, 0.14f));
+        coronaHaloMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+        coronaHaloGeom.setMaterial(coronaHaloMat);
+        coronaHaloGeom.setQueueBucket(com.jme3.renderer.queue.RenderQueue.Bucket.Transparent);
+        rootNode.attachChild(coronaHaloGeom);
 
         // Moon Mesh (Silver Blue Lunar Sphere)
         Sphere moonSphere = new Sphere(16, 16, 4.5f);
@@ -293,9 +315,11 @@ public class WeatherVisualizer {
     private void initGroundSnowAndIceCover() {
         if (snowGroundNode != null) snowGroundNode.removeFromParent();
         if (iceGroundNode != null) iceGroundNode.removeFromParent();
+        if (hoarfrostNode != null) hoarfrostNode.removeFromParent();
 
         snowGroundNode = new Node("SnowGroundCover");
         iceGroundNode = new Node("IceSheetCover");
+        hoarfrostNode = new Node("HoarfrostCover");
 
         // Ground Snowpack Overlay (High-resolution XZ quad layer lying just above terrain)
         snowGroundMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
@@ -321,32 +345,48 @@ public class WeatherVisualizer {
         iceGroundGeom.setLocalTranslation(-13, 0.22f, -13);
         iceGroundNode.attachChild(iceGroundGeom);
 
+        // Crystalline Hoarfrost / Gelée blanche Overlay
+        hoarfrostMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        hoarfrostMat.setColor("Color", new ColorRGBA(0.96f, 0.98f, 1.0f, 0.0f));
+        hoarfrostMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+
+        Quad hoarQuad = new Quad(90, 90);
+        hoarfrostGeom = new Geometry("HoarfrostCoverMesh", hoarQuad);
+        hoarfrostGeom.setMaterial(hoarfrostMat);
+        hoarfrostGeom.rotate(1.5708f, 0, 0);
+        hoarfrostGeom.setLocalTranslation(-13, 0.15f, -13);
+        hoarfrostNode.attachChild(hoarfrostGeom);
+
         snowGroundNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
         iceGroundNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+        hoarfrostNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
         rootNode.attachChild(snowGroundNode);
         rootNode.attachChild(iceGroundNode);
+        rootNode.attachChild(hoarfrostNode);
     }
 
     private void initMistAndFire() {
         mistNode = new Node("MistNode");
         mistNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+        groundMistPuffs.clear();
         fireNode = new Node("FireNode");
         fireNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
 
-        // Volumetric Low-Hanging Mist Puffs (Realistic & Atmospheric)
+        // Volumetric Low-Hanging Understory Ground Mist (Brume matinale de sous-bois)
         Material mistMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        mistMat.setColor("Color", new ColorRGBA(0.92f, 0.96f, 1.0f, 0.22f));
+        mistMat.setColor("Color", new ColorRGBA(0.92f, 0.96f, 1.0f, 0.18f));
         mistMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
 
-        Sphere mistPuff = new Sphere(8, 8, 4.5f);
-        for (int i = 0; i < 6; i++) {
-            Geometry g = new Geometry("MistPuff_" + i, mistPuff);
+        Sphere mistPuff = new Sphere(8, 8, 4.0f);
+        for (int i = 0; i < 12; i++) {
+            Geometry g = new Geometry("GroundMistPuff_" + i, mistPuff);
             g.setMaterial(mistMat);
-            float mx = 32f + (float) ((Math.random() - 0.5) * 45.0);
-            float mz = 32f + (float) ((Math.random() - 0.5) * 45.0);
-            float my = 16f + (float) (Math.random() * 4.0);
+            float mx = 10f + (float) (Math.random() * 44.0);
+            float mz = 10f + (float) (Math.random() * 44.0);
+            float my = 0.8f + (float) (Math.random() * 2.2f);
             g.setLocalTranslation(mx, my, mz);
-            g.setLocalScale(1.4f, 0.5f, 1.4f);
+            g.setLocalScale(2.2f, 0.35f, 2.2f);
+            groundMistPuffs.add(g);
             mistNode.attachChild(g);
         }
         rootNode.attachChild(mistNode);
@@ -362,6 +402,30 @@ public class WeatherVisualizer {
         rootNode.attachChild(fireNode);
 
         updateMistAndFireVisibility();
+    }
+
+    private void initGodRays() {
+        if (godRaysNode != null) godRaysNode.removeFromParent();
+        godRaysNode = new Node("CrepuscularGodRays");
+        godRays.clear();
+
+        Material rayMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        rayMat.setColor("Color", new ColorRGBA(1.0f, 0.96f, 0.82f, 0.08f));
+        rayMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+        rayMat.getAdditionalRenderState().setFaceCullMode(com.jme3.material.RenderState.FaceCullMode.Off);
+
+        Cylinder shaft = new Cylinder(6, 6, 1.2f, 3.8f, 50.0f, true, false);
+        for (int i = 0; i < 5; i++) {
+            Geometry g = new Geometry("Sunbeam_" + i, shaft);
+            g.setMaterial(rayMat);
+            float rx = 20f + i * 7.5f + (float) ((Math.random() - 0.5) * 4.0);
+            float rz = 20f + (i % 3) * 11.0f + (float) ((Math.random() - 0.5) * 4.0);
+            g.setLocalTranslation(rx, 25.0f, rz);
+            godRays.add(g);
+            godRaysNode.attachChild(g);
+        }
+        godRaysNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+        rootNode.attachChild(godRaysNode);
     }
 
     private void updateMistAndFireVisibility() {
@@ -409,12 +473,19 @@ public class WeatherVisualizer {
         float worldCenterZ = 32f;
 
         if (sunMesh != null) {
-            sunMesh.setCullHint((!showSun || !isDay) ? com.jme3.scene.Spatial.CullHint.Always : com.jme3.scene.Spatial.CullHint.Never);
+            boolean sunVis = showSun && isDay;
+            sunMesh.setCullHint(!sunVis ? com.jme3.scene.Spatial.CullHint.Always : com.jme3.scene.Spatial.CullHint.Never);
+            if (coronaHaloGeom != null) {
+                coronaHaloGeom.setCullHint(!sunVis ? com.jme3.scene.Spatial.CullHint.Always : com.jme3.scene.Spatial.CullHint.Never);
+            }
             if (isDay) {
                 float sx = worldCenterX + (float) Math.cos((sunAngle - 0.25f) * Math.PI * 2) * 160f;
                 float sy = 85f + (float) Math.sin((sunAngle - 0.25f) * Math.PI * 2) * 110f;
                 float sz = worldCenterZ + 40f;
                 sunMesh.setLocalTranslation(sx, sy, sz);
+                if (coronaHaloGeom != null) {
+                    coronaHaloGeom.setLocalTranslation(sx, sy, sz);
+                }
 
                 if (sunLight != null) {
                     sunLight.setDirection(new Vector3f(worldCenterX - sx, 10f - sy, worldCenterZ - sz).normalizeLocal());
@@ -434,7 +505,12 @@ public class WeatherVisualizer {
 
                 if (sunLight != null) {
                     sunLight.setDirection(new Vector3f(worldCenterX - mx, 10f - my, worldCenterZ - mz).normalizeLocal());
-                    sunLight.setColor(new ColorRGBA(0.35f, 0.45f, 0.75f, 1.0f));
+                    // Purkinje Scotopic Blue Shift: biological rods favor cool silver-indigo wavelengths at night
+                    if (currentRenderMode == RenderMode.REALISTIC) {
+                        sunLight.setColor(new ColorRGBA(0.24f, 0.36f, 0.65f, 1.0f).mult(Math.max(0.45f, weather.getLightLevel() * 1.8f)));
+                    } else {
+                        sunLight.setColor(new ColorRGBA(0.35f, 0.45f, 0.75f, 1.0f));
+                    }
                 }
             }
         }
@@ -469,7 +545,7 @@ public class WeatherVisualizer {
         // 3. Clouds Drift Motion along Wind Direction
         if (cloudsNode != null) {
             cloudsNode.setCullHint(!showClouds ? com.jme3.scene.Spatial.CullHint.Always : com.jme3.scene.Spatial.CullHint.Never);
-            if (showClouds) {
+            if (showClouds && tpf > 0.0001f) {
                 // Translation along wind vector + slow orbital rotation
                 cloudsNode.rotate(0, windSpeedMs * 0.0008f * tpf, 0);
             }
@@ -489,7 +565,7 @@ public class WeatherVisualizer {
 
         for (Geometry drop : rainDrops) {
             drop.setCullHint(isRaining ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-            if (isRaining) {
+            if (isRaining && tpf > 0.0001f) {
                 drop.setLocalRotation(rainSlant);
                 Vector3f pos = drop.getLocalTranslation();
                 float fallSpeed = 22f + (rainRate / 5f) * 4f;
@@ -507,7 +583,7 @@ public class WeatherVisualizer {
         // Snow Flakes: Micro-turbulent drift + wind vector
         for (Geometry flake : snowFlakes) {
             flake.setCullHint(isSnowing ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-            if (isSnowing) {
+            if (isSnowing && tpf > 0.0001f) {
                 Vector3f pos = flake.getLocalTranslation();
                 pos.y -= tpf * (5.5f + (snowRate / 10f) * 2f);
                 pos.x += (windDx + FastMath.sin(pos.y * 0.3f) * 0.25f) * tpf;
@@ -523,7 +599,7 @@ public class WeatherVisualizer {
         // Realistic & Scientific Hail
         for (Geometry pellet : hailPellets) {
             pellet.setCullHint(isHailing ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-            if (isHailing) {
+            if (isHailing && tpf > 0.0001f) {
                 Vector3f pos = pellet.getLocalTranslation();
                 pos.y -= tpf * 44f;
                 pos.x += windDx * 0.4f * tpf;
@@ -536,7 +612,7 @@ public class WeatherVisualizer {
         // Gamified Hail Voxel Cubes
         for (Geometry cube : gamifiedHailCubes) {
             cube.setCullHint((isHailing && currentRenderMode == RenderMode.GAMIFIED) ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-            if (isHailing && currentRenderMode == RenderMode.GAMIFIED) {
+            if (isHailing && currentRenderMode == RenderMode.GAMIFIED && tpf > 0.0001f) {
                 Vector3f pos = cube.getLocalTranslation();
                 pos.y -= tpf * 32f;
                 pos.x += windDx * 0.3f * tpf;
@@ -570,7 +646,58 @@ public class WeatherVisualizer {
             iceGroundNode.setCullHint(iceAlpha > 0.02f ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
         }
 
-        // 6. Lightning Strobe Timer
+        // Hoarfrost / Gelée blanche matinale (Crystalline Frost Sheen)
+        float temp = weather.getTemperature();
+        float humidity = weather.getHumidity();
+        boolean hoarfrostCondition = (temp >= -2.5f && temp <= 2.5f && humidity > 0.78f && snowDepthMm < 1.0f);
+        if (hoarfrostMat != null && hoarfrostNode != null) {
+            float hoarAlpha = hoarfrostCondition ? Math.min(0.42f, (humidity - 0.78f) * 2.1f) : 0.0f;
+            hoarfrostMat.setColor("Color", new ColorRGBA(0.96f, 0.98f, 1.0f, hoarAlpha));
+            hoarfrostNode.setCullHint(hoarAlpha > 0.02f ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
+        }
+
+        // 6. Understory Ground Mist Drift (Brume matinale de sous-bois)
+        if (showFog && tpf > 0.0001f) {
+            for (Geometry puff : groundMistPuffs) {
+                Vector3f pos = puff.getLocalTranslation();
+                pos.x += windDx * 0.12f * tpf;
+                pos.z += windDz * 0.12f * tpf;
+                if (pos.x < 2.0f) pos.x = 62.0f;
+                if (pos.x > 62.0f) pos.x = 2.0f;
+                if (pos.z < 2.0f) pos.z = 62.0f;
+                if (pos.z > 62.0f) pos.z = 2.0f;
+                puff.setLocalTranslation(pos);
+            }
+        }
+
+        // 7. Crepuscular God Rays (Rayons solaires de canopée à travers les clairières)
+        if (godRaysNode != null) {
+            boolean raysActive = currentRenderMode == RenderMode.REALISTIC && isDay && showSun;
+            if (!raysActive) {
+                godRaysNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+            } else {
+                // Fade in during morning / late afternoon when sun elevation is low
+                float solarElev = (float) Math.sin((sunAngle - 0.25f) * Math.PI * 2);
+                float rayStrength = (solarElev > 0.08f && solarElev < 0.78f) ? (1.0f - Math.abs(solarElev - 0.42f) / 0.35f) : 0.0f;
+                rayStrength = Math.max(0.0f, Math.min(1.0f, rayStrength));
+
+                if (rayStrength <= 0.02f) {
+                    godRaysNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+                } else {
+                    godRaysNode.setCullHint(com.jme3.scene.Spatial.CullHint.Never);
+                    Quaternion sunDirQuat = new Quaternion().fromAngles(0.35f, (sunAngle - 0.25f) * FastMath.TWO_PI, 0);
+                    godRaysNode.setLocalRotation(sunDirQuat);
+                    for (Geometry ray : godRays) {
+                        Material m = ray.getMaterial();
+                        if (m != null && m.getMaterialDef().getMaterialParam("Color") != null) {
+                            m.setColor("Color", new ColorRGBA(1.0f, 0.95f, 0.80f, 0.08f * rayStrength));
+                        }
+                    }
+                }
+            }
+        }
+
+        // 8. Lightning Strobe Timer
         if (lightningFlashTime > 0) {
             lightningFlashTime -= tpf;
             if (lightningFlashTime <= 0) {

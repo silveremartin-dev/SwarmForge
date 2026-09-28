@@ -673,6 +673,16 @@ public class JmeGameApp extends SimpleApplication {
         });
     }
 
+    private boolean simulationPaused = false;
+
+    public void setSimulationPaused(boolean paused) {
+        this.simulationPaused = paused;
+    }
+
+    public boolean isSimulationPaused() {
+        return simulationPaused;
+    }
+
     @Override
     public void simpleUpdate(float tpf) {
         // Process tasks from JavaFX thread
@@ -680,17 +690,21 @@ public class JmeGameApp extends SimpleApplication {
             taskQueue.poll().run();
         }
 
+        float effectiveTpf = simulationPaused ? 0.0f : tpf;
+
         // Update Simulation Visuals
         if (simulation != null) {
-            updateAntVisuals(tpf);
-            updateEnvironmentVisuals(tpf);
+            updateAntVisuals(effectiveTpf);
+            updateEnvironmentVisuals(effectiveTpf);
 
             if (pheromoneVisualizer != null && simulation.getPheromoneGrid() != null) {
                 pheromoneVisualizer.update(simulation.getPheromoneGrid());
             }
 
             // 3D Ant Selection & Target Spotlight Reticle Animation
-            reticleAnimationTimer += tpf;
+            if (!simulationPaused) {
+                reticleAnimationTimer += tpf;
+            }
             if (selectionReticleNode != null) {
                 if (followedAntId != null && antVisuals.containsKey(followedAntId)) {
                     com.jme3.scene.Spatial antSpatial = antVisuals.get(followedAntId);
@@ -698,7 +712,9 @@ public class JmeGameApp extends SimpleApplication {
                         selectionReticleNode.setCullHint(com.jme3.scene.Spatial.CullHint.Never);
                         Vector3f antPos = antSpatial.getWorldTranslation();
                         selectionReticleNode.setLocalTranslation(antPos.x, antPos.y + 0.08f, antPos.z);
-                        selectionReticleNode.rotate(0, tpf * 2.2f, 0);
+                        if (!simulationPaused) {
+                            selectionReticleNode.rotate(0, tpf * 2.2f, 0);
+                        }
                         float pulse = 1.0f + 0.12f * (float) Math.sin(reticleAnimationTimer * 5.0f);
                         selectionReticleNode.setLocalScale(pulse);
                     } else {
@@ -1072,20 +1088,53 @@ public class JmeGameApp extends SimpleApplication {
     }
 
     public void zoomCamera(float delta) {
+        zoomCamera(delta, width / 2.0, height / 2.0, width, height);
+    }
+
+    public void zoomCamera(float delta, double fxX, double fxY, double paneW, double paneH) {
         enqueueTask(() -> {
             followedAntId = null; // Break ant follow on manual user manipulation
-            Vector3f toTarget = cameraTarget.subtract(cam.getLocation());
+
+            float jmeX = (float) ((fxX / Math.max(1.0, paneW)) * width);
+            float jmeY = (float) ((1.0 - (fxY / Math.max(1.0, paneH))) * height);
+
+            Vector3f click3d = cam.getWorldCoordinates(new com.jme3.math.Vector2f(jmeX, jmeY), 0f).clone();
+            Vector3f dir = cam.getWorldCoordinates(new com.jme3.math.Vector2f(jmeX, jmeY), 1f).subtractLocal(click3d).normalizeLocal();
+            com.jme3.math.Ray ray = new com.jme3.math.Ray(click3d, dir);
+
+            com.jme3.collision.CollisionResults results = new com.jme3.collision.CollisionResults();
+            rootNode.collideWith(ray, results);
+
+            Vector3f targetPoint = null;
+            if (results.size() > 0) {
+                targetPoint = results.getClosestCollision().getContactPoint();
+            } else if (Math.abs(dir.y) > 0.001f) {
+                float groundY = cameraTarget.y;
+                float t = (groundY - click3d.y) / dir.y;
+                if (t > 0) {
+                    targetPoint = click3d.add(dir.mult(t));
+                }
+            }
+
+            Vector3f toTarget = (targetPoint != null) ? targetPoint.subtract(cam.getLocation()) : cameraTarget.subtract(cam.getLocation());
             float dist = toTarget.length();
             float move = delta * (dist * 0.08f + 0.4f);
-            Vector3f dir = cam.getDirection().mult(move);
-            if (delta > 0 && dist - move < 0.35f) {
-                // Minimum distance clamp for macro ant inspection
-                cam.setLocation(cameraTarget.subtract(cam.getDirection().mult(0.35f)));
-            } else if (delta < 0 && dist + Math.abs(move) > 250.0f) {
-                // Maximum distance clamp
-                cam.setLocation(cameraTarget.subtract(cam.getDirection().mult(250.0f)));
-            } else {
-                cam.setLocation(cam.getLocation().add(dir));
+
+            if (delta > 0) { // Zoom in towards pointer target
+                if (dist - move < 0.35f) {
+                    move = Math.max(0f, dist - 0.35f);
+                }
+                Vector3f zoomDir = toTarget.normalize();
+                cam.setLocation(cam.getLocation().add(zoomDir.mult(move)));
+                if (targetPoint != null) {
+                    cameraTarget.interpolateLocal(targetPoint, 0.12f);
+                }
+            } else { // Zoom out
+                if (dist + Math.abs(move) > 350.0f) {
+                    move = -(350.0f - dist);
+                }
+                Vector3f zoomDir = toTarget.normalize();
+                cam.setLocation(cam.getLocation().add(zoomDir.mult(move)));
             }
         });
     }
@@ -1273,22 +1322,17 @@ public class JmeGameApp extends SimpleApplication {
             if (simulation.getSeasonManager() != null) {
                 vegetationVisualizer.setSeason(simulation.getSeasonManager().getCurrentSeason());
             }
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.updateNestArchitectures(simulation.getColonies(), currentRenderMode);
+            }
             for (org.swarmforge.core.domain.Colony colony : simulation.getColonies()) {
                 if (colony.getTunnelNetwork() != null) {
                     tunnelVisualizer.update(colony.getTunnelNetwork());
                 }
 
-                // Check for 3D Beehive or Wasp Nest tree anchoring
                 String spName = colony.getSpecies() != null ? colony.getSpecies().getCommonName().toLowerCase() : "";
                 String arch = colony.getSpecies() != null && colony.getSpecies().getNestType() != null ? colony.getSpecies().getNestType().toUpperCase() : "";
-                
-                if (spName.contains("bee") || spName.contains("abeille") || spName.contains("apis") || arch.contains("BEEHIVE")) {
-                    // Check if 3D beehive is already attached
-                    String hiveName = "3D_Beehive_" + (int) colony.getNestX() + "_" + (int) colony.getNestY();
-                    if (rootNode.getChild(hiveName) == null) {
-                        vegetationVisualizer.renderBeehive(colony.getNestX(), colony.getNestY(), colony.getNestZ(), 45.0f);
-                    }
-                } else if (spName.contains("wasp") || spName.contains("guêpe") || spName.contains("vespula") || arch.contains("PAPER") || arch.contains("ARBOREAL")) {
+                if (spName.contains("wasp") || spName.contains("guêpe") || spName.contains("vespula") || arch.contains("PAPER") || arch.contains("ARBOREAL")) {
                     vegetationVisualizer.ensureHostTreeForWaspNest(colony.getNestX(), colony.getNestY(), colony.getNestZ());
                 }
             }
@@ -1360,6 +1404,9 @@ public class JmeGameApp extends SimpleApplication {
         }
         if (vegetationVisualizer != null) {
             vegetationVisualizer.setRenderMode(mode);
+        }
+        if (tunnelVisualizer != null) {
+            tunnelVisualizer.setRenderMode(mode);
         }
         if (weatherVisualizer != null) {
             weatherVisualizer.setRenderMode(mode);

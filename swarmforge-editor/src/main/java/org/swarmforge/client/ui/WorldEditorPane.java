@@ -125,6 +125,7 @@ public class WorldEditorPane extends BorderPane {
     private CheckBox showSubstrateStratigraphyCheck;
     private Label lblHoverInfo;
     public Label getLblHoverInfo() { return lblHoverInfo; }
+    private Label hudVoxelOverlay;
 
     // Controls: 1. Scale & Resolution
     private Slider surfaceSizeSlider; // Mètres (0.5 - 50.0m)
@@ -204,6 +205,7 @@ public class WorldEditorPane extends BorderPane {
     public void setVoxelInfoVisible(boolean visible) {
         this.isVoxelInfoVisible = visible;
         if (showVoxelInfoCheck != null) showVoxelInfoCheck.setSelected(visible);
+        if (hudVoxelOverlay != null) hudVoxelOverlay.setVisible(visible);
         if (!visible && lblHoverInfo != null) lblHoverInfo.setText("");
         repaintAllViews();
     }
@@ -413,6 +415,9 @@ public class WorldEditorPane extends BorderPane {
             weatherOverlayPane.setVisible(simMode && isWeatherOverlayVisible);
             weatherOverlayPane.setManaged(simMode && isWeatherOverlayVisible);
         }
+        if (gameView != null && gameView.getGameApp() != null) {
+            gameView.getGameApp().setSimulationPaused(!simMode);
+        }
         updateRightScrollVisibility();
         repaintAllViews();
     }
@@ -506,69 +511,7 @@ public class WorldEditorPane extends BorderPane {
             subFlow.getChildren().add(b);
         }
 
-        // 2. Castes
-        Label titleCastes = new Label("🐜 Castes & Rôles");
-        titleCastes.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #fbbf24;");
-        FlowPane castesFlow = new FlowPane(4, 4);
-        castesFlow.setPrefWrapLength(240);
-        String[][] castes = {
-            {"👑 Reine (Gyne)", "#e11d48"},
-            {"🐜 Ouvrière", "#f97316"},
-            {"🛡️ Soldat / Major", "#ef4444"},
-            {"⚖️ Media", "#ca8a04"},
-            {"🔍 Minor", "#84cc16"},
-            {"🪽 Mâle / Drone", "#06b6d4"},
-            {"🥚 Couvain / Larve", "#e2e8f0"}
-        };
-        for (String[] c : castes) {
-            HBox b = new HBox(4);
-            b.setAlignment(Pos.CENTER_LEFT);
-            b.setPadding(new Insets(2, 5, 2, 5));
-            b.setStyle("-fx-background-color: rgba(255,255,255,0.06); -fx-background-radius: 4; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 4; -fx-border-width: 0.5;");
-            Canvas dot = new Canvas(8, 8);
-            GraphicsContext g = dot.getGraphicsContext2D();
-            g.setFill(Color.web(c[1]));
-            g.fillOval(0, 0, 8, 8);
-            g.setStroke(Color.WHITE);
-            g.setLineWidth(0.6);
-            g.strokeOval(0, 0, 8, 8);
-            Label lbl = new Label(c[0]);
-            lbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #e2e8f0;");
-            b.getChildren().addAll(dot, lbl);
-            castesFlow.getChildren().add(b);
-        }
-
-        // 3. Phéromones
-        Label titlePhero = new Label("📡 Canaux Phéromonaux");
-        titlePhero.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #a855f7;");
-        FlowPane pheroFlow = new FlowPane(4, 4);
-        pheroFlow.setPrefWrapLength(240);
-        String[][] pheros = {
-            {"🍏 Nourriture (Recrutement)", "#22c55e"},
-            {"🏠 Retour Nid (Piste)", "#3b82f6"},
-            {"⚠️ Danger / Alarme", "#ef4444"},
-            {"👑 Phéromone Royale", "#ec4899"},
-            {"☠️ Nécrophorique", "#64748b"}
-        };
-        for (String[] p : pheros) {
-            HBox b = new HBox(4);
-            b.setAlignment(Pos.CENTER_LEFT);
-            b.setPadding(new Insets(2, 5, 2, 5));
-            b.setStyle("-fx-background-color: rgba(255,255,255,0.06); -fx-background-radius: 4; -fx-border-color: rgba(255,255,255,0.1); -fx-border-radius: 4; -fx-border-width: 0.5;");
-            Canvas dot = new Canvas(8, 8);
-            GraphicsContext g = dot.getGraphicsContext2D();
-            g.setFill(Color.web(p[1]));
-            g.fillOval(0, 0, 8, 8);
-            g.setStroke(Color.WHITE);
-            g.setLineWidth(0.6);
-            g.strokeOval(0, 0, 8, 8);
-            Label lbl = new Label(p[0]);
-            lbl.setStyle("-fx-font-size: 10px; -fx-text-fill: #e2e8f0;");
-            b.getChildren().addAll(dot, lbl);
-            pheroFlow.getChildren().add(b);
-        }
-
-        // 4. Chambres & Nids
+        // 2. Chambres & Nids
         Label titleNest = new Label("🏰 Galeries & Chambres");
         titleNest.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #10b981;");
         FlowPane nestFlow = new FlowPane(4, 4);
@@ -603,10 +546,6 @@ public class WorldEditorPane extends BorderPane {
 
         panel.getChildren().addAll(
             titleSub, subFlow,
-            new Separator(),
-            titleCastes, castesFlow,
-            new Separator(),
-            titlePhero, pheroFlow,
             new Separator(),
             titleNest, nestFlow
         );
@@ -653,12 +592,13 @@ public class WorldEditorPane extends BorderPane {
                     int soilIdx = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, ((double) (surfaceZ - z) / Math.max(1, surfaceZ)) * (SOIL_DEPTH - 1)));
                     byte soilMatId = soilLayers[gx][gy][soilIdx];
                     boolean isVoid = voidGrid[gx][gy][soilIdx] || carvedVoxelGrid[gx][gy];
+                    boolean isRiv = isNearRiver(gx, gy, 0);
 
                     org.swarmforge.core.domain.TerrariumCell.Material mat;
                     if (isVoid) {
                         mat = org.swarmforge.core.domain.TerrariumCell.Material.CAVITY;
-                    } else if (z == surfaceZ) {
-                        mat = org.swarmforge.core.domain.TerrariumCell.Material.PEAT;
+                    } else if (isRiv && z == surfaceZ) {
+                        mat = org.swarmforge.core.domain.TerrariumCell.Material.WATER;
                     } else {
                         mat = switch (soilMatId) {
                             case 1 -> org.swarmforge.core.domain.TerrariumCell.Material.SAND;
@@ -1793,6 +1733,7 @@ public class WorldEditorPane extends BorderPane {
         box.setStyle("-fx-background-color: rgba(15, 23, 42, 0.88); -fx-background-radius: 8; -fx-border-color: rgba(56, 189, 248, 0.4); -fx-border-width: 1; -fx-border-radius: 8;");
         box.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         box.setPickOnBounds(false);
+        box.setMouseTransparent(true);
         box.setVisible(isSimulationMode && isWeatherOverlayVisible);
         box.setManaged(isSimulationMode && isWeatherOverlayVisible);
 
@@ -3465,6 +3406,9 @@ public class WorldEditorPane extends BorderPane {
         StackPane.setMargin(sideMinimapsBox, new Insets(10, 10, 10, 10));
 
         this.gameView = new org.swarmforge.client.view.GameViewPane(1024, 768);
+        if (gameView.getGameApp() != null) {
+            gameView.getGameApp().setSimulationPaused(!isSimulationMode);
+        }
         boolean isSci = (currentRenderMode == RenderMode.SCIENTIFIC);
         canvas3D.setVisible(isSci);
         canvas3D.setManaged(isSci);
@@ -3475,8 +3419,13 @@ public class WorldEditorPane extends BorderPane {
         gameView.getGameApp().setSelectionListener(new org.swarmforge.client.view.JmeGameApp.ObjectSelectionListener() {
             @Override
             public void onVoxelSelected(int x, int y, int z, String material, float moisture, float temp, float compaction) {
+                String text = "📍 Voxel: (" + x + ", " + y + ", " + z + ") | " + material + " | Hum: " + (int) moisture + "% | Temp: " + String.format(java.util.Locale.US, "%.1f", temp) + "°C | Comp: " + (int) compaction + "%";
                 if (lblHoverInfo != null) {
-                    lblHoverInfo.setText("📍 Voxel: (" + x + ", " + y + ", " + z + ") | " + material + " | Hum: " + (int) moisture + "% | Temp: " + String.format(java.util.Locale.US, "%.1f", temp) + "°C");
+                    lblHoverInfo.setText(text);
+                }
+                if (hudVoxelOverlay != null && isVoxelInfoVisible) {
+                    hudVoxelOverlay.setText(text);
+                    hudVoxelOverlay.setVisible(true);
                 }
             }
 
@@ -3500,6 +3449,10 @@ public class WorldEditorPane extends BorderPane {
             public void onHoverInfo(String text) {
                 if (lblHoverInfo != null && text != null) {
                     lblHoverInfo.setText(text);
+                }
+                if (hudVoxelOverlay != null && text != null && isVoxelInfoVisible) {
+                    hudVoxelOverlay.setText(text);
+                    hudVoxelOverlay.setVisible(true);
                 }
             }
         });
@@ -3536,7 +3489,7 @@ public class WorldEditorPane extends BorderPane {
         });
         gameView.setOnScroll(e -> {
             if (gameView.getGameApp() != null) {
-                gameView.getGameApp().zoomCamera((float) e.getDeltaY() * 0.05f);
+                gameView.getGameApp().zoomCamera((float) e.getDeltaY() * 0.05f, e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
             }
             repaintAllViews();
         });
@@ -3553,15 +3506,22 @@ public class WorldEditorPane extends BorderPane {
             }
         });
 
+        this.hudVoxelOverlay = new Label("🔬 Inspection Voxel Active");
+        hudVoxelOverlay.setStyle("-fx-background-color: rgba(15, 23, 42, 0.85); -fx-text-fill: #f8fafc; -fx-padding: 6 12 6 12; -fx-background-radius: 6; -fx-border-color: rgba(56, 189, 248, 0.5); -fx-border-radius: 6; -fx-border-width: 1; -fx-font-size: 11px; -fx-font-weight: bold;");
+        hudVoxelOverlay.setMouseTransparent(true);
+        hudVoxelOverlay.setVisible(isVoxelInfoVisible);
+        StackPane.setAlignment(hudVoxelOverlay, Pos.BOTTOM_LEFT);
+        StackPane.setMargin(hudVoxelOverlay, new Insets(10, 10, 10, 10));
+
         this.weatherOverlayPane = createWeatherOverlayPane();
-        StackPane h3d = new StackPane(canvas3D, gameView, sideMinimapsBox, trackedAntPane, chamberInfoPane, weatherOverlayPane);
+        StackPane h3d = new StackPane(canvas3D, gameView, hudVoxelOverlay, sideMinimapsBox, trackedAntPane, chamberInfoPane, weatherOverlayPane);
         h3d.setStyle("-fx-border-color: #555; -fx-border-width: 1; -fx-background-color: #0b0f19;");
         HBox.setHgrow(h3d, Priority.ALWAYS);
         VBox.setVgrow(h3d, Priority.ALWAYS);
 
         h3d.setOnScroll(e -> {
             if (gameView != null && gameView.isVisible() && gameView.getGameApp() != null) {
-                gameView.getGameApp().zoomCamera((float) e.getDeltaY() * 0.05f);
+                gameView.getGameApp().zoomCamera((float) e.getDeltaY() * 0.05f, e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
                 repaintAllViews();
             }
         });
@@ -3803,6 +3763,8 @@ public class WorldEditorPane extends BorderPane {
         lblHoverInfo = new Label();
         lblHoverInfo.setText(I18nManager.getInstance().get("world.hover_info"));
         lblHoverInfo.getStyleClass().add("legend-hover-info");
+        lblHoverInfo.setWrapText(true);
+        lblHoverInfo.setMaxWidth(230);
 
         List<String[]> substrateList = new ArrayList<>();
         substrateList.add(new String[]{"organic", "#523219"});
@@ -3840,88 +3802,17 @@ public class WorldEditorPane extends BorderPane {
             substrateItemsPane.getChildren().add(item);
         }
 
+        VBox hoverInspectionCard = new VBox(4);
+        hoverInspectionCard.setStyle("-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 6; -fx-padding: 6; -fx-border-color: rgba(56,189,248,0.25); -fx-border-radius: 6; -fx-border-width: 0.8;");
+        Label titleHover = new Label("🔬 Inspection Voxel");
+        titleHover.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+        hoverInspectionCard.getChildren().addAll(titleHover, lblHoverInfo);
+
         legendContentBox.getChildren().addAll(
             titleSubstrates,
-            substrateItemsPane
-        );
-
-        // 2. Castes & Roles
-        Label titleCastes = new Label();
-        titleCastes.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.castes.title"));
-        titleCastes.getStyleClass().add("legend-title");
-        FlowPane castesFlow = new FlowPane(4, 4);
-        castesFlow.setPrefWrapLength(220);
-        String[][] castes = {
-            {"queen", "#e11d48"},
-            {"worker", "#f97316"},
-            {"soldier", "#ef4444"},
-            {"media", "#ca8a04"},
-            {"minor", "#84cc16"},
-            {"drone", "#06b6d4"},
-            {"brood", "#e2e8f0"}
-        };
-        for (String[] c : castes) {
-            String key = c[0];
-            HBox b = new HBox(4);
-            b.setAlignment(Pos.CENTER_LEFT);
-            b.setPadding(new Insets(2, 4, 2, 4));
-            b.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 4;");
-            Canvas dot = new Canvas(8, 8);
-            GraphicsContext g = dot.getGraphicsContext2D();
-            g.setFill(Color.web(c[1]));
-            g.fillOval(0, 0, 8, 8);
-            g.setStroke(Color.WHITE);
-            g.setLineWidth(0.6);
-            g.strokeOval(0, 0, 8, 8);
-            Label lbl = new Label();
-            lbl.setStyle("-fx-font-size: 10px;");
-            lbl.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.caste." + key));
-            lbl.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("legend.caste." + key + ".desc"));
-            b.getChildren().addAll(dot, lbl);
-            castesFlow.getChildren().add(b);
-        }
-
-        // 3. Canaux Phéromonaux
-        Label titlePhero = new Label();
-        titlePhero.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.phero.title"));
-        titlePhero.getStyleClass().add("legend-title");
-        FlowPane pheroFlow = new FlowPane(4, 4);
-        pheroFlow.setPrefWrapLength(220);
-        String[][] pheros = {
-            {"food", "#22c55e"},
-            {"home", "#3b82f6"},
-            {"danger", "#ef4444"},
-            {"queen", "#ec4899"},
-            {"necrophoric", "#64748b"}
-        };
-        for (String[] p : pheros) {
-            String key = p[0];
-            HBox b = new HBox(4);
-            b.setAlignment(Pos.CENTER_LEFT);
-            b.setPadding(new Insets(2, 4, 2, 4));
-            b.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 4;");
-            Canvas dot = new Canvas(8, 8);
-            GraphicsContext g = dot.getGraphicsContext2D();
-            g.setFill(Color.web(p[1]));
-            g.fillOval(0, 0, 8, 8);
-            g.setStroke(Color.WHITE);
-            g.setLineWidth(0.6);
-            g.strokeOval(0, 0, 8, 8);
-            Label lbl = new Label();
-            lbl.setStyle("-fx-font-size: 10px;");
-            lbl.textProperty().bind(I18nManager.getInstance().createStringBinding("legend.phero." + key));
-            lbl.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("legend.phero." + key + ".desc"));
-            b.getChildren().addAll(dot, lbl);
-            pheroFlow.getChildren().add(b);
-        }
-
-        legendContentBox.getChildren().addAll(
+            substrateItemsPane,
             new Separator(),
-            titleCastes,
-            castesFlow,
-            new Separator(),
-            titlePhero,
-            pheroFlow
+            hoverInspectionCard
         );
 
         panel.getChildren().add(legendContentBox);
@@ -4894,7 +4785,14 @@ public class WorldEditorPane extends BorderPane {
         double h = canvas3D.getHeight();
 
         if (currentRenderMode == RenderMode.SCIENTIFIC) {
-            gc3D.setFill(Color.web("#030712"));
+            // Luminous daylight atmospheric sky gradient matching 3D photoperiod
+            javafx.scene.paint.LinearGradient skyGrad = new javafx.scene.paint.LinearGradient(
+                0, 0, 0, h, false, javafx.scene.paint.CycleMethod.NO_CYCLE,
+                new javafx.scene.paint.Stop(0.0, Color.web("#38bdf8")),
+                new javafx.scene.paint.Stop(0.5, Color.web("#7dd3fc")),
+                new javafx.scene.paint.Stop(1.0, Color.web("#bae6fd"))
+            );
+            gc3D.setFill(skyGrad);
         } else if (currentRenderMode == RenderMode.GAMIFIED) {
             gc3D.setFill(Color.web("#1e1b4b"));
         } else {

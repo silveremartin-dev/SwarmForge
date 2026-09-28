@@ -2691,29 +2691,46 @@ public class SwarmForgeClient extends Application {
 
         private Node createSettingsPane() {
                 org.swarmforge.client.util.I18nManager i18n = I18nManager.getInstance();
-                VBox main = new VBox(15);
-                main.setPadding(new Insets(10, 15, 10, 15));
+                VBox main = new VBox(20);
+                main.setPadding(new Insets(20));
 
                 Label title = new Label();
                 title.textProperty().bind(i18n.createStringBinding("settings.title"));
-                title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
+                title.getStyleClass().add("card-title");
+                title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
                 VBox headerBox = new VBox(6);
                 headerBox.getChildren().addAll(title, new Separator());
 
-                GridPane grid = new GridPane();
-                grid.setHgap(20);
-                grid.setVgap(15);
-                grid.setPadding(new Insets(10, 0, 10, 0));
+                // --- CARD 1: GENERAL & UI (Language / Theme) ---
+                VBox cardUi = new VBox(14);
+                cardUi.getStyleClass().add("card-pane");
+                cardUi.setPadding(new Insets(16));
+
+                Label uiCardTitle = new Label();
+                uiCardTitle.textProperty().bind(i18n.createStringBinding("settings.title"));
+                uiCardTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: bold;");
+
+                GridPane gridUi = new GridPane();
+                gridUi.setHgap(20);
+                gridUi.setVgap(14);
+
+                ColumnConstraints col1 = new ColumnConstraints();
+                col1.setMinWidth(220);
+                col1.setPrefWidth(240);
+                ColumnConstraints col2 = new ColumnConstraints();
+                col2.setHgrow(Priority.ALWAYS);
+                gridUi.getColumnConstraints().addAll(col1, col2);
 
                 // 1. Language Row
                 Label langLabel = new Label();
                 langLabel.textProperty().bind(i18n.createStringBinding("settings.language"));
-                langLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+                langLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
                 langLabel.tooltipProperty().bind(i18n.createTooltipBinding("settings.language.tt"));
 
                 ComboBox<String> langCombo = new ComboBox<>();
                 langCombo.getItems().addAll("English", "Français", "Español", "Deutsch", "中文");
+                langCombo.setMaxWidth(Double.MAX_VALUE);
                 langCombo.tooltipProperty().bind(i18n.createTooltipBinding("settings.language.combo.tt"));
 
                 java.util.Locale currentLoc = i18n.getLocale();
@@ -2736,11 +2753,12 @@ public class SwarmForgeClient extends Application {
                 // 2. Theme Row
                 Label themeLabel = new Label();
                 themeLabel.textProperty().bind(i18n.createStringBinding("settings.theme"));
-                themeLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+                themeLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
                 themeLabel.tooltipProperty().bind(i18n.createTooltipBinding("settings.theme.tt"));
 
                 ComboBox<String> themeCombo = new ComboBox<>();
                 themeCombo.getItems().addAll("Dark Theme", "Light Theme");
+                themeCombo.setMaxWidth(Double.MAX_VALUE);
                 themeCombo.tooltipProperty().bind(i18n.createTooltipBinding("settings.theme.combo.tt"));
                 if (org.swarmforge.client.util.ThemeManager.getInstance().getCurrentTheme() == org.swarmforge.client.util.ThemeManager.Theme.DARK) {
                         themeCombo.setValue("Dark Theme");
@@ -2756,15 +2774,190 @@ public class SwarmForgeClient extends Application {
                         }
                 });
 
-                grid.add(langLabel, 0, 0);
-                grid.add(langCombo, 1, 0);
-                grid.add(themeLabel, 0, 1);
-                grid.add(themeCombo, 1, 1);
+                gridUi.add(langLabel, 0, 0);
+                gridUi.add(langCombo, 1, 0);
+                gridUi.add(themeLabel, 0, 1);
+                gridUi.add(themeCombo, 1, 1);
 
-                main.getChildren().addAll(headerBox, grid);
-                main.setPadding(new Insets(20));
+                cardUi.getChildren().addAll(uiCardTitle, new Separator(), gridUi);
+
+                // --- CARD 2: LOCAL SIMULATION ENGINE & CONCURRENCY ---
+                VBox cardEngine = new VBox(14);
+                cardEngine.getStyleClass().add("card-pane");
+                cardEngine.setPadding(new Insets(16));
+
+                Label engineCardTitle = new Label();
+                engineCardTitle.textProperty().bind(i18n.createStringBinding("settings.engine.title"));
+                engineCardTitle.setStyle("-fx-font-size: 15px; -fx-font-weight: bold;");
+
+                Label engineCardDesc = new Label();
+                engineCardDesc.textProperty().bind(i18n.createStringBinding("settings.engine.desc"));
+                engineCardDesc.setWrapText(true);
+                engineCardDesc.getStyleClass().add("text-muted");
+
+                GridPane gridEngine = new GridPane();
+                gridEngine.setHgap(20);
+                gridEngine.setVgap(14);
+                gridEngine.getColumnConstraints().addAll(col1, col2);
+
+                // 2.1 Backend Engine Selector
+                Label backendLabel = new Label();
+                backendLabel.textProperty().bind(i18n.createStringBinding("settings.engine.backend"));
+                backendLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
+                backendLabel.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.backend.tt"));
+
+                ComboBox<String> backendCombo = new ComboBox<>();
+                String optBackendAuto = "⚡ Automatique (Auto-detection)";
+                String optBackendRust = "🦀 Rust Natif SIMD (Zero-GC Panama FFM)";
+                String optBackendJava = "☕ Java 21 Artemis ECS (Reference Engine)";
+                backendCombo.getItems().addAll(optBackendAuto, optBackendRust, optBackendJava);
+                backendCombo.setMaxWidth(Double.MAX_VALUE);
+                backendCombo.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.backend.tt"));
+
+                org.swarmforge.core.engine.SimulationEngineType curEngine = org.swarmforge.core.engine.EnginePreferences.getSelectedEngineType();
+                if (curEngine == org.swarmforge.core.engine.SimulationEngineType.RUST_NATIVE) {
+                        backendCombo.setValue(optBackendRust);
+                } else if (curEngine == org.swarmforge.core.engine.SimulationEngineType.JAVA_ECS) {
+                        backendCombo.setValue(optBackendJava);
+                } else {
+                        backendCombo.setValue(optBackendAuto);
+                }
+
+                Label rustStatusBadge = new Label();
+                boolean rustAvail = org.swarmforge.core.engine.RustNativeEngine.isNativeLibraryAvailable();
+                if (rustAvail) {
+                        rustStatusBadge.textProperty().bind(i18n.createStringBinding("settings.engine.rust_available"));
+                        rustStatusBadge.setStyle("-fx-text-fill: #10b981; -fx-font-weight: bold; -fx-font-size: 11px;");
+                } else {
+                        rustStatusBadge.textProperty().bind(i18n.createStringBinding("settings.engine.rust_unavailable"));
+                        rustStatusBadge.setStyle("-fx-text-fill: #f59e0b; -fx-font-size: 11px;");
+                }
+
+                VBox backendBox = new VBox(6, backendCombo, rustStatusBadge);
+
+                backendCombo.setOnAction(e -> {
+                        String selected = backendCombo.getValue();
+                        if (optBackendRust.equals(selected)) {
+                                org.swarmforge.core.engine.EnginePreferences.setSelectedEngineType(org.swarmforge.core.engine.SimulationEngineType.RUST_NATIVE);
+                        } else if (optBackendJava.equals(selected)) {
+                                org.swarmforge.core.engine.EnginePreferences.setSelectedEngineType(org.swarmforge.core.engine.SimulationEngineType.JAVA_ECS);
+                        } else {
+                                org.swarmforge.core.engine.EnginePreferences.resetToDefaults();
+                        }
+                });
+
+                // 2.2 Concurrency & Threading (Single-Core vs Multi-Core)
+                Label concurrencyLabel = new Label();
+                concurrencyLabel.textProperty().bind(i18n.createStringBinding("settings.engine.concurrency"));
+                concurrencyLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
+                concurrencyLabel.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.concurrency.tt"));
+
+                ToggleGroup concurrencyGroup = new ToggleGroup();
+                RadioButton rbSingleCore = new RadioButton();
+                rbSingleCore.textProperty().bind(i18n.createStringBinding("settings.engine.single_core"));
+                rbSingleCore.setToggleGroup(concurrencyGroup);
+                rbSingleCore.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.concurrency.tt"));
+
+                RadioButton rbMultiCore = new RadioButton();
+                rbMultiCore.textProperty().bind(i18n.createStringBinding("settings.engine.multi_core"));
+                rbMultiCore.setToggleGroup(concurrencyGroup);
+                rbMultiCore.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.concurrency.tt"));
+
+                int maxCores = Runtime.getRuntime().availableProcessors();
+                int currentThreads = org.swarmforge.core.engine.EnginePreferences.getThreadCount();
+
+                Spinner<Integer> threadSpinner = new Spinner<>(1, Math.max(1, maxCores), currentThreads);
+                threadSpinner.setEditable(true);
+                threadSpinner.setPrefWidth(120);
+                threadSpinner.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.threads.tt"));
+
+                Label threadUnitLabel = new Label();
+                threadUnitLabel.textProperty().bind(i18n.createStringBinding("settings.engine.threads.unit"));
+                threadUnitLabel.setStyle("-fx-font-size: 12px;");
+
+                HBox threadsRow = new HBox(8, rbMultiCore, threadSpinner, threadUnitLabel);
+                threadsRow.setAlignment(Pos.CENTER_LEFT);
+
+                if (org.swarmforge.core.engine.EnginePreferences.isSingleCore()) {
+                        rbSingleCore.setSelected(true);
+                        threadSpinner.setDisable(true);
+                } else {
+                        rbMultiCore.setSelected(true);
+                        threadSpinner.setDisable(false);
+                }
+
+                rbSingleCore.setOnAction(e -> {
+                        org.swarmforge.core.engine.EnginePreferences.setThreadCount(1);
+                        threadSpinner.getValueFactory().setValue(1);
+                        threadSpinner.setDisable(true);
+                });
+
+                rbMultiCore.setOnAction(e -> {
+                        int t = threadSpinner.getValue() > 1 ? threadSpinner.getValue() : maxCores;
+                        threadSpinner.getValueFactory().setValue(t);
+                        org.swarmforge.core.engine.EnginePreferences.setThreadCount(t);
+                        threadSpinner.setDisable(false);
+                });
+
+                threadSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
+                        if (newVal != null && rbMultiCore.isSelected()) {
+                                org.swarmforge.core.engine.EnginePreferences.setThreadCount(newVal);
+                        }
+                });
+
+                VBox concurrencyBox = new VBox(8, rbSingleCore, threadsRow);
+
+                // 2.3 Hardware Acceleration Mode (GPU vs CPU)
+                Label accelLabel = new Label();
+                accelLabel.textProperty().bind(i18n.createStringBinding("settings.engine.accel"));
+                accelLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
+                accelLabel.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.accel.tt"));
+
+                ComboBox<String> accelCombo = new ComboBox<>();
+                String optAccelAuto = "⚡ Automatique (GPU si disponible / CPU Vectoriel)";
+                String optAccelGpu = "🎮 Accélération GPU (TornadoVM / OpenCL)";
+                String optAccelCpu = "💻 Pur CPU Multithreadé (SIMD / Vector API)";
+                accelCombo.getItems().addAll(optAccelAuto, optAccelGpu, optAccelCpu);
+                accelCombo.setMaxWidth(Double.MAX_VALUE);
+                accelCombo.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.accel.tt"));
+
+                org.swarmforge.core.engine.ComputeAccelerationMode curAccel = org.swarmforge.core.engine.EnginePreferences.getSelectedAccelerationMode();
+                if (curAccel == org.swarmforge.core.engine.ComputeAccelerationMode.GPU_ACCELERATED) {
+                        accelCombo.setValue(optAccelGpu);
+                } else if (curAccel == org.swarmforge.core.engine.ComputeAccelerationMode.CPU_MULTITHREADED_SIMD) {
+                        accelCombo.setValue(optAccelCpu);
+                } else {
+                        accelCombo.setValue(optAccelAuto);
+                }
+
+                accelCombo.setOnAction(e -> {
+                        String selected = accelCombo.getValue();
+                        if (optAccelGpu.equals(selected)) {
+                                org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.GPU_ACCELERATED);
+                        } else if (optAccelCpu.equals(selected)) {
+                                org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.CPU_MULTITHREADED_SIMD);
+                        } else {
+                                org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.AUTO);
+                        }
+                });
+
+                gridEngine.add(backendLabel, 0, 0);
+                gridEngine.add(backendBox, 1, 0);
+                gridEngine.add(concurrencyLabel, 0, 1);
+                gridEngine.add(concurrencyBox, 1, 1);
+                gridEngine.add(accelLabel, 0, 2);
+                gridEngine.add(accelCombo, 1, 2);
+
+                cardEngine.getChildren().addAll(engineCardTitle, engineCardDesc, new Separator(), gridEngine);
+
+                main.getChildren().addAll(headerBox, cardUi, cardEngine);
                 VBox.setVgrow(main, Priority.ALWAYS);
-                return main;
+
+                ScrollPane scroll = new ScrollPane(main);
+                scroll.setFitToWidth(true);
+                scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+                scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+                return scroll;
         }
 
         private VBox createMirrorOverlay() {
@@ -2822,9 +3015,9 @@ public class SwarmForgeClient extends Application {
                 });
 
                 view.setOnScroll(e -> {
-                        // Scroll: Zoom
+                        // Scroll: Zoom towards mouse pointer
                         double delta = e.getDeltaY();
-                        view.getGameApp().zoomCamera((float) delta * 0.05f);
+                        view.getGameApp().zoomCamera((float) delta * 0.05f, e.getX(), e.getY(), view.getWidth(), view.getHeight());
                 });
 
                 view.getGameApp().setSelectionListener(new org.swarmforge.client.view.JmeGameApp.ObjectSelectionListener() {

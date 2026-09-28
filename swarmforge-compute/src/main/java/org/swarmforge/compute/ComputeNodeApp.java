@@ -291,21 +291,42 @@ public class ComputeNodeApp {
             if (mp != null && !mp.isBlank()) myPort = Integer.parseInt(mp);
         } catch (Exception ignored) {}
 
-        int threads = Runtime.getRuntime().availableProcessors();
-        boolean gpu = "true".equalsIgnoreCase(System.getenv("GPU_ENABLED"));
+        // 1. Initialize EnginePreferences from args / system env
+        org.swarmforge.core.engine.EnginePreferences.applyCommandLineArgs(args);
 
-        for (int i = 0; i < args.length; i++) {
-            switch (args[i]) {
-                case "--host" -> host = args[++i];
-                case "--port" -> serverPort = Integer.parseInt(args[++i]); // Server port
-                case "--my-port" -> myPort = Integer.parseInt(args[++i]); // My port
-                case "--threads" -> threads = Integer.parseInt(args[++i]);
-                case "--gpu" -> gpu = true;
-                case "--help", "-h" -> {
-                    printHelp();
-                    return;
+        int threads = org.swarmforge.core.engine.EnginePreferences.getThreadCount();
+        boolean gpu = org.swarmforge.core.engine.EnginePreferences.getSelectedAccelerationMode() == org.swarmforge.core.engine.ComputeAccelerationMode.GPU_ACCELERATED
+                || "true".equalsIgnoreCase(System.getenv("GPU_ENABLED"));
+
+        if (args != null) {
+            for (int i = 0; i < args.length; i++) {
+                String arg = args[i];
+                if (arg.startsWith("--host=")) {
+                    host = arg.substring("--host=".length());
+                } else if (arg.startsWith("--port=")) {
+                    try { serverPort = Integer.parseInt(arg.substring("--port=".length())); } catch (Exception ignored) {}
+                } else if (arg.startsWith("--my-port=")) {
+                    try { myPort = Integer.parseInt(arg.substring("--my-port=".length())); } catch (Exception ignored) {}
+                } else {
+                    switch (arg) {
+                        case "--host" -> { if (i + 1 < args.length) host = args[++i]; }
+                        case "--port" -> { if (i + 1 < args.length) serverPort = Integer.parseInt(args[++i]); }
+                        case "--my-port" -> { if (i + 1 < args.length) myPort = Integer.parseInt(args[++i]); }
+                        case "--threads", "--engine", "--accel" -> { if (i + 1 < args.length) i++; }
+                        case "--gpu", "--cpu", "--rust", "--java", "--single-core", "--multi-core", "--monocoeur", "--multicoeur" -> {}
+                        case "--help", "-h" -> {
+                            printHelp();
+                            return;
+                        }
+                    }
                 }
             }
+        }
+
+        // Re-read updated thread count and GPU flag after arguments iteration
+        threads = org.swarmforge.core.engine.EnginePreferences.getThreadCount();
+        if (org.swarmforge.core.engine.EnginePreferences.getSelectedAccelerationMode() == org.swarmforge.core.engine.ComputeAccelerationMode.GPU_ACCELERATED) {
+            gpu = true;
         }
 
         try {
@@ -318,11 +339,26 @@ public class ComputeNodeApp {
 
     private static void printHelp() {
         System.out.println("""
-                Usage: java -jar swarmforge-compute.jar [OPTIONS]
-                --host <addr>      Server hostname (sim server)
-                --port <num>       Server port
-                --my-port <num>    Listening port for this node
-                --gpu              Enable GPU
+                +------------------------------------------------------+
+                |        SWARMFORGE COMPUTE NODE - HELP                |
+                +------------------------------------------------------+
+                |  Usage: java -jar swarmforge-compute.jar [OPTIONS]   |
+                +------------------------------------------------------+
+                |  Cluster Network Options:                            |
+                |    --host <addr>      Server hostname (default: localhost)
+                |    --port <num>       Server gRPC port (default: 50051)
+                |    --my-port <num>    Listening port for worker (default: 50052)
+                |                                                      |
+                |  Compute Engine & Acceleration Options:              |
+                |    --engine <auto|java|rust> Engine backend selector |
+                |    --rust / --java           Shortcut engine flags   |
+                |    --accel <auto|gpu|cpu>    Hardware compute accel  |
+                |    --gpu / --cpu             Shortcut accel flags    |
+                |    --threads <N>             Worker thread count     |
+                |    --single-core / --monocoeur Force 1 worker thread |
+                |    --multi-core / --multicoeur Max available cores   |
+                |    --help, -h                Show this help message  |
+                +------------------------------------------------------+
                 """);
     }
 }
