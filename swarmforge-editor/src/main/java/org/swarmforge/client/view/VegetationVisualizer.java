@@ -78,9 +78,12 @@ public class VegetationVisualizer {
     private Spatial bambooModel;
     private Spatial beehiveModel;
     private boolean uvVisionMode = false;
+    private boolean ommatidialVisionMode = false;
+    private final Node ommatidialOverlayNode = new Node("OmmatidialOverlayNode");
 
-    // Multi-Mode Nest Architecture System
+    // Multi-Mode Nest Architecture & Colony Infrastructure System
     private final Node nestArchitectureNode = new Node("NestArchitectureNode");
+    private final Node colonyInfrastructureNode = new Node("ColonyInfrastructureNode");
     private final List<Colony> trackedColonies = new ArrayList<>();
 
     // Ambient Atmosphere & Biological Fauna (Butterflies, Fireflies, Leaves, Birds, Pollen, Dust, Water Striders, Webs, Steam, Stridulations, Pappus)
@@ -99,10 +102,28 @@ public class VegetationVisualizer {
     private final List<StridulationAura> activeStridulations = new ArrayList<>();
     private final List<DandelionPappusParticle> activePappus = new ArrayList<>();
     private final List<MushroomClusterAgent> activeMushroomClusters = new ArrayList<>();
+
+    // Dynamic Micro-Hydrology Agents (Flaques éphémères, égouttement de canopée, essaims de moucherons)
     private final List<DynamicPuddleAgent> activePuddles = new ArrayList<>();
     private final List<CanopyDripParticle> activeCanopyDrips = new ArrayList<>();
     private final List<GnatSwarmAgent> activeGnatSwarms = new ArrayList<>();
+
+    // Trophobiosis, Extrafloral Nectaries & Fungal Pathogens (Pucerons, nectaires, Ophiocordyceps)
+    private final List<AphidClusterAgent> activeAphidClusters = new ArrayList<>();
+    private final List<ExtrafloralNectaryAgent> activeNectaries = new ArrayList<>();
+    private final List<CordycepsCadaverAgent> activeCordycepsCadavers = new ArrayList<>();
+    private final List<Geometry> activeMudcracks = new ArrayList<>();
+
     private float rainWetness = 0.0f;
+
+    // Tree Species Distribution Matrix from World Editor (0=Oak, 1=Pine, 2=Acacia, 3=Cactus, 4=Birch, 5=Bamboo, 6=Deadwood)
+    private int oakPct = 60;
+    private int pinePct = 20;
+    private int acaciaPct = 0;
+    private int cactusPct = 0;
+    private int birchPct = 10;
+    private int bambooPct = 0;
+    private int deadWoodPct = 10;
 
     public VegetationVisualizer(AssetManager assetManager) {
         this.assetManager = assetManager;
@@ -110,6 +131,7 @@ public class VegetationVisualizer {
         this.rootNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
         this.rootNode.attachChild(ambientAtmosphereNode);
         this.rootNode.attachChild(nestArchitectureNode);
+        this.rootNode.attachChild(colonyInfrastructureNode);
         loadAssets();
     }
 
@@ -250,6 +272,34 @@ public class VegetationVisualizer {
         return rootNode;
     }
 
+    public void setTreeSpeciesComposition(int oak, int pine, int acacia, int cactus, int birch, int bamboo, int deadWood) {
+        this.oakPct = Math.max(0, oak);
+        this.pinePct = Math.max(0, pine);
+        this.acaciaPct = Math.max(0, acacia);
+        this.cactusPct = Math.max(0, cactus);
+        this.birchPct = Math.max(0, birch);
+        this.bambooPct = Math.max(0, bamboo);
+        this.deadWoodPct = Math.max(0, deadWood);
+    }
+
+    public int sampleTreeSpeciesIndex(Random rand) {
+        int total = oakPct + pinePct + acaciaPct + cactusPct + birchPct + bambooPct + deadWoodPct;
+        if (total <= 0) return 0; // Default to Oak
+        int roll = rand.nextInt(total);
+        if (roll < oakPct) return 0; // Oak
+        roll -= oakPct;
+        if (roll < pinePct) return 1; // Pine
+        roll -= pinePct;
+        if (roll < acaciaPct) return 2; // Acacia
+        roll -= acaciaPct;
+        if (roll < cactusPct) return 3; // Cactus
+        roll -= cactusPct;
+        if (roll < birchPct) return 4; // Birch
+        roll -= birchPct;
+        if (roll < bambooPct) return 5; // Bamboo
+        return 6; // Dead Wood
+    }
+
     public void setLatitude(double latitude) {
         this.currentLatitude = latitude;
     }
@@ -305,8 +355,14 @@ public class VegetationVisualizer {
         rootNode.detachAllChildren();
         rootNode.attachChild(ambientAtmosphereNode);
         rootNode.attachChild(nestArchitectureNode);
+        rootNode.attachChild(colonyInfrastructureNode);
+        if (ommatidialVisionMode) {
+            rootNode.attachChild(ommatidialOverlayNode);
+        }
         ambientAtmosphereNode.detachAllChildren();
+        colonyInfrastructureNode.detachAllChildren();
         activeFlowerLocations.clear();
+        activeCanopyLocations.clear();
         activeButterflies.clear();
         activeFireflies.clear();
         activeFallingLeaves.clear();
@@ -319,6 +375,13 @@ public class VegetationVisualizer {
         activeStridulations.clear();
         activePappus.clear();
         activeMushroomClusters.clear();
+        activePuddles.clear();
+        activeCanopyDrips.clear();
+        activeGnatSwarms.clear();
+        activeAphidClusters.clear();
+        activeNectaries.clear();
+        activeCordycepsCadavers.clear();
+        activeMudcracks.clear();
         rebuildNestArchitectures();
 
         if (!visible) return;
@@ -368,13 +431,14 @@ public class VegetationVisualizer {
                         continue;
                     }
 
+                    int speciesIdx = sampleTreeSpeciesIndex(rand);
                     if (currentRenderMode == RenderMode.GAMIFIED) {
-                        createProceduralTreeGamified(jx, elev, jz, biome, effectiveSeason, rand);
+                        createProceduralTreeGamified(jx, elev, jz, biome, effectiveSeason, rand, speciesIdx);
                     } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
-                        createProceduralTreeScientific(jx, elev, jz, biome, rand);
+                        createProceduralTreeScientific(jx, elev, jz, biome, rand, speciesIdx);
                     } else {
                         // Canopy Tree
-                        createRealisticFlora(jx, elev, jz, biome, effectiveSeason, rand, 0);
+                        createRealisticFlora(jx, elev, jz, biome, effectiveSeason, rand, speciesIdx);
 
                         // 1. Ronds de sorcière (Fairy Rings): 38% probability around mature canopy trees in vegetative biomes
                         if ((biome == Biome.FOREST || biome == Biome.GRASSLAND || biome == Biome.MEDITERRANEAN || biome == Biome.WETLAND)
@@ -571,20 +635,20 @@ public class VegetationVisualizer {
                 chosenModel = pickRandomFromList(bushes, rand);
             }
             case FLOWER -> {
-                targetHeight = (0.45f + rand.nextFloat() * 0.45f) * Math.max(0.4f, plant.growth);
+                targetHeight = (0.22f + rand.nextFloat() * 0.20f) * Math.max(0.4f, plant.growth);
                 chosenModel = pickRandomFromList(flowers, rand);
                 activeFlowerLocations.add(new Vector3f(x, y, z));
             }
             case MOSS, GRASS -> {
-                targetHeight = (0.30f + rand.nextFloat() * 0.35f) * Math.max(0.4f, plant.growth);
-                chosenModel = pickRandomFromList(flowers, rand);
+                targetHeight = (0.15f + rand.nextFloat() * 0.20f) * Math.max(0.4f, plant.growth);
+                chosenModel = !grassTufts.isEmpty() ? pickRandomFromList(grassTufts, rand) : pickRandomFromList(flowers, rand);
             }
         }
 
         if (chosenModel != null) {
             Spatial instance = chosenModel.clone();
             applySeasonalTint(instance, season, biome);
-            normalizeAndPositionModel(instance, x, y, z, Math.max(0.35f, targetHeight), rand);
+            normalizeAndPositionModel(instance, x, y, z, Math.max(0.20f, targetHeight), rand);
         } else {
             createProceduralTree3D(x, y, z, (biome == Biome.ALPINE_SNOW) ? 4 : 0, rand, season);
         }
@@ -708,24 +772,25 @@ public class VegetationVisualizer {
         rootNode.attachChild(floraNode);
     }
 
-    private void createRealisticFlora(float x, float y, float z, Biome biome, Season season, Random rand, int index) {
-        Spatial chosenModel = pickModelForBiome(biome, rand, false);
+    private void createRealisticFlora(float x, float y, float z, Biome biome, Season season, Random rand, int speciesIdx) {
+        Spatial chosenModel = pickModelForSpecies(speciesIdx, biome, rand);
+        if (chosenModel == null) {
+            chosenModel = pickModelForBiome(biome, rand, true);
+        }
         float targetHeight;
 
-        if (biome == Biome.DESERT && chosenModel == cactusModel) {
-            targetHeight = 4.5f + rand.nextFloat() * 3.5f;
-        } else if (chosenModel == bambooModel) {
+        if (speciesIdx == 3 || chosenModel == cactusModel) {
+            targetHeight = 3.5f + rand.nextFloat() * 2.5f;
+        } else if (speciesIdx == 5 || chosenModel == bambooModel) {
             targetHeight = 4.0f + rand.nextFloat() * 2.5f;
-        } else if (chosenModel != null && (rocks.contains(chosenModel) || flowers.contains(chosenModel) || mushrooms.contains(chosenModel))) {
-            targetHeight = 0.50f + rand.nextFloat() * 0.70f;
-        } else if (chosenModel != null && bushes.contains(chosenModel)) {
-            targetHeight = 1.6f + rand.nextFloat() * 1.2f;
-        } else if (chosenModel != null && palmTrees.contains(chosenModel)) {
+        } else if (speciesIdx == 6 || (chosenModel != null && deadwoodLogs.contains(chosenModel))) {
+            targetHeight = 0.9f + rand.nextFloat() * 0.6f;
+        } else if (speciesIdx == 2 || (chosenModel != null && palmTrees.contains(chosenModel))) {
             targetHeight = 7.5f + rand.nextFloat() * 3.5f;
-        } else if (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
-            targetHeight = 14.0f + rand.nextFloat() * 6.0f;
+        } else if (speciesIdx == 1 || biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
+            targetHeight = 11.0f + rand.nextFloat() * 5.0f;
         } else {
-            targetHeight = 13.5f + rand.nextFloat() * 4.5f;
+            targetHeight = 11.5f + rand.nextFloat() * 4.0f;
         }
 
         if (chosenModel != null) {
@@ -733,50 +798,95 @@ public class VegetationVisualizer {
             applySeasonalTint(instance, season, biome);
             normalizeAndPositionModel(instance, x, y, z, targetHeight, rand);
         } else {
-            createProceduralTree3D(x, y, z, rand.nextInt(5), rand, season);
+            createProceduralTree3D(x, y, z, speciesIdx, rand, season);
         }
     }
 
+    private Spatial pickModelForSpecies(int speciesIdx, Biome biome, Random rand) {
+        return switch (speciesIdx) {
+            case 1 -> !coniferTrees.isEmpty() ? pickRandomFromList(coniferTrees, rand) : pickRandomFromList(deciduousTrees, rand);
+            case 2 -> !palmTrees.isEmpty() ? pickRandomFromList(palmTrees, rand) : (!deciduousTrees.isEmpty() ? pickRandomFromList(deciduousTrees, rand) : null);
+            case 3 -> cactusModel != null ? cactusModel : (!deadTrees.isEmpty() ? pickRandomFromList(deadTrees, rand) : null);
+            case 4 -> !deciduousTrees.isEmpty() ? pickRandomFromList(deciduousTrees, rand) : null;
+            case 5 -> (bambooPct > 0) ? bambooModel : null;
+            case 6 -> !deadwoodLogs.isEmpty() ? pickRandomFromList(deadwoodLogs, rand) : (!deadTrees.isEmpty() ? pickRandomFromList(deadTrees, rand) : null);
+            default -> !deciduousTrees.isEmpty() ? pickRandomFromList(deciduousTrees, rand) : null;
+        };
+    }
+
     private Spatial pickModelForBiome(Biome biome, Random rand, boolean preferTrees) {
-        switch (biome) {
+        if (preferTrees) {
+            return switch (biome) {
+                case DESERT -> (cactusModel != null && rand.nextFloat() < 0.65f) ? cactusModel : (!deadTrees.isEmpty() ? pickRandomFromList(deadTrees, rand) : cactusModel);
+                case TROPICAL -> {
+                    float r = rand.nextFloat();
+                    if (r < 0.55f && !palmTrees.isEmpty()) yield pickRandomFromList(palmTrees, rand);
+                    if (r < 0.75f && bambooPct > 0 && bambooModel != null) yield bambooModel;
+                    if (!deciduousTrees.isEmpty()) yield pickRandomFromList(deciduousTrees, rand);
+                    yield pickRandomFromList(palmTrees, rand);
+                }
+                case ALPINE_SNOW, TUNDRA -> {
+                    float r = rand.nextFloat();
+                    if (r < 0.88f && !coniferTrees.isEmpty()) yield pickRandomFromList(coniferTrees, rand);
+                    if (!deadTrees.isEmpty()) yield pickRandomFromList(deadTrees, rand);
+                    yield pickRandomFromList(coniferTrees, rand);
+                }
+                case MEDITERRANEAN -> {
+                    float r = rand.nextFloat();
+                    if (r < 0.60f && !coniferTrees.isEmpty()) yield pickRandomFromList(coniferTrees, rand);
+                    if (!deciduousTrees.isEmpty()) yield pickRandomFromList(deciduousTrees, rand);
+                    yield pickRandomFromList(coniferTrees, rand);
+                }
+                case FOREST, GRASSLAND, WETLAND -> {
+                    float r = rand.nextFloat();
+                    if (r < 0.78f && !deciduousTrees.isEmpty()) yield pickRandomFromList(deciduousTrees, rand);
+                    if (r < 0.94f && !coniferTrees.isEmpty()) yield pickRandomFromList(coniferTrees, rand);
+                    if (!deadTrees.isEmpty()) yield pickRandomFromList(deadTrees, rand);
+                    yield pickRandomFromList(deciduousTrees, rand);
+                }
+            };
+        }
+
+        return switch (biome) {
             case DESERT -> {
                 float r = rand.nextFloat();
-                if (r < 0.45f && cactusModel != null) return cactusModel;
-                if (r < 0.75f && !deadTrees.isEmpty()) return pickRandomFromList(deadTrees, rand);
-                if (!rocks.isEmpty()) return pickRandomFromList(rocks, rand);
-                return cactusModel;
+                if (r < 0.40f && cactusModel != null) yield cactusModel;
+                if (r < 0.65f && !deadTrees.isEmpty()) yield pickRandomFromList(deadTrees, rand);
+                if (!rocks.isEmpty()) yield pickRandomFromList(rocks, rand);
+                yield cactusModel;
             }
             case TROPICAL -> {
                 float r = rand.nextFloat();
-                if (r < 0.40f && !palmTrees.isEmpty()) return pickRandomFromList(palmTrees, rand);
-                if (r < 0.65f && bambooModel != null) return bambooModel;
-                if (r < 0.85f && !deciduousTrees.isEmpty()) return pickRandomFromList(deciduousTrees, rand);
-                if (!flowers.isEmpty()) return pickRandomFromList(flowers, rand);
-                return pickRandomFromList(deciduousTrees, rand);
+                if (r < 0.35f && !palmTrees.isEmpty()) yield pickRandomFromList(palmTrees, rand);
+                if (r < 0.55f && bambooPct > 0 && bambooModel != null) yield bambooModel;
+                if (r < 0.75f && !deciduousTrees.isEmpty()) yield pickRandomFromList(deciduousTrees, rand);
+                if (r < 0.90f && !bushes.isEmpty()) yield pickRandomFromList(bushes, rand);
+                if (!flowers.isEmpty()) yield pickRandomFromList(flowers, rand);
+                yield pickRandomFromList(deciduousTrees, rand);
             }
             case ALPINE_SNOW, TUNDRA -> {
                 float r = rand.nextFloat();
-                if (r < 0.65f && !coniferTrees.isEmpty()) return pickRandomFromList(coniferTrees, rand);
-                if (r < 0.85f && !rocks.isEmpty()) return pickRandomFromList(rocks, rand);
-                if (!deadTrees.isEmpty()) return pickRandomFromList(deadTrees, rand);
-                return pickRandomFromList(coniferTrees, rand);
+                if (r < 0.60f && !coniferTrees.isEmpty()) yield pickRandomFromList(coniferTrees, rand);
+                if (r < 0.85f && !rocks.isEmpty()) yield pickRandomFromList(rocks, rand);
+                if (!deadTrees.isEmpty()) yield pickRandomFromList(deadTrees, rand);
+                yield pickRandomFromList(coniferTrees, rand);
             }
             case MEDITERRANEAN -> {
                 float r = rand.nextFloat();
-                if (r < 0.50f && !coniferTrees.isEmpty()) return pickRandomFromList(coniferTrees, rand);
-                if (r < 0.80f && !bushes.isEmpty()) return pickRandomFromList(bushes, rand);
-                if (!rocks.isEmpty()) return pickRandomFromList(rocks, rand);
-                return pickRandomFromList(coniferTrees, rand);
+                if (r < 0.45f && !coniferTrees.isEmpty()) yield pickRandomFromList(coniferTrees, rand);
+                if (r < 0.75f && !bushes.isEmpty()) yield pickRandomFromList(bushes, rand);
+                if (!rocks.isEmpty()) yield pickRandomFromList(rocks, rand);
+                yield pickRandomFromList(coniferTrees, rand);
             }
             case FOREST, GRASSLAND, WETLAND -> {
+                float r = rand.nextFloat();
+                if (r < 0.50f && !deciduousTrees.isEmpty()) yield pickRandomFromList(deciduousTrees, rand);
+                if (r < 0.70f && !coniferTrees.isEmpty()) yield pickRandomFromList(coniferTrees, rand);
+                if (r < 0.88f && !bushes.isEmpty()) yield pickRandomFromList(bushes, rand);
+                if (!flowers.isEmpty()) yield pickRandomFromList(flowers, rand);
+                yield pickRandomFromList(deciduousTrees, rand);
             }
-        }
-        float r = rand.nextFloat();
-        if (r < 0.55f && !deciduousTrees.isEmpty()) return pickRandomFromList(deciduousTrees, rand);
-        if (r < 0.75f && !coniferTrees.isEmpty()) return pickRandomFromList(coniferTrees, rand);
-        if (r < 0.90f && !bushes.isEmpty()) return pickRandomFromList(bushes, rand);
-        if (!flowers.isEmpty()) return pickRandomFromList(flowers, rand);
-        return pickRandomFromList(deciduousTrees, rand);
+        };
     }
 
     private Spatial pickRandomFromList(List<Spatial> list, Random rand) {
@@ -976,6 +1086,10 @@ public class VegetationVisualizer {
     }
 
     private void createProceduralTreeScientific(float x, float y, float z, Biome biome, Random rand) {
+        createProceduralTreeScientific(x, y, z, biome, rand, sampleTreeSpeciesIndex(rand));
+    }
+
+    private void createProceduralTreeScientific(float x, float y, float z, Biome biome, Random rand, int speciesIdx) {
         Node treeNode = new Node("TreeScientific");
         treeNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
         treeNode.setLocalTranslation(x, y, z);
@@ -984,15 +1098,17 @@ public class VegetationVisualizer {
 
         Material trunkMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         trunkMat.setBoolean("UseMaterialColors", true);
-        trunkMat.setColor("Diffuse", new ColorRGBA(0.40f, 0.25f, 0.12f, 1.0f));
-        trunkMat.setColor("Ambient", new ColorRGBA(0.25f, 0.15f, 0.08f, 1.0f));
+        ColorRGBA trunkCol = (speciesIdx == 4) ? new ColorRGBA(0.9f, 0.9f, 0.92f, 1.0f) : new ColorRGBA(0.40f, 0.25f, 0.12f, 1.0f);
+        trunkMat.setColor("Diffuse", trunkCol);
+        trunkMat.setColor("Ambient", trunkCol.mult(0.6f));
         trunkMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-        Cylinder trunkMesh = new Cylinder(8, 12, 0.15f, 0.15f, 6.0f, true, false);
+        float trunkH = (speciesIdx == 6) ? 1.2f : ((speciesIdx == 3) ? 4.5f : 6.0f);
+        Cylinder trunkMesh = new Cylinder(8, 12, 0.15f, 0.15f, trunkH, true, false);
         Geometry trunkGeom = new Geometry("SciTrunk", trunkMesh);
         trunkGeom.setMaterial(trunkMat);
         trunkGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-        trunkGeom.setLocalTranslation(0, 3.0f, 0);
+        trunkGeom.setLocalTranslation(0, trunkH * 0.5f, 0);
         trunkGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
         treeNode.attachChild(trunkGeom);
 
@@ -1008,18 +1124,32 @@ public class VegetationVisualizer {
         dbhGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
         treeNode.attachChild(dbhGeom);
 
-        Material leafMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
-        leafMat.setBoolean("UseMaterialColors", true);
-        leafMat.setColor("Diffuse", new ColorRGBA(0.12f, 0.65f, 0.28f, 1.0f));
-        leafMat.setColor("Ambient", new ColorRGBA(0.08f, 0.40f, 0.18f, 1.0f));
-        leafMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+        if (speciesIdx != 6) {
+            Material leafMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            leafMat.setBoolean("UseMaterialColors", true);
+            ColorRGBA leafCol = (speciesIdx == 1) ? new ColorRGBA(0.08f, 0.45f, 0.18f, 1.0f) : new ColorRGBA(0.12f, 0.65f, 0.28f, 1.0f);
+            leafMat.setColor("Diffuse", leafCol);
+            leafMat.setColor("Ambient", leafCol.mult(0.6f));
+            leafMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
 
-        com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(12, 12, 1.8f);
-        Geometry crownGeom = new Geometry("SciCrownLAI", crownMesh);
-        crownGeom.setMaterial(leafMat);
-        crownGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-        crownGeom.setLocalTranslation(0, 5.5f, 0);
-        treeNode.attachChild(crownGeom);
+            if (speciesIdx == 1) {
+                // Conical LAI envelope for Conifers
+                Cylinder coneMesh = new Cylinder(10, 12, 0.05f, 1.8f, 4.0f, true, false);
+                Geometry coneGeom = new Geometry("SciCrownLAI", coneMesh);
+                coneGeom.setMaterial(leafMat);
+                coneGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+                coneGeom.setLocalTranslation(0, 5.0f, 0);
+                coneGeom.setLocalRotation(new Quaternion().fromAngles(-FastMath.HALF_PI, 0, 0));
+                treeNode.attachChild(coneGeom);
+            } else {
+                com.jme3.scene.shape.Sphere crownMesh = new com.jme3.scene.shape.Sphere(12, 12, 1.8f);
+                Geometry crownGeom = new Geometry("SciCrownLAI", crownMesh);
+                crownGeom.setMaterial(leafMat);
+                crownGeom.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+                crownGeom.setLocalTranslation(0, 5.5f, 0);
+                treeNode.attachChild(crownGeom);
+            }
+        }
 
         treeNode.setLocalRotation(new Quaternion().fromAngles(0, rotY, 0));
         rootNode.attachChild(treeNode);
@@ -1035,6 +1165,10 @@ public class VegetationVisualizer {
     }
 
     private void createProceduralTreeGamified(float x, float y, float z, Biome biome, Season season, Random rand) {
+        createProceduralTreeGamified(x, y, z, biome, season, rand, sampleTreeSpeciesIndex(rand));
+    }
+
+    private void createProceduralTreeGamified(float x, float y, float z, Biome biome, Season season, Random rand, int speciesIdx) {
         Node treeNode = new Node("TreeGamified");
         treeNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
         treeNode.setLocalTranslation(x, y, z);
@@ -1047,7 +1181,7 @@ public class VegetationVisualizer {
         woodMat.setColor("Ambient", new ColorRGBA(0.24f, 0.15f, 0.07f, 1f));
         woodMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Back);
 
-        if (biome == Biome.DESERT) {
+        if (speciesIdx == 3 || (biome == Biome.DESERT && cactusPct > 0)) {
             // Authentic Ribbed Micro-Voxel Saguaro Cactus (Scaled to 7.5m)
             Material cactusMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             cactusMat.setBoolean("UseMaterialColors", true);
@@ -1071,7 +1205,7 @@ public class VegetationVisualizer {
             treeNode.attachChild(createMicroVoxel("CactusArmJointR", 1.0f, 0.70f, 0.70f, cactusMat, 0.95f, 4.6f, 0));
             treeNode.attachChild(createMicroVoxel("CactusArmUpR", 0.70f, 2.6f, 0.70f, cactusMat, 1.45f, 5.8f, 0));
 
-        } else if (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
+        } else if (speciesIdx == 1 || biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
             // Hierarchical Micro-Voxel Spruce/Pine Tree (13.5m height, 4 stepped needle tiers)
             treeNode.attachChild(createMicroVoxel("SpruceTrunk", 0.90f, 12.0f, 0.90f, woodMat, 0, 6.0f, 0));
             // Base Root Flares
@@ -1107,6 +1241,20 @@ public class VegetationVisualizer {
 
             // Tier 4: Spire Peak (1.8m peak)
             treeNode.attachChild(createMicroVoxel("PinePeak", 1.2f, 1.60f, 1.2f, pineLeafMat, 0, 11.5f, 0));
+
+        } else if (speciesIdx == 5 && bambooPct > 0) {
+            // Multi-culm Micro-Voxel Bamboo Stalks
+            Material bambooMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            bambooMat.setBoolean("UseMaterialColors", true);
+            bambooMat.setColor("Diffuse", new ColorRGBA(0.52f, 0.80f, 0.18f, 1f));
+            bambooMat.setColor("Ambient", new ColorRGBA(0.30f, 0.48f, 0.08f, 1f));
+            treeNode.attachChild(createMicroVoxel("Bamboo1", 0.35f, 6.0f, 0.35f, bambooMat, -0.4f, 3.0f, -0.4f));
+            treeNode.attachChild(createMicroVoxel("Bamboo2", 0.35f, 7.2f, 0.35f, bambooMat, 0.3f, 3.6f, -0.2f));
+            treeNode.attachChild(createMicroVoxel("Bamboo3", 0.35f, 5.5f, 0.35f, bambooMat, -0.1f, 2.75f, 0.4f));
+
+        } else if (speciesIdx == 6) {
+            // Micro-Voxel Deadwood Stump
+            treeNode.attachChild(createMicroVoxel("StumpCore", 1.2f, 1.4f, 1.2f, woodMat, 0, 0.7f, 0));
 
         } else {
             // Authentic Majestic Micro-Voxel Oak / Deciduous Tree (Height: 12.5m, Crown: 8.5m)
@@ -1433,6 +1581,56 @@ public class VegetationVisualizer {
                 dp.update(tpf, windDx, windDz, swayTime);
             }
         }
+
+        // 13. Dynamic Ephemeral Puddles (Flaques d'eau éphémères réactives à la pluie et l'évaporation)
+        if (currentRenderMode == RenderMode.REALISTIC) {
+            for (DynamicPuddleAgent puddle : activePuddles) {
+                puddle.update(tpf, rain, temp, swayTime);
+            }
+        }
+
+        // 14. Canopy Drip Particles (Égouttement résiduel d'interception foliaire)
+        if (currentRenderMode == RenderMode.REALISTIC) {
+            for (CanopyDripParticle drip : activeCanopyDrips) {
+                drip.update(tpf, rainWetness);
+            }
+        }
+
+        // 15. Crepuscular Gnat Swarms (Nuées de moucherons/diptères crépusculaires)
+        float hour = (weather != null) ? weather.getTimeOfDay() : 19.0f;
+        boolean isTwilight = (hour >= 5.5f && hour <= 7.5f) || (hour >= 18.5f && hour <= 21.0f);
+        if (currentRenderMode == RenderMode.REALISTIC) {
+            for (GnatSwarmAgent swarm : activeGnatSwarms) {
+                swarm.update(tpf, swayTime, isTwilight, rain, temp);
+            }
+        }
+
+        // 16. Aphid Clusters & Honeydew Shimmer (Grappes de pucerons et sécrétion de miellat)
+        if (currentRenderMode == RenderMode.REALISTIC) {
+            for (AphidClusterAgent aphid : activeAphidClusters) {
+                aphid.update(tpf, swayTime);
+            }
+        }
+
+        // 17. Extrafloral Nectary Secretions (Nectaires extra-floraux perlés)
+        if (currentRenderMode == RenderMode.REALISTIC) {
+            for (ExtrafloralNectaryAgent nectary : activeNectaries) {
+                nectary.update(tpf, swayTime);
+            }
+        }
+
+        // 18. Parasitic Ophiocordyceps Zombie Fungi (Cadavres fongiques à stroma et halo de spores)
+        if (currentRenderMode == RenderMode.REALISTIC) {
+            for (CordycepsCadaverAgent cordyceps : activeCordycepsCadavers) {
+                cordyceps.update(tpf, swayTime);
+            }
+        }
+
+        // 19. Desiccation Mudcracks in Severe Drought (Fentes de dessiccation par forte chaleur et sécheresse)
+        boolean drought = (temp > 28.0f && rain < 0.05f && rainWetness < 0.05f && currentRenderMode == RenderMode.REALISTIC);
+        for (Geometry mc : activeMudcracks) {
+            mc.setCullHint(drought ? Spatial.CullHint.Dynamic : Spatial.CullHint.Always);
+        }
     }
 
     private void rebuildAtmosphericFauna(Terrarium terrarium, Biome biome, Season effectiveSeason, Random rand) {
@@ -1586,6 +1784,84 @@ public class VegetationVisualizer {
                 activePappus.add(dp);
                 ambientAtmosphereNode.attachChild(dp.geom);
             }
+        }
+
+        // 12. Dynamic Ephemeral Puddles (Flaques éphémères dans les dépressions topographiques)
+        int puddleSpots = 6;
+        for (int i = 0; i < puddleSpots; i++) {
+            float px = 3.0f + rand.nextFloat() * (currentGridWidth - 6.0f);
+            float pz = 3.0f + rand.nextFloat() * (currentGridHeight - 6.0f);
+            float pelev = terrarium.getSurfaceElevation(px, pz);
+            DynamicPuddleAgent puddle = createDynamicPuddle(new Vector3f(px, pelev + 0.015f, pz), 0.6f + rand.nextFloat() * 0.8f);
+            activePuddles.add(puddle);
+            ambientAtmosphereNode.attachChild(puddle.geom);
+        }
+
+        // 13. Canopy Drip Particles (Interception foliaire et égouttement post-pluie sous la canopée)
+        if (!activeCanopyLocations.isEmpty()) {
+            int dripCount = Math.min(24, activeCanopyLocations.size() * 3);
+            for (int i = 0; i < dripCount; i++) {
+                Vector3f canopyPos = activeCanopyLocations.get(i % activeCanopyLocations.size());
+                float groundY = terrarium.getSurfaceElevation(canopyPos.x, canopyPos.z);
+                CanopyDripParticle drip = createCanopyDrip(canopyPos, groundY, rand.nextFloat() * 2.0f);
+                activeCanopyDrips.add(drip);
+                ambientAtmosphereNode.attachChild(drip.geom);
+            }
+        }
+
+        // 14. Crepuscular Gnat Swarms (Nuées de moucherons dansant au-dessus des buissons et points d'eau)
+        int gnatCount = 4;
+        for (int i = 0; i < gnatCount; i++) {
+            float gx = 4.0f + rand.nextFloat() * (currentGridWidth - 8.0f);
+            float gz = 4.0f + rand.nextFloat() * (currentGridHeight - 8.0f);
+            float gelev = terrarium.getSurfaceElevation(gx, gz);
+            GnatSwarmAgent gnatSwarm = createGnatSwarm(new Vector3f(gx, gelev + 1.2f + rand.nextFloat() * 0.8f, gz), 0.65f, rand, i);
+            activeGnatSwarms.add(gnatSwarm);
+            ambientAtmosphereNode.attachChild(gnatSwarm.swarmNode);
+        }
+
+        // 15. Trophobiotic Aphid Herds on Plant Stems (Grappes de pucerons avec perles de miellat)
+        int aphidClusterCount = 5;
+        for (int i = 0; i < aphidClusterCount; i++) {
+            float ax = 3.0f + rand.nextFloat() * (currentGridWidth - 6.0f);
+            float az = 3.0f + rand.nextFloat() * (currentGridHeight - 6.0f);
+            float aelev = terrarium.getSurfaceElevation(ax, az);
+            AphidClusterAgent aphidCluster = createAphidCluster(new Vector3f(ax, aelev + 0.45f + rand.nextFloat() * 0.5f, az), rand, i);
+            activeAphidClusters.add(aphidCluster);
+            ambientAtmosphereNode.attachChild(aphidCluster.node);
+        }
+
+        // 16. Extrafloral Nectary Beads (Nectaires extra-floraux perlés sur les tiges de buissons)
+        int nectaryCount = 8;
+        for (int i = 0; i < nectaryCount; i++) {
+            float nx = 3.0f + rand.nextFloat() * (currentGridWidth - 6.0f);
+            float nz = 3.0f + rand.nextFloat() * (currentGridHeight - 6.0f);
+            float nelev = terrarium.getSurfaceElevation(nx, nz);
+            ExtrafloralNectaryAgent nectary = createExtrafloralNectary(new Vector3f(nx, nelev + 0.35f + rand.nextFloat() * 0.4f, nz), rand);
+            activeNectaries.add(nectary);
+            ambientAtmosphereNode.attachChild(nectary.geom);
+        }
+
+        // 17. Parasitic Ophiocordyceps Zombie Cadavers (Cadavres de fourmis zombies fixés sous les feuilles)
+        int cordycepsCount = 3;
+        for (int i = 0; i < cordycepsCount; i++) {
+            float cx = 4.0f + rand.nextFloat() * (currentGridWidth - 8.0f);
+            float cz = 4.0f + rand.nextFloat() * (currentGridHeight - 8.0f);
+            float celev = terrarium.getSurfaceElevation(cx, cz);
+            CordycepsCadaverAgent cordyceps = createCordycepsCadaver(new Vector3f(cx, celev + 1.2f + rand.nextFloat() * 0.8f, cz), rand, i);
+            activeCordycepsCadavers.add(cordyceps);
+            ambientAtmosphereNode.attachChild(cordyceps.node);
+        }
+
+        // 18. Desiccation Mudcracks Grid (Craquelures de sol argileux en période de sécheresse)
+        int crackPatches = 6;
+        for (int i = 0; i < crackPatches; i++) {
+            float mx = 3.0f + rand.nextFloat() * (currentGridWidth - 6.0f);
+            float mz = 3.0f + rand.nextFloat() * (currentGridHeight - 6.0f);
+            float melev = terrarium.getSurfaceElevation(mx, mz);
+            Geometry crack = createMudcrackPatch(new Vector3f(mx, melev + 0.02f, mz), 0.75f + rand.nextFloat() * 0.5f, rand, i);
+            activeMudcracks.add(crack);
+            ambientAtmosphereNode.attachChild(crack);
         }
     }
 
@@ -1747,9 +2023,10 @@ public class VegetationVisualizer {
         geom.setMaterial(birdMat);
         geom.setQueueBucket(RenderQueue.Bucket.Transparent);
 
-        float orbitRadius = 14.0f + rand.nextFloat() * 18.0f;
+        float maxDim = Math.min(currentGridWidth, currentGridHeight);
+        float orbitRadius = maxDim * 0.22f + rand.nextFloat() * (maxDim * 0.15f);
         float speed = 0.25f + rand.nextFloat() * 0.15f;
-        float altitude = 65.0f + rand.nextFloat() * 15.0f;
+        float altitude = 22.0f + rand.nextFloat() * 8.0f;
         float startAngle = rand.nextFloat() * FastMath.TWO_PI;
 
         return new BirdAgent(geom, center, orbitRadius, speed, altitude, startAngle);
@@ -2191,6 +2468,340 @@ public class VegetationVisualizer {
         }
     }
 
+    private DynamicPuddleAgent createDynamicPuddle(Vector3f center, float maxRadius) {
+        Material waterMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        waterMat.setColor("Color", new ColorRGBA(0.22f, 0.48f, 0.72f, 0.70f));
+        waterMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+        Geometry geom = new Geometry("DynamicPuddle", new Cylinder(16, 16, maxRadius, 0.015f, true));
+        geom.setMaterial(waterMat);
+        geom.setQueueBucket(RenderQueue.Bucket.Transparent);
+        geom.setLocalRotation(new Quaternion().fromAngles(-FastMath.HALF_PI, 0, 0));
+        geom.setLocalTranslation(center);
+
+        return new DynamicPuddleAgent(geom, center, maxRadius);
+    }
+
+    private static class DynamicPuddleAgent {
+        final Geometry geom;
+        final Vector3f center;
+        final float maxRadius;
+        float currentRadius = 0.05f;
+
+        DynamicPuddleAgent(Geometry geom, Vector3f center, float maxRadius) {
+            this.geom = geom;
+            this.center = center;
+            this.maxRadius = maxRadius;
+        }
+
+        void update(float tpf, float rain, float temp, float swayTime) {
+            if (rain > 0.05f) {
+                currentRadius = Math.min(maxRadius, currentRadius + 0.35f * rain * tpf);
+            } else {
+                float evapRate = 0.012f + 0.030f * (Math.max(0.0f, temp) / 30.0f);
+                currentRadius = Math.max(0.0f, currentRadius - evapRate * tpf);
+            }
+
+            if (currentRadius <= 0.02f) {
+                geom.setCullHint(Spatial.CullHint.Always);
+            } else {
+                geom.setCullHint(Spatial.CullHint.Dynamic);
+                float ripple = (rain > 0.05f) ? (1.0f + 0.04f * FastMath.sin(swayTime * 12.0f + center.x)) : 1.0f;
+                geom.setLocalScale(currentRadius * ripple, currentRadius * ripple, 1.0f);
+                Material mat = geom.getMaterial();
+                if (mat != null && mat.getMaterialDef().getMaterialParam("Color") != null) {
+                    float alpha = Math.min(0.85f, 0.30f + (currentRadius / maxRadius) * 0.55f);
+                    mat.setColor("Color", new ColorRGBA(0.20f, 0.45f, 0.70f, alpha));
+                }
+            }
+        }
+    }
+
+    private CanopyDripParticle createCanopyDrip(Vector3f canopyPos, float groundY, float initialDelay) {
+        Material dropMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        dropMat.setColor("Color", new ColorRGBA(0.85f, 0.92f, 1.0f, 0.80f));
+        dropMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+        Geometry geom = new Geometry("CanopyDrip", new Box(0.008f, 0.022f, 0.008f));
+        geom.setMaterial(dropMat);
+        geom.setQueueBucket(RenderQueue.Bucket.Transparent);
+        geom.setLocalTranslation(canopyPos);
+
+        return new CanopyDripParticle(geom, canopyPos, groundY, initialDelay);
+    }
+
+    private static class CanopyDripParticle {
+        final Geometry geom;
+        final Vector3f canopyPos;
+        final float groundY;
+        final Vector3f currentPos;
+        float velY = 0.0f;
+        float resetTimer = 0.0f;
+
+        CanopyDripParticle(Geometry geom, Vector3f canopyPos, float groundY, float initialDelay) {
+            this.geom = geom;
+            this.canopyPos = canopyPos.clone();
+            this.groundY = groundY;
+            this.currentPos = canopyPos.clone();
+            this.resetTimer = initialDelay;
+        }
+
+        void update(float tpf, float rainWetness) {
+            if (rainWetness < 0.05f) {
+                geom.setCullHint(Spatial.CullHint.Always);
+                return;
+            }
+
+            if (resetTimer > 0) {
+                resetTimer -= tpf;
+                geom.setCullHint(Spatial.CullHint.Always);
+                return;
+            }
+
+            geom.setCullHint(Spatial.CullHint.Dynamic);
+            velY -= 9.81f * tpf;
+            currentPos.y += velY * tpf;
+            geom.setLocalTranslation(currentPos);
+
+            if (currentPos.y <= groundY) {
+                currentPos.set(canopyPos);
+                velY = 0.0f;
+                resetTimer = 0.4f + (1.0f - rainWetness) * 2.0f;
+            }
+        }
+    }
+
+    private GnatSwarmAgent createGnatSwarm(Vector3f center, float radius, Random rand, int index) {
+        Node swarmNode = new Node("GnatSwarm_" + index);
+        swarmNode.setShadowMode(RenderQueue.ShadowMode.Off);
+
+        Material gnatMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        gnatMat.setColor("Color", new ColorRGBA(0.12f, 0.12f, 0.15f, 0.75f));
+        gnatMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+        List<Geometry> gnats = new ArrayList<>();
+        List<Float> phases = new ArrayList<>();
+        int count = 16;
+        for (int i = 0; i < count; i++) {
+            Geometry g = new Geometry("Gnat_" + index + "_" + i, new Box(0.006f, 0.006f, 0.006f));
+            g.setMaterial(gnatMat);
+            g.setQueueBucket(RenderQueue.Bucket.Transparent);
+            swarmNode.attachChild(g);
+            gnats.add(g);
+            phases.add(rand.nextFloat() * FastMath.TWO_PI);
+        }
+
+        return new GnatSwarmAgent(swarmNode, center, radius, gnats, phases);
+    }
+
+    private static class GnatSwarmAgent {
+        final Node swarmNode;
+        final Vector3f center;
+        final List<Geometry> gnats = new ArrayList<>();
+        final List<Float> gnatPhases = new ArrayList<>();
+        final float radius;
+
+        GnatSwarmAgent(Node swarmNode, Vector3f center, float radius, List<Geometry> gnats, List<Float> phases) {
+            this.swarmNode = swarmNode;
+            this.center = center;
+            this.radius = radius;
+            this.gnats.addAll(gnats);
+            this.gnatPhases.addAll(phases);
+        }
+
+        void update(float tpf, float time, boolean isTwilight, float rain, float temp) {
+            boolean active = (isTwilight || rain > 0.05f) && rain < 0.35f && temp > 10.0f;
+            if (!active) {
+                swarmNode.setCullHint(Spatial.CullHint.Always);
+                return;
+            }
+            swarmNode.setCullHint(Spatial.CullHint.Dynamic);
+
+            for (int i = 0; i < gnats.size(); i++) {
+                Geometry g = gnats.get(i);
+                float phase = gnatPhases.get(i);
+                float theta = time * 3.2f + phase;
+                float r = radius * (0.35f + 0.65f * FastMath.sin(time * 1.8f + phase * 2.0f));
+                float gx = center.x + r * FastMath.cos(theta);
+                float gy = center.y + 0.25f * FastMath.sin(theta * 2.2f + phase) + 0.15f * FastMath.cos(time * 4.0f + phase);
+                float gz = center.z + r * FastMath.sin(theta);
+                g.setLocalTranslation(gx, gy, gz);
+            }
+        }
+    }
+
+    private AphidClusterAgent createAphidCluster(Vector3f stemPos, Random rand, int index) {
+        Node clusterNode = new Node("AphidCluster_" + index);
+        clusterNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+
+        Material aphidMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        aphidMat.setBoolean("UseMaterialColors", true);
+        ColorRGBA col = (rand.nextBoolean()) ? new ColorRGBA(0.28f, 0.58f, 0.18f, 1.0f) : new ColorRGBA(0.15f, 0.18f, 0.12f, 1.0f);
+        aphidMat.setColor("Diffuse", col);
+        aphidMat.setColor("Ambient", col.mult(0.6f));
+
+        Material honeyMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        honeyMat.setColor("Color", new ColorRGBA(0.96f, 0.90f, 0.40f, 0.90f));
+        honeyMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+        List<Geometry> droplets = new ArrayList<>();
+        int count = 4 + rand.nextInt(4);
+        for (int i = 0; i < count; i++) {
+            float ox = (rand.nextFloat() - 0.5f) * 0.18f;
+            float oy = (rand.nextFloat() - 0.5f) * 0.12f;
+            float oz = (rand.nextFloat() - 0.5f) * 0.18f;
+
+            // Aphid body
+            Geometry aphid = new Geometry("Aphid_" + i, new Sphere(8, 8, 0.025f));
+            aphid.setMaterial(aphidMat);
+            aphid.setLocalScale(1.0f, 0.8f, 1.4f);
+            aphid.setLocalTranslation(stemPos.x + ox, stemPos.y + oy, stemPos.z + oz);
+            clusterNode.attachChild(aphid);
+
+            // Glistening Honeydew droplet on aphid posterior
+            if (rand.nextFloat() < 0.65f) {
+                Geometry droplet = new Geometry("Honeydew_" + i, new Sphere(6, 6, 0.014f));
+                droplet.setMaterial(honeyMat);
+                droplet.setQueueBucket(RenderQueue.Bucket.Transparent);
+                droplet.setLocalTranslation(stemPos.x + ox, stemPos.y + oy + 0.025f, stemPos.z + oz - 0.02f);
+                clusterNode.attachChild(droplet);
+                droplets.add(droplet);
+            }
+        }
+
+        return new AphidClusterAgent(clusterNode, stemPos, droplets);
+    }
+
+    private static class AphidClusterAgent {
+        final Node node;
+        final Vector3f stemPos;
+        final List<Geometry> honeydewDroplets = new ArrayList<>();
+
+        AphidClusterAgent(Node node, Vector3f stemPos, List<Geometry> honeydewDroplets) {
+            this.node = node;
+            this.stemPos = stemPos;
+            this.honeydewDroplets.addAll(honeydewDroplets);
+        }
+
+        void update(float tpf, float swayTime) {
+            float pulse = 0.85f + 0.15f * FastMath.sin(swayTime * 2.5f + stemPos.x);
+            for (Geometry drop : honeydewDroplets) {
+                drop.setLocalScale(pulse);
+            }
+        }
+    }
+
+    private ExtrafloralNectaryAgent createExtrafloralNectary(Vector3f axilPos, Random rand) {
+        Material nectaryMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        nectaryMat.setColor("Color", new ColorRGBA(0.98f, 0.88f, 0.25f, 0.90f));
+        nectaryMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+        Geometry geom = new Geometry("ExtrafloralNectary", new Sphere(6, 6, 0.022f));
+        geom.setMaterial(nectaryMat);
+        geom.setQueueBucket(RenderQueue.Bucket.Transparent);
+        geom.setLocalTranslation(axilPos);
+
+        return new ExtrafloralNectaryAgent(geom, axilPos);
+    }
+
+    private static class ExtrafloralNectaryAgent {
+        final Geometry geom;
+        final Vector3f position;
+
+        ExtrafloralNectaryAgent(Geometry geom, Vector3f position) {
+            this.geom = geom;
+            this.position = position;
+        }
+
+        void update(float tpf, float swayTime) {
+            float glisten = 0.90f + 0.10f * FastMath.sin(swayTime * 3.0f + position.z);
+            geom.setLocalScale(glisten);
+        }
+    }
+
+    private CordycepsCadaverAgent createCordycepsCadaver(Vector3f anchorPos, Random rand, int index) {
+        Node cadaverNode = new Node("CordycepsCadaver_" + index);
+        cadaverNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+
+        Material deadAntMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        deadAntMat.setBoolean("UseMaterialColors", true);
+        deadAntMat.setColor("Diffuse", new ColorRGBA(0.12f, 0.08f, 0.06f, 1.0f));
+        deadAntMat.setColor("Ambient", new ColorRGBA(0.08f, 0.05f, 0.04f, 1.0f));
+
+        // Fixed ant body (summit disease grip)
+        Geometry antBody = new Geometry("DeadAntGrip", new Box(0.025f, 0.02f, 0.05f));
+        antBody.setMaterial(deadAntMat);
+        antBody.setLocalTranslation(anchorPos);
+        cadaverNode.attachChild(antBody);
+
+        // Ascending fungal stroma stalk
+        Material stromaMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        stromaMat.setBoolean("UseMaterialColors", true);
+        ColorRGBA stromaCol = new ColorRGBA(0.85f, 0.72f, 0.45f, 1.0f);
+        stromaMat.setColor("Diffuse", stromaCol);
+        stromaMat.setColor("Ambient", stromaCol.mult(0.6f));
+
+        Geometry stroma = new Geometry("FungalStroma", new Cylinder(6, 8, 0.008f, 0.18f, true));
+        stroma.setMaterial(stromaMat);
+        stroma.setLocalTranslation(anchorPos.x, anchorPos.y + 0.10f, anchorPos.z);
+        stroma.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
+        cadaverNode.attachChild(stroma);
+
+        // Clavate perithecial bulb
+        Geometry bulb = new Geometry("PerithecialBulb", new Sphere(8, 8, 0.022f));
+        bulb.setMaterial(stromaMat);
+        bulb.setLocalTranslation(anchorPos.x, anchorPos.y + 0.20f, anchorPos.z);
+        cadaverNode.attachChild(bulb);
+
+        // Faint spore cloud aura
+        Material sporeMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        sporeMat.setColor("Color", new ColorRGBA(0.92f, 0.85f, 0.60f, 0.35f));
+        sporeMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+        Geometry sporeAura = new Geometry("SporeCloud", new Sphere(8, 8, 0.08f));
+        sporeAura.setMaterial(sporeMat);
+        sporeAura.setQueueBucket(RenderQueue.Bucket.Transparent);
+        sporeAura.setLocalTranslation(anchorPos.x, anchorPos.y + 0.20f, anchorPos.z);
+        cadaverNode.attachChild(sporeAura);
+
+        return new CordycepsCadaverAgent(cadaverNode, anchorPos, sporeAura);
+    }
+
+    private static class CordycepsCadaverAgent {
+        final Node node;
+        final Vector3f anchorPos;
+        final Geometry sporeAura;
+        float auraPulse = 0.0f;
+
+        CordycepsCadaverAgent(Node node, Vector3f anchorPos, Geometry sporeAura) {
+            this.node = node;
+            this.anchorPos = anchorPos;
+            this.sporeAura = sporeAura;
+        }
+
+        void update(float tpf, float swayTime) {
+            auraPulse += tpf * 1.5f;
+            float scale = 0.9f + 0.2f * FastMath.sin(auraPulse);
+            if (sporeAura != null) {
+                sporeAura.setLocalScale(scale);
+            }
+        }
+    }
+
+    private Geometry createMudcrackPatch(Vector3f pos, float size, Random rand, int index) {
+        Material crackMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        crackMat.setColor("Color", new ColorRGBA(0.28f, 0.18f, 0.12f, 0.70f));
+        crackMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+        Geometry crack = new Geometry("Mudcrack_" + index, new Quad(size, size));
+        crack.setMaterial(crackMat);
+        crack.setQueueBucket(RenderQueue.Bucket.Transparent);
+        crack.setLocalRotation(new Quaternion().fromAngles(-FastMath.HALF_PI, 0, rand.nextFloat() * FastMath.TWO_PI));
+        crack.setLocalTranslation(pos.x - size * 0.5f, pos.y, pos.z - size * 0.5f);
+        crack.setCullHint(Spatial.CullHint.Always); // Initially dormant until drought
+        return crack;
+    }
+
     // =========================================================================
     // Multi-Mode Nest Architecture Visualizer System (13 Biologically Rigorous Typologies)
     // =========================================================================
@@ -2206,10 +2817,12 @@ public class VegetationVisualizer {
 
     public void rebuildNestArchitectures() {
         nestArchitectureNode.detachAllChildren();
+        colonyInfrastructureNode.detachAllChildren();
         if (trackedColonies.isEmpty()) return;
 
         for (Colony colony : trackedColonies) {
             createNestForColony(colony, currentRenderMode);
+            createColonyInfrastructure(colony, currentRenderMode);
         }
     }
 
@@ -2238,6 +2851,8 @@ public class VegetationVisualizer {
             buildPaperPedunculateNest(nestNode, x, Math.max(surfY + 2.5f, z), y, mode);
         } else if (arch.contains("CATHEDRAL_MOUND") || spName.contains("termite")) {
             buildCathedralTermiteMound(nestNode, x, surfY, y, mode);
+        } else if (arch.contains("MOUND") || arch.contains("FORMICA") || spName.contains("formica") || spName.contains("mound") || spName.contains("dome")) {
+            buildFormicaThatchedMound(nestNode, x, surfY, y, mode, 180.0f);
         } else if (arch.contains("ARBOREAL_SILK_LEAF") || spName.contains("weaver") || spName.contains("tisserande")) {
             buildArborealSilkLeafNest(nestNode, x, Math.max(surfY + 3.0f, z), y, mode);
         } else if (arch.contains("WAX_POTS_CLUSTER") || spName.contains("bourdon") || spName.contains("bombus")) {
@@ -2258,6 +2873,22 @@ public class VegetationVisualizer {
         }
 
         nestArchitectureNode.attachChild(nestNode);
+    }
+
+    private void createColonyInfrastructure(Colony colony, RenderMode mode) {
+        if (colony == null) return;
+        float x = colony.getNestX();
+        float y = colony.getNestY();
+        float z = colony.getNestZ();
+        float surfY = (activeTerrarium != null) ? activeTerrarium.getSurfaceElevation(x, y) : z;
+
+        Node infraNode = new Node("ColonyInfra_" + colony.getId());
+        infraNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
+
+        buildRefuseMidden(infraNode, x, surfY, y, mode);
+        buildTrunkTrails(infraNode, x, surfY, y, mode);
+
+        colonyInfrastructureNode.attachChild(infraNode);
     }
 
     private void buildWoodenBeehive(Node parent, float x, float y, float z, RenderMode mode) {
@@ -2579,6 +3210,156 @@ public class VegetationVisualizer {
         }
     }
 
+    private void buildFormicaThatchedMound(Node parent, float x, float y, float z, RenderMode mode, float southAngle) {
+        if (mode == RenderMode.SCIENTIFIC) {
+            Material sciMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            sciMat.setBoolean("UseMaterialColors", true);
+            sciMat.setColor("Diffuse", new ColorRGBA(0.95f, 0.45f, 0.15f, 0.80f));
+            sciMat.setColor("Ambient", new ColorRGBA(0.60f, 0.25f, 0.10f, 0.80f));
+
+            Geometry dome = new Geometry("SciThatchedMound", new Sphere(16, 16, 1.10f));
+            dome.setMaterial(sciMat);
+            dome.setLocalScale(1.3f, 0.75f, 1.1f);
+            dome.setLocalTranslation(x, y + 0.45f, z);
+            dome.setLocalRotation(new Quaternion().fromAngles(0, FastMath.DEG_TO_RAD * southAngle, 0));
+            parent.attachChild(dome);
+
+            Material arrowMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+            arrowMat.setColor("Color", new ColorRGBA(1.0f, 0.85f, 0.10f, 0.95f));
+            Geometry arrow = new Geometry("SolarVectorArrow", new Cylinder(4, 8, 0.04f, 0.90f, true));
+            arrow.setMaterial(arrowMat);
+            arrow.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
+            arrow.setLocalTranslation(x, y + 1.25f, z + 0.55f);
+            parent.attachChild(arrow);
+        } else if (mode == RenderMode.GAMIFIED) {
+            Material needleMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            needleMat.setBoolean("UseMaterialColors", true);
+            needleMat.setColor("Diffuse", new ColorRGBA(0.42f, 0.28f, 0.14f, 1.0f));
+            needleMat.setColor("Ambient", new ColorRGBA(0.28f, 0.18f, 0.08f, 1.0f));
+
+            for (int lvl = 0; lvl < 3; lvl++) {
+                float sz = 0.90f - lvl * 0.25f;
+                Geometry step = new Geometry("GamifiedMoundStep_" + lvl, new Box(sz, 0.18f, sz));
+                step.setMaterial(needleMat);
+                step.setLocalTranslation(x, y + 0.18f + lvl * 0.32f, z);
+                parent.attachChild(step);
+            }
+        } else {
+            Material thatchMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            thatchMat.setBoolean("UseMaterialColors", true);
+            thatchMat.setColor("Diffuse", new ColorRGBA(0.38f, 0.24f, 0.14f, 1.0f));
+            thatchMat.setColor("Ambient", new ColorRGBA(0.24f, 0.15f, 0.08f, 1.0f));
+
+            Geometry dome = new Geometry("ThatchedNeedleMound", new Sphere(18, 18, 1.15f));
+            dome.setMaterial(thatchMat);
+            dome.setLocalScale(1.35f, 0.85f, 1.15f);
+            dome.setLocalTranslation(x, y + 0.40f, z);
+            parent.attachChild(dome);
+
+            Material baseMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            baseMat.setBoolean("UseMaterialColors", true);
+            baseMat.setColor("Diffuse", new ColorRGBA(0.30f, 0.20f, 0.10f, 1.0f));
+            Geometry apron = new Geometry("NeedleApron", new Cylinder(16, 16, 1.65f, 0.08f, true));
+            apron.setMaterial(baseMat);
+            apron.setLocalRotation(new Quaternion().fromAngles(-FastMath.HALF_PI, 0, 0));
+            apron.setLocalTranslation(x, y + 0.04f, z);
+            parent.attachChild(apron);
+        }
+    }
+
+    private void buildRefuseMidden(Node parent, float x, float y, float z, RenderMode mode) {
+        float mx = x + 6.0f;
+        float mz = z + 6.0f;
+        float my = (activeTerrarium != null) ? activeTerrarium.getSurfaceElevation(mx, mz) : y;
+
+        if (mode == RenderMode.SCIENTIFIC) {
+            Material ringMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+            ringMat.setColor("Color", new ColorRGBA(0.95f, 0.25f, 0.25f, 0.65f));
+            ringMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+            Geometry perimeter = new Geometry("MiddenSanitaryPerimeter", new Cylinder(16, 16, 1.2f, 0.04f, false));
+            perimeter.setMaterial(ringMat);
+            perimeter.setLocalRotation(new Quaternion().fromAngles(-FastMath.HALF_PI, 0, 0));
+            perimeter.setLocalTranslation(mx, my + 0.05f, mz);
+            parent.attachChild(perimeter);
+
+            Geometry centerHeap = new Geometry("SciMiddenCore", new Box(0.35f, 0.20f, 0.35f));
+            Material coreMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            coreMat.setBoolean("UseMaterialColors", true);
+            coreMat.setColor("Diffuse", new ColorRGBA(0.65f, 0.20f, 0.20f, 0.85f));
+            centerHeap.setMaterial(coreMat);
+            centerHeap.setLocalTranslation(mx, my + 0.10f, mz);
+            parent.attachChild(centerHeap);
+        } else if (mode == RenderMode.GAMIFIED) {
+            Material compostMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            compostMat.setBoolean("UseMaterialColors", true);
+            compostMat.setColor("Diffuse", new ColorRGBA(0.25f, 0.18f, 0.12f, 1.0f));
+
+            Geometry compost = new Geometry("GamifiedCompostHeap", new Box(0.60f, 0.35f, 0.60f));
+            compost.setMaterial(compostMat);
+            compost.setLocalTranslation(mx, my + 0.18f, mz);
+            parent.attachChild(compost);
+        } else {
+            Material wasteMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+            wasteMat.setBoolean("UseMaterialColors", true);
+            wasteMat.setColor("Diffuse", new ColorRGBA(0.18f, 0.14f, 0.10f, 1.0f));
+            wasteMat.setColor("Ambient", new ColorRGBA(0.10f, 0.08f, 0.05f, 1.0f));
+
+            Geometry heap = new Geometry("OrganicRefuseMidden", new Sphere(12, 12, 0.75f));
+            heap.setMaterial(wasteMat);
+            heap.setLocalScale(1.3f, 0.45f, 1.2f);
+            heap.setLocalTranslation(mx, my + 0.15f, mz);
+            parent.attachChild(heap);
+        }
+    }
+
+    private void buildTrunkTrails(Node parent, float x, float y, float z, RenderMode mode) {
+        float[] angles = { 45.0f, 160.0f, 290.0f };
+        for (float ang : angles) {
+            float rad = FastMath.DEG_TO_RAD * ang;
+            float len = 12.0f;
+            float endX = x + len * FastMath.cos(rad);
+            float endZ = z + len * FastMath.sin(rad);
+            float endY = (activeTerrarium != null) ? activeTerrarium.getSurfaceElevation(endX, endZ) : y;
+            float midX = (x + endX) * 0.5f;
+            float midZ = (z + endZ) * 0.5f;
+            float midY = (y + endY) * 0.5f;
+
+            if (mode == RenderMode.SCIENTIFIC) {
+                Material ribbonMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+                ribbonMat.setColor("Color", new ColorRGBA(0.15f, 0.75f, 0.95f, 0.65f));
+                ribbonMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+                Geometry ribbon = new Geometry("TrunkTrailSci_" + (int)ang, new Box(0.15f, 0.02f, len * 0.5f));
+                ribbon.setMaterial(ribbonMat);
+                ribbon.setLocalTranslation(midX, midY + 0.04f, midZ);
+                ribbon.setLocalRotation(new Quaternion().fromAngles(0, -rad + FastMath.HALF_PI, 0));
+                parent.attachChild(ribbon);
+            } else if (mode == RenderMode.GAMIFIED) {
+                Material pathMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+                pathMat.setBoolean("UseMaterialColors", true);
+                pathMat.setColor("Diffuse", new ColorRGBA(0.55f, 0.42f, 0.28f, 1.0f));
+
+                Geometry path = new Geometry("GamifiedTrail_" + (int)ang, new Box(0.25f, 0.03f, len * 0.5f));
+                path.setMaterial(pathMat);
+                path.setLocalTranslation(midX, midY + 0.02f, midZ);
+                path.setLocalRotation(new Quaternion().fromAngles(0, -rad + FastMath.HALF_PI, 0));
+                parent.attachChild(path);
+            } else {
+                Material trailMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+                trailMat.setBoolean("UseMaterialColors", true);
+                trailMat.setColor("Diffuse", new ColorRGBA(0.26f, 0.18f, 0.11f, 1.0f));
+                trailMat.setColor("Ambient", new ColorRGBA(0.16f, 0.10f, 0.06f, 1.0f));
+
+                Geometry trail = new Geometry("RealisticTrunkTrail_" + (int)ang, new Box(0.20f, 0.02f, len * 0.5f));
+                trail.setMaterial(trailMat);
+                trail.setLocalTranslation(midX, midY + 0.03f, midZ);
+                trail.setLocalRotation(new Quaternion().fromAngles(0, -rad + FastMath.HALF_PI, 0));
+                parent.attachChild(trail);
+            }
+        }
+    }
+
     public Spatial renderBeehive(float x, float y, float z, float orientationAngle) {
         if (beehiveModel == null) return null;
 
@@ -2624,14 +3405,122 @@ public class VegetationVisualizer {
         return uvVisionMode;
     }
 
+    public void setOmmatidialVisionMode(boolean enabled) {
+        this.ommatidialVisionMode = enabled;
+        if (enabled) {
+            rebuildOmmatidialOverlay();
+            if (ommatidialOverlayNode.getParent() == null) {
+                rootNode.attachChild(ommatidialOverlayNode);
+            }
+        } else {
+            ommatidialOverlayNode.detachAllChildren();
+            ommatidialOverlayNode.removeFromParent();
+        }
+    }
+
+    public boolean isOmmatidialVisionMode() {
+        return ommatidialVisionMode;
+    }
+
+    private void rebuildOmmatidialOverlay() {
+        ommatidialOverlayNode.detachAllChildren();
+        if (activeTerrarium == null) return;
+
+        float cx = currentGridWidth * 0.5f;
+        float cz = currentGridHeight * 0.5f;
+        float cy = activeTerrarium.getSurfaceElevation(cx, cz) + 12.0f;
+
+        // 1. Celestial Rayleigh Polarization Compass Rings (e-vector sky rings)
+        Material polMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        polMat.setColor("Color", new ColorRGBA(0.20f, 0.65f, 0.95f, 0.40f));
+        polMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+        for (int r = 1; r <= 3; r++) {
+            Geometry polRing = new Geometry("PolarizationRing_" + r, new Cylinder(24, 24, r * 6.0f, 0.05f, false));
+            polRing.setMaterial(polMat);
+            polRing.setQueueBucket(RenderQueue.Bucket.Transparent);
+            polRing.setLocalRotation(new Quaternion().fromAngles(-FastMath.HALF_PI, 0, 0));
+            polRing.setLocalTranslation(cx, cy + 25.0f, cz);
+            ommatidialOverlayNode.attachChild(polRing);
+        }
+
+        // 2. Hexagonal Ommatidial Facet Lattice
+        Material facetMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        facetMat.setColor("Color", new ColorRGBA(0.70f, 0.85f, 1.0f, 0.22f));
+        facetMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+
+        for (int i = -3; i <= 3; i++) {
+            for (int j = -3; j <= 3; j++) {
+                Geometry facet = new Geometry("Ommatidium_" + i + "_" + j, new Cylinder(6, 6, 1.4f, 0.02f, false));
+                facet.setMaterial(facetMat);
+                facet.setQueueBucket(RenderQueue.Bucket.Transparent);
+                facet.setLocalRotation(new Quaternion().fromAngles(-FastMath.HALF_PI, 0, 0));
+                facet.setLocalTranslation(cx + i * 2.8f + (j % 2) * 1.4f, cy + 18.0f, cz + j * 2.4f);
+                ommatidialOverlayNode.attachChild(facet);
+            }
+        }
+    }
+
     private void applyUVColoration(Spatial spatial, boolean uv) {
         if (spatial instanceof Geometry geom) {
             Material mat = geom.getMaterial();
             if (mat != null) {
-                if (uv) {
-                    mat.setColor("Diffuse", new ColorRGBA(0.45f, 0.20f, 0.85f, 1.0f));
-                    mat.setColor("Ambient", new ColorRGBA(0.25f, 0.10f, 0.65f, 1.0f));
-                }
+                try {
+                    boolean hasDiffuse = mat.getMaterialDef().getMaterialParam("Diffuse") != null;
+                    boolean hasAmbient = mat.getMaterialDef().getMaterialParam("Ambient") != null;
+                    boolean hasColor = mat.getMaterialDef().getMaterialParam("Color") != null;
+
+                    if (uv) {
+                        // Store original colors if not already stored
+                        if (hasDiffuse && mat.getParam("Diffuse") != null && geom.getUserData("origDiffuse") == null) {
+                            geom.setUserData("origDiffuse", mat.getParam("Diffuse").getValue());
+                        }
+                        if (hasAmbient && mat.getParam("Ambient") != null && geom.getUserData("origAmbient") == null) {
+                            geom.setUserData("origAmbient", mat.getParam("Ambient").getValue());
+                        }
+                        if (hasColor && mat.getParam("Color") != null && geom.getUserData("origColor") == null) {
+                            geom.setUserData("origColor", mat.getParam("Color").getValue());
+                        }
+
+                        // Determine biological insect UV coloration based on geometry type
+                        String gName = geom.getName() != null ? geom.getName().toLowerCase() : "";
+                        ColorRGBA uvDiffuse;
+                        ColorRGBA uvAmbient;
+
+                        if (gName.contains("flower") || gName.contains("petal") || gName.contains("blossom") || gName.contains("nectar")) {
+                            // Fluorescent UV nectar guide (electric violet/cyan bullseye)
+                            uvDiffuse = new ColorRGBA(0.85f, 0.20f, 0.98f, 1.0f);
+                            uvAmbient = new ColorRGBA(0.45f, 0.10f, 0.65f, 1.0f);
+                        } else if (gName.contains("leaf") || gName.contains("leaves") || gName.contains("canopy") || gName.contains("bush")) {
+                            // UV-absorptive dark green-violet foliage
+                            uvDiffuse = new ColorRGBA(0.22f, 0.38f, 0.28f, 1.0f);
+                            uvAmbient = new ColorRGBA(0.12f, 0.18f, 0.15f, 1.0f);
+                        } else if (gName.contains("water") || gName.contains("river") || gName.contains("puddle")) {
+                            // UV-reflective cyan polarization sheen
+                            uvDiffuse = new ColorRGBA(0.20f, 0.75f, 1.0f, 0.90f);
+                            uvAmbient = new ColorRGBA(0.10f, 0.40f, 0.70f, 0.90f);
+                        } else {
+                            // Neutral mineral / bark UV tint
+                            uvDiffuse = new ColorRGBA(0.40f, 0.30f, 0.55f, 1.0f);
+                            uvAmbient = new ColorRGBA(0.20f, 0.15f, 0.35f, 1.0f);
+                        }
+
+                        if (hasDiffuse) mat.setColor("Diffuse", uvDiffuse);
+                        if (hasAmbient) mat.setColor("Ambient", uvAmbient);
+                        if (hasColor) mat.setColor("Color", uvDiffuse);
+                    } else {
+                        // Restore original colors
+                        if (hasDiffuse && geom.getUserData("origDiffuse") instanceof ColorRGBA origD) {
+                            mat.setColor("Diffuse", origD);
+                        }
+                        if (hasAmbient && geom.getUserData("origAmbient") instanceof ColorRGBA origA) {
+                            mat.setColor("Ambient", origA);
+                        }
+                        if (hasColor && geom.getUserData("origColor") instanceof ColorRGBA origC) {
+                            mat.setColor("Color", origC);
+                        }
+                    }
+                } catch (Throwable ignored) {}
             }
         } else if (spatial instanceof Node node) {
             for (Spatial child : node.getChildren()) {

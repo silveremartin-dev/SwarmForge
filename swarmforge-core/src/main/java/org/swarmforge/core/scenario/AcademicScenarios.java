@@ -646,7 +646,7 @@ public class AcademicScenarios {
      * List all available academic single-player and standard scenarios.
      */
     public static List<Scenario> getAllAcademicScenarios(long seed) {
-        return List.of(
+        List<Scenario> list = List.of(
                 createLevyVsBrownianScenario(seed),
                 createPolyethismScenario(seed),
                 createNestMorphogenesisScenario(seed),
@@ -664,16 +664,30 @@ public class AcademicScenarios {
                 createWaspVsWildBeehiveScenario(seed),
                 createApiculturalApiaryScenario(seed)
         );
+        for (Scenario s : list) {
+            s.setBuiltIn(true);
+            s.setAuthor("Academic Reference");
+            s.setVersion(1);
+            s.calculateChecksum();
+        }
+        return list;
     }
 
     /**
      * List all dedicated multiplayer & megaterrarium sharded scenarios.
      */
     public static List<Scenario> getAllMultiplayerScenarios(long seed) {
-        return List.of(
+        List<Scenario> list = List.of(
                 createMultiplayerBattleArena1v1(seed),
                 createMultiplayerCoopTributeTrade(seed),
                 createMultiplayerMegaterrariumSharded(seed)
         );
+        for (Scenario s : list) {
+            s.setBuiltIn(true);
+            s.setAuthor("Academic Multiplayer");
+            s.setVersion(1);
+            s.calculateChecksum();
+        }
+        return list;
     }
 }

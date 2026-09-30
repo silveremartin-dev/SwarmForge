@@ -297,7 +297,7 @@ export default function SimulationVisualViewport() {
 
     const [resetCamTrigger, setResetCamTrigger] = useState(0)
     const [customTarget, setCustomTarget] = useState(null)
-    const [showScoreboard, setShowScoreboard] = useState(true)
+    const [showScoreboard, setShowScoreboard] = useState(false)
     const [isFlashing, setIsFlashing] = useState(false)
     const isDark = theme === 'dark'
 

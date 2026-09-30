@@ -1,4 +1,4 @@
-// SwarmForge Web i18n Translation Dictionary
+﻿// SwarmForge Web i18n Translation Dictionary
 // Comprehensive 5-Language Support: French (fr), English (en), German (de), Spanish (es), Chinese (zh)
 
 export const DEFAULT_LANGUAGE = 'fr'
@@ -354,6 +354,7 @@ export const translations = {
         isolineClimate: 'Isolines Microclimat',
         isolinePhero: 'Isolines Phéromones',
         uvMode: 'Vision Ultraviolette (UV)',
+        ommatidialMode: 'Vision Ommatidienne (Mosaïque)',
         mediaTitle: 'MÉDIA & CAPTURES 3D',
         btnFullscreen: 'Mode Plein Écran (F11)',
         btnExitFullscreen: 'Quitter Plein Écran (ESC)',
@@ -475,6 +476,7 @@ export const translations = {
         isolinesMicroclimate: 'Isolines Microclimat',
         isolinesPhero: 'Isolines Phéromonales',
         uvVision: 'Spectre Vision UV',
+        ommatidialVision: 'Vision Ommatidienne (Mosaïque & Polarisation)',
         audioProceduralTitle: 'MIXER AUDIO PROCÉDURAL (1:1 JAVAFX)',
         channelMaster: '1. Volume Général (Master)',
         channelAmbient: '2. Ambiance & Biome',
@@ -1147,6 +1149,7 @@ export const translations = {
         isolineClimate: 'Microclimate Isolines',
         isolinePhero: 'Pheromone Isolines',
         uvMode: 'Ultraviolet Vision (UV)',
+        ommatidialMode: 'Ommatidial Vision (Mosaic)',
         mediaTitle: 'MEDIA & 3D CAPTURES',
         btnFullscreen: 'Fullscreen Mode (F11)',
         btnExitFullscreen: 'Exit Fullscreen (ESC)',
@@ -1268,6 +1271,7 @@ export const translations = {
         isolinesMicroclimate: 'Microclimate Isolines',
         isolinesPhero: 'Pheromone Isolines',
         uvVision: 'UV Vision Spectrum',
+        ommatidialVision: 'Ommatidial Vision (Mosaic & Polarization)',
         audioProceduralTitle: 'PROCEDURAL AUDIO MIXER (1:1 JAVAFX)',
         channelMaster: '1. Master Volume',
         channelAmbient: '2. Biome Ambience',
@@ -1940,6 +1944,7 @@ export const translations = {
         isolineClimate: 'Mikroklima-Isolinien',
         isolinePhero: 'Pheromon-Isolinien',
         uvMode: 'Ultraviolette Sicht (UV)',
+        ommatidialMode: 'Ommatidien-Sicht (Mosaik)',
         mediaTitle: 'MEDIEN & 3D-AUFNAHMEN',
         btnFullscreen: 'Vollbildmodus (F11)',
         btnExitFullscreen: 'Vollbild beenden (ESC)',
@@ -2061,6 +2066,7 @@ export const translations = {
         isolinesMicroclimate: 'Mikroklima-Isolinien',
         isolinesPhero: 'Pheromon-Isolinien',
         uvVision: 'UV-Visionsspektrum',
+        ommatidialVision: 'Ommatidien-Sicht (Mosaik & Polarisation)',
         audioProceduralTitle: 'PROZEDURALER AUDIO-MIXER (1:1 JAVAFX)',
         channelMaster: '1. Gesamtlautstärke (Master)',
         channelAmbient: '2. Biom-Ambiente',
@@ -2732,6 +2738,7 @@ export const translations = {
         isolineClimate: 'Isolíneas Microclimáticas',
         isolinePhero: 'Isolíneas de Feromonas',
         uvMode: 'Visión Ultravioleta (UV)',
+        ommatidialMode: 'Visión Omatidial (Mosaico)',
         mediaTitle: 'MEDIOS Y CAPTURAS 3D',
         btnFullscreen: 'Modo Pantalla Completa (F11)',
         btnExitFullscreen: 'Salir de Pantalla Completa (ESC)',
@@ -2853,6 +2860,7 @@ export const translations = {
         isolinesMicroclimate: 'Isolíneas de Microclima',
         isolinesPhero: 'Isolíneas de Feromonas',
         uvVision: 'Espectro de Visión UV',
+        ommatidialVision: 'Visión Omatidial (Mosaico y Polarización)',
         audioProceduralTitle: 'MEZCLADOR DE AUDIO PROCEDURAL (1:1 JAVAFX)',
         channelMaster: '1. Volumen Maestro',
         channelAmbient: '2. Ambiente de Bioma',
@@ -3988,4 +3996,5 @@ export function getTranslation(lang, key, fallbackOrParams = '', params = null) 
     }
     return text
 }
+
 

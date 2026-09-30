@@ -163,9 +163,15 @@ public class PheromoneVisualizer {
 
         // Iterate active chemical grid entries
         Map<Long, float[]> entries = grid.getAllEntries();
+        if (entries == null || entries.isEmpty())
+            return;
+
         for (Map.Entry<Long, float[]> entry : entries.entrySet()) {
-            long key = entry.getKey();
+            if (entry == null) continue;
+            Long key = entry.getKey();
+            if (key == null) continue;
             float[] pheromones = entry.getValue();
+            if (pheromones == null || pheromones.length == 0) continue;
 
             int[] coords = org.swarmforge.core.spatial.Morton3D.decode(key);
             int x = coords[0]; // Domain X -> JME X

@@ -225,6 +225,9 @@ public class WorldPresetManager {
         cfg.put("treeCount", treeCount);
         cfg.put("hollowLogs", hollowLogs);
         cfg.put("rockCrevices", rockCrevices);
+        cfg.put("builtIn", true);
+        cfg.put("author", "Academic Reference");
+        cfg.put("version", 1);
         return cfg;
     }
 
@@ -261,13 +264,51 @@ public class WorldPresetManager {
         return presets.containsKey(name);
     }
 
+    public boolean isBuiltIn(String name) {
+        if (name == null || !presets.containsKey(name)) return false;
+        Map<String, Object> cfg = presets.get(name);
+        return cfg != null && Boolean.TRUE.equals(cfg.get("builtIn"));
+    }
+
     public void save(String name, Map<String, Object> config) {
-        presets.put(name, new LinkedHashMap<>(config));
+        if (name == null || name.isBlank() || config == null) return;
+        Map<String, Object> copy = new LinkedHashMap<>(config);
+        
+        // Protect built-in presets
+        if (isBuiltIn(name)) {
+            name = "[Fork] " + name;
+            copy.put("builtIn", false);
+        }
+
+        copy.put("builtIn", false);
+        copy.put("revisionTimestamp", System.currentTimeMillis());
+        
+        // Calculate deterministic checksum
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(copy.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) hex.append(String.format("%02x", b));
+            copy.put("checksum", hex.toString().substring(0, 12));
+        } catch (Exception ignored) {}
+
+        if (presets.containsKey(name)) {
+            Map<String, Object> existing = presets.get(name);
+            int ver = existing.containsKey("version") && existing.get("version") instanceof Number ? ((Number) existing.get("version")).intValue() + 1 : 2;
+            copy.put("version", ver);
+        } else {
+            copy.putIfAbsent("version", 1);
+        }
+
+        presets.put(name, copy);
         persist();
     }
 
     public boolean delete(String name) {
         if (presets.containsKey(name)) {
+            if (isBuiltIn(name)) {
+                return false; // Cannot delete reference built-in world
+            }
             presets.remove(name);
             persist();
             return true;
@@ -277,8 +318,14 @@ public class WorldPresetManager {
 
     private void persist() {
         try {
+            Map<String, Map<String, Object>> customOnly = new LinkedHashMap<>();
+            for (Map.Entry<String, Map<String, Object>> entry : presets.entrySet()) {
+                if (!Boolean.TRUE.equals(entry.getValue().get("builtIn"))) {
+                    customOnly.put(entry.getKey(), entry.getValue());
+                }
+            }
             ObjectMapper m = new ObjectMapper();
-            m.writerWithDefaultPrettyPrinter().writeValue(PRESETS_FILE, presets);
+            m.writerWithDefaultPrettyPrinter().writeValue(PRESETS_FILE, customOnly);
         } catch (Exception ex) {
             System.err.println("[WorldPresets] Could not write " + PRESETS_FILE + ": " + ex.getMessage());
         }

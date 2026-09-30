@@ -131,7 +131,9 @@ public final class VoxelTextureAtlas {
 
     private static void setPixel(int[][][] atlas, int tx, int ty, int px, int py, int r, int g, int b, int a) {
         int x = tx * TILE_SIZE + px;
-        int y = ty * TILE_SIZE + py;
+        // In OpenGL textures, V=0 is at bottom (y=0) and V=1 is at top (y=63).
+        // getTileUV sets row 0 (ty=0) to V in [0.75, 1.0], so row 0 must be in top pixel rows [48..63].
+        int y = (TILES_PER_ROW - 1 - ty) * TILE_SIZE + (TILE_SIZE - 1 - py);
         if (x >= 0 && x < ATLAS_SIZE && y >= 0 && y < ATLAS_SIZE) {
             atlas[y][x][0] = Math.max(0, Math.min(255, r));
             atlas[y][x][1] = Math.max(0, Math.min(255, g));
@@ -218,12 +220,14 @@ public final class VoxelTextureAtlas {
     }
 
     private static void paintClay(int[][][] atlas, int tx, int ty, Random rng) {
-        int baseR = 160, baseG = 95, baseB = 68; // Terracotta clay
+        int baseR = 152, baseG = 112, baseB = 92; // Natural warm earthy terracotta clay / silt
         for (int y = 0; y < TILE_SIZE; y++) {
             for (int x = 0; x < TILE_SIZE; x++) {
-                int wave = (int) (Math.sin(x * 0.5) * 8);
-                int noise = rng.nextInt(16) - 8 + wave;
-                setPixel(atlas, tx, ty, x, y, baseR + noise, baseG + noise, baseB + noise, 255);
+                int noise = rng.nextInt(18) - 9;
+                // Subtle natural sedimentation strata
+                if (y % 4 == 0) noise -= 6;
+                if ((x + y * 3) % 7 == 0) noise += 8;
+                setPixel(atlas, tx, ty, x, y, baseR + noise, baseG + (noise * 3 / 4), baseB + (noise / 2), 255);
             }
         }
     }
@@ -243,8 +247,8 @@ public final class VoxelTextureAtlas {
         int baseR = 107, baseG = 84, baseB = 51; // Oak bark brown
         for (int y = 0; y < TILE_SIZE; y++) {
             for (int x = 0; x < TILE_SIZE; x++) {
-                int stripe = (x % 3 == 0) ? -20 : ((x % 3 == 1) ? 15 : 0);
-                int noise = rng.nextInt(14) - 7 + stripe;
+                int stripe = (x % 3 == 0) ? -16 : ((x % 3 == 1) ? 12 : 0);
+                int noise = rng.nextInt(12) - 6 + stripe;
                 setPixel(atlas, tx, ty, x, y, baseR + noise, baseG + noise, baseB + noise, 255);
             }
         }
@@ -269,17 +273,19 @@ public final class VoxelTextureAtlas {
     }
 
     private static void paintLeaves(int[][][] atlas, int tx, int ty, Random rng) {
-        int baseR = 60, baseG = 145, baseB = 30; // Dappled canopy green
+        int baseR = 56, baseG = 142, baseB = 35; // Lush canopy green
         for (int y = 0; y < TILE_SIZE; y++) {
             for (int x = 0; x < TILE_SIZE; x++) {
-                int noise = rng.nextInt(35) - 17;
+                int noise = rng.nextInt(32) - 16;
+                if ((x + y) % 3 == 0) noise += 14;
+                if ((x * 2 + y) % 5 == 0) noise -= 14;
                 setPixel(atlas, tx, ty, x, y, baseR + noise, baseG + noise, baseB + noise, 255);
             }
         }
     }
 
     private static void paintWater(int[][][] atlas, int tx, int ty, Random rng) {
-        int baseR = 40, baseG = 120, baseB = 220;
+        int baseR = 36, baseG = 115, baseB = 215;
         for (int y = 0; y < TILE_SIZE; y++) {
             for (int x = 0; x < TILE_SIZE; x++) {
                 int wave = (int) (Math.sin((x + y) * 0.8) * 15);
@@ -301,12 +307,17 @@ public final class VoxelTextureAtlas {
     }
 
     private static void paintSnowTop(int[][][] atlas, int tx, int ty, Random rng) {
-        int base = 240;
+        // Crystalline winter snow with icy blue-grey micro-relief and depth
+        int baseR = 224, baseG = 236, baseB = 246;
         for (int y = 0; y < TILE_SIZE; y++) {
             for (int x = 0; x < TILE_SIZE; x++) {
-                int noise = rng.nextInt(14) - 7;
-                int v = Math.max(220, Math.min(255, base + noise));
-                setPixel(atlas, tx, ty, x, y, v, v, v + 2, 255);
+                int noise = rng.nextInt(20) - 10;
+                if ((x * 3 + y * 5) % 4 == 0) noise += 10; // Ice sparkle highlight
+                if ((x + y) % 5 == 0) noise -= 12; // Subtle shadow groove
+                int r = Math.max(195, Math.min(250, baseR + noise));
+                int g = Math.max(210, Math.min(252, baseG + noise));
+                int b = Math.max(225, Math.min(255, baseB + noise));
+                setPixel(atlas, tx, ty, x, y, r, g, b, 255);
             }
         }
     }
@@ -314,12 +325,15 @@ public final class VoxelTextureAtlas {
     private static void paintSnowSide(int[][][] atlas, int tx, int ty, Random rng) {
         paintDirt(atlas, tx, ty, rng);
         int[] fringePattern = {4, 5, 4, 3, 5, 4, 3, 4, 5, 4, 3, 4, 5, 4, 3, 4};
+        int baseR = 224, baseG = 236, baseB = 246;
         for (int x = 0; x < TILE_SIZE; x++) {
             int depth = fringePattern[x % fringePattern.length];
             for (int y = 0; y < depth; y++) {
-                int noise = rng.nextInt(12) - 6;
-                int v = Math.max(220, Math.min(255, 240 + noise));
-                setPixel(atlas, tx, ty, x, y, v, v, v + 2, 255);
+                int noise = rng.nextInt(16) - 8;
+                int r = Math.max(195, Math.min(250, baseR + noise));
+                int g = Math.max(210, Math.min(252, baseG + noise));
+                int b = Math.max(225, Math.min(255, baseB + noise));
+                setPixel(atlas, tx, ty, x, y, r, g, b, 255);
             }
         }
     }

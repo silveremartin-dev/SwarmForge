@@ -44,6 +44,7 @@ public class JmeGameApp extends SimpleApplication {
     private byte[] pixelData;
     private byte[] transferData;
     private final java.util.concurrent.atomic.AtomicBoolean isTransferring = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final java.util.concurrent.atomic.AtomicBoolean isStopped = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     // Recording
     private boolean recording = false;
@@ -514,6 +515,17 @@ public class JmeGameApp extends SimpleApplication {
         });
     }
 
+    public void setTreeSpeciesComposition(int oak, int pine, int acacia, int cactus, int birch, int bamboo, int deadWood) {
+        enqueueTask(() -> {
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.setTreeSpeciesComposition(oak, pine, acacia, cactus, birch, bamboo, deadWood);
+                if (lastTerrarium != null) {
+                    vegetationVisualizer.rebuildVegetation(lastTerrarium.getWidth(), lastTerrarium.getHeight(), lastTerrarium, simulation != null ? simulation.getVegetationSystem() : null);
+                }
+            }
+        });
+    }
+
     private org.swarmforge.core.domain.Terrarium lastTerrarium;
 
     public void rebuildTerrainMesh() {
@@ -552,9 +564,9 @@ public class JmeGameApp extends SimpleApplication {
                 soilMat.setBoolean("UseMaterialColors", true);
                 soilMat.setBoolean("UseVertexColor", true);
                 soilMat.setColor("Diffuse", ColorRGBA.White);
-                soilMat.setColor("Ambient", new ColorRGBA(0.55f, 0.58f, 0.62f, 1f));
-                soilMat.setColor("Specular", new ColorRGBA(0.08f, 0.08f, 0.08f, 1f));
-                soilMat.setFloat("Shininess", 3f);
+                soilMat.setColor("Ambient", new ColorRGBA(0.72f, 0.75f, 0.78f, 1f));
+                soilMat.setColor("Specular", new ColorRGBA(0.12f, 0.12f, 0.12f, 1f));
+                soilMat.setFloat("Shininess", 6f);
 
                 // Pick dominant substrate texture from terrarium top-layer material distribution
                 double lat = Math.abs(terrarium.getLatitude());
@@ -610,8 +622,15 @@ public class JmeGameApp extends SimpleApplication {
                 } catch (Exception ignored) {}
             }
 
+            soilMat.getAdditionalRenderState().setFaceCullMode(com.jme3.material.RenderState.FaceCullMode.Off);
+
             TerrainMeshGenerator generator = new TerrainMeshGenerator();
             com.jme3.scene.Mesh terrainMesh = generator.generateMesh(terrarium, slicePlaneRatio, showSkirt, isGamifiedVoxelMode);
+            if (!isGamifiedVoxelMode) {
+                try {
+                    com.jme3.util.TangentBinormalGenerator.generate(terrainMesh);
+                } catch (Exception ignored) {}
+            }
             Geometry terrainGeom = new Geometry("TerrainMesh", terrainMesh);
             terrainGeom.setMaterial(soilMat);
             terrainGeom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Receive);
@@ -630,6 +649,10 @@ public class JmeGameApp extends SimpleApplication {
             }
 
             rootNode.attachChild(terrainNode);
+
+            if (weatherVisualizer != null) {
+                weatherVisualizer.setWorldDimensions(w, h);
+            }
 
             if (vegetationVisualizer != null) {
                 vegetationVisualizer.setLatitude(terrarium.getLatitude());
@@ -685,9 +708,20 @@ public class JmeGameApp extends SimpleApplication {
 
     @Override
     public void simpleUpdate(float tpf) {
-        // Process tasks from JavaFX thread
+        if (isStopped.get()) {
+            return;
+        }
+        // Process tasks from JavaFX thread with exception safety
         while (!taskQueue.isEmpty()) {
-            taskQueue.poll().run();
+            Runnable task = taskQueue.poll();
+            if (task != null) {
+                try {
+                    task.run();
+                } catch (Throwable t) {
+                    System.err.println("[JME Task Error] " + t.getMessage());
+                    t.printStackTrace();
+                }
+            }
         }
 
         float effectiveTpf = simulationPaused ? 0.0f : tpf;
@@ -960,16 +994,11 @@ public class JmeGameApp extends SimpleApplication {
         // In JME coordinates, X is x, Y is altitude (vertical up), Z is z (Terrarium Y depth).
         if (simulation != null && simulation.getTerrarium() != null) {
             float surfaceElevation = simulation.getTerrarium().getSurfaceElevation(x, z);
-            boolean isUndergroundChamber = false;
-            if (y < surfaceElevation - 1.0f) {
-                org.swarmforge.core.domain.TerrariumCell cell = simulation.getTerrarium().getCell((int) x, (int) z, (int) y);
-                if (cell != null && cell.isPassable()) {
-                    isUndergroundChamber = true;
-                }
+            if (y >= surfaceElevation - 0.5f) {
+                // Surface ant: snap cleanly to terrain surface level
+                y = surfaceElevation + 0.05f;
             }
-            if (!isUndergroundChamber) {
-                y = surfaceElevation + 0.5f + 0.05f;
-            }
+            // Underground ant: preserve true subterranean altitude y within excavated chambers/tunnels
         }
 
         antGeom.setLocalTranslation(x, y, z);
@@ -1205,6 +1234,9 @@ public class JmeGameApp extends SimpleApplication {
 
     @Override
     public void simpleRender(com.jme3.renderer.RenderManager rm) {
+        if (isStopped.get()) {
+            return;
+        }
         // Post-render: Read pixels
         if (targetImage != null) {
             // Guard against JavaFX queue flood: only capture/transfer if previous frame finished painting
@@ -1347,16 +1379,149 @@ public class JmeGameApp extends SimpleApplication {
         }
     }
 
+    private Node ommatidialGuiNode = null;
+    private boolean ommatidialVisionActive = false;
+    private boolean uvVisionActive = false;
+
     public void setUVVisionMode(boolean enabled) {
+        this.uvVisionActive = enabled;
         enqueueTask(() -> {
             if (vegetationVisualizer != null) {
                 vegetationVisualizer.setUVVisionMode(enabled);
+            }
+            if (viewPort != null) {
+                if (enabled) {
+                    viewPort.setBackgroundColor(new ColorRGBA(0.08f, 0.04f, 0.22f, 1.0f)); // UV indigo sky
+                    if (sunLight != null) {
+                        sunLight.setColor(new ColorRGBA(0.85f, 0.55f, 1.45f, 1.0f)); // UV actinic lighting
+                    }
+                } else {
+                    applyRenderModeInternal(currentRenderMode);
+                }
             }
         });
     }
 
     public boolean isUVVisionMode() {
-        return vegetationVisualizer != null && vegetationVisualizer.isUVVisionMode();
+        return uvVisionActive;
+    }
+
+    public void setOmmatidialVisionMode(boolean enabled) {
+        this.ommatidialVisionActive = enabled;
+        enqueueTask(() -> {
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.setOmmatidialVisionMode(enabled);
+            }
+            if (ommatidialGuiNode == null) {
+                initOmmatidialGuiOverlay();
+            }
+            if (enabled) {
+                if (ommatidialGuiNode != null && ommatidialGuiNode.getParent() == null) {
+                    guiNode.attachChild(ommatidialGuiNode);
+                }
+            } else if (ommatidialGuiNode != null) {
+                ommatidialGuiNode.removeFromParent();
+            }
+        });
+    }
+
+    public boolean isOmmatidialVisionMode() {
+        return ommatidialVisionActive;
+    }
+
+    private void initOmmatidialGuiOverlay() {
+        ommatidialGuiNode = new Node("OmmatidialScreenOverlay");
+
+        float screenW = width > 0 ? (float) width : 1280f;
+        float screenH = height > 0 ? (float) height : 800f;
+
+        float hexRadius = 22.0f; // Screen-space ommatidium facet dimension
+        float hexWidth = hexRadius * 1.73205f; // sqrt(3) * R
+        float rowHeight = hexRadius * 1.5f;
+
+        int cols = (int) Math.ceil(screenW / hexWidth) + 2;
+        int rows = (int) Math.ceil(screenH / rowHeight) + 2;
+
+        List<Float> verts = new java.util.ArrayList<>();
+        List<Float> colors = new java.util.ArrayList<>();
+        List<Integer> indices = new java.util.ArrayList<>();
+        int indexOffset = 0;
+
+        Material facetMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        facetMat.setBoolean("VertexColor", true);
+        facetMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+        facetMat.getAdditionalRenderState().setDepthWrite(false);
+
+        for (int r = 0; r < rows; r++) {
+            float yCenter = r * rowHeight;
+            float xOffset = (r % 2 == 1) ? hexWidth * 0.5f : 0.0f;
+            for (int c = 0; c < cols; c++) {
+                float xCenter = c * hexWidth + xOffset;
+
+                // Center distance factor for compound eye vignette curvature
+                float dx = (xCenter - screenW * 0.5f) / (screenW * 0.5f);
+                float dy = (yCenter - screenH * 0.5f) / (screenH * 0.5f);
+                float distSq = dx * dx + dy * dy;
+                float borderAlpha = Math.min(0.50f, 0.16f + distSq * 0.32f);
+
+                // Add 6 outline line segments of hexagon
+                for (int i = 0; i < 6; i++) {
+                    float angle1 = (float) (Math.PI / 3.0 * i + Math.PI / 6.0);
+                    float angle2 = (float) (Math.PI / 3.0 * ((i + 1) % 6) + Math.PI / 6.0);
+
+                    float x1 = xCenter + hexRadius * (float) Math.cos(angle1);
+                    float y1 = yCenter + hexRadius * (float) Math.sin(angle1);
+                    float x2 = xCenter + hexRadius * (float) Math.cos(angle2);
+                    float y2 = yCenter + hexRadius * (float) Math.sin(angle2);
+
+                    float perpX = -(y2 - y1);
+                    float perpY = (x2 - x1);
+                    float len = (float) Math.sqrt(perpX * perpX + perpY * perpY);
+                    if (len > 0.001f) {
+                        perpX = (perpX / len) * 0.75f;
+                        perpY = (perpY / len) * 0.75f;
+                    }
+
+                    verts.add(x1 + perpX); verts.add(y1 + perpY); verts.add(0.0f);
+                    verts.add(x1 - perpX); verts.add(y1 - perpY); verts.add(0.0f);
+                    verts.add(x2 + perpX); verts.add(y2 + perpY); verts.add(0.0f);
+                    verts.add(x2 - perpX); verts.add(y2 - perpY); verts.add(0.0f);
+
+                    for (int k = 0; k < 4; k++) {
+                        colors.add(0.12f); colors.add(0.22f); colors.add(0.35f); colors.add(borderAlpha);
+                    }
+
+                    indices.add(indexOffset + 0); indices.add(indexOffset + 1); indices.add(indexOffset + 2);
+                    indices.add(indexOffset + 2); indices.add(indexOffset + 1); indices.add(indexOffset + 3);
+                    indexOffset += 4;
+                }
+            }
+        }
+
+        if (!verts.isEmpty()) {
+            com.jme3.scene.Mesh facetMesh = new com.jme3.scene.Mesh();
+            facetMesh.setBuffer(com.jme3.scene.VertexBuffer.Type.Position, 3, BufferUtils.createFloatBuffer(toFloatArray(verts)));
+            facetMesh.setBuffer(com.jme3.scene.VertexBuffer.Type.Color, 4, BufferUtils.createFloatBuffer(toFloatArray(colors)));
+            facetMesh.setBuffer(com.jme3.scene.VertexBuffer.Type.Index, 1, BufferUtils.createIntBuffer(toIntArray(indices)));
+            facetMesh.updateBound();
+
+            Geometry facetGeom = new Geometry("FacetGridScreen", facetMesh);
+            facetGeom.setMaterial(facetMat);
+            facetGeom.setQueueBucket(com.jme3.renderer.queue.RenderQueue.Bucket.Gui);
+            ommatidialGuiNode.attachChild(facetGeom);
+        }
+    }
+
+    private static float[] toFloatArray(List<Float> list) {
+        float[] arr = new float[list.size()];
+        for (int i = 0; i < list.size(); i++) arr[i] = list.get(i);
+        return arr;
+    }
+
+    private static int[] toIntArray(List<Integer> list) {
+        int[] arr = new int[list.size()];
+        for (int i = 0; i < list.size(); i++) arr[i] = list.get(i);
+        return arr;
     }
 
     private boolean isGamifiedVoxelMode = false;
@@ -1568,5 +1733,18 @@ public class JmeGameApp extends SimpleApplication {
 
     public void setAntVisualScaleMultiplier(float multiplier) {
         this.antVisualScaleMultiplier = multiplier;
+    }
+
+    /**
+     * Safely stops the JME application and deallocates native OpenGL resources.
+     */
+    public void stopApp() {
+        if (isStopped.compareAndSet(false, true)) {
+            this.targetImage = null;
+            try {
+                this.stop(true);
+            } catch (Throwable ignored) {
+            }
+        }
     }
 }

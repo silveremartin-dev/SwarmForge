@@ -45,12 +45,16 @@ public class SplashScreen {
     private final Label percentLabel;
 
     public SplashScreen() {
-        this(null);
+        this(null, null, null, null);
     }
 
     public SplashScreen(Stage owner) {
+        this(owner, null, null, null);
+    }
+
+    public SplashScreen(Stage owner, String customTitle, String customBadge, String customSubtitle) {
         splashStage = new Stage();
-        splashStage.initStyle(StageStyle.TRANSPARENT);
+        splashStage.initStyle(StageStyle.UNDECORATED);
 
         // Do not attach unshown owner stage as it hides the splash window under Win32 / Glass
         if (owner != null && owner.isShowing()) {
@@ -69,35 +73,58 @@ public class SplashScreen {
             bgUrl = SplashScreen.class.getResource("/images/splash_bg.png");
         }
         if (bgUrl != null) {
-            Image bgImg = new Image(bgUrl.toExternalForm(), SPLASH_WIDTH, SPLASH_HEIGHT, false, true);
-            bgImageView.setImage(bgImg);
-            bgImageView.setFitWidth(SPLASH_WIDTH);
-            bgImageView.setFitHeight(SPLASH_HEIGHT);
-            bgImageView.setPreserveRatio(false);
-            bgImageView.setSmooth(true);
+            try {
+                Image bgImg = new Image(bgUrl.openStream(), SPLASH_WIDTH, SPLASH_HEIGHT, false, true);
+                bgImageView.setImage(bgImg);
+                bgImageView.setFitWidth(SPLASH_WIDTH);
+                bgImageView.setFitHeight(SPLASH_HEIGHT);
+                bgImageView.setPreserveRatio(false);
+                bgImageView.setSmooth(true);
+            } catch (Exception ignored) {}
         }
 
         // 2. High-fidelity glassmorphism dark gradient overlay
-        // Keeps the lively terrarium, glowing chambers & moss clearly visible while providing contrast for typography
         Region gradientOverlay = new Region();
         gradientOverlay.setPrefSize(SPLASH_WIDTH, SPLASH_HEIGHT);
         gradientOverlay.setStyle(
             "-fx-background-color: linear-gradient(to bottom, " +
-            "rgba(15, 23, 42, 0.50) 0%, " +
-            "rgba(15, 23, 42, 0.30) 35%, " +
-            "rgba(15, 23, 42, 0.65) 70%, " +
-            "rgba(15, 23, 42, 0.95) 100%);"
+            "rgba(15, 23, 42, 0.40) 0%, " +
+            "rgba(15, 23, 42, 0.20) 35%, " +
+            "rgba(15, 23, 42, 0.55) 70%, " +
+            "rgba(15, 23, 42, 0.85) 100%);"
         );
 
         // 3. Header: Logo + Title + Badges
         javafx.scene.Node logoNode;
+        Image appIconImg = null;
         URL iconUrl = SplashScreen.class.getResource("/icons/icon.png");
         if (iconUrl != null) {
-            Image appIconImg = new Image(iconUrl.toExternalForm(), 44, 44, true, true);
+            try {
+                appIconImg = new Image(iconUrl.toExternalForm(), 48, 48, true, true);
+            } catch (Exception ignored) {}
+        }
+        if (appIconImg == null || appIconImg.isError()) {
+            java.awt.image.BufferedImage awt = IconUtils.loadAwtIconImage();
+            if (awt != null) {
+                try {
+                    javafx.scene.image.WritableImage wr = new javafx.scene.image.WritableImage(awt.getWidth(), awt.getHeight());
+                    javafx.scene.image.PixelWriter pw = wr.getPixelWriter();
+                    for (int x = 0; x < awt.getWidth(); x++) {
+                        for (int y = 0; y < awt.getHeight(); y++) {
+                            pw.setArgb(x, y, awt.getRGB(x, y));
+                        }
+                    }
+                    appIconImg = wr;
+                } catch (Exception ignored) {}
+            }
+        }
+
+        if (appIconImg != null && !appIconImg.isError()) {
             ImageView iconView = new ImageView(appIconImg);
             iconView.setFitWidth(44);
             iconView.setFitHeight(44);
             iconView.setPreserveRatio(true);
+            iconView.setSmooth(true);
             logoNode = iconView;
         } else {
             FontIcon logoIcon = new FontIcon(Feather.DISC);
@@ -106,10 +133,12 @@ public class SplashScreen {
             logoNode = logoIcon;
         }
 
-        Label titleLabel = new Label(i18n.get("splash.title"));
+        String titleStr = customTitle != null ? customTitle : i18n.get("splash.title", "SwarmForge");
+        Label titleLabel = new Label(titleStr);
         titleLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.85), 6, 0, 0, 2);");
 
-        Label badgeLabel = new Label("SIMULATION STUDIO");
+        String badgeStr = customBadge != null ? customBadge : "STUDIO & WORLD EDITOR";
+        Label badgeLabel = new Label(badgeStr);
         badgeLabel.setStyle(
             "-fx-background-color: rgba(56, 189, 248, 0.20); " +
             "-fx-text-fill: #7dd3fc; " +
@@ -124,7 +153,8 @@ public class SplashScreen {
         HBox titleRow = new HBox(10, titleLabel, badgeLabel);
         titleRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label subtitleLabel = new Label(i18n.get("splash.subtitle"));
+        String subtitleStr = customSubtitle != null ? customSubtitle : i18n.get("splash.subtitle", "Eusocial Insect Society Simulator (Ants, Termites, Wasps & Bees)");
+        Label subtitleLabel = new Label(subtitleStr);
         subtitleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #e2e8f0; -fx-font-weight: 500; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.85), 4, 0, 0, 1);");
 
         VBox titleBox = new VBox(3, titleRow, subtitleLabel);
@@ -152,8 +182,9 @@ public class SplashScreen {
         progressBar.setPrefHeight(8);
         progressBar.setStyle("-fx-accent: #0ea5e9; -fx-control-inner-background: rgba(15, 23, 42, 0.85);");
 
-        // 5. Footer Metadata
-        Label footerLabel = new Label(i18n.get("splash.footer"));
+        // 5. Footer Metadata (v1.0.0-beta.1)
+        String footerText = i18n.get("splash.footer", "v1.0.0-beta.1 • Silvère Martin-Michiellot & Gemini AI (Google DeepMind)");
+        Label footerLabel = new Label(footerText);
         footerLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
 
         Label taxaLabel = new Label("Formicidae • Apidae • Vespidae • Isoptera");
@@ -175,22 +206,16 @@ public class SplashScreen {
         rootPane.setMinSize(SPLASH_WIDTH, SPLASH_HEIGHT);
         rootPane.setMaxSize(SPLASH_WIDTH, SPLASH_HEIGHT);
 
-        // Rounded corners clipping
-        Rectangle clip = new Rectangle(SPLASH_WIDTH, SPLASH_HEIGHT);
-        clip.setArcWidth(24);
-        clip.setArcHeight(24);
-        rootPane.setClip(clip);
-
         // Container with cyan border & ambient drop shadow
         StackPane container = new StackPane(rootPane);
-        container.setPadding(new Insets(10));
+        container.setPadding(new Insets(0));
         container.setStyle(
-            "-fx-background-color: transparent; " +
-            "-fx-border-color: rgba(56, 189, 248, 0.4); " +
+            "-fx-background-color: #0f172a; " +
+            "-fx-border-color: rgba(56, 189, 248, 0.6); " +
             "-fx-border-width: 1.5px; " +
-            "-fx-border-radius: 14px; " +
-            "-fx-background-radius: 14px; " +
-            "-fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.75), 24, 0, 0, 8);"
+            "-fx-border-radius: 4px; " +
+            "-fx-background-radius: 4px; " +
+            "-fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.85), 20, 0, 0, 6);"
         );
 
         // Draggable window support
@@ -205,7 +230,6 @@ public class SplashScreen {
         });
 
         Scene scene = new Scene(container);
-        scene.setFill(Color.TRANSPARENT);
         splashStage.setScene(scene);
         splashStage.setAlwaysOnTop(true);
     }
@@ -246,7 +270,7 @@ public class SplashScreen {
             int percentage = (int) Math.round(progress * 100);
 
             KeyFrame kf = new KeyFrame(
-                Duration.millis(380 * (i + 1)),
+                Duration.millis(320 * (i + 1)),
                 e -> {
                     statusLabel.setText(steps[stepIdx]);
                     progressBar.setProgress(progress);
@@ -257,11 +281,16 @@ public class SplashScreen {
         }
 
         timeline.setOnFinished(e -> {
-            splashStage.setAlwaysOnTop(false);
-            splashStage.close();
             if (onFinished != null) {
                 onFinished.run();
             }
+            // Close splash screen safely after main stage has rendered
+            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(Duration.millis(350));
+            pause.setOnFinished(pe -> {
+                splashStage.setAlwaysOnTop(false);
+                splashStage.close();
+            });
+            pause.play();
         });
 
         timeline.play();

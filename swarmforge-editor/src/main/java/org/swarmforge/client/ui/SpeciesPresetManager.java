@@ -33,14 +33,32 @@ public class SpeciesPresetManager {
 
     private void loadAll() {
         presets.clear();
-        presets.putAll(createBuiltins());
+        Map<String, CustomSpecies> builtins = createBuiltins();
+        for (CustomSpecies s : builtins.values()) {
+            s.setBuiltIn(true);
+            s.setAuthor("Academic Reference");
+            s.setVersion(1);
+            s.calculateChecksum();
+        }
+        presets.putAll(builtins);
 
         if (PRESETS_FILE.exists()) {
             try {
                 ObjectMapper mapper = new ObjectMapper();
                 mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
                 Map<String, CustomSpecies> saved = mapper.readValue(PRESETS_FILE, new TypeReference<LinkedHashMap<String, CustomSpecies>>() {});
-                presets.putAll(saved);
+                for (Map.Entry<String, CustomSpecies> entry : saved.entrySet()) {
+                    CustomSpecies s = entry.getValue();
+                    if (s == null) continue;
+                    // Protect built-in names
+                    if (presets.containsKey(entry.getKey()) && presets.get(entry.getKey()).isBuiltIn()) {
+                        s.setPresetName("[Fork] " + s.getPresetName());
+                        s.setId("custom-fork-" + s.getId() + "-" + s.calculateChecksum().substring(0, 4));
+                    }
+                    s.setBuiltIn(false);
+                    s.calculateChecksum();
+                    presets.put(s.getPresetName(), s);
+                }
             } catch (Exception e) {
                 System.err.println("[SpeciesPresetManager] Could not load " + PRESETS_FILE + ": " + e.getMessage());
             }
@@ -1477,13 +1495,39 @@ public class SpeciesPresetManager {
     }
 
     public void addPreset(String name, CustomSpecies species) {
+        if (species == null || name == null || name.isBlank()) return;
+        
+        // Prevent overwriting built-in academic species
+        if (presets.containsKey(name) && presets.get(name).isBuiltIn()) {
+            name = "[Fork] " + name;
+            species.setId("custom-fork-" + species.getId() + "-" + System.currentTimeMillis());
+            species.setBuiltIn(false);
+        }
+
         species.setPresetName(name);
+        species.setBuiltIn(false);
+        species.setRevisionTimestamp(System.currentTimeMillis());
+        species.calculateChecksum();
+
+        // Check if existing custom species had a different version
+        if (presets.containsKey(name)) {
+            CustomSpecies existing = presets.get(name);
+            if (!existing.isContentEqualTo(species)) {
+                species.setVersion(existing.getVersion() + 1);
+            }
+        }
+
         presets.put(name, species);
+        org.swarmforge.core.species.SpeciesRegistry.getInstance().register(species);
         persist();
     }
 
     public boolean delete(String name) {
         if (presets.containsKey(name)) {
+            CustomSpecies target = presets.get(name);
+            if (target.isBuiltIn()) {
+                return false; // Cannot delete reference built-in species
+            }
             presets.remove(name);
             persist();
             return true;
@@ -1493,8 +1537,14 @@ public class SpeciesPresetManager {
 
     public void persist() {
         try {
+            Map<String, CustomSpecies> customOnly = new LinkedHashMap<>();
+            for (Map.Entry<String, CustomSpecies> entry : presets.entrySet()) {
+                if (!entry.getValue().isBuiltIn()) {
+                    customOnly.put(entry.getKey(), entry.getValue());
+                }
+            }
             ObjectMapper mapper = new ObjectMapper();
-            mapper.writerWithDefaultPrettyPrinter().writeValue(PRESETS_FILE, presets);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(PRESETS_FILE, customOnly);
         } catch (Exception e) {
             System.err.println("[SpeciesPresetManager] Could not save " + PRESETS_FILE + ": " + e.getMessage());
         }

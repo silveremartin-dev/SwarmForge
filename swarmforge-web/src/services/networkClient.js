@@ -33,6 +33,7 @@ class SwarmForgeNetworkClient {
         this.onSimulationUpdateCallbacks = new Set()
         this.onEventLogCallbacks = new Set()
         this.onScenarioReceivedCallbacks = new Set()
+        this.onScenarioDataCallbacks = new Set()
         this.onServerScenariosCallbacks = new Set()
         this.onLobbyStateCallbacks = new Set()
     }
@@ -67,6 +68,14 @@ class SwarmForgeNetworkClient {
     onScenarioReceived(callback) {
         this.onScenarioReceivedCallbacks.add(callback)
         return () => this.onScenarioReceivedCallbacks.delete(callback)
+    }
+
+    /**
+     * Subscribe to scenario full data payload (Export/Download mode)
+     */
+    onScenarioData(callback) {
+        this.onScenarioDataCallbacks.add(callback)
+        return () => this.onScenarioDataCallbacks.delete(callback)
     }
 
     /**
@@ -118,6 +127,12 @@ class SwarmForgeNetworkClient {
     notifyScenarioReceived(scenario) {
         this.onScenarioReceivedCallbacks.forEach(cb => {
             try { cb(scenario) } catch (e) { console.error('ScenarioReceived callback error:', e) }
+        })
+    }
+
+    notifyScenarioData(scenario) {
+        this.onScenarioDataCallbacks.forEach(cb => {
+            try { cb(scenario) } catch (e) { console.error('ScenarioData callback error:', e) }
         })
     }
 
@@ -264,8 +279,14 @@ class SwarmForgeNetworkClient {
             }
 
             // 3. Scenario state deployed from server (Join Mode)
-            if (msg.type === 'SCENARIO_STATE' || msg.scenario) {
+            if (msg.type === 'SCENARIO_STATE' || (msg.type !== 'SCENARIO_DATA' && msg.scenario && !msg.type)) {
                 this.notifyScenarioReceived(msg.scenario || msg)
+                return
+            }
+
+            // 3b. Scenario Data received for export / download
+            if (msg.type === 'SCENARIO_DATA') {
+                this.notifyScenarioData(msg.scenario || msg)
                 return
             }
 
@@ -443,11 +464,26 @@ class SwarmForgeNetworkClient {
     /**
      * Select a scenario from the server's known catalog (Lobby mode)
      */
-    selectServerScenario(scenarioId) {
+    /**
+     * Request scenario full payload for export / download
+     */
+    requestExportScenario(scenarioId) {
         return this.sendRaw({
-            type: 'SELECT_SCENARIO',
+            type: 'GET_SCENARIO',
             simulationId: this.simulationId,
             scenarioId: scenarioId,
+            timestamp: Date.now()
+        })
+    }
+
+    /**
+     * Save custom scenario permanently on server
+     */
+    saveScenarioOnServer(scenarioData) {
+        return this.sendRaw({
+            type: 'SAVE_SCENARIO',
+            simulationId: this.simulationId,
+            scenario: scenarioData,
             timestamp: Date.now()
         })
     }

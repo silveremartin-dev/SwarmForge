@@ -77,8 +77,20 @@ public class GameViewPane extends Pane {
         return gameApp != null && gameApp.isUVVisionMode();
     }
 
+    public void setOmmatidialVisionMode(boolean enabled) {
+        if (gameApp != null) {
+            gameApp.setOmmatidialVisionMode(enabled);
+        }
+    }
+
+    public boolean isOmmatidialVisionMode() {
+        return gameApp != null && gameApp.isOmmatidialVisionMode();
+    }
+
     public void stop() {
-        gameApp.stop();
+        if (gameApp != null) {
+            gameApp.stopApp();
+        }
     }
 
     public void setTerrainListener(JmeGameApp.TerrainModificationListener listener) {

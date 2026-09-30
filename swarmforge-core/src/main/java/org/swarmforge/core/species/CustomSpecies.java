@@ -26,6 +26,13 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class CustomSpecies implements Species {
 
+    private String id;
+    private String author = "Custom";
+    private int version = 1;
+    private long revisionTimestamp = System.currentTimeMillis();
+    private String contentChecksum = "";
+    private boolean builtIn = false;
+
     private String presetName = "Default Species";
     private String scientificName = "Formica genericus";
     private String genus = "Formica";
@@ -1876,6 +1883,69 @@ public class CustomSpecies implements Species {
     public Object getCustomAttribute(String key, Object defaultValue) {
         if (customAttributes == null) return defaultValue;
         return customAttributes.getOrDefault(key, defaultValue);
+    }
+
+    public String getId() {
+        if (id == null || id.isEmpty()) {
+            String base = (scientificName != null && !scientificName.isEmpty()) ? scientificName : presetName;
+            return (base != null ? base : "custom_species").toLowerCase().replaceAll("[^a-z0-9]+", "-");
+        }
+        return id;
+    }
+    public void setId(String id) { this.id = id; }
+
+    public String getAuthor() { return author; }
+    public void setAuthor(String author) { this.author = author != null ? author : "Custom"; }
+
+    public int getVersion() { return version; }
+    public void setVersion(int version) { this.version = Math.max(1, version); }
+
+    public long getRevisionTimestamp() { return revisionTimestamp; }
+    public void setRevisionTimestamp(long revisionTimestamp) { this.revisionTimestamp = revisionTimestamp; }
+
+    public boolean isBuiltIn() { return builtIn; }
+    public void setBuiltIn(boolean builtIn) { this.builtIn = builtIn; }
+
+    public String getContentChecksum() {
+        if (contentChecksum == null || contentChecksum.isEmpty()) {
+            return calculateChecksum();
+        }
+        return contentChecksum;
+    }
+    public void setContentChecksum(String contentChecksum) { this.contentChecksum = contentChecksum; }
+
+    public String calculateChecksum() {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            StringBuilder sb = new StringBuilder();
+            sb.append(scientificName != null ? scientificName : "").append("|");
+            sb.append(presetName != null ? presetName : "").append("|");
+            sb.append(insectType != null ? insectType : "").append("|");
+            sb.append(queenCountMode != null ? queenCountMode : "").append("|");
+            sb.append(queenCount).append("|").append(queenLifespan).append("|").append(queenEggLayingRate).append("|");
+            sb.append(workerLifespan).append("|").append(workerSpeed).append("|").append(typicalColonySize).append("|");
+            sb.append(aggression).append("|").append(metabolism).append("|").append(strength).append("|");
+            sb.append(primaryDiet != null ? primaryDiet : "").append("|").append(secondaryDiet != null ? secondaryDiet : "").append("|");
+            sb.append(dailyFoodConsumption).append("|").append(waterRequirement).append("|");
+            sb.append(nestType != null ? nestType : "").append("|").append(venomType != null ? venomType : "").append("|");
+            sb.append(optimalTempCelsius).append("|").append(minTempCelsius).append("|").append(maxTempCelsius).append("|");
+            sb.append(optimalHumidityPercent).append("|").append(minHumidityPercent).append("|").append(maxHumidityPercent);
+            byte[] hash = md.digest(sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            this.contentChecksum = hex.toString().substring(0, 16);
+            return this.contentChecksum;
+        } catch (Exception e) {
+            this.contentChecksum = "0000000000000000";
+            return this.contentChecksum;
+        }
+    }
+
+    public boolean isContentEqualTo(CustomSpecies other) {
+        if (other == null) return false;
+        return getContentChecksum().equals(other.getContentChecksum());
     }
 }
 

@@ -110,6 +110,21 @@ public class WeatherVisualizer {
         return rootNode;
     }
 
+    private int worldWidth = 64;
+    private int worldHeight = 64;
+
+    public void setWorldDimensions(int width, int height) {
+        if (this.worldWidth != width || this.worldHeight != height) {
+            this.worldWidth = Math.max(8, width);
+            this.worldHeight = Math.max(8, height);
+            rebuildClouds();
+            rebuildPrecipitation();
+            initMistAndFire();
+            initGroundSnowAndIceCover();
+            initScientificVectors();
+        }
+    }
+
     public void setRenderMode(RenderMode mode) {
         if (this.currentRenderMode != mode) {
             this.currentRenderMode = mode;
@@ -175,6 +190,11 @@ public class WeatherVisualizer {
         }
         cloudsNode = new Node("CloudsDeck");
 
+        float midX = worldWidth * 0.5f;
+        float midZ = worldHeight * 0.5f;
+        float spanX = worldWidth * 0.6f;
+        float spanZ = worldHeight * 0.6f;
+
         if (currentRenderMode == RenderMode.REALISTIC) {
             // REALISTIC MODE: Layered Volumetric Cloud Particles & Soft Multi-Puffs
             Material cloudMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
@@ -183,17 +203,17 @@ public class WeatherVisualizer {
 
             Sphere cloudPuff = new Sphere(12, 12, 6.5f);
             for (int cluster = 0; cluster < 6; cluster++) {
-                float cx = 32.0f + (float) ((Math.random() - 0.5) * 50.0);
-                float cz = 32.0f + (float) ((Math.random() - 0.5) * 50.0);
+                float cx = midX + (float) ((Math.random() - 0.5) * spanX);
+                float cz = midZ + (float) ((Math.random() - 0.5) * spanZ);
                 float cy = 38.0f + (float) (Math.random() * 5.0);
 
                 for (int p = 0; p < 4; p++) {
                     Geometry puff = new Geometry("CloudPuff_" + cluster + "_" + p, cloudPuff);
                     puff.setMaterial(cloudMat);
                     puff.setLocalTranslation(
-                            cx + (float) ((Math.random() - 0.5) * 12.0),
+                            cx + (float) ((Math.random() - 0.5) * 8.0),
                             cy + (float) ((Math.random() - 0.5) * 3.0),
-                            cz + (float) ((Math.random() - 0.5) * 12.0)
+                            cz + (float) ((Math.random() - 0.5) * 8.0)
                     );
                     puff.setLocalScale(0.8f + (float) Math.random() * 0.6f);
                     cloudsNode.attachChild(puff);
@@ -210,8 +230,8 @@ public class WeatherVisualizer {
             for (int i = 0; i < 8; i++) {
                 Geometry g = new Geometry("SciCloud_" + i, wireCloud);
                 g.setMaterial(cloudMat);
-                float cx = 32.0f + (float) ((Math.random() - 0.5) * 50.0);
-                float cz = 32.0f + (float) ((Math.random() - 0.5) * 50.0);
+                float cx = midX + (float) ((Math.random() - 0.5) * spanX);
+                float cz = midZ + (float) ((Math.random() - 0.5) * spanZ);
                 g.setLocalTranslation(cx, 38.0f, cz);
                 cloudsNode.attachChild(g);
             }
@@ -223,8 +243,8 @@ public class WeatherVisualizer {
 
             float cubeSize = 3.5f;
             for (int c = 0; c < 5; c++) {
-                float baseCylinderX = 32.0f + (float) ((Math.random() - 0.5) * 45.0);
-                float baseCylinderZ = 32.0f + (float) ((Math.random() - 0.5) * 45.0);
+                float baseCylinderX = midX + (float) ((Math.random() - 0.5) * spanX);
+                float baseCylinderZ = midZ + (float) ((Math.random() - 0.5) * spanZ);
                 float baseCylinderY = 36.0f;
 
                 for (int bx = -2; bx <= 2; bx++) {
@@ -325,36 +345,39 @@ public class WeatherVisualizer {
         snowGroundMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         snowGroundMat.setColor("Color", new ColorRGBA(0.98f, 0.99f, 1.0f, 0.0f));
         snowGroundMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+        snowGroundMat.getAdditionalRenderState().setFaceCullMode(com.jme3.material.RenderState.FaceCullMode.Off);
 
-        Quad snowQuad = new Quad(90, 90);
+        Quad snowQuad = new Quad(worldWidth, worldHeight);
         snowGroundGeom = new Geometry("SnowCoverMesh", snowQuad);
         snowGroundGeom.setMaterial(snowGroundMat);
-        snowGroundGeom.rotate(1.5708f, 0, 0); // Flat on ground XZ plane
-        snowGroundGeom.setLocalTranslation(-13, 0.18f, -13);
+        snowGroundGeom.rotate(-FastMath.HALF_PI, 0, 0); // Flat on ground XZ plane spanning [0..w, 0..h]
+        snowGroundGeom.setLocalTranslation(0, 0.18f, 0);
         snowGroundNode.attachChild(snowGroundGeom);
 
         // Ground Surface Ice Sheet Overlay
         iceGroundMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         iceGroundMat.setColor("Color", new ColorRGBA(0.70f, 0.88f, 1.0f, 0.0f));
         iceGroundMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+        iceGroundMat.getAdditionalRenderState().setFaceCullMode(com.jme3.material.RenderState.FaceCullMode.Off);
 
-        Quad iceQuad = new Quad(90, 90);
+        Quad iceQuad = new Quad(worldWidth, worldHeight);
         iceGroundGeom = new Geometry("IceSheetMesh", iceQuad);
         iceGroundGeom.setMaterial(iceGroundMat);
-        iceGroundGeom.rotate(1.5708f, 0, 0);
-        iceGroundGeom.setLocalTranslation(-13, 0.22f, -13);
+        iceGroundGeom.rotate(-FastMath.HALF_PI, 0, 0);
+        iceGroundGeom.setLocalTranslation(0, 0.22f, 0);
         iceGroundNode.attachChild(iceGroundGeom);
 
         // Crystalline Hoarfrost / Gelée blanche Overlay
         hoarfrostMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         hoarfrostMat.setColor("Color", new ColorRGBA(0.96f, 0.98f, 1.0f, 0.0f));
         hoarfrostMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+        hoarfrostMat.getAdditionalRenderState().setFaceCullMode(com.jme3.material.RenderState.FaceCullMode.Off);
 
-        Quad hoarQuad = new Quad(90, 90);
+        Quad hoarQuad = new Quad(worldWidth, worldHeight);
         hoarfrostGeom = new Geometry("HoarfrostCoverMesh", hoarQuad);
         hoarfrostGeom.setMaterial(hoarfrostMat);
-        hoarfrostGeom.rotate(1.5708f, 0, 0);
-        hoarfrostGeom.setLocalTranslation(-13, 0.15f, -13);
+        hoarfrostGeom.rotate(-FastMath.HALF_PI, 0, 0);
+        hoarfrostGeom.setLocalTranslation(0, 0.15f, 0);
         hoarfrostNode.attachChild(hoarfrostGeom);
 
         snowGroundNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
@@ -381,8 +404,8 @@ public class WeatherVisualizer {
         for (int i = 0; i < 12; i++) {
             Geometry g = new Geometry("GroundMistPuff_" + i, mistPuff);
             g.setMaterial(mistMat);
-            float mx = 10f + (float) (Math.random() * 44.0);
-            float mz = 10f + (float) (Math.random() * 44.0);
+            float mx = 4f + (float) (Math.random() * Math.max(1.0, worldWidth - 8.0));
+            float mz = 4f + (float) (Math.random() * Math.max(1.0, worldHeight - 8.0));
             float my = 0.8f + (float) (Math.random() * 2.2f);
             g.setLocalTranslation(mx, my, mz);
             g.setLocalScale(2.2f, 0.35f, 2.2f);
@@ -397,7 +420,7 @@ public class WeatherVisualizer {
         Sphere fireSpike = new Sphere(8, 8, 1.2f);
         Geometry fireGeom = new Geometry("FireSpike", fireSpike);
         fireGeom.setMaterial(fireMat);
-        fireGeom.setLocalTranslation(32f, 16.0f, 32f);
+        fireGeom.setLocalTranslation(worldWidth * 0.5f, 16.0f, worldHeight * 0.5f);
         fireNode.attachChild(fireGeom);
         rootNode.attachChild(fireNode);
 
@@ -418,8 +441,8 @@ public class WeatherVisualizer {
         for (int i = 0; i < 5; i++) {
             Geometry g = new Geometry("Sunbeam_" + i, shaft);
             g.setMaterial(rayMat);
-            float rx = 20f + i * 7.5f + (float) ((Math.random() - 0.5) * 4.0);
-            float rz = 20f + (i % 3) * 11.0f + (float) ((Math.random() - 0.5) * 4.0);
+            float rx = (worldWidth * 0.25f) + i * (worldWidth * 0.12f) + (float) ((Math.random() - 0.5) * 4.0);
+            float rz = (worldHeight * 0.25f) + (i % 3) * (worldHeight * 0.16f) + (float) ((Math.random() - 0.5) * 4.0);
             g.setLocalTranslation(rx, 25.0f, rz);
             godRays.add(g);
             godRaysNode.attachChild(g);
@@ -438,6 +461,7 @@ public class WeatherVisualizer {
     }
 
     private void initScientificVectors() {
+        if (scientificVectorNode != null) scientificVectorNode.removeFromParent();
         scientificVectorNode = new Node("ScientificVectors");
         scientificWindArrows.clear();
 
@@ -448,8 +472,8 @@ public class WeatherVisualizer {
         for (int i = 0; i < 16; i++) {
             Geometry g = new Geometry("VelocityVector_" + i, arrow);
             g.setMaterial(vecMat);
-            float gx = 8f + (i % 4) * 16f;
-            float gz = 8f + (i / 4) * 16f;
+            float gx = (worldWidth * 0.15f) + (i % 4) * (worldWidth * 0.23f);
+            float gz = (worldHeight * 0.15f) + (i / 4) * (worldHeight * 0.23f);
             g.setLocalTranslation(gx, 15f, gz);
             scientificWindArrows.add(g);
             scientificVectorNode.attachChild(g);
@@ -713,9 +737,9 @@ public class WeatherVisualizer {
     }
 
     private void resetParticlePos(Geometry p, float maxH) {
-        float px = 32f + (float) ((Math.random() - 0.5) * 58.0);
+        float px = 1.0f + (float) (Math.random() * Math.max(1.0, worldWidth - 2.0));
         float py = 10f + (float) (Math.random() * maxH);
-        float pz = 32f + (float) ((Math.random() - 0.5) * 58.0);
+        float pz = 1.0f + (float) (Math.random() * Math.max(1.0, worldHeight - 2.0));
         p.setLocalTranslation(px, py, pz);
     }
 

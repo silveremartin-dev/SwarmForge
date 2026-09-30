@@ -94,6 +94,7 @@ public class SwarmForgeClient extends Application {
                 return t;
         });
         private volatile boolean simLoopActive = false;
+        private final java.util.concurrent.atomic.AtomicBoolean isShuttingDown = new java.util.concurrent.atomic.AtomicBoolean(false);
 
         public static boolean isClientOnlyMode = false;
 
@@ -121,7 +122,21 @@ public class SwarmForgeClient extends Application {
         // 2. Show Splash Screen on startup with progress bar
         org.swarmforge.client.ui.SplashScreen splashScreen = null;
         if (!isTestMode) {
-            splashScreen = new org.swarmforge.client.ui.SplashScreen();
+            if (isClientOnlyMode) {
+                splashScreen = new org.swarmforge.client.ui.SplashScreen(
+                    null,
+                    "SwarmForge Client",
+                    "SIMULATION VIEWER",
+                    org.swarmforge.client.util.I18nManager.getInstance().get("splash.client.subtitle", "3D Eusocial Simulation Viewer & God Mode Controller")
+                );
+            } else {
+                splashScreen = new org.swarmforge.client.ui.SplashScreen(
+                    null,
+                    "SwarmForge Studio",
+                    "STUDIO & WORLD EDITOR",
+                    org.swarmforge.client.util.I18nManager.getInstance().get("splash.subtitle")
+                );
+            }
             splashScreen.show();
         }
 
@@ -139,75 +154,17 @@ public class SwarmForgeClient extends Application {
 
         // Menu bar removed per user request
 
-        if (isClientOnlyMode) {
-            // Dedicated Client mode: directly display Simulation Manager full screen
-            Node simManager = createSimulationManager();
-            root.setCenter(simManager);
-            primaryStage.setMaximized(true);
-        } else {
-            // 2. Main Tab Pane
-            this.mainTabs = new TabPane();
-            this.mainTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        // 2. Main Tab Pane
+        this.mainTabs = new TabPane();
+        this.mainTabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-            // --- TAB 1: SIMULATION MANAGER (Control, God Mode, Event Log) ---
-            this.simTab = new Tab();
-            simTab.textProperty().bind(i18n.createStringBinding("tab.simulation"));
-            simTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SLIDERS));
-            simTab.setContent(createSimulationManager());
+        // --- TAB 1: SIMULATION MANAGER (Control, God Mode, Event Log) ---
+        this.simTab = new Tab();
+        simTab.textProperty().bind(i18n.createStringBinding("tab.simulation"));
+        simTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SLIDERS));
+        simTab.setContent(createSimulationManager());
 
-        // --- TAB 2: WORLD EDITOR (3D View + Terrain Tools) ---
-        this.worldTab = new Tab();
-        worldTab.textProperty().bind(i18n.createStringBinding("tab.world_editor"));
-        worldTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.GLOBE));
-        worldTab.setContent(createWorldEditor());
-
-        // --- TAB 3: SPECIES EDITOR ---
-        Tab speciesTab = new Tab();
-        speciesTab.textProperty().bind(i18n.createStringBinding("tab.species_editor"));
-        speciesTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CPU));
-        org.swarmforge.client.ui.SpeciesEditorPane speciesPane = new org.swarmforge.client.ui.SpeciesEditorPane();
-        speciesPane.setOnApply(species -> {
-            this.currentSpecies = species;
-            new Alert(Alert.AlertType.INFORMATION, "Espèce active mise à jour : " + species.getCommonName()).show();
-        });
-        speciesTab.setContent(speciesPane);
-
-        // --- TAB 3b: ACCESSORY SPECIES EDITOR ---
-        Tab accessoryTab = new Tab();
-        accessoryTab.textProperty().bind(i18n.createStringBinding("tab.accessory"));
-        accessoryTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.FEATHER));
-        accessoryTab.setContent(new org.swarmforge.client.ui.AccessorySpeciesEditorPane());
-
-        // --- TAB 4: WEATHER ---
-        Tab weatherTab = new Tab();
-        weatherTab.textProperty().bind(i18n.createStringBinding("tab.weather"));
-        weatherTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SUN));
-        weatherTab.setContent(new org.swarmforge.client.ui.WeatherEditorPane());
-
-        // --- TAB 5: NEST GENERATOR ---
-        Tab nestTab = new Tab();
-        nestTab.textProperty().bind(i18n.createStringBinding("tab.nest"));
-        nestTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.HOME));
-        this.nestPane = new org.swarmforge.client.ui.NestGeneratorPane();
-        nestPane.setOnApply(config -> {
-             if (this.lastGeneratedTerrarium == null) {
-                  new Alert(Alert.AlertType.WARNING, "No world generated.").show();
-                  mainTabs.getSelectionModel().select(worldTab);
-                  return;
-             }
-             generateNest(config);
-             mainTabs.getSelectionModel().select(worldTab);
-        });
-        nestTab.setContent(nestPane);
-
-        // Wire direct species-to-nest generation pipeline
-        speciesPane.setOnGenerateNestForSpecies(species -> {
-            this.currentSpecies = species;
-            nestPane.configureFromSpecies(species);
-            mainTabs.getSelectionModel().select(nestTab);
-        });
-
-        // --- TAB 7: SETTINGS ---
+        // --- TAB 7: SETTINGS / PREFERENCES ---
         Tab settingsTab = new Tab();
         settingsTab.textProperty().bind(i18n.createStringBinding("tab.settings"));
         settingsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SETTINGS));
@@ -219,7 +176,66 @@ public class SwarmForgeClient extends Application {
         this.glossaryTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.BOOK_OPEN));
         this.glossaryTab.setContent(createGlossaryPaneView());
 
-        mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, accessoryTab, weatherTab, nestTab, settingsTab, this.glossaryTab);
+        if (isClientOnlyMode) {
+            // Dedicated Client mode: Embed Simulation Viewer, Settings/Preferences, and Glossary tabs
+            mainTabs.getTabs().addAll(simTab, settingsTab, this.glossaryTab);
+            primaryStage.setMaximized(true);
+        } else {
+            // Studio Mode: Full Suite with World Editor, Species Editor, Weather, Nest Generator
+            // --- TAB 2: WORLD EDITOR (3D View + Terrain Tools) ---
+            this.worldTab = new Tab();
+            worldTab.textProperty().bind(i18n.createStringBinding("tab.world_editor"));
+            worldTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.GLOBE));
+            worldTab.setContent(createWorldEditor());
+
+            // --- TAB 3: SPECIES EDITOR ---
+            Tab speciesTab = new Tab();
+            speciesTab.textProperty().bind(i18n.createStringBinding("tab.species_editor"));
+            speciesTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CPU));
+            org.swarmforge.client.ui.SpeciesEditorPane speciesPane = new org.swarmforge.client.ui.SpeciesEditorPane();
+            speciesPane.setOnApply(species -> {
+                this.currentSpecies = species;
+                new Alert(Alert.AlertType.INFORMATION, "Espèce active mise à jour : " + species.getCommonName()).show();
+            });
+            speciesTab.setContent(speciesPane);
+
+            // --- TAB 3b: ACCESSORY SPECIES EDITOR ---
+            Tab accessoryTab = new Tab();
+            accessoryTab.textProperty().bind(i18n.createStringBinding("tab.accessory"));
+            accessoryTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.FEATHER));
+            accessoryTab.setContent(new org.swarmforge.client.ui.AccessorySpeciesEditorPane());
+
+            // --- TAB 4: WEATHER ---
+            Tab weatherTab = new Tab();
+            weatherTab.textProperty().bind(i18n.createStringBinding("tab.weather"));
+            weatherTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SUN));
+            weatherTab.setContent(new org.swarmforge.client.ui.WeatherEditorPane());
+
+            // --- TAB 5: NEST GENERATOR ---
+            Tab nestTab = new Tab();
+            nestTab.textProperty().bind(i18n.createStringBinding("tab.nest"));
+            nestTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.HOME));
+            this.nestPane = new org.swarmforge.client.ui.NestGeneratorPane();
+            nestPane.setOnApply(config -> {
+                 if (this.lastGeneratedTerrarium == null) {
+                      new Alert(Alert.AlertType.WARNING, "No world generated.").show();
+                      mainTabs.getSelectionModel().select(worldTab);
+                      return;
+                 }
+                 generateNest(config);
+                 mainTabs.getSelectionModel().select(worldTab);
+            });
+            nestTab.setContent(nestPane);
+
+            // Wire direct species-to-nest generation pipeline
+            speciesPane.setOnGenerateNestForSpecies(species -> {
+                this.currentSpecies = species;
+                nestPane.configureFromSpecies(species);
+                mainTabs.getSelectionModel().select(nestTab);
+            });
+
+            mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, accessoryTab, weatherTab, nestTab, settingsTab, this.glossaryTab);
+        }
 
         org.swarmforge.client.ui.GlossaryDialog.setNavigationHandler(this::navigateToGlossaryTab);
 
@@ -263,7 +279,6 @@ public class SwarmForgeClient extends Application {
         mainTabs.getSelectionModel().select(simTab);
 
         root.setCenter(mainTabs);
-        }
 
         // Scene Setup & Theme Registration
         Scene scene = new Scene(root, 1280, 800);
@@ -271,8 +286,12 @@ public class SwarmForgeClient extends Application {
 
         primaryStage.setScene(scene);
         primaryStage.setOnCloseRequest(e -> {
+            try {
+                this.stop();
+            } catch (Throwable ex) {
+                // ignored
+            }
             Platform.exit();
-            System.exit(0);
         });
 
         if (isTestMode || splashScreen == null) {
@@ -2393,6 +2412,15 @@ public class SwarmForgeClient extends Application {
                     if (simWorldViewer != null) simWorldViewer.setUVVisionMode(b);
                 });
 
+                CheckBox chkOmmatidialVision = new CheckBox();
+                chkOmmatidialVision.textProperty().bind(i18n.createStringBinding("world.render.ommatidial_vision"));
+                chkOmmatidialVision.tooltipProperty().bind(i18n.createTooltipBinding("world.render.ommatidial_vision.tt"));
+                chkOmmatidialVision.setSelected(false);
+                chkOmmatidialVision.setStyle("-fx-font-size: 11px;");
+                chkOmmatidialVision.selectedProperty().addListener((o, a, b) -> {
+                    if (simWorldViewer != null) simWorldViewer.setOmmatidialVisionMode(b);
+                });
+
                 renderSection.getChildren().addAll(
                     lblRenderMode, comboRenderMode,
                     chkMinimap, chkSyncMinimap, chkShowLegend,
@@ -2400,7 +2428,7 @@ public class SwarmForgeClient extends Application {
                     new Separator(),
                     chkTerrain, chkTrees, chkSkirt, sliceBox, chkNid, chkPheromonesLayer, comboPheromoneType, chkAntsLayer, chkWeatherLayer,
                     new Separator(),
-                    chkElevationIsolines, chkClimateIsolines, chkPheromoneIsolines, chkUVVision
+                    chkElevationIsolines, chkClimateIsolines, chkPheromoneIsolines, chkUVVision, chkOmmatidialVision
                 );
 
                 // Audio Controls Section
@@ -2806,22 +2834,31 @@ public class SwarmForgeClient extends Application {
                 backendLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
                 backendLabel.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.backend.tt"));
 
-                ComboBox<String> backendCombo = new ComboBox<>();
-                String optBackendAuto = "⚡ Automatique (Auto-detection)";
-                String optBackendRust = "🦀 Rust Natif SIMD (Zero-GC Panama FFM)";
-                String optBackendJava = "☕ Java 21 Artemis ECS (Reference Engine)";
-                backendCombo.getItems().addAll(optBackendAuto, optBackendRust, optBackendJava);
+                ComboBox<org.swarmforge.core.engine.SimulationEngineType> backendCombo = new ComboBox<>();
+                backendCombo.getItems().addAll(
+                    org.swarmforge.core.engine.SimulationEngineType.JAVA_ECS,
+                    org.swarmforge.core.engine.SimulationEngineType.RUST_NATIVE
+                );
                 backendCombo.setMaxWidth(Double.MAX_VALUE);
                 backendCombo.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.backend.tt"));
 
+                backendCombo.setCellFactory(lv -> new ListCell<>() {
+                    @Override
+                    protected void updateItem(org.swarmforge.core.engine.SimulationEngineType item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty || item == null) {
+                            setText(null);
+                        } else {
+                            setText(item == org.swarmforge.core.engine.SimulationEngineType.RUST_NATIVE
+                                ? i18n.get("settings.engine.backend.rust")
+                                : i18n.get("settings.engine.backend.java"));
+                        }
+                    }
+                });
+                backendCombo.setButtonCell(backendCombo.getCellFactory().call(null));
+
                 org.swarmforge.core.engine.SimulationEngineType curEngine = org.swarmforge.core.engine.EnginePreferences.getSelectedEngineType();
-                if (curEngine == org.swarmforge.core.engine.SimulationEngineType.RUST_NATIVE) {
-                        backendCombo.setValue(optBackendRust);
-                } else if (curEngine == org.swarmforge.core.engine.SimulationEngineType.JAVA_ECS) {
-                        backendCombo.setValue(optBackendJava);
-                } else {
-                        backendCombo.setValue(optBackendAuto);
-                }
+                backendCombo.setValue(curEngine != null ? curEngine : org.swarmforge.core.engine.SimulationEngineType.JAVA_ECS);
 
                 Label rustStatusBadge = new Label();
                 boolean rustAvail = org.swarmforge.core.engine.RustNativeEngine.isNativeLibraryAvailable();
@@ -2836,13 +2873,9 @@ public class SwarmForgeClient extends Application {
                 VBox backendBox = new VBox(6, backendCombo, rustStatusBadge);
 
                 backendCombo.setOnAction(e -> {
-                        String selected = backendCombo.getValue();
-                        if (optBackendRust.equals(selected)) {
-                                org.swarmforge.core.engine.EnginePreferences.setSelectedEngineType(org.swarmforge.core.engine.SimulationEngineType.RUST_NATIVE);
-                        } else if (optBackendJava.equals(selected)) {
-                                org.swarmforge.core.engine.EnginePreferences.setSelectedEngineType(org.swarmforge.core.engine.SimulationEngineType.JAVA_ECS);
-                        } else {
-                                org.swarmforge.core.engine.EnginePreferences.resetToDefaults();
+                        org.swarmforge.core.engine.SimulationEngineType selected = backendCombo.getValue();
+                        if (selected != null) {
+                                org.swarmforge.core.engine.EnginePreferences.setSelectedEngineType(selected);
                         }
                 });
 
@@ -2913,31 +2946,45 @@ public class SwarmForgeClient extends Application {
                 accelLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: 600;");
                 accelLabel.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.accel.tt"));
 
-                ComboBox<String> accelCombo = new ComboBox<>();
-                String optAccelAuto = "⚡ Automatique (GPU si disponible / CPU Vectoriel)";
-                String optAccelGpu = "🎮 Accélération GPU (TornadoVM / OpenCL)";
-                String optAccelCpu = "💻 Pur CPU Multithreadé (SIMD / Vector API)";
-                accelCombo.getItems().addAll(optAccelAuto, optAccelGpu, optAccelCpu);
+                ComboBox<org.swarmforge.core.engine.ComputeAccelerationMode> accelCombo = new ComboBox<>();
+                accelCombo.getItems().addAll(
+                    org.swarmforge.core.engine.ComputeAccelerationMode.AUTO,
+                    org.swarmforge.core.engine.ComputeAccelerationMode.GPU_ACCELERATED,
+                    org.swarmforge.core.engine.ComputeAccelerationMode.CPU_MULTITHREADED_SIMD
+                );
                 accelCombo.setMaxWidth(Double.MAX_VALUE);
                 accelCombo.tooltipProperty().bind(i18n.createTooltipBinding("settings.engine.accel.tt"));
 
+                accelCombo.setCellFactory(lv -> new ListCell<>() {
+                    @Override
+                    protected void updateItem(org.swarmforge.core.engine.ComputeAccelerationMode item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty || item == null) {
+                            setText(null);
+                        } else {
+                            setText(switch (item) {
+                                case GPU_ACCELERATED -> i18n.get("settings.engine.accel.gpu");
+                                case CPU_MULTITHREADED_SIMD -> i18n.get("settings.engine.accel.cpu");
+                                default -> i18n.get("settings.engine.accel.auto");
+                            });
+                        }
+                    }
+                });
+                accelCombo.setButtonCell(accelCombo.getCellFactory().call(null));
+
+                // Re-render button cells when language changes
+                i18n.localeProperty().addListener((o, oldL, newL) -> {
+                    backendCombo.setButtonCell(backendCombo.getCellFactory().call(null));
+                    accelCombo.setButtonCell(accelCombo.getCellFactory().call(null));
+                });
+
                 org.swarmforge.core.engine.ComputeAccelerationMode curAccel = org.swarmforge.core.engine.EnginePreferences.getSelectedAccelerationMode();
-                if (curAccel == org.swarmforge.core.engine.ComputeAccelerationMode.GPU_ACCELERATED) {
-                        accelCombo.setValue(optAccelGpu);
-                } else if (curAccel == org.swarmforge.core.engine.ComputeAccelerationMode.CPU_MULTITHREADED_SIMD) {
-                        accelCombo.setValue(optAccelCpu);
-                } else {
-                        accelCombo.setValue(optAccelAuto);
-                }
+                accelCombo.setValue(curAccel != null ? curAccel : org.swarmforge.core.engine.ComputeAccelerationMode.AUTO);
 
                 accelCombo.setOnAction(e -> {
-                        String selected = accelCombo.getValue();
-                        if (optAccelGpu.equals(selected)) {
-                                org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.GPU_ACCELERATED);
-                        } else if (optAccelCpu.equals(selected)) {
-                                org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.CPU_MULTITHREADED_SIMD);
-                        } else {
-                                org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.AUTO);
+                        org.swarmforge.core.engine.ComputeAccelerationMode selected = accelCombo.getValue();
+                        if (selected != null) {
+                                org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(selected);
                         }
                 });
 
@@ -3674,32 +3721,38 @@ public class SwarmForgeClient extends Application {
 
         @Override
         public void stop() throws Exception {
+                if (!isShuttingDown.compareAndSet(false, true)) {
+                        return;
+                }
                 simLoopActive = false;
                 try {
                         simLoopExecutor.shutdownNow();
-                } catch (Exception ignored) {}
+                        simLoopExecutor.awaitTermination(300, java.util.concurrent.TimeUnit.MILLISECONDS);
+                } catch (Throwable ignored) {}
                 try {
                         if (localSimulation != null) {
                                 localSimulation.stop();
                         }
-                } catch (Exception ignored) {}
+                } catch (Throwable ignored) {}
                 try {
                         if (gameView != null) {
                                 gameView.stop();
                         }
-                } catch (Exception ignored) {}
+                } catch (Throwable ignored) {}
                 try {
                         if (networkClient != null) {
                                 networkClient.disconnect();
                         }
-                } catch (Exception ignored) {}
+                } catch (Throwable ignored) {}
                 try {
                         org.swarmforge.client.audio.SimulationAudioManager.getInstance().stop();
-                } catch (Exception ignored) {}
+                } catch (Throwable ignored) {}
                 try {
                         org.swarmforge.client.util.SoundEffectManager.getInstance().stopAmbience();
-                } catch (Exception ignored) {}
-                super.stop();
+                } catch (Throwable ignored) {}
+                try {
+                        super.stop();
+                } catch (Throwable ignored) {}
         }
 
         public static void main(String[] args) {

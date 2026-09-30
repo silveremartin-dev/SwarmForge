@@ -58,14 +58,16 @@ public class SimulationClient {
         LOG.info("Disconnecting...");
         connected = false;
         if (requestObserver != null) {
-            requestObserver.onCompleted();
-        }
-        if (channel != null) {
             try {
-                channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+                requestObserver.onCompleted();
+            } catch (Throwable ignored) {}
+        }
+        if (channel != null && !channel.isShutdown()) {
+            try {
+                channel.shutdownNow().awaitTermination(1, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-            }
+            } catch (Throwable ignored) {}
         }
     }
 

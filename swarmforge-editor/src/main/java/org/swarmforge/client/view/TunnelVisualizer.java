@@ -131,7 +131,19 @@ public class TunnelVisualizer {
         mat.setBoolean("UseMaterialColors", true);
         ColorRGBA col = getNodeColor(node.type());
         mat.setColor("Diffuse", col);
-        mat.setColor("Ambient", col.mult(0.6f));
+        mat.setColor("Ambient", col.mult(0.65f));
+
+        // Saliva Masonry Lining & Cuticular SSS Translucency
+        if (currentRenderMode == RenderMode.REALISTIC) {
+            mat.setColor("Specular", new ColorRGBA(0.40f, 0.32f, 0.22f, 1.0f));
+            mat.setFloat("Shininess", 18.0f); // Polished saliva-bonded clay sheen
+            if (node.type() == TunnelNetwork.ChamberType.BROOD_CHAMBER || node.type() == TunnelNetwork.ChamberType.QUEEN_CHAMBER) {
+                // Cuticular Subsurface Scattering (SSS) translucent ivory warmth
+                mat.setColor("Diffuse", new ColorRGBA(0.96f, 0.94f, 0.86f, 0.92f));
+                mat.setColor("Ambient", new ColorRGBA(0.85f, 0.75f, 0.60f, 1.0f));
+            }
+        }
+
         geom.setMaterial(mat);
 
         return geom;
@@ -164,8 +176,8 @@ public class TunnelVisualizer {
             Box box = new Box(galleryRadius3D, galleryRadius3D, Math.max(0.05f, len * 0.5f));
             geom = new Geometry(name, box);
         } else {
-            // Cylindrical Pipe / Natural Gallery
-            Cylinder shape = new Cylinder(4, 8, galleryRadius3D, Math.max(0.05f, len), true);
+            // Cylindrical Pipe / Natural Gallery (smooth continuous organic tube)
+            Cylinder shape = new Cylinder(8, 16, galleryRadius3D, Math.max(0.05f, len), true);
             geom = new Geometry(name, shape);
         }
 
@@ -181,7 +193,12 @@ public class TunnelVisualizer {
         mat.setBoolean("UseMaterialColors", true);
         ColorRGBA col = new ColorRGBA(0.48f, 0.32f, 0.20f, 1.0f);
         mat.setColor("Diffuse", col);
-        mat.setColor("Ambient", col.mult(0.5f));
+        mat.setColor("Ambient", col.mult(0.55f));
+        if (currentRenderMode == RenderMode.REALISTIC) {
+            // Saliva mucus gallery smoothing sheen
+            mat.setColor("Specular", new ColorRGBA(0.32f, 0.25f, 0.18f, 1.0f));
+            mat.setFloat("Shininess", 12.0f);
+        }
         geom.setMaterial(mat);
 
         return geom;
@@ -190,7 +207,7 @@ public class TunnelVisualizer {
     private ColorRGBA getNodeColor(TunnelNetwork.ChamberType type) {
         return switch (type) {
             case QUEEN_CHAMBER -> ColorRGBA.Magenta;
-            case BROOD_CHAMBER -> ColorRGBA.White; // Eggs/Larvae
+            case BROOD_CHAMBER -> new ColorRGBA(0.95f, 0.92f, 0.85f, 1.0f); // Cuticular SSS Ivory
             case FOOD_STORAGE -> ColorRGBA.Green;
             case FUNGUS_GARDEN -> new ColorRGBA(0.66f, 0.33f, 0.97f, 1.0f); // Purple
             case HIBERNATION -> new ColorRGBA(0.22f, 0.74f, 0.97f, 1.0f); // Cyan

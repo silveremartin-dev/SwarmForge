@@ -303,6 +303,10 @@ public class TrackedAntPane extends VBox {
     private Predator currentPredator = null;
 
     public void setNoAntSelectedState() {
+        if (!javafx.application.Platform.isFxApplicationThread()) {
+            javafx.application.Platform.runLater(this::setNoAntSelectedState);
+            return;
+        }
         this.currentAnt = null;
         this.currentPredator = null;
         this.isFollowing = false;
@@ -346,6 +350,10 @@ public class TrackedAntPane extends VBox {
     }
 
     public void updateAnt(Individual ant, boolean following) {
+        if (!javafx.application.Platform.isFxApplicationThread()) {
+            javafx.application.Platform.runLater(() -> updateAnt(ant, following));
+            return;
+        }
         this.currentAnt = ant;
         this.currentPredator = null;
         this.isFollowing = following;
@@ -441,6 +449,10 @@ public class TrackedAntPane extends VBox {
     }
 
     public void updatePredator(Predator predator, boolean following) {
+        if (!javafx.application.Platform.isFxApplicationThread()) {
+            javafx.application.Platform.runLater(() -> updatePredator(predator, following));
+            return;
+        }
         this.currentPredator = predator;
         this.currentAnt = null;
         this.isFollowing = following;

@@ -476,6 +476,11 @@ public class Simulation {
         if (state.compareAndSet(State.RUNNING, State.STOPPED) || state.compareAndSet(State.PAUSED, State.STOPPED)) {
             if (simulationThread != null) {
                 simulationThread.interrupt();
+                try {
+                    simulationThread.join(300);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
             }
             org.swarmforge.core.event.EventBus.getInstance().publish(
                 SimulationEvent.obtain(

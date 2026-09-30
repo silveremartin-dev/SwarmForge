@@ -55,51 +55,22 @@ export function formatSimRelativeTime(totalSeconds) {
     return `J+${days} ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-const createDefaultSpeciesCards = () => [
-    {
-        id: 'card_col_1',
-        name: 'Colonie Principale (Formica fusca)',
-        speciesId: 'species_formica_fusca',
-        nestType: 'DOME_AND_SUBTERRANEAN',
-        color: '#38bdf8',
-        initialQueens: 1,
-        initialWorkers: 80,
-        initialSoldiers: 15,
-        initialMales: 0,
-        aiArchitecture: 'BEHAVIOR_TREE',
-        preyPredatorPresetId: 'prey_pred_pucerons_fourmilion'
-    },
-    {
-        id: 'card_col_2',
-        name: 'Colonie Rivale (Linepithema humile)',
-        speciesId: 'species_linepithema_humile',
-        nestType: 'ARBOREAL_WOOD',
-        color: '#f43f5e',
-        initialQueens: 2,
-        initialWorkers: 50,
-        initialSoldiers: 10,
-        initialMales: 0,
-        aiArchitecture: 'HYBRID_RULE_UTILITY',
-        preyPredatorPresetId: 'prey_pred_peaceful_abundance'
-    }
-]
-
 function spawnInitialAntsFromCards(speciesCards) {
+    if (!speciesCards || speciesCards.length === 0) return []
     const ants = []
-    const cards = speciesCards && speciesCards.length > 0 ? speciesCards : createDefaultSpeciesCards()
 
-    cards.forEach((card, cIdx) => {
-        const baseX = cIdx === 0 ? 35 : 65
-        const baseY = cIdx === 0 ? 35 : 65
+    speciesCards.forEach((card, cIdx) => {
+        const baseX = cIdx === 0 ? 35 : (35 + cIdx * 30)
+        const baseY = cIdx === 0 ? 35 : (35 + cIdx * 30)
         const speciesPreset = DEFAULT_SPECIES_PRESETS.find(s => s.id === card.speciesId) || DEFAULT_SPECIES_PRESETS[0]
 
         // Queens
-        for (let i = 0; i < (card.initialQueens || 1); i++) {
+        for (let i = 0; i < (card.initialQueens || 0); i++) {
             ants.push({
                 id: `ant_${card.id}_queen_${i + 1}`,
                 colonyId: card.id,
                 colonyName: card.name,
-                species: speciesPreset.name,
+                species: speciesPreset?.name || 'Formica fusca',
                 caste: 'QUEEN',
                 job: 'LAYING_EGGS',
                 x: baseX + (Math.random() - 0.5) * 4,
@@ -116,12 +87,12 @@ function spawnInitialAntsFromCards(speciesCards) {
         }
 
         // Soldiers
-        for (let i = 0; i < (card.initialSoldiers || 10); i++) {
+        for (let i = 0; i < (card.initialSoldiers || 0); i++) {
             ants.push({
                 id: `ant_${card.id}_soldier_${i + 1}`,
                 colonyId: card.id,
                 colonyName: card.name,
-                species: speciesPreset.name,
+                species: speciesPreset?.name || 'Formica fusca',
                 caste: 'SOLDIER',
                 job: 'GUARD',
                 x: baseX + (Math.random() - 0.5) * 12,
@@ -140,7 +111,7 @@ function spawnInitialAntsFromCards(speciesCards) {
         }
 
         // Workers
-        for (let i = 0; i < (card.initialWorkers || 40); i++) {
+        for (let i = 0; i < (card.initialWorkers || 0); i++) {
             const isForager = i % 2 === 0
             const isBuilder = i % 4 === 1
             const job = isForager ? 'FORAGER' : (isBuilder ? 'BUILDER' : 'NURSE')
@@ -150,7 +121,7 @@ function spawnInitialAntsFromCards(speciesCards) {
                 id: `ant_${card.id}_worker_${i + 1}`,
                 colonyId: card.id,
                 colonyName: card.name,
-                species: speciesPreset.name,
+                species: speciesPreset?.name || 'Formica fusca',
                 caste: 'WORKER',
                 job: job,
                 x: baseX + (Math.random() - 0.5) * 20,
@@ -174,7 +145,7 @@ function spawnInitialAntsFromCards(speciesCards) {
                 id: `ant_${card.id}_male_${i + 1}`,
                 colonyId: card.id,
                 colonyName: card.name,
-                species: speciesPreset.name,
+                species: speciesPreset?.name || 'Formica fusca',
                 caste: 'MALE',
                 job: 'RESTING',
                 x: baseX + (Math.random() - 0.5) * 6,
@@ -195,54 +166,41 @@ function spawnInitialAntsFromCards(speciesCards) {
 }
 
 function generateInitialColonies(speciesCards) {
-    const cards = speciesCards && speciesCards.length > 0 ? speciesCards : createDefaultSpeciesCards()
-    return cards.map(c => ({
+    if (!speciesCards || speciesCards.length === 0) return []
+    return speciesCards.map(c => ({
         id: c.id,
         name: c.name,
         speciesId: c.speciesId,
         color: c.color,
-        food: 250,
-        water: 150,
-        protein: 80,
-        population: (c.initialQueens || 1) + (c.initialWorkers || 40) + (c.initialSoldiers || 10) + (c.initialMales || 0),
-        queens: c.initialQueens || 1,
-        workers: c.initialWorkers || 40,
-        soldiers: c.initialSoldiers || 10,
+        food: 0,
+        water: 0,
+        protein: 0,
+        population: (c.initialQueens || 0) + (c.initialWorkers || 0) + (c.initialSoldiers || 0) + (c.initialMales || 0),
+        queens: c.initialQueens || 0,
+        workers: c.initialWorkers || 0,
+        soldiers: c.initialSoldiers || 0,
         males: c.initialMales || 0
     }))
 }
 
 function generateInitialFoodSources() {
-    return [
-        { id: 'food_1', x: 25, y: 0.2, z: 25, type: 'SUGAR', name: 'Miellat de Pucerons', amount: 350, maxAmount: 500, color: '#f59e0b' },
-        { id: 'food_2', x: 75, y: 0.2, z: 75, type: 'SEEDS', name: 'Graines de Graminées', amount: 600, maxAmount: 800, color: '#eab308' },
-        { id: 'food_3', x: 70, y: 0.2, z: 30, type: 'PREY', name: 'Cadavre de Scarabée', amount: 400, maxAmount: 400, color: '#ef4444' },
-        { id: 'food_4', x: 30, y: 0.2, z: 70, type: 'WATER', name: 'Gouttelettes de Rosée', amount: 200, maxAmount: 300, color: '#38bdf8' }
-    ]
+    return []
 }
 
 function generateInitialNests(speciesCards) {
-    const cards = speciesCards && speciesCards.length > 0 ? speciesCards : createDefaultSpeciesCards()
-    return cards.map((c, idx) => ({
+    if (!speciesCards || speciesCards.length === 0) return []
+    return speciesCards.map((c, idx) => ({
         id: `nest_${c.id}`,
         colonyId: c.id,
         name: `Nid de ${c.name}`,
-        x: idx === 0 ? 35 : 65,
-        y: idx === 0 ? 35 : 65,
+        x: idx === 0 ? 35 : (35 + idx * 30),
+        y: idx === 0 ? 35 : (35 + idx * 30),
         z: 0,
         nestType: c.nestType || 'DOME_AND_SUBTERRANEAN',
         scale: 1.0,
         color: c.color,
-        chambers: [
-            { id: 'ch_1', name: 'Chambre Royale', x: idx === 0 ? 35 : 65, y: -1.2, z: idx === 0 ? 35 : 65, radius: 1.5, type: 'QUEEN' },
-            { id: 'ch_2', name: 'Couvain & Larves', x: (idx === 0 ? 35 : 65) + 1.2, y: -0.8, z: (idx === 0 ? 35 : 65) + 0.8, radius: 1.2, type: 'BROOD' },
-            { id: 'ch_3', name: 'Grenier à Graines', x: (idx === 0 ? 35 : 65) - 1.2, y: -0.6, z: (idx === 0 ? 35 : 65) - 0.8, radius: 1.3, type: 'FOOD' }
-        ],
-        tunnels: [
-            { from: [idx === 0 ? 35 : 65, 0, idx === 0 ? 35 : 65], to: [idx === 0 ? 35 : 65, -1.2, idx === 0 ? 35 : 65] },
-            { from: [idx === 0 ? 35 : 65, -1.2, idx === 0 ? 35 : 65], to: [(idx === 0 ? 35 : 65) + 1.2, -0.8, (idx === 0 ? 35 : 65) + 0.8] },
-            { from: [idx === 0 ? 35 : 65, -1.2, idx === 0 ? 35 : 65], to: [(idx === 0 ? 35 : 65) - 1.2, -0.6, (idx === 0 ? 35 : 65) - 0.8] }
-        ]
+        chambers: [],
+        tunnels: []
     }))
 }
 
@@ -384,7 +342,7 @@ export const useSimulationStore = create((set, get) => {
         requiredPlayerCount: 1,
         gridTilesX: 1,
         gridTilesY: 1,
-        speciesCards: createDefaultSpeciesCards(),
+        speciesCards: [],
 
         setScenarioPresetId: (presetId) => {
             const meta = DEFAULT_SCENARIO_META_PRESETS.find(p => p.id === presetId)
@@ -567,22 +525,7 @@ export const useSimulationStore = create((set, get) => {
         },
 
         // --- 5. God Mode Interventions & Scheduled Events Queue ---
-        scheduledEvents: [
-            {
-                id: 'evt_init_1',
-                targetTick: 120,
-                scheduledCalendarTime: '2026-03-20 08:01:00',
-                category: 'RESOURCE',
-                eventType: 'Surface Food Deposit',
-                colonyTarget: 'TOUTES',
-                description: 'Dépôt automatique de graines de pissenlit (+150)',
-                action: 'SPAWN_FOOD',
-                amount: 150,
-                posX: 45, posY: 45, posZ: 0.2,
-                executed: false,
-                paused: false
-            }
-        ],
+        scheduledEvents: [],
 
         addScheduledEvent: (event) => {
             const current = get().scheduledEvents
@@ -1042,26 +985,14 @@ export const useSimulationStore = create((set, get) => {
                 networkClient.sendControlCommand('PLAY')
             }
 
-            let currentAnts = state.ants
-            let currentColonies = state.colonies
-            let currentNests = state.nests
-            let currentFoods = state.foodSources
-
-            if (!currentAnts || currentAnts.length === 0) {
-                currentColonies = generateInitialColonies(state.speciesCards)
-                currentAnts = spawnInitialAntsFromCards(state.speciesCards)
-                currentNests = generateInitialNests(state.speciesCards)
-                currentFoods = generateInitialFoodSources()
-            }
+            let currentAnts = state.ants || []
+            let currentColonies = state.colonies || []
+            let currentNests = state.nests || []
+            let currentFoods = state.foodSources || []
 
             set({
                 running: true,
-                isPaused: false,
-                isScenarioApplied: true,
-                colonies: currentColonies,
-                ants: currentAnts,
-                nests: currentNests,
-                foodSources: currentFoods
+                isPaused: false
             })
             soundEngine.updateSimulationState(true, state.speed, get().activeTab === 'VISUAL_3D')
 
@@ -1665,7 +1596,7 @@ export const useSimulationStore = create((set, get) => {
                     requiredPlayerCount: data.requiredPlayerCount ?? 1,
                     gridTilesX: data.gridTilesX ?? 1,
                     gridTilesY: data.gridTilesY ?? 1,
-                    speciesCards: data.speciesCards || createDefaultSpeciesCards()
+                    speciesCards: data.speciesCards || []
                 })
                 get().applyScenarioSetup()
                 return true
@@ -1834,29 +1765,52 @@ networkClient.onSimulationUpdate((update) => {
     // Parse individuals / ants from server
     let updatedAnts = state.ants
     if (update.individuals && Array.isArray(update.individuals)) {
-        updatedAnts = update.individuals.map(ind => {
-            const existing = state.ants.find(a => a.id === ind.id)
-            const colony = state.colonies.find(c => c.id === ind.colonyId)
-            return {
-                ...existing,
-                id: ind.id,
-                colonyId: ind.colonyId || existing?.colonyId || 'col_1',
-                colonyName: ind.colonyName || colony?.name || existing?.colonyName || 'Colonie',
-                species: ind.species || existing?.species || 'Formica fusca',
-                caste: ind.caste || existing?.caste || 'WORKER',
-                job: ind.job || existing?.job || 'FORAGER',
-                x: ind.x ?? ind.posX ?? existing?.x ?? 50,
-                y: ind.y ?? ind.posY ?? existing?.y ?? 0.1,
-                z: ind.z ?? ind.posZ ?? existing?.z ?? 50,
-                heading: ind.heading ?? existing?.heading ?? 0,
-                speedMms: ind.speedMms ?? existing?.speedMms ?? 20.0,
-                health: ind.health ?? existing?.health ?? 100,
-                energy: ind.energy ?? existing?.energy ?? 100,
-                carriedItem: ind.carriedItem ?? existing?.carriedItem ?? 'NONE',
-                task: (ind.task ?? existing?.task) || 'Activité en cours',
-                color: ind.color || colony?.color || existing?.color || '#38bdf8'
-            }
-        })
+        updatedAnts = update.individuals
+            .filter(ind => ind.alive !== false)
+            .map(ind => {
+                const existing = state.ants.find(a => a.id === ind.id)
+                const colony = state.colonies.find(c => c.id === ind.colonyId)
+                const posX = ind.position?.x ?? ind.x ?? ind.posX ?? existing?.x ?? 50
+                const posY = ind.position?.y ?? ind.y ?? ind.posY ?? existing?.y ?? 0.1
+                const posZ = ind.position?.z ?? ind.z ?? ind.posZ ?? existing?.z ?? 50
+                const caste = ind.caste || ind.currentAction || existing?.caste || 'WORKER'
+                const job = ind.job || existing?.job || 'FORAGER'
+
+                return {
+                    ...existing,
+                    id: ind.id,
+                    colonyId: ind.colonyId || existing?.colonyId || 'col_1',
+                    colonyName: ind.colonyName || colony?.name || existing?.colonyName || 'Colonie',
+                    species: ind.species || existing?.species || 'Formica fusca',
+                    caste: caste,
+                    job: job,
+                    x: posX,
+                    y: posY,
+                    z: posZ,
+                    heading: ind.heading ?? existing?.heading ?? 0,
+                    speedMms: ind.speedMms ?? existing?.speedMms ?? 20.0,
+                    health: ind.health ?? existing?.health ?? 100,
+                    energy: ind.energy ?? existing?.energy ?? 100,
+                    carriedItem: ind.carriedItem ?? existing?.carriedItem ?? 'NONE',
+                    task: (ind.task ?? existing?.task) || (job === 'FORAGER' ? 'Fourragement' : (job === 'GUARD' ? 'Garde' : 'Activité en cours')),
+                    color: ind.color || colony?.color || existing?.color || '#38bdf8'
+                }
+            })
+    }
+
+    // Parse food sources from server
+    let updatedFoodSources = state.foodSources
+    if (update.food && Array.isArray(update.food)) {
+        updatedFoodSources = update.food.map((f, i) => ({
+            id: f.id || `food_srv_${i}`,
+            x: f.position?.x ?? f.x ?? f.posX ?? 50,
+            y: f.position?.y ?? f.y ?? f.posY ?? 0.2,
+            z: f.position?.z ?? f.z ?? f.posZ ?? 50,
+            quantity: f.quantity ?? f.amount ?? 100,
+            amount: f.quantity ?? f.amount ?? 100,
+            type: f.type || 'SUGAR',
+            name: f.type === 'SUGAR' ? 'Miellat / Sucre' : (f.type === 'SEEDS' ? 'Graines' : (f.type === 'PREY' ? 'Proie' : 'Eau'))
+        }))
     }
 
     // Parse environment from server
@@ -1866,23 +1820,58 @@ networkClient.onSimulationUpdate((update) => {
             ...state.environment,
             temperature: update.environment.temperature ?? state.environment.temperature,
             humidity: update.environment.humidity ?? state.environment.humidity,
-            windSpeed: update.environment.wind ?? update.environment.windSpeed ?? state.environment.windSpeed,
-            weatherState: update.environment.weather ?? update.environment.weatherState ?? state.environment.weatherState,
+            windSpeed: update.environment.windSpeed ?? update.environment.wind ?? state.environment.windSpeed,
+            weatherState: update.environment.weatherState ?? update.environment.weather ?? (update.environment.rainIntensity > 0 ? 'RAIN' : 'CLEAR'),
             season: update.environment.season ?? state.environment.season,
-            lightLevel: update.environment.light ?? update.environment.lightLevel ?? state.environment.lightLevel
+            lightLevel: update.environment.lightLevel ?? update.environment.light ?? state.environment.lightLevel,
+            timeOfDay: update.environment.timeOfDay ?? state.environment.timeOfDay
         }
     }
 
     // Parse nests if provided
     let updatedNests = state.nests
     if (update.nests && Array.isArray(update.nests)) {
-        updatedNests = update.nests
+        updatedNests = update.nests.map(n => ({
+            id: n.id || `nest_${n.id}`,
+            colonyId: n.id,
+            name: `Nid ${n.id}`,
+            x: n.x ?? (n.chambers && n.chambers[0]?.position?.x) ?? 50,
+            y: n.y ?? (n.chambers && n.chambers[0]?.position?.y) ?? 0,
+            z: n.z ?? (n.chambers && n.chambers[0]?.position?.z) ?? 50,
+            chambers: (n.chambers || []).map(ch => ({
+                id: ch.id,
+                name: ch.id,
+                type: ch.type || 'QUEEN',
+                x: ch.position?.x ?? ch.x ?? 50,
+                y: ch.position?.y ?? ch.y ?? -1.2,
+                z: ch.position?.z ?? ch.z ?? 50,
+                radius: 1.2
+            })),
+            tunnels: (n.tunnels || []).map(tu => ({
+                from: [50, 0, 50],
+                to: [50, -1.2, 50]
+            }))
+        }))
     }
 
     // Parse colonies if provided
     let updatedColonies = state.colonies
     if (update.colonies && Array.isArray(update.colonies)) {
         updatedColonies = update.colonies
+    }
+
+    // Parse predators from server
+    let updatedPredators = state.predators
+    if (update.predators && Array.isArray(update.predators)) {
+        updatedPredators = update.predators.map(p => ({
+            id: p.id || `pred_${Math.random()}`,
+            type: p.type || 'SPIDER',
+            x: p.x ?? p.posX ?? 50,
+            y: p.y ?? p.posY ?? 0.3,
+            z: p.z ?? p.posZ ?? 50,
+            state: p.state || 'HUNTING',
+            health: p.health ?? 100
+        }))
     }
 
     // Tracked Ant telemetry update
@@ -1951,6 +1940,8 @@ networkClient.onSimulationUpdate((update) => {
         simTimeFormatted: calendarTime,
         simRelativeTimeFormatted: relativeTime,
         ants: updatedAnts,
+        foodSources: updatedFoodSources,
+        predators: updatedPredators,
         environment: updatedEnv,
         nests: updatedNests,
         colonies: updatedColonies,
@@ -1958,5 +1949,27 @@ networkClient.onSimulationUpdate((update) => {
         trackedAntData: updatedTrackedAntData,
         measuredTps: update.tps ?? state.measuredTps
     })
+})
+
+networkClient.onScenarioData((scenario) => {
+    if (scenario) {
+        useSimulationStore.getState().addEventLog({
+            severity: 'INFO',
+            type: 'SYSTEM',
+            source: 'SwarmForge Server',
+            message: `Scénario "${scenario.title || scenario.id}" prêt pour export.`
+        })
+        try {
+            const blob = new Blob([JSON.stringify(scenario, null, 2)], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `swarmforge_scenario_${scenario.id || Date.now()}.json`
+            a.click()
+            URL.revokeObjectURL(url)
+        } catch (e) {
+            console.warn('Could not auto-download scenario blob:', e)
+        }
+    }
 })
 

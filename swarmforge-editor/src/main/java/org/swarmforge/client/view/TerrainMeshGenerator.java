@@ -154,15 +154,15 @@ public class TerrainMeshGenerator {
                 int i01 = vertexIndexGrid[x][y + 1];
                 int i11 = vertexIndexGrid[x + 1][y + 1];
 
-                // Triangle 1
+                // Triangle 1 (CCW)
                 indices.add(i00);
-                indices.add(i01);
                 indices.add(i10);
+                indices.add(i01);
 
-                // Triangle 2
+                // Triangle 2 (CCW)
                 indices.add(i10);
-                indices.add(i01);
                 indices.add(i11);
+                indices.add(i01);
             }
         }
 
@@ -216,18 +216,37 @@ public class TerrainMeshGenerator {
                     continue; // Leave excavated chambers/tunnels open in the cutaway skirt
                 }
 
-                float r = 0.45f, g = 0.30f, b = 0.18f; // Humus/dirt default
+                float r = 0.45f, g = 0.30f, b = 0.18f; // Default organo-mineral
+                float depthFromSurface = topYA - yTopA;
+
                 if (z == 0) {
-                    r = 0.25f; g = 0.28f; b = 0.32f; // Granite Bedrock
+                    // Horizon C: Granite Bedrock / Lithosphere
+                    r = 0.25f; g = 0.28f; b = 0.32f;
                 } else if (cellA.material() == TerrariumCell.Material.ROCK || cellA.material() == TerrariumCell.Material.GRAVEL) {
                     r = 0.55f; g = 0.58f; b = 0.62f;
                 } else if (cellA.material() == TerrariumCell.Material.CLAY) {
-                    r = 0.70f; g = 0.42f; b = 0.24f;
+                    // Illuvial Clay Horizon (accumulation argileuse riche en fer)
+                    r = 0.68f; g = 0.38f; b = 0.20f;
                 } else if (cellA.material() == TerrariumCell.Material.SAND) {
                     r = 0.85f; g = 0.78f; b = 0.45f;
                 } else if (cellA.material() == TerrariumCell.Material.PEAT) {
-                    r = 0.28f; g = 0.18f; b = 0.10f;
+                    r = 0.22f; g = 0.15f; b = 0.09f;
+                } else if (depthFromSurface <= 0.28f) {
+                    // Horizon O: Organic Litter & Humus (Litière forestière décomposée)
+                    r = 0.20f; g = 0.14f; b = 0.08f;
+                } else if (depthFromSurface <= 1.0f) {
+                    // Horizon A: Organo-mineral topsoil (Horizon humifère supérieur)
+                    r = 0.38f; g = 0.26f; b = 0.15f;
+                } else {
+                    // Horizon B: Mineral subsoil (Horizon d'accumulation)
+                    r = 0.48f; g = 0.32f; b = 0.19f;
                 }
+
+                // Micro-geological sedimentary layering modulation
+                float sedimentVar = 0.94f + 0.06f * (float) Math.sin(yTopA * 8.0f + xA * 0.5f);
+                r *= sedimentVar;
+                g *= sedimentVar;
+                b *= sedimentVar;
 
                 int baseIdx = vertices.size() / 3;
 

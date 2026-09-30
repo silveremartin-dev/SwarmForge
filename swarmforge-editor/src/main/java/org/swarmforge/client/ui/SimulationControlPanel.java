@@ -787,22 +787,20 @@ public class SimulationControlPanel extends VBox {
         lblEngine.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.engine.backend", "Moteur de Calcul (Engine)"));
         lblEngine.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lblEngine.getStyleClass().add("accent-title");
-        lblEngine.setTooltip(new Tooltip(I18nManager.getInstance().get("sim.engine.backend.tt", "Sélectionne le moteur de calcul : Auto (Optimal), Pure Java 21 ECS, ou Natif Rust SIMD.")));
+        lblEngine.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("sim.engine.backend.tt"));
 
-        engineBackendCombo.getItems().setAll(
-            "⚡ Auto-Detect (Optimal: Rust if present, Java ECS fallback)",
-            "☕ Pure Java 21 Artemis ECS (Portabilité absolue)",
-            "🦀 Native Rust SIMD Engine (Project Panama - Off-Heap)"
-        );
-        engineBackendCombo.getSelectionModel().selectFirst();
+        updateEngineAndAccelComboTexts();
+        I18nManager.getInstance().localeProperty().addListener((obs, oldLoc, newLoc) -> updateEngineAndAccelComboTexts());
+
         engineBackendCombo.setPrefWidth(240);
         engineBackendCombo.setStyle("-fx-font-size: 10px;");
-        engineBackendCombo.setTooltip(new Tooltip(I18nManager.getInstance().get("sim.engine.backend.tt")));
-        engineBackendCombo.valueProperty().addListener((o, oldV, newV) -> {
-            if (newV != null) {
-                if (newV.contains("Java")) {
+        engineBackendCombo.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("sim.engine.backend.tt"));
+        engineBackendCombo.getSelectionModel().selectedIndexProperty().addListener((o, oldIdx, newIdx) -> {
+            if (newIdx != null) {
+                int idx = newIdx.intValue();
+                if (idx == 1) {
                     org.swarmforge.core.engine.EnginePreferences.setSelectedEngineType(org.swarmforge.core.engine.SimulationEngineType.JAVA_ECS);
-                } else if (newV.contains("Rust")) {
+                } else if (idx == 2) {
                     org.swarmforge.core.engine.EnginePreferences.setSelectedEngineType(org.swarmforge.core.engine.SimulationEngineType.RUST_NATIVE);
                 } else {
                     org.swarmforge.core.engine.EnginePreferences.resetToDefaults();
@@ -814,22 +812,17 @@ public class SimulationControlPanel extends VBox {
         lblAccel.textProperty().bind(I18nManager.getInstance().createStringBinding("sim.compute.acceleration", "Accélération Matérielle"));
         lblAccel.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lblAccel.getStyleClass().add("accent-title");
-        lblAccel.setTooltip(new Tooltip(I18nManager.getInstance().get("sim.compute.acceleration.tt", "Sélectionne le matériel pour les EDP 3D et la biomécanique : Auto GPU/CPU, GPU OpenCL/TornadoVM, ou CPU SIMD.")));
+        lblAccel.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("sim.compute.acceleration.tt"));
 
-        computeAccelerationCombo.getItems().setAll(
-            "🚀 Auto-Detect (GPU OpenCL / TornadoVM si dispo, sinon CPU SIMD)",
-            "🎮 GPU Hardware Acceleration (OpenCL / TornadoVM / WebGPU)",
-            "💻 Pure CPU Multithreaded (SIMD Vector API)"
-        );
-        computeAccelerationCombo.getSelectionModel().selectFirst();
         computeAccelerationCombo.setPrefWidth(240);
         computeAccelerationCombo.setStyle("-fx-font-size: 10px;");
-        computeAccelerationCombo.setTooltip(new Tooltip(I18nManager.getInstance().get("sim.compute.acceleration.tt")));
-        computeAccelerationCombo.valueProperty().addListener((o, oldV, newV) -> {
-            if (newV != null) {
-                if (newV.contains("GPU")) {
+        computeAccelerationCombo.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("sim.compute.acceleration.tt"));
+        computeAccelerationCombo.getSelectionModel().selectedIndexProperty().addListener((o, oldIdx, newIdx) -> {
+            if (newIdx != null) {
+                int idx = newIdx.intValue();
+                if (idx == 1) {
                     org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.GPU_ACCELERATED);
-                } else if (newV.contains("CPU")) {
+                } else if (idx == 2) {
                     org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.CPU_MULTITHREADED_SIMD);
                 } else {
                     org.swarmforge.core.engine.EnginePreferences.setSelectedAccelerationMode(org.swarmforge.core.engine.ComputeAccelerationMode.AUTO);
@@ -2654,6 +2647,7 @@ public class SimulationControlPanel extends VBox {
                 }
 
                 org.swarmforge.core.scenario.Scenario sc = new org.swarmforge.core.scenario.Scenario(clean.toLowerCase().replace(" ", "_"), clean, desc);
+                sc.setAuthor(txtPlayerAlias != null && !txtPlayerAlias.getText().trim().isEmpty() ? txtPlayerAlias.getText().trim() : "Custom");
                 sc.setMasterSeed(getMasterSeed());
                 sc.setBiomeName(getSelectedWorld());
                 sc.setMaxDurationValue(maxDurationSpinner.getValue() != null ? maxDurationSpinner.getValue() : 100.0);
@@ -2665,13 +2659,29 @@ public class SimulationControlPanel extends VBox {
                 sc.setGridTilesX(spinGridTilesX.getValue() != null ? spinGridTilesX.getValue() : 1);
                 sc.setGridTilesY(spinGridTilesY.getValue() != null ? spinGridTilesY.getValue() : 1);
                 for (SpeciesConfigCard card : speciesCardList) {
-                    sc.addColony(new org.swarmforge.core.scenario.Scenario.ColonySetup(card.getSpeciesName(), card.getSpeciesName().toLowerCase().replace(" ", "_"), card.getQueenCount(), card.getWorkerCount(), card.getSoldierCount(), card.getInitialFood(), java.util.Map.of()));
+                    String spName = card.getSpeciesName();
+                    sc.addColony(new org.swarmforge.core.scenario.Scenario.ColonySetup(spName, spName.toLowerCase().replace(" ", "_"), card.getQueenCount(), card.getWorkerCount(), card.getSoldierCount(), card.getInitialFood(), java.util.Map.of()));
+                    if (speciesPresetManager != null) {
+                        org.swarmforge.core.species.CustomSpecies sp = speciesPresetManager.getPresetOrFallback(spName);
+                        if (sp != null) {
+                            sc.embedSpecies(sp);
+                        }
+                    }
                 }
+
+                // Embed self-contained World & Climate configurations
+                if (worldPresetManager != null && getSelectedWorld() != null && worldPresetManager.contains(getSelectedWorld())) {
+                    sc.setEmbeddedWorldConfig(worldPresetManager.get(getSelectedWorld()));
+                }
+                if (weatherPresetManager != null && getSelectedWeather() != null && weatherPresetManager.contains(getSelectedWeather())) {
+                    sc.setEmbeddedClimateConfig(weatherPresetManager.get(getSelectedWeather()));
+                }
+
                 scenarioPresetManager.save(sc);
 
                 if (!comboMeta.getItems().contains(itemTitle)) comboMeta.getItems().add(itemTitle);
                 comboMeta.getSelectionModel().select(itemTitle);
-                org.swarmforge.client.util.NotificationOverlay.show(this, "Scenario preset saved: " + clean, org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS);
+                org.swarmforge.client.util.NotificationOverlay.show(this, "Scenario preset saved: " + clean + " (v" + sc.getVersion() + ")", org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS);
             }
         });
     }
@@ -2679,14 +2689,24 @@ public class SimulationControlPanel extends VBox {
     private void handleDeleteScenario() {
         String selected = comboMeta.getValue();
         if (selected == null || selected.isEmpty()) return;
+        String clean = selected.replace("🔬 ", "").replace("⚔️ ", "").replace("📁 ", "").trim();
         Alert alert = org.swarmforge.client.util.ThemeManager.createAlert(
             Alert.AlertType.CONFIRMATION,
             "Are you sure you want to delete scenario preset '" + selected + "'?"
         );
         alert.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.OK) {
-                comboMeta.getItems().remove(selected);
-                if (!comboMeta.getItems().isEmpty()) comboMeta.getSelectionModel().selectFirst();
+                boolean deleted = scenarioPresetManager.delete(clean);
+                if (deleted) {
+                    comboMeta.getItems().remove(selected);
+                    if (!comboMeta.getItems().isEmpty()) comboMeta.getSelectionModel().selectFirst();
+                    org.swarmforge.client.util.NotificationOverlay.show(this, "Scenario deleted: " + clean, org.swarmforge.client.util.NotificationOverlay.NotificationType.INFO);
+                } else {
+                    org.swarmforge.client.util.ThemeManager.createAlert(
+                        Alert.AlertType.INFORMATION,
+                        "Built-in Academic or Multiplayer reference scenarios are protected and cannot be deleted."
+                    ).show();
+                }
             }
         });
     }
@@ -2920,6 +2940,27 @@ public class SimulationControlPanel extends VBox {
                 }
             }
         }
+    }
+
+    private void updateEngineAndAccelComboTexts() {
+        I18nManager i18n = I18nManager.getInstance();
+        int engineIdx = engineBackendCombo.getSelectionModel().getSelectedIndex();
+        if (engineIdx < 0) engineIdx = 0;
+        engineBackendCombo.getItems().setAll(
+            i18n.get("sim.engine.backend.auto"),
+            i18n.get("sim.engine.backend.java"),
+            i18n.get("sim.engine.backend.rust")
+        );
+        engineBackendCombo.getSelectionModel().select(engineIdx);
+
+        int accelIdx = computeAccelerationCombo.getSelectionModel().getSelectedIndex();
+        if (accelIdx < 0) accelIdx = 0;
+        computeAccelerationCombo.getItems().setAll(
+            i18n.get("sim.compute.acceleration.auto"),
+            i18n.get("sim.compute.acceleration.gpu"),
+            i18n.get("sim.compute.acceleration.cpu")
+        );
+        computeAccelerationCombo.getSelectionModel().select(accelIdx);
     }
 
     // =========================================================================

@@ -402,10 +402,11 @@ public class NestGeneratorPane extends BorderPane {
 
     private void populateGenusCombo() {
         if (genusSelect == null) return;
+        I18nManager i18n = I18nManager.getInstance();
         String cat = categorySelect != null ? categorySelect.getValue() : null;
         String curVal = genusSelect.getValue();
         genusSelect.getItems().clear();
-        genusSelect.getItems().add("🔬 All Genera");
+        genusSelect.getItems().add(i18n.get("nest.genus.all"));
 
         String type = getCategoryType(cat);
         if ("ANT".equals(type)) {
@@ -439,10 +440,11 @@ public class NestGeneratorPane extends BorderPane {
 
     private void filterSpeciesModelComboByCategory(String category) {
         if (speciesModelCombo == null) return;
+        I18nManager i18n = I18nManager.getInstance();
         String targetType = getCategoryType(category);
 
         String targetGenus = null;
-        if (genusSelect != null && genusSelect.getValue() != null && !genusSelect.getValue().contains("All Genera")) {
+        if (genusSelect != null && genusSelect.getValue() != null && !genusSelect.getValue().equals(i18n.get("nest.genus.all")) && !genusSelect.getValue().contains("All Genera")) {
             targetGenus = genusSelect.getValue().split(" ")[0].toLowerCase();
         }
 
@@ -471,7 +473,7 @@ public class NestGeneratorPane extends BorderPane {
                 }
             }
             FXCollections.sort(speciesModelCombo.getItems());
-            speciesModelCombo.getItems().add("🛠️ Custom Nest Configuration");
+            speciesModelCombo.getItems().add(i18n.get("nest.species.custom_config"));
             if (curSel != null && speciesModelCombo.getItems().contains(curSel)) {
                 speciesModelCombo.setValue(curSel);
             } else if (!speciesModelCombo.getItems().isEmpty()) {
@@ -764,14 +766,7 @@ public class NestGeneratorPane extends BorderPane {
 
         // 2. Solar Orientation
         evalOrientationCombo = new ComboBox<>();
-        evalOrientationCombo.getItems().addAll(
-            "East (Morning Light)",
-            "North (Shaded / Cool)",
-            "South (Full Solar)",
-            "South-East (Morning Sun)",
-            "West (Evening Heat)"
-        );
-        evalOrientationCombo.getSelectionModel().selectFirst();
+        populateOrientationCombo();
         evalOrientationCombo.setPrefWidth(220);
         evalOrientationCombo.setOnAction(e -> updatePlacementViabilityScore());
 
@@ -812,6 +807,25 @@ public class NestGeneratorPane extends BorderPane {
         return block;
     }
 
+    private void populateOrientationCombo() {
+        if (evalOrientationCombo == null) return;
+        I18nManager i18n = I18nManager.getInstance();
+        int selIdx = evalOrientationCombo.getSelectionModel().getSelectedIndex();
+        evalOrientationCombo.getItems().clear();
+        evalOrientationCombo.getItems().addAll(
+            i18n.get("nest.solar.east"),
+            i18n.get("nest.solar.north"),
+            i18n.get("nest.solar.south"),
+            i18n.get("nest.solar.southeast"),
+            i18n.get("nest.solar.west")
+        );
+        if (selIdx >= 0 && selIdx < evalOrientationCombo.getItems().size()) {
+            evalOrientationCombo.getSelectionModel().select(selIdx);
+        } else {
+            evalOrientationCombo.getSelectionModel().selectFirst();
+        }
+    }
+
     private VBox buildPlacementViabilityCard() {
         I18nManager i18n = I18nManager.getInstance();
         Label evalTitle = new Label();
@@ -826,7 +840,7 @@ public class NestGeneratorPane extends BorderPane {
         evalScoreLabel = new Label("85%");
         evalScoreLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #22c55e;");
 
-        evalBadgeLabel = new Label("🟢 OPTIMAL");
+        evalBadgeLabel = new Label(i18n.get("nest.eval.badge.optimal"));
         evalBadgeLabel.setStyle("-fx-background-color: #15803d; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10; -fx-font-size: 10px;");
 
         HBox scoreHeaderBox = new HBox(8, evalScoreProgressBar, evalScoreLabel, evalBadgeLabel);
@@ -870,6 +884,7 @@ public class NestGeneratorPane extends BorderPane {
 
     private void updatePlacementViabilityScore() {
         if (evalScoreProgressBar == null) return;
+        I18nManager i18n = I18nManager.getInstance();
         double height = evalHeightSlider != null ? evalHeightSlider.getValue() : 0.0;
         double temp = evalTempSlider != null ? evalTempSlider.getValue() : 22.0;
         double moisture = evalMoistureSlider != null ? evalMoistureSlider.getValue() : 45.0;
@@ -882,48 +897,48 @@ public class NestGeneratorPane extends BorderPane {
         evalRecommendationsBox.getChildren().clear();
 
         // 1. Height & Elevation Clearance Checks
-        if (arch.contains("BEEHIVE") || arch.contains("WAX_COMB")) {
+        if (arch.contains("BEEHIVE") || arch.contains("WAX_COMB") || arch.contains("beehive") || arch.contains("Ruche")) {
             if (height < 0.4) {
                 score -= 25.0;
-                addEvalRec("⚠ Wooden Beehive: Risk of ground moisture and ground predators. Elevate to >= 0.5m.");
+                addEvalRec(i18n.get("nest.eval.rec.beehive_low"));
             } else if (height > 2.5) {
                 score -= 15.0;
-                addEvalRec("ℹ️ High Elevation: Strong wind exposure may perturb take-off and landing.");
+                addEvalRec(i18n.get("nest.eval.rec.beehive_high"));
             } else {
-                addEvalRec("✅ Ideal Elevation (0.5m - 2.0m): Ground protection and insulation.");
+                addEvalRec(i18n.get("nest.eval.rec.beehive_ideal"));
             }
-        } else if (arch.contains("PAPER_PEDUNCULATE")) {
+        } else if (arch.contains("PAPER_PEDUNCULATE") || arch.contains("paper") || arch.contains("papier")) {
             if (height < 2.5) {
                 score -= 35.0;
-                addEvalRec("🚨 Hanging Nest: Height < 2.5m vulnerable to terrestrial predators.");
+                addEvalRec(i18n.get("nest.eval.rec.paper_low"));
             } else {
-                addEvalRec("✅ Optimal Aerial Anchor: Peduncle attached high up, safe from ground.");
+                addEvalRec(i18n.get("nest.eval.rec.paper_optimal"));
             }
-        } else if (arch.contains("BURROW") || arch.contains("FUNGI_VAULT")) {
+        } else if (arch.contains("BURROW") || arch.contains("FUNGI_VAULT") || arch.contains("subterranean") || arch.contains("souterrain")) {
             if (height > 0.5) {
                 score -= 30.0;
-                addEvalRec("⚠ Subterranean gallery placed above soil surface.");
+                addEvalRec(i18n.get("nest.eval.rec.subterranean_high"));
             } else {
-                addEvalRec("✅ Ideal Depth: Natural thermal soil protection.");
+                addEvalRec(i18n.get("nest.eval.rec.subterranean_ideal"));
             }
         }
 
         // 2. Thermal Microclimate
-        if (temp < 15.0) { score -= 20.0; addEvalRec("⚠ Cool ambient temperature (<15°C): Brood development slowed."); }
-        else if (temp > 35.0) { score -= 25.0; addEvalRec("🚨 Thermal Overheating (>35°C): Risk of wax melting or mortality."); }
-        else { addEvalRec("✅ Optimal thermal microclimate (18°C - 30°C)."); }
+        if (temp < 15.0) { score -= 20.0; addEvalRec(i18n.get("nest.eval.rec.temp_cold")); }
+        else if (temp > 35.0) { score -= 25.0; addEvalRec(i18n.get("nest.eval.rec.temp_hot")); }
+        else { addEvalRec(i18n.get("nest.eval.rec.temp_optimal")); }
 
         // 3. Moisture
-        if (moisture < 20.0) { score -= 20.0; addEvalRec("⚠ Substrate Desiccation (<20%): Risk of brood dehydration."); }
-        else if (moisture > 80.0) { score -= 20.0; addEvalRec("⚠ Water Saturation (>80%): Risk of fungal mold development."); }
-        else { addEvalRec("✅ Balanced substrate moisture level."); }
+        if (moisture < 20.0) { score -= 20.0; addEvalRec(i18n.get("nest.eval.rec.moisture_dry")); }
+        else if (moisture > 80.0) { score -= 20.0; addEvalRec(i18n.get("nest.eval.rec.moisture_wet")); }
+        else { addEvalRec(i18n.get("nest.eval.rec.moisture_balanced")); }
 
         // 4. Foraging
-        if (foraging > 150.0) { score -= 20.0; addEvalRec("⚠ High Foraging Distance (>150m): High flight energy expenditure."); }
-        else { addEvalRec("✅ Immediate proximity to floral and water resources."); }
+        if (foraging > 150.0) { score -= 20.0; addEvalRec(i18n.get("nest.eval.rec.foraging_far")); }
+        else { addEvalRec(i18n.get("nest.eval.rec.foraging_near")); }
 
         // 5. Compaction
-        if (compaction < 30.0) { score -= 15.0; addEvalRec("⚠ Unstable Loose Substrate (<30 kPa): Collapse risk."); }
+        if (compaction < 30.0) { score -= 15.0; addEvalRec(i18n.get("nest.eval.rec.compaction_loose")); }
 
         // 6. Colony Population vs Nest Capacity Validation & Spillover Diagnostics
         int totalChambers = (int) getChamberCount();
@@ -934,18 +949,18 @@ public class NestGeneratorPane extends BorderPane {
 
         if (estPop > estNestCap) {
             score -= 15.0;
-            addEvalRec(String.format("⚠ Nest Capacity (~%d ind.) < Population (%d ind.). The %d overflow individuals will emerge on the surface around the crater.", estNestCap, estPop, estPop - estNestCap));
+            addEvalRec(String.format(i18n.get("nest.eval.rec.cap_overflow"), estNestCap, estPop, estPop - estNestCap));
         } else {
-            addEvalRec(String.format("✅ Nest capacity (~%d ind.) sufficient for initial population (%d ind.).", estNestCap, estPop));
+            addEvalRec(String.format(i18n.get("nest.eval.rec.cap_sufficient"), estNestCap, estPop));
         }
 
         if (queenChambers == 0) {
             score -= 20.0;
-            addEvalRec("🚨 Missing Queen Chamber (0): The queen and eggs will have no dedicated chamber.");
+            addEvalRec(i18n.get("nest.eval.rec.queen_missing"));
         }
         if (foodChambers == 0) {
             score -= 10.0;
-            addEvalRec("⚠ Absence of Storage Granaries: Risk of starvation or brood cluttering.");
+            addEvalRec(i18n.get("nest.eval.rec.food_missing"));
         }
 
         score = Math.max(0.0, Math.min(100.0, score));
@@ -955,17 +970,17 @@ public class NestGeneratorPane extends BorderPane {
         if (score >= 80) {
             evalScoreProgressBar.setStyle("-fx-accent: #22c55e;");
             evalScoreLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #22c55e;");
-            evalBadgeLabel.setText("🟢 OPTIMAL");
+            evalBadgeLabel.setText(i18n.get("nest.eval.badge.optimal"));
             evalBadgeLabel.setStyle("-fx-background-color: #15803d; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10; -fx-font-size: 10px;");
         } else if (score >= 50) {
             evalScoreProgressBar.setStyle("-fx-accent: #f59e0b;");
             evalScoreLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;");
-            evalBadgeLabel.setText("🟠 VIABLE");
+            evalBadgeLabel.setText(i18n.get("nest.eval.badge.viable"));
             evalBadgeLabel.setStyle("-fx-background-color: #b45309; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10; -fx-font-size: 10px;");
         } else {
             evalScoreProgressBar.setStyle("-fx-accent: #ef4444;");
             evalScoreLabel.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #ef4444;");
-            evalBadgeLabel.setText("🔴 CRITIQUE");
+            evalBadgeLabel.setText(i18n.get("nest.eval.badge.critical"));
             evalBadgeLabel.setStyle("-fx-background-color: #b91c1c; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 2 8; -fx-background-radius: 10; -fx-font-size: 10px;");
         }
     }
@@ -1428,11 +1443,12 @@ public class NestGeneratorPane extends BorderPane {
         isDirty = true;
         isUpdatingSpeciesCombo = true;
         try {
+            I18nManager i18n = I18nManager.getInstance();
             if (speciesModelCombo != null) {
-                speciesModelCombo.setValue("✨ Custom Active Species");
+                speciesModelCombo.setValue(i18n.get("nest.species.custom_config"));
             }
             if (speciesStatusLabel != null) {
-                speciesStatusLabel.setText("Nest parameters modified (Custom nest).");
+                speciesStatusLabel.setText(i18n.get("nest.status.custom_modified"));
             }
             if (presetsCombo != null && presetsCombo.getSelectionModel().getSelectedItem() != null) {
                 presetsCombo.getSelectionModel().clearSelection();
@@ -1606,8 +1622,9 @@ public class NestGeneratorPane extends BorderPane {
 
             updateTotalChambers();
 
+            I18nManager i18n = I18nManager.getInstance();
             if (speciesStatusLabel != null) {
-                speciesStatusLabel.setText("Nest synchronized (" + species.getCommonName() + ")");
+                speciesStatusLabel.setText(String.format(i18n.get("nest.status.synchronized"), species.getCommonName()));
             }
             if (speciesModelCombo != null) {
                 String matchedItem = null;
@@ -1624,7 +1641,7 @@ public class NestGeneratorPane extends BorderPane {
                 if (matchedItem != null) {
                     speciesModelCombo.setValue(matchedItem);
                 } else {
-                    speciesModelCombo.setValue("✨ Custom Active Species");
+                    speciesModelCombo.setValue(i18n.get("nest.species.custom_config"));
                 }
             }
         } finally {
@@ -1637,19 +1654,20 @@ public class NestGeneratorPane extends BorderPane {
 
     private void updatePassageCheckLabel() {
         if (passageCheckLabel == null) return;
+        I18nManager i18n = I18nManager.getInstance();
         double wMm = workerSizeSlider != null ? workerSizeSlider.getValue() : 4.0;
         double tunnelScale = tunnelWidthSlider != null ? tunnelWidthSlider.getValue() : 2.0;
         // Scaled gallery clearance relative to worker size
         double effectiveWidthMm = Math.max(tunnelScale * 3.0, (tunnelScale / 2.0) * wMm * 1.25);
 
         if (effectiveWidthMm < wMm * 0.95) {
-            passageCheckLabel.setText("⚠ Tunnel too narrow for workers (" + String.format("%.1f", wMm) + "mm)! Risk of blockage.");
+            passageCheckLabel.setText(String.format(i18n.get("nest.tunnel.narrow"), wMm));
             passageCheckLabel.setStyle("-fx-font-size:10px;-fx-text-fill:#ef4444;-fx-font-weight:bold;");
         } else if (effectiveWidthMm < wMm * 1.2) {
-            passageCheckLabel.setText("⚡ Narrow passage (Single file movement - Workers " + String.format("%.1f", wMm) + "mm)");
+            passageCheckLabel.setText(String.format(i18n.get("nest.tunnel.single_file"), wMm));
             passageCheckLabel.setStyle("-fx-font-size:10px;-fx-text-fill:#eab308;-fx-font-weight:bold;");
         } else {
-            passageCheckLabel.setText("✅ Fluid tunnel (Smooth passage for workers, majors, queen - " + String.format("%.1f", effectiveWidthMm) + "mm)");
+            passageCheckLabel.setText(String.format(i18n.get("nest.tunnel.fluid"), effectiveWidthMm));
             passageCheckLabel.setStyle("-fx-font-size:10px;-fx-text-fill:#22c55e;-fx-font-weight:bold;");
         }
     }
@@ -1657,10 +1675,11 @@ public class NestGeneratorPane extends BorderPane {
     private void onSpeciesModelSelected() {
         String sel = speciesModelCombo.getValue();
         if (sel == null) return;
+        I18nManager i18n = I18nManager.getInstance();
 
-        if (sel.contains("Custom Nest Configuration") || sel.contains("Custom Species")) {
+        if (sel.contains("Custom Nest Configuration") || sel.contains("Custom Species") || sel.equals(i18n.get("nest.species.custom_config"))) {
             if (speciesStatusLabel != null) {
-                speciesStatusLabel.setText("Custom Parameters (Nest not linked to a preset).");
+                speciesStatusLabel.setText(i18n.get("nest.status.custom_unlinked"));
             }
             return;
         }

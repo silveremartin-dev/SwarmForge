@@ -67,12 +67,33 @@ public class Scenario implements Serializable {
     // Numerical Integration Step Size (dt)
     private float simulationStepSeconds = 0.0166f;
 
+    private String author = "Custom";
+    private int version = 1;
+    private long revisionTimestamp = System.currentTimeMillis();
+    private String contentChecksum = "";
+    private boolean builtIn = false;
+
+    // Self-Contained Embedded Assets (Species, Worlds, Climates, Predators, Nests)
+    private final Map<String, org.swarmforge.core.species.CustomSpecies> embeddedSpecies = new HashMap<>();
+    private final Map<String, Object> embeddedWorldConfig = new HashMap<>();
+    private final Map<String, Object> embeddedClimateConfig = new HashMap<>();
+    private final List<Map<String, Object>> embeddedPredators = new ArrayList<>();
+    private final Map<String, Object> embeddedNestConfig = new HashMap<>();
+
     public Scenario() {}
 
     public Scenario(String id, String title, String description) {
         this.id = id;
         this.title = title;
         this.description = description;
+    }
+
+    public Scenario(String id, String title, String description, String author, int version) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.author = author;
+        this.version = Math.max(1, version);
     }
 
     /**
@@ -214,4 +235,131 @@ public class Scenario implements Serializable {
 
     public float getSimulationStepSeconds() { return simulationStepSeconds; }
     public void setSimulationStepSeconds(float simulationStepSeconds) { this.simulationStepSeconds = simulationStepSeconds; }
+
+    public String getAuthor() { return author; }
+    public void setAuthor(String author) { this.author = author != null ? author : "Custom"; }
+
+    public int getVersion() { return version; }
+    public void setVersion(int version) { this.version = Math.max(1, version); }
+
+    public long getRevisionTimestamp() { return revisionTimestamp; }
+    public void setRevisionTimestamp(long revisionTimestamp) { this.revisionTimestamp = revisionTimestamp; }
+
+    public String getContentChecksum() {
+        if (contentChecksum == null || contentChecksum.isEmpty()) {
+            return calculateChecksum();
+        }
+        return contentChecksum;
+    }
+    public void setContentChecksum(String contentChecksum) { this.contentChecksum = contentChecksum; }
+
+    public boolean isBuiltIn() { return builtIn; }
+    public void setBuiltIn(boolean builtIn) { this.builtIn = builtIn; }
+
+    // --- Embedded Assets (Self-Contained Scenario Bundle) ---
+
+    public Map<String, org.swarmforge.core.species.CustomSpecies> getEmbeddedSpecies() {
+        return embeddedSpecies;
+    }
+
+    public void embedSpecies(org.swarmforge.core.species.CustomSpecies species) {
+        if (species != null) {
+            String key = species.getId() != null ? species.getId() : species.getScientificName();
+            if (key != null) {
+                this.embeddedSpecies.put(key, species);
+            }
+        }
+    }
+
+    public Map<String, Object> getEmbeddedWorldConfig() {
+        return embeddedWorldConfig;
+    }
+
+    public void setEmbeddedWorldConfig(Map<String, Object> config) {
+        this.embeddedWorldConfig.clear();
+        if (config != null) this.embeddedWorldConfig.putAll(config);
+    }
+
+    public Map<String, Object> getEmbeddedClimateConfig() {
+        return embeddedClimateConfig;
+    }
+
+    public void setEmbeddedClimateConfig(Map<String, Object> config) {
+        this.embeddedClimateConfig.clear();
+        if (config != null) this.embeddedClimateConfig.putAll(config);
+    }
+
+    public List<Map<String, Object>> getEmbeddedPredators() {
+        return embeddedPredators;
+    }
+
+    public void embedPredator(Map<String, Object> predatorConfig) {
+        if (predatorConfig != null) this.embeddedPredators.add(predatorConfig);
+    }
+
+    public Map<String, Object> getEmbeddedNestConfig() {
+        return embeddedNestConfig;
+    }
+
+    public void setEmbeddedNestConfig(Map<String, Object> config) {
+        this.embeddedNestConfig.clear();
+        if (config != null) this.embeddedNestConfig.putAll(config);
+    }
+
+    public boolean isSelfContained() {
+        return !embeddedSpecies.isEmpty() || !embeddedWorldConfig.isEmpty() || !embeddedClimateConfig.isEmpty();
+    }
+
+    /**
+     * Calculates a deterministic SHA-256 content checksum of the scenario configuration,
+     * including embedded self-contained species, worlds, climates and predators.
+     * Used to detect collisions, duplicate presets, and configuration divergence.
+     */
+    public String calculateChecksum() {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            StringBuilder sb = new StringBuilder();
+            sb.append(title != null ? title : "").append("|");
+            sb.append(masterSeed).append("|");
+            sb.append(width).append("x").append(height).append("x").append(depth).append("|");
+            sb.append(biomeName != null ? biomeName : "").append("|");
+            sb.append(initialTemperature).append("|").append(initialHumidity).append("|");
+            sb.append(foodPatchesCount).append("|").append(aphidColoniesCount).append("|");
+            sb.append(seedPlantsCount).append("|").append(preySpawnersCount).append("|");
+            sb.append(multiplayerOnly).append("|").append(requiredPlayerCount).append("|");
+            for (ColonySetup c : colonies) {
+                sb.append(c.speciesName()).append(":").append(c.queenCount()).append(":").append(c.workerCount()).append(":").append(c.soldierCount()).append(";");
+            }
+            for (ScenarioEvent ev : scheduledEvents) {
+                sb.append(ev.triggerTick()).append(":").append(ev.eventType()).append(";");
+            }
+            for (Map.Entry<String, org.swarmforge.core.species.CustomSpecies> spEntry : embeddedSpecies.entrySet()) {
+                sb.append("SP:").append(spEntry.getKey()).append("=").append(spEntry.getValue().getContentChecksum()).append(";");
+            }
+            if (!embeddedWorldConfig.isEmpty()) {
+                sb.append("WORLD:").append(embeddedWorldConfig.toString()).append(";");
+            }
+            if (!embeddedClimateConfig.isEmpty()) {
+                sb.append("CLIMATE:").append(embeddedClimateConfig.toString()).append(";");
+            }
+            byte[] hash = md.digest(sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                hexString.append(String.format("%02x", b));
+            }
+            this.contentChecksum = hexString.toString().substring(0, 16);
+            return this.contentChecksum;
+        } catch (Exception e) {
+            this.contentChecksum = "0000000000000000";
+            return this.contentChecksum;
+        }
+    }
+
+    /**
+     * Checks if this scenario has identical biological, physical and demographic content to another.
+     */
+    public boolean isContentEqualTo(Scenario other) {
+        if (other == null) return false;
+        return getContentChecksum().equals(other.getContentChecksum());
+    }
 }

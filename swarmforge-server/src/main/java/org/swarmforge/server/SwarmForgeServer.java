@@ -64,6 +64,11 @@ public class SwarmForgeServer {
         // Get main components for legacy support/accessors
         Simulation mainSim = simulationManager.getSimulation("main").orElseThrow();
         this.terrarium = mainSim.getTerrarium();
+        try {
+            loadAcademicScenario(org.swarmforge.core.scenario.AcademicScenarios.createLevyVsBrownianScenario(42L));
+        } catch (Exception e) {
+            LOG.warn("Could not load initial academic scenario: {}", e.getMessage());
+        }
 
         // Initialize persistence
         this.database = new DatabaseManager(

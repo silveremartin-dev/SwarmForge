@@ -1,48 +1,57 @@
 import React, { useState } from 'react'
-import { Users, Minus, ChevronDown, X, Crosshair, Crown, Shield, HardHat, Utensils } from 'lucide-react'
+import { Users, Minus, ChevronDown, X, Crosshair, Crown, Shield, HardHat, Utensils, AlertCircle } from 'lucide-react'
 import { useSimulationStore } from '../store/simulationStore'
 import { getTranslation } from '../i18n/translations'
 
 export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible, onClose }) {
-    const { colonies, ants, nests, playerAlias, playerSpecies, theme, language } = useSimulationStore()
+    const {
+        colonies,
+        ants,
+        nests,
+        playerAlias,
+        playerSpecies,
+        lobbyPlayers,
+        requiredPlayerCount,
+        isMultiplayerOnly,
+        gridTilesX,
+        gridTilesY,
+        connected,
+        theme,
+        language
+    } = useSimulationStore()
     const [isCollapsed, setIsCollapsed] = useState(false)
     const isDark = theme === 'dark'
     const t = (key, fallback) => getTranslation(language, key, fallback)
 
-    if (!isVisible) return null
+    const isMatchmakingWaiting = connected && (requiredPlayerCount > 1 || isMultiplayerOnly) && (lobbyPlayers || []).length < (requiredPlayerCount || 2)
+    const isMultiEntityContext = isMatchmakingWaiting ||
+        ((lobbyPlayers || []).length > 1) ||
+        ((colonies || []).length > 1) ||
+        ((gridTilesX || 1) > 1 || (gridTilesY || 1) > 1) ||
+        isMultiplayerOnly ||
+        ((requiredPlayerCount || 1) > 1)
 
-    const teamColors = ['#38bdf8', '#f87171', '#4ade80', '#fbbf24', '#c084fc', '#f472b6']
+    if (!isVisible || !isMultiEntityContext) return null
 
     // Compute live per-colony dynamic statistics from real ants array
     const coloniesData = (colonies || []).map((col, idx) => {
         const isLocal = idx === 0 || col.isLocalParticipant || col.id === 'card_col_1'
         const colAnts = (ants || []).filter(a => a.colonyId === col.id || (idx === 0 && !a.colonyId))
         
-        const realQueens = colAnts.length > 0 
-            ? colAnts.filter(a => a.caste === 'QUEEN').length 
-            : (col.queens ?? (col.initialQueens || 1))
-        
-        const realWorkers = colAnts.length > 0 
-            ? colAnts.filter(a => a.caste === 'WORKER').length 
-            : (col.workers ?? (col.initialWorkers || 40))
-        
-        const realSoldiers = colAnts.length > 0 
-            ? colAnts.filter(a => a.caste === 'SOLDIER').length 
-            : (col.soldiers ?? (col.initialSoldiers || 10))
-        
-        const realMales = colAnts.length > 0 
-            ? colAnts.filter(a => a.caste === 'MALE').length 
-            : (col.males ?? (col.initialMales || 0))
+        const realQueens = colAnts.filter(a => a.caste === 'QUEEN').length
+        const realWorkers = colAnts.filter(a => a.caste === 'WORKER').length
+        const realSoldiers = colAnts.filter(a => a.caste === 'SOLDIER').length
+        const realMales = colAnts.filter(a => a.caste === 'MALE').length
 
-        const totalPop = colAnts.length > 0 ? colAnts.length : (realQueens + realWorkers + realSoldiers + realMales)
-        const foodAmount = col.foodStored ?? col.food ?? 250
+        const totalPop = colAnts.length > 0 ? colAnts.length : (col.population || 0)
+        const foodAmount = col.foodStored ?? col.food ?? 0
 
         const nest = (nests || []).find(n => n.colonyId === col.id) || (nests && nests[idx])
         const nestX = nest?.x ?? (idx === 0 ? 35 : 65)
         const nestY = nest?.y ?? 0
         const nestZ = nest?.z ?? (nest?.y ?? (idx === 0 ? 35 : 65))
 
-        const participantName = isLocal ? (playerAlias || t('localPlayerDefault', 'Joueur Local')) : (col.participantName || `${t('aiRivalPrefix', 'IA Rival')} #${idx}`)
+        const participantName = isLocal ? (playerAlias || t('localPlayerDefault', 'Joueur Local')) : (col.participantName || col.name || `Colonie #${idx + 1}`)
         const speciesName = isLocal ? (playerSpecies || col.speciesId || 'Formica fusca') : (col.speciesId || col.speciesName || t('rivalSpeciesDefault', 'Espèce Rivale'))
 
         return {
@@ -56,7 +65,7 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
             queens: realQueens,
             males: realMales,
             foodStored: foodAmount,
-            isQueenAlive: realQueens > 0,
+            isQueenAlive: realQueens > 0 || (col.queens && col.queens > 0),
             nestX,
             nestY,
             nestZ,
@@ -144,6 +153,25 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
             {/* Colonies List (1:1 with JavaFX ColonyCard) */}
             {!isCollapsed && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}>
+                    {isMatchmakingWaiting && (
+                        <div style={{
+                            background: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.2)',
+                            border: '1px solid #f59e0b',
+                            borderRadius: 6,
+                            padding: '6px 8px',
+                            color: isDark ? '#fcd34d' : '#b45309',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            fontSize: 10,
+                            fontWeight: 600
+                        }}>
+                            <AlertCircle size={14} color="#f59e0b" style={{ flexShrink: 0 }} />
+                            <span>
+                                {t('matchmakingWaitingNotice', 'En attente de participants')} : {(lobbyPlayers || []).length} / {requiredPlayerCount || 2} {t('playersConnected', 'joueur(s) connecté(s)')}
+                            </span>
+                        </div>
+                    )}
                     {coloniesData.length === 0 ? (
                         <div style={{ color: isDark ? '#64748b' : '#94a3b8', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
                             {t('noColoniesDetected', 'Aucune colonie active détectée.')}
