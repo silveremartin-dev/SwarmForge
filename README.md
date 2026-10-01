@@ -183,23 +183,36 @@ The Windows Standalone is heavier **solely** because `jpackage` embeds a full st
 # Build the entire multi-module platform
 mvn clean install -DskipTests
 
-# Build the Standalone Windows Release & Installer locally:
-.\scripts\package-release.bat
+# Or using the dedicated build scripts:
+./scripts/build/build-all.sh            # Linux / macOS
+scripts\build\build-all.bat             # Windows
+
+# Package Client artifacts:
+scripts\build\package_client.bat
+
+# Compile Native Rust Acceleration (optional):
+scripts\build\build-rust-native.bat
+
+# Generate Javadoc documentation:
+scripts\build\generate-javadoc.bat
+
+# Package Standalone Release archive:
+scripts\build\package-release.bat
 ```
 
 ### Running Components
 
-```bash
-# 1. Launch SwarmForge Server (with integrated GUI monitor)
-mvn exec:java -pl swarmforge-server -Dexec.mainClass=org.swarmforge.server.ServerGuiApp
-
-# 2. Launch SwarmForge Studio / 3D Editor
-mvn exec:java -pl swarmforge-editor -Dexec.mainClass=org.swarmforge.client.SwarmForgeClient
-
-# 3. Launch Distributed Compute Node
-mvn exec:java -pl swarmforge-compute -Dexec.mainClass=org.swarmforge.compute.ComputeNodeApp \
-  -Dexec.args="--host localhost --port 50051 --my-port 50052 --gpu"
-```
+| Component | Windows (`.bat`) | Linux / macOS (`.sh`) | Options / Notes |
+| :--- | :--- | :--- | :--- |
+| **Serveur de simulation** | `scripts\run\run-server.bat` | `./scripts/run/run-server.sh` | GUI par défaut. `--nogui`, `--scenario <1-16>`, `--postgres` |
+| **Client Lourd seul (Viewer 3D)** | `scripts\run\run-client.bat` | `./scripts/run/run-client.sh` | `--debug`, `--nogui` |
+| **Client Lourd + Serveur** | `scripts\run\run-client-and-server.bat` | `./scripts/run/run-client-and-server.sh` | Lance le serveur puis le viewer 3D |
+| **Client Léger seul (Web UI)** | `scripts\run\run-web.bat` | `./scripts/run/run-web.sh` | Distribution sur `http://localhost:5173` |
+| **Client Léger + Serveur** | `scripts\run\run-web-and-server.bat` | `./scripts/run/run-web-and-server.sh` | Serveur Java + client Web Vite/Three.js |
+| **Éditeur Studio autonome** | `scripts\run\run-editor.bat` | `./scripts/run/run-editor.sh` | Mode autonome JavaFX / jME3 |
+| **Banc d'Essai Tout-en-Un** | `scripts\test\test-all-in-one.bat` | `./scripts/test/test-all-in-one.sh` | Multi-clients, choix scénario & compute node |
+| **Tests Unitaires / Intégration** | `scripts\test\run-all-tests.bat` | `./scripts/test/run-all-tests.sh` | Exécution des tests Maven (`mvn test`) |
+| **Benchmarks JMH** | `scripts\test\run-benchmarks.bat` | `./scripts/test/run-benchmarks.sh` | Suite de benchmarks de débit |
 
 ---
 

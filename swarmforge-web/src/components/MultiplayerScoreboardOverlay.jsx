@@ -23,15 +23,8 @@ export default function MultiplayerScoreboardOverlay({ onFocusColony, isVisible,
     const isDark = theme === 'dark'
     const t = (key, fallback) => getTranslation(language, key, fallback)
 
-    const isMatchmakingWaiting = connected && (requiredPlayerCount > 1 || isMultiplayerOnly) && (lobbyPlayers || []).length < (requiredPlayerCount || 2)
-    const isMultiEntityContext = isMatchmakingWaiting ||
-        ((lobbyPlayers || []).length > 1) ||
-        ((colonies || []).length > 1) ||
-        ((gridTilesX || 1) > 1 || (gridTilesY || 1) > 1) ||
-        isMultiplayerOnly ||
-        ((requiredPlayerCount || 1) > 1)
-
-    if (!isVisible || !isMultiEntityContext) return null
+    const hasMultipleParticipants = Boolean(lobbyPlayers && lobbyPlayers.length >= 2)
+    if (!isVisible || !hasMultipleParticipants) return null
 
     // Compute live per-colony dynamic statistics from real ants array
     const coloniesData = (colonies || []).map((col, idx) => {

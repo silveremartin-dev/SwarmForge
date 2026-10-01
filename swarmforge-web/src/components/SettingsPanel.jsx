@@ -6,13 +6,18 @@ import {
     RotateCcw,
     Check,
     Info,
-    Cpu,
     Zap,
-    Boxes,
     Activity,
     Monitor,
-    Sparkles,
-    Sliders
+    Sliders,
+    Volume2,
+    VolumeX,
+    Trees,
+    Waves,
+    CloudRain,
+    Bug,
+    Eye,
+    Layers
 } from 'lucide-react'
 import { useSimulationStore } from '../store/simulationStore'
 import { SUPPORTED_LANGUAGES, getTranslation } from '../i18n/translations'
@@ -27,7 +32,31 @@ export default function SettingsPanel() {
         computeAcceleration,
         setComputeAcceleration,
         lodLevel,
-        setLodLevel
+        setLodLevel,
+        // Audio Controls
+        masterVolume,
+        setMasterVolume,
+        ambientEnabled,
+        toggleAmbient,
+        riverEnabled,
+        toggleRiver,
+        weatherEnabled,
+        toggleWeatherAudio,
+        insectEnabled,
+        toggleInsect,
+        // Graphics Controls
+        showPheromones,
+        togglePheromones,
+        showVegetation,
+        toggleVegetation,
+        showChambers,
+        toggleChambers,
+        showWeather,
+        toggleWeather,
+        showScientificIsolinesTopo,
+        toggleScientificIsolinesTopo,
+        isUVVisionMode,
+        toggleUVVisionMode
     } = useSimulationStore()
 
     const [hasWebGpu, setHasWebGpu] = useState(false)
@@ -54,6 +83,11 @@ export default function SettingsPanel() {
         setComputeAcceleration('auto')
         if (setLodLevel) setLodLevel('medium')
         setTargetFps(60)
+        setMasterVolume(0.7)
+        if (!ambientEnabled) toggleAmbient()
+        if (!riverEnabled) toggleRiver()
+        if (!weatherEnabled) toggleWeatherAudio()
+        if (!insectEnabled) toggleInsect()
         showToast(t('resetSettingsBtn', '✓ Paramètres rétablis par défaut !'), 'info')
     }
 
@@ -61,7 +95,7 @@ export default function SettingsPanel() {
 
     return (
         <div style={{
-            maxWidth: 800,
+            maxWidth: 820,
             margin: '0 auto',
             display: 'flex',
             flexDirection: 'column',
@@ -74,7 +108,7 @@ export default function SettingsPanel() {
                         ⚙️ {t('settingsTitle', 'Paramètres du Client Visuel & Préférences')}
                     </h2>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: textMuted }}>
-                        {t('settingsSubtitle', 'Personnalisation de la langue, du thème visuel et de l\'accélération de rendu GPU client (WebGPU / WebGL).')}
+                        {t('settingsSubtitle', 'Personnalisation de la langue, du thème visuel, de l\'audio spatial et de l\'accélération graphique GPU (WebGPU / WebGL).')}
                     </p>
                 </div>
                 <button
@@ -206,7 +240,166 @@ export default function SettingsPanel() {
                 </div>
             </div>
 
-            {/* 3. Client GPU Compute & Graphics Acceleration */}
+            {/* 3. Audio Configuration (Parity with Heavy Desktop Client SimulationAudioManager.java) */}
+            <div style={{
+                background: cardBg,
+                border: `1px solid ${borderCol}`,
+                borderRadius: 10,
+                padding: '16px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#10b981' }}>
+                        <Volume2 size={18} />
+                        <span style={{ fontSize: 14, fontWeight: 800 }}>
+                            {t('audioSettingsTitle', 'Paramètres Audio & Sons du Biome')}
+                        </span>
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981' }}>
+                        {Math.round(masterVolume * 100)} %
+                    </span>
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: textMuted }}>
+                    {t('audioSettingsDesc', 'Contrôlez le volume principal et les canaux audio réels (ambiance, cours d\'eau, météo, bio-acoustique des insectes).')}
+                </p>
+
+                {/* Master Volume Slider */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    {masterVolume === 0 ? <VolumeX size={18} color={textMuted} /> : <Volume2 size={18} color="#10b981" />}
+                    <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={masterVolume}
+                        onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
+                        title={t('audioMasterVolumeTt', 'Ajuste le volume général de l\'environnement sonore (0% à 100%)')}
+                        style={{
+                            flex: 1,
+                            accentColor: '#10b981',
+                            cursor: 'pointer'
+                        }}
+                    />
+                    <span style={{ minWidth: 45, textAlign: 'right', fontSize: 13, fontWeight: 700, color: textMain }}>
+                        {Math.round(masterVolume * 100)}%
+                    </span>
+                </div>
+
+                {/* 4 Desktop Parity Checkboxes */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {/* 1. Ambiance / Biome */}
+                    <label
+                        title={t('audioBiomeTt', 'Active ou désactive le fond sonore immersif de forêt tempérée et vent dans le feuillage')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '10px 14px',
+                            borderRadius: 6,
+                            background: inputBg,
+                            border: `1px solid ${ambientEnabled ? '#10b981' : borderCol}`,
+                            cursor: 'pointer',
+                            color: textMain,
+                            fontSize: 13,
+                            fontWeight: 600
+                        }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={ambientEnabled}
+                            onChange={toggleAmbient}
+                            style={{ accentColor: '#10b981', width: 16, height: 16, cursor: 'pointer' }}
+                        />
+                        <Trees size={16} color={ambientEnabled ? '#10b981' : textMuted} />
+                        <span>{t('audioBiomeLabel', '🌲 Ambiance & Biome')}</span>
+                    </label>
+
+                    {/* 2. Cours d'eau / Rivière */}
+                    <label
+                        title={t('audioRiverTt', 'Active ou désactive le ruissellement aquatique et clapotis du cours d\'eau')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '10px 14px',
+                            borderRadius: 6,
+                            background: inputBg,
+                            border: `1px solid ${riverEnabled ? '#38bdf8' : borderCol}`,
+                            cursor: 'pointer',
+                            color: textMain,
+                            fontSize: 13,
+                            fontWeight: 600
+                        }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={riverEnabled}
+                            onChange={toggleRiver}
+                            style={{ accentColor: '#38bdf8', width: 16, height: 16, cursor: 'pointer' }}
+                        />
+                        <Waves size={16} color={riverEnabled ? '#38bdf8' : textMuted} />
+                        <span>{t('audioRiverLabel', '🌊 Cours d\'eau & Rivière')}</span>
+                    </label>
+
+                    {/* 3. Climat & Météo */}
+                    <label
+                        title={t('audioWeatherTt', 'Active ou désactive les effets sonores météo dynamiques (pluie, grêle, vent violent, orage)')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '10px 14px',
+                            borderRadius: 6,
+                            background: inputBg,
+                            border: `1px solid ${weatherEnabled ? '#f59e0b' : borderCol}`,
+                            cursor: 'pointer',
+                            color: textMain,
+                            fontSize: 13,
+                            fontWeight: 600
+                        }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={weatherEnabled}
+                            onChange={toggleWeatherAudio}
+                            style={{ accentColor: '#f59e0b', width: 16, height: 16, cursor: 'pointer' }}
+                        />
+                        <CloudRain size={16} color={weatherEnabled ? '#f59e0b' : textMuted} />
+                        <span>{t('audioWeatherLabel', '🌦️ Climat & Météo')}</span>
+                    </label>
+
+                    {/* 4. Activité Bio-acoustique des Insectes */}
+                    <label
+                        title={t('audioInsectsTt', 'Active ou désactive la stridulation, les bruits de mandibules et déplacements des fourmis')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '10px 14px',
+                            borderRadius: 6,
+                            background: inputBg,
+                            border: `1px solid ${insectEnabled ? '#a855f7' : borderCol}`,
+                            cursor: 'pointer',
+                            color: textMain,
+                            fontSize: 13,
+                            fontWeight: 600
+                        }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={insectEnabled}
+                            onChange={toggleInsect}
+                            style={{ accentColor: '#a855f7', width: 16, height: 16, cursor: 'pointer' }}
+                        />
+                        <Bug size={16} color={insectEnabled ? '#a855f7' : textMuted} />
+                        <span>{t('audioInsectsLabel', '🐜 Activité des Insectes')}</span>
+                    </label>
+                </div>
+            </div>
+
+            {/* 4. Client GPU Compute & Graphics Acceleration */}
             <div style={{
                 background: cardBg,
                 border: `1px solid ${borderCol}`,
@@ -219,7 +412,7 @@ export default function SettingsPanel() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#8b5cf6' }}>
                         <Zap size={18} />
-                        <span style={{ fontSize: 14, fontWeight: 800 }}>{t('clientGpuTitle', 'Accélération Graphique & GPU Client (Rendu WebGPU / WebGL)')}</span>
+                        <span style={{ fontSize: 14, fontWeight: 800 }}>{t('clientGpuTitle', 'Accélérateur Graphique pour Affichage des Phéromones')}</span>
                     </div>
                     <span
                         title={hasWebGpu ? t('clientGpuAvail', '✓ WebGPU Disponible') : t('clientGpuUnavail', '⚠ WebGPU Non supporté (Repli WebGL)')}
@@ -237,7 +430,7 @@ export default function SettingsPanel() {
                     </span>
                 </div>
                 <p style={{ margin: 0, fontSize: 12, color: textMuted }}>
-                    {t('clientGpuDesc', 'Configurez le pipeline de calcul GPU local du navigateur (WebGPU Compute WGSL) pour la diffusion continue des nuages de phéromones et le rendu Three.js.')}
+                    {t('clientGpuDesc', 'Sélectionnez le pipeline GPU pour le calcul et l\'interpolation des gradients de phéromones.')}
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -327,7 +520,7 @@ export default function SettingsPanel() {
                 </div>
             </div>
 
-            {/* 4. Display Quality & Framerate Limit */}
+            {/* 5. Display Quality & Visual Layers */}
             <div style={{
                 background: cardBg,
                 border: `1px solid ${borderCol}`,
@@ -335,14 +528,14 @@ export default function SettingsPanel() {
                 padding: '16px 20px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 12
+                gap: 16
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#10b981' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#38bdf8' }}>
                     <Sliders size={18} />
-                    <span style={{ fontSize: 14, fontWeight: 800 }}>{t('visualQualityTitle', 'Qualité Visuelle & Fréquence de Rendu Client')}</span>
+                    <span style={{ fontSize: 14, fontWeight: 800 }}>{t('visualQualityTitle', 'Options Graphiques & Qualité de Rendu')}</span>
                 </div>
                 <p style={{ margin: 0, fontSize: 12, color: textMuted }}>
-                    {t('visualQualityDesc', 'Ajustez le niveau de détail des modèles d\'insectes (LOD) et le taux de rafraîchissement d\'affichage.')}
+                    {t('visualQualityDesc', 'Ajustez le niveau de détail des modèles d\'insectes (LOD), la fréquence de rafraîchissement et les calques visuels.')}
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -410,9 +603,116 @@ export default function SettingsPanel() {
                         </select>
                     </div>
                 </div>
+
+                {/* Additional Visual Layer Quick Toggles */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
+                    <label
+                        title={t('pheroCloudTt', 'Active ou désactive la visualisation 3D des nuages de phéromones')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            background: inputBg,
+                            border: `1px solid ${borderCol}`,
+                            cursor: 'pointer',
+                            color: textMain,
+                            fontSize: 12,
+                            fontWeight: 600
+                        }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={showPheromones}
+                            onChange={togglePheromones}
+                            style={{ accentColor: '#8b5cf6', width: 15, height: 15, cursor: 'pointer' }}
+                        />
+                        <Layers size={15} color="#8b5cf6" />
+                        <span>{t('pheroCloudLabel', 'Nuages de Phéromones')}</span>
+                    </label>
+
+                    <label
+                        title={t('uvVisionTt', 'Bascule le filtre visuel pour simuler la vision ultraviolette des hyménoptères')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            background: inputBg,
+                            border: `1px solid ${borderCol}`,
+                            cursor: 'pointer',
+                            color: textMain,
+                            fontSize: 12,
+                            fontWeight: 600
+                        }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={isUVVisionMode}
+                            onChange={toggleUVVisionMode}
+                            style={{ accentColor: '#a855f7', width: 15, height: 15, cursor: 'pointer' }}
+                        />
+                        <Eye size={15} color="#a855f7" />
+                        <span>{t('uvVisionLabel', 'Vision UV & Spectre')}</span>
+                    </label>
+
+                    <label
+                        title={t('floraTt', 'Affiche ou masque les arbres, buissons et herbes')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            background: inputBg,
+                            border: `1px solid ${borderCol}`,
+                            cursor: 'pointer',
+                            color: textMain,
+                            fontSize: 12,
+                            fontWeight: 600
+                        }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={showVegetation}
+                            onChange={toggleVegetation}
+                            style={{ accentColor: '#10b981', width: 15, height: 15, cursor: 'pointer' }}
+                        />
+                        <Trees size={15} color="#10b981" />
+                        <span>{t('floraLabel', 'Végétation & Arbres')}</span>
+                    </label>
+
+                    <label
+                        title={t('chambersTt', 'Affiche ou masque le réseau souterrain des galeries')}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            background: inputBg,
+                            border: `1px solid ${borderCol}`,
+                            cursor: 'pointer',
+                            color: textMain,
+                            fontSize: 12,
+                            fontWeight: 600
+                        }}
+                    >
+                        <input
+                            type="checkbox"
+                            checked={showChambers}
+                            onChange={toggleChambers}
+                            style={{ accentColor: '#f59e0b', width: 15, height: 15, cursor: 'pointer' }}
+                        />
+                        <Layers size={15} color="#f59e0b" />
+                        <span>{t('chambersLabel', 'Galeries Souterraines')}</span>
+                    </label>
+                </div>
             </div>
 
-            {/* 5. System & Architecture Info Card */}
+            {/* 6. System & Architecture Info Card */}
             <div style={{
                 background: cardBg,
                 border: `1px solid ${borderCol}`,
@@ -429,10 +729,9 @@ export default function SettingsPanel() {
                     <span>{t('aboutTitle', 'À propos de SwarmForge Web Visualizer')}</span>
                 </div>
                 <div><strong>{t('aboutVersion', 'Version :')}</strong> 2.4.0 (Unified Simulation Studio Architecture)</div>
-                <div><strong>{t('aboutArchitecture', 'Architecture :')}</strong> {t('aboutArchDesc', 'Client Léger WebGL 2.0 / WebGPU (Three.js / React Three Fiber) avec moteur sonore procédural WebAudio. La simulation physique et l\'intelligence collective sont exécutées sur le serveur SwarmForge.')}</div>
+                <div><strong>{t('aboutArchitecture', 'Architecture :')}</strong> {t('aboutArchDesc', 'Client Léger WebGL 2.0 / WebGPU (Three.js / React Three Fiber) avec moteur sonore synchronisé. La simulation physique, les trajectoires d\'évitement aquatique et l\'intelligence collective sont exécutées sur le serveur SwarmForge.')}</div>
                 <div><strong>{t('aboutAuthor', 'Auteur :')}</strong> Silvère Martin-Michiellot & Gemini AI Assistant (Google DeepMind)</div>
             </div>
         </div>
     )
 }
-

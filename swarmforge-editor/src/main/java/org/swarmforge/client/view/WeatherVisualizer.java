@@ -513,8 +513,8 @@ public class WeatherVisualizer {
 
                 if (sunLight != null) {
                     sunLight.setDirection(new Vector3f(worldCenterX - sx, 10f - sy, worldCenterZ - sz).normalizeLocal());
-                    float intensity = Math.max(0.7f, weather.getLightLevel() * 2.5f);
-                    sunLight.setColor(new ColorRGBA(1.25f, 1.20f, 1.05f, 1.0f).mult(intensity));
+                    float intensity = Math.max(0.75f, weather.getLightLevel() * 2.5f);
+                    sunLight.setColor(new ColorRGBA(1.35f, 1.30f, 1.20f, 1.0f).mult(intensity));
                 }
             }
         }
@@ -529,12 +529,8 @@ public class WeatherVisualizer {
 
                 if (sunLight != null) {
                     sunLight.setDirection(new Vector3f(worldCenterX - mx, 10f - my, worldCenterZ - mz).normalizeLocal());
-                    // Purkinje Scotopic Blue Shift: biological rods favor cool silver-indigo wavelengths at night
-                    if (currentRenderMode == RenderMode.REALISTIC) {
-                        sunLight.setColor(new ColorRGBA(0.24f, 0.36f, 0.65f, 1.0f).mult(Math.max(0.45f, weather.getLightLevel() * 1.8f)));
-                    } else {
-                        sunLight.setColor(new ColorRGBA(0.35f, 0.45f, 0.75f, 1.0f));
-                    }
+                    // Soft moonlight illumination
+                    sunLight.setColor(new ColorRGBA(0.60f, 0.65f, 0.75f, 1.0f).mult(Math.max(0.40f, weather.getLightLevel() * 1.5f)));
                 }
             }
         }
@@ -729,7 +725,7 @@ public class WeatherVisualizer {
             }
         }
 
-        if (showLightning && (state == WeatherState.THUNDERSTORM || state == WeatherState.TEMPEST)) {
+        if (showLightning && (state == WeatherState.THUNDERSTORM || state == WeatherState.TEMPEST) && tpf > 0.0001f) {
             if (Math.random() < 0.018) {
                 triggerLightningFlash();
             }

@@ -16,7 +16,8 @@ import { soundEngine } from '../utils/soundEngine'
  * - Vision Nocturne (Night vision soft ambient illumination toggle)
  */
 export default function WeatherRenderer() {
-    const { showWeather, environment, weatherToggles, environmentLighting, climateEngine } = useSimulationStore()
+    const { showWeather, environment, weatherToggles, environmentLighting, climateEngine, running, isPaused, speed } = useSimulationStore()
+    const isSimActive = Boolean(running && !isPaused && (typeof speed === 'number' ? speed > 0 : true))
 
     // If disabled in options, do not render weather / sky effects
     if (!showWeather) return null
@@ -78,15 +79,15 @@ export default function WeatherRenderer() {
     }, [])
 
     useFrame((state, delta) => {
-        if (!precipRef.current || !precipRef.current.geometry?.attributes?.position?.array || !showPrecipitation || (intensity < 0.1 && !isSnow && !isHail)) return
+        if (!isSimActive || !precipRef.current || !precipRef.current.geometry?.attributes?.position?.array || !showPrecipitation || (intensity < 0.1 && !isSnow && !isHail)) return
 
         const positions = precipRef.current.geometry.attributes.position.array
         const windX = windSpeed * 0.15
         const fallSpeedMult = isSnow ? 0.25 : isHail ? 1.8 : 1.0
 
         for (let i = 0; i < maxParticles; i++) {
-            positions[i * 3] += (windX + particles.velocities[i * 3]) * delta * 10
-            positions[i * 3 + 1] += particles.velocities[i * 3 + 1] * fallSpeedMult * delta * 25
+            positions[i * 3] += (windX + particles.velocities[i * 3]) * delta * 10 * (speed || 1.0)
+            positions[i * 3 + 1] += particles.velocities[i * 3 + 1] * fallSpeedMult * delta * 25 * (speed || 1.0)
 
             if (positions[i * 3 + 1] < 0) {
                 positions[i * 3 + 1] = 50 + Math.random() * 10
@@ -112,24 +113,24 @@ export default function WeatherRenderer() {
         const manualTriggered = lightningTrigger !== prevTriggerRef.current
         prevTriggerRef.current = lightningTrigger
 
-        if ((isStorm || manualTriggered) && showLightning) {
+        if ((isStorm || manualTriggered) && showLightning && isSimActive) {
             flashLightning()
         }
-    }, [lightningTrigger, weatherState, showLightning])
+    }, [lightningTrigger, weatherState, showLightning, isSimActive])
 
     // Periodic auto-lightning in storms
     useEffect(() => {
         const isStorm = weatherState === 'THUNDERSTORM' || weatherState === 'TEMPEST'
-        if (!isStorm || !showLightning) return
+        if (!isStorm || !showLightning || !isSimActive) return
 
         const interval = setInterval(() => {
-            if (Math.random() > 0.4) {
+            if (Math.random() > 0.4 && isSimActive) {
                 flashLightning()
             }
         }, 4500)
 
         return () => clearInterval(interval)
-    }, [weatherState, showLightning])
+    }, [weatherState, showLightning, isSimActive])
 
     const flashLightning = () => {
         // 1. Instant visual lightning flash (t = 0)
@@ -180,8 +181,8 @@ export default function WeatherRenderer() {
     }, [])
 
     useFrame((state, delta) => {
-        if (!cloudGroupRef.current || !showClouds) return
-        cloudGroupRef.current.rotation.y += windSpeed * 0.0005 * delta
+        if (!isSimActive || !cloudGroupRef.current || !showClouds) return
+        cloudGroupRef.current.rotation.y += windSpeed * 0.0005 * delta * (speed || 1.0)
     })
 
     const cloudColor = (weatherState === 'THUNDERSTORM' || weatherState === 'TEMPEST')
@@ -203,6 +204,17 @@ export default function WeatherRenderer() {
         }
         return pos
     }, [])
+
+    useFrame((state, delta) => {
+        if (!isSimActive || !dustRef.current || !dustRef.current.geometry?.attributes?.position?.array || !showWindDust || windSpeed <= 2) return
+        const posArray = dustRef.current.geometry.attributes.position.array
+        const drift = windSpeed * 0.15 * delta * (speed || 1.0)
+        for (let i = 0; i < dustCount; i++) {
+            posArray[i * 3] += drift
+            if (posArray[i * 3] > 50) posArray[i * 3] -= 100
+        }
+        dustRef.current.geometry.attributes.position.needsUpdate = true
+    })
 
     return (
         <group>

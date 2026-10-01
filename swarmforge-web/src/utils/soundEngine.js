@@ -1,745 +1,352 @@
 /**
- * SoundEngine.js - WebAudio Procedural Audio Synthesizer & Sound FX Engine
- * Manages atmospheric sounds, weather effects, biome ambiance, and insect activity:
- * 1. Thunder & Lightning (Éclairs & Tonnerre): Sharp electric crack + multi-stage rolling thunder rumble
- * 2. Rain (Pluie & Gouttes): Layered pink noise + individual raindrop impact synthesis
- * 3. Storm & Wind (Tempête & Vent): Dual LFO howling wind + whistling canopy gusts
- * 4. Tree Leaves (Feuilles dans les arbres): High-frequency bandpass foliage rustling
- * 5. Birds & Wildlife (Chants d'oiseaux & Forêt): Multi-tone bird chirps, trills, and calls
- * 6. Insects & Digging (Activité insectes & Creusement): Mandible clicks + soil grain excavation
+ * SoundEngine.js - High-Fidelity Audio Manager & Sound Bank Player for SwarmForge Web.
+ * Directly utilizes real bio-acoustic recordings and environmental audio files (1:1 with SimulationAudioManager.java):
+ * - Biome Ambiance: Natural bird songs, forest wind, desert breeze, nocturnal crickets.
+ * - River & Water: Rushing stream flows, gentle water ripples, splashes.
+ * - Weather & Storms: Real howling gale winds, light/heavy rain loops, delayed thunder strikes.
+ * - Insect & Nest Activity: Colony bio-acoustics, ant mandibles, soil digging, queen activity.
  */
 
-class ProceduralSoundEngine {
+const SOUND_BANK = {
+    // 1. Biome & Ambient
+    ambientDay: '/sounds/mixkit-morning-birds-2472.wav',
+    ambientForest: '/sounds/Bourne_woods_windy_2020-05-05_0753.mp3',
+    ambientDesert: '/sounds/desert_wind_ambient.mp3',
+    ambientNight: '/sounds/ElevenLabs_Ambiance_nocturne_animée,_grillons_qui_chantent_et_lucioles_qui_brillent_dans_le_noir.mp3',
+    ambientJungle: '/sounds/mixkit-night-forest-with-insects-2414.wav',
+
+    // 2. River & Water
+    riverStream: '/sounds/WATRFlow_Small stream 4 (ID 1354)_BigSoundBank.com.mp3',
+    riverFlow: '/sounds/mixkit-river-water-flow-and-surroundings-2452.wav',
+    waterSplash: '/sounds/water_splash2.ogg',
+
+    // 3. Weather & Wind
+    rainLight: '/sounds/mixkit-light-rain-loop-2393.wav',
+    rainHeavy: '/sounds/mixkit-heavy-rain-2403.wav',
+    windBreeze: '/sounds/soft_wind_leaves.mp3',
+    windHowl: '/sounds/strong_howling_wind.mp3',
+    windGust: '/sounds/wind_gust_leaves.mp3',
+    leavesRustle: '/sounds/dry_leaves_rustling.mp3',
+    thunder1: '/sounds/mixkit-thunder-strike-in-storm-2405.wav',
+    thunder2: '/sounds/THUN_Thunder 2 (ID 3113)_BigSoundBank.com.mp3',
+    thunder3: '/sounds/THUN_Thunder 3 (ID 3114)_BigSoundBank.com.mp3',
+
+    // 4. Insect & Colony
+    colonyActivity: '/sounds/ant_colony_activity.mp3',
+    anthillNest: '/sounds/anthill_nest_sounds.mp3',
+    soilDigging: '/sounds/sand_soil_digging.mp3',
+    queenCare: '/sounds/queen-ants-sound.mp3',
+    termites: '/sounds/termites-and-ants-sound.mp3',
+}
+
+class SimulationAudioPlayer {
     constructor() {
-        this.ctx = null;
-        this.isInitialized = false;
-        this.masterGain = null;
-        this.muted = false;
-        this.simRunning = false;
+        this.isInitialized = false
+        this.ctx = null
+        this.masterGain = null
+        this.muted = false
+        this.simRunning = false
+        this.speed = 1.0
 
-        // Channel Gain Nodes
-        this.gains = {
-            ambiance: null,
-            weather: null,
-            insects: null,
-            digging: null,
-            river: null,
-            disease: null,
-        };
-
-        // Volumes (0.0 to 1.0)
         this.volumes = {
             master: 0.70,
-            ambiance: 0.70,
-            weather: 0.60,
-            insects: 0.50,
-            digging: 0.50,
+            ambient: 0.70,
             river: 0.60,
-            disease: 0.70,
-        };
+            weather: 0.65,
+            insect: 0.60,
+        }
 
-        // Active sound nodes & timers
-        this.windNode = null;
-        this.windFilter = null;
-        this.windLfo = null;
-        this.rainNode = null;
-        this.rainFilter = null;
-        this.riverNode = null;
-        this.riverFilter = null;
-        this.birdTimer = null;
-        this.leavesTimer = null;
-        this.raindropTimer = null;
-        this.spatialAudioEnabled = true;
         this.enabled = {
             ambient: true,
             river: true,
             weather: true,
             insect: true,
-        };
+        }
+
+        this.isDay = true
+        this.lightLevel = 1.0
+        this.rainIntensity = 0
+        this.windSpeed = 2.5
+
+        // HTML5 Audio Channels for smooth persistent playback
+        this.channels = {
+            ambient: null,
+            river: null,
+            weatherRain: null,
+            weatherWind: null,
+            insect: null,
+            digging: null,
+        }
+
+        this.oneShotSounds = []
+        this.rustleTimer = null
     }
 
     init() {
-        if (this.isInitialized) return;
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
+        if (this.isInitialized) return
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext
+            if (AudioCtx) {
+                this.ctx = new AudioCtx()
+                this.masterGain = this.ctx.createGain()
+                this.masterGain.gain.setValueAtTime(this.volumes.master, this.ctx.currentTime)
+                this.masterGain.connect(this.ctx.destination)
+            }
+        } catch (e) {
+            console.warn('[AudioEngine] WebAudio context init fallback:', e)
+        }
 
-        this.ctx = new AudioCtx();
-        
-        // Master Gain Node (initialized to 0.0 silence until simulation starts)
-        this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
-        this.masterGain.connect(this.ctx.destination);
+        // Initialize persistent channel Audio elements
+        this.channels.ambient = this._createAudioChannel(SOUND_BANK.ambientDay, true)
+        this.channels.river = this._createAudioChannel(SOUND_BANK.riverStream, true)
+        this.channels.weatherRain = this._createAudioChannel(SOUND_BANK.rainLight, true)
+        this.channels.weatherWind = this._createAudioChannel(SOUND_BANK.windBreeze, true)
+        this.channels.insect = this._createAudioChannel(SOUND_BANK.colonyActivity, true)
+        this.channels.digging = this._createAudioChannel(SOUND_BANK.soilDigging, true)
 
-        // Create Channel Gains (initialized to 0.0 until simulation starts in 3D)
-        Object.keys(this.gains).forEach(key => {
-            const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(0.0, this.ctx.currentTime);
-            gain.connect(this.masterGain);
-            this.gains[key] = gain;
-        });
+        this.isInitialized = true
+        this._updateChannelVolumes()
+    }
 
-        this.isInitialized = true;
+    _createAudioChannel(src, loop = true) {
+        if (typeof window === 'undefined' || typeof Audio === 'undefined') return null
+        try {
+            const audio = new Audio(src)
+            audio.loop = loop
+            audio.preload = 'auto'
+            audio.volume = 0
+            return audio
+        } catch {
+            return null
+        }
     }
 
     async ensureContext() {
         if (!this.isInitialized) {
-            this.init();
+            this.init()
         }
         if (this.ctx && this.ctx.state === 'suspended') {
-            await this.ctx.resume().catch(() => {});
+            await this.ctx.resume().catch(() => {})
         }
     }
 
-    // --- 1. PROCEDURAL WIND & TREE CANOPY AMBIANCE ---
-    startWindAmbiance() {
-        if (!this.simRunning || this.muted || !this.ctx || !this.gains.weather) return;
+    _updateChannelVolumes() {
+        if (!this.isInitialized) return
 
-        // 3-second buffer of smooth pink/brown noise for breeze
-        const bufferSize = this.ctx.sampleRate * 3;
-        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        const master = (this.muted || !this.simRunning) ? 0 : this.volumes.master
 
-        for (let i = 0; i < bufferSize; i++) {
-            const white = Math.random() * 2 - 1;
-            b0 = 0.99886 * b0 + white * 0.0555179;
-            b1 = 0.99332 * b1 + white * 0.0750759;
-            b2 = 0.96900 * b2 + white * 0.1538520;
-            b3 = 0.86650 * b3 + white * 0.3104856;
-            b4 = 0.55000 * b4 + white * 0.5329522;
-            b5 = -0.7616 * b5 - white * 0.0168980;
-            output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.05;
-            b6 = white * 0.115926;
+        // Ambient Channel
+        if (this.channels.ambient) {
+            const targetVol = (this.enabled.ambient && this.simRunning) ? (master * this.volumes.ambient) : 0
+            this._fadeVolume(this.channels.ambient, targetVol)
         }
 
-        const whiteNoise = this.ctx.createBufferSource();
-        whiteNoise.buffer = noiseBuffer;
-        whiteNoise.loop = true;
-
-        // Lowpass filter with dynamic frequency modulation
-        this.windFilter = this.ctx.createBiquadFilter();
-        this.windFilter.type = 'lowpass';
-        this.windFilter.frequency.setValueAtTime(300, this.ctx.currentTime);
-
-        // Dual LFO for natural wind howling
-        this.windLfo = this.ctx.createOscillator();
-        this.windLfo.frequency.value = 0.15; // Slow breeze pulse
-        const lfoGain = this.ctx.createGain();
-        lfoGain.gain.value = 220; // Modulate frequency between 100Hz and 500Hz
-
-        this.windLfo.connect(lfoGain);
-        lfoGain.connect(this.windFilter.frequency);
-        this.windLfo.start();
-
-        whiteNoise.connect(this.windFilter);
-        this.windFilter.connect(this.gains.weather);
-        whiteNoise.start();
-        this.windNode = whiteNoise;
-    }
-
-    // --- 2. LEAVES IN TREES RUSTLING (Feuilles dans les arbres) ---
-    triggerLeavesRustle() {
-        if (!this.ctx || !this.gains.ambiance || this.muted) return;
-        const now = this.ctx.currentTime;
-
-        // High frequency bandpass noise burst representing foliage friction
-        const duration = 0.4 + Math.random() * 0.6;
-        const bufferSize = Math.floor(this.ctx.sampleRate * duration);
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1);
+        // River Channel
+        if (this.channels.river) {
+            const targetVol = (this.enabled.river && this.simRunning) ? (master * this.volumes.river) : 0
+            this._fadeVolume(this.channels.river, targetVol)
         }
 
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
+        // Weather Rain Channel
+        if (this.channels.weatherRain) {
+            const hasRain = this.rainIntensity > 0.1
+            const rainScale = Math.min(1.0, this.rainIntensity / 25.0)
+            const targetVol = (this.enabled.weather && this.simRunning && hasRain) ? (master * this.volumes.weather * (0.3 + 0.7 * rainScale)) : 0
+            this._fadeVolume(this.channels.weatherRain, targetVol)
+        }
 
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(3200 + Math.random() * 1800, now);
-        filter.Q.value = 2.5;
+        // Weather Wind Channel
+        if (this.channels.weatherWind) {
+            const windScale = Math.min(1.5, Math.max(0.2, this.windSpeed / 5.0))
+            const targetVol = (this.enabled.weather && this.simRunning) ? (master * this.volumes.weather * 0.7 * windScale) : 0
+            this._fadeVolume(this.channels.weatherWind, targetVol)
+        }
 
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.08 + Math.random() * 0.05, now + duration * 0.3);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        // Insect Activity Channel
+        if (this.channels.insect) {
+            const targetVol = (this.enabled.insect && this.simRunning) ? (master * this.volumes.insect) : 0
+            this._fadeVolume(this.channels.insect, targetVol)
+        }
 
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.gains.ambiance);
-
-        noise.start(now);
-    }
-
-    scheduleNextLeavesRustle() {
-        if (this.leavesTimer) clearTimeout(this.leavesTimer);
-        const delay = 3000 + Math.random() * 6000;
-        this.leavesTimer = setTimeout(() => {
-            this.triggerLeavesRustle();
-            this.scheduleNextLeavesRustle();
-        }, delay);
-    }
-
-    // --- 3. BIRD CHIRPS & FOREST SONG SYNTHESIS (Day Birds & Night Crickets) ---
-    triggerNightCricket() {
-        if (!this.ctx || !this.gains.ambiance || this.muted) return;
-        const now = this.ctx.currentTime;
-        // High frequency cricket chirp pulse train (4.5 kHz pulse bursts)
-        for (let i = 0; i < 4; i++) {
-            const noteTime = now + i * 0.03;
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(4500 + Math.random() * 300, noteTime);
-
-            gain.gain.setValueAtTime(0.001, noteTime);
-            gain.gain.linearRampToValueAtTime(0.08, noteTime + 0.005);
-            gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.02);
-
-            osc.connect(gain);
-            gain.connect(this.gains.ambiance);
-            osc.start(noteTime);
-            osc.stop(noteTime + 0.025);
+        // Digging Channel
+        if (this.channels.digging) {
+            const targetVol = (this.enabled.insect && this.simRunning) ? (master * this.volumes.insect * 0.45) : 0
+            this._fadeVolume(this.channels.digging, targetVol)
         }
     }
 
-    triggerBirdChirp() {
-        if (!this.ctx || !this.gains.ambiance || this.muted) return;
+    _fadeVolume(audio, targetVolume, durationMs = 200) {
+        if (!audio) return
+        const clampedTarget = Math.max(0, Math.min(1, targetVolume))
+        
+        if (clampedTarget > 0 && audio.paused) {
+            audio.play().catch(() => {})
+        }
 
-        const now = this.ctx.currentTime;
-        const callType = Math.random();
-
-        if (callType < 0.6) {
-            // Short 2-note bird chirp
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-
-            const baseFreq = 2400 + Math.random() * 1000;
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(baseFreq, now);
-            osc.frequency.exponentialRampToValueAtTime(baseFreq + 1200, now + 0.06);
-            osc.frequency.exponentialRampToValueAtTime(baseFreq + 400, now + 0.14);
-
-            gain.gain.setValueAtTime(0.001, now);
-            gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
-
-            osc.connect(gain);
-            gain.connect(this.gains.ambiance);
-            osc.start(now);
-            osc.stop(now + 0.18);
-        } else {
-            // Rapid 3-trill bird warble
-            for (let i = 0; i < 3; i++) {
-                const noteTime = now + i * 0.07;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(3200 + i * 300, noteTime);
-                osc.frequency.linearRampToValueAtTime(4200, noteTime + 0.04);
-
-                gain.gain.setValueAtTime(0.001, noteTime);
-                gain.gain.linearRampToValueAtTime(0.14, noteTime + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.05);
-
-                osc.connect(gain);
-                gain.connect(this.gains.ambiance);
-                osc.start(noteTime);
-                osc.stop(noteTime + 0.06);
+        const startVol = audio.volume
+        const diff = clampedTarget - startVol
+        if (Math.abs(diff) < 0.02) {
+            audio.volume = clampedTarget
+            if (clampedTarget === 0 && !audio.paused) {
+                audio.pause()
             }
+            return
         }
-    }
 
-    scheduleNextBirdChirp() {
-        if (this.birdTimer) clearTimeout(this.birdTimer);
-        if (this.simRunning === false) return;
-        const delay = 2000 + Math.random() * 5000;
-        this.birdTimer = setTimeout(() => {
-            if (this.isDay === false || (this.lightLevel !== undefined && this.lightLevel < 0.2)) {
-                this.triggerNightCricket();
-            } else {
-                this.triggerBirdChirp();
+        const steps = 10
+        const stepTime = durationMs / steps
+        let currentStep = 0
+
+        const interval = setInterval(() => {
+            currentStep++
+            const currentVol = startVol + diff * (currentStep / steps)
+            audio.volume = Math.max(0, Math.min(1, currentVol))
+
+            if (currentStep >= steps) {
+                clearInterval(interval)
+                audio.volume = clampedTarget
+                if (clampedTarget === 0 && !audio.paused) {
+                    audio.pause()
+                }
             }
-            this.scheduleNextBirdChirp();
-        }, delay);
-    }
-
-    // --- 4. RAIN & INDIVIDUAL RAINDROPS SYNTHESIS (Bruits de pluie) ---
-    updateRainSound(intensity) {
-        this.ensureContext();
-        if (!this.ctx || !this.gains.weather) return;
-
-        if (intensity <= 0.05) {
-            if (this.rainNode) {
-                try { this.rainNode.stop(); } catch (e) {}
-                this.rainNode = null;
-            }
-            if (this.raindropTimer) clearInterval(this.raindropTimer);
-            return;
-        }
-
-        if (!this.rainNode) {
-            // Continuous rain shower background noise
-            const bufferSize = this.ctx.sampleRate * 2;
-            const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-            const output = buffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                output[i] = (Math.random() * 2 - 1) * 0.2;
-            }
-
-            const noise = this.ctx.createBufferSource();
-            noise.buffer = buffer;
-            noise.loop = true;
-
-            this.rainFilter = this.ctx.createBiquadFilter();
-            this.rainFilter.type = 'highpass';
-            this.rainFilter.frequency.value = 1400;
-
-            noise.connect(this.rainFilter);
-            this.rainFilter.connect(this.gains.weather);
-            noise.start();
-            this.rainNode = noise;
-
-            // Start periodic individual raindrop impact sounds
-            this.raindropTimer = setInterval(() => {
-                this.triggerSingleRaindrop();
-            }, 120);
-        }
-
-        // Adjust rain volume smoothly
-        const rainVol = Math.min(0.85, Math.max(0.08, intensity / 25.0));
-        this.gains.weather.gain.setTargetAtTime(rainVol, this.ctx.currentTime, 0.2);
-    }
-
-    triggerSingleRaindrop() {
-        if (!this.ctx || !this.gains.weather || this.muted) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        // Sine droplet pitch drop (1400Hz -> 300Hz)
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200 + Math.random() * 600, now);
-        osc.frequency.exponentialRampToValueAtTime(300 + Math.random() * 200, now + 0.02);
-
-        gain.gain.setValueAtTime(0.03, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.025);
-
-        osc.connect(gain);
-        gain.connect(this.gains.weather);
-
-        osc.start(now);
-        osc.stop(now + 0.03);
-    }
-
-    // --- 5. THUNDER & LIGHTNING STRIKES (Tonnerre & Éclairs) ---
-    triggerThunder() {
-        this.ensureContext();
-        if (!this.ctx || !this.gains.weather) return;
-
-        const now = this.ctx.currentTime;
-
-        // 1. Initial Electric Crack (High Pass Snap)
-        const snapOsc = this.ctx.createOscillator();
-        const snapGain = this.ctx.createGain();
-        snapOsc.type = 'sawtooth';
-        snapOsc.frequency.setValueAtTime(800, now);
-        snapOsc.frequency.exponentialRampToValueAtTime(120, now + 0.05);
-
-        snapGain.gain.setValueAtTime(0.4, now);
-        snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-
-        snapOsc.connect(snapGain);
-        snapGain.connect(this.gains.weather);
-        snapOsc.start(now);
-        snapOsc.stop(now + 0.1);
-
-        // 2. Sub-bass Rumble (60Hz -> 25Hz)
-        const sub = this.ctx.createOscillator();
-        const subGain = this.ctx.createGain();
-        sub.type = 'triangle';
-        sub.frequency.setValueAtTime(70, now);
-        sub.frequency.exponentialRampToValueAtTime(25, now + 1.8);
-
-        subGain.gain.setValueAtTime(0.01, now);
-        subGain.gain.linearRampToValueAtTime(0.5, now + 0.08);
-        subGain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
-
-        sub.connect(subGain);
-        subGain.connect(this.gains.weather);
-        sub.start(now);
-        sub.stop(now + 2.1);
-
-        // 3. Multi-stage Rolling Thunder Echo (Filtered Noise Crash)
-        const bufferSize = Math.floor(this.ctx.sampleRate * 2.2);
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1);
-        }
-
-        const crash = this.ctx.createBufferSource();
-        crash.buffer = buffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(280, now);
-        filter.frequency.linearRampToValueAtTime(90, now + 1.8);
-
-        const crashGain = this.ctx.createGain();
-        crashGain.gain.setValueAtTime(0.01, now);
-        crashGain.gain.linearRampToValueAtTime(0.45, now + 0.04);
-        crashGain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
-
-        crash.connect(filter);
-        filter.connect(crashGain);
-        crashGain.connect(this.gains.weather);
-
-        crash.start(now);
-    }
-
-    // --- 6. STORM & TEMPÊTE (Howling wind storm gusts) ---
-    triggerStormGust() {
-        if (!this.ctx || !this.gains.weather || this.muted) return;
-        const now = this.ctx.currentTime;
-
-        const duration = 2.5;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        // Howling wind pitch sweep (180Hz -> 550Hz -> 200Hz)
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(200, now);
-        osc.frequency.exponentialRampToValueAtTime(580, now + 1.0);
-        osc.frequency.exponentialRampToValueAtTime(180, now + duration);
-
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.2, now + 0.8);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
-        osc.connect(gain);
-        gain.connect(this.gains.weather);
-        osc.start(now);
-        osc.stop(now + duration + 0.1);
-    }
-
-    // --- 7. INSECTS & DIGGING SOUNDS (Pas d'insectes & excavation) ---
-    triggerInsectStep() {
-        if (!this.ctx || !this.gains.insects || this.muted) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(3800 + Math.random() * 2200, now);
-
-        gain.gain.setValueAtTime(0.05, now);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
-
-        osc.connect(gain);
-        gain.connect(this.gains.insects);
-
-        osc.start(now);
-        osc.stop(now + 0.02);
-    }
-
-    triggerNestDiggingSound() {
-        if (!this.ctx || !this.gains.digging || this.muted) return;
-        const now = this.ctx.currentTime;
-
-        const bufferSize = Math.floor(this.ctx.sampleRate * 0.12);
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1);
-        }
-
-        const scratch = this.ctx.createBufferSource();
-        scratch.buffer = buffer;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(650 + Math.random() * 550, now);
-        filter.Q.value = 3.5;
-
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-
-        scratch.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.gains.digging);
-
-        scratch.start(now);
-    }
-
-    // --- 8. PROCEDURAL RIVER WATER FLOW SYNTHESIS (Bruit de rivière qui coule) ---
-    startRiverAmbiance() {
-        if (!this.simRunning || this.muted || !this.ctx || !this.gains.river) return;
-
-        // Continuous bandpass filtered water flow noise with soft bubbling LFO
-        const bufferSize = this.ctx.sampleRate * 4;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1);
-        }
-
-        const noiseSource = this.ctx.createBufferSource();
-        noiseSource.buffer = buffer;
-        noiseSource.loop = true;
-
-        this.riverFilter = this.ctx.createBiquadFilter();
-        this.riverFilter.type = 'bandpass';
-        this.riverFilter.frequency.setValueAtTime(650, this.ctx.currentTime);
-        this.riverFilter.Q.value = 1.8;
-
-        // LFO for river stream modulation / water bubbling
-        const riverLfo = this.ctx.createOscillator();
-        riverLfo.frequency.value = 0.45;
-        const lfoGain = this.ctx.createGain();
-        lfoGain.gain.value = 250;
-
-        riverLfo.connect(lfoGain);
-        lfoGain.connect(this.riverFilter.frequency);
-        riverLfo.start();
-
-        noiseSource.connect(this.riverFilter);
-        this.riverFilter.connect(this.gains.river);
-        noiseSource.start();
-        this.riverNode = noiseSource;
-    }
-
-    updateRiverSound(cameraPos, riverPos = { x: 25, y: 0, z: 50 }) {
-        if (!this.simRunning || this.muted || !this.ctx || !this.gains.river || !cameraPos) return;
-
-        if (!this.riverNode) {
-            this.startRiverAmbiance();
-        }
-
-        if (this.ctx.state === 'suspended') {
-            this.ctx.resume().catch(() => {});
-        }
-
-        // Distance-based attenuation (Spatialization for river)
-        const dx = cameraPos.x - riverPos.x;
-        const dy = cameraPos.y - riverPos.y;
-        const dz = cameraPos.z - riverPos.z;
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-        // Max hearable distance = 450 meters
-        const maxDist = 450;
-        const proximity = Math.max(0.40, 1 - dist / maxDist);
-        const targetVol = Math.pow(proximity, 1.1) * (this.volumes.river || 0.60);
-
-        this.gains.river.gain.setTargetAtTime(targetVol, this.ctx.currentTime, 0.25);
-    }
-
-    // --- 9. DISEASE & EPIDEMIC OUTBREAK ALERT SOUND (Alerte maladie/épidémie) ---
-    triggerDiseaseOutbreakSound() {
-        if (!this.simRunning || this.muted || !this.ctx || !this.gains.disease) return;
-
-        const now = this.ctx.currentTime;
-        // Dissonant warning synth sweep (Fungal spore alert)
-        const osc1 = this.ctx.createOscillator();
-        const osc2 = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-
-        osc1.type = 'sawtooth';
-        osc2.type = 'sine';
-
-        osc1.frequency.setValueAtTime(440, now);
-        osc1.frequency.linearRampToValueAtTime(220, now + 0.5);
-
-        osc2.frequency.setValueAtTime(466.16, now); // Dissonant minor second (Bb)
-        osc2.frequency.linearRampToValueAtTime(233.08, now + 0.5);
-
-        gain.gain.setValueAtTime(0.001, now);
-        gain.gain.linearRampToValueAtTime(0.25, now + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-
-        osc1.connect(gain);
-        osc2.connect(gain);
-        gain.connect(this.gains.disease);
-
-        osc1.start(now);
-        osc2.start(now);
-        osc1.stop(now + 0.65);
-        osc2.stop(now + 0.65);
-    }
-
-    // --- 10. 3D SPATIAL AUDIO LISTENER POSITIONAL UPDATE ---
-    updateSpatialListener(cameraX, cameraY, cameraZ) {
-        if (!this.simRunning || !this.ctx || !this.ctx.listener || !this.spatialAudioEnabled) return;
-        const listener = this.ctx.listener;
-        if (listener.positionX) {
-            listener.positionX.setTargetAtTime(cameraX, this.ctx.currentTime, 0.1);
-            listener.positionY.setTargetAtTime(cameraY, this.ctx.currentTime, 0.1);
-            listener.positionZ.setTargetAtTime(cameraZ, this.ctx.currentTime, 0.1);
-        } else if (listener.setPosition) {
-            listener.setPosition(cameraX, cameraY, cameraZ);
-        }
+        }, stepTime)
     }
 
     updateSimulationState(arg1, arg2, arg3) {
-        let isDay = true;
-        let lightLevel = 1.0;
-        let simRunning = false;
-        let speed = 1.0;
-        let is3DActive = false;
+        let simRunning = false
+        let speed = 1.0
 
         if (typeof arg1 === 'object' && arg1 !== null) {
-            isDay = arg1.isDay ?? true;
-            lightLevel = arg1.lightLevel ?? 1.0;
-            simRunning = arg1.simRunning ?? false;
-            speed = arg1.speed ?? 1.0;
-            is3DActive = arg1.is3DActive ?? false;
+            simRunning = Boolean(arg1.simRunning)
+            speed = typeof arg1.speed === 'number' ? arg1.speed : 1.0
+            if (arg1.isDay !== undefined) this.isDay = arg1.isDay
+            if (arg1.lightLevel !== undefined) this.lightLevel = arg1.lightLevel
+            if (arg1.windSpeed !== undefined) this.windSpeed = arg1.windSpeed
         } else {
-            simRunning = Boolean(arg1);
-            speed = typeof arg2 === 'number' ? arg2 : 1.0;
-            is3DActive = Boolean(arg3);
+            simRunning = Boolean(arg1)
+            speed = typeof arg2 === 'number' ? arg2 : 1.0
         }
 
-        this.isDay = isDay;
-        this.lightLevel = lightLevel;
-        this.simRunning = Boolean(simRunning && speed > 0 && is3DActive);
+        this.simRunning = Boolean(simRunning && speed > 0)
+        this.speed = speed
 
-        if (!this.simRunning) {
-            if (this.birdTimer) clearTimeout(this.birdTimer);
-            if (this.leavesTimer) clearTimeout(this.leavesTimer);
-            if (this.masterGain && this.ctx) {
-                this.masterGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+        // Ambient track selection based on Day / Night
+        if (this.channels.ambient) {
+            const expectedSrc = (this.isDay || this.lightLevel >= 0.25) ? SOUND_BANK.ambientDay : SOUND_BANK.ambientNight
+            if (!this.channels.ambient.src.includes(encodeURI(expectedSrc).split('/').pop())) {
+                this.channels.ambient.src = expectedSrc
+                if (this.simRunning && this.enabled.ambient && !this.muted) {
+                    this.channels.ambient.play().catch(() => {})
+                }
             }
-            if (this.gains.ambiance && this.ctx) {
-                this.gains.ambiance.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
-            }
-            if (this.gains.weather && this.ctx) {
-                this.gains.weather.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
-            }
-            if (this.gains.river && this.ctx) {
-                this.gains.river.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
-            }
-            if (this.gains.insects && this.ctx) {
-                this.gains.insects.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
-            }
-            if (this.gains.digging && this.ctx) {
-                this.gains.digging.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
-            }
-        } else {
-            if (this.masterGain && this.ctx) {
-                this.masterGain.gain.setTargetAtTime(this.muted ? 0 : this.volumes.master, this.ctx.currentTime, 0.1);
-            }
-            if (!this.windNode) {
-                this.startWindAmbiance();
-            }
-            if (!this.riverNode) {
-                this.startRiverAmbiance();
-            }
-            if (this.gains.ambiance && this.ctx) {
-                this.gains.ambiance.gain.setTargetAtTime(this.enabled.ambient ? this.volumes.ambiance : 0, this.ctx.currentTime, 0.2);
-            }
-            if (this.gains.weather && this.ctx) {
-                this.gains.weather.gain.setTargetAtTime(this.enabled.weather ? this.volumes.weather : 0, this.ctx.currentTime, 0.2);
-            }
-            if (this.gains.river && this.ctx) {
-                this.gains.river.gain.setTargetAtTime(this.enabled.river ? this.volumes.river : 0, this.ctx.currentTime, 0.2);
-            }
-            if (this.gains.insects && this.ctx) {
-                this.gains.insects.gain.setTargetAtTime(this.enabled.insect ? this.volumes.insects : 0, this.ctx.currentTime, 0.2);
-            }
-            if (this.gains.digging && this.ctx) {
-                this.gains.digging.gain.setTargetAtTime(this.enabled.insect ? this.volumes.digging : 0, this.ctx.currentTime, 0.2);
-            }
-            this.scheduleNextBirdChirp();
-            this.scheduleNextLeavesRustle();
         }
+
+        this._updateChannelVolumes()
+        this._scheduleRandomLeavesRustle()
     }
 
-    // --- 1:1 CONTROLS & CHANNEL MANAGEMENT (Matching SimulationAudioManager.java) ---
-    setMasterVolume(val) {
-        this.volumes.master = val;
-        if (this.masterGain && this.ctx) {
-            this.masterGain.gain.setValueAtTime(this.muted ? 0 : val, this.ctx.currentTime);
+    _scheduleRandomLeavesRustle() {
+        if (this.rustleTimer) clearTimeout(this.rustleTimer)
+        if (!this.simRunning || !this.enabled.weather || this.muted) return
+
+        const delay = 6000 + Math.random() * 12000
+        this.rustleTimer = setTimeout(() => {
+            if (this.simRunning && this.enabled.weather && !this.muted) {
+                this.playOneShot(SOUND_BANK.leavesRustle, 0.4 * this.volumes.master * this.volumes.weather)
+            }
+            this._scheduleRandomLeavesRustle()
+        }, delay)
+    }
+
+    updateRainSound(intensity) {
+        this.rainIntensity = Math.max(0, Number(intensity) || 0)
+        if (this.channels.weatherRain) {
+            const isHeavy = this.rainIntensity > 15
+            const rainSrc = isHeavy ? SOUND_BANK.rainHeavy : SOUND_BANK.rainLight
+            if (!this.channels.weatherRain.src.includes(encodeURI(rainSrc).split('/').pop())) {
+                this.channels.weatherRain.src = rainSrc
+            }
         }
+        this._updateChannelVolumes()
+    }
+
+    triggerThunder(distanceMeters = 50) {
+        if (!this.enabled.weather || this.muted || !this.simRunning) return
+        const sounds = [SOUND_BANK.thunder1, SOUND_BANK.thunder2, SOUND_BANK.thunder3]
+        const choice = sounds[Math.floor(Math.random() * sounds.length)]
+        
+        // Speed of sound delay
+        const delayMs = Math.max(0, Math.min(2500, Math.round((distanceMeters / 343.0) * 1000.0)))
+        const attenuation = 1.0 / (1.0 + Math.pow(distanceMeters / 150.0, 1.5))
+
+        setTimeout(() => {
+            this.playOneShot(choice, this.volumes.master * this.volumes.weather * attenuation)
+        }, delayMs)
+    }
+
+    playOneShot(src, volume = 0.5) {
+        if (this.muted || volume <= 0.01) return
+        try {
+            const audio = new Audio(src)
+            audio.volume = Math.max(0, Math.min(1, volume))
+            audio.play().catch(() => {})
+        } catch {}
+    }
+
+    // --- 1:1 Controls with Desktop SimulationAudioManager.java ---
+    setMasterVolume(val) {
+        const v = Math.max(0, Math.min(1, Number(val) || 0))
+        this.volumes.master = v
+        if (this.muted && v > 0) {
+            this.muted = false
+        }
+        this._updateChannelVolumes()
     }
 
     setAmbientEnabled(enabled) {
-        this.enabled.ambient = Boolean(enabled);
-        if (this.gains.ambiance && this.ctx) {
-            this.gains.ambiance.gain.setTargetAtTime(this.enabled.ambient ? this.volumes.ambiance : 0, this.ctx.currentTime, 0.05);
-        }
+        this.enabled.ambient = Boolean(enabled)
+        this._updateChannelVolumes()
     }
 
     setRiverEnabled(enabled) {
-        this.enabled.river = Boolean(enabled);
-        if (this.gains.river && this.ctx) {
-            this.gains.river.gain.setTargetAtTime(this.enabled.river ? this.volumes.river : 0, this.ctx.currentTime, 0.05);
-        }
+        this.enabled.river = Boolean(enabled)
+        this._updateChannelVolumes()
     }
 
     setWeatherEnabled(enabled) {
-        this.enabled.weather = Boolean(enabled);
-        if (this.gains.weather && this.ctx) {
-            this.gains.weather.gain.setTargetAtTime(this.enabled.weather ? this.volumes.weather : 0, this.ctx.currentTime, 0.05);
-        }
+        this.enabled.weather = Boolean(enabled)
+        this._updateChannelVolumes()
     }
 
     setInsectEnabled(enabled) {
-        this.enabled.insect = Boolean(enabled);
-        if (this.gains.insects && this.ctx) {
-            this.gains.insects.gain.setTargetAtTime(this.enabled.insect ? this.volumes.insects : 0, this.ctx.currentTime, 0.05);
-        }
-        if (this.gains.digging && this.ctx) {
-            this.gains.digging.gain.setTargetAtTime(this.enabled.insect ? this.volumes.digging : 0, this.ctx.currentTime, 0.05);
-        }
+        this.enabled.insect = Boolean(enabled)
+        this._updateChannelVolumes()
     }
 
     setChannelVolume(channel, val) {
         if (this.volumes[channel] !== undefined) {
-            this.volumes[channel] = val;
-            if (this.gains[channel] && this.ctx) {
-                this.gains[channel].gain.setValueAtTime(val, this.ctx.currentTime);
-            }
+            this.volumes[channel] = Math.max(0, Math.min(1, Number(val) || 0))
+            this._updateChannelVolumes()
         }
     }
 
     toggleMute() {
-        this.muted = !this.muted;
-        if (this.masterGain && this.ctx) {
-            this.masterGain.gain.setValueAtTime(this.muted ? 0 : this.volumes.master, this.ctx.currentTime);
-        }
-        return this.muted;
+        this.muted = !this.muted
+        this._updateChannelVolumes()
+        return this.muted
     }
+
     resumeAmbient() {
-        try {
-            this.updateSimulationState({ simRunning: true, speed: 1.0 })
-        } catch {}
+        this.updateSimulationState({ simRunning: true, speed: 1.0 })
     }
 
     pauseAmbient() {
-        try {
-            this.updateSimulationState({ simRunning: false, speed: 0.0 })
-        } catch {}
+        this.updateSimulationState({ simRunning: false, speed: 0.0 })
     }
 
     setAmbientVolume(val) {
-        this.setChannelVolume('ambiance', val)
-    }
-
-    ensureContext() {
-        try {
-            if (!this.isInitialized) {
-                this.init()
-            }
-            if (this.ctx && this.ctx.state === 'suspended') {
-                this.ctx.resume()
-            }
-        } catch {}
+        this.setChannelVolume('ambient', val)
     }
 }
 
-export const soundEngine = new ProceduralSoundEngine();
+export const soundEngine = new SimulationAudioPlayer()

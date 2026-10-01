@@ -285,10 +285,16 @@ function RealisticGroundFlora({ windSpeed = 2.4, season = 'SUMMER', climateType 
     }, [terrainConfig])
 
     const groupRef = useRef()
+    const { running, isPaused, speed } = useSimulationStore()
+    const isSimActive = Boolean(running && !isPaused && (typeof speed === 'number' ? speed > 0 : true))
+    const floraTimeRef = useRef(0)
 
-    useFrame((state) => {
+    useFrame((state, delta) => {
         if (groupRef.current) {
-            const t = state.clock.getElapsedTime()
+            if (isSimActive) {
+                floraTimeRef.current += delta * (speed || 1.0)
+            }
+            const t = floraTimeRef.current
             groupRef.current.children.forEach((child, idx) => {
                 if (child.userData?.type === 'GRASS' || child.userData?.type === 'FERN') {
                     child.rotation.z = Math.sin(t * 2 + idx) * 0.04

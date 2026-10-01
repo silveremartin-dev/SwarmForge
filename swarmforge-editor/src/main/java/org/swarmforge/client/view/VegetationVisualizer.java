@@ -391,10 +391,12 @@ public class VegetationVisualizer {
         Random rand = new Random(42);
         int cutX = Math.max(2, Math.min(gridWidth, (int) Math.ceil(gridWidth * Math.max(0.05f, Math.min(1.0f, slicePlaneRatio)))));
 
-        float minX = 1.0f;
-        float maxX = Math.max(minX, cutX - 1.0f);
-        float minZ = 1.0f;
-        float maxZ = Math.max(minZ, gridHeight - 1.0f);
+        float marginX = Math.min(3.5f, cutX * 0.12f);
+        float marginZ = Math.min(3.5f, gridHeight * 0.12f);
+        float minX = marginX;
+        float maxX = Math.max(minX, cutX - marginX);
+        float minZ = marginZ;
+        float maxZ = Math.max(minZ, gridHeight - marginZ);
 
         if (vegSystem != null && !vegSystem.getPlants().isEmpty()) {
             // Position flora according to real simulation plants
@@ -415,7 +417,7 @@ public class VegetationVisualizer {
         } else if (terrarium != null) {
             // Procedural Natural Vegetation Pass for World Editor / Initial World state:
             // Multi-tiered natural ecosystem: Canopy Trees, Sub-canopy Saplings & Understory Shrubs
-            float treeStep = (currentRenderMode == RenderMode.GAMIFIED) ? 8.5f : 6.0f;
+            float treeStep = (currentRenderMode == RenderMode.GAMIFIED) ? 9.5f : 7.0f;
             for (float tx = minX + 0.5f; tx <= maxX - 0.5f; tx += treeStep) {
                 for (float tz = minZ + 0.5f; tz <= maxZ - 0.5f; tz += treeStep) {
                     float jx = Math.max(minX, Math.min(maxX, tx + (rand.nextFloat() - 0.5f) * (treeStep * 0.75f)));
@@ -616,18 +618,18 @@ public class VegetationVisualizer {
 
     private void createRealisticFloraForPlant(float x, float y, float z, VegetationSystem.Plant plant, Biome biome, Season season, Random rand) {
         Spatial chosenModel = null;
-        float targetHeight = 13.5f * plant.growth;
+        float targetHeight = 24.0f * plant.growth;
 
         switch (plant.type) {
             case TREE -> {
                 chosenModel = pickModelForBiome(biome, rand, true);
                 String name = (chosenModel != null && chosenModel.getName() != null) ? chosenModel.getName().toLowerCase() : "";
                 if (name.contains("stump") || name.contains("log")) {
-                    targetHeight = (0.9f + rand.nextFloat() * 0.6f) * Math.max(0.4f, plant.growth);
+                    targetHeight = (1.0f + rand.nextFloat() * 0.8f) * Math.max(0.4f, plant.growth);
                 } else if (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
-                    targetHeight = (13.0f + rand.nextFloat() * 6.0f) * Math.max(0.4f, plant.growth);
+                    targetHeight = (22.0f + rand.nextFloat() * 8.0f) * Math.max(0.4f, plant.growth);
                 } else {
-                    targetHeight = (13.5f + rand.nextFloat() * 4.5f) * Math.max(0.4f, plant.growth);
+                    targetHeight = (24.0f + rand.nextFloat() * 8.0f) * Math.max(0.4f, plant.growth);
                 }
             }
             case SHRUB -> {
@@ -780,17 +782,17 @@ public class VegetationVisualizer {
         float targetHeight;
 
         if (speciesIdx == 3 || chosenModel == cactusModel) {
-            targetHeight = 3.5f + rand.nextFloat() * 2.5f;
+            targetHeight = 5.5f + rand.nextFloat() * 3.5f;
         } else if (speciesIdx == 5 || chosenModel == bambooModel) {
-            targetHeight = 4.0f + rand.nextFloat() * 2.5f;
+            targetHeight = 5.0f + rand.nextFloat() * 3.0f;
         } else if (speciesIdx == 6 || (chosenModel != null && deadwoodLogs.contains(chosenModel))) {
-            targetHeight = 0.9f + rand.nextFloat() * 0.6f;
+            targetHeight = 1.0f + rand.nextFloat() * 0.8f;
         } else if (speciesIdx == 2 || (chosenModel != null && palmTrees.contains(chosenModel))) {
-            targetHeight = 7.5f + rand.nextFloat() * 3.5f;
+            targetHeight = 18.0f + rand.nextFloat() * 7.0f;
         } else if (speciesIdx == 1 || biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
-            targetHeight = 11.0f + rand.nextFloat() * 5.0f;
+            targetHeight = 22.0f + rand.nextFloat() * 8.0f;
         } else {
-            targetHeight = 11.5f + rand.nextFloat() * 4.0f;
+            targetHeight = 24.0f + rand.nextFloat() * 8.0f;
         }
 
         if (chosenModel != null) {
@@ -933,22 +935,6 @@ public class VegetationVisualizer {
         spatial.setLocalTranslation(-centerX * scale, baseYOffset - 0.08f, -centerZ * scale);
         pivotNode.attachChild(spatial);
 
-        // Ground Contact AO Shadow Disk for Trees and Boulders (natural ground anchoring)
-        if (targetHeight >= 2.5f) {
-            float shadowRadius = Math.min(2.5f, Math.max(0.6f, targetHeight * 0.18f));
-            Cylinder shadowDisk = new Cylinder(8, 8, shadowRadius, 0.012f, true);
-            Geometry shadowGeom = new Geometry("ContactShadow", shadowDisk);
-            Material shadowMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-            shadowMat.setColor("Color", new ColorRGBA(0.04f, 0.06f, 0.04f, 0.45f));
-            shadowMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
-            shadowMat.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
-            shadowGeom.setMaterial(shadowMat);
-            shadowGeom.setQueueBucket(RenderQueue.Bucket.Transparent);
-            shadowGeom.setLocalTranslation(0, 0.010f, 0);
-            shadowGeom.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
-            pivotNode.attachChild(shadowGeom);
-        }
-
         float rotY;
         String sName = (spatial.getName() != null) ? spatial.getName().toLowerCase() : "";
         if (sName.contains("moss") || mossyRocks.contains(spatial)) {
@@ -965,6 +951,8 @@ public class VegetationVisualizer {
         pivotNode.setLocalTranslation(x, y, z);
         pivotNode.setLocalRotation(new Quaternion().fromAngles(tiltX, rotY, tiltZ));
         pivotNode.setUserData("BaseRotY", rotY);
+        pivotNode.setUserData("TiltX", tiltX);
+        pivotNode.setUserData("TiltZ", tiltZ);
 
         rootNode.attachChild(pivotNode);
     }
@@ -1082,6 +1070,7 @@ public class VegetationVisualizer {
         }
 
         treeNode.setLocalRotation(new Quaternion().fromAngles(0, rotY, 0));
+        treeNode.setLocalScale(1.8f, 1.8f, 1.8f);
         rootNode.attachChild(treeNode);
     }
 
@@ -1152,6 +1141,7 @@ public class VegetationVisualizer {
         }
 
         treeNode.setLocalRotation(new Quaternion().fromAngles(0, rotY, 0));
+        treeNode.setLocalScale(2.0f, 2.0f, 2.0f);
         rootNode.attachChild(treeNode);
     }
 
@@ -1307,6 +1297,7 @@ public class VegetationVisualizer {
         }
 
         treeNode.setLocalRotation(new Quaternion().fromAngles(0, rotY, 0));
+        treeNode.setLocalScale(1.8f, 1.8f, 1.8f);
         rootNode.attachChild(treeNode);
     }
 
@@ -1314,12 +1305,16 @@ public class VegetationVisualizer {
         if (!visible || rootNode.getChildren().isEmpty()) return;
 
         if (tpf <= 0.0001f) {
-            // Simulation is paused or static: Keep all trees completely upright and stationary at rest
+            // Simulation is paused or static: Keep all trees completely stationary at rest
             for (Spatial child : rootNode.getChildren()) {
                 if (child instanceof Node treeNode) {
                     Float baseRotY = (Float) treeNode.getUserData("BaseRotY");
                     if (baseRotY != null) {
-                        treeNode.setLocalRotation(new Quaternion().fromAngles(0, baseRotY, 0));
+                        Float tiltX = (Float) treeNode.getUserData("TiltX");
+                        Float tiltZ = (Float) treeNode.getUserData("TiltZ");
+                        float tx = tiltX != null ? tiltX : 0.0f;
+                        float tz = tiltZ != null ? tiltZ : 0.0f;
+                        treeNode.setLocalRotation(new Quaternion().fromAngles(tx, baseRotY, tz));
                     }
                 }
             }
@@ -1784,17 +1779,6 @@ public class VegetationVisualizer {
                 activePappus.add(dp);
                 ambientAtmosphereNode.attachChild(dp.geom);
             }
-        }
-
-        // 12. Dynamic Ephemeral Puddles (Flaques éphémères dans les dépressions topographiques)
-        int puddleSpots = 6;
-        for (int i = 0; i < puddleSpots; i++) {
-            float px = 3.0f + rand.nextFloat() * (currentGridWidth - 6.0f);
-            float pz = 3.0f + rand.nextFloat() * (currentGridHeight - 6.0f);
-            float pelev = terrarium.getSurfaceElevation(px, pz);
-            DynamicPuddleAgent puddle = createDynamicPuddle(new Vector3f(px, pelev + 0.015f, pz), 0.6f + rand.nextFloat() * 0.8f);
-            activePuddles.add(puddle);
-            ambientAtmosphereNode.attachChild(puddle.geom);
         }
 
         // 13. Canopy Drip Particles (Interception foliaire et égouttement post-pluie sous la canopée)

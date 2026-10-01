@@ -177,8 +177,8 @@ public class SwarmForgeClient extends Application {
         this.glossaryTab.setContent(createGlossaryPaneView());
 
         if (isClientOnlyMode) {
-            // Dedicated Client mode: Embed Simulation Viewer, Settings/Preferences, and Glossary tabs
-            mainTabs.getTabs().addAll(simTab, settingsTab, this.glossaryTab);
+            // Dedicated Client mode: Embedded full Simulation Manager with its 7 tabs (Controls, 3D View, God Mode, Stats, Event Log, Settings, Glossary)
+            root.setCenter(createSimulationManager());
             primaryStage.setMaximized(true);
         } else {
             // Studio Mode: Full Suite with World Editor, Species Editor, Weather, Nest Generator
@@ -235,50 +235,50 @@ public class SwarmForgeClient extends Application {
             });
 
             mainTabs.getTabs().addAll(simTab, worldTab, speciesTab, accessoryTab, weatherTab, nestTab, settingsTab, this.glossaryTab);
+
+            final boolean[] isProgrammaticTabSwitch = { false };
+            mainTabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+                if (isProgrammaticTabSwitch[0]) return;
+                if (oldTab != null && oldTab.getContent() != null) {
+                    javafx.scene.Node content = oldTab.getContent();
+                    boolean canLeave = true;
+                    if (content instanceof org.swarmforge.client.ui.SpeciesEditorPane speciesEditor) {
+                        canLeave = speciesEditor.promptUnsavedChanges();
+                    } else if (content instanceof org.swarmforge.client.ui.WorldEditorPane worldEditor) {
+                        canLeave = worldEditor.promptUnsavedChanges();
+                    } else if (content instanceof org.swarmforge.client.ui.WeatherEditorPane weatherEditor) {
+                        canLeave = weatherEditor.promptUnsavedChanges();
+                    } else if (content instanceof org.swarmforge.client.ui.NestGeneratorPane nestEditor) {
+                        canLeave = nestEditor.promptUnsavedChanges();
+                    } else if (content instanceof org.swarmforge.client.ui.AccessorySpeciesEditorPane accessoryEditor) {
+                        canLeave = accessoryEditor.promptUnsavedChanges();
+                    }
+
+                    if (!canLeave) {
+                        isProgrammaticTabSwitch[0] = true;
+                        try {
+                            mainTabs.getSelectionModel().select(oldTab);
+                        } finally {
+                            isProgrammaticTabSwitch[0] = false;
+                        }
+                    }
+                }
+
+                update3DRenderingState();
+            });
+
+            // Style tab graphics
+            for (Tab t : mainTabs.getTabs()) {
+                t.getStyleClass().add("custom-tab");
+            }
+
+            // Select Simulation Tab by default on launch
+            mainTabs.getSelectionModel().select(simTab);
+
+            root.setCenter(mainTabs);
         }
 
         org.swarmforge.client.ui.GlossaryDialog.setNavigationHandler(this::navigateToGlossaryTab);
-
-        final boolean[] isProgrammaticTabSwitch = { false };
-        mainTabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
-            if (isProgrammaticTabSwitch[0]) return;
-            if (oldTab != null && oldTab.getContent() != null) {
-                javafx.scene.Node content = oldTab.getContent();
-                boolean canLeave = true;
-                if (content instanceof org.swarmforge.client.ui.SpeciesEditorPane speciesEditor) {
-                    canLeave = speciesEditor.promptUnsavedChanges();
-                } else if (content instanceof org.swarmforge.client.ui.WorldEditorPane worldEditor) {
-                    canLeave = worldEditor.promptUnsavedChanges();
-                } else if (content instanceof org.swarmforge.client.ui.WeatherEditorPane weatherEditor) {
-                    canLeave = weatherEditor.promptUnsavedChanges();
-                } else if (content instanceof org.swarmforge.client.ui.NestGeneratorPane nestEditor) {
-                    canLeave = nestEditor.promptUnsavedChanges();
-                } else if (content instanceof org.swarmforge.client.ui.AccessorySpeciesEditorPane accessoryEditor) {
-                    canLeave = accessoryEditor.promptUnsavedChanges();
-                }
-
-                if (!canLeave) {
-                    isProgrammaticTabSwitch[0] = true;
-                    try {
-                        mainTabs.getSelectionModel().select(oldTab);
-                    } finally {
-                        isProgrammaticTabSwitch[0] = false;
-                    }
-                }
-            }
-
-            update3DRenderingState();
-        });
-
-        // Style tab graphics
-        for (Tab t : mainTabs.getTabs()) {
-            t.getStyleClass().add("custom-tab");
-        }
-
-        // Select Simulation Tab by default on launch
-        mainTabs.getSelectionModel().select(simTab);
-
-        root.setCenter(mainTabs);
 
         // Scene Setup & Theme Registration
         Scene scene = new Scene(root, 1280, 800);
@@ -1157,7 +1157,19 @@ public class SwarmForgeClient extends Application {
                     }
                 });
 
-                subTabs.getTabs().addAll(controlsTab, visualTab, godTab, statsTab, eventLogTab);
+                // --- TAB: SETTINGS / PREFERENCES ---
+                Tab simSettingsTab = new Tab();
+                simSettingsTab.textProperty().bind(i18n.createStringBinding("tab.settings"));
+                simSettingsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.SETTINGS));
+                simSettingsTab.setContent(createSettingsPane());
+
+                // --- TAB: GLOSSARY ---
+                this.glossaryTab = new Tab();
+                this.glossaryTab.textProperty().bind(i18n.createStringBinding("tab.glossary"));
+                this.glossaryTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.BOOK_OPEN));
+                this.glossaryTab.setContent(createGlossaryPaneView());
+
+                subTabs.getTabs().addAll(controlsTab, visualTab, godTab, statsTab, eventLogTab, simSettingsTab, this.glossaryTab);
                 pane.setCenter(subTabs);
 
                 // SimulationControlPanel Server Networking Callbacks
@@ -1946,12 +1958,18 @@ public class SwarmForgeClient extends Application {
                         simControlPanel.setOnPlay(v -> {
                                 if (simulationInactiveOverlay != null) simulationInactiveOverlay.setVisible(false);
                                 if (localSimulation != null) localSimulation.start();
+                                if (simWorldViewer != null && simWorldViewer.getGameView() != null && simWorldViewer.getGameView().getGameApp() != null) {
+                                    simWorldViewer.getGameView().getGameApp().setSimulationPaused(false);
+                                }
                                 if (isVideoArmed && !isVideoRecording) {
                                     startVideoRecordingInternal.run();
                                 }
                         });
                         simControlPanel.setOnPause(v -> {
                                 if (localSimulation != null) localSimulation.pause();
+                                if (simWorldViewer != null && simWorldViewer.getGameView() != null && simWorldViewer.getGameView().getGameApp() != null) {
+                                    simWorldViewer.getGameView().getGameApp().setSimulationPaused(true);
+                                }
                                 if (isVideoRecording && stopVideoRecordingAndExport != null) {
                                     stopVideoRecordingAndExport.run();
                                 } else if (isVideoArmed) {
@@ -1963,6 +1981,9 @@ public class SwarmForgeClient extends Application {
                                         localSimulation.stop();
                                         localSimulation.reset(0);
                                         simControlPanel.updateTick(0, 0);
+                                }
+                                if (simWorldViewer != null && simWorldViewer.getGameView() != null && simWorldViewer.getGameView().getGameApp() != null) {
+                                    simWorldViewer.getGameView().getGameApp().setSimulationPaused(true);
                                 }
                                 if (simWorldViewer != null) {
                                     simWorldViewer.resetAntTracking();

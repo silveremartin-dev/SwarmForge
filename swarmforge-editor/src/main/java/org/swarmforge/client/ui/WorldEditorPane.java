@@ -2022,9 +2022,14 @@ public class WorldEditorPane extends BorderPane {
         this.onAntSelectedListener = listener;
     }
 
+    private final java.util.Deque<java.util.UUID> antNavigationHistory = new java.util.ArrayDeque<>();
+
     public void setFollowedAnt(org.swarmforge.core.domain.Individual ant) {
         this.followedAnt = ant;
         this.antTrailHistory.clear();
+        if (gameView != null && gameView.getGameApp() != null) {
+            gameView.getGameApp().followAnt(ant != null && ant.getId() != null ? ant.getId().toString() : null);
+        }
         if (trackedAntPane != null) {
             trackedAntPane.updateAnt(ant, ant != null);
         }
@@ -2032,6 +2037,91 @@ public class WorldEditorPane extends BorderPane {
             onAntSelectedListener.accept(ant);
         }
         repaintAllViews();
+    }
+
+    public void selectNextNearestAnt() {
+        if (activeSimulation == null) return;
+
+        List<org.swarmforge.core.domain.Individual> candidates = new ArrayList<>();
+        for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
+            if (colony != null) {
+                for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
+                    if (ind != null && ind.isAlive() && ind.getHealth() > 0) {
+                        candidates.add(ind);
+                    }
+                }
+            }
+        }
+
+        if (candidates.isEmpty()) return;
+
+        double refX = 32.0, refY = 32.0, refZ = 0.0;
+        java.util.UUID currentId = (followedAnt != null) ? followedAnt.getId() : null;
+
+        if (followedAnt != null) {
+            refX = followedAnt.getX();
+            refY = followedAnt.getY();
+            refZ = followedAnt.getZ();
+            // Exclude currently tracked ant
+            candidates.removeIf(ind -> ind.getId() != null && ind.getId().equals(currentId));
+        }
+
+        if (candidates.isEmpty()) return;
+
+        final double fRefX = refX, fRefY = refY, fRefZ = refZ;
+        candidates.sort(Comparator.comparingDouble(ind -> {
+            double dx = ind.getX() - fRefX;
+            double dy = ind.getY() - fRefY;
+            double dz = ind.getZ() - fRefZ;
+            return dx * dx + dy * dy + dz * dz;
+        }));
+
+        // Pick the nearest ant (preferring one not immediately previously visited in history if multiple exist)
+        org.swarmforge.core.domain.Individual bestMatch = candidates.get(0);
+        if (candidates.size() > 1 && !antNavigationHistory.isEmpty() && bestMatch.getId() != null && bestMatch.getId().equals(antNavigationHistory.peek())) {
+            bestMatch = candidates.get(1);
+        }
+
+        if (currentId != null) {
+            antNavigationHistory.push(currentId);
+            if (antNavigationHistory.size() > 50) {
+                antNavigationHistory.removeLast();
+            }
+        }
+
+        setFollowedAnt(bestMatch);
+        setFollowAntCameraEnabled(true);
+        if (trackedAntPane != null) {
+            trackedAntPane.setVisible(true);
+            trackedAntPane.updateAnt(bestMatch, true);
+        }
+    }
+
+    public void selectPreviousNearestAnt() {
+        if (activeSimulation == null) return;
+
+        // 1. Try history stack first
+        while (!antNavigationHistory.isEmpty()) {
+            java.util.UUID prevId = antNavigationHistory.pop();
+            for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
+                if (colony != null) {
+                    for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
+                        if (ind != null && ind.isAlive() && ind.getId() != null && ind.getId().equals(prevId)) {
+                            setFollowedAnt(ind);
+                            setFollowAntCameraEnabled(true);
+                            if (trackedAntPane != null) {
+                                trackedAntPane.setVisible(true);
+                                trackedAntPane.updateAnt(ind, true);
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. If no history or previous ant dead, select nearest ant from current position
+        selectNextNearestAnt();
     }
 
     public void resetAntTracking() {
@@ -3407,6 +3497,8 @@ public class WorldEditorPane extends BorderPane {
         });
 
         trackedAntPane.setOnCenter(this::centerCameraOnSelection);
+        trackedAntPane.setOnNextAnt(this::selectNextNearestAnt);
+        trackedAntPane.setOnPreviousAnt(this::selectPreviousNearestAnt);
         trackedAntPane.setOnClose(() -> {
             if (showAntTrackingCheck != null) showAntTrackingCheck.setSelected(false);
             setAntTrackingEnabled(false);
@@ -3507,8 +3599,8 @@ public class WorldEditorPane extends BorderPane {
                     if (h3d != null) {
                         double hx = Math.max(10, Math.min(h3d.getWidth() - 430.0 - 10, lastGameViewMouseX + 15));
                         double hy = Math.max(10, Math.min(h3d.getHeight() - 220.0 - 10, lastGameViewMouseY - 20));
-                        floatingMouseInspectorCard.setLayoutX(hx);
-                        floatingMouseInspectorCard.setLayoutY(hy);
+                        floatingMouseInspectorCard.relocate(hx, hy);
+                        floatingMouseInspectorCard.toFront();
                     }
                     floatingMouseInspectorCard.setVisible(true);
                 }
@@ -4504,7 +4596,9 @@ public class WorldEditorPane extends BorderPane {
             return;
         }
         if (floatingMouseInspectorCard == null) return;
-        if (gx < 0 || gx >= GRID_SIZE || gy < 0 || gy >= GRID_SIZE) {
+        int maxGX = (activeSimulation != null && activeSimulation.getTerrarium() != null) ? activeSimulation.getTerrarium().getWidth() : GRID_SIZE;
+        int maxGY = (activeSimulation != null && activeSimulation.getTerrarium() != null) ? activeSimulation.getTerrarium().getHeight() : GRID_SIZE;
+        if (gx < 0 || gx >= maxGX || gy < 0 || gy >= maxGY) {
             floatingMouseInspectorCard.setVisible(false);
             return;
         }
@@ -4649,9 +4743,9 @@ public class WorldEditorPane extends BorderPane {
         double hx = Math.max(10, Math.min(parentW - cardW - 10, screenX + 15));
         double hy = Math.max(10, Math.min(parentH - cardH - 10, screenY - 20));
 
-        floatingMouseInspectorCard.setLayoutX(hx);
-        floatingMouseInspectorCard.setLayoutY(hy);
+        floatingMouseInspectorCard.relocate(hx, hy);
         floatingMouseInspectorCard.setVisible(true);
+        floatingMouseInspectorCard.toFront();
     }
 
     private void updateHoverInfo(double mx, double my, String viewType) {

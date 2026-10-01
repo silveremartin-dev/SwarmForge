@@ -479,9 +479,13 @@ public class SparsePheromoneGrid {
 
     public Map<Long, float[]> getAllEntries() {
         Map<Long, float[]> snapshot = new java.util.HashMap<>();
+        long tick = currentTick;
         for (Map.Entry<Long, PheromoneEntry> e : grid.entrySet()) {
-            int[] pos = Morton3D.decode(e.getKey());
-            snapshot.put(e.getKey(), readAll(pos[0], pos[1], pos[2]));
+            if (e == null || e.getKey() == null || e.getValue() == null) continue;
+            float[] values = decay(e.getValue(), tick);
+            if (values != null) {
+                snapshot.put(e.getKey(), values);
+            }
         }
         return snapshot;
     }

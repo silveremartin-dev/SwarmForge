@@ -1,13 +1,14 @@
 @echo off
-REM =======================================================================
-REM   SwarmForge - Test Tout-en-Un : Serveur Java + Multi-Clients (BAT)
-REM =======================================================================
+REM ==============================================================================
+REM   SwarmForge - Lanceur de Test d'Integration Tout-en-Un (BAT)
+REM   Orchestre en local le serveur Java, le(s) client(s) Web, le Studio et le Compute Node.
+REM ==============================================================================
 
 cd /d "%~dp0..\.."
 
-echo =======================================================================
-echo        SwarmForge - Lanceur de Test Multi-Clients Tout-en-Un
-echo =======================================================================
+echo ==============================================================================
+echo        SwarmForge - Banc d'Essai ^& Test d'Integration Tout-en-Un
+echo ==============================================================================
 echo.
 echo   Scenarios Academiques Disponibles :
 echo    [ 1] ACAD_01_LEVY_BROWNIAN             (Levy Flights vs Brownian Walk)
@@ -29,25 +30,47 @@ echo    [16] ACAD_16_APICULTURAL_APIARY        (Rucher Moderne Dadant et Butinag
 echo.
 
 set SCENARIO_ID=4
-set /p USER_SCENARIO="Entrez le numero du scenario (1-16) [Defaut: 4]: "
-if not "%USER_SCENARIO%"=="" set SCENARIO_ID=%USER_SCENARIO%
-
 set WEB_COUNT=2
-set /p USER_WEB="Nombre de clients Web a ouvrir (0-5) [Defaut: 2]: "
-if not "%USER_WEB%"=="" set WEB_COUNT=%USER_WEB%
-
 set LAUNCH_EDITOR=O
-set /p USER_ED="Lancer le client lourd Studio JavaFX (O/N) [Defaut: O]: "
-if not "%USER_ED%"=="" set LAUNCH_EDITOR=%USER_ED%
+set LAUNCH_COMPUTE=N
+
+REM Mode interactif si aucun argument
+if "%~1"=="" (
+    set /p USER_SCENARIO="Scenario (1-16) [Defaut: 4]: "
+    if not "!USER_SCENARIO!"=="" set SCENARIO_ID=!USER_SCENARIO!
+    if not "%USER_SCENARIO%"=="" set SCENARIO_ID=%USER_SCENARIO%
+
+    set /p USER_WEB="Nombre de clients Web a ouvrir (0-5) [Defaut: 2]: "
+    if not "!USER_WEB!"=="" set WEB_COUNT=!USER_WEB!
+    if not "%USER_WEB%"=="" set WEB_COUNT=%USER_WEB%
+
+    set /p USER_ED="Lancer le client Studio JavaFX (O/N) [Defaut: O]: "
+    if not "!USER_ED!"=="" set LAUNCH_EDITOR=!USER_ED!
+    if not "%USER_ED%"=="" set LAUNCH_EDITOR=%USER_ED%
+
+    set /p USER_COMP="Lancer un noeud de calcul headless Compute Node (O/N) [Defaut: N]: "
+    if not "!USER_COMP!"=="" set LAUNCH_COMPUTE=!USER_COMP!
+    if not "%USER_COMP%"=="" set LAUNCH_COMPUTE=%USER_COMP%
+) else (
+    set SCENARIO_ID=%~1
+    if not "%~2"=="" set WEB_COUNT=%~2
+    if not "%~3"=="" set LAUNCH_EDITOR=%~3
+    if not "%~4"=="" set LAUNCH_COMPUTE=%~4
+)
 
 echo.
-echo [1/4] Lancement du Serveur Java SwarmForge (Scenario #%SCENARIO_ID%)...
-start "SwarmForge Server [Scenario %SCENARIO_ID%]" cmd /k "mvn exec:java -pl swarmforge-server -Dexec.args=\"--scenario %SCENARIO_ID%\""
+echo [1/4] Compilation et Lancement du Serveur Java SwarmForge (Scenario #%SCENARIO_ID%)...
+start "SwarmForge Server [Scenario %SCENARIO_ID%]" cmd /k "cd /d "%CD%" && mvn exec:java -pl swarmforge-server -Dexec.args=\"--scenario %SCENARIO_ID%\""
 
-echo [2/4] Lancement du Serveur Web HTTP Statique...
-start "SwarmForge Web Static Server" cmd /k "py scripts\test\serve_web_static.py || python scripts\test\serve_web_static.py"
+echo [2/4] Lancement du Serveur HTTP Statique Web (Port 5173)...
+start "SwarmForge Web Static Server" cmd /k "cd /d "%CD%" && py scripts\test\serve_web_static.py || python scripts\test\serve_web_static.py"
 
-echo [3/4] Attente de 4 secondes pour initialisation...
+if /I "%LAUNCH_COMPUTE%"=="O" (
+    echo [Option] Lancement du Noeud de Calcul Headless (Compute Node)...
+    start "SwarmForge Compute Node" cmd /k "cd /d "%CD%" && mvn exec:java -pl swarmforge-compute"
+)
+
+echo [3/4] Attente de 4 secondes pour initialisation du serveur...
 timeout /t 4 /nobreak >nul
 
 if %WEB_COUNT% GTR 0 (
@@ -58,15 +81,15 @@ if %WEB_COUNT% GTR 0 (
 )
 
 if /I "%LAUNCH_EDITOR%"=="O" (
-    echo [Bonus] Lancement du Client Lourd Studio JavaFX...
-    start "SwarmForge Studio Client" cmd /k "mvn exec:java -pl swarmforge-editor"
+    echo [Option] Lancement du Studio JavaFX...
+    start "SwarmForge Studio" cmd /k "cd /d "%CD%" && mvn exec:java -pl swarmforge-editor"
 )
 
 echo.
-echo =======================================================================
-echo          TOUS LES COMPOSANTS SONT DEMARRES AVEC SUCCES !
-echo =======================================================================
-echo   - Serveur gRPC      : localhost:50051
-echo   - Serveur WebSocket : ws://localhost:8081
-echo   - Client(s) Web     : http://localhost:5173 (%WEB_COUNT% ouverts)
-echo =======================================================================
+echo ==============================================================================
+echo                 TEST D'INTEGRATION LANCE AVEC SUCCES
+echo ==============================================================================
+echo   - Serveur gRPC        : localhost:50051 (Scenario #%SCENARIO_ID%)
+echo   - Serveur WebSocket   : ws://localhost:8081
+echo   - Client(s) Web (SPA) : http://localhost:5173 (%WEB_COUNT% client(s))
+echo ==============================================================================

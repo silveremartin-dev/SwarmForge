@@ -191,9 +191,21 @@ public class ServerBrowserPane extends BorderPane {
 
     public void refreshServers() {
         serverList.clear();
-        serverList.add(new ServerEntry("SwarmForge Local Daemon", "localhost", 50051, 1, 1, 1, "H2 In-Memory"));
-        serverList.add(new ServerEntry("SwarmForge EU Cluster Node 1", "eu1.swarmforge.org", 50051, 24, 4, 12, "PostgreSQL"));
-        serverList.add(new ServerEntry("SwarmForge US High-Scale Compute", "us1.swarmforge.org", 50051, 88, 8, 32, "PostgreSQL + Redis"));
+        String host = hostField.getText() != null ? hostField.getText().trim() : "localhost";
+        int port = 50051;
+        try {
+            port = Integer.parseInt(portField.getText().trim());
+        } catch (Exception ignored) {}
+
+        long t0 = System.currentTimeMillis();
+        boolean reachable = org.swarmforge.client.network.LocalServerManager.isPortOpen(host, port);
+        int pingMs = (int) Math.max(1, System.currentTimeMillis() - t0);
+
+        if (reachable) {
+            boolean isLocal = "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host);
+            String name = isLocal ? "SwarmForge Local Server (Actif)" : ("Serveur SwarmForge (" + host + ")");
+            serverList.add(new ServerEntry(name, host, port, pingMs, 1, 1, "En ligne (gRPC)"));
+        }
     }
 
     private void handleDirectConnect() {

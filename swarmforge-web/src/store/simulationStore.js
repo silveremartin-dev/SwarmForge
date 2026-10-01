@@ -55,115 +55,7 @@ export function formatSimRelativeTime(totalSeconds) {
     return `J+${days} ${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
-function spawnInitialAntsFromCards(speciesCards) {
-    if (!speciesCards || speciesCards.length === 0) return []
-    const ants = []
 
-    speciesCards.forEach((card, cIdx) => {
-        const baseX = cIdx === 0 ? 35 : (35 + cIdx * 30)
-        const baseY = cIdx === 0 ? 35 : (35 + cIdx * 30)
-        const speciesPreset = DEFAULT_SPECIES_PRESETS.find(s => s.id === card.speciesId) || DEFAULT_SPECIES_PRESETS[0]
-
-        // Queens
-        for (let i = 0; i < (card.initialQueens || 0); i++) {
-            ants.push({
-                id: `ant_${card.id}_queen_${i + 1}`,
-                colonyId: card.id,
-                colonyName: card.name,
-                species: speciesPreset?.name || 'Formica fusca',
-                caste: 'QUEEN',
-                job: 'LAYING_EGGS',
-                x: baseX + (Math.random() - 0.5) * 4,
-                y: -1.2,
-                z: baseY + (Math.random() - 0.5) * 4,
-                vx: 0, vy: 0, vz: 0,
-                health: 100,
-                energy: 100,
-                age: 180 + Math.floor(Math.random() * 100),
-                carriedItem: 'NONE',
-                task: 'Royal Care & Egg Laying',
-                color: card.color
-            })
-        }
-
-        // Soldiers
-        for (let i = 0; i < (card.initialSoldiers || 0); i++) {
-            ants.push({
-                id: `ant_${card.id}_soldier_${i + 1}`,
-                colonyId: card.id,
-                colonyName: card.name,
-                species: speciesPreset?.name || 'Formica fusca',
-                caste: 'SOLDIER',
-                job: 'GUARD',
-                x: baseX + (Math.random() - 0.5) * 12,
-                y: 0.1,
-                z: baseY + (Math.random() - 0.5) * 12,
-                vx: (Math.random() - 0.5) * 0.2,
-                vy: 0,
-                vz: (Math.random() - 0.5) * 0.2,
-                health: 100,
-                energy: 90 + Math.random() * 10,
-                age: 30 + Math.floor(Math.random() * 60),
-                carriedItem: 'NONE',
-                task: 'Nest Perimeter Defense',
-                color: card.color
-            })
-        }
-
-        // Workers
-        for (let i = 0; i < (card.initialWorkers || 0); i++) {
-            const isForager = i % 2 === 0
-            const isBuilder = i % 4 === 1
-            const job = isForager ? 'FORAGER' : (isBuilder ? 'BUILDER' : 'NURSE')
-            const task = isForager ? 'Searching for Nectar/Seeds' : (isBuilder ? 'Tunnel Excavation' : 'Tending Brood')
-
-            ants.push({
-                id: `ant_${card.id}_worker_${i + 1}`,
-                colonyId: card.id,
-                colonyName: card.name,
-                species: speciesPreset?.name || 'Formica fusca',
-                caste: 'WORKER',
-                job: job,
-                x: baseX + (Math.random() - 0.5) * 20,
-                y: isBuilder ? -0.8 : 0.1,
-                z: baseY + (Math.random() - 0.5) * 20,
-                vx: (Math.random() - 0.5) * 0.3,
-                vy: 0,
-                vz: (Math.random() - 0.5) * 0.3,
-                health: 100,
-                energy: 85 + Math.random() * 15,
-                age: 15 + Math.floor(Math.random() * 45),
-                carriedItem: isForager && Math.random() > 0.6 ? 'SUGAR' : 'NONE',
-                task: task,
-                color: card.color
-            })
-        }
-
-        // Males
-        for (let i = 0; i < (card.initialMales || 0); i++) {
-            ants.push({
-                id: `ant_${card.id}_male_${i + 1}`,
-                colonyId: card.id,
-                colonyName: card.name,
-                species: speciesPreset?.name || 'Formica fusca',
-                caste: 'MALE',
-                job: 'RESTING',
-                x: baseX + (Math.random() - 0.5) * 6,
-                y: -0.5,
-                z: baseY + (Math.random() - 0.5) * 6,
-                vx: 0, vy: 0, vz: 0,
-                health: 100,
-                energy: 95,
-                age: 10 + Math.floor(Math.random() * 20),
-                carriedItem: 'NONE',
-                task: 'Resting in Queen Chamber',
-                color: card.color
-            })
-        }
-    })
-
-    return ants
-}
 
 function generateInitialColonies(speciesCards) {
     if (!speciesCards || speciesCards.length === 0) return []
@@ -237,7 +129,7 @@ export const useSimulationStore = create((set, get) => {
 
         setActiveTab: (tab) => {
             const currentRunning = get().running
-            // Auto-pause when entering God Mode (1:1 with SwarmForgeClient.java line 1052)
+            // Auto-pause ONLY when entering God Mode (1:1 with SwarmForgeClient.java line 1052)
             if (tab === 'GOD_MODE' && currentRunning) {
                 get().pause()
                 get().addEventLog({
@@ -247,8 +139,8 @@ export const useSimulationStore = create((set, get) => {
                     message: '⏸️ Simulation mise en pause automatique pour agencement des interventions.'
                 })
             }
-            // Update audio engine to ensure sound only plays when 3D tab is active
-            soundEngine.updateSimulationState(get().running, get().speed, tab === 'VISUAL_3D')
+            // Continuous audio and background simulation across all other tabs
+            soundEngine.updateSimulationState(get().running, get().speed)
             set({
                 activeTab: tab,
                 activeMainTab: tab === 'SETTINGS' ? 'SETTINGS' : 'SIMULATION',
@@ -437,21 +329,108 @@ export const useSimulationStore = create((set, get) => {
             set({ trackedAntId: ant ? ant.id : id, trackedAntData: ant, selectedEntity: ant })
             return ant
         },
+        antNavigationHistory: [],
         selectNextAnt: () => {
-            const ants = get().ants || []
+            const state = get()
+            const ants = (state.ants || []).filter(a => a && (a.health === undefined || a.health > 0))
             if (ants.length === 0) return
-            const currentIdx = ants.findIndex(a => a.id === (get().trackedAntId || get().selectedEntity?.id))
-            const nextIdx = (currentIdx + 1) % ants.length
-            const nextAnt = ants[nextIdx]
-            set({ trackedAntId: nextAnt.id, trackedAntData: nextAnt, selectedEntity: nextAnt })
+            const currentId = state.trackedAntId || state.selectedEntity?.id
+            const currentAnt = ants.find(a => a.id === currentId)
+            if (!currentAnt) {
+                const first = ants[0]
+                set({ trackedAntId: first.id, trackedAntData: first, selectedEntity: first })
+                return
+            }
+
+            const curX = currentAnt.x ?? 50
+            const curY = currentAnt.y ?? 0.15
+            const curZ = currentAnt.z !== undefined ? currentAnt.z : (currentAnt.y ?? 50)
+
+            // Push current ant into navigation history stack (capped at 50)
+            const history = [...(state.antNavigationHistory || [])]
+            if (currentId && (history.length === 0 || history[history.length - 1] !== currentId)) {
+                history.push(currentId)
+                if (history.length > 50) history.shift()
+            }
+
+            // Calculate 3D Euclidean distance to all other living ants
+            const candidates = ants
+                .filter(a => a.id !== currentId)
+                .map(a => {
+                    const ax = a.x ?? 50
+                    const ay = a.y ?? 0.15
+                    const az = a.z !== undefined ? a.z : (a.y ?? 50)
+                    const distSq = (ax - curX) * (ax - curX) + (ay - curY) * (ay - curY) + (az - curZ) * (az - curZ)
+                    return { ant: a, distSq }
+                })
+                .sort((a, b) => a.distSq - b.distSq)
+
+            if (candidates.length > 0) {
+                const nextAnt = candidates[0].ant
+                set({
+                    trackedAntId: nextAnt.id,
+                    trackedAntData: nextAnt,
+                    selectedEntity: nextAnt,
+                    antNavigationHistory: history
+                })
+            }
         },
         selectPreviousAnt: () => {
-            const ants = get().ants || []
+            const state = get()
+            const ants = (state.ants || []).filter(a => a && (a.health === undefined || a.health > 0))
             if (ants.length === 0) return
-            const currentIdx = ants.findIndex(a => a.id === (get().trackedAntId || get().selectedEntity?.id))
-            const prevIdx = (currentIdx - 1 + ants.length) % ants.length
-            const prevAnt = ants[prevIdx]
-            set({ trackedAntId: prevAnt.id, trackedAntData: prevAnt, selectedEntity: prevAnt })
+            const currentId = state.trackedAntId || state.selectedEntity?.id
+            const history = [...(state.antNavigationHistory || [])]
+
+            // Try to pop previous ant from history stack
+            while (history.length > 0) {
+                const prevId = history.pop()
+                if (prevId !== currentId) {
+                    const found = ants.find(a => a.id === prevId)
+                    if (found) {
+                        set({
+                            trackedAntId: found.id,
+                            trackedAntData: found,
+                            selectedEntity: found,
+                            antNavigationHistory: history
+                        })
+                        return
+                    }
+                }
+            }
+
+            // If no history, select closest ant by Euclidean distance
+            const currentAnt = ants.find(a => a.id === currentId)
+            if (!currentAnt) {
+                const last = ants[ants.length - 1]
+                set({ trackedAntId: last.id, trackedAntData: last, selectedEntity: last, antNavigationHistory: [] })
+                return
+            }
+
+            const curX = currentAnt.x ?? 50
+            const curY = currentAnt.y ?? 0.15
+            const curZ = currentAnt.z !== undefined ? currentAnt.z : (currentAnt.y ?? 50)
+
+            const candidates = ants
+                .filter(a => a.id !== currentId)
+                .map(a => {
+                    const ax = a.x ?? 50
+                    const ay = a.y ?? 0.15
+                    const az = a.z !== undefined ? a.z : (a.y ?? 50)
+                    const distSq = (ax - curX) * (ax - curX) + (ay - curY) * (ay - curY) + (az - curZ) * (az - curZ)
+                    return { ant: a, distSq }
+                })
+                .sort((a, b) => a.distSq - b.distSq)
+
+            if (candidates.length > 0) {
+                const prevAnt = candidates[0].ant
+                set({
+                    trackedAntId: prevAnt.id,
+                    trackedAntData: prevAnt,
+                    selectedEntity: prevAnt,
+                    antNavigationHistory: []
+                })
+            }
         },
         showTerrain: true,
         toggleTerrain: () => set(s => ({ showTerrain: !s.showTerrain })),
@@ -492,37 +471,6 @@ export const useSimulationStore = create((set, get) => {
             solarRadiation: 450.0
         },
 
-        applyScenarioSetup: () => {
-            const state = get()
-            const initialColonies = generateInitialColonies(state.speciesCards)
-            const initialAnts = spawnInitialAntsFromCards(state.speciesCards)
-            const initialNests = generateInitialNests(state.speciesCards)
-            const initialFood = generateInitialFoodSources()
-
-            set({
-                ticks: 0,
-                highestRecordedTick: 0,
-                simTimeSeconds: 0,
-                simTimeFormatted: formatSimCalendarTime(state.startDateTime, 0),
-                simRelativeTimeFormatted: 'J+0 00:00:00',
-                colonies: initialColonies,
-                ants: initialAnts,
-                nests: initialNests,
-                foodSources: initialFood,
-                predators: [],
-                statsHistory: [],
-                trackedAntId: null,
-                trackedAntData: null,
-                activeTab: 'VISUAL_3D'
-            })
-
-            get().addEventLog({
-                severity: 'INFO',
-                type: 'SYSTEM',
-                source: 'Gestionnaire de Scénario',
-                message: `Scénario appliqué avec succès (${initialColonies.length} colonies, ${initialAnts.length} individus).`
-            })
-        },
 
         // --- 5. God Mode Interventions & Scheduled Events Queue ---
         scheduledEvents: [],
@@ -889,37 +837,40 @@ export const useSimulationStore = create((set, get) => {
         // --- 9. Core Simulation Actions & Transport Controls ---
         applyScenarioSetup: () => {
             const state = get()
-            const { speciesCards, startDateTime, masterSeed, selectedWorldPresetId, selectedWeatherPresetId, connected, serverRole, playerAlias, playerSpecies } = state
+            const { speciesCards, startDateTime, masterSeed, selectedWorldPresetId, selectedWeatherPresetId, connected, serverRole, playerAlias, playerSpecies, serverHost, serverPort } = state
             const initialColonies = generateInitialColonies(speciesCards)
-            const initialAnts = spawnInitialAntsFromCards(speciesCards)
             const initialFoods = generateInitialFoodSources()
             const initialNests = generateInitialNests(speciesCards)
 
             const worldPreset = DEFAULT_WORLD_PRESETS.find(w => w.id === selectedWorldPresetId)
             const weatherPreset = DEFAULT_WEATHER_PRESETS.find(w => w.id === selectedWeatherPresetId)
 
+            // Ensure server connection is active or initiated
+            if (!connected) {
+                networkClient.connect(serverHost, serverPort, playerAlias, playerSpecies, serverRole)
+                showToast(`Connexion au serveur SwarmForge (${serverHost}:${serverPort})...`, 'info')
+            }
+
             // If connected to SwarmForge Server: deploy scenario or join session
-            if (connected) {
-                if (serverRole === 'HOST') {
-                    networkClient.deployScenario({
-                        selectedWorldPresetId,
-                        selectedWeatherPresetId,
-                        startDateTime,
-                        masterSeed,
-                        stepSeconds: state.stepSeconds,
-                        maxDurationSeconds: state.maxDuration,
-                        minPopulationStop: state.minPopStop,
-                        isMultiplayerOnly: state.isMultiplayerOnly,
-                        requiredPlayerCount: state.requiredPlayerCount,
-                        gridTilesX: state.gridTilesX,
-                        gridTilesY: state.gridTilesY,
-                        speciesCards,
-                        colonies: initialColonies,
-                        nests: initialNests
-                    })
-                } else {
-                    networkClient.joinSession(playerAlias, playerSpecies)
-                }
+            if (serverRole === 'HOST') {
+                networkClient.deployScenario({
+                    selectedWorldPresetId,
+                    selectedWeatherPresetId,
+                    startDateTime,
+                    masterSeed,
+                    stepSeconds: state.stepSeconds,
+                    maxDurationSeconds: state.maxDuration,
+                    minPopulationStop: state.minPopStop,
+                    isMultiplayerOnly: state.isMultiplayerOnly,
+                    requiredPlayerCount: state.requiredPlayerCount,
+                    gridTilesX: state.gridTilesX,
+                    gridTilesY: state.gridTilesY,
+                    speciesCards,
+                    colonies: initialColonies,
+                    nests: initialNests
+                })
+            } else {
+                networkClient.joinSession(playerAlias, playerSpecies)
             }
 
             set({
@@ -930,7 +881,7 @@ export const useSimulationStore = create((set, get) => {
                 isPaused: false,
                 isScenarioApplied: true,
                 colonies: initialColonies,
-                ants: initialAnts,
+                ants: [], // Strictly reconciled via server SimulationUpdate frames
                 nests: initialNests,
                 pheromones: [],
                 foodSources: initialFoods,
@@ -954,19 +905,8 @@ export const useSimulationStore = create((set, get) => {
                 type: 'SIMULATION_STARTED',
                 source: 'Gestionnaire de Scénario',
                 sourceKey: 'sourceScenario',
-                message: `Nouveau scénario appliqué : ${worldPreset?.name || 'Monde'} (${initialAnts.length} individus, ${initialColonies.length} colonies)`,
-                metadata: { world: worldPreset?.name, initialPopulation: initialAnts.length, coloniesCount: initialColonies.length }
-            })
-
-            // Generate canonical COLONY_FOUNDED events for each colony (1:1 with SimulationEvent.java)
-            initialColonies.forEach(col => {
-                get().addEventLog({
-                    severity: 'INFO',
-                    type: 'COLONY_FOUNDED',
-                    source: col.name,
-                    message: `Colonie "${col.name}" (${col.speciesId}) fondée avec ${col.population} individus (${col.queens} reine(s), ${col.workers} ouvrières, ${col.soldiers} soldats).`,
-                    metadata: { colonyId: col.id, species: col.speciesId, population: col.population, queens: col.queens, workers: col.workers, soldiers: col.soldiers }
-                })
+                message: `Nouveau scénario initialisé : ${worldPreset?.name || 'Monde'} (${initialColonies.length} colonies). Synchronisation avec le serveur SwarmForge en cours...`,
+                metadata: { world: worldPreset?.name, coloniesCount: initialColonies.length }
             })
 
             // Switch to 3D view on apply (1:1 with SwarmForgeClient.java line 916)
@@ -981,14 +921,11 @@ export const useSimulationStore = create((set, get) => {
             const state = get()
             if (state.running) return
 
-            if (state.connected) {
-                networkClient.sendControlCommand('PLAY')
+            if (!state.connected) {
+                networkClient.connect(state.serverHost, state.serverPort, state.playerAlias, state.playerSpecies, state.serverRole)
+                showToast('Connexion au serveur SwarmForge en cours...', 'info')
             }
-
-            let currentAnts = state.ants || []
-            let currentColonies = state.colonies || []
-            let currentNests = state.nests || []
-            let currentFoods = state.foodSources || []
+            networkClient.sendControlCommand('PLAY')
 
             set({
                 running: true,
@@ -1000,37 +937,9 @@ export const useSimulationStore = create((set, get) => {
                 severity: 'INFO',
                 type: 'SIMULATION_STARTED',
                 source: 'Moteur de Simulation',
-                message: `Simulation lancée à vitesse ${state.speed}x (dt=${state.stepSeconds}s)`,
-                metadata: { speed: state.speed, dt: state.stepSeconds, activeAnts: currentAnts.length }
+                message: `Ordre de démarrage transmis au serveur (vitesse ${state.speed}x, dt=${state.stepSeconds}s)`,
+                metadata: { speed: state.speed, dt: state.stepSeconds }
             })
-
-            lastTickTime = performance.now()
-            lastTpsMeasureTime = performance.now()
-            tickCountInWindow = 0
-
-            clearInterval(simLoopInterval)
-            simLoopInterval = setInterval(() => {
-                const current = get()
-                if (!current.running || current.isPaused) return
-
-                const now = performance.now()
-                const elapsedMs = now - lastTickTime
-                lastTickTime = now
-
-                const ticksToAdvance = Math.max(1, Math.round((current.speed * (elapsedMs / 1000)) / current.stepSeconds))
-
-                for (let i = 0; i < Math.min(ticksToAdvance, 20); i++) {
-                    get().stepTick()
-                }
-
-                tickCountInWindow += Math.min(ticksToAdvance, 20)
-                if (now - lastTpsMeasureTime >= 500) {
-                    const actualTps = Math.round((tickCountInWindow / (now - lastTpsMeasureTime)) * 1000)
-                    set({ measuredTps: actualTps })
-                    tickCountInWindow = 0
-                    lastTpsMeasureTime = now
-                }
-            }, 33)
         },
 
         pause: () => {
@@ -1039,7 +948,6 @@ export const useSimulationStore = create((set, get) => {
             }
             set({ running: false, isPaused: true })
             soundEngine.updateSimulationState(false, get().speed, get().activeTab === 'VISUAL_3D')
-            clearInterval(simLoopInterval)
             get().addEventLog({
                 severity: 'INFO',
                 type: 'SIMULATION_PAUSED',
@@ -1054,349 +962,6 @@ export const useSimulationStore = create((set, get) => {
             if (state.connected) {
                 networkClient.sendControlCommand('STEP')
             }
-            const newTick = state.ticks + 1
-            const newHighestTick = Math.max(state.highestRecordedTick, newTick)
-            const newSimTime = newTick * state.stepSeconds
-            const calendarTime = formatSimCalendarTime(state.startDateTime, newSimTime)
-            const relativeTime = formatSimRelativeTime(newSimTime)
-
-            // 1. Check & Execute Scheduled Events
-            const pendingEvents = state.scheduledEvents.filter(e => !e.executed && !e.paused && e.targetTick <= newTick)
-            if (pendingEvents.length > 0) {
-                pendingEvents.forEach(evt => {
-                    get().executeInstantIntervention(evt)
-                    evt.executed = true
-                })
-                set({
-                    scheduledEvents: state.scheduledEvents.map(e => {
-                        const matched = pendingEvents.find(p => p.id === e.id)
-                        return matched ? { ...e, executed: true } : e
-                    })
-                })
-            }
-
-            // 2. Simulate Ant movement and behaviors with realistic bio-kinetics (15-30 mm/s)
-            let foragingCount = 0
-            let diggingCount = 0
-            let nursingCount = 0
-            let guardingCount = 0
-            let royalCareCount = 0
-            let restingCount = 0
-            let workersCount = 0
-            let soldiersCount = 0
-            let queensCount = 0
-            let malesCount = 0
-
-            const dt = state.stepSeconds || 0.05
-            const updatedAnts = state.ants.map(ant => {
-                if (ant.caste === 'QUEEN') {
-                    queensCount++
-                    royalCareCount++
-                } else if (ant.caste === 'SOLDIER') {
-                    soldiersCount++
-                    guardingCount++
-                } else if (ant.caste === 'MALE') {
-                    malesCount++
-                    restingCount++
-                } else {
-                    workersCount++
-                    if (ant.job === 'FORAGER') foragingCount++
-                    else if (ant.job === 'BUILDER') diggingCount++
-                    else nursingCount++
-                }
-
-                // Realistic ant speed: 15-28 mm/s in world coords (1 world unit = 1 cm = 10 mm)
-                const baseSpeedMms = ant.caste === 'SOLDIER' ? 18.5 : (ant.caste === 'QUEEN' ? 12.0 : 24.0)
-                const speedJitter = (Math.random() - 0.5) * 4.0
-                const speedMms = Math.max(5.0, baseSpeedMms + speedJitter)
-                const stepDistanceWorld = (speedMms * dt) / 10.0 // mm to cm (world units)
-
-                const headingJitter = (Math.random() - 0.5) * 0.35
-                const currentHeading = (ant.heading !== undefined ? ant.heading : (Math.random() * Math.PI * 2)) + headingJitter
-                const moveDist = ant.job === 'RESTING' ? 0 : stepDistanceWorld
-                const newX = Math.max(5, Math.min(95, ant.x + Math.cos(currentHeading) * moveDist))
-                const newZ = Math.max(5, Math.min(95, ant.z + Math.sin(currentHeading) * moveDist))
-                const newEnergy = Math.max(10, ant.energy - 0.003)
-
-                return {
-                    ...ant,
-                    x: newX,
-                    z: newZ,
-                    heading: currentHeading,
-                    speedMms: speedMms,
-                    energy: newEnergy
-                }
-            })
-
-            // 2b. 8 Pheromone Types trail deposition and evaporation (1:1 with PheromoneType.java)
-            const currentPheromones = state.pheromones || []
-            const newPheromoneDrops = []
-            
-            // Foragers, scouts, soldiers & queens drop appropriate pheromone channels
-            if (newTick % 4 === 0) {
-                updatedAnts.forEach(ant => {
-                    if (ant.caste === 'QUEEN') {
-                        if (Math.random() < 0.25) {
-                            newPheromoneDrops.push({
-                                id: `phero_queen_${Date.now()}_${ant.id}_${newTick}`,
-                                x: ant.x,
-                                z: ant.z,
-                                type: 'QUEEN_SCENT',
-                                intensity: 0.95,
-                                colonyId: ant.colonyId,
-                                createdAtTick: newTick
-                            })
-                        }
-                    } else if (ant.caste === 'WORKER') {
-                        if (ant.carriedItem && ant.carriedItem !== 'NONE' && Math.random() < 0.45) {
-                            newPheromoneDrops.push({
-                                id: `phero_food_${Date.now()}_${ant.id}_${newTick}`,
-                                x: ant.x,
-                                z: ant.z,
-                                type: 'FOOD_TRAIL',
-                                intensity: 0.90,
-                                colonyId: ant.colonyId,
-                                createdAtTick: newTick
-                            })
-                        } else if (ant.job === 'FORAGER' && Math.random() < 0.30) {
-                            newPheromoneDrops.push({
-                                id: `phero_home_${Date.now()}_${ant.id}_${newTick}`,
-                                x: ant.x,
-                                z: ant.z,
-                                type: 'HOME_TRAIL',
-                                intensity: 0.75,
-                                colonyId: ant.colonyId,
-                                createdAtTick: newTick
-                            })
-                        }
-                    } else if (ant.caste === 'SOLDIER' && Math.random() < 0.20) {
-                        newPheromoneDrops.push({
-                            id: `phero_territory_${Date.now()}_${ant.id}_${newTick}`,
-                            x: ant.x,
-                            z: ant.z,
-                            type: 'TERRITORY',
-                            intensity: 0.80,
-                            colonyId: ant.colonyId,
-                            createdAtTick: newTick
-                        })
-                    }
-                })
-            }
-
-            // Evaporate existing pheromones
-            const decayedPheromones = currentPheromones
-                .map(p => ({
-                    ...p,
-                    intensity: p.intensity * 0.988
-                }))
-                .filter(p => p.intensity > 0.08)
-
-            const updatedPheromones = [...decayedPheromones, ...newPheromoneDrops].slice(-1000)
-
-            // 2c. Biological & Simulation Event Generation (1:1 with EventLogPane.java & SimulationEvent.java)
-            // Food Discovery (FOOD_DISCOVERED)
-            if (newTick % 45 === 0 && Math.random() < 0.45) {
-                const forager = updatedAnts.find(a => a.caste === 'WORKER' && a.job === 'FORAGER')
-                if (forager && state.foodSources && state.foodSources.length > 0) {
-                    const nearestFood = state.foodSources[Math.floor(Math.random() * state.foodSources.length)]
-                    get().addEventLog({
-                        severity: 'INFO',
-                        type: 'FOOD_DISCOVERED',
-                        source: forager.colonyName || 'Colonie',
-                        message: `Ouvrière prospectrice a localisé une ressource "${nearestFood.name}" (${nearestFood.type}) à (${Math.round(nearestFood.x)}, ${Math.round(nearestFood.z)}) : ${nearestFood.amount} unités.`,
-                        metadata: { colonyId: forager.colonyId, species: forager.species, x: Math.round(nearestFood.x), z: Math.round(nearestFood.z), amount: nearestFood.amount, resource: nearestFood.name },
-                        tick: newTick,
-                        simCalendarTime: calendarTime
-                    })
-                }
-            }
-
-            // Stomodeal Trophallaxis (TROPHALLAXIS)
-            if (newTick % 60 === 0 && Math.random() < 0.5) {
-                const forager = updatedAnts.find(a => a.carriedItem && a.carriedItem !== 'NONE')
-                const receiver = updatedAnts.find(a => (a.job === 'NURSE' || a.caste === 'QUEEN') && a.colonyId === forager?.colonyId)
-                if (forager && receiver) {
-                    get().addEventLog({
-                        severity: 'INFO',
-                        type: 'TROPHALLAXIS',
-                        source: forager.colonyName || 'Colonie',
-                        message: `Transfert stomodéal de nutriments et miellat entre fourrageuse (${forager.id}) et ${receiver.caste === 'QUEEN' ? 'la Reine' : 'nourrice'} (${receiver.id}).`,
-                        metadata: { colonyId: forager.colonyId, donorId: forager.id, receiverId: receiver.id, volumeUl: (1.5 + Math.random() * 2.0).toFixed(1) },
-                        tick: newTick,
-                        simCalendarTime: calendarTime
-                    })
-                }
-            }
-
-            // Worker / Soldier Emergence (WORKER_BORN, SOLDIER_BORN)
-            if (newTick % 90 === 0 && Math.random() < 0.6) {
-                const targetCol = state.colonies[Math.floor(Math.random() * state.colonies.length)]
-                if (targetCol) {
-                    const isSoldier = Math.random() < 0.2
-                    const casteType = isSoldier ? 'SOLDIER' : 'WORKER'
-                    const eventType = isSoldier ? 'SOLDIER_BORN' : 'WORKER_BORN'
-                    const newId = `ant_${targetCol.id}_${casteType.toLowerCase()}_${Date.now().toString().slice(-4)}`
-                    get().addEventLog({
-                        severity: 'INFO',
-                        type: eventType,
-                        source: targetCol.name,
-                        message: `Éclosion réussie dans la chambre à couvain : 1 nouvel individu ${isSoldier ? 'soldat (major)' : 'ouvrière (minor)'} [${newId}] a achevé sa nymphose.`,
-                        metadata: { colonyId: targetCol.id, species: targetCol.speciesId, caste: casteType, individualId: newId },
-                        tick: newTick,
-                        simCalendarTime: calendarTime
-                    })
-                }
-            }
-
-            // Natural Senescence & Necrophoresis (WORKER_DIED, SOLDIER_DIED)
-            if (newTick % 160 === 0 && Math.random() < 0.4) {
-                const targetCol = state.colonies[Math.floor(Math.random() * state.colonies.length)]
-                if (targetCol) {
-                    const isSoldier = Math.random() < 0.15
-                    const casteType = isSoldier ? 'SOLDIER' : 'WORKER'
-                    const eventType = isSoldier ? 'SOLDIER_DIED' : 'WORKER_DIED'
-                    get().addEventLog({
-                        severity: 'WARNING',
-                        type: eventType,
-                        source: targetCol.name,
-                        message: `Nécrophorèse : Individu ${casteType.toLowerCase()} décédé suite à l'épuisement physiologique (sénescence). Corps transporté vers la zone de dépotoir.`,
-                        metadata: { colonyId: targetCol.id, species: targetCol.speciesId, caste: casteType, cause: 'Sénescence physiologique' },
-                        tick: newTick,
-                        simCalendarTime: calendarTime
-                    })
-                }
-            }
-
-            // Territory Marking (TERRITORY_CLAIMED)
-            if (newTick % 180 === 0 && Math.random() < 0.45) {
-                const soldier = updatedAnts.find(a => a.caste === 'SOLDIER')
-                if (soldier) {
-                    get().addEventLog({
-                        severity: 'INFO',
-                        type: 'TERRITORY_CLAIMED',
-                        source: soldier.colonyName || 'Colonie',
-                        message: `Marquage de patrouille territoriale : Dépôt d'hydrocarbures cuticulaires et phéromone de territoire aux coordonnées (${Math.round(soldier.x)}, ${Math.round(soldier.z)}).`,
-                        metadata: { colonyId: soldier.colonyId, x: Math.round(soldier.x), z: Math.round(soldier.z), intensity: 0.85 },
-                        tick: newTick,
-                        simCalendarTime: calendarTime
-                    })
-                }
-            }
-
-            // Interspecific Combat (COMBAT_OCCURRED)
-            if (newTick % 220 === 0 && state.colonies.length > 1 && Math.random() < 0.4) {
-                const col1 = state.colonies[0]
-                const col2 = state.colonies[1]
-                get().addEventLog({
-                    severity: 'WARNING',
-                    type: 'COMBAT_OCCURRED',
-                    source: 'Zone Frontalière',
-                    message: `Escarmouche intercoloniale : Affrontement entre patrouilles de "${col1.name}" et "${col2.name}". Mandibules déployées et sécrétions d'acide formique.`,
-                    metadata: { colony1: col1.name, colony2: col2.name, damageDealt: Math.round(15 + Math.random() * 25), location: 'Secteur Central' },
-                    tick: newTick,
-                    simCalendarTime: calendarTime
-                })
-            }
-
-            // Demographic Milestones (MILESTONE_REACHED)
-            if (newTick === 100 || newTick === 300 || newTick === 600 || newTick === 1000 || newTick === 2000) {
-                get().addEventLog({
-                    severity: 'INFO',
-                    type: 'MILESTONE_REACHED',
-                    source: 'Moteur SwarmForge',
-                    message: `Cap franchi : ${newTick} cycles de simulation complétés (Population active : ${updatedAnts.length} individus, ${updatedPheromones.length} concentrations chimiques).`,
-                    metadata: { tick: newTick, totalPopulation: updatedAnts.length, pheromonesActive: updatedPheromones.length },
-                    tick: newTick,
-                    simCalendarTime: calendarTime
-                })
-            }
-
-            // 3. Update Colonies stats & Demographics
-            const updatedColonies = state.colonies.map(col => {
-                const colAnts = updatedAnts.filter(a => a.colonyId === col.id)
-                return {
-                    ...col,
-                    population: colAnts.length,
-                    food: Math.max(0, col.food + (foragingCount > 0 ? 0.05 : -0.02)),
-                    queens: colAnts.filter(a => a.caste === 'QUEEN').length,
-                    workers: colAnts.filter(a => a.caste === 'WORKER').length,
-                    soldiers: colAnts.filter(a => a.caste === 'SOLDIER').length,
-                    males: colAnts.filter(a => a.caste === 'MALE').length
-                }
-            })
-
-            // 4. Record Snapshot into Statistics History
-            const statsSnapshot = {
-                tick: newTick,
-                simTimeSeconds: newSimTime,
-                totalPopulation: updatedAnts.length,
-                coloniesPop: updatedColonies.reduce((acc, c) => ({ ...acc, [c.id]: c.population }), {}),
-                casteBreakdown: {
-                    queens: queensCount,
-                    workers: workersCount,
-                    soldiers: soldiersCount,
-                    males: malesCount
-                },
-                resources: {
-                    food: updatedColonies.reduce((sum, c) => sum + c.food, 0),
-                    water: updatedColonies.reduce((sum, c) => sum + c.water, 0),
-                    protein: updatedColonies.reduce((sum, c) => sum + c.protein, 0),
-                    births: Math.floor(newTick / 300),
-                    deaths: Math.floor(newTick / 600)
-                },
-                weather: {
-                    temp: state.environment.temperature,
-                    rain: state.environment.weatherState === 'TEMPEST' ? 25.0 : 0.0,
-                    phero: updatedPheromones.length
-                },
-                behaviors: {
-                    foraging: foragingCount,
-                    digging: diggingCount,
-                    nursing: nursingCount,
-                    guarding: guardingCount,
-                    royalCare: royalCareCount,
-                    resting: restingCount
-                },
-                performance: {
-                    tps: state.measuredTps || 20,
-                    targetTps: 20
-                }
-            }
-
-            let updatedHistory = state.statsHistory
-            if (newTick % 3 === 0 || updatedHistory.length === 0) {
-                // Keep up to 7200 data points (sufficient for 1 hour at full resolution)
-                updatedHistory = [...state.statsHistory, statsSnapshot].slice(-7200)
-            }
-
-            // 5. Update Tracked Individual Ant Telemetry if active
-            let updatedTrackedAntData = state.trackedAntData
-            if (state.trackedAntId) {
-                const currentTracked = updatedAnts.find(a => a.id === state.trackedAntId)
-                if (currentTracked) {
-                    // Realistic incremental distance: (speedMms * dt) / 1000 meters
-                    const deltaMeters = ((currentTracked.speedMms || 20.0) * dt) / 1000.0
-                    updatedTrackedAntData = {
-                        ...currentTracked,
-                        distanceTraveled: (state.trackedAntData?.distanceTraveled || 0) + deltaMeters,
-                        healthHistory: [...(state.trackedAntData?.healthHistory || []), currentTracked.health].slice(-100),
-                        energyHistory: [...(state.trackedAntData?.energyHistory || []), currentTracked.energy].slice(-100)
-                    }
-                }
-            }
-
-            set({
-                ticks: newTick,
-                highestRecordedTick: newHighestTick,
-                simTimeSeconds: newSimTime,
-                simTimeFormatted: calendarTime,
-                simRelativeTimeFormatted: relativeTime,
-                ants: updatedAnts,
-                pheromones: updatedPheromones,
-                colonies: updatedColonies,
-                statsHistory: updatedHistory,
-                trackedAntData: updatedTrackedAntData
-            })
         },
 
         seekToTick: (targetTick) => {

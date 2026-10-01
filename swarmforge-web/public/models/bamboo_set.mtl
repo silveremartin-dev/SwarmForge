@@ -1,0 +1,107 @@
+# Blender MTL File: 'bamboo set .blend'
+# Material Count: 9
+
+newmtl bamboo_leaf_1
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd bamboo_leaf_2.png
+map_d bamboo_leaf_2.png
+
+newmtl bamboo_leaf_2
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.604255 0.604255 0.604255
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd bamboo_leaf_2.png
+map_d bamboo_leaf_2.png
+
+newmtl bamboo_leaf_3
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd bamboo_leaf_3.png
+map_d bamboo_leaf_3.png
+
+newmtl bamboo_shrub_1
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd bamboo_shrub_1.png
+map_d bamboo_shrub_1.png
+
+newmtl bamboo_shrub_2
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd bamboo_shrub_2.png
+map_d bamboo_shrub_2.png
+
+newmtl bamboo_shrub_3
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 0.000000
+illum 1
+map_Kd bamboo_shrub_3.png
+map_d bamboo_shrub_3.png
+
+newmtl bamboo_stick_1_baked
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.019608 0.019608 0.019608
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd bamboo_stick_1_bake.png
+
+newmtl bamboo_stick_2
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.895745 0.868815 0.868815
+Ks 0.095745 0.095745 0.095745
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd bamboo_stick_2_bake.png
+
+newmtl bamboo_stick_3
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.093220 0.093220 0.093220
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd bamboo_stick_3_bake.png

@@ -6,6 +6,8 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 
+import { useSimulationStore } from '../store/simulationStore'
+
 // Global cache for parsed 3D scenes
 const modelCache = new Map()
 
@@ -253,10 +255,17 @@ export default function LowPolyModel({
         }
     }, [url, objectName, objectIndex, targetHeight, textureUrl, season])
 
-    // Wind Sway Micro-Animations (modulated by windSpeed m/s)
-    useFrame((state) => {
+    const { running, isPaused, speed } = useSimulationStore()
+    const isSimActive = Boolean(running && !isPaused && (typeof speed === 'number' ? speed > 0 : true))
+    const accumulatedTimeRef = useRef(0)
+
+    // Wind Sway Micro-Animations (modulated by windSpeed m/s, frozen when simulation is paused)
+    useFrame((state, delta) => {
         if (sway && swayRef.current) {
-            const t = state.clock.getElapsedTime()
+            if (isSimActive) {
+                accumulatedTimeRef.current += delta * (speed || 1.0)
+            }
+            const t = accumulatedTimeRef.current
             const windFactor = Math.min(15, Math.max(0.5, windSpeed))
             const swayAmpX = 0.02 + windFactor * 0.003
             const swayAmpZ = 0.015 + windFactor * 0.0025

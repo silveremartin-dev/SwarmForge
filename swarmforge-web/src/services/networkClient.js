@@ -204,6 +204,8 @@ class SwarmForgeNetworkClient {
                     text: 'Hors ligne',
                     isConnected: false
                 })
+                this.notifyServerScenarios([])
+                this.notifyLobbyState({ status: 'INACTIVE', selectedScenarioId: null, players: [] })
             }
 
             this.socket.onerror = (err) => {
@@ -213,6 +215,8 @@ class SwarmForgeNetworkClient {
                     text: `Erreur de connexion (${this.host}:${this.grpcPort})`,
                     isConnected: false
                 })
+                this.notifyServerScenarios([])
+                this.notifyLobbyState({ status: 'INACTIVE', selectedScenarioId: null, players: [] })
             }
         } catch (error) {
             console.error('Failed to establish WebSocket connection:', error)
@@ -221,6 +225,8 @@ class SwarmForgeNetworkClient {
                 text: 'Échec de connexion réseau',
                 isConnected: false
             })
+            this.notifyServerScenarios([])
+            this.notifyLobbyState({ status: 'INACTIVE', selectedScenarioId: null, players: [] })
         }
     }
 
@@ -247,6 +253,8 @@ class SwarmForgeNetworkClient {
             text: 'Hors ligne',
             isConnected: false
         })
+        this.notifyServerScenarios([])
+        this.notifyLobbyState({ status: 'INACTIVE', selectedScenarioId: null, players: [] })
     }
 
     /**

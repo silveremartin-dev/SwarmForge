@@ -30,9 +30,11 @@ function createGlowDiscTexture() {
 }
 
 export default function PheromoneCloud() {
-    const { pheromones, ants, terrainConfig, showPheromones } = useSimulationStore()
+    const { pheromones, ants, terrainConfig, showPheromones, running, isPaused, speed } = useSimulationStore()
     const pointsRef = useRef()
     const glowTexture = useMemo(() => createGlowDiscTexture(), [])
+    const isSimActive = Boolean(running && !isPaused && (typeof speed === 'number' ? speed > 0 : true))
+    const timeRef = useRef(0)
 
     // Max capacity for cloud points
     const MAX_POINTS = 3000
@@ -50,10 +52,13 @@ export default function PheromoneCloud() {
         return { geometry: geo, positions: pos, colors: col, sizes: sz }
     }, [])
 
-    useFrame(({ clock }) => {
+    useFrame((state, delta) => {
         if (!pointsRef.current || !showPheromones) return
 
-        const elapsed = clock.getElapsedTime()
+        if (isSimActive) {
+            timeRef.current += delta * (speed || 1.0)
+        }
+        const elapsed = timeRef.current
         let idx = 0
 
         // 1. Render active deposited pheromone points with soft trail dispersion

@@ -28,6 +28,8 @@ import java.util.function.Consumer;
 public class TrackedAntPane extends VBox {
 
     private final Label titleLabel;
+    private final Button btnPrevAnt;
+    private final Button btnNextAnt;
     private final Button btnClose;
 
     // Telemetry Labels
@@ -59,6 +61,8 @@ public class TrackedAntPane extends VBox {
     private Runnable onStopFollowHandler;
     private Runnable onCenterHandler;
     private Runnable onCloseHandler;
+    private Runnable onNextAntHandler;
+    private Runnable onPreviousAntHandler;
 
     public TrackedAntPane() {
         setSpacing(6);
@@ -70,7 +74,7 @@ public class TrackedAntPane extends VBox {
                 "-fx-border-radius: 10; -fx-background-radius: 10;");
 
         // Header
-        HBox headerBox = new HBox(8);
+        HBox headerBox = new HBox(6);
         headerBox.setAlignment(Pos.CENTER_LEFT);
 
         titleLabel = new Label();
@@ -78,6 +82,22 @@ public class TrackedAntPane extends VBox {
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        btnPrevAnt = new Button("◀");
+        btnPrevAnt.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.btn_prev.tt"));
+        btnPrevAnt.setOnAction(e -> {
+            if (onPreviousAntHandler != null) {
+                onPreviousAntHandler.run();
+            }
+        });
+
+        btnNextAnt = new Button("▶");
+        btnNextAnt.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("tracked_ant.btn_next.tt"));
+        btnNextAnt.setOnAction(e -> {
+            if (onNextAntHandler != null) {
+                onNextAntHandler.run();
+            }
+        });
 
         btnClose = new Button("✕");
         btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 13px; -fx-padding: 0 4 0 4; -fx-cursor: hand;");
@@ -94,7 +114,7 @@ public class TrackedAntPane extends VBox {
             }
         });
 
-        headerBox.getChildren().addAll(titleLabel, spacer, btnClose);
+        headerBox.getChildren().addAll(titleLabel, spacer, btnPrevAnt, btnNextAnt, btnClose);
 
         Separator sep1 = new Separator();
         sep1.setStyle("-fx-background-color: rgba(245, 158, 11, 0.3);");
@@ -256,6 +276,8 @@ public class TrackedAntPane extends VBox {
                     "-fx-border-radius: 10; -fx-background-radius: 10;");
             titleLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #f59e0b;");
             btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: hand;");
+            btnPrevAnt.setStyle("-fx-background-color: rgba(51, 65, 85, 0.8); -fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 1 6; -fx-background-radius: 4; -fx-border-color: #475569; -fx-border-radius: 4; -fx-border-width: 1; -fx-cursor: hand;");
+            btnNextAnt.setStyle("-fx-background-color: rgba(51, 65, 85, 0.8); -fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 1 6; -fx-background-radius: 4; -fx-border-color: #475569; -fx-border-radius: 4; -fx-border-width: 1; -fx-cursor: hand;");
             lblSpeciesColony.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8;");
             lblHealthText.setStyle("-fx-font-size: 11px; -fx-text-fill: #cbd5e1;");
             lblEnergyHungerThirst.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
@@ -272,6 +294,8 @@ public class TrackedAntPane extends VBox {
                     "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 4);");
             titleLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #0369a1;");
             btnClose.setStyle("-fx-background-color: transparent; -fx-text-fill: #64748b; -fx-font-weight: bold; -fx-font-size: 12px; -fx-cursor: hand;");
+            btnPrevAnt.setStyle("-fx-background-color: #f1f5f9; -fx-text-fill: #0284c7; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 1 6; -fx-background-radius: 4; -fx-border-color: #cbd5e1; -fx-border-radius: 4; -fx-border-width: 1; -fx-cursor: hand;");
+            btnNextAnt.setStyle("-fx-background-color: #f1f5f9; -fx-text-fill: #0284c7; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 1 6; -fx-background-radius: 4; -fx-border-color: #cbd5e1; -fx-border-radius: 4; -fx-border-width: 1; -fx-cursor: hand;");
             lblSpeciesColony.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #0284c7;");
             lblHealthText.setStyle("-fx-font-size: 11px; -fx-text-fill: #334155;");
             lblEnergyHungerThirst.setStyle("-fx-font-size: 11px; -fx-text-fill: #0284c7;");
@@ -728,6 +752,14 @@ public class TrackedAntPane extends VBox {
 
     public void setOnClose(Runnable handler) {
         this.onCloseHandler = handler;
+    }
+
+    public void setOnNextAnt(Runnable handler) {
+        this.onNextAntHandler = handler;
+    }
+
+    public void setOnPreviousAnt(Runnable handler) {
+        this.onPreviousAntHandler = handler;
     }
 
     public Individual getCurrentAnt() {

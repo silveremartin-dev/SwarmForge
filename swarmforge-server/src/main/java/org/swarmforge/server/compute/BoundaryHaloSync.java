@@ -37,6 +37,7 @@ public class BoundaryHaloSync {
 
         Map<Long, float[]> all = grid.getAllEntries();
         for (Map.Entry<Long, float[]> entry : all.entrySet()) {
+            if (entry == null || entry.getKey() == null || entry.getValue() == null) continue;
             int[] coords = Morton3D.decode(entry.getKey());
             int x = coords[0];
             int y = coords[1];

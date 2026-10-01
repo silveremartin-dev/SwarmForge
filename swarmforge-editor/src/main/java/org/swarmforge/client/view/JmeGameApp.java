@@ -276,7 +276,7 @@ public class JmeGameApp extends SimpleApplication {
                     com.jme3.collision.CollisionResult closes = results.getClosestCollision();
                     Geometry geom = closes.getGeometry();
 
-                    // Check for ant selection (both direct mesh hit and proximity raycasting)
+                    // Check for ant selection (direct mesh hit and screen-space proximity)
                     if (isAntTrackingEnabled) {
                         for (int i = 0; i < results.size(); i++) {
                             Geometry hitGeom = results.getCollision(i).getGeometry();
@@ -290,31 +290,38 @@ public class JmeGameApp extends SimpleApplication {
                             }
                         }
 
-                        // Proximity check to all active ants along ray (1.8m selection radius)
-                        String closestAntId = null;
-                        String closestAntStage = null;
-                        float minRayDist = 1.8f;
+                        // High-Accuracy Screen-Space Ant Selection (28px clickable hitbox across all render modes)
+                        String bestAntId = null;
+                        String bestAntStage = null;
+                        float bestDistSq = Float.MAX_VALUE;
+                        boolean bestIsAdult = false;
+                        float maxClickRadiusSq = 28.0f * 28.0f;
 
                         for (java.util.Map.Entry<String, com.jme3.scene.Spatial> entry : antVisuals.entrySet()) {
                             com.jme3.scene.Spatial antSpatial = entry.getValue();
                             if (antSpatial != null && antSpatial.getCullHint() != com.jme3.scene.Spatial.CullHint.Always) {
                                 Vector3f antPos = antSpatial.getWorldTranslation();
-                                Vector3f v = antPos.subtract(click3d);
-                                float proj = v.dot(dir);
-                                if (proj > 0) {
-                                    Vector3f closestPointOnRay = click3d.add(dir.mult(proj));
-                                    float dist = antPos.distance(closestPointOnRay);
-                                    if (dist < minRayDist) {
-                                        minRayDist = dist;
-                                        closestAntId = entry.getKey();
-                                        closestAntStage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                                Vector3f screenPos = cam.getScreenCoordinates(antPos);
+                                if (screenPos.z >= 0f && screenPos.z <= 1.0f) {
+                                    float dx = screenPos.x - click2d.x;
+                                    float dy = screenPos.y - click2d.y;
+                                    float distSq = dx * dx + dy * dy;
+                                    if (distSq <= maxClickRadiusSq) {
+                                        String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                                        boolean isAdult = "ADULT".equalsIgnoreCase(stage);
+                                        if (bestAntId == null || (isAdult && !bestIsAdult) || (isAdult == bestIsAdult && distSq < bestDistSq)) {
+                                            bestAntId = entry.getKey();
+                                            bestAntStage = stage;
+                                            bestDistSq = distSq;
+                                            bestIsAdult = isAdult;
+                                        }
                                     }
                                 }
                             }
                         }
 
-                        if (closestAntId != null) {
-                            selectAndFollowAnt(closestAntId, closestAntStage);
+                        if (bestAntId != null) {
+                            selectAndFollowAnt(bestAntId, bestAntStage);
                             return;
                         }
                     }
@@ -703,7 +710,11 @@ public class JmeGameApp extends SimpleApplication {
     }
 
     public boolean isSimulationPaused() {
-        return simulationPaused;
+        if (simulationPaused) return true;
+        if (simulation == null) return true;
+        return !simulation.isRunning()
+                || simulation.getState() == org.swarmforge.core.simulation.Simulation.State.STOPPED
+                || simulation.getState() == org.swarmforge.core.simulation.Simulation.State.PAUSED;
     }
 
     @Override
@@ -724,7 +735,8 @@ public class JmeGameApp extends SimpleApplication {
             }
         }
 
-        float effectiveTpf = simulationPaused ? 0.0f : tpf;
+        boolean pausedOrStopped = isSimulationPaused();
+        float effectiveTpf = pausedOrStopped ? 0.0f : tpf;
 
         // Update Simulation Visuals
         if (simulation != null) {
@@ -732,11 +744,15 @@ public class JmeGameApp extends SimpleApplication {
             updateEnvironmentVisuals(effectiveTpf);
 
             if (pheromoneVisualizer != null && simulation.getPheromoneGrid() != null) {
-                pheromoneVisualizer.update(simulation.getPheromoneGrid());
+                try {
+                    pheromoneVisualizer.update(simulation.getPheromoneGrid());
+                } catch (Throwable t) {
+                    System.err.println("[PheromoneVisualizer Error] " + t.getMessage());
+                }
             }
 
             // 3D Ant Selection & Target Spotlight Reticle Animation
-            if (!simulationPaused) {
+            if (!pausedOrStopped) {
                 reticleAnimationTimer += tpf;
             }
             if (selectionReticleNode != null) {
@@ -746,7 +762,7 @@ public class JmeGameApp extends SimpleApplication {
                         selectionReticleNode.setCullHint(com.jme3.scene.Spatial.CullHint.Never);
                         Vector3f antPos = antSpatial.getWorldTranslation();
                         selectionReticleNode.setLocalTranslation(antPos.x, antPos.y + 0.08f, antPos.z);
-                        if (!simulationPaused) {
+                        if (!pausedOrStopped) {
                             selectionReticleNode.rotate(0, tpf * 2.2f, 0);
                         }
                         float pulse = 1.0f + 0.12f * (float) Math.sin(reticleAnimationTimer * 5.0f);
@@ -856,8 +872,10 @@ public class JmeGameApp extends SimpleApplication {
 
     public void pick(double fxX, double fxY, double paneW, double paneH) {
         enqueueTask(() -> {
-            float jmeX = (float) ((fxX / Math.max(1.0, paneW)) * width);
-            float jmeY = (float) ((1.0 - (fxY / Math.max(1.0, paneH))) * height);
+            float camW = cam != null ? cam.getWidth() : width;
+            float camH = cam != null ? cam.getHeight() : height;
+            float jmeX = (float) ((fxX / Math.max(1.0, paneW)) * camW);
+            float jmeY = (float) ((1.0 - (fxY / Math.max(1.0, paneH))) * camH);
 
             Vector3f click3d = cam.getWorldCoordinates(new com.jme3.math.Vector2f(jmeX, jmeY), 0f).clone();
             Vector3f dir = cam.getWorldCoordinates(new com.jme3.math.Vector2f(jmeX, jmeY), 1f).subtractLocal(click3d).normalizeLocal();
@@ -881,31 +899,38 @@ public class JmeGameApp extends SimpleApplication {
                 }
             }
 
-            // 2. Ant Selection (Ray Proximity Check within 2.0m tolerance)
-            String closestAntId = null;
-            String closestAntStage = null;
-            float minRayDist = 2.0f;
+            // 2. High-Accuracy Screen-Space Ant Selection (28px clickable hitbox across all render modes: Realistic, Scientific, Gamified)
+            String bestAntId = null;
+            String bestAntStage = null;
+            float bestDistSq = Float.MAX_VALUE;
+            boolean bestIsAdult = false;
+            float maxClickRadiusSq = 28.0f * 28.0f;
 
             for (java.util.Map.Entry<String, com.jme3.scene.Spatial> entry : antVisuals.entrySet()) {
                 com.jme3.scene.Spatial antSpatial = entry.getValue();
                 if (antSpatial != null && antSpatial.getCullHint() != com.jme3.scene.Spatial.CullHint.Always) {
                     Vector3f antPos = antSpatial.getWorldTranslation();
-                    Vector3f v = antPos.subtract(click3d);
-                    float proj = v.dot(dir);
-                    if (proj > 0) {
-                        Vector3f closestPointOnRay = click3d.add(dir.mult(proj));
-                        float dist = antPos.distance(closestPointOnRay);
-                        if (dist < minRayDist) {
-                            minRayDist = dist;
-                            closestAntId = entry.getKey();
-                            closestAntStage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                    Vector3f screenPos = cam.getScreenCoordinates(antPos);
+                    if (screenPos.z >= 0f && screenPos.z <= 1.0f) {
+                        float dx = screenPos.x - jmeX;
+                        float dy = screenPos.y - jmeY;
+                        float distSq = dx * dx + dy * dy;
+                        if (distSq <= maxClickRadiusSq) {
+                            String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                            boolean isAdult = "ADULT".equalsIgnoreCase(stage);
+                            if (bestAntId == null || (isAdult && !bestIsAdult) || (isAdult == bestIsAdult && distSq < bestDistSq)) {
+                                bestAntId = entry.getKey();
+                                bestAntStage = stage;
+                                bestDistSq = distSq;
+                                bestIsAdult = isAdult;
+                            }
                         }
                     }
                 }
             }
 
-            if (closestAntId != null) {
-                selectAndFollowAnt(closestAntId, closestAntStage);
+            if (bestAntId != null) {
+                selectAndFollowAnt(bestAntId, bestAntStage);
                 return;
             }
 
@@ -1016,11 +1041,60 @@ public class JmeGameApp extends SimpleApplication {
     private final Vector3f cameraTarget = new Vector3f(32, 10, 32);
     private boolean initialCameraConfigured = false;
 
+    private long lastHoverTimeMs = 0;
+
     // Real-Time Hover Raycasting for 3D Viewport
     public void hover(double fxX, double fxY, double paneW, double paneH) {
+        long now = System.currentTimeMillis();
+        if (now - lastHoverTimeMs < 40) { // Throttle hover raycast to 25 FPS
+            return;
+        }
+        lastHoverTimeMs = now;
+
         enqueueTask(() -> {
-            float jmeX = (float) ((fxX / Math.max(1.0, paneW)) * width);
-            float jmeY = (float) ((1.0 - (fxY / Math.max(1.0, paneH))) * height);
+            float camW = cam != null ? cam.getWidth() : width;
+            float camH = cam != null ? cam.getHeight() : height;
+            float jmeX = (float) ((fxX / Math.max(1.0, paneW)) * camW);
+            float jmeY = (float) ((1.0 - (fxY / Math.max(1.0, paneH))) * camH);
+
+            // 1. High-Precision Screen-Space Ant Hover Check (22px radius)
+            String bestHoverId = null;
+            String bestHoverStage = null;
+            float bestHoverDistSq = Float.MAX_VALUE;
+            boolean bestHoverIsAdult = false;
+            float maxHoverRadiusSq = 22.0f * 22.0f;
+
+            for (java.util.Map.Entry<String, com.jme3.scene.Spatial> entry : antVisuals.entrySet()) {
+                com.jme3.scene.Spatial antSpatial = entry.getValue();
+                if (antSpatial != null && antSpatial.getCullHint() != com.jme3.scene.Spatial.CullHint.Always) {
+                    Vector3f antPos = antSpatial.getWorldTranslation();
+                    Vector3f screenPos = cam.getScreenCoordinates(antPos);
+                    if (screenPos.z >= 0f && screenPos.z <= 1.0f) {
+                        float dx = screenPos.x - jmeX;
+                        float dy = screenPos.y - jmeY;
+                        float distSq = dx * dx + dy * dy;
+                        if (distSq <= maxHoverRadiusSq) {
+                            String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
+                            boolean isAdult = "ADULT".equalsIgnoreCase(stage);
+                            if (bestHoverId == null || (isAdult && !bestHoverIsAdult) || (isAdult == bestHoverIsAdult && distSq < bestHoverDistSq)) {
+                                bestHoverId = entry.getKey();
+                                bestHoverStage = stage;
+                                bestHoverDistSq = distSq;
+                                bestHoverIsAdult = isAdult;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (bestHoverId != null) {
+                final String fId = bestHoverId;
+                final String fStage = bestHoverStage;
+                if (selectionListener != null) {
+                    Platform.runLater(() -> selectionListener.onHoverInfo("🐜 Fourmi #" + fId + " [" + fStage + "]"));
+                }
+                return;
+            }
 
             Vector3f click3d = cam.getWorldCoordinates(new com.jme3.math.Vector2f(jmeX, jmeY), 0f).clone();
             Vector3f dir = cam.getWorldCoordinates(new com.jme3.math.Vector2f(jmeX, jmeY), 1f).subtractLocal(click3d).normalizeLocal();
@@ -1028,23 +1102,6 @@ public class JmeGameApp extends SimpleApplication {
 
             com.jme3.collision.CollisionResults results = new com.jme3.collision.CollisionResults();
             rootNode.collideWith(ray, results);
-
-            // 1. Ant Hover Check
-            for (int i = 0; i < results.size(); i++) {
-                Geometry hitGeom = results.getCollision(i).getGeometry();
-                com.jme3.scene.Spatial antSpatial = hitGeom;
-                while (antSpatial != null && antSpatial.getUserData("ID") == null) {
-                    antSpatial = antSpatial.getParent();
-                }
-                if (antSpatial != null && antSpatial.getUserData("ID") != null) {
-                    String antId = (String) antSpatial.getUserData("ID");
-                    String stage = antSpatial.getUserData("LifeStage") != null ? (String) antSpatial.getUserData("LifeStage") : "ADULT";
-                    if (selectionListener != null) {
-                        Platform.runLater(() -> selectionListener.onHoverInfo("🐜 Fourmi #" + antId + " [" + stage + "]"));
-                    }
-                    return;
-                }
-            }
 
             // 2. Chamber Node Hover Check
             for (int i = 0; i < results.size(); i++) {
@@ -1324,6 +1381,37 @@ public class JmeGameApp extends SimpleApplication {
         taskQueue.add(task);
     }
 
+    private int lastColonySignature = 0;
+    private org.swarmforge.client.ui.WorldEditorPane.RenderMode lastNestRenderMode = null;
+
+    private void checkAndUpdateNestArchitectures() {
+        if (vegetationVisualizer == null || simulation == null) return;
+        List<org.swarmforge.core.domain.Colony> colonies = simulation.getColonies();
+        int signature = (colonies != null ? colonies.size() * 31 : 0);
+        if (colonies != null) {
+            for (org.swarmforge.core.domain.Colony c : colonies) {
+                signature = signature * 31 + Float.floatToIntBits(c.getNestX()) + Float.floatToIntBits(c.getNestY());
+                if (c.getSpecies() != null && c.getSpecies().getNestType() != null) {
+                    signature = signature * 31 + c.getSpecies().getNestType().hashCode();
+                }
+            }
+        }
+        if (signature != lastColonySignature || currentRenderMode != lastNestRenderMode) {
+            lastColonySignature = signature;
+            lastNestRenderMode = currentRenderMode;
+            vegetationVisualizer.updateNestArchitectures(colonies, currentRenderMode);
+            if (colonies != null) {
+                for (org.swarmforge.core.domain.Colony colony : colonies) {
+                    String spName = colony.getSpecies() != null ? colony.getSpecies().getCommonName().toLowerCase() : "";
+                    String arch = colony.getSpecies() != null && colony.getSpecies().getNestType() != null ? colony.getSpecies().getNestType().toUpperCase() : "";
+                    if (spName.contains("wasp") || spName.contains("guêpe") || spName.contains("vespula") || arch.contains("PAPER") || arch.contains("ARBOREAL")) {
+                        vegetationVisualizer.ensureHostTreeForWaspNest(colony.getNestX(), colony.getNestY(), colony.getNestZ());
+                    }
+                }
+            }
+        }
+    }
+
     private void updateEnvironmentVisuals(float tpf) {
         if (tunnelVisualizer == null) {
             tunnelVisualizer = new TunnelVisualizer(assetManager);
@@ -1354,28 +1442,27 @@ public class JmeGameApp extends SimpleApplication {
             if (simulation.getSeasonManager() != null) {
                 vegetationVisualizer.setSeason(simulation.getSeasonManager().getCurrentSeason());
             }
-            if (vegetationVisualizer != null) {
-                vegetationVisualizer.updateNestArchitectures(simulation.getColonies(), currentRenderMode);
-            }
+            checkAndUpdateNestArchitectures();
             for (org.swarmforge.core.domain.Colony colony : simulation.getColonies()) {
                 if (colony.getTunnelNetwork() != null) {
                     tunnelVisualizer.update(colony.getTunnelNetwork());
                 }
-
-                String spName = colony.getSpecies() != null ? colony.getSpecies().getCommonName().toLowerCase() : "";
-                String arch = colony.getSpecies() != null && colony.getSpecies().getNestType() != null ? colony.getSpecies().getNestType().toUpperCase() : "";
-                if (spName.contains("wasp") || spName.contains("guêpe") || spName.contains("vespula") || arch.contains("PAPER") || arch.contains("ARBOREAL")) {
-                    vegetationVisualizer.ensureHostTreeForWaspNest(colony.getNestX(), colony.getNestY(), colony.getNestZ());
-                }
             }
             if (simulation.getWeather() != null) {
                 weatherVisualizer.update(simulation.getWeather(), tpf);
+            } else if (weatherVisualizer != null) {
+                weatherVisualizer.update(null, tpf);
             }
             if (vegetationVisualizer != null) {
                 vegetationVisualizer.update(simulation.getWeather(), tpf);
             }
-        } else if (vegetationVisualizer != null) {
-            vegetationVisualizer.update(null, tpf);
+        } else {
+            if (weatherVisualizer != null) {
+                weatherVisualizer.update(null, tpf);
+            }
+            if (vegetationVisualizer != null) {
+                vegetationVisualizer.update(null, tpf);
+            }
         }
     }
 
@@ -1547,6 +1634,7 @@ public class JmeGameApp extends SimpleApplication {
 
     private void applyRenderModeInternal(org.swarmforge.client.ui.WorldEditorPane.RenderMode mode) {
         if (mode == null) mode = org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC;
+        this.currentRenderMode = mode;
         this.isGamifiedVoxelMode = (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED);
 
         if (viewPort != null) {
@@ -1569,6 +1657,7 @@ public class JmeGameApp extends SimpleApplication {
         }
         if (vegetationVisualizer != null) {
             vegetationVisualizer.setRenderMode(mode);
+            checkAndUpdateNestArchitectures();
         }
         if (tunnelVisualizer != null) {
             tunnelVisualizer.setRenderMode(mode);

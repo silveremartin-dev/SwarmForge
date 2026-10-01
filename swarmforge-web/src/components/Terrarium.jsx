@@ -39,9 +39,16 @@ function MacroAtmosphere({ isNight, terrainConfig }) {
         return pts
     }, [isNight])
 
-    useFrame((state) => {
+    const { running, isPaused, speed } = useSimulationStore()
+    const isSimActive = Boolean(running && !isPaused && (typeof speed === 'number' ? speed > 0 : true))
+    const particleTimeRef = useRef(0)
+
+    useFrame((state, delta) => {
         if (groupRef.current) {
-            const t = state.clock.getElapsedTime()
+            if (isSimActive) {
+                particleTimeRef.current += delta * (speed || 1.0)
+            }
+            const t = particleTimeRef.current
             groupRef.current.children.forEach((mesh, idx) => {
                 const p = particles[idx]
                 mesh.position.y = p.y + Math.sin(t * p.speed + p.phase) * 0.35
@@ -88,9 +95,16 @@ function GamifiedVoxelParticles({ terrainConfig }) {
         return v
     }, [terrainConfig])
 
-    useFrame((state) => {
+    const { running, isPaused, speed } = useSimulationStore()
+    const isSimActive = Boolean(running && !isPaused && (typeof speed === 'number' ? speed > 0 : true))
+    const voxelTimeRef = useRef(0)
+
+    useFrame((state, delta) => {
         if (groupRef.current) {
-            const t = state.clock.getElapsedTime()
+            if (isSimActive) {
+                voxelTimeRef.current += delta * (speed || 1.0)
+            }
+            const t = voxelTimeRef.current
             groupRef.current.children.forEach((mesh, idx) => {
                 const v = voxels[idx]
                 mesh.position.y = v.baseY + Math.sin(t * v.speed + idx) * 0.25
@@ -253,11 +267,17 @@ function VoxelTerrain({ terrainConfig, slicePlaneRatio = 1.0, show3DSkirt = true
  */
 function AntSelectionReticle3D({ ant, terrainConfig }) {
     const groupRef = useRef()
+    const { running, isPaused, speed } = useSimulationStore()
+    const isSimActive = Boolean(running && !isPaused && (typeof speed === 'number' ? speed > 0 : true))
+    const reticleTimeRef = useRef(0)
 
     useFrame((state, delta) => {
         if (groupRef.current) {
-            groupRef.current.rotation.y += delta * 2.2
-            const t = state.clock.getElapsedTime()
+            if (isSimActive) {
+                reticleTimeRef.current += delta * (speed || 1.0)
+                groupRef.current.rotation.y += delta * 2.2 * (speed || 1.0)
+            }
+            const t = reticleTimeRef.current
             const pulse = 1.0 + Math.sin(t * 5.0) * 0.12
             groupRef.current.scale.set(pulse, pulse, pulse)
         }
@@ -359,14 +379,17 @@ export default function Terrarium() {
         return [new THREE.Plane(new THREE.Vector3(0, 0, -1), sliceZ)]
     }, [slicePlaneRatio])
 
+    const { running, isPaused, speed } = useSimulationStore()
+    const isSimActive = Boolean(running && !isPaused && (typeof speed === 'number' ? speed > 0 : true))
+    const riverTimeRef = useRef(0)
+
     // Realtime spatial listener & river audio update based on 3D camera distance
-    useFrame((state) => {
-        if (camera) {
-            soundEngine.updateSpatialListener(camera.position.x, camera.position.y, camera.position.z)
-            soundEngine.updateRiverSound(camera.position, { x: 25, y: 0, z: 50 })
+    useFrame((state, delta) => {
+        if (isSimActive) {
+            riverTimeRef.current += delta * (speed || 1.0)
         }
         if (riverMeshRef.current) {
-            riverMeshRef.current.position.y = 0.02 + Math.sin(state.clock.getElapsedTime() * 2) * 0.01
+            riverMeshRef.current.position.y = 0.02 + Math.sin(riverTimeRef.current * 2) * 0.01
         }
     })
 

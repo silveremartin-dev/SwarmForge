@@ -22,7 +22,7 @@ import java.util.List;
  */
 public class TerrainMeshGenerator {
 
-    private static final float UV_SCALE = 0.20f; // 5 meters per texture tile repeat
+    private static final float UV_SCALE = 0.35f; // Fine detailed texture tile repeat (3m per repeat)
 
     public Mesh generateMesh(Terrarium terrarium) {
         return generateMesh(terrarium, 1.0f, true, false);
@@ -72,7 +72,7 @@ public class TerrainMeshGenerator {
                 TerrariumCell topCell = terrarium.getCell(x, y, Math.min(depth - 1, Math.max(0, (int) elev)));
                 TerrariumCell.Material mat = topCell != null ? topCell.material() : TerrariumCell.Material.EARTH;
 
-                float r = 0.52f, g = 0.88f, b = 0.40f; // Lush green meadow default
+                float r = 0.38f, g = 0.76f, b = 0.28f; // Lush green meadow default
                 if (mat == TerrariumCell.Material.WATER) {
                     r = 0.22f; g = 0.62f; b = 0.98f; // Crystalline azure water
                 } else if (lat > 60.0) {
@@ -88,7 +88,7 @@ public class TerrainMeshGenerator {
                 } else if (mat == TerrariumCell.Material.PEAT) {
                     r = 0.42f; g = 0.28f; b = 0.16f; // Dark rich organic humus
                 } else {
-                    r = 0.48f; g = 0.85f; b = 0.38f; // Temperate meadow
+                    r = 0.38f; g = 0.76f; b = 0.28f; // Temperate meadow
                 }
 
                 // Pedological Moisture Shading: Higher soil humidity darkens albedo

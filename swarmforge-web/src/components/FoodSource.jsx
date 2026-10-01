@@ -12,15 +12,20 @@ const foodColors = {
 
 export default function FoodSource({ position, quantity = 100, type = 'SUGAR' }) {
     const meshRef = useRef()
-    const { lookAndFeel } = useSimulationStore()
+    const { lookAndFeel, running, isPaused, speed } = useSimulationStore()
     const isGamified = lookAndFeel === 'GAMING'
     const color = foodColors[type] || foodColors.SUGAR
     const scale = Math.max(0.5, Math.min(3, quantity / 100))
+    const isSimActive = Boolean(running && !isPaused && (typeof speed === 'number' ? speed > 0 : true))
+    const pulseTimeRef = useRef(0)
 
-    // Gentle pulsing animation
-    useFrame((state) => {
+    // Gentle pulsing animation (frozen when simulation is paused or stopped)
+    useFrame((state, delta) => {
         if (meshRef.current) {
-            meshRef.current.scale.setScalar(scale + Math.sin(state.clock.elapsedTime * 2) * 0.1)
+            if (isSimActive) {
+                pulseTimeRef.current += delta * (speed || 1.0)
+            }
+            meshRef.current.scale.setScalar(scale + Math.sin(pulseTimeRef.current * 2) * 0.1)
         }
     })
 
