@@ -1953,8 +1953,12 @@ public class WorldEditorPane extends BorderPane {
         return trackedAntPane;
     }
 
+    /**
+     * @deprecated Use {@link #getTrackedIndividualPane()} instead.
+     */
+    @Deprecated
     public TrackedIndividualPane getTrackedAntPane() {
-        return trackedAntPane;
+        return getTrackedIndividualPane();
     }
 
     public ChamberInfoPane getChamberInfoPane() {

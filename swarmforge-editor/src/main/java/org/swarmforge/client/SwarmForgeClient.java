@@ -647,8 +647,8 @@ public class SwarmForgeClient extends Application {
                         if (this.chkAntTracking != null) {
                             this.chkAntTracking.setSelected(true);
                         }
-                        if (this.simWorldViewer.getTrackedAntPane() != null) {
-                            this.simWorldViewer.getTrackedAntPane().setVisible(true);
+                        if (this.simWorldViewer.getTrackedIndividualPane() != null) {
+                            this.simWorldViewer.getTrackedIndividualPane().setVisible(true);
                         }
                         if (this.simSubTabs != null && this.visualTab != null) {
                             this.simSubTabs.getSelectionModel().select(this.visualTab);
@@ -1715,8 +1715,8 @@ public class SwarmForgeClient extends Application {
                             if (this.chkAntTracking != null) {
                                 this.chkAntTracking.setSelected(true);
                             }
-                            if (this.simWorldViewer.getTrackedAntPane() != null) {
-                                this.simWorldViewer.getTrackedAntPane().setVisible(true);
+                            if (this.simWorldViewer.getTrackedIndividualPane() != null) {
+                                this.simWorldViewer.getTrackedIndividualPane().setVisible(true);
                             }
                             if (this.simSubTabs != null && this.visualTab != null) {
                                 this.simSubTabs.getSelectionModel().select(this.visualTab);

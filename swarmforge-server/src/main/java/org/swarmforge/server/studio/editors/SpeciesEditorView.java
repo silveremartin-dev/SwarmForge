@@ -36,11 +36,13 @@ public class SpeciesEditorView extends ScrollPane {
         basicInfo.setVgap(10);
 
         basicInfo.add(new Label("Latin Name:"), 0, 0);
-        latinNameField = new TextField("Lasius niger");
+        latinNameField = new TextField();
+        latinNameField.setPromptText("e.g. Lasius niger, Apis mellifera");
         basicInfo.add(latinNameField, 1, 0);
 
         basicInfo.add(new Label("Common Name:"), 0, 1);
-        commonNameField = new TextField("Black Garden Ant");
+        commonNameField = new TextField();
+        commonNameField.setPromptText("e.g. Black Garden Ant, Western Honey Bee");
         basicInfo.add(commonNameField, 1, 1);
 
         content.getChildren().add(new TitledPane("Taxonomy", basicInfo));

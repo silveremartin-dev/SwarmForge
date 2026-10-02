@@ -155,12 +155,28 @@ public class StatisticsDashboard extends VBox {
     private java.util.function.Consumer<String> onTrackAntListener;
     private java.util.function.Consumer<String> onSelectAntListener;
 
-    public void setOnTrackAnt(java.util.function.Consumer<String> listener) {
+    public void setOnTrackIndividual(java.util.function.Consumer<String> listener) {
         this.onTrackAntListener = listener;
     }
 
-    public void setOnSelectAnt(java.util.function.Consumer<String> listener) {
+    /**
+     * @deprecated Use {@link #setOnTrackIndividual(java.util.function.Consumer)} instead.
+     */
+    @Deprecated
+    public void setOnTrackAnt(java.util.function.Consumer<String> listener) {
+        setOnTrackIndividual(listener);
+    }
+
+    public void setOnSelectIndividual(java.util.function.Consumer<String> listener) {
         this.onSelectAntListener = listener;
+    }
+
+    /**
+     * @deprecated Use {@link #setOnSelectIndividual(java.util.function.Consumer)} instead.
+     */
+    @Deprecated
+    public void setOnSelectAnt(java.util.function.Consumer<String> listener) {
+        setOnSelectIndividual(listener);
     }
 
     public String getScenarioName() {
@@ -316,9 +332,9 @@ public class StatisticsDashboard extends VBox {
         }
     }
 
-    public void setTrackedAntId(String antId) {
-        if (antId != null && !antId.trim().isEmpty()) {
-            this.trackedAntId = antId.trim();
+    public void setTrackedIndividualId(String individualId) {
+        if (individualId != null && !individualId.trim().isEmpty()) {
+            this.trackedAntId = individualId.trim();
             txtAntSearchId.setText(this.trackedAntId);
             lblTrackedIdDisplay.setText(this.trackedAntId);
             antHealthSeries.getData().clear();
@@ -327,12 +343,28 @@ public class StatisticsDashboard extends VBox {
         }
     }
 
-    public void setTrackedAnt(org.swarmforge.core.domain.Individual ant) {
-        if (ant != null) {
-            String idStr = ant.getFormattedId();
-            setTrackedAntId(idStr);
-            updateIndividualTelemetryFromEntity(ant);
+    /**
+     * @deprecated Use {@link #setTrackedIndividualId(String)} instead.
+     */
+    @Deprecated
+    public void setTrackedAntId(String antId) {
+        setTrackedIndividualId(antId);
+    }
+
+    public void setTrackedIndividual(org.swarmforge.core.domain.Individual individual) {
+        if (individual != null) {
+            String idStr = individual.getFormattedId();
+            setTrackedIndividualId(idStr);
+            updateIndividualTelemetryFromEntity(individual);
         }
+    }
+
+    /**
+     * @deprecated Use {@link #setTrackedIndividual(org.swarmforge.core.domain.Individual)} instead.
+     */
+    @Deprecated
+    public void setTrackedAnt(org.swarmforge.core.domain.Individual ant) {
+        setTrackedIndividual(ant);
     }
 
     public void updateIndividualTelemetryFromEntity(org.swarmforge.core.domain.Individual ant) {

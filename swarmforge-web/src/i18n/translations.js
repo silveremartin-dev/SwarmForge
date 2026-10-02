@@ -1,4 +1,4 @@
-﻿// SwarmForge Web i18n Translation Dictionary
+// SwarmForge Web i18n Translation Dictionary
 // Comprehensive 5-Language Support: French (fr), English (en), German (de), Spanish (es), Chinese (zh)
 
 export const DEFAULT_LANGUAGE = 'fr'
@@ -366,9 +366,9 @@ export const translations = {
         surfaceLabel: 'Surface 100%',
         visibleLayersTitle: 'Calques Visibles',
 
-        // 3D View: Tracked Ant HUD (1:1 TrackedAntPane.java)
-        trackedAntTitle: 'Fourmi Suivie',
-        trackedAntSelectedTitle: 'Fourmi Sélectionnée',
+        // 3D View: Tracked Individual HUD (1:1 TrackedIndividualPane.java)
+        trackedAntTitle: 'Individu Suivi',
+        trackedAntSelectedTitle: 'Individu Sélectionné',
         colonyNative: 'Colonie Native',
         noLoad: 'Aucun chargement',
         hunger: 'Faim',
@@ -634,7 +634,7 @@ export const translations = {
         seriesTpsReal: 'TPS Réel',
         seriesTpsTarget: 'TPS Cible',
         antInspectorTitle: '7. Inspection & Télémétrie d\'un Individu Spécifique',
-        searchAntPlaceholder: 'Identifiant de fourmi...',
+        searchAntPlaceholder: 'Identifiant d\'individu...',
         btnSearchAnt: 'Rechercher',
         btnTrack3D: 'Suivre en 3D',
         lblAntId: 'Identifiant :',
@@ -644,8 +644,8 @@ export const translations = {
         lblAntDistanceSpeed: 'Distance & Vitesse :',
         lblAntPosLoad: 'Position (X, Z) & Charge :',
         noAntSelectedDetailed: 'Aucun individu sélectionné. Utilisez la recherche ou les flèches pour inspecter un individu en temps réel.',
-        prevAntBtn: 'Fourmi précédente',
-        nextAntBtn: 'Fourmi suivante',
+        prevAntBtn: 'Individu précédent',
+        nextAntBtn: 'Individu suivant',
         waitingTelemetry: 'En attente de données télémétriques...',
 
         // Audio Panel & Sound Controls (1:1 with SwarmForgeClient.java)
@@ -1161,9 +1161,9 @@ export const translations = {
         surfaceLabel: 'Surface 100%',
         visibleLayersTitle: 'Visible Layers',
 
-        // 3D View: Tracked Ant HUD (1:1 TrackedAntPane.java)
-        trackedAntTitle: 'Tracked Ant',
-        trackedAntSelectedTitle: 'Selected Ant',
+        // 3D View: Tracked Individual HUD (1:1 TrackedIndividualPane.java)
+        trackedAntTitle: 'Tracked Individual',
+        trackedAntSelectedTitle: 'Selected Individual',
         colonyNative: 'Native Colony',
         noLoad: 'No cargo',
         hunger: 'Hunger',
@@ -1429,7 +1429,7 @@ export const translations = {
         seriesTpsReal: 'Real TPS',
         seriesTpsTarget: 'Target TPS',
         antInspectorTitle: '7. Specific Individual Telemetry & Inspection',
-        searchAntPlaceholder: 'Ant ID...',
+        searchAntPlaceholder: 'Individual ID...',
         btnSearchAnt: 'Search',
         btnTrack3D: 'Track in 3D',
         lblAntId: 'Identifier:',
@@ -1438,9 +1438,9 @@ export const translations = {
         lblAntHealthEnergy: 'Health & Energy:',
         lblAntDistanceSpeed: 'Distance & Speed:',
         lblAntPosLoad: 'Position (X, Z) & Load:',
-        noAntSelectedDetailed: 'No individual selected. Use search or arrow buttons to inspect an ant in real time.',
-        prevAntBtn: 'Previous ant',
-        nextAntBtn: 'Next ant',
+        noAntSelectedDetailed: 'No individual selected. Use search or arrow buttons to inspect an individual in real time.',
+        prevAntBtn: 'Previous individual',
+        nextAntBtn: 'Next individual',
         waitingTelemetry: 'Awaiting telemetry data...',
 
         // Audio Panel & Sound Controls (1:1 with SwarmForgeClient.java)
