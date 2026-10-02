@@ -636,12 +636,12 @@ public class SwarmForgeClient extends Application {
                 this.statisticsDashboard = new org.swarmforge.client.ui.StatisticsDashboard();
                 this.statisticsDashboard.setOnSelectAnt(antId -> {
                     if (this.simWorldViewer != null) {
-                        this.simWorldViewer.setFollowedAntById(antId);
+                        this.simWorldViewer.setFollowedIndividualById(antId);
                     }
                 });
                 this.statisticsDashboard.setOnTrackAnt(antId -> {
                     if (this.simWorldViewer != null) {
-                        this.simWorldViewer.setFollowedAntById(antId);
+                        this.simWorldViewer.setFollowedIndividualById(antId);
                         this.simWorldViewer.setFollowAntCameraEnabled(true);
                         this.simWorldViewer.setAntTrackingEnabled(true);
                         if (this.chkAntTracking != null) {
@@ -1597,8 +1597,8 @@ public class SwarmForgeClient extends Application {
                                             stats.targetTickRate = 60.0;
                                         }
                                         statisticsDashboard.update(stats);
-                                        if (simWorldViewer != null && simWorldViewer.getFollowedAnt() != null) {
-                                            statisticsDashboard.updateIndividualTelemetryFromEntity(simWorldViewer.getFollowedAnt());
+                                        if (simWorldViewer != null && simWorldViewer.getFollowedIndividual() != null) {
+                                            statisticsDashboard.updateIndividualTelemetryFromEntity(simWorldViewer.getFollowedIndividual());
                                         }
                                 }
                         }
@@ -1696,7 +1696,7 @@ public class SwarmForgeClient extends Application {
                 // Center Viewport: WorldEditorPane 3-View System (3D View + Mouse Orbit/Pan/Zoom Controls + 2D Minimaps)
                 this.simWorldViewer = new org.swarmforge.client.ui.WorldEditorPane();
                 this.simWorldViewer.setSimulationMode(true);
-                this.simWorldViewer.setOnAntSelected(ant -> {
+                this.simWorldViewer.setOnIndividualSelected(ant -> {
                     if (this.statisticsDashboard != null && ant != null) {
                         this.statisticsDashboard.setTrackedAnt(ant);
                     }
@@ -1704,12 +1704,12 @@ public class SwarmForgeClient extends Application {
                 if (this.statisticsDashboard != null) {
                     this.statisticsDashboard.setOnSelectAnt(antId -> {
                         if (this.simWorldViewer != null) {
-                            this.simWorldViewer.setFollowedAntById(antId);
+                            this.simWorldViewer.setFollowedIndividualById(antId);
                         }
                     });
                     this.statisticsDashboard.setOnTrackAnt(antId -> {
                         if (this.simWorldViewer != null) {
-                            this.simWorldViewer.setFollowedAntById(antId);
+                            this.simWorldViewer.setFollowedIndividualById(antId);
                             this.simWorldViewer.setFollowAntCameraEnabled(true);
                             this.simWorldViewer.setAntTrackingEnabled(true);
                             if (this.chkAntTracking != null) {
@@ -3090,9 +3090,9 @@ public class SwarmForgeClient extends Application {
 
                 view.getGameApp().setSelectionListener(new org.swarmforge.client.view.JmeGameApp.ObjectSelectionListener() {
                         @Override
-                        public void onAntSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {
+                        public void onIndividualSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {
                                 if (simWorldViewer != null) {
-                                        simWorldViewer.setFollowedAntById(id);
+                                        simWorldViewer.setFollowedIndividualById(id);
                                 }
                         }
 

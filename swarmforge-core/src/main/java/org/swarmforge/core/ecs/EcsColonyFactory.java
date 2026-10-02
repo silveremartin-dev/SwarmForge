@@ -30,10 +30,10 @@ public class EcsColonyFactory {
     }
 
     /**
-     * Spawns an ant entity in the ECS world with full biological components.
+     * Spawns an insect individual entity in the ECS world with full biological components.
      */
-    public int createAnt(UUID colonyId, Individual.Caste caste, Individual.Job job,
-                         float x, float y, float z, Species species) {
+    public int createIndividual(UUID colonyId, Individual.Caste caste, Individual.Job job,
+                                float x, float y, float z, Species species) {
         int entityId = ecsWorld.create();
         EntityEdit edit = ecsWorld.edit(entityId);
 
@@ -154,6 +154,16 @@ public class EcsColonyFactory {
         return entityId;
     }
 
+    /**
+     * Spawns an individual entity in the ECS world.
+     * @deprecated Use {@link #createIndividual(UUID, Individual.Caste, Individual.Job, float, float, float, Species)} instead.
+     */
+    @Deprecated
+    public int createAnt(UUID colonyId, Individual.Caste caste, Individual.Job job,
+                         float x, float y, float z, Species species) {
+        return createIndividual(colonyId, caste, job, x, y, z, species);
+    }
+
     private static boolean matchesCasteTemplate(CasteTemplate ct, Individual.Caste caste, String casteName) {
         if (ct == null || ct.getName() == null) return false;
         String name = ct.getName().toLowerCase().trim();
@@ -179,7 +189,7 @@ public class EcsColonyFactory {
             float x = nestX + (float) Math.cos(rAngle) * rDist;
             float y = nestY + (float) Math.sin(rAngle) * rDist;
             Individual.Job job = (i % 2 == 0) ? Individual.Job.FORAGER : Individual.Job.NURSE;
-            entityIds[i] = createAnt(colonyId, Individual.Caste.WORKER, job, x, y, nestZ, species);
+            entityIds[i] = createIndividual(colonyId, Individual.Caste.WORKER, job, x, y, nestZ, species);
         }
         return entityIds;
     }

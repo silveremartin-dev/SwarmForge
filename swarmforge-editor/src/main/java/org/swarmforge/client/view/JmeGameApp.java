@@ -84,31 +84,50 @@ public class JmeGameApp extends SimpleApplication {
 
     public interface ObjectSelectionListener {
         void onVoxelSelected(int x, int y, int z, String material, float moisture, float temp, float compaction);
-        void onAntSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job);
+        default void onIndividualSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {}
+        @Deprecated
+        default void onAntSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {
+            onIndividualSelected(id, caste, stage, health, energy, hunger, age, job);
+        }
         default void onChamberSelected(String chamberId) {}
         default void onHoverInfo(String text) {}
     }
 
     private ObjectSelectionListener selectionListener;
-    private boolean isAntTrackingEnabled = true;
+    private boolean isIndividualTrackingEnabled = true;
 
-    public boolean isAntTrackingEnabled() {
-        return isAntTrackingEnabled;
+    public boolean isIndividualTrackingEnabled() {
+        return isIndividualTrackingEnabled;
     }
 
-    public void setAntTrackingEnabled(boolean enabled) {
-        this.isAntTrackingEnabled = enabled;
+    @Deprecated
+    public boolean isAntTrackingEnabled() {
+        return isIndividualTrackingEnabled();
+    }
+
+    public void setIndividualTrackingEnabled(boolean enabled) {
+        this.isIndividualTrackingEnabled = enabled;
         if (!enabled) {
             this.followedAntId = null;
         }
+    }
+
+    @Deprecated
+    public void setAntTrackingEnabled(boolean enabled) {
+        setIndividualTrackingEnabled(enabled);
     }
 
     public void setSelectionListener(ObjectSelectionListener listener) {
         this.selectionListener = listener;
     }
 
+    public void followIndividual(String individualId) {
+        this.followedAntId = individualId;
+    }
+
+    @Deprecated
     public void followAnt(String antId) {
-        this.followedAntId = antId;
+        followIndividual(antId);
     }
 
     public void setTerrainListener(TerrainModificationListener listener) {
@@ -277,7 +296,7 @@ public class JmeGameApp extends SimpleApplication {
                     Geometry geom = closes.getGeometry();
 
                     // Check for ant selection (direct mesh hit and screen-space proximity)
-                    if (isAntTrackingEnabled) {
+                    if (isIndividualTrackingEnabled) {
                         for (int i = 0; i < results.size(); i++) {
                             Geometry hitGeom = results.getCollision(i).getGeometry();
                             com.jme3.scene.Spatial antSpatial = hitGeom;
@@ -395,7 +414,7 @@ public class JmeGameApp extends SimpleApplication {
     private void selectAndFollowAnt(String antId, String stage) {
         followedAntId = antId;
         String fStage = stage != null ? stage : "ADULT";
-        System.out.println("Following Ant: " + followedAntId);
+        System.out.println("Following Individual: " + followedAntId);
         if (selectionListener != null) {
             String roleName = "Ouvrière (Worker)";
             String taskName = "Forager";
@@ -418,12 +437,17 @@ public class JmeGameApp extends SimpleApplication {
             final float finalEnergy = energy;
             final float finalHydration = hydration;
             final float finalDistance = distanceTravelled;
-            Platform.runLater(() -> selectionListener.onAntSelected(antId, finalRole, fStage, finalHealth, finalEnergy, finalHydration, finalDistance, finalTask));
+            Platform.runLater(() -> selectionListener.onIndividualSelected(antId, finalRole, fStage, finalHealth, finalEnergy, finalHydration, finalDistance, finalTask));
         }
     }
 
-    public String getFollowedAntId() {
+    public String getFollowedIndividualId() {
         return followedAntId;
+    }
+
+    @Deprecated
+    public String getFollowedAntId() {
+        return getFollowedIndividualId();
     }
 
     private String followedAntId = null;
@@ -1820,8 +1844,16 @@ public class JmeGameApp extends SimpleApplication {
         return 0.0;
     }
 
-    public void setAntVisualScaleMultiplier(float multiplier) {
+    public void setInsectVisualScaleMultiplier(float multiplier) {
         this.antVisualScaleMultiplier = multiplier;
+    }
+
+    /**
+     * @deprecated Use {@link #setInsectVisualScaleMultiplier(float)} instead.
+     */
+    @Deprecated
+    public void setAntVisualScaleMultiplier(float multiplier) {
+        setInsectVisualScaleMultiplier(multiplier);
     }
 
     /**

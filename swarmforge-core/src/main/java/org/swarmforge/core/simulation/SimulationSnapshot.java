@@ -58,7 +58,7 @@ public class SimulationSnapshot implements Serializable {
      */
     public record IndividualSnapshot(
             String id,
-            long antNumber,
+            long individualNumber,
             float x, float y, float z,
             float heading,
             float health,
@@ -69,6 +69,11 @@ public class SimulationSnapshot implements Serializable {
             Individual.LifeStage lifeStage,
             Individual.AiState state,
             Individual.CarriedItem carriedItem) implements Serializable {
+
+        @Deprecated
+        public long antNumber() {
+            return individualNumber;
+        }
     }
 
     private SimulationSnapshot(long tick, List<ColonySnapshot> colonies, byte[] pheromoneData, int dayOfYear,
@@ -97,7 +102,7 @@ public class SimulationSnapshot implements Serializable {
             for (Individual ind : colony.getLivingIndividuals()) {
                 indSnapshots.add(new IndividualSnapshot(
                         ind.getId().toString(),
-                        ind.getAntNumber(),
+                        ind.getIndividualNumber(),
                         ind.getX(), ind.getY(), ind.getZ(),
                         ind.getHeading(),
                         ind.getHealth(),
@@ -170,7 +175,7 @@ public class SimulationSnapshot implements Serializable {
             }
 
             // recreate individuals
-            long maxAntNum = 0;
+            long maxIndividualNum = 0;
             for (IndividualSnapshot is : cs.individuals()) {
                 java.util.UUID indId = null;
                 if (is.id() != null && !is.id().isEmpty()) {
@@ -178,9 +183,9 @@ public class SimulationSnapshot implements Serializable {
                         indId = java.util.UUID.fromString(is.id());
                     } catch (Exception ignored) {}
                 }
-                long aNum = is.antNumber() > 0 ? is.antNumber() : 0;
-                if (aNum > maxAntNum) maxAntNum = aNum;
-                Individual ind = new Individual(indId, aNum, colony.getId(), is.caste(), is.x(), is.y(), is.z());
+                long iNum = is.individualNumber() > 0 ? is.individualNumber() : 0;
+                if (iNum > maxIndividualNum) maxIndividualNum = iNum;
+                Individual ind = new Individual(indId, iNum, colony.getId(), is.caste(), is.x(), is.y(), is.z());
                 ind.setSpecies(species);
                 ind.setPosition(is.x(), is.y(), is.z());
                 ind.setHeading(is.heading());
@@ -196,8 +201,8 @@ public class SimulationSnapshot implements Serializable {
 
                 colony.addIndividual(ind);
             }
-            if (maxAntNum > 0) {
-                Individual.setNextAntNumber(maxAntNum + 1);
+            if (maxIndividualNum > 0) {
+                Individual.setNextIndividualNumber(maxIndividualNum + 1);
             }
             simulation.addColony(colony);
         }

@@ -32,8 +32,8 @@ const SOUND_BANK = {
     thunder3: '/sounds/THUN_Thunder 3 (ID 3114)_BigSoundBank.com.mp3',
 
     // 4. Insect & Colony
-    colonyActivity: '/sounds/ant_colony_activity.mp3',
-    anthillNest: '/sounds/anthill_nest_sounds.mp3',
+    colonyActivity: '/sounds/colony_activity.mp3',
+    anthillNest: '/sounds/nest_sounds.mp3',
     soilDigging: '/sounds/sand_soil_digging.mp3',
     queenCare: '/sounds/queen-ants-sound.mp3',
     termites: '/sounds/termites-and-ants-sound.mp3',

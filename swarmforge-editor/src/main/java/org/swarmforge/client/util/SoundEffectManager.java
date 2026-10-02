@@ -203,8 +203,8 @@ public class SoundEffectManager {
      */
     public String[] getSoundBankSuggestions() {
         return new String[]{
-            "ant_colony_activity.mp3 (Colony activity & collective stridulations)",
-            "anthill_nest_sounds.mp3 (Anthill internal sounds & subterranean tunnels)",
+            "colony_activity.mp3 (Colony activity & collective stridulations)",
+            "nest_sounds.mp3 (Internal nest sounds & subterranean tunnels)",
             "sand_soil_digging.mp3 (Soil digging & sand scraping)",
             "dry_leaves_rustling.mp3 (Dry leaves rustling & forest litter)",
             "soft_wind_leaves.mp3 (Gentle breeze through foliage)",

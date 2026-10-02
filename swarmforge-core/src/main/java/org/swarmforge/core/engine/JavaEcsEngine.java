@@ -189,7 +189,7 @@ public class JavaEcsEngine implements SimulationEngine {
             return entityId;
         } else {
             EcsColonyFactory colonyFactory = worldManager.getColonyFactory();
-            int entityId = colonyFactory.createAnt(colonyId, caste, job, x, y, z, species);
+            int entityId = colonyFactory.createIndividual(colonyId, caste, job, x, y, z, species);
             if (entityId >= 0) {
                 activeEntityCount.incrementAndGet();
             }

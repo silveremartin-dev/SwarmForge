@@ -347,12 +347,14 @@ public class SimulationAudioManager {
             File insectFile = null;
             if (cameraDepth > 0.4 || cameraZoom > 10.0) {
                 // Subterranean nest view or extreme close-up digging
-                insectFile = findSoundFile("anthill_nest_sounds.mp3");
+                insectFile = findSoundFile("nest_sounds.mp3");
+                if (insectFile == null) insectFile = findSoundFile("anthill_nest_sounds.mp3");
                 if (insectFile == null) insectFile = findSoundFile("sand_soil_digging.mp3");
                 if (insectFile == null) insectFile = findSoundFile("termites-and-ants-sound.mp3");
             } else {
                 // Surface activity
-                insectFile = findSoundFile("ant_colony_activity.mp3");
+                insectFile = findSoundFile("colony_activity.mp3");
+                if (insectFile == null) insectFile = findSoundFile("ant_colony_activity.mp3");
                 if (insectFile == null) insectFile = findSoundFile("freesound_community-ants-23656.mp3");
                 if (insectFile == null) insectFile = findSoundFile("antscolony.mp3");
             }

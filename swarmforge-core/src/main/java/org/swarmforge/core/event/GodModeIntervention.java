@@ -34,7 +34,9 @@ public record GodModeIntervention(
     private static final long serialVersionUID = 1L;
 
     public enum ActionType {
+        SPAWN_INDIVIDUALS,
         SPAWN_ANTS,
+        KILL_INDIVIDUALS,
         KILL_ANTS,
         SPAWN_FOOD,
         TRIGGER_DISASTER,
@@ -42,10 +44,26 @@ public record GodModeIntervention(
         MODIFY_PARAMETER
     }
 
+    public static GodModeIntervention spawnIndividuals(long tick, String targetColony, String caste, int count, float x, float y, float z) {
+        return new GodModeIntervention(tick, System.currentTimeMillis(), ActionType.SPAWN_INDIVIDUALS, targetColony, caste, count, x, y, z, 0f, null, 0f, null, null);
+    }
+
+    /**
+     * @deprecated Use {@link #spawnIndividuals(long, String, String, int, float, float, float)} instead.
+     */
+    @Deprecated
     public static GodModeIntervention spawnAnts(long tick, String targetColony, String caste, int count, float x, float y, float z) {
         return new GodModeIntervention(tick, System.currentTimeMillis(), ActionType.SPAWN_ANTS, targetColony, caste, count, x, y, z, 0f, null, 0f, null, null);
     }
 
+    public static GodModeIntervention killIndividuals(long tick, String targetColony, String caste, int count) {
+        return new GodModeIntervention(tick, System.currentTimeMillis(), ActionType.KILL_INDIVIDUALS, targetColony, caste, count, 0f, 0f, 0f, 0f, null, 0f, null, null);
+    }
+
+    /**
+     * @deprecated Use {@link #killIndividuals(long, String, String, int)} instead.
+     */
+    @Deprecated
     public static GodModeIntervention killAnts(long tick, String targetColony, String caste, int count) {
         return new GodModeIntervention(tick, System.currentTimeMillis(), ActionType.KILL_ANTS, targetColony, caste, count, 0f, 0f, 0f, 0f, null, 0f, null, null);
     }

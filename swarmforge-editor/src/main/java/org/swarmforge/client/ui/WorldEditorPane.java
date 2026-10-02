@@ -2017,30 +2017,46 @@ public class WorldEditorPane extends BorderPane {
         return activeSimulation;
     }
 
-    private java.util.function.Consumer<org.swarmforge.core.domain.Individual> onAntSelectedListener;
+    private java.util.function.Consumer<org.swarmforge.core.domain.Individual> onIndividualSelectedListener;
 
-    public void setOnAntSelected(java.util.function.Consumer<org.swarmforge.core.domain.Individual> listener) {
-        this.onAntSelectedListener = listener;
+    public void setOnIndividualSelected(java.util.function.Consumer<org.swarmforge.core.domain.Individual> listener) {
+        this.onIndividualSelectedListener = listener;
     }
 
-    private final java.util.Deque<java.util.UUID> antNavigationHistory = new java.util.ArrayDeque<>();
+    /**
+     * @deprecated Use {@link #setOnIndividualSelected(java.util.function.Consumer)} instead.
+     */
+    @Deprecated
+    public void setOnAntSelected(java.util.function.Consumer<org.swarmforge.core.domain.Individual> listener) {
+        setOnIndividualSelected(listener);
+    }
 
-    public void setFollowedAnt(org.swarmforge.core.domain.Individual ant) {
-        this.followedAnt = ant;
+    private final java.util.Deque<java.util.UUID> individualNavigationHistory = new java.util.ArrayDeque<>();
+
+    public void setFollowedIndividual(org.swarmforge.core.domain.Individual individual) {
+        this.followedAnt = individual;
         this.antTrailHistory.clear();
         if (gameView != null && gameView.getGameApp() != null) {
-            gameView.getGameApp().followAnt(ant != null && ant.getId() != null ? ant.getId().toString() : null);
+            gameView.getGameApp().followIndividual(individual != null && individual.getId() != null ? individual.getId().toString() : null);
         }
         if (trackedAntPane != null) {
-            trackedAntPane.updateAnt(ant, ant != null);
+            trackedAntPane.updateAnt(individual, individual != null);
         }
-        if (onAntSelectedListener != null && ant != null) {
-            onAntSelectedListener.accept(ant);
+        if (onIndividualSelectedListener != null && individual != null) {
+            onIndividualSelectedListener.accept(individual);
         }
         repaintAllViews();
     }
 
-    public void selectNextNearestAnt() {
+    /**
+     * @deprecated Use {@link #setFollowedIndividual(Individual)} instead.
+     */
+    @Deprecated
+    public void setFollowedAnt(org.swarmforge.core.domain.Individual ant) {
+        setFollowedIndividual(ant);
+    }
+
+    public void selectNextNearestIndividual() {
         if (activeSimulation == null) return;
 
         List<org.swarmforge.core.domain.Individual> candidates = new ArrayList<>();
@@ -2063,7 +2079,7 @@ public class WorldEditorPane extends BorderPane {
             refX = followedAnt.getX();
             refY = followedAnt.getY();
             refZ = followedAnt.getZ();
-            // Exclude currently tracked ant
+            // Exclude currently tracked individual
             candidates.removeIf(ind -> ind.getId() != null && ind.getId().equals(currentId));
         }
 
@@ -2077,20 +2093,20 @@ public class WorldEditorPane extends BorderPane {
             return dx * dx + dy * dy + dz * dz;
         }));
 
-        // Pick the nearest ant (preferring one not immediately previously visited in history if multiple exist)
+        // Pick the nearest individual (preferring one not immediately previously visited in history if multiple exist)
         org.swarmforge.core.domain.Individual bestMatch = candidates.get(0);
-        if (candidates.size() > 1 && !antNavigationHistory.isEmpty() && bestMatch.getId() != null && bestMatch.getId().equals(antNavigationHistory.peek())) {
+        if (candidates.size() > 1 && !individualNavigationHistory.isEmpty() && bestMatch.getId() != null && bestMatch.getId().equals(individualNavigationHistory.peek())) {
             bestMatch = candidates.get(1);
         }
 
         if (currentId != null) {
-            antNavigationHistory.push(currentId);
-            if (antNavigationHistory.size() > 50) {
-                antNavigationHistory.removeLast();
+            individualNavigationHistory.push(currentId);
+            if (individualNavigationHistory.size() > 50) {
+                individualNavigationHistory.removeLast();
             }
         }
 
-        setFollowedAnt(bestMatch);
+        setFollowedIndividual(bestMatch);
         setFollowAntCameraEnabled(true);
         if (trackedAntPane != null) {
             trackedAntPane.setVisible(true);
@@ -2098,17 +2114,25 @@ public class WorldEditorPane extends BorderPane {
         }
     }
 
-    public void selectPreviousNearestAnt() {
+    /**
+     * @deprecated Use {@link #selectNextNearestIndividual()} instead.
+     */
+    @Deprecated
+    public void selectNextNearestAnt() {
+        selectNextNearestIndividual();
+    }
+
+    public void selectPreviousNearestIndividual() {
         if (activeSimulation == null) return;
 
         // 1. Try history stack first
-        while (!antNavigationHistory.isEmpty()) {
-            java.util.UUID prevId = antNavigationHistory.pop();
+        while (!individualNavigationHistory.isEmpty()) {
+            java.util.UUID prevId = individualNavigationHistory.pop();
             for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
                 if (colony != null) {
                     for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
                         if (ind != null && ind.isAlive() && ind.getId() != null && ind.getId().equals(prevId)) {
-                            setFollowedAnt(ind);
+                            setFollowedIndividual(ind);
                             setFollowAntCameraEnabled(true);
                             if (trackedAntPane != null) {
                                 trackedAntPane.setVisible(true);
@@ -2121,13 +2145,21 @@ public class WorldEditorPane extends BorderPane {
             }
         }
 
-        // 2. If no history or previous ant dead, select nearest ant from current position
-        selectNextNearestAnt();
+        // 2. If no history or previous individual dead, select nearest individual from current position
+        selectNextNearestIndividual();
     }
 
-    public void resetAntTracking() {
+    /**
+     * @deprecated Use {@link #selectPreviousNearestIndividual()} instead.
+     */
+    @Deprecated
+    public void selectPreviousNearestAnt() {
+        selectPreviousNearestIndividual();
+    }
+
+    public void resetIndividualTracking() {
         if (!javafx.application.Platform.isFxApplicationThread()) {
-            javafx.application.Platform.runLater(this::resetAntTracking);
+            javafx.application.Platform.runLater(this::resetIndividualTracking);
             return;
         }
         this.followedAnt = null;
@@ -2138,23 +2170,34 @@ public class WorldEditorPane extends BorderPane {
         repaintAllViews();
     }
 
-    public void setFollowedAntById(String query) {
+    /**
+     * @deprecated Use {@link #resetIndividualTracking()} instead.
+     */
+    @Deprecated
+    public void resetAntTracking() {
+        resetIndividualTracking();
+    }
+
+    public void setFollowedIndividualById(String query) {
         if (query == null || query.trim().isEmpty()) return;
         String q = query.trim().toLowerCase();
         org.swarmforge.core.domain.Individual match = null;
 
         if (activeSimulation != null) {
-            long targetAntNumber = -1;
-            if (q.startsWith("ant_")) {
-                try { targetAntNumber = Long.parseLong(q.substring(4)); } catch (Exception ignored) {}
+            long targetIndividualNumber = -1;
+            if (q.startsWith("ant_") || q.startsWith("insect_") || q.startsWith("ind_")) {
+                try {
+                    int underIdx = q.indexOf('_');
+                    targetIndividualNumber = Long.parseLong(q.substring(underIdx + 1));
+                } catch (Exception ignored) {}
             } else {
-                try { targetAntNumber = Long.parseLong(q); } catch (Exception ignored) {}
+                try { targetIndividualNumber = Long.parseLong(q); } catch (Exception ignored) {}
             }
 
-            // 1. Primary lookup: Match exact persistent antNumber or UUID
+            // 1. Primary lookup: Match exact persistent individualNumber or UUID
             for (org.swarmforge.core.domain.Colony colony : activeSimulation.getColonies()) {
                 for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
-                    if (targetAntNumber > 0 && ind.getAntNumber() == targetAntNumber) {
+                    if (targetIndividualNumber > 0 && ind.getIndividualNumber() == targetIndividualNumber) {
                         match = ind;
                         break;
                     }
@@ -2184,20 +2227,36 @@ public class WorldEditorPane extends BorderPane {
         }
 
         if (match != null) {
-            setFollowedAnt(match);
+            setFollowedIndividual(match);
             setFollowAntCameraEnabled(true);
             if (trackedAntPane != null) {
                 trackedAntPane.updateAnt(match, true);
             }
         } else {
             if (trackedAntPane != null) {
-                trackedAntPane.setSearchStatusError("Fourmi introuvable : '" + query + "'");
+                trackedAntPane.setSearchStatusError(I18nManager.getInstance().get("tracked_ant.not_found", query));
             }
         }
     }
 
-    public org.swarmforge.core.domain.Individual getFollowedAnt() {
+    /**
+     * @deprecated Use {@link #setFollowedIndividualById(String)} instead.
+     */
+    @Deprecated
+    public void setFollowedAntById(String query) {
+        setFollowedIndividualById(query);
+    }
+
+    public org.swarmforge.core.domain.Individual getFollowedIndividual() {
         return followedAnt;
+    }
+
+    /**
+     * @deprecated Use {@link #getFollowedIndividual()} instead.
+     */
+    @Deprecated
+    public org.swarmforge.core.domain.Individual getFollowedAnt() {
+        return getFollowedIndividual();
     }
 
     public void focusOnLocation(float x, float y, float z) {
@@ -3478,28 +3537,28 @@ public class WorldEditorPane extends BorderPane {
         StackPane.setMargin(trackedAntPane, new Insets(10, 10, 40, 10));
 
         trackedAntPane.setOnFollowAnt(ant -> {
-            setFollowedAnt(ant);
+            setFollowedIndividual(ant);
             setCameraFollowMode(CameraFollowMode.TPS);
         });
 
         trackedAntPane.setOnFollowAntMode((ant, mode) -> {
-            setFollowedAnt(ant);
+            setFollowedIndividual(ant);
             setCameraFollowMode(mode);
         });
 
         trackedAntPane.setOnFollowAntById(query -> {
-            setFollowedAntById(query);
+            setFollowedIndividualById(query);
         });
 
         trackedAntPane.setOnStopFollow(() -> {
-            setFollowedAnt(null);
+            setFollowedIndividual(null);
             setCameraFollowMode(CameraFollowMode.FREE);
             trackedAntPane.setNoAntSelectedState();
         });
 
         trackedAntPane.setOnCenter(this::centerCameraOnSelection);
-        trackedAntPane.setOnNextAnt(this::selectNextNearestAnt);
-        trackedAntPane.setOnPreviousAnt(this::selectPreviousNearestAnt);
+        trackedAntPane.setOnNextAnt(this::selectNextNearestIndividual);
+        trackedAntPane.setOnPreviousAnt(this::selectPreviousNearestIndividual);
         trackedAntPane.setOnClose(() -> {
             if (showAntTrackingCheck != null) showAntTrackingCheck.setSelected(false);
             setAntTrackingEnabled(false);
@@ -3566,12 +3625,12 @@ public class WorldEditorPane extends BorderPane {
             }
 
             @Override
-            public void onAntSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {
-                setFollowedAntById(id);
+            public void onIndividualSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {
+                setFollowedIndividualById(id);
                 if (trackedAntPane != null) {
                     trackedAntPane.setVisible(true);
                 }
-                String bioText = "🐜 Fourmi #" + id + " [" + (caste != null ? caste : "Ouvrière") + "] | Santé: " + (int)(health * 100) + "% | Énergie: " + (int)(energy * 100) + "%";
+                String bioText = "🐜 Individu #" + id + " [" + (caste != null ? caste : "Ouvrière") + "] | Santé: " + (int)(health * 100) + "% | Énergie: " + (int)(energy * 100) + "%";
                 updateFloatingMouseInspector(0, 0, 0, lastGameViewMouseX, lastGameViewMouseY, bioText);
             }
 
@@ -4305,7 +4364,7 @@ public class WorldEditorPane extends BorderPane {
             }
 
             if (clickedAnt != null && isAntTrackingEnabled) {
-                setFollowedAnt(clickedAnt);
+                setFollowedIndividual(clickedAnt);
                 if (trackedAntPane != null) {
                     trackedAntPane.updateAnt(clickedAnt, true);
                     trackedAntPane.setVisible(true);

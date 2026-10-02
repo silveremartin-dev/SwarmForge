@@ -56,7 +56,7 @@ public class InsectVisualizer {
 
     private void precomputeMeshes() {
         for (Individual.Caste caste : Individual.Caste.values()) {
-            meshCache.put(caste, createAntMesh(caste));
+            meshCache.put(caste, createInsectMesh(caste));
 
             Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             mat.setBoolean("UseMaterialColors", true);
@@ -73,8 +73,16 @@ public class InsectVisualizer {
         return matCache.get(caste);
     }
 
-    private Mesh createAntMesh(Individual.Caste caste) {
+    public Mesh createInsectMesh(Individual.Caste caste) {
         return createOrganismMesh(caste, null);
+    }
+
+    /**
+     * @deprecated Use {@link #createInsectMesh(Individual.Caste)} instead.
+     */
+    @Deprecated
+    public Mesh createAntMesh(Individual.Caste caste) {
+        return createInsectMesh(caste);
     }
 
     public ColorRGBA getColor(Individual.Caste caste) {
@@ -155,8 +163,20 @@ public class InsectVisualizer {
         }
     }
 
-    public Geometry createAntGeometry(Individual.Caste caste, Individual.LifeStage stage) {
+    public Geometry createInsectGeometry(Individual.Caste caste, Individual.LifeStage stage) {
         return createOrganismGeometry(caste, stage, null);
+    }
+
+    public Geometry createInsectGeometry(Individual.Caste caste) {
+        return createInsectGeometry(caste, Individual.LifeStage.ADULT);
+    }
+
+    /**
+     * @deprecated Use {@link #createInsectGeometry(Individual.Caste, Individual.LifeStage)} instead.
+     */
+    @Deprecated
+    public Geometry createAntGeometry(Individual.Caste caste, Individual.LifeStage stage) {
+        return createInsectGeometry(caste, stage);
     }
 
     public Geometry createOrganismGeometry(Individual.Caste caste, Individual.LifeStage stage, org.swarmforge.core.species.Species species) {
@@ -165,14 +185,18 @@ public class InsectVisualizer {
         }
 
         Mesh mesh = getOrCreateSpeciesMesh(caste, species);
-        Geometry geom = new Geometry("Organism_" + (species != null ? species.getCommonName() : "Ant") + "_" + caste, mesh);
+        Geometry geom = new Geometry("Organism_" + (species != null ? species.getCommonName() : "Insect") + "_" + caste, mesh);
         Material mat = getOrCreateSpeciesMaterial(caste, species);
         geom.setMaterial(mat);
         return geom;
     }
 
+    /**
+     * @deprecated Use {@link #createInsectGeometry(Individual.Caste)} instead.
+     */
+    @Deprecated
     public Geometry createAntGeometry(Individual.Caste caste) {
-        return createAntGeometry(caste, Individual.LifeStage.ADULT);
+        return createInsectGeometry(caste, Individual.LifeStage.ADULT);
     }
 
     private final Map<String, Mesh> speciesMeshCache = new HashMap<>();
