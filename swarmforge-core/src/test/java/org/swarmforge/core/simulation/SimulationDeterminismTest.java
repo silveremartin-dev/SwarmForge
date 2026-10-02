@@ -59,7 +59,7 @@ public class SimulationDeterminismTest {
     }
 
     private Simulation createSeededSimulation(long seed) {
-        Individual.resetAntNumberGenerator();
+        Individual.resetIndividualNumberGenerator();
         Terrarium terrarium = new Terrarium(64, 64, 32);
         Simulation sim = new Simulation(terrarium, seed);
         sim.addColony("FormicaRufa", 1, 30, 5, 20, 32.0f, 32.0f);

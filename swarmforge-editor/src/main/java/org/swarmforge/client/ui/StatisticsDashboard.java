@@ -159,25 +159,10 @@ public class StatisticsDashboard extends VBox {
         this.onTrackAntListener = listener;
     }
 
-    /**
-     * @deprecated Use {@link #setOnTrackIndividual(java.util.function.Consumer)} instead.
-     */
-    @Deprecated
-    public void setOnTrackAnt(java.util.function.Consumer<String> listener) {
-        setOnTrackIndividual(listener);
-    }
-
     public void setOnSelectIndividual(java.util.function.Consumer<String> listener) {
         this.onSelectAntListener = listener;
     }
 
-    /**
-     * @deprecated Use {@link #setOnSelectIndividual(java.util.function.Consumer)} instead.
-     */
-    @Deprecated
-    public void setOnSelectAnt(java.util.function.Consumer<String> listener) {
-        setOnSelectIndividual(listener);
-    }
 
     public String getScenarioName() {
         return scenarioName;
@@ -306,7 +291,7 @@ public class StatisticsDashboard extends VBox {
     private void triggerTrackAndTrace() {
         String val = txtAntSearchId.getText() != null ? txtAntSearchId.getText().trim() : "";
         if (!val.isEmpty()) {
-            setTrackedAntId(val);
+            setTrackedIndividualId(val);
             if (onTrackAntListener != null) {
                 onTrackAntListener.accept(val);
             }
@@ -326,7 +311,7 @@ public class StatisticsDashboard extends VBox {
         }
         num = Math.max(1, num + delta);
         String newId = prefix + num;
-        setTrackedAntId(newId);
+        setTrackedIndividualId(newId);
         if (onSelectAntListener != null) {
             onSelectAntListener.accept(newId);
         }
@@ -343,14 +328,6 @@ public class StatisticsDashboard extends VBox {
         }
     }
 
-    /**
-     * @deprecated Use {@link #setTrackedIndividualId(String)} instead.
-     */
-    @Deprecated
-    public void setTrackedAntId(String antId) {
-        setTrackedIndividualId(antId);
-    }
-
     public void setTrackedIndividual(org.swarmforge.core.domain.Individual individual) {
         if (individual != null) {
             String idStr = individual.getFormattedId();
@@ -359,13 +336,6 @@ public class StatisticsDashboard extends VBox {
         }
     }
 
-    /**
-     * @deprecated Use {@link #setTrackedIndividual(org.swarmforge.core.domain.Individual)} instead.
-     */
-    @Deprecated
-    public void setTrackedAnt(org.swarmforge.core.domain.Individual ant) {
-        setTrackedIndividual(ant);
-    }
 
     public void updateIndividualTelemetryFromEntity(org.swarmforge.core.domain.Individual ant) {
         if (ant == null) return;

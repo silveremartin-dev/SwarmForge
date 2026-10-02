@@ -1,6 +1,6 @@
 //! C Foreign Function Interface (FFI) bindings for Java 21 Project Panama.
 
-use crate::entity::AntEntity;
+use crate::entity::InsectEntity;
 use crate::pheromone::PheromoneGrid;
 use crate::spatial::SpatialGrid;
 
@@ -8,7 +8,7 @@ pub struct NativeSimulationEngine {
     pub width: f32,
     pub depth: f32,
     pub height: f32,
-    pub entities: Vec<Option<AntEntity>>,
+    pub entities: Vec<Option<InsectEntity>>,
     pub active_count: usize,
     pub next_id: u32,
     pub spatial: SpatialGrid,
@@ -90,7 +90,7 @@ pub extern "C" fn swarmforge_engine_spawn_entity(
     if let Some(engine) = unsafe { ptr.as_mut() } {
         let id = engine.next_id;
         engine.next_id += 1;
-        let agent = AntEntity::new(id, x, y, z, (caste & 0xFF) as u8, energy);
+        let agent = InsectEntity::new(id, x, y, z, (caste & 0xFF) as u8, energy);
 
         if (id as usize) < engine.entities.len() {
             engine.entities[id as usize] = Some(agent);

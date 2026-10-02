@@ -116,7 +116,7 @@ public class ClimateAndGodModeEventsTest {
 
         GodModeIntervention i1 = GodModeIntervention.modifyParameter(1L, "temperature", 38.0f);
         GodModeIntervention i2 = GodModeIntervention.spawnFood(2L, 30f, 30f, 0f, 300f);
-        GodModeIntervention i3 = GodModeIntervention.spawnAnts(3L, colony.getId().toString(), "WORKER", 5, 30f, 30f, 0f);
+        GodModeIntervention i3 = GodModeIntervention.spawnIndividuals(3L, colony.getId().toString(), "WORKER", 5, 30f, 30f, 0f);
 
         simulation.logIntervention(i1);
         simulation.logIntervention(i2);
@@ -131,12 +131,12 @@ public class ClimateAndGodModeEventsTest {
 
         assertEquals(38.0f, weather.getTemperature(), 0.01f, "Weather temperature should reflect God Mode edit");
         assertTrue(colony.getResourceAmount(ResourceType.SUGAR) >= 300f, "Colony sugar should increase from God Mode food spawn");
-        assertEquals(initialPop + 5, colony.getPopulation(), "Colony population should increase by 5 after God Mode ant spawn");
+        assertEquals(initialPop + 5, colony.getPopulation(), "Colony population should increase by 5 after God Mode individual spawn");
 
         List<GodModeIntervention> journal = simulation.getInterventionJournal();
         assertEquals(3, journal.size(), "Intervention journal should record all 3 God Mode actions");
         assertEquals(ActionType.MODIFY_PARAMETER, journal.get(0).actionType());
         assertEquals(ActionType.SPAWN_FOOD, journal.get(1).actionType());
-        assertEquals(ActionType.SPAWN_ANTS, journal.get(2).actionType());
+        assertEquals(ActionType.SPAWN_INDIVIDUALS, journal.get(2).actionType());
     }
 }

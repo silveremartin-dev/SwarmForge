@@ -69,11 +69,6 @@ public class SimulationSnapshot implements Serializable {
             Individual.LifeStage lifeStage,
             Individual.AiState state,
             Individual.CarriedItem carriedItem) implements Serializable {
-
-        @Deprecated
-        public long antNumber() {
-            return individualNumber;
-        }
     }
 
     private SimulationSnapshot(long tick, List<ColonySnapshot> colonies, byte[] pheromoneData, int dayOfYear,

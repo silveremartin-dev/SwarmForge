@@ -154,15 +154,6 @@ public class EcsColonyFactory {
         return entityId;
     }
 
-    /**
-     * Spawns an individual entity in the ECS world.
-     * @deprecated Use {@link #createIndividual(UUID, Individual.Caste, Individual.Job, float, float, float, Species)} instead.
-     */
-    @Deprecated
-    public int createAnt(UUID colonyId, Individual.Caste caste, Individual.Job job,
-                         float x, float y, float z, Species species) {
-        return createIndividual(colonyId, caste, job, x, y, z, species);
-    }
 
     private static boolean matchesCasteTemplate(CasteTemplate ct, Individual.Caste caste, String casteName) {
         if (ct == null || ct.getName() == null) return false;

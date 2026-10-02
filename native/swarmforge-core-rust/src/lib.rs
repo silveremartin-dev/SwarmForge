@@ -8,7 +8,7 @@ pub mod ffi;
 pub mod pheromone;
 pub mod spatial;
 
-pub use entity::{AntEntity, InsectEntity};
+pub use entity::InsectEntity;
 pub use ffi::NativeSimulationEngine;
 pub use pheromone::PheromoneGrid;
 pub use spatial::SpatialGrid;
@@ -19,7 +19,7 @@ mod tests {
 
     #[test]
     fn test_kinematics_determinism_parity() {
-        let mut ant = AntEntity::new(1, 10.0, 20.0, 0.0, 1, 100.0);
+        let mut ant = InsectEntity::new(1, 10.0, 20.0, 0.0, 1, 100.0);
         ant.vx = 2.0;
         ant.vy = 1.0;
         ant.vz = 0.5;

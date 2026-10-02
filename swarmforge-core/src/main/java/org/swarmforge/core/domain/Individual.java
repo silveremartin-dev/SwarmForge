@@ -38,21 +38,6 @@ public class Individual implements java.io.Serializable, AgentView {
         return individualNumber;
     }
 
-    @Deprecated
-    public static void resetAntNumberGenerator() {
-        resetIndividualNumberGenerator();
-    }
-
-    @Deprecated
-    public static void setNextAntNumber(long nextVal) {
-        setNextIndividualNumber(nextVal);
-    }
-
-    @Deprecated
-    public long getAntNumber() {
-        return individualNumber;
-    }
-
     public String getFormattedId() {
         return "insect_" + individualNumber;
     }

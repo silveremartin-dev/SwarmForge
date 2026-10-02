@@ -243,7 +243,7 @@ public class WorldEditorPane extends BorderPane {
             showAntTrackingCheck.setSelected(enabled);
         }
         if (!enabled) {
-            setFollowedAnt(null);
+            setFollowedIndividual(null);
             if (trackedAntPane != null) {
                 trackedAntPane.clearSearchStatus();
                 trackedAntPane.setVisible(false);
@@ -1953,13 +1953,6 @@ public class WorldEditorPane extends BorderPane {
         return trackedAntPane;
     }
 
-    /**
-     * @deprecated Use {@link #getTrackedIndividualPane()} instead.
-     */
-    @Deprecated
-    public TrackedIndividualPane getTrackedAntPane() {
-        return getTrackedIndividualPane();
-    }
 
     public ChamberInfoPane getChamberInfoPane() {
         return chamberInfoPane;
@@ -2027,14 +2020,6 @@ public class WorldEditorPane extends BorderPane {
         this.onIndividualSelectedListener = listener;
     }
 
-    /**
-     * @deprecated Use {@link #setOnIndividualSelected(java.util.function.Consumer)} instead.
-     */
-    @Deprecated
-    public void setOnAntSelected(java.util.function.Consumer<org.swarmforge.core.domain.Individual> listener) {
-        setOnIndividualSelected(listener);
-    }
-
     private final java.util.Deque<java.util.UUID> individualNavigationHistory = new java.util.ArrayDeque<>();
 
     public void setFollowedIndividual(org.swarmforge.core.domain.Individual individual) {
@@ -2052,13 +2037,6 @@ public class WorldEditorPane extends BorderPane {
         repaintAllViews();
     }
 
-    /**
-     * @deprecated Use {@link #setFollowedIndividual(Individual)} instead.
-     */
-    @Deprecated
-    public void setFollowedAnt(org.swarmforge.core.domain.Individual ant) {
-        setFollowedIndividual(ant);
-    }
 
     public void selectNextNearestIndividual() {
         if (activeSimulation == null) return;
@@ -2118,14 +2096,6 @@ public class WorldEditorPane extends BorderPane {
         }
     }
 
-    /**
-     * @deprecated Use {@link #selectNextNearestIndividual()} instead.
-     */
-    @Deprecated
-    public void selectNextNearestAnt() {
-        selectNextNearestIndividual();
-    }
-
     public void selectPreviousNearestIndividual() {
         if (activeSimulation == null) return;
 
@@ -2153,14 +2123,6 @@ public class WorldEditorPane extends BorderPane {
         selectNextNearestIndividual();
     }
 
-    /**
-     * @deprecated Use {@link #selectPreviousNearestIndividual()} instead.
-     */
-    @Deprecated
-    public void selectPreviousNearestAnt() {
-        selectPreviousNearestIndividual();
-    }
-
     public void resetIndividualTracking() {
         if (!javafx.application.Platform.isFxApplicationThread()) {
             javafx.application.Platform.runLater(this::resetIndividualTracking);
@@ -2172,14 +2134,6 @@ public class WorldEditorPane extends BorderPane {
             trackedAntPane.updateAnt(null, false);
         }
         repaintAllViews();
-    }
-
-    /**
-     * @deprecated Use {@link #resetIndividualTracking()} instead.
-     */
-    @Deprecated
-    public void resetAntTracking() {
-        resetIndividualTracking();
     }
 
     public void setFollowedIndividualById(String query) {
@@ -2243,25 +2197,10 @@ public class WorldEditorPane extends BorderPane {
         }
     }
 
-    /**
-     * @deprecated Use {@link #setFollowedIndividualById(String)} instead.
-     */
-    @Deprecated
-    public void setFollowedAntById(String query) {
-        setFollowedIndividualById(query);
-    }
-
     public org.swarmforge.core.domain.Individual getFollowedIndividual() {
         return followedAnt;
     }
 
-    /**
-     * @deprecated Use {@link #getFollowedIndividual()} instead.
-     */
-    @Deprecated
-    public org.swarmforge.core.domain.Individual getFollowedAnt() {
-        return getFollowedIndividual();
-    }
 
     public void focusOnLocation(float x, float y, float z) {
         if (gameView != null && gameView.getGameApp() != null) {

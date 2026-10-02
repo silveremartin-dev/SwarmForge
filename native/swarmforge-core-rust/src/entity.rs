@@ -15,8 +15,6 @@ pub struct InsectEntity {
     pub is_alive: bool,
 }
 
-pub type AntEntity = InsectEntity;
-
 #[allow(non_camel_case_types)]
 type float32 = f32;
 

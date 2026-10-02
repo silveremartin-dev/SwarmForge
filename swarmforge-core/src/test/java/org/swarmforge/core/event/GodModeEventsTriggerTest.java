@@ -45,15 +45,15 @@ public class GodModeEventsTriggerTest {
     void testGodModeInterventionJournaling() {
         assertEquals(0, simulation.getInterventionJournal().size(), "Intervention journal should be empty initially");
 
-        GodModeIntervention spawnAnts = GodModeIntervention.spawnAnts(1L, colony.getId().toString(), "WORKER", 10, 30f, 30f, 0f);
-        GodModeIntervention killAnts = GodModeIntervention.killAnts(2L, colony.getId().toString(), "WORKER", 5);
+        GodModeIntervention spawnInd = GodModeIntervention.spawnIndividuals(1L, colony.getId().toString(), "WORKER", 10, 30f, 30f, 0f);
+        GodModeIntervention killInd = GodModeIntervention.killIndividuals(2L, colony.getId().toString(), "WORKER", 5);
         GodModeIntervention spawnFood = GodModeIntervention.spawnFood(3L, 30f, 30f, 0f, 200f);
         GodModeIntervention triggerDisaster = GodModeIntervention.triggerDisaster(4L, "FLOOD", 0.7f);
         GodModeIntervention modifyParam = GodModeIntervention.modifyParameter(5L, "temperature", 34.5f);
         GodModeIntervention stopDisasters = GodModeIntervention.stopDisasters(6L);
 
-        simulation.logIntervention(spawnAnts);
-        simulation.logIntervention(killAnts);
+        simulation.logIntervention(spawnInd);
+        simulation.logIntervention(killInd);
         simulation.logIntervention(spawnFood);
         simulation.logIntervention(triggerDisaster);
         simulation.logIntervention(modifyParam);
@@ -62,8 +62,8 @@ public class GodModeEventsTriggerTest {
         List<GodModeIntervention> journal = simulation.getInterventionJournal();
         assertEquals(6, journal.size(), "Intervention journal must record all 6 interventions");
 
-        assertEquals(ActionType.SPAWN_ANTS, journal.get(0).actionType());
-        assertEquals(ActionType.KILL_ANTS, journal.get(1).actionType());
+        assertEquals(ActionType.SPAWN_INDIVIDUALS, journal.get(0).actionType());
+        assertEquals(ActionType.KILL_INDIVIDUALS, journal.get(1).actionType());
         assertEquals(ActionType.SPAWN_FOOD, journal.get(2).actionType());
         assertEquals(ActionType.TRIGGER_DISASTER, journal.get(3).actionType());
         assertEquals(ActionType.MODIFY_PARAMETER, journal.get(4).actionType());
@@ -71,12 +71,12 @@ public class GodModeEventsTriggerTest {
     }
 
     @Test
-    @DisplayName("Verify SPAWN_ANTS and KILL_ANTS God Mode interventions alter colony population")
-    void testGodModeAntSpawningAndKilling() {
+    @DisplayName("Verify SPAWN_INDIVIDUALS and KILL_INDIVIDUALS God Mode interventions alter colony population")
+    void testGodModeIndividualSpawningAndKilling() {
         int initialPop = colony.getPopulation();
 
-        // 1. Spawn ants
-        GodModeIntervention spawn = GodModeIntervention.spawnAnts(simulation.getTickCount(), colony.getId().toString(), "WORKER", 8, 30f, 30f, 0f);
+        // 1. Spawn individuals
+        GodModeIntervention spawn = GodModeIntervention.spawnIndividuals(simulation.getTickCount(), colony.getId().toString(), "WORKER", 8, 30f, 30f, 0f);
         simulation.logIntervention(spawn);
 
         for (int i = 0; i < spawn.count(); i++) {
@@ -85,8 +85,8 @@ public class GodModeEventsTriggerTest {
 
         assertEquals(initialPop + 8, colony.getPopulation(), "Colony population should increase by 8 after spawn intervention");
 
-        // 2. Kill ants
-        GodModeIntervention kill = GodModeIntervention.killAnts(simulation.getTickCount(), colony.getId().toString(), "WORKER", 3);
+        // 2. Kill individuals
+        GodModeIntervention kill = GodModeIntervention.killIndividuals(simulation.getTickCount(), colony.getId().toString(), "WORKER", 3);
         simulation.logIntervention(kill);
 
         List<Individual> workers = colony.getLivingIndividuals();

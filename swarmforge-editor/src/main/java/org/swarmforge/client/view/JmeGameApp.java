@@ -85,10 +85,6 @@ public class JmeGameApp extends SimpleApplication {
     public interface ObjectSelectionListener {
         void onVoxelSelected(int x, int y, int z, String material, float moisture, float temp, float compaction);
         default void onIndividualSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {}
-        @Deprecated
-        default void onAntSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {
-            onIndividualSelected(id, caste, stage, health, energy, hunger, age, job);
-        }
         default void onChamberSelected(String chamberId) {}
         default void onHoverInfo(String text) {}
     }
@@ -100,21 +96,11 @@ public class JmeGameApp extends SimpleApplication {
         return isIndividualTrackingEnabled;
     }
 
-    @Deprecated
-    public boolean isAntTrackingEnabled() {
-        return isIndividualTrackingEnabled();
-    }
-
     public void setIndividualTrackingEnabled(boolean enabled) {
         this.isIndividualTrackingEnabled = enabled;
         if (!enabled) {
             this.followedAntId = null;
         }
-    }
-
-    @Deprecated
-    public void setAntTrackingEnabled(boolean enabled) {
-        setIndividualTrackingEnabled(enabled);
     }
 
     public void setSelectionListener(ObjectSelectionListener listener) {
@@ -125,10 +111,6 @@ public class JmeGameApp extends SimpleApplication {
         this.followedAntId = individualId;
     }
 
-    @Deprecated
-    public void followAnt(String antId) {
-        followIndividual(antId);
-    }
 
     public void setTerrainListener(TerrainModificationListener listener) {
         this.terrainListener = listener;
@@ -445,12 +427,8 @@ public class JmeGameApp extends SimpleApplication {
         return followedAntId;
     }
 
-    @Deprecated
-    public String getFollowedAntId() {
-        return getFollowedIndividualId();
-    }
-
     private String followedAntId = null;
+
 
     private final com.jme3.input.controls.AnalogListener cameraAnalogListener = (name, value, tpf) -> {
         if (followedAntId != null && (name.startsWith("Pan") || name.startsWith("Rotate"))) {
@@ -1849,16 +1827,9 @@ public class JmeGameApp extends SimpleApplication {
     }
 
     /**
-     * @deprecated Use {@link #setInsectVisualScaleMultiplier(float)} instead.
-     */
-    @Deprecated
-    public void setAntVisualScaleMultiplier(float multiplier) {
-        setInsectVisualScaleMultiplier(multiplier);
-    }
-
-    /**
      * Safely stops the JME application and deallocates native OpenGL resources.
      */
+
     public void stopApp() {
         if (isStopped.compareAndSet(false, true)) {
             this.targetImage = null;

@@ -634,12 +634,12 @@ public class SwarmForgeClient extends Application {
                 statsTab.textProperty().bind(i18n.createStringBinding("tab.stats"));
                 statsTab.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.BAR_CHART_2));
                 this.statisticsDashboard = new org.swarmforge.client.ui.StatisticsDashboard();
-                this.statisticsDashboard.setOnSelectAnt(antId -> {
+                this.statisticsDashboard.setOnSelectIndividual(antId -> {
                     if (this.simWorldViewer != null) {
                         this.simWorldViewer.setFollowedIndividualById(antId);
                     }
                 });
-                this.statisticsDashboard.setOnTrackAnt(antId -> {
+                this.statisticsDashboard.setOnTrackIndividual(antId -> {
                     if (this.simWorldViewer != null) {
                         this.simWorldViewer.setFollowedIndividualById(antId);
                         this.simWorldViewer.setFollowAntCameraEnabled(true);
@@ -707,9 +707,9 @@ public class SwarmForgeClient extends Application {
                                 this.interventionPanel.clearScheduledEvents();
                         }
                         if (this.simWorldViewer != null) {
-                                this.simWorldViewer.resetAntTracking();
+                                this.simWorldViewer.resetIndividualTracking();
                         }
-                        org.swarmforge.core.domain.Individual.resetAntNumberGenerator();
+                        org.swarmforge.core.domain.Individual.resetIndividualNumberGenerator();
 
                         if (this.simControlPanel != null && this.simControlPanel.isServerExecutionMode()) {
                             String host = this.simControlPanel.getServerHost();
@@ -1071,7 +1071,7 @@ public class SwarmForgeClient extends Application {
                             this.eventLogPane.clearLog();
                         }
                         if (this.simWorldViewer != null) {
-                            this.simWorldViewer.resetAntTracking();
+                            this.simWorldViewer.resetIndividualTracking();
                         }
                     }
                     if (this.localSimulation != null) {
@@ -1698,16 +1698,16 @@ public class SwarmForgeClient extends Application {
                 this.simWorldViewer.setSimulationMode(true);
                 this.simWorldViewer.setOnIndividualSelected(ant -> {
                     if (this.statisticsDashboard != null && ant != null) {
-                        this.statisticsDashboard.setTrackedAnt(ant);
+                        this.statisticsDashboard.setTrackedIndividual(ant);
                     }
                 });
                 if (this.statisticsDashboard != null) {
-                    this.statisticsDashboard.setOnSelectAnt(antId -> {
+                    this.statisticsDashboard.setOnSelectIndividual(antId -> {
                         if (this.simWorldViewer != null) {
                             this.simWorldViewer.setFollowedIndividualById(antId);
                         }
                     });
-                    this.statisticsDashboard.setOnTrackAnt(antId -> {
+                    this.statisticsDashboard.setOnTrackIndividual(antId -> {
                         if (this.simWorldViewer != null) {
                             this.simWorldViewer.setFollowedIndividualById(antId);
                             this.simWorldViewer.setFollowAntCameraEnabled(true);
@@ -1986,7 +1986,7 @@ public class SwarmForgeClient extends Application {
                                     simWorldViewer.getGameView().getGameApp().setSimulationPaused(true);
                                 }
                                 if (simWorldViewer != null) {
-                                    simWorldViewer.resetAntTracking();
+                                    simWorldViewer.resetIndividualTracking();
                                 }
                                 if (interventionPanel != null) {
                                     interventionPanel.resetEventsState();
@@ -2061,7 +2061,7 @@ public class SwarmForgeClient extends Application {
                                                 eventLogPane.clearLog();
                                         }
                                         if (simWorldViewer != null) {
-                                                simWorldViewer.resetAntTracking();
+                                                simWorldViewer.resetIndividualTracking();
                                         }
                                 }
                                 if (localSimulation != null) {

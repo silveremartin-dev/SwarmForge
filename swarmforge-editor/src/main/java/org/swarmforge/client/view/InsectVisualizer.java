@@ -77,13 +77,6 @@ public class InsectVisualizer {
         return createOrganismMesh(caste, null);
     }
 
-    /**
-     * @deprecated Use {@link #createInsectMesh(Individual.Caste)} instead.
-     */
-    @Deprecated
-    public Mesh createAntMesh(Individual.Caste caste) {
-        return createInsectMesh(caste);
-    }
 
     public ColorRGBA getColor(Individual.Caste caste) {
         switch (caste) {
@@ -171,14 +164,6 @@ public class InsectVisualizer {
         return createInsectGeometry(caste, Individual.LifeStage.ADULT);
     }
 
-    /**
-     * @deprecated Use {@link #createInsectGeometry(Individual.Caste, Individual.LifeStage)} instead.
-     */
-    @Deprecated
-    public Geometry createAntGeometry(Individual.Caste caste, Individual.LifeStage stage) {
-        return createInsectGeometry(caste, stage);
-    }
-
     public Geometry createOrganismGeometry(Individual.Caste caste, Individual.LifeStage stage, org.swarmforge.core.species.Species species) {
         if (stage != Individual.LifeStage.ADULT) {
             return createImmatureGeometry(stage);
@@ -191,13 +176,6 @@ public class InsectVisualizer {
         return geom;
     }
 
-    /**
-     * @deprecated Use {@link #createInsectGeometry(Individual.Caste)} instead.
-     */
-    @Deprecated
-    public Geometry createAntGeometry(Individual.Caste caste) {
-        return createInsectGeometry(caste, Individual.LifeStage.ADULT);
-    }
 
     private final Map<String, Mesh> speciesMeshCache = new HashMap<>();
     private final Map<String, Material> speciesMatCache = new HashMap<>();
