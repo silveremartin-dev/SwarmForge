@@ -1,0 +1,22 @@
+{
+  "presetName" : "Hanging Paper Nest",
+  "speciesModel" : "\uD83D\uDC1D Common Wasp (Vespula vulgaris)",
+  "nestStageIndex" : 2,
+  "taxonCategory" : "WASP",
+  "genus" : "Vespula",
+  "architecture" : "PAPER_PEDUNCULATE",
+  "material" : "WOOD_PULP_PAPER",
+  "workerSizeMm" : 13.0,
+  "depth" : 6,
+  "chamberCount" : 16,
+  "tunnelWidth" : 2,
+  "branching" : 3,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 1,
+    "\uD83E\uDD5A Brood Chambers" : 5,
+    "\uD83C\uDF56 Food Storage" : 4,
+    "\uD83D\uDEAA Entrances" : 2,
+    "\uD83D\uDDD1 Waste Dumps" : 1,
+    "\uD83C\uDF44 Fungus Gardens" : 0
+  }
+}

@@ -111,13 +111,20 @@ public class TunnelVisualizer {
             Box box = new Box(radius3D, radius3D, radius3D);
             geom = new Geometry("Node_" + node.id(), box);
         } else if (currentRenderMode == RenderMode.REALISTIC) {
-            // Realistic Lenticular Ellipsoidal Chamber (flattened horizontally under lithostatic pressure)
-            Sphere shape = new Sphere(10, 10, radius3D);
-            geom = new Geometry("Node_" + node.id(), shape);
-            geom.setLocalScale(1.25f, 0.72f, 1.25f);
+            if (node.type() == TunnelNetwork.ChamberType.TUNNEL) {
+                // Do not render intermediate tunnel pathway waypoints as spheres in realistic mode
+                // This prevents the "spheres stuck to each other" artifact across galleries
+                geom = new Geometry("Node_" + node.id(), new Box(0.01f, 0.01f, 0.01f));
+                geom.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+            } else {
+                // Realistic Lenticular Ellipsoidal Chamber (flattened horizontally under lithostatic soil pressure)
+                Sphere shape = new Sphere(16, 16, radius3D);
+                geom = new Geometry("Node_" + node.id(), shape);
+                geom.setLocalScale(1.4f, 0.55f, 1.4f);
+            }
         } else {
             // Scientific Metric Sphere
-            Sphere shape = new Sphere(8, 8, radius3D);
+            Sphere shape = new Sphere(10, 10, radius3D);
             geom = new Geometry("Node_" + node.id(), shape);
         }
 
@@ -135,12 +142,12 @@ public class TunnelVisualizer {
 
         // Saliva Masonry Lining & Cuticular SSS Translucency
         if (currentRenderMode == RenderMode.REALISTIC) {
-            mat.setColor("Specular", new ColorRGBA(0.40f, 0.32f, 0.22f, 1.0f));
-            mat.setFloat("Shininess", 18.0f); // Polished saliva-bonded clay sheen
+            mat.setColor("Specular", new ColorRGBA(0.35f, 0.28f, 0.20f, 1.0f));
+            mat.setFloat("Shininess", 16.0f); // Polished saliva-bonded earthen sheen
             if (node.type() == TunnelNetwork.ChamberType.BROOD_CHAMBER || node.type() == TunnelNetwork.ChamberType.QUEEN_CHAMBER) {
                 // Cuticular Subsurface Scattering (SSS) translucent ivory warmth
-                mat.setColor("Diffuse", new ColorRGBA(0.96f, 0.94f, 0.86f, 0.92f));
-                mat.setColor("Ambient", new ColorRGBA(0.85f, 0.75f, 0.60f, 1.0f));
+                mat.setColor("Diffuse", new ColorRGBA(0.82f, 0.74f, 0.62f, 1.0f));
+                mat.setColor("Ambient", new ColorRGBA(0.55f, 0.48f, 0.38f, 1.0f));
             }
         }
 
@@ -205,12 +212,24 @@ public class TunnelVisualizer {
     }
 
     private ColorRGBA getNodeColor(TunnelNetwork.ChamberType type) {
+        if (currentRenderMode == RenderMode.REALISTIC) {
+            return switch (type) {
+                case QUEEN_CHAMBER -> new ColorRGBA(0.52f, 0.38f, 0.28f, 1.0f);
+                case BROOD_CHAMBER -> new ColorRGBA(0.56f, 0.44f, 0.34f, 1.0f);
+                case FOOD_STORAGE, LEAF_CACHE -> new ColorRGBA(0.48f, 0.40f, 0.26f, 1.0f);
+                case FUNGUS_GARDEN -> new ColorRGBA(0.45f, 0.35f, 0.38f, 1.0f);
+                case HIBERNATION -> new ColorRGBA(0.38f, 0.32f, 0.28f, 1.0f);
+                case WASTE_DUMP -> new ColorRGBA(0.28f, 0.22f, 0.16f, 1.0f);
+                case ENTRANCE -> new ColorRGBA(0.42f, 0.32f, 0.22f, 1.0f);
+                default -> new ColorRGBA(0.40f, 0.30f, 0.20f, 1.0f);
+            };
+        }
         return switch (type) {
             case QUEEN_CHAMBER -> ColorRGBA.Magenta;
-            case BROOD_CHAMBER -> new ColorRGBA(0.95f, 0.92f, 0.85f, 1.0f); // Cuticular SSS Ivory
-            case FOOD_STORAGE -> ColorRGBA.Green;
-            case FUNGUS_GARDEN -> new ColorRGBA(0.66f, 0.33f, 0.97f, 1.0f); // Purple
-            case HIBERNATION -> new ColorRGBA(0.22f, 0.74f, 0.97f, 1.0f); // Cyan
+            case BROOD_CHAMBER -> new ColorRGBA(0.95f, 0.92f, 0.85f, 1.0f);
+            case FOOD_STORAGE, LEAF_CACHE -> ColorRGBA.Green;
+            case FUNGUS_GARDEN -> new ColorRGBA(0.66f, 0.33f, 0.97f, 1.0f);
+            case HIBERNATION -> ColorRGBA.Cyan;
             case WASTE_DUMP -> ColorRGBA.DarkGray;
             case ENTRANCE -> ColorRGBA.Yellow;
             default -> ColorRGBA.Brown;

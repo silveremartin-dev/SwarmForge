@@ -8,7 +8,7 @@ package org.swarmforge.core.domain;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 import org.swarmforge.core.species.Species;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,7 +23,7 @@ class ColonyTest {
 
     @BeforeEach
     void setUp() {
-        CustomSpecies species = new CustomSpecies();
+        DefaultSpecies species = new DefaultSpecies();
         species.setScientificName("Testus antus");
         species.setCommonName("Test Ant");
         species.setWorkerLifespan(5000);

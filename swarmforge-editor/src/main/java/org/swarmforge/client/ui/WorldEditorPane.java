@@ -184,7 +184,7 @@ public class WorldEditorPane extends BorderPane {
     private List<SurfaceFloraItem> surfaceFloraItems = new ArrayList<>();
 
     public enum RenderMode { REALISTIC, SCIENTIFIC, GAMIFIED }
-    private RenderMode currentRenderMode = RenderMode.SCIENTIFIC;
+    private RenderMode currentRenderMode = RenderMode.REALISTIC;
 
     // Viewport Layer Visibility Flags
     private boolean isSimulationMode = false;
@@ -604,9 +604,6 @@ public class WorldEditorPane extends BorderPane {
             gameView.setVisible(true);
             gameView.setManaged(true);
             gameView.setRenderMode(currentRenderMode);
-            if (gameView.getGameApp() != null) {
-                gameView.getGameApp().renderTerrarium(exportToTerrarium());
-            }
         }
         repaintAllViews();
     }
@@ -1731,7 +1728,7 @@ public class WorldEditorPane extends BorderPane {
     private CameraFollowMode cameraFollowMode = CameraFollowMode.FREE;
     private final java.util.LinkedList<double[]> antTrailHistory = new java.util.LinkedList<>();
     private static final int MAX_TRAIL_LENGTH = 100;
-    private TrackedAntPane trackedAntPane;
+    private TrackedIndividualPane trackedAntPane;
     private ChamberInfoPane chamberInfoPane;
     private CheckBox showAntTrackingCheck;
     private CheckBox showChamberOverlayCheck;
@@ -1952,7 +1949,11 @@ public class WorldEditorPane extends BorderPane {
             sunriseH, sunriseM, sunsetH, sunsetM, dayH, dayM));
     }
 
-    public TrackedAntPane getTrackedAntPane() {
+    public TrackedIndividualPane getTrackedIndividualPane() {
+        return trackedAntPane;
+    }
+
+    public TrackedIndividualPane getTrackedAntPane() {
         return trackedAntPane;
     }
 
@@ -3469,7 +3470,7 @@ public class WorldEditorPane extends BorderPane {
 
         setupMouseControls();
 
-        trackedAntPane = new TrackedAntPane();
+        trackedAntPane = new TrackedIndividualPane();
         trackedAntPane.setPickOnBounds(false);
         trackedAntPane.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         trackedAntPane.setVisible(isSimulationMode);
@@ -3549,11 +3550,11 @@ public class WorldEditorPane extends BorderPane {
         if (gameView.getGameApp() != null) {
             gameView.getGameApp().setSimulationPaused(!isSimulationMode);
         }
-        boolean isSci = (currentRenderMode == RenderMode.SCIENTIFIC);
-        canvas3D.setVisible(isSci);
-        canvas3D.setManaged(isSci);
-        gameView.setVisible(!isSci);
-        gameView.setManaged(!isSci);
+        canvas3D.setVisible(gameView == null);
+        canvas3D.setManaged(gameView == null);
+        gameView.setVisible(true);
+        gameView.setManaged(true);
+        gameView.setRenderMode(currentRenderMode);
 
         // JME Selection Bridge
         this.floatingMouseInspectorCard = createFloatingMouseInspectorCard();
@@ -5104,7 +5105,7 @@ public class WorldEditorPane extends BorderPane {
 
 
     private void draw3D() {
-        if (canvas3D == null || canvas3D.getWidth() < 10 || canvas3D.getHeight() < 10) return;
+        if (canvas3D == null || !canvas3D.isVisible() || canvas3D.getWidth() < 10 || canvas3D.getHeight() < 10) return;
         draw3DTechnical();
     }
 

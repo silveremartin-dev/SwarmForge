@@ -45,7 +45,7 @@ public class SwarmForgeClient extends Application {
 
         private GameViewPane gameView; // 3D View
         private double lastX, lastY;
-        private org.swarmforge.core.species.CustomSpecies currentSpecies = new org.swarmforge.core.species.CustomSpecies();
+        private org.swarmforge.core.species.DefaultSpecies currentSpecies = new org.swarmforge.core.species.DefaultSpecies();
         private org.swarmforge.client.network.SimulationClient networkClient = new org.swarmforge.client.network.SimulationClient();
         private org.swarmforge.core.domain.Terrarium lastGeneratedTerrarium;
         private org.swarmforge.core.simulation.Simulation localSimulation; // For local preview

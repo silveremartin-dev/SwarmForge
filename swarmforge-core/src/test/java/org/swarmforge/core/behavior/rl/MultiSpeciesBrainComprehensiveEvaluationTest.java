@@ -79,11 +79,11 @@ public class MultiSpeciesBrainComprehensiveEvaluationTest {
         int[][] confusionMatrix = new int[OnnxBrainArchitecture.NUM_ACTIONS][OnnxBrainArchitecture.NUM_ACTIONS];
         long[] latenciesNanos = new long[totalScenarios];
 
-        HeadlessTrainingScenario.MockSimulationContext ctx = new HeadlessTrainingScenario.MockSimulationContext();
+        HeadlessTrainingScenario.HeadlessSimulationContext ctx = new HeadlessTrainingScenario.HeadlessSimulationContext();
 
         HeadlessTrainingScenario scenario = new HeadlessTrainingScenario();
         for (int i = 0; i < totalScenarios; i++) {
-            HeadlessTrainingScenario.MockAgentView agent = scenario.generateSyntheticAgentState();
+            HeadlessTrainingScenario.HeadlessAgentView agent = scenario.generateSyntheticAgentState();
             Individual.Caste caste = agent.caste;
 
             String speciesName = switch (agent.insectType) {

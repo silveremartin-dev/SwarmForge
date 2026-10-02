@@ -74,7 +74,7 @@ public class Scenario implements Serializable {
     private boolean builtIn = false;
 
     // Self-Contained Embedded Assets (Species, Worlds, Climates, Predators, Nests)
-    private final Map<String, org.swarmforge.core.species.CustomSpecies> embeddedSpecies = new HashMap<>();
+    private final Map<String, org.swarmforge.core.species.DefaultSpecies> embeddedSpecies = new HashMap<>();
     private final Map<String, Object> embeddedWorldConfig = new HashMap<>();
     private final Map<String, Object> embeddedClimateConfig = new HashMap<>();
     private final List<Map<String, Object>> embeddedPredators = new ArrayList<>();
@@ -258,11 +258,11 @@ public class Scenario implements Serializable {
 
     // --- Embedded Assets (Self-Contained Scenario Bundle) ---
 
-    public Map<String, org.swarmforge.core.species.CustomSpecies> getEmbeddedSpecies() {
+    public Map<String, org.swarmforge.core.species.DefaultSpecies> getEmbeddedSpecies() {
         return embeddedSpecies;
     }
 
-    public void embedSpecies(org.swarmforge.core.species.CustomSpecies species) {
+    public void embedSpecies(org.swarmforge.core.species.DefaultSpecies species) {
         if (species != null) {
             String key = species.getId() != null ? species.getId() : species.getScientificName();
             if (key != null) {
@@ -333,7 +333,7 @@ public class Scenario implements Serializable {
             for (ScenarioEvent ev : scheduledEvents) {
                 sb.append(ev.triggerTick()).append(":").append(ev.eventType()).append(";");
             }
-            for (Map.Entry<String, org.swarmforge.core.species.CustomSpecies> spEntry : embeddedSpecies.entrySet()) {
+            for (Map.Entry<String, org.swarmforge.core.species.DefaultSpecies> spEntry : embeddedSpecies.entrySet()) {
                 sb.append("SP:").append(spEntry.getKey()).append("=").append(spEntry.getValue().getContentChecksum()).append(";");
             }
             if (!embeddedWorldConfig.isEmpty()) {

@@ -13,7 +13,7 @@ import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.simulation.BehaviorStrategy;
 import org.swarmforge.core.simulation.NursingBehavior;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 import org.swarmforge.core.world.SoilHydricCoupling;
 
 import java.util.UUID;
@@ -39,7 +39,7 @@ public class SubterraneanHydrogeologyAndBroodRescueTest {
     @Test
     @DisplayName("Verify Nurse Ant Emergency Brood Evacuation Under Flooding")
     void testFloodBroodEvacuation() {
-        CustomSpecies species = new CustomSpecies();
+        DefaultSpecies species = new DefaultSpecies();
         species.setScientificName("Lasius niger");
         Colony colony = new Colony(species, 25f, 25f, -3f);
 

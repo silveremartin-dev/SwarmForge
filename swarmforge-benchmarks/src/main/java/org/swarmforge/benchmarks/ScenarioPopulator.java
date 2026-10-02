@@ -60,7 +60,7 @@ public class ScenarioPopulator {
     public static ScenarioDescription createTemperateGardenScenario(int population) {
         Terrarium terrarium = createTerrarium(100, 100, 20);
         Simulation sim = new Simulation(terrarium);
-        LasiusNiger species = new LasiusNiger();
+        DefaultSpecies species = SpeciesRegistry.getInstance().getSpecies("lasius-niger");
 
         Colony colony = new Colony(species, 50.0f, 50.0f, 5.0f);
         colony.addProtein(5000.0f);
@@ -97,7 +97,7 @@ public class ScenarioPopulator {
     public static ScenarioDescription createForestTerritoryScenario(int population) {
         Terrarium terrarium = createTerrarium(120, 120, 24);
         Simulation sim = new Simulation(terrarium);
-        FormicaRufa species = new FormicaRufa();
+        DefaultSpecies species = SpeciesRegistry.getInstance().getSpecies("formica-rufa");
 
         Colony colony = new Colony(species, 60.0f, 60.0f, 5.0f);
         colony.addProtein(10000.0f);
@@ -134,7 +134,7 @@ public class ScenarioPopulator {
     public static ScenarioDescription createTropicalLeafcutterScenario(int population) {
         Terrarium terrarium = createTerrarium(128, 128, 25);
         Simulation sim = new Simulation(terrarium);
-        AttaCephalotes species = new AttaCephalotes();
+        DefaultSpecies species = SpeciesRegistry.getInstance().getSpecies("atta-cephalotes");
 
         Colony colony = new Colony(species, 64.0f, 64.0f, 5.0f);
         colony.addProtein(15000.0f);
@@ -173,7 +173,7 @@ public class ScenarioPopulator {
     public static ScenarioDescription createDesertFireAntScenario(int population) {
         Terrarium terrarium = createTerrarium(100, 100, 20);
         Simulation sim = new Simulation(terrarium);
-        SolenopsisInvicta species = new SolenopsisInvicta();
+        DefaultSpecies species = SpeciesRegistry.getInstance().getSpecies("solenopsis-invicta");
 
         Colony colony = new Colony(species, 50.0f, 50.0f, 5.0f);
         colony.addProtein(8000.0f);

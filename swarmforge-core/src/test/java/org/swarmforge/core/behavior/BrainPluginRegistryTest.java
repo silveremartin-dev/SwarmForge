@@ -89,9 +89,9 @@ class BrainPluginRegistryTest {
             writer.write(jsonContent);
         }
 
-        CustomBrainDescriptor descriptor = registry.importJsonBrain(tempFile);
+        BrainDescriptor descriptor = registry.importJsonBrain(tempFile);
         assertNotNull(descriptor);
-        assertEquals(CustomBrainDescriptor.BrainSourceType.DECLARATIVE_JSON_GRAPH, descriptor.getSourceType());
+        assertEquals(BrainDescriptor.BrainSourceType.DECLARATIVE_JSON_GRAPH, descriptor.getSourceType());
         assertTrue(registry.hasBrain(descriptor.getId()));
 
         ReasoningArchitecture brain = registry.createBrain(descriptor.getId());
@@ -125,11 +125,11 @@ class BrainPluginRegistryTest {
     @DisplayName("Verify custom brain descriptor dynamic registration and unregistration")
     void testRegisterCustomBrain() {
         String customId = "CUSTOM_TEST_BRAIN_V1";
-        CustomBrainDescriptor custom = new CustomBrainDescriptor(
+        BrainDescriptor custom = new BrainDescriptor(
                 customId,
                 "Custom Test Brain",
                 "Test cognitive module",
-                CustomBrainDescriptor.BrainSourceType.JAVA_PLUGIN,
+                BrainDescriptor.BrainSourceType.JAVA_PLUGIN,
                 "test.jar",
                 "Test Author",
                 "1.0.0",

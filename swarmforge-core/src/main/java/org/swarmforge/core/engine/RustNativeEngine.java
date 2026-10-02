@@ -70,9 +70,9 @@ public class RustNativeEngine implements SimulationEngine {
     private JavaEcsEngine fallbackEngine = null;
 
     public RustNativeEngine() {
+        this.fallbackEngine = new JavaEcsEngine();
         if (!nativeAvailable) {
             log.info("Rust native library ('{}') not loaded. RustNativeEngine operating in high-performance Java ECS mode.", LIB_BASE_NAME);
-            this.fallbackEngine = new JavaEcsEngine();
         }
     }
 

@@ -12,7 +12,7 @@ import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.gpu.SparsePheromoneGrid;
 import org.swarmforge.core.simulation.Simulation;
 import org.swarmforge.core.spatial.BorderMigrationSystem;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 
 import java.util.Arrays;
 import java.util.List;
@@ -69,7 +69,7 @@ public class MegaterrariumClusterBenchmark {
         int width = 100, height = 100, depth = 30;
         Terrarium terrarium = new Terrarium(width, height, depth);
         Simulation sim = new Simulation(terrarium);
-        CustomSpecies species = new CustomSpecies();
+        DefaultSpecies species = new DefaultSpecies();
         Colony colony = new Colony(species, 50f, 50f, 5f);
         sim.addColony(colony);
 
@@ -113,7 +113,7 @@ public class MegaterrariumClusterBenchmark {
         // Node 0
         Terrarium terr0 = new Terrarium(width, height, depth);
         Simulation sim0 = new Simulation(terr0);
-        Colony col0 = new Colony(new CustomSpecies(), 50f, 50f, 5f);
+        Colony col0 = new Colony(new DefaultSpecies(), 50f, 50f, 5f);
         sim0.addColony(col0);
         java.util.List<Individual> list0 = new java.util.ArrayList<>(popPerNode);
         for (int i = 0; i < popPerNode; i++) {
@@ -124,7 +124,7 @@ public class MegaterrariumClusterBenchmark {
         // Node 1
         Terrarium terr1 = new Terrarium(width, height, depth);
         Simulation sim1 = new Simulation(terr1);
-        Colony col1 = new Colony(new CustomSpecies(), 50f, 50f, 5f);
+        Colony col1 = new Colony(new DefaultSpecies(), 50f, 50f, 5f);
         sim1.addColony(col1);
         java.util.List<Individual> list1 = new java.util.ArrayList<>(popPerNode);
         for (int i = 0; i < popPerNode; i++) {

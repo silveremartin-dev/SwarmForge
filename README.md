@@ -1,4 +1,4 @@
-# SwarmForge - Eusocial Insect Simulation & Research Platform
+﻿# SwarmForge - Eusocial Insect Simulation & Research Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://openjdk.org/projects/jdk/21/)
@@ -57,7 +57,7 @@ Built-in interactive documentation, domain definitions, biological equations, an
 
 | Feature Subsystem | Technical Capabilities & Implementation |
 |-------------------|------------------------------------------|
-| **Biological Engine** | **100% Data-Driven Architecture** (Zero hardcoded constants). Lifespans, walking/flight speeds, oviposition rates, development stage durations (days $\rightarrow$ 1440 ticks/day), Arrhenius $Q_{10} = 2.2$ thermal kinetics, mandibular biting forces (MPa), caste protein thresholds, and stoichiometric $C:N$ (22.5:1) fungal gongylidia synthesis dynamically driven by `CustomSpecies` & `CasteTemplate` presets. |
+| **Biological Engine** | **100% Data-Driven Architecture** (Zero hardcoded constants). Lifespans, walking/flight speeds, oviposition rates, development stage durations (days $\rightarrow$ 1440 ticks/day), Arrhenius $Q_{10} = 2.2$ thermal kinetics, mandibular biting forces (MPa), caste protein thresholds, and stoichiometric $C:N$ (22.5:1) fungal gongylidia synthesis dynamically driven by `DefaultSpecies` & `CasteTemplate` presets. |
 | **Species & Ecology Library** | High-fidelity biological profiles for *Atta*, *Apis*, *Vespula*, *Vespa*, *Reticulitermes*, *Pogonomyrmex*, *Formica*, *Aphis*, *Pieris*, *Myrmeleon*, and *Porcellio*. Nuptial flight synchronization conditioned on aerological/meteorological windows (temperature, humidity, wind shear, barometric pressure). |
 | **Predator-Prey AI & Pathology** | 4 distinct hunting styles (`AMBUSH`, `TRAP`, `CHASE`, `SWOOP`), specialized raid behaviors, boss predator events, trophobiosis mutualism, Bray-Curtis Cuticular Hydrocarbon (CHC) profile discrimination, and SIR epidemic dynamics ($R_0$, incubation, grooming defense). |
 | **Core Compute & Zero-Legacy Architecture** | SwarmForge v2.0 **Zero Legacy Architecture**: Canonical `Individual` domain model implementing zero-cost `AgentView` bridging to the **Artemis-odb ECS Engine** (`org.swarmforge.core.ecs.*`), **256-Bit Bitmask Ethology Engine** (`EthologyComponent` covering 220+ eusocial behaviors across 4 primitive `long` words), and zero-allocation open-addressing `SpatialPartitioningSystem` ($O(1)$ spatial queries). |

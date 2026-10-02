@@ -7,8 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Vector3f;
 import org.swarmforge.core.gpu.SparsePheromoneGrid;
-import org.swarmforge.core.species.FormicaRufa;
 import org.swarmforge.core.species.Species;
+import org.swarmforge.core.species.SpeciesRegistry;
 
 import java.util.List;
 import java.util.UUID;
@@ -53,7 +53,7 @@ class SimulationEngineTest {
         javaEngine.start();
 
         UUID colonyId = UUID.randomUUID();
-        Species species = new FormicaRufa();
+        Species species = SpeciesRegistry.getInstance().getSpecies("formica-rufa");
 
         int id1 = javaEngine.spawnAnt(colonyId, Individual.Caste.WORKER, Individual.Job.FORAGER, 10.0f, 15.0f, 0.0f, species);
         int id2 = javaEngine.spawnAnt(colonyId, Individual.Caste.SOLDIER, Individual.Job.GUARD, 12.0f, 15.0f, 0.0f, species);
@@ -95,7 +95,7 @@ class SimulationEngineTest {
         rustEngine.start();
 
         UUID colonyId = UUID.randomUUID();
-        Species species = new FormicaRufa();
+        Species species = SpeciesRegistry.getInstance().getSpecies("formica-rufa");
 
         int id = rustEngine.spawnAnt(colonyId, Individual.Caste.QUEEN, Individual.Job.IDLE, 25.0f, 30.0f, 0.0f, species);
         assertTrue(id >= 0);

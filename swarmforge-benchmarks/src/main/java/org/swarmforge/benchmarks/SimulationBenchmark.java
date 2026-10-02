@@ -7,7 +7,8 @@ import org.swarmforge.core.domain.ResourceType;
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.domain.TerrariumCell;
 import org.swarmforge.core.simulation.Simulation;
-import org.swarmforge.core.species.LasiusNiger;
+import org.swarmforge.core.species.DefaultSpecies;
+import org.swarmforge.core.species.SpeciesRegistry;
 
 import java.util.concurrent.TimeUnit;
 
@@ -51,7 +52,7 @@ public class SimulationBenchmark {
         simulation = new Simulation(terrarium);
 
         // 2. Instantiate colony with Lasius niger species parameters
-        LasiusNiger species = new LasiusNiger();
+        DefaultSpecies species = SpeciesRegistry.getInstance().getSpecies("lasius-niger");
         Colony colony = new Colony(species, 50.0f, 50.0f, 5.0f);
         colony.addProtein(5_000.0f);
         colony.addCarbohydrate(5_000.0f);

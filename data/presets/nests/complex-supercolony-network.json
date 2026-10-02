@@ -1,0 +1,22 @@
+{
+  "presetName" : "Complex Supercolony Network",
+  "speciesModel" : "\uD83D\uDC1C Argentine Ant (Linepithema humile)",
+  "nestStageIndex" : 3,
+  "taxonCategory" : "ANT",
+  "genus" : "Linepithema",
+  "architecture" : "BURROW_UNDERGROUND",
+  "material" : "EARTH",
+  "workerSizeMm" : 4.5,
+  "depth" : 10,
+  "chamberCount" : 24,
+  "tunnelWidth" : 3,
+  "branching" : 4,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 3,
+    "\uD83E\uDD5A Brood Chambers" : 8,
+    "\uD83C\uDF56 Food Storage" : 10,
+    "\uD83D\uDEAA Entrances" : 5,
+    "\uD83D\uDDD1 Waste Dumps" : 3,
+    "\uD83C\uDF44 Fungus Gardens" : 0
+  }
+}

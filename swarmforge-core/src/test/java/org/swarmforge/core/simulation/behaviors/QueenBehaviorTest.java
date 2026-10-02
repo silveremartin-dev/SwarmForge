@@ -16,7 +16,7 @@ import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.domain.TerrariumCell;
 import org.swarmforge.core.simulation.Simulation;
 import org.swarmforge.core.species.Species;
-import org.swarmforge.core.species.LasiusNiger;
+import org.swarmforge.core.species.SpeciesRegistry;
 
 /**
  * Unit tests for QueenBehavior class.
@@ -42,7 +42,7 @@ class QueenBehaviorTest {
         }
         simulation = new Simulation(terrarium);
 
-        Species species = new LasiusNiger();
+        Species species = SpeciesRegistry.getInstance().getSpecies("lasius-niger");
         colony = new Colony(species, 25f, 25f, 5f);
         simulation.addColony(colony);
 

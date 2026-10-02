@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.swarmforge.core.domain.*;
 import org.swarmforge.core.simulation.Aphid;
 import org.swarmforge.core.simulation.Simulation;
-import org.swarmforge.core.species.LasiusNiger;
+import org.swarmforge.core.species.SpeciesRegistry;
 import org.swarmforge.core.domain.ResourceType;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,7 +24,7 @@ class SymbiosisTest {
     @Test
     void testAphidMilking() {
         // 1. Setup Lasius Colony
-        Colony colony = new Colony(new LasiusNiger(), 50f, 50f, 0f);
+        Colony colony = new Colony(SpeciesRegistry.getInstance().getSpecies("lasius-niger"), 50f, 50f, 0f);
         simulation.addColony(colony);
 
         // 2. Setup Aphid (regenerating food)

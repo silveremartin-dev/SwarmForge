@@ -1,0 +1,22 @@
+{
+  "presetName" : "Hexagonal Wax Comb Nest",
+  "speciesModel" : "\uD83D\uDC1D Honeybee (Apis mellifera)",
+  "nestStageIndex" : 2,
+  "taxonCategory" : "BEE",
+  "genus" : "Apis",
+  "architecture" : "WAX_COMB_HEXAGONAL",
+  "material" : "BEESWAX",
+  "workerSizeMm" : 14.0,
+  "depth" : 6,
+  "chamberCount" : 20,
+  "tunnelWidth" : 2,
+  "branching" : 3,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 1,
+    "\uD83E\uDD5A Brood Chambers" : 6,
+    "\uD83C\uDF56 Food Storage" : 8,
+    "\uD83D\uDEAA Entrances" : 1,
+    "\uD83D\uDDD1 Waste Dumps" : 0,
+    "\uD83C\uDF44 Fungus Gardens" : 0
+  }
+}

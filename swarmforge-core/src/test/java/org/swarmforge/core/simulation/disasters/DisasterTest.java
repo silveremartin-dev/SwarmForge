@@ -15,7 +15,7 @@ import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.domain.TerrariumCell;
 import org.swarmforge.core.simulation.Simulation;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 
 /**
  * Unit tests for Disaster classes.
@@ -40,7 +40,7 @@ class DisasterTest {
         }
         simulation = new Simulation(terrarium);
 
-        CustomSpecies species = new CustomSpecies();
+        DefaultSpecies species = new DefaultSpecies();
         species.setScientificName("Testus antus");
         colony = new Colony(species, 25f, 25f, 5f);
         simulation.addColony(colony);

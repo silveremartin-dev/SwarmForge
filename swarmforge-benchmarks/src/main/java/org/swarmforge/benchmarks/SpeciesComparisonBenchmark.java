@@ -34,12 +34,12 @@ public class SpeciesComparisonBenchmark {
         List<SpeciesBenchmarkResult> results = new ArrayList<>();
 
         List<Species> speciesList = List.of(
-                new LasiusNiger(),
-                new FormicaRufa(),
-                new AttaCephalotes(),
-                new SolenopsisInvicta(),
-                new CamponotusPennsylvanicus(),
-                new ApisMellifera()
+                SpeciesRegistry.getInstance().getSpecies("lasius-niger"),
+                SpeciesRegistry.getInstance().getSpecies("formica-rufa"),
+                SpeciesRegistry.getInstance().getSpecies("atta-cephalotes"),
+                SpeciesRegistry.getInstance().getSpecies("solenopsis-invicta"),
+                SpeciesRegistry.getInstance().getSpecies("camponotus-pennsylvanicus"),
+                SpeciesRegistry.getInstance().getSpecies("apis-mellifera")
         );
 
         for (Species species : speciesList) {

@@ -2,7 +2,7 @@ package org.swarmforge.core.util;
 
 import org.junit.jupiter.api.Test;
 import org.swarmforge.core.domain.Colony;
-import org.swarmforge.core.species.LasiusNiger;
+import org.swarmforge.core.species.SpeciesRegistry;
 
 import java.io.*;
 
@@ -13,7 +13,7 @@ public class SerializationTest {
     @Test
     public void testColonySerialization() throws IOException, ClassNotFoundException {
         // 1. Create Colony
-        Colony original = new Colony(new LasiusNiger(), 0, 0, 0);
+        Colony original = new Colony(SpeciesRegistry.getInstance().getSpecies("lasius-niger"), 0, 0, 0);
 
         // 2. Serialize
         ByteArrayOutputStream bos = new ByteArrayOutputStream();

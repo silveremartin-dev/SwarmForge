@@ -417,7 +417,7 @@ public class VegetationVisualizer {
         } else if (terrarium != null) {
             // Procedural Natural Vegetation Pass for World Editor / Initial World state:
             // Multi-tiered natural ecosystem: Canopy Trees, Sub-canopy Saplings & Understory Shrubs
-            float treeStep = (currentRenderMode == RenderMode.GAMIFIED) ? 9.5f : 7.0f;
+            float treeStep = 8.0f; // Unified spatial grid step across Realistic, Scientific, and Gamified modes
             for (float tx = minX + 0.5f; tx <= maxX - 0.5f; tx += treeStep) {
                 for (float tz = minZ + 0.5f; tz <= maxZ - 0.5f; tz += treeStep) {
                     float jx = Math.max(minX, Math.min(maxX, tx + (rand.nextFloat() - 0.5f) * (treeStep * 0.75f)));
@@ -618,18 +618,18 @@ public class VegetationVisualizer {
 
     private void createRealisticFloraForPlant(float x, float y, float z, VegetationSystem.Plant plant, Biome biome, Season season, Random rand) {
         Spatial chosenModel = null;
-        float targetHeight = 24.0f * plant.growth;
+        float targetHeight = 8.0f * Math.max(0.4f, plant.growth);
 
         switch (plant.type) {
             case TREE -> {
                 chosenModel = pickModelForBiome(biome, rand, true);
                 String name = (chosenModel != null && chosenModel.getName() != null) ? chosenModel.getName().toLowerCase() : "";
                 if (name.contains("stump") || name.contains("log")) {
-                    targetHeight = (1.0f + rand.nextFloat() * 0.8f) * Math.max(0.4f, plant.growth);
+                    targetHeight = (0.9f + rand.nextFloat() * 0.6f) * Math.max(0.4f, plant.growth);
                 } else if (biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
-                    targetHeight = (22.0f + rand.nextFloat() * 8.0f) * Math.max(0.4f, plant.growth);
+                    targetHeight = (7.5f + rand.nextFloat() * 2.5f) * Math.max(0.4f, plant.growth);
                 } else {
-                    targetHeight = (24.0f + rand.nextFloat() * 8.0f) * Math.max(0.4f, plant.growth);
+                    targetHeight = (7.0f + rand.nextFloat() * 2.5f) * Math.max(0.4f, plant.growth);
                 }
             }
             case SHRUB -> {
@@ -782,17 +782,17 @@ public class VegetationVisualizer {
         float targetHeight;
 
         if (speciesIdx == 3 || chosenModel == cactusModel) {
-            targetHeight = 5.5f + rand.nextFloat() * 3.5f;
+            targetHeight = 3.5f + rand.nextFloat() * 2.0f;
         } else if (speciesIdx == 5 || chosenModel == bambooModel) {
-            targetHeight = 5.0f + rand.nextFloat() * 3.0f;
+            targetHeight = 3.5f + rand.nextFloat() * 2.0f;
         } else if (speciesIdx == 6 || (chosenModel != null && deadwoodLogs.contains(chosenModel))) {
-            targetHeight = 1.0f + rand.nextFloat() * 0.8f;
+            targetHeight = 0.9f + rand.nextFloat() * 0.6f;
         } else if (speciesIdx == 2 || (chosenModel != null && palmTrees.contains(chosenModel))) {
-            targetHeight = 18.0f + rand.nextFloat() * 7.0f;
+            targetHeight = 6.5f + rand.nextFloat() * 2.5f;
         } else if (speciesIdx == 1 || biome == Biome.ALPINE_SNOW || biome == Biome.TUNDRA) {
-            targetHeight = 22.0f + rand.nextFloat() * 8.0f;
+            targetHeight = 7.5f + rand.nextFloat() * 2.5f;
         } else {
-            targetHeight = 24.0f + rand.nextFloat() * 8.0f;
+            targetHeight = 7.0f + rand.nextFloat() * 2.5f;
         }
 
         if (chosenModel != null) {
@@ -958,30 +958,24 @@ public class VegetationVisualizer {
     }
 
     private void applySeasonalTint(Spatial spatial, Season season, Biome biome) {
-        float tintVar = 0.94f + FastMath.nextRandomFloat() * 0.12f;
         if (spatial instanceof Geometry geom) {
             Material mat = geom.getMaterial();
             if (mat != null && mat.getMaterialDef().getMaterialParam("Diffuse") != null) {
                 String name = geom.getName() != null ? geom.getName().toLowerCase() : "";
-                boolean isRockOrWood = name.contains("stone") || name.contains("rock") || name.contains("log")
-                        || name.contains("stump") || name.contains("trunk") || name.contains("branch")
-                        || name.contains("mushroom") || name.contains("cactus") || name.contains("bamboo");
+                boolean isFoliage = name.contains("leaf") || name.contains("leaves") || name.contains("foliage")
+                        || name.contains("bush") || name.contains("grass") || name.contains("crown");
 
-                if (!isRockOrWood) {
+                // Only apply foliage season color shifting in Fall or Winter when not rock/wood/flower
+                if (isFoliage && (season == Season.FALL || season == Season.WINTER)) {
                     ColorRGBA seasonalColor = getSeasonFoliageColor(season, biome);
                     if (seasonalColor != null) {
-                        ColorRGBA nuanced = seasonalColor.mult(tintVar);
-                        // If geometry has a diffuse texture map, apply light tint blend rather than overriding solid color
                         if (mat.getMaterialDef().getMaterialParam("DiffuseMap") != null && mat.getParam("DiffuseMap") != null) {
-                            mat.setColor("Diffuse", ColorRGBA.White.mult(0.7f).add(nuanced.mult(0.3f)));
+                            mat.setColor("Diffuse", ColorRGBA.White.mult(0.6f).add(seasonalColor.mult(0.4f)));
                         } else {
-                            mat.setColor("Diffuse", nuanced);
+                            mat.setColor("Diffuse", seasonalColor);
                         }
-                        mat.setColor("Ambient", nuanced.mult(0.35f));
+                        mat.setColor("Ambient", seasonalColor.mult(0.4f));
                     }
-                } else {
-                    mat.setColor("Diffuse", new ColorRGBA(tintVar, tintVar, tintVar, 1.0f));
-                    mat.setColor("Ambient", new ColorRGBA(0.35f * tintVar, 0.35f * tintVar, 0.35f * tintVar, 1.0f));
                 }
             }
         } else if (spatial instanceof Node node) {
@@ -1304,62 +1298,18 @@ public class VegetationVisualizer {
     public void update(WeatherSystem weather, float tpf) {
         if (!visible || rootNode.getChildren().isEmpty()) return;
 
-        if (tpf <= 0.0001f) {
-            // Simulation is paused or static: Keep all trees completely stationary at rest
-            for (Spatial child : rootNode.getChildren()) {
-                if (child instanceof Node treeNode) {
-                    Float baseRotY = (Float) treeNode.getUserData("BaseRotY");
-                    if (baseRotY != null) {
-                        Float tiltX = (Float) treeNode.getUserData("TiltX");
-                        Float tiltZ = (Float) treeNode.getUserData("TiltZ");
-                        float tx = tiltX != null ? tiltX : 0.0f;
-                        float tz = tiltZ != null ? tiltZ : 0.0f;
-                        treeNode.setLocalRotation(new Quaternion().fromAngles(tx, baseRotY, tz));
-                    }
-                }
-            }
-            return;
-        }
-
-        swayTime += tpf;
-
-        float windSpeedMs = 3.3f;
-        float windAngleDeg = 45.0f;
-        if (weather != null) {
-            windSpeedMs = weather.getWindSpeedMs();
-            windAngleDeg = weather.getWindDirectionAngle();
-        }
-
-        float windIntensity = Math.min(1.2f, windSpeedMs / 15.0f);
-        float swayFrequency = 1.1f + windIntensity * 0.6f;
-        float swayAmplitude = 0.006f + windIntensity * 0.014f;
-
-        float windRad = FastMath.DEG_TO_RAD * windAngleDeg;
-        float windCos = FastMath.cos(windRad);
-        float windSin = FastMath.sin(windRad);
-
+        // Keep all trees stationary at their fixed world orientation (no sway)
         for (Spatial child : rootNode.getChildren()) {
             if (child == ambientAtmosphereNode) continue;
             if (child instanceof Node treeNode) {
-                Vector3f pos = treeNode.getLocalTranslation();
-                float spatialPhase = pos.x * 0.18f + pos.z * 0.18f;
-
-                float primarySin = FastMath.sin(swayTime * swayFrequency + spatialPhase);
-                float secondaryCos = FastMath.cos(swayTime * swayFrequency * 1.35f + spatialPhase) * 0.3f;
-
-                float tiltAngle = (primarySin + secondaryCos) * swayAmplitude;
-
                 Float baseRotY = (Float) treeNode.getUserData("BaseRotY");
-                if (baseRotY == null) {
-                    baseRotY = 0.0f;
+                if (baseRotY != null) {
+                    Float tiltX = (Float) treeNode.getUserData("TiltX");
+                    Float tiltZ = (Float) treeNode.getUserData("TiltZ");
+                    float tx = tiltX != null ? tiltX : 0.0f;
+                    float tz = tiltZ != null ? tiltZ : 0.0f;
+                    treeNode.setLocalRotation(new Quaternion().fromAngles(tx, baseRotY, tz));
                 }
-
-                float pitch = windCos * tiltAngle;
-                float roll = windSin * tiltAngle;
-
-                Quaternion baseQuat = new Quaternion().fromAngles(0, baseRotY, 0);
-                Quaternion swayQuat = new Quaternion().fromAngles(pitch, 0, roll);
-                treeNode.setLocalRotation(baseQuat.mult(swayQuat));
             }
         }
 
@@ -1369,6 +1319,10 @@ public class VegetationVisualizer {
         boolean isDay = (weather == null || weather.isDaytime());
         float temp = (weather != null) ? weather.getTemperature() : 20.0f;
         float rain = (weather != null) ? weather.getRainfall() : 0.0f;
+        float windSpeedMs = (weather != null) ? weather.getWindSpeedMs() : 3.0f;
+        float windAngle = (weather != null) ? (float) Math.toRadians(weather.getWindDirectionAngle()) : 0.785f;
+        float windSin = FastMath.sin(windAngle);
+        float windCos = FastMath.cos(windAngle);
         float windDx = windSin * (windSpeedMs * 0.45f);
         float windDz = -windCos * (windSpeedMs * 0.45f);
 
@@ -1755,18 +1709,6 @@ public class VegetationVisualizer {
             ambientAtmosphereNode.attachChild(sp.geom);
         }
 
-        // 10. Bioacoustic Stridulation Auras (Ondes acoustiques de stridulation estivale)
-        if (biome == Biome.FOREST || biome == Biome.GRASSLAND || biome == Biome.MEDITERRANEAN) {
-            int auraCount = 6;
-            for (int i = 0; i < auraCount; i++) {
-                float ax = 3.0f + rand.nextFloat() * (currentGridWidth - 6.0f);
-                float az = 3.0f + rand.nextFloat() * (currentGridHeight - 6.0f);
-                float aelev = terrarium.getSurfaceElevation(ax, az);
-                StridulationAura sa = createStridulationAura(new Vector3f(ax, aelev + 1.2f + rand.nextFloat() * 2.0f, az), rand);
-                activeStridulations.add(sa);
-                ambientAtmosphereNode.attachChild(sa.geom);
-            }
-        }
 
         // 11. Dandelion Pappus Drift (Aigrettes de pissenlit et graines anémochores en sustentation)
         if ((effectiveSeason == Season.SPRING || effectiveSeason == Season.SUMMER) && (biome == Biome.GRASSLAND || biome == Biome.FOREST || biome == Biome.WETLAND)) {

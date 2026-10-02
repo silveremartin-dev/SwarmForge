@@ -15,9 +15,8 @@ import org.swarmforge.core.domain.Individual.LifeStage;
 import org.swarmforge.core.epidemiology.*;
 import org.swarmforge.core.genetics.*;
 import org.swarmforge.core.simulation.*;
-import org.swarmforge.core.species.ApisMellifera;
-import org.swarmforge.core.species.FormicaRufa;
-import org.swarmforge.core.species.VespulaGermanica;
+import org.swarmforge.core.species.DefaultSpecies;
+import org.swarmforge.core.species.SpeciesRegistry;
 import org.swarmforge.core.structure.physics.NestType;
 import org.swarmforge.core.structure.physics.NestVoxelGrid;
 
@@ -112,7 +111,7 @@ public class AdvancedBehaviorsAndEcologicalScenariosTest {
     @Test
     @DisplayName("Behavior 3: Propolis Antiseptic Coating on Nest Architecture")
     void testPropolisNestSanitization() {
-        FormicaRufa species = new FormicaRufa();
+        DefaultSpecies species = SpeciesRegistry.getInstance().getSpecies("formica-rufa");
         Colony colony = new Colony(species, 0, 0, 0);
         colony.addResource(ResourceType.PROPOLIS_RESIN, 10.0f);
 
@@ -162,7 +161,7 @@ public class AdvancedBehaviorsAndEcologicalScenariosTest {
     @Test
     @DisplayName("Behavior 5: Aerial 3D Navigation & Wingbeat Energy Scaling")
     void testAerialNavigationAndKinematics() {
-        ApisMellifera beeSpecies = new ApisMellifera();
+        DefaultSpecies beeSpecies = SpeciesRegistry.getInstance().getSpecies("apis-mellifera");
         assertTrue(beeSpecies.isWorkersCanFly(), "Honeybees have flying workers");
 
         Colony hive = new Colony(beeSpecies, 20, 20, 15);

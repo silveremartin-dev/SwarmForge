@@ -13,7 +13,7 @@ import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.spatial.BorderMigrationSystem;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,7 +59,7 @@ class CheckpointRetentionAndMultiNodeTest {
         Terrarium terrarium = new Terrarium(100, 100, 30);
         Simulation simulation = new Simulation(terrarium);
 
-        CustomSpecies species = new CustomSpecies();
+        DefaultSpecies species = new DefaultSpecies();
         species.setScientificName("Formica rufa");
         Colony colony = new Colony(species, 50f, 50f, 5f);
         simulation.addColony(colony);

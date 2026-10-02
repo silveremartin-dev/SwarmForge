@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 import org.swarmforge.core.behavior.FSMArchitecture;
 import org.swarmforge.core.behavior.ReasoningArchitecture.Action;
 import org.swarmforge.core.behavior.ReasoningArchitecture.Action.ActionType;
@@ -32,7 +32,7 @@ class BehaviorTest {
         terrarium = new Terrarium(50, 50, 20);
         simulation = new Simulation(terrarium);
 
-        CustomSpecies species = new CustomSpecies();
+        DefaultSpecies species = new DefaultSpecies();
         species.setScientificName("Testus Behaviorus");
         colony = new Colony(species, 25f, 25f, 5f);
         simulation.addColony(colony);

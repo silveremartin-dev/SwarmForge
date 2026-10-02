@@ -1,0 +1,22 @@
+{
+  "presetName" : "Hollow Trunk Nest",
+  "speciesModel" : "\uD83D\uDC1C Carpenter Ant (Camponotus herculeanus)",
+  "nestStageIndex" : 2,
+  "taxonCategory" : "ANT",
+  "genus" : "Camponotus",
+  "architecture" : "HOLLOW_TRUNK_NEST",
+  "material" : "TREE_TRUNK",
+  "workerSizeMm" : 12.0,
+  "depth" : 6,
+  "chamberCount" : 16,
+  "tunnelWidth" : 2,
+  "branching" : 3,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 1,
+    "\uD83E\uDD5A Brood Chambers" : 5,
+    "\uD83C\uDF56 Food Storage" : 6,
+    "\uD83D\uDEAA Entrances" : 2,
+    "\uD83D\uDDD1 Waste Dumps" : 2,
+    "\uD83C\uDF44 Fungus Gardens" : 0
+  }
+}

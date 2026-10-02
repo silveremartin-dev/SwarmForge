@@ -53,7 +53,7 @@ public class EcsIntegrationTest {
              .create(ColonyComponent.class).colonyId = colonyId;
              
         // Register in ColonyRegistry to avoid NPE in ForagingSystem
-        org.swarmforge.core.domain.Colony mockColony = new org.swarmforge.core.domain.Colony(new org.swarmforge.core.species.LasiusNiger(), 50, 0, 50);
+        org.swarmforge.core.domain.Colony mockColony = new org.swarmforge.core.domain.Colony(org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies("lasius-niger"), 50, 0, 50);
         // Force the ID to match
         java.lang.reflect.Field idField;
         try {

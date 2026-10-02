@@ -6,8 +6,8 @@ import org.swarmforge.core.domain.TerrariumCell;
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.ResourceType;
-import org.swarmforge.core.species.LasiusNiger;
-import org.swarmforge.core.species.FormicaRufa;
+import org.swarmforge.core.species.DefaultSpecies;
+import org.swarmforge.core.species.SpeciesRegistry;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -77,7 +77,7 @@ public class ColonyBenchmarkRunner {
         Simulation simulation = new Simulation(terrarium);
 
         // 3. Create Primary Colony
-        LasiusNiger species = new LasiusNiger();
+        DefaultSpecies species = SpeciesRegistry.getInstance().getSpecies("lasius-niger");
         Colony colony = new Colony(species, 50.0f, 50.0f, 5.0f);
         colony.addProtein(5000.0f);
         colony.addCarbohydrate(5000.0f);

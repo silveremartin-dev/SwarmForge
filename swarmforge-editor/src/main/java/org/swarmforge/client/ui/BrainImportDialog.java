@@ -20,7 +20,7 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.ThemeManager;
 import org.swarmforge.core.behavior.BrainPluginRegistry;
-import org.swarmforge.core.behavior.CustomBrainDescriptor;
+import org.swarmforge.core.behavior.BrainDescriptor;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -47,9 +47,9 @@ public class BrainImportDialog extends Stage {
     private final Label lblValidationStatus = new Label();
     private final TextArea txtMetadataPreview = new TextArea();
     private final Button btnImport = new Button();
-    private final Consumer<CustomBrainDescriptor> onImportSuccess;
+    private final Consumer<BrainDescriptor> onImportSuccess;
 
-    public BrainImportDialog(Stage owner, Consumer<CustomBrainDescriptor> onImportSuccess) {
+    public BrainImportDialog(Stage owner, Consumer<BrainDescriptor> onImportSuccess) {
         this.onImportSuccess = onImportSuccess;
 
         initOwner(owner);
@@ -235,13 +235,13 @@ public class BrainImportDialog extends Stage {
             String customDesc = txtDescription.getText().trim();
 
             BrainPluginRegistry registry = BrainPluginRegistry.getInstance();
-            CustomBrainDescriptor registeredDescriptor = null;
+            BrainDescriptor registeredDescriptor = null;
 
             String lower = destFile.getFileName().toString().toLowerCase();
             if (lower.endsWith(".onnx")) {
                 registeredDescriptor = registry.importOnnxModel(destFile.toFile(), customName, customDesc);
             } else if (lower.endsWith(".jar") || lower.endsWith(".class")) {
-                List<CustomBrainDescriptor> list = registry.importJavaPlugin(destFile.toFile());
+                List<BrainDescriptor> list = registry.importJavaPlugin(destFile.toFile());
                 if (!list.isEmpty()) registeredDescriptor = list.get(0);
             } else if (lower.endsWith(".sfbrain") || lower.endsWith(".json")) {
                 registeredDescriptor = registry.importJsonBrain(destFile.toFile());

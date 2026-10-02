@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.swarmforge.core.domain.CasteTemplate;
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Terrarium;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 
 import java.util.List;
 
@@ -24,12 +24,12 @@ import static org.junit.jupiter.api.Assertions.*;
 public class HeatmapAndCasteHardeningTest {
 
     private Terrarium terrarium;
-    private CustomSpecies species;
+    private DefaultSpecies species;
 
     @BeforeEach
     public void setUp() {
         terrarium = new Terrarium(50, 50, 10);
-        species = new CustomSpecies();
+        species = new DefaultSpecies();
         species.setScientificName("Formica rufa");
     }
 

@@ -1,0 +1,90 @@
+{
+  "id" : "MP_03_MEGATERRARIUM_4NODE_ALLIANCE",
+  "title" : "Mégaterrarium 4-Nœuds - Fédération Polycalique",
+  "description" : "Simulation distribuée sur une grille 2x2 de sous-volumes avec migration d'entités transfrontalière et synchronisation des halos de phéromones.",
+  "academicCategory" : "Multiplayer / Distributed Sharding",
+  "masterSeed" : 42,
+  "width" : 200,
+  "height" : 200,
+  "depth" : 50,
+  "biomeName" : "TEMPERATE_FOREST",
+  "soilDensity" : 0.6,
+  "initialTemperature" : 22.0,
+  "initialHumidity" : 0.65,
+  "dayNightCycleEnabled" : true,
+  "colonies" : [ {
+    "speciesName" : "Formica polyctena (Nœud 0,0 - Ouest Nord)",
+    "colonyId" : "COLONY_NODE_00",
+    "queenCount" : 1,
+    "workerCount" : 100,
+    "soldierCount" : 10,
+    "initialFoodStore" : 400,
+    "casteEngineMap" : {
+      "SOLDIER" : "FUZZY_LOGIC",
+      "QUEEN" : "BDI",
+      "WORKER" : "FINITE_STATE_MACHINE"
+    }
+  }, {
+    "speciesName" : "Formica polyctena (Nœud 1,0 - Est Nord)",
+    "colonyId" : "COLONY_NODE_10",
+    "queenCount" : 1,
+    "workerCount" : 100,
+    "soldierCount" : 10,
+    "initialFoodStore" : 400,
+    "casteEngineMap" : {
+      "SOLDIER" : "FUZZY_LOGIC",
+      "QUEEN" : "BDI",
+      "WORKER" : "FINITE_STATE_MACHINE"
+    }
+  }, {
+    "speciesName" : "Formica polyctena (Nœud 0,1 - Ouest Sud)",
+    "colonyId" : "COLONY_NODE_01",
+    "queenCount" : 1,
+    "workerCount" : 100,
+    "soldierCount" : 10,
+    "initialFoodStore" : 400,
+    "casteEngineMap" : {
+      "SOLDIER" : "FUZZY_LOGIC",
+      "QUEEN" : "BDI",
+      "WORKER" : "FINITE_STATE_MACHINE"
+    }
+  }, {
+    "speciesName" : "Formica polyctena (Nœud 1,1 - Est Sud)",
+    "colonyId" : "COLONY_NODE_11",
+    "queenCount" : 1,
+    "workerCount" : 100,
+    "soldierCount" : 10,
+    "initialFoodStore" : 400,
+    "casteEngineMap" : {
+      "SOLDIER" : "FUZZY_LOGIC",
+      "QUEEN" : "BDI",
+      "WORKER" : "FINITE_STATE_MACHINE"
+    }
+  } ],
+  "foodPatchesCount" : 40,
+  "aphidColoniesCount" : 2,
+  "seedPlantsCount" : 15,
+  "preySpawnersCount" : 3,
+  "scheduledEvents" : [ ],
+  "targetMetrics" : [ "POLYCALIC_SUPERCOLONY_POPULATION", "INTER_NODE_CROSS_BORDER_FLUX", "HALO_DIFFUSION_ACCURACY" ],
+  "maxDurationValue" : 100.0,
+  "maxDurationUnit" : "Days (d)",
+  "maxSimulationTicks" : 520481927,
+  "minPopulationStopThreshold" : 0,
+  "simulationStepSeconds" : 0.0166,
+  "author" : "Academic Multiplayer",
+  "version" : 1,
+  "revisionTimestamp" : 1790883227932,
+  "contentChecksum" : "c05eea7099871ced",
+  "builtIn" : true,
+  "embeddedSpecies" : { },
+  "embeddedWorldConfig" : { },
+  "embeddedClimateConfig" : { },
+  "embeddedPredators" : [ ],
+  "embeddedNestConfig" : { },
+  "multiplayerOnly" : true,
+  "requiredPlayerCount" : 4,
+  "gridTilesX" : 2,
+  "gridTilesY" : 2,
+  "selfContained" : false
+}

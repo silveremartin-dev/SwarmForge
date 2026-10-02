@@ -1,0 +1,22 @@
+{
+  "presetName" : "Mature Subterranean Nest",
+  "speciesModel" : "\uD83D\uDC1C Dusky Wood Ant (Formica fusca)",
+  "nestStageIndex" : 2,
+  "taxonCategory" : "ANT",
+  "genus" : "Formica",
+  "architecture" : "BURROW_UNDERGROUND",
+  "material" : "EARTH",
+  "workerSizeMm" : 5.0,
+  "depth" : 8,
+  "chamberCount" : 16,
+  "tunnelWidth" : 2,
+  "branching" : 3,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 1,
+    "\uD83E\uDD5A Brood Chambers" : 5,
+    "\uD83C\uDF56 Food Storage" : 5,
+    "\uD83D\uDEAA Entrances" : 3,
+    "\uD83D\uDDD1 Waste Dumps" : 2,
+    "\uD83C\uDF44 Fungus Gardens" : 0
+  }
+}

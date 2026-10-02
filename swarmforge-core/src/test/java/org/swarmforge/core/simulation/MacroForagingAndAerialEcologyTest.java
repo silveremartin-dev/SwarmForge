@@ -13,8 +13,8 @@ import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.ResourceType;
 import org.swarmforge.core.domain.Terrarium;
-import org.swarmforge.core.species.ApisMellifera;
-import org.swarmforge.core.species.VespulaGermanica;
+import org.swarmforge.core.species.DefaultSpecies;
+import org.swarmforge.core.species.SpeciesRegistry;
 import org.swarmforge.core.spatial.OptimalColonyPlacementEngine;
 
 import java.util.Map;
@@ -41,7 +41,7 @@ public class MacroForagingAndAerialEcologyTest {
         terrarium = new Terrarium(120, 120, 60);
         simulation = new Simulation(terrarium);
 
-        ApisMellifera beeSpecies = new ApisMellifera();
+        DefaultSpecies beeSpecies = SpeciesRegistry.getInstance().getSpecies("apis-mellifera");
         beeColony = new Colony(beeSpecies, 40, 40, 1.2f);
         simulation.addColony(beeColony);
 
@@ -142,7 +142,7 @@ public class MacroForagingAndAerialEcologyTest {
     @Test
     @DisplayName("Combat Realism & Worker Bee Sting Non-Systematic Autotomy")
     void testCombatAndBeeStingAutotomyRealism() {
-        ApisMellifera beeSpecies = new ApisMellifera();
+        DefaultSpecies beeSpecies = SpeciesRegistry.getInstance().getSpecies("apis-mellifera");
         Colony colony = new Colony(beeSpecies, 10, 10, 0);
         Individual beeWorker = new Individual(colony.getId(), Individual.Caste.WORKER, 10, 10, 0);
         beeWorker.setSpecies(beeSpecies);
@@ -153,7 +153,7 @@ public class MacroForagingAndAerialEcologyTest {
 
         // Stinging an enemy insect: Worker should survive in the majority of attempts
         Individual waspEnemy = new Individual(UUID.randomUUID(), Individual.Caste.WORKER, 11, 10, 0);
-        waspEnemy.setSpecies(new VespulaGermanica());
+        waspEnemy.setSpecies(SpeciesRegistry.getInstance().getSpecies("vespula-germanica"));
         float initialWaspHealth = waspEnemy.getHealth();
 
         boolean stung = beeWorker.performBarbedBeeSting(waspEnemy);

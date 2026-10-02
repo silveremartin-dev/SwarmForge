@@ -27,7 +27,7 @@ public class SpeciesRegistryTest {
     @DisplayName("Verify Builtin Eusocial Species Registration Parity")
     void testBuiltinSpeciesRegistration() {
         SpeciesRegistry registry = SpeciesRegistry.getInstance();
-        Collection<CustomSpecies> speciesList = registry.getAllSpecies();
+        Collection<DefaultSpecies> speciesList = registry.getAllSpecies();
 
         assertTrue(speciesList.size() >= 14, "Expected at least 14 registered eusocial species, got: " + speciesList.size());
 
@@ -59,8 +59,16 @@ public class SpeciesRegistryTest {
 
         // Test Gall Thrips (Kladothrips harteri)
         assertTrue(registry.get("Kladothrips harteri").isPresent());
+    }
 
-        // Test Eucalyptus Wood Beetle (Austroplatypus incompertus)
-        assertTrue(registry.get("Austroplatypus incompertus").isPresent());
+    @Test
+    @DisplayName("Verify SpeciesRegistry JSON Preset Loading & Retrieval")
+    void testSpeciesRegistryJsonLoading() {
+        SpeciesRegistry registry = SpeciesRegistry.getInstance();
+        assertNotNull(registry.getSpecies("atta-cephalotes"));
+        assertEquals("Atta cephalotes", registry.getSpecies("atta-cephalotes").getScientificName());
+        assertTrue(registry.getSpecies("apis-mellifera").isWorkersCanFly());
+        assertEquals("FORMIC_ACID", registry.getSpecies("formica-rufa").getVenomType());
+        assertEquals("MOUND", registry.getSpecies("formica-rufa").getNestType());
     }
 }

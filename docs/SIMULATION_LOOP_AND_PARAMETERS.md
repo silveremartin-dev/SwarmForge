@@ -1,4 +1,4 @@
-# 🌀 Simulation Loop & Environmental Parameter Specification
+﻿# 🌀 Simulation Loop & Environmental Parameter Specification
 
 This document provides a detailed specification of the **SwarmForge** temporal simulation loop architecture, multi-scale tick sequencing, and all physical, biological, biomechanical, and sensory parameters standardized in SI metric units.
 
@@ -89,7 +89,7 @@ The voxel cell (`TerrariumCell`) represents the fundamental spatial discretizati
 
 ---
 
-## 3. Sensory Capabilities & Modalities (`Species` & `CustomSpecies`)
+## 3. Sensory Capabilities & Modalities (`Species` & `DefaultSpecies`)
 
 Every eusocial insect species and polymorphic caste (Ants, Bees, Wasps, Termites) possesses a comprehensive physiological sensory profile:
 
@@ -129,7 +129,7 @@ Every eusocial insect species and polymorphic caste (Ants, Bees, Wasps, Termites
 
 ---
 
-## 4. Biomechanical & Motor Systems (`Species` & `CustomSpecies`)
+## 4. Biomechanical & Motor Systems (`Species` & `DefaultSpecies`)
 
 | Motor Parameter | SI Unit / Type | Biological Function by Clade (Ants, Bees, Wasps, Termites) |
 | :--- | :--- | :--- |

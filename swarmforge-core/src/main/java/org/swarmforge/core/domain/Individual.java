@@ -23,23 +23,38 @@ import org.swarmforge.core.behavior.AgentView;
 public class Individual implements java.io.Serializable, AgentView {
     private static final long serialVersionUID = 1L;
 
-    private static final java.util.concurrent.atomic.AtomicLong ANT_NUMBER_GENERATOR = new java.util.concurrent.atomic.AtomicLong(1);
-    private final long antNumber;
+    private static final java.util.concurrent.atomic.AtomicLong INDIVIDUAL_NUMBER_GENERATOR = new java.util.concurrent.atomic.AtomicLong(1);
+    private final long individualNumber;
 
+    public static void resetIndividualNumberGenerator() {
+        INDIVIDUAL_NUMBER_GENERATOR.set(1);
+    }
+
+    public static void setNextIndividualNumber(long nextVal) {
+        INDIVIDUAL_NUMBER_GENERATOR.set(Math.max(1, nextVal));
+    }
+
+    public long getIndividualNumber() {
+        return individualNumber;
+    }
+
+    @Deprecated
     public static void resetAntNumberGenerator() {
-        ANT_NUMBER_GENERATOR.set(1);
+        resetIndividualNumberGenerator();
     }
 
+    @Deprecated
     public static void setNextAntNumber(long nextVal) {
-        ANT_NUMBER_GENERATOR.set(Math.max(1, nextVal));
+        setNextIndividualNumber(nextVal);
     }
 
+    @Deprecated
     public long getAntNumber() {
-        return antNumber;
+        return individualNumber;
     }
 
     public String getFormattedId() {
-        return "ant_" + antNumber;
+        return "insect_" + individualNumber;
     }
 
     private final UUID id;
@@ -2272,12 +2287,12 @@ public class Individual implements java.io.Serializable, AgentView {
     }
 
     public Individual(UUID colonyId, Caste caste, float x, float y, float z) {
-        this(null, ANT_NUMBER_GENERATOR.getAndIncrement(), colonyId, caste, x, y, z);
+        this(null, INDIVIDUAL_NUMBER_GENERATOR.getAndIncrement(), colonyId, caste, x, y, z);
     }
 
-    public Individual(UUID id, long antNumber, UUID colonyId, Caste caste, float x, float y, float z) {
-        this.antNumber = antNumber > 0 ? antNumber : ANT_NUMBER_GENERATOR.getAndIncrement();
-        this.id = id != null ? id : new UUID(colonyId != null ? colonyId.getMostSignificantBits() ^ this.antNumber : this.antNumber, this.antNumber);
+    public Individual(UUID id, long individualNumber, UUID colonyId, Caste caste, float x, float y, float z) {
+        this.individualNumber = individualNumber > 0 ? individualNumber : INDIVIDUAL_NUMBER_GENERATOR.getAndIncrement();
+        this.id = id != null ? id : new UUID(colonyId != null ? colonyId.getMostSignificantBits() ^ this.individualNumber : this.individualNumber, this.individualNumber);
         this.colonyId = colonyId;
         this.caste = caste;
         this.x = x;
@@ -3052,7 +3067,7 @@ public class Individual implements java.io.Serializable, AgentView {
         if (random != null) {
             return random;
         }
-        long seed = (antNumber > 0 ? (antNumber * 31L + 1337L) : (id != null ? id.getLeastSignificantBits() : 1337L));
+        long seed = (individualNumber > 0 ? (individualNumber * 31L + 1337L) : (id != null ? id.getLeastSignificantBits() : 1337L));
         this.random = new java.util.Random(seed);
         return this.random;
     }

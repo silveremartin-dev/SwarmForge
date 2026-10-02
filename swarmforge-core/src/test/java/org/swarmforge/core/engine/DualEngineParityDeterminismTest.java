@@ -5,8 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Vector3f;
 import org.swarmforge.core.gpu.SparsePheromoneGrid;
-import org.swarmforge.core.species.FormicaRufa;
 import org.swarmforge.core.species.Species;
+import org.swarmforge.core.species.SpeciesRegistry;
 
 import java.util.List;
 import java.util.UUID;
@@ -48,7 +48,7 @@ public class DualEngineParityDeterminismTest {
         rustEngine.start();
 
         UUID colonyId = UUID.fromString("00000000-0000-0000-0000-000000000001");
-        Species species = new FormicaRufa();
+        Species species = SpeciesRegistry.getInstance().getSpecies("formica-rufa");
 
         // Spawn 10 identical reference agents in both engines
         int count = 10;

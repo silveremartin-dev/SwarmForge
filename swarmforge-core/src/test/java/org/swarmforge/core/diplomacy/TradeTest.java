@@ -4,12 +4,12 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.ResourceType;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 
 public class TradeTest {
     @Test
     void testSendResource() {
-        CustomSpecies s = new CustomSpecies();
+        DefaultSpecies s = new DefaultSpecies();
         s.setScientificName("Test Ant");
         Colony sender = new Colony(s, 0, 0, 0);
         Colony receiver = new Colony(s, 10, 10, 0);

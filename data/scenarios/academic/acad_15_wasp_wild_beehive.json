@@ -1,0 +1,72 @@
+{
+  "id" : "ACAD_15_WASP_WILD_BEEHIVE",
+  "title" : "Arboreal Wasp Nest vs Wild Beehive (Tree Hollow)",
+  "description" : "Ecological predation dynamics between an arboreal hanging paper wasp nest (Vespula germanica) and a wild honeybee colony (Apis mellifera) nested inside a hollow tree trunk with thermal balling defense.",
+  "academicCategory" : "Aerial Ecology / Predation & Thermal Defense",
+  "masterSeed" : 42,
+  "width" : 350,
+  "height" : 350,
+  "depth" : 32,
+  "biomeName" : "TEMPERATE_FOREST",
+  "soilDensity" : 0.6,
+  "initialTemperature" : 22.0,
+  "initialHumidity" : 0.65,
+  "dayNightCycleEnabled" : true,
+  "colonies" : [ {
+    "speciesName" : "Vespula germanica (Canopy Paper Nest)",
+    "colonyId" : "COLONY_WASP_NEST",
+    "queenCount" : 1,
+    "workerCount" : 80,
+    "soldierCount" : 20,
+    "initialFoodStore" : 500,
+    "casteEngineMap" : {
+      "QUEEN" : "BDI",
+      "WORKER" : "BEHAVIOR_TREE"
+    }
+  }, {
+    "speciesName" : "Apis mellifera (Wild Hollow Trunk)",
+    "colonyId" : "COLONY_WILD_BEEHIVE",
+    "queenCount" : 1,
+    "workerCount" : 250,
+    "soldierCount" : 0,
+    "initialFoodStore" : 500,
+    "casteEngineMap" : {
+      "QUEEN" : "BDI",
+      "WORKER" : "BDI"
+    }
+  } ],
+  "foodPatchesCount" : 10,
+  "aphidColoniesCount" : 2,
+  "seedPlantsCount" : 15,
+  "preySpawnersCount" : 3,
+  "scheduledEvents" : [ {
+    "triggerTick" : 6000,
+    "eventType" : "WASP_RAID_TRIGGER",
+    "description" : "Wasp scouting party detects honey stores and triggers aerial raid",
+    "parameters" : {
+      "targetColonyId" : "COLONY_WILD_BEEHIVE",
+      "raidForceSize" : 30
+    }
+  } ],
+  "targetMetrics" : [ "AERIAL_INTERCEPTION_RATE", "THERMAL_BALL_DEFENSE_SUCCESS", "HONEY_DEPLETION_PREDATION_LOSS", "WORKER_DEFENSIVE_AUTOTOMY_COUNT" ],
+  "maxDurationValue" : 100.0,
+  "maxDurationUnit" : "Days (d)",
+  "maxSimulationTicks" : 520481927,
+  "minPopulationStopThreshold" : 0,
+  "simulationStepSeconds" : 0.0166,
+  "author" : "Academic Reference",
+  "version" : 1,
+  "revisionTimestamp" : 1790883227159,
+  "contentChecksum" : "b618f5775e656b26",
+  "builtIn" : true,
+  "embeddedSpecies" : { },
+  "embeddedWorldConfig" : { },
+  "embeddedClimateConfig" : { },
+  "embeddedPredators" : [ ],
+  "embeddedNestConfig" : { },
+  "multiplayerOnly" : false,
+  "requiredPlayerCount" : 1,
+  "gridTilesX" : 1,
+  "gridTilesY" : 1,
+  "selfContained" : false
+}

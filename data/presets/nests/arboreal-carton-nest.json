@@ -1,0 +1,22 @@
+{
+  "presetName" : "Arboreal Carton Nest",
+  "speciesModel" : "\uD83D\uDC1C Acrobat Ant (Crematogaster scutellaris)",
+  "nestStageIndex" : 2,
+  "taxonCategory" : "ANT",
+  "genus" : "Crematogaster",
+  "architecture" : "CARTON_NEST",
+  "material" : "CARTON_PULP",
+  "workerSizeMm" : 3.5,
+  "depth" : 6,
+  "chamberCount" : 14,
+  "tunnelWidth" : 2,
+  "branching" : 3,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 1,
+    "\uD83E\uDD5A Brood Chambers" : 4,
+    "\uD83C\uDF56 Food Storage" : 5,
+    "\uD83D\uDEAA Entrances" : 2,
+    "\uD83D\uDDD1 Waste Dumps" : 2,
+    "\uD83C\uDF44 Fungus Gardens" : 0
+  }
+}

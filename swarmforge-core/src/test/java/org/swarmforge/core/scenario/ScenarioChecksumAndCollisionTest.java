@@ -76,7 +76,7 @@ public class ScenarioChecksumAndCollisionTest {
         Scenario scenario = new Scenario("CUSTOM_SELF_CONTAINED_01", "Mission Amazonie Profonde", "Scénario auto-contenu sans dépendances");
         
         // 1. Create and embed custom species
-        org.swarmforge.core.species.CustomSpecies alienAnt = new org.swarmforge.core.species.CustomSpecies();
+        org.swarmforge.core.species.DefaultSpecies alienAnt = new org.swarmforge.core.species.DefaultSpecies();
         alienAnt.setId("alien_ant_01");
         alienAnt.setCommonName("Fourmi des Profondeurs");
         alienAnt.setScientificName("Crypticus formicoid");
@@ -103,13 +103,13 @@ public class ScenarioChecksumAndCollisionTest {
     }
 
     @Test
-    @DisplayName("CustomSpecies checksum determinism and modification divergence")
-    void testCustomSpeciesChecksum() {
-        org.swarmforge.core.species.CustomSpecies sp1 = new org.swarmforge.core.species.CustomSpecies();
+    @DisplayName("DefaultSpecies checksum determinism and modification divergence")
+    void testDefaultSpeciesChecksum() {
+        org.swarmforge.core.species.DefaultSpecies sp1 = new org.swarmforge.core.species.DefaultSpecies();
         sp1.setScientificName("Atta cephalotes");
         sp1.setAggression(0.4f);
 
-        org.swarmforge.core.species.CustomSpecies sp2 = new org.swarmforge.core.species.CustomSpecies();
+        org.swarmforge.core.species.DefaultSpecies sp2 = new org.swarmforge.core.species.DefaultSpecies();
         sp2.setScientificName("Atta cephalotes");
         sp2.setAggression(0.4f);
 

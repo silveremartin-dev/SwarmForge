@@ -292,6 +292,7 @@
                     <destDir>.</destDir>
                     <doclint>none</doclint>
                     <failOnError>false</failOnError>
+                    <additionalJOption>--add-modules=jdk.incubator.vector</additionalJOption>
                     <show>protected</show>
                     <windowtitle>SwarmForge API Documentation</windowtitle>
                     <doctitle>SwarmForge ${project.version} API</doctitle>

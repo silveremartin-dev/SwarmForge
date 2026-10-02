@@ -73,7 +73,7 @@ public class SocialImmunityEpidemiologyTest {
     @Test
     @DisplayName("Test Propolis Antiseptic Coating on Nest Voxels")
     void testPropolisCoating() {
-        Species testSpecies = new org.swarmforge.core.species.FormicaRufa();
+        Species testSpecies = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies("formica-rufa");
         Colony colony = new Colony(testSpecies, 0, 0, 0);
         colony.addResource(ResourceType.PROPOLIS_RESIN, 5.0f);
 

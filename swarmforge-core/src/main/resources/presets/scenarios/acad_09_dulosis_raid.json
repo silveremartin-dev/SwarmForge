@@ -1,0 +1,73 @@
+{
+  "id" : "ACAD_09_DULOSIS_RAID",
+  "title" : "Dulosis & Slave-Making Raids (Polyergus rufescens vs Formica fusca)",
+  "description" : "Simulation of obligate dulotic raids: Polyergus rufescens raiding column launching a targeted assault on a Formica fusca nest to capture pupae/cocoons and repatriate them as slave labor.",
+  "academicCategory" : "Sociobiology / Dulosis & Parasitism",
+  "masterSeed" : 42,
+  "width" : 350,
+  "height" : 350,
+  "depth" : 48,
+  "biomeName" : "TEMPERATE_FOREST",
+  "soilDensity" : 0.6,
+  "initialTemperature" : 22.0,
+  "initialHumidity" : 0.65,
+  "dayNightCycleEnabled" : true,
+  "colonies" : [ {
+    "speciesName" : "Polyergus rufescens (Amazon Raiding Party)",
+    "colonyId" : "COLONY_POLYERGUS",
+    "queenCount" : 1,
+    "workerCount" : 80,
+    "soldierCount" : 40,
+    "initialFoodStore" : 500,
+    "casteEngineMap" : {
+      "SOLDIER" : "FUZZY_LOGIC",
+      "QUEEN" : "BDI",
+      "WORKER" : "BEHAVIOR_TREE"
+    }
+  }, {
+    "speciesName" : "Formica fusca (Target Host Colony)",
+    "colonyId" : "COLONY_FORMICA",
+    "queenCount" : 1,
+    "workerCount" : 150,
+    "soldierCount" : 0,
+    "initialFoodStore" : 500,
+    "casteEngineMap" : {
+      "QUEEN" : "BDI",
+      "WORKER" : "BEHAVIOR_TREE"
+    }
+  } ],
+  "foodPatchesCount" : 10,
+  "aphidColoniesCount" : 2,
+  "seedPlantsCount" : 15,
+  "preySpawnersCount" : 3,
+  "scheduledEvents" : [ {
+    "triggerTick" : 5000,
+    "eventType" : "DULOTIC_RAID_TRIGGER",
+    "description" : "Polyergus scout detects host nest and recruits raiding column",
+    "parameters" : {
+      "targetColonyId" : "COLONY_FORMICA",
+      "raidForceSize" : 60
+    }
+  } ],
+  "targetMetrics" : [ "PUPAE_CAPTURED_COUNT", "RAID_COLUMN_COHESION", "REPATRIATION_SUCCESS_RATE", "HOST_DEFENSE_CASUALTIES" ],
+  "maxDurationValue" : 100.0,
+  "maxDurationUnit" : "Days (d)",
+  "maxSimulationTicks" : 520481927,
+  "minPopulationStopThreshold" : 0,
+  "simulationStepSeconds" : 0.0166,
+  "author" : "Academic Reference",
+  "version" : 1,
+  "revisionTimestamp" : 1790883227159,
+  "contentChecksum" : "a326dbc5807b1016",
+  "builtIn" : true,
+  "embeddedSpecies" : { },
+  "embeddedWorldConfig" : { },
+  "embeddedClimateConfig" : { },
+  "embeddedPredators" : [ ],
+  "embeddedNestConfig" : { },
+  "multiplayerOnly" : false,
+  "requiredPlayerCount" : 1,
+  "gridTilesX" : 1,
+  "gridTilesY" : 1,
+  "selfContained" : false
+}

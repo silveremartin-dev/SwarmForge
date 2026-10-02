@@ -60,7 +60,7 @@ public class NestGeneratorPane extends BorderPane {
     private ComboBox<String> nestStageCombo;
     private Label speciesStatusLabel;
     private Label passageCheckLabel;
-    private org.swarmforge.core.species.CustomSpecies activeCustomSpecies;
+    private org.swarmforge.core.species.DefaultSpecies activeDefaultSpecies;
     private boolean isUpdatingSpeciesCombo = false;
 
     private ComboBox<String> categorySelect;
@@ -455,7 +455,7 @@ public class NestGeneratorPane extends BorderPane {
             speciesModelCombo.getItems().clear();
             org.swarmforge.client.ui.SpeciesPresetManager mgr = speciesPresetMgr;
             for (String pName : mgr.getPresetNames()) {
-                org.swarmforge.core.species.CustomSpecies sp = mgr.getPreset(pName);
+                org.swarmforge.core.species.DefaultSpecies sp = mgr.getPreset(pName);
                 String icon = "🐜";
                 String spType = sp != null && sp.getInsectType() != null ? sp.getInsectType().toUpperCase() : "ANT";
                 if (spType.contains("BEE") || spType.contains("WASP")) icon = "🐝";
@@ -630,9 +630,9 @@ public class NestGeneratorPane extends BorderPane {
         btnAutoAdapt.setStyle("-fx-background-color:#0284c7;-fx-text-fill:white;-fx-font-weight:bold;-fx-font-size:11px;-fx-padding:5 12;-fx-background-radius:4;");
         btnAutoAdapt.tooltipProperty().bind(i18n.createTooltipBinding("nest.adapt.btn.tt"));
         btnAutoAdapt.setOnAction(e -> {
-            if (activeCustomSpecies != null) {
-                configureFromSpecies(activeCustomSpecies);
-                NotificationOverlay.show(this, java.text.MessageFormat.format(i18n.get("nest.adapt.success"), activeCustomSpecies.getCommonName()), NotificationOverlay.NotificationType.SUCCESS);
+            if (activeDefaultSpecies != null) {
+                configureFromSpecies(activeDefaultSpecies);
+                NotificationOverlay.show(this, java.text.MessageFormat.format(i18n.get("nest.adapt.success"), activeDefaultSpecies.getCommonName()), NotificationOverlay.NotificationType.SUCCESS);
             } else {
                 onSpeciesModelSelected();
                 String selSp = speciesModelCombo != null && speciesModelCombo.getValue() != null ? speciesModelCombo.getValue() : "?";
@@ -943,7 +943,7 @@ public class NestGeneratorPane extends BorderPane {
         // 6. Colony Population vs Nest Capacity Validation & Spillover Diagnostics
         int totalChambers = (int) getChamberCount();
         int estNestCap = Math.max(100, totalChambers * 100);
-        int estPop = activeCustomSpecies != null ? activeCustomSpecies.getTypicalColonySize() : 300;
+        int estPop = activeDefaultSpecies != null ? activeDefaultSpecies.getTypicalColonySize() : 300;
         int queenChambers = getSp("👑 Queen Chamber");
         int foodChambers = getSp("🍖 Food Storage");
 
@@ -1459,9 +1459,9 @@ public class NestGeneratorPane extends BorderPane {
     }
 
 
-    public void configureFromSpecies(org.swarmforge.core.species.CustomSpecies species) {
+    public void configureFromSpecies(org.swarmforge.core.species.DefaultSpecies species) {
         if (species == null) return;
-        this.activeCustomSpecies = species;
+        this.activeDefaultSpecies = species;
 
         isUpdatingSpeciesCombo = true;
         try {
@@ -1697,8 +1697,8 @@ public class NestGeneratorPane extends BorderPane {
     private void onNestStageChanged() {
         // Stage change only affects depth, branching, and chamber distribution
         // Architecture, material, category and genus remain unchanged
-        if (activeCustomSpecies != null) {
-            applyStageScaling(activeCustomSpecies, nestStageCombo.getSelectionModel().getSelectedIndex());
+        if (activeDefaultSpecies != null) {
+            applyStageScaling(activeDefaultSpecies, nestStageCombo.getSelectionModel().getSelectedIndex());
         } else {
             String sel = speciesModelCombo != null ? speciesModelCombo.getValue() : null;
             if (sel != null && !sel.contains("Custom")) {
@@ -1714,7 +1714,7 @@ public class NestGeneratorPane extends BorderPane {
         }
     }
 
-    private void applyStageScaling(org.swarmforge.core.species.CustomSpecies species, int stageIndex) {
+    private void applyStageScaling(org.swarmforge.core.species.DefaultSpecies species, int stageIndex) {
         if (species == null) return;
         if (stageIndex < 0) stageIndex = 2;
 

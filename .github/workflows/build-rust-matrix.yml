@@ -3,11 +3,11 @@ name: Build & Package Native Rust Simulation Engine
 on:
   push:
     paths:
-      - 'crates/swarmforge-core-rust/**'
+      - 'native/swarmforge-core-rust/**'
       - '.github/workflows/build-rust-matrix.yml'
   pull_request:
     paths:
-      - 'crates/swarmforge-core-rust/**'
+      - 'native/swarmforge-core-rust/**'
   workflow_dispatch:
 
 jobs:
@@ -40,15 +40,15 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Build Rust Engine (${{ matrix.target }})
-        working-directory: crates/swarmforge-core-rust
+        working-directory: native/swarmforge-core-rust
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Run Native Rust Unit Tests
-        working-directory: crates/swarmforge-core-rust
+        working-directory: native/swarmforge-core-rust
         run: cargo test --release
 
       - name: Upload Native Binary Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: crates/swarmforge-core-rust/target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+          path: native/swarmforge-core-rust/target/${{ matrix.target }}/release/${{ matrix.artifact_name }}

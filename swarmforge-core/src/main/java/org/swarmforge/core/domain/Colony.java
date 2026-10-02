@@ -101,7 +101,7 @@ public class Colony implements java.io.Serializable {
         this.nest.addTunnel(tunnel);
 
         // Initialize Fungus Garden if this is a leafcutter species
-        if (speciesName != null && speciesName.contains("Atta")) {
+        if ((species != null && species.canFarmFungus()) || (speciesName != null && (speciesName.toLowerCase().contains("atta") || speciesName.toLowerCase().contains("acromyrmex")))) {
             this.fungusGarden = new org.swarmforge.core.simulation.FungusGarden(this);
         } else {
             this.fungusGarden = null;

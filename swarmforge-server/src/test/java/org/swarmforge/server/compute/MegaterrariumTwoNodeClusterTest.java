@@ -14,7 +14,7 @@ import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.gpu.SparsePheromoneGrid;
 import org.swarmforge.core.simulation.Simulation;
 import org.swarmforge.core.spatial.BorderMigrationSystem;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 
 import java.util.List;
 import java.util.Map;
@@ -43,7 +43,7 @@ public class MegaterrariumTwoNodeClusterTest {
         // 1. Initialize Node 0 (West Tile [0, 0])
         Terrarium terrariumNode0 = new Terrarium(width, height, depth);
         Simulation simNode0 = new Simulation(terrariumNode0);
-        CustomSpecies speciesWest = new CustomSpecies();
+        DefaultSpecies speciesWest = new DefaultSpecies();
         speciesWest.setScientificName("Lasius niger");
         Colony colonyWest = new Colony(speciesWest, 50f, 50f, 5f);
         simNode0.addColony(colonyWest);
@@ -51,7 +51,7 @@ public class MegaterrariumTwoNodeClusterTest {
         // 2. Initialize Node 1 (East Tile [1, 0])
         Terrarium terrariumNode1 = new Terrarium(width, height, depth);
         Simulation simNode1 = new Simulation(terrariumNode1);
-        CustomSpecies speciesEast = new CustomSpecies();
+        DefaultSpecies speciesEast = new DefaultSpecies();
         speciesEast.setScientificName("Formica rufa");
         Colony colonyEast = new Colony(speciesEast, 50f, 50f, 5f);
         simNode1.addColony(colonyEast);

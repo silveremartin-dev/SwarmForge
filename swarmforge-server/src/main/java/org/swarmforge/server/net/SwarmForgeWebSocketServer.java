@@ -43,7 +43,11 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
     private final Map<WebSocket, Long> clientWindowTimestamps = new ConcurrentHashMap<>();
     private final Map<String, JsonObject> activeScenarios = new ConcurrentHashMap<>();
     private final Map<String, JsonObject> customScenarios = new ConcurrentHashMap<>();
-    private final java.nio.file.Path scenarioStorageDir = java.nio.file.Paths.get("scenarios");
+    private final java.nio.file.Path scenarioStorageDir = java.nio.file.Files.exists(java.nio.file.Paths.get("data", "scenarios"))
+            ? java.nio.file.Paths.get("data", "scenarios")
+            : (java.nio.file.Files.exists(java.nio.file.Paths.get("..", "data", "scenarios"))
+            ? java.nio.file.Paths.get("..", "data", "scenarios")
+            : java.nio.file.Paths.get("data", "scenarios"));
 
     public SwarmForgeWebSocketServer(int port, org.swarmforge.server.simulation.SimulationManager simulationManager) {
         super(new InetSocketAddress(port));
@@ -57,7 +61,7 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
             if (!java.nio.file.Files.exists(scenarioStorageDir)) {
                 java.nio.file.Files.createDirectories(scenarioStorageDir);
             }
-            try (var stream = java.nio.file.Files.list(scenarioStorageDir)) {
+            try (var stream = java.nio.file.Files.walk(scenarioStorageDir)) {
                 stream.filter(p -> p.toString().endsWith(".json")).forEach(p -> {
                     try {
                         String content = java.nio.file.Files.readString(p);
@@ -65,7 +69,7 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
                         String id = obj.has("id") ? obj.get("id").getAsString() : p.getFileName().toString().replace(".json", "");
                         obj.addProperty("id", id);
                         customScenarios.put(id, obj);
-                        LOG.info("Loaded custom server scenario: {}", id);
+                        LOG.info("Loaded server scenario: {} from {}", id, p);
                     } catch (Exception e) {
                         LOG.warn("Failed to load scenario file {}: {}", p, e.getMessage());
                     }
@@ -295,7 +299,7 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
 
             // 0. Register embedded self-contained species
             if (target.getEmbeddedSpecies() != null && !target.getEmbeddedSpecies().isEmpty()) {
-                for (org.swarmforge.core.species.CustomSpecies customSp : target.getEmbeddedSpecies().values()) {
+                for (org.swarmforge.core.species.DefaultSpecies customSp : target.getEmbeddedSpecies().values()) {
                     org.swarmforge.core.species.SpeciesRegistry.getInstance().register(customSp);
                 }
             }

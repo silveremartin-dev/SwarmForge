@@ -3,8 +3,8 @@ package org.swarmforge.benchmarks;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.engine.*;
 import org.swarmforge.core.gpu.SparsePheromoneGrid;
-import org.swarmforge.core.species.FormicaRufa;
 import org.swarmforge.core.species.Species;
+import org.swarmforge.core.species.SpeciesRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -134,7 +134,7 @@ public class DualEngineBenchmark {
         engine.start();
 
         UUID colonyId = UUID.randomUUID();
-        Species species = new FormicaRufa();
+        Species species = SpeciesRegistry.getInstance().getSpecies("formica-rufa");
 
         // Vectorized batch spawn
         for (int i = 0; i < population; i++) {

@@ -23,8 +23,10 @@ public class TaxonomicArchetypeAndBiometeorologyTest {
     @Test
     @DisplayName("Verify Taxonomic Archetypes (Order -> Genus -> Species Overrides)")
     public void testTaxonomicArchetypes() {
+        SpeciesRegistry registry = SpeciesRegistry.getInstance();
+
         // Apis mellifera (Apidae / Bee)
-        ApisMellifera apis = new ApisMellifera();
+        DefaultSpecies apis = registry.getSpecies("apis-mellifera");
         assertTrue(apis.isWorkersCanFly());
         assertEquals("BEE", apis.getInsectType());
         assertTrue(apis.canPerformWaggleDance());
@@ -36,7 +38,7 @@ public class TaxonomicArchetypeAndBiometeorologyTest {
         assertTrue(apis.canPackCorbiculaPollenBaskets());
 
         // Bombus terrestris (Apidae / Bumblebee)
-        BombusTerrestris bombus = new BombusTerrestris();
+        DefaultSpecies bombus = registry.getSpecies("bombus-terrestris");
         assertTrue(bombus.isWorkersCanFly());
         assertTrue(bombus.canPerformBuzzPollination());
         assertTrue(bombus.canForageSubZeroBumblebee());
@@ -45,7 +47,7 @@ public class TaxonomicArchetypeAndBiometeorologyTest {
         assertEquals(4.0f, bombus.getMinTempCelsius(), 0.1f);
 
         // Vespula germanica (Vespidae / Wasp)
-        VespulaGermanica vespula = new VespulaGermanica();
+        DefaultSpecies vespula = registry.getSpecies("vespula-germanica");
         assertTrue(vespula.isWorkersCanFly());
         assertEquals("WASP", vespula.getInsectType());
         assertTrue(vespula.canMasticatePaperPulpCarton());
@@ -53,12 +55,12 @@ public class TaxonomicArchetypeAndBiometeorologyTest {
         assertTrue(vespula.canApplyPedicelAntRepellent());
 
         // Vespa crabro (Vespidae / Hornet)
-        VespaCrabro vespa = new VespaCrabro();
+        DefaultSpecies vespa = registry.getSpecies("vespa-crabro");
         assertTrue(vespa.canEmitHornetGroupAlarmPheromone());
         assertTrue(vespa.canMasticatePaperPulpCarton());
 
         // Formica rufa (Formicinae / Wood Ant)
-        FormicaRufa rufa = new FormicaRufa();
+        DefaultSpecies rufa = registry.getSpecies("formica-rufa");
         assertEquals("FORMIC_ACID", rufa.getVenomType());
         assertTrue(rufa.canSprayFormicResinDisinfectant());
         assertTrue(rufa.canFireFormicAcidArtilleryJet());
@@ -68,7 +70,7 @@ public class TaxonomicArchetypeAndBiometeorologyTest {
         assertTrue(rufa.isPolycalic());
 
         // Atta cephalotes (Myrmicinae / Leafcutter Ant)
-        AttaCephalotes atta = new AttaCephalotes();
+        DefaultSpecies atta = registry.getSpecies("atta-cephalotes");
         assertTrue(atta.canFarmFungus());
         assertTrue(atta.canWeedFungusGarden());
         assertTrue(atta.canShearLeafCrescentMandible());
@@ -78,24 +80,24 @@ public class TaxonomicArchetypeAndBiometeorologyTest {
         assertTrue(atta.canStridulateRescueCall());
 
         // Solenopsis invicta (Myrmicinae / Fire Ant)
-        SolenopsisInvicta solenopsis = new SolenopsisInvicta();
+        DefaultSpecies solenopsis = registry.getSpecies("solenopsis-invicta");
         assertTrue(solenopsis.canFormFloatingAntRaft());
         assertTrue(solenopsis.canFormLivingRaft());
         assertTrue(solenopsis.hasTerritorialRepellentPheromone());
 
         // Linepithema humile (Dolichoderinae / Argentine Ant)
-        LinepithemaHumile linepithema = new LinepithemaHumile();
+        DefaultSpecies linepithema = registry.getSpecies("linepithema-humile");
         assertTrue(linepithema.isUnicolonial());
         assertTrue(linepithema.formsMegaColonies());
 
         // Odontomachus bauri (Ponerinae / Trap-Jaw Ant)
-        OdontomachusBauri odonto = new OdontomachusBauri();
+        DefaultSpecies odonto = registry.getSpecies("odontomachus-bauri");
         assertTrue(odonto.hasTrapJawMechanism());
         assertTrue(odonto.canSnapTrapMandiblesCatapult());
         assertTrue(odonto.canPerformGamergateDominanceTournament());
 
         // Reticulitermes flavipes (Isoptera / Termite)
-        ReticulitermesFlavipes termite = new ReticulitermesFlavipes();
+        DefaultSpecies termite = registry.getSpecies("reticulitermes-flavipes");
         assertTrue(termite.isHasKing());
         assertTrue(termite.hasTermiteGutSymbiosis());
         assertTrue(termite.hasProctodealTrophallaxis());
@@ -107,9 +109,10 @@ public class TaxonomicArchetypeAndBiometeorologyTest {
     @Test
     @DisplayName("Verify Biometeorological Flight Thresholds & Aerodynamics (Re, Viscosity)")
     public void testBiometeorology() {
-        BombusTerrestris bombus = new BombusTerrestris();
-        ApisMellifera apis = new ApisMellifera();
-        VespulaGermanica vespula = new VespulaGermanica();
+        SpeciesRegistry registry = SpeciesRegistry.getInstance();
+        DefaultSpecies bombus = registry.getSpecies("bombus-terrestris");
+        DefaultSpecies apis = registry.getSpecies("apis-mellifera");
+        DefaultSpecies vespula = registry.getSpecies("vespula-germanica");
 
         // Stub context simulating 6°C dry weather
         SimulationContext coldContext = new SimulationContext() {

@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.swarmforge.core.domain.*;
 import org.swarmforge.core.simulation.Simulation;
 
-import org.swarmforge.core.species.AttaCephalotes;
+import org.swarmforge.core.species.SpeciesRegistry;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -29,7 +29,7 @@ class EcologyTest {
     @Test
     void testAttaFungusCycle() {
         // 1. Setup Atta Colony
-        Colony colony = new Colony(new AttaCephalotes(), 50f, 50f, 0f);
+        Colony colony = new Colony(SpeciesRegistry.getInstance().getSpecies("atta-cephalotes"), 50f, 50f, 0f);
         simulation.addColony(colony);
 
         // 2. Setup Leaf Source

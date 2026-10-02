@@ -1,0 +1,22 @@
+{
+  "presetName" : "Subterranean Fungus Vaults",
+  "speciesModel" : "\uD83D\uDC1C Leafcutter Ant (Atta sexdens)",
+  "nestStageIndex" : 2,
+  "taxonCategory" : "ANT",
+  "genus" : "Atta",
+  "architecture" : "SUBTERRANEAN_FUNGI_VAULT",
+  "material" : "EARTH",
+  "workerSizeMm" : 7.0,
+  "depth" : 10,
+  "chamberCount" : 20,
+  "tunnelWidth" : 2,
+  "branching" : 3,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 1,
+    "\uD83E\uDD5A Brood Chambers" : 4,
+    "\uD83C\uDF56 Food Storage" : 3,
+    "\uD83D\uDEAA Entrances" : 3,
+    "\uD83D\uDDD1 Waste Dumps" : 4,
+    "\uD83C\uDF44 Fungus Gardens" : 8
+  }
+}

@@ -214,7 +214,7 @@ public class SwarmForgeServer {
                 .addService(simulationService)
                 .addService(matchmakingService)
                 .addService(leaderboardService)
-                .addService(new org.swarmforge.server.ai.MockRLService())
+                .addService(new org.swarmforge.server.ai.FallbackRLService())
                 .build()
                 .start();
         LOG.info("gRPC Server (Secure) started on port " + grpcPort);
@@ -428,9 +428,9 @@ public class SwarmForgeServer {
         // 3. Colony & Species
         org.swarmforge.core.species.Species species;
         if (speciesType != null && speciesType.contains("Atta")) {
-            species = new org.swarmforge.core.species.AttaCephalotes();
+            species = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies("atta-cephalotes");
         } else {
-            species = new org.swarmforge.core.species.LasiusNiger(); // Default
+            species = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies("lasius-niger"); // Default
         }
 
         Colony colony = new Colony(species, centerX, centerY, 50);
@@ -676,7 +676,7 @@ public class SwarmForgeServer {
         int rivalX = terrarium.getWidth() - 30;
         int rivalY = terrarium.getHeight() - 30;
         int groundLevel = terrarium.getDepth() - 10;
-        Colony rivalColony = new Colony(new org.swarmforge.core.species.AttaCephalotes(), rivalX, rivalY,
+        Colony rivalColony = new Colony(org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies("atta-cephalotes"), rivalX, rivalY,
                 groundLevel - 5);
         rivalColony.addIndividual(rivalColony.createQueen());
         for (int i = 0; i < 30; i++) {
@@ -945,7 +945,7 @@ public class SwarmForgeServer {
         boolean batchMode = "true".equalsIgnoreCase(System.getenv("BATCH_MODE")) || "batch".equalsIgnoreCase(System.getenv("MODE"));
         long batchTicks = 1000;
         int snapshotInterval = 50;
-        String exportDir = System.getenv().getOrDefault("EXPORT_DIR", "./saves/batch");
+        String exportDir = System.getenv().getOrDefault("EXPORT_DIR", "data/results");
         try {
             String envTicks = System.getenv("TICKS");
             if (envTicks != null && !envTicks.isBlank()) batchTicks = Long.parseLong(envTicks);

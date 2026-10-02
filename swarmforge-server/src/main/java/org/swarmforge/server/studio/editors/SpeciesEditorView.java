@@ -73,10 +73,10 @@ public class SpeciesEditorView extends ScrollPane {
     }
 
     public org.swarmforge.core.species.Species getSpecies() {
-        org.swarmforge.core.species.CustomSpecies species = new org.swarmforge.core.species.CustomSpecies();
+        org.swarmforge.core.species.DefaultSpecies species = new org.swarmforge.core.species.DefaultSpecies();
         species.setScientificName(latinNameField.getText());
         species.setCommonName(commonNameField.getText());
-        // species.setAggression(aggressionSlider.getValue()); // CustomSpecies doesn't
+        // species.setAggression(aggressionSlider.getValue()); // DefaultSpecies doesn't
         // have this yet, need to add if needed
         species.setViewDistance(foragingRangeSpinner.getValue().floatValue());
 

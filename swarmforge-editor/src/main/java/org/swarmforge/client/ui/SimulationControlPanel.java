@@ -24,7 +24,7 @@ import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
 import org.swarmforge.core.domain.CasteTemplate;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -2662,7 +2662,7 @@ public class SimulationControlPanel extends VBox {
                     String spName = card.getSpeciesName();
                     sc.addColony(new org.swarmforge.core.scenario.Scenario.ColonySetup(spName, spName.toLowerCase().replace(" ", "_"), card.getQueenCount(), card.getWorkerCount(), card.getSoldierCount(), card.getInitialFood(), java.util.Map.of()));
                     if (speciesPresetManager != null) {
-                        org.swarmforge.core.species.CustomSpecies sp = speciesPresetManager.getPresetOrFallback(spName);
+                        org.swarmforge.core.species.DefaultSpecies sp = speciesPresetManager.getPresetOrFallback(spName);
                         if (sp != null) {
                             sc.embedSpecies(sp);
                         }

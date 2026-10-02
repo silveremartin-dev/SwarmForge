@@ -55,7 +55,7 @@ public class JmeGameApp extends SimpleApplication {
     private org.swarmforge.core.simulation.Simulation simulation;
     private org.swarmforge.client.network.SimulationClient networkClient;
     private java.util.Map<String, com.jme3.scene.Spatial> antVisuals = new java.util.HashMap<>();
-    private AntVisualizer antVisualizer;
+    private InsectVisualizer insectVisualizer;
     private TunnelVisualizer tunnelVisualizer;
     private Node terrainNode;
     private String currentTool = "View Mode";
@@ -193,7 +193,7 @@ public class JmeGameApp extends SimpleApplication {
             this.tunnelVisualizer = new TunnelVisualizer(assetManager);
             rootNode.attachChild(this.tunnelVisualizer.getRootNode());
 
-            this.antVisualizer = new AntVisualizer(assetManager);
+            this.insectVisualizer = new InsectVisualizer(assetManager);
             initializeInstancing();
 
             this.weatherVisualizer = new WeatherVisualizer(assetManager, this.sunLight);
@@ -670,8 +670,8 @@ public class JmeGameApp extends SimpleApplication {
                 tunnelVisualizer.setTerrarium(terrarium);
                 tunnelVisualizer.setTerrainDimensions(10.0f, w);
             }
-            if (antVisualizer != null) {
-                antVisualizer.setTerrainDimensions(10.0f, w);
+            if (insectVisualizer != null) {
+                insectVisualizer.setTerrainDimensions(10.0f, w);
             }
 
             // Initialize Pheromone Visualizer aligned with exact ground surface elevation
@@ -810,13 +810,13 @@ public class JmeGameApp extends SimpleApplication {
     }
 
     private void updateAntVisuals(float tpf) {
-        if (antVisualizer == null) {
-            antVisualizer = new AntVisualizer(assetManager);
+        if (insectVisualizer == null) {
+            insectVisualizer = new InsectVisualizer(assetManager);
             initializeInstancing();
         }
 
         if (simulation != null && simulation.getTerrarium() != null) {
-            antVisualizer.setTerrainDimensions(10.0f, simulation.getTerrarium().getWidth());
+            insectVisualizer.setTerrainDimensions(10.0f, simulation.getTerrarium().getWidth());
         }
 
         java.util.Set<String> activeIds = new java.util.HashSet<>();
@@ -997,7 +997,7 @@ public class JmeGameApp extends SimpleApplication {
         }
 
         if (antGeom == null) {
-            antGeom = antVisualizer.createOrganismGeometry(caste, lifeStage, species);
+            antGeom = insectVisualizer.createOrganismGeometry(caste, lifeStage, species);
             antGeom.setUserData("LifeStage", lifeStage.name());
             antGeom.setUserData("ID", id);
 
@@ -1006,7 +1006,7 @@ public class JmeGameApp extends SimpleApplication {
             float variance = (1.0f + (((hash % 1000) / 1000.0f) - 0.5f) * 0.12f) * antVisualScaleMultiplier;
             antGeom.setLocalScale(variance);
 
-            com.jme3.scene.Node node = antVisualizer.getInstancedNode(caste);
+            com.jme3.scene.Node node = insectVisualizer.getInstancedNode(caste);
             if (node != null) {
                 node.attachChild(antGeom);
             } else {
@@ -1033,7 +1033,7 @@ public class JmeGameApp extends SimpleApplication {
     private void initializeInstancing() {
         for (org.swarmforge.core.domain.Individual.Caste caste : org.swarmforge.core.domain.Individual.Caste.values()) {
             com.jme3.scene.Node node = new com.jme3.scene.Node("CasteNode_" + caste);
-            antVisualizer.registerInstancedNode(caste, node);
+            insectVisualizer.registerInstancedNode(caste, node);
             rootNode.attachChild(node);
         }
     }
@@ -1706,9 +1706,9 @@ public class JmeGameApp extends SimpleApplication {
     public void setAntsVisible(boolean visible) {
         this.antsVisible = visible;
         enqueueTask(() -> {
-            if (antVisualizer != null) {
+            if (insectVisualizer != null) {
                 for (org.swarmforge.core.domain.Individual.Caste caste : org.swarmforge.core.domain.Individual.Caste.values()) {
-                    com.jme3.scene.Node node = antVisualizer.getInstancedNode(caste);
+                    com.jme3.scene.Node node = insectVisualizer.getInstancedNode(caste);
                     if (node != null) {
                         if (visible) {
                             if (node.getParent() == null) rootNode.attachChild(node);

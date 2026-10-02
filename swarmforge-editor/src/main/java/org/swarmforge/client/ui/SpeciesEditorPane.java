@@ -19,10 +19,10 @@ import javafx.stage.Stage;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.core.domain.CasteTemplate;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
 import org.swarmforge.core.behavior.BrainPluginRegistry;
-import org.swarmforge.core.behavior.CustomBrainDescriptor;
+import org.swarmforge.core.behavior.BrainDescriptor;
 
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.NotificationOverlay;
@@ -132,8 +132,8 @@ public class SpeciesEditorPane extends VBox {
     private CheckBox hasAroliaAdhesionCheckBox;
 
     private VBox warningBannerBox;
-    private Consumer<CustomSpecies> onApplyListener;
-    private Consumer<CustomSpecies> onGenerateNestForSpeciesListener;
+    private Consumer<DefaultSpecies> onApplyListener;
+    private Consumer<DefaultSpecies> onGenerateNestForSpeciesListener;
 
     private boolean isUpdatingFields = false;
     private boolean isDirty = false;
@@ -234,7 +234,7 @@ public class SpeciesEditorPane extends VBox {
         if (result.get() == btnDiscard) { isDirty = false; return true; }
         if (btnUpdate != null && result.get() == btnUpdate) {
             // Mise à jour directe sans dialogue
-            CustomSpecies species = buildSpeciesFromUI();
+            DefaultSpecies species = buildSpeciesFromUI();
             species.setPresetName(currentName);
             presetManager.addPreset(currentName, species);
             isUpdatingFields = true;
@@ -258,11 +258,11 @@ public class SpeciesEditorPane extends VBox {
         return false;
     }
 
-    public void setOnApply(Consumer<CustomSpecies> listener) {
+    public void setOnApply(Consumer<DefaultSpecies> listener) {
         this.onApplyListener = listener;
     }
 
-    public void setOnGenerateNestForSpecies(Consumer<CustomSpecies> listener) {
+    public void setOnGenerateNestForSpecies(Consumer<DefaultSpecies> listener) {
         this.onGenerateNestForSpeciesListener = listener;
     }
 
@@ -948,8 +948,8 @@ public class SpeciesEditorPane extends VBox {
         for (ArchitectureType type : ArchitectureType.values()) {
             decisionArchCombo.getItems().add(type.getDisplayName());
         }
-        for (CustomBrainDescriptor desc : BrainPluginRegistry.getInstance().getRegisteredBrains()) {
-            if (desc.getSourceType() != CustomBrainDescriptor.BrainSourceType.BUILTIN && !decisionArchCombo.getItems().contains(desc.getDisplayName())) {
+        for (BrainDescriptor desc : BrainPluginRegistry.getInstance().getRegisteredBrains()) {
+            if (desc.getSourceType() != BrainDescriptor.BrainSourceType.BUILTIN && !decisionArchCombo.getItems().contains(desc.getDisplayName())) {
                 decisionArchCombo.getItems().add(desc.getDisplayName());
             }
         }
@@ -1274,7 +1274,7 @@ public class SpeciesEditorPane extends VBox {
         Button btnGenerateSpeciesNest = new Button("📐 Generate & Preview Nest for this Species", new FontIcon(Feather.HOME));
         btnGenerateSpeciesNest.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 12px;");
         btnGenerateSpeciesNest.setOnAction(e -> {
-            CustomSpecies s = buildSpeciesFromUI();
+            DefaultSpecies s = buildSpeciesFromUI();
             if (onGenerateNestForSpeciesListener != null) {
                 onGenerateNestForSpeciesListener.accept(s);
             } else {
@@ -1537,7 +1537,7 @@ public class SpeciesEditorPane extends VBox {
             }
         }
 
-        CustomSpecies species = buildSpeciesFromUI();
+        DefaultSpecies species = buildSpeciesFromUI();
         species.setPresetName(name);
 
         presetManager.addPreset(name, species);
@@ -1589,7 +1589,7 @@ public class SpeciesEditorPane extends VBox {
         File f = chooser.showSaveDialog(getScene().getWindow());
         if (f != null) {
             try {
-                CustomSpecies species = buildSpeciesFromUI();
+                DefaultSpecies species = buildSpeciesFromUI();
                 presetManager.saveToFile(f, species);
                 org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Species successfully saved as " + f.getName()).show();
             } catch (Exception ex) {
@@ -1606,7 +1606,7 @@ public class SpeciesEditorPane extends VBox {
         File f = chooser.showOpenDialog(getScene().getWindow());
         if (f != null) {
             try {
-                CustomSpecies species = presetManager.loadFromFile(f);
+                DefaultSpecies species = presetManager.loadFromFile(f);
                 loadPresetToUI(species);
                 org.swarmforge.client.util.ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Espèce '" + species.getCommonName() + "' chargée avec succès!").show();
             } catch (Exception ex) {
@@ -1674,7 +1674,7 @@ public class SpeciesEditorPane extends VBox {
         }
     }
 
-    private void loadPresetToUI(CustomSpecies s) {
+    private void loadPresetToUI(DefaultSpecies s) {
         if (s == null) return;
         isUpdatingFields = true;
         try {
@@ -1790,8 +1790,8 @@ public class SpeciesEditorPane extends VBox {
         }
     }
 
-    private CustomSpecies buildSpeciesFromUI() {
-        CustomSpecies s = new CustomSpecies();
+    private DefaultSpecies buildSpeciesFromUI() {
+        DefaultSpecies s = new DefaultSpecies();
         s.setPresetName(commonNameField != null ? commonNameField.getText().trim() : "");
 
         s.setCommonName(commonNameField.getText());
@@ -2490,7 +2490,7 @@ public class SpeciesEditorPane extends VBox {
             var desc = BrainPluginRegistry.getInstance().getDescriptor(arch);
             if (desc.isPresent()) return desc.get().getDisplayName();
         }
-        for (CustomBrainDescriptor d : BrainPluginRegistry.getInstance().getRegisteredBrains()) {
+        for (BrainDescriptor d : BrainPluginRegistry.getInstance().getRegisteredBrains()) {
             if (d.getDisplayName().equalsIgnoreCase(arch)) return d.getDisplayName();
         }
         ArchitectureType t = ArchitectureType.parse(arch);
@@ -2512,7 +2512,7 @@ public class SpeciesEditorPane extends VBox {
             var desc = BrainPluginRegistry.getInstance().getDescriptor(arch);
             if (desc.isPresent()) return desc.get().getDescription();
         }
-        for (CustomBrainDescriptor d : BrainPluginRegistry.getInstance().getRegisteredBrains()) {
+        for (BrainDescriptor d : BrainPluginRegistry.getInstance().getRegisteredBrains()) {
             if (d.getDisplayName().equalsIgnoreCase(arch)) return d.getDescription();
         }
         ArchitectureType t = ArchitectureType.parse(arch);

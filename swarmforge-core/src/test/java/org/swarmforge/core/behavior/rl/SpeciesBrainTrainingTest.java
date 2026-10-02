@@ -70,7 +70,7 @@ class SpeciesBrainTrainingTest {
 
         // 5. Étape 4 : Validation Comportementale Détaillée par Caste
         try (OnnxBrainArchitecture onnxBrain = new OnnxBrainArchitecture(onnxFile.getAbsolutePath())) {
-            HeadlessTrainingScenario.MockSimulationContext ctx = (HeadlessTrainingScenario.MockSimulationContext) scenario.getContext();
+            HeadlessTrainingScenario.HeadlessSimulationContext ctx = (HeadlessTrainingScenario.HeadlessSimulationContext) scenario.getContext();
 
             // A. Test Reine (QUEEN) : Dans le nid avec de l'énergie -> Ponte d'œufs (LAY_EGG) ou Soin
             Individual queen = new Individual(UUID.randomUUID(), Individual.Caste.QUEEN, 0, 0, 0);
@@ -117,7 +117,7 @@ class SpeciesBrainTrainingTest {
             ctx.foodNearby = false;
 
             // E. Test Espèces différentes (Abeille / Apidae & Termite / Isoptera)
-            org.swarmforge.core.species.CustomSpecies beeSpecies = new org.swarmforge.core.species.CustomSpecies();
+            org.swarmforge.core.species.DefaultSpecies beeSpecies = new org.swarmforge.core.species.DefaultSpecies();
             beeSpecies.setInsectType("BEE");
             Individual beeWorker = new Individual(UUID.randomUUID(), Individual.Caste.WORKER, 15, 15, 0);
             beeWorker.setSpecies(beeSpecies);

@@ -1,0 +1,22 @@
+{
+  "presetName" : "Living Army Ant Bivouac",
+  "speciesModel" : "\uD83D\uDC1C Army Ant (Eciton burchellii)",
+  "nestStageIndex" : 2,
+  "taxonCategory" : "ANT",
+  "genus" : "Eciton",
+  "architecture" : "BIVOUAC_LIVING_NEST",
+  "material" : "LIVING_INSECT_BODIES",
+  "workerSizeMm" : 8.0,
+  "depth" : 5,
+  "chamberCount" : 18,
+  "tunnelWidth" : 2,
+  "branching" : 3,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 1,
+    "\uD83E\uDD5A Brood Chambers" : 6,
+    "\uD83C\uDF56 Food Storage" : 6,
+    "\uD83D\uDEAA Entrances" : 2,
+    "\uD83D\uDDD1 Waste Dumps" : 2,
+    "\uD83C\uDF44 Fungus Gardens" : 0
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "presetName" : "Arboreal Silk Weave Nest",
+  "speciesModel" : "\uD83D\uDC1C Weaver Ant (Oecophylla smaragdina)",
+  "nestStageIndex" : 2,
+  "taxonCategory" : "ANT",
+  "genus" : "Oecophylla",
+  "architecture" : "ARBOREAL_SILK_LEAF",
+  "material" : "SILK_WEAVE",
+  "workerSizeMm" : 6.0,
+  "depth" : 5,
+  "chamberCount" : 12,
+  "tunnelWidth" : 2,
+  "branching" : 2,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 1,
+    "\uD83E\uDD5A Brood Chambers" : 4,
+    "\uD83C\uDF56 Food Storage" : 3,
+    "\uD83D\uDEAA Entrances" : 2,
+    "\uD83D\uDDD1 Waste Dumps" : 1,
+    "\uD83C\uDF44 Fungus Gardens" : 0
+  }
+}

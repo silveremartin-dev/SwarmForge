@@ -13,7 +13,7 @@ import org.swarmforge.core.domain.FoodSource;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.ResourceType;
 import org.swarmforge.core.simulation.SimulationContext;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 import org.swarmforge.core.species.Species;
 
 import java.io.File;
@@ -37,7 +37,7 @@ public class HeadlessTrainingScenario {
     private final List<Individual> colonyMembers = new ArrayList<>();
     private final SimpleNeuralNetwork network;
     private final DqnTrainer dqnTrainer;
-    private final MockSimulationContext context;
+    private final HeadlessSimulationContext context;
     private final Random rng = new Random(42);
 
     private float lastImitationLoss = 1.0f;
@@ -56,7 +56,7 @@ public class HeadlessTrainingScenario {
         this.dqnTrainer.epsilon = 0.4f;
         this.dqnTrainer.epsilonMin = 0.02f;
         this.dqnTrainer.batchSize = 32;
-        this.context = new MockSimulationContext();
+        this.context = new HeadlessSimulationContext();
     }
 
     /**
@@ -102,8 +102,8 @@ public class HeadlessTrainingScenario {
             float currentLr = 0.003f * (1.0f - (float) s / steps) + 0.0003f;
             network.setLearningRate(currentLr);
 
-            MockAgentView mockAgent = generateSyntheticAgentState();
-            if (context instanceof MockSimulationContext mockCtx) {
+            HeadlessAgentView mockAgent = generateSyntheticAgentState();
+            if (context instanceof HeadlessSimulationContext mockCtx) {
                 mockCtx.alarmIntensity = mockAgent.alarmPheromone;
                 mockCtx.foodGradX = mockAgent.foodPheromoneGradientX;
                 mockCtx.foodGradY = mockAgent.foodPheromoneGradientY;
@@ -164,8 +164,8 @@ public class HeadlessTrainingScenario {
 
             // Multi-task imitation regularization to prevent catastrophic forgetting
             if (t % 2 == 0) {
-                MockAgentView regAgent = generateSyntheticAgentState();
-                if (context instanceof MockSimulationContext mockCtx) {
+                HeadlessAgentView regAgent = generateSyntheticAgentState();
+                if (context instanceof HeadlessSimulationContext mockCtx) {
                     mockCtx.alarmIntensity = regAgent.alarmPheromone;
                     mockCtx.foodGradX = regAgent.foodPheromoneGradientX;
                     mockCtx.foodGradY = regAgent.foodPheromoneGradientY;
@@ -269,8 +269,8 @@ public class HeadlessTrainingScenario {
         return reward;
     }
 
-    public MockAgentView generateSyntheticAgentState() {
-        MockAgentView view = new MockAgentView();
+    public HeadlessAgentView generateSyntheticAgentState() {
+        HeadlessAgentView view = new HeadlessAgentView();
 
         // Balanced caste selection across all 5 social castes
         Individual.Caste[] castes = {
@@ -457,7 +457,7 @@ public class HeadlessTrainingScenario {
     /**
      * Minimal synthetic SimulationContext for headless training.
      */
-    public static class MockSimulationContext implements SimulationContext {
+    public static class HeadlessSimulationContext implements SimulationContext {
         public float foodGradX = 0.2f;
         public float foodGradY = 0.1f;
         public float alarmIntensity = 0.0f;
@@ -470,12 +470,12 @@ public class HeadlessTrainingScenario {
         @Override public float getFoodPheromoneGradientX(float x, float y, float z) { return foodGradX; }
         @Override public float getFoodPheromoneGradientY(float x, float y, float z) { return foodGradY; }
         @Override public boolean hasEnemyNearby(AgentView agent) {
-            if (agent instanceof MockAgentView mv) return mv.hasEnemyNearby || enemyNearby;
+            if (agent instanceof HeadlessAgentView mv) return mv.hasEnemyNearby || enemyNearby;
             return enemyNearby;
         }
         @Override public Individual getNearestEnemy(AgentView agent) { return null; }
         @Override public boolean hasFoodNearby(AgentView agent) {
-            if (agent instanceof MockAgentView mv) return mv.hasFoodNearby || foodNearby;
+            if (agent instanceof HeadlessAgentView mv) return mv.hasFoodNearby || foodNearby;
             return foodNearby || Math.hypot(agent.getX() - 10.0, agent.getY() - 10.0) < 3.0;
         }
         @Override public float[] getNearestFoodPosition(AgentView agent) { return new float[]{10f, 10f, 0f}; }
@@ -494,7 +494,7 @@ public class HeadlessTrainingScenario {
     /**
      * Synthetic AgentView adapter for rapid multi-caste training data generation.
      */
-    public static class MockAgentView implements AgentView {
+    public static class HeadlessAgentView implements AgentView {
         public float x = 0f, y = 0f, z = 0f;
         public float heading = 0f;
         public float energy = 1.0f;
@@ -524,9 +524,7 @@ public class HeadlessTrainingScenario {
         @Override public boolean isNurse() { return caste == Individual.Caste.NURSE; }
         @Override public boolean isDrone() { return caste == Individual.Caste.MALE; }
         @Override public Species getSpecies() {
-            CustomSpecies sp = new CustomSpecies();
-            sp.setInsectType(insectType);
-            return sp;
+            return org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies("lasius-niger");
         }
     }
 }

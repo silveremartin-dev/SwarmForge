@@ -1,0 +1,22 @@
+{
+  "presetName" : "Propolis & Wax Pots Cluster",
+  "speciesModel" : "\uD83D\uDC1D Buff-Tailed Bumblebee (Bombus terrestris)",
+  "nestStageIndex" : 1,
+  "taxonCategory" : "BEE",
+  "genus" : "Bombus",
+  "architecture" : "WAX_POTS_CLUSTER",
+  "material" : "PROPOLIS",
+  "workerSizeMm" : 16.0,
+  "depth" : 5,
+  "chamberCount" : 14,
+  "tunnelWidth" : 2,
+  "branching" : 2,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 1,
+    "\uD83E\uDD5A Brood Chambers" : 4,
+    "\uD83C\uDF56 Food Storage" : 5,
+    "\uD83D\uDEAA Entrances" : 1,
+    "\uD83D\uDDD1 Waste Dumps" : 1,
+    "\uD83C\uDF44 Fungus Gardens" : 0
+  }
+}

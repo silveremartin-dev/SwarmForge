@@ -239,14 +239,7 @@ public class Simulation {
     }
 
     public Colony addColony(String speciesType, int queens, int workers, int soldiers, int brood, float x, float y) {
-        org.swarmforge.core.species.Species species;
-        switch (speciesType) {
-            case "FormicaRufa" -> species = new org.swarmforge.core.species.FormicaRufa();
-            case "SolenopsisInvicta" -> species = new org.swarmforge.core.species.SolenopsisInvicta();
-            case "AttaCephalotes" -> species = new org.swarmforge.core.species.AttaCephalotes();
-            case "Camponotus" -> species = new org.swarmforge.core.species.Camponotus();
-            default -> species = new org.swarmforge.core.species.LasiusNiger();
-        }
+        org.swarmforge.core.species.Species species = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies(speciesType);
 
         float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(x, y) : 0f;
         Colony colony = new Colony(species, x, y, surfaceZ);

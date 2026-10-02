@@ -10,9 +10,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
-import org.swarmforge.core.simulation.FungusGarden;
-import org.swarmforge.core.species.FormicaRufa;
-import org.swarmforge.core.species.AttaCephalotes;
+import org.swarmforge.core.species.DefaultSpecies;
+import org.swarmforge.core.species.SpeciesRegistry;
 
 import java.util.UUID;
 
@@ -33,7 +32,7 @@ public class AdvancedRealismBehaviorsTest {
         UUID colony2 = UUID.randomUUID();
 
         Individual defender = new Individual(colony1, Individual.Caste.SOLDIER, 10f, 10f, 0f);
-        defender.setSpecies(new FormicaRufa());
+        defender.setSpecies(SpeciesRegistry.getInstance().getSpecies("formica-rufa"));
 
         Individual enemy = new Individual(colony2, Individual.Caste.WORKER, 11.2f, 10f, 0f); // 1.2m distance (<= 1.5m range)
 
@@ -83,9 +82,9 @@ public class AdvancedRealismBehaviorsTest {
     @Test
     @DisplayName("3. Tripartite Symbiosis: Actinobacteria bio-weeding against Escovopsis contamination")
     void testTripartiteSymbiosisBioWeeding() {
-        AttaCephalotes species = new AttaCephalotes();
+        DefaultSpecies species = SpeciesRegistry.getInstance().getSpecies("atta-cephalotes");
         Colony colony = new Colony(species, 20f, 20f, 0f);
-        FungusGarden garden = new FungusGarden(colony);
+        org.swarmforge.core.simulation.FungusGarden garden = new org.swarmforge.core.simulation.FungusGarden(colony);
 
         // Contaminate garden with Escovopsis
         garden.setContaminationLevel(0.8f);

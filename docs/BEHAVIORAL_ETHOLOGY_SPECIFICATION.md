@@ -1,10 +1,10 @@
-# SwarmForge Behavioral Ethology Engine Specification
+﻿# SwarmForge Behavioral Ethology Engine Specification
 **Version 2.2.0-SNAPSHOT | Author: Silvère Martin-Michiellot & Gemini AI Assistant (Google DeepMind)**
 
 ---
 
 ## Executive Summary
-This document provides a comprehensive technical and biological reference for the **80 advanced eusocial insect behavioral systems** implemented within the SwarmForge simulation framework. Each behavioral system is governed by a modular capability flag registered in `Species.java` and `CustomSpecies.java`, executed through dedicated simulation subsystems in `org.swarmforge.core.simulation`, and rendered in real-time within the HUD inspector mouseover view (`WorldEditorPane`).
+This document provides a comprehensive technical and biological reference for the **80 advanced eusocial insect behavioral systems** implemented within the SwarmForge simulation framework. Each behavioral system is governed by a modular capability flag registered in `Species.java` and `DefaultSpecies.java`, executed through dedicated simulation subsystems in `org.swarmforge.core.simulation`, and rendered in real-time within the HUD inspector mouseover view (`WorldEditorPane`).
 
 ---
 

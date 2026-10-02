@@ -12,9 +12,8 @@ import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.ResourceType;
 import org.swarmforge.core.domain.Terrarium;
-import org.swarmforge.core.domain.TerrariumCell;
-import org.swarmforge.core.species.FormicaRufa;
-import org.swarmforge.core.species.CataglyphisBombycina;
+import org.swarmforge.core.species.DefaultSpecies;
+import org.swarmforge.core.species.SpeciesRegistry;
 
 import java.util.UUID;
 
@@ -88,12 +87,12 @@ public class TrophallaxisTandemAndNavigationTest {
         for (int x = 0; x < 32; x++) {
             for (int y = 0; y < 32; y++) {
                 for (int z = 0; z < 5; z++) {
-                    terrarium.setCell(TerrariumCell.earth(x, y, z));
+                    terrarium.setCell(org.swarmforge.core.domain.TerrariumCell.earth(x, y, z));
                 }
             }
         }
 
-        FormicaRufa species = new FormicaRufa();
+        DefaultSpecies species = SpeciesRegistry.getInstance().getSpecies("formica-rufa");
         Colony colony = new Colony(species, 16f, 16f, 5f);
         colony.setTerrarium(terrarium);
         terrarium.addColony(colony);
@@ -116,9 +115,9 @@ public class TrophallaxisTandemAndNavigationTest {
     @Test
     @DisplayName("4. Celestial Polarized Light & Path Integration: Displacement vector and return heading")
     void testPathIntegrationDeadReckoning() {
-        UUID colonyId = UUID.randomUUID();
+        java.util.UUID colonyId = java.util.UUID.randomUUID();
         Individual desertAnt = new Individual(colonyId, Individual.Caste.FORAGER, 50f, 50f, 0f);
-        desertAnt.setSpecies(new CataglyphisBombycina());
+        desertAnt.setSpecies(SpeciesRegistry.getInstance().getSpecies("cataglyphis-bombycina"));
 
         desertAnt.resetPathIntegration();
         assertEquals(0.0f, desertAnt.getPathIntegrationDistance(), 0.001f);

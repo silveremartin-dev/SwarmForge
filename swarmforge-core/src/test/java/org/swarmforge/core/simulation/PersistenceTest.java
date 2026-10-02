@@ -5,7 +5,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -24,7 +24,7 @@ class PersistenceTest {
         Simulation sim = new Simulation(terrarium);
         sim.getPheromoneGrid().setMaxHeightAboveGround(100);
 
-        CustomSpecies species = new CustomSpecies();
+        DefaultSpecies species = new DefaultSpecies();
         species.setCommonName("Test Ant");
         species.setScientificName("Testus");
         Colony colony = new Colony(species, 50, 50, 10);

@@ -562,13 +562,9 @@ public class WeatherVisualizer {
             }
         }
 
-        // 3. Clouds Drift Motion along Wind Direction
+        // 3. Clouds (Stationary atmospheric layer)
         if (cloudsNode != null) {
             cloudsNode.setCullHint(!showClouds ? com.jme3.scene.Spatial.CullHint.Always : com.jme3.scene.Spatial.CullHint.Never);
-            if (showClouds && tpf > 0.0001f) {
-                // Translation along wind vector + slow orbital rotation
-                cloudsNode.rotate(0, windSpeedMs * 0.0008f * tpf, 0);
-            }
         }
 
         // 4. Precipitation Slant & Kinematics (Rain, Snow, Hail)

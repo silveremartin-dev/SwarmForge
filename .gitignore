@@ -73,3 +73,11 @@ captures/
 logs/
 **/logs/
 in/
+
+# Runtime Data Outputs (Batch Results, Run Logs, Checkpoints)
+data/results/*
+!data/results/.gitkeep
+data/logs/*
+!data/logs/.gitkeep
+data/checkpoints/*
+!data/checkpoints/.gitkeep

@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import org.swarmforge.client.util.NotificationOverlay;
+import org.swarmforge.core.domain.AccessoryPreset;
 
 /**
  * Dedicated Editor Pane for Accessory & Predator Species (Flora, Aphids, Prey Insects, Predators, Pathogens, Fungi, Detritivores)
@@ -34,6 +35,7 @@ import org.swarmforge.client.util.NotificationOverlay;
 public class AccessorySpeciesEditorPane extends VBox {
 
     private final I18nManager i18n = I18nManager.getInstance();
+    private final AccessoryPresetManager presetManager = new AccessoryPresetManager();
 
     // UI Controls - Header & Toolbar
     private Label headerLabel;
@@ -229,31 +231,7 @@ public class AccessorySpeciesEditorPane extends VBox {
         lblPreset.getStyleClass().add("bold-label");
         lblPreset.setGraphic(new FontIcon(Feather.SLIDERS));
 
-        accessoryPresetCombo = new ComboBox<>(FXCollections.observableArrayList(
-                "Seed-Bearing Grasses (Messor / Seeds & Biomass)",
-                "Nectar Flowers & EFN (Acacia Nectaries)",
-                "Humid Moss (Polytrichum / Substrate)",
-                "Pine Aphids (Cinara pini / Honeydew)",
-                "Root Mealybugs (Eurhizococcus / Subterranean)",
-                "Mealworm Larvae (Protein Prey)",
-                "Termite Prey (Microtermes / Food)",
-                "Antlion Pitfall (Myrmeleon / Funnel Trap)",
-                "Jumping Spider (Salticidae / Ambush)",
-                "Asian Hornet (Flying Bee Hunter)",
-                "European Bee-eater Wasp (Philanthus / Bee Hunter)",
-                "European Honey Buzzard (Raptor Wasp Hunter)",
-                "Megaponera Termite Raider (Termite Specialist)",
-                "Black Woodpecker (Bark Beetle & Ant Predator)",
-                "Tamandua Anteater (Direct Nest Raid)",
-                "Parasitoid Wasp (Eucharitidae / Egg-laying)",
-                "Entomopathogenic Fungus (Zombie Cordyceps)",
-                "Parasitic Mite (Varroa destructor)",
-                "Intestinal Microsporidian (Nosema bombi)",
-                "Atta Symbiotic Fungus (Leucoagaricus)",
-                "Termite Cultivated Fungus (Termitomyces)",
-                "Garbage Springtails (Detritivore Cleaner)",
-                "Myrmecophilous Beetle (Lomechusa Commensal)"
-        ));
+        accessoryPresetCombo = new ComboBox<>(FXCollections.observableArrayList(presetManager.getPresetNames()));
         FXCollections.sort(accessoryPresetCombo.getItems());
         accessoryPresetCombo.setEditable(true);
         accessoryPresetCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
@@ -634,18 +612,43 @@ public class AccessorySpeciesEditorPane extends VBox {
         String fieldText = accessoryNameField != null ? accessoryNameField.getText().trim() : "";
         String name = !editedText.isEmpty() ? editedText : (!fieldText.isEmpty() ? fieldText : "swarmforge-accessory-custom");
 
-        if (accessoryPresetCombo.getItems().contains(name)) {
-            Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
-                Alert.AlertType.CONFIRMATION,
-                String.format(i18n.get("preset.delete.confirm"), name)
-            );
-            confirmAlert.setTitle(i18n.get("preset.delete.title"));
-            confirmAlert.setHeaderText(i18n.get("accessory.delete.confirm_header"));
-            java.util.Optional<ButtonType> res = confirmAlert.showAndWait();
-            if (res.isEmpty() || res.get() != ButtonType.OK) {
-                return;
+        AccessoryPreset preset = new AccessoryPreset();
+        preset.setId(name.toLowerCase().replaceAll("[^a-z0-9]+", "-"));
+        preset.setName(name);
+        preset.setBuiltIn(false);
+        preset.setAuthor("User Custom");
+
+        try {
+            if (categoryCombo != null && categoryCombo.getValue() != null) {
+                preset.setCategory(org.swarmforge.core.domain.AccessoryPreset.Category.valueOf(categoryCombo.getValue()));
             }
+        } catch (Exception ignored) {}
+
+        if (biomeCombo != null) preset.setBiome(biomeCombo.getValue());
+        if (latitudeField != null) { try { preset.setLatitude(Double.parseDouble(latitudeField.getText())); } catch (Exception ignored) {} }
+        if (minTempField != null) { try { preset.setMinTempCelsius(Float.parseFloat(minTempField.getText())); } catch (Exception ignored) {} }
+        if (optTempField != null) { try { preset.setOptimalTempCelsius(Float.parseFloat(optTempField.getText())); } catch (Exception ignored) {} }
+        if (maxTempField != null) { try { preset.setMaxTempCelsius(Float.parseFloat(maxTempField.getText())); } catch (Exception ignored) {} }
+        if (growthRateField != null) { try { preset.setGrowthRate(Float.parseFloat(growthRateField.getText())); } catch (Exception ignored) {} }
+        if (initialBiomassDensityField != null) { try { preset.setInitialBiomassDensity(Float.parseFloat(initialBiomassDensityField.getText())); } catch (Exception ignored) {} }
+        if (initialPopulationDensityField != null) { try { preset.setInitialPopulationDensity(Float.parseFloat(initialPopulationDensityField.getText())); } catch (Exception ignored) {} }
+        if (diapauseCheck != null) preset.setDiapause(diapauseCheck.isSelected());
+
+        if (hemisphereCombo != null) {
+            int idx = hemisphereCombo.getSelectionModel().getSelectedIndex();
+            preset.setHemisphere(idx == 1 ? "SOUTHERN" : (idx == 2 ? "EQUATORIAL" : "NORTHERN"));
         }
+        if (seasonSlider1 != null) preset.setSeasonMultiplierSpring((float) seasonSlider1.getValue());
+        if (seasonSlider2 != null) preset.setSeasonMultiplierSummer((float) seasonSlider2.getValue());
+        if (seasonSlider3 != null) preset.setSeasonMultiplierAutumn((float) seasonSlider3.getValue());
+        if (seasonSlider4 != null) preset.setSeasonMultiplierWinter((float) seasonSlider4.getValue());
+
+        if (killRateField != null) { try { preset.setKillRate(Float.parseFloat(killRateField.getText())); } catch (Exception ignored) {} }
+        if (transmissionR0Field != null) { try { preset.setTransmissionR0(Float.parseFloat(transmissionR0Field.getText())); } catch (Exception ignored) {} }
+        if (incubationDaysField != null) { try { preset.setIncubationDays(Float.parseFloat(incubationDaysField.getText())); } catch (Exception ignored) {} }
+        if (mortalityRateField != null) { try { preset.setMortalityRate(Float.parseFloat(mortalityRateField.getText())); } catch (Exception ignored) {} }
+
+        presetManager.savePreset(name, preset);
 
         isUpdatingFields = true;
         try {
@@ -668,7 +671,20 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         File f = chooser.showOpenDialog(getScene().getWindow());
         if (f != null) {
-            NotificationOverlay.show(this, i18n.get("nest.preset.import") + " : " + f.getName(), NotificationOverlay.NotificationType.INFO);
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                org.swarmforge.core.domain.AccessoryPreset p = mapper.readValue(f, org.swarmforge.core.domain.AccessoryPreset.class);
+                String name = p.getName() != null ? p.getName() : p.getId();
+                presetManager.savePreset(name, p);
+                if (!accessoryPresetCombo.getItems().contains(name)) {
+                    accessoryPresetCombo.getItems().add(name);
+                }
+                accessoryPresetCombo.getSelectionModel().select(name);
+                applyAccessoryPreset(name);
+                NotificationOverlay.show(this, i18n.get("nest.preset.import") + " : " + f.getName(), NotificationOverlay.NotificationType.SUCCESS);
+            } catch (Exception ex) {
+                NotificationOverlay.show(this, "Import error: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
+            }
         }
     }
 
@@ -680,26 +696,41 @@ public class AccessorySpeciesEditorPane extends VBox {
 
         File f = chooser.showSaveDialog(getScene().getWindow());
         if (f != null) {
-            NotificationOverlay.show(this, i18n.get("nest.preset.export") + " : " + f.getName(), NotificationOverlay.NotificationType.SUCCESS);
+            try {
+                String name = accessoryNameField != null ? accessoryNameField.getText().trim() : "custom";
+                org.swarmforge.core.domain.AccessoryPreset p = presetManager.get(name).orElseGet(() -> {
+                    org.swarmforge.core.domain.AccessoryPreset np = new org.swarmforge.core.domain.AccessoryPreset();
+                    np.setId(name.toLowerCase().replaceAll("[^a-z0-9]+", "-"));
+                    np.setName(name);
+                    return np;
+                });
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper()
+                        .enable(com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT);
+                mapper.writeValue(f, p);
+                NotificationOverlay.show(this, i18n.get("nest.preset.export") + " : " + f.getName(), NotificationOverlay.NotificationType.SUCCESS);
+            } catch (Exception ex) {
+                NotificationOverlay.show(this, "Export error: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
+            }
         }
     }
 
     private void handleDeletePreset() {
+        String selected = accessoryPresetCombo.getValue();
+        if (selected == null || selected.isEmpty()) return;
+
         Alert confirmAlert = org.swarmforge.client.util.ThemeManager.createAlert(
             Alert.AlertType.CONFIRMATION,
-            String.format(i18n.get("preset.delete.confirm"), accessoryPresetCombo.getValue())
+            String.format(i18n.get("preset.delete.confirm"), selected)
         );
         confirmAlert.setTitle(i18n.get("preset.delete.title"));
         confirmAlert.setHeaderText(i18n.get("accessory.delete.confirm_header"));
 
         confirmAlert.showAndWait().ifPresent(buttonType -> {
             if (buttonType == ButtonType.OK) {
-                String selected = accessoryPresetCombo.getValue();
-                if (selected != null) {
-                    accessoryPresetCombo.getItems().remove(selected);
-                    if (!accessoryPresetCombo.getItems().isEmpty()) {
-                        accessoryPresetCombo.getSelectionModel().selectFirst();
-                    }
+                presetManager.deletePreset(selected);
+                accessoryPresetCombo.getItems().remove(selected);
+                if (!accessoryPresetCombo.getItems().isEmpty()) {
+                    accessoryPresetCombo.getSelectionModel().selectFirst();
                 }
                 NotificationOverlay.show(this, i18n.get("preset.delete.title"), NotificationOverlay.NotificationType.INFO);
             }
@@ -760,234 +791,61 @@ public class AccessorySpeciesEditorPane extends VBox {
 
     private void applyAccessoryPreset(String name) {
         if (name == null || name.isEmpty()) return;
+        org.swarmforge.core.domain.AccessoryPreset p = presetManager.get(name).orElse(null);
+        if (p == null) return;
+
         isUpdatingFields = true;
         try {
-            if (name.contains("Grasses") || name.contains("Graminées")) {
-                accessoryNameField.setText("Seed-Bearing Grasses (Messor)");
-                categoryCombo.setValue("FLORA");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("45.0");
-                minTempField.setText("5.0");
-                optTempField.setText("22.0");
-                maxTempField.setText("35.0");
-                growthRateField.setText("1.2");
-                initialBiomassDensityField.setText("150.0");
-                initialPopulationDensityField.setText("25.0");
-                diapauseCheck.setSelected(true);
-                hemisphereCombo.getSelectionModel().select(0);
-                seasonSlider1.setValue(0.8); seasonSlider2.setValue(1.0); seasonSlider3.setValue(0.6); seasonSlider4.setValue(0.1);
-                targetCasteCombo.setValue("All Castes");
-                huntModeCombo.setValue("Direct Attack (Bird / Anteater)");
-                killRateField.setText("0.0");
-                pathogenVectorCombo.setValue("Airborne Spores (Cordyceps)");
-                transmissionR0Field.setText("0.0"); incubationDaysField.setText("0.0"); mortalityRateField.setText("0.0");
-            } else if (name.contains("Aphids") || name.contains("Pucerons")) {
-                accessoryNameField.setText("Pine Aphids (Cinara / Honeydew)");
-                categoryCombo.setValue("APHID_MUTUALIST");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("48.5");
-                minTempField.setText("8.0"); optTempField.setText("20.0"); maxTempField.setText("30.0");
-                growthRateField.setText("2.5");
-                initialBiomassDensityField.setText("80.0"); initialPopulationDensityField.setText("100.0");
-                diapauseCheck.setSelected(true);
-                hemisphereCombo.getSelectionModel().select(0);
-                seasonSlider1.setValue(0.7); seasonSlider2.setValue(1.0); seasonSlider3.setValue(0.5); seasonSlider4.setValue(0.0);
-                targetCasteCombo.setValue("Workers");
-                huntModeCombo.setValue("Ambush / Stalking (Spider)");
-                killRateField.setText("0.2");
-                pathogenVectorCombo.setValue("Grooming / Allogrooming");
-                transmissionR0Field.setText("1.2"); incubationDaysField.setText("5.0"); mortalityRateField.setText("5.0");
-            } else if (name.contains("Mealworm") || name.contains("Ténébrion")) {
-                accessoryNameField.setText("Mealworm Larvae (Protein Prey)");
-                categoryCombo.setValue("PREY_INSECT");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("43.0");
-                minTempField.setText("10.0"); optTempField.setText("25.0"); maxTempField.setText("38.0");
-                growthRateField.setText("3.0");
-                initialBiomassDensityField.setText("200.0"); initialPopulationDensityField.setText("50.0");
-                diapauseCheck.setSelected(false);
-                seasonSlider1.setValue(0.6); seasonSlider2.setValue(0.9); seasonSlider3.setValue(0.7); seasonSlider4.setValue(0.2);
-                targetCasteCombo.setValue("Workers");
-                huntModeCombo.setValue("Direct Attack (Bird / Anteater)");
-                killRateField.setText("1.5");
-                transmissionR0Field.setText("0.0"); incubationDaysField.setText("0.0"); mortalityRateField.setText("0.0");
-            } else if (name.contains("Antlion") || name.contains("Fourmilion")) {
-                accessoryNameField.setText("Antlion Pitfall (Myrmeleon / Predator)");
-                categoryCombo.setValue("PREDATOR");
-                biomeCombo.setValue("MEDITERRANEAN");
-                latitudeField.setText("38.0");
-                minTempField.setText("12.0"); optTempField.setText("28.0"); maxTempField.setText("42.0");
-                growthRateField.setText("0.5");
-                initialBiomassDensityField.setText("20.0"); initialPopulationDensityField.setText("5.0");
-                diapauseCheck.setSelected(true);
-                seasonSlider1.setValue(0.5); seasonSlider2.setValue(1.0); seasonSlider3.setValue(0.8); seasonSlider4.setValue(0.1);
-                targetCasteCombo.setValue("Workers");
-                huntModeCombo.setValue("Trap / Funnel (Antlion)");
-                killRateField.setText("5.0");
-                transmissionR0Field.setText("0.0"); incubationDaysField.setText("0.0"); mortalityRateField.setText("0.0");
-            } else if (name.contains("Cordyceps") || name.contains("Entomopathogenic") || name.contains("Entomopathogène")) {
-                accessoryNameField.setText("Entomopathogenic Fungus (Cordyceps)");
-                categoryCombo.setValue("PATHOGEN_PARASITE");
-                biomeCombo.setValue("TROPICAL_RAINFOREST");
-                latitudeField.setText("3.0");
-                minTempField.setText("15.0"); optTempField.setText("26.0"); maxTempField.setText("34.0");
-                growthRateField.setText("4.0");
-                initialBiomassDensityField.setText("10.0"); initialPopulationDensityField.setText("30.0");
-                diapauseCheck.setSelected(false);
-                seasonSlider1.setValue(1.0); seasonSlider2.setValue(0.8); seasonSlider3.setValue(1.0); seasonSlider4.setValue(0.8);
-                targetCasteCombo.setValue("Workers");
-                huntModeCombo.setValue("Parasitoid (Internal Egg-laying / Wasp)");
-                killRateField.setText("2.0");
-                pathogenVectorCombo.setValue("Airborne Spores (Cordyceps)");
-                transmissionR0Field.setText("3.8"); incubationDaysField.setText("3.0"); mortalityRateField.setText("25.0");
-            } else if (name.contains("Varroa") || name.contains("Mite") || name.contains("Acarien")) {
-                accessoryNameField.setText("Parasitic Mite (Varroa destructor)");
-                categoryCombo.setValue("PATHOGEN_PARASITE");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("45.0");
-                minTempField.setText("12.0"); optTempField.setText("24.0"); maxTempField.setText("36.0");
-                growthRateField.setText("2.8");
-                initialBiomassDensityField.setText("5.0"); initialPopulationDensityField.setText("80.0");
-                diapauseCheck.setSelected(false);
-                seasonSlider1.setValue(0.7); seasonSlider2.setValue(1.0); seasonSlider3.setValue(0.6); seasonSlider4.setValue(0.2);
-                targetCasteCombo.setValue("Brood / Pupae");
-                huntModeCombo.setValue("Parasitoid (Internal Egg-laying / Wasp)");
-                killRateField.setText("1.0");
-                pathogenVectorCombo.setValue("Soil & Gallery Contact");
-                transmissionR0Field.setText("2.8"); incubationDaysField.setText("2.0"); mortalityRateField.setText("15.0");
-            } else if (name.contains("Moss") || name.contains("Mousse")) {
-                accessoryNameField.setText("Humid Moss (Polytrichum / Substrate)");
-                categoryCombo.setValue("FLORA");
-                biomeCombo.setValue("TAIGA_BOREAL");
-                latitudeField.setText("60.0");
-                minTempField.setText("2.0"); optTempField.setText("18.0"); maxTempField.setText("28.0");
-                growthRateField.setText("0.8");
-                initialBiomassDensityField.setText("300.0"); initialPopulationDensityField.setText("10.0");
-                diapauseCheck.setSelected(true);
-                seasonSlider1.setValue(0.9); seasonSlider2.setValue(0.7); seasonSlider3.setValue(0.4); seasonSlider4.setValue(0.1);
-                targetCasteCombo.setValue("All Castes");
-                huntModeCombo.setValue("Direct Attack (Bird / Anteater)");
-                killRateField.setText("0.0");
-            } else if (name.contains("Nectaries") || name.contains("Nectaires")) {
-                accessoryNameField.setText("Nectar Flowers & Nectaries (Acacia EFN)");
-                categoryCombo.setValue("FLORA");
-                biomeCombo.setValue("MEDITERRANEAN");
-                latitudeField.setText("35.0");
-                minTempField.setText("10.0"); optTempField.setText("25.0"); maxTempField.setText("38.0");
-                growthRateField.setText("1.8"); initialBiomassDensityField.setText("180.0"); initialPopulationDensityField.setText("40.0");
-                diapauseCheck.setSelected(false);
-            } else if (name.contains("Mealybugs") || name.contains("Cochenilles")) {
-                accessoryNameField.setText("Root Mealybugs (Eurhizococcus)");
-                categoryCombo.setValue("APHID_MUTUALIST");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("44.0");
-                minTempField.setText("6.0"); optTempField.setText("21.0"); maxTempField.setText("32.0");
-                growthRateField.setText("1.5"); initialBiomassDensityField.setText("60.0"); initialPopulationDensityField.setText("120.0");
-            } else if (name.contains("Termite Prey") || name.contains("Termites Proies")) {
-                accessoryNameField.setText("Termite Prey (Microtermes)");
-                categoryCombo.setValue("PREY_INSECT");
-                biomeCombo.setValue("TROPICAL_RAINFOREST");
-                latitudeField.setText("5.0");
-                minTempField.setText("18.0"); optTempField.setText("28.0"); maxTempField.setText("36.0");
-                growthRateField.setText("3.5"); initialBiomassDensityField.setText("250.0"); initialPopulationDensityField.setText("300.0");
-            } else if (name.contains("Spider") || name.contains("Araignée")) {
-                accessoryNameField.setText("Jumping Spider (Salticidae)");
-                categoryCombo.setValue("PREDATOR");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("46.0");
-                minTempField.setText("8.0"); optTempField.setText("23.0"); maxTempField.setText("35.0");
-                growthRateField.setText("0.6"); initialBiomassDensityField.setText("15.0"); initialPopulationDensityField.setText("8.0");
-            } else if (name.contains("Hornet") || name.contains("Frelon")) {
-                accessoryNameField.setText("Asian Hornet (Bee Predator)");
-                categoryCombo.setValue("PREDATOR");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("44.5");
-                minTempField.setText("10.0"); optTempField.setText("25.0"); maxTempField.setText("36.0");
-                growthRateField.setText("1.4"); initialBiomassDensityField.setText("25.0"); initialPopulationDensityField.setText("12.0");
-                targetCasteCombo.setValue("Workers"); huntModeCombo.setValue("Direct Attack (Bird / Anteater)"); killRateField.setText("8.0");
-            } else if (name.contains("Philanthus") || name.contains("Philanthe")) {
-                accessoryNameField.setText("European Bee-eater Wasp (Philanthus)");
-                categoryCombo.setValue("PREDATOR");
-                biomeCombo.setValue("MEDITERRANEAN");
-                latitudeField.setText("42.0");
-                minTempField.setText("12.0"); optTempField.setText("26.0"); maxTempField.setText("38.0");
-                growthRateField.setText("1.0"); initialBiomassDensityField.setText("10.0"); initialPopulationDensityField.setText("6.0");
-                targetCasteCombo.setValue("Workers"); huntModeCombo.setValue("Ambush / Stalking (Spider)"); killRateField.setText("6.0");
-            } else if (name.contains("Buzzard") || name.contains("Bondrée")) {
-                accessoryNameField.setText("European Honey Buzzard (Raptor Wasp Hunter)");
-                categoryCombo.setValue("PREDATOR");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("49.0");
-                minTempField.setText("8.0"); optTempField.setText("22.0"); maxTempField.setText("32.0");
-                growthRateField.setText("0.2"); initialBiomassDensityField.setText("2.0"); initialPopulationDensityField.setText("2.0");
-                targetCasteCombo.setValue("All Castes"); huntModeCombo.setValue("Direct Attack (Bird / Anteater)"); killRateField.setText("35.0");
-            } else if (name.contains("Megaponera")) {
-                accessoryNameField.setText("Megaponera Termite Raider (Termite Raid)");
-                categoryCombo.setValue("PREDATOR");
-                biomeCombo.setValue("TROPICAL_RAINFOREST");
-                latitudeField.setText("-1.0");
-                minTempField.setText("20.0"); optTempField.setText("29.0"); maxTempField.setText("38.0");
-                growthRateField.setText("2.5"); initialBiomassDensityField.setText("80.0"); initialPopulationDensityField.setText("150.0");
-                targetCasteCombo.setValue("Workers"); huntModeCombo.setValue("Direct Attack (Bird / Anteater)"); killRateField.setText("12.0");
-            } else if (name.contains("Woodpecker") || name.contains("Pic Noir")) {
-                accessoryNameField.setText("Black Woodpecker (Bark Beetle Predator)");
-                categoryCombo.setValue("PREDATOR");
-                biomeCombo.setValue("TAIGA_BOREAL");
-                latitudeField.setText("58.0");
-                minTempField.setText("-5.0"); optTempField.setText("18.0"); maxTempField.setText("30.0");
-                growthRateField.setText("0.3"); initialBiomassDensityField.setText("4.0"); initialPopulationDensityField.setText("3.0");
-                targetCasteCombo.setValue("Workers"); huntModeCombo.setValue("Direct Attack (Bird / Anteater)"); killRateField.setText("20.0");
-            } else if (name.contains("Tamandua")) {
-                accessoryNameField.setText("Tamandua Anteater (Direct Nest Raid)");
-                categoryCombo.setValue("PREDATOR");
-                biomeCombo.setValue("TROPICAL_RAINFOREST");
-                latitudeField.setText("-2.0");
-                minTempField.setText("20.0"); optTempField.setText("30.0"); maxTempField.setText("40.0");
-                growthRateField.setText("0.1"); initialBiomassDensityField.setText("1.0"); initialPopulationDensityField.setText("1.0");
-                killRateField.setText("25.0");
-            } else if (name.contains("Parasitoid") || name.contains("Guêpe Parasitoïde")) {
-                accessoryNameField.setText("Parasitoid Wasp (Eucharitidae)");
-                categoryCombo.setValue("PATHOGEN_PARASITE");
-                biomeCombo.setValue("TROPICAL_RAINFOREST");
-                latitudeField.setText("8.0");
-                minTempField.setText("16.0"); optTempField.setText("27.0"); maxTempField.setText("35.0");
-                growthRateField.setText("2.0"); initialBiomassDensityField.setText("5.0"); initialPopulationDensityField.setText("40.0");
-            } else if (name.contains("Microsporidian") || name.contains("Microsporidie") || name.contains("Nosema")) {
-                accessoryNameField.setText("Intestinal Microsporidian (Nosema bombi)");
-                categoryCombo.setValue("PATHOGEN_PARASITE");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("50.0");
-                minTempField.setText("4.0"); optTempField.setText("18.0"); maxTempField.setText("30.0");
-                growthRateField.setText("3.2"); initialBiomassDensityField.setText("2.0"); initialPopulationDensityField.setText("150.0");
-            } else if (name.contains("Leucoagaricus") || name.contains("Symbiotic Atta")) {
-                accessoryNameField.setText("Atta Symbiotic Fungus (Leucoagaricus)");
-                categoryCombo.setValue("FUNGI");
-                biomeCombo.setValue("TROPICAL_RAINFOREST");
-                latitudeField.setText("0.0");
-                minTempField.setText("18.0"); optTempField.setText("26.0"); maxTempField.setText("32.0");
-                growthRateField.setText("4.5"); initialBiomassDensityField.setText("400.0"); initialPopulationDensityField.setText("1.0");
-            } else if (name.contains("Termitomyces")) {
-                accessoryNameField.setText("Termite Cultivated Fungus (Termitomyces)");
-                categoryCombo.setValue("FUNGI");
-                biomeCombo.setValue("TROPICAL_RAINFOREST");
-                latitudeField.setText("-5.0");
-                minTempField.setText("19.0"); optTempField.setText("27.0"); maxTempField.setText("33.0");
-                growthRateField.setText("4.0"); initialBiomassDensityField.setText("350.0"); initialPopulationDensityField.setText("1.0");
-            } else if (name.contains("Springtails") || name.contains("Collemboles")) {
-                accessoryNameField.setText("Garbage Springtails (Detritivore Cleaner)");
-                categoryCombo.setValue("DETRITIVORE");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("48.0");
-                minTempField.setText("5.0"); optTempField.setText("19.0"); maxTempField.setText("28.0");
-                growthRateField.setText("2.2"); initialBiomassDensityField.setText("50.0"); initialPopulationDensityField.setText("200.0");
-            } else if (name.contains("Myrmecophilous") || name.contains("Staphylin") || name.contains("Lomechusa")) {
-                accessoryNameField.setText("Myrmecophilous Beetle (Lomechusa Commensal)");
-                categoryCombo.setValue("DETRITIVORE");
-                biomeCombo.setValue("TEMPERATE_DECIDUOUS");
-                latitudeField.setText("47.0");
-                minTempField.setText("7.0"); optTempField.setText("20.0"); maxTempField.setText("30.0");
-                growthRateField.setText("1.1"); initialBiomassDensityField.setText("15.0"); initialPopulationDensityField.setText("30.0");
+            if (accessoryNameField != null) accessoryNameField.setText(p.getName() != null ? p.getName() : p.getId());
+            if (categoryCombo != null && p.getCategory() != null) categoryCombo.setValue(p.getCategory().name());
+            if (biomeCombo != null && p.getBiome() != null) biomeCombo.setValue(p.getBiome());
+            if (latitudeField != null) latitudeField.setText(String.valueOf(p.getLatitude()));
+            if (minTempField != null) minTempField.setText(String.valueOf(p.getMinTempCelsius()));
+            if (optTempField != null) optTempField.setText(String.valueOf(p.getOptimalTempCelsius()));
+            if (maxTempField != null) maxTempField.setText(String.valueOf(p.getMaxTempCelsius()));
+            if (growthRateField != null) growthRateField.setText(String.valueOf(p.getGrowthRate()));
+            if (initialBiomassDensityField != null) initialBiomassDensityField.setText(String.valueOf(p.getInitialBiomassDensity()));
+            if (initialPopulationDensityField != null) initialPopulationDensityField.setText(String.valueOf(p.getInitialPopulationDensity()));
+            if (diapauseCheck != null) diapauseCheck.setSelected(p.isDiapause());
+
+            if (hemisphereCombo != null && p.getHemisphere() != null) {
+                if ("SOUTHERN".equalsIgnoreCase(p.getHemisphere())) hemisphereCombo.getSelectionModel().select(1);
+                else if ("EQUATORIAL".equalsIgnoreCase(p.getHemisphere())) hemisphereCombo.getSelectionModel().select(2);
+                else hemisphereCombo.getSelectionModel().select(0);
             }
+            if (seasonSlider1 != null) seasonSlider1.setValue(p.getSeasonMultiplierSpring());
+            if (seasonSlider2 != null) seasonSlider2.setValue(p.getSeasonMultiplierSummer());
+            if (seasonSlider3 != null) seasonSlider3.setValue(p.getSeasonMultiplierAutumn());
+            if (seasonSlider4 != null) seasonSlider4.setValue(p.getSeasonMultiplierWinter());
+
+            if (targetCasteCombo != null && p.getTargetCaste() != null) {
+                targetCasteCombo.setValue(switch (p.getTargetCaste()) {
+                    case WORKERS -> "Workers";
+                    case BROOD_PUPAE -> "Brood / Pupae";
+                    case QUEENS_ALATES -> "Queens / Alates";
+                    default -> "All Castes";
+                });
+            }
+            if (huntModeCombo != null && p.getHuntMode() != null) {
+                huntModeCombo.setValue(switch (p.getHuntMode()) {
+                    case AMBUSH -> "Ambush / Stalking (Spider)";
+                    case PARASITOID -> "Parasitoid (Internal Egg-laying / Wasp)";
+                    case TRAP_FUNNEL -> "Trap / Funnel (Antlion)";
+                    default -> "Direct Attack (Bird / Anteater)";
+                });
+            }
+            if (killRateField != null) killRateField.setText(String.valueOf(p.getKillRate()));
+            if (pathogenVectorCombo != null && p.getPathogenVector() != null) {
+                pathogenVectorCombo.setValue(switch (p.getPathogenVector()) {
+                    case CONTAMINATED_FOOD -> "Contaminated Food";
+                    case GROOMING -> "Grooming / Allogrooming";
+                    case SOIL_CONTACT -> "Soil & Gallery Contact";
+                    default -> "Airborne Spores (Cordyceps)";
+                });
+            }
+            if (transmissionR0Field != null) transmissionR0Field.setText(String.valueOf(p.getTransmissionR0()));
+            if (incubationDaysField != null) incubationDaysField.setText(String.valueOf(p.getIncubationDays()));
+            if (mortalityRateField != null) mortalityRateField.setText(String.valueOf(p.getMortalityRate()));
         } finally {
             isUpdatingFields = false;
         }

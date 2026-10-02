@@ -14,7 +14,7 @@ import org.swarmforge.core.domain.Colony;
 
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.domain.TerrariumCell;
-import org.swarmforge.core.species.CustomSpecies;
+import org.swarmforge.core.species.DefaultSpecies;
 import org.swarmforge.core.event.SimulationEvent;
 
 /**
@@ -50,7 +50,7 @@ public class SimulationTest {
 
     @Test
     void testAddColony() {
-        CustomSpecies species = new CustomSpecies();
+        DefaultSpecies species = new DefaultSpecies();
         species.setScientificName("Testus antus");
         Colony colony = new Colony(species, 25f, 25f, 5f);
         simulation.addColony(colony);

@@ -34,11 +34,11 @@ public final class BrainPluginRegistry {
     private static final BrainPluginRegistry INSTANCE = new BrainPluginRegistry();
 
     public interface RegistryListener {
-        void onBrainRegistered(CustomBrainDescriptor descriptor);
+        void onBrainRegistered(BrainDescriptor descriptor);
         void onBrainUnregistered(String brainId);
     }
 
-    private final Map<String, CustomBrainDescriptor> registeredBrains = new ConcurrentHashMap<>();
+    private final Map<String, BrainDescriptor> registeredBrains = new ConcurrentHashMap<>();
     private final List<RegistryListener> listeners = new CopyOnWriteArrayList<>();
 
     private BrainPluginRegistry() {
@@ -61,11 +61,11 @@ public final class BrainPluginRegistry {
     }
 
     private void registerBuiltInArchitectures() {
-        registerBrain(new CustomBrainDescriptor(
+        registerBrain(new BrainDescriptor(
                 "BEHAVIOR_TREE",
                 "Behavior Tree (Hierarchical Selector/Sequence)",
                 "Standard modular behavior tree with reactive node evaluation and state execution.",
-                CustomBrainDescriptor.BrainSourceType.BUILTIN,
+                BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
                 "1.0.0-beta.1",
@@ -73,11 +73,11 @@ public final class BrainPluginRegistry {
                 BehaviorTreeArchitecture::new
         ));
 
-        registerBrain(new CustomBrainDescriptor(
+        registerBrain(new BrainDescriptor(
                 "FINITE_STATE_MACHINE",
                 "Finite State Machine (FSM)",
                 "Fast state machine with discrete transition matrices and biological triggers.",
-                CustomBrainDescriptor.BrainSourceType.BUILTIN,
+                BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
                 "1.0.0-beta.1",
@@ -85,11 +85,11 @@ public final class BrainPluginRegistry {
                 FSMArchitecture::new
         ));
 
-        registerBrain(new CustomBrainDescriptor(
+        registerBrain(new BrainDescriptor(
                 "BDI",
                 "BDI (Belief-Desire-Intention)",
                 "Cognitive architecture driven by internal mental states, desires, and tactical intentions.",
-                CustomBrainDescriptor.BrainSourceType.BUILTIN,
+                BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
                 "1.0.0-beta.1",
@@ -97,11 +97,11 @@ public final class BrainPluginRegistry {
                 BDIArchitecture::new
         ));
 
-        registerBrain(new CustomBrainDescriptor(
+        registerBrain(new BrainDescriptor(
                 "FUZZY_LOGIC",
                 "Fuzzy Logic Engine",
                 "Continuous membership functions for adaptive thresholding and environmental fuzzy inference.",
-                CustomBrainDescriptor.BrainSourceType.BUILTIN,
+                BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
                 "1.0.0-beta.1",
@@ -109,11 +109,11 @@ public final class BrainPluginRegistry {
                 FuzzyLogicArchitecture::new
         ));
 
-        registerBrain(new CustomBrainDescriptor(
+        registerBrain(new BrainDescriptor(
                 "BLACKBOARD",
                 "Blackboard System (Shared Knowledge Base)",
                 "Opportunistic multi-agent blackboard system communicating via shared social memory.",
-                CustomBrainDescriptor.BrainSourceType.BUILTIN,
+                BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
                 "1.0.0-beta.1",
@@ -121,11 +121,11 @@ public final class BrainPluginRegistry {
                 FSMArchitecture::new
         ));
 
-        registerBrain(new CustomBrainDescriptor(
+        registerBrain(new BrainDescriptor(
                 "HYBRID",
                 "Hybrid Cognitive Architecture (Multi-Engine)",
                 "Hybrid model combining reactive FSM reflexes, fuzzy transitions, and neural policy reinforcement.",
-                CustomBrainDescriptor.BrainSourceType.BUILTIN,
+                BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
                 "1.0.0-beta.1",
@@ -133,11 +133,11 @@ public final class BrainPluginRegistry {
                 org.swarmforge.core.behavior.rl.RLArchitecture::new
         ));
 
-        registerBrain(new CustomBrainDescriptor(
+        registerBrain(new BrainDescriptor(
                 "NEURAL_NETWORK",
                 "Spiking Neural Network / Default ONNX Brain",
                 "Deep learning inference using trained neural models via ONNX runtime.",
-                CustomBrainDescriptor.BrainSourceType.BUILTIN,
+                BrainDescriptor.BrainSourceType.BUILTIN,
                 OnnxBrainArchitecture.DEFAULT_MODEL_RESOURCE,
                 "SwarmForge Neuroethology Lab",
                 "2.0.0",
@@ -146,7 +146,7 @@ public final class BrainPluginRegistry {
         ));
     }
 
-    public void registerBrain(CustomBrainDescriptor descriptor) {
+    public void registerBrain(BrainDescriptor descriptor) {
         if (descriptor == null) return;
         registeredBrains.put(descriptor.getId().toUpperCase(), descriptor);
         LOG.info("Registered cognitive brain architecture: " + descriptor);
@@ -161,7 +161,7 @@ public final class BrainPluginRegistry {
 
     public void unregisterBrain(String brainId) {
         if (brainId == null) return;
-        CustomBrainDescriptor removed = registeredBrains.remove(brainId.toUpperCase());
+        BrainDescriptor removed = registeredBrains.remove(brainId.toUpperCase());
         if (removed != null) {
             LOG.info("Unregistered cognitive brain: " + brainId);
             for (RegistryListener l : listeners) {
@@ -174,12 +174,12 @@ public final class BrainPluginRegistry {
         }
     }
 
-    public Optional<CustomBrainDescriptor> getDescriptor(String brainId) {
+    public Optional<BrainDescriptor> getDescriptor(String brainId) {
         if (brainId == null) return Optional.empty();
         return Optional.ofNullable(registeredBrains.get(brainId.toUpperCase()));
     }
 
-    public List<CustomBrainDescriptor> getRegisteredBrains() {
+    public List<BrainDescriptor> getRegisteredBrains() {
         return new ArrayList<>(registeredBrains.values());
     }
 
@@ -200,7 +200,7 @@ public final class BrainPluginRegistry {
         }
 
         String key = brainId.toUpperCase().trim();
-        CustomBrainDescriptor descriptor = registeredBrains.get(key);
+        BrainDescriptor descriptor = registeredBrains.get(key);
         if (descriptor != null) {
             return descriptor.createInstance();
         }
@@ -212,7 +212,7 @@ public final class BrainPluginRegistry {
     /**
      * Imports an external ONNX neural network model file (.onnx).
      */
-    public CustomBrainDescriptor importOnnxModel(File onnxFile, String customName, String description) throws Exception {
+    public BrainDescriptor importOnnxModel(File onnxFile, String customName, String description) throws Exception {
         if (onnxFile == null || !onnxFile.exists()) {
             throw new IllegalArgumentException("ONNX file does not exist: " + onnxFile);
         }
@@ -228,11 +228,11 @@ public final class BrainPluginRegistry {
         }
 
         String absolutePath = onnxFile.getAbsolutePath();
-        CustomBrainDescriptor descriptor = new CustomBrainDescriptor(
+        BrainDescriptor descriptor = new BrainDescriptor(
                 brainId,
                 displayName,
                 desc,
-                CustomBrainDescriptor.BrainSourceType.ONNX_MODEL,
+                BrainDescriptor.BrainSourceType.ONNX_MODEL,
                 absolutePath,
                 "Imported ONNX",
                 "1.0.0",
@@ -247,7 +247,7 @@ public final class BrainPluginRegistry {
     /**
      * Imports a Java bytecode plugin (.jar or .class) containing classes implementing ReasoningArchitecture.
      */
-    public List<CustomBrainDescriptor> importJavaPlugin(File jarFile) throws Exception {
+    public List<BrainDescriptor> importJavaPlugin(File jarFile) throws Exception {
         if (jarFile == null || !jarFile.exists()) {
             throw new IllegalArgumentException("Plugin file does not exist: " + jarFile);
         }
@@ -257,18 +257,18 @@ public final class BrainPluginRegistry {
             throw new IllegalArgumentException("No classes implementing ReasoningArchitecture were found in " + jarFile.getName());
         }
 
-        List<CustomBrainDescriptor> loaded = new ArrayList<>();
+        List<BrainDescriptor> loaded = new ArrayList<>();
         for (Class<? extends ReasoningArchitecture> clazz : brainClasses) {
             String className = clazz.getSimpleName();
             String brainId = "JAVA_" + className.toUpperCase().replaceAll("[^A-Z0-9_]", "_");
             String displayName = "Java Plugin: " + className;
             String desc = "Custom Java reasoning architecture plugin loaded from " + jarFile.getName();
 
-            CustomBrainDescriptor descriptor = new CustomBrainDescriptor(
+            BrainDescriptor descriptor = new BrainDescriptor(
                     brainId,
                     displayName,
                     desc,
-                    CustomBrainDescriptor.BrainSourceType.JAVA_PLUGIN,
+                    BrainDescriptor.BrainSourceType.JAVA_PLUGIN,
                     jarFile.getAbsolutePath(),
                     "External Contributor",
                     "1.0.0",
@@ -293,7 +293,7 @@ public final class BrainPluginRegistry {
     /**
      * Imports a declarative JSON / .sfbrain behavior tree file.
      */
-    public CustomBrainDescriptor importJsonBrain(File jsonFile) throws Exception {
+    public BrainDescriptor importJsonBrain(File jsonFile) throws Exception {
         if (jsonFile == null || !jsonFile.exists()) {
             throw new IllegalArgumentException("JSON brain file does not exist: " + jsonFile);
         }
@@ -304,11 +304,11 @@ public final class BrainPluginRegistry {
         String desc = brain.getDescription() != null && !brain.getDescription().isBlank() ? brain.getDescription() : "Declarative behavior tree loaded from " + jsonFile.getName();
 
         String absolutePath = jsonFile.getAbsolutePath();
-        CustomBrainDescriptor descriptor = new CustomBrainDescriptor(
+        BrainDescriptor descriptor = new BrainDescriptor(
                 brainId,
                 displayName,
                 desc,
-                CustomBrainDescriptor.BrainSourceType.DECLARATIVE_JSON_GRAPH,
+                BrainDescriptor.BrainSourceType.DECLARATIVE_JSON_GRAPH,
                 absolutePath,
                 "Behavior Tree Designer",
                 "1.0.0",

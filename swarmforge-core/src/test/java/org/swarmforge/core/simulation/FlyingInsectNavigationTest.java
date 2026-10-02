@@ -10,8 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.swarmforge.core.domain.*;
-import org.swarmforge.core.species.ApisMellifera;
-import org.swarmforge.core.species.VespulaGermanica;
+import org.swarmforge.core.species.DefaultSpecies;
+import org.swarmforge.core.species.SpeciesRegistry;
 import org.swarmforge.core.world.VegetationSystem;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,7 +37,7 @@ public class FlyingInsectNavigationTest {
     @Test
     @DisplayName("Apis Mellifera: 3D Aerial Flight, Flower Nectar Foraging & Wax Comb Return")
     void testApisMellifera3DFlightAndForaging() {
-        ApisMellifera species = new ApisMellifera();
+        DefaultSpecies species = SpeciesRegistry.getInstance().getSpecies("apis-mellifera");
         assertTrue(species.isWorkersCanFly());
         assertEquals("BEE", species.getInsectType());
 
@@ -87,7 +87,7 @@ public class FlyingInsectNavigationTest {
     @Test
     @DisplayName("Vespula Germanica: Aerial Wasp Predation & Paper Nest Navigation")
     void testVespulaGermanicaWaspFlightAndPredation() {
-        VespulaGermanica waspSpecies = new VespulaGermanica();
+        DefaultSpecies waspSpecies = SpeciesRegistry.getInstance().getSpecies("vespula-germanica");
         assertTrue(waspSpecies.isWorkersCanFly());
 
         Colony waspColony = new Colony(waspSpecies, 50, 50, 20); // Aerial paper nest at z=20
@@ -126,7 +126,7 @@ public class FlyingInsectNavigationTest {
     @Test
     @DisplayName("Wingbeat Frequency Flight Energy Expenditure Scaling")
     void testWingbeatEnergyExpenditure() {
-        ApisMellifera beeSpecies = new ApisMellifera();
+        DefaultSpecies beeSpecies = SpeciesRegistry.getInstance().getSpecies("apis-mellifera");
         Individual bee = new Individual(java.util.UUID.randomUUID(), Individual.Caste.WORKER, 0, 0, 10);
         bee.setSpecies(beeSpecies);
 

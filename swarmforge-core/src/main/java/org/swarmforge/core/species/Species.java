@@ -14,7 +14,8 @@ package org.swarmforge.core.species;
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
-@com.fasterxml.jackson.annotation.JsonTypeInfo(use = com.fasterxml.jackson.annotation.JsonTypeInfo.Id.CLASS, include = com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY, property = "@class")
+@com.fasterxml.jackson.databind.annotation.JsonDeserialize(as = DefaultSpecies.class)
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public interface Species extends java.io.Serializable {
 
     /**

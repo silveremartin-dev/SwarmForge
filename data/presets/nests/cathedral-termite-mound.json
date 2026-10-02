@@ -1,0 +1,22 @@
+{
+  "presetName" : "Cathedral Termite Mound",
+  "speciesModel" : "\uD83D\uDC1C Subterranean Termite (Reticulitermes flavipes)",
+  "nestStageIndex" : 3,
+  "taxonCategory" : "TERMITE",
+  "genus" : "Reticulitermes",
+  "architecture" : "CATHEDRAL_MOUND",
+  "material" : "STERCORAL_CEMENT",
+  "workerSizeMm" : 6.0,
+  "depth" : 8,
+  "chamberCount" : 22,
+  "tunnelWidth" : 2,
+  "branching" : 3,
+  "chamberDistribution" : {
+    "\uD83D\uDC51 Queen Chamber" : 1,
+    "\uD83E\uDD5A Brood Chambers" : 7,
+    "\uD83C\uDF56 Food Storage" : 6,
+    "\uD83D\uDEAA Entrances" : 3,
+    "\uD83D\uDDD1 Waste Dumps" : 4,
+    "\uD83C\uDF44 Fungus Gardens" : 0
+  }
+}
