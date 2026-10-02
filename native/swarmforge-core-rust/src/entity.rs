@@ -1,6 +1,6 @@
 /// Representation of an individual insect entity in the native Rust engine.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct AntEntity {
+pub struct InsectEntity {
     pub id: u32,
     pub x: float32,
     pub y: float32,
@@ -15,10 +15,12 @@ pub struct AntEntity {
     pub is_alive: bool,
 }
 
+pub type AntEntity = InsectEntity;
+
 #[allow(non_camel_case_types)]
 type float32 = f32;
 
-impl AntEntity {
+impl InsectEntity {
     pub fn new(id: u32, x: f32, y: f32, z: f32, caste: u8, energy: f32) -> Self {
         Self {
             id,

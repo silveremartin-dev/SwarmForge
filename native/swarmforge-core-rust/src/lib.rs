@@ -8,7 +8,7 @@ pub mod ffi;
 pub mod pheromone;
 pub mod spatial;
 
-pub use entity::AntEntity;
+pub use entity::{AntEntity, InsectEntity};
 pub use ffi::NativeSimulationEngine;
 pub use pheromone::PheromoneGrid;
 pub use spatial::SpatialGrid;
