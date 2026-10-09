@@ -9,9 +9,10 @@ Ce dossier regroupe tous les scripts d'automatisation, de compilation, d'exécut
 ```
 scripts/
 ├── build/       # Compilation Maven, génération Javadoc, packaging et releases multi-plateformes
-├── run/         # Lanceurs opérationnels (Client lourd, Client léger, Serveur, Studio, Docker, i18n)
+├── run/         # Lanceurs opérationnels (Client lourd, Client léger, Serveur, Studio, Docker)
 ├── test/        # Banc d'essai tout-en-un multi-clients, tests unitaires et benchmarks
-├── i18n/        # Suite universelle d'audit, traduction 5 langues et couverture des infobulles
+├── dev/         # Outils de développement (audit i18n, vérification des tooltips, qualité)
+├── i18n/        # Moteur Python de traduction 5 langues et d'audit i18n
 ├── gcp/         # Déploiement Cloud GCP, calcul distribué batch et synchronisation
 └── package-release.ps1 # Script PowerShell unifié de packaging de release multi-OS
 ```
@@ -31,7 +32,6 @@ Tous les scripts `.bat` sont 100% natifs en pur Batch Windows sans dépendance P
 | **`run-server.bat`** | **`run-server.sh`** | Démarre le **Serveur de Simulation** (GUI par défaut, options `--nogui`, `--scenario <ID>`, `--postgres`). |
 | **`run-editor.bat`** | **`run-editor.sh`** | Démarre l'**Éditeur Studio autonome** (JavaFX / jMonkeyEngine, module `swarmforge-editor`). |
 | **`run-computenode.bat`** | **`run-computenode.sh`** | Démarre un **Nœud de calcul headless** (`swarmforge-compute`). |
-| **`i18n-audit.bat`** | **`i18n-audit.sh`** | Lance l'audit complet, la synchronisation 5 langues et la détection de chaînes / tooltips. |
 | **`start-docker.bat`** | **`start-docker.sh`** | Démarre l'infrastructure PostgreSQL et Redis via Docker Compose. |
 | **`web_server.py`** | — | Serveur HTTP local Python servant `swarmforge-web/dist` sur le port `5173`. |
 
@@ -106,13 +106,18 @@ Scripts permettant de générer immédiatement des bundles autonomes prêts à l
 
 ---
 
-## 🌐 4. Internationalisation & Traduction (`scripts/i18n/`)
+## 🌐 4. Outils Développeur & Internationalisation (`scripts/dev/` & `scripts/i18n/`)
 
-La suite `scripts/i18n/i18n_validator_and_translator.py` permet d'auditer et de synchroniser automatiquement l'ensemble des traductions du projet sur les **5 langues officielles** (**FR, EN, DE, ES, ZH**) pour tous les modules (`swarmforge-editor`, `swarmforge-client`, `swarmforge-core`, `swarmforge-web`).
+Le dossier `scripts/dev/` regroupe les scripts et outils destinés au contrôle qualité du code, à la détection de chaînes non-internationalisées, à la vérification de la couverture des infobulles (tooltips) et à la synchronisation linguistique sur les **5 langues officielles** (**FR, EN, DE, ES, ZH**).
 
-| Option / Commande | Description |
+| Script Windows (`.bat`) | Script Unix (`.sh`) | Description |
+| :--- | :--- | :--- |
+| **`i18n-audit.bat`** | **`i18n-audit.sh`** | Lance l'audit et la synchronisation complète sur tous les modules (options `--all`, `--audit`, `--sync`, `--fix-encoding`). |
+
+### 🔬 Moteur Python d'internationalisation (`scripts/i18n/i18n_validator_and_translator.py`)
+
+| Commande | Action |
 | :--- | :--- |
-| **`scripts\run\i18n-audit.bat`** / **`.sh`** | Lance l'audit et la synchronisation complète sur tous les modules. |
 | `python scripts/i18n/i18n_validator_and_translator.py --audit` | Détecte les chaînes Java codées en dur, vérifie la complétude des bundles et la couverture des infobulles (tooltips). |
 | `python scripts/i18n/i18n_validator_and_translator.py --sync` | Synchronise et propage les clés manquantes avec le lexique entomologique & biologique vers toutes les langues. |
 | `python scripts/i18n/i18n_validator_and_translator.py --fix-encoding` | Corrige les corruptions d'encodage multi-octets UTF-8 / mojibake dans les sources Java. |
