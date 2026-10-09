@@ -3189,6 +3189,8 @@ export const translations = {
         minPopStopInputTt: 'Número mínimo de individuos por debajo del cual la simulación se pausa automáticamente.',
         confirmDeleteColony: '¿Confirmar la eliminación de esta colonia?',
         btnDeleteColonyTt: 'Eliminar esta colonia del escenario (se requiere confirmación)'
+        // Auto-synchronized & Biological translations
+        audioState: 'Procedural Audio Engine:',
     },
 
     zh: {
@@ -3981,6 +3983,10 @@ export const translations = {
         minPopStopInputTt: '触发自动暂停的最低存活个体数。',
         confirmDeleteColony: '确认删除该群落？',
         btnDeleteColonyTt: '从当前场景中移除该群落 (需要二次确认)'
+        // Auto-synchronized & Biological translations
+        audioState: 'Procedural Audio Engine:',
+        ommatidialMode: 'Ommatidial Vision (Mosaic)',
+        ommatidialVision: 'Ommatidial Vision (Mosaic & Polarization)',
     }
 }
 
