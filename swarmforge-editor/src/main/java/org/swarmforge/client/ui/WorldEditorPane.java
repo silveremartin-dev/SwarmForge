@@ -596,14 +596,17 @@ public class WorldEditorPane extends BorderPane {
 
     public void setRenderMode(RenderMode mode) {
         this.currentRenderMode = mode != null ? mode : RenderMode.REALISTIC;
+        boolean isSci = (currentRenderMode == RenderMode.SCIENTIFIC);
         if (canvas3D != null) {
-            canvas3D.setVisible(gameView == null);
-            canvas3D.setManaged(gameView == null);
+            canvas3D.setVisible(isSci);
+            canvas3D.setManaged(isSci);
         }
         if (gameView != null) {
-            gameView.setVisible(true);
-            gameView.setManaged(true);
-            gameView.setRenderMode(currentRenderMode);
+            gameView.setVisible(!isSci);
+            gameView.setManaged(!isSci);
+            if (!isSci) {
+                gameView.setRenderMode(currentRenderMode);
+            }
         }
         repaintAllViews();
     }
@@ -3552,11 +3555,14 @@ public class WorldEditorPane extends BorderPane {
         if (gameView.getGameApp() != null) {
             gameView.getGameApp().setSimulationPaused(!isSimulationMode);
         }
-        canvas3D.setVisible(gameView == null);
-        canvas3D.setManaged(gameView == null);
-        gameView.setVisible(true);
-        gameView.setManaged(true);
-        gameView.setRenderMode(currentRenderMode);
+        boolean isSci = (currentRenderMode == RenderMode.SCIENTIFIC);
+        canvas3D.setVisible(isSci);
+        canvas3D.setManaged(isSci);
+        gameView.setVisible(!isSci);
+        gameView.setManaged(!isSci);
+        if (!isSci) {
+            gameView.setRenderMode(currentRenderMode);
+        }
 
         // JME Selection Bridge
         this.floatingMouseInspectorCard = createFloatingMouseInspectorCard();

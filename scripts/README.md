@@ -1,6 +1,6 @@
 # 🐝 SwarmForge - Guide des Scripts & Lanceurs
 
-Ce dossier regroupe tous les scripts d'automatisation, de compilation, d'exécution et de test du projet SwarmForge, organisés par catégories sous forme de sous-dossiers dédiés.
+Ce dossier regroupe tous les scripts d'automatisation, de compilation, d'exécution, de packaging de release et de test du projet SwarmForge, organisés par catégories sous forme de sous-dossiers dédiés.
 
 ---
 
@@ -8,10 +8,11 @@ Ce dossier regroupe tous les scripts d'automatisation, de compilation, d'exécut
 
 ```
 scripts/
-├── build/       # Compilation Maven, génération Javadoc, packaging et releases
+├── build/       # Compilation Maven, génération Javadoc, packaging et releases multi-plateformes
 ├── run/         # Lanceurs opérationnels (Client lourd, Client léger, Serveur, Studio, Docker)
 ├── test/        # Banc d'essai tout-en-un multi-clients, tests unitaires et benchmarks
-└── gcp/         # Déploiement Cloud GCP, calcul distribué batch et synchronisation
+├── gcp/         # Déploiement Cloud GCP, calcul distribué batch et synchronisation
+└── package-release.ps1 # Script PowerShell unifié de packaging de release multi-OS
 ```
 
 ---
@@ -73,15 +74,22 @@ scripts\run\run-server.bat --nogui --scenario 6 --postgres
 
 ---
 
-## 🔨 2. Compilation & Packaging (`scripts/build/`)
+## 📦 2. Déploiement & Packaging des Releases (`scripts/build/`)
 
-| Script Windows (`.bat`) | Script Unix (`.sh`) | Description |
+Scripts permettant de générer immédiatement des bundles autonomes prêts à l'emploi pour les 3 plateformes (Linux, macOS, Windows) ainsi qu'un package universel multi-plateformes dans `dist/release/` avec sommes de contrôle `SHA256SUMS.txt`.
+
+| Script | Plateforme Cible | Artefacts Produits dans `dist/release/` |
 | :--- | :--- | :--- |
-| **`build-all.bat`** | **`build-all.sh`** | Compilation Maven complète de tous les modules du projet. |
-| **`package_client.bat`** | **`package_client.sh`** | Packaging des artefacts du client lourd (`swarmforge-client`). |
-| **`build-rust-native.bat`** | **`build-rust-native.sh`** | Compilation des bibliothèques d'accélération Rust natives (`swarmforge-core/src/main/rust`). |
-| **`generate-javadoc.bat`** | **`generate-javadoc.sh`** | Génère la documentation Javadoc agrégée et par module dans `/javadoc`. |
-| **`package-release.bat`** | **`package-release.sh`** | Génère le bundle de release serveur autonome compressé (`.zip`) dans `dist/release/`. |
+| **`deploy-release-linux.sh`** | Linux (x64) | `SwarmForge-v<version>-Linux-x64.tar.gz` & `.zip` |
+| **`deploy-release-macos.sh`** | macOS (Universal) | `SwarmForge-v<version>-macOS-Universal.tar.gz` & `.zip` |
+| **`deploy-release-windows.bat`** | Windows (x64) | `SwarmForge-v<version>-Windows-x64.zip` |
+| **`deploy-release-windows.sh`** | Windows (Cross-build Unix) | `SwarmForge-v<version>-Windows-x64.zip` |
+| **`deploy-release-all.bat`** | **Linux + Mac + Windows** | Tous les packages OS + `SwarmForge-v<version>-AllPlatforms.zip` |
+| **`deploy-release-all.sh`** | **Linux + Mac + Windows** | Tous les packages OS + `SwarmForge-v<version>-AllPlatforms.zip` |
+| **`package-release.ps1`** | **Toutes plateformes** (PowerShell) | Packages selon paramètre `-Platform [windows\|linux\|macos\|all]` |
+| **`build-all.bat` / `.sh`** | Tout OS | Compilation Maven complète (`mvn clean install -DskipTests`). |
+| **`build-rust-native.bat` / `.sh`** | Tout OS | Compilation des bibliothèques natives Rust JNI (`swarmforge-core`). |
+| **`generate-javadoc.bat` / `.sh`** | Tout OS | Génération de la Javadoc complète dans `/javadoc`. |
 
 ---
 
@@ -99,3 +107,13 @@ scripts\run\run-server.bat --nogui --scenario 6 --postgres
 ## ☁️ 4. Déploiement Google Cloud Platform (`scripts/gcp/`)
 
 Scripts d'orchestration pour le calcul massivement distribué sur GCP (Batch API, VM Compute Engine, synchronisation de données).
+
+| Script | Description |
+| :--- | :--- |
+| **`deploy-gcp.sh`** | Déploiement automatisé du cluster SwarmForge complet (Master Server, 2 Nœuds Compute, PostgreSQL, Redis, Web) sur une VM GCP. |
+| **`create-infra.sh`** | Provisionne l'infrastructure VM Compute Engine sur GCP. |
+| **`start-vm.sh` / `stop-vm.sh` / `status-vm.sh`** | Contrôle du cycle de vie de la VM de calcul GCP. |
+| **`sync-code.sh` / `sync-and-rebuild.sh`** | Synchronisation du code source local vers la VM GCP et recompilation. |
+| **`logs-cloud.sh`** | Streaming des logs du cluster SwarmForge distant en temps réel. |
+| **`fetch-snapshots.sh`** | Rapatriement des captures et snapshots de simulation depuis le Cloud. |
+| **`batch/`** | Scripts de soumission et monitoring de jobs massifs sur GCP Batch API. |

@@ -253,6 +253,15 @@ public class VegetationVisualizer {
         if (spatial instanceof Geometry geom) {
             Material mat = geom.getMaterial();
             if (mat != null) {
+                if (mat.getMaterialDef().getMaterialParam("UseMaterialColors") != null) {
+                    mat.setBoolean("UseMaterialColors", true);
+                }
+                if (mat.getMaterialDef().getMaterialParam("Ambient") != null && mat.getParam("Ambient") == null) {
+                    mat.setColor("Ambient", new ColorRGBA(0.85f, 0.85f, 0.85f, 1.0f));
+                }
+                if (mat.getMaterialDef().getMaterialParam("Diffuse") != null && mat.getParam("Diffuse") == null) {
+                    mat.setColor("Diffuse", ColorRGBA.White);
+                }
                 // Ensure double-sided shadow depth rendering for foliage and leaves
                 String name = geom.getName() != null ? geom.getName().toLowerCase() : "";
                 if (name.contains("leaf") || name.contains("leaves") || name.contains("plane") || name.contains("branch") || name.contains("bush")) {
@@ -406,18 +415,16 @@ public class VegetationVisualizer {
                 float z = Math.max(minZ, Math.min(maxZ, plant.y)); // Horizontal Y in domain -> JME Z
                 float y = (terrarium != null) ? terrarium.getSurfaceElevation(x, z) : 0.0f;
 
-                if (currentRenderMode == RenderMode.REALISTIC) {
-                    createRealisticFloraForPlant(x, y, z, plant, biome, effectiveSeason, rand);
-                } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
-                    createScientificFloraForPlant(x, y, z, plant, biome, rand);
-                } else if (currentRenderMode == RenderMode.GAMIFIED) {
+                if (currentRenderMode == RenderMode.GAMIFIED) {
                     createGamifiedFloraForPlant(x, y, z, plant, biome, effectiveSeason, rand);
+                } else {
+                    createRealisticFloraForPlant(x, y, z, plant, biome, effectiveSeason, rand);
                 }
             }
         } else if (terrarium != null) {
             // Procedural Natural Vegetation Pass for World Editor / Initial World state:
             // Multi-tiered natural ecosystem: Canopy Trees, Sub-canopy Saplings & Understory Shrubs
-            float treeStep = 8.0f; // Unified spatial grid step across Realistic, Scientific, and Gamified modes
+            float treeStep = 8.0f; // Unified spatial grid step across Realistic and Gamified modes
             for (float tx = minX + 0.5f; tx <= maxX - 0.5f; tx += treeStep) {
                 for (float tz = minZ + 0.5f; tz <= maxZ - 0.5f; tz += treeStep) {
                     float jx = Math.max(minX, Math.min(maxX, tx + (rand.nextFloat() - 0.5f) * (treeStep * 0.75f)));
@@ -436,10 +443,8 @@ public class VegetationVisualizer {
                     int speciesIdx = sampleTreeSpeciesIndex(rand);
                     if (currentRenderMode == RenderMode.GAMIFIED) {
                         createProceduralTreeGamified(jx, elev, jz, biome, effectiveSeason, rand, speciesIdx);
-                    } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
-                        createProceduralTreeScientific(jx, elev, jz, biome, rand, speciesIdx);
                     } else {
-                        // Canopy Tree
+                        // Canopy Tree (Realistic Mode)
                         createRealisticFlora(jx, elev, jz, biome, effectiveSeason, rand, speciesIdx);
 
                         // 1. Ronds de sorcière (Fairy Rings): 38% probability around mature canopy trees in vegetative biomes
@@ -518,7 +523,7 @@ public class VegetationVisualizer {
         int depth = terrarium.getDepth();
 
         // Sample surface with tighter biological step clamped inside terrain margins
-        int step = Math.max(2, Math.min(width, height) / 24);
+        int step = Math.max(1, Math.min(width, height) / 36);
         for (int x = 1; x < cutX - 1; x += step) {
             for (int y = 1; y < height - 1; y += step) {
                 float jx = Math.max(1.0f, Math.min(cutX - 1.0f, x + (rand.nextFloat() - 0.5f) * (step * 0.9f)));
@@ -2803,18 +2808,8 @@ public class VegetationVisualizer {
 
     private void createColonyInfrastructure(Colony colony, RenderMode mode) {
         if (colony == null) return;
-        float x = colony.getNestX();
-        float y = colony.getNestY();
-        float z = colony.getNestZ();
-        float surfY = (activeTerrarium != null) ? activeTerrarium.getSurfaceElevation(x, y) : z;
-
-        Node infraNode = new Node("ColonyInfra_" + colony.getId());
-        infraNode.setShadowMode(RenderQueue.ShadowMode.CastAndReceive);
-
-        buildRefuseMidden(infraNode, x, surfY, y, mode);
-        buildTrunkTrails(infraNode, x, surfY, y, mode);
-
-        colonyInfrastructureNode.attachChild(infraNode);
+        // In realistic mode, the subterranean nest and entrance collar/mound are accurately rendered
+        // without unnatural floating geometric rings or rigid polygon stripes on the surface
     }
 
     private void buildWoodenBeehive(Node parent, float x, float y, float z, RenderMode mode) {
@@ -2827,51 +2822,30 @@ public class VegetationVisualizer {
             return;
         }
 
-        if (mode == RenderMode.SCIENTIFIC) {
-            // Metric Sensor Station Beehive (White calibrated data station box)
-            Material boxMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
-            boxMat.setBoolean("UseMaterialColors", true);
-            boxMat.setColor("Diffuse", new ColorRGBA(0.92f, 0.94f, 0.96f, 1.0f));
-            boxMat.setColor("Ambient", new ColorRGBA(0.65f, 0.70f, 0.75f, 1.0f));
+        // GAMIFIED: Full Minecraft-style Bee Hive Block with amber stripes & entrance slit
+        Material woodMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+        woodMat.setBoolean("UseMaterialColors", true);
+        woodMat.setColor("Diffuse", new ColorRGBA(0.85f, 0.58f, 0.22f, 1.0f));
+        woodMat.setColor("Ambient", new ColorRGBA(0.55f, 0.35f, 0.12f, 1.0f));
 
-            Geometry body = new Geometry("SciHiveBody", new Box(0.42f, 0.50f, 0.42f));
-            body.setMaterial(boxMat);
-            body.setLocalTranslation(x, y + 0.50f, z);
-            parent.attachChild(body);
+        Geometry hiveBlock = new Geometry("GamifiedBeehive", new Box(0.50f, 0.50f, 0.50f));
+        hiveBlock.setMaterial(woodMat);
+        hiveBlock.setLocalTranslation(x, y + 0.50f, z);
+        parent.attachChild(hiveBlock);
 
-            // Flight Entrance Sensor Bar
-            Material sensorMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-            sensorMat.setColor("Color", new ColorRGBA(0.20f, 0.80f, 0.95f, 1.0f));
-            Geometry sensorBar = new Geometry("SensorBar", new Box(0.35f, 0.03f, 0.05f));
-            sensorBar.setMaterial(sensorMat);
-            sensorBar.setLocalTranslation(x, y + 0.10f, z + 0.43f);
-            parent.attachChild(sensorBar);
-        } else {
-            // GAMIFIED: Full Minecraft-style Bee Hive Block with amber stripes & entrance slit
-            Material woodMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
-            woodMat.setBoolean("UseMaterialColors", true);
-            woodMat.setColor("Diffuse", new ColorRGBA(0.85f, 0.58f, 0.22f, 1.0f));
-            woodMat.setColor("Ambient", new ColorRGBA(0.55f, 0.35f, 0.12f, 1.0f));
-
-            Geometry hiveBlock = new Geometry("GamifiedBeehive", new Box(0.50f, 0.50f, 0.50f));
-            hiveBlock.setMaterial(woodMat);
-            hiveBlock.setLocalTranslation(x, y + 0.50f, z);
-            parent.attachChild(hiveBlock);
-
-            // Honey slit
-            Material honeyMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-            honeyMat.setColor("Color", new ColorRGBA(0.95f, 0.72f, 0.10f, 1.0f));
-            Geometry slit = new Geometry("HoneySlit", new Box(0.30f, 0.06f, 0.02f));
-            slit.setMaterial(honeyMat);
-            slit.setLocalTranslation(x, y + 0.35f, z + 0.51f);
-            parent.attachChild(slit);
-        }
+        // Honey slit
+        Material honeyMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        honeyMat.setColor("Color", new ColorRGBA(0.95f, 0.72f, 0.10f, 1.0f));
+        Geometry slit = new Geometry("HoneySlit", new Box(0.30f, 0.06f, 0.02f));
+        slit.setMaterial(honeyMat);
+        slit.setLocalTranslation(x, y + 0.35f, z + 0.51f);
+        parent.attachChild(slit);
     }
 
     private void buildPaperPedunculateNest(Node parent, float x, float y, float z, RenderMode mode) {
         Material paperMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         paperMat.setBoolean("UseMaterialColors", true);
-        ColorRGBA col = (mode == RenderMode.SCIENTIFIC) ? new ColorRGBA(0.70f, 0.82f, 0.90f, 0.75f) : new ColorRGBA(0.62f, 0.58f, 0.52f, 1.0f);
+        ColorRGBA col = new ColorRGBA(0.62f, 0.58f, 0.52f, 1.0f);
         paperMat.setColor("Diffuse", col);
         paperMat.setColor("Ambient", col.mult(0.6f));
 
@@ -2909,7 +2883,7 @@ public class VegetationVisualizer {
     private void buildCathedralTermiteMound(Node parent, float x, float y, float z, RenderMode mode) {
         Material clayMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         clayMat.setBoolean("UseMaterialColors", true);
-        ColorRGBA col = (mode == RenderMode.SCIENTIFIC) ? new ColorRGBA(0.92f, 0.45f, 0.30f, 1.0f) : new ColorRGBA(0.72f, 0.38f, 0.22f, 1.0f);
+        ColorRGBA col = new ColorRGBA(0.72f, 0.38f, 0.22f, 1.0f);
         clayMat.setColor("Diffuse", col);
         clayMat.setColor("Ambient", col.mult(0.6f));
 
@@ -2945,7 +2919,7 @@ public class VegetationVisualizer {
     private void buildArborealSilkLeafNest(Node parent, float x, float y, float z, RenderMode mode) {
         Material leafMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
         leafMat.setBoolean("UseMaterialColors", true);
-        ColorRGBA col = (mode == RenderMode.SCIENTIFIC) ? new ColorRGBA(0.35f, 0.85f, 0.45f, 0.8f) : new ColorRGBA(0.28f, 0.65f, 0.22f, 1.0f);
+        ColorRGBA col = new ColorRGBA(0.28f, 0.65f, 0.22f, 1.0f);
         leafMat.setColor("Diffuse", col);
         leafMat.setColor("Ambient", col.mult(0.6f));
 
@@ -3137,27 +3111,7 @@ public class VegetationVisualizer {
     }
 
     private void buildFormicaThatchedMound(Node parent, float x, float y, float z, RenderMode mode, float southAngle) {
-        if (mode == RenderMode.SCIENTIFIC) {
-            Material sciMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
-            sciMat.setBoolean("UseMaterialColors", true);
-            sciMat.setColor("Diffuse", new ColorRGBA(0.95f, 0.45f, 0.15f, 0.80f));
-            sciMat.setColor("Ambient", new ColorRGBA(0.60f, 0.25f, 0.10f, 0.80f));
-
-            Geometry dome = new Geometry("SciThatchedMound", new Sphere(16, 16, 1.10f));
-            dome.setMaterial(sciMat);
-            dome.setLocalScale(1.3f, 0.75f, 1.1f);
-            dome.setLocalTranslation(x, y + 0.45f, z);
-            dome.setLocalRotation(new Quaternion().fromAngles(0, FastMath.DEG_TO_RAD * southAngle, 0));
-            parent.attachChild(dome);
-
-            Material arrowMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-            arrowMat.setColor("Color", new ColorRGBA(1.0f, 0.85f, 0.10f, 0.95f));
-            Geometry arrow = new Geometry("SolarVectorArrow", new Cylinder(4, 8, 0.04f, 0.90f, true));
-            arrow.setMaterial(arrowMat);
-            arrow.setLocalRotation(new Quaternion().fromAngles(FastMath.HALF_PI, 0, 0));
-            arrow.setLocalTranslation(x, y + 1.25f, z + 0.55f);
-            parent.attachChild(arrow);
-        } else if (mode == RenderMode.GAMIFIED) {
+        if (mode == RenderMode.GAMIFIED) {
             Material needleMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             needleMat.setBoolean("UseMaterialColors", true);
             needleMat.setColor("Diffuse", new ColorRGBA(0.42f, 0.28f, 0.14f, 1.0f));
@@ -3198,25 +3152,7 @@ public class VegetationVisualizer {
         float mz = z + 6.0f;
         float my = (activeTerrarium != null) ? activeTerrarium.getSurfaceElevation(mx, mz) : y;
 
-        if (mode == RenderMode.SCIENTIFIC) {
-            Material ringMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-            ringMat.setColor("Color", new ColorRGBA(0.95f, 0.25f, 0.25f, 0.65f));
-            ringMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
-
-            Geometry perimeter = new Geometry("MiddenSanitaryPerimeter", new Cylinder(16, 16, 1.2f, 0.04f, false));
-            perimeter.setMaterial(ringMat);
-            perimeter.setLocalRotation(new Quaternion().fromAngles(-FastMath.HALF_PI, 0, 0));
-            perimeter.setLocalTranslation(mx, my + 0.05f, mz);
-            parent.attachChild(perimeter);
-
-            Geometry centerHeap = new Geometry("SciMiddenCore", new Box(0.35f, 0.20f, 0.35f));
-            Material coreMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
-            coreMat.setBoolean("UseMaterialColors", true);
-            coreMat.setColor("Diffuse", new ColorRGBA(0.65f, 0.20f, 0.20f, 0.85f));
-            centerHeap.setMaterial(coreMat);
-            centerHeap.setLocalTranslation(mx, my + 0.10f, mz);
-            parent.attachChild(centerHeap);
-        } else if (mode == RenderMode.GAMIFIED) {
+        if (mode == RenderMode.GAMIFIED) {
             Material compostMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
             compostMat.setBoolean("UseMaterialColors", true);
             compostMat.setColor("Diffuse", new ColorRGBA(0.25f, 0.18f, 0.12f, 1.0f));
@@ -3251,17 +3187,7 @@ public class VegetationVisualizer {
             float midZ = (z + endZ) * 0.5f;
             float midY = (y + endY) * 0.5f;
 
-            if (mode == RenderMode.SCIENTIFIC) {
-                Material ribbonMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-                ribbonMat.setColor("Color", new ColorRGBA(0.15f, 0.75f, 0.95f, 0.65f));
-                ribbonMat.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
-
-                Geometry ribbon = new Geometry("TrunkTrailSci_" + (int)ang, new Box(0.15f, 0.02f, len * 0.5f));
-                ribbon.setMaterial(ribbonMat);
-                ribbon.setLocalTranslation(midX, midY + 0.04f, midZ);
-                ribbon.setLocalRotation(new Quaternion().fromAngles(0, -rad + FastMath.HALF_PI, 0));
-                parent.attachChild(ribbon);
-            } else if (mode == RenderMode.GAMIFIED) {
+            if (mode == RenderMode.GAMIFIED) {
                 Material pathMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
                 pathMat.setBoolean("UseMaterialColors", true);
                 pathMat.setColor("Diffuse", new ColorRGBA(0.55f, 0.42f, 0.28f, 1.0f));

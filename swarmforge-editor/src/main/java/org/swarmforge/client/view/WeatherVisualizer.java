@@ -220,22 +220,6 @@ public class WeatherVisualizer {
                 }
             }
 
-        } else if (currentRenderMode == RenderMode.SCIENTIFIC) {
-            // SCIENTIFIC MODE: Schematic Wireframe Cloud Deck
-            Material cloudMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-            cloudMat.setColor("Color", new ColorRGBA(0.3f, 0.7f, 0.9f, 0.4f));
-            cloudMat.getAdditionalRenderState().setWireframe(true);
-
-            Sphere wireCloud = new Sphere(8, 8, 8.0f);
-            for (int i = 0; i < 8; i++) {
-                Geometry g = new Geometry("SciCloud_" + i, wireCloud);
-                g.setMaterial(cloudMat);
-                float cx = midX + (float) ((Math.random() - 0.5) * spanX);
-                float cz = midZ + (float) ((Math.random() - 0.5) * spanZ);
-                g.setLocalTranslation(cx, 38.0f, cz);
-                cloudsNode.attachChild(g);
-            }
-
         } else if (currentRenderMode == RenderMode.GAMIFIED) {
             // GAMIFIED MODE: Voxel Cubic Cloud Blocks (Minecraft style)
             Material cloudMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
@@ -549,18 +533,6 @@ public class WeatherVisualizer {
         float windDx = FastMath.sin(windRad) * (windSpeedMs * 0.45f);
         float windDz = -FastMath.cos(windRad) * (windSpeedMs * 0.45f);
 
-        // Update Scientific Wind Arrows rotation
-        if (scientificVectorNode != null) {
-            boolean isSci = (currentRenderMode == RenderMode.SCIENTIFIC);
-            scientificVectorNode.setCullHint(isSci ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-            if (isSci) {
-                Quaternion windRot = new Quaternion().fromAngles(0, windRad, 0);
-                for (Geometry arrow : scientificWindArrows) {
-                    arrow.setLocalRotation(windRot);
-                    arrow.setLocalScale(0.8f + (windSpeedMs / 30f) * 0.8f);
-                }
-            }
-        }
 
         // 3. Clouds (Stationary atmospheric layer)
         if (cloudsNode != null) {

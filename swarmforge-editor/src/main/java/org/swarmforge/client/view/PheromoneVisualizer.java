@@ -71,12 +71,12 @@ public class PheromoneVisualizer {
 
     private void applyTextureFiltering() {
         if (texture == null) return;
-        if (currentRenderMode == RenderMode.SCIENTIFIC) {
-            // Discrete voxel precision
+        if (currentRenderMode == RenderMode.GAMIFIED) {
+            // Discrete voxel precision for gamified mode
             texture.setMinFilter(MinFilter.NearestNoMipMaps);
             texture.setMagFilter(MagFilter.Nearest);
         } else {
-            // Smooth continuous organic or glowing particle trail
+            // Smooth continuous organic vapor trail for realistic mode
             texture.setMinFilter(MinFilter.BilinearNearestMipMap);
             texture.setMagFilter(MagFilter.Bilinear);
         }
@@ -183,39 +183,7 @@ public class PheromoneVisualizer {
                 float food = pheromones.length > 1 ? pheromones[1] : 0f;
                 float danger = pheromones.length > 2 ? pheromones[2] : 0f;
 
-                if (currentRenderMode == RenderMode.SCIENTIFIC) {
-                    // Scientific mode: discrete quantitative heatmap
-                    float r = Math.min(1.0f, danger * 1.6f + food * 0.3f);
-                    float g = Math.min(1.0f, food * 1.5f + homing * 0.2f);
-                    float b = Math.min(1.0f, homing * 1.6f + danger * 0.1f);
-                    float a = Math.min(0.95f, food * 1.3f + homing * 1.2f + danger * 1.8f);
-
-                    if (a > 0.02f) {
-                        setPixel(x, y, r, g, b, a);
-                    }
-                } else if (currentRenderMode == RenderMode.REALISTIC) {
-                    // Realistic mode: continuous organic chemical vapor trail diffusion
-                    // Smooth 3x3 kernel creates uninterrupted chemical corridors between voxels
-                    float r = Math.min(1.0f, danger * 1.5f + food * 0.2f);
-                    float g = Math.min(1.0f, food * 1.4f + homing * 0.15f);
-                    float b = Math.min(1.0f, homing * 1.5f + danger * 0.05f);
-                    float intensity = Math.min(0.85f, food * 1.2f + homing * 1.1f + danger * 1.6f);
-
-                    if (intensity > 0.02f) {
-                        // Core pixel
-                        setPixel(x, y, r, g, b, intensity * 0.90f);
-                        // Continuous organic vapor dispersion onto 4-neighbors (merging adjacent dots into trails)
-                        spreadPixel(x + 1, y, r, g, b, intensity * 0.42f);
-                        spreadPixel(x - 1, y, r, g, b, intensity * 0.42f);
-                        spreadPixel(x, y + 1, r, g, b, intensity * 0.42f);
-                        spreadPixel(x, y - 1, r, g, b, intensity * 0.42f);
-                        // Diagonal soft falloff
-                        spreadPixel(x + 1, y + 1, r, g, b, intensity * 0.20f);
-                        spreadPixel(x - 1, y + 1, r, g, b, intensity * 0.20f);
-                        spreadPixel(x + 1, y - 1, r, g, b, intensity * 0.20f);
-                        spreadPixel(x - 1, y - 1, r, g, b, intensity * 0.20f);
-                    }
-                } else {
+                if (currentRenderMode == RenderMode.GAMIFIED) {
                     // Gamified mode: luminous neon glowing particle trail ribbons
                     float r = Math.min(1.0f, danger * 2.0f + food * 0.4f);
                     float g = Math.min(1.0f, food * 1.8f + homing * 0.3f);
@@ -239,6 +207,28 @@ public class PheromoneVisualizer {
                         spreadPixel(x - 2, y, r * 0.7f, g * 0.7f, b * 0.7f, intensity * 0.18f);
                         spreadPixel(x, y + 2, r * 0.7f, g * 0.7f, b * 0.7f, intensity * 0.18f);
                         spreadPixel(x, y - 2, r * 0.7f, g * 0.7f, b * 0.7f, intensity * 0.18f);
+                    }
+                } else {
+                    // Realistic mode: continuous organic chemical vapor trail diffusion
+                    // Smooth 3x3 kernel creates uninterrupted chemical corridors between voxels
+                    float r = Math.min(1.0f, danger * 1.5f + food * 0.2f);
+                    float g = Math.min(1.0f, food * 1.4f + homing * 0.15f);
+                    float b = Math.min(1.0f, homing * 1.5f + danger * 0.05f);
+                    float intensity = Math.min(0.85f, food * 1.2f + homing * 1.1f + danger * 1.6f);
+
+                    if (intensity > 0.02f) {
+                        // Core pixel
+                        setPixel(x, y, r, g, b, intensity * 0.90f);
+                        // Continuous organic vapor dispersion onto 4-neighbors (merging adjacent dots into trails)
+                        spreadPixel(x + 1, y, r, g, b, intensity * 0.42f);
+                        spreadPixel(x - 1, y, r, g, b, intensity * 0.42f);
+                        spreadPixel(x, y + 1, r, g, b, intensity * 0.42f);
+                        spreadPixel(x, y - 1, r, g, b, intensity * 0.42f);
+                        // Diagonal soft falloff
+                        spreadPixel(x + 1, y + 1, r, g, b, intensity * 0.20f);
+                        spreadPixel(x - 1, y + 1, r, g, b, intensity * 0.20f);
+                        spreadPixel(x + 1, y - 1, r, g, b, intensity * 0.20f);
+                        spreadPixel(x - 1, y - 1, r, g, b, intensity * 0.20f);
                     }
                 }
             }

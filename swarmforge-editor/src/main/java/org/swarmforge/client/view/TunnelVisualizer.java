@@ -92,40 +92,46 @@ public class TunnelVisualizer {
 
     private Geometry createNodeGeometry(TunnelNode node) {
         float mmPerWorldUnit = (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
-        // Biological chamber sizes (Queen: ~60-80mm, Brood: ~40-50mm, Entrance: ~30-35mm)
-        float radiusMm = switch (node.type()) {
-            case QUEEN_CHAMBER -> 65.0f;
-            case FUNGUS_GARDEN -> 55.0f;
-            case HIBERNATION -> 50.0f;
-            case BROOD_CHAMBER, FOOD_STORAGE -> 40.0f;
-            case ENTRANCE -> 30.0f;
-            default -> 20.0f;
-        };
-
-        float baseRadius3D = (radiusMm / mmPerWorldUnit) * 1.15f;
-        float radius3D = Math.max(0.12f, Math.min(0.70f, baseRadius3D));
+        
+        float rx, ry, rz;
+        if (node.radiusX() > 0.01f && node.radiusY() > 0.01f && node.radiusZ() > 0.01f) {
+            rx = node.radiusX();
+            ry = node.radiusY();
+            rz = node.radiusZ();
+        } else {
+            // Biological chamber sizes calibrated in mm to real-world nest architectures
+            float radiusMm = switch (node.type()) {
+                case QUEEN_CHAMBER -> 22.0f; // 44mm diameter royal chamber
+                case FUNGUS_GARDEN -> 20.0f; // 40mm diameter fungus vault
+                case HIBERNATION -> 18.0f;
+                case BROOD_CHAMBER, FOOD_STORAGE -> 14.0f; // 28mm diameter brood/granary chamber
+                case ENTRANCE -> 10.0f; // 20mm diameter entrance vestibule
+                default -> 8.0f;
+            };
+            float radius3D = radiusMm / mmPerWorldUnit;
+            rx = radius3D;
+            ry = radius3D;
+            rz = radius3D * 0.60f;
+        }
 
         Geometry geom;
         if (currentRenderMode == RenderMode.GAMIFIED) {
             // Gamified Voxel Cube Block
-            Box box = new Box(radius3D, radius3D, radius3D);
+            Box box = new Box(rx, rz, ry);
             geom = new Geometry("Node_" + node.id(), box);
-        } else if (currentRenderMode == RenderMode.REALISTIC) {
+        } else {
+            // Realistic Mode: Lenticular Ellipsoidal Chamber
             if (node.type() == TunnelNetwork.ChamberType.TUNNEL) {
                 // Do not render intermediate tunnel pathway waypoints as spheres in realistic mode
-                // This prevents the "spheres stuck to each other" artifact across galleries
-                geom = new Geometry("Node_" + node.id(), new Box(0.01f, 0.01f, 0.01f));
+                // This completely prevents the "spheres stuck to each other" artifact across galleries
+                geom = new Geometry("Node_" + node.id(), new Box(0.001f, 0.001f, 0.001f));
                 geom.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
             } else {
                 // Realistic Lenticular Ellipsoidal Chamber (flattened horizontally under lithostatic soil pressure)
-                Sphere shape = new Sphere(16, 16, radius3D);
+                Sphere shape = new Sphere(16, 16, 1.0f);
                 geom = new Geometry("Node_" + node.id(), shape);
-                geom.setLocalScale(1.4f, 0.55f, 1.4f);
+                geom.setLocalScale(rx, rz, ry);
             }
-        } else {
-            // Scientific Metric Sphere
-            Sphere shape = new Sphere(10, 10, radius3D);
-            geom = new Geometry("Node_" + node.id(), shape);
         }
 
         float surfaceY = terrarium != null ? terrarium.getSurfaceElevation(node.x(), node.y()) : 0f;
@@ -174,17 +180,18 @@ public class TunnelVisualizer {
         float len = diff.length();
 
         float mmPerWorldUnit = (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
-        float galleryRadiusMm = customGalleryDiameterMm > 0 ? customGalleryDiameterMm / 2.0f : 10.0f;
-        float galleryRadius3D = Math.max(0.04f, (galleryRadiusMm / mmPerWorldUnit) * 1.25f);
+        // Real biological gallery diameter (typically 6-10 mm for standard workers/queens)
+        float galleryDiameterMm = customGalleryDiameterMm > 0 ? customGalleryDiameterMm : 8.0f;
+        float galleryRadius3D = (galleryDiameterMm * 0.5f) / mmPerWorldUnit;
 
         Geometry geom;
         if (currentRenderMode == RenderMode.GAMIFIED) {
             // Square Corridor Shaft
-            Box box = new Box(galleryRadius3D, galleryRadius3D, Math.max(0.05f, len * 0.5f));
+            Box box = new Box(galleryRadius3D, galleryRadius3D, Math.max(0.01f, len * 0.5f));
             geom = new Geometry(name, box);
         } else {
             // Cylindrical Pipe / Natural Gallery (smooth continuous organic tube)
-            Cylinder shape = new Cylinder(8, 16, galleryRadius3D, Math.max(0.05f, len), true);
+            Cylinder shape = new Cylinder(8, 16, galleryRadius3D, Math.max(0.01f, len), true);
             geom = new Geometry(name, shape);
         }
 

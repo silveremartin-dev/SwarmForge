@@ -568,18 +568,18 @@ public class JmeGameApp extends SimpleApplication {
                 com.jme3.texture.Texture atlasTex = VoxelTextureAtlas.getAtlasTexture();
                 soilMat.setTexture("DiffuseMap", atlasTex);
             } else {
-                // REALISTIC: Lit with vertex color multiplied by diffuse texture
+                // REALISTIC: Lit with rich vertex color multiplied by diffuse ground texture and normal mapping
                 soilMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
                 soilMat.setBoolean("UseMaterialColors", true);
                 soilMat.setBoolean("UseVertexColor", true);
                 soilMat.setColor("Diffuse", ColorRGBA.White);
-                soilMat.setColor("Ambient", new ColorRGBA(0.72f, 0.75f, 0.78f, 1f));
-                soilMat.setColor("Specular", new ColorRGBA(0.12f, 0.12f, 0.12f, 1f));
-                soilMat.setFloat("Shininess", 6f);
+                soilMat.setColor("Ambient", new ColorRGBA(0.70f, 0.72f, 0.75f, 1f));
+                soilMat.setColor("Specular", new ColorRGBA(0.20f, 0.20f, 0.22f, 1f));
+                soilMat.setFloat("Shininess", 16f);
 
                 // Pick dominant substrate texture from terrarium top-layer material distribution
                 double lat = Math.abs(terrarium.getLatitude());
-                int sandCount = 0, rockCount = 0, snowCount = 0, grassCount = 0;
+                int sandCount = 0, rockCount = 0, grassCount = 0;
                 int sampleStep = Math.max(1, terrarium.getWidth() / 16);
                 for (int sx = 0; sx < terrarium.getWidth(); sx += sampleStep) {
                     for (int sy = 0; sy < terrarium.getHeight(); sy += sampleStep) {
@@ -595,37 +595,38 @@ public class JmeGameApp extends SimpleApplication {
                         }
                     }
                 }
-                if (lat > 60.0) snowCount = 999; // polar override
 
-                String pbrFolder;
-                if (snowCount > 0) {
-                    pbrFolder = "Ground061"; // Alpine / snow
+                String diffusePath = "textures/3td_AfricaGrass_Dry.png";
+                String normalPath = "textures/3td_AfricaGrass_Dry_NRM.png";
+                if (lat > 60.0) {
+                    diffusePath = "textures/3td_RockGround_01.JPG";
+                    normalPath = "textures/3td_RockGround_01_NRM.png";
                 } else if (sandCount > grassCount && sandCount > rockCount) {
-                    pbrFolder = "Ground025"; // Desert / sand
+                    diffusePath = "textures/3td_sand_01_256.png";
+                    normalPath = "textures/3td_ground_03_DET.png";
                 } else if (rockCount > grassCount) {
-                    pbrFolder = "Ground037"; // Rocky / humus
+                    diffusePath = "textures/3td_RockGround_01.JPG";
+                    normalPath = "textures/3td_RockGround_01_NRM.png";
                 } else {
-                    pbrFolder = "Ground049A"; // Default: temperate grass
+                    diffusePath = "textures/3td_ground_03.jpg";
+                    normalPath = "textures/3td_ground_03_DET.png";
                 }
 
                 try {
-                    com.jme3.texture.Texture diffuseTex = assetManager.loadTexture(
-                        "models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_Color.jpg");
+                    com.jme3.texture.Texture diffuseTex = assetManager.loadTexture(diffusePath);
                     diffuseTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
                     diffuseTex.setMinFilter(com.jme3.texture.Texture.MinFilter.Trilinear);
                     diffuseTex.setMagFilter(com.jme3.texture.Texture.MagFilter.Bilinear);
                     soilMat.setTexture("DiffuseMap", diffuseTex);
                 } catch (Exception e) {
                     try {
-                        com.jme3.texture.Texture fallbackTex = assetManager.loadTexture(
-                            "models/textures/pbr/Ground049A/Ground049A_1K-JPG_Color.jpg");
+                        com.jme3.texture.Texture fallbackTex = assetManager.loadTexture("textures/3td_AfricaGrass_Dry.png");
                         fallbackTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
                         soilMat.setTexture("DiffuseMap", fallbackTex);
                     } catch (Exception ignored) {}
                 }
                 try {
-                    com.jme3.texture.Texture normalTex = assetManager.loadTexture(
-                        "models/textures/pbr/" + pbrFolder + "/" + pbrFolder + "_1K-JPG_NormalGL.jpg");
+                    com.jme3.texture.Texture normalTex = assetManager.loadTexture(normalPath);
                     normalTex.setWrap(com.jme3.texture.Texture.WrapMode.Repeat);
                     soilMat.setTexture("NormalMap", normalTex);
                 } catch (Exception ignored) {}
@@ -644,6 +645,25 @@ public class JmeGameApp extends SimpleApplication {
             terrainGeom.setMaterial(soilMat);
             terrainGeom.setShadowMode(com.jme3.renderer.queue.RenderQueue.ShadowMode.Receive);
             terrainNode.attachChild(terrainGeom);
+
+            // Shimmering Specular Water Overlay for rivers and water bodies
+            if (!isGamifiedVoxelMode) {
+                com.jme3.scene.Mesh waterMesh = generator.generateWaterMesh(terrarium, slicePlaneRatio);
+                if (waterMesh != null) {
+                    Geometry waterGeom = new Geometry("WaterMesh", waterMesh);
+                    Material waterMat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");
+                    waterMat.setBoolean("UseMaterialColors", true);
+                    waterMat.setColor("Diffuse", new ColorRGBA(0.18f, 0.58f, 0.92f, 0.85f));
+                    waterMat.setColor("Ambient", new ColorRGBA(0.15f, 0.45f, 0.75f, 0.85f));
+                    waterMat.setColor("Specular", new ColorRGBA(0.95f, 0.98f, 1.0f, 1.0f));
+                    waterMat.setFloat("Shininess", 64f);
+                    waterMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
+                    waterMat.getAdditionalRenderState().setFaceCullMode(com.jme3.material.RenderState.FaceCullMode.Off);
+                    waterGeom.setMaterial(waterMat);
+                    waterGeom.setQueueBucket(com.jme3.renderer.queue.RenderQueue.Bucket.Transparent);
+                    terrainNode.attachChild(waterGeom);
+                }
+            }
 
             // 3D Elevation Isolines Contour Mesh
             if (showElevationIsolines) {
@@ -839,7 +859,7 @@ public class JmeGameApp extends SimpleApplication {
                 org.swarmforge.core.domain.Individual.LifeStage lifeStage = org.swarmforge.core.domain.Individual.LifeStage
                         .valueOf(protoStage.name());
                 updateSingleAntVisual(id, org.swarmforge.core.domain.Individual.Caste.WORKER, lifeStage,
-                        ind.getPosition().getX(), ind.getPosition().getZ(), ind.getPosition().getY(), ind.getHeading(), activeIds, null);
+                        ind.getPosition().getX(), ind.getPosition().getZ(), ind.getPosition().getY(), ind.getHeading(), activeIds, null, null);
             }
         } else if (simulation != null) {
             for (org.swarmforge.core.domain.Colony colony : simulation.getColonies()) {
@@ -847,7 +867,7 @@ public class JmeGameApp extends SimpleApplication {
                     String id = ind.getId().toString();
                     org.swarmforge.core.domain.Individual.Caste caste = ind.getCaste() != null ? ind.getCaste() : org.swarmforge.core.domain.Individual.Caste.WORKER;
                     org.swarmforge.core.domain.Individual.LifeStage stage = ind.getLifeStage() != null ? ind.getLifeStage() : org.swarmforge.core.domain.Individual.LifeStage.ADULT;
-                    updateSingleAntVisual(id, caste, stage, ind.getX(), ind.getZ(), ind.getY(), ind.getHeading(), activeIds, ind.getSpecies());
+                    updateSingleAntVisual(id, caste, stage, ind.getX(), ind.getZ(), ind.getY(), ind.getHeading(), activeIds, ind.getSpecies(), ind.getCasteTemplate());
                 }
             }
             if (simulation.getPredatorManager() != null) {
@@ -855,7 +875,7 @@ public class JmeGameApp extends SimpleApplication {
                     if (pred != null && pred.isAlive()) {
                         String id = "Predator_" + pred.getId();
                         updateSingleAntVisual(id, org.swarmforge.core.domain.Individual.Caste.SOLDIER, org.swarmforge.core.domain.Individual.LifeStage.ADULT,
-                                pred.getX(), pred.getZ(), pred.getY(), pred.getHeading(), activeIds, null);
+                                pred.getX(), pred.getZ(), pred.getY(), pred.getHeading(), activeIds, null, null);
                     }
                 }
             }
@@ -983,7 +1003,8 @@ public class JmeGameApp extends SimpleApplication {
                                        org.swarmforge.core.domain.Individual.LifeStage lifeStage,
                                        float x, float y, float z, float heading,
                                        java.util.Set<String> activeIds,
-                                       org.swarmforge.core.species.Species species) {
+                                       org.swarmforge.core.species.Species species,
+                                       org.swarmforge.core.domain.CasteTemplate template) {
         if (!antsVisible) return;
         activeIds.add(id);
 
@@ -1002,11 +1023,6 @@ public class JmeGameApp extends SimpleApplication {
             antGeom = insectVisualizer.createOrganismGeometry(caste, lifeStage, species);
             antGeom.setUserData("LifeStage", lifeStage.name());
             antGeom.setUserData("ID", id);
-
-            // Deterministic individual size polymorphism (±6% subtle variation around CasteTemplate average)
-            int hash = id != null ? Math.abs(id.hashCode()) : 0;
-            float variance = (1.0f + (((hash % 1000) / 1000.0f) - 0.5f) * 0.12f) * antVisualScaleMultiplier;
-            antGeom.setLocalScale(variance);
 
             com.jme3.scene.Node node = insectVisualizer.getInstancedNode(caste);
             if (node != null) {
@@ -1030,6 +1046,25 @@ public class JmeGameApp extends SimpleApplication {
 
         antGeom.setLocalTranslation(x, y, z);
         antGeom.setLocalRotation(new com.jme3.math.Quaternion().fromAngles(0, heading, 0));
+
+        // Real Biological Metric Scaling (1.0x at close camera macro zoom)
+        float baseScale = insectVisualizer.getScaleForIndividual(caste, lifeStage, species, template);
+        int hash = id != null ? Math.abs(id.hashCode()) : 0;
+        float variance = 1.0f + (((hash % 1000) / 1000.0f) - 0.5f) * 0.10f; // ±5% individual biological polymorphism
+
+        // Smooth Camera-Distance-Adaptive LOD Magnification:
+        // When camera is close (macro zoom <= 3.0m), magnification is strictly 1.0x (true biological 1:1 scale).
+        // When zooming out (3.0m -> 35.0m+), smoothly magnify so insects remain visible on overview.
+        Vector3f camLoc = cam != null ? cam.getLocation() : cameraTarget;
+        float distToCam = camLoc.distance(antGeom.getLocalTranslation());
+        float distMin = 3.0f;
+        float distMax = 35.0f;
+        float t = Math.max(0.0f, Math.min(1.0f, (distToCam - distMin) / (distMax - distMin)));
+        float smoothT = t * t * (3.0f - 2.0f * t); // Smoothstep
+        float maxFarMagnification = Math.max(1.0f, antVisualScaleMultiplier * 3.5f);
+        float magnification = 1.0f + smoothT * (maxFarMagnification - 1.0f);
+
+        antGeom.setLocalScale(baseScale * variance * magnification);
     }
 
     private void initializeInstancing() {
@@ -1447,6 +1482,12 @@ public class JmeGameApp extends SimpleApplication {
             checkAndUpdateNestArchitectures();
             for (org.swarmforge.core.domain.Colony colony : simulation.getColonies()) {
                 if (colony.getTunnelNetwork() != null) {
+                    if (colony.getSpecies() != null) {
+                        float reqDiam = colony.getSpecies().getRequiredTunnelDiameterMm();
+                        if (reqDiam > 0) {
+                            tunnelVisualizer.setCustomGalleryDiameterMm(Math.max(4.0f, reqDiam));
+                        }
+                    }
                     tunnelVisualizer.update(colony.getTunnelNetwork());
                 }
             }
@@ -1642,18 +1683,14 @@ public class JmeGameApp extends SimpleApplication {
         if (viewPort != null) {
             if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
                 viewPort.setBackgroundColor(new ColorRGBA(0.22f, 0.47f, 0.88f, 1.0f)); // Minecraft vibrant sky
-            } else if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC) {
-                viewPort.setBackgroundColor(new ColorRGBA(0.48f, 0.68f, 0.85f, 1.0f)); // Natural atmosphere sky
             } else {
-                viewPort.setBackgroundColor(ColorRGBA.Black); // Scientific dark background
+                viewPort.setBackgroundColor(new ColorRGBA(0.48f, 0.68f, 0.85f, 1.0f)); // Natural atmosphere sky (Realistic Mode)
             }
             if (sunLight != null) {
                 if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.GAMIFIED) {
                     sunLight.setColor(new ColorRGBA(1.3f, 1.25f, 1.2f, 1.0f));
-                } else if (mode == org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC) {
-                    sunLight.setColor(new ColorRGBA(1.35f, 1.30f, 1.18f, 1.0f));
                 } else {
-                    sunLight.setColor(ColorRGBA.White);
+                    sunLight.setColor(new ColorRGBA(1.35f, 1.30f, 1.18f, 1.0f));
                 }
             }
         }

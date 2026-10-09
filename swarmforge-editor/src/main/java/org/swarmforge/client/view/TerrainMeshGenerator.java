@@ -36,6 +36,83 @@ public class TerrainMeshGenerator {
         }
     }
 
+    public Mesh generateWaterMesh(Terrarium terrarium, float sliceRatio) {
+        if (terrarium == null) return null;
+        List<Float> vertices = new ArrayList<>();
+        List<Float> normals = new ArrayList<>();
+        List<Float> texCoords = new ArrayList<>();
+        List<Float> colors = new ArrayList<>();
+        List<Integer> indices = new ArrayList<>();
+
+        int width = terrarium.getWidth();
+        int height = terrarium.getHeight();
+        int depth = terrarium.getDepth();
+        int cutX = Math.max(2, Math.min(width, (int) Math.ceil(width * Math.max(0.05f, Math.min(1.0f, sliceRatio)))));
+
+        boolean hasWater = false;
+        for (int x = 0; x < cutX - 1; x++) {
+            for (int y = 0; y < height - 1; y++) {
+                float elev00 = terrarium.getSurfaceElevation(x, y);
+                float elev10 = terrarium.getSurfaceElevation(x + 1, y);
+                float elev01 = terrarium.getSurfaceElevation(x, y + 1);
+                float elev11 = terrarium.getSurfaceElevation(x + 1, y + 1);
+
+                TerrariumCell c00 = terrarium.getCell(x, y, Math.min(depth - 1, Math.max(0, (int) elev00)));
+                TerrariumCell c10 = terrarium.getCell(x + 1, y, Math.min(depth - 1, Math.max(0, (int) elev10)));
+                TerrariumCell c01 = terrarium.getCell(x, y + 1, Math.min(depth - 1, Math.max(0, (int) elev01)));
+                TerrariumCell c11 = terrarium.getCell(x + 1, y + 1, Math.min(depth - 1, Math.max(0, (int) elev11)));
+
+                boolean isWaterQuad = (c00 != null && c00.material() == TerrariumCell.Material.WATER)
+                                   || (c10 != null && c10.material() == TerrariumCell.Material.WATER)
+                                   || (c01 != null && c01.material() == TerrariumCell.Material.WATER)
+                                   || (c11 != null && c11.material() == TerrariumCell.Material.WATER);
+
+                if (!isWaterQuad) continue;
+                hasWater = true;
+
+                int baseIdx = vertices.size() / 3;
+                float wY00 = elev00 + 0.05f;
+                float wY10 = elev10 + 0.05f;
+                float wY01 = elev01 + 0.05f;
+                float wY11 = elev11 + 0.05f;
+
+                vertices.add((float) x); vertices.add(wY00); vertices.add((float) y);
+                normals.add(0f); normals.add(1f); normals.add(0f);
+                texCoords.add(x * 0.5f); texCoords.add(y * 0.5f);
+                colors.add(0.18f); colors.add(0.58f); colors.add(0.92f); colors.add(0.85f);
+
+                vertices.add((float) (x + 1)); vertices.add(wY10); vertices.add((float) y);
+                normals.add(0f); normals.add(1f); normals.add(0f);
+                texCoords.add((x + 1) * 0.5f); texCoords.add(y * 0.5f);
+                colors.add(0.18f); colors.add(0.58f); colors.add(0.92f); colors.add(0.85f);
+
+                vertices.add((float) x); vertices.add(wY01); vertices.add((float) (y + 1));
+                normals.add(0f); normals.add(1f); normals.add(0f);
+                texCoords.add(x * 0.5f); texCoords.add((y + 1) * 0.5f);
+                colors.add(0.18f); colors.add(0.58f); colors.add(0.92f); colors.add(0.85f);
+
+                vertices.add((float) (x + 1)); vertices.add(wY11); vertices.add((float) (y + 1));
+                normals.add(0f); normals.add(1f); normals.add(0f);
+                texCoords.add((x + 1) * 0.5f); texCoords.add((y + 1) * 0.5f);
+                colors.add(0.18f); colors.add(0.58f); colors.add(0.92f); colors.add(0.85f);
+
+                indices.add(baseIdx + 0); indices.add(baseIdx + 1); indices.add(baseIdx + 2);
+                indices.add(baseIdx + 1); indices.add(baseIdx + 3); indices.add(baseIdx + 2);
+            }
+        }
+
+        if (!hasWater || vertices.isEmpty()) return null;
+
+        Mesh mesh = new Mesh();
+        mesh.setBuffer(Type.Position, 3, BufferUtils.createFloatBuffer(toFloatArray(vertices)));
+        mesh.setBuffer(Type.Normal, 3, BufferUtils.createFloatBuffer(toFloatArray(normals)));
+        mesh.setBuffer(Type.TexCoord, 2, BufferUtils.createFloatBuffer(toFloatArray(texCoords)));
+        mesh.setBuffer(Type.Color, 4, BufferUtils.createFloatBuffer(toFloatArray(colors)));
+        mesh.setBuffer(Type.Index, 1, BufferUtils.createIntBuffer(toIntArray(indices)));
+        mesh.updateBound();
+        return mesh;
+    }
+
     /**
      * Generates a continuous, smooth natural heightfield landscape for Realistic Mode.
      */
@@ -72,34 +149,34 @@ public class TerrainMeshGenerator {
                 TerrariumCell topCell = terrarium.getCell(x, y, Math.min(depth - 1, Math.max(0, (int) elev)));
                 TerrariumCell.Material mat = topCell != null ? topCell.material() : TerrariumCell.Material.EARTH;
 
-                float r = 0.38f, g = 0.76f, b = 0.28f; // Lush green meadow default
+                float r = 0.42f, g = 0.82f, b = 0.32f; // Lush vibrant green meadow
                 if (mat == TerrariumCell.Material.WATER) {
-                    r = 0.22f; g = 0.62f; b = 0.98f; // Crystalline azure water
+                    r = 0.20f; g = 0.58f; b = 0.95f; // Crystalline azure river / water
                 } else if (lat > 60.0) {
                     r = 0.98f; g = 0.98f; b = 1.0f;  // Alpine snow
                 } else if (mat == TerrariumCell.Material.SAND || lat < 23.5) {
-                    r = 0.98f; g = 0.86f; b = 0.48f; // Golden desert sand
+                    r = 0.95f; g = 0.84f; b = 0.46f; // Golden desert sand
                 } else if (mat == TerrariumCell.Material.ROCK) {
-                    r = 0.65f; g = 0.68f; b = 0.72f; // Granite grey rock
+                    r = 0.68f; g = 0.70f; b = 0.74f; // Granite grey slate rock
                 } else if (mat == TerrariumCell.Material.GRAVEL) {
-                    r = 0.75f; g = 0.72f; b = 0.65f; // River gravel & pebbles
+                    r = 0.78f; g = 0.74f; b = 0.68f; // River gravel & pebbles
                 } else if (mat == TerrariumCell.Material.CLAY) {
-                    r = 0.85f; g = 0.48f; b = 0.28f; // Terracotta clay
-                } else if (mat == TerrariumCell.Material.PEAT) {
-                    r = 0.42f; g = 0.28f; b = 0.16f; // Dark rich organic humus
+                    r = 0.82f; g = 0.48f; b = 0.26f; // Terracotta clay
+                } else if (mat == TerrariumCell.Material.PEAT || mat == TerrariumCell.Material.LEAF_LITTER) {
+                    r = 0.48f; g = 0.32f; b = 0.18f; // Rich dark organic forest humus
                 } else {
-                    r = 0.38f; g = 0.76f; b = 0.28f; // Temperate meadow
+                    r = 0.42f; g = 0.82f; b = 0.32f; // Temperate meadow
                 }
 
-                // Pedological Moisture Shading: Higher soil humidity darkens albedo
+                // Pedological Moisture Shading: Higher soil humidity gives rich deeper tones
                 if (mat != TerrariumCell.Material.WATER && mat != TerrariumCell.Material.ROCK && topCell != null) {
                     float hum = topCell.humidity();
-                    float moistureDarken = 1.0f - (hum * 0.28f);
+                    float moistureDarken = 1.0f - (hum * 0.18f);
                     r *= moistureDarken;
                     g *= moistureDarken;
                     b *= moistureDarken;
 
-                    // Water Proximity: Darken immediate shoreline edges (wet bank effect)
+                    // Water Proximity: Wet shorelines
                     boolean nearWater = false;
                     for (int dx = -1; dx <= 1 && !nearWater; dx++) {
                         for (int dy = -1; dy <= 1 && !nearWater; dy++) {
@@ -113,19 +190,18 @@ public class TerrainMeshGenerator {
                         }
                     }
                     if (nearWater) {
-                        r *= 0.78f;
-                        g *= 0.80f;
-                        b *= 0.76f;
+                        r *= 0.85f;
+                        g *= 0.88f;
+                        b *= 0.82f;
                     }
                 }
 
-                // Geomorphological Slope Scree (Éboulis de pente / Falaises rocheuses):
-                // On steep slopes, topsoil erodes, transitioning terrain albedo to exposed rock/slate
+                // Geomorphological Slope Scree (Éboulis de pente / Falaises rocheuses)
                 if (mat != TerrariumCell.Material.WATER && norm.y < 0.78f) {
                     float slopeFactor = Math.min(1.0f, Math.max(0.0f, (0.78f - norm.y) / 0.28f));
-                    r = r * (1.0f - slopeFactor) + 0.58f * slopeFactor;
-                    g = g * (1.0f - slopeFactor) + 0.60f * slopeFactor;
-                    b = b * (1.0f - slopeFactor) + 0.63f * slopeFactor;
+                    r = r * (1.0f - slopeFactor) + 0.62f * slopeFactor;
+                    g = g * (1.0f - slopeFactor) + 0.64f * slopeFactor;
+                    b = b * (1.0f - slopeFactor) + 0.66f * slopeFactor;
                 }
 
                 vertices.add((float) x);
@@ -139,7 +215,6 @@ public class TerrainMeshGenerator {
                 texCoords.add(x * UV_SCALE);
                 texCoords.add(y * UV_SCALE);
 
-                // Modulate PBR texture by natural substrate vertex color
                 colors.add(r); colors.add(g); colors.add(b); colors.add(1.0f);
 
                 vertexIndexGrid[x][y] = vertexCounter++;

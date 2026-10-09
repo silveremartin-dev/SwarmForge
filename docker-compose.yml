@@ -5,9 +5,9 @@ services:
     image: postgres:16-alpine
     container_name: swarmforge-postgres
     environment:
-      - POSTGRES_USER=swarmforge
-      - POSTGRES_PASSWORD=swarmforge
-      - POSTGRES_DB=swarmforge
+      - POSTGRES_USER=${POSTGRES_USER:-swarmforge}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-swarmforge_dev_secret_change_me}
+      - POSTGRES_DB=${POSTGRES_DB:-swarmforge}
     ports:
       - "5432:5432"
     volumes:
@@ -38,9 +38,9 @@ services:
       - GRPC_PORT=50051
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=swarmforge
-      - DB_USER=swarmforge
-      - DB_PASSWORD=swarmforge
+      - DB_NAME=${POSTGRES_DB:-swarmforge}
+      - DB_USER=${POSTGRES_USER:-swarmforge}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-swarmforge_dev_secret_change_me}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SCENARIO=${SCENARIO:-1}

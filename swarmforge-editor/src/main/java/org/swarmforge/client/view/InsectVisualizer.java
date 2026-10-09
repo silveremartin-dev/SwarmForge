@@ -489,14 +489,82 @@ public class InsectVisualizer {
         if (gridWidth > 0) this.gridWidth = gridWidth;
     }
 
-    private float getScale(Individual.Caste caste, org.swarmforge.core.species.Species species) {
-        float baseScale = switch (caste) {
-            case QUEEN -> 1.30f;
-            case SOLDIER -> 0.95f;
-            case MALE -> 0.75f;
-            default -> 0.60f;
+    public float getMmPerWorldUnit() {
+        return (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
+    }
+
+    public static float getIndividualBodyLengthMm(Individual.Caste caste, org.swarmforge.core.species.Species species, org.swarmforge.core.domain.CasteTemplate template) {
+        if (template != null && template.getBodyLengthMm() > 0) {
+            return template.getBodyLengthMm();
+        }
+        if (species != null) {
+            if (species.getCastes() != null) {
+                for (org.swarmforge.core.domain.CasteTemplate ct : species.getCastes()) {
+                    if (matchesCaste(ct, caste) && ct.getBodyLengthMm() > 0) {
+                        return ct.getBodyLengthMm();
+                    }
+                }
+            }
+            float avg = species.getAverageCasteBodyLengthMm();
+            if (avg > 0) {
+                return switch (caste != null ? caste : Individual.Caste.WORKER) {
+                    case QUEEN -> avg * 2.2f;
+                    case SOLDIER -> avg * 1.6f;
+                    case MALE -> avg * 1.2f;
+                    default -> avg;
+                };
+            }
+        }
+        return switch (caste != null ? caste : Individual.Caste.WORKER) {
+            case QUEEN -> 14.0f;
+            case SOLDIER -> 9.0f;
+            case MALE -> 6.0f;
+            default -> 4.5f;
         };
-        return baseScale * visualScaleMultiplier;
+    }
+
+    private static boolean matchesCaste(org.swarmforge.core.domain.CasteTemplate ct, Individual.Caste caste) {
+        if (ct == null || caste == null) return false;
+        String name = ct.getName() != null ? ct.getName().toUpperCase() : "";
+        org.swarmforge.core.domain.CasteTemplate.CasteCategory cat = ct.getCategory();
+        return switch (caste) {
+            case QUEEN -> cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.PRIMARY_REPRODUCTIVE
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.SECONDARY_REPRODUCTIVE
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.QUEEN_DICHTHADIIGYNE
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.QUEEN_ERGATOGYNE
+                    || name.contains("QUEEN") || name.contains("REINE");
+            case SOLDIER -> cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.SOLDIER_DEFENSIVE
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.SUPER_SOLDIER
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.SOLDIER_PHRAGMOTIC
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.SOLDIER_NASUTE
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.WORKER_MAJOR
+                    || name.contains("SOLDIER") || name.contains("MAJOR");
+            case MALE -> cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.MALE_DRONE
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.MALE_ERGATANDROUS
+                    || name.contains("MALE") || name.contains("DRONE");
+            default -> cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.WORKER_MEDIA
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.WORKER_MINIMA
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.GENERAL_WORKER
+                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.METABOLIC_REPLETE
+                    || name.contains("WORKER") || name.contains("OUVRIERE");
+        };
+    }
+
+    public float getScaleForIndividual(Individual.Caste caste, Individual.LifeStage stage, org.swarmforge.core.species.Species species, org.swarmforge.core.domain.CasteTemplate template) {
+        float mmPerWorldUnit = getMmPerWorldUnit();
+        if (stage == Individual.LifeStage.EGG) {
+            return 0.8f / mmPerWorldUnit;
+        } else if (stage == Individual.LifeStage.LARVA) {
+            return 2.2f / mmPerWorldUnit;
+        } else if (stage == Individual.LifeStage.PUPA) {
+            return 4.0f / mmPerWorldUnit;
+        }
+        float bodyLengthMm = getIndividualBodyLengthMm(caste, species, template);
+        return bodyLengthMm / mmPerWorldUnit;
+    }
+
+    private float getScale(Individual.Caste caste, org.swarmforge.core.species.Species species) {
+        return 1.0f;
     }
 
     private int addBox(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx,

@@ -146,6 +146,38 @@ public interface Species extends java.io.Serializable {
         return java.util.Collections.emptyList();
     }
 
+    /**
+     * @return Average body length in millimeters across defined castes
+     */
+    default float getAverageCasteBodyLengthMm() {
+        java.util.List<org.swarmforge.core.domain.CasteTemplate> castes = getCastes();
+        if (castes == null || castes.isEmpty()) return 5.0f;
+        float sum = 0;
+        int count = 0;
+        for (org.swarmforge.core.domain.CasteTemplate ct : castes) {
+            if (ct != null && ct.getBodyLengthMm() > 0) {
+                sum += ct.getBodyLengthMm();
+                count++;
+            }
+        }
+        return count > 0 ? sum / count : 5.0f;
+    }
+
+    /**
+     * @return Minimum gallery diameter in millimeters required for the largest caste of this species
+     */
+    default float getRequiredTunnelDiameterMm() {
+        java.util.List<org.swarmforge.core.domain.CasteTemplate> castes = getCastes();
+        if (castes == null || castes.isEmpty()) return 6.0f;
+        float maxMinDiameter = 4.0f;
+        for (org.swarmforge.core.domain.CasteTemplate ct : castes) {
+            if (ct != null) {
+                maxMinDiameter = Math.max(maxMinDiameter, ct.getMinTunnelDiameterMm());
+            }
+        }
+        return maxMinDiameter;
+    }
+
     enum InsectOrder {
         ANT("🐜 Hymenoptera: Formicidae (Fourmis / Ants)"),
         BEE("🐝 Hymenoptera: Apidae (Abeilles / Bees)"),
