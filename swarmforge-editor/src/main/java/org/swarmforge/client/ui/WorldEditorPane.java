@@ -633,7 +633,7 @@ public class WorldEditorPane extends BorderPane {
                     int soilIdx = (int) Math.max(0, Math.min(SOIL_DEPTH - 1, ((double) (surfaceZ - z) / Math.max(1, surfaceZ)) * (SOIL_DEPTH - 1)));
                     byte soilMatId = soilLayers[gx][gy][soilIdx];
                     boolean isVoid = voidGrid[gx][gy][soilIdx] || carvedVoxelGrid[gx][gy];
-                    boolean isRiv = (riverCheck != null && riverCheck.isSelected()) && isNearRiver(gx, gy, 0);
+                    boolean isRiv = (riverCheck != null && riverCheck.isSelected()) && isNearRiver(gx, gy, 2);
 
                     org.swarmforge.core.domain.TerrariumCell.Material mat;
                     if (isVoid) {
@@ -1771,6 +1771,8 @@ public class WorldEditorPane extends BorderPane {
     private VBox createWeatherOverlayPane() {
         VBox box = new VBox(5);
         box.setPadding(new Insets(8, 12, 8, 12));
+        box.setPrefWidth(280);
+        box.setMinWidth(280);
         box.setStyle("-fx-background-color: rgba(15, 23, 42, 0.88); -fx-background-radius: 8; -fx-border-color: rgba(56, 189, 248, 0.4); -fx-border-width: 1; -fx-border-radius: 8;");
         box.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         box.setPickOnBounds(false);
@@ -5340,7 +5342,7 @@ public class WorldEditorPane extends BorderPane {
                         double[] p3 = project3DPoint(x, y + step, zTop, cx, cy, scale, radAz, radEl);
 
                         byte mat = soilLayers[x][y][0];
-                        if (riverCheck != null && riverCheck.isSelected() && isNearRiver(x, y, 1)) {
+                        if (riverCheck != null && riverCheck.isSelected() && isNearRiver(x, y, 2)) {
                             mat = 8; // Water River Voxel (Azure Blue Top surface)
                         }
                         drawVoxelBlockTexture(new double[]{p0[0], p1[0], p2[0], p3[0]}, new double[]{p0[1], p1[1], p2[1], p3[1]}, mat, true, false, false, x, y, (int)zTop);

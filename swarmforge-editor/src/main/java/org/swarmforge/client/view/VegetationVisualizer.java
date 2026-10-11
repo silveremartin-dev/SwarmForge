@@ -2782,7 +2782,8 @@ public class VegetationVisualizer {
             buildPaperPedunculateNest(nestNode, x, Math.max(surfY + 2.5f, z), y, mode);
         } else if (arch.contains("CATHEDRAL_MOUND") || spName.contains("termite")) {
             buildCathedralTermiteMound(nestNode, x, surfY, y, mode);
-        } else if (arch.contains("MOUND") || arch.contains("FORMICA") || spName.contains("formica") || spName.contains("mound") || spName.contains("dome")) {
+        } else if ((arch.equals("MOUND") || arch.contains("SOLAR_PINE_NEEDLE_MOUND")) && colony.getTunnelNetwork() == null) {
+            // Only place surface thatched needle mound if there is no subterranean tunnel network
             buildFormicaThatchedMound(nestNode, x, surfY, y, mode, 180.0f);
         } else if (arch.contains("ARBOREAL_SILK_LEAF") || spName.contains("weaver") || spName.contains("tisserande")) {
             buildArborealSilkLeafNest(nestNode, x, Math.max(surfY + 3.0f, z), y, mode);

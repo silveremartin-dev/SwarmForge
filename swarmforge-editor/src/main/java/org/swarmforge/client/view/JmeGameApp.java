@@ -488,8 +488,15 @@ public class JmeGameApp extends SimpleApplication {
     private boolean showSkirt = true;
     private boolean showElevationIsolines = false;
 
+    private long lastSliceRebuildMs = 0L;
+
     public void setSlicePlaneRatio(float ratio) {
         this.slicePlaneRatio = Math.max(0.05f, Math.min(1.0f, ratio));
+        long now = System.currentTimeMillis();
+        if (now - lastSliceRebuildMs < 40L) {
+            return;
+        }
+        lastSliceRebuildMs = now;
         enqueueTask(() -> {
             if (vegetationVisualizer != null) {
                 vegetationVisualizer.setSlicePlaneRatio(this.slicePlaneRatio);
@@ -1871,7 +1878,7 @@ public class JmeGameApp extends SimpleApplication {
         if (isStopped.compareAndSet(false, true)) {
             this.targetImage = null;
             try {
-                this.stop(true);
+                this.stop(false);
             } catch (Throwable ignored) {
             }
         }

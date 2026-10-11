@@ -96,8 +96,8 @@ public class TerrainMeshGenerator {
                 texCoords.add((x + 1) * 0.5f); texCoords.add((y + 1) * 0.5f);
                 colors.add(0.18f); colors.add(0.58f); colors.add(0.92f); colors.add(0.85f);
 
-                indices.add(baseIdx + 0); indices.add(baseIdx + 1); indices.add(baseIdx + 2);
-                indices.add(baseIdx + 1); indices.add(baseIdx + 3); indices.add(baseIdx + 2);
+                indices.add(baseIdx + 0); indices.add(baseIdx + 2); indices.add(baseIdx + 1);
+                indices.add(baseIdx + 1); indices.add(baseIdx + 2); indices.add(baseIdx + 3);
             }
         }
 
@@ -229,15 +229,15 @@ public class TerrainMeshGenerator {
                 int i01 = vertexIndexGrid[x][y + 1];
                 int i11 = vertexIndexGrid[x + 1][y + 1];
 
-                // Triangle 1 (CCW)
+                // Triangle 1 (CCW from above)
                 indices.add(i00);
-                indices.add(i10);
                 indices.add(i01);
+                indices.add(i10);
 
-                // Triangle 2 (CCW)
+                // Triangle 2 (CCW from above)
                 indices.add(i10);
-                indices.add(i11);
                 indices.add(i01);
+                indices.add(i11);
             }
         }
 

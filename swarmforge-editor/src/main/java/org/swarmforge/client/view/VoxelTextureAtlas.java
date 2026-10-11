@@ -220,14 +220,14 @@ public final class VoxelTextureAtlas {
     }
 
     private static void paintClay(int[][][] atlas, int tx, int ty, Random rng) {
-        int baseR = 152, baseG = 112, baseB = 92; // Natural warm earthy terracotta clay / silt
+        int baseR = 154, baseG = 52, baseB = 18; // Rich terracotta red-brown clay (#9a3412) matching legend and scientific mode
         for (int y = 0; y < TILE_SIZE; y++) {
             for (int x = 0; x < TILE_SIZE; x++) {
                 int noise = rng.nextInt(18) - 9;
                 // Subtle natural sedimentation strata
                 if (y % 4 == 0) noise -= 6;
                 if ((x + y * 3) % 7 == 0) noise += 8;
-                setPixel(atlas, tx, ty, x, y, baseR + noise, baseG + (noise * 3 / 4), baseB + (noise / 2), 255);
+                setPixel(atlas, tx, ty, x, y, baseR + noise, baseG + (noise / 2), baseB + (noise / 3), 255);
             }
         }
     }

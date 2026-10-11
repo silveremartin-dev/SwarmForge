@@ -22,6 +22,11 @@ import java.util.logging.Logger;
 public class ClientApp extends Application {
 
     private static final Logger LOG = Logger.getLogger(ClientApp.class.getName());
+    private SwarmForgeClient clientDelegate;
+
+    static {
+        SwarmForgeClient.silenceJme3Loggers();
+    }
 
     @Override
     public void start(Stage primaryStage) {
@@ -29,7 +34,16 @@ public class ClientApp extends Application {
         org.swarmforge.client.util.IconUtils.initEarlyTaskbarAppId();
         SwarmForgeClient.silenceJme3Loggers();
         SwarmForgeClient.setClientOnlyMode(true);
-        new SwarmForgeClient().start(primaryStage);
+        clientDelegate = new SwarmForgeClient();
+        clientDelegate.start(primaryStage);
+    }
+
+    @Override
+    public void stop() throws Exception {
+        if (clientDelegate != null) {
+            clientDelegate.stop();
+        }
+        super.stop();
     }
 
     public static void main(String[] args) {

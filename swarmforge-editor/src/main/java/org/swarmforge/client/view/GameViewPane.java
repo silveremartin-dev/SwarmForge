@@ -24,6 +24,7 @@ public class GameViewPane extends Pane {
     private final WritableImage writableImage;
 
     public GameViewPane(int width, int height) {
+        org.swarmforge.client.util.IconUtils.silenceJme3Warnings();
         this.setPrefSize(width, height);
 
         writableImage = new WritableImage(width, height);

@@ -198,9 +198,11 @@ public class TunnelVisualizer {
         // Position at midpoint
         geom.setLocalTranslation(p1.add(diff.mult(0.5f)));
 
-        // Rotate to match direction
+        // Rotate to match direction (Cylinder / Box length is along Z in JME)
         if (len > 0.001f) {
-            geom.lookAt(p2, Vector3f.UNIT_Y);
+            Vector3f dir = diff.normalize();
+            Vector3f up = Math.abs(dir.y) > 0.95f ? Vector3f.UNIT_X : Vector3f.UNIT_Y;
+            geom.lookAt(p2, up);
         }
 
         Material mat = new Material(assetManager, "Common/MatDefs/Light/Lighting.j3md");

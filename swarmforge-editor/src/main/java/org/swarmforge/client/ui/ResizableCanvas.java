@@ -57,4 +57,10 @@ public class ResizableCanvas extends Canvas {
     public double maxHeight(double width) {
         return 10000.0;
     }
+
+    @Override
+    public void resize(double width, double height) {
+        super.setWidth(width);
+        super.setHeight(height);
+    }
 }

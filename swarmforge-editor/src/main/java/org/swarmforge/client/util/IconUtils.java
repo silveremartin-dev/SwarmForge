@@ -39,15 +39,23 @@ public class IconUtils {
     private static File cachedIcoFile = null;
 
     /**
-     * Suppresses noisy, benign warnings from jME3 third-party asset loaders (OBJLoader, Material color space).
+     * Suppresses noisy, benign warnings from jME3 third-party asset loaders, mesh tangent calculations,
+     * and forces our SafeBufferAllocator to prevent JVM crashes on exit.
      */
     public static void silenceJme3Warnings() {
         try {
+            // Force SafeBufferAllocator to prevent JVM crash (0xc0000005) & InterruptedException on exit
+            System.setProperty("com.jme3.BufferAllocatorImplementation", "org.swarmforge.client.util.SafeBufferAllocator");
+            System.setProperty("com.jme3.lwjgl3.ConcurrentBufferAllocator", "false");
+
             java.util.logging.Logger.getLogger("com.jme3.scene.plugins.OBJLoader").setLevel(java.util.logging.Level.SEVERE);
             java.util.logging.Logger.getLogger("com.jme3.scene.plugins.MTLLoader").setLevel(java.util.logging.Level.SEVERE);
             java.util.logging.Logger.getLogger("com.jme3.material.Material").setLevel(java.util.logging.Level.SEVERE);
             java.util.logging.Logger.getLogger("com.jme3.scene.plugins").setLevel(java.util.logging.Level.SEVERE);
             java.util.logging.Logger.getLogger("com.jme3.asset.DesktopAssetManager").setLevel(java.util.logging.Level.WARNING);
+            java.util.logging.Logger.getLogger("com.jme3.util.TangentBinormalGenerator").setLevel(java.util.logging.Level.SEVERE);
+            java.util.logging.Logger.getLogger("com.jme3.util.BufferAllocatorFactory").setLevel(java.util.logging.Level.SEVERE);
+            java.util.logging.Logger.getLogger("com.jme3.system.lwjgl.LwjglContext").setLevel(java.util.logging.Level.WARNING);
         } catch (Throwable ignored) {
         }
     }

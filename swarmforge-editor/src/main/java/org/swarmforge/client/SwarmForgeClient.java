@@ -292,6 +292,12 @@ public class SwarmForgeClient extends Application {
                 // ignored
             }
             Platform.exit();
+            if (!isTestMode) {
+                try {
+                    System.exit(0);
+                } catch (Throwable ignored) {
+                }
+            }
         });
 
         if (isTestMode || splashScreen == null) {
