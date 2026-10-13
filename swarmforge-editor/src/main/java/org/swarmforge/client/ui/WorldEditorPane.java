@@ -49,7 +49,12 @@ public class WorldEditorPane extends BorderPane {
 
     public void setActive(boolean active) {
         this.isActive = active;
-        if (active) repaintAllViews();
+        if (active) {
+            if (currentRenderMode != RenderMode.SCIENTIFIC) {
+                attachGameView();
+            }
+            repaintAllViews();
+        }
     }
 
     public ResizableCanvas getCanvas3D() {
@@ -604,13 +609,11 @@ public class WorldEditorPane extends BorderPane {
                 canvas3D.toFront();
             }
         }
-        if (gameView != null) {
-            gameView.setVisible(!isSci);
-            gameView.setManaged(!isSci);
-            if (!isSci) {
-                gameView.setRenderMode(currentRenderMode);
-                gameView.toFront();
-            }
+        if (!isSci) {
+            attachGameView();
+        } else if (gameView != null) {
+            gameView.setVisible(false);
+            gameView.setManaged(false);
         }
         if (floatingMouseInspectorCard != null) floatingMouseInspectorCard.toFront();
         if (sideMinimapsBox != null) sideMinimapsBox.toFront();
@@ -621,6 +624,155 @@ public class WorldEditorPane extends BorderPane {
             this.isActive = true;
         }
         repaintAllViews();
+    }
+
+    public void attachGameView() {
+        if (gameView == null) {
+            this.gameView = org.swarmforge.client.view.GameViewPane.getSharedInstance(1024, 768);
+        }
+        if (h3d != null && gameView != null) {
+            boolean reparented = false;
+            if (gameView.getParent() != this.h3d) {
+                if (gameView.getParent() instanceof Pane oldParent) {
+                    oldParent.getChildren().remove(gameView);
+                }
+                int idx = h3d.getChildren().indexOf(canvas3D);
+                // Insert right above the 2.5D canvas so every overlay card stays on top
+                h3d.getChildren().add(Math.max(0, idx + 1), gameView);
+                reparented = true;
+            }
+            boolean isSci = (currentRenderMode == RenderMode.SCIENTIFIC);
+            gameView.setVisible(!isSci);
+            gameView.setManaged(!isSci);
+            if (reparented) {
+                bindGameViewListeners();
+                if (gameView.getGameApp() != null) {
+                    gameView.getGameApp().setSimulationPaused(!isSimulationMode);
+                    if (activeSimulation != null) {
+                        gameView.getGameApp().setSimulation(activeSimulation);
+                        if (activeSimulation.getTerrarium() != null) {
+                            gameView.getGameApp().renderTerrarium(activeSimulation.getTerrarium());
+                        }
+                    }
+                }
+            }
+            if (!isSci) {
+                gameView.setRenderMode(currentRenderMode);
+            }
+        }
+    }
+
+    private void bindGameViewListeners() {
+        if (gameView == null || gameView.getGameApp() == null) return;
+
+        gameView.getGameApp().setSelectionListener(new org.swarmforge.client.view.JmeGameApp.ObjectSelectionListener() {
+            @Override
+            public void onVoxelSelected(int x, int y, int z, String material, float moisture, float temp, float compaction) {
+                updateFloatingMouseInspector(x, y, z, lastGameViewMouseX, lastGameViewMouseY, null);
+            }
+
+            @Override
+            public void onIndividualSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {
+                setFollowedIndividualById(id);
+                if (trackedAntPane != null) {
+                    trackedAntPane.setVisible(true);
+                }
+                String bioText = "🐜 Individu #" + id + " [" + (caste != null ? caste : "Ouvrière") + "] | Santé: " + (int)(health * 100) + "% | Énergie: " + (int)(energy * 100) + "%";
+                updateFloatingMouseInspector(0, 0, 0, lastGameViewMouseX, lastGameViewMouseY, bioText);
+            }
+
+            @Override
+            public void onChamberSelected(String chamberId) {
+                selectChamberById(chamberId);
+                if (chamberInfoPane != null) {
+                    chamberInfoPane.setVisible(true);
+                }
+                updateFloatingMouseInspector(0, 0, 0, lastGameViewMouseX, lastGameViewMouseY, "🏛️ Cavité: " + chamberId);
+            }
+
+            @Override
+            public void onHoverInfo(String text) {
+                if (text != null && text.contains("📍 Voxel")) {
+                    // Handled by onVoxelSelected
+                } else if (text != null && isVoxelInfoVisible) {
+                    lblFInspTitle.setText("🔍 Inspection Ciblée");
+                    lblFInspAlt.setText("");
+                    lblFInspSubstrat.setText("");
+                    lblFInspClimate.setText("");
+                    lblFInspChem.setText("");
+                    lblFInspGas.setText("");
+                    lblFInspPhero.setText("");
+                    lblFInspBio.setText(text);
+                    floatingMouseInspectorCard.autosize();
+                    if (h3d != null) {
+                        double cardW = Math.max(380.0, floatingMouseInspectorCard.getWidth());
+                        double cardH = Math.max(160.0, floatingMouseInspectorCard.getHeight());
+                        double hx = Math.max(10, Math.min(h3d.getWidth() - cardW - 10, lastGameViewMouseX + 15));
+                        double hy = Math.max(10, Math.min(h3d.getHeight() - cardH - 10, lastGameViewMouseY - 20));
+                        floatingMouseInspectorCard.relocate(hx, hy);
+                        floatingMouseInspectorCard.toFront();
+                    }
+                    floatingMouseInspectorCard.setVisible(true);
+                }
+            }
+        });
+
+        gameView.setOnMouseMoved(e -> {
+            lastGameViewMouseX = e.getX();
+            lastGameViewMouseY = e.getY();
+            if (gameView.getGameApp() != null) {
+                gameView.getGameApp().hover(e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
+            }
+        });
+
+        gameView.setOnMouseExited(e -> {
+            if (floatingMouseInspectorCard != null) {
+                floatingMouseInspectorCard.setVisible(false);
+            }
+        });
+
+        final double[] lastJmeMouse = new double[2];
+        gameView.setOnMousePressed(e -> {
+            lastJmeMouse[0] = e.getSceneX();
+            lastJmeMouse[1] = e.getSceneY();
+        });
+        gameView.setOnMouseDragged(e -> {
+            double dx = e.getSceneX() - lastJmeMouse[0];
+            double dy = e.getSceneY() - lastJmeMouse[1];
+            if (gameView.getGameApp() != null) {
+                if (e.isPrimaryButtonDown() && !e.isShiftDown()) {
+                    gameView.getGameApp().rotateCamera((float) dx, (float) dy);
+                } else if (e.isSecondaryButtonDown() || e.isMiddleButtonDown() || e.isShiftDown()) {
+                    gameView.getGameApp().panCamera((float) dx, (float) dy);
+                }
+            }
+            lastJmeMouse[0] = e.getSceneX();
+            lastJmeMouse[1] = e.getSceneY();
+            lastGameViewMouseX = e.getX();
+            lastGameViewMouseY = e.getY();
+            if (gameView.getGameApp() != null) {
+                gameView.getGameApp().hover(e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
+            }
+            repaintAllViews();
+        });
+        gameView.setOnScroll(e -> {
+            if (gameView.getGameApp() != null) {
+                gameView.getGameApp().zoomCamera((float) e.getDeltaY() * 0.05f, e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
+            }
+            repaintAllViews();
+        });
+        gameView.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                if (gameView.getGameApp() != null) {
+                    gameView.getGameApp().resetCamera();
+                }
+                resetAllCameras();
+                return;
+            }
+            if (gameView.getGameApp() != null) {
+                gameView.getGameApp().pick(e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
+            }
+        });
     }
 
     public org.swarmforge.core.domain.Terrarium exportToTerrarium() {
@@ -3584,135 +3736,25 @@ public class WorldEditorPane extends BorderPane {
         StackPane.setAlignment(sideMinimapsBox, Pos.TOP_RIGHT);
         StackPane.setMargin(sideMinimapsBox, new Insets(10, 10, 10, 10));
 
-        this.gameView = new org.swarmforge.client.view.GameViewPane(1024, 768);
-        if (gameView.getGameApp() != null) {
-            gameView.getGameApp().setSimulationPaused(!isSimulationMode);
-        }
+        this.gameView = org.swarmforge.client.view.GameViewPane.getSharedInstance(1024, 768);
+        this.floatingMouseInspectorCard = createFloatingMouseInspectorCard();
+        this.weatherOverlayPane = createWeatherOverlayPane();
+
         boolean isSci = (currentRenderMode == RenderMode.SCIENTIFIC);
         canvas3D.setVisible(isSci);
         canvas3D.setManaged(isSci);
-        gameView.setVisible(!isSci);
-        gameView.setManaged(!isSci);
-        if (!isSci) {
-            gameView.setRenderMode(currentRenderMode);
+
+        if (gameView.getParent() == null) {
+            this.h3d = new StackPane(canvas3D, gameView, floatingMouseInspectorCard, sideMinimapsBox, trackedAntPane, chamberInfoPane, weatherOverlayPane);
+            bindGameViewListeners();
+            gameView.setVisible(!isSci);
+            gameView.setManaged(!isSci);
+            if (!isSci) {
+                gameView.setRenderMode(currentRenderMode);
+            }
+        } else {
+            this.h3d = new StackPane(canvas3D, floatingMouseInspectorCard, sideMinimapsBox, trackedAntPane, chamberInfoPane, weatherOverlayPane);
         }
-
-        // JME Selection Bridge
-        this.floatingMouseInspectorCard = createFloatingMouseInspectorCard();
-
-        gameView.getGameApp().setSelectionListener(new org.swarmforge.client.view.JmeGameApp.ObjectSelectionListener() {
-            @Override
-            public void onVoxelSelected(int x, int y, int z, String material, float moisture, float temp, float compaction) {
-                updateFloatingMouseInspector(x, y, z, lastGameViewMouseX, lastGameViewMouseY, null);
-            }
-
-            @Override
-            public void onIndividualSelected(String id, String caste, String stage, float health, float energy, float hunger, float age, String job) {
-                setFollowedIndividualById(id);
-                if (trackedAntPane != null) {
-                    trackedAntPane.setVisible(true);
-                }
-                String bioText = "🐜 Individu #" + id + " [" + (caste != null ? caste : "Ouvrière") + "] | Santé: " + (int)(health * 100) + "% | Énergie: " + (int)(energy * 100) + "%";
-                updateFloatingMouseInspector(0, 0, 0, lastGameViewMouseX, lastGameViewMouseY, bioText);
-            }
-
-            @Override
-            public void onChamberSelected(String chamberId) {
-                selectChamberById(chamberId);
-                if (chamberInfoPane != null) {
-                    chamberInfoPane.setVisible(true);
-                }
-                updateFloatingMouseInspector(0, 0, 0, lastGameViewMouseX, lastGameViewMouseY, "🏛️ Cavité: " + chamberId);
-            }
-
-            @Override
-            public void onHoverInfo(String text) {
-                if (text != null && text.contains("📍 Voxel")) {
-                    // Handled by onVoxelSelected
-                } else if (text != null && isVoxelInfoVisible) {
-                    lblFInspTitle.setText("🔍 Inspection Ciblée");
-                    lblFInspAlt.setText("");
-                    lblFInspSubstrat.setText("");
-                    lblFInspClimate.setText("");
-                    lblFInspChem.setText("");
-                    lblFInspGas.setText("");
-                    lblFInspPhero.setText("");
-                    lblFInspBio.setText(text);
-                    floatingMouseInspectorCard.autosize();
-                    if (h3d != null) {
-                        double cardW = Math.max(380.0, floatingMouseInspectorCard.getWidth());
-                        double cardH = Math.max(160.0, floatingMouseInspectorCard.getHeight());
-                        double hx = Math.max(10, Math.min(h3d.getWidth() - cardW - 10, lastGameViewMouseX + 15));
-                        double hy = Math.max(10, Math.min(h3d.getHeight() - cardH - 10, lastGameViewMouseY - 20));
-                        floatingMouseInspectorCard.relocate(hx, hy);
-                        floatingMouseInspectorCard.toFront();
-                    }
-                    floatingMouseInspectorCard.setVisible(true);
-                }
-            }
-        });
-
-        // Mouse Hover Detection on GameView
-        gameView.setOnMouseMoved(e -> {
-            lastGameViewMouseX = e.getX();
-            lastGameViewMouseY = e.getY();
-            if (gameView.getGameApp() != null) {
-                gameView.getGameApp().hover(e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
-            }
-        });
-
-        gameView.setOnMouseExited(e -> {
-            if (floatingMouseInspectorCard != null) {
-                floatingMouseInspectorCard.setVisible(false);
-            }
-        });
-
-        // Complete Mouse Controls on GameView (Rotate, Pan, Zoom, Pick, Reset)
-        final double[] lastJmeMouse = new double[2];
-        gameView.setOnMousePressed(e -> {
-            lastJmeMouse[0] = e.getSceneX();
-            lastJmeMouse[1] = e.getSceneY();
-        });
-        gameView.setOnMouseDragged(e -> {
-            double dx = e.getSceneX() - lastJmeMouse[0];
-            double dy = e.getSceneY() - lastJmeMouse[1];
-            if (gameView.getGameApp() != null) {
-                if (e.isPrimaryButtonDown() && !e.isShiftDown()) {
-                    gameView.getGameApp().rotateCamera((float) dx, (float) dy);
-                } else if (e.isSecondaryButtonDown() || e.isMiddleButtonDown() || e.isShiftDown()) {
-                    gameView.getGameApp().panCamera((float) dx, (float) dy);
-                }
-            }
-            lastJmeMouse[0] = e.getSceneX();
-            lastJmeMouse[1] = e.getSceneY();
-            lastGameViewMouseX = e.getX();
-            lastGameViewMouseY = e.getY();
-            if (gameView.getGameApp() != null) {
-                gameView.getGameApp().hover(e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
-            }
-            repaintAllViews();
-        });
-        gameView.setOnScroll(e -> {
-            if (gameView.getGameApp() != null) {
-                gameView.getGameApp().zoomCamera((float) e.getDeltaY() * 0.05f, e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
-            }
-            repaintAllViews();
-        });
-        gameView.setOnMouseClicked(e -> {
-            if (e.getClickCount() == 2) {
-                if (gameView.getGameApp() != null) {
-                    gameView.getGameApp().resetCamera();
-                }
-                resetAllCameras();
-                return;
-            }
-            if (gameView.getGameApp() != null) {
-                gameView.getGameApp().pick(e.getX(), e.getY(), gameView.getWidth(), gameView.getHeight());
-            }
-        });
-
-        this.weatherOverlayPane = createWeatherOverlayPane();
-        this.h3d = new StackPane(canvas3D, gameView, floatingMouseInspectorCard, sideMinimapsBox, trackedAntPane, chamberInfoPane, weatherOverlayPane);
         h3d.setStyle("-fx-border-color: #555; -fx-border-width: 1; -fx-background-color: #0b0f19;");
         HBox.setHgrow(h3d, Priority.ALWAYS);
         VBox.setVgrow(h3d, Priority.ALWAYS);

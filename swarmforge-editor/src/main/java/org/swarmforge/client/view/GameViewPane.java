@@ -19,6 +19,22 @@ import com.jme3.system.JmeContext;
  */
 public class GameViewPane extends Pane {
 
+    private static GameViewPane sharedInstance;
+    private static final Object LOCK = new Object();
+
+    public static GameViewPane getSharedInstance(int width, int height) {
+        synchronized (LOCK) {
+            if (sharedInstance == null) {
+                sharedInstance = new GameViewPane(width, height);
+            }
+            return sharedInstance;
+        }
+    }
+
+    public static GameViewPane getSharedInstance() {
+        return getSharedInstance(1024, 768);
+    }
+
     private final ImageView imageView;
     private final JmeGameApp gameApp;
     private final WritableImage writableImage;

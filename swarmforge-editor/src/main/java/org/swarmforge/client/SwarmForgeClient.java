@@ -313,23 +313,50 @@ public class SwarmForgeClient extends Application {
             });
         }
 
-        // Auto-connect to server at launch (localhost:50051)
+        // Server connection at launch: dedicated client probes localhost:50051 safely; studio starts offline
         if (!isTestMode) {
-            Platform.runLater(() -> {
-                try {
-                    networkClient.connect("localhost", 50051);
-                    networkClient.startStreaming();
-                    LOG.info("Auto-connected to SwarmForge server at localhost:50051");
-                    if (simControlPanel != null) {
-                        simControlPanel.setServerConnectionStatus(true, "localhost:50051");
+            if (isClientOnlyMode) {
+                Thread.ofVirtual().start(() -> {
+                    boolean reachable = false;
+                    try (java.net.Socket s = new java.net.Socket()) {
+                        s.connect(new java.net.InetSocketAddress("localhost", 50051), 350);
+                        reachable = true;
+                    } catch (Throwable ignored) {
                     }
-                } catch (Throwable ex) {
-                    LOG.info("Standalone mode active (server auto-connect offline)");
+                    if (reachable) {
+                        try {
+                            networkClient.connect("localhost", 50051);
+                            networkClient.startStreaming();
+                            LOG.info("Auto-connected to SwarmForge server at localhost:50051");
+                            Platform.runLater(() -> {
+                                if (simControlPanel != null) {
+                                    simControlPanel.setServerConnectionStatus(true, "localhost:50051");
+                                }
+                            });
+                        } catch (Throwable ex) {
+                            Platform.runLater(() -> {
+                                if (simControlPanel != null) {
+                                    simControlPanel.setServerConnectionStatus(false, "Hors-ligne");
+                                }
+                            });
+                        }
+                    } else {
+                        LOG.info("Standalone mode active (no SwarmForge server detected on localhost:50051)");
+                        Platform.runLater(() -> {
+                            if (simControlPanel != null) {
+                                simControlPanel.setServerConnectionStatus(false, "Hors-ligne");
+                            }
+                        });
+                    }
+                });
+            } else {
+                // Studio Mode: start directly in standalone offline mode
+                Platform.runLater(() -> {
                     if (simControlPanel != null) {
                         simControlPanel.setServerConnectionStatus(false, "Hors-ligne");
                     }
-                }
-            });
+                });
+            }
         }
     }
 
