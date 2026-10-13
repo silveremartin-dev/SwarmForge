@@ -36,8 +36,8 @@ shift
 goto parse_args
 
 :run_stack
-echo [1/3] Compilation du Serveur et du Client...
-call mvn compile -pl swarmforge-server,swarmforge-client -am -q
+echo [1/3] Compilation et installation du Serveur et du Client...
+call mvn install -pl swarmforge-server,swarmforge-client -am -DskipTests -q
 if errorlevel 1 (
     echo [ERREUR] Echec de la compilation.
     pause

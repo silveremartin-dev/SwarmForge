@@ -36,8 +36,8 @@ shift
 goto parse_args
 
 :run_client
-echo [1/2] Compilation des modules Core ^& Client...
-call mvn compile -pl swarmforge-client -am -q
+echo [1/2] Compilation et installation des modules Core ^& Client...
+call mvn install -pl swarmforge-client -am -DskipTests -q
 if errorlevel 1 (
     echo [ERREUR] Echec de la compilation du Client.
     pause

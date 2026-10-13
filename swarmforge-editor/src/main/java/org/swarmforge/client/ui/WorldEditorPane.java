@@ -600,13 +600,25 @@ public class WorldEditorPane extends BorderPane {
         if (canvas3D != null) {
             canvas3D.setVisible(isSci);
             canvas3D.setManaged(isSci);
+            if (isSci) {
+                canvas3D.toFront();
+            }
         }
         if (gameView != null) {
             gameView.setVisible(!isSci);
             gameView.setManaged(!isSci);
             if (!isSci) {
                 gameView.setRenderMode(currentRenderMode);
+                gameView.toFront();
             }
+        }
+        if (floatingMouseInspectorCard != null) floatingMouseInspectorCard.toFront();
+        if (sideMinimapsBox != null) sideMinimapsBox.toFront();
+        if (trackedAntPane != null) trackedAntPane.toFront();
+        if (chamberInfoPane != null) chamberInfoPane.toFront();
+        if (weatherOverlayPane != null) weatherOverlayPane.toFront();
+        if (isSci) {
+            this.isActive = true;
         }
         repaintAllViews();
     }
@@ -1769,11 +1781,12 @@ public class WorldEditorPane extends BorderPane {
     }
 
     private VBox createWeatherOverlayPane() {
-        VBox box = new VBox(5);
-        box.setPadding(new Insets(8, 12, 8, 12));
-        box.setPrefWidth(280);
-        box.setMinWidth(280);
-        box.setStyle("-fx-background-color: rgba(15, 23, 42, 0.88); -fx-background-radius: 8; -fx-border-color: rgba(56, 189, 248, 0.4); -fx-border-width: 1; -fx-border-radius: 8;");
+        VBox box = new VBox(6);
+        box.setPadding(new Insets(10, 14, 10, 14));
+        box.setPrefWidth(390);
+        box.setMinWidth(380);
+        box.setMaxWidth(440);
+        box.setStyle("-fx-background-color: rgba(15, 23, 42, 0.95); -fx-background-radius: 8px; -fx-border-color: rgba(56, 189, 248, 0.6); -fx-border-width: 1.2px; -fx-border-radius: 8px; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.7), 10, 0, 0, 3);");
         box.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         box.setPickOnBounds(false);
         box.setMouseTransparent(true);
@@ -1782,38 +1795,54 @@ public class WorldEditorPane extends BorderPane {
 
         Label title = new Label();
         title.textProperty().bind(I18nManager.getInstance().createStringBinding("weather.info_overlay.title"));
-        title.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 11px; -fx-font-weight: bold;");
+        title.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 11.5px; -fx-font-weight: bold;");
 
         lblWeatherCoords = new Label("📍 Lat: -- • Lon: -- • Alt: --");
         lblWeatherCoords.setStyle("-fx-text-fill: #7dd3fc; -fx-font-size: 10px; -fx-font-weight: bold;");
+        lblWeatherCoords.setWrapText(true);
 
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(3);
+        grid.setHgap(16);
+        grid.setVgap(4);
+        javafx.scene.layout.ColumnConstraints col0 = new javafx.scene.layout.ColumnConstraints();
+        col0.setMinWidth(175);
+        col0.setPrefWidth(180);
+        javafx.scene.layout.ColumnConstraints col1 = new javafx.scene.layout.ColumnConstraints();
+        col1.setMinWidth(175);
+        col1.setPrefWidth(180);
+        grid.getColumnConstraints().addAll(col0, col1);
 
         lblWeatherTemp = new Label("🌡️ Temp: --");
         lblWeatherTemp.setStyle("-fx-text-fill: #f87171; -fx-font-size: 10.5px; -fx-font-weight: bold;");
+        lblWeatherTemp.setWrapText(true);
 
         lblWeatherHum = new Label("💧 Humidité: --");
         lblWeatherHum.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 10.5px;");
+        lblWeatherHum.setWrapText(true);
 
         lblWeatherLight = new Label("☀️ Lumière: --");
         lblWeatherLight.setStyle("-fx-text-fill: #fde047; -fx-font-size: 10.5px;");
+        lblWeatherLight.setWrapText(true);
 
         lblWeatherWindSpd = new Label("💨 Vent: --");
         lblWeatherWindSpd.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10.5px;");
+        lblWeatherWindSpd.setWrapText(true);
 
         lblWeatherWindDir = new Label("🧭 Dir: --");
         lblWeatherWindDir.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10.5px;");
+        lblWeatherWindDir.setWrapText(true);
 
         lblWeatherRain = new Label("🌧️ Pluie: --");
         lblWeatherRain.setStyle("-fx-text-fill: #60a5fa; -fx-font-size: 10.5px;");
+        lblWeatherRain.setWrapText(true);
 
         lblWeatherPressure = new Label("📉 Pression: --");
         lblWeatherPressure.setStyle("-fx-text-fill: #a7f3d0; -fx-font-size: 10.5px;");
+        lblWeatherPressure.setWrapText(true);
 
         lblWeatherMoon = new Label("🌔 Lune: --");
         lblWeatherMoon.setStyle("-fx-text-fill: #c084fc; -fx-font-size: 10.5px;");
+        lblWeatherMoon.setWrapText(true);
 
         grid.add(lblWeatherTemp, 0, 0);
         grid.add(lblWeatherWindSpd, 1, 0);
@@ -1829,9 +1858,11 @@ public class WorldEditorPane extends BorderPane {
 
         lblWeatherStatus = new Label("☀️ Ensoleillé • Jour");
         lblWeatherStatus.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 10.5px; -fx-font-weight: bold;");
+        lblWeatherStatus.setWrapText(true);
 
         lblWeatherPhotoperiod = new Label("🌅 Lever: -- • 🌇 Coucher: --");
         lblWeatherPhotoperiod.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 10px;");
+        lblWeatherPhotoperiod.setWrapText(true);
 
         box.getChildren().addAll(title, lblWeatherCoords, grid, new Separator(), lblWeatherStatus, lblWeatherPhotoperiod);
         StackPane.setAlignment(box, Pos.TOP_LEFT);
@@ -3607,9 +3638,12 @@ public class WorldEditorPane extends BorderPane {
                     lblFInspGas.setText("");
                     lblFInspPhero.setText("");
                     lblFInspBio.setText(text);
+                    floatingMouseInspectorCard.autosize();
                     if (h3d != null) {
-                        double hx = Math.max(10, Math.min(h3d.getWidth() - 430.0 - 10, lastGameViewMouseX + 15));
-                        double hy = Math.max(10, Math.min(h3d.getHeight() - 220.0 - 10, lastGameViewMouseY - 20));
+                        double cardW = Math.max(380.0, floatingMouseInspectorCard.getWidth());
+                        double cardH = Math.max(160.0, floatingMouseInspectorCard.getHeight());
+                        double hx = Math.max(10, Math.min(h3d.getWidth() - cardW - 10, lastGameViewMouseX + 15));
+                        double hy = Math.max(10, Math.min(h3d.getHeight() - cardH - 10, lastGameViewMouseY - 20));
                         floatingMouseInspectorCard.relocate(hx, hy);
                         floatingMouseInspectorCard.toFront();
                     }
@@ -4555,7 +4589,16 @@ public class WorldEditorPane extends BorderPane {
         card.setMinWidth(380);
         card.setPrefWidth(430);
         card.setMaxWidth(540);
-        card.setStyle("-fx-background-color: rgba(15, 23, 42, 0.95); -fx-background-radius: 8px; -fx-border-color: rgba(56, 189, 248, 0.7); -fx-border-radius: 8px; -fx-border-width: 1.2px; -fx-padding: 8px 12px; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 8, 0, 0, 2);");
+        card.setStyle(
+            "-fx-background-color: rgba(15, 23, 42, 0.96); " +
+            "-fx-background-radius: 8px; " +
+            "-fx-border-color: #38bdf8; " +
+            "-fx-border-radius: 8px; " +
+            "-fx-border-width: 1.5px; " +
+            "-fx-padding: 10px 14px; " +
+            "-fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.85), 14, 0, 0, 4);"
+        );
+        card.getStyleClass().add("card-pane");
 
         lblFInspTitle = new Label();
         lblFInspTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
@@ -4747,10 +4790,11 @@ public class WorldEditorPane extends BorderPane {
         lblFInspPhero.setText(String.format(Locale.US, "🧪 Phéromones: %s", pheromoneInfo));
         lblFInspBio.setText(String.format(Locale.US, "🐜 Contenu Voxel: %s", bioContents));
 
+        floatingMouseInspectorCard.autosize();
         double parentW = h3d != null && h3d.getWidth() > 0 ? h3d.getWidth() : 800;
         double parentH = h3d != null && h3d.getHeight() > 0 ? h3d.getHeight() : 600;
-        double cardW = 430.0;
-        double cardH = 220.0;
+        double cardW = Math.max(400.0, floatingMouseInspectorCard.getWidth());
+        double cardH = Math.max(180.0, floatingMouseInspectorCard.getHeight());
         double hx = Math.max(10, Math.min(parentW - cardW - 10, screenX + 15));
         double hy = Math.max(10, Math.min(parentH - cardH - 10, screenY - 20));
 

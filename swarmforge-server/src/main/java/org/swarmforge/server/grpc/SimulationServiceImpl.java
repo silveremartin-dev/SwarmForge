@@ -456,7 +456,7 @@ public class SimulationServiceImpl extends SimulationServiceGrpc.SimulationServi
                 .setRedisConnected(server != null && server.isRedisConnected())
                 .setRunningSimulations(simulationManager.getAllSimulations().size())
                 .setConnectedClients(connectedClientCount.get())
-                .setVersion("1.0.0-beta.1-SNAPSHOT")
+                .setVersion("1.0.0-beta.2-SNAPSHOT")
                 .setUptimeSeconds(server != null ? server.getUptimeSeconds() : 0)
                 .build();
 

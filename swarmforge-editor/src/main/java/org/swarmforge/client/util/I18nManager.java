@@ -56,6 +56,27 @@ public class I18nManager {
     }
 
     private Locale determineInitialLocale() {
+        // 1. Try file-based preference in user home directory (~/.swarmforge/config.properties)
+        try {
+            java.io.File cfgFile = new java.io.File(System.getProperty("user.home"), ".swarmforge/config.properties");
+            if (cfgFile.exists()) {
+                java.util.Properties props = new java.util.Properties();
+                try (java.io.FileInputStream in = new java.io.FileInputStream(cfgFile)) {
+                    props.load(in);
+                    String fileLang = props.getProperty("user_language");
+                    if (fileLang != null && !fileLang.trim().isEmpty()) {
+                        for (Locale loc : supportedLocales) {
+                            if (loc.getLanguage().equalsIgnoreCase(fileLang.trim())) {
+                                LOG.info("Loaded user language from config file: " + loc.getLanguage());
+                                return loc;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // 2. Try Java user Preferences node
         try {
             java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(I18nManager.class);
             String savedLang = prefs.get("user_language", null);
@@ -71,6 +92,7 @@ public class I18nManager {
             LOG.warning("Could not read user language preference: " + e.getMessage());
         }
 
+        // 3. Fallback to OS system locale
         Locale sysLocale = Locale.getDefault();
         if (sysLocale != null) {
             String sysLang = sysLocale.getLanguage();
@@ -88,6 +110,7 @@ public class I18nManager {
 
     private void saveUserLocalePreference(Locale targetLocale) {
         if (targetLocale == null) return;
+        // 1. Save to Java Preferences node
         try {
             java.util.prefs.Preferences prefs = java.util.prefs.Preferences.userNodeForPackage(I18nManager.class);
             prefs.put("user_language", targetLocale.getLanguage());
@@ -96,6 +119,23 @@ public class I18nManager {
         } catch (Exception e) {
             LOG.warning("Could not save user language preference: " + e.getMessage());
         }
+
+        // 2. Save to file ~/.swarmforge/config.properties for portability
+        try {
+            java.io.File dir = new java.io.File(System.getProperty("user.home"), ".swarmforge");
+            if (!dir.exists()) dir.mkdirs();
+            java.io.File cfgFile = new java.io.File(dir, "config.properties");
+            java.util.Properties props = new java.util.Properties();
+            if (cfgFile.exists()) {
+                try (java.io.FileInputStream in = new java.io.FileInputStream(cfgFile)) {
+                    props.load(in);
+                } catch (Exception ignored) {}
+            }
+            props.setProperty("user_language", targetLocale.getLanguage());
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(cfgFile)) {
+                props.store(out, "SwarmForge Configuration");
+            }
+        } catch (Exception ignored) {}
     }
 
 

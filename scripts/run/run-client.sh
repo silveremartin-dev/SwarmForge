@@ -33,8 +33,8 @@ for arg in "$@"; do
     esac
 done
 
-echo "[1/2] Compiling SwarmForge Core & Client..."
-mvn compile -pl swarmforge-client -am -q
+echo "[1/2] Compiling and installing SwarmForge Core & Client..."
+mvn install -pl swarmforge-client -am -DskipTests -q
 if [ $? -ne 0 ]; then
     echo "ERROR: Compilation failed."
     exit 1

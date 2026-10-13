@@ -29,5 +29,7 @@ for arg in "$@"; do
     esac
 done
 
+echo "Compiling and installing SwarmForge Core & Editor..."
+mvn install -pl swarmforge-editor -am -DskipTests -q
 echo "Launching SwarmForge Editor..."
-mvn compile exec:java -pl swarmforge-editor -q $DEBUG_OPT $HEADLESS_OPT -Dexec.args="$PASSED_ARGS"
+mvn exec:java -pl swarmforge-editor -q $DEBUG_OPT $HEADLESS_OPT -Dexec.args="$PASSED_ARGS"

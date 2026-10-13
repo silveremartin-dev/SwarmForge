@@ -125,16 +125,16 @@ public class SwarmForgeClient extends Application {
             if (isClientOnlyMode) {
                 splashScreen = new org.swarmforge.client.ui.SplashScreen(
                     null,
-                    "SwarmForge Client",
-                    "SIMULATION VIEWER",
+                    org.swarmforge.client.util.I18nManager.getInstance().get("splash.title.client", "SwarmForge Client"),
+                    org.swarmforge.client.util.I18nManager.getInstance().get("splash.badge.client", "SIMULATION VIEWER"),
                     org.swarmforge.client.util.I18nManager.getInstance().get("splash.client.subtitle", "3D Eusocial Simulation Viewer & God Mode Controller")
                 );
             } else {
                 splashScreen = new org.swarmforge.client.ui.SplashScreen(
                     null,
-                    "SwarmForge Studio",
-                    "STUDIO & WORLD EDITOR",
-                    org.swarmforge.client.util.I18nManager.getInstance().get("splash.subtitle")
+                    org.swarmforge.client.util.I18nManager.getInstance().get("splash.title.studio", "SwarmForge Studio"),
+                    org.swarmforge.client.util.I18nManager.getInstance().get("splash.badge.editor", "STUDIO & WORLD EDITOR"),
+                    org.swarmforge.client.util.I18nManager.getInstance().get("splash.subtitle", "Eusocial Insect Society Simulator (Ants, Termites, Wasps & Bees)")
                 );
             }
             splashScreen.show();
@@ -2661,6 +2661,9 @@ public class SwarmForgeClient extends Application {
         }
 
         private boolean isSim3DFocused() {
+                if (isClientOnlyMode) {
+                        return simSubTabs == null || simSubTabs.getSelectionModel().getSelectedItem() == visualTab;
+                }
                 boolean isSimTabSelected = (mainTabs == null || mainTabs.getSelectionModel().getSelectedItem() == simTab);
                 boolean isVisualSubTabSelected = (simSubTabs == null || simSubTabs.getSelectionModel().getSelectedItem() == visualTab);
                 return isSimTabSelected && isVisualSubTabSelected;

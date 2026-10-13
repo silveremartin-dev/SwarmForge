@@ -137,7 +137,7 @@ public class SplashScreen {
         Label titleLabel = new Label(titleStr);
         titleLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.85), 6, 0, 0, 2);");
 
-        String badgeStr = customBadge != null ? customBadge : "STUDIO & WORLD EDITOR";
+        String badgeStr = customBadge != null ? customBadge : i18n.get("splash.badge.editor", "STUDIO & WORLD EDITOR");
         Label badgeLabel = new Label(badgeStr);
         badgeLabel.setStyle(
             "-fx-background-color: rgba(56, 189, 248, 0.20); " +
@@ -182,8 +182,8 @@ public class SplashScreen {
         progressBar.setPrefHeight(8);
         progressBar.setStyle("-fx-accent: #0ea5e9; -fx-control-inner-background: rgba(15, 23, 42, 0.85);");
 
-        // 5. Footer Metadata (v1.0.0-beta.1)
-        String footerText = i18n.get("splash.footer", "v1.0.0-beta.1 • Silvère Martin-Michiellot & Gemini AI (Google DeepMind)");
+        // 5. Footer Metadata (v1.0.0-beta.2)
+        String footerText = i18n.get("splash.footer", "v1.0.0-beta.2 • Silvère Martin-Michiellot & Gemini AI (Google DeepMind)");
         Label footerLabel = new Label(footerText);
         footerLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
 

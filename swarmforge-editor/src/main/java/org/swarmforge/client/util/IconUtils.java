@@ -52,8 +52,9 @@ public class IconUtils {
             java.util.logging.Logger.getLogger("com.jme3.scene.plugins.MTLLoader").setLevel(java.util.logging.Level.SEVERE);
             java.util.logging.Logger.getLogger("com.jme3.material.Material").setLevel(java.util.logging.Level.SEVERE);
             java.util.logging.Logger.getLogger("com.jme3.scene.plugins").setLevel(java.util.logging.Level.SEVERE);
-            java.util.logging.Logger.getLogger("com.jme3.asset.DesktopAssetManager").setLevel(java.util.logging.Level.WARNING);
-            java.util.logging.Logger.getLogger("com.jme3.util.TangentBinormalGenerator").setLevel(java.util.logging.Level.SEVERE);
+            java.util.logging.Logger tbLogger = java.util.logging.Logger.getLogger("com.jme3.util.TangentBinormalGenerator");
+            tbLogger.setLevel(java.util.logging.Level.OFF);
+            tbLogger.setUseParentHandlers(false);
             java.util.logging.Logger.getLogger("com.jme3.util.BufferAllocatorFactory").setLevel(java.util.logging.Level.SEVERE);
             java.util.logging.Logger.getLogger("com.jme3.system.lwjgl.LwjglContext").setLevel(java.util.logging.Level.WARNING);
         } catch (Throwable ignored) {

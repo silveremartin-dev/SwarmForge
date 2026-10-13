@@ -121,7 +121,7 @@ public class RestApiServer {
             status.put("running", simulation != null && simulation.isRunning());
             status.put("tick", simulation != null ? simulation.getTickCount() : 0);
             status.put("colonies", simulation != null ? simulation.getColonies().size() : 0);
-            status.put("version", "1.0.0-beta.1");
+            status.put("version", "1.0.0-beta.2");
 
             sendJson(exchange, status);
         }

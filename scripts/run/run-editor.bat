@@ -36,8 +36,8 @@ shift
 goto parse_args
 
 :run_editor
-echo [1/2] Compilation des modules Core ^& Editor...
-call mvn compile -pl swarmforge-editor -am -q
+echo [1/2] Compilation et installation des modules Core ^& Editor...
+call mvn install -pl swarmforge-editor -am -DskipTests -q
 if errorlevel 1 (
     echo [ERREUR] Echec de la compilation de l'Editeur.
     pause

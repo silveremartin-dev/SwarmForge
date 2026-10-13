@@ -15,7 +15,7 @@
     <parent>
         <groupId>org.swarmforge</groupId>
         <artifactId>swarmforge-parent</artifactId>
-        <version>1.0.0-beta.1-SNAPSHOT</version>
+        <version>1.0.0-beta.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>swarmforge-client</artifactId>

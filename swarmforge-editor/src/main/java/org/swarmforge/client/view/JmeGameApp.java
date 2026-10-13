@@ -645,6 +645,9 @@ public class JmeGameApp extends SimpleApplication {
             com.jme3.scene.Mesh terrainMesh = generator.generateMesh(terrarium, slicePlaneRatio, showSkirt, isGamifiedVoxelMode);
             if (!isGamifiedVoxelMode) {
                 try {
+                    java.util.logging.Logger tbLog = java.util.logging.Logger.getLogger("com.jme3.util.TangentBinormalGenerator");
+                    tbLog.setLevel(java.util.logging.Level.OFF);
+                    tbLog.setUseParentHandlers(false);
                     com.jme3.util.TangentBinormalGenerator.generate(terrainMesh);
                 } catch (Exception ignored) {}
             }

@@ -33,8 +33,8 @@ for arg in "$@"; do
     esac
 done
 
-echo "[1/3] Compiling Server & Client..."
-mvn compile -pl swarmforge-server,swarmforge-client -am -q
+echo "[1/3] Compiling and installing Server & Client..."
+mvn install -pl swarmforge-server,swarmforge-client -am -DskipTests -q
 
 echo "[2/3] Starting SwarmForge Server in background..."
 mvn exec:java -pl swarmforge-server -Dexec.args="--local" &
