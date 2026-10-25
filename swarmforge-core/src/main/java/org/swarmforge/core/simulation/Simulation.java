@@ -55,7 +55,8 @@ public class Simulation {
     private int diffusionInterval = 5;
     private Thread simulationThread;
     private float speedMultiplier = 1.0f;
-    private final SimulationHistory history;
+    private final SimulationTimeMachine timeMachine;
+    private final SimulationEnvironmentUpdater environmentUpdater = new SimulationEnvironmentUpdater(this);
 
     private volatile double measuredTps = 0.0;
     private long lastTpsSampleTime = System.nanoTime();
@@ -167,7 +168,7 @@ public class Simulation {
         this.tickDurationNanos = 1_000_000_000L / ticksPerSecond;
 
         this.pathfinder = new org.swarmforge.core.spatial.AStarPathfinder(terrarium);
-        this.history = new SimulationHistory(10000, 1);
+        this.timeMachine = new SimulationTimeMachine(this, 10000, 1);
         this.predatorManager = new PredatorManager(this);
         this.territoryManager = new TerritoryManager(this);
         this.diseaseManager = new org.swarmforge.core.simulation.diseases.DiseaseManager(this);
@@ -208,6 +209,7 @@ public class Simulation {
         this.computeCluster = clusterManager;
     }
 
+    private static final int MAX_QUEUED_EVENTS = 1000;
     private final java.util.Queue<SimulationEvent> eventQueue = new java.util.concurrent.ConcurrentLinkedQueue<>();
 
     public void addColony(Colony colony) {
@@ -219,7 +221,7 @@ public class Simulation {
         }
         colonies.add(colony);
         org.swarmforge.core.ecs.ColonyRegistry.register(colony);
-        colony.addListener(new ColonyObserver());
+        colony.addListener(new SimulationColonyObserver(this));
         seedInitialEnvironmentResources();
     }
 
@@ -307,105 +309,6 @@ public class Simulation {
 
     // Inner class to avoid leaking Simulation reference if not careful, though here
     // it's fine.
-    private static String formatCaste(Individual.Caste caste) {
-        if (caste == null) return "Individual";
-        return switch (caste) {
-            case QUEEN -> "Queen";
-            case SOLDIER -> "Soldier";
-            case MALE -> "Male";
-            case NURSE -> "Nurse";
-            case FORAGER -> "Forager";
-            case WORKER -> "Worker";
-        };
-    }
-
-    private class ColonyObserver implements org.swarmforge.core.domain.ColonyListener {
-        @Override
-        public void onBirth(Colony colony, Individual individual) {
-            SimulationEvent.EventType type;
-            String shortId = "#" + individual.getId().toString().substring(0, 8).toUpperCase();
-            String colName = (colony.getSpeciesName() != null && !colony.getSpeciesName().isEmpty()) 
-                ? colony.getSpeciesName() : "Colony #" + colony.getId().toString().substring(0, 5);
-            String casteStr = formatCaste(individual.getCaste());
-            int x = (int) individual.getX();
-            int y = (int) individual.getY();
-            int z = (int) individual.getZ();
-
-            String message;
-            if (individual.getLifeStage() == Individual.LifeStage.EGG) {
-                type = SimulationEvent.EventType.WORKER_BORN;
-                message = String.format("Egg Laying: Queen of %s laid an egg (%s %s) at (%d, %d, %d)",
-                        colName, casteStr, shortId, x, y, z);
-            } else {
-                type = switch (individual.getCaste()) {
-                    case QUEEN -> SimulationEvent.EventType.QUEEN_BORN;
-                    case SOLDIER -> SimulationEvent.EventType.SOLDIER_BORN;
-                    default -> SimulationEvent.EventType.WORKER_BORN;
-                };
-                message = String.format("Birth: %s %s in colony %s at (%d, %d, %d)",
-                        casteStr, shortId, colName, x, y, z);
-            }
-
-            java.util.Map<String, Object> data = new java.util.HashMap<>();
-            data.put("colony", colName);
-            data.put("colonyId", colony.getId().toString());
-            data.put("individualId", shortId);
-            data.put("caste", individual.getCaste().name());
-            data.put("stage", individual.getLifeStage().name());
-            data.put("job", individual.getJob().name());
-            data.put("x", x);
-            data.put("y", y);
-            data.put("z", z);
-
-            SimulationEvent event = SimulationEvent.obtain(type, SimulationEvent.Severity.INFO, tickCount.get(), message, data);
-            event.setSimTimeSeconds(Simulation.this.accumulatedSimulationSeconds);
-            eventQueue.offer(event);
-            org.swarmforge.core.event.EventBus.getInstance().publish(event);
-        }
-
-        @Override
-        public void onDeath(Colony colony, Individual individual) {
-            SimulationEvent.EventType type = switch (individual.getCaste()) {
-                case QUEEN -> SimulationEvent.EventType.QUEEN_DIED;
-                case SOLDIER -> SimulationEvent.EventType.SOLDIER_DIED;
-                default -> SimulationEvent.EventType.WORKER_DIED;
-            };
-            SimulationEvent.Severity severity = (individual.getCaste() == Individual.Caste.QUEEN)
-                    ? SimulationEvent.Severity.CRITICAL
-                    : SimulationEvent.Severity.WARNING;
-
-            String shortId = "#" + individual.getId().toString().substring(0, 8).toUpperCase();
-            String colName = (colony.getSpeciesName() != null && !colony.getSpeciesName().isEmpty()) 
-                ? colony.getSpeciesName() : "Colony #" + colony.getId().toString().substring(0, 5);
-            String casteStr = formatCaste(individual.getCaste());
-            String cause = (individual.getCauseOfDeath() != null && !individual.getCauseOfDeath().isEmpty())
-                ? individual.getCauseOfDeath() : "Unknown";
-            double ageDays = individual.getAge() / 86400.0;
-            int x = (int) individual.getX();
-            int y = (int) individual.getY();
-            int z = (int) individual.getZ();
-
-            java.util.Map<String, Object> data = new java.util.HashMap<>();
-            data.put("colony", colName);
-            data.put("colonyId", colony.getId().toString());
-            data.put("individualId", shortId);
-            data.put("caste", individual.getCaste().name());
-            data.put("ageDays", String.format(Locale.US, "%.1f j", ageDays));
-            data.put("age", String.format(Locale.US, "%.1f jours", ageDays));
-            data.put("cause", cause);
-            data.put("x", x);
-            data.put("y", y);
-            data.put("z", z);
-
-            String message = String.format(Locale.US, "Death: %s %s (Cause: %s, Age: %.1f jours) in colony %s at (%d, %d, %d)",
-                    casteStr, shortId, cause, ageDays, colName, x, y, z);
-            SimulationEvent event = SimulationEvent.obtain(type, severity, tickCount.get(), message, data);
-            event.setSimTimeSeconds(Simulation.this.accumulatedSimulationSeconds);
-            eventQueue.offer(event);
-            org.swarmforge.core.event.EventBus.getInstance().publish(event);
-        }
-    }
-
     public void start() {
         seedInitialEnvironmentResources();
         if (state.compareAndSet(State.STOPPED, State.RUNNING) ||
@@ -798,12 +701,12 @@ public class Simulation {
         processEvents();
 
         // Auto periodic checkpoint creation every autoCheckpointInterval ticks (default 50,000) for live checkpoint manager
-        if (currentTick > 0 && currentTick % autoCheckpointInterval == 0) {
-            createCheckpoint("Auto-Snapshot (Tick #" + currentTick + ")");
+        if (currentTick > 0 && currentTick % timeMachine.getAutoCheckpointInterval() == 0) {
+            timeMachine.createCheckpoint("Auto-Snapshot (Tick #" + currentTick + ")");
         }
 
         // Record history snapshot periodically
-        history.recordIfNeeded(this);
+        timeMachine.getHistory().recordIfNeeded(this);
     }
 
     private void processGrowth(Individual ind) {
@@ -865,164 +768,8 @@ public class Simulation {
     }
 
     private void updateEnvironment(long currentTick) {
-        pheromoneGrid.tick();
-        pathfinder.tick();
-
-        // Process construction
-        for (org.swarmforge.core.structure.ConstructionManager cm : constructionManagers.values()) {
-            cm.tick();
-        }
-
-        predatorManager.tick(simulationStepSeconds);
-
-        if (diseaseManager != null)
-            diseaseManager.tick(simulationStepSeconds);
-
-        // Process active multi-tick disasters
-        if (!activeDisasters.isEmpty()) {
-            activeDisasters.removeIf(disaster -> {
-                disaster.tick(this, terrarium);
-                return disaster.isFinished();
-            });
-        }
-
-        // Water Simulation
-        if (tickCount.get() % 10 == 0) { // Every 10 ticks is enough for fluid dynamics
-            // Collect tunnel networks
-            java.util.List<org.swarmforge.core.simulation.TunnelNetwork> tunnels = colonies.stream()
-                    .map(Colony::getTunnelNetwork)
-                    .toList();
-
-            if (weather.isRaining()) {
-                float rainAmount = Math.max(0.1f, weather.getRainfall()) * 0.001f * simulationStepSeconds * 10.0f;
-                waterGrid.addRain(rainAmount);
-            }
-            waterGrid.tick(tunnels, simulationStepSeconds * 10.0f);
-        }
-
-        if (soilHydricCoupling != null && weather != null) {
-            float sTemp = weather.getTemperature();
-            float rain = weather.getRainfall();
-            float snow = weather.getSnowfall();
-            float wind = weather.getWindSpeed();
-            soilHydricCoupling.tick(rain, snow, sTemp, wind, simulationStepSeconds / 3600.0f);
-        }
-        if (waterTable != null && weather != null) {
-            float evap = (weather.isRaining() ? 0.0f : 0.2f);
-            if (vegetationSystem != null) {
-                float solarIrr = (dayNightCycle != null) ? dayNightCycle.getLightLevel() : 0.8f;
-                evap += vegetationSystem.calculateRootEvapotranspiration(solarIrr);
-            }
-            waterTable.tick(weather.getRainfall(), evap);
-        }
-
-        if (weather != null && ecsWorldManager != null) {
-            float sTemp = weather.getTemperature();
-            float sMoist = (soilHydricCoupling != null) ? (soilHydricCoupling.getMoistureAtDepth(0) / 100.0f) : (weather.getSoilHumidityAtDepth(0) / 100.0f);
-            ecsWorldManager.updateEnvironmentalBoundaryConditions(sTemp, sMoist, 0.0f);
-        }
-
-        // Distributed Pheromone Logic
-        boolean pheromonesProcessed = false;
-
-        if (this.computeCluster != null && terrarium.getWidth() * terrarium.getHeight() * terrarium.getDepth() <= 64 * 64 * 64) {
-            try {
-                float[] pheromoneData = terrarium.exportPheromones();
-                pheromonesProcessed = this.computeCluster.dispatchPheromoneTask(
-                        terrarium.getWidth(), terrarium.getHeight(), terrarium.getDepth(),
-                        pheromoneData);
-                if (pheromonesProcessed) {
-                    terrarium.importPheromones(pheromoneData);
-                }
-            } catch (Exception e) {
-                // Fallback to local diffusion
-            }
-        }
-
-        // Local Diffusion (fallback)
-        if (!pheromonesProcessed && currentTick % diffusionInterval == 0) {
-            pheromoneGrid.diffuse();
-            // pheromoneGrid.evaporate(evaporationRate); // Removed: handled by tick/lazy
-            // decay
-        }
-
-        if (territoryManager != null) {
-            territoryManager.tick();
-        }
-
-        nuptialFlightSystem.tick();
-        diapauseSystem.tick();
-        soilStructureSystem.tick();
-        pheromoneClimateSystem.tick();
-        symbiosisSystem.tick();
-        nestMicroclimateSystem.tick();
-        if (vegetationSystem != null) {
-            vegetationSystem.tick(weather.getTemperature(), weather.getHumidity());
-        }
-
-        if (dayNightCycle != null) {
-            dayNightCycle.tick();
-        }
-        if (seasonManager != null) {
-            seasonManager.tick();
-        }
-
-        if (pluginManager != null) {
-            pluginManager.notifyTick(currentTick);
-        }
-
-        // Advance weather continuously every tick (1 tick = 1 second => 1/3600 hour)
-        if (weather != null) {
-            weather.advanceTime(1.0f / 3600.0f);
-            if (dayNightCycle != null) {
-                dayNightCycle.setPhase(weather.getTimeOfDay() / 24.0f);
-            }
-
-            org.swarmforge.core.world.WeatherMarkovChain.WeatherState currentWState = weather.getWeatherState();
-            if (currentWState != null && currentWState != lastWeatherState) {
-                boolean isSevere = (currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.THUNDERSTORM ||
-                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.BLIZZARD ||
-                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.TEMPEST ||
-                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.SANDSTORM ||
-                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.HAIL ||
-                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.HEATWAVE ||
-                        currentWState == org.swarmforge.core.world.WeatherMarkovChain.WeatherState.DROUGHT);
-
-                SimulationEvent.EventType evtType = isSevere
-                        ? SimulationEvent.EventType.DISASTER_OCCURRED
-                        : SimulationEvent.EventType.WEATHER_CHANGED;
-
-                SimulationEvent.Severity severity = isSevere
-                        ? SimulationEvent.Severity.WARNING
-                        : SimulationEvent.Severity.INFO;
-
-                java.util.Map<String, Object> data = new java.util.HashMap<>();
-                data.put("weatherState", currentWState.label);
-                data.put("temperature", Math.round(weather.getTemperature() * 10.0f) / 10.0f);
-                data.put("humidity", Math.round(weather.getHumidity() * 10.0f) / 10.0f);
-                data.put("windSpeed", Math.round(weather.getWindSpeed() * 10.0f) / 10.0f);
-                data.put("windDirection", weather.getWindDirection());
-                data.put("rainfall", Math.round(weather.getRainfall() * 10.0f) / 10.0f);
-                data.put("snowfall", Math.round(weather.getSnowfall() * 10.0f) / 10.0f);
-                data.put("pressure", Math.round(weather.getPressure() * 10.0f) / 10.0f);
-                data.put("flightSuitability", Math.round(currentWState.flightSuitability * 100.0f) + "%");
-
-                String msg = String.format("%s: %s (T: %.1f°C, Wind: %.1f km/h %s, Humidity: %.0f%%, Rain: %.1f mm/h, Pressure: %.1f hPa)",
-                        (isSevere ? "🌋 Ecological Disaster" : "🌧️ Weather Shift"),
-                        currentWState.label, weather.getTemperature(), weather.getWindSpeed(), weather.getWindDirection(),
-                        weather.getHumidity(), weather.getRainfall(), weather.getPressure());
-
-                SimulationEvent evt = SimulationEvent.obtain(evtType, severity, currentTick, msg, data);
-                eventQueue.offer(evt);
-                org.swarmforge.core.event.EventBus.getInstance().publish(evt);
-
-                lastWeatherState = currentWState;
-            }
-        }
+        environmentUpdater.updateEnvironment(currentTick);
     }
-
-    private static final int MAX_QUEUED_EVENTS = 1000;
-
     private void processEvents() {
         while (eventQueue.size() > MAX_QUEUED_EVENTS) {
             eventQueue.poll();
@@ -1038,98 +785,35 @@ public class Simulation {
         return events;
     }
 
-    // Getters
-    public NestMicroclimateSystem getNestMicroclimateSystem() {
-        return nestMicroclimateSystem;
-    }
-
-    public org.swarmforge.core.world.VegetationSystem getVegetationSystem() {
-        return vegetationSystem;
-    }
-
-    public long getTickCount() {
-        return tickCount.get();
-    }
-
-    public void setTickCount(long ticks) {
-        this.tickCount.set(ticks);
-    }
-
-    public float getElapsedSeconds() {
-        return (float) (accumulatedSimulationSeconds > 0 ? accumulatedSimulationSeconds : (tickCount.get() * simulationStepSeconds));
-    }
-
-    public double getElapsedSimulationSeconds() {
-        return accumulatedSimulationSeconds > 0 ? accumulatedSimulationSeconds : (tickCount.get() * (double) simulationStepSeconds);
-    }
-
-    public void setElapsedSimulationSeconds(double seconds) {
-        this.accumulatedSimulationSeconds = Math.max(0.0, seconds);
-    }
-
-    public State getState() {
-        return state.get();
-    }
-
-    public org.swarmforge.core.world.SeasonManager getSeasonManager() {
-        return seasonManager;
-    }
-
-    public MacroForagingSystem getMacroForagingSystem() {
-        return macroForagingSystem;
-    }
-
-    public Terrarium getTerrarium() {
-        return terrarium;
-    }
-
-    // public SparsePheromoneGrid getPheromoneGrid() { return pheromoneGrid; } //
-    // Already defined above
-
-    public org.swarmforge.core.spatial.SpatialPartition<Individual> getSpatialIndex() {
-        return spatialIndex;
-    }
-
-    public List<Colony> getColonies() {
-        return List.copyOf(colonies);
-    }
+    // Getters & Setters
+    public NestMicroclimateSystem getNestMicroclimateSystem() { return nestMicroclimateSystem; }
+    public org.swarmforge.core.world.VegetationSystem getVegetationSystem() { return vegetationSystem; }
+    public long getTickCount() { return tickCount.get(); }
+    public void setTickCount(long ticks) { this.tickCount.set(ticks); }
+    public float getElapsedSeconds() { return (float) (accumulatedSimulationSeconds > 0 ? accumulatedSimulationSeconds : (tickCount.get() * simulationStepSeconds)); }
+    public double getElapsedSimulationSeconds() { return accumulatedSimulationSeconds > 0 ? accumulatedSimulationSeconds : (tickCount.get() * (double) simulationStepSeconds); }
+    public void setElapsedSimulationSeconds(double seconds) { this.accumulatedSimulationSeconds = Math.max(0.0, seconds); }
+    public State getState() { return state.get(); }
+    public org.swarmforge.core.world.SeasonManager getSeasonManager() { return seasonManager; }
+    public MacroForagingSystem getMacroForagingSystem() { return macroForagingSystem; }
+    public Terrarium getTerrarium() { return terrarium; }
+    public org.swarmforge.core.spatial.SpatialPartition<Individual> getSpatialIndex() { return spatialIndex; }
+    public List<Colony> getColonies() { return List.copyOf(colonies); }
 
     public Colony getColony(java.util.UUID id) {
         for (Colony c : colonies) {
-            if (c.getId().equals(id))
-                return c;
+            if (c.getId().equals(id)) return c;
         }
-        return null; // Should not happen for valid IDs
+        return null;
     }
 
-    public boolean isRunning() {
-        return state.get() == State.RUNNING;
-    }
-
-    public void setDiffusionInterval(int interval) {
-        this.diffusionInterval = Math.max(1, interval);
-    }
-
-    // Food management
-    public void spawnFood(float x, float y, float z, float quantity, org.swarmforge.core.domain.ResourceType type) {
-        foodSources.add(new FoodSource(x, y, z, quantity, type));
-    }
-
-    public void addFoodSource(FoodSource foodSource) {
-        foodSources.add(foodSource);
-    }
-
-    public org.swarmforge.core.spatial.SpatialPartition<FoodSource> getFoodIndex() {
-        return foodIndex;
-    }
-
-    public List<FoodSource> getFoodSources() {
-        return List.copyOf(foodSources);
-    }
-
-    public org.swarmforge.core.spatial.AStarPathfinder getPathfinder() {
-        return pathfinder;
-    }
+    public boolean isRunning() { return state.get() == State.RUNNING; }
+    public void setDiffusionInterval(int interval) { this.diffusionInterval = Math.max(1, interval); }
+    public void spawnFood(float x, float y, float z, float quantity, org.swarmforge.core.domain.ResourceType type) { foodSources.add(new FoodSource(x, y, z, quantity, type)); }
+    public void addFoodSource(FoodSource foodSource) { foodSources.add(foodSource); }
+    public org.swarmforge.core.spatial.SpatialPartition<FoodSource> getFoodIndex() { return foodIndex; }
+    public List<FoodSource> getFoodSources() { return List.copyOf(foodSources); }
+    public org.swarmforge.core.spatial.AStarPathfinder getPathfinder() { return pathfinder; }
 
     public float[] getFlowVector(float x, float y, float z, int targetX, int targetY, int targetZ) {
         if (terrarium == null) return new float[]{0f, 0f, 0f};
@@ -1143,13 +827,8 @@ public class Simulation {
         return flowGrid.getVector(x, y, z);
     }
 
-    public PredatorManager getPredatorManager() {
-        return predatorManager;
-    }
-
-    public TerritoryManager getTerritoryManager() {
-        return territoryManager;
-    }
+    public PredatorManager getPredatorManager() { return predatorManager; }
+    public TerritoryManager getTerritoryManager() { return territoryManager; }
 
     public void setMasterSeed(long seed) {
         this.masterSeed = seed;
@@ -1165,273 +844,44 @@ public class Simulation {
         seedInitialEnvironmentResources();
     }
 
-    public long getMasterSeed() {
-        return masterSeed;
-    }
+    public long getMasterSeed() { return masterSeed; }
+    public java.util.Random getRandom() { return random; }
+    public void setRandom(java.util.Random random) { this.random = random; }
+    public void clearColonies() { this.colonies.clear(); }
+    public void clearFoodSources() { this.foodSources.clear(); }
+    public SimulationTimeMachine getTimeMachine() { return timeMachine; }
+    public void restoreState(long tick) { timeMachine.restoreState(tick); }
+    public void reset(long tick) { timeMachine.reset(tick); }
+    public void recordInitialSnapshot() { timeMachine.recordInitialSnapshot(); }
+    public long getHighestRecordedTick() { return timeMachine.getHighestRecordedTick(); }
 
-    public java.util.Random getRandom() {
-        return random;
-    }
-
-    public void setRandom(java.util.Random random) {
-        this.random = random;
-    }
-
-    /**
-     * Resets runtime entities for snapshot restoration WITHOUT clearing history, checkpoints, or journal.
-     */
-    public void restoreState(long tick) {
-        this.tickCount.set(tick);
-        this.colonies.clear();
-        this.foodSources.clear();
-        this.spatialIndex.clear();
-        this.foodIndex.clear();
-        if (this.pheromoneGrid != null) {
-            this.pheromoneGrid.clear();
-        }
-        if (this.waterGrid != null) {
-            this.waterGrid.clear();
-        }
-        if (this.predatorManager != null) {
-            this.predatorManager.clearPredators();
-        }
-        if (this.activeDisasters != null) {
-            this.activeDisasters.clear();
-        }
-        this.eventQueue.clear();
-    }
-
-    /**
-     * Reset the simulation state completely (clearing history, checkpoints, journal, and random state).
-     */
-    public void reset(long tick) {
-        restoreState(tick);
-        this.random = new java.util.Random(this.masterSeed);
-        if (this.history != null) {
-            this.history.clear();
-        }
-        this.interventionJournal.clear();
-        this.checkpoints.clear();
-    }
-
-    /**
-     * Record initial snapshot right after setup.
-     */
-    public void recordInitialSnapshot() {
-        if (this.history != null) {
-            this.history.record(SimulationSnapshot.capture(this));
-        }
-        if (this.checkpoints.isEmpty()) {
-            createCheckpoint("Départ / Initial Setup (#0)");
-        }
-    }
-
-    /**
-     * Get highest tick recorded in history or current tick.
-     */
-    public long getHighestRecordedTick() {
-        if (this.history != null) {
-            long hTick = this.history.getHighestRecordedTick();
-            return Math.max(this.tickCount.get(), hTick);
-        }
-        return this.tickCount.get();
-    }
-
-    // === Speed Control ===
-
-    /**
-     * Set the simulation speed multiplier.
-     * 
-     * @param multiplier Speed multiplier (0.1 to 10.0). 1.0 = normal, 2.0 = double
-     *                   speed
-     */
     public void setSpeedMultiplier(float multiplier) {
         this.speedMultiplier = Math.max(0.1f, Math.min(10.0f, multiplier));
         this.tickDurationNanos = (long) (1_000_000_000L / (ticksPerSecond * speedMultiplier));
     }
 
-    /**
-     * Get the current speed multiplier.
-     */
-    public float getSpeedMultiplier() {
-        return speedMultiplier;
-    }
+    public float getSpeedMultiplier() { return speedMultiplier; }
+    public void speedUp() { setSpeedMultiplier(speedMultiplier + 0.5f); }
+    public void slowDown() { setSpeedMultiplier(speedMultiplier - 0.5f); }
+    public void normalSpeed() { setSpeedMultiplier(1.0f); }
 
-    /**
-     * Speed up simulation (increases multiplier by 0.5).
-     */
-    public void speedUp() {
-        setSpeedMultiplier(speedMultiplier + 0.5f);
-    }
-
-    /**
-     * Slow down simulation (decreases multiplier by 0.5).
-     */
-    public void slowDown() {
-        setSpeedMultiplier(speedMultiplier - 0.5f);
-    }
-
-    /**
-     * Reset to normal speed.
-     */
-    public void normalSpeed() {
-        setSpeedMultiplier(1.0f);
-    }
-
-    // === Rewind/History Control ===
-
-    /**
-     * Get the simulation history buffer.
-     */
-    public SimulationHistory getHistory() {
-        return history;
-    }
-
-    /**
-     * Rewind simulation by N steps.
-     * 
-     * @param steps Number of snapshot steps to rewind
-     * @return true if rewind was successful
-     */
-    public boolean rewind(int steps) {
-        State oldState = state.get();
-        if (oldState == State.RUNNING) {
-            pause();
-        }
-
-        boolean success = history.rewind(this, steps);
-
-        if (success) {
-            long curTick = tickCount.get();
-            for (Colony colony : colonies) {
-                for (Individual ind : colony.getIndividuals()) {
-                    ind.setLastDecisionTick(curTick);
-                    ind.setCachedAction(null);
-                    if (ind.getBrain() == null) {
-                        ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-                    }
-                }
-            }
-            eventQueue.offer(new SimulationEvent(org.swarmforge.core.event.SimulationEvent.EventType.MILESTONE_REACHED,
-                    curTick, "Rewound " + steps + " steps to tick " + curTick));
-        }
-
-        return success;
-    }
-
-    public java.util.Queue<org.swarmforge.core.event.SimulationEvent> getEventQueue() {
-        return eventQueue;
-    }
-
-    /**
-     * Seek to a specific tick in history.
-     * 
-     * @param tick Target tick
-     * @return true if seek was successful
-     */
-    public boolean seekToTick(long tick) {
-        State oldState = state.get();
-        if (oldState == State.RUNNING) {
-            pause();
-        }
-
-        boolean success = history.seekToTick(this, tick);
-
-        if (success) {
-            this.tickCount.set(tick);
-            for (Colony colony : colonies) {
-                for (Individual ind : colony.getIndividuals()) {
-                    ind.setLastDecisionTick(tick);
-                    ind.setCachedAction(null);
-                    if (ind.getBrain() == null) {
-                        ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-                    }
-                }
-            }
-            eventQueue.offer(new SimulationEvent(org.swarmforge.core.event.SimulationEvent.EventType.MILESTONE_REACHED,
-                    tick, "Seeked to tick " + tick));
-        }
-
-        return success;
-    }
-
-    private final java.util.List<org.swarmforge.core.event.GodModeIntervention> interventionJournal = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
-    private final java.util.List<SimulationCheckpoint> checkpoints = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
-    private int autoCheckpointInterval = 50000; // Default 50,000 ticks (~41 min at 20 TPS, ~14 min at 60 TPS)
-
-    public int getAutoCheckpointInterval() {
-        return autoCheckpointInterval;
-    }
-
-    public void setAutoCheckpointInterval(int interval) {
-        this.autoCheckpointInterval = Math.max(1000, interval);
-    }
-
-    public void logIntervention(org.swarmforge.core.event.GodModeIntervention intervention) {
-        if (intervention != null) {
-            interventionJournal.add(intervention);
-            org.swarmforge.core.event.EventBus.getInstance().publish(
-                org.swarmforge.core.event.SimulationEvent.obtain(
-                    org.swarmforge.core.event.SimulationEvent.EventType.GOD_MODE_INTERVENTION,
-                    org.swarmforge.core.event.SimulationEvent.Severity.INFO,
-                    getTickCount(),
-                    "⚡ Intervention Mode Divin (" + intervention.actionType() + ") enregistrée au tick #" + getTickCount(),
-                    null
-                )
-            );
-        }
-    }
-
-    public java.util.List<org.swarmforge.core.event.GodModeIntervention> getInterventionJournal() {
-        return new java.util.ArrayList<>(interventionJournal);
-    }
-
-    public synchronized SimulationCheckpoint createCheckpoint(String name) {
-        SimulationSnapshot snap = SimulationSnapshot.capture(this);
-        SimulationCheckpoint cp = new SimulationCheckpoint(name, getTickCount(), snap, interventionJournal);
-        checkpoints.add(cp);
-        while (checkpoints.size() > 60) {
-            checkpoints.remove(1); // Keep index 0 (initial), drop oldest intermediate
-        }
-        return cp;
-    }
-
-    public boolean restoreCheckpoint(SimulationCheckpoint cp) {
-        if (cp == null || cp.getSnapshot() == null) return false;
-        cp.getSnapshot().restore(this);
-        this.interventionJournal.clear();
-        this.interventionJournal.addAll(cp.getInterventionsRecorded());
-        long curTick = getTickCount();
-        for (Colony colony : colonies) {
-            for (Individual ind : colony.getIndividuals()) {
-                ind.setLastDecisionTick(curTick);
-                ind.setCachedAction(null);
-                if (ind.getBrain() == null) {
-                    ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-                }
-            }
-        }
-        return true;
-    }
-
-    public java.util.List<SimulationCheckpoint> getCheckpoints() {
-        return new java.util.ArrayList<>(checkpoints);
-    }
-
-    /**
-     * Record a snapshot to history.
-     */
-    public void recordSnapshot() {
-        history.record(SimulationSnapshot.capture(this));
-    }
-
-    public float getSimulationStepSeconds() {
-        return simulationStepSeconds;
-    }
-
-    public double getAccumulatedSimulationSeconds() {
-        return accumulatedSimulationSeconds;
-    }
+    public SimulationHistory getHistory() { return timeMachine.getHistory(); }
+    public boolean rewind(int steps) { return timeMachine.rewind(steps); }
+    public java.util.Queue<org.swarmforge.core.event.SimulationEvent> getEventQueue() { return eventQueue; }
+    public boolean seekToTick(long tick) { return timeMachine.seekToTick(tick); }
+    public int getAutoCheckpointInterval() { return timeMachine.getAutoCheckpointInterval(); }
+    public void setAutoCheckpointInterval(int interval) { timeMachine.setAutoCheckpointInterval(interval); }
+    public void logIntervention(org.swarmforge.core.event.GodModeIntervention intervention) { timeMachine.logIntervention(intervention); }
+    public java.util.List<org.swarmforge.core.event.GodModeIntervention> getInterventionJournal() { return timeMachine.getInterventionJournal(); }
+    public synchronized SimulationCheckpoint createCheckpoint(String name) { return timeMachine.createCheckpoint(name); }
+    public boolean restoreCheckpoint(SimulationCheckpoint cp) { return timeMachine.restoreCheckpoint(cp); }
+    public java.util.List<SimulationCheckpoint> getCheckpoints() { return timeMachine.getCheckpoints(); }
+    public void recordSnapshot() { timeMachine.recordSnapshot(); }
+    public java.util.Map<org.swarmforge.core.domain.Colony, org.swarmforge.core.structure.ConstructionManager> getConstructionManagers() { return constructionManagers; }
+    public org.swarmforge.core.compute.ComputeCluster getComputeCluster() { return computeCluster; }
+    public int getDiffusionInterval() { return diffusionInterval; }
+    public float getSimulationStepSeconds() { return simulationStepSeconds; }
+    public double getAccumulatedSimulationSeconds() { return accumulatedSimulationSeconds; }
 
     public void setSimulationStepSeconds(float stepSeconds) {
         this.simulationStepSeconds = Math.max(0.001f, stepSeconds);
@@ -1440,11 +890,6 @@ public class Simulation {
         }
     }
 
-    /**
-     * Queue an event for processing.
-     * 
-     * @param event The event to queue
-     */
     public void queueEvent(org.swarmforge.core.event.SimulationEvent event) {
         if (event != null) {
             if (event.getSimTimeSeconds() < 0) {
@@ -1455,11 +900,6 @@ public class Simulation {
         }
     }
 
-    public float getSurfaceElevation(float x, float y) {
-        return terrarium != null ? terrarium.getSurfaceElevation(x, y) : 0.0f;
-    }
-
-    public org.swarmforge.core.simulation.diseases.DiseaseManager getDiseaseManager() {
-        return diseaseManager;
-    }
+    public float getSurfaceElevation(float x, float y) { return terrarium != null ? terrarium.getSurfaceElevation(x, y) : 0.0f; }
+    public org.swarmforge.core.simulation.diseases.DiseaseManager getDiseaseManager() { return diseaseManager; }
 }

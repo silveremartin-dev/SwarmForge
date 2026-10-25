@@ -557,7 +557,7 @@ public class EthologyComponent extends Component {
         if (s.canRepairGallSubstratalSecretion()) c3 |= W3_THRIPS_GALL_REPAIR_SECRETION;
         if (s.canPlugGallWithChitinousTube()) c3 |= W3_THRIPS_CHITINOUS_TUBE_PLUG;
         if (s.canWrapPreyInCommunalSilk()) c3 |= W3_SPIDER_COMMUNAL_SILK_PREY_WRAP;
-        if (s.canPerformCrècheRegurgitationSpider()) c3 |= W3_SPIDER_CRECHE_REGURGITATION;
+        if (s.canPerformCrecheRegurgitationSpider()) c3 |= W3_SPIDER_CRECHE_REGURGITATION;
         if (s.canSensePreySignalWireTripping()) c3 |= W3_SPIDER_DRAGLINE_SIGNAL_WIRE;
         if (s.canEjectGarbageChuteRefuse()) c3 |= W3_SPIDER_GARBAGE_CHUTE;
         if (s.canCamouflageWebWithPlantDebris()) c3 |= W3_SPIDER_WEB_DEBRIS_CAMOUFLAGE;

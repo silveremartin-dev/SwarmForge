@@ -478,7 +478,7 @@ public interface Species extends java.io.Serializable {
     default boolean canForageSubZeroBumblebee() { return false; } // Flight muscle shivering allowing Arctic bumblebee nectar foraging at 0°C
     default boolean canRepairGallSubstratalSecretion() { return false; } // Abdominal secretion of growth stimulants to repair thrips gall cracks
     default boolean canTrophallaxisPassalidWoodFrass() { return false; } // Oral regurgitation of pre-digested wood pulp to passalid beetle grubs
-    default boolean canPerformCrècheRegurgitationSpider() { return false; } // Maternal liquefied gut regurgitation feeding of social spider crèches
+    default boolean canPerformCrecheRegurgitationSpider() { return false; } // Maternal liquefied gut regurgitation feeding of social spider crèches
     default boolean canBlockRoyalChamberSentry() { return false; } // Interlocked soldier head capsules blocking access to termite royal chamber
     default boolean canEmitParentBugAlarmGathering() { return false; } // Abdominal alarm pheromone burst signaling nymphs to cluster under maternal shield
 

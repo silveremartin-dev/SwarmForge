@@ -178,67 +178,6 @@ public class Colony implements java.io.Serializable {
     public float getMapWidth() { return mapWidth; }
     public float getMapHeight() { return mapHeight; }
 
-    public void applyGaussianAge(Individual ind, boolean isFoundingQueen) {
-        if (ind == null) return;
-        float maxLifespanDays = ind.getMaxLifespan();
-        float maxLifespanSec = maxLifespanDays * 86400.0f;
-        if (isFoundingQueen) {
-            // Young founding queen: age between 0 and 0.05 * maxLifespan
-            float youngAgeSec = (float) (getRandom().nextDouble(0.0, 0.05) * maxLifespanSec);
-            ind.setAgeInSeconds(youngAgeSec);
-        } else {
-            // Gaussian distribution across young adult workforce (mean = 15%, stdDev = 6%)
-            // Guarantees all starting workers are in their prime youth with ample lifespan remaining
-            double mean = 0.15 * maxLifespanSec;
-            double stdDev = 0.06 * maxLifespanSec;
-            double sample = mean + stdDev * getRandom().nextGaussian();
-            float ageSec = (float) Math.max(0.01 * maxLifespanSec, Math.min(0.35 * maxLifespanSec, sample));
-            ind.setAgeInSeconds(ageSec);
-        }
-    }
-
-    public void applyGaussianHealth(Individual ind, boolean isFoundingQueen) {
-        if (ind == null) return;
-        float maxH = ind.getMaxHealth() > 0 ? ind.getMaxHealth() : 100f;
-        if (isFoundingQueen) {
-            ind.setHealth(maxH);
-        } else {
-            // Normal / Gaussian distribution for startup health (mean = 94% maxH, stdDev = 5% maxH)
-            double mean = 0.94 * maxH;
-            double stdDev = 0.05 * maxH;
-            double sample = mean + stdDev * getRandom().nextGaussian();
-            float h = (float) Math.max(0.65 * maxH, Math.min(maxH, sample));
-            ind.setHealth(h);
-        }
-    }
-
-    public List<Individual> createQueens(int count) {
-        return createQueens(count, true);
-    }
-
-    public List<Individual> createQueens(int count, boolean applyAgeDistribution) {
-        if (count <= 0) return List.of();
-        List<Individual> batch = new java.util.ArrayList<>(count);
-        boolean isFoundingQueen = (count == 1);
-
-        for (int i = 0; i < count; i++) {
-            float[] pos = getSpawningCoordinates(Individual.Caste.QUEEN, Individual.Job.NONE, i);
-            Individual ind = new Individual(this.id, Individual.Caste.QUEEN, pos[0], pos[1], pos[2]);
-            ind.setSpecies(this.species);
-            ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-            if (getRandom() != null) {
-                ind.setRandom(new java.util.Random(getRandom().nextLong()));
-            }
-            applyGaussianHealth(ind, isFoundingQueen);
-            if (applyAgeDistribution) {
-                applyGaussianAge(ind, isFoundingQueen);
-            }
-            batch.add(ind);
-        }
-        addIndividualsBulk(batch);
-        return batch;
-    }
-
     private transient Terrarium terrarium;
 
     public void setTerrarium(Terrarium terrarium) {
@@ -256,546 +195,83 @@ public class Colony implements java.io.Serializable {
         return nestZ;
     }
 
+    private final ColonyDemographicsSpawner demographicsSpawner = new ColonyDemographicsSpawner(this);
+
+    public ColonyDemographicsSpawner getDemographicsSpawner() {
+        return demographicsSpawner;
+    }
+
+    public void applyGaussianAge(Individual ind, boolean isFoundingQueen) {
+        demographicsSpawner.applyGaussianAge(ind, isFoundingQueen);
+    }
+
+    public void applyGaussianHealth(Individual ind, boolean isFoundingQueen) {
+        demographicsSpawner.applyGaussianHealth(ind, isFoundingQueen);
+    }
+
+    public List<Individual> createQueens(int count) {
+        return demographicsSpawner.createQueens(count);
+    }
+
+    public List<Individual> createQueens(int count, boolean applyAgeDistribution) {
+        return demographicsSpawner.createQueens(count, applyAgeDistribution);
+    }
+
     public double calculateSurfaceActivityRatio(int dayOfYear, float hourOfDay, float ambientTemp, double latitude) {
-        // Solar Declination Angle (Earth's axial tilt 23.45°)
-        double declinationDeg = 23.45 * Math.sin(Math.toRadians((dayOfYear - 81) * 360.0 / 365.0));
-
-        // Invert declination for Southern Hemisphere (latitude < 0)
-        if (latitude < 0) {
-            declinationDeg = -declinationDeg;
-        }
-
-        // Solar Hour Angle H = 15° * (solar_time - 12)
-        double hourAngleRad = Math.toRadians(15.0 * (hourOfDay - 12.0));
-        double latRad = Math.toRadians(latitude);
-        double decRad = Math.toRadians(declinationDeg);
-
-        // Solar Elevation Angle
-        double sinElevation = Math.sin(latRad) * Math.sin(decRad) + Math.cos(latRad) * Math.cos(decRad) * Math.cos(hourAngleRad);
-        double elevationDeg = Math.toDegrees(Math.asin(Math.max(-1.0, Math.min(1.0, sinElevation))));
-
-        // Solar Illumination level (0.0 nocturnal .. 1.0 peak solar)
-        double illumination = 0.0;
-        if (elevationDeg > 0) {
-            illumination = Math.min(1.0, sinElevation * 1.35);
-        } else if (elevationDeg > -6.0) {
-            illumination = (6.0 + elevationDeg) / 6.0 * 0.10; // Civil Twilight
-        }
-
-        // Thermal & Biological Suitability
-        if (ambientTemp < 8.0f || ambientTemp > 45.0f) {
-            return 0.0; // Thermal stupor / extreme heat -> 100% inside nest chambers
-        }
-
-        double thermalFactor = 1.0;
-        if (ambientTemp < 15.0f) {
-            thermalFactor = Math.max(0.0, (ambientTemp - 8.0) / 7.0);
-        } else if (ambientTemp > 35.0f) {
-            thermalFactor = Math.max(0.1, 1.0 - (ambientTemp - 35.0) / 10.0);
-        }
-
-        return Math.max(0.0, Math.min(0.35, illumination * thermalFactor));
+        return demographicsSpawner.calculateSurfaceActivityRatio(dayOfYear, hourOfDay, ambientTemp, latitude);
     }
 
     public double calculateSurfaceActivityRatio(int dayOfYear, float hourOfDay, float ambientTemp) {
-        double lat = terrarium != null ? terrarium.getLatitude() : 48.8;
-        return calculateSurfaceActivityRatio(dayOfYear, hourOfDay, ambientTemp, lat);
+        return demographicsSpawner.calculateSurfaceActivityRatio(dayOfYear, hourOfDay, ambientTemp);
     }
 
-    private float[] getSpawningCoordinates(Individual.Caste caste, Individual.Job job, int index) {
-        return getSpawningCoordinates(caste, job, index, 180, 14.0f, 22.0f);
+    public float[] getSpawningCoordinates(Individual.Caste caste, Individual.Job job, int index) {
+        return demographicsSpawner.getSpawningCoordinates(caste, job, index);
     }
 
     public float[] getSpawningCoordinates(Individual.Caste caste, Individual.Job job, int index, int dayOfYear, float hourOfDay, float ambientTemp) {
-        float sx = nestX;
-        float sy = nestY;
-        float sz = nestZ;
-
-        List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
-        List<org.swarmforge.core.structure.Chamber> entranceChambers = (nest != null) ? nest.getChambersOfType(org.swarmforge.core.structure.Chamber.Type.ENTRANCE) : List.of();
-        List<org.swarmforge.core.structure.Chamber> nurseryChambers = (nest != null) ? nest.getChambersOfType(org.swarmforge.core.structure.Chamber.Type.NURSERY) : List.of();
-        List<org.swarmforge.core.simulation.TunnelNetwork.TunnelNode> simNodes = (tunnelNetwork != null && tunnelNetwork.getNodes() != null) ? tunnelNetwork.getNodes() : List.of();
-
-        double surfaceActivityRatio = calculateSurfaceActivityRatio(dayOfYear, hourOfDay, ambientTemp);
-
-        if (caste == Individual.Caste.QUEEN) {
-            var qChamber = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.QUEEN_CHAMBER, nestX, nestY, nestZ) : null;
-            if (qChamber != null) {
-                sx = qChamber.x(); sy = qChamber.y(); sz = qChamber.z();
-            } else if (nest != null) {
-                List<org.swarmforge.core.structure.Chamber> queenChambers = nest.getChambersOfType(org.swarmforge.core.structure.Chamber.Type.QUEEN_QUARTERS);
-                if (!queenChambers.isEmpty()) {
-                    var ch = queenChambers.get(index % queenChambers.size());
-                    sx = (float) ch.getX(); sy = (float) ch.getY(); sz = (float) ch.getZ();
-                } else if (!nestChambers.isEmpty()) {
-                    var ch = nestChambers.get(index % nestChambers.size());
-                    sx = (float) ch.getX(); sy = (float) ch.getY(); sz = (float) ch.getZ();
-                } else if (!simNodes.isEmpty()) {
-                    var node = simNodes.stream()
-                            .filter(n -> n.type() != org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE)
-                            .findFirst().orElse(simNodes.get(0));
-                    sx = node.x(); sy = node.y(); sz = node.z();
-                } else {
-                    sz = getDynamicQueenChamberDepth();
-                }
-            } else if (!simNodes.isEmpty()) {
-                var node = simNodes.stream()
-                        .filter(n -> n.type() != org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE)
-                        .findFirst().orElse(simNodes.get(0));
-                sx = node.x(); sy = node.y(); sz = node.z();
-            } else {
-                sz = getDynamicQueenChamberDepth();
-            }
-
-            // Queen center placement with micro-jitter (<= 0.2m) to guarantee 100% inside chamber air cavity
-            float rAngle = getRandom().nextFloat(0f, (float) (Math.PI * 2));
-            float rDist = getRandom().nextFloat(0.05f, 0.2f);
-            sx += (float) Math.cos(rAngle) * rDist;
-            sy += (float) Math.sin(rAngle) * rDist;
-
-        } else if (caste == Individual.Caste.NURSE) {
-            // Nurses stay deep inside the nest in nursery / brood chambers
-            if (!nurseryChambers.isEmpty()) {
-                var ch = nurseryChambers.get(index % nurseryChambers.size());
-                float maxR = Math.min(1.2f, Math.max(0.3f, (float) Math.cbrt(ch.getCapacity()) * 0.3f));
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.05, maxR * 0.7);
-                sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
-                sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
-                sz = (float) ch.getZ();
-            } else if (tunnelNetwork != null && tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ) != null) {
-                var ch = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ);
-                float maxR = Math.min(1.0f, Math.max(0.2f, ch.radiusX() * 0.7f));
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.05, maxR);
-                sx = (float) (ch.x() + Math.cos(rAngle) * rDist);
-                sy = (float) (ch.y() + Math.sin(rAngle) * rDist);
-                sz = ch.z();
-            } else if (!nestChambers.isEmpty()) {
-                var ch = nestChambers.get(index % nestChambers.size());
-                sx = (float) ch.getX(); sy = (float) ch.getY(); sz = (float) ch.getZ();
-            } else if (!simNodes.isEmpty()) {
-                var node = simNodes.get(index % simNodes.size());
-                float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.05, maxR);
-                sx = (float) (node.x() + Math.cos(rAngle) * rDist);
-                sy = (float) (node.y() + Math.sin(rAngle) * rDist);
-                sz = node.z();
-            } else {
-                sz = nestZ - 4.0f;
-            }
-        } else if (caste == Individual.Caste.FORAGER) {
-            boolean spawnOnSurface = (index % 100 < surfaceActivityRatio * 100);
-            if (spawnOnSurface) {
-                float refX = nestX;
-                float refY = nestY;
-                if (!entranceChambers.isEmpty()) {
-                    var ent = entranceChambers.get(index % entranceChambers.size());
-                    refX = (float) ent.getX();
-                    refY = (float) ent.getY();
-                } else if (tunnelNetwork != null && tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) != null) {
-                    var ent = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ);
-                    refX = ent.x();
-                    refY = ent.y();
-                }
-                float rAngle = getRandom().nextFloat(0f, (float) (Math.PI * 2));
-                float rDist = getRandom().nextFloat(0.5f, 3.5f);
-                sx = refX + (float) Math.cos(rAngle) * rDist;
-                sy = refY + (float) Math.sin(rAngle) * rDist;
-                sz = getSurfaceZAt(sx, sy);
-            } else if (!nestChambers.isEmpty()) {
-                var ch = nestChambers.get(index % nestChambers.size());
-                sx = (float) ch.getX(); sy = (float) ch.getY(); sz = (float) ch.getZ();
-            } else if (!simNodes.isEmpty()) {
-                var node = simNodes.get(index % simNodes.size());
-                float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.05, maxR);
-                sx = (float) (node.x() + Math.cos(rAngle) * rDist);
-                sy = (float) (node.y() + Math.sin(rAngle) * rDist);
-                sz = node.z();
-            } else {
-                sz = nestZ - 1.5f;
-            }
-        } else if (caste == Individual.Caste.WORKER) {
-            boolean spawnOnSurface = (job == Individual.Job.FORAGER && (index % 100 < surfaceActivityRatio * 100));
-            if (spawnOnSurface) {
-                // Station foragers across ALL nest entrances if multiple entrances exist!
-                float refX = nestX;
-                float refY = nestY;
-                if (!entranceChambers.isEmpty()) {
-                    var ent = entranceChambers.get(index % entranceChambers.size());
-                    refX = (float) ent.getX();
-                    refY = (float) ent.getY();
-                } else if (tunnelNetwork != null && tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) != null) {
-                    var ent = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ);
-                    refX = ent.x();
-                    refY = ent.y();
-                }
-                float rAngle = getRandom().nextFloat(0f, (float) (Math.PI * 2));
-                float rDist = getRandom().nextFloat(0.5f, 3.5f);
-                sx = refX + (float) Math.cos(rAngle) * rDist;
-                sy = refY + (float) Math.sin(rAngle) * rDist;
-                sz = getSurfaceZAt(sx, sy); // Dynamic terrain elevation adaptation
-            } else if (!nestChambers.isEmpty()) {
-                var ch = nestChambers.get(index % nestChambers.size());
-                float maxR = Math.min(1.2f, Math.max(0.3f, (float) Math.cbrt(ch.getCapacity()) * 0.3f));
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.05, maxR * 0.7);
-                sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
-                sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
-                sz = (float) ch.getZ();
-            } else if (!simNodes.isEmpty()) {
-                var node = simNodes.get(index % simNodes.size());
-                float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.05, maxR);
-                sx = (float) (node.x() + Math.cos(rAngle) * rDist);
-                sy = (float) (node.y() + Math.sin(rAngle) * rDist);
-                sz = node.z();
-            } else {
-                sz = nestZ - 3.0f;
-            }
-        } else if (caste == Individual.Caste.SOLDIER) {
-            boolean spawnOnSurface = (index % 100 < (surfaceActivityRatio * 0.75) * 100);
-            if (spawnOnSurface) {
-                // Station guards near ALL nest entrance chambers!
-                float refX = nestX;
-                float refY = nestY;
-                if (!entranceChambers.isEmpty()) {
-                    var ent = entranceChambers.get(index % entranceChambers.size());
-                    refX = (float) ent.getX();
-                    refY = (float) ent.getY();
-                } else if (tunnelNetwork != null && tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ) != null) {
-                    var ent = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.ENTRANCE, nestX, nestY, nestZ);
-                    refX = ent.x();
-                    refY = ent.y();
-                }
-                float rAngle = getRandom().nextFloat(0f, (float) (Math.PI * 2));
-                float rDist = getRandom().nextFloat(0.3f, 2.5f);
-                sx = refX + (float) Math.cos(rAngle) * rDist;
-                sy = refY + (float) Math.sin(rAngle) * rDist;
-                sz = getSurfaceZAt(sx, sy); // Dynamic terrain elevation adaptation
-            } else if (!nestChambers.isEmpty()) {
-                var ch = nestChambers.get(index % nestChambers.size());
-                float maxR = Math.min(1.2f, Math.max(0.3f, (float) Math.cbrt(ch.getCapacity()) * 0.3f));
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.05, maxR * 0.7);
-                sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
-                sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
-                sz = (float) ch.getZ();
-            } else if (!simNodes.isEmpty()) {
-                var node = simNodes.get(index % simNodes.size());
-                float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.05, maxR);
-                sx = (float) (node.x() + Math.cos(rAngle) * rDist);
-                sy = (float) (node.y() + Math.sin(rAngle) * rDist);
-                sz = node.z();
-            } else {
-                sz = nestZ - 2.0f;
-            }
-        } else if (caste == Individual.Caste.MALE) {
-            if (!nestChambers.isEmpty()) {
-                var ch = nestChambers.get(index % nestChambers.size());
-                float maxR = Math.min(1.0f, Math.max(0.3f, (float) Math.cbrt(ch.getCapacity()) * 0.3f));
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.05, maxR * 0.7);
-                sx = (float) (ch.getX() + Math.cos(rAngle) * rDist);
-                sy = (float) (ch.getY() + Math.sin(rAngle) * rDist);
-                sz = (float) ch.getZ();
-            } else if (!simNodes.isEmpty()) {
-                var node = simNodes.get(index % simNodes.size());
-                float maxR = Math.min(1.0f, Math.max(0.2f, node.radiusX() * 0.7f));
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.05, maxR);
-                sx = (float) (node.x() + Math.cos(rAngle) * rDist);
-                sy = (float) (node.y() + Math.sin(rAngle) * rDist);
-                sz = node.z();
-            } else {
-                sz = nestZ - 4.0f;
-            }
-        }
-
-        sx = Math.max(1.0f, Math.min(mapWidth - 1.0f, sx));
-        sy = Math.max(1.0f, Math.min(mapHeight - 1.0f, sy));
-
-        return ensureValidWalkablePos(sx, sy, sz);
-    }
-
-    private float[] ensureValidWalkablePos(float sx, float sy, float sz) {
-        if (terrarium == null) return new float[]{sx, sy, sz};
-
-        int cx = Math.round(sx);
-        int cy = Math.round(sy);
-        int cz = Math.round(sz);
-
-        if (!terrarium.inBounds(cx, cy, cz)) {
-            cx = Math.max(0, Math.min(terrarium.getWidth() - 1, cx));
-            cy = Math.max(0, Math.min(terrarium.getHeight() - 1, cy));
-            cz = Math.max(0, Math.min(terrarium.getDepth() - 1, cz));
-        }
-
-        var cell = terrarium.getCell(cx, cy, cz);
-        if (cell == null || cell.isPassable()) {
-            return new float[]{sx, sy, sz};
-        }
-
-        // Search in expanding cubic shell (radius 1 to 5) for the nearest passable cell
-        for (int r = 1; r <= 5; r++) {
-            for (int dx = -r; dx <= r; dx++) {
-                for (int dy = -r; dy <= r; dy++) {
-                    for (int dz = -r; dz <= r; dz++) {
-                        if (Math.abs(dx) == r || Math.abs(dy) == r || Math.abs(dz) == r) {
-                            int tx = cx + dx;
-                            int ty = cy + dy;
-                            int tz = cz + dz;
-                            if (terrarium.inBounds(tx, ty, tz)) {
-                                var tCell = terrarium.getCell(tx, ty, tz);
-                                if (tCell != null && tCell.isPassable()) {
-                                    return new float[]{(float) tx, (float) ty, (float) tz};
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Fallback to surface elevation if no open subterranean cell was found
-        float surfZ = getSurfaceZAt(sx, sy);
-        return new float[]{sx, sy, surfZ};
+        return demographicsSpawner.getSpawningCoordinates(caste, job, index, dayOfYear, hourOfDay, ambientTemp);
     }
 
     public int calculateSubterraneanCapacity() {
-        if (nest != null && nest.getChambers() != null && !nest.getChambers().isEmpty()) {
-            int cap = 0;
-            for (var chamber : nest.getChambers()) {
-                cap += Math.max(50, (int) chamber.getCapacity());
-            }
-            return Math.max(500, cap);
-        }
-        if (tunnelNetwork != null && tunnelNetwork.getNodes() != null && !tunnelNetwork.getNodes().isEmpty()) {
-            return Math.max(500, tunnelNetwork.getNodes().size() * 50);
-        }
-        return 500;
+        return demographicsSpawner.calculateSubterraneanCapacity();
     }
 
     public List<Individual> createWorkers(int count) {
-        return createWorkers(count, true);
+        return demographicsSpawner.createWorkers(count);
     }
 
     public List<Individual> createWorkers(int count, boolean applyAgeDistribution) {
-        if (count <= 0) return List.of();
-        List<Individual> batch = new java.util.ArrayList<>(count);
-
-        for (int i = 0; i < count; i++) {
-            Individual.Job job = (i % 2 == 0) ? Individual.Job.FORAGER : Individual.Job.NURSE;
-            float[] pos = getSpawningCoordinates(Individual.Caste.WORKER, job, i);
-
-            Individual ind = new Individual(this.id, Individual.Caste.WORKER, pos[0], pos[1], pos[2]);
-            ind.setHomePosition(this.nestX, this.nestY, this.nestZ);
-            ind.setSpecies(this.species);
-            ind.setJob(job);
-            ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-            if (getRandom() != null) {
-                ind.setRandom(new java.util.Random(getRandom().nextLong()));
-            }
-            applyGaussianHealth(ind, false);
-            if (applyAgeDistribution) {
-                applyGaussianAge(ind, false);
-            }
-            batch.add(ind);
-        }
-        addIndividualsBulk(batch);
-        return batch;
+        return demographicsSpawner.createWorkers(count, applyAgeDistribution);
     }
 
     public List<Individual> createSoldiers(int count) {
-        return createSoldiers(count, true);
+        return demographicsSpawner.createSoldiers(count);
     }
 
     public List<Individual> createSoldiers(int count, boolean applyAgeDistribution) {
-        if (count <= 0) return List.of();
-        List<Individual> batch = new java.util.ArrayList<>(count);
-
-        for (int i = 0; i < count; i++) {
-            float[] pos = getSpawningCoordinates(Individual.Caste.SOLDIER, Individual.Job.GUARD, i);
-
-            Individual ind = new Individual(this.id, Individual.Caste.SOLDIER, pos[0], pos[1], pos[2]);
-            ind.setHomePosition(this.nestX, this.nestY, this.nestZ);
-            ind.setSpecies(this.species);
-            ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-            if (getRandom() != null) {
-                ind.setRandom(new java.util.Random(getRandom().nextLong()));
-            }
-            applyGaussianHealth(ind, false);
-            if (applyAgeDistribution) {
-                applyGaussianAge(ind, false);
-            }
-            batch.add(ind);
-        }
-        addIndividualsBulk(batch);
-        return batch;
+        return demographicsSpawner.createSoldiers(count, applyAgeDistribution);
     }
 
     public List<Individual> createMales(int count) {
-        return createMales(count, true);
+        return demographicsSpawner.createMales(count);
     }
 
     public List<Individual> createMales(int count, boolean applyAgeDistribution) {
-        if (count <= 0) return List.of();
-        List<Individual> batch = new java.util.ArrayList<>(count);
-
-        for (int i = 0; i < count; i++) {
-            float[] pos = getSpawningCoordinates(Individual.Caste.MALE, Individual.Job.NONE, i);
-
-            Individual ind = new Individual(this.id, Individual.Caste.MALE, pos[0], pos[1], pos[2]);
-            ind.setHomePosition(this.nestX, this.nestY, this.nestZ);
-            ind.setSpecies(this.species);
-            ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-            if (getRandom() != null) {
-                ind.setRandom(new java.util.Random(getRandom().nextLong()));
-            }
-            applyGaussianHealth(ind, false);
-            if (applyAgeDistribution) {
-                applyGaussianAge(ind, false);
-            }
-            batch.add(ind);
-        }
-        addIndividualsBulk(batch);
-        return batch;
+        return demographicsSpawner.createMales(count, applyAgeDistribution);
     }
 
     public List<Individual> createBrood(int count) {
-        return createBrood(count, true);
+        return demographicsSpawner.createBrood(count);
     }
 
     public List<Individual> createBrood(int count, boolean applyAgeDistribution) {
-        if (count <= 0) return List.of();
-        List<Individual> batch = new java.util.ArrayList<>(count);
-        var broodChamber = tunnelNetwork != null ? tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.BROOD_CHAMBER, nestX, nestY, nestZ) : null;
-        float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(nestX, nestY) : 16.0f;
-        float defaultUndergroundZ = Math.max(1.0f, surfaceZ - Math.max(1.0f, Math.abs(getDynamicQueenChamberDepth() * 0.5f)));
-        if (broodChamber == null && tunnelNetwork != null) {
-            broodChamber = tunnelNetwork.getNearestChamber(org.swarmforge.core.simulation.TunnelNetwork.ChamberType.QUEEN_CHAMBER, nestX, nestY, nestZ);
-        }
-        if (broodChamber == null && tunnelNetwork != null && !tunnelNetwork.getNodes().isEmpty()) {
-            for (var node : tunnelNetwork.getNodes()) {
-                if (node.z() < surfaceZ) {
-                    broodChamber = node;
-                    break;
-                }
-            }
-        }
-        float baseSx = broodChamber != null ? broodChamber.x() : nestX;
-        float baseSy = broodChamber != null ? broodChamber.y() : nestY;
-        float baseSz = broodChamber != null ? broodChamber.z() : defaultUndergroundZ;
-
-        List<org.swarmforge.core.structure.Chamber> nurseryChambers = nest != null ? nest.getChambersOfType(org.swarmforge.core.structure.Chamber.Type.NURSERY) : List.of();
-        List<org.swarmforge.core.structure.Chamber> nestChambers = (nest != null && nest.getChambers() != null) ? nest.getChambers() : List.of();
-
-        for (int i = 0; i < count; i++) {
-            float sx = baseSx, sy = baseSy, sz = baseSz;
-            if (!nurseryChambers.isEmpty()) {
-                org.swarmforge.core.structure.Chamber targetChamber = nurseryChambers.get(i % nurseryChambers.size());
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.1, 1.5);
-                sx = (float) (targetChamber.getX() + Math.cos(rAngle) * rDist);
-                sy = (float) (targetChamber.getY() + Math.sin(rAngle) * rDist);
-                sz = targetChamber.getZ();
-            } else if (!nestChambers.isEmpty()) {
-                org.swarmforge.core.structure.Chamber targetChamber = nestChambers.get(i % nestChambers.size());
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.1, 1.5);
-                sx = (float) (targetChamber.getX() + Math.cos(rAngle) * rDist);
-                sy = (float) (targetChamber.getY() + Math.sin(rAngle) * rDist);
-                sz = targetChamber.getZ();
-            } else if (broodChamber != null) {
-                double rAngle = getRandom().nextDouble(0, Math.PI * 2);
-                double rDist = getRandom().nextDouble(0.1, Math.min(1.2, broodChamber.radiusX() * 0.8));
-                sx = (float) (broodChamber.x() + Math.cos(rAngle) * rDist);
-                sy = (float) (broodChamber.y() + Math.sin(rAngle) * rDist);
-                sz = broodChamber.z();
-            }
-
-            // Enforce strictly subterranean depth for all non-adult brood
-            float antSurfaceZ = terrarium != null ? terrarium.getSurfaceElevation(sx, sy) : 16.0f;
-            if (sz >= antSurfaceZ) {
-                sz = Math.max(1.0f, antSurfaceZ - Math.max(1.0f, Math.abs(getDynamicQueenChamberDepth() * 0.5f)));
-            }
-
-            sx = Math.max(1.0f, Math.min(mapWidth - 1.0f, sx));
-            sy = Math.max(1.0f, Math.min(mapHeight - 1.0f, sy));
-            sz = Math.max(1.0f, Math.min(terrarium != null ? terrarium.getDepth() - 1 : 63, sz));
-
-            Individual ind = new Individual(this.id, Individual.Caste.WORKER, sx, sy, sz);
-            ind.setSpecies(this.species);
-            ind.setJob(Individual.Job.NONE);
-            applyGaussianHealth(ind, false);
-
-            // Brood breakdown: 35% Eggs, 40% Larvae, 25% Pupae
-            double r = getRandom().nextDouble();
-            float eggDur = species != null ? species.getEggStageDuration() : 300f;
-            float larvaDur = species != null ? species.getLarvaStageDuration() : 600f;
-            float pupaDur = species != null ? species.getPupaStageDuration() : 500f;
-            if (eggDur <= 30f) eggDur *= 60.0f;
-            if (larvaDur <= 30f) larvaDur *= 60.0f;
-            if (pupaDur <= 30f) pupaDur *= 60.0f;
-
-            if (r < 0.35) {
-                ind.setLifeStage(Individual.LifeStage.EGG);
-                ind.setMaturationThreshold(eggDur);
-                if (applyAgeDistribution) {
-                    ind.setAgeInSeconds((float) (getRandom().nextDouble(0, eggDur * 0.9)));
-                }
-            } else if (r < 0.75) {
-                ind.setLifeStage(Individual.LifeStage.LARVA);
-                ind.setMaturationThreshold(eggDur + larvaDur);
-                if (applyAgeDistribution) {
-                    ind.setAgeInSeconds((float) (eggDur + getRandom().nextDouble(0, larvaDur * 0.9)));
-                }
-            } else {
-                ind.setLifeStage(Individual.LifeStage.PUPA);
-                ind.setMaturationThreshold(eggDur + larvaDur + pupaDur);
-                if (applyAgeDistribution) {
-                    ind.setAgeInSeconds((float) (eggDur + larvaDur + getRandom().nextDouble(0, pupaDur * 0.9)));
-                }
-            }
-            batch.add(ind);
-        }
-        addIndividualsBulk(batch);
-        return batch;
+        return demographicsSpawner.createBrood(count, applyAgeDistribution);
     }
 
-    /**
-     * Spawns a unit based on a specific CasteTemplate.
-     * Checks resource costs before spawning.
-     */
     public Individual spawnUnit(CasteTemplate template) {
-        if (proteinStored >= template.getProteinCost() &&
-                carbohydrateStored >= template.getCarbohydrateCost() &&
-                waterStored >= template.getWaterCost()) {
-
-            proteinStored -= template.getProteinCost();
-            carbohydrateStored -= template.getCarbohydrateCost();
-            waterStored -= template.getWaterCost();
-
-            Individual ind = new Individual(this.id, template, nestX, nestY, nestZ);
-            ind.setSpecies(this.species);
-            if (template != null && template.getDecisionArchitectureType() != null) {
-                ind.setBrain(org.swarmforge.core.behavior.ReasoningArchitecture.create(template.getDecisionArchitectureType()));
-            } else {
-                ind.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-            }
-            applyGaussianHealth(ind, false);
-            addIndividual(ind);
-            return ind;
-        }
-        return null;
+        return demographicsSpawner.spawnUnit(template);
     }
-
     public float getProteinStored() {
         return proteinStored;
     }

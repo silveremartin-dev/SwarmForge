@@ -223,69 +223,28 @@ public class StatisticsDashboard extends VBox {
         GridPane grid = new GridPane();
         grid.setHgap(16);
         grid.setVgap(8);
-
-        Label lblIdTitle = new Label();
-        lblIdTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.id"));
-        lblIdTitle.getStyleClass().add("field-label");
         lblTrackedIdDisplay.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
 
-        Label lblCasteAgeTitle = new Label();
-        lblCasteAgeTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.caste_age"));
-        lblCasteAgeTitle.getStyleClass().add("field-label");
-
-        Label lblSpeciesTitle = new Label();
-        lblSpeciesTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.species"));
-        lblSpeciesTitle.getStyleClass().add("field-label");
-
-        Label lblColonyTitle = new Label();
-        lblColonyTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.colony"));
-        lblColonyTitle.getStyleClass().add("field-label");
-
-        Label lblHealthTitle = new Label();
-        lblHealthTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.health"));
-        lblHealthTitle.getStyleClass().add("field-label");
-
-        Label lblEnergyTitle = new Label();
-        lblEnergyTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.energy"));
-        lblEnergyTitle.getStyleClass().add("field-label");
-
-        Label lblDistTitle = new Label();
-        lblDistTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.distance"));
-        lblDistTitle.getStyleClass().add("field-label");
-
-        Label lblPayloadTitle = new Label();
-        lblPayloadTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.payload"));
-        lblPayloadTitle.getStyleClass().add("field-label");
-
-        Label lblTaskTitle = new Label();
-        lblTaskTitle.textProperty().bind(i18n.createStringBinding("stats.indiv.task"));
-        lblTaskTitle.getStyleClass().add("field-label");
-
-        grid.add(lblIdTitle, 0, 0);
-        grid.add(lblTrackedIdDisplay, 1, 0);
-        grid.add(lblCasteAgeTitle, 2, 0);
-        grid.add(lblIndivCasteAge, 3, 0);
-
-        grid.add(lblSpeciesTitle, 0, 1);
-        grid.add(lblIndivSpecies, 1, 1);
-        grid.add(lblColonyTitle, 2, 1);
-        grid.add(lblIndivColony, 3, 1);
-
-        grid.add(lblHealthTitle, 0, 2);
-        grid.add(lblIndivHealth, 1, 2);
-        grid.add(lblEnergyTitle, 2, 2);
-        grid.add(lblIndivEnergy, 3, 2);
-
-        grid.add(lblDistTitle, 0, 3);
-        grid.add(lblIndivDistance, 1, 3);
-        grid.add(lblPayloadTitle, 2, 3);
-        grid.add(lblIndivPayload, 3, 3);
-
-        grid.add(lblTaskTitle, 0, 4);
-        grid.add(lblIndivTask, 1, 4, 3, 1);
+        addIndivField(grid, "stats.indiv.id", lblTrackedIdDisplay, 0, 0, 1);
+        addIndivField(grid, "stats.indiv.caste_age", lblIndivCasteAge, 2, 0, 1);
+        addIndivField(grid, "stats.indiv.species", lblIndivSpecies, 0, 1, 1);
+        addIndivField(grid, "stats.indiv.colony", lblIndivColony, 2, 1, 1);
+        addIndivField(grid, "stats.indiv.health", lblIndivHealth, 0, 2, 1);
+        addIndivField(grid, "stats.indiv.energy", lblIndivEnergy, 2, 2, 1);
+        addIndivField(grid, "stats.indiv.distance", lblIndivDistance, 0, 3, 1);
+        addIndivField(grid, "stats.indiv.payload", lblIndivPayload, 2, 3, 1);
+        addIndivField(grid, "stats.indiv.task", lblIndivTask, 0, 4, 3);
 
         box.getChildren().addAll(title, inputRow, new Separator(), grid);
         return box;
+    }
+
+    private void addIndivField(GridPane grid, String labelKey, Label valueLabel, int col, int row, int colSpan) {
+        Label titleLbl = new Label();
+        titleLbl.textProperty().bind(i18n.createStringBinding(labelKey));
+        titleLbl.getStyleClass().add("field-label");
+        grid.add(titleLbl, col, row);
+        grid.add(valueLabel, col + 1, row, colSpan, 1);
     }
 
     private void triggerTrackAndTrace() {
@@ -552,59 +511,6 @@ public class StatisticsDashboard extends VBox {
         lblSelect.getStyleClass().add("card-title");
         lblSelect.tooltipProperty().bind(i18n.createTooltipBinding("stats.series_select.tt"));
 
-        chkTotalPop.textProperty().bind(i18n.createStringBinding("stats.population_total"));
-        chkTotalPop.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.total_pop.tt"));
-        chkWorkers.textProperty().bind(i18n.createStringBinding("stats.workers"));
-        chkWorkers.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.workers.tt"));
-        chkSoldiers.textProperty().bind(i18n.createStringBinding("stats.soldiers"));
-        chkSoldiers.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.soldiers.tt"));
-        chkQueens.textProperty().bind(i18n.createStringBinding("stats.queens"));
-        chkQueens.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.queens.tt"));
-        chkMales.textProperty().bind(i18n.createStringBinding("stats.chk.males"));
-
-        chkForaging.textProperty().bind(i18n.createStringBinding("stats.behavior.foraging"));
-        chkDigging.textProperty().bind(i18n.createStringBinding("stats.behavior.digging"));
-        chkNursing.textProperty().bind(i18n.createStringBinding("stats.behavior.nursing"));
-        chkGuarding.textProperty().bind(i18n.createStringBinding("stats.behavior.guarding"));
-        chkRoyalCare.textProperty().bind(i18n.createStringBinding("stats.behavior.royal_care"));
-        chkResting.textProperty().bind(i18n.createStringBinding("stats.behavior.resting"));
-
-        chkFood.textProperty().bind(i18n.createStringBinding("stats.food"));
-        chkFood.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.food.tt"));
-        chkWater.textProperty().bind(i18n.createStringBinding("stats.water"));
-        chkWater.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.water.tt"));
-        chkProtein.textProperty().bind(i18n.createStringBinding("stats.chk.protein"));
-        chkBirths.textProperty().bind(i18n.createStringBinding("stats.births"));
-        chkBirths.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.births.tt"));
-        chkDeaths.textProperty().bind(i18n.createStringBinding("stats.deaths"));
-        chkDeaths.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.deaths.tt"));
-        chkTemp.textProperty().bind(i18n.createStringBinding("stats.chk.temp"));
-        chkRain.textProperty().bind(i18n.createStringBinding("stats.chk.rain"));
-        chkPhero.textProperty().bind(i18n.createStringBinding("stats.chk.phero"));
-        chkTps.textProperty().bind(i18n.createStringBinding("stats.tps"));
-        chkTps.tooltipProperty().bind(i18n.createTooltipBinding("stats.chk.tps.tt"));
-        chkAntHealth.textProperty().bind(i18n.createStringBinding("stats.chk.ant_health"));
-        chkAntEnergy.textProperty().bind(i18n.createStringBinding("stats.chk.ant_energy"));
-        chkAntDistance.textProperty().bind(i18n.createStringBinding("stats.chk.ant_distance"));
-
-        FlowPane checkFlow = new FlowPane(12, 6);
-        checkFlow.getChildren().addAll(
-                chkTotalPop, chkWorkers, chkSoldiers, chkQueens, chkMales,
-                chkForaging, chkDigging, chkNursing, chkGuarding, chkRoyalCare, chkResting,
-                chkFood, chkWater, chkProtein, chkBirths, chkDeaths,
-                chkTemp, chkRain, chkPhero, chkTps,
-                chkAntHealth, chkAntEnergy, chkAntDistance
-        );
-
-        for (Node n : checkFlow.getChildren()) {
-            if (n instanceof CheckBox cb) {
-                cb.setSelected(true);
-            }
-        }
-
-        selectorBox.getChildren().addAll(lblSelect, checkFlow);
-
-        // === Setup Charts ===
         chartMultiColony = createChart("stats.chart.multi_colony.title", "stats.chart.multi_colony.y");
         chartCastes = createChart("stats.chart.castes.title", "stats.chart.castes.y");
         chartBehaviors = createChart("stats.chart.behaviors.title", "stats.chart.behaviors.y");
@@ -613,53 +519,54 @@ public class StatisticsDashboard extends VBox {
         chartPerformance = createChart("stats.chart.performance.title", "stats.chart.performance.y");
         chartIndividualAnt = createChart("stats.chart.individual.title", "stats.chart.individual.y");
 
-        // Setup series names
-        updateSeriesNames();
+        bindSeriesCheckbox(chkTotalPop, "stats.population_total", "stats.chk.total_pop.tt", chartCastes, totalPopSeries);
+        bindSeriesCheckbox(chkWorkers, "stats.workers", "stats.chk.workers.tt", chartCastes, workersSeries);
+        bindSeriesCheckbox(chkSoldiers, "stats.soldiers", "stats.chk.soldiers.tt", chartCastes, soldiersSeries);
+        bindSeriesCheckbox(chkQueens, "stats.queens", "stats.chk.queens.tt", chartCastes, queensSeries);
+        bindSeriesCheckbox(chkMales, "stats.chk.males", null, chartCastes, malesSeries);
 
-        // Listen for locale changes
+        bindSeriesCheckbox(chkForaging, "stats.behavior.foraging", null, chartBehaviors, behaviorForagingSeries);
+        bindSeriesCheckbox(chkDigging, "stats.behavior.digging", null, chartBehaviors, behaviorDiggingSeries);
+        bindSeriesCheckbox(chkNursing, "stats.behavior.nursing", null, chartBehaviors, behaviorNursingSeries);
+        bindSeriesCheckbox(chkGuarding, "stats.behavior.guarding", null, chartBehaviors, behaviorGuardingSeries);
+        bindSeriesCheckbox(chkRoyalCare, "stats.behavior.royal_care", null, chartBehaviors, behaviorRoyalCareSeries);
+        bindSeriesCheckbox(chkResting, "stats.behavior.resting", null, chartBehaviors, behaviorRestingSeries);
+
+        bindSeriesCheckbox(chkFood, "stats.food", "stats.chk.food.tt", chartResources, foodSeries);
+        bindSeriesCheckbox(chkWater, "stats.water", "stats.chk.water.tt", chartResources, waterSeries);
+        bindSeriesCheckbox(chkProtein, "stats.chk.protein", null, chartResources, proteinSeries);
+        bindSeriesCheckbox(chkBirths, "stats.births", "stats.chk.births.tt", chartResources, birthsSeries);
+        bindSeriesCheckbox(chkDeaths, "stats.deaths", "stats.chk.deaths.tt", chartResources, deathsSeries);
+        bindSeriesCheckbox(chkTemp, "stats.chk.temp", null, chartWeather, tempSeries);
+        bindSeriesCheckbox(chkRain, "stats.chk.rain", null, chartWeather, rainSeries);
+        bindSeriesCheckbox(chkPhero, "stats.chk.phero", null, chartWeather, pheroSeries);
+        bindSeriesCheckbox(chkTps, "stats.tps", "stats.chk.tps.tt", chartPerformance, tpsSeries);
+        bindSeriesCheckbox(chkAntHealth, "stats.chk.ant_health", null, chartIndividualAnt, antHealthSeries);
+        bindSeriesCheckbox(chkAntEnergy, "stats.chk.ant_energy", null, chartIndividualAnt, antEnergySeries);
+        bindSeriesCheckbox(chkAntDistance, "stats.chk.ant_distance", null, chartIndividualAnt, antDistanceSeries);
+
+        FlowPane checkFlow = new FlowPane(12, 6,
+                chkTotalPop, chkWorkers, chkSoldiers, chkQueens, chkMales,
+                chkForaging, chkDigging, chkNursing, chkGuarding, chkRoyalCare, chkResting,
+                chkFood, chkWater, chkProtein, chkBirths, chkDeaths,
+                chkTemp, chkRain, chkPhero, chkTps,
+                chkAntHealth, chkAntEnergy, chkAntDistance
+        );
+        selectorBox.getChildren().addAll(lblSelect, checkFlow);
+
+        updateSeriesNames();
         i18n.localeProperty().addListener((obs, oldLoc, newLoc) -> {
             populateGraphViewItems();
             populateTimeWindowItems();
             updateSeriesNames();
         });
 
-        // Assign series to charts
         chartCastes.getData().addAll(totalPopSeries, queensSeries, workersSeries, soldiersSeries, malesSeries);
         chartBehaviors.getData().addAll(behaviorForagingSeries, behaviorDiggingSeries, behaviorNursingSeries, behaviorGuardingSeries, behaviorRoyalCareSeries, behaviorRestingSeries);
         chartResources.getData().addAll(foodSeries, waterSeries, proteinSeries, birthsSeries, deathsSeries);
         chartWeather.getData().addAll(tempSeries, rainSeries, pheroSeries);
         chartPerformance.getData().addAll(tpsSeries);
         chartIndividualAnt.getData().addAll(antHealthSeries, antEnergySeries, antDistanceSeries);
-
-        // Bind visibility controls for all series
-        chkTotalPop.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, totalPopSeries, newV));
-        chkQueens.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, queensSeries, newV));
-        chkWorkers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, workersSeries, newV));
-        chkSoldiers.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, soldiersSeries, newV));
-        chkMales.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartCastes, malesSeries, newV));
-
-        chkForaging.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorForagingSeries, newV));
-        chkDigging.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorDiggingSeries, newV));
-        chkNursing.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorNursingSeries, newV));
-        chkGuarding.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorGuardingSeries, newV));
-        chkRoyalCare.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorRoyalCareSeries, newV));
-        chkResting.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartBehaviors, behaviorRestingSeries, newV));
-
-        chkFood.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, foodSeries, newV));
-        chkWater.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, waterSeries, newV));
-        chkProtein.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, proteinSeries, newV));
-        chkBirths.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, birthsSeries, newV));
-        chkDeaths.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartResources, deathsSeries, newV));
-
-        chkTemp.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartWeather, tempSeries, newV));
-        chkRain.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartWeather, rainSeries, newV));
-        chkPhero.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartWeather, pheroSeries, newV));
-
-        chkTps.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartPerformance, tpsSeries, newV));
-
-        chkAntHealth.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartIndividualAnt, antHealthSeries, newV));
-        chkAntEnergy.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartIndividualAnt, antEnergySeries, newV));
-        chkAntDistance.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chartIndividualAnt, antDistanceSeries, newV));
 
         updateVisibleCharts();
 
@@ -668,6 +575,13 @@ public class StatisticsDashboard extends VBox {
         VBox.setVgrow(scrollCharts, Priority.ALWAYS);
 
         getChildren().addAll(headerBar, summaryPane, selectorBox, scrollCharts);
+    }
+
+    private void bindSeriesCheckbox(CheckBox chk, String labelKey, String ttKey, LineChart<Number, Number> chart, XYChart.Series<Number, Number> series) {
+        chk.textProperty().bind(i18n.createStringBinding(labelKey));
+        if (ttKey != null) chk.tooltipProperty().bind(i18n.createTooltipBinding(ttKey));
+        chk.setSelected(true);
+        chk.selectedProperty().addListener((obs, oldV, newV) -> toggleSeries(chart, series, newV));
     }
 
     private void populateGraphViewItems() {
@@ -922,35 +836,21 @@ public class StatisticsDashboard extends VBox {
                 antEnergySeries.getData().add(new XYChart.Data<>(timeSeconds, simulatedEnergy));
                 antDistanceSeries.getData().add(new XYChart.Data<>(timeSeconds, simulatedDistance));
 
-                // Trim series lengths
-                trimSeries(totalPopSeries);
-                trimSeries(queensSeries);
-                trimSeries(workersSeries);
-                trimSeries(soldiersSeries);
-                trimSeries(malesSeries);
-                trimSeries(behaviorForagingSeries);
-                trimSeries(behaviorDiggingSeries);
-                trimSeries(behaviorNursingSeries);
-                trimSeries(behaviorGuardingSeries);
-                trimSeries(behaviorRoyalCareSeries);
-                trimSeries(behaviorRestingSeries);
-                trimSeries(foodSeries);
-                trimSeries(waterSeries);
-                trimSeries(proteinSeries);
-                trimSeries(birthsSeries);
-                trimSeries(deathsSeries);
-                trimSeries(tempSeries);
-                trimSeries(rainSeries);
-                trimSeries(pheroSeries);
-                trimSeries(tpsSeries);
-                trimSeries(antHealthSeries);
-                trimSeries(antEnergySeries);
-                trimSeries(antDistanceSeries);
-
-                // Update X-Axis Windows according to time window selector
+                getAllFixedSeries().forEach(this::trimSeries);
                 updateChartXAxes(timeSeconds);
             }
         });
+    }
+
+    private List<XYChart.Series<Number, Number>> getAllFixedSeries() {
+        return List.of(
+                totalPopSeries, queensSeries, workersSeries, soldiersSeries, malesSeries,
+                behaviorForagingSeries, behaviorDiggingSeries, behaviorNursingSeries,
+                behaviorGuardingSeries, behaviorRoyalCareSeries, behaviorRestingSeries,
+                foodSeries, waterSeries, proteinSeries, birthsSeries, deathsSeries,
+                tempSeries, rainSeries, pheroSeries, tpsSeries,
+                antHealthSeries, antEnergySeries, antDistanceSeries
+        );
     }
 
     private void updateChartXAxes(double currentTimeSec) {
@@ -960,7 +860,6 @@ public class StatisticsDashboard extends VBox {
         for (LineChart<Number, Number> c : allCharts) {
             NumberAxis xAxis = (NumberAxis) c.getXAxis();
             if (window <= 0) {
-                // All history
                 xAxis.setAutoRanging(true);
             } else {
                 xAxis.setAutoRanging(false);
@@ -968,7 +867,7 @@ public class StatisticsDashboard extends VBox {
                 double maxX = Math.max(window, currentTimeSec);
                 xAxis.setLowerBound(minX);
                 xAxis.setUpperBound(maxX);
-                xAxis.setTickUnit(window / 6.0); // 6 clean tick intervals
+                xAxis.setTickUnit(window / 6.0);
             }
         }
     }
@@ -982,82 +881,21 @@ public class StatisticsDashboard extends VBox {
     public void truncateAfter(double simTimeSeconds) {
         Runnable doTruncate = () -> {
             historyList.removeIf(s -> s.getSimTimeSeconds() > simTimeSeconds);
-            for (XYChart.Series<Number, Number> s : colonySeriesMap.values()) {
-                s.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            }
-            totalPopSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            queensSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            workersSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            soldiersSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            malesSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-
-            behaviorForagingSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            behaviorDiggingSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            behaviorNursingSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            behaviorGuardingSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            behaviorRoyalCareSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            behaviorRestingSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-
-            foodSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            waterSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            proteinSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            birthsSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            deathsSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-
-            tempSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            rainSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            pheroSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-
-            tpsSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            antHealthSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            antEnergySeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-            antDistanceSeries.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds);
-
+            colonySeriesMap.values().forEach(s -> s.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds));
+            getAllFixedSeries().forEach(s -> s.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds));
             updateChartXAxes(simTimeSeconds);
         };
-        if (Platform.isFxApplicationThread()) {
-            doTruncate.run();
-        } else {
-            Platform.runLater(doTruncate);
-        }
+        if (Platform.isFxApplicationThread()) doTruncate.run();
+        else Platform.runLater(doTruncate);
     }
 
     public void clear() {
         Runnable doClear = () -> {
             historyList.clear();
-            for (XYChart.Series<Number, Number> s : colonySeriesMap.values()) {
-                s.getData().clear();
-            }
+            colonySeriesMap.values().forEach(s -> s.getData().clear());
             chartMultiColony.getData().clear();
             colonySeriesMap.clear();
-
-            totalPopSeries.getData().clear();
-            queensSeries.getData().clear();
-            workersSeries.getData().clear();
-            soldiersSeries.getData().clear();
-            malesSeries.getData().clear();
-
-            behaviorForagingSeries.getData().clear();
-            behaviorDiggingSeries.getData().clear();
-            behaviorNursingSeries.getData().clear();
-            behaviorGuardingSeries.getData().clear();
-            behaviorRoyalCareSeries.getData().clear();
-            behaviorRestingSeries.getData().clear();
-
-            foodSeries.getData().clear();
-            waterSeries.getData().clear();
-            proteinSeries.getData().clear();
-            birthsSeries.getData().clear();
-            deathsSeries.getData().clear();
-
-            tempSeries.getData().clear();
-            rainSeries.getData().clear();
-            pheroSeries.getData().clear();
-
-            tpsSeries.getData().clear();
-            antHealthSeries.getData().clear();
-            antEnergySeries.getData().clear();
-            antDistanceSeries.getData().clear();
+            getAllFixedSeries().forEach(s -> s.getData().clear());
 
             lblPopulation.setText("0");
             lblColoniesCount.setText("0");

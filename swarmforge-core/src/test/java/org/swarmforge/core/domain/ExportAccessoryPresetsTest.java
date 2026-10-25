@@ -329,15 +329,18 @@ public class ExportAccessoryPresetsTest {
 
         File[] dirs = {
                 new File("data/presets/accessories"),
+                new File("../data/presets/accessories"),
                 new File("swarmforge-core/src/main/resources/presets/accessories"),
                 new File("src/main/resources/presets/accessories")
         };
 
         for (File d : dirs) {
-            d.mkdirs();
-            for (AccessoryPreset p : list) {
-                File target = new File(d, p.getId() + ".json");
-                mapper.writeValue(target, p);
+            if (d.exists() || d.getParentFile() != null && d.getParentFile().exists()) {
+                d.mkdirs();
+                for (AccessoryPreset p : list) {
+                    File target = new File(d, p.getId() + ".json");
+                    mapper.writeValue(target, p);
+                }
             }
         }
 
