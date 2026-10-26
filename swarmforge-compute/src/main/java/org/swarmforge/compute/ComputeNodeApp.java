@@ -333,7 +333,7 @@ public class ComputeNodeApp {
             ComputeNodeApp node = new ComputeNodeApp(host, serverPort, myPort, threads, gpu);
             node.start();
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.log(Level.SEVERE, "ComputeNodeApp fatal startup failure: " + e.getMessage(), e);
         }
     }
 

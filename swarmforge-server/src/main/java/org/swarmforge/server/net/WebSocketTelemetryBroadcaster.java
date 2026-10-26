@@ -26,6 +26,8 @@ import java.util.Map;
 public final class WebSocketTelemetryBroadcaster {
 
     private static final Logger LOG = LoggerFactory.getLogger(WebSocketTelemetryBroadcaster.class);
+    private static final Map<java.util.UUID, float[]> lastSentPositions = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final float DELTA_THRESHOLD_SQ = 0.0025f; // 0.05m threshold for spatial delta compression
 
     private WebSocketTelemetryBroadcaster() {
         // Utility class
@@ -84,6 +86,11 @@ public final class WebSocketTelemetryBroadcaster {
             SimulationUpdate.Builder update = SimulationUpdate.newBuilder()
                     .setTick(sim.getTickCount());
 
+            boolean isKeyframe = (sim.getTickCount() % 100 == 0);
+            if (lastSentPositions.size() > 20000) {
+                lastSentPositions.clear();
+            }
+
             int count = 0;
             for (Colony colony : sim.getColonies()) {
                 if (count < 1000) {
@@ -91,12 +98,27 @@ public final class WebSocketTelemetryBroadcaster {
                         if (count++ >= 1000)
                             break;
 
+                        float x = ind.getX();
+                        float y = ind.getY();
+                        float z = ind.getZ();
+                        float[] last = lastSentPositions.get(ind.getId());
+
+                        if (!isKeyframe && last != null) {
+                            float dx = x - last[0];
+                            float dy = y - last[1];
+                            float dz = z - last[2];
+                            if ((dx * dx + dy * dy + dz * dz) < DELTA_THRESHOLD_SQ) {
+                                continue; // Spatial delta compression: skip non-moving entities
+                            }
+                        }
+                        lastSentPositions.put(ind.getId(), new float[] { x, y, z });
+
                         update.addIndividuals(IndividualDelta.newBuilder()
                                 .setId(ind.getId().toString())
                                 .setPosition(Vec3.newBuilder()
-                                        .setX(ind.getX())
-                                        .setY(ind.getY())
-                                        .setZ(ind.getZ())
+                                        .setX(x)
+                                        .setY(y)
+                                        .setZ(z)
                                         .build())
                                 .setHeading(ind.getHeading())
                                 .setAlive(ind.isAlive())

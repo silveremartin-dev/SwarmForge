@@ -153,6 +153,17 @@ public class PluginManager {
     /**
      * Unload all plugins.
      */
+    /**
+     * Loads plugins discovered via standard Java ServiceLoader SPI.
+     */
+    public void loadPluginsFromServiceLoader(ClassLoader classLoader) {
+        ClassLoader cl = (classLoader != null) ? classLoader : Thread.currentThread().getContextClassLoader();
+        ServiceLoader<SwarmForgePlugin> loader = ServiceLoader.load(SwarmForgePlugin.class, cl);
+        for (SwarmForgePlugin plugin : loader) {
+            registerPlugin(plugin);
+        }
+    }
+
     public void unloadAll() {
         for (String id : new ArrayList<>(loadedPlugins.keySet())) {
             unloadPlugin(id);

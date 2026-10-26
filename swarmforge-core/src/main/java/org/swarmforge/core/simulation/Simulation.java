@@ -112,6 +112,11 @@ public class Simulation {
     private final java.util.List<org.swarmforge.core.simulation.disasters.DisasterEvent> activeDisasters = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final java.util.Map<Long, org.swarmforge.core.navigation.FlowFieldGrid> flowFieldCache = new java.util.concurrent.ConcurrentHashMap<>();
     private final org.swarmforge.core.ecs.EcsWorldManager ecsWorldManager;
+    private final org.swarmforge.core.event.EventBus eventBus = new org.swarmforge.core.event.EventBus("simulation");
+
+    public org.swarmforge.core.event.EventBus getEventBus() {
+        return eventBus;
+    }
 
     public void triggerDisaster(org.swarmforge.core.simulation.disasters.DisasterEvent disaster) {
         if (disaster != null) {

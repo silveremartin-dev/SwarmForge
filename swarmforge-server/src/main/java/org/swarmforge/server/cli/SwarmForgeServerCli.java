@@ -239,7 +239,6 @@ public final class SwarmForgeServerCli {
             }
         } catch (Exception e) {
             LOG.error("Server error: " + e.getMessage(), e);
-            e.printStackTrace();
             System.exit(1);
         }
     }

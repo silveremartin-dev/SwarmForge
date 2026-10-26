@@ -43,6 +43,8 @@ import java.util.regex.Pattern;
  */
 class SimulationScenarioIoHelper {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(SimulationScenarioIoHelper.class);
+
     private final SimulationControlPanel panel;
 
     SimulationScenarioIoHelper(SimulationControlPanel panel) {
@@ -169,8 +171,7 @@ class SimulationScenarioIoHelper {
                     panel.updateApplyPresetsButtonState(false);
 
                     if (ex != null) {
-                        System.err.println("[ERROR] [SwarmForge Engine] Exception during scenario creation: " + ex.getMessage());
-                        ex.printStackTrace();
+                        LOG.error("Exception during scenario creation: {}", ex.getMessage(), ex);
                         if (panel.inlineProgressBar != null) {
                             panel.inlineProgressBar.setProgress(1.0);
                             panel.inlineProgressLabel.setText("⚠ Initialization completed with warnings: " + ex.getMessage());

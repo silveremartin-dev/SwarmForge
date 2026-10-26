@@ -50,7 +50,11 @@ public class EventBus {
         return t;
     });
 
-    private EventBus() {
+    public EventBus() {
+        this("swarmforge");
+    }
+
+    public EventBus(String scenario) {
         startDiskLogging("swarmforge");
     }
 

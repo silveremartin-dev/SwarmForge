@@ -31,6 +31,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public class JmeGameApp extends SimpleApplication {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(JmeGameApp.class);
+
     final int width;
     final int height;
     private final ConcurrentLinkedQueue<Runnable> taskQueue = new ConcurrentLinkedQueue<>();
@@ -228,8 +230,7 @@ public class JmeGameApp extends SimpleApplication {
                 inputManager.addListener(recordListener, "Toggle_Record");
             }
         } catch (Throwable t) {
-            System.err.println("[JME] Error during simpleInitApp: " + t.getMessage());
-            t.printStackTrace();
+            LOG.error("Error during simpleInitApp: {}", t.getMessage(), t);
         }
     }
 
@@ -354,8 +355,7 @@ public class JmeGameApp extends SimpleApplication {
                 try {
                     task.run();
                 } catch (Throwable t) {
-                    System.err.println("[JME Task Error] " + t.getMessage());
-                    t.printStackTrace();
+                    LOG.error("JME task error: {}", t.getMessage(), t);
                 }
             }
         }
