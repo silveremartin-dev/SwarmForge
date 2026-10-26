@@ -702,6 +702,7 @@ public class Simulation {
             colMap.put(col.getId(), col);
         }
         macroForagingSystem.update(simulationStepSeconds, indMap, colMap);
+        symbiosisSystem.tick();
 
         processEvents();
 

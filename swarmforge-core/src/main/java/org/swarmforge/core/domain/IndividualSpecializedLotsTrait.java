@@ -206,8 +206,8 @@ public class IndividualSpecializedLotsTrait implements Serializable {
 
     public boolean performMammalianDefensiveSting(Individual self, float envenomationDamage) {
         if (!self.isAlive()) return false;
-        self.setHealth(0.0f);
         self.die("Autotomie défensive post-piqûre mammifère (Dard arraché)");
+        self.setHealthDirect(0.0f);
         return true;
     }
 

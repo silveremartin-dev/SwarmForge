@@ -52,8 +52,10 @@ public class SymbiosisSystem {
                         .anyMatch(f -> f instanceof Aphid || f.getType() == org.swarmforge.core.domain.ResourceType.HONEYDEW);
                 int foragers = colony.getPopulation();
                 if ((hasAphidHerd || plantCount > 0) && foragers > 0) {
-                    // Sap conversion rate scaled by available flora and tending workforce
-                    float sapYield = Math.min(1.0f, (plantCount / 20.0f) * 0.4f);
+                    // Sap conversion rate scaled by available flora and tending workforce (or direct aphid herd)
+                    float baseYield = hasAphidHerd ? 0.5f : 0.0f;
+                    float floraYield = plantCount > 0 ? (plantCount / 20.0f) * 0.4f : 0.0f;
+                    float sapYield = Math.min(1.0f, Math.max(baseYield, floraYield));
                     colony.addResource(org.swarmforge.core.domain.ResourceType.HONEYDEW, sapYield);
                 }
             }

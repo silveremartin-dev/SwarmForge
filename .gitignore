@@ -81,3 +81,4 @@ data/logs/*
 !data/logs/.gitkeep
 data/checkpoints/*
 !data/checkpoints/.gitkeep
+data/scenarios/CUSTOM_*.json

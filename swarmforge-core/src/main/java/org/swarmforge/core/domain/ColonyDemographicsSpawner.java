@@ -21,7 +21,9 @@ import java.util.Random;
  * Handles caste creation, subterranean placement inside chambers, surface activity
  * ratios governed by solar declination and circadian illumination, and Gaussian age/health distributions.
  */
-public class ColonyDemographicsSpawner {
+public class ColonyDemographicsSpawner implements java.io.Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private final Colony colony;
 
