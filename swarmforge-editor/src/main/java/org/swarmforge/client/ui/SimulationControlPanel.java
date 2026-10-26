@@ -13,6 +13,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
+import org.swarmforge.client.event.UiEvent;
+import org.swarmforge.client.event.UiEventBus;
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
 import org.swarmforge.core.engine.ComputeAccelerationMode;
@@ -523,6 +525,7 @@ public class SimulationControlPanel extends VBox {
 
     void updateButtonStates() {
         playbackSubPanel.updateButtonStates();
+        UiEventBus.getInstance().publishFx(new UiEvent.SimulationStateChangedUiEvent(isPlaying, isPaused, isStopped, currentTick, currentSpeed));
     }
 
     public void updateTick(long tick, long maxTick) {

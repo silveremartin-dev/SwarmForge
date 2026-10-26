@@ -108,27 +108,25 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
             JsonObject json = JsonParser.parseString(message).getAsJsonObject();
             String type = json.has("type") ? json.get("type").getAsString() : "";
 
-            switch (type.toUpperCase()) {
-                case "PING" -> {
-                    JsonObject pong = new JsonObject();
-                    pong.addProperty("type", "PONG");
-                    pong.addProperty("timestamp", System.currentTimeMillis());
-                    conn.send(pong.toString());
-                }
-                case "SUBSCRIBE" -> {
-                    String simId = json.has("simulationId") ? json.get("simulationId").getAsString() : "main";
-                    if (simId == null || simId.trim().isEmpty()) simId = "main";
+            if ("PING".equalsIgnoreCase(type)) {
+                JsonObject pong = new JsonObject();
+                pong.addProperty("type", "PONG");
+                pong.addProperty("timestamp", System.currentTimeMillis());
+                conn.send(pong.toString());
+                return;
+            }
+
+            ServerWebSocketCommand command = ServerWebSocketCommand.parse(json);
+            switch (command) {
+                case ServerWebSocketCommand.SubscribeCommand sub -> {
+                    String simId = (sub.simulationId() == null || sub.simulationId().isBlank()) ? "main" : sub.simulationId();
                     clientSubscriptions.put(conn, simId);
 
-                    String tag = json.has("participantTag") ? json.get("participantTag").getAsString() : "Joueur_" + (connectedPlayers.size() + 1);
-                    String species = json.has("species") ? json.get("species").getAsString() : "Formica fusca";
-                    String role = json.has("role") ? json.get("role").getAsString() : "JOIN";
-
                     JsonObject player = new JsonObject();
-                    player.addProperty("tag", tag);
-                    player.addProperty("species", species);
-                    player.addProperty("role", role);
-                    player.addProperty("isReady", "HOST".equalsIgnoreCase(role));
+                    player.addProperty("tag", sub.participantTag());
+                    player.addProperty("species", sub.species());
+                    player.addProperty("role", sub.role());
+                    player.addProperty("isReady", "HOST".equalsIgnoreCase(sub.role()));
                     player.addProperty("joinedAt", System.currentTimeMillis());
                     connectedPlayers.put(conn, player);
 
@@ -136,45 +134,24 @@ public class SwarmForgeWebSocketServer extends WebSocketServer {
                     sendServerScenarios(conn);
                     broadcastLobbyState();
                 }
-                case "LIST_SERVER_SCENARIOS", "GET_SCENARIOS" -> {
-                    sendServerScenarios(conn);
-                }
-                case "GET_SCENARIO", "EXPORT_SCENARIO" -> {
-                    String scenarioId = json.has("scenarioId") ? json.get("scenarioId").getAsString() : selectedScenarioId;
+                case ServerWebSocketCommand.ListScenariosCommand ignored -> sendServerScenarios(conn);
+                case ServerWebSocketCommand.ExportScenarioCommand esc -> {
+                    String scenarioId = (esc.scenarioId() == null || esc.scenarioId().isBlank()) ? selectedScenarioId : esc.scenarioId();
                     handleExportScenario(conn, scenarioId);
                 }
-                case "SAVE_SCENARIO", "CREATE_SCENARIO" -> {
-                    JsonObject scObj = json.has("scenario") ? json.getAsJsonObject("scenario") : json;
-                    saveCustomScenario(scObj);
+                case ServerWebSocketCommand.SaveScenarioCommand ssc -> {
+                    saveCustomScenario(ssc.scenario());
                     sendServerScenarios(conn);
                 }
-                case "DEPLOY_SCENARIO" -> {
-                    handleDeployScenario(conn, json);
-                }
-                case "JOIN_SESSION" -> {
-                    handleJoinSession(conn, json);
-                }
-                case "PLAYER_READY" -> {
-                    handlePlayerReady(conn, json);
-                }
-                case "START_MATCH" -> {
-                    handleStartMatch(conn, json);
-                }
-                case "SELECT_SCENARIO" -> {
-                    handleSelectScenario(conn, json);
-                }
-                case "CONTROL_COMMAND", "CONTROL" -> {
-                    handleControlCommand(conn, json);
-                }
-                case "GOD_MODE_INTERVENTION" -> {
-                    handleGodModeIntervention(conn, json);
-                }
-                case "SCHEDULE_EVENT" -> {
-                    handleScheduleEvent(conn, json);
-                }
-                default -> {
-                    LOG.debug("Unhandled WebSocket message type: {}", type);
-                }
+                case ServerWebSocketCommand.DeployScenarioCommand dsc -> handleDeployScenario(conn, json);
+                case ServerWebSocketCommand.JoinSessionCommand jsc -> handleJoinSession(conn, json);
+                case ServerWebSocketCommand.PlayerReadyCommand prc -> handlePlayerReady(conn, json);
+                case ServerWebSocketCommand.StartMatchCommand ignored -> handleStartMatch(conn, json);
+                case ServerWebSocketCommand.SelectScenarioCommand ssc -> handleSelectScenario(conn, json);
+                case ServerWebSocketCommand.ControlCommand cc -> handleControlCommand(conn, json);
+                case ServerWebSocketCommand.GodModeInterventionCommand gmic -> handleGodModeIntervention(conn, json);
+                case ServerWebSocketCommand.ScheduleEventCommand sec -> handleScheduleEvent(conn, json);
+                case ServerWebSocketCommand.UnknownCommand uc -> LOG.debug("Unhandled WebSocket command: {}", uc.rawType());
             }
         } catch (Exception e) {
             LOG.warn("Failed to parse WebSocket message from {}: {}", conn.getRemoteSocketAddress(), e.getMessage());

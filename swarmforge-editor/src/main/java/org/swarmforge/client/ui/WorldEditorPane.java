@@ -79,6 +79,7 @@ public class WorldEditorPane extends BorderPane {
 
     // Preset & Species Adaptation
     final WorldPresetManager presetManager = new WorldPresetManager();
+    final TerrainUndoManager undoManager = new TerrainUndoManager();
     ComboBox<String> presetsCombo;
     ComboBox<String> speciesAdaptCombo;
     Label lblAdaptStatus;
@@ -319,6 +320,21 @@ public class WorldEditorPane extends BorderPane {
             repaintAllViews();
         }
         ThemeManager.getInstance().currentThemeProperty().addListener((obs, oldTheme, newTheme) -> repaintAllViews());
+        setOnKeyPressed(e -> {
+            if (e.isControlDown()) {
+                if (e.getCode() == javafx.scene.input.KeyCode.Z) {
+                    undoManager.undo();
+                    e.consume();
+                } else if (e.getCode() == javafx.scene.input.KeyCode.Y) {
+                    undoManager.redo();
+                    e.consume();
+                }
+            }
+        });
+    }
+
+    public TerrainUndoManager getUndoManager() {
+        return undoManager;
     }
 
     public void bindGameViewListeners() {

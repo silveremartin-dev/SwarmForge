@@ -98,11 +98,8 @@ public class SwarmForgeServer {
         this.restApiServer.setSimulation(mainSim); // REST API currently tied to main
     }
 
-    private final java.util.concurrent.ExecutorService dbAsyncExecutor = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "db-async-writer");
-        t.setDaemon(true);
-        return t;
-    });
+    private final java.util.concurrent.ExecutorService dbAsyncExecutor = java.util.concurrent.Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("db-async-writer-", 0).factory());
 
     // ... constructors ...
 

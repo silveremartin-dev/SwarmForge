@@ -17,6 +17,8 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import org.swarmforge.client.ui.world.TerrainProceduralGenerator;
 import org.swarmforge.client.util.CanvasInteractionHandler;
+import org.swarmforge.client.event.UiEvent;
+import org.swarmforge.client.event.UiEventBus;
 import org.swarmforge.client.util.I18nManager;
 
 import static org.swarmforge.client.ui.WorldEditorPane.GRID_SIZE;
@@ -42,6 +44,7 @@ final class WorldEditorInteractionAndInspectorHelper {
             @Override
             public void onVoxelSelected(int x, int y, int z, String material, float moisture, float temp, float compaction) {
                 pane.updateFloatingMouseInspector(x, y, z, pane.lastGameViewMouseX, pane.lastGameViewMouseY, null);
+                UiEventBus.getInstance().publishFx(new UiEvent.VoxelSelectedUiEvent(x, y, z, 0, moisture, temp, 0.0));
             }
 
             @Override
@@ -52,6 +55,11 @@ final class WorldEditorInteractionAndInspectorHelper {
                 }
                 String bioText = "🐜 Individu #" + id + " [" + (caste != null ? caste : "Ouvrière") + "] | Santé: " + (int) (health * 100) + "% | Énergie: " + (int) (energy * 100) + "%";
                 pane.updateFloatingMouseInspector(0, 0, 0, pane.lastGameViewMouseX, pane.lastGameViewMouseY, bioText);
+                java.util.UUID uid = null;
+                try {
+                    uid = java.util.UUID.fromString(id);
+                } catch (Exception ignored) {}
+                UiEventBus.getInstance().publishFx(new UiEvent.IndividualFocusedUiEvent(uid, "Formicidae", caste, health, energy, 0, 0, 0));
             }
 
             @Override
