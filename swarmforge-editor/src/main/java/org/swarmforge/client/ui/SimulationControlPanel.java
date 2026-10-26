@@ -468,21 +468,22 @@ public class SimulationControlPanel extends VBox {
             btnApplyPresets.setTooltip(new Tooltip());
         }
 
+        btnApplyPresets.getStyleClass().removeAll("danger-button", "action-primary-button", "btn-danger", "btn-primary");
         if (isCreating) {
             btnApplyPresets.textProperty().bind(i18n.createStringBinding("sim.btn.cancel_creation"));
-            btnApplyPresets.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5; -fx-cursor: hand;");
+            btnApplyPresets.getStyleClass().addAll("btn-danger", "danger-button");
             btnApplyPresets.getTooltip().textProperty().bind(i18n.createStringBinding("sim.btn.cancel_creation.tt"));
         } else if (isServerExecutionMode()) {
             btnApplyPresets.setText(isServerJoinMode() ?
                 i18n.get("sim.server.btn.join", "🌐 Rejoindre la Partie Serveur") :
                 i18n.get("sim.server.btn.deploy", "🚀 Déployer Scénario sur Serveur"));
-            btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5; -fx-cursor: hand;");
+            btnApplyPresets.getStyleClass().addAll("btn-primary", "action-primary-button");
             btnApplyPresets.getTooltip().setText(isServerJoinMode() ?
                 i18n.get("sim.server.role.join", "Rejoint la simulation partagée sur le serveur SwarmForge.") :
                 i18n.get("sim.server.role.host", "Déploie le scénario et initialise le monde sur le serveur SwarmForge."));
         } else {
             btnApplyPresets.textProperty().bind(i18n.createStringBinding("sim.btn.apply_create"));
-            btnApplyPresets.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 10 16; -fx-background-radius: 5;");
+            btnApplyPresets.getStyleClass().addAll("btn-primary", "action-primary-button");
             btnApplyPresets.getTooltip().textProperty().bind(i18n.createStringBinding("sim.btn.apply_presets.tt"));
         }
     }

@@ -120,7 +120,7 @@ final class WorldEditorRightSidebarAndLegendBuilder {
         box.setPrefWidth(390);
         box.setMinWidth(380);
         box.setMaxWidth(440);
-        box.setStyle("-fx-background-color: rgba(15, 23, 42, 0.95); -fx-background-radius: 8px; -fx-border-color: rgba(56, 189, 248, 0.6); -fx-border-width: 1.2px; -fx-border-radius: 8px; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.7), 10, 0, 0, 3);");
+        box.getStyleClass().addAll("card-pane", "weather-hud-box");
         box.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         box.setPickOnBounds(false);
         box.setMouseTransparent(true);
@@ -129,10 +129,10 @@ final class WorldEditorRightSidebarAndLegendBuilder {
 
         Label title = new Label();
         title.textProperty().bind(I18nManager.getInstance().createStringBinding("weather.info_overlay.title"));
-        title.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 11.5px; -fx-font-weight: bold;");
+        title.getStyleClass().add("weather-hud-title");
 
         pane.lblWeatherCoords = new Label("📍 Lat: -- • Lon: -- • Alt: --");
-        pane.lblWeatherCoords.setStyle("-fx-text-fill: #7dd3fc; -fx-font-size: 10px; -fx-font-weight: bold;");
+        pane.lblWeatherCoords.getStyleClass().add("bold-label");
         pane.lblWeatherCoords.setWrapText(true);
 
         GridPane grid = new GridPane();
@@ -548,7 +548,7 @@ final class WorldEditorRightSidebarAndLegendBuilder {
             HBox item = new HBox(4);
             item.setAlignment(Pos.CENTER_LEFT);
             item.setPadding(new Insets(2, 4, 2, 4));
-            item.setStyle("-fx-background-color: rgba(255, 255, 255, 0.05); -fx-background-radius: 4;");
+            item.getStyleClass().add("legend-item-box");
 
             Canvas dot = new Canvas(8, 8);
             GraphicsContext g = dot.getGraphicsContext2D();
@@ -596,7 +596,7 @@ final class WorldEditorRightSidebarAndLegendBuilder {
             HBox item = new HBox(4);
             item.setAlignment(Pos.CENTER_LEFT);
             item.setPadding(new Insets(2, 4, 2, 4));
-            item.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 4;");
+            item.getStyleClass().add("legend-item-box");
 
             Node symbolNode;
             if ("line".equals(it[2])) {
@@ -656,7 +656,7 @@ final class WorldEditorRightSidebarAndLegendBuilder {
             HBox item = new HBox(4);
             item.setAlignment(Pos.CENTER_LEFT);
             item.setPadding(new Insets(2, 4, 2, 4));
-            item.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 4;");
+            item.getStyleClass().add("legend-item-box");
 
             Canvas dot = new Canvas(8, 8);
             GraphicsContext g = dot.getGraphicsContext2D();
@@ -701,7 +701,7 @@ final class WorldEditorRightSidebarAndLegendBuilder {
             HBox item = new HBox(4);
             item.setAlignment(Pos.CENTER_LEFT);
             item.setPadding(new Insets(2, 4, 2, 4));
-            item.setStyle("-fx-background-color: rgba(255,255,255,0.05); -fx-background-radius: 4;");
+            item.getStyleClass().add("legend-item-box");
 
             Canvas dot = new Canvas(8, 8);
             GraphicsContext g = dot.getGraphicsContext2D();

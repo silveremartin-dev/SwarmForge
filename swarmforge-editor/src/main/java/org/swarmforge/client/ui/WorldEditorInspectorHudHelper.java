@@ -27,54 +27,45 @@ public final class WorldEditorInspectorHudHelper {
         card.setMinWidth(380);
         card.setPrefWidth(430);
         card.setMaxWidth(540);
-        card.setStyle(
-            "-fx-background-color: rgba(15, 23, 42, 0.96); " +
-            "-fx-background-radius: 8px; " +
-            "-fx-border-color: #38bdf8; " +
-            "-fx-border-radius: 8px; " +
-            "-fx-border-width: 1.5px; " +
-            "-fx-padding: 10px 14px; " +
-            "-fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.85), 14, 0, 0, 4);"
-        );
-        card.getStyleClass().add("card-pane");
+        card.getStyleClass().addAll("card-pane", "inspector-hud-card");
 
         pane.lblFInspTitle = new Label();
-        pane.lblFInspTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
+        pane.lblFInspTitle.getStyleClass().add("inspector-title");
         pane.lblFInspTitle.setWrapText(true);
         pane.lblFInspTitle.setMinWidth(Region.USE_PREF_SIZE);
 
         pane.lblFInspAlt = new Label();
-        pane.lblFInspAlt.setStyle("-fx-text-fill: #f8fafc; -fx-font-size: 10px;");
+        pane.lblFInspAlt.getStyleClass().add("inspector-line");
         pane.lblFInspAlt.setWrapText(true);
         pane.lblFInspAlt.setMinWidth(Region.USE_PREF_SIZE);
 
         pane.lblFInspSubstrat = new Label();
-        pane.lblFInspSubstrat.setStyle("-fx-text-fill: #f8fafc; -fx-font-size: 10px;");
+        pane.lblFInspSubstrat.getStyleClass().add("inspector-line");
         pane.lblFInspSubstrat.setWrapText(true);
         pane.lblFInspSubstrat.setMinWidth(Region.USE_PREF_SIZE);
 
         pane.lblFInspClimate = new Label();
-        pane.lblFInspClimate.setStyle("-fx-text-fill: #f8fafc; -fx-font-size: 10px;");
+        pane.lblFInspClimate.getStyleClass().add("inspector-line");
         pane.lblFInspClimate.setWrapText(true);
         pane.lblFInspClimate.setMinWidth(Region.USE_PREF_SIZE);
 
         pane.lblFInspChem = new Label();
-        pane.lblFInspChem.setStyle("-fx-text-fill: #f8fafc; -fx-font-size: 10px;");
+        pane.lblFInspChem.getStyleClass().add("inspector-chem");
         pane.lblFInspChem.setWrapText(true);
         pane.lblFInspChem.setMinWidth(Region.USE_PREF_SIZE);
 
         pane.lblFInspGas = new Label();
-        pane.lblFInspGas.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold; -fx-font-size: 10px;");
+        pane.lblFInspGas.getStyleClass().add("inspector-gas-optimal");
         pane.lblFInspGas.setWrapText(true);
         pane.lblFInspGas.setMinWidth(Region.USE_PREF_SIZE);
 
         pane.lblFInspPhero = new Label();
-        pane.lblFInspPhero.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 9.5px;");
+        pane.lblFInspPhero.getStyleClass().add("inspector-phero");
         pane.lblFInspPhero.setWrapText(true);
         pane.lblFInspPhero.setMinWidth(Region.USE_PREF_SIZE);
 
         pane.lblFInspBio = new Label();
-        pane.lblFInspBio.setStyle("-fx-text-fill: #f8fafc; -fx-font-size: 10px;");
+        pane.lblFInspBio.getStyleClass().add("inspector-line");
         pane.lblFInspBio.setWrapText(true);
         pane.lblFInspBio.setMinWidth(Region.USE_PREF_SIZE);
 
@@ -166,16 +157,16 @@ public final class WorldEditorInspectorHudHelper {
         float co2Pct = co2Ppm / 10000.0f;
 
         String gasStatus;
-        String gasColorStyle;
+        String gasCssClass;
         if (co2Ppm < 1500.0f && o2Pct >= 19.5f) {
             gasStatus = "🟢 Optimal";
-            gasColorStyle = "-fx-text-fill: #4ade80;";
+            gasCssClass = "inspector-gas-optimal";
         } else if (co2Ppm < 5000.0f && o2Pct >= 18.0f) {
             gasStatus = "🟠 CO₂ Élevé";
-            gasColorStyle = "-fx-text-fill: #f59e0b;";
+            gasCssClass = "inspector-gas-elevated";
         } else {
             gasStatus = "🔴 Hypoxie Critique";
-            gasColorStyle = "-fx-text-fill: #ef4444;";
+            gasCssClass = "inspector-gas-critical";
         }
 
         float lightLux = (safeDepth == 0) ? (pane.isForestArea(gx, gy) ? 4500.0f : 12000.0f) : (safeDepth == 1 && isVoid ? 120.0f : 0.0f);
@@ -223,7 +214,8 @@ public final class WorldEditorInspectorHudHelper {
         pane.lblFInspClimate.setText(String.format(Locale.US, "🌡️ Temp: %.1f°C | 💧 Humidité: %d%% %s", tempC, humPct, humStatus));
         String phStatus = phVal < 5.8f ? " (Acide)" : (phVal > 7.4f ? " (Basique)" : " (Neutre)");
         pane.lblFInspChem.setText(String.format(Locale.US, "🧪 pH: %.1f%s | 🌿 Racines: %d%%", phVal, phStatus, rootPct));
-        pane.lblFInspGas.setStyle(gasColorStyle + " -fx-font-weight: bold; -fx-font-size: 10px;");
+        pane.lblFInspGas.getStyleClass().removeAll("inspector-gas-optimal", "inspector-gas-elevated", "inspector-gas-critical");
+        pane.lblFInspGas.getStyleClass().add(gasCssClass);
         pane.lblFInspGas.setText(String.format(Locale.US, "💨 CO₂: %.0f ppm (%.3f%%) | O₂: %.1f%% | %s", co2Ppm, co2Pct, o2Pct, gasStatus));
         pane.lblFInspPhero.setText(String.format(Locale.US, "🧪 Phéromones: %s", pheromoneInfo));
         pane.lblFInspBio.setText(String.format(Locale.US, "🐜 Contenu Voxel: %s", bioContents));

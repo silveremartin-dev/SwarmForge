@@ -858,6 +858,93 @@
     -fx-background-color: #b91c1c;
 }
 
+/* Floating Inspector HUD Card & Actions */
+.inspector-hud-card {
+    -fx-background-color: rgba(255, 255, 255, 0.96);
+    -fx-background-radius: 8px;
+    -fx-border-color: #0284c7;
+    -fx-border-radius: 8px;
+    -fx-border-width: 1.5px;
+    -fx-padding: 10px 14px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.18), 14, 0, 0, 4);
+}
+.inspector-title {
+    -fx-text-fill: #0284c7;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+}
+.inspector-line {
+    -fx-text-fill: #0f172a;
+    -fx-font-size: 10px;
+}
+.inspector-chem {
+    -fx-text-fill: #0f172a;
+    -fx-font-size: 10px;
+}
+.inspector-gas-optimal {
+    -fx-text-fill: #16a34a;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+}
+.inspector-gas-elevated {
+    -fx-text-fill: #d97706;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+}
+.inspector-gas-critical {
+    -fx-text-fill: #dc2626;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+}
+.inspector-phero {
+    -fx-text-fill: #7c3aed;
+    -fx-font-size: 9.5px;
+}
+.action-primary-button {
+    -fx-background-color: #0284c7;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4px;
+}
+.action-primary-button:hover {
+    -fx-background-color: #0369a1;
+}
+
+.viewport-3d-pane {
+    -fx-border-color: #cbd5e1;
+    -fx-border-width: 1px;
+    -fx-background-color: #f1f5f9;
+}
+
+.weather-hud-box {
+    -fx-background-color: rgba(255, 255, 255, 0.95);
+    -fx-background-radius: 8px;
+    -fx-border-color: rgba(2, 132, 199, 0.6);
+    -fx-border-width: 1.2px;
+    -fx-border-radius: 8px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 3);
+}
+
+.weather-hud-title {
+    -fx-text-fill: #0284c7;
+    -fx-font-size: 11.5px;
+    -fx-font-weight: bold;
+}
+
+.legend-item-box {
+    -fx-background-color: rgba(0, 0, 0, 0.04);
+    -fx-background-radius: 4px;
+}
+
+.chamber-info-card {
+    -fx-background-color: rgba(255, 255, 255, 0.96);
+    -fx-border-color: #0284c7;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.15), 10, 0, 0, 3);
+}
+
 
 
 

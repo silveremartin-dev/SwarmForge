@@ -59,9 +59,7 @@ public class ChamberInfoPane extends VBox {
         setPadding(new Insets(10, 12, 10, 12));
         setPrefWidth(360);
         setMaxWidth(380);
-        setStyle("-fx-background-color: rgba(15, 23, 42, 0.94); " +
-                "-fx-border-color: #38bdf8; -fx-border-width: 1.5; " +
-                "-fx-border-radius: 10; -fx-background-radius: 10;");
+        getStyleClass().addAll("card-pane", "chamber-info-card");
 
         // Header
         HBox headerBox = new HBox(8);

@@ -68,8 +68,7 @@ public final class WorldEditorViewLayoutBuilder {
         Button bDelete = new Button();
         bDelete.textProperty().bind(I18nManager.getInstance().createStringBinding("preset.delete"));
         bDelete.setGraphic(new FontIcon(Feather.TRASH_2));
-        bDelete.getStyleClass().add("btn-danger");
-        bDelete.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
+        bDelete.getStyleClass().addAll("btn-danger", "danger-button");
         bDelete.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("world.presets.delete.tt"));
         bDelete.setOnAction(e -> pane.handleDeletePreset());
 
@@ -81,7 +80,7 @@ public final class WorldEditorViewLayoutBuilder {
 
         Button bNewPreset = new Button();
         bNewPreset.textProperty().bind(I18nManager.getInstance().createStringBinding("world.preset.new"));
-        bNewPreset.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        bNewPreset.getStyleClass().addAll("btn-primary", "action-primary-button");
         bNewPreset.tooltipProperty().bind(I18nManager.getInstance().createTooltipBinding("world.presets.new.tt"));
         bNewPreset.setOnAction(e -> pane.handleSavePreset());
 
@@ -191,7 +190,7 @@ public final class WorldEditorViewLayoutBuilder {
         } else {
             pane.h3d = new StackPane(pane.canvas3D, pane.floatingMouseInspectorCard, pane.sideMinimapsBox, pane.trackedAntPane, pane.chamberInfoPane, pane.weatherOverlayPane);
         }
-        pane.h3d.setStyle("-fx-border-color: #555; -fx-border-width: 1; -fx-background-color: #0b0f19;");
+        pane.h3d.getStyleClass().add("viewport-3d-pane");
         HBox.setHgrow(pane.h3d, Priority.ALWAYS);
         VBox.setVgrow(pane.h3d, Priority.ALWAYS);
 
