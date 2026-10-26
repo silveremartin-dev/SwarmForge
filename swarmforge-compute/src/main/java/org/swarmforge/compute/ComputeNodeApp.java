@@ -223,25 +223,10 @@ public class ComputeNodeApp {
                 }
                 float[] result = new float[size];
 
-                boolean processedOnGpu = false;
-                if (gpuEnabled) {
-                    try {
-                        org.swarmforge.core.simulation.gpu.PheromoneKernel kernel = new org.swarmforge.core.simulation.gpu.PheromoneKernel(
-                                request.getWidth(), request.getHeight(), request.getDepth(),
-                                8, data, result, 0.1f, 0.01f);
-                        kernel.execute(request.getWidth() * request.getHeight() * request.getDepth());
-                        kernel.dispose();
-                        processedOnGpu = true;
-                    } catch (Throwable e) {
-                        LOG.warning("GPU execution failed, falling back to CPU processing: " + e.getMessage());
-                    }
-                }
-
-                if (!processedOnGpu) {
-                    org.swarmforge.core.simulation.gpu.PheromoneVectorFallback.processVectorized(
-                            request.getWidth(), request.getHeight(), request.getDepth(),
-                            8, data, result, 0.1f, 0.01f);
-                }
+                org.swarmforge.core.simulation.gpu.GpuComputeDispatcher.setGpuEnabled(gpuEnabled);
+                org.swarmforge.core.simulation.gpu.GpuComputeDispatcher.dispatchPheromoneCompute(
+                        request.getWidth(), request.getHeight(), request.getDepth(),
+                        8, data, result, 0.1f, 0.01f);
 
                 PheromoneTaskResponse.Builder builder = PheromoneTaskResponse.newBuilder()
                         .setSuccess(true);
