@@ -222,8 +222,7 @@ public class SimulationControlPanel extends VBox {
         execModeBox.setAlignment(Pos.CENTER_LEFT);
         Label lblExecMode = new Label();
         lblExecMode.textProperty().bind(i18n.createStringBinding("sim.exec_mode.title"));
-        lblExecMode.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
-        lblExecMode.getStyleClass().add("accent-title");
+        lblExecMode.getStyleClass().addAll("accent-title", "compact-combo");
         lblExecMode.tooltipProperty().bind(i18n.createTooltipBinding("sim.exec_mode.title.tt"));
 
         comboExecutionMode.getItems().setAll(
@@ -232,7 +231,7 @@ public class SimulationControlPanel extends VBox {
         );
         comboExecutionMode.getSelectionModel().selectFirst();
         comboExecutionMode.setMaxWidth(Double.MAX_VALUE);
-        comboExecutionMode.setStyle("-fx-font-size: 11px;");
+        comboExecutionMode.getStyleClass().add("compact-combo");
         comboExecutionMode.setTooltip(new Tooltip(i18n.get("sim.exec_mode.tt")));
         HBox.setHgrow(comboExecutionMode, Priority.ALWAYS);
         execModeBox.getChildren().addAll(lblExecMode, comboExecutionMode);
@@ -257,7 +256,6 @@ public class SimulationControlPanel extends VBox {
 
         Button bSaveScenario = createScenarioActionButton("common.btn.save", Feather.SAVE, "btn-secondary", "sim.btn.save.tt", this::handleSaveScenario);
         Button bDeleteScenario = createScenarioActionButton("common.btn.delete", Feather.TRASH_2, "btn-danger", "sim.btn.delete.tt", this::handleDeleteScenario);
-        bDeleteScenario.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold;");
         Button bExportScenario = createScenarioActionButton("common.btn.export", Feather.DOWNLOAD, "btn-secondary", "sim.btn.export.tt", this::handleExportScenario);
         Button bImportScenario = createScenarioActionButton("common.btn.import", Feather.UPLOAD, "btn-secondary", "sim.btn.import.tt", this::handleImportScenario);
 
@@ -265,7 +263,6 @@ public class SimulationControlPanel extends VBox {
         metaRow.setAlignment(Pos.CENTER_LEFT);
         Label lblMeta = new Label();
         lblMeta.textProperty().bind(i18n.createStringBinding("sim.preset.meta"));
-        lblMeta.setStyle("-fx-font-weight: bold; -fx-font-size: 11px;");
         lblMeta.getStyleClass().add("purple-accent-title");
         lblMeta.setMinWidth(Region.USE_PREF_SIZE);
 
@@ -305,12 +302,11 @@ public class SimulationControlPanel extends VBox {
         VBox descBox = new VBox(4);
         Label lblDesc = new Label();
         lblDesc.textProperty().bind(i18n.createStringBinding("sim.desc.title"));
-        lblDesc.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;");
-        lblDesc.getStyleClass().add("sub-title-gray");
+        lblDesc.getStyleClass().addAll("sub-title-gray", "card-caption-title");
         areaDescription.setPrefRowCount(2);
         areaDescription.setPromptText("Scenario description and experimental objectives...");
         areaDescription.setWrapText(true);
-        areaDescription.setStyle("-fx-font-size: 11px;");
+        areaDescription.getStyleClass().add("compact-text-area");
         descBox.getChildren().addAll(lblDesc, areaDescription);
 
         // Populate World and Weather combos
@@ -367,11 +363,10 @@ public class SimulationControlPanel extends VBox {
         inlineProgressBar = new ProgressBar(0);
         inlineProgressBar.setMaxWidth(Double.MAX_VALUE);
         inlineProgressBar.setPrefHeight(6);
-        inlineProgressBar.setStyle("-fx-accent: #0284c7;");
+        inlineProgressBar.getStyleClass().add("scenario-progress-bar");
 
         inlineProgressLabel = new Label("Initializing scenario...");
-        inlineProgressLabel.setStyle("-fx-font-size: 10px;");
-        inlineProgressLabel.getStyleClass().add("accent-title");
+        inlineProgressLabel.getStyleClass().addAll("accent-title", "scenario-progress-label");
 
         applyProgressBox = new HBox(8, inlineProgressBar, inlineProgressLabel);
         applyProgressBox.setAlignment(Pos.CENTER_LEFT);

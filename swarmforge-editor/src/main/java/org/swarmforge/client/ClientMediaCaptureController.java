@@ -57,10 +57,15 @@ class ClientMediaCaptureController {
         this.client = client;
     }
 
+    private void setButtonState(Button btn, String stateClass) {
+        btn.getStyleClass().removeAll("media-button-neutral", "media-button-recording", "media-button-processing", "media-button-success");
+        btn.getStyleClass().add(stateClass);
+    }
+
     VBox buildMediaSection(StackPane viewportStack, Button btnFullscreenMode) {
         this.btnRecVideo = new Button(i18n.get("sidebar.btn.video"));
         this.btnRecVideo.setMaxWidth(Double.MAX_VALUE);
-        this.btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+        setButtonState(this.btnRecVideo, "media-button-neutral");
         File videoDir = new File("captures/videos");
         Tooltip ttRecVideo = new Tooltip("🎥 Enregistrement Vidéo 3D (MP4 / GIF)\n📂 Emplacement: " + videoDir.getAbsolutePath());
         this.btnRecVideo.setTooltip(ttRecVideo);
@@ -68,14 +73,14 @@ class ClientMediaCaptureController {
         setupRecordingHandlers();
 
         VBox mediaSection = new VBox(6);
-        mediaSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
+        mediaSection.getStyleClass().add("sidebar-section-card");
         Label lblMedia = new Label();
         lblMedia.textProperty().bind(i18n.createStringBinding("sidebar.media.title"));
-        lblMedia.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lblMedia.getStyleClass().add("sidebar-section-label");
 
         Button btnPhoto = new Button(i18n.get("sidebar.btn.photo"));
         btnPhoto.setMaxWidth(Double.MAX_VALUE);
-        btnPhoto.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+        setButtonState(btnPhoto, "media-button-neutral");
         File screenshotDir = new File("captures/screenshots");
         Tooltip ttPhoto = new Tooltip("📸 Capture d'écran HD (PNG)\n📂 Emplacement: " + screenshotDir.getAbsolutePath());
         btnPhoto.setTooltip(ttPhoto);
@@ -92,7 +97,7 @@ class ClientMediaCaptureController {
                 isVideoArmed = true;
                 btnRecVideo.textProperty().unbind();
                 btnRecVideo.setText("⏳ REC Armé (En attente)");
-                btnRecVideo.setStyle("-fx-background-color: #f59e0b; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                setButtonState(btnRecVideo, "media-button-processing");
             } else {
                 startVideoRecordingInternal();
             }
@@ -124,12 +129,12 @@ class ClientMediaCaptureController {
             LOG.info("[SwarmForge] Screenshot HD enregistré: " + screenshotFile.getAbsolutePath());
 
             btnPhoto.setText("✓ Screenshot Saved!");
-            btnPhoto.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+            setButtonState(btnPhoto, "media-button-success");
 
             PauseTransition pt = new PauseTransition(Duration.seconds(3));
             pt.setOnFinished(ev -> {
                 btnPhoto.setText(i18n.get("sidebar.btn.photo"));
-                btnPhoto.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                setButtonState(btnPhoto, "media-button-neutral");
             });
             pt.play();
         } catch (Exception ex) {
@@ -146,7 +151,7 @@ class ClientMediaCaptureController {
         SimulationAudioManager.getInstance().startAudioRecording();
 
         btnRecVideo.setText(i18n.get("sidebar.btn.video_recording", "🔴 Stop (REC 00:00 / 10:00 - 0 frames)"));
-        btnRecVideo.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+        setButtonState(btnRecVideo, "media-button-recording");
 
         videoCaptureTimeline = new Timeline(
             new KeyFrame(Duration.millis(100), ev -> {
@@ -180,7 +185,7 @@ class ClientMediaCaptureController {
         if (isVideoArmed) {
             isVideoArmed = false;
             btnRecVideo.setText(i18n.get("sidebar.btn.video"));
-            btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+            setButtonState(btnRecVideo, "media-button-neutral");
         }
     }
 
@@ -204,7 +209,7 @@ class ClientMediaCaptureController {
             } catch (Exception ignored) {}
             if (btnRecVideo != null) {
                 btnRecVideo.setText(i18n.get("sidebar.btn.video"));
-                btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                setButtonState(btnRecVideo, "media-button-neutral");
             }
         };
         if (Platform.isFxApplicationThread()) {
@@ -241,7 +246,7 @@ class ClientMediaCaptureController {
             final byte[] pcmAudioData = SimulationAudioManager.getInstance().stopAudioRecording();
 
             btnRecVideo.setText(i18n.get("sidebar.btn.video"));
-            btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+            setButtonState(btnRecVideo, "media-button-neutral");
 
             final List<BufferedImage> framesToExport = new ArrayList<>(recordedVideoFrames);
             final String scName = (client.simControlPanel != null) ? client.simControlPanel.getSelectedScenarioName() : "Scenario";
@@ -254,12 +259,12 @@ class ClientMediaCaptureController {
                     Platform.runLater(() -> {
                         LOG.info("[SwarmForge] Vidéo 3D MP4 exportée: " + videoFile.getAbsolutePath());
                         btnRecVideo.setText("✓ Video Recorded!");
-                        btnRecVideo.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                        setButtonState(btnRecVideo, "media-button-success");
 
                         PauseTransition pt = new PauseTransition(Duration.seconds(3));
                         pt.setOnFinished(ev -> {
                             btnRecVideo.setText(i18n.get("sidebar.btn.video"));
-                            btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                            setButtonState(btnRecVideo, "media-button-neutral");
                         });
                         pt.play();
                     });
@@ -270,12 +275,12 @@ class ClientMediaCaptureController {
                         Platform.runLater(() -> {
                             LOG.info("[SwarmForge] Vidéo 3D GIF exportée: " + videoFile.getAbsolutePath());
                             btnRecVideo.setText("✓ Video Recorded!");
-                            btnRecVideo.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                            setButtonState(btnRecVideo, "media-button-success");
 
                             PauseTransition pt = new PauseTransition(Duration.seconds(3));
                             pt.setOnFinished(ev -> {
                                 btnRecVideo.setText(i18n.get("sidebar.btn.video"));
-                                btnRecVideo.setStyle("-fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+                                setButtonState(btnRecVideo, "media-button-neutral");
                             });
                             pt.play();
                         });

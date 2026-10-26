@@ -945,6 +945,153 @@
     -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.15), 10, 0, 0, 3);
 }
 
+/* Viewport and Simulation HUD & Overlay Elements */
+.simulation-inactive-overlay {
+    -fx-background-color: rgba(255, 255, 255, 0.88);
+    -fx-padding: 8 16;
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(2, 132, 199, 0.4);
+    -fx-border-width: 1;
+    -fx-border-radius: 20;
+}
+
+.simulation-inactive-title {
+    -fx-text-fill: #0284c7;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.fullscreen-exit-button {
+    -fx-background-color: #ef4444;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+    -fx-background-radius: 20;
+    -fx-padding: 6 14;
+    -fx-cursor: hand;
+}
+.fullscreen-exit-button:hover {
+    -fx-background-color: #dc2626;
+}
+
+.fullscreen-toggle-button {
+    -fx-background-color: #0284c7;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+.fullscreen-toggle-button:hover {
+    -fx-background-color: #0369a1;
+}
+
+.client-sidebar-title {
+    -fx-text-fill: #0f172a;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.sidebar-section-card {
+    -fx-background-color: rgba(0, 0, 0, 0.03);
+    -fx-padding: 8px;
+    -fx-background-radius: 6px;
+}
+
+.sidebar-section-label {
+    -fx-text-fill: #6d28d9;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+}
+
+.compact-combo {
+    -fx-font-size: 11px;
+}
+
+.compact-checkbox {
+    -fx-font-size: 11px;
+}
+
+.compact-text-area {
+    -fx-font-size: 11px;
+}
+
+.card-caption-title {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.transparent-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.scenario-progress-bar {
+    -fx-accent: #0284c7;
+}
+
+.scenario-progress-label {
+    -fx-font-size: 10px;
+}
+
+.media-button-neutral {
+    -fx-background-color: #64748b;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+.media-button-neutral:hover {
+    -fx-background-color: #475569;
+}
+
+.media-button-recording {
+    -fx-background-color: #ef4444;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+.media-button-recording:hover {
+    -fx-background-color: #dc2626;
+}
+
+.media-button-processing {
+    -fx-background-color: #d97706;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.media-button-success {
+    -fx-background-color: #16a34a;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.telemetry-sync-success {
+    -fx-text-fill: #16a34a;
+    -fx-font-size: 11px;
+}
+
+.telemetry-sync-warning {
+    -fx-text-fill: #dc2626;
+    -fx-font-size: 11px;
+}
+
+.telemetry-sync-info {
+    -fx-text-fill: #6d28d9;
+    -fx-font-size: 11px;
+}
+
+
 
 
 

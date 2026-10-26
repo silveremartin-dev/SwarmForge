@@ -115,11 +115,11 @@ class ClientViewportSidebarBuilder {
 
         client.simulationInactiveOverlay = new VBox(4);
         client.simulationInactiveOverlay.setAlignment(Pos.CENTER);
-        client.simulationInactiveOverlay.setStyle("-fx-background-color: rgba(15, 23, 42, 0.75); -fx-padding: 8 16; -fx-background-radius: 20; -fx-border-color: rgba(56, 189, 248, 0.3); -fx-border-width: 1; -fx-border-radius: 20;");
+        client.simulationInactiveOverlay.getStyleClass().add("simulation-inactive-overlay");
         client.simulationInactiveOverlay.setMaxSize(360, 50);
 
         Label lblInactiveTitle = new Label("🎬 3D View Ready — Waiting for Launch");
-        lblInactiveTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 12px; -fx-font-weight: bold;");
+        lblInactiveTitle.getStyleClass().add("simulation-inactive-title");
 
         client.simulationInactiveOverlay.setMouseTransparent(true);
         client.simulationInactiveOverlay.setPickOnBounds(false);
@@ -128,7 +128,7 @@ class ClientViewportSidebarBuilder {
         client.simulationInactiveOverlay.getChildren().addAll(lblInactiveTitle);
 
         Button btnExitFullscreen = new Button("❌ Exit Fullscreen (ESC)");
-        btnExitFullscreen.setStyle("-fx-background-color: rgba(239, 68, 68, 0.9); -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-radius: 20; -fx-padding: 6 14; -fx-cursor: hand;");
+        btnExitFullscreen.getStyleClass().add("fullscreen-exit-button");
         btnExitFullscreen.setVisible(false);
         btnExitFullscreen.setManaged(false);
 
@@ -164,12 +164,12 @@ class ClientViewportSidebarBuilder {
 
         Label lblSideTitle = new Label();
         lblSideTitle.textProperty().bind(i18n.createStringBinding("sidebar.title"));
-        lblSideTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 13px;");
+        lblSideTitle.getStyleClass().add("client-sidebar-title");
 
         client.chkShowScoreboard = new CheckBox();
         client.chkShowScoreboard.textProperty().bind(i18n.createStringBinding("multiplayer.scoreboard.chk"));
         client.chkShowScoreboard.setTooltip(new Tooltip(i18n.get("multiplayer.scoreboard.chk.tooltip", "Afficher ou masquer l'overlay du tableau des scores et colonies multijoueur")));
-        client.chkShowScoreboard.setStyle("-fx-font-size: 11px; -fx-text-fill: #e2e8f0;");
+        client.chkShowScoreboard.getStyleClass().add("compact-checkbox");
         client.chkShowScoreboard.setSelected(true);
         client.chkShowScoreboard.setVisible(false);
         client.chkShowScoreboard.setManaged(false);
@@ -191,7 +191,7 @@ class ClientViewportSidebarBuilder {
         Button btnFullscreenMode = new Button();
         btnFullscreenMode.textProperty().bind(i18n.createStringBinding("sidebar.btn.fullscreen"));
         btnFullscreenMode.setMaxWidth(Double.MAX_VALUE);
-        btnFullscreenMode.setStyle("-fx-background-color: #38bdf8; -fx-text-fill: #0f172a; -fx-font-weight: bold; -fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;");
+        btnFullscreenMode.getStyleClass().add("fullscreen-toggle-button");
         Tooltip ttFS = new Tooltip();
         ttFS.textProperty().bind(i18n.createStringBinding("sidebar.btn.fullscreen.tt"));
         btnFullscreenMode.setTooltip(ttFS);
@@ -211,7 +211,7 @@ class ClientViewportSidebarBuilder {
         sideScroll.setFitToWidth(true);
         sideScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         sideScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        sideScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        sideScroll.getStyleClass().add("transparent-scroll-pane");
 
         rootPane.setRight(sideScroll);
 
@@ -340,10 +340,10 @@ class ClientViewportSidebarBuilder {
 
     private VBox buildRenderLayersSection(CheckBox chkMinimap) {
         VBox renderSection = new VBox(6);
-        renderSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
+        renderSection.getStyleClass().add("sidebar-section-card");
         Label lblRenderMode = new Label();
         lblRenderMode.textProperty().bind(i18n.createStringBinding("sidebar.render_layers.title"));
-        lblRenderMode.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lblRenderMode.getStyleClass().add("sidebar-section-label");
 
         ComboBox<String> comboRenderMode = new ComboBox<>();
         comboRenderMode.getItems().addAll(
@@ -352,7 +352,7 @@ class ClientViewportSidebarBuilder {
             "🎮 Mode Gamifié (Voxel / Minecraft)"
         );
         comboRenderMode.setMaxWidth(Double.MAX_VALUE);
-        comboRenderMode.setStyle("-fx-font-size: 11px;");
+        comboRenderMode.getStyleClass().add("compact-combo");
         comboRenderMode.getSelectionModel().selectedItemProperty().addListener((o, oldV, newV) -> {
             if (newV == null || client.simWorldViewer == null) return;
             if (newV.contains("Scientifique")) {
@@ -367,7 +367,7 @@ class ClientViewportSidebarBuilder {
 
         chkMinimap.textProperty().bind(i18n.createStringBinding("sidebar.chk.minimap"));
         chkMinimap.setSelected(true);
-        chkMinimap.setStyle("-fx-font-size: 11px;");
+        chkMinimap.getStyleClass().add("compact-checkbox");
         Tooltip ttMinimap = new Tooltip();
         ttMinimap.textProperty().bind(i18n.createStringBinding("sidebar.chk.minimap.tt"));
         chkMinimap.setTooltip(ttMinimap);
@@ -376,7 +376,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkSyncMinimap = new CheckBox();
         chkSyncMinimap.textProperty().bind(i18n.createStringBinding("minimap.sync"));
         chkSyncMinimap.setSelected(true);
-        chkSyncMinimap.setStyle("-fx-font-size: 10.5px;");
+        chkSyncMinimap.getStyleClass().add("compact-checkbox");
         VBox.setMargin(chkSyncMinimap, new Insets(0, 0, 0, 16));
         chkSyncMinimap.selectedProperty().addListener((o, a, b) -> {
             if (client.simWorldViewer != null) client.simWorldViewer.setSyncViews(b);
@@ -385,7 +385,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkShowLegend = new CheckBox();
         chkShowLegend.textProperty().bind(i18n.createStringBinding("legend.show"));
         chkShowLegend.setSelected(true);
-        chkShowLegend.setStyle("-fx-font-size: 11px;");
+        chkShowLegend.getStyleClass().add("compact-checkbox");
         chkShowLegend.selectedProperty().addListener((o, a, b) -> {
             if (client.simWorldViewer != null) client.simWorldViewer.setShowLegend(b);
         });
@@ -393,7 +393,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkTerrain = new CheckBox();
         chkTerrain.textProperty().bind(i18n.createStringBinding("sidebar.chk.terrain"));
         chkTerrain.setSelected(true);
-        chkTerrain.setStyle("-fx-font-size: 11px;");
+        chkTerrain.getStyleClass().add("compact-checkbox");
         Tooltip ttTerrain = new Tooltip();
         ttTerrain.textProperty().bind(i18n.createStringBinding("world.render.terrain.tt"));
         chkTerrain.setTooltip(ttTerrain);
@@ -405,7 +405,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkTrees = new CheckBox();
         chkTrees.textProperty().bind(i18n.createStringBinding("sidebar.chk.trees"));
         chkTrees.setSelected(true);
-        chkTrees.setStyle("-fx-font-size: 11px;");
+        chkTrees.getStyleClass().add("compact-checkbox");
         Tooltip ttTrees = new Tooltip();
         ttTrees.textProperty().bind(i18n.createStringBinding("sidebar.chk.trees.tt"));
         chkTrees.setTooltip(ttTrees);
@@ -414,7 +414,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkSkirt = new CheckBox();
         chkSkirt.textProperty().bind(i18n.createStringBinding("sidebar.chk.skirt"));
         chkSkirt.setSelected(true);
-        chkSkirt.setStyle("-fx-font-size: 11px;");
+        chkSkirt.getStyleClass().add("compact-checkbox");
         Tooltip ttSkirt = new Tooltip();
         ttSkirt.textProperty().bind(i18n.createStringBinding("world.render.bezel.tt"));
         chkSkirt.setTooltip(ttSkirt);
@@ -424,14 +424,14 @@ class ClientViewportSidebarBuilder {
         client.sliceSlider.setPrefWidth(90);
         Label sliceLbl = new Label();
         sliceLbl.textProperty().bind(i18n.createStringBinding("sidebar.lbl.slice"));
-        sliceLbl.setStyle("-fx-font-size: 10.5px;");
+        sliceLbl.getStyleClass().add("card-caption-title");
         Tooltip ttSlice = new Tooltip();
         ttSlice.textProperty().bind(i18n.createStringBinding("sidebar.chk.scanner.tt"));
         sliceLbl.setTooltip(ttSlice);
         client.sliceSlider.setTooltip(ttSlice);
 
         Label sliceValLbl = new Label("100 %");
-        sliceValLbl.setStyle("-fx-text-fill: #00d4ff; -fx-min-width: 40px; -fx-font-weight: bold; -fx-font-size: 10.5px;");
+        sliceValLbl.getStyleClass().add("slider-val-accent");
 
         client.sliceSlider.valueProperty().addListener((o, a, b) -> {
             sliceValLbl.setText(String.format(Locale.US, "%.0f %%", b.doubleValue()));
@@ -452,7 +452,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkNid = new CheckBox();
         chkNid.textProperty().bind(i18n.createStringBinding("sidebar.chk.nest"));
         chkNid.setSelected(true);
-        chkNid.setStyle("-fx-font-size: 11px;");
+        chkNid.getStyleClass().add("compact-checkbox");
         Tooltip ttNid = new Tooltip();
         ttNid.textProperty().bind(i18n.createStringBinding("sidebar.chk.nest.tt"));
         chkNid.setTooltip(ttNid);
@@ -464,7 +464,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkPheromonesLayer = new CheckBox();
         chkPheromonesLayer.textProperty().bind(i18n.createStringBinding("sidebar.chk.pheromones"));
         chkPheromonesLayer.setSelected(true);
-        chkPheromonesLayer.setStyle("-fx-font-size: 11px;");
+        chkPheromonesLayer.getStyleClass().add("compact-checkbox");
         Tooltip ttPhero = new Tooltip();
         ttPhero.textProperty().bind(i18n.createStringBinding("sidebar.chk.pheromones.tt"));
         chkPheromonesLayer.setTooltip(ttPhero);
@@ -485,7 +485,7 @@ class ClientViewportSidebarBuilder {
         );
         comboPheromoneType.getSelectionModel().selectFirst();
         comboPheromoneType.setMaxWidth(Double.MAX_VALUE);
-        comboPheromoneType.setStyle("-fx-font-size: 10px;");
+        comboPheromoneType.getStyleClass().add("compact-combo");
         comboPheromoneType.getSelectionModel().selectedIndexProperty().addListener((o, oldV, newV) -> {
             if (newV == null) return;
             int idx = newV.intValue();
@@ -498,7 +498,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkAntsLayer = new CheckBox();
         chkAntsLayer.textProperty().bind(i18n.createStringBinding("sidebar.chk.ants"));
         chkAntsLayer.setSelected(true);
-        chkAntsLayer.setStyle("-fx-font-size: 11px;");
+        chkAntsLayer.getStyleClass().add("compact-checkbox");
         Tooltip ttAnts = new Tooltip();
         ttAnts.textProperty().bind(i18n.createStringBinding("sidebar.chk.ants.tt"));
         chkAntsLayer.setTooltip(ttAnts);
@@ -510,7 +510,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkWeatherLayer = new CheckBox();
         chkWeatherLayer.textProperty().bind(i18n.createStringBinding("sidebar.chk.weather"));
         chkWeatherLayer.setSelected(true);
-        chkWeatherLayer.setStyle("-fx-font-size: 11px;");
+        chkWeatherLayer.getStyleClass().add("compact-checkbox");
         Tooltip ttWeather = new Tooltip();
         ttWeather.textProperty().bind(i18n.createStringBinding("sidebar.chk.weather.tt"));
         chkWeatherLayer.setTooltip(ttWeather);
@@ -522,7 +522,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkVoxelInfo = new CheckBox();
         chkVoxelInfo.textProperty().bind(i18n.createStringBinding("world.render.voxel_info"));
         chkVoxelInfo.setSelected(true);
-        chkVoxelInfo.setStyle("-fx-font-size: 11px;");
+        chkVoxelInfo.getStyleClass().add("compact-checkbox");
         Tooltip ttVoxelInfo = new Tooltip();
         ttVoxelInfo.textProperty().bind(i18n.createStringBinding("world.render.voxel_info.tt"));
         chkVoxelInfo.setTooltip(ttVoxelInfo);
@@ -531,7 +531,7 @@ class ClientViewportSidebarBuilder {
         client.chkAntTracking = new CheckBox();
         client.chkAntTracking.textProperty().bind(i18n.createStringBinding("world.render.ant_tracking"));
         client.chkAntTracking.setSelected(true);
-        client.chkAntTracking.setStyle("-fx-font-size: 11px;");
+        client.chkAntTracking.getStyleClass().add("compact-checkbox");
         Tooltip ttAntTracking = new Tooltip();
         ttAntTracking.textProperty().bind(i18n.createStringBinding("world.render.ant_tracking.tt"));
         client.chkAntTracking.setTooltip(ttAntTracking);
@@ -540,7 +540,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkChamberOverlay = new CheckBox();
         chkChamberOverlay.textProperty().bind(i18n.createStringBinding("world.render.chamber_overlay"));
         chkChamberOverlay.setSelected(true);
-        chkChamberOverlay.setStyle("-fx-font-size: 11px;");
+        chkChamberOverlay.getStyleClass().add("compact-checkbox");
         Tooltip ttChamberOverlay = new Tooltip();
         ttChamberOverlay.textProperty().bind(i18n.createStringBinding("world.render.chamber_overlay.tt"));
         chkChamberOverlay.setTooltip(ttChamberOverlay);
@@ -549,7 +549,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkWeatherOverlay = new CheckBox();
         chkWeatherOverlay.textProperty().bind(i18n.createStringBinding("world.render.weather_overlay"));
         chkWeatherOverlay.setSelected(true);
-        chkWeatherOverlay.setStyle("-fx-font-size: 11px;");
+        chkWeatherOverlay.getStyleClass().add("compact-checkbox");
         Tooltip ttWeatherOverlay = new Tooltip();
         ttWeatherOverlay.textProperty().bind(i18n.createStringBinding("world.render.weather_overlay.tt"));
         chkWeatherOverlay.setTooltip(ttWeatherOverlay);
@@ -559,7 +559,7 @@ class ClientViewportSidebarBuilder {
         chkElevationIsolines.textProperty().bind(i18n.createStringBinding("world.render.isolines_elevation"));
         chkElevationIsolines.tooltipProperty().bind(i18n.createTooltipBinding("world.render.isolines_elevation.tt"));
         chkElevationIsolines.setSelected(false);
-        chkElevationIsolines.setStyle("-fx-font-size: 11px;");
+        chkElevationIsolines.getStyleClass().add("compact-checkbox");
         chkElevationIsolines.selectedProperty().addListener((o, a, b) -> {
             if (client.simWorldViewer != null) client.simWorldViewer.setShowElevationIsolines(b);
         });
@@ -568,7 +568,7 @@ class ClientViewportSidebarBuilder {
         chkClimateIsolines.textProperty().bind(i18n.createStringBinding("world.render.isolines_climate"));
         chkClimateIsolines.tooltipProperty().bind(i18n.createTooltipBinding("world.render.isolines_climate.tt"));
         chkClimateIsolines.setSelected(false);
-        chkClimateIsolines.setStyle("-fx-font-size: 11px;");
+        chkClimateIsolines.getStyleClass().add("compact-checkbox");
         chkClimateIsolines.selectedProperty().addListener((o, a, b) -> {
             if (client.simWorldViewer != null) client.simWorldViewer.setShowClimateIsolines(b);
         });
@@ -577,7 +577,7 @@ class ClientViewportSidebarBuilder {
         chkPheromoneIsolines.textProperty().bind(i18n.createStringBinding("world.render.isolines_pheromone"));
         chkPheromoneIsolines.tooltipProperty().bind(i18n.createTooltipBinding("world.render.isolines_pheromone.tt"));
         chkPheromoneIsolines.setSelected(false);
-        chkPheromoneIsolines.setStyle("-fx-font-size: 11px;");
+        chkPheromoneIsolines.getStyleClass().add("compact-checkbox");
         chkPheromoneIsolines.selectedProperty().addListener((o, a, b) -> {
             if (client.simWorldViewer != null) client.simWorldViewer.setShowPheromoneIsolines(b);
         });
@@ -586,7 +586,7 @@ class ClientViewportSidebarBuilder {
         chkUVVision.textProperty().bind(i18n.createStringBinding("world.render.uv_vision"));
         chkUVVision.tooltipProperty().bind(i18n.createTooltipBinding("world.render.uv_vision.tt"));
         chkUVVision.setSelected(false);
-        chkUVVision.setStyle("-fx-font-size: 11px;");
+        chkUVVision.getStyleClass().add("compact-checkbox");
         chkUVVision.selectedProperty().addListener((o, a, b) -> {
             if (client.simWorldViewer != null) client.simWorldViewer.setUVVisionMode(b);
         });
@@ -595,7 +595,7 @@ class ClientViewportSidebarBuilder {
         chkOmmatidialVision.textProperty().bind(i18n.createStringBinding("world.render.ommatidial_vision"));
         chkOmmatidialVision.tooltipProperty().bind(i18n.createTooltipBinding("world.render.ommatidial_vision.tt"));
         chkOmmatidialVision.setSelected(false);
-        chkOmmatidialVision.setStyle("-fx-font-size: 11px;");
+        chkOmmatidialVision.getStyleClass().add("compact-checkbox");
         chkOmmatidialVision.selectedProperty().addListener((o, a, b) -> {
             if (client.simWorldViewer != null) client.simWorldViewer.setOmmatidialVisionMode(b);
         });
@@ -614,25 +614,25 @@ class ClientViewportSidebarBuilder {
 
     private VBox buildAudioControlsSection() {
         VBox audioSection = new VBox(6);
-        audioSection.setStyle("-fx-background-color: rgba(255,255,255,0.03); -fx-padding: 8; -fx-background-radius: 6;");
+        audioSection.getStyleClass().add("sidebar-section-card");
         Label lblAudio = new Label();
         lblAudio.textProperty().bind(i18n.createStringBinding("sidebar.audio.title"));
-        lblAudio.setStyle("-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 11px;");
+        lblAudio.getStyleClass().add("sidebar-section-label");
 
         SimulationAudioManager audioMgr = SimulationAudioManager.getInstance();
 
         Slider masterVolSlider = new Slider(0, 100, 70);
-        masterVolSlider.setStyle("-fx-font-size: 9px;");
+        masterVolSlider.getStyleClass().add("compact-combo");
         masterVolSlider.valueProperty().addListener((o, oldV, newV) -> audioMgr.setMasterVolume(newV.doubleValue() / 100.0));
         Label volLbl = new Label();
         volLbl.textProperty().bind(i18n.createStringBinding("sidebar.audio.volume"));
-        volLbl.setStyle("-fx-font-size: 10px;");
+        volLbl.getStyleClass().add("card-caption-title");
         HBox volBox = new HBox(6, volLbl, masterVolSlider);
 
         CheckBox chkAmbientSound = new CheckBox();
         chkAmbientSound.textProperty().bind(i18n.createStringBinding("sidebar.audio.ambient"));
         chkAmbientSound.setSelected(audioMgr.isAmbientEnabled());
-        chkAmbientSound.setStyle("-fx-font-size: 10px;");
+        chkAmbientSound.getStyleClass().add("compact-checkbox");
         Tooltip ttAmb = new Tooltip();
         ttAmb.textProperty().bind(i18n.createStringBinding("sidebar.audio.ambient.tt"));
         chkAmbientSound.setTooltip(ttAmb);
@@ -641,7 +641,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkRiverSound = new CheckBox();
         chkRiverSound.textProperty().bind(i18n.createStringBinding("sidebar.audio.river"));
         chkRiverSound.setSelected(audioMgr.isRiverEnabled());
-        chkRiverSound.setStyle("-fx-font-size: 10px;");
+        chkRiverSound.getStyleClass().add("compact-checkbox");
         Tooltip ttRiv = new Tooltip();
         ttRiv.textProperty().bind(i18n.createStringBinding("sidebar.audio.river.tt"));
         chkRiverSound.setTooltip(ttRiv);
@@ -650,7 +650,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkWeatherSound = new CheckBox();
         chkWeatherSound.textProperty().bind(i18n.createStringBinding("sidebar.audio.weather"));
         chkWeatherSound.setSelected(audioMgr.isWeatherEnabled());
-        chkWeatherSound.setStyle("-fx-font-size: 10px;");
+        chkWeatherSound.getStyleClass().add("compact-checkbox");
         Tooltip ttWea = new Tooltip();
         ttWea.textProperty().bind(i18n.createStringBinding("sidebar.audio.weather.tt"));
         chkWeatherSound.setTooltip(ttWea);
@@ -659,7 +659,7 @@ class ClientViewportSidebarBuilder {
         CheckBox chkInsectSound = new CheckBox();
         chkInsectSound.textProperty().bind(i18n.createStringBinding("sidebar.audio.insect"));
         chkInsectSound.setSelected(audioMgr.isInsectEnabled());
-        chkInsectSound.setStyle("-fx-font-size: 10px;");
+        chkInsectSound.getStyleClass().add("compact-checkbox");
         Tooltip ttIns = new Tooltip();
         ttIns.textProperty().bind(i18n.createStringBinding("sidebar.audio.insect.tt"));
         chkInsectSound.setTooltip(ttIns);
@@ -707,7 +707,6 @@ class ClientViewportSidebarBuilder {
                             if (!client.mainTabs.getStyleClass().contains("tab-pane-fullscreen")) {
                                 client.mainTabs.getStyleClass().add("tab-pane-fullscreen");
                             }
-                            client.mainTabs.setStyle("-fx-tab-max-height: 0; -fx-tab-min-height: 0; -fx-padding: 0; -fx-border-width: 0;");
                             Node hdr = client.mainTabs.lookup(".tab-header-area");
                             if (hdr != null) { hdr.setVisible(false); hdr.setManaged(false); }
                         }
@@ -715,7 +714,6 @@ class ClientViewportSidebarBuilder {
                             if (!client.simSubTabs.getStyleClass().contains("tab-pane-fullscreen")) {
                                 client.simSubTabs.getStyleClass().add("tab-pane-fullscreen");
                             }
-                            client.simSubTabs.setStyle("-fx-tab-max-height: 0; -fx-tab-min-height: 0; -fx-padding: 0; -fx-border-width: 0;");
                             Node hdr = client.simSubTabs.lookup(".tab-header-area");
                             if (hdr != null) { hdr.setVisible(false); hdr.setManaged(false); }
                         }
@@ -734,13 +732,11 @@ class ClientViewportSidebarBuilder {
                     } else {
                         if (client.mainTabs != null) {
                             client.mainTabs.getStyleClass().remove("tab-pane-fullscreen");
-                            client.mainTabs.setStyle("");
                             Node hdr = client.mainTabs.lookup(".tab-header-area");
                             if (hdr != null) { hdr.setVisible(true); hdr.setManaged(true); }
                         }
                         if (client.simSubTabs != null) {
                             client.simSubTabs.getStyleClass().remove("tab-pane-fullscreen");
-                            client.simSubTabs.setStyle("");
                             Node hdr = client.simSubTabs.lookup(".tab-header-area");
                             if (hdr != null) { hdr.setVisible(true); hdr.setManaged(true); }
                         }

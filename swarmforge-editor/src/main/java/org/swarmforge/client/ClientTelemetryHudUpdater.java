@@ -123,7 +123,8 @@ class ClientTelemetryHudUpdater {
                                 client.simControlPanel.getServerHost(), client.simControlPanel.getServerPort(), roleLabel, scName, formattedTime, tick));
                         if (client.syncLabel != null) {
                             client.syncLabel.setText("● " + i18n.get("sim.server.sync.connected", "Connecté au Serveur (gRPC Stream)"));
-                            client.syncLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-size: 11px;");
+                            client.syncLabel.getStyleClass().removeAll("telemetry-sync-success", "telemetry-sync-warning", "telemetry-sync-info");
+                            client.syncLabel.getStyleClass().add("telemetry-sync-success");
                         }
                         client.simControlPanel.setServerSessionStats(i18n.get("sim.server.online", "En Ligne (~15ms)"));
                     } else {
@@ -133,7 +134,8 @@ class ClientTelemetryHudUpdater {
                                 i18n.get("sim.server.offline", "Hors-Ligne"), formattedTime));
                         if (client.syncLabel != null) {
                             client.syncLabel.setText("○ " + i18n.get("sim.server.sync.disconnected", "Serveur Déconnecté"));
-                            client.syncLabel.setStyle("-fx-text-fill: #f87171; -fx-font-size: 11px;");
+                            client.syncLabel.getStyleClass().removeAll("telemetry-sync-success", "telemetry-sync-warning", "telemetry-sync-info");
+                            client.syncLabel.getStyleClass().add("telemetry-sync-warning");
                         }
                         client.simControlPanel.setServerSessionStats(i18n.get("sim.server.offline", "Hors-Ligne"));
                     }
@@ -141,7 +143,8 @@ class ClientTelemetryHudUpdater {
                     client.statsLabel.setText(String.format("💻 %s | %s (Step #%d)", i18n.get("engine.mode.local.short", "Moteur Local In-Process"), formattedTime, tick));
                     if (client.syncLabel != null) {
                         client.syncLabel.setText("● " + i18n.get("engine.mode.local.sync", "Moteur Local Autonome"));
-                        client.syncLabel.setStyle("-fx-text-fill: #a78bfa; -fx-font-size: 11px;");
+                        client.syncLabel.getStyleClass().removeAll("telemetry-sync-success", "telemetry-sync-warning", "telemetry-sync-info");
+                        client.syncLabel.getStyleClass().add("telemetry-sync-info");
                     }
                 }
 
