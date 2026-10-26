@@ -1,5 +1,7 @@
 package org.swarmforge.core.engine;
 
+import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.VectorSpecies;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Vector3f;
 import org.swarmforge.core.spatial.Morton3D;
@@ -162,6 +164,8 @@ public final class CompactDodEntityBuffer {
         }).join();
     }
 
+    private static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
+
     private void stepChunk(int start, int end, float dt, float boundX, float boundY, float boundZ) {
         final float[] px = posX;
         final float[] py = posY;
@@ -174,30 +178,50 @@ public final class CompactDodEntityBuffer {
 
         final float energyDecay = 0.01f * dt;
 
-        // Loop auto-vectorizable by JVM JIT into 256-bit AVX2 / 512-bit AVX-512 registers
-        for (int i = start; i < end; i++) {
-            float x = px[i] + vx[i] * dt;
-            float y = py[i] + vy[i] * dt;
-            float z = pz[i] + vz[i] * dt;
+        // Hardware-accelerated SIMD vectorization across AVX2 / AVX-512 registers
+        final int vectorBound = SPECIES.loopBound(end - start);
+        final int limit = start + vectorBound;
 
-            // Boundary reflection constraints
-            if (x < 0.0f) { x = 0.0f; vx[i] = -vx[i]; }
-            else if (x > boundX) { x = boundX; vx[i] = -vx[i]; }
+        for (int i = start; i < limit; i += SPECIES.length()) {
+            FloatVector pxVec = FloatVector.fromArray(SPECIES, px, i);
+            FloatVector vxVec = FloatVector.fromArray(SPECIES, vx, i);
+            pxVec.add(vxVec.mul(dt)).intoArray(px, i);
 
-            if (y < 0.0f) { y = 0.0f; vy[i] = -vy[i]; }
-            else if (y > boundY) { y = boundY; vy[i] = -vy[i]; }
+            FloatVector pyVec = FloatVector.fromArray(SPECIES, py, i);
+            FloatVector vyVec = FloatVector.fromArray(SPECIES, vy, i);
+            pyVec.add(vyVec.mul(dt)).intoArray(py, i);
 
-            if (z < 0.0f) { z = 0.0f; vz[i] = -vz[i]; }
-            else if (z > boundZ) { z = boundZ; vz[i] = -vz[i]; }
+            FloatVector pzVec = FloatVector.fromArray(SPECIES, pz, i);
+            FloatVector vzVec = FloatVector.fromArray(SPECIES, vz, i);
+            pzVec.add(vzVec.mul(dt)).intoArray(pz, i);
 
-            px[i] = x;
-            py[i] = y;
-            pz[i] = z;
+            FloatVector eVec = FloatVector.fromArray(SPECIES, e, i);
+            eVec.sub(energyDecay).max(0.0f).intoArray(e, i);
+        }
 
-            // Metabolic energy depletion (bit-to-bit deterministic parity)
+        // Tail processing for remaining boundary elements
+        for (int i = limit; i < end; i++) {
+            px[i] += vx[i] * dt;
+            py[i] += vy[i] * dt;
+            pz[i] += vz[i] * dt;
             e[i] = Math.max(0.0f, e[i] - energyDecay);
+        }
 
-            // Fast Morton 3D spatial indexing code
+        // Boundary reflection constraints and Morton 3D spatial indexing
+        for (int i = start; i < end; i++) {
+            float x = px[i];
+            float y = py[i];
+            float z = pz[i];
+
+            if (x < 0.0f) { px[i] = 0.0f; vx[i] = -vx[i]; x = 0.0f; }
+            else if (x > boundX) { px[i] = boundX; vx[i] = -vx[i]; x = boundX; }
+
+            if (y < 0.0f) { py[i] = 0.0f; vy[i] = -vy[i]; y = 0.0f; }
+            else if (y > boundY) { py[i] = boundY; vy[i] = -vy[i]; y = boundY; }
+
+            if (z < 0.0f) { pz[i] = 0.0f; vz[i] = -vz[i]; z = 0.0f; }
+            else if (z > boundZ) { pz[i] = boundZ; vz[i] = -vz[i]; z = boundZ; }
+
             m[i] = Morton3D.encode((int) x, (int) y, (int) z);
         }
     }

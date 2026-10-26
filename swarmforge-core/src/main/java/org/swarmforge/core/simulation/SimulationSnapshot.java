@@ -71,7 +71,7 @@ public class SimulationSnapshot implements Serializable {
             Individual.CarriedItem carriedItem) implements Serializable {
     }
 
-    private SimulationSnapshot(long tick, List<ColonySnapshot> colonies, byte[] pheromoneData, int dayOfYear,
+    public SimulationSnapshot(long tick, List<ColonySnapshot> colonies, byte[] pheromoneData, int dayOfYear,
                                String weatherStateName, float timeOfDay, float temperature, float humidity, float rainfall) {
         this.tick = tick;
         this.timestamp = System.currentTimeMillis();
@@ -262,6 +262,14 @@ public class SimulationSnapshot implements Serializable {
     public long getTimestamp() {
         return timestamp;
     }
+    public java.util.List<ColonySnapshot> getColonies() { return colonies; }
+    public byte[] getPheromoneData() { return pheromoneData; }
+    public int getDayOfYear() { return dayOfYear; }
+    public String getWeatherStateName() { return weatherStateName; }
+    public float getTimeOfDay() { return timeOfDay; }
+    public float getTemperature() { return temperature; }
+    public float getHumidity() { return humidity; }
+    public float getRainfall() { return rainfall; }
 
     /**
      * Get estimated memory size in bytes.
