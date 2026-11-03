@@ -1,4 +1,4 @@
-﻿// SwarmForge Web i18n Translation Dictionary
+// SwarmForge Web i18n Translation Dictionary
 // Modular 5-Language Support: French (fr), English (en), German (de), Spanish (es), Chinese (zh)
 
 import { fr } from './locales/fr.js'

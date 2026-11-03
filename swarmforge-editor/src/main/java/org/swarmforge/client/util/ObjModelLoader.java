@@ -6,6 +6,9 @@
  */
 package org.swarmforge.client.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -24,6 +27,8 @@ import java.util.Map;
  * @author Silvère Martin-Michiellot
  */
 public class ObjModelLoader {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ObjModelLoader.class);
 
     public static class ObjMesh {
         public String name = "default";
@@ -81,7 +86,7 @@ public class ObjModelLoader {
         List<ObjMesh> meshes = new ArrayList<>();
         try (InputStream is = ObjModelLoader.class.getResourceAsStream(resourcePath)) {
             if (is == null) {
-                System.err.println("[ObjModelLoader] Resource not found: " + resourcePath);
+                LOG.warn("Resource not found: {}", resourcePath);
                 return meshes;
             }
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
@@ -176,7 +181,7 @@ public class ObjModelLoader {
                 meshes = validMeshes;
             }
         } catch (Exception e) {
-            System.err.println("[ObjModelLoader] Error loading " + resourcePath + ": " + e.getMessage());
+            LOG.error("Error loading {}: {}", resourcePath, e.getMessage(), e);
         }
 
         cache.put(resourcePath, meshes);

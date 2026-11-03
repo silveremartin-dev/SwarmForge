@@ -1,4 +1,4 @@
-﻿export const es = {
+export const es = {
         // Navigation & Header
         appTitle: 'SwarmForge Studio',
         tagline: 'Simulador Emergente de Superorganismos y Colonias',

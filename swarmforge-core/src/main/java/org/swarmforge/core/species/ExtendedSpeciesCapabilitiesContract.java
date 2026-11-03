@@ -15,6 +15,50 @@ package org.swarmforge.core.species;
  */
 public interface ExtendedSpeciesCapabilitiesContract {
 
+    // --- Batch XI & XII Eusocial/Subsocial Arthropod Capabilities (101-120) ---
+    default boolean canTrophallaxisProtozoa() { return false; } // Anal trophallactic transfer of flagellate protozoa essential for cellulose digestion in termites
+    default boolean canSquirtNasuteChemical() { return false; } // Specialized nasus nozzle squirt of sticky terpenoid defense glue
+    default boolean canMasticatePaperPulpCarton() { return false; } // Scraping and saliva mastication of weathered wood fibers for carton paper nest cell building
+    default boolean canHarvestLarvalSalivaDroplets() { return false; } // Solicit nutrient-rich amino acid saliva droplets from larvae in exchange for meat
+    default boolean canApplyPedicelAntRepellent() { return false; } // Glandular organ secretion coating on nest pedicel stalk to block ant invasion
+    default boolean canRecognizeFacialVisualPatterns() { return false; } // Visual recognition of unique facial markings maintaining wasp dominance hierarchy
+    default boolean canPerformBuzzPollination() { return false; } // High-frequency thorax muscular vibration (sonication) to dislodge pollen
+    default boolean canIncubateBroodAbdominalHeat() { return false; } // Pressing hairless ventral abdomen onto brood cells to transfer metabolic heat
+    default boolean canStabFrontalHornsAphid() { return false; } // Sterile soldier aphid horn stabbing and hemolymph gluing of ladybug predators
+    default boolean canSqueezeGallIntrudersThrips() { return false; } // Eusocial thrips soldier raptorial foreleg crushing of gall invaders
+    default boolean canSnapClawAcousticShockwave() { return false; } // Eusocial shrimp giant chela cavitation snap producing acoustic shockwaves in sponge canals
+    default boolean canStridulatePassalidParentalCare() { return false; } // Passalid beetle adult/larval stridulatory communication during wood frass feeding
+    default boolean canPerformPhysogastricPeristalsis() { return false; } // Termite queen massive abdominal peristalsis supporting high daily egg laying
+    default boolean canOrientMagneticMound() { return false; } // Building wedge-shaped mounds aligned along geomagnetic lines for thermoregulation
+    default boolean canEmitHornetGroupAlarmPheromone() { return false; } // Venom spray alarm recruitment triggering mass coordinated hornet raids
+    default boolean canWeaveStenogastrinePaperJelly() { return false; } // Mixing salivary gelatinous secretions with fine plant fibers for hair-thin suspended nests
+    default boolean canInoculateFungalCombTermite() { return false; } // Termite cultivation of Termitomyces fungal gardens on chewed fecal pellets
+    default boolean canDrumAbdomenWaspCellRim() { return false; } // Rhythmic abdominal drumming against paper cell walls to alert nestmates
+    default boolean canConstructNectarWaxPots() { return false; } // Molding urn-shaped wax pots near nest entrance for honey storage
+    default boolean canPerformMaternalShieldGuarding() { return false; } // Subsocial parent bug maternal body shield guarding over egg clutch
+
+    // --- Batch XIII Arthropod & Eusocial Capabilities (121-140) ---
+    default boolean canWeaveCommunalSpiderSilk() { return false; } // Cooperative spinning of massive capture webs in social spiders
+    default boolean canFormProcessionarySilkTrail() { return false; } // Single file procession guided by silk thread and abdominal trail pheromones
+    default boolean canConstructClayVaultArches() { return false; } // Subterranean gothic arches built from clay-saliva pellets
+    default boolean canDeliverStenogastrinePapFood() { return false; } // Secretion of proteinaceous pap droplets into egg cells before hatching
+    default boolean canPlasterFrassGalleryWalls() { return false; } // Plastering gallery walls with frass to prevent resin inundation
+    default boolean canLearnTrapliningFlightRoutes() { return false; } // Traplining spatial memory trajectories for bumblebee foraging
+    default boolean canCoolNestWaterRegurgitation() { return false; } // Water droplet regurgitation on cell caps for evaporative cooling
+    default boolean canEjectHoneydewSignalingDroplets() { return false; } // Abdominal flicks ejecting honeydew to recruit mutualist ants
+    default boolean canSnapMandibleAcousticAlarm() { return false; } // Mandible snapping against wooden gallery walls creating acoustic alarms
+    default boolean canPerformEggLickingGrooming() { return false; } // Maternal mouthpart licking and salivary coating of earwig eggs
+    default boolean canConstructChaffGarbageDunes() { return false; } // Dumping seed chaff refuse in specialized exterior crescent dunes
+    default boolean canDrumAntennaeLarvalStimulation() { return false; } // Antennal drumming on larval heads soliciting saliva release
+    default boolean canFormLeafPullingChains() { return false; } // Interlocked worker body chains pulling tree leaves together for weaver nest assembly
+    default boolean canApplySalivaryCementMoistureSeal() { return false; } // Water-resistant salivary-clay mortar sealing gallery breaches against desiccation
+    default boolean canForageSubZeroBumblebee() { return false; } // Flight muscle shivering allowing Arctic bumblebee nectar foraging at 0°C
+    default boolean canRepairGallSubstratalSecretion() { return false; } // Abdominal secretion of growth stimulants to repair thrips gall cracks
+    default boolean canTrophallaxisPassalidWoodFrass() { return false; } // Oral regurgitation of pre-digested wood pulp to passalid beetle grubs
+    default boolean canPerformCrecheRegurgitationSpider() { return false; } // Maternal liquefied gut regurgitation feeding of social spider crèches
+    default boolean canBlockRoyalChamberSentry() { return false; } // Interlocked soldier head capsules blocking access to termite royal chamber
+    default boolean canEmitParentBugAlarmGathering() { return false; } // Abdominal alarm pheromone burst signaling nymphs to cluster under maternal shield
+
     // --- Batch XIV Capabilities (141-160) ---
     default boolean canApplyBeeBreadHydrophobicCoating() { return false; }
     default boolean canBindParasitesWithSilk() { return false; }
@@ -102,4 +146,37 @@ public interface ExtendedSpeciesCapabilitiesContract {
     default boolean canMilkAphidHoneydewStroking() { return false; }
     default boolean canClusterSolarHeatCollector() { return false; }
     default boolean canSerializeGlobalEthologicalBitSet() { return false; }
+
+    // --- Academic Ethological & Biological Aliases ---
+    default boolean canPerformLarvalHemolymphophily() {
+        return canFeedOnLarvalHemolymphDracula();
+    }
+
+    default boolean canPerformEclosionVibratoryStimulation() {
+        return true;
+    }
+
+    default boolean canPerformSubharmonicSentinelStridulation() {
+        return true;
+    }
+
+    default boolean canExtendProboscisForNectar() {
+        return canLapNectarTongueExtension();
+    }
+
+    default boolean canSealCellsWithOpercula() {
+        return true;
+    }
+
+    default boolean canConstructMiddenRefusePiles() {
+        return canConstructChaffGarbageDunes();
+    }
+
+    default boolean canSecreteAbdominalGelSupport() {
+        return canWeaveStenogastrinePaperJelly();
+    }
+
+    default boolean canDeliverSalivaryLarvalPap() {
+        return canDeliverStenogastrinePapFood();
+    }
 }

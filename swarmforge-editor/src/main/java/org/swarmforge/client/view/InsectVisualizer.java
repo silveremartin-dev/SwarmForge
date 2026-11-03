@@ -377,209 +377,48 @@ public class InsectVisualizer {
         return offset;
     }
 
+    private final InsectScaleCalculator scaleCalculator = new InsectScaleCalculator();
+
     private int addArticulatedLeg(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx,
                                   int offset, Vector3f origin, float angleRad, float scale, boolean isRight) {
-        float signX = isRight ? 1.0f : -1.0f;
-        float sinA = FastMath.sin(angleRad);
-        float cosA = FastMath.cos(angleRad);
-
-        // Coxa / Trochanter base joint
-        Vector3f jointKnee = new Vector3f(
-                origin.x + signX * (0.16f * scale + cosA * 0.04f * scale),
-                origin.y + 0.09f * scale,
-                origin.z + sinA * 0.12f * scale
-        );
-
-        // Tarsus / Foot position touching ground (Y = 0)
-        Vector3f footPos = new Vector3f(
-                origin.x + signX * (0.28f * scale + cosA * 0.08f * scale),
-                0.0f,
-                origin.z + sinA * 0.22f * scale
-        );
-
-        // Femur (Upper leg - Arched)
-        offset = addSegmentCylinder(pos, norm, idx, offset, origin, jointKnee, 0.016f * scale);
-
-        // Tibia & Tarsus (Lower leg reaching to ground)
-        offset = addSegmentCylinder(pos, norm, idx, offset, jointKnee, footPos, 0.012f * scale);
-
-        return offset;
+        return InsectGeometryBuilder.addArticulatedLeg(pos, norm, idx, offset, origin, angleRad, scale, isRight);
     }
 
     private int addElbowedAntenna(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx,
                                   int offset, Vector3f origin, boolean isRight, float scale) {
-        float signX = isRight ? 1.0f : -1.0f;
-        // Scape (First elongate antennal segment)
-        Vector3f scapeEnd = new Vector3f(
-                origin.x + signX * 0.08f * scale,
-                origin.y + 0.08f * scale,
-                origin.z + 0.12f * scale
-        );
-        offset = addSegmentCylinder(pos, norm, idx, offset, origin, scapeEnd, 0.009f * scale);
-
-        // Funiculus / Flagellum (Elbowed forward sensing tip)
-        Vector3f funiculusEnd = new Vector3f(
-                scapeEnd.x + signX * 0.04f * scale,
-                scapeEnd.y - 0.02f * scale,
-                scapeEnd.z + 0.14f * scale
-        );
-        offset = addSegmentCylinder(pos, norm, idx, offset, scapeEnd, funiculusEnd, 0.007f * scale);
-
-        return offset;
+        return InsectGeometryBuilder.addElbowedAntenna(pos, norm, idx, offset, origin, isRight, scale);
     }
 
     private int addCurvedMandible(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx,
                                   int offset, Vector3f origin, boolean isRight, float scale) {
-        float signX = isRight ? 1.0f : -1.0f;
-        Vector3f mandMid = new Vector3f(origin.x + signX * 0.035f * scale, origin.y, origin.z + 0.06f * scale);
-        Vector3f mandTip = new Vector3f(origin.x - signX * 0.015f * scale, origin.y - 0.01f * scale, origin.z + 0.11f * scale);
-
-        offset = addSegmentCylinder(pos, norm, idx, offset, origin, mandMid, 0.014f * scale);
-        offset = addSegmentCylinder(pos, norm, idx, offset, mandMid, mandTip, 0.010f * scale);
-        return offset;
+        return InsectGeometryBuilder.addCurvedMandible(pos, norm, idx, offset, origin, isRight, scale);
     }
 
     private int addSegmentCylinder(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx,
                                    int offset, Vector3f p1, Vector3f p2, float radius) {
-        Vector3f dir = p2.subtract(p1);
-        float len = dir.length();
-        if (len < 0.0001f) return offset;
-        dir.normalizeLocal();
-
-        Vector3f up = Math.abs(dir.y) < 0.9f ? Vector3f.UNIT_Y : Vector3f.UNIT_Z;
-        Vector3f side = dir.cross(up).normalizeLocal();
-        Vector3f ortho = dir.cross(side).normalizeLocal();
-
-        int sides = 6;
-        int startOffset = offset;
-        for (int i = 0; i < sides; i++) {
-            float angle = i * FastMath.TWO_PI / sides;
-            float cosA = FastMath.cos(angle);
-            float sinA = FastMath.sin(angle);
-            Vector3f n = side.mult(cosA).add(ortho.mult(sinA)).normalizeLocal();
-
-            pos.add(p1.add(n.mult(radius)));
-            norm.add(n);
-            offset++;
-
-            pos.add(p2.add(n.mult(radius * 0.85f)));
-            norm.add(n);
-            offset++;
-        }
-
-        for (int i = 0; i < sides; i++) {
-            int next = (i + 1) % sides;
-            int v0 = startOffset + i * 2;
-            int v1 = startOffset + i * 2 + 1;
-            int v2 = startOffset + next * 2;
-            int v3 = startOffset + next * 2 + 1;
-
-            idx.add(v0); idx.add(v1); idx.add(v2);
-            idx.add(v2); idx.add(v1); idx.add(v3);
-        }
-
-        return offset;
+        return InsectGeometryBuilder.addSegmentCylinder(pos, norm, idx, offset, p1, p2, radius);
     }
 
-    private float terrainSideMeters = 10.0f; // Default terrain side length in meters
-    private int gridWidth = 64; // Default 3D scene grid dimension
-
     public void setTerrainDimensions(float terrainSideMeters, int gridWidth) {
-        if (terrainSideMeters > 0) this.terrainSideMeters = terrainSideMeters;
-        if (gridWidth > 0) this.gridWidth = gridWidth;
+        scaleCalculator.setTerrainDimensions(terrainSideMeters, gridWidth);
     }
 
     public float getMmPerWorldUnit() {
-        return (terrainSideMeters * 1000.0f) / Math.max(1, gridWidth);
+        return scaleCalculator.getMmPerWorldUnit();
     }
 
     public static float getIndividualBodyLengthMm(Individual.Caste caste, org.swarmforge.core.species.Species species, org.swarmforge.core.domain.CasteTemplate template) {
-        if (template != null && template.getBodyLengthMm() > 0) {
-            return template.getBodyLengthMm();
-        }
-        if (species != null) {
-            if (species.getCastes() != null) {
-                for (org.swarmforge.core.domain.CasteTemplate ct : species.getCastes()) {
-                    if (matchesCaste(ct, caste) && ct.getBodyLengthMm() > 0) {
-                        return ct.getBodyLengthMm();
-                    }
-                }
-            }
-            float avg = species.getAverageCasteBodyLengthMm();
-            if (avg > 0) {
-                return switch (caste != null ? caste : Individual.Caste.WORKER) {
-                    case QUEEN -> avg * 2.2f;
-                    case SOLDIER -> avg * 1.6f;
-                    case MALE -> avg * 1.2f;
-                    default -> avg;
-                };
-            }
-        }
-        return switch (caste != null ? caste : Individual.Caste.WORKER) {
-            case QUEEN -> 14.0f;
-            case SOLDIER -> 9.0f;
-            case MALE -> 6.0f;
-            default -> 4.5f;
-        };
-    }
-
-    private static boolean matchesCaste(org.swarmforge.core.domain.CasteTemplate ct, Individual.Caste caste) {
-        if (ct == null || caste == null) return false;
-        String name = ct.getName() != null ? ct.getName().toUpperCase() : "";
-        org.swarmforge.core.domain.CasteTemplate.CasteCategory cat = ct.getCategory();
-        return switch (caste) {
-            case QUEEN -> cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.PRIMARY_REPRODUCTIVE
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.SECONDARY_REPRODUCTIVE
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.QUEEN_DICHTHADIIGYNE
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.QUEEN_ERGATOGYNE
-                    || name.contains("QUEEN") || name.contains("REINE");
-            case SOLDIER -> cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.SOLDIER_DEFENSIVE
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.SUPER_SOLDIER
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.SOLDIER_PHRAGMOTIC
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.SOLDIER_NASUTE
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.WORKER_MAJOR
-                    || name.contains("SOLDIER") || name.contains("MAJOR");
-            case MALE -> cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.MALE_DRONE
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.MALE_ERGATANDROUS
-                    || name.contains("MALE") || name.contains("DRONE");
-            default -> cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.WORKER_MEDIA
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.WORKER_MINIMA
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.GENERAL_WORKER
-                    || cat == org.swarmforge.core.domain.CasteTemplate.CasteCategory.METABOLIC_REPLETE
-                    || name.contains("WORKER") || name.contains("OUVRIERE");
-        };
+        return InsectScaleCalculator.getIndividualBodyLengthMm(caste, species, template);
     }
 
     public float getScaleForIndividual(Individual.Caste caste, Individual.LifeStage stage, org.swarmforge.core.species.Species species, org.swarmforge.core.domain.CasteTemplate template) {
-        float mmPerWorldUnit = getMmPerWorldUnit();
-        if (stage == Individual.LifeStage.EGG) return 0.8f / mmPerWorldUnit;
-        if (stage == Individual.LifeStage.LARVA) return 2.2f / mmPerWorldUnit;
-        if (stage == Individual.LifeStage.PUPA) return 4.0f / mmPerWorldUnit;
-        return getIndividualBodyLengthMm(caste, species, template) / mmPerWorldUnit;
+        return scaleCalculator.getScaleForIndividual(caste, stage, species, template);
     }
 
     private float getScale(Individual.Caste caste, org.swarmforge.core.species.Species species) { return 1.0f; }
 
     private int addBox(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx, int offset, Vector3f center, Vector3f ext) {
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Z, 0, 2, 1, 3); offset += 4;
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Z.negate(), 5, 7, 4, 6); offset += 4;
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_X.negate(), 1, 3, 5, 7); offset += 4;
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_X, 4, 6, 0, 2); offset += 4;
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Y, 1, 5, 0, 4); offset += 4;
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Y.negate(), 2, 6, 3, 7); offset += 4;
-        return offset;
-    }
-
-    private void addFace(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx, int offset, Vector3f c, Vector3f e, Vector3f n, int v1, int v2, int v3, int v4) {
-        Vector3f[] unitBox = new Vector3f[]{
-                new Vector3f(1, 1, 1), new Vector3f(-1, 1, 1), new Vector3f(1, -1, 1), new Vector3f(-1, -1, 1),
-                new Vector3f(1, 1, -1), new Vector3f(-1, 1, -1), new Vector3f(1, -1, -1), new Vector3f(-1, -1, -1)
-        };
-        pos.add(unitBox[v1].mult(e).add(c)); pos.add(unitBox[v2].mult(e).add(c));
-        pos.add(unitBox[v3].mult(e).add(c)); pos.add(unitBox[v4].mult(e).add(c));
-        for (int i = 0; i < 4; i++) norm.add(n);
-        idx.add(offset); idx.add(offset + 1); idx.add(offset + 2);
-        idx.add(offset + 1); idx.add(offset + 3); idx.add(offset + 2);
+        return InsectGeometryBuilder.addBox(pos, norm, idx, offset, center, ext);
     }
 
     private final Map<Individual.Caste, com.jme3.scene.Node> instancedNodes = new EnumMap<>(Individual.Caste.class);

@@ -124,7 +124,7 @@ public class SwarmForgeServer {
             LOG.info("Starting SwarmForge Server...");
 
             // Auto-start Docker services if down
-            checkAndAutoStartInfrastructure();
+            ServerInfrastructureBootstrap.checkAndAutoStartInfrastructure(config);
 
             // Connect Database
             try {
@@ -191,49 +191,6 @@ public class SwarmForgeServer {
         } catch (Throwable t) {
             LOG.error("SERVER STARTUP FAILED CRITICALLY: ", t);
             throw t;
-        }
-    }
-
-    private void checkAndAutoStartInfrastructure() {
-        if (config.dbHost() == null || config.dbHost().trim().isEmpty() || config.dbPort() <= 0) {
-            return;
-        }
-        try {
-            boolean postgresRunning = isPortOpen(config.dbHost(), config.dbPort());
-            boolean redisRunning = (config.redisHost() != null && !config.redisHost().trim().isEmpty() && config.redisPort() > 0)
-                    ? isPortOpen(config.redisHost(), config.redisPort())
-                    : true;
-
-            if (!postgresRunning || !redisRunning) {
-                LOG.warn("Infrastructure (Postgres/Redis) appears down. Attempting auto-start...");
-                Process p = null;
-                try {
-                    p = new ProcessBuilder("docker-compose", "up", "-d").inheritIO().start();
-                } catch (Exception e) {
-                    try {
-                        p = new ProcessBuilder("docker", "compose", "up", "-d").inheritIO().start();
-                    } catch (Exception ex) {
-                        LOG.warn("Could not invoke docker-compose: {}", ex.getMessage());
-                    }
-                }
-                if (p != null) {
-                    int exitCode = p.waitFor();
-                    if (exitCode == 0) {
-                        LOG.info("Auto-start command executed. Waiting for services to initialize...");
-                        for (int i = 0; i < 10; i++) {
-                            Thread.sleep(500);
-                            if (isPortOpen(config.dbHost(), config.dbPort())) {
-                                LOG.info("Services are now reachable.");
-                                break;
-                            }
-                        }
-                    } else {
-                        LOG.warn("Auto-start Docker infrastructure exited with code {}", exitCode);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            LOG.warn("Auto-start check skipped or failed: {}", e.getMessage());
         }
     }
 
@@ -380,36 +337,10 @@ public class SwarmForgeServer {
     }
 
     public void printStatusBanner() {
-        String dbStatus = database.isConnected() 
-                ? (database.isH2Fallback() ? "[OK] H2 (MEM)" : "[OK] POSTGRES") 
-                : "[X] OFFLINE";
-        String dbColor = database.isConnected() ? "\u001B[32m" : "\u001B[31m";
-        String redisStatus = cache.isConnected() ? "[OK] ONLINE " : "[X] OFFLINE";
-        String redisColor = cache.isConnected() ? "\u001B[32m" : "\u001B[31m";
-        String reset = "\u001B[0m";
-
-        System.out.println();
-        System.out.println("+------------------------------------------------------+");
-        System.out.println("|          SWARMFORGE SERVER - STATUS                  |");
-        System.out.println("+------------------------------------------------------+");
-        System.out.println("|  gRPC Server    : \u001B[32m[OK] RUNNING\u001B[0m  (port " + grpcPort + ")           |");
-        System.out.println("|  Database       : " + dbColor + dbStatus + reset + "                       |");
-        System.out.println("|  Redis Cache    : " + redisColor + redisStatus + reset + "                       |");
-        System.out.println("+------------------------------------------------------+");
-        if (database.isH2Fallback()) {
-            System.out.println("|  \u001B[33m[!] Running in Standalone / H2 In-Memory Fallback\u001B[0m |");
-        }
-        if (!cache.isConnected()) {
-            System.out.println("|  \u001B[33m[!] Caching disabled - start Redis for caching\u001B[0m     |");
-        }
-        if (database.isConnected() && cache.isConnected() && !database.isH2Fallback()) {
-            System.out.println("|  \u001B[32m[OK] All production services operational\u001B[0m            |");
-        }
-        System.out.println("+------------------------------------------------------+");
-        System.out.println();
+        ServerStatusBannerPrinter.printStatusBanner(grpcPort, database, cache);
     }
 
-    // === World & Scenario Delegations ===
+        // === World & Scenario Delegations ===
 
     public void createNewWorld(String name, String terrainType, String speciesType) {
         worldManager.createNewWorld(name, terrainType, speciesType);
@@ -559,7 +490,7 @@ public class SwarmForgeServer {
         return dbAsyncExecutor;
     }
 
-    private boolean isPortOpen(String host, int port) {
+    private static boolean isPortOpen(String host, int port) {
         if (host == null || host.trim().isEmpty() || port <= 0) return false;
         String targetHost = ("0.0.0.0".equals(host.trim()) || host.trim().isEmpty()) ? "localhost" : host.trim();
         try (Socket socket = new Socket()) {

@@ -149,78 +149,15 @@ public class WorldEditorPane extends BaseWorldEditorPane {
     }
 
     public void setSimulationMode(boolean simMode) {
-        this.isSimulationMode = simMode;
-        setHideHeaderPresets(simMode);
-        setHideConfigPanel(simMode);
-        setHideRightRenderOptions(simMode);
-        setSlicePlane(100.0);
-        if (showAntTrackingCheck != null) {
-            showAntTrackingCheck.setVisible(simMode);
-            showAntTrackingCheck.setManaged(simMode);
-        }
-        if (showChamberOverlayCheck != null) {
-            showChamberOverlayCheck.setVisible(simMode);
-            showChamberOverlayCheck.setManaged(simMode);
-        }
-        boolean show = (showLegendCheckBox == null || showLegendCheckBox.isSelected());
-        if (nestLegendBox != null) { nestLegendBox.setVisible(simMode && show); nestLegendBox.setManaged(simMode && show); }
-        if (pheroLegendBox != null) { pheroLegendBox.setVisible(simMode && show); pheroLegendBox.setManaged(simMode && show); }
-        if (castesLegendBox != null) { castesLegendBox.setVisible(simMode && show); castesLegendBox.setManaged(simMode && show); }
-        if (weatherOverlayPane != null) { weatherOverlayPane.setVisible(simMode && isWeatherOverlayVisible); weatherOverlayPane.setManaged(simMode && isWeatherOverlayVisible); }
-        if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setSimulationPaused(!simMode);
-        updateRightScrollVisibility();
-        repaintAllViews();
+        WorldEditorVisibilityHelper.setSimulationMode(this, simMode);
     }
 
     public void setRenderMode(RenderMode mode) {
-        this.currentRenderMode = mode != null ? mode : RenderMode.REALISTIC;
-        boolean isSci = (currentRenderMode == RenderMode.SCIENTIFIC);
-        if (canvas3D != null) {
-            canvas3D.setVisible(isSci);
-            canvas3D.setManaged(isSci);
-            if (isSci) canvas3D.toFront();
-        }
-        if (!isSci) attachGameView();
-        else if (gameView != null) {
-            gameView.setVisible(false);
-            gameView.setManaged(false);
-        }
-        if (floatingMouseInspectorCard != null) floatingMouseInspectorCard.toFront();
-        if (sideMinimapsBox != null) sideMinimapsBox.toFront();
-        if (trackedAntPane != null) trackedAntPane.toFront();
-        if (chamberInfoPane != null) chamberInfoPane.toFront();
-        if (weatherOverlayPane != null) weatherOverlayPane.toFront();
-        if (isSci) this.isActive = true;
-        repaintAllViews();
+        WorldEditorVisibilityHelper.setRenderMode(this, mode);
     }
 
     public void attachGameView() {
-        if (gameView == null) gameView = GameViewPane.getSharedInstance(1024, 768);
-        if (h3d != null && gameView != null) {
-            boolean reparented = false;
-            if (gameView.getParent() != this.h3d) {
-                if (gameView.getParent() instanceof Pane oldParent) oldParent.getChildren().remove(gameView);
-                int idx = h3d.getChildren().indexOf(canvas3D);
-                h3d.getChildren().add(Math.max(0, idx + 1), gameView);
-                reparented = true;
-            }
-            boolean isSci = (currentRenderMode == RenderMode.SCIENTIFIC);
-            gameView.setVisible(!isSci);
-            gameView.setManaged(!isSci);
-            if (reparented) {
-                bindGameViewListeners();
-                if (gameView.getGameApp() != null) {
-                    gameView.getGameApp().setSimulationPaused(!isSimulationMode);
-                    if (activeSimulation != null) {
-                        gameView.getGameApp().setSimulation(activeSimulation);
-                        if (activeSimulation.getTerrarium() != null) {
-                            gameView.getGameApp().renderTerrarium(activeSimulation.getTerrarium());
-                        }
-                    }
-                }
-            }
-            if (!isSci) gameView.setRenderMode(currentRenderMode);
-        }
+        WorldEditorVisibilityHelper.attachGameView(this);
     }
 
     public void setTerrainVisible(boolean visible) {
@@ -303,27 +240,7 @@ public class WorldEditorPane extends BaseWorldEditorPane {
     }
 
     public void setFullscreenMode(boolean fs) {
-        setDualMinimapVisible(!fs);
-        setHeaderVisible(!fs);
-        if (fs) {
-            this.previousZoom = this.zoom;
-            this.zoom = Math.min(80.0, this.zoom * 1.25);
-            if (isSync()) { this.sideZoom = Math.max(0.3, Math.min(20.0, zoom / 7.5)); this.topZoom = sideZoom; }
-            setHideHeaderPresets(true);
-            setHideConfigPanel(true);
-            setHideRightRenderOptions(true);
-            setRightLegendVisible(false);
-        } else {
-            this.zoom = this.previousZoom;
-            if (isSync()) { this.sideZoom = Math.max(0.3, Math.min(6.0, zoom / 7.5)); this.topZoom = sideZoom; }
-            if (!isSimulationMode) {
-                setHideHeaderPresets(false);
-                setHideConfigPanel(false);
-                setHideRightRenderOptions(false);
-            }
-            updateRightScrollVisibility();
-        }
-        repaintAllViews();
+        WorldEditorVisibilityHelper.setFullscreenMode(this, fs);
     }
 
     public void setHideHeaderPresets(boolean hide) {
@@ -355,13 +272,7 @@ public class WorldEditorPane extends BaseWorldEditorPane {
     }
 
     public void updateRightScrollVisibility() {
-        if (rightScroll != null) {
-            boolean hasLegend = (legendPanel != null && legendPanel.isVisible() && (showLegendCheckBox == null || showLegendCheckBox.isSelected()));
-            boolean hasOptions = (rightRenderOptions != null && rightRenderOptions.isVisible());
-            boolean hasVisibleContent = hasLegend || hasOptions;
-            rightScroll.setVisible(hasVisibleContent);
-            rightScroll.setManaged(hasVisibleContent);
-        }
+        WorldEditorVisibilityHelper.updateRightScrollVisibility(this);
     }
 
     public void setSlicePlane(double sliceValue) {

@@ -58,17 +58,7 @@ public class WeatherVisualizer {
     private final List<Geometry> godRays = new ArrayList<>();
     private final List<Geometry> groundMistPuffs = new ArrayList<>();
     private Node fireNode;
-    private Node snowGroundNode;
-    private Node iceGroundNode;
-    private Node hoarfrostNode;
-
-    // Snow Ground Overlay Materials & Mesh
-    private Geometry snowGroundGeom;
-    private Material snowGroundMat;
-    private Geometry iceGroundGeom;
-    private Material iceGroundMat;
-    private Geometry hoarfrostGeom;
-    private Material hoarfrostMat;
+    private WeatherGroundCoverRenderer groundCoverRenderer;
 
     // Scientific Mode Vector & Isoline Indicators
     private Node scientificVectorNode;
@@ -91,6 +81,7 @@ public class WeatherVisualizer {
 
         this.precipitationRenderer = new WeatherPrecipitationRenderer(assetManager, worldWidth, worldHeight, currentRenderMode);
         rootNode.attachChild(precipitationRenderer.getPrecipitationNode());
+        this.groundCoverRenderer = new WeatherGroundCoverRenderer(rootNode, assetManager, worldWidth, worldHeight);
 
         initSunAndMoon();
         initStars();
@@ -114,6 +105,7 @@ public class WeatherVisualizer {
             this.worldWidth = Math.max(8, width);
             this.worldHeight = Math.max(8, height);
             precipitationRenderer.setWorldDimensions(this.worldWidth, this.worldHeight);
+            groundCoverRenderer = new WeatherGroundCoverRenderer(rootNode, assetManager, this.worldWidth, this.worldHeight);
             rebuildClouds();
             initMistAndFire();
             initGroundSnowAndIceCover();
@@ -244,59 +236,9 @@ public class WeatherVisualizer {
     }
 
     private void initGroundSnowAndIceCover() {
-        if (snowGroundNode != null) snowGroundNode.removeFromParent();
-        if (iceGroundNode != null) iceGroundNode.removeFromParent();
-        if (hoarfrostNode != null) hoarfrostNode.removeFromParent();
-
-        snowGroundNode = new Node("SnowGroundCover");
-        iceGroundNode = new Node("IceSheetCover");
-        hoarfrostNode = new Node("HoarfrostCover");
-
-        // Ground Snowpack Overlay (High-resolution XZ quad layer lying just above terrain)
-        snowGroundMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        snowGroundMat.setColor("Color", new ColorRGBA(0.98f, 0.99f, 1.0f, 0.0f));
-        snowGroundMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
-        snowGroundMat.getAdditionalRenderState().setFaceCullMode(com.jme3.material.RenderState.FaceCullMode.Off);
-
-        Quad snowQuad = new Quad(worldWidth, worldHeight);
-        snowGroundGeom = new Geometry("SnowCoverMesh", snowQuad);
-        snowGroundGeom.setMaterial(snowGroundMat);
-        snowGroundGeom.rotate(-FastMath.HALF_PI, 0, 0); // Flat on ground XZ plane spanning [0..w, 0..h]
-        snowGroundGeom.setLocalTranslation(0, 0.18f, 0);
-        snowGroundNode.attachChild(snowGroundGeom);
-
-        // Ground Surface Ice Sheet Overlay
-        iceGroundMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        iceGroundMat.setColor("Color", new ColorRGBA(0.70f, 0.88f, 1.0f, 0.0f));
-        iceGroundMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
-        iceGroundMat.getAdditionalRenderState().setFaceCullMode(com.jme3.material.RenderState.FaceCullMode.Off);
-
-        Quad iceQuad = new Quad(worldWidth, worldHeight);
-        iceGroundGeom = new Geometry("IceSheetMesh", iceQuad);
-        iceGroundGeom.setMaterial(iceGroundMat);
-        iceGroundGeom.rotate(-FastMath.HALF_PI, 0, 0);
-        iceGroundGeom.setLocalTranslation(0, 0.22f, 0);
-        iceGroundNode.attachChild(iceGroundGeom);
-
-        // Crystalline Hoarfrost / Gelée blanche Overlay
-        hoarfrostMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        hoarfrostMat.setColor("Color", new ColorRGBA(0.96f, 0.98f, 1.0f, 0.0f));
-        hoarfrostMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
-        hoarfrostMat.getAdditionalRenderState().setFaceCullMode(com.jme3.material.RenderState.FaceCullMode.Off);
-
-        Quad hoarQuad = new Quad(worldWidth, worldHeight);
-        hoarfrostGeom = new Geometry("HoarfrostCoverMesh", hoarQuad);
-        hoarfrostGeom.setMaterial(hoarfrostMat);
-        hoarfrostGeom.rotate(-FastMath.HALF_PI, 0, 0);
-        hoarfrostGeom.setLocalTranslation(0, 0.15f, 0);
-        hoarfrostNode.attachChild(hoarfrostGeom);
-
-        snowGroundNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
-        iceGroundNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
-        hoarfrostNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
-        rootNode.attachChild(snowGroundNode);
-        rootNode.attachChild(iceGroundNode);
-        rootNode.attachChild(hoarfrostNode);
+        if (groundCoverRenderer != null) {
+            groundCoverRenderer.init();
+        }
     }
 
     private void initMistAndFire() {
@@ -470,37 +412,8 @@ public class WeatherVisualizer {
         precipitationRenderer.update(weather, tpf, showPrecipitation, windDx, windDz, windRad);
 
         // 5. Technical Resolution of Ground Snow Cover & Ice Sheet Overlay Rendering
-        float snowDepthMm = weather.getSnowDepthMm();
-        float iceThicknessMm = weather.getIceThicknessMm();
-
-        if (showSnowCover && snowGroundMat != null) {
-            float snowAlpha = Math.min(0.92f, snowDepthMm / 50.0f); // 50mm snowpack = full opaque white cover
-            snowGroundMat.setColor("Color", new ColorRGBA(0.98f, 0.99f, 1.0f, snowAlpha));
-            snowGroundNode.setCullHint(snowAlpha > 0.02f ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-
-            // Dynamic elevation offset as snow accumulates
-            float snowElevationY = 0.18f + Math.min(0.25f, (snowDepthMm / 200.0f) * 0.25f);
-            if (snowGroundGeom != null) {
-                Vector3f p = snowGroundGeom.getLocalTranslation();
-                p.y = snowElevationY;
-                snowGroundGeom.setLocalTranslation(p);
-            }
-        }
-
-        if (iceGroundMat != null) {
-            float iceAlpha = Math.min(0.85f, iceThicknessMm / 30.0f); // 30mm ice sheet = full specular cyan ice
-            iceGroundMat.setColor("Color", new ColorRGBA(0.68f, 0.88f, 1.0f, iceAlpha));
-            iceGroundNode.setCullHint(iceAlpha > 0.02f ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-        }
-
-        // Hoarfrost / Gelée blanche matinale (Crystalline Frost Sheen)
-        float temp = weather.getTemperature();
-        float humidity = weather.getHumidity();
-        boolean hoarfrostCondition = (temp >= -2.5f && temp <= 2.5f && humidity > 0.78f && snowDepthMm < 1.0f);
-        if (hoarfrostMat != null && hoarfrostNode != null) {
-            float hoarAlpha = hoarfrostCondition ? Math.min(0.42f, (humidity - 0.78f) * 2.1f) : 0.0f;
-            hoarfrostMat.setColor("Color", new ColorRGBA(0.96f, 0.98f, 1.0f, hoarAlpha));
-            hoarfrostNode.setCullHint(hoarAlpha > 0.02f ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
+        if (groundCoverRenderer != null) {
+            groundCoverRenderer.update(weather, showSnowCover);
         }
 
         // 6. Understory Ground Mist Drift (Brume matinale de sous-bois)

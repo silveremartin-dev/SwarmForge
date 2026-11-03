@@ -259,12 +259,12 @@ public class JmeGameApp extends SimpleApplication {
         if (name.equals("Toggle_Record") && !isPressed) {
             recording = !recording;
             if (recording) {
-                System.out.println("Recording Started...");
+                LOG.info("Recording Started...");
                 if (!recordingDir.exists())
                     recordingDir.mkdirs();
                 recordingFrameCount = 0;
             } else {
-                System.out.println("Recording Stopped.");
+                LOG.info("Recording Stopped.");
             }
         }
     };
@@ -392,7 +392,7 @@ public class JmeGameApp extends SimpleApplication {
                 try {
                     pheromoneVisualizer.update(simulation.getPheromoneGrid());
                 } catch (Throwable t) {
-                    System.err.println("[PheromoneVisualizer Error] " + t.getMessage());
+                    LOG.error("PheromoneVisualizer Error: {}", t.getMessage(), t);
                 }
             }
 

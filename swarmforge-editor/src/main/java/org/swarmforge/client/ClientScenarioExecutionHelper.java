@@ -29,10 +29,12 @@ import org.swarmforge.core.spatial.OptimalColonyPlacementEngine;
 import org.swarmforge.core.world.NestGenerator;
 import org.swarmforge.core.world.TerrainGenerator;
 
-import java.util.LinkedHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
+import java.util.LinkedHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -42,7 +44,7 @@ import java.util.stream.Collectors;
  */
 class ClientScenarioExecutionHelper {
 
-    private static final Logger LOG = Logger.getLogger(ClientScenarioExecutionHelper.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(ClientScenarioExecutionHelper.class);
     private final SwarmForgeClient client;
     private final I18nManager i18n = I18nManager.getInstance();
 
@@ -200,7 +202,7 @@ class ClientScenarioExecutionHelper {
             if (client.simControlPanel != null && client.simControlPanel.isServerExecutionMode()) {
                 String host = client.simControlPanel.getServerHost();
                 int port = client.simControlPanel.getServerPort();
-                System.out.println("[INFO] [SwarmForge Engine] Mode d'exécution Serveur SwarmForge (" + host + ":" + port + ") activé.");
+                LOG.info("[SwarmForge Engine] Mode d'exécution Serveur SwarmForge ({}:{}) activé.", host, port);
                 if (client.networkClient != null && !client.networkClient.isConnected()) {
                     boolean isOpen = LocalServerManager.isPortOpen(host, port);
                     if (!isOpen) {
@@ -209,7 +211,7 @@ class ClientScenarioExecutionHelper {
                             LOG.info("Serveur local inactif, affichage du dialogue de configuration...");
                             client.promptAndStartLocalServer(host, port, null);
                         } else {
-                            System.out.println("[WARN] Serveur distant non disponible à " + host + ":" + port + ", exécution en mode local fallback.");
+                            LOG.warn("Serveur distant non disponible à {}:{}, exécution en mode local fallback.", host, port);
                         }
                     } else {
                         try {
@@ -222,12 +224,12 @@ class ClientScenarioExecutionHelper {
                                 client.gameView.getGameApp().setNetworkClient(client.networkClient);
                             }
                         } catch (Exception ex) {
-                            System.out.println("[WARN] Échec de connexion au serveur à " + host + ":" + port + " (" + ex.getMessage() + ")");
+                            LOG.warn("Échec de connexion au serveur à {}:{} ({})", host, port, ex.getMessage());
                         }
                     }
                 }
             } else {
-                System.out.println("[INFO] [SwarmForge Engine] Création du terrarium et de la simulation locale in-process...");
+                LOG.info("[SwarmForge Engine] Création du terrarium et de la simulation locale in-process...");
             }
 
             if (client.lastGeneratedTerrarium == null) {
@@ -401,11 +403,11 @@ class ClientScenarioExecutionHelper {
                         client.mainTabs.getSelectionModel().select(client.simTab);
                     }
                 } catch (Exception ex) {
-                    LOG.log(java.util.logging.Level.SEVERE, "Error activating simulation sub-tabs: " + ex.getMessage(), ex);
+                    LOG.error("Error activating simulation sub-tabs: {}", ex.getMessage(), ex);
                 }
             });
         } catch (Exception e) {
-            LOG.log(java.util.logging.Level.SEVERE, "Error creating simulation: " + e.getMessage(), e);
+            LOG.error("Error creating simulation: {}", e.getMessage(), e);
         }
     }
 
@@ -433,110 +435,6 @@ class ClientScenarioExecutionHelper {
     }
 
     void startLocalSimulationLoop() {
-        if (client.simLoopActive) return;
-        client.simLoopActive = true;
-        client.simLoopExecutor.submit(() -> {
-            long lastTime = System.nanoTime();
-            while (client.simLoopActive) {
-                boolean isConnected = client.networkClient != null && client.networkClient.isConnected();
-                boolean isPlaying = client.simControlPanel != null && client.simControlPanel.isPlaying();
-
-                if (isPlaying && !isConnected) {
-                    if (client.localSimulation == null) {
-                        if (client.lastGeneratedTerrarium == null) {
-                            client.lastGeneratedTerrarium = new Terrarium(64, 64, 32);
-                            TerrainGenerator gen = new TerrainGenerator(12345L);
-                            gen.generate(client.lastGeneratedTerrarium, 16, 6.0f, 0.08f);
-                        }
-                        client.localSimulation = new Simulation(client.lastGeneratedTerrarium);
-                        client.localSimulation.addColony("LasiusNiger");
-                        final Simulation finalSim = client.localSimulation;
-                        Platform.runLater(() -> {
-                            if (client.simWorldViewer != null) {
-                                Terrarium uiTerrarium = client.simWorldViewer.exportToTerrarium();
-                                if (uiTerrarium != null) {
-                                    client.lastGeneratedTerrarium = uiTerrarium;
-                                    client.localSimulation = new Simulation(uiTerrarium);
-                                    client.localSimulation.addColony("LasiusNiger");
-                                }
-                                client.simWorldViewer.setSimulation(client.localSimulation != null ? client.localSimulation : finalSim);
-                                client.simWorldViewer.setSlicePlane(100.0);
-                                if (client.sliceSlider != null) client.sliceSlider.setValue(100.0);
-                            }
-                        });
-                    }
-                    float speed = client.simControlPanel != null ? client.simControlPanel.getSpeedMultiplier() : 1.0f;
-                    client.localSimulation.tick();
-
-                    if (speed >= 100.0f) {
-                        Thread.onSpinWait();
-                        lastTime = System.nanoTime();
-                    } else {
-                        double targetFps = 60.0 * Math.max(0.1, Math.min(20.0, speed));
-                        long targetNanos = (long) (1_000_000_000L / targetFps);
-
-                        long elapsed = System.nanoTime() - lastTime;
-                        lastTime = System.nanoTime();
-                        long sleepNanos = targetNanos - elapsed;
-                        if (sleepNanos > 0) {
-                            try {
-                                Thread.sleep(sleepNanos / 1_000_000, (int) (sleepNanos % 1_000_000));
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                break;
-                            }
-                        }
-                    }
-
-                    if (client.localSimulation != null && client.simControlPanel != null) {
-                        long curTick = client.localSimulation.getTickCount();
-                        int totalPop = 0;
-                        if (client.localSimulation.getColonies() != null) {
-                            for (Colony col : client.localSimulation.getColonies()) {
-                                totalPop += col.getPopulation();
-                            }
-                        }
-                        int minPopStop = client.simControlPanel.getMinPopulationStopThreshold();
-                        long maxTicks = client.simControlPanel.getMaxSimulationTicks();
-
-                        if (curTick > 0 && totalPop <= minPopStop) {
-                            int finalPop = totalPop;
-                            Platform.runLater(() -> {
-                                if (client.simControlPanel.isPlaying()) {
-                                    client.simControlPanel.pauseSimulation();
-                                    NotificationOverlay.show(
-                                            client.simSubTabs != null ? client.simSubTabs : client.simControlPanel,
-                                            "🛑 SIMULATION INTERROMPUE : La population totale est tombée à " + finalPop + " (seuil minimal d'arrêt : " + minPopStop + ").",
-                                            NotificationOverlay.NotificationType.WARNING,
-                                            true
-                                    );
-                                }
-                            });
-                        } else if (maxTicks > 0 && curTick >= maxTicks) {
-                            long finalMaxTicks = maxTicks;
-                            Platform.runLater(() -> {
-                                if (client.simControlPanel.isPlaying()) {
-                                    client.simControlPanel.pauseSimulation();
-                                    NotificationOverlay.show(
-                                            client.simSubTabs != null ? client.simSubTabs : client.simControlPanel,
-                                            "⏱️ SIMULATION TERMINÉE : La durée maximale de " + finalMaxTicks + " pas de temps (ticks) a été atteinte.",
-                                            NotificationOverlay.NotificationType.INFO,
-                                            true
-                                    );
-                                }
-                            });
-                        }
-                    }
-                } else {
-                    try {
-                        Thread.sleep(50);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                    lastTime = System.nanoTime();
-                }
-            }
-        });
+        ClientSimulationLoopRunner.startLocalSimulationLoop(client);
     }
 }

@@ -360,70 +360,15 @@ public class StatisticsDashboard extends VBox {
     }
 
     private void toggleSeries(LineChart<Number, Number> chart, XYChart.Series<Number, Number> series, boolean show) {
-        if (show) {
-            if (!chart.getData().contains(series)) {
-                chart.getData().add(series);
-            }
-        } else {
-            chart.getData().remove(series);
-        }
+        StatisticsChartSetupHelper.toggleSeries(chart, series, show);
     }
 
     private GridPane createSummaryPanel() {
-        GridPane grid = new GridPane();
-        grid.setHgap(16);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(10));
-
-        grid.add(createKpiCard("stats.population", lblPopulation, "Total living individuals in the simulation"), 0, 0);
-        grid.add(createKpiCard("stats.active_colonies", lblColoniesCount, "Number of distinct colonies & species residing in the terrarium"), 1, 0);
-        grid.add(createKpiCard("stats.queens", lblQueens, "Genetically reproductive queens"), 2, 0);
-        grid.add(createKpiCard("stats.workers", lblWorkers, "Workers for foraging and brood care"), 3, 0);
-
-        grid.add(createKpiCard("stats.soldiers", lblSoldiers, "Soldiers armed with defensive mandibles"), 0, 1);
-        grid.add(createKpiCard("stats.food", lblFood, "Food reserves accumulated in nests"), 1, 1);
-        grid.add(createKpiCard("stats.water", lblWater, "Water reserves and nest hygrometry level"), 2, 1);
-        grid.add(createKpiCard("stats.tick_rate", lblTickRate, "Engine calculation speed in Ticks Per Second"), 3, 1);
-
-        grid.add(createKpiCard("stats.sim_time", lblSimTime, "Elapsed simulation time and converted theoretical date"), 0, 2, 4, 1);
-
-        return grid;
-    }
-
-    private HBox createKpiCard(String labelKey, Label valueLabel, String tooltipDesc) {
-        HBox box = new HBox(6);
-        box.setAlignment(Pos.CENTER_LEFT);
-        box.getStyleClass().add("card-pane");
-        box.setPadding(new Insets(6, 12, 6, 12));
-
-        Label lbl = new Label();
-        lbl.textProperty().bind(i18n.createStringBinding(labelKey));
-        lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #94a3b8;");
-
-        valueLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #38bdf8;");
-
-        box.getChildren().addAll(lbl, valueLabel);
-        Tooltip.install(box, new Tooltip(tooltipDesc));
-        return box;
+        return StatisticsChartSetupHelper.createSummaryPanel(lblPopulation, lblColoniesCount, lblQueens, lblWorkers, lblSoldiers, lblFood, lblWater, lblTickRate, lblSimTime);
     }
 
     private LineChart<Number, Number> createChart(String titleKey, String yLabelKey) {
-        NumberAxis xAxis = new NumberAxis();
-        xAxis.labelProperty().bind(i18n.createStringBinding("stats.chart.x_axis"));
-        xAxis.setForceZeroInRange(false);
-
-        NumberAxis yAxis = new NumberAxis();
-        yAxis.labelProperty().bind(i18n.createStringBinding(yLabelKey));
-
-        LineChart<Number, Number> chart = new LineChart<>(xAxis, yAxis);
-        chart.titleProperty().bind(i18n.createStringBinding(titleKey));
-        chart.setCreateSymbols(false);
-        chart.setAnimated(false);
-        chart.setLegendVisible(true);
-        chart.setPrefHeight(230);
-        chart.getStyleClass().add("chart-holder");
-
-        return chart;
+        return StatisticsChartSetupHelper.createChart(titleKey, yLabelKey);
     }
 
     public void update(ColonyStats stats) {

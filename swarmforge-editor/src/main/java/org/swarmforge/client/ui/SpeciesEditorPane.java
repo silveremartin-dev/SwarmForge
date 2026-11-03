@@ -37,16 +37,16 @@ import java.util.function.Consumer;
  */
 public class SpeciesEditorPane extends VBox {
 
-    private final SpeciesPresetManager presetManager = new SpeciesPresetManager();
-    private final I18nManager i18n = I18nManager.getInstance();
+    final SpeciesPresetManager presetManager = new SpeciesPresetManager();
+    final I18nManager i18n = I18nManager.getInstance();
 
-    private ComboBox<String> presetCombo;
+    ComboBox<String> presetCombo;
     private TabPane mainTabPane;
     private VBox warningBannerBox;
 
     // Modular Sub-Panes
     private final ObservableList<org.swarmforge.client.ui.species.CasteRow> casteRows = FXCollections.observableArrayList();
-    private final SpeciesTaxonomyPane taxonomyPane;
+    final SpeciesTaxonomyPane taxonomyPane;
     private final SpeciesQueensPane queensPane;
     private final SpeciesCastesPane castesPane;
     private final SpeciesDevelopmentStagesPane stagesPane;
@@ -57,9 +57,9 @@ public class SpeciesEditorPane extends VBox {
     private Consumer<DefaultSpecies> onApplyListener;
     private Consumer<DefaultSpecies> onGenerateNestForSpeciesListener;
 
-    private boolean isUpdatingFields = false;
-    private boolean isDirty = false;
-    private String lastSelectedPreset = null;
+    boolean isUpdatingFields = false;
+    boolean isDirty = false;
+    String lastSelectedPreset = null;
 
     public SpeciesEditorPane() {
         setSpacing(10);
@@ -247,58 +247,7 @@ public class SpeciesEditorPane extends VBox {
     }
 
     public boolean promptUnsavedChanges() {
-        if ("true".equals(System.getProperty("swarmforge.test")) || Boolean.getBoolean("headless") || Boolean.getBoolean("testfx.headless")) return true;
-        if (!isDirty) return true;
-        String currentName = lastSelectedPreset != null ? lastSelectedPreset : "";
-        boolean hasCurrentPreset = !currentName.isEmpty();
-
-        Alert alert = ThemeManager.createAlert(
-            Alert.AlertType.CONFIRMATION,
-            i18n.get("dialog.unsaved.species_editor") + "\n"
-            + (hasCurrentPreset ? i18n.get("preset.current") + ": \"" + currentName + "\"" : "")
-        );
-        alert.setTitle(i18n.get("common.dialog.unsaved_title"));
-        alert.setHeaderText(i18n.get("dialog.exit.species_editor"));
-
-        ButtonType btnUpdate  = hasCurrentPreset
-            ? new ButtonType(i18n.get("preset.update") + " \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
-            : null;
-        ButtonType btnSaveAs  = new ButtonType(i18n.get("preset.save_as"), ButtonBar.ButtonData.OTHER);
-        ButtonType btnDiscard = new ButtonType(i18n.get("preset.discard"), ButtonBar.ButtonData.OTHER);
-        ButtonType btnCancel  = new ButtonType(i18n.get("common.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
-
-        if (btnUpdate != null) {
-            alert.getButtonTypes().setAll(btnUpdate, btnSaveAs, btnDiscard, btnCancel);
-        } else {
-            alert.getButtonTypes().setAll(btnSaveAs, btnDiscard, btnCancel);
-        }
-        Optional<ButtonType> result = alert.showAndWait();
-
-        if (result.isEmpty() || result.get() == btnCancel) return false;
-        if (result.get() == btnDiscard) { isDirty = false; return true; }
-        if (btnUpdate != null && result.get() == btnUpdate) {
-            DefaultSpecies species = buildSpeciesFromUI();
-            species.setPresetName(currentName);
-            presetManager.addPreset(currentName, species);
-            isUpdatingFields = true;
-            try {
-                if (!presetCombo.getItems().contains(currentName)) {
-                    presetCombo.getItems().add(currentName);
-                }
-                presetCombo.getSelectionModel().select(currentName);
-            } finally {
-                isUpdatingFields = false;
-            }
-            lastSelectedPreset = currentName;
-            isDirty = false;
-            NotificationOverlay.show(this, "Preset \"" + currentName + "\" updated.", NotificationOverlay.NotificationType.SUCCESS);
-            return true;
-        }
-        if (result.get() == btnSaveAs) {
-            handleAddPreset();
-            return !isDirty;
-        }
-        return false;
+        return SpeciesPresetActionHelper.promptUnsavedChanges(this);
     }
 
     public void setOnApply(Consumer<DefaultSpecies> listener) {
@@ -322,114 +271,20 @@ public class SpeciesEditorPane extends VBox {
         return SpeciesValidator.validateAndRender(taxonomyPane, queensPane, nestPane, casteRows, warningBannerBox, this::validateParameters);
     }
 
-    private void handleAddPreset() {
-        String editedText = presetCombo.getEditor() != null ? presetCombo.getEditor().getText().trim() : "";
-        String common = taxonomyPane.commonNameField.getText().trim();
-        String scientific = taxonomyPane.scientificNameField.getText().trim();
-
-        String name = editedText;
-        if (name.isEmpty()) {
-            if (!common.isEmpty() && !scientific.isEmpty()) {
-                name = common + " (" + scientific + ")";
-            } else if (!common.isEmpty()) {
-                name = common;
-            } else if (!scientific.isEmpty()) {
-                name = scientific;
-            }
-        }
-
-        if (name.isEmpty()) {
-            ThemeManager.createAlert(Alert.AlertType.WARNING, "Please specify a common name, scientific name, or preset name.").show();
-            return;
-        }
-
-        if (presetManager.contains(name)) {
-            Alert confirmAlert = ThemeManager.createAlert(
-                Alert.AlertType.CONFIRMATION,
-                "Species preset '" + name + "' already exists.\n\nDo you want to replace it with current configuration?"
-            );
-            confirmAlert.setTitle("Replace Existing Preset");
-            confirmAlert.setHeaderText("Replacement Confirmation");
-            Optional<ButtonType> res = confirmAlert.showAndWait();
-            if (res.isEmpty() || res.get() != ButtonType.OK) {
-                return;
-            }
-        }
-
-        DefaultSpecies species = buildSpeciesFromUI();
-        species.setPresetName(name);
-        presetManager.addPreset(name, species);
-
-        isUpdatingFields = true;
-        try {
-            if (!presetCombo.getItems().contains(name)) {
-                presetCombo.getItems().add(name);
-            }
-            presetCombo.getSelectionModel().select(name);
-        } finally {
-            isUpdatingFields = false;
-        }
-        lastSelectedPreset = name;
-        isDirty = false;
-
-        NotificationOverlay.show(this, "Species preset '" + name + "\" saved.", NotificationOverlay.NotificationType.SUCCESS);
+    void handleAddPreset() {
+        SpeciesPresetActionHelper.handleAddPreset(this);
     }
 
-    private void handleDeletePreset() {
-        String selected = presetCombo.getValue();
-        if (selected == null || selected.isEmpty()) return;
-
-        Alert confirmAlert = ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, String.format(i18n.get("preset.delete.confirm"), selected));
-        confirmAlert.setTitle(i18n.get("preset.delete.title"));
-        confirmAlert.setHeaderText(i18n.get("preset.delete.header.species"));
-
-        confirmAlert.showAndWait().ifPresent(buttonType -> {
-            if (buttonType == ButtonType.OK) {
-                presetManager.delete(selected);
-                presetCombo.getItems().setAll(presetManager.getPresetNames());
-                if (!presetCombo.getItems().isEmpty()) {
-                    presetCombo.getSelectionModel().selectFirst();
-                } else {
-                    presetCombo.getSelectionModel().clearSelection();
-                }
-                NotificationOverlay.show(this, "Species preset deleted.", NotificationOverlay.NotificationType.INFO);
-            }
-        });
+    void handleDeletePreset() {
+        SpeciesPresetActionHelper.handleDeletePreset(this);
     }
 
-    private void handleSaveDisk() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Save Species");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
-        chooser.setInitialFileName("species_" + taxonomyPane.commonNameField.getText().replaceAll("\\s+", "_") + ".json");
-
-        File f = chooser.showSaveDialog(getScene().getWindow());
-        if (f != null) {
-            try {
-                DefaultSpecies species = buildSpeciesFromUI();
-                presetManager.saveToFile(f, species);
-                ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Species successfully saved as " + f.getName()).show();
-            } catch (Exception ex) {
-                ThemeManager.createAlert(Alert.AlertType.ERROR, "Save Error: " + ex.getMessage()).show();
-            }
-        }
+    void handleSaveDisk() {
+        SpeciesPresetActionHelper.handleSaveDisk(this);
     }
 
-    private void handleLoadDisk() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Load Species");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
-
-        File f = chooser.showOpenDialog(getScene().getWindow());
-        if (f != null) {
-            try {
-                DefaultSpecies species = presetManager.loadFromFile(f);
-                loadPresetToUI(species);
-                ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Espèce '" + species.getCommonName() + "' chargée avec succès!").show();
-            } catch (Exception ex) {
-                ThemeManager.createAlert(Alert.AlertType.ERROR, "Load Error: " + ex.getMessage()).show();
-            }
-        }
+    void handleLoadDisk() {
+        SpeciesPresetActionHelper.handleLoadDisk(this);
     }
 
     private void onFieldEdited() {

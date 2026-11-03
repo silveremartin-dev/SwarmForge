@@ -1,5 +1,8 @@
 package org.swarmforge.client.ui;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.function.Consumer;
 
 /**
@@ -11,6 +14,8 @@ import java.util.function.Consumer;
  * @author Gemini AI Assistant
  */
 public class GlossaryDialog {
+
+    private static final Logger LOG = LoggerFactory.getLogger(GlossaryDialog.class);
 
     private static Consumer<String> navigationHandler;
 
@@ -26,7 +31,7 @@ public class GlossaryDialog {
         if (navigationHandler != null) {
             navigationHandler.accept(searchTerm);
         } else {
-            System.err.println("[GlossaryDialog] Navigation handler not registered for term: " + searchTerm);
+            LOG.warn("Navigation handler not registered for term: {}", searchTerm);
         }
     }
 }

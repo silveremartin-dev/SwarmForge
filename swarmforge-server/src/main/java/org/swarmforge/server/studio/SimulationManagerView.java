@@ -11,6 +11,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
@@ -18,6 +20,8 @@ import java.util.UUID;
  * Manager to create, configure, and resume simulations.
  */
 public class SimulationManagerView extends VBox {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SimulationManagerView.class);
 
     public SimulationManagerView() {
         setSpacing(20);
@@ -60,14 +64,14 @@ public class SimulationManagerView extends VBox {
         createBtn.getStyleClass().add("accent-button");
         createBtn.setOnAction(e -> {
             // Logic to create simulation entry in DB
-            System.out.println("Creating simulation: " + worldCombo.getValue() + " with " + speciesCombo.getValue());
+            LOG.info("Creating simulation: {} with {}", worldCombo.getValue(), speciesCombo.getValue());
             Alert alert = new Alert(Alert.AlertType.INFORMATION, "Simulation Created! ID: " + UUID.randomUUID());
             alert.getDialogPane().setStyle("-fx-background-color: #1e1e2e; -fx-text-fill: white;");
             alert.show();
         });
 
         Button loadBtn = new Button("Load Checkpoint...");
-        loadBtn.setOnAction(e -> System.out.println("Opening checkpoint loader..."));
+        loadBtn.setOnAction(e -> LOG.info("Opening checkpoint loader..."));
 
         actions.getChildren().addAll(createBtn, loadBtn);
         getChildren().add(actions);

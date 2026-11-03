@@ -7,6 +7,8 @@
 package org.swarmforge.client.ui;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.swarmforge.core.scenario.AcademicScenarios;
 import org.swarmforge.core.scenario.Scenario;
 
@@ -22,6 +24,8 @@ import java.util.*;
  * @author Gemini AI Assistant
  */
 public class ScenarioPresetManager {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ScenarioPresetManager.class);
 
     public static final File PRESETS_FILE = new File("scenario_presets.json");
     private final Map<String, Scenario> presetsById = new LinkedHashMap<>();
@@ -70,7 +74,7 @@ public class ScenarioPresetManager {
                     registerPreset(s);
                 }
             } catch (Exception ex) {
-                System.err.println("[ScenarioPresetManager] Failed to read " + PRESETS_FILE + ": " + ex.getMessage());
+                LOG.error("Failed to read {}: {}", PRESETS_FILE, ex.getMessage(), ex);
             }
         }
 
@@ -206,7 +210,7 @@ public class ScenarioPresetManager {
             }
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(PRESETS_FILE, customList);
         } catch (Exception ex) {
-            System.err.println("[ScenarioPresetManager] Failed to write " + PRESETS_FILE + ": " + ex.getMessage());
+            LOG.error("Failed to write {}: {}", PRESETS_FILE, ex.getMessage(), ex);
         }
     }
 }

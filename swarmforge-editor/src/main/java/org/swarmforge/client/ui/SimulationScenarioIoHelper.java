@@ -61,7 +61,7 @@ class SimulationScenarioIoHelper {
             panel.inlineProgressBar.setProgress(0);
             panel.inlineProgressLabel.setText("❌ Scenario creation cancelled by user.");
         }
-        System.out.println("[INFO] [SwarmForge Engine] Instanciation et calculs du scénario annulés par l'utilisateur. Mémoire libérée.");
+        LOG.info("[SwarmForge Engine] Instanciation et calculs du scénario annulés par l'utilisateur. Mémoire libérée.");
         System.gc();
 
         PauseTransition hideDelay = new PauseTransition(Duration.millis(2000));
@@ -108,10 +108,9 @@ class SimulationScenarioIoHelper {
         String scenarioName = panel.comboMeta.getValue() != null ? panel.comboMeta.getValue() : "New Scenario";
         panel.lastSetupSnapshot = panel.captureSetupSnapshotOnFXThread();
 
-        System.out.println("\n================================================================================");
-        System.out.println("[INFO] [SwarmForge Engine] === INITIALISATION DU SCÉNARIO & DE L'ÉCOSYSTÈME ===");
-        System.out.println("[INFO] [SwarmForge Engine] Scénario : " + scenarioName + " | Seed: " + seed);
-        System.out.println("[INFO] [SwarmForge Engine] Step 1/5 [15%]: Initialisation du maillage 3D biotope & grille spatiale ('" + selectedWorld + "')...");
+        LOG.info("[SwarmForge Engine] === INITIALISATION DU SCÉNARIO & DE L'ÉCOSYSTÈME ===");
+        LOG.info("[SwarmForge Engine] Scénario : {} | Seed: {}", scenarioName, seed);
+        LOG.info("[SwarmForge Engine] Step 1/5 [15%]: Initialisation du maillage 3D biotope & grille spatiale ('{}')...", selectedWorld);
 
         if (panel.applyProgressBox != null) {
             panel.applyProgressBox.setVisible(true);
@@ -123,7 +122,7 @@ class SimulationScenarioIoHelper {
         panel.activeCreationTimeline = new Timeline(
             new KeyFrame(Duration.millis(250), e -> {
                 if (!panel.isCreatingScenario) return;
-                System.out.println("[INFO] [SwarmForge Engine] Step 2/5 [35%]: Calcul du profil microclimatique & météo ('" + selectedWeather + "')...");
+                LOG.info("[SwarmForge Engine] Step 2/5 [35%]: Calcul du profil microclimatique & météo ('{}')...", selectedWeather);
                 if (panel.inlineProgressBar != null) {
                     panel.inlineProgressBar.setProgress(0.35);
                     panel.inlineProgressLabel.setText("Step 2/5 [35%]: Calculating microclimate profile & weather parameters ('" + selectedWeather + "')...");
@@ -131,7 +130,7 @@ class SimulationScenarioIoHelper {
             }),
             new KeyFrame(Duration.millis(550), e -> {
                 if (!panel.isCreatingScenario) return;
-                System.out.println("[INFO] [SwarmForge Engine] Step 3/5 [60%]: Construction des structures de nids souterrains & arboricoles...");
+                LOG.info("[SwarmForge Engine] Step 3/5 [60%]: Construction des structures de nids souterrains & arboricoles...");
                 if (panel.inlineProgressBar != null) {
                     panel.inlineProgressBar.setProgress(0.60);
                     panel.inlineProgressLabel.setText("Step 3/5 [60%]: Constructing subterranean & arboreal nest structures...");
@@ -139,7 +138,7 @@ class SimulationScenarioIoHelper {
             }),
             new KeyFrame(Duration.millis(900), e -> {
                 if (!panel.isCreatingScenario) return;
-                System.out.println("[INFO] [SwarmForge Engine] Step 4/5 [85%]: Instanciation des colonies multi-espèces (" + panel.speciesCardList.size() + " espèces) & moteurs IA...");
+                LOG.info("[SwarmForge Engine] Step 4/5 [85%]: Instanciation des colonies multi-espèces ({} espèces) & moteurs IA...", panel.speciesCardList.size());
                 if (panel.inlineProgressBar != null) {
                     panel.inlineProgressBar.setProgress(0.85);
                     panel.inlineProgressLabel.setText("Step 4/5 [85%]: Instantiating multi-species colonies (" + panel.speciesCardList.size() + " species) & caste AI engines...");
@@ -147,7 +146,7 @@ class SimulationScenarioIoHelper {
             }),
             new KeyFrame(Duration.millis(1200), e -> {
                 if (!panel.isCreatingScenario) return;
-                System.out.println("[INFO] [SwarmForge Engine] Step 5/5 [95%]: Population des espèces accessoires, proies & réseaux trophiques...");
+                LOG.info("[SwarmForge Engine] Step 5/5 [95%]: Population des espèces accessoires, proies & réseaux trophiques...");
                 if (panel.inlineProgressBar != null) {
                     panel.inlineProgressBar.setProgress(0.95);
                     panel.inlineProgressLabel.setText("Step 5/5 [95%]: Populating accessory species, prey & ecosystem food webs...");
@@ -186,8 +185,7 @@ class SimulationScenarioIoHelper {
                             panel.inlineProgressBar.setProgress(1.0);
                             panel.inlineProgressLabel.setText("✅ Scenario '" + scenarioName + "' initialized successfully!");
                         }
-                        System.out.println("[INFO] [SwarmForge Engine] === INITIALISATION DU SCÉNARIO COMPLÉTÉE AVEC SUCCÈS ===");
-                        System.out.println("================================================================================\n");
+                        LOG.info("[SwarmForge Engine] === INITIALISATION DU SCÉNARIO COMPLÉTÉE AVEC SUCCÈS ===");
                     }
 
                     PauseTransition hideDelay = new PauseTransition(Duration.millis(1400));
@@ -398,98 +396,11 @@ class SimulationScenarioIoHelper {
     }
 
     void handleSaveScenario() {
-        String desc = panel.areaDescription.getText() != null ? panel.areaDescription.getText().trim() : "";
-        if (desc.isEmpty()) {
-            ThemeManager.createAlert(
-                Alert.AlertType.WARNING,
-                "Description required: Please enter a scientific description in the 'Scientific Scenario Description' area before saving the preset."
-            ).show();
-            return;
-        }
-
-        String name = panel.comboMeta.getValue() != null ? panel.comboMeta.getValue().replace("🔬 ", "").replace("⚔️ ", "").replace("📌 ", "") : "New Scenario";
-        TextInputDialog dialog = ThemeManager.createTextInputDialog(name);
-        dialog.setTitle("Save Scenario Preset");
-        dialog.setHeaderText("Scenario preset name (Description captured):");
-        dialog.showAndWait().ifPresent(scenarioName -> {
-            if (!scenarioName.trim().isEmpty()) {
-                String clean = scenarioName.trim();
-                String itemTitle = "📌 " + clean;
-                if ((panel.scenarioPresetManager != null && panel.scenarioPresetManager.getPresetNames().contains(clean)) || panel.comboMeta.getItems().contains(itemTitle)) {
-                    Alert confirmAlert = ThemeManager.createAlert(
-                        Alert.AlertType.CONFIRMATION,
-                        "Scenario preset '" + clean + "' already exists.\n\nDo you want to overwrite it with current configuration?"
-                    );
-                    confirmAlert.setTitle("Overwrite Existing Scenario");
-                    confirmAlert.setHeaderText("Overwrite Confirmation");
-                    Optional<ButtonType> res = confirmAlert.showAndWait();
-                    if (res.isEmpty() || res.get() != ButtonType.OK) {
-                        return;
-                    }
-                }
-
-                Scenario sc = new Scenario(clean.toLowerCase().replace(" ", "_"), clean, desc);
-                sc.setAuthor(panel.getPlayerAlias());
-                sc.setMasterSeed(panel.getMasterSeed());
-                sc.setBiomeName(panel.getSelectedWorld());
-                sc.setMaxDurationValue(panel.maxDurationSpinner.getValue() != null ? panel.maxDurationSpinner.getValue() : 100.0);
-                sc.setMaxDurationUnit(panel.durationUnitCombo.getValue() != null ? panel.durationUnitCombo.getValue() : "Days (d)");
-                sc.setMinPopulationStopThreshold(panel.getMinPopulationStopThreshold());
-                sc.setSimulationStepSeconds(panel.getSimulationStepSeconds());
-                sc.setMultiplayerOnly(panel.chkMultiplayerOnly.isSelected());
-                sc.setRequiredPlayerCount(panel.spinRequiredPlayers.getValue() != null ? panel.spinRequiredPlayers.getValue() : 1);
-                sc.setGridTilesX(panel.spinGridTilesX.getValue() != null ? panel.spinGridTilesX.getValue() : 1);
-                sc.setGridTilesY(panel.spinGridTilesY.getValue() != null ? panel.spinGridTilesY.getValue() : 1);
-                for (SpeciesConfigCard card : panel.speciesCardList) {
-                    String spName = card.getSpeciesName();
-                    sc.addColony(new Scenario.ColonySetup(spName, spName.toLowerCase().replace(" ", "_"), card.getQueenCount(), card.getWorkerCount(), card.getSoldierCount(), card.getInitialFood(), Map.of()));
-                    if (panel.speciesPresetManager != null) {
-                        DefaultSpecies sp = panel.speciesPresetManager.getPresetOrFallback(spName);
-                        if (sp != null) {
-                            sc.embedSpecies(sp);
-                        }
-                    }
-                }
-
-                if (panel.worldPresetManager != null && panel.getSelectedWorld() != null && panel.worldPresetManager.contains(panel.getSelectedWorld())) {
-                    sc.setEmbeddedWorldConfig(panel.worldPresetManager.get(panel.getSelectedWorld()));
-                }
-                if (panel.weatherPresetManager != null && panel.getSelectedWeather() != null && panel.weatherPresetManager.contains(panel.getSelectedWeather())) {
-                    sc.setEmbeddedClimateConfig(panel.weatherPresetManager.get(panel.getSelectedWeather()));
-                }
-
-                panel.scenarioPresetManager.save(sc);
-
-                if (!panel.comboMeta.getItems().contains(itemTitle)) panel.comboMeta.getItems().add(itemTitle);
-                panel.comboMeta.getSelectionModel().select(itemTitle);
-                NotificationOverlay.show(panel, "Scenario preset saved: " + clean + " (v" + sc.getVersion() + ")", NotificationOverlay.NotificationType.SUCCESS);
-            }
-        });
+        ScenarioPresetActionHelper.handleSaveScenario(panel);
     }
 
     void handleDeleteScenario() {
-        String selected = panel.comboMeta.getValue();
-        if (selected == null || selected.isEmpty()) return;
-        String clean = selected.replace("🔬 ", "").replace("⚔️ ", "").replace("📌 ", "").trim();
-        Alert alert = ThemeManager.createAlert(
-            Alert.AlertType.CONFIRMATION,
-            "Are you sure you want to delete scenario preset '" + selected + "'?"
-        );
-        alert.showAndWait().ifPresent(btn -> {
-            if (btn == ButtonType.OK) {
-                boolean deleted = panel.scenarioPresetManager.delete(clean);
-                if (deleted) {
-                    panel.comboMeta.getItems().remove(selected);
-                    if (!panel.comboMeta.getItems().isEmpty()) panel.comboMeta.getSelectionModel().selectFirst();
-                    NotificationOverlay.show(panel, "Scenario deleted: " + clean, NotificationOverlay.NotificationType.INFO);
-                } else {
-                    ThemeManager.createAlert(
-                        Alert.AlertType.INFORMATION,
-                        "Built-in Academic or Multiplayer reference scenarios are protected and cannot be deleted."
-                    ).show();
-                }
-            }
-        });
+        ScenarioPresetActionHelper.handleDeleteScenario(panel);
     }
 
     void handleExportScenario() {

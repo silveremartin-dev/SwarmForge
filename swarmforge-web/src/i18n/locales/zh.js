@@ -1,4 +1,4 @@
-﻿export const zh = {
+export const zh = {
         // Navigation & Header
         appTitle: 'SwarmForge Studio',
         tagline: '群体超个体与蚁群模拟引擎',
