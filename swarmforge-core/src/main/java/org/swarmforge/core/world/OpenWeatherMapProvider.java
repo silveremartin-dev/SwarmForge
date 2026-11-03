@@ -101,7 +101,7 @@ public class OpenWeatherMapProvider implements WeatherProvider {
             float rainfall = 0f;
             try {
                 rainfall = extractFloat(json, "\"1h\":([-\\d.]+)");
-            } catch (Exception ignored) {
+            } catch (Exception ignored) { // Rainfall field optional when no rain
             }
 
             String condition = extractString(json, "\"description\":\"([^\"]+)\"");

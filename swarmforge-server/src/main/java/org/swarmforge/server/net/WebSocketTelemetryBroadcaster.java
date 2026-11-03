@@ -43,6 +43,7 @@ public final class WebSocketTelemetryBroadcaster {
                     broadcastUpdates(server.getConnections(), simulationManager, clientSubscriptions, printer);
                     Thread.sleep(50); // 20 FPS
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     break;
                 } catch (Exception e) {
                     LOG.error("Broadcast error", e);

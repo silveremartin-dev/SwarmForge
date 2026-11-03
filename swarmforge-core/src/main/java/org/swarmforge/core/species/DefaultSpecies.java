@@ -126,7 +126,6 @@ public class DefaultSpecies extends SpeciesCapabilities {
     // Default constructor for Jackson
     public DefaultSpecies() {
     }
-
     public DefaultSpecies(String genus, InsectOrder order) {
         applyTaxonomicArchetype(genus, order);
     }
@@ -139,7 +138,9 @@ public class DefaultSpecies extends SpeciesCapabilities {
         if (insectType != null) {
             try {
                 order = InsectOrder.valueOf(insectType.toUpperCase());
-            } catch (Exception ignored) {}
+            } catch (IllegalArgumentException ignored) {
+                // Heuristic fallback to genus and taxonomic name matching below
+            }
         }
         String g = this.genus;
         if ((g == null || g.isBlank()) && scientificName != null && !scientificName.isBlank()) {
@@ -156,24 +157,16 @@ public class DefaultSpecies extends SpeciesCapabilities {
     public void applyTaxonomicArchetype(String genus, InsectOrder order) {
         TaxonomicArchetypeApplier.apply(this, genus, order);
     }
-
-    public String getPresetName() {
-        return presetName;
-    }
-
+    public String getPresetName() { return presetName; }
     public void setPresetName(String presetName) { this.presetName = presetName; }
-
     @Override public String getScientificName() { return scientificName; }
-
     public void setScientificName(String scientificName) {
         this.scientificName = scientificName;
         if (scientificName != null && scientificName.contains(" ")) {
             this.genus = scientificName.split(" ")[0];
         }
     }
-
-    @Override
-    public String getGenus() {
+    @Override public String getGenus() {
         if (genus == null || genus.trim().isEmpty()) {
             if (scientificName != null && scientificName.contains(" ")) {
                 return scientificName.split(" ")[0];
@@ -182,229 +175,97 @@ public class DefaultSpecies extends SpeciesCapabilities {
         }
         return genus;
     }
-
     public void setGenus(String genus) { this.genus = genus; }
-
     @Override public String getCommonName() { return commonName; }
-
     public void setCommonName(String commonName) { this.commonName = commonName; }
-
-    public String getDescription() {
-        return description;
-    }
-
+    public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-
-    public String getInsectType() {
-        return insectType;
-    }
-
+    public String getInsectType() { return insectType; }
     public void setInsectType(String insectType) { this.insectType = insectType; }
-
-    public String getQueenCountMode() {
-        return queenCountMode != null ? queenCountMode : "MONOGYNE";
-    }
-
+    public String getQueenCountMode() { return queenCountMode != null ? queenCountMode : "MONOGYNE"; }
     public void setQueenCountMode(String queenCountMode) { this.queenCountMode = queenCountMode; }
-
-    public int getQueenCount() {
-        return queenCount;
-    }
-
+    public int getQueenCount() { return queenCount; }
     public void setQueenCount(int queenCount) { this.queenCount = queenCount; }
-
     @Override public int getQueenLifespan() { return queenLifespan; }
-
     public void setQueenLifespan(int queenLifespan) { this.queenLifespan = queenLifespan; }
-
-    public boolean isHasKing() {
-        return hasKing;
-    }
-
+    public boolean isHasKing() { return hasKing; }
     public void setHasKing(boolean hasKing) { this.hasKing = hasKing; }
-
-    public int getKingLifespan() {
-        return kingLifespan;
-    }
-
+    public int getKingLifespan() { return kingLifespan; }
     public void setKingLifespan(int kingLifespan) { this.kingLifespan = kingLifespan; }
-
-    public float getQueenEggLayingRate() {
-        return queenEggLayingRate;
-    }
-
+    public float getQueenEggLayingRate() { return queenEggLayingRate; }
     public void setQueenEggLayingRate(float queenEggLayingRate) { this.queenEggLayingRate = queenEggLayingRate; }
-
-    public String getNuptialFlightType() {
-        return nuptialFlightType;
-    }
-
+    public String getNuptialFlightType() { return nuptialFlightType; }
     public void setNuptialFlightType(String nuptialFlightType) { this.nuptialFlightType = nuptialFlightType; }
-
-    public int getEggStageDuration() {
-        return eggStageDuration;
-    }
-
+    public int getEggStageDuration() { return eggStageDuration; }
     public void setEggStageDuration(int eggStageDuration) { this.eggStageDuration = eggStageDuration; }
-
-    public int getLarvaStageDuration() {
-        return larvaStageDuration;
-    }
-
+    public int getLarvaStageDuration() { return larvaStageDuration; }
     public void setLarvaStageDuration(int larvaStageDuration) { this.larvaStageDuration = larvaStageDuration; }
-
-    public int getPupaStageDuration() {
-        return pupaStageDuration;
-    }
-
+    public int getPupaStageDuration() { return pupaStageDuration; }
     public void setPupaStageDuration(int pupaStageDuration) { this.pupaStageDuration = pupaStageDuration; }
-
-    public String getLarvaDietRequirement() {
-        return larvaDietRequirement;
-    }
-
+    public String getLarvaDietRequirement() { return larvaDietRequirement; }
     public void setLarvaDietRequirement(String larvaDietRequirement) { this.larvaDietRequirement = larvaDietRequirement; }
-
     @Override public int getWorkerLifespan() { return workerLifespan; }
-
     public void setWorkerLifespan(int workerLifespan) { this.workerLifespan = workerLifespan; }
-
     @Override public float getWorkerSpeed() { return workerSpeed; }
-
     public void setWorkerSpeed(float workerSpeed) {
         this.workerSpeed = workerSpeed;
         if (this.walkingSpeed <= 0) this.walkingSpeed = workerSpeed;
         if (this.runningSpeed <= 0) this.runningSpeed = workerSpeed * 1.65f;
     }
-
     @Override public float getWalkingSpeed() { return walkingSpeed > 0 ? walkingSpeed : workerSpeed; }
-
     public void setWalkingSpeed(float walkingSpeed) {
         this.walkingSpeed = walkingSpeed;
         this.workerSpeed = walkingSpeed;
     }
-
     @Override public float getRunningSpeed() { return runningSpeed > 0 ? runningSpeed : (getWalkingSpeed() * 1.65f); }
-
     public void setRunningSpeed(float runningSpeed) { this.runningSpeed = runningSpeed; }
-
     @Override public float getFlyingSpeed() { return flyingSpeed > 0 ? flyingSpeed : (isWorkersCanFly() ? 4.5f : getWalkingSpeed() * 2.5f); }
-
     public void setFlyingSpeed(float flyingSpeed) { this.flyingSpeed = flyingSpeed; }
-
     @Override public float getViewDistance() { return viewDistance; }
-
     public void setViewDistance(float viewDistance) { this.viewDistance = viewDistance; }
-
     @Override public int getTypicalColonySize() { return typicalColonySize; }
-
     public void setTypicalColonySize(int typicalColonySize) { this.typicalColonySize = typicalColonySize; }
-
     @Override public boolean formsMegaColonies() { return formsMegaColonies; }
-
     public void setFormsMegaColonies(boolean formsMegaColonies) { this.formsMegaColonies = formsMegaColonies; }
-
     @Override public float getAggression() { return aggression; }
-
     public void setAggression(float aggression) { this.aggression = aggression; }
-
     @Override public float getMetabolism() { return metabolism; }
-
     public void setMetabolism(float metabolism) { this.metabolism = metabolism; }
-
     @Override public float getStrength() { return strength; }
-
     public void setStrength(float strength) { this.strength = strength; }
-
-    public boolean isWorkersCanFly() {
-        return workersCanFly;
-    }
-
+    public boolean isWorkersCanFly() { return workersCanFly; }
     public void setWorkersCanFly(boolean workersCanFly) { this.workersCanFly = workersCanFly; }
-
-    public String getPrimaryDiet() {
-        return primaryDiet != null ? primaryDiet : "SUGARS_NECTAR";
-    }
-
+    public String getPrimaryDiet() { return primaryDiet != null ? primaryDiet : "SUGARS_NECTAR"; }
     public void setPrimaryDiet(String primaryDiet) { this.primaryDiet = primaryDiet; }
-
-    public String getSecondaryDiet() {
-        return secondaryDiet != null ? secondaryDiet : "INSECTS_MEAT";
-    }
-
+    public String getSecondaryDiet() { return secondaryDiet != null ? secondaryDiet : "INSECTS_MEAT"; }
     public void setSecondaryDiet(String secondaryDiet) { this.secondaryDiet = secondaryDiet; }
-
-    public float getDailyFoodConsumption() {
-        return dailyFoodConsumption;
-    }
-
+    public float getDailyFoodConsumption() { return dailyFoodConsumption; }
     public void setDailyFoodConsumption(float dailyFoodConsumption) { this.dailyFoodConsumption = dailyFoodConsumption; }
-
-    public float getWaterRequirement() {
-        return waterRequirement;
-    }
-
+    public float getWaterRequirement() { return waterRequirement; }
     public void setWaterRequirement(float waterRequirement) { this.waterRequirement = waterRequirement; }
-
-    public String getNestType() {
-        return nestType != null ? nestType : "UNDERGROUND_BURROW";
-    }
-
+    public String getNestType() { return nestType != null ? nestType : "UNDERGROUND_BURROW"; }
     public void setNestType(String nestType) { this.nestType = nestType; }
-
-    public float getOptimalTempCelsius() {
-        return optimalTempCelsius;
-    }
-
+    public float getOptimalTempCelsius() { return optimalTempCelsius; }
     public void setOptimalTempCelsius(float optimalTempCelsius) { this.optimalTempCelsius = optimalTempCelsius; }
-
-    public float getMinTempCelsius() {
-        return minTempCelsius;
-    }
-
+    public float getMinTempCelsius() { return minTempCelsius; }
     public void setMinTempCelsius(float minTempCelsius) { this.minTempCelsius = minTempCelsius; }
-
-    public float getMaxTempCelsius() {
-        return maxTempCelsius;
-    }
-
+    public float getMaxTempCelsius() { return maxTempCelsius; }
     public void setMaxTempCelsius(float maxTempCelsius) { this.maxTempCelsius = maxTempCelsius; }
-
     @Override public float getOptimalHumidityPercent() { return optimalHumidityPercent; }
-
     public void setOptimalHumidityPercent(float optimalHumidityPercent) { this.optimalHumidityPercent = optimalHumidityPercent; }
-
     @Override public float getMinHumidityPercent() { return minHumidityPercent; }
-
     public void setMinHumidityPercent(float minHumidityPercent) { this.minHumidityPercent = minHumidityPercent; }
-
     @Override public float getMaxHumidityPercent() { return maxHumidityPercent; }
-
     public void setMaxHumidityPercent(float maxHumidityPercent) { this.maxHumidityPercent = maxHumidityPercent; }
-
-    public float getTerritoriality() {
-        return territoriality;
-    }
-
+    public float getTerritoriality() { return territoriality; }
     public void setTerritoriality(float territoriality) { this.territoriality = territoriality; }
-
-    public String getVenomType() {
-        return venomType != null ? venomType : "NONE";
-    }
-
+    public String getVenomType() { return venomType != null ? venomType : "NONE"; }
     public void setVenomType(String venomType) { this.venomType = venomType; }
-
-    public List<CasteTemplate> getCasteTemplates() {
-        return casteTemplates;
-    }
-
+    public List<CasteTemplate> getCasteTemplates() { return casteTemplates; }
     public void setCasteTemplates(List<CasteTemplate> casteTemplates) { this.casteTemplates = casteTemplates; }
-
     @Override
     @JsonIgnore
-    public List<CasteTemplate> getCastes() {
-        return casteTemplates;
-    }
+    public List<CasteTemplate> getCastes() { return casteTemplates; }
 
     /**
      * Calculates the average body length (mm) across defined castes.
@@ -435,9 +296,7 @@ public class DefaultSpecies extends SpeciesCapabilities {
         }
         return maxMinDiameter;
     }
-
-    @Override
-    public InsectOrder getInsectOrder() {
+    @Override public InsectOrder getInsectOrder() {
         if (insectType == null) return InsectOrder.ANT;
         String type = insectType.toUpperCase().trim();
         if (type.contains("BEE") || type.contains("APIDAE")) return InsectOrder.BEE;
@@ -448,9 +307,7 @@ public class DefaultSpecies extends SpeciesCapabilities {
         if (type.contains("BEETLE") || type.contains("COLEOPTERA")) return InsectOrder.BEETLE;
         return InsectOrder.ANT;
     }
-
-    @Override
-    public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
+    @Override public java.util.Set<org.swarmforge.core.domain.ResourceType> getForagingTypes() {
         java.util.Set<org.swarmforge.core.domain.ResourceType> set = new java.util.HashSet<>();
         addDietResourceType(set, primaryDiet);
         addDietResourceType(set, secondaryDiet);
@@ -482,136 +339,79 @@ public class DefaultSpecies extends SpeciesCapabilities {
             }
         }
     }
-
     @Override public SpeciesCategory getCategory() { return category != null ? category : SpeciesCategory.EUSOCIAL_PRIMARY; }
-
     public void setCategory(SpeciesCategory category) { this.category = category; }
-
     public float getProteinThresholdMinor() { return proteinThresholdMinor; }
     public void setProteinThresholdMinor(float proteinThresholdMinor) { this.proteinThresholdMinor = proteinThresholdMinor; }
-
     public float getProteinThresholdMajor() { return proteinThresholdMajor; }
     public void setProteinThresholdMajor(float proteinThresholdMajor) { this.proteinThresholdMajor = proteinThresholdMajor; }
-
     public float getProteinThresholdSoldier() { return proteinThresholdSoldier; }
     public void setProteinThresholdSoldier(float proteinThresholdSoldier) { this.proteinThresholdSoldier = proteinThresholdSoldier; }
-
     public float getProteinThresholdQueen() { return proteinThresholdQueen; }
     public void setProteinThresholdQueen(float proteinThresholdQueen) { this.proteinThresholdQueen = proteinThresholdQueen; }
-
     public float getQueenPheromoneInhibitionFactor() { return queenPheromoneInhibitionFactor; }
     public void setQueenPheromoneInhibitionFactor(float queenPheromoneInhibitionFactor) { this.queenPheromoneInhibitionFactor = queenPheromoneInhibitionFactor; }
-
     public boolean isHaplodiploidyEnabled() { return haplodiploidyEnabled; }
     public void setHaplodiploidyEnabled(boolean haplodiploidyEnabled) { this.haplodiploidyEnabled = haplodiploidyEnabled; }
-
     public float getPathogenResistance() { return pathogenResistance; }
     public void setPathogenResistance(float pathogenResistance) { this.pathogenResistance = pathogenResistance; }
-
     public float getGroomingDefenseEfficacy() { return groomingDefenseEfficacy; }
     public void setGroomingDefenseEfficacy(float groomingDefenseEfficacy) { this.groomingDefenseEfficacy = groomingDefenseEfficacy; }
-
-    @Override
-    public boolean hasMagnetoreception() { return hasMagnetoreception; }
+    @Override public boolean hasMagnetoreception() { return hasMagnetoreception; }
     public void setHasMagnetoreception(boolean hasMagnetoreception) { this.hasMagnetoreception = hasMagnetoreception; }
-
-    @Override
-    public float getMagnetoreceptionSensitivity() { return magnetoreceptionSensitivity; }
+    @Override public float getMagnetoreceptionSensitivity() { return magnetoreceptionSensitivity; }
     public void setMagnetoreceptionSensitivity(float magnetoreceptionSensitivity) { this.magnetoreceptionSensitivity = magnetoreceptionSensitivity; }
-
-    @Override
-    public float getThermoreceptionSensitivity() { return thermoreceptionSensitivity; }
+    @Override public float getThermoreceptionSensitivity() { return thermoreceptionSensitivity; }
     public void setThermoreceptionSensitivity(float thermoreceptionSensitivity) { this.thermoreceptionSensitivity = thermoreceptionSensitivity; }
-
-    @Override
-    public float getGasSensitivityCo2Ppm() { return gasSensitivityCo2Ppm; }
+    @Override public float getGasSensitivityCo2Ppm() { return gasSensitivityCo2Ppm; }
     public void setGasSensitivityCo2Ppm(float gasSensitivityCo2Ppm) { this.gasSensitivityCo2Ppm = gasSensitivityCo2Ppm; }
-
-    @Override
-    public float getVisualAcuity() { return visualAcuity; }
+    @Override public float getVisualAcuity() { return visualAcuity; }
     public void setVisualAcuity(float visualAcuity) { this.visualAcuity = visualAcuity; }
-
-    @Override
-    public float getMinLightLevelThreshold() { return minLightLevelThreshold; }
+    @Override public float getMinLightLevelThreshold() { return minLightLevelThreshold; }
     public void setMinLightLevelThreshold(float minLightLevelThreshold) { this.minLightLevelThreshold = minLightLevelThreshold; }
-
-    @Override
-    public boolean hasSubstrateVibrationSensing() { return hasSubstrateVibrationSensing; }
+    @Override public boolean hasSubstrateVibrationSensing() { return hasSubstrateVibrationSensing; }
     public void setHasSubstrateVibrationSensing(boolean hasSubstrateVibrationSensing) { this.hasSubstrateVibrationSensing = hasSubstrateVibrationSensing; }
-
-    @Override
-    public float getVibrationSensitivityDb() { return vibrationSensitivityDb; }
+    @Override public float getVibrationSensitivityDb() { return vibrationSensitivityDb; }
     public void setVibrationSensitivityDb(float vibrationSensitivityDb) { this.vibrationSensitivityDb = vibrationSensitivityDb; }
-
-    @Override
-    public boolean hasHygroreception() { return hasHygroreception; }
+    @Override public boolean hasHygroreception() { return hasHygroreception; }
     public void setHasHygroreception(boolean hasHygroreception) { this.hasHygroreception = hasHygroreception; }
-
-    @Override
-    public float getHygroreceptionSensitivityPercent() { return hygroreceptionSensitivityPercent; }
+    @Override public float getHygroreceptionSensitivityPercent() { return hygroreceptionSensitivityPercent; }
     public void setHygroreceptionSensitivityPercent(float hygroreceptionSensitivityPercent) { this.hygroreceptionSensitivityPercent = hygroreceptionSensitivityPercent; }
-
-    @Override
-    public boolean hasElectrosensing() { return hasElectrosensing; }
+    @Override public boolean hasElectrosensing() { return hasElectrosensing; }
     public void setHasElectrosensing(boolean hasElectrosensing) { this.hasElectrosensing = hasElectrosensing; }
-
-    @Override
-    public float getElectroceptionSensitivityVolts() { return electroceptionSensitivityVolts; }
+    @Override public float getElectroceptionSensitivityVolts() { return electroceptionSensitivityVolts; }
     public void setElectroceptionSensitivityVolts(float electroceptionSensitivityVolts) { this.electroceptionSensitivityVolts = electroceptionSensitivityVolts; }
-
-    @Override
-    public boolean hasPolarizedLightNavigation() { return hasPolarizedLightNavigation; }
+    @Override public boolean hasPolarizedLightNavigation() { return hasPolarizedLightNavigation; }
     public void setHasPolarizedLightNavigation(boolean hasPolarizedLightNavigation) { this.hasPolarizedLightNavigation = hasPolarizedLightNavigation; }
-
-    @Override
-    public float getWingbeatFrequencyHz() { return wingbeatFrequencyHz; }
+    @Override public float getWingbeatFrequencyHz() { return wingbeatFrequencyHz; }
     public void setWingbeatFrequencyHz(float wingbeatFrequencyHz) { this.wingbeatFrequencyHz = wingbeatFrequencyHz; }
-
-    @Override
-    public boolean hasHoveringCapability() { return hasHoveringCapability; }
+    @Override public boolean hasHoveringCapability() { return hasHoveringCapability; }
     public void setHasHoveringCapability(boolean hasHoveringCapability) { this.hasHoveringCapability = hasHoveringCapability; }
-
-    @Override
-    public float getMaxCarryingPayloadRatio() { return maxCarryingPayloadRatio; }
+    @Override public float getMaxCarryingPayloadRatio() { return maxCarryingPayloadRatio; }
     public void setMaxCarryingPayloadRatio(float maxCarryingPayloadRatio) { this.maxCarryingPayloadRatio = maxCarryingPayloadRatio; }
-
-    @Override
-    public float getMandibularBitingForceMPa() { return mandibularBitingForceMPa; }
+    @Override public float getMandibularBitingForceMPa() { return mandibularBitingForceMPa; }
     public void setMandibularBitingForceMPa(float mandibularBitingForceMPa) { this.mandibularBitingForceMPa = mandibularBitingForceMPa; }
-
-    @Override
-    public boolean hasAutothysis() { return hasAutothysis; }
+    @Override public boolean hasAutothysis() { return hasAutothysis; }
     public void setHasAutothysis(boolean hasAutothysis) { this.hasAutothysis = hasAutothysis; }
-
-    @Override
-    public boolean hasSubstrateAdhesionArolia() { return hasSubstrateAdhesionArolia; }
+    @Override public boolean hasSubstrateAdhesionArolia() { return hasSubstrateAdhesionArolia; }
     public void setHasSubstrateAdhesionArolia(boolean hasSubstrateAdhesionArolia) { this.hasSubstrateAdhesionArolia = hasSubstrateAdhesionArolia; }
-
     public void setCanDeliverSalivaryLarvalPap(boolean val) { setCanDeliverStenogastrinePapFood(val); }
-
     @Override public float getOvipositionRate() { return queenEggLayingRate; }
     public void setOvipositionRate(float rate) { this.queenEggLayingRate = rate; }
-
     @Override public BitSet getCapabilitiesBitSet() { return capabilitiesBitSet; }
 
     // --- Dynamic Plugin Extensibility Attributes ---
     private java.util.Map<String, Object> customAttributes = new java.util.HashMap<>();
-
-    @Override
-    public java.util.Map<String, Object> getCustomAttributes() { return customAttributes; }
+    @Override public java.util.Map<String, Object> getCustomAttributes() { return customAttributes; }
     public void setCustomAttributes(java.util.Map<String, Object> customAttributes) { this.customAttributes = customAttributes != null ? customAttributes : new java.util.HashMap<>(); }
-
     public void setCustomAttribute(String key, Object value) {
         if (this.customAttributes == null) this.customAttributes = new java.util.HashMap<>();
         this.customAttributes.put(key, value);
     }
-
-    @Override
-    public Object getCustomAttribute(String key, Object defaultValue) {
+    @Override public Object getCustomAttribute(String key, Object defaultValue) {
         if (customAttributes == null) return defaultValue;
         return customAttributes.getOrDefault(key, defaultValue);
     }
-
     public String getId() {
         if (id == null || id.isEmpty()) {
             String base = (scientificName != null && !scientificName.isEmpty()) ? scientificName : presetName;
@@ -620,19 +420,14 @@ public class DefaultSpecies extends SpeciesCapabilities {
         return id;
     }
     public void setId(String id) { this.id = id; }
-
     public String getAuthor() { return author; }
     public void setAuthor(String author) { this.author = author != null ? author : "Custom"; }
-
     public int getVersion() { return version; }
     public void setVersion(int version) { this.version = Math.max(1, version); }
-
     public long getRevisionTimestamp() { return revisionTimestamp; }
     public void setRevisionTimestamp(long revisionTimestamp) { this.revisionTimestamp = revisionTimestamp; }
-
     public boolean isBuiltIn() { return builtIn; }
     public void setBuiltIn(boolean builtIn) { this.builtIn = builtIn; }
-
     public String getContentChecksum() {
         if (contentChecksum == null || contentChecksum.isEmpty()) {
             return calculateChecksum();
@@ -640,7 +435,6 @@ public class DefaultSpecies extends SpeciesCapabilities {
         return contentChecksum;
     }
     public void setContentChecksum(String contentChecksum) { this.contentChecksum = contentChecksum; }
-
     public String calculateChecksum() {
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
@@ -669,7 +463,6 @@ public class DefaultSpecies extends SpeciesCapabilities {
             return this.contentChecksum;
         }
     }
-
     public boolean isContentEqualTo(DefaultSpecies other) {
         if (other == null) return false;
         return getContentChecksum().equals(other.getContentChecksum());

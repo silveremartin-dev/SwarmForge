@@ -18,6 +18,9 @@ import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
 
 import java.util.*;
 
+/**
+ * UI Card component presenting species configuration parameters, caste populations, and AI reasoning profiles.
+ */
 public class SpeciesConfigCard {
     public static void selectComboIfPresent(ComboBox<String> combo, String val) {
         if (val == null || combo == null) return;
@@ -436,30 +439,10 @@ public class SpeciesConfigCard {
         private void applyDemographicsFromStage(int stageIndex) {
             if (queenSpinner == null || workerSpinner == null || soldierSpinner == null || broodSpinner == null) return;
             switch (stageIndex) {
-                case 0 -> { // Claustral Founding Cell
-                    queenSpinner.getValueFactory().setValue(1);
-                    workerSpinner.getValueFactory().setValue(0);
-                    soldierSpinner.getValueFactory().setValue(0);
-                    broodSpinner.getValueFactory().setValue(10);
-                }
-                case 1 -> { // Incipient / Young Nest
-                    queenSpinner.getValueFactory().setValue(1);
-                    workerSpinner.getValueFactory().setValue(100);
-                    soldierSpinner.getValueFactory().setValue(10);
-                    broodSpinner.getValueFactory().setValue(50);
-                }
-                case 3 -> { // Complex Supercolony Network
-                    queenSpinner.getValueFactory().setValue(50);
-                    workerSpinner.getValueFactory().setValue(500000);
-                    soldierSpinner.getValueFactory().setValue(50000);
-                    broodSpinner.getValueFactory().setValue(200000);
-                }
-                default -> { // Established / Mature Colony (Stage 2)
-                    queenSpinner.getValueFactory().setValue(1);
-                    workerSpinner.getValueFactory().setValue(5000);
-                    soldierSpinner.getValueFactory().setValue(500);
-                    broodSpinner.getValueFactory().setValue(2500);
-                }
+                case 0 -> { queenSpinner.getValueFactory().setValue(1); workerSpinner.getValueFactory().setValue(0); soldierSpinner.getValueFactory().setValue(0); broodSpinner.getValueFactory().setValue(10); }
+                case 1 -> { queenSpinner.getValueFactory().setValue(1); workerSpinner.getValueFactory().setValue(100); soldierSpinner.getValueFactory().setValue(10); broodSpinner.getValueFactory().setValue(50); }
+                case 3 -> { queenSpinner.getValueFactory().setValue(50); workerSpinner.getValueFactory().setValue(500000); soldierSpinner.getValueFactory().setValue(50000); broodSpinner.getValueFactory().setValue(200000); }
+                default -> { queenSpinner.getValueFactory().setValue(1); workerSpinner.getValueFactory().setValue(5000); soldierSpinner.getValueFactory().setValue(500); broodSpinner.getValueFactory().setValue(2500); }
             }
         }
 
@@ -469,19 +452,12 @@ public class SpeciesConfigCard {
         public String getNestStage() { return nestStageCombo.getValue(); }
         public int getNestStageIndex() { return nestStageCombo.getSelectionModel().getSelectedIndex(); }
         public void setNestType(String nestType) {
-            if (nestTypeCombo.getItems().contains(nestType)) {
-                nestTypeCombo.getSelectionModel().select(nestType);
-            } else if (nestType != null) {
-                nestTypeCombo.getItems().add(nestType);
-                nestTypeCombo.getSelectionModel().select(nestType);
-            }
+            if (nestTypeCombo.getItems().contains(nestType)) nestTypeCombo.getSelectionModel().select(nestType);
+            else if (nestType != null) { nestTypeCombo.getItems().add(nestType); nestTypeCombo.getSelectionModel().select(nestType); }
             triggerChange();
         }
         public void setNestStageIndex(int index) {
-            if (index >= 0 && index < nestStageCombo.getItems().size()) {
-                nestStageCombo.getSelectionModel().select(index);
-                applyDemographicsFromStage(index);
-            }
+            if (index >= 0 && index < nestStageCombo.getItems().size()) { nestStageCombo.getSelectionModel().select(index); applyDemographicsFromStage(index); }
             triggerChange();
         }
         public int getQueenCount() { return queenSpinner.getValue(); }
@@ -500,15 +476,7 @@ public class SpeciesConfigCard {
 
         public List<AccessoryConfigSnapshot> getAccessorySnapshots() {
             List<AccessoryConfigSnapshot> list = new ArrayList<>();
-            for (AccessoryRowControls ctrl : accessoryControlsList) {
-                list.add(new AccessoryConfigSnapshot(
-                    ctrl.name,
-                    ctrl.role,
-                    ctrl.chk.isSelected(),
-                    ctrl.countSpinner.getValue(),
-                    ctrl.strategyCombo.getValue()
-                ));
-            }
+            for (AccessoryRowControls ctrl : accessoryControlsList) list.add(new AccessoryConfigSnapshot(ctrl.name, ctrl.role, ctrl.chk.isSelected(), ctrl.countSpinner.getValue(), ctrl.strategyCombo.getValue()));
             return list;
         }
 
@@ -519,9 +487,7 @@ public class SpeciesConfigCard {
                     if (ctrl.name.equalsIgnoreCase(sSnap.name())) {
                         ctrl.chk.setSelected(sSnap.enabled());
                         ctrl.countSpinner.getValueFactory().setValue(sSnap.initialCount());
-                        if (ctrl.strategyCombo.getItems().contains(sSnap.renewalStrategy())) {
-                            ctrl.strategyCombo.getSelectionModel().select(sSnap.renewalStrategy());
-                        }
+                        if (ctrl.strategyCombo.getItems().contains(sSnap.renewalStrategy())) ctrl.strategyCombo.getSelectionModel().select(sSnap.renewalStrategy());
                     }
                 }
             }
@@ -529,29 +495,17 @@ public class SpeciesConfigCard {
         }
 
         public boolean hasActivePreyAccessory() {
-            for (AccessoryRowControls ctrl : accessoryControlsList) {
-                if ("PROIE".equals(ctrl.role) && ctrl.chk.isSelected()) {
-                    return true;
-                }
-            }
+            for (AccessoryRowControls ctrl : accessoryControlsList) if ("PROIE".equals(ctrl.role) && ctrl.chk.isSelected()) return true;
             return false;
         }
 
         public boolean hasActivePredatorAccessory() {
-            for (AccessoryRowControls ctrl : accessoryControlsList) {
-                if ("PRÃ‰DATEUR".equals(ctrl.role) && ctrl.chk.isSelected()) {
-                    return true;
-                }
-            }
+            for (AccessoryRowControls ctrl : accessoryControlsList) if (ctrl.role != null && ctrl.role.contains("PR") && ctrl.chk.isSelected()) return true;
             return false;
         }
 
         public void enableAccessorySpeciesRole(String role) {
-            for (AccessoryRowControls ctrl : accessoryControlsList) {
-                if (role.equals(ctrl.role)) {
-                    ctrl.chk.setSelected(true);
-                }
-            }
+            for (AccessoryRowControls ctrl : accessoryControlsList) if (role.equals(ctrl.role)) ctrl.chk.setSelected(true);
             triggerChange();
         }
 
@@ -559,10 +513,7 @@ public class SpeciesConfigCard {
         public void setNestPlacement(String placement) {
             selectComboIfPresent(nestPlacementCombo, placement);
             boolean manual = nestPlacementCombo.getSelectionModel().getSelectedIndex() == 1;
-            if (manualPosBox != null) {
-                manualPosBox.setVisible(manual);
-                manualPosBox.setManaged(manual);
-            }
+            if (manualPosBox != null) { manualPosBox.setVisible(manual); manualPosBox.setManaged(manual); }
             triggerChange();
         }
         public double getCustomX() { return posXSpinner.getValue(); }
@@ -570,155 +521,23 @@ public class SpeciesConfigCard {
         public double getCustomZ() { return posZSpinner.getValue(); }
         public void setCustomZ(double z) { posZSpinner.getValueFactory().setValue(z); triggerChange(); }
         public String getNestRelation() { return nestRelationCombo.getValue(); }
-        public void setNestRelation(String relation) {
-            selectComboIfPresent(nestRelationCombo, relation);
-            triggerChange();
-        }
+        public void setNestRelation(String relation) { selectComboIfPresent(nestRelationCombo, relation); triggerChange(); }
 
         public SpeciesConfigSnapshot getSnapshot() {
-            return new SpeciesConfigSnapshot(
-                speciesName,
-                getNestType(),
-                getQueenCount(),
-                getWorkerCount(),
-                getSoldierCount(),
-                getBroodCount(),
-                getInitialFood(),
-                getWorkerEngine(),
-                getSoldierEngine(),
-                getQueenEngine(),
-                getAccessorySnapshots(),
-                getNestPlacement(),
-                getCustomX(),
-                getCustomZ(),
-                getNestRelation()
-            );
+            return new SpeciesConfigSnapshot(speciesName, getNestType(), getQueenCount(), getWorkerCount(), getSoldierCount(), getBroodCount(),
+                getInitialFood(), getWorkerEngine(), getSoldierEngine(), getQueenEngine(), getAccessorySnapshots(), getNestPlacement(), getCustomX(), getCustomZ(), getNestRelation());
         }
 
-    public static int estimateNestCapacity(String nestType) {
-        if (nestType == null) return 25000;
-        String lower = nestType.toLowerCase();
-        if (lower.contains("stem") || lower.contains("gall") || lower.contains("galle") || lower.contains("tige") || lower.contains("founding") || lower.contains("claustral")) {
-            return 500;
-        } else if (lower.contains("bivouac") || lower.contains("pot") || lower.contains("silk") || lower.contains("paper") || lower.contains("guÃªpe")) {
-            return 5000;
-        } else if (lower.contains("tree") || lower.contains("cavity") || lower.contains("carton") || lower.contains("comb") || lower.contains("beehive") || lower.contains("ruche")) {
-            return 20000;
-        } else if (lower.contains("subterranean") || lower.contains("burrow") || lower.contains("galerie") || lower.contains("souterrain") || lower.contains("needle") || lower.contains("dÃ´me")) {
-            return 50000;
-        } else if (lower.contains("supercolonie") || lower.contains("supercolony") || lower.contains("fungi") || lower.contains("vault") || lower.contains("cathÃ©drale") || lower.contains("cathedral")) {
-            return 500000;
-        }
-        return 25000;
-    }
-
+    public static int estimateNestCapacity(String nestType) { return SpeciesCompatibilityRegistry.estimateNestCapacity(nestType); }
     public record AccessorySpeciesInfo(String name, String role, String description, int defaultCount) {
-        public AccessorySpeciesInfo(String name, String role, String description) {
-            this(name, role, description, 50);
-        }
+        public AccessorySpeciesInfo(String name, String role, String description) { this(name, role, description, 50); }
     }
-
-    /**
-     * Helper method to filter physical nest architectures based on biological species capability.
-     * Guaranteed exact biological match returning pure physical nest typologies.
-     */
-    public static List<String> getCompatibleNestArchitectures(String speciesName) {
-        List<String> nests = new ArrayList<>();
-        nests.add("Subterranean Burrows & Galleries");
-
-        if (speciesName != null) {
-            String lower = speciesName.toLowerCase();
-            if (lower.contains("atta") || lower.contains("coupeuse")) {
-                nests.add("Subterranean Fungi Vault");
-            } else if (lower.contains("apis") || lower.contains("abeille")) {
-                nests.add("Hexagonal Wax Comb");
-                nests.add("Wooden Beehive");
-            } else if (lower.contains("bombus") || lower.contains("bourdon")) {
-                nests.add("Wax & Propolis Pots");
-            } else if (lower.contains("vespula") || lower.contains("guÃªpe")) {
-                nests.add("Suspended Paper Nest");
-            } else if (lower.contains("reticulitermes") || lower.contains("macrotermes") || lower.contains("termite")) {
-                nests.add("Cathedral Termite Mound");
-            } else if (lower.contains("crematogaster") || lower.contains("carton")) {
-                nests.add("Carton Wooden Nest");
-            } else if (lower.contains("temnothorax") || lower.contains("gall") || lower.contains("galle")) {
-                nests.add("Hollow Stem & Gall Nest");
-            } else if (lower.contains("camponotus") || lower.contains("carpenter") || lower.contains("charpentiÃ¨re")) {
-                nests.add("Tree Trunk Cavity Nest");
-            } else if (lower.contains("eciton") || lower.contains("army") || lower.contains("lÃ©gionnaire")) {
-                nests.add("Living Bivouac");
-            } else if (lower.contains("oecophylla") || lower.contains("weaver") || lower.contains("tisserande")) {
-                nests.add("Arboreal Silk Nest");
-            } else if (lower.contains("formica") || lower.contains("wood ant") || lower.contains("rousse")) {
-                nests.add("Solar Needle Mound");
-            }
-        }
-        Collections.sort(nests);
-        return nests;
-    }
-
-    public static void selectDefaultNestArchitectureForSpecies(String speciesName, ComboBox<String> combo) {
-        List<String> list = getCompatibleNestArchitectures(speciesName);
-        combo.getItems().setAll(list);
-        if (speciesName != null) {
-            String matched = null;
-            for (String arch : list) {
-                if (!arch.startsWith("Subterranean Burrows")) {
-                    matched = arch;
-                    break;
-                }
-            }
-            if (matched != null) {
-                combo.getSelectionModel().select(matched);
-                return;
-            }
-        }
-        if (!combo.getItems().isEmpty()) {
-            combo.getSelectionModel().selectFirst();
-        }
-    }
-
-    public static List<String> getCompatibleNestTypes(String speciesName) {
-        return getCompatibleNestArchitectures(speciesName);
-    }
-
-    /**
-     * Helper method to filter compatible accessory species (Proies, PrÃ©dateurs, Commensaux, PathogÃ¨nes).
-     * Excludes neutral or biologically incompatible species.
-     */
+    public static List<String> getCompatibleNestArchitectures(String speciesName) { return SpeciesCompatibilityRegistry.getCompatibleNestArchitectures(speciesName); }
+    public static void selectDefaultNestArchitectureForSpecies(String speciesName, ComboBox<String> combo) { SpeciesCompatibilityRegistry.selectDefaultNestArchitectureForSpecies(speciesName, combo); }
+    public static List<String> getCompatibleNestTypes(String speciesName) { return SpeciesCompatibilityRegistry.getCompatibleNestArchitectures(speciesName); }
     public static List<AccessorySpeciesInfo> getCompatibleAccessorySpecies(String speciesName) {
         List<AccessorySpeciesInfo> list = new ArrayList<>();
-        if (speciesName == null) return list;
-        String lower = speciesName.toLowerCase();
-
-        if (lower.contains("atta") || lower.contains("coupeuse")) {
-            list.add(new AccessorySpeciesInfo("Seeded Grasses & Foliage", "COMMENSAL", "Foliage providing symbiotic plant biomass", 150));
-            list.add(new AccessorySpeciesInfo("Humid Moss (Polytrichum)", "COMMENSAL", "Substrate maintaining humidity for fungus garden", 80));
-            list.add(new AccessorySpeciesInfo("Entomopathogenic Fungus (Cordyceps)", "PATHOGEN", "Cordyceps targeting workers in forest environments", 20));
-        } else if (lower.contains("messor") || lower.contains("pogonomyrmex") || lower.contains("moissonneuse")) {
-            list.add(new AccessorySpeciesInfo("Seeded Grasses (Herbs & Biomass)", "PROIE", "Plant seeds for harvesting and granaries", 200));
-            list.add(new AccessorySpeciesInfo("Mealworm Larvae (Protein Prey)", "PROIE", "Arthropod prey providing nitrogen to brood", 40));
-            list.add(new AccessorySpeciesInfo("Antlion Pitfall Trap (Myrmeleon)", "PRÃ‰DATEUR", "Funnel-web pitfall predator in sand", 10));
-        } else if (lower.contains("apis") || lower.contains("abeille")) {
-            list.add(new AccessorySpeciesInfo("Nectariferous Grasses & Flowers", "COMMENSAL", "Melliferous flowers supplying nectar and pollen", 120));
-            list.add(new AccessorySpeciesInfo("Parasitic Mite (Varroa destructor)", "PATHOGEN", "Hematophagous parasitic mite targeting bee brood", 30));
-            list.add(new AccessorySpeciesInfo("Hunting Spider / Robber Fly", "PRÃ‰DATEUR", "Predators capturing foragers in flight", 15));
-        } else if (lower.contains("reticulitermes") || lower.contains("macrotermes") || lower.contains("termite")) {
-            list.add(new AccessorySpeciesInfo("Humid Moss & Woody Timber", "COMMENSAL", "Digestible cellulosic biomass", 100));
-            list.add(new AccessorySpeciesInfo("Mealworm Larvae (Protein Prey)", "PROIE", "Residual soil arthropod prey", 30));
-            list.add(new AccessorySpeciesInfo("Hunting Wasp / Subterranean Spider", "PRÃ‰DATEUR", "Gallery specialist predators", 12));
-        } else if (lower.contains("vespula") || lower.contains("guÃªpe")) {
-            list.add(new AccessorySpeciesInfo("Mealworm Larvae & Caterpillars (Prey)", "PROIE", "Insect prey hunted for brood protein", 60));
-            list.add(new AccessorySpeciesInfo("Grasses & Flowers (Nectar)", "COMMENSAL", "Sugary energy sources for adults", 80));
-            list.add(new AccessorySpeciesInfo("Entomopathogenic Fungus (Cordyceps)", "PATHOGEN", "Spores carried during flight", 15));
-        } else { // Lasius, Solenopsis, Formica, etc.
-            list.add(new AccessorySpeciesInfo("Pine Aphids (Cinara / Honeydew)", "COMMENSAL", "Aphids farmed in trophobiosis for sugary honeydew", 80));
-            list.add(new AccessorySpeciesInfo("Seeded Grasses (Herbs & Biomass)", "COMMENSAL", "Local vegetation providing substrate and shade", 100));
-            list.add(new AccessorySpeciesInfo("Mealworm Larvae (Protein Prey)", "PROIE", "Arthropodes proies apportant les protÃ©ines", 50));
-            list.add(new AccessorySpeciesInfo("Antlion Pitfall Trap (Myrmeleon)", "PRÃ‰DATEUR", "Natural predator of patrolling workers", 15));
-            list.add(new AccessorySpeciesInfo("Entomopathogenic Fungus (Cordyceps)", "PATHOGEN", "Mycelial parasite targeting colony", 10));
-        }
-        list.sort(Comparator.comparing(AccessorySpeciesInfo::name));
+        for (var a : SpeciesCompatibilityRegistry.getCompatibleAccessorySpecies(speciesName)) list.add(new AccessorySpeciesInfo(a.name(), a.role(), a.description(), a.defaultCount()));
         return list;
     }
 }

@@ -9,6 +9,8 @@ package org.swarmforge.client.ui;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.swarmforge.core.species.DefaultSpecies;
 
 import java.io.File;
@@ -25,6 +27,7 @@ import java.util.*;
  */
 public class SpeciesPresetManager {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SpeciesPresetManager.class);
     public static final File PRESETS_FILE = new File("species_presets.json");
 
     private static final String[] BUILTIN_SPECIES_FILES = {
@@ -96,7 +99,7 @@ public class SpeciesPresetManager {
                     presets.put(s.getPresetName(), s);
                 }
             } catch (Exception e) {
-                System.err.println("[SpeciesPresetManager] Could not load " + PRESETS_FILE + ": " + e.getMessage());
+                LOG.warn("Could not load species presets from {}: {}", PRESETS_FILE, e.getMessage());
             }
         }
 
@@ -122,7 +125,9 @@ public class SpeciesPresetManager {
                 try {
                     sp = mapper.readValue(path, DefaultSpecies.class);
                     break;
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    LOG.debug("Could not parse species preset from candidate file {}: {}", path.getPath(), e.getMessage());
+                }
             }
         }
 
@@ -131,7 +136,9 @@ public class SpeciesPresetManager {
                 if (in != null) {
                     sp = mapper.readValue(in, DefaultSpecies.class);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                LOG.debug("Could not parse species preset from classpath /presets/species/{}: {}", filename, e.getMessage());
+            }
         }
         return sp;
     }
@@ -193,7 +200,7 @@ public class SpeciesPresetManager {
             }
             mapper.writerWithDefaultPrettyPrinter().writeValue(PRESETS_FILE, customOnly);
         } catch (Exception e) {
-            System.err.println("[SpeciesPresetManager] Could not save " + PRESETS_FILE + ": " + e.getMessage());
+            LOG.warn("Could not save species presets to {}: {}", PRESETS_FILE, e.getMessage());
         }
     }
 

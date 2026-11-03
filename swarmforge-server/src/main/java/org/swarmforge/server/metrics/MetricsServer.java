@@ -7,6 +7,8 @@
 package org.swarmforge.server.metrics;
 
 import com.sun.net.httpserver.HttpServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
 
@@ -24,6 +26,8 @@ import java.util.concurrent.Executors;
  * @author Silvère Martin-Michiellot
  */
 public class MetricsServer {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MetricsServer.class);
 
     private HttpServer server;
     private final MetricsExporter exporter;
@@ -53,7 +57,7 @@ public class MetricsServer {
         server.start();
         running = true;
 
-        System.out.println("Metrics server started on http://localhost:" + port + "/metrics");
+        LOG.info("Metrics server started on http://localhost:{}/metrics", port);
     }
 
     /**
@@ -63,7 +67,7 @@ public class MetricsServer {
         if (server != null && running) {
             server.stop(1);
             running = false;
-            System.out.println("Metrics server stopped");
+            LOG.info("Metrics server stopped");
         }
     }
 

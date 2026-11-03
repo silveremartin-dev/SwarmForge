@@ -33,13 +33,13 @@ public class ServerGuiApp extends Application {
 
     private static final Logger LOG = Logger.getLogger(ServerGuiApp.class.getName());
 
-    private SwarmForgeServer server;
+    SwarmForgeServer server;
     private TextArea logArea;
     private Circle dbStatusIndicator;
     private Circle redisStatusIndicator;
     private Circle grpcStatusIndicator;
-    private ListView<String> runningSimsList;
-    private ListView<String> connectedClientsList;
+    ListView<String> runningSimsList;
+    ListView<String> connectedClientsList;
     private ListView<String> savedSimsList;
 
     @Override
@@ -275,155 +275,11 @@ public class ServerGuiApp extends Application {
         return panel;
     }
 
-    private Button btnPause;
-    private Button btnStop;
+    Button btnPause;
+    Button btnStop;
 
     private VBox createDashboard() {
-        VBox panel = new VBox(15);
-        panel.setPadding(new Insets(20));
-        panel.setStyle("-fx-background-color: #16213e;");
-
-        Label title = new Label("Running Simulations");
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #00d4ff;");
-
-        // Split: Simulations | Clients
-        HBox split = new HBox(20);
-        HBox.setHgrow(split, Priority.ALWAYS);
-
-        // Running Simulations
-        VBox simsPane = new VBox(10);
-        simsPane.setPrefWidth(400);
-        Label simsLabel = new Label("Active Simulations");
-        simsLabel.setStyle("-fx-text-fill: white;");
-
-        runningSimsList = new ListView<>();
-        // runningSimsList.getItems().addAll(
-        // "▶ Demo World - Tick: 12,450 - Pop: 342",
-        // "⏸ Test Colony - Tick: 5,200 - Pop: 89");
-        runningSimsList.setPrefHeight(200);
-
-        HBox simControls = new HBox(10);
-        btnPause = new Button("⏸ Pause");
-        btnPause.setOnAction(e -> togglePauseSimulation());
-
-        btnStop = new Button("⏹ Stop");
-        btnStop.setStyle("-fx-background-color: #dc3545; -fx-text-fill: white;");
-        btnStop.setOnAction(e -> stopSimulation());
-
-        simControls.getChildren().addAll(btnPause, btnStop);
-
-        simsPane.getChildren().addAll(simsLabel, runningSimsList, simControls);
-
-        // Connected Clients
-        VBox clientsPane = new VBox(10);
-        clientsPane.setPrefWidth(400);
-        Label clientsLabel = new Label("Connected Clients");
-        clientsLabel.setStyle("-fx-text-fill: white;");
-
-        connectedClientsList = new ListView<>();
-        connectedClientsList.setPrefHeight(200);
-
-        Button btnKick = new Button("Disconnect Selected");
-        btnKick.setStyle("-fx-background-color: #ffc107; -fx-text-fill: black;");
-        btnKick.setOnAction(e -> kickSelectedClient());
-
-        clientsPane.getChildren().addAll(clientsLabel, connectedClientsList, btnKick);
-
-        split.getChildren().addAll(simsPane, clientsPane);
-
-        // Server Stats
-        Label statsLabel = new Label("Server Statistics");
-        statsLabel.setStyle("-fx-text-fill: #888;");
-
-        HBox stats = new HBox(30);
-        stats.getChildren().addAll(
-                stat("CPU", "45%"), // Placeholder
-                stat("Memory", "2.1 GB"), // Placeholder
-                stat("Uptime", "0s"),
-                stat("Total Ticks", "0"));
-
-        panel.getChildren().addAll(title, new Separator(), split, new Separator(), statsLabel, stats);
-
-        // Start dashboard polling
-        startDashboardPolling();
-
-        return panel;
-    }
-
-    private void startDashboardPolling() {
-        new Thread(() -> {
-            while (true) {
-                if (server != null) {
-                    // Update connected clients
-                    java.util.List<String> clients = server.getConnectedClients();
-
-                    // Update UI
-                    Platform.runLater(() -> {
-                        // Update Client List if changed
-                        if (!connectedClientsList.getItems().equals(clients)) {
-                            connectedClientsList.getItems().setAll(clients);
-                        }
-
-                        // Update Sim Controls
-                        if (server.isSimulationPaused()) {
-                            btnPause.setText("▶ Resume");
-                            btnPause.setStyle("-fx-background-color: #28a745; -fx-text-fill: white;");
-                        } else {
-                            btnPause.setText("⏸ Pause");
-                            btnPause.setStyle("");
-                        }
-
-                        // Update Running Sim List (Mock for now, just main sim)
-                        if (server.isSimulationRunning() || server.isSimulationPaused()) {
-                            // Tick access removed as unused
-                            // server.getSimulation().getTickCount() - unsafe if null.
-                            // But for GUI simplicity we assume main sim.
-                            String status = server.isSimulationPaused() ? "⏸" : "▶";
-                            String item = status + " Main Simulation (Active)";
-                            if (runningSimsList.getItems().isEmpty()) {
-                                runningSimsList.getItems().add(item);
-                            } else {
-                                runningSimsList.getItems().set(0, item);
-                            }
-                        } else {
-                            runningSimsList.getItems().clear();
-                        }
-                    });
-                }
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    break;
-                }
-            }
-        }).start();
-    }
-
-    private void togglePauseSimulation() {
-        if (server == null)
-            return;
-        if (server.isSimulationPaused()) {
-            server.resumeSimulation();
-        } else {
-            server.pauseSimulation();
-        }
-    }
-
-    private void stopSimulation() {
-        if (server != null) {
-            server.stopSimulation();
-            appendLog("Simulation stopped.");
-        }
-    }
-
-    private void kickSelectedClient() {
-        if (server == null)
-            return;
-        String client = connectedClientsList.getSelectionModel().getSelectedItem();
-        if (client != null) {
-            server.kickClient(client);
-            appendLog("Kicked client: " + client);
-        }
+        return ServerDashboardPanelBuilder.createDashboard(this);
     }
 
     // ... label helpers ...
@@ -497,7 +353,7 @@ public class ServerGuiApp extends Application {
                     Thread.sleep(1000);
                 }
             } catch (InterruptedException e) {
-                // Stopped
+                Thread.currentThread().interrupt();
             }
         }).start();
     }
@@ -572,7 +428,7 @@ public class ServerGuiApp extends Application {
         }).start();
     }
 
-    private void appendLog(String message) {
+    void appendLog(String message) {
         String timestamp = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
         if (logArea != null) {
             Platform.runLater(() -> logArea.appendText("[" + timestamp + "] " + message + "\n"));

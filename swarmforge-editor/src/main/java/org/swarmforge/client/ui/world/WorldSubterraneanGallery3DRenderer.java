@@ -554,89 +554,36 @@ public class WorldSubterraneanGallery3DRenderer {
     }
 
     public void drawGalleriesLegendHUD(WorldEditorPane pane, GraphicsContext gc3D, double w, double h) {
-        double boxW = 290.0;
-        double boxH = 240.0;
-        double hx = w - boxW - 15.0;
-        double hy = 15.0;
-
-        // HUD Glassmorphism Card
-        gc3D.setFill(Color.web("rgba(15, 23, 42, 0.94)"));
-        gc3D.fillRoundRect(hx, hy, boxW, boxH, 10, 10);
-        gc3D.setStroke(Color.web("#38bdf8", 0.85));
-        gc3D.setLineWidth(1.2);
-        gc3D.strokeRoundRect(hx, hy, boxW, boxH, 10, 10);
-
-        // Header Title
-        gc3D.setFill(Color.web("#38bdf8"));
-        gc3D.setFont(Font.font("System", javafx.scene.text.FontWeight.BOLD, 11));
-        gc3D.fillText("🏰 NEST & MULTI-SPECIES CHAMBERS LEGEND", hx + 12, hy + 20);
-
-        gc3D.setStroke(Color.web("rgba(56, 189, 248, 0.3)"));
-        gc3D.setLineWidth(1.0);
-        gc3D.strokeLine(hx + 10, hy + 26, hx + boxW - 10, hy + 26);
-
+        double boxW = 290.0, boxH = 240.0, hx = w - boxW - 15.0, hy = 15.0;
+        gc3D.setFill(Color.web("rgba(15, 23, 42, 0.94)")); gc3D.fillRoundRect(hx, hy, boxW, boxH, 10, 10);
+        gc3D.setStroke(Color.web("#38bdf8", 0.85)); gc3D.setLineWidth(1.2); gc3D.strokeRoundRect(hx, hy, boxW, boxH, 10, 10);
+        gc3D.setFill(Color.web("#38bdf8")); gc3D.setFont(Font.font("System", javafx.scene.text.FontWeight.BOLD, 11));
+        gc3D.fillText("NEST & MULTI-SPECIES CHAMBERS LEGEND", hx + 12, hy + 20);
+        gc3D.setStroke(Color.web("rgba(56, 189, 248, 0.3)")); gc3D.setLineWidth(1.0); gc3D.strokeLine(hx + 10, hy + 26, hx + boxW - 10, hy + 26);
         gc3D.setFont(Font.font("System", 10));
-
-        // 1. Loge Royale
-        gc3D.setFill(Color.web("#d946ef")); gc3D.fillOval(hx + 14, hy + 35, 10, 10);
-        gc3D.setFill(Color.web("#f8fafc"));
-        gc3D.fillText(I18nManager.getInstance().get("nest.legend.royal"), hx + 32, hy + 44);
-
-        // 2. Chambre du Couvain
-        gc3D.setFill(Color.web("#f8fafc")); gc3D.fillOval(hx + 14, hy + 53, 10, 10);
-        gc3D.setStroke(Color.web("#94a3b8")); gc3D.strokeOval(hx + 14, hy + 53, 10, 10);
-        gc3D.setFill(Color.web("#f8fafc"));
-        gc3D.fillText(I18nManager.getInstance().get("nest.chambers.brood"), hx + 32, hy + 62);
-
-        // 3. Champignonnière (Atta / Macrotermes)
-        gc3D.setFill(Color.web("#a855f7")); gc3D.fillOval(hx + 14, hy + 71, 10, 10);
-        gc3D.setFill(Color.web("#f8fafc"));
-        gc3D.fillText(I18nManager.getInstance().get("nest.chambers.fungus"), hx + 32, hy + 80);
-
-        // 4. Laiterie à Pucerons / Élevage
-        gc3D.setFill(Color.web("#ec4899")); gc3D.fillOval(hx + 14, hy + 89, 10, 10);
-        gc3D.setFill(Color.web("#f8fafc"));
-        gc3D.fillText(I18nManager.getInstance().get("nest.chambers.food"), hx + 32, hy + 98);
-
-        // 5. Grenier & Stockage
-        gc3D.setFill(Color.web("#22c55e")); gc3D.fillOval(hx + 14, hy + 107, 10, 10);
-        gc3D.setFill(Color.web("#f8fafc"));
-        gc3D.fillText(I18nManager.getInstance().get("nest.legend.storage"), hx + 32, hy + 116);
-
-        // 6. Loge d'Hibernation / Diapause
-        gc3D.setFill(Color.web("#0284c7")); gc3D.fillOval(hx + 14, hy + 125, 10, 10);
-        gc3D.setFill(Color.web("#f8fafc"));
+        I18nManager i18n = I18nManager.getInstance();
         String simSeason = pane.getSimSeason();
-        String hibState = (simSeason != null && simSeason.toLowerCase().contains("hiver")) ? " (" + I18nManager.getInstance().get("nest.legend.active") + ")" : "";
-        gc3D.fillText(I18nManager.getInstance().get("nest.legend.hibernation") + hibState, hx + 32, hy + 134);
-
-        // 7. Dépotoir / Déchets
-        gc3D.setFill(Color.web("#eab308")); gc3D.fillOval(hx + 14, hy + 143, 10, 10);
-        gc3D.setFill(Color.web("#f8fafc"));
-        gc3D.fillText(I18nManager.getInstance().get("nest.chambers.waste"), hx + 32, hy + 152);
-
-        // 8. Galeries & Puits Voxel Excavés
-        gc3D.setStroke(Color.web("#f59e0b")); gc3D.setLineWidth(2.5);
-        gc3D.strokeLine(hx + 14, hy + 166, hx + 24, hy + 166);
-        gc3D.setFill(Color.web("#f8fafc"));
-        gc3D.fillText(I18nManager.getInstance().get("nest.legend.tunnel"), hx + 32, hy + 170);
-
-        // 9. Tunnels sous la Neige / Glace
-        gc3D.setStroke(Color.web("#e0f2fe")); gc3D.setLineWidth(2.5);
-        gc3D.strokeLine(hx + 14, hy + 184, hx + 24, hy + 184);
-        gc3D.setFill(Color.web("#f8fafc"));
-        gc3D.fillText(I18nManager.getInstance().get("nest.legend.snow_tunnels"), hx + 32, hy + 188);
-
-        // 10. Déblais de Terre & Exits
+        String hibState = (simSeason != null && simSeason.toLowerCase().contains("hiver")) ? " (" + i18n.get("nest.legend.active") + ")" : "";
+        String[][] ovalItems = {
+            {"#d946ef", i18n.get("nest.legend.royal")}, {"#f8fafc", i18n.get("nest.chambers.brood")},
+            {"#a855f7", i18n.get("nest.chambers.fungus")}, {"#ec4899", i18n.get("nest.chambers.food")},
+            {"#22c55e", i18n.get("nest.legend.storage")}, {"#0284c7", i18n.get("nest.legend.hibernation") + hibState},
+            {"#eab308", i18n.get("nest.chambers.waste")}
+        };
+        for (int i = 0; i < ovalItems.length; i++) {
+            double iy = hy + 35 + i * 18;
+            gc3D.setFill(Color.web(ovalItems[i][0])); gc3D.fillOval(hx + 14, iy, 10, 10);
+            if (i == 1) { gc3D.setStroke(Color.web("#94a3b8")); gc3D.strokeOval(hx + 14, iy, 10, 10); }
+            gc3D.setFill(Color.web("#f8fafc")); gc3D.fillText(ovalItems[i][1], hx + 32, iy + 9);
+        }
+        gc3D.setStroke(Color.web("#f59e0b")); gc3D.setLineWidth(2.5); gc3D.strokeLine(hx + 14, hy + 166, hx + 24, hy + 166);
+        gc3D.setFill(Color.web("#f8fafc")); gc3D.fillText(i18n.get("nest.legend.tunnel"), hx + 32, hy + 170);
+        gc3D.setStroke(Color.web("#e0f2fe")); gc3D.setLineWidth(2.5); gc3D.strokeLine(hx + 14, hy + 184, hx + 24, hy + 184);
+        gc3D.setFill(Color.web("#f8fafc")); gc3D.fillText(i18n.get("nest.legend.snow_tunnels"), hx + 32, hy + 188);
         gc3D.setFill(Color.web("#9a3412")); gc3D.fillOval(hx + 14, hy + 199, 10, 6);
         gc3D.setFill(Color.web("#18181b")); gc3D.fillOval(hx + 17, hy + 200, 4, 3);
-        gc3D.setFill(Color.web("#f8fafc"));
-        gc3D.fillText(I18nManager.getInstance().get("nest.chambers.entrance"), hx + 32, hy + 207);
-
-        // Live Dynamic Status Note
-        gc3D.setFill(Color.web("#4ade80"));
-        gc3D.setFont(Font.font("System", 9));
-        gc3D.fillText(I18nManager.getInstance().get("nest.legend.matrix"), hx + 12, hy + 230);
+        gc3D.setFill(Color.web("#f8fafc")); gc3D.fillText(i18n.get("nest.chambers.entrance"), hx + 32, hy + 207);
+        gc3D.setFill(Color.web("#4ade80")); gc3D.setFont(Font.font("System", 9));
+        gc3D.fillText(i18n.get("nest.legend.matrix"), hx + 12, hy + 230);
     }
-
 }

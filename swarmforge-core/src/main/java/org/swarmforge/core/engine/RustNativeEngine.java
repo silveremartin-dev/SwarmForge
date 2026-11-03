@@ -161,7 +161,9 @@ public class RustNativeEngine implements SimulationEngine {
                 targetPath.toFile().deleteOnExit();
                 return targetPath;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ex) {
+            log.debug("Embedded native library extraction bypassed: {}", ex.getMessage());
+        }
         return null;
     }
 
@@ -219,7 +221,9 @@ public class RustNativeEngine implements SimulationEngine {
         if (sessionArena != null) {
             try {
                 sessionArena.getClass().getMethod("close").invoke(sessionArena);
-            } catch (Throwable ignored) {}
+            } catch (Throwable t) {
+                log.trace("Session arena close reflection notification: {}", t.getMessage());
+            }
             sessionArena = null;
         }
         globalTickCount = 0L;

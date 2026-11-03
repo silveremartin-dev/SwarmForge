@@ -33,6 +33,9 @@ public final class BrainPluginRegistry {
     private static final Logger LOG = Logger.getLogger(BrainPluginRegistry.class.getName());
     private static final BrainPluginRegistry INSTANCE = new BrainPluginRegistry();
 
+    /**
+     * Listener interface notified of dynamic cognitive brain architecture registration events.
+     */
     public interface RegistryListener {
         void onBrainRegistered(BrainDescriptor descriptor);
         void onBrainUnregistered(String brainId);

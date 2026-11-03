@@ -311,6 +311,14 @@
     -fx-text-fill: #ffffff;
 }
 
+.table-row-cell.log-row-critical {
+    -fx-background-color: rgba(239, 68, 68, 0.16);
+}
+
+.table-row-cell.log-row-warning {
+    -fx-background-color: rgba(245, 158, 11, 0.14);
+}
+
 .table-cell {
     -fx-text-fill: #0f172a;
 }

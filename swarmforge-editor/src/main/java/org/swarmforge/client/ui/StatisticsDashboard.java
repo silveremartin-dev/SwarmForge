@@ -50,300 +50,37 @@ public class StatisticsDashboard extends VBox {
         }
     }
 
-    // Dynamic series map for species/colonies: Key = ColonyName (or "Colonie #1 - Species")
     private final Map<String, XYChart.Series<Number, Number>> colonySeriesMap = new LinkedHashMap<>();
+    private final XYChart.Series<Number, Number> totalPopSeries = new XYChart.Series<>(), queensSeries = new XYChart.Series<>(), workersSeries = new XYChart.Series<>(), soldiersSeries = new XYChart.Series<>(), malesSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> foodSeries = new XYChart.Series<>(), waterSeries = new XYChart.Series<>(), proteinSeries = new XYChart.Series<>(), birthsSeries = new XYChart.Series<>(), deathsSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> tempSeries = new XYChart.Series<>(), rainSeries = new XYChart.Series<>(), pheroSeries = new XYChart.Series<>(), tpsSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> behaviorForagingSeries = new XYChart.Series<>(), behaviorDiggingSeries = new XYChart.Series<>(), behaviorNursingSeries = new XYChart.Series<>(), behaviorGuardingSeries = new XYChart.Series<>(), behaviorRoyalCareSeries = new XYChart.Series<>(), behaviorRestingSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> antHealthSeries = new XYChart.Series<>(), antEnergySeries = new XYChart.Series<>(), antDistanceSeries = new XYChart.Series<>();
 
-    // Caste Series
-    private final XYChart.Series<Number, Number> totalPopSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> queensSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> workersSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> soldiersSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> malesSeries = new XYChart.Series<>();
-
-    // Bio-Resources Series
-    private final XYChart.Series<Number, Number> foodSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> waterSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> proteinSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> birthsSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> deathsSeries = new XYChart.Series<>();
-
-    // Weather & Ecosystem Series
-    private final XYChart.Series<Number, Number> tempSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> rainSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> pheroSeries = new XYChart.Series<>();
-
-    // Ethological Behavior Series
-    private final XYChart.Series<Number, Number> behaviorForagingSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> behaviorDiggingSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> behaviorNursingSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> behaviorGuardingSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> behaviorRoyalCareSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> behaviorRestingSeries = new XYChart.Series<>();
-
-    // System Performance Series
-    private final XYChart.Series<Number, Number> tpsSeries = new XYChart.Series<>();
-
-    // Individual Ant Telemetry Series
-    private final XYChart.Series<Number, Number> antHealthSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> antEnergySeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> antDistanceSeries = new XYChart.Series<>();
-
-    // Charts
-    private final LineChart<Number, Number> chartMultiColony;
-    private final LineChart<Number, Number> chartCastes;
-    private final LineChart<Number, Number> chartResources;
-    private final LineChart<Number, Number> chartWeather;
-    private final LineChart<Number, Number> chartBehaviors;
-    private final LineChart<Number, Number> chartPerformance;
-    private final LineChart<Number, Number> chartIndividualAnt;
-
-    private final TextField txtAntSearchId = new TextField("ant_1");
-    private final Label lblTrackedIdDisplay = new Label("ant_1");
-    private final Label lblIndivHealth = new Label("100.0%");
-    private final Label lblIndivEnergy = new Label("95.0%");
-    private final Label lblIndivDistance = new Label("0.0 m");
-    private final Label lblIndivPayload = new Label("0.0 mg");
-    private final Label lblIndivTask = new Label("Foraging (Nectar)");
-    private final Label lblIndivCasteAge = new Label("Worker (14 days)");
-    private final Label lblIndivSpecies = new Label("Formica fusca");
-    private final Label lblIndivColony = new Label("Colonie #1");
-    private String trackedAntId = "ant_1";
+    private final LineChart<Number, Number> chartMultiColony, chartCastes, chartResources, chartWeather, chartBehaviors, chartPerformance, chartIndividualAnt;
     private String scenarioName = "swarmforge";
-    private java.util.function.Consumer<String> onTrackAntListener;
-    private java.util.function.Consumer<String> onSelectAntListener;
+    private final StatisticsTrackedAntCard trackedAntCard = new StatisticsTrackedAntCard(() -> {
+        antHealthSeries.getData().clear(); antEnergySeries.getData().clear(); antDistanceSeries.getData().clear();
+    });
 
-    public void setOnTrackIndividual(java.util.function.Consumer<String> listener) {
-        this.onTrackAntListener = listener;
-    }
-
-    public void setOnSelectIndividual(java.util.function.Consumer<String> listener) {
-        this.onSelectAntListener = listener;
-    }
-
-
-    public String getScenarioName() {
-        return scenarioName;
-    }
-
-    public void setScenarioName(String scenarioName) {
-        if (scenarioName != null && !scenarioName.isBlank()) {
-            this.scenarioName = scenarioName;
-        }
-    }
-
+    public void setOnTrackIndividual(java.util.function.Consumer<String> listener) { trackedAntCard.setOnTrackAntListener(listener); }
+    public void setOnSelectIndividual(java.util.function.Consumer<String> listener) { trackedAntCard.setOnSelectAntListener(listener); }
+    public String getScenarioName() { return scenarioName; }
+    public void setScenarioName(String scenarioName) { if (scenarioName != null && !scenarioName.isBlank()) this.scenarioName = scenarioName; }
     private final I18nManager i18n = I18nManager.getInstance();
-
-    private final VBox individualAntCard = createIndividualAntCard();
-
-    private VBox createIndividualAntCard() {
-        VBox box = new VBox(10);
-        box.setPadding(new Insets(10));
-        box.getStyleClass().add("card-pane");
-
-        Label title = new Label();
-        title.textProperty().bind(i18n.createStringBinding("stats.indiv.title"));
-        title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #38bdf8;");
-
-        HBox inputRow = new HBox(8);
-        inputRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label lblPrompt = new Label();
-        lblPrompt.textProperty().bind(i18n.createStringBinding("stats.indiv.prompt"));
-        lblPrompt.getStyleClass().add("field-label");
-
-        txtAntSearchId.promptTextProperty().bind(I18nManager.getInstance().createStringBinding("inspector.prompt.id"));
-        txtAntSearchId.setPrefWidth(140);
-        txtAntSearchId.tooltipProperty().bind(i18n.createTooltipBinding("stats.ant_search.tt"));
-        txtAntSearchId.setOnAction(e -> triggerTrackAndTrace());
-
-        Button btnPrevAnt = new Button();
-        btnPrevAnt.textProperty().bind(i18n.createStringBinding("inspector.btn.prev"));
-        btnPrevAnt.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CHEVRON_LEFT));
-        btnPrevAnt.getStyleClass().add("btn-secondary");
-        btnPrevAnt.setOnAction(e -> cycleAnt(-1));
-
-        Button btnNextAnt = new Button();
-        btnNextAnt.textProperty().bind(i18n.createStringBinding("inspector.btn.next"));
-        btnNextAnt.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.CHEVRON_RIGHT));
-        btnNextAnt.getStyleClass().add("btn-secondary");
-        btnNextAnt.setOnAction(e -> cycleAnt(1));
-
-        Button btnTrack = new Button();
-        btnTrack.textProperty().bind(i18n.createStringBinding("stats.track_btn"));
-        btnTrack.setGraphic(new org.kordamp.ikonli.javafx.FontIcon(org.kordamp.ikonli.feather.Feather.TARGET));
-        btnTrack.getStyleClass().add("btn-primary");
-        btnTrack.tooltipProperty().bind(i18n.createTooltipBinding("stats.track_btn.tt"));
-        btnTrack.setOnAction(e -> triggerTrackAndTrace());
-
-        inputRow.getChildren().addAll(lblPrompt, txtAntSearchId, btnPrevAnt, btnNextAnt, btnTrack);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(16);
-        grid.setVgap(8);
-        lblTrackedIdDisplay.setStyle("-fx-font-weight: bold; -fx-text-fill: #38bdf8;");
-
-        addIndivField(grid, "stats.indiv.id", lblTrackedIdDisplay, 0, 0, 1);
-        addIndivField(grid, "stats.indiv.caste_age", lblIndivCasteAge, 2, 0, 1);
-        addIndivField(grid, "stats.indiv.species", lblIndivSpecies, 0, 1, 1);
-        addIndivField(grid, "stats.indiv.colony", lblIndivColony, 2, 1, 1);
-        addIndivField(grid, "stats.indiv.health", lblIndivHealth, 0, 2, 1);
-        addIndivField(grid, "stats.indiv.energy", lblIndivEnergy, 2, 2, 1);
-        addIndivField(grid, "stats.indiv.distance", lblIndivDistance, 0, 3, 1);
-        addIndivField(grid, "stats.indiv.payload", lblIndivPayload, 2, 3, 1);
-        addIndivField(grid, "stats.indiv.task", lblIndivTask, 0, 4, 3);
-
-        box.getChildren().addAll(title, inputRow, new Separator(), grid);
-        return box;
-    }
-
-    private void addIndivField(GridPane grid, String labelKey, Label valueLabel, int col, int row, int colSpan) {
-        Label titleLbl = new Label();
-        titleLbl.textProperty().bind(i18n.createStringBinding(labelKey));
-        titleLbl.getStyleClass().add("field-label");
-        grid.add(titleLbl, col, row);
-        grid.add(valueLabel, col + 1, row, colSpan, 1);
-    }
-
-    private void triggerTrackAndTrace() {
-        String val = txtAntSearchId.getText() != null ? txtAntSearchId.getText().trim() : "";
-        if (!val.isEmpty()) {
-            setTrackedIndividualId(val);
-            if (onTrackAntListener != null) {
-                onTrackAntListener.accept(val);
-            }
-        }
-    }
-
-    private void cycleAnt(int delta) {
-        String current = (trackedAntId != null && !trackedAntId.isBlank()) ? trackedAntId.trim() : "ant_1";
-        int num = 1;
-        String prefix = "ant_";
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^(.*?)(\\d+)$").matcher(current);
-        if (m.find()) {
-            prefix = m.group(1);
-            try {
-                num = Integer.parseInt(m.group(2));
-            } catch (Exception ignored) {}
-        }
-        num = Math.max(1, num + delta);
-        String newId = prefix + num;
-        setTrackedIndividualId(newId);
-        if (onSelectAntListener != null) {
-            onSelectAntListener.accept(newId);
-        }
-    }
-
-    public void setTrackedIndividualId(String individualId) {
-        if (individualId != null && !individualId.trim().isEmpty()) {
-            this.trackedAntId = individualId.trim();
-            txtAntSearchId.setText(this.trackedAntId);
-            lblTrackedIdDisplay.setText(this.trackedAntId);
-            antHealthSeries.getData().clear();
-            antEnergySeries.getData().clear();
-            antDistanceSeries.getData().clear();
-        }
-    }
-
-    public void setTrackedIndividual(org.swarmforge.core.domain.Individual individual) {
-        if (individual != null) {
-            String idStr = individual.getFormattedId();
-            setTrackedIndividualId(idStr);
-            updateIndividualTelemetryFromEntity(individual);
-        }
-    }
-
-
-    public void updateIndividualTelemetryFromEntity(org.swarmforge.core.domain.Individual ant) {
-        if (ant == null) return;
-        Platform.runLater(() -> {
-            String shortUuid = ant.getId() != null ? ant.getId().toString().substring(0, Math.min(8, ant.getId().toString().length())) : "N/A";
-            lblTrackedIdDisplay.setText(String.format("%s (#%s)", ant.getFormattedId(), shortUuid));
-            if (!ant.isAlive() || ant.getHealth() <= 0) {
-                String cod = ant.getCauseOfDeath() != null ? " (" + ant.getCauseOfDeath() + ")" : "";
-                lblIndivHealth.setText(i18n.get("stats.indiv.dead", cod));
-            } else {
-                lblIndivHealth.setText(String.format(Locale.US, "%.1f%%", ant.getHealth()));
-            }
-            lblIndivEnergy.setText(String.format(Locale.US, "%.1f%%", ant.getEnergy()));
-            double distNest = Math.hypot(ant.getX() - ant.getHomeX(), ant.getY() - ant.getHomeY());
-            lblIndivDistance.setText(i18n.get("stats.indiv.dist_fmt", distNest));
-            String payload = (ant.getCarriedItem() != null && ant.getCarriedItem() != org.swarmforge.core.domain.Individual.CarriedItem.NONE)
-                    ? ant.getCarriedItem().name()
-                    : "0.0 mg";
-            lblIndivPayload.setText(payload);
-            double ageDays = ant.getAge() / 86400.0;
-            String casteName = ant.getCaste() != null ? ant.getCaste().name() : "Worker";
-            lblIndivCasteAge.setText(i18n.get("stats.indiv.age_fmt", casteName, ageDays));
-            String spName = ant.getSpecies() != null 
-                    ? (ant.getSpecies().getCommonName() != null ? ant.getSpecies().getCommonName() : ant.getSpecies().getScientificName())
-                    : i18n.get("stats.indiv.species_fallback", "Formicidae");
-            lblIndivSpecies.setText(spName != null ? spName : "Formicidae");
-            String colStr = ant.getColonyId() != null ? ant.getColonyId().toString().substring(0, Math.min(8, ant.getColonyId().toString().length())) : "1";
-            lblIndivColony.setText(i18n.get("stats.indiv.colony_fmt", colStr));
-
-            String ethology;
-            if (ant.getCaste() == org.swarmforge.core.domain.Individual.Caste.QUEEN) {
-                ethology = i18n.get("stats.ethology.queen", "👑 Soins Royaux / Ponte");
-            } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.FORAGE || ant.getJob() == org.swarmforge.core.domain.Individual.Job.FORAGER || ant.isCarryingFood()) {
-                ethology = i18n.get("stats.ethology.forage", "🌾 Fourragement (Récolte / Transport)");
-            } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.DIG || ant.getJob() == org.swarmforge.core.domain.Individual.Job.BUILDER || ant.getCarriedItem() == org.swarmforge.core.domain.Individual.CarriedItem.EARTH) {
-                ethology = i18n.get("stats.ethology.dig", "⛏️ Excavation / Creusage");
-            } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.TEND_BROOD || ant.getJob() == org.swarmforge.core.domain.Individual.Job.NURSE || ant.getCarriedItem() == org.swarmforge.core.domain.Individual.CarriedItem.BROOD) {
-                ethology = i18n.get("stats.ethology.nurse", "🍼 Soins aux Larves (Nursing)");
-            } else if (ant.getState() == org.swarmforge.core.domain.Individual.AiState.ATTACKING || ant.getState() == org.swarmforge.core.domain.Individual.AiState.PATROL || ant.getJob() == org.swarmforge.core.domain.Individual.Job.GUARD || ant.getCaste() == org.swarmforge.core.domain.Individual.Caste.SOLDIER) {
-                ethology = i18n.get("stats.ethology.guard", "🛡️ Garde & Défense");
-            } else {
-                ethology = i18n.get("stats.ethology.rest", "💤 Repos / Inactivité");
-            }
-
-            String jobStr = ant.getJob() != null ? ant.getJob().toString() : "Forager";
-            String stateStr = ant.getState() != null ? ant.getState().toString() : "ACTIVE";
-            lblIndivTask.setText(String.format(Locale.US, "%s [%s / %s]", ethology, jobStr, stateStr));
-        });
-    }
-
+    public void setTrackedIndividualId(String individualId) { trackedAntCard.setTrackedIndividualId(individualId); }
+    public void setTrackedIndividual(org.swarmforge.core.domain.Individual individual) { trackedAntCard.setTrackedIndividual(individual); }
+    public void updateIndividualTelemetryFromEntity(org.swarmforge.core.domain.Individual ant) { trackedAntCard.updateIndividualTelemetryFromEntity(ant); }
     private final VBox chartsContainer = new VBox(14);
-
-    // Controls
-    private final ComboBox<String> comboGraphView = new ComboBox<>();
-    private final ComboBox<String> comboTimeWindow = new ComboBox<>();
-
-    private final CheckBox chkTotalPop = new CheckBox();
-    private final CheckBox chkWorkers = new CheckBox();
-    private final CheckBox chkSoldiers = new CheckBox();
-    private final CheckBox chkQueens = new CheckBox();
-    private final CheckBox chkMales = new CheckBox();
-    private final CheckBox chkFood = new CheckBox();
-    private final CheckBox chkWater = new CheckBox();
-    private final CheckBox chkProtein = new CheckBox();
-    private final CheckBox chkBirths = new CheckBox();
-    private final CheckBox chkDeaths = new CheckBox();
-    private final CheckBox chkTemp = new CheckBox();
-    private final CheckBox chkRain = new CheckBox();
-    private final CheckBox chkPhero = new CheckBox();
-    private final CheckBox chkForaging = new CheckBox();
-    private final CheckBox chkDigging = new CheckBox();
-    private final CheckBox chkNursing = new CheckBox();
-    private final CheckBox chkGuarding = new CheckBox();
-    private final CheckBox chkRoyalCare = new CheckBox();
-    private final CheckBox chkResting = new CheckBox();
-    private final CheckBox chkTps = new CheckBox();
-    private final CheckBox chkAntHealth = new CheckBox();
-    private final CheckBox chkAntEnergy = new CheckBox();
-    private final CheckBox chkAntDistance = new CheckBox();
-
+    private final ComboBox<String> comboGraphView = new ComboBox<>(), comboTimeWindow = new ComboBox<>();
+    private final CheckBox chkTotalPop = new CheckBox(), chkWorkers = new CheckBox(), chkSoldiers = new CheckBox(), chkQueens = new CheckBox(), chkMales = new CheckBox();
+    private final CheckBox chkFood = new CheckBox(), chkWater = new CheckBox(), chkProtein = new CheckBox(), chkBirths = new CheckBox(), chkDeaths = new CheckBox();
+    private final CheckBox chkTemp = new CheckBox(), chkRain = new CheckBox(), chkPhero = new CheckBox(), chkTps = new CheckBox();
+    private final CheckBox chkForaging = new CheckBox(), chkDigging = new CheckBox(), chkNursing = new CheckBox(), chkGuarding = new CheckBox(), chkRoyalCare = new CheckBox(), chkResting = new CheckBox();
+    private final CheckBox chkAntHealth = new CheckBox(), chkAntEnergy = new CheckBox(), chkAntDistance = new CheckBox();
     private final List<ColonyStats> historyList = new ArrayList<>();
-
-    // KPI Labels
-    private final Label lblPopulation = new Label("0");
-    private final Label lblColoniesCount = new Label("0");
-    private final Label lblQueens = new Label("0");
-    private final Label lblWorkers = new Label("0");
-    private final Label lblSoldiers = new Label("0");
-    private final Label lblFood = new Label("0.0");
-    private final Label lblWater = new Label("0.0");
-    private final Label lblTickRate = new Label("0 tps");
-    private final Label lblSimTime = new Label("00:00:00 (0.0 s)");
+    private final Label lblPopulation = new Label("0"), lblColoniesCount = new Label("0"), lblQueens = new Label("0"), lblWorkers = new Label("0"), lblSoldiers = new Label("0");
+    private final Label lblFood = new Label("0.0"), lblWater = new Label("0.0"), lblTickRate = new Label("0 tps"), lblSimTime = new Label("00:00:00 (0.0 s)");
 
     private long lastGraphUpdateMillis = 0;
     private double currentSelectedWindowSec = 180.0; // 3 minutes default
@@ -611,14 +348,14 @@ public class StatisticsDashboard extends VBox {
         chartsContainer.getChildren().clear();
         int selected = comboGraphView.getSelectionModel().getSelectedIndex();
         switch (selected) {
-            case 0 -> chartsContainer.getChildren().addAll(chartMultiColony, chartCastes, chartBehaviors, chartResources, chartWeather, chartPerformance, individualAntCard, chartIndividualAnt);
+            case 0 -> chartsContainer.getChildren().addAll(chartMultiColony, chartCastes, chartBehaviors, chartResources, chartWeather, chartPerformance, trackedAntCard.getCardPane(), chartIndividualAnt);
             case 1 -> chartsContainer.getChildren().add(chartMultiColony);
             case 2 -> chartsContainer.getChildren().add(chartCastes);
             case 3 -> chartsContainer.getChildren().add(chartBehaviors);
             case 4 -> chartsContainer.getChildren().add(chartResources);
             case 5 -> chartsContainer.getChildren().add(chartWeather);
             case 6 -> chartsContainer.getChildren().add(chartPerformance);
-            case 7 -> chartsContainer.getChildren().addAll(individualAntCard, chartIndividualAnt);
+            case 7 -> chartsContainer.getChildren().addAll(trackedAntCard.getCardPane(), chartIndividualAnt);
         }
     }
 
@@ -716,7 +453,7 @@ public class StatisticsDashboard extends VBox {
             lblFood.setText(String.format("%.1f", stats.food));
             lblWater.setText(String.format("%.1f", stats.water));
             lblTickRate.setText(String.format(java.util.Locale.US, "%.1f / %.0f TPS", stats.tickRate, stats.targetTickRate > 0 ? stats.targetTickRate : 60.0));
-            lblSimTime.setText(formatTime(stats.simTicks, stats.stepTimeSeconds));
+            lblSimTime.setText(StatisticsCsvExporter.formatTime(stats.simTicks, stats.stepTimeSeconds));
 
             if (updateGraphsNow) {
                 // 1. Multi-Colony & Species Chart Update
@@ -784,10 +521,7 @@ public class StatisticsDashboard extends VBox {
                 double simulatedDistance = (stats.simTicks * 0.08);
                 double simulatedPayload = (stats.simTicks % 20 > 10 ? 3.5 : 0.0);
 
-                lblIndivHealth.setText(String.format("%.1f%%", simulatedHealth));
-                lblIndivEnergy.setText(String.format("%.1f%%", simulatedEnergy));
-                lblIndivDistance.setText(String.format("%.2f m", simulatedDistance));
-                lblIndivPayload.setText(String.format("%.1f mg", simulatedPayload));
+                trackedAntCard.updateSyntheticTelemetry(simulatedHealth, simulatedEnergy, simulatedDistance, simulatedPayload);
 
                 antHealthSeries.getData().add(new XYChart.Data<>(timeSeconds, simulatedHealth));
                 antEnergySeries.getData().add(new XYChart.Data<>(timeSeconds, simulatedEnergy));
@@ -812,27 +546,20 @@ public class StatisticsDashboard extends VBox {
 
     private void updateChartXAxes(double currentTimeSec) {
         double window = currentSelectedWindowSec;
-        List<LineChart<Number, Number>> allCharts = List.of(chartMultiColony, chartCastes, chartBehaviors, chartResources, chartWeather, chartPerformance);
-
-        for (LineChart<Number, Number> c : allCharts) {
+        for (LineChart<Number, Number> c : List.of(chartMultiColony, chartCastes, chartBehaviors, chartResources, chartWeather, chartPerformance)) {
             NumberAxis xAxis = (NumberAxis) c.getXAxis();
-            if (window <= 0) {
-                xAxis.setAutoRanging(true);
-            } else {
+            if (window <= 0) xAxis.setAutoRanging(true);
+            else {
                 xAxis.setAutoRanging(false);
-                double minX = Math.max(0, currentTimeSec - window);
-                double maxX = Math.max(window, currentTimeSec);
-                xAxis.setLowerBound(minX);
-                xAxis.setUpperBound(maxX);
+                xAxis.setLowerBound(Math.max(0, currentTimeSec - window));
+                xAxis.setUpperBound(Math.max(window, currentTimeSec));
                 xAxis.setTickUnit(window / 6.0);
             }
         }
     }
 
     private void trimSeries(XYChart.Series<Number, Number> series) {
-        if (series.getData().size() > MAX_DATA_POINTS) {
-            series.getData().remove(0);
-        }
+        if (series.getData().size() > MAX_DATA_POINTS) series.getData().remove(0);
     }
 
     public void truncateAfter(double simTimeSeconds) {
@@ -842,45 +569,22 @@ public class StatisticsDashboard extends VBox {
             getAllFixedSeries().forEach(s -> s.getData().removeIf(d -> d.getXValue() != null && d.getXValue().doubleValue() > simTimeSeconds));
             updateChartXAxes(simTimeSeconds);
         };
-        if (Platform.isFxApplicationThread()) doTruncate.run();
-        else Platform.runLater(doTruncate);
+        if (Platform.isFxApplicationThread()) doTruncate.run(); else Platform.runLater(doTruncate);
     }
 
     public void clear() {
         Runnable doClear = () -> {
             historyList.clear();
             colonySeriesMap.values().forEach(s -> s.getData().clear());
-            chartMultiColony.getData().clear();
-            colonySeriesMap.clear();
+            chartMultiColony.getData().clear(); colonySeriesMap.clear();
             getAllFixedSeries().forEach(s -> s.getData().clear());
-
-            lblPopulation.setText("0");
-            lblColoniesCount.setText("0");
-            lblQueens.setText("0");
-            lblWorkers.setText("0");
-            lblSoldiers.setText("0");
-            lblFood.setText("0.0");
-            lblWater.setText("0.0");
-            lblTickRate.setText("0 tps");
-            lblSimTime.setText("00:00:00 (0.0 s)");
-            lblIndivHealth.setText("100.0%");
-            lblIndivEnergy.setText("100.0%");
-            lblIndivDistance.setText("0.00 m");
-            lblIndivPayload.setText("0.0 mg");
+            lblPopulation.setText("0"); lblColoniesCount.setText("0"); lblQueens.setText("0");
+            lblWorkers.setText("0"); lblSoldiers.setText("0"); lblFood.setText("0.0");
+            lblWater.setText("0.0"); lblTickRate.setText("0 tps"); lblSimTime.setText("00:00:00 (0.0 s)");
+            trackedAntCard.resetTelemetryLabels();
         };
-
-        if (Platform.isFxApplicationThread()) {
-            doClear.run();
-        } else {
-            Platform.runLater(doClear);
-        }
+        if (Platform.isFxApplicationThread()) doClear.run(); else Platform.runLater(doClear);
     }
 
-    private void exportToCSV() {
-        StatisticsCsvExporter.exportToCSV(getScene() != null ? getScene().getWindow() : null, scenarioName, historyList, i18n);
-    }
-
-    private String formatTime(long ticks, double stepSeconds) {
-        return StatisticsCsvExporter.formatTime(ticks, stepSeconds);
-    }
+    private void exportToCSV() { StatisticsCsvExporter.exportToCSV(getScene() != null ? getScene().getWindow() : null, scenarioName, historyList, i18n); }
 }

@@ -10,12 +10,16 @@ import org.swarmforge.core.domain.Colony;
 import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.simulation.Simulation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Extreme heatwave disaster raising ambient and soil temperatures.
  * Progressive thermal stress and metabolic drain scale with duration and intensity.
  */
 public class HeatwaveDisaster implements DisasterEvent {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HeatwaveDisaster.class);
 
     private final float intensity;
     private final int durationTicks;
@@ -65,7 +69,7 @@ public class HeatwaveDisaster implements DisasterEvent {
 
     @Override
     public void trigger(Simulation simulation, Terrarium terrarium) {
-        System.out.println("☀️ DISASTER TRIGGER: " + getName() + " (" + getSeverity() + " | Durée: " + durationTicks + " pas)!");
+        LOG.warn("DISASTER TRIGGER: {} (Severity: {} | Duration: {} ticks)", getName(), getSeverity(), durationTicks);
         this.remainingTicks = durationTicks;
         tick(simulation, terrarium);
     }

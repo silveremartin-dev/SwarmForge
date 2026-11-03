@@ -5,6 +5,9 @@ import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
+/**
+ * Immutable snapshot encapsulating species parameters, initial demographics, and AI brain engine assignments.
+ */
 public record SpeciesConfigSnapshot(
     String speciesName,
     String nestType,

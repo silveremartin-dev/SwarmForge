@@ -24,6 +24,9 @@ public final class BrainDescriptor implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    /**
+     * Origin technology and source representation of the cognitive brain architecture.
+     */
     public enum BrainSourceType {
         BUILTIN,
         ONNX_MODEL,

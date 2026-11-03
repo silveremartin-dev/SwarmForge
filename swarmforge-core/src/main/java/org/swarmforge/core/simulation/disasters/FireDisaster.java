@@ -11,6 +11,8 @@ import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.domain.TerrariumCell;
 import org.swarmforge.core.simulation.Simulation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Random;
@@ -20,6 +22,8 @@ import java.util.Random;
  * Damage scales directly with duration and intensity.
  */
 public class FireDisaster implements DisasterEvent {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FireDisaster.class);
 
     private final float intensity;
     private final int spreadRadius;
@@ -79,7 +83,7 @@ public class FireDisaster implements DisasterEvent {
 
     @Override
     public void trigger(Simulation simulation, Terrarium terrarium) {
-        System.out.println("🔥 DISASTER TRIGGER: " + getName() + " (" + getSeverity() + " | Durée: " + durationTicks + " pas)!");
+        LOG.warn("DISASTER TRIGGER: {} (Severity: {} | Duration: {} ticks)", getName(), getSeverity(), durationTicks);
 
         java.util.Random rand = (simulation != null && simulation.getRandom() != null) ? simulation.getRandom() : new java.util.Random(1337L);
         if (centerX < 0 && terrarium != null) centerX = rand.nextInt(terrarium.getWidth());

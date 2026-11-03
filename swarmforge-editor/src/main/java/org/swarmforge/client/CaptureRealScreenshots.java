@@ -15,6 +15,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -34,7 +35,7 @@ public class CaptureRealScreenshots extends Application {
             primaryStage.show();
             primaryStage.toFront();
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.log(Level.SEVERE, "Application startup failed: " + e.getMessage(), e);
             Platform.exit();
             return;
         }
@@ -85,7 +86,7 @@ public class CaptureRealScreenshots extends Application {
                                 ImageIO.write(bImage, "png", outFile);
                                 System.out.println("SUCCESSFULLY SAVED REAL SCREENSHOT: " + outFile.getAbsolutePath());
                             } catch (Exception ex) {
-                                ex.printStackTrace();
+                                LOG.log(Level.SEVERE, "Snapshot capture failed: " + ex.getMessage(), ex);
                             } finally {
                                 latch.countDown();
                             }
@@ -101,7 +102,7 @@ public class CaptureRealScreenshots extends Application {
 
                 System.out.println(">>> ALL REAL SCREENSHOTS CAPTURED SUCCESSFULLY! <<<");
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.log(Level.SEVERE, "Batch capture loop error: " + e.getMessage(), e);
             } finally {
                 Platform.exit();
                 System.exit(0);

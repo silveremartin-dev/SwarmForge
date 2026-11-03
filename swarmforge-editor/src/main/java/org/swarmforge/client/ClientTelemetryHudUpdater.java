@@ -463,6 +463,7 @@ class ClientTelemetryHudUpdater {
                 if (procLoad >= 0.0) return procLoad;
             }
         } catch (Throwable ignored) {
+            // com.sun.management.OperatingSystemMXBean unsupported or restricted in this runtime
         }
         return -1.0;
     }

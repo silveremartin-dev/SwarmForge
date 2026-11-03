@@ -8,6 +8,8 @@ package org.swarmforge.core.simulation.disasters;
 
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.simulation.Simulation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 
@@ -16,6 +18,8 @@ import java.util.Random;
  * Wind speed and heavy rain wash away surface pheromones and infiltrate top soil over duration.
  */
 public class StormDisaster implements DisasterEvent {
+
+    private static final Logger LOG = LoggerFactory.getLogger(StormDisaster.class);
 
     private final float intensity;
     private final int durationTicks;
@@ -69,7 +73,7 @@ public class StormDisaster implements DisasterEvent {
 
     @Override
     public void trigger(Simulation simulation, Terrarium terrarium) {
-        System.out.println("🌩️ DISASTER TRIGGER: " + getName() + " (" + getSeverity() + " | Durée: " + durationTicks + " pas)!");
+        LOG.warn("DISASTER TRIGGER: {} (Severity: {} | Duration: {} ticks)", getName(), getSeverity(), durationTicks);
         this.remainingTicks = durationTicks;
         tick(simulation, terrarium);
     }

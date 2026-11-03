@@ -552,63 +552,37 @@ public class InsectVisualizer {
 
     public float getScaleForIndividual(Individual.Caste caste, Individual.LifeStage stage, org.swarmforge.core.species.Species species, org.swarmforge.core.domain.CasteTemplate template) {
         float mmPerWorldUnit = getMmPerWorldUnit();
-        if (stage == Individual.LifeStage.EGG) {
-            return 0.8f / mmPerWorldUnit;
-        } else if (stage == Individual.LifeStage.LARVA) {
-            return 2.2f / mmPerWorldUnit;
-        } else if (stage == Individual.LifeStage.PUPA) {
-            return 4.0f / mmPerWorldUnit;
-        }
-        float bodyLengthMm = getIndividualBodyLengthMm(caste, species, template);
-        return bodyLengthMm / mmPerWorldUnit;
+        if (stage == Individual.LifeStage.EGG) return 0.8f / mmPerWorldUnit;
+        if (stage == Individual.LifeStage.LARVA) return 2.2f / mmPerWorldUnit;
+        if (stage == Individual.LifeStage.PUPA) return 4.0f / mmPerWorldUnit;
+        return getIndividualBodyLengthMm(caste, species, template) / mmPerWorldUnit;
     }
 
-    private float getScale(Individual.Caste caste, org.swarmforge.core.species.Species species) {
-        return 1.0f;
-    }
+    private float getScale(Individual.Caste caste, org.swarmforge.core.species.Species species) { return 1.0f; }
 
-    private int addBox(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx,
-                       int offset, Vector3f center, Vector3f ext) {
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Z, 0, 2, 1, 3);
-        offset += 4;
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Z.negate(), 5, 7, 4, 6);
-        offset += 4;
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_X.negate(), 1, 3, 5, 7);
-        offset += 4;
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_X, 4, 6, 0, 2);
-        offset += 4;
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Y, 1, 5, 0, 4);
-        offset += 4;
-        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Y.negate(), 2, 6, 3, 7);
-        offset += 4;
+    private int addBox(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx, int offset, Vector3f center, Vector3f ext) {
+        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Z, 0, 2, 1, 3); offset += 4;
+        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Z.negate(), 5, 7, 4, 6); offset += 4;
+        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_X.negate(), 1, 3, 5, 7); offset += 4;
+        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_X, 4, 6, 0, 2); offset += 4;
+        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Y, 1, 5, 0, 4); offset += 4;
+        addFace(pos, norm, idx, offset, center, ext, Vector3f.UNIT_Y.negate(), 2, 6, 3, 7); offset += 4;
         return offset;
     }
 
-    private void addFace(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx,
-                         int offset, Vector3f c, Vector3f e, Vector3f n, int v1, int v2, int v3, int v4) {
+    private void addFace(List<Vector3f> pos, List<Vector3f> norm, List<Integer> idx, int offset, Vector3f c, Vector3f e, Vector3f n, int v1, int v2, int v3, int v4) {
         Vector3f[] unitBox = new Vector3f[]{
                 new Vector3f(1, 1, 1), new Vector3f(-1, 1, 1), new Vector3f(1, -1, 1), new Vector3f(-1, -1, 1),
                 new Vector3f(1, 1, -1), new Vector3f(-1, 1, -1), new Vector3f(1, -1, -1), new Vector3f(-1, -1, -1)
         };
-
-        pos.add(unitBox[v1].mult(e).add(c));
-        pos.add(unitBox[v2].mult(e).add(c));
-        pos.add(unitBox[v3].mult(e).add(c));
-        pos.add(unitBox[v4].mult(e).add(c));
-
+        pos.add(unitBox[v1].mult(e).add(c)); pos.add(unitBox[v2].mult(e).add(c));
+        pos.add(unitBox[v3].mult(e).add(c)); pos.add(unitBox[v4].mult(e).add(c));
         for (int i = 0; i < 4; i++) norm.add(n);
-
-        idx.add(offset + 0); idx.add(offset + 1); idx.add(offset + 2);
+        idx.add(offset); idx.add(offset + 1); idx.add(offset + 2);
         idx.add(offset + 1); idx.add(offset + 3); idx.add(offset + 2);
     }
 
     private final Map<Individual.Caste, com.jme3.scene.Node> instancedNodes = new EnumMap<>(Individual.Caste.class);
-
-    public void registerInstancedNode(Individual.Caste caste, com.jme3.scene.Node node) {
-        instancedNodes.put(caste, node);
-    }
-
-    public com.jme3.scene.Node getInstancedNode(Individual.Caste caste) {
-        return instancedNodes.get(caste);
-    }
+    public void registerInstancedNode(Individual.Caste caste, com.jme3.scene.Node node) { instancedNodes.put(caste, node); }
+    public com.jme3.scene.Node getInstancedNode(Individual.Caste caste) { return instancedNodes.get(caste); }
 }

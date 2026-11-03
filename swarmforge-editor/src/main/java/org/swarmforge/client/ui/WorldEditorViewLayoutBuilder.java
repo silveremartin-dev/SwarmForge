@@ -226,4 +226,52 @@ public final class WorldEditorViewLayoutBuilder {
         VBox.setVgrow(area, Priority.ALWAYS);
         return area;
     }
+
+    static VBox buildSculptBlock(WorldEditorPane pane) {
+        pane.enableSculptingCheck = new javafx.scene.control.CheckBox("🖌️ Enable Direct Sculpting Mode (Mouse Drag)");
+        pane.enableSculptingCheck.setSelected(false);
+        pane.enableSculptingCheck.setStyle("-fx-font-weight: bold;");
+        pane.enableSculptingCheck.getStyleClass().add("accent-title");
+        pane.enableSculptingCheck.setOnAction(e -> pane.repaintAllViews());
+
+        pane.brushModeSelect = new ComboBox<>();
+        pane.brushModeSelect.getItems().addAll("Lower Elevation", "Raise Elevation", "Smooth Relief");
+        ComboBoxTooltipHelper.setupDescriptiveComboBox(pane.brushModeSelect,
+            val -> val,
+            val -> switch (val != null ? val : "") {
+                case "Raise Elevation" -> "Increases the terrain elevation at painted coordinates.";
+                case "Lower Elevation" -> "Digs into the terrain and lowers surface voxel elevation.";
+                case "Smooth Relief" -> "Calculates local average elevation to smooth sharp slopes.";
+                default -> "";
+            }
+        );
+        pane.brushModeSelect.getSelectionModel().selectFirst();
+        pane.brushModeSelect.setPrefWidth(240);
+        pane.brushModeSelect.valueProperty().addListener((o, a, b) -> pane.repaintAllViews());
+
+        pane.brushSubstrateSelect = new ComboBox<>();
+        pane.brushSubstrateSelect.getItems().addAll(
+            "Earth Substrate", "Sand Substrate", "Clay Substrate",
+            "Silt Substrate", "Peat Substrate", "Gravel Substrate",
+            "Stone Substrate", "Natural Cavity / Void"
+        );
+
+        pane.brushRadiusSlider = pane.mkSlider(1, 15, 4);
+        pane.brushStrengthSlider = pane.mkSlider(10, 100, 50);
+        pane.addLsn(pane.brushRadiusSlider, pane.brushStrengthSlider);
+
+        Label lblBrushMode = new Label();
+        lblBrushMode.textProperty().bind(I18nManager.getInstance().createStringBinding("world.mode_brush"));
+        Label lblBrushRadius = new Label();
+        lblBrushRadius.textProperty().bind(I18nManager.getInstance().createStringBinding("world.radius_brush"));
+        Label lblBrushStrength = new Label();
+        lblBrushStrength.textProperty().bind(I18nManager.getInstance().createStringBinding("world.strength_brush"));
+
+        return new VBox(8,
+                pane.enableSculptingCheck,
+                lblBrushMode, pane.brushModeSelect,
+                lblBrushRadius, pane.sv(pane.brushRadiusSlider, "vx"),
+                lblBrushStrength, pane.sv(pane.brushStrengthSlider, "%")
+        );
+    }
 }

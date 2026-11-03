@@ -6,23 +6,45 @@
  */
 package org.swarmforge.server;
 
-import org.swarmforge.core.domain.Terrarium;
-import org.swarmforge.core.domain.Colony;
-import org.swarmforge.core.domain.Individual;
-import org.swarmforge.core.simulation.Simulation;
-import org.swarmforge.core.world.NestGenerator;
-import org.swarmforge.server.persistence.DatabaseManager;
-import org.swarmforge.server.persistence.RedisCache;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import io.grpc.netty.NettyServerBuilder;
+import io.grpc.Server;
 import io.grpc.netty.GrpcSslContexts;
+import io.grpc.netty.NettyServerBuilder;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
+import java.io.File;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.swarmforge.core.domain.Colony;
+import org.swarmforge.core.domain.Individual;
+import org.swarmforge.core.domain.Terrarium;
+import org.swarmforge.core.plugin.PluginContext;
+import org.swarmforge.core.plugin.PluginManager;
+import org.swarmforge.core.scenario.AcademicScenarios;
+import org.swarmforge.core.scenario.Scenario;
+import org.swarmforge.core.simulation.Simulation;
+import org.swarmforge.server.ai.FallbackRLService;
+import org.swarmforge.server.cli.SwarmForgeServerCli;
+import org.swarmforge.server.compute.ComputeClusterManager;
+import org.swarmforge.server.grpc.AuthServiceImpl;
+import org.swarmforge.server.grpc.LeaderboardServiceImpl;
+import org.swarmforge.server.grpc.MatchmakingServiceImpl;
+import org.swarmforge.server.grpc.SimulationServiceImpl;
+import org.swarmforge.server.net.SwarmForgeWebSocketServer;
+import org.swarmforge.server.persistence.DatabaseManager;
+import org.swarmforge.server.persistence.RedisCache;
+import org.swarmforge.server.rest.RestApiServer;
+import org.swarmforge.server.security.JwtServerInterceptor;
+import org.swarmforge.server.simulation.ServerBatchCampaignRunner;
+import org.swarmforge.server.simulation.SimulationManager;
 
 /**
  * Main server application for SwarmForge.
- * Initializes simulation, databases, and gRPC services.
+ * Initializes simulation, databases, gRPC services, REST endpoints, and WebSocket streaming.
  *
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
@@ -31,41 +53,43 @@ public class SwarmForgeServer {
 
     private static final Logger LOG = LoggerFactory.getLogger(SwarmForgeServer.class);
 
-    private final Terrarium terrarium; // Default/Main terrarium? Or one per sim? One per sim.
-    // private final Simulation simulation; // REPLACED
-    private final org.swarmforge.server.simulation.SimulationManager simulationManager;
-
-    // private final WeatherSystem weather; // Unused
+    private final Terrarium terrarium;
+    private final SimulationManager simulationManager;
     private final DatabaseManager database;
     private final RedisCache cache;
-    private final org.swarmforge.server.grpc.SimulationServiceImpl simulationService; // Fully qualified
-    private final org.swarmforge.server.grpc.MatchmakingServiceImpl matchmakingService;
-    private final org.swarmforge.server.grpc.LeaderboardServiceImpl leaderboardService;
-    private final org.swarmforge.server.compute.ComputeClusterManager clusterManager;
-    private final org.swarmforge.core.plugin.PluginManager pluginManager;
-    private final org.swarmforge.server.rest.RestApiServer restApiServer;
-    private org.swarmforge.server.net.SwarmForgeWebSocketServer webSocketServer;
+    private final SimulationServiceImpl simulationService;
+    private final MatchmakingServiceImpl matchmakingService;
+    private final LeaderboardServiceImpl leaderboardService;
+    private final ComputeClusterManager clusterManager;
+    private final PluginManager pluginManager;
+    private final RestApiServer restApiServer;
+    private SwarmForgeWebSocketServer webSocketServer;
     private final int grpcPort;
     private final ServerConfig config;
-    private io.grpc.Server grpcServer;
+    private final ServerWorldManager worldManager;
+    private Server grpcServer;
+
+    private final ExecutorService dbAsyncExecutor = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("db-async-writer-", 0).factory());
+    private final long startTime = System.currentTimeMillis();
 
     public SwarmForgeServer(ServerConfig config) {
         this.config = config;
         this.grpcPort = config.grpcPort();
+        this.worldManager = new ServerWorldManager(this);
 
         // Initialize Simulation Manager
-        this.simulationManager = new org.swarmforge.server.simulation.SimulationManager();
+        this.simulationManager = new SimulationManager();
 
         // Create MAIN simulation
         LOG.info("Initializing main simulation...");
         this.simulationManager.createSimulation("main", "Main World",
                 config.worldWidth(), config.worldHeight(), config.worldDepth());
 
-        // Get main components for legacy support/accessors
         Simulation mainSim = simulationManager.getSimulation("main").orElseThrow();
         this.terrarium = mainSim.getTerrarium();
         try {
-            loadAcademicScenario(org.swarmforge.core.scenario.AcademicScenarios.createLevyVsBrownianScenario(42L));
+            loadAcademicScenario(AcademicScenarios.createLevyVsBrownianScenario(42L));
         } catch (Exception e) {
             LOG.warn("Could not load initial academic scenario: {}", e.getMessage());
         }
@@ -77,194 +101,204 @@ public class SwarmForgeServer {
         this.cache = new RedisCache(config.redisHost(), config.redisPort());
 
         // Initialize Compute Cluster
-        this.clusterManager = new org.swarmforge.server.compute.ComputeClusterManager();
-        mainSim.setClusterManager(clusterManager); // Set for main
+        this.clusterManager = new ComputeClusterManager();
+        mainSim.setClusterManager(clusterManager);
 
         // Initialize Plugins
-        this.pluginManager = new org.swarmforge.core.plugin.PluginManager();
-        this.pluginManager.setContext(new org.swarmforge.core.plugin.PluginContext(mainSim, pluginManager)); // Plugins
-                                                                                                             // attached
-                                                                                                             // to main?
-        this.pluginManager.loadPluginsFromDirectory(new java.io.File("plugins"));
+        this.pluginManager = new PluginManager();
+        this.pluginManager.setContext(new PluginContext(mainSim, pluginManager));
+        this.pluginManager.loadPluginsFromDirectory(new File("plugins"));
 
-        // Initialize gRPC Service
-        // We pass 'this' (server) so service can access manager
-        this.simulationService = new org.swarmforge.server.grpc.SimulationServiceImpl(this);
-        this.matchmakingService = new org.swarmforge.server.grpc.MatchmakingServiceImpl(this.simulationManager);
-        this.leaderboardService = new org.swarmforge.server.grpc.LeaderboardServiceImpl();
+        // Initialize gRPC Services
+        this.simulationService = new SimulationServiceImpl(this);
+        this.matchmakingService = new MatchmakingServiceImpl(this.simulationManager);
+        this.leaderboardService = new LeaderboardServiceImpl();
 
         // Initialize REST API
-        this.restApiServer = new org.swarmforge.server.rest.RestApiServer(config.grpcPort() + 1000);
-        this.restApiServer.setSimulation(mainSim); // REST API currently tied to main
+        this.restApiServer = new RestApiServer(config.grpcPort() + 1000);
+        this.restApiServer.setSimulation(mainSim);
     }
-
-    private final java.util.concurrent.ExecutorService dbAsyncExecutor = java.util.concurrent.Executors.newThreadPerTaskExecutor(
-            Thread.ofVirtual().name("db-async-writer-", 0).factory());
-
-    // ... constructors ...
 
     public void start() throws Exception {
         try {
             LOG.info("Starting SwarmForge Server...");
 
-        // Check Infrastructure & Auto-Start (only if database or redis host is configured)
-        if (config.dbHost() != null && !config.dbHost().trim().isEmpty() && config.dbPort() > 0) {
-            try {
-                boolean postgresRunning = isPortOpen(config.dbHost(), config.dbPort());
-                boolean redisRunning = (config.redisHost() != null && !config.redisHost().trim().isEmpty() && config.redisPort() > 0)
-                        ? isPortOpen(config.redisHost(), config.redisPort())
-                        : true;
+            // Auto-start Docker services if down
+            checkAndAutoStartInfrastructure();
 
-                if (!postgresRunning || !redisRunning) {
-                    LOG.warn("Infrastructure (Postgres/Redis) appears down. Attempting auto-start...");
-                    Process p = null;
-                    try {
-                        p = new ProcessBuilder("docker-compose", "up", "-d").inheritIO().start();
-                    } catch (Exception e) {
-                        try {
-                            p = new ProcessBuilder("docker", "compose", "up", "-d").inheritIO().start();
-                        } catch (Exception ex) {
-                            LOG.warn("Could not invoke docker-compose or docker compose: " + ex.getMessage());
-                        }
+            // Connect Database
+            try {
+                database.connect();
+                if (database.isConnected()) {
+                    LOG.info("Database connected successfully");
+                    if (getSimulation() != null) {
+                        saveWorld("Initial World State");
                     }
-                    if (p != null) {
-                        int exitCode = p.waitFor();
-                        if (exitCode == 0) {
-                            LOG.info("Auto-start command executed. Waiting for services to initialize...");
-                            for (int i = 0; i < 10; i++) {
-                                Thread.sleep(500);
-                                if (isPortOpen(config.dbHost(), config.dbPort())) {
-                                    LOG.info("Services are now reachable.");
-                                    break;
-                                }
-                            }
-                        } else {
-                            LOG.warn("Auto-start Docker infrastructure exited with code " + exitCode);
-                        }
-                    }
+                } else {
+                    LOG.info("Database running in fallback mode");
                 }
             } catch (Exception e) {
-                LOG.warn("Auto-start check skipped or failed: " + e.getMessage());
+                LOG.warn("Database connection failed (running in offline mode): {}", e.getMessage());
             }
-        }
 
-        try {
-            database.connect();
-            if (database.isConnected()) {
-                LOG.info("Database connected successfully");
-                Simulation sim = getSimulation();
-                if (sim != null) {
-                    saveWorld("Initial World State");
+            // Connect Redis
+            try {
+                cache.connect();
+                if (cache.isConnected()) {
+                    LOG.info("Redis connected successfully");
+                } else {
+                    LOG.info("Redis caching disabled (running without Redis)");
                 }
-            } else {
-                LOG.info("Database running in fallback mode");
+            } catch (Exception e) {
+                LOG.warn("Redis connection failed (caching disabled): {}", e.getMessage());
             }
-        } catch (Exception e) {
-            LOG.warn("Database connection failed (running in offline mode): {}", e.getMessage());
-        }
 
+            // TLS Setup
+            SslContext sslContext = createSslContextIfEnabled();
+
+            NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(grpcPort)
+                    .maxInboundMessageSize(16 * 1024 * 1024)
+                    .maxInboundMetadataSize(64 * 1024);
+            if (sslContext != null) {
+                serverBuilder.sslContext(sslContext);
+            }
+
+            this.grpcServer = serverBuilder
+                    .intercept(new JwtServerInterceptor())
+                    .addService(new AuthServiceImpl())
+                    .addService(simulationService)
+                    .addService(matchmakingService)
+                    .addService(leaderboardService)
+                    .addService(new FallbackRLService())
+                    .build()
+                    .start();
+            LOG.info("gRPC Server (Secure) started on port {}", grpcPort);
+
+            // Start REST API
+            try {
+                this.restApiServer.start();
+            } catch (Exception e) {
+                LOG.warn("Failed to start REST API: {}", e.getMessage());
+            }
+
+            // Start WebSocket Server
+            startWebSocketServer();
+
+            // Start Redis updater & DB checkpointer
+            startBackgroundWorkers();
+
+            printStatusBanner();
+        } catch (Throwable t) {
+            LOG.error("SERVER STARTUP FAILED CRITICALLY: ", t);
+            throw t;
+        }
+    }
+
+    private void checkAndAutoStartInfrastructure() {
+        if (config.dbHost() == null || config.dbHost().trim().isEmpty() || config.dbPort() <= 0) {
+            return;
+        }
         try {
-            cache.connect();
-            if (cache.isConnected()) {
-                LOG.info("Redis connected successfully");
-            } else {
-                LOG.info("Redis caching disabled (running without Redis)");
+            boolean postgresRunning = isPortOpen(config.dbHost(), config.dbPort());
+            boolean redisRunning = (config.redisHost() != null && !config.redisHost().trim().isEmpty() && config.redisPort() > 0)
+                    ? isPortOpen(config.redisHost(), config.redisPort())
+                    : true;
+
+            if (!postgresRunning || !redisRunning) {
+                LOG.warn("Infrastructure (Postgres/Redis) appears down. Attempting auto-start...");
+                Process p = null;
+                try {
+                    p = new ProcessBuilder("docker-compose", "up", "-d").inheritIO().start();
+                } catch (Exception e) {
+                    try {
+                        p = new ProcessBuilder("docker", "compose", "up", "-d").inheritIO().start();
+                    } catch (Exception ex) {
+                        LOG.warn("Could not invoke docker-compose: {}", ex.getMessage());
+                    }
+                }
+                if (p != null) {
+                    int exitCode = p.waitFor();
+                    if (exitCode == 0) {
+                        LOG.info("Auto-start command executed. Waiting for services to initialize...");
+                        for (int i = 0; i < 10; i++) {
+                            Thread.sleep(500);
+                            if (isPortOpen(config.dbHost(), config.dbPort())) {
+                                LOG.info("Services are now reachable.");
+                                break;
+                            }
+                        }
+                    } else {
+                        LOG.warn("Auto-start Docker infrastructure exited with code {}", exitCode);
+                    }
+                }
             }
         } catch (Exception e) {
-            LOG.warn("Redis connection failed (caching disabled): {}", e.getMessage());
+            LOG.warn("Auto-start check skipped or failed: {}", e.getMessage());
         }
+    }
 
-        // TLS Setup (enabled when ENABLE_TLS=true)
-        SslContext sslContext = null;
-        if ("true".equalsIgnoreCase(System.getenv("ENABLE_TLS"))) {
+    private SslContext createSslContextIfEnabled() {
+        if (!"true".equalsIgnoreCase(System.getenv("ENABLE_TLS"))) {
+            LOG.info("gRPC Server running in plaintext mode (set ENABLE_TLS=true to activate TLS)");
+            return null;
+        }
+        try {
+            SelfSignedCertificate ssc = new SelfSignedCertificate();
+            SslContext ctx = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey())
+                    .sslProvider(io.netty.handler.ssl.SslProvider.OPENSSL)
+                    .build();
+            LOG.info("TLS Enabled using self-signed certificate (OpenSSL)");
+            return ctx;
+        } catch (Throwable e) {
+            LOG.warn("Failed to initialize OpenSSL TLS, trying JDK SSL: {}", e.getMessage());
             try {
                 SelfSignedCertificate ssc = new SelfSignedCertificate();
-                sslContext = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey())
-                        .sslProvider(io.netty.handler.ssl.SslProvider.OPENSSL)
-                        .build();
-                LOG.info("TLS Enabled using self-signed certificate");
-            } catch (Throwable e) {
-                LOG.warn("Failed to initialize Native TLS (OpenSSL), trying JDK SSL: " + e.getMessage());
-                try {
-                    SelfSignedCertificate ssc = new SelfSignedCertificate();
-                    sslContext = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey()).build();
-                    LOG.info("TLS Enabled using JDK SSL");
-                } catch (Throwable e2) {
-                    LOG.warn("Could not initialize TLS, running plaintext: " + e2.getMessage());
-                    sslContext = null;
-                }
+                SslContext ctx = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey()).build();
+                LOG.info("TLS Enabled using JDK SSL");
+                return ctx;
+            } catch (Throwable e2) {
+                LOG.warn("Could not initialize TLS, running plaintext: {}", e2.getMessage());
+                return null;
             }
-        } else {
-            LOG.info("gRPC Server running in plaintext mode (set ENABLE_TLS=true to activate TLS)");
         }
+    }
 
-        NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(grpcPort)
-                .maxInboundMessageSize(16 * 1024 * 1024) // 16 MB max payload size
-                .maxInboundMetadataSize(64 * 1024);     // 64 KB metadata limit
-        if (sslContext != null) {
-            serverBuilder.sslContext(sslContext);
-        }
-
-        this.grpcServer = serverBuilder
-                .intercept(new org.swarmforge.server.security.JwtServerInterceptor())
-                .addService(new org.swarmforge.server.grpc.AuthServiceImpl())
-                .addService(simulationService)
-                .addService(matchmakingService)
-                .addService(leaderboardService)
-                .addService(new org.swarmforge.server.ai.FallbackRLService())
-                .build()
-                .start();
-        LOG.info("gRPC Server (Secure) started on port " + grpcPort);
-
-        // Start REST API
-        try
-
-        {
-            this.restApiServer.start();
-        } catch (
-
-        Exception e) {
-            LOG.warn("Failed to start REST API: " + e.getMessage());
-        }
-
-        // Start WebSocket Server (Port 8081 or next available port)
+    private void startWebSocketServer() {
         try {
             int wsPort = 8081;
             boolean bound = false;
             for (int p = wsPort; p < wsPort + 10; p++) {
                 if (!isPortOpen("localhost", p)) {
                     try {
-                        this.webSocketServer = new org.swarmforge.server.net.SwarmForgeWebSocketServer(p, simulationManager);
+                        this.webSocketServer = new SwarmForgeWebSocketServer(p, simulationManager);
                         this.webSocketServer.start();
                         bound = true;
-                        LOG.info("WebSocket Server started on port " + p);
+                        LOG.info("WebSocket Server started on port {}", p);
                         break;
                     } catch (Exception ex) {
-                        LOG.warn("Could not bind WebSocket on port " + p + ", trying next: " + ex.getMessage());
+                        LOG.warn("Could not bind WebSocket on port {}, trying next: {}", p, ex.getMessage());
                     }
                 }
             }
             if (!bound) {
-                LOG.warn("Could not find an available port for WebSocket Server (8081-8090 are busy). WebSocket streaming disabled.");
+                LOG.warn("Could not find an available port for WebSocket Server (8081-8090 are busy).");
             }
         } catch (Exception e) {
-            LOG.warn("Failed to start WebSocket Server: " + e.getMessage());
+            LOG.warn("Failed to start WebSocket Server: {}", e.getMessage());
         }
+    }
 
-        // Start Redis updater
+    private void startBackgroundWorkers() {
+        // Redis live position streamer
         Thread.ofVirtual().name("redis-updater").start(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 if (cache.isConnected()) {
                     for (var entry : simulationManager.getAllSimulations().entrySet()) {
                         String simId = entry.getKey();
                         Simulation sim = entry.getValue();
-
                         if (sim.getState() == Simulation.State.RUNNING) {
                             try {
-                                long tick = sim.getTickCount();
-                                cache.setTick(simId, tick); // Use simId as world key? cache key is usually world name.
-                                // We'll use simId for now.
-
+                                cache.setTick(simId, sim.getTickCount());
                                 for (Colony colony : sim.getColonies()) {
                                     for (Individual ind : colony.getLivingIndividuals()) {
                                         cache.setIndividualPosition(simId, ind.getId().toString(),
@@ -272,20 +306,21 @@ public class SwarmForgeServer {
                                     }
                                 }
                             } catch (Exception e) {
-                                LOG.warn("Error updating Redis for " + simId + ": " + e.getMessage());
+                                LOG.warn("Error updating Redis for {}: {}", simId, e.getMessage());
                             }
                         }
                     }
                 }
                 try {
-                    Thread.sleep(50); // 20 updates per second
+                    Thread.sleep(50);
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     break;
                 }
             }
         });
 
-        // Start Periodic Database Auto-Checkpointer (Every 10 seconds for replays)
+        // Periodic Database Checkpointer
         Thread.ofVirtual().name("db-checkpointer").start(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
@@ -297,23 +332,17 @@ public class SwarmForgeServer {
                         }
                     }
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     break;
                 } catch (Exception ex) {
-                    LOG.warn("Auto-checkpoint failed: " + ex.getMessage());
+                    LOG.warn("Auto-checkpoint failed: {}", ex.getMessage());
                 }
             }
         });
-
-        printStatusBanner();
-        } catch (Throwable t) {
-            LOG.error("SERVER STARTUP FAILED CRITICALLY: ", t);
-            throw t;
-        }
     }
 
-    // ... existing logic ...
-
     // === Simulation Control ===
+
     public void pauseSimulation() {
         simulationManager.getAllSimulations().values().forEach(Simulation::pause);
         LOG.info("All simulations paused by server request");
@@ -340,26 +369,21 @@ public class SwarmForgeServer {
     }
 
     // === Client Management ===
-    public java.util.List<String> getConnectedClients() {
-        // Delegate to service
+
+    public List<String> getConnectedClients() {
         return simulationService.getConnectedClientIds();
     }
 
     public void kickClient(String clientId) {
         simulationService.kickClient(clientId);
-        LOG.info("Kicked client: " + clientId);
+        LOG.info("Kicked client: {}", clientId);
     }
 
-    // ... rest of class ...
-
-    /**
-     * Print a clear status banner showing service states.
-     */
     public void printStatusBanner() {
         String dbStatus = database.isConnected() 
                 ? (database.isH2Fallback() ? "[OK] H2 (MEM)" : "[OK] POSTGRES") 
                 : "[X] OFFLINE";
-        String dbColor = database.isConnected() ? "\u001B[32m" : "\u001B[31m"; // Green/Red
+        String dbColor = database.isConnected() ? "\u001B[32m" : "\u001B[31m";
         String redisStatus = cache.isConnected() ? "[OK] ONLINE " : "[X] OFFLINE";
         String redisColor = cache.isConnected() ? "\u001B[32m" : "\u001B[31m";
         String reset = "\u001B[0m";
@@ -385,398 +409,84 @@ public class SwarmForgeServer {
         System.out.println();
     }
 
+    // === World & Scenario Delegations ===
+
     public void createNewWorld(String name, String terrainType, String speciesType) {
-        LOG.info("Creating new world: " + name + " (" + terrainType + ", " + speciesType + ")");
-
-        Simulation simulation = getSimulation(); // Access main
-        if (simulation == null)
-            return;
-
-        simulation.stop();
-        terrarium.clear();
-        simulation.reset(0);
-
-        // 1. Terrain
-        org.swarmforge.core.world.TerrainGenerator terrainGen = new org.swarmforge.core.world.TerrainGenerator();
-        int groundLevel = terrarium.getDepth() - 10;
-
-        float roughness = 8f;
-        float scale = 0.03f;
-
-        if (terrainType.contains("Flat")) {
-            roughness = 1f;
-            scale = 0.005f;
-        } else if (terrainType.contains("Desert")) {
-            roughness = 4f;
-            scale = 0.02f;
-        } else if (terrainType.contains("Hills")) {
-            roughness = 12f;
-            scale = 0.05f;
-        }
-
-        terrainGen.generate(terrarium, groundLevel, roughness, scale);
-
-        // 2. Nest
-        NestGenerator nestGen = new NestGenerator(terrarium);
-        int centerX = terrarium.getWidth() / 2;
-        int centerY = terrarium.getHeight() / 2;
-        nestGen.generate(centerX, centerY, groundLevel - 5, NestGenerator.NestType.MATURE, 1.0f);
-
-        // 3. Colony & Species
-        org.swarmforge.core.species.Species species;
-        if (speciesType != null && speciesType.contains("Atta")) {
-            species = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies("atta-cephalotes");
-        } else {
-            species = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies("lasius-niger"); // Default
-        }
-
-        Colony colony = new Colony(species, centerX, centerY, 50);
-        colony.addIndividual(colony.createQueen());
-        for (int i = 0; i < 50; i++) {
-            Individual worker = colony.createWorker();
-            worker.setPosition(centerX, centerY, groundLevel - 2);
-            colony.addIndividual(worker);
-        }
-        simulation.addColony(colony);
-
-        // 4. Persistence & Start
-        if (database.isConnected()) {
-            saveWorld(name);
-        }
-        simulation.start();
-        LOG.info("New world created, running and ready.");
+        worldManager.createNewWorld(name, terrainType, speciesType);
     }
 
-    public java.util.List<String> getAvailableWorlds() {
-        if (database == null || !database.isConnected()) {
-            return java.util.Collections.emptyList();
-        }
-        try {
-            return database.worldRepository().findAll().stream()
-                    .map(w -> w.name() + " [" + w.id() + "]")
-                    .collect(java.util.stream.Collectors.toList());
-        } catch (Exception e) {
-            LOG.error("Failed to list worlds", e);
-            return java.util.Collections.emptyList();
-        }
+    public List<String> getAvailableWorlds() {
+        return worldManager.getAvailableWorlds();
     }
 
-    /**
-     * Load and configure an academic research scenario into the main simulation.
-     */
-    public void loadAcademicScenario(org.swarmforge.core.scenario.Scenario scenario) {
-        if (scenario == null) return;
-        LOG.info("Loading Academic Scenario: {} ({})", scenario.getTitle(), scenario.getId());
-
-        Simulation simulation = getSimulation();
-        if (simulation == null) return;
-
-        simulation.stop();
-        terrarium.clear();
-        simulation.reset(0);
-        simulation.setMasterSeed(scenario.getMasterSeed());
-
-        // 1. Terrain generation according to Biome
-        org.swarmforge.core.world.TerrainGenerator terrainGen = new org.swarmforge.core.world.TerrainGenerator();
-        int groundLevel = terrarium.getDepth() - 10;
-        float roughness = 8f;
-        float scale = 0.03f;
-
-        String biome = scenario.getBiomeName() != null ? scenario.getBiomeName().toUpperCase() : "TEMPERATE";
-        if (biome.contains("DESERT") || biome.contains("STEPPE") || biome.contains("ARID")) {
-            roughness = 4f;
-            scale = 0.02f;
-        } else if (biome.contains("ALPINE") || biome.contains("MOUNTAIN") || biome.contains("HILLS") || biome.contains("TAIGA")) {
-            roughness = 14f;
-            scale = 0.05f;
-        } else if (biome.contains("WETLAND") || biome.contains("SAVANNA")) {
-            roughness = 3f;
-            scale = 0.01f;
-        }
-
-        terrainGen.generate(terrarium, groundLevel, roughness, scale);
-
-        // 2. Weather & Day/Night
-        if (simulation.getWeather() != null) {
-            simulation.getWeather().setTemperature(scenario.getInitialTemperature());
-            simulation.getWeather().setHumidity(scenario.getInitialHumidity() * 100f);
-        }
-
-        // 3. Colonies & Species
-        int totalColonies = scenario.getColonies().size();
-        for (int i = 0; i < totalColonies; i++) {
-            var colSetup = scenario.getColonies().get(i);
-            String spName = colSetup.speciesName();
-            org.swarmforge.core.species.Species species = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies(spName);
-
-            // Position calculation
-            int posX = (totalColonies == 1) ? (terrarium.getWidth() / 2) : (int) ((i + 1) * (terrarium.getWidth() / (totalColonies + 1.0f)));
-            int posY = (totalColonies == 1) ? (terrarium.getHeight() / 2) : (int) ((i + 1) * (terrarium.getHeight() / (totalColonies + 1.0f)));
-
-            // Nest Generation
-            NestGenerator nestGen = new NestGenerator(terrarium);
-            nestGen.generate(posX, posY, groundLevel - 5, NestGenerator.NestType.MATURE, 1.0f);
-
-            Colony colony = new Colony(species, posX, posY, groundLevel - 5);
-            for (int q = 0; q < colSetup.queenCount(); q++) {
-                colony.addIndividual(colony.createQueen());
-            }
-            for (int w = 0; w < colSetup.workerCount(); w++) {
-                Individual worker = colony.createWorker();
-                worker.setPosition(posX, posY, groundLevel - 2);
-                colony.addIndividual(worker);
-            }
-            for (int s = 0; s < colSetup.soldierCount(); s++) {
-                Individual soldier = colony.createSoldier();
-                soldier.setPosition(posX, posY, groundLevel - 2);
-                colony.addIndividual(soldier);
-            }
-
-            simulation.addColony(colony);
-        }
-
-        // 4. Food Patches
-        int foodCount = Math.max(10, scenario.getFoodPatchesCount());
-        java.util.Random rand = new java.util.Random(scenario.getMasterSeed());
-        for (int f = 0; f < foodCount; f++) {
-            float fx = 10 + rand.nextFloat() * (terrarium.getWidth() - 20);
-            float fy = 10 + rand.nextFloat() * (terrarium.getHeight() - 20);
-            simulation.spawnFood(fx, fy, groundLevel, 15 + rand.nextFloat() * 30, org.swarmforge.core.domain.ResourceType.SUGAR);
-        }
-
-        // 5. Start simulation
-        simulation.start();
-        if (database.isConnected()) {
-            saveWorld(scenario.getTitle());
-        }
-        LOG.info("Scenario '{}' initialized and running (Colonies: {}, Population: {})",
-                scenario.getTitle(), simulation.getColonies().size(),
-                simulation.getColonies().stream().mapToInt(Colony::getPopulation).sum());
+    public void loadAcademicScenario(Scenario scenario) {
+        worldManager.loadAcademicScenario(scenario);
     }
 
-    /**
-     * Run an autonomous headless batch campaign for scientific experiments,
-     * recording snapshots to disk and database, then exiting.
-     */
-    public void runBatchCampaign(org.swarmforge.core.scenario.Scenario scenario, long targetTicks, String exportDir, int snapshotInterval) {
-        new org.swarmforge.server.simulation.ServerBatchCampaignRunner(this).runBatchCampaign(scenario, targetTicks, exportDir, snapshotInterval);
+    public void runBatchCampaign(Scenario scenario, long targetTicks, String exportDir, int snapshotInterval) {
+        new ServerBatchCampaignRunner(this).runBatchCampaign(scenario, targetTicks, exportDir, snapshotInterval);
     }
 
-    /**
-     * Create a demo world with a colony.
-     */
     public void createDemoWorld() {
-        createNewWorld("Demo World", "Perlin Hills", "Lasius niger");
-
-        // Add extra stuff for demo
-        int rivalX = terrarium.getWidth() - 30;
-        int rivalY = terrarium.getHeight() - 30;
-        int groundLevel = terrarium.getDepth() - 10;
-        Colony rivalColony = new Colony(org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies("atta-cephalotes"), rivalX, rivalY,
-                groundLevel - 5);
-        rivalColony.addIndividual(rivalColony.createQueen());
-        for (int i = 0; i < 30; i++) {
-            Individual worker = rivalColony.createWorker();
-            worker.setPosition(rivalX, rivalY, groundLevel - 2);
-            rivalColony.addIndividual(worker);
-        }
-        // spawn rival (assuming main simulation)
-        Simulation simulation = getSimulation();
-        if (simulation != null) {
-            simulation.addColony(rivalColony);
-        }
-
-        // Spawn food
-        java.util.Random rand = new java.util.Random();
-        for (int i = 0; i < 20; i++) {
-            float fx = rand.nextFloat() * terrarium.getWidth();
-            float fy = rand.nextFloat() * terrarium.getHeight();
-            // Assuming current simulation is the one createNewWorld set up (which operates
-            // on main)
-            Simulation sim = getSimulation();
-            if (sim != null)
-                sim.spawnFood(fx, fy, groundLevel, 10 + rand.nextFloat() * 20,
-                        org.swarmforge.core.domain.ResourceType.SEED);
-        }
+        worldManager.createDemoWorld();
     }
 
-    /**
-     * Stop the server.
-     */
+    public void saveWorld(String name) {
+        worldManager.saveWorld(name);
+    }
+
+    public void loadWorld(String worldIdStr) {
+        worldManager.loadWorld(worldIdStr);
+    }
+
     public void stop() {
         LOG.info("Stopping SwarmForge Server...");
         if (grpcServer != null) {
             grpcServer.shutdown();
         }
-        if (simulationManager != null)
+        if (simulationManager != null) {
             simulationManager.stopAll();
-        if (cache != null)
+        }
+        if (cache != null) {
             cache.disconnect();
-        if (database != null)
+        }
+        if (database != null) {
             database.disconnect();
+        }
         if (restApiServer != null) {
             try {
                 restApiServer.stop();
             } catch (Exception e) {
-                LOG.warn("Error stopping REST API server: " + e.getMessage());
+                LOG.warn("Error stopping REST API server: {}", e.getMessage());
             }
         }
         if (webSocketServer != null) {
             try {
                 webSocketServer.stop(500);
             } catch (Exception e) {
-                LOG.warn("Error stopping WebSocket server: " + e.getMessage());
+                LOG.warn("Error stopping WebSocket server: {}", e.getMessage());
             }
             webSocketServer = null;
         }
         LOG.info("Server stopped");
     }
 
-    /**
-     * Save the current world state.
-     */
-    public void saveWorld(String name) {
-        if (!database.isConnected()) {
-            return;
-        }
-        try {
-            Simulation simulation = getSimulation();
-            if (simulation == null) {
-                LOG.warn("Cannot save world: simulation is null");
-                return;
-            }
-            Terrarium targetTerrarium = simulation.getTerrarium() != null ? simulation.getTerrarium() : this.terrarium;
-            if (targetTerrarium == null) {
-                LOG.warn("Cannot save world: terrarium is null");
-                return;
-            }
-
-            org.swarmforge.server.persistence.SimulationSerializer serializer = new org.swarmforge.server.persistence.SimulationSerializer();
-
-            // 1. Serialize memory buffers rapidly (<1ms)
-            byte[] cellsData = serializer.serializeCells(targetTerrarium);
-            byte[] coloniesData = serializer.serializeColonies(simulation.getColonies());
-            byte[] individualsData = serializer.serializeIndividuals(new java.util.ArrayList<>());
-            long tickCount = simulation.getTickCount();
-            int width = targetTerrarium.getWidth();
-            int height = targetTerrarium.getHeight();
-            int depth = targetTerrarium.getDepth();
-            java.util.List<Colony> coloniesCopy = new java.util.ArrayList<>(simulation.getColonies());
-
-            // 2. Offload PostgreSQL I/O to background async writer thread (Zero tick stall)
-            dbAsyncExecutor.submit(() -> {
-                try {
-                    java.util.UUID worldId = database.worldRepository().save(
-                            name, width, height, depth, 0, 0, 0);
-
-                    for (Colony col : coloniesCopy) {
-                        try {
-                            database.colonyRepository().save(col, "System");
-                        } catch (Exception ignored) {}
-                    }
-
-                    database.checkpointRepository().save(
-                            worldId, tickCount, name,
-                            cellsData, coloniesData, individualsData);
-
-                    LOG.info("Async world save completed: " + worldId + " (Tick " + tickCount + ")");
-                } catch (Exception ex) {
-                    LOG.error("Failed to async save world to database: " + ex.getMessage(), ex);
-                }
-            });
-        } catch (Exception e) {
-            LOG.error("Failed to serialize world for saving: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Load a world state.
-     */
-    public void loadWorld(String worldIdStr) {
-        LOG.info("Loading world: " + worldIdStr);
-        try {
-            java.util.UUID worldId = java.util.UUID.fromString(worldIdStr);
-
-            // 1. Find latest checkpoint
-            java.util.List<org.swarmforge.server.persistence.CheckpointRepository.CheckpointSummary> checkpoints = database
-                    .checkpointRepository().findByWorld(worldId);
-
-            if (checkpoints.isEmpty()) {
-                throw new Exception("No checkpoints found for world " + worldIdStr);
-            }
-
-            java.util.UUID checkpointId = checkpoints.get(0).id();
-            var checkpointOpt = database.checkpointRepository().findById(checkpointId);
-
-            if (checkpointOpt.isEmpty()) {
-                throw new Exception("Checkpoint data missing for " + checkpointId);
-            }
-
-            var checkpoint = checkpointOpt.get();
-
-            Simulation simulation = getSimulation();
-            if (simulation == null)
-                return;
-
-            // 2. Stop simulation
-            boolean wasRunning = simulation.getState() == Simulation.State.RUNNING;
-            simulation.stop();
-            // Wait a bit for threads to stop? separate thread logic handles flag check.
-            Thread.sleep(100);
-
-            // 3. Deserialize
-            org.swarmforge.server.persistence.SimulationSerializer serializer = new org.swarmforge.server.persistence.SimulationSerializer();
-            java.util.Collection<org.swarmforge.core.domain.TerrariumCell> cells = serializer
-                    .deserializeCells(checkpoint.cellsData());
-            java.util.Collection<Colony> colonies = serializer.deserializeColonies(checkpoint.coloniesData());
-
-            // 4. Reset World
-            terrarium.clear();
-            for (org.swarmforge.core.domain.TerrariumCell cell : cells) {
-                terrarium.setCell(cell);
-            }
-
-            // 5. Reset Simulation
-            simulation.reset(checkpoint.tick());
-            for (Colony colony : colonies) {
-                simulation.addColony(colony);
-            }
-
-            LOG.info("World loaded successfully. Tick: " + checkpoint.tick());
-
-            // 6. Resume if was running
-            if (wasRunning) {
-                simulation.start();
-            }
-
-        } catch (Exception e) {
-            LOG.error("Failed to load world: " + e.getMessage(), e);
-            throw new RuntimeException(e); // Propagate to gRPC
-        }
-    }
-
     public Terrarium getTerrarium() {
-        return terrarium; // Main
+        return terrarium;
     }
 
     public Simulation getSimulation() {
         return simulationManager.getSimulation("main").orElse(null);
     }
 
-    public org.swarmforge.server.simulation.SimulationManager getSimulationManager() {
+    public SimulationManager getSimulationManager() {
         return simulationManager;
     }
 
-    /**
-     * Check if database is connected.
-     */
     public boolean isDatabaseConnected() {
         return database != null && database.isConnected();
     }
 
-    /**
-     * Check if Redis cache is connected.
-     */
     public boolean isRedisConnected() {
         return cache != null && cache.isConnected();
     }
@@ -809,90 +519,51 @@ public class SwarmForgeServer {
         }
     }
 
-    /**
-     * Get server uptime in seconds.
-     */
     public long getUptimeSeconds() {
         return (System.currentTimeMillis() - startTime) / 1000;
     }
 
-    private long startTime = System.currentTimeMillis();
-
-    public org.swarmforge.server.compute.ComputeClusterManager getClusterManager() {
+    public ComputeClusterManager getClusterManager() {
         return clusterManager;
     }
 
     public void listAcademicScenarios() {
-        System.out.println("\n=== Scénarios Académiques & Scientifiques Disponibles (SwarmForge) ===");
-        var list = org.swarmforge.core.scenario.AcademicScenarios.getAllAcademicScenarios(42L);
-        for (int i = 0; i < list.size(); i++) {
-            var s = list.get(i);
-            System.out.printf(" [%2d] %-34s | %s\n      Catégorie : %s (Colonies: %d, Biome: %s)\n",
-                    (i + 1), s.getId(), s.getTitle(), s.getAcademicCategory(), s.getColonies().size(), s.getBiomeName());
-        }
-        System.out.println("=======================================================================\n");
+        SwarmForgeServerCli.listAcademicScenarios();
     }
 
     public static void main(String[] args) {
-        org.swarmforge.server.cli.SwarmForgeServerCli.main(args);
+        SwarmForgeServerCli.main(args);
     }
 
     public void printSimulationInfo() {
-        System.out.println("\n=== Multi-Simulation Info ===");
-        simulationManager.getAllSimulations().forEach((id, sim) -> {
-            System.out.println("ID: " + id);
-            System.out.println("  Tick: " + sim.getTickCount());
-            System.out.println("  State: " + sim.getState());
-            System.out.println("  Colonies: " + sim.getColonies().size());
-            int totalPop = sim.getColonies().stream().mapToInt(Colony::getPopulation).sum();
-            System.out.println("  Population: " + totalPop);
-        });
-        System.out.println("===========================\n");
+        SwarmForgeServerCli.printSimulationInfo(this);
     }
 
     public void listSimulations() {
-        System.out.println("\n=== Available Simulations ===");
-        if (!database.isConnected()) {
-            try {
-                database.connect();
-            } catch (Exception e) {
-                System.err.println("Cannot list simulations: Database not connected");
-                System.err.println("Hint: Start Docker with 'scripts/start-docker'");
-                return;
-            }
-        }
-        try {
-            var worlds = database.worldRepository().findAll();
-            if (worlds.isEmpty()) {
-                System.out.println("No simulations found. Use --create-demo to create one.");
-            } else {
-                System.out.println("ID                                   | Name                | Size");
-                System.out.println("-".repeat(70));
-                for (var world : worlds) {
-                    System.out.printf("%-36s | %-19s | %dx%dx%d%n",
-                            world.id(), world.name(),
-                            world.width(), world.height(), world.depth());
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Error listing simulations: " + e.getMessage());
-        }
-        System.out.println();
+        SwarmForgeServerCli.listSimulations(this);
     }
 
-    public io.grpc.Server getGrpcServer() {
+    public Server getGrpcServer() {
         return grpcServer;
     }
 
-    public org.swarmforge.server.persistence.DatabaseManager getDatabaseManager() {
+    public DatabaseManager getDatabaseManager() {
         return database;
+    }
+
+    public ServerWorldManager getWorldManager() {
+        return worldManager;
+    }
+
+    public ExecutorService getDbAsyncExecutor() {
+        return dbAsyncExecutor;
     }
 
     private boolean isPortOpen(String host, int port) {
         if (host == null || host.trim().isEmpty() || port <= 0) return false;
         String targetHost = ("0.0.0.0".equals(host.trim()) || host.trim().isEmpty()) ? "localhost" : host.trim();
-        try (java.net.Socket socket = new java.net.Socket()) {
-            socket.connect(new java.net.InetSocketAddress(targetHost, port), 600);
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(targetHost, port), 600);
             return true;
         } catch (Exception e) {
             return false;

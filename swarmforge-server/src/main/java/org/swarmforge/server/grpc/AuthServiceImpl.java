@@ -2,15 +2,19 @@ package org.swarmforge.server.grpc;
 
 import io.grpc.stub.StreamObserver;
 import org.mindrot.jbcrypt.BCrypt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.swarmforge.protocol.grpc.AuthServiceGrpc;
 import org.swarmforge.protocol.grpc.LoginRequest;
 import org.swarmforge.protocol.grpc.LoginResponse;
 import org.swarmforge.server.security.JwtUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+/**
+ * gRPC service implementation for user authentication and JWT token issuance.
+ * Validates credentials via BCrypt salted hashes or secure environment variables.
+ */
 public class AuthServiceImpl extends AuthServiceGrpc.AuthServiceImplBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(AuthServiceImpl.class);
@@ -30,11 +34,11 @@ public class AuthServiceImpl extends AuthServiceGrpc.AuthServiceImplBase {
                     .addAllRoles(roles)
                     .build();
 
-            LOG.info("User authenticated successfully: " + username);
+            LOG.info("User authenticated successfully: {}", username);
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } else {
-            LOG.warn("Failed login attempt for: " + username);
+            LOG.warn("Failed login attempt for: {}", username);
             responseObserver.onError(io.grpc.Status.UNAUTHENTICATED
                     .withDescription("Invalid username or password")
                     .asRuntimeException());
@@ -46,11 +50,20 @@ public class AuthServiceImpl extends AuthServiceGrpc.AuthServiceImplBase {
             return false;
         }
 
-        String adminSecret = System.getenv().getOrDefault("SWARMFORGE_ADMIN_PASSWORD", "admin123");
-        String userSecret = System.getenv().getOrDefault("SWARMFORGE_USER_PASSWORD", "user123");
+        boolean isProduction = "production".equalsIgnoreCase(System.getenv("SWARMFORGE_ENV"))
+                || "prod".equalsIgnoreCase(System.getenv("SWARMFORGE_ENV"));
 
-        if ("admin123".equals(adminSecret) || "user123".equals(userSecret)) {
-            LOG.warn("⚠️ Security Notice: Using default credentials in non-production environment.");
+        String adminSecret = System.getenv("SWARMFORGE_ADMIN_PASSWORD");
+        String userSecret = System.getenv("SWARMFORGE_USER_PASSWORD");
+
+        if (adminSecret == null || userSecret == null) {
+            if (isProduction) {
+                LOG.error("[SECURITY] Refusing default credentials in production environment! SWARMFORGE_ADMIN_PASSWORD and SWARMFORGE_USER_PASSWORD must be configured.");
+                return false;
+            }
+            if (adminSecret == null) adminSecret = "admin123";
+            if (userSecret == null) userSecret = "user123";
+            LOG.warn("⚠️ Security Notice: Using default credentials in non-production development mode.");
         }
 
         if ("admin".equalsIgnoreCase(username)) {
@@ -66,7 +79,7 @@ public class AuthServiceImpl extends AuthServiceGrpc.AuthServiceImplBase {
             try {
                 return BCrypt.checkpw(rawPassword, expectedHashOrPlain);
             } catch (Exception e) {
-                LOG.error("BCrypt validation error: " + e.getMessage());
+                LOG.error("BCrypt validation error: {}", e.getMessage());
                 return false;
             }
         }

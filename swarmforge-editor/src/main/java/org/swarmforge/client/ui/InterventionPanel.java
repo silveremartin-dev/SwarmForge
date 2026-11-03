@@ -65,82 +65,9 @@ public class InterventionPanel extends BorderPane {
         }
     }
 
-    public static class ScheduledEvent {
-        public long targetTick;
-        public String timeFormatted;
-        public Category category;
-        public String eventType;
-        public String colonyTarget;
-        public String description;
-
-        // Category-specific parameters
-        public String entityAction = "SPAWN"; // SPAWN, KILL, EXTINCT, BROOD_KILL, BROOD_SPAWN
-        public String caste = "Worker";
-        public int count = 10;
-        // Default position: CENTER of map (32, 32) at terrain surface level (1.0)
-        public float posX = 32.0f, posY = 32.0f, posZ = 1.0f;
-
-        public String resourceType = "Surface Food";
-        public String foodNature = "Seeds & Grains";
-        public float amount = 100f;
-
-        public String disasterType = "Flood & Heavy Rain";
-        public float intensity = 0.5f;
-        public int durationMinutes = 60;
-
-        // Abiotic Climate Parameters (Relative Offset vs Absolute Target)
-        public boolean isRelativeAbiotic = true;
-        public float tempCelsius = 22.0f;
-        public float humidityPercent = 65.0f;
-        public float windMetersPerSec = 1.5f;
-        public float solarWattsPerM2 = 450.0f;
-
-        public float deltaTempCelsius = 5.0f;
-        public float deltaHumidityPercent = 20.0f;
-        public float deltaWindMetersPerSec = 2.0f;
-        public float deltaSolarWattsPerM2 = 100.0f;
-
-        public float radius = 5.0f;
-
-        public boolean executed = false;
-        public boolean paused = false;
-
+    public static class ScheduledEvent extends InterventionScheduledEvent {
         public ScheduledEvent(long targetTick, String timeFormatted, Category category, String eventType, String colonyTarget, String description) {
-            this.targetTick = targetTick;
-            this.timeFormatted = timeFormatted;
-            this.category = category;
-            this.eventType = eventType;
-            this.colonyTarget = colonyTarget;
-            this.description = description;
-        }
-
-        public ScheduledEvent copyWithOffset(long additionalTicks, double stepSec) {
-            long newTarget = this.targetTick + additionalTicks;
-            String newTime = formatTickToCalendarTime(newTarget, stepSec);
-            ScheduledEvent clone = new ScheduledEvent(newTarget, newTime, this.category, this.eventType, this.colonyTarget, this.description);
-            clone.entityAction = this.entityAction;
-            clone.caste = this.caste;
-            clone.count = this.count;
-            clone.posX = this.posX; clone.posY = this.posY; clone.posZ = this.posZ;
-            clone.resourceType = this.resourceType;
-            clone.foodNature = this.foodNature;
-            clone.amount = this.amount;
-            clone.disasterType = this.disasterType;
-            clone.intensity = this.intensity;
-            clone.durationMinutes = this.durationMinutes;
-            clone.isRelativeAbiotic = this.isRelativeAbiotic;
-            clone.tempCelsius = this.tempCelsius;
-            clone.humidityPercent = this.humidityPercent;
-            clone.windMetersPerSec = this.windMetersPerSec;
-            clone.solarWattsPerM2 = this.solarWattsPerM2;
-            clone.deltaTempCelsius = this.deltaTempCelsius;
-            clone.deltaHumidityPercent = this.deltaHumidityPercent;
-            clone.deltaWindMetersPerSec = this.deltaWindMetersPerSec;
-            clone.deltaSolarWattsPerM2 = this.deltaSolarWattsPerM2;
-            clone.radius = this.radius;
-            clone.executed = false;
-            clone.paused = false;
-            return clone;
+            super(targetTick, timeFormatted, category, eventType, colonyTarget, description);
         }
     }
 
@@ -185,7 +112,7 @@ public class InterventionPanel extends BorderPane {
         // Header Section
         Label title = new Label();
         title.textProperty().bind(i18n.createStringBinding("god.title"));
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #ef4444;");
+        title.getStyleClass().addAll("header-title-large", "accent-danger-title");
         title.setTooltip(new Tooltip(i18n.get("god.title.tt")));
 
         simStateWarningLabel = new Label(i18n.get("god.warn.stopped"));
@@ -274,144 +201,16 @@ public class InterventionPanel extends BorderPane {
      * Repeat Event capability, and clean HH:mm:ss time formatting.
      */
     private VBox createScheduledEventsQueueBlock() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        VBox box = new VBox(10);
-        box.setPadding(new Insets(12));
-        box.getStyleClass().add("queue-box");
-
-        Label lblQueueTitle = new Label();
-        lblQueueTitle.textProperty().bind(i18n.createStringBinding("god.queue.title"));
-        lblQueueTitle.getStyleClass().add("accent-title");
-
-        scheduledEventsListView = new ListView<>(scheduledEventsList);
-        scheduledEventsListView.setPrefHeight(180);
-        scheduledEventsListView.getStyleClass().add("log-text-area");
-        scheduledEventsListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-
-        scheduledEventsListView.setCellFactory(param -> new ListCell<ScheduledEvent>() {
-            @Override
-            protected void updateItem(ScheduledEvent ev, boolean empty) {
-                super.updateItem(ev, empty);
-                if (empty || ev == null) {
-                    setText(null);
-                    setGraphic(null);
-                    setStyle("");
-                } else {
-                    HBox cellBox = new HBox(8);
-                    cellBox.setAlignment(Pos.CENTER_LEFT);
-                    cellBox.setPadding(new Insets(4, 8, 4, 8));
-
-                    FontIcon catIconNode = new FontIcon(ev.category.icon);
-                    catIconNode.setIconSize(12);
-                    catIconNode.setIconColor(javafx.scene.paint.Color.WHITE);
-
-                    Label badgeCat = new Label(" " + ev.category.getDisplayName(), catIconNode);
-                    badgeCat.setStyle(String.format("-fx-background-color: %s; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 3;", ev.category.color));
-
-                    Label timeLabel = new Label("[" + ev.timeFormatted + "]");
-                    timeLabel.getStyleClass().add("accent-title");
-                    timeLabel.setStyle("-fx-font-size: 11px;");
-
-                    Label descLabel = new Label(ev.eventType + (ev.colonyTarget != null ? " (" + ev.colonyTarget + ")" : "") + " : " + ev.description);
-                    descLabel.setStyle("-fx-font-size: 11px;");
-                    HBox.setHgrow(descLabel, Priority.ALWAYS);
-
-                    FontIcon stIconNode = new FontIcon(ev.executed ? Feather.CHECK_CIRCLE : ev.paused ? Feather.PAUSE_CIRCLE : Feather.CLOCK);
-                    stIconNode.setIconSize(11);
-                    stIconNode.setIconColor(javafx.scene.paint.Color.WHITE);
-
-                    org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-                    String statusText = " " + (ev.executed ? i18n.get("god.status.executed") : ev.paused ? i18n.get("god.status.paused") : i18n.get("god.status.pending"));
-                    String statusBg = ev.executed ? "#16a34a" : ev.paused ? "#d97706" : "#0284c7";
-                    Label statusBadge = new Label(statusText, stIconNode);
-                    statusBadge.setStyle(String.format("-fx-background-color: %s; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-padding: 2 6; -fx-background-radius: 3;", statusBg));
-
-                    cellBox.getChildren().addAll(badgeCat, timeLabel, descLabel, statusBadge);
-
-                    if (isSelected()) {
-                        setStyle("-fx-background-color: #334155; -fx-background-radius: 4;");
-                        cellBox.setStyle("-fx-background-color: #334155; -fx-background-radius: 4;");
-                    } else {
-                        setStyle("-fx-background-color: transparent;");
-                        cellBox.setStyle("-fx-background-color: transparent;");
-                    }
-
-                    if (ev.executed) {
-                        cellBox.setOpacity(0.75);
-                    } else {
-                        cellBox.setOpacity(1.0);
-                    }
-
-                    setGraphic(cellBox);
-                }
-            }
-        });
-
-        // Queue Control Toolbar Buttons
-        HBox btnToolbar = new HBox(8);
-        btnToolbar.setAlignment(Pos.CENTER_LEFT);
-
-        Button btnRepeatEv = new Button();
-        btnRepeatEv.textProperty().bind(i18n.createStringBinding("god.queue.btn.repeat"));
-        btnRepeatEv.setStyle("-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-        btnRepeatEv.tooltipProperty().bind(i18n.createTooltipBinding("god.queue.repeat.tt"));
-        btnRepeatEv.setOnAction(e -> repeatSelectedEvents(10));
-
-        Button btnDeleteEv = new Button();
-        btnDeleteEv.textProperty().bind(i18n.createStringBinding("god.queue.btn.delete"));
-        btnDeleteEv.getStyleClass().add("btn-danger");
-        btnDeleteEv.tooltipProperty().bind(i18n.createTooltipBinding("god.queue.delete.tt"));
-        btnDeleteEv.setOnAction(e -> {
-            List<ScheduledEvent> selected = new ArrayList<>(scheduledEventsListView.getSelectionModel().getSelectedItems());
-            for (ScheduledEvent ev : selected) {
-                if (ev != null && !ev.executed) {
-                    scheduledEventsList.remove(ev);
-                }
-            }
-            sortScheduledEvents();
-        });
-
-        Button btnClearAll = new Button();
-        btnClearAll.textProperty().bind(i18n.createStringBinding("god.queue.btn.clear_all"));
-        btnClearAll.setStyle("-fx-background-color: #ef4444; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-        btnClearAll.tooltipProperty().bind(i18n.createTooltipBinding("god.queue.clear_all.tt"));
-        btnClearAll.setOnAction(e -> {
-            scheduledEventsList.removeIf(ev -> !ev.executed);
-            sortScheduledEvents();
-        });
-
-        btnToolbar.getChildren().addAll(btnRepeatEv, btnDeleteEv, btnClearAll);
-
-        box.getChildren().addAll(lblQueueTitle, scheduledEventsListView, btnToolbar);
-        return box;
+        return InterventionEventQueueCard.createQueueBlock(
+                scheduledEventsListView,
+                scheduledEventsList,
+                () -> simulationStepSec,
+                this::scrollToFirstUpcomingEvent
+        );
     }
 
-    private void sortScheduledEvents() {
-        scheduledEventsList.sort(Comparator.comparingLong((ScheduledEvent ev) -> ev.targetTick));
-    }
-
-    private void repeatSelectedEvents(int offsetSeconds) {
-        List<ScheduledEvent> selected = new ArrayList<>(scheduledEventsListView.getSelectionModel().getSelectedItems());
-        if (selected.isEmpty()) return;
-
-        long offsetTicks = Math.max(1, Math.round(offsetSeconds / simulationStepSec));
-        List<ScheduledEvent> newEvents = new ArrayList<>();
-
-        for (ScheduledEvent ev : selected) {
-            if (ev != null) {
-                ScheduledEvent clone = ev.copyWithOffset(offsetTicks, simulationStepSec);
-                newEvents.add(clone);
-            }
-        }
-
-        scheduledEventsList.addAll(newEvents);
-        sortScheduledEvents();
-
-        scheduledEventsListView.getSelectionModel().clearSelection();
-        for (ScheduledEvent clone : newEvents) {
-            scheduledEventsListView.getSelectionModel().select(clone);
-        }
-        scrollToFirstUpcomingEvent();
+    void sortScheduledEvents() {
+        InterventionEventQueueCard.sortScheduledEvents(scheduledEventsList);
     }
 
     /**
@@ -493,12 +292,12 @@ public class InterventionPanel extends BorderPane {
     }
 
     // Dynamic Terrain Dimensions & Terrarium Reference for Spatial Sliders
-    private double terrainWidthMeters = 64.0;
-    private double terrainLengthMeters = 64.0;
-    private double terrainDepthMeters = 5.0;
-    private double terrainMaxAltitudeMeters = 25.0;
-    private Label terrainDimensionsInfoLabel;
-    private CheckBox atSurfaceCheckBox;
+    double terrainWidthMeters = 64.0;
+    double terrainLengthMeters = 64.0;
+    double terrainDepthMeters = 5.0;
+    double terrainMaxAltitudeMeters = 25.0;
+    Label terrainDimensionsInfoLabel;
+    CheckBox atSurfaceCheckBox;
     private org.swarmforge.core.domain.Terrarium terrariumRef;
 
     public void setTerrarium(org.swarmforge.core.domain.Terrarium terrarium) {
@@ -569,140 +368,8 @@ public class InterventionPanel extends BorderPane {
         }
     }
 
-    /**
-     * Sub-block 2: Spatial 3D Positioning (Sliders X, Y, Z, Dynamic Terrain Size Centered)
-     */
     private Node createSpatialPositionSubBlockNode() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        VBox box = new VBox(10);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(12); grid.setVgap(10);
-
-        terrainDimensionsInfoLabel = new Label(i18n.get("god.spatial.terrain_coverage",
-                terrainWidthMeters, terrainLengthMeters, terrainDepthMeters, terrainMaxAltitudeMeters));
-        terrainDimensionsInfoLabel.setStyle("-fx-text-fill: #0ea5e9; -fx-font-size: 11px; -fx-font-weight: bold;");
-
-        // X Slider (West -> East)
-        Label lblX = new Label();
-        lblX.textProperty().bind(i18n.createStringBinding("god.spatial.x.label"));
-        lblX.setStyle("-fx-font-weight: bold;");
-        lblX.tooltipProperty().bind(i18n.createTooltipBinding("god.spatial.x.tt"));
-        
-        double centerX = terrainWidthMeters / 2.0;
-        posXSlider = new Slider(0.0, terrainWidthMeters, centerX);
-        posXSlider.setPrefWidth(260);
-        posXSlider.setMajorTickUnit(Math.max(1.0, terrainWidthMeters / 4.0));
-        posXSlider.setMinorTickCount(3);
-        posXSlider.setSnapToTicks(false);
-        posXSlider.tooltipProperty().bind(i18n.createTooltipBinding("god.spatial.x.slider.tt"));
-        posXValLabel = new Label();
-        posXValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-        
-        Runnable updateXText = () -> {
-            double v = posXSlider.getValue();
-            double c = terrainWidthMeters / 2.0;
-            double pct = Math.min(100.0, Math.max(0.0, (v / terrainWidthMeters) * 100.0));
-            String note = (Math.abs(v - c) < (terrainWidthMeters * 0.05)) ? i18n.get("god.spatial.center") :
-                          (v < terrainWidthMeters * 0.15) ? i18n.get("god.spatial.far_west") :
-                          (v > terrainWidthMeters * 0.85) ? i18n.get("god.spatial.far_east") : "";
-            posXValLabel.setText(String.format("%.1f m / %.1f m (%.0f%%%s)", v, terrainWidthMeters, pct, note));
-        };
-        posXSlider.valueProperty().addListener((o, a, b) -> updateXText.run());
-        updateXText.run();
-
-        // Y Slider (South -> North)
-        Label lblY = new Label();
-        lblY.textProperty().bind(i18n.createStringBinding("god.spatial.y.label"));
-        lblY.setStyle("-fx-font-weight: bold;");
-        lblY.tooltipProperty().bind(i18n.createTooltipBinding("god.spatial.y.tt"));
-
-        double centerY = terrainLengthMeters / 2.0;
-        posYSlider = new Slider(0.0, terrainLengthMeters, centerY);
-        posYSlider.setPrefWidth(260);
-        posYSlider.setMajorTickUnit(Math.max(1.0, terrainLengthMeters / 4.0));
-        posYSlider.setMinorTickCount(3);
-        posYSlider.setSnapToTicks(false);
-        posYSlider.tooltipProperty().bind(i18n.createTooltipBinding("god.spatial.y.slider.tt"));
-        posYValLabel = new Label();
-        posYValLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
-
-        Runnable updateYText = () -> {
-            double v = posYSlider.getValue();
-            double c = terrainLengthMeters / 2.0;
-            double pct = Math.min(100.0, Math.max(0.0, (v / terrainLengthMeters) * 100.0));
-            String note = (Math.abs(v - c) < (terrainLengthMeters * 0.05)) ? i18n.get("god.spatial.center") :
-                          (v < terrainLengthMeters * 0.15) ? i18n.get("god.spatial.far_south") :
-                          (v > terrainLengthMeters * 0.85) ? i18n.get("god.spatial.far_north") : "";
-            posYValLabel.setText(String.format("%.1f m / %.1f m (%.0f%%%s)", v, terrainLengthMeters, pct, note));
-        };
-        posYSlider.valueProperty().addListener((o, a, b) -> updateYText.run());
-        updateYText.run();
-
-        // Z Slider (Depth -> Surface -> Altitude)
-        Label lblZ = new Label();
-        lblZ.textProperty().bind(i18n.createStringBinding("god.spatial.z.label"));
-        lblZ.setStyle("-fx-font-weight: bold;");
-        lblZ.tooltipProperty().bind(i18n.createTooltipBinding("god.spatial.z.tt"));
-        posZSlider = new Slider(-terrainDepthMeters, terrainMaxAltitudeMeters, 1.0);
-        posZSlider.setPrefWidth(260);
-        posZSlider.setMajorTickUnit(5.0);
-        posZSlider.setMinorTickCount(4);
-        posZSlider.setSnapToTicks(false);
-        posZSlider.tooltipProperty().bind(i18n.createTooltipBinding("god.spatial.z.slider.tt"));
-        posZValLabel = new Label();
-        posZValLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold;");
-
-        atSurfaceCheckBox = new CheckBox();
-        atSurfaceCheckBox.textProperty().bind(i18n.createStringBinding("god.spatial.atsurface"));
-        atSurfaceCheckBox.setSelected(true);
-        atSurfaceCheckBox.setStyle("-fx-font-weight: bold; -fx-text-fill: #22c55e; -fx-cursor: hand;");
-        atSurfaceCheckBox.tooltipProperty().bind(i18n.createTooltipBinding("god.spatial.atsurface.tt"));
-
-        Runnable updateZText = () -> {
-            boolean atSurf = atSurfaceCheckBox.isSelected();
-            posZSlider.setDisable(atSurf);
-            if (atSurf) {
-                double x = posXSlider != null ? posXSlider.getValue() : 0;
-                double y = posYSlider != null ? posYSlider.getValue() : 0;
-                float surfZ = getCalculatedSurfaceZ(x, y);
-                posZValLabel.setText(String.format(i18n.get("god.z_surface"), x, y, surfZ));
-                posZValLabel.setStyle("-fx-text-fill: #22c55e; -fx-font-weight: bold;");
-            } else {
-                double v = posZSlider.getValue();
-                String desc = (v < 0.0) ? i18n.get("god.spatial.subterranean", v, terrainDepthMeters) :
-                              (Math.abs(v - 1.0) < 0.5) ? i18n.get("god.spatial.surface_level") :
-                              (v <= 5.0) ? i18n.get("god.spatial.low_relief", v) :
-                              i18n.get("god.spatial.aerial", v, terrainMaxAltitudeMeters);
-                posZValLabel.setText(desc);
-                posZValLabel.setStyle(v < 0.0 ? "-fx-text-fill: #f59e0b; -fx-font-weight: bold;" : v > 5.0 ? "-fx-text-fill: #c084fc; -fx-font-weight: bold;" : "-fx-text-fill: #4ade80; -fx-font-weight: bold;");
-            }
-        };
-
-        atSurfaceCheckBox.selectedProperty().addListener((o, a, b) -> updateZText.run());
-        posZSlider.valueProperty().addListener((o, a, b) -> updateZText.run());
-        posXSlider.valueProperty().addListener((o, a, b) -> { if (atSurfaceCheckBox.isSelected()) updateZText.run(); });
-        posYSlider.valueProperty().addListener((o, a, b) -> { if (atSurfaceCheckBox.isSelected()) updateZText.run(); });
-        updateZText.run();
-
-        grid.add(lblX, 0, 0); grid.add(posXSlider, 1, 0); grid.add(posXValLabel, 2, 0);
-        grid.add(lblY, 0, 1); grid.add(posYSlider, 1, 1); grid.add(posYValLabel, 2, 1);
-        grid.add(lblZ, 0, 2); grid.add(posZSlider, 1, 2); grid.add(posZValLabel, 2, 2);
-        grid.add(atSurfaceCheckBox, 1, 3, 2, 1);
-
-        Button btnResetCenter = new Button();
-        btnResetCenter.textProperty().bind(i18n.createStringBinding("god.spatial.reset.btn"));
-        btnResetCenter.setStyle("-fx-background-color: rgba(56,189,248,0.15); -fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-border-color: #38bdf8; -fx-border-radius: 4; -fx-cursor: hand;");
-        btnResetCenter.tooltipProperty().bind(i18n.createTooltipBinding("god.spatial.reset.btn.tt"));
-        btnResetCenter.setOnAction(e -> {
-            posXSlider.setValue(terrainWidthMeters / 2.0);
-            posYSlider.setValue(terrainLengthMeters / 2.0);
-            posZSlider.setValue(1.0);
-            atSurfaceCheckBox.setSelected(true);
-        });
-
-        box.getChildren().addAll(terrainDimensionsInfoLabel, grid, btnResetCenter);
-        return box;
+        return InterventionEventQueueCard.createSpatialPositionSubBlockNode(this);
     }
 
     private long calculateTargetSeconds() {
@@ -751,14 +418,7 @@ public class InterventionPanel extends BorderPane {
     }
 
     void scrollToFirstUpcomingEvent() {
-        if (scheduledEventsListView == null || scheduledEventsList.isEmpty()) return;
-        for (int i = 0; i < scheduledEventsList.size(); i++) {
-            ScheduledEvent ev = scheduledEventsList.get(i);
-            if (!ev.executed || ev.targetTick >= currentSimulationTick) {
-                scheduledEventsListView.scrollTo(i);
-                break;
-            }
-        }
+        InterventionEventQueueCard.scrollToFirstUpcomingEvent(scheduledEventsListView, scheduledEventsList, currentSimulationTick);
     }
 
     ScheduledEvent createBaseEvent(Category category, String eventType, String desc) {

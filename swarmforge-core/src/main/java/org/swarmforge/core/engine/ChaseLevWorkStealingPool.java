@@ -9,6 +9,8 @@ package org.swarmforge.core.engine;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Lock-Free Multi-Producer Multi-Consumer (MPMC) Work-Stealing Task Scheduler based on the Chase-Lev Deque.
@@ -24,6 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Gemini AI Assistant (Google DeepMind)
  */
 public final class ChaseLevWorkStealingPool {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ChaseLevWorkStealingPool.class);
 
     public static final class WorkStealingDeque {
         private static final int INITIAL_CAPACITY = 1024;
@@ -162,7 +166,8 @@ public final class ChaseLevWorkStealingPool {
             if (task != null) {
                 try {
                     task.run();
-                } catch (Throwable ignored) {
+                } catch (Throwable t) {
+                    LOG.error("Uncaught exception in worker task [workerId={}]", workerId, t);
                 }
             } else {
                 Thread.onSpinWait();

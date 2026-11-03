@@ -6,8 +6,9 @@
  */
 package org.swarmforge.client.ui;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.InputStream;
@@ -20,6 +21,7 @@ import java.util.*;
  */
 public class NestPresetManager {
 
+    private static final Logger LOG = LoggerFactory.getLogger(NestPresetManager.class);
     public static final File PRESETS_FILE = new File("nest_presets.json");
 
     private static final String[] BUILTIN_NEST_FILES = {
@@ -65,7 +67,7 @@ public class NestPresetManager {
                 Map<String, Map<String, Object>> saved = mapper.readValue(PRESETS_FILE, Map.class);
                 presets.putAll(saved);
             } catch (Exception ex) {
-                System.err.println("[NestPresets] Could not read " + PRESETS_FILE + ": " + ex.getMessage());
+                LOG.warn("Could not read nest presets file {}: {}", PRESETS_FILE, ex.getMessage());
             }
         }
     }
@@ -87,7 +89,9 @@ public class NestPresetManager {
                 try {
                     cfg = mapper.readValue(path, Map.class);
                     break;
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    LOG.debug("Could not parse nest preset from candidate path {}: {}", path.getPath(), e.getMessage());
+                }
             }
         }
 
@@ -96,7 +100,9 @@ public class NestPresetManager {
                 if (in != null) {
                     cfg = mapper.readValue(in, Map.class);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                LOG.debug("Could not parse nest preset from classpath /presets/nests/{}: {}", filename, e.getMessage());
+            }
         }
         return cfg;
     }
@@ -126,7 +132,6 @@ public class NestPresetManager {
         if (presets.containsKey(name)) {
             presets.remove(name);
             persist();
-            return true;
         }
         return false;
     }
@@ -135,7 +140,7 @@ public class NestPresetManager {
         try {
             mapper.writerWithDefaultPrettyPrinter().writeValue(PRESETS_FILE, presets);
         } catch (Exception ex) {
-            System.err.println("[NestPresets] Could not write " + PRESETS_FILE + ": " + ex.getMessage());
+            LOG.warn("Could not write nest presets to {}: {}", PRESETS_FILE, ex.getMessage());
         }
     }
 }

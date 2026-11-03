@@ -10,6 +10,10 @@ import io.grpc.Status;
 
 import java.util.List;
 
+/**
+ * gRPC Server Interceptor for validating JSON Web Tokens (JWT) on incoming requests.
+ * Extracts the user credentials and role-based permissions, injecting them into the gRPC {@link Context}.
+ */
 public class JwtServerInterceptor implements ServerInterceptor {
 
     private static final Metadata.Key<String> AUTHORIZATION_KEY = Metadata.Key.of("Authorization",
@@ -52,10 +56,6 @@ public class JwtServerInterceptor implements ServerInterceptor {
             }
         }
 
-        // For Phase 8 MVP, we might allow guest access for some things, but let's be
-        // strict for now
-        // Or make it optional based on config.
-        // Assuming user wants security.
         call.close(Status.UNAUTHENTICATED.withDescription("Missing Token"), headers);
         return new ServerCall.Listener<>() {
         };

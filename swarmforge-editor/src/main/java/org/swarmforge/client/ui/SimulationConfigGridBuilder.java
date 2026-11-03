@@ -373,7 +373,7 @@ class SimulationConfigGridBuilder {
 
         Button btnAddSpeciesToScenario = new Button();
         btnAddSpeciesToScenario.textProperty().bind(i18n.createStringBinding("sim.btn.add_species"));
-        btnAddSpeciesToScenario.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+        btnAddSpeciesToScenario.getStyleClass().add("btn-primary");
         btnAddSpeciesToScenario.setTooltip(new Tooltip());
         btnAddSpeciesToScenario.getTooltip().textProperty().bind(i18n.createStringBinding("sim.btn.add_species.tt"));
         btnAddSpeciesToScenario.setOnAction(e -> {
@@ -385,7 +385,7 @@ class SimulationConfigGridBuilder {
 
         Button btnAutoPreset = new Button();
         btnAutoPreset.textProperty().bind(i18n.createStringBinding("sim.btn.recommended_preset"));
-        btnAutoPreset.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
+        btnAutoPreset.getStyleClass().add("btn-secondary");
         btnAutoPreset.setTooltip(new Tooltip());
         btnAutoPreset.getTooltip().textProperty().bind(i18n.createStringBinding("sim.btn.rec_preset.tt"));
         btnAutoPreset.setOnAction(e -> panel.applyMetaPreset(panel.comboMeta.getValue()));
@@ -396,6 +396,54 @@ class SimulationConfigGridBuilder {
 
         section3Container.getChildren().addAll(speciesAddBar, panel.speciesListContainer);
         return section3Container;
+    }
+
+    void addSpeciesCard(String speciesName) {
+        SpeciesConfigCard card = new SpeciesConfigCard(speciesName, () -> {
+            panel.speciesCardList.removeIf(c -> c.getSpeciesName().equals(speciesName));
+            refreshSpeciesListContainer();
+            panel.updateValidationPanel();
+        });
+        card.setOnChange(panel::updateValidationPanel);
+        panel.speciesCardList.add(card);
+        refreshSpeciesListContainer();
+        panel.updateValidationPanel();
+    }
+
+    void refreshSpeciesListContainer() {
+        panel.speciesListContainer.getChildren().clear();
+        for (SpeciesConfigCard card : panel.speciesCardList) {
+            panel.speciesListContainer.getChildren().add(card.getCardPane());
+        }
+    }
+
+    void updateApplyPresetsButtonState(boolean isCreating) {
+        if (panel.btnApplyPresets == null) return;
+        panel.btnApplyPresets.textProperty().unbind();
+        if (panel.btnApplyPresets.getTooltip() != null) {
+            panel.btnApplyPresets.getTooltip().textProperty().unbind();
+        } else {
+            panel.btnApplyPresets.setTooltip(new Tooltip());
+        }
+
+        panel.btnApplyPresets.getStyleClass().removeAll("danger-button", "action-primary-button", "btn-danger", "btn-primary");
+        if (isCreating) {
+            panel.btnApplyPresets.textProperty().bind(i18n.createStringBinding("sim.btn.cancel_creation"));
+            panel.btnApplyPresets.getStyleClass().addAll("btn-danger", "danger-button");
+            panel.btnApplyPresets.getTooltip().textProperty().bind(i18n.createStringBinding("sim.btn.cancel_creation.tt"));
+        } else if (panel.isServerExecutionMode()) {
+            panel.btnApplyPresets.setText(panel.isServerJoinMode() ?
+                    i18n.get("sim.server.btn.join", "🌐 Rejoindre la Partie Serveur") :
+                    i18n.get("sim.server.btn.deploy", "🚀 Déployer Scénario sur Serveur"));
+            panel.btnApplyPresets.getStyleClass().addAll("btn-primary", "action-primary-button");
+            panel.btnApplyPresets.getTooltip().setText(panel.isServerJoinMode() ?
+                    i18n.get("sim.server.role.join", "Rejoint la simulation partagée sur le serveur SwarmForge.") :
+                    i18n.get("sim.server.role.host", "Déploie le scénario et initialise le monde sur le serveur SwarmForge."));
+        } else {
+            panel.btnApplyPresets.textProperty().bind(i18n.createStringBinding("sim.btn.apply_create"));
+            panel.btnApplyPresets.getStyleClass().addAll("btn-primary", "action-primary-button");
+            panel.btnApplyPresets.getTooltip().textProperty().bind(i18n.createStringBinding("sim.btn.apply_presets.tt"));
+        }
     }
 
     void updateEngineAndAccelComboTexts() {

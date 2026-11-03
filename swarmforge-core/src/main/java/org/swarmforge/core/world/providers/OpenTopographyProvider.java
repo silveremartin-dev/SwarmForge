@@ -7,6 +7,8 @@
 package org.swarmforge.core.world.providers;
 
 import org.swarmforge.core.world.ElevationProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -21,6 +23,8 @@ import java.net.URL;
  * @author Gemini AI Assistant
  */
 public class OpenTopographyProvider implements ElevationProvider {
+
+    private static final Logger LOG = LoggerFactory.getLogger(OpenTopographyProvider.class);
 
     private static final String API_URL = "https://portal.opentopography.org/API/globaldem";
     private static final String DATASET = "SRTMGL1"; // 30m resolution
@@ -65,7 +69,7 @@ public class OpenTopographyProvider implements ElevationProvider {
             return parseAAIGrid(new BufferedReader(new InputStreamReader(conn.getInputStream())));
 
         } catch (Exception e) {
-            System.err.println("Failed to fetch elevation data: " + e.getMessage());
+            LOG.error("Failed to fetch elevation data: {}", e.getMessage(), e);
             return new float[0][0]; // Return empty grid on failure
         }
     }

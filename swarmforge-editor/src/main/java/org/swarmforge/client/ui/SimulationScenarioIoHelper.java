@@ -6,8 +6,6 @@
  */
 package org.swarmforge.client.ui;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import javafx.animation.KeyFrame;
 import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
@@ -17,7 +15,6 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
-import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.NotificationOverlay;
@@ -27,19 +24,17 @@ import org.swarmforge.core.event.SimulationEvent;
 import org.swarmforge.core.scenario.Scenario;
 import org.swarmforge.core.species.DefaultSpecies;
 
-import java.io.File;
-import java.time.LocalDateTime;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Helper class managing scenario preset application, saving, deleting, JSON import/export,
  * scenario execution orchestration, and real-time Open-Meteo weather synchronization
  * for {@link SimulationControlPanel}.
+ *
+ * @author Silvère Martin-Michiellot
+ * @author Gemini AI Assistant
  */
 class SimulationScenarioIoHelper {
 
@@ -498,237 +493,27 @@ class SimulationScenarioIoHelper {
     }
 
     void handleExportScenario() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Export Scenario Configuration");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
-        chooser.setInitialFileName("scenario-preset.json");
-        File file = chooser.showSaveDialog(panel.getScene().getWindow());
-        if (file != null) {
-            try {
-                ScenarioSetupSnapshot snapshot = panel.captureSetupSnapshotOnFXThread();
-                ObjectMapper mapper = new ObjectMapper();
-                mapper.enable(SerializationFeature.INDENT_OUTPUT);
-                mapper.writeValue(file, snapshot);
-                NotificationOverlay.show(
-                    panel,
-                    "Scenario successfully exported to " + file.getName(),
-                    NotificationOverlay.NotificationType.SUCCESS
-                );
-            } catch (Exception ex) {
-                ThemeManager.createAlert(
-                    Alert.AlertType.ERROR,
-                    "Error exporting scenario: " + ex.getMessage()
-                ).show();
-            }
-        }
+        SimulationScenarioJsonHandler.handleExportScenario(panel);
     }
 
     void handleImportScenario() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Import Scenario Configuration");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
-        File file = chooser.showOpenDialog(panel.getScene().getWindow());
-        if (file != null) {
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                ScenarioSetupSnapshot snapshot = mapper.readValue(file, ScenarioSetupSnapshot.class);
-                if (snapshot != null) {
-                    if (snapshot.seed() != 0) {
-                        panel.txtSeed.setText(String.valueOf(snapshot.seed()));
-                    }
-                    if (snapshot.startDateTimeIso() != null && !snapshot.startDateTimeIso().isEmpty()) {
-                        try {
-                            panel.startDateTime = LocalDateTime.parse(snapshot.startDateTimeIso());
-                            if (panel.startDatePicker != null) panel.startDatePicker.setValue(panel.startDateTime.toLocalDate());
-                            if (panel.startTimeHourSpinner != null) panel.startTimeHourSpinner.getValueFactory().setValue(panel.startDateTime.getHour());
-                            if (panel.startTimeMinuteSpinner != null) panel.startTimeMinuteSpinner.getValueFactory().setValue(panel.startDateTime.getMinute());
-                            if (panel.startTimeSecondSpinner != null) panel.startTimeSecondSpinner.getValueFactory().setValue(panel.startDateTime.getSecond());
-                            panel.updateTick(panel.currentTick, panel.maxTick);
-                        } catch (Exception ignored) {}
-                    }
-                    if (snapshot.simulationStepSeconds() > 0) {
-                        panel.simulationStepSeconds = snapshot.simulationStepSeconds();
-                        selectStepComboByDt(panel.simulationStepSeconds);
-                        panel.updateStepDtLabel();
-                    }
-                    if (snapshot.maxDurationValue() > 0 && panel.maxDurationSpinner != null) {
-                        panel.maxDurationSpinner.getValueFactory().setValue(snapshot.maxDurationValue());
-                    }
-                    if (snapshot.maxDurationUnit() != null && panel.durationUnitCombo != null) {
-                        selectComboIfPresent(panel.durationUnitCombo, snapshot.maxDurationUnit());
-                    }
-                    if (snapshot.minPopStopThreshold() >= 0 && panel.minPopStopSpinner != null) {
-                        panel.minPopStopSpinner.getValueFactory().setValue(snapshot.minPopStopThreshold());
-                    }
-                    if (snapshot.description() != null && panel.areaDescription != null) {
-                        panel.areaDescription.setText(snapshot.description());
-                    }
-                    if (snapshot.selectedWorld() != null) selectComboIfPresent(panel.comboWorld, snapshot.selectedWorld());
-                    if (snapshot.selectedWeather() != null) selectComboIfPresent(panel.comboWeather, snapshot.selectedWeather());
-
-                    if (panel.chkMultiplayerOnly != null) {
-                        panel.chkMultiplayerOnly.setSelected(snapshot.isMultiplayerOnly());
-                    }
-                    if (panel.spinRequiredPlayers != null && snapshot.requiredPlayerCount() > 0) {
-                        panel.spinRequiredPlayers.getValueFactory().setValue(snapshot.requiredPlayerCount());
-                    }
-                    if (panel.spinGridTilesX != null && snapshot.gridTilesX() > 0) {
-                        panel.spinGridTilesX.getValueFactory().setValue(snapshot.gridTilesX());
-                    }
-                    if (panel.spinGridTilesY != null && snapshot.gridTilesY() > 0) {
-                        panel.spinGridTilesY.getValueFactory().setValue(snapshot.gridTilesY());
-                    }
-                    if (snapshot.engineBackend() != null && panel.engineBackendCombo != null) {
-                        selectComboIfPresent(panel.engineBackendCombo, snapshot.engineBackend());
-                    }
-                    if (snapshot.computeAcceleration() != null && panel.computeAccelerationCombo != null) {
-                        selectComboIfPresent(panel.computeAccelerationCombo, snapshot.computeAcceleration());
-                    }
-
-                    panel.speciesCardList.clear();
-                    if (snapshot.speciesSnapshots() != null && !snapshot.speciesSnapshots().isEmpty()) {
-                        for (SpeciesConfigSnapshot sSnap : snapshot.speciesSnapshots()) {
-                            panel.addSpeciesCard(sSnap.speciesName());
-                            if (!panel.speciesCardList.isEmpty()) {
-                                SpeciesConfigCard card = panel.speciesCardList.get(panel.speciesCardList.size() - 1);
-                                if (sSnap.nestType() != null) card.setNestType(sSnap.nestType());
-                                card.setQueenCount(sSnap.queenCount());
-                                card.setWorkerCount(sSnap.workerCount());
-                                card.setSoldierCount(sSnap.soldierCount());
-                                card.setInitialFood(sSnap.initialFood());
-                                if (sSnap.placementStrategy() != null) card.setNestPlacement(sSnap.placementStrategy());
-                                card.setCustomX(sSnap.customX());
-                                card.setCustomZ(sSnap.customZ());
-                                if (sSnap.nestRelation() != null) card.setNestRelation(sSnap.nestRelation());
-                                if (sSnap.accessorySnapshots() != null) {
-                                    card.setAccessorySnapshots(sSnap.accessorySnapshots());
-                                }
-                            }
-                        }
-                    }
-                    panel.refreshSpeciesListContainer();
-                    panel.updateDurationCalculatedLabel();
-                    panel.updateValidationPanel();
-                    NotificationOverlay.show(
-                        panel,
-                        "Scenario successfully imported from " + file.getName(),
-                        NotificationOverlay.NotificationType.SUCCESS
-                    );
-                }
-            } catch (Exception ex) {
-                ThemeManager.createAlert(
-                    Alert.AlertType.ERROR,
-                    "Error importing scenario: " + ex.getMessage()
-                ).show();
-            }
-        }
+        SimulationScenarioJsonHandler.handleImportScenario(panel);
     }
 
     void fetchRealWeatherFromWorld(TextField targetField) {
-        double lat = 48.4047;
-        double lon = 2.7016;
-        double alt = 35.0;
-        String name = "Monde Actuel";
-
-        if (panel.worldConfigSupplier != null) {
-            Map<String, Object> cfg = panel.worldConfigSupplier.get();
-            if (cfg != null) {
-                if (cfg.containsKey("cityName") && cfg.get("cityName") != null) {
-                    name = String.valueOf(cfg.get("cityName"));
-                }
-                if (cfg.containsKey("latitude") && cfg.get("latitude") != null) {
-                    try { lat = Double.parseDouble(String.valueOf(cfg.get("latitude"))); } catch (Exception ignored) {}
-                }
-                if (cfg.containsKey("longitude") && cfg.get("longitude") != null) {
-                    try { lon = Double.parseDouble(String.valueOf(cfg.get("longitude"))); } catch (Exception ignored) {}
-                }
-                if (cfg.containsKey("elevation") && cfg.get("elevation") != null) {
-                    try { alt = Double.parseDouble(String.valueOf(cfg.get("elevation"))); } catch (Exception ignored) {}
-                }
-            }
-        } else {
-            String worldPreset = panel.comboWorld != null ? panel.comboWorld.getValue() : null;
-            if (worldPreset != null) {
-                name = worldPreset;
-                WorldPresetManager wpm = new WorldPresetManager();
-                Map<String, Object> pCfg = wpm.getPreset(worldPreset);
-                if (pCfg != null) {
-                    if (pCfg.containsKey("cityName") && pCfg.get("cityName") != null) name = String.valueOf(pCfg.get("cityName"));
-                    if (pCfg.containsKey("latitude") && pCfg.get("latitude") != null) {
-                        try { lat = Double.parseDouble(String.valueOf(pCfg.get("latitude"))); } catch (Exception ignored) {}
-                    }
-                    if (pCfg.containsKey("longitude") && pCfg.get("longitude") != null) {
-                        try { lon = Double.parseDouble(String.valueOf(pCfg.get("longitude"))); } catch (Exception ignored) {}
-                    }
-                    if (pCfg.containsKey("elevation") && pCfg.get("elevation") != null) {
-                        try { alt = Double.parseDouble(String.valueOf(pCfg.get("elevation"))); } catch (Exception ignored) {}
-                    }
-                }
-            }
-        }
-
-        if (targetField != null) {
-            targetField.setText(name != null && !name.isBlank() ? name : String.format(Locale.US, "%.4f, %.4f", lat, lon));
-        }
-
-        fetchRealWeatherByCoordinates(lat, lon, alt, name);
+        SimulationScenarioWeatherSync.fetchRealWeatherFromWorld(panel, targetField);
     }
 
     void fetchRealWeather(String cityQuery) {
-        if (cityQuery == null || cityQuery.trim().isEmpty()) {
-            fetchRealWeatherFromWorld(null);
-            return;
-        }
-        final String query = cityQuery.trim();
-
-        Pattern coordPattern = Pattern.compile("^([+-]?\\d+(?:\\.\\d+)?)[,\\s/]+([+-]?\\d+(?:\\.\\d+)?)(?:[,\\s/]+([+-]?\\d+(?:\\.\\d+)?)(?:\\s*m)?)?$");
-        Matcher m = coordPattern.matcher(query);
-        if (m.matches()) {
-            try {
-                double lat = Double.parseDouble(m.group(1));
-                double lon = Double.parseDouble(m.group(2));
-                double alt = (m.group(3) != null && !m.group(3).isEmpty()) ? Double.parseDouble(m.group(3)) : 50.0;
-                fetchRealWeatherByCoordinates(lat, lon, alt, "GPS " + String.format(Locale.US, "%.2f, %.2f", lat, lon));
-                return;
-            } catch (Exception ignored) {}
-        }
-
-        panel.lblRealWeatherStatus.setText("⏳ Recherche Open-Meteo pour \"" + query + "\"...");
-        panel.lblRealWeatherStatus.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px;");
-
-        panel.weatherApiClient.resolveLocation(
-            query,
-            loc -> fetchRealWeatherByCoordinates(loc.latitude(), loc.longitude(), loc.altitude(), loc.name()),
-            errMsg -> Platform.runLater(() -> {
-                panel.lblRealWeatherStatus.setText("⚠️ " + errMsg);
-                panel.lblRealWeatherStatus.setStyle("-fx-text-fill: #f87171; -fx-font-size: 10px;");
-            })
-        );
+        SimulationScenarioWeatherSync.fetchRealWeather(panel, cityQuery);
     }
 
     void fetchRealWeatherByCoordinates(double lat, double lon, double alt, String name) {
-        final String locationName = (name != null && !name.isBlank()) ? name : String.format(Locale.US, "%.2f°N, %.2f°E", lat, lon);
-        panel.lblRealWeatherStatus.setText("⏳ Chargement Open-Meteo pour " + locationName + "...");
-        panel.lblRealWeatherStatus.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 10px;");
-
-        panel.weatherApiClient.fetchWeather(
-            lat, lon, alt, name,
-            data -> {
-                panel.cachedRealWeatherData = data.configMap();
-                Platform.runLater(() -> {
-                    panel.lblRealWeatherStatus.setText(String.format(Locale.US, "🟢 %s (%.2f°N, %.2f°E, %.0fm) : %.1f°C, Vent %.0f km/h, Hum. %.0f%%",
-                        locationName, lat, lon, alt, data.temperature(), data.windSpeed(), data.humidity()));
-                    panel.lblRealWeatherStatus.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold; -fx-font-size: 10px;");
-                });
-            },
-            errMsg -> Platform.runLater(() -> {
-                panel.lblRealWeatherStatus.setText("⚠️ " + errMsg);
-                panel.lblRealWeatherStatus.setStyle("-fx-text-fill: #f87171; -fx-font-size: 10px;");
-            })
-        );
+        SimulationScenarioWeatherSync.fetchRealWeatherByCoordinates(panel, lat, lon, alt, name);
     }
 
     private void selectStepComboByDt(float dt) {
+        if (panel.scenarioStepCombo == null) return;
         if (Math.abs(dt - 0.0166f) < 0.005f) {
             panel.scenarioStepCombo.getSelectionModel().select(0);
         } else if (Math.abs(dt - 0.05f) < 0.01f) {

@@ -21,6 +21,9 @@ public final class GpuComputeDispatcher {
 
     private static final Logger LOG = LoggerFactory.getLogger(GpuComputeDispatcher.class);
 
+    /**
+     * Hardware acceleration tier used for simulation physics and diffusion computation.
+     */
     public enum ComputeTier {
         VULKAN_SPIRV,
         OPENCL_APARAPI,

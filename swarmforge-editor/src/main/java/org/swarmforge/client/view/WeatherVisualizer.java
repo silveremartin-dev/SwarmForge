@@ -52,7 +52,7 @@ public class WeatherVisualizer {
     private Node starsNode;
     private Node cloudsNode;
     private Node lightningNode;
-    private Node precipitationNode;
+    private final WeatherPrecipitationRenderer precipitationRenderer;
     private Node mistNode;
     private Node godRaysNode;
     private final List<Geometry> godRays = new ArrayList<>();
@@ -61,12 +61,6 @@ public class WeatherVisualizer {
     private Node snowGroundNode;
     private Node iceGroundNode;
     private Node hoarfrostNode;
-
-    // Geometries for precipitation particles
-    private final List<Geometry> rainDrops = new ArrayList<>();
-    private final List<Geometry> snowFlakes = new ArrayList<>();
-    private final List<Geometry> hailPellets = new ArrayList<>();
-    private final List<Geometry> gamifiedHailCubes = new ArrayList<>();
 
     // Snow Ground Overlay Materials & Mesh
     private Geometry snowGroundGeom;
@@ -95,10 +89,12 @@ public class WeatherVisualizer {
         this.sunLight = sunLight;
         this.rootNode = new Node("WeatherVisualizer");
 
+        this.precipitationRenderer = new WeatherPrecipitationRenderer(assetManager, worldWidth, worldHeight, currentRenderMode);
+        rootNode.attachChild(precipitationRenderer.getPrecipitationNode());
+
         initSunAndMoon();
         initStars();
         rebuildClouds();
-        rebuildPrecipitation();
         initMistAndFire();
         initGodRays();
         initGroundSnowAndIceCover();
@@ -117,8 +113,8 @@ public class WeatherVisualizer {
         if (this.worldWidth != width || this.worldHeight != height) {
             this.worldWidth = Math.max(8, width);
             this.worldHeight = Math.max(8, height);
+            precipitationRenderer.setWorldDimensions(this.worldWidth, this.worldHeight);
             rebuildClouds();
-            rebuildPrecipitation();
             initMistAndFire();
             initGroundSnowAndIceCover();
             initScientificVectors();
@@ -128,8 +124,8 @@ public class WeatherVisualizer {
     public void setRenderMode(RenderMode mode) {
         if (this.currentRenderMode != mode) {
             this.currentRenderMode = mode;
+            precipitationRenderer.setRenderMode(mode);
             rebuildClouds();
-            rebuildPrecipitation();
             updateMistAndFireVisibility();
             initGroundSnowAndIceCover();
             if (godRaysNode != null) {
@@ -245,75 +241,6 @@ public class WeatherVisualizer {
         }
 
         rootNode.attachChild(cloudsNode);
-    }
-
-    private void rebuildPrecipitation() {
-        if (precipitationNode != null) {
-            precipitationNode.removeFromParent();
-        }
-        precipitationNode = new Node("PrecipitationSystem");
-        rainDrops.clear();
-        snowFlakes.clear();
-        hailPellets.clear();
-        gamifiedHailCubes.clear();
-
-        // 1. Rain Particles
-        Material rainMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        rainMat.setColor("Color", new ColorRGBA(0.4f, 0.75f, 1.0f, 0.75f));
-        rainMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
-        Cylinder dropShape = new Cylinder(4, 4, 0.04f, 0.9f, true);
-
-        for (int i = 0; i < 45; i++) {
-            Geometry drop = new Geometry("RainDrop_" + i, dropShape);
-            drop.setMaterial(rainMat);
-            resetParticlePos(drop, 35.0f);
-            rainDrops.add(drop);
-            precipitationNode.attachChild(drop);
-        }
-
-        // 2. Snow Flakes
-        Material snowMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        snowMat.setColor("Color", new ColorRGBA(1.0f, 1.0f, 1.0f, 0.92f));
-        Sphere flakeShape = new Sphere(6, 6, 0.18f);
-
-        for (int i = 0; i < 35; i++) {
-            Geometry flake = new Geometry("SnowFlake_" + i, flakeShape);
-            flake.setMaterial(snowMat);
-            resetParticlePos(flake, 35.0f);
-            snowFlakes.add(flake);
-            precipitationNode.attachChild(flake);
-        }
-
-        // 3. Hail Pellets (Grêle)
-        if (currentRenderMode == RenderMode.GAMIFIED) {
-            // Gamified Voxel Ice Cube Hail
-            Material hailVoxelMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-            hailVoxelMat.setColor("Color", new ColorRGBA(0.75f, 0.92f, 1.0f, 0.95f));
-            Box hailCube = new Box(0.2f, 0.2f, 0.2f);
-
-            for (int i = 0; i < 25; i++) {
-                Geometry cube = new Geometry("GamifiedHailCube_" + i, hailCube);
-                cube.setMaterial(hailVoxelMat);
-                resetParticlePos(cube, 35.0f);
-                gamifiedHailCubes.add(cube);
-                precipitationNode.attachChild(cube);
-            }
-        } else {
-            // Realistic High-Speed Icy Pellets & Particle Splash
-            Material hailMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-            hailMat.setColor("Color", new ColorRGBA(0.85f, 0.95f, 1.0f, 0.95f));
-            Sphere hailShape = new Sphere(8, 8, 0.28f);
-
-            for (int i = 0; i < 25; i++) {
-                Geometry pellet = new Geometry("HailPellet_" + i, hailShape);
-                pellet.setMaterial(hailMat);
-                resetParticlePos(pellet, 35.0f);
-                hailPellets.add(pellet);
-                precipitationNode.attachChild(pellet);
-            }
-        }
-
-        rootNode.attachChild(precipitationNode);
     }
 
     private void initGroundSnowAndIceCover() {
@@ -540,75 +467,7 @@ public class WeatherVisualizer {
         }
 
         // 4. Precipitation Slant & Kinematics (Rain, Snow, Hail)
-        WeatherState state = weather.getWeatherState();
-        float rainRate = weather.getRainfall(); // mm/h
-        float snowRate = weather.getSnowfall(); // mm/h
-
-        boolean isRaining = showPrecipitation && (state == WeatherState.LIGHT_RAIN || state == WeatherState.HEAVY_RAIN || state == WeatherState.THUNDERSTORM || state == WeatherState.TEMPEST || rainRate > 0.5f);
-        boolean isSnowing = showPrecipitation && (state == WeatherState.SNOW || state == WeatherState.BLIZZARD || snowRate > 0.5f);
-        boolean isHailing = showPrecipitation && (state == WeatherState.HAIL);
-
-        // Rain Slant angle proportional to wind velocity
-        Quaternion rainSlant = new Quaternion().fromAngles(windDz * 0.03f, windRad, -windDx * 0.03f);
-
-        for (Geometry drop : rainDrops) {
-            drop.setCullHint(isRaining ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-            if (isRaining && tpf > 0.0001f) {
-                drop.setLocalRotation(rainSlant);
-                Vector3f pos = drop.getLocalTranslation();
-                float fallSpeed = 22f + (rainRate / 5f) * 4f;
-                pos.y -= tpf * fallSpeed;
-                pos.x += windDx * tpf;
-                pos.z += windDz * tpf;
-                if (pos.y < 0f || pos.x < -10f || pos.x > 75f || pos.z < -10f || pos.z > 75f) {
-                    resetParticlePos(drop, 35f);
-                } else {
-                    drop.setLocalTranslation(pos);
-                }
-            }
-        }
-
-        // Snow Flakes: Micro-turbulent drift + wind vector
-        for (Geometry flake : snowFlakes) {
-            flake.setCullHint(isSnowing ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-            if (isSnowing && tpf > 0.0001f) {
-                Vector3f pos = flake.getLocalTranslation();
-                pos.y -= tpf * (5.5f + (snowRate / 10f) * 2f);
-                pos.x += (windDx + FastMath.sin(pos.y * 0.3f) * 0.25f) * tpf;
-                pos.z += (windDz + FastMath.cos(pos.y * 0.3f) * 0.25f) * tpf;
-                if (pos.y < 0f || pos.x < -10f || pos.x > 75f || pos.z < -10f || pos.z > 75f) {
-                    resetParticlePos(flake, 35f);
-                } else {
-                    flake.setLocalTranslation(pos);
-                }
-            }
-        }
-
-        // Realistic & Scientific Hail
-        for (Geometry pellet : hailPellets) {
-            pellet.setCullHint(isHailing ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-            if (isHailing && tpf > 0.0001f) {
-                Vector3f pos = pellet.getLocalTranslation();
-                pos.y -= tpf * 44f;
-                pos.x += windDx * 0.4f * tpf;
-                pos.z += windDz * 0.4f * tpf;
-                if (pos.y < 0f) resetParticlePos(pellet, 35f);
-                else pellet.setLocalTranslation(pos);
-            }
-        }
-
-        // Gamified Hail Voxel Cubes
-        for (Geometry cube : gamifiedHailCubes) {
-            cube.setCullHint((isHailing && currentRenderMode == RenderMode.GAMIFIED) ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
-            if (isHailing && currentRenderMode == RenderMode.GAMIFIED && tpf > 0.0001f) {
-                Vector3f pos = cube.getLocalTranslation();
-                pos.y -= tpf * 32f;
-                pos.x += windDx * 0.3f * tpf;
-                pos.z += windDz * 0.3f * tpf;
-                if (pos.y < 0f) resetParticlePos(cube, 35f);
-                else cube.setLocalTranslation(pos);
-            }
-        }
+        precipitationRenderer.update(weather, tpf, showPrecipitation, windDx, windDz, windRad);
 
         // 5. Technical Resolution of Ground Snow Cover & Ice Sheet Overlay Rendering
         float snowDepthMm = weather.getSnowDepthMm();
@@ -693,18 +552,12 @@ public class WeatherVisualizer {
             }
         }
 
+        WeatherState state = weather.getWeatherState();
         if (showLightning && (state == WeatherState.THUNDERSTORM || state == WeatherState.TEMPEST) && tpf > 0.0001f) {
             if (Math.random() < 0.018) {
                 triggerLightningFlash();
             }
         }
-    }
-
-    private void resetParticlePos(Geometry p, float maxH) {
-        float px = 1.0f + (float) (Math.random() * Math.max(1.0, worldWidth - 2.0));
-        float py = 10f + (float) (Math.random() * maxH);
-        float pz = 1.0f + (float) (Math.random() * Math.max(1.0, worldHeight - 2.0));
-        p.setLocalTranslation(px, py, pz);
     }
 
     public void triggerLightningFlash() {

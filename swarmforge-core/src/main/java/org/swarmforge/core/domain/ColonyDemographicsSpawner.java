@@ -421,29 +421,8 @@ public class ColonyDemographicsSpawner implements java.io.Serializable {
     }
 
     public List<Individual> createWorkers(int count, boolean applyAgeDistribution) {
-        if (count <= 0) return List.of();
-        List<Individual> batch = new ArrayList<>(count);
-
-        for (int i = 0; i < count; i++) {
-            Individual.Job job = (i % 2 == 0) ? Individual.Job.FORAGER : Individual.Job.NURSE;
-            float[] pos = getSpawningCoordinates(Individual.Caste.WORKER, job, i);
-
-            Individual ind = new Individual(colony.getId(), Individual.Caste.WORKER, pos[0], pos[1], pos[2]);
-            ind.setHomePosition(colony.getNestX(), colony.getNestY(), colony.getNestZ());
-            ind.setSpecies(colony.getSpecies());
-            ind.setJob(job);
-            ind.setBrain(new FSMArchitecture());
-            if (getRandom() != null) {
-                ind.setRandom(new Random(getRandom().nextLong()));
-            }
-            applyGaussianHealth(ind, false);
-            if (applyAgeDistribution) {
-                applyGaussianAge(ind, false);
-            }
-            batch.add(ind);
-        }
-        colony.addIndividualsBulk(batch);
-        return batch;
+        return createCasteBatch(count, applyAgeDistribution, Individual.Caste.WORKER,
+                i -> (i % 2 == 0) ? Individual.Job.FORAGER : Individual.Job.NURSE);
     }
 
     public List<Individual> createSoldiers(int count) {
@@ -451,27 +430,7 @@ public class ColonyDemographicsSpawner implements java.io.Serializable {
     }
 
     public List<Individual> createSoldiers(int count, boolean applyAgeDistribution) {
-        if (count <= 0) return List.of();
-        List<Individual> batch = new ArrayList<>(count);
-
-        for (int i = 0; i < count; i++) {
-            float[] pos = getSpawningCoordinates(Individual.Caste.SOLDIER, Individual.Job.GUARD, i);
-
-            Individual ind = new Individual(colony.getId(), Individual.Caste.SOLDIER, pos[0], pos[1], pos[2]);
-            ind.setHomePosition(colony.getNestX(), colony.getNestY(), colony.getNestZ());
-            ind.setSpecies(colony.getSpecies());
-            ind.setBrain(new FSMArchitecture());
-            if (getRandom() != null) {
-                ind.setRandom(new Random(getRandom().nextLong()));
-            }
-            applyGaussianHealth(ind, false);
-            if (applyAgeDistribution) {
-                applyGaussianAge(ind, false);
-            }
-            batch.add(ind);
-        }
-        colony.addIndividualsBulk(batch);
-        return batch;
+        return createCasteBatch(count, applyAgeDistribution, Individual.Caste.SOLDIER, i -> Individual.Job.GUARD);
     }
 
     public List<Individual> createMales(int count) {
@@ -479,23 +438,24 @@ public class ColonyDemographicsSpawner implements java.io.Serializable {
     }
 
     public List<Individual> createMales(int count, boolean applyAgeDistribution) {
+        return createCasteBatch(count, applyAgeDistribution, Individual.Caste.MALE, i -> Individual.Job.NONE);
+    }
+
+    private List<Individual> createCasteBatch(int count, boolean applyAgeDistribution, Individual.Caste caste,
+                                              java.util.function.IntFunction<Individual.Job> jobSupplier) {
         if (count <= 0) return List.of();
         List<Individual> batch = new ArrayList<>(count);
-
         for (int i = 0; i < count; i++) {
-            float[] pos = getSpawningCoordinates(Individual.Caste.MALE, Individual.Job.NONE, i);
-
-            Individual ind = new Individual(colony.getId(), Individual.Caste.MALE, pos[0], pos[1], pos[2]);
+            Individual.Job job = jobSupplier.apply(i);
+            float[] pos = getSpawningCoordinates(caste, job, i);
+            Individual ind = new Individual(colony.getId(), caste, pos[0], pos[1], pos[2]);
             ind.setHomePosition(colony.getNestX(), colony.getNestY(), colony.getNestZ());
             ind.setSpecies(colony.getSpecies());
+            if (job != Individual.Job.NONE) ind.setJob(job);
             ind.setBrain(new FSMArchitecture());
-            if (getRandom() != null) {
-                ind.setRandom(new Random(getRandom().nextLong()));
-            }
+            if (getRandom() != null) ind.setRandom(new Random(getRandom().nextLong()));
             applyGaussianHealth(ind, false);
-            if (applyAgeDistribution) {
-                applyGaussianAge(ind, false);
-            }
+            if (applyAgeDistribution) applyGaussianAge(ind, false);
             batch.add(ind);
         }
         colony.addIndividualsBulk(batch);

@@ -59,7 +59,7 @@ public class IntegrationTest {
             try {
                 server.start();
             } catch (Exception e) {
-                e.printStackTrace();
+                org.slf4j.LoggerFactory.getLogger(IntegrationTest.class).error("Server startup failure in test", e);
             }
         }).start();
 

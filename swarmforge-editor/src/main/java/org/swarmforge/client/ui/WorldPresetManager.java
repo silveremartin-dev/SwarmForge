@@ -8,6 +8,8 @@ package org.swarmforge.client.ui;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.InputStream;
@@ -23,6 +25,7 @@ import java.util.*;
  */
 public class WorldPresetManager {
 
+    private static final Logger LOG = LoggerFactory.getLogger(WorldPresetManager.class);
     private static final File PRESETS_FILE = new File("world_presets.json");
 
     private static final String[] BUILTIN_WORLD_FILES = {
@@ -81,7 +84,9 @@ public class WorldPresetManager {
                 try {
                     cfg = mapper.readValue(path, Map.class);
                     break;
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    LOG.debug("Could not parse world preset from candidate file {}: {}", path.getPath(), e.getMessage());
+                }
             }
         }
 
@@ -90,7 +95,9 @@ public class WorldPresetManager {
                 if (in != null) {
                     cfg = mapper.readValue(in, Map.class);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                LOG.debug("Could not parse world preset from classpath /presets/worlds/{}: {}", filename, e.getMessage());
+            }
         }
         return cfg;
     }
@@ -107,7 +114,7 @@ public class WorldPresetManager {
                     }
                 }
             } catch (Exception ex) {
-                System.err.println("[WorldPresets] Could not read " + PRESETS_FILE + ": " + ex.getMessage());
+                LOG.warn("Could not read world presets from {}: {}", PRESETS_FILE, ex.getMessage());
             }
         }
     }
@@ -158,7 +165,9 @@ public class WorldPresetManager {
             StringBuilder hex = new StringBuilder();
             for (byte b : hash) hex.append(String.format("%02x", b));
             copy.put("checksum", hex.toString().substring(0, 12));
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            LOG.debug("Could not compute SHA-256 checksum for world preset {}: {}", name, e.getMessage());
+        }
 
         if (presets.containsKey(name)) {
             Map<String, Object> existing = presets.get(name);
@@ -194,7 +203,7 @@ public class WorldPresetManager {
             }
             mapper.writerWithDefaultPrettyPrinter().writeValue(PRESETS_FILE, customOnly);
         } catch (Exception ex) {
-            System.err.println("[WorldPresets] Could not write " + PRESETS_FILE + ": " + ex.getMessage());
+            LOG.warn("Could not write world presets to {}: {}", PRESETS_FILE, ex.getMessage());
         }
     }
 }

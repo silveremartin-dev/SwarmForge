@@ -524,29 +524,24 @@ class JmeViewportInteractionController {
             Camera cam = app.getCamera();
             app.cameraTarget.set(x, y, z);
             float distance = Math.max(10.0f, cam.getLocation().distance(app.cameraTarget));
-            Vector3f newPos = app.cameraTarget.add(new Vector3f(0, distance * 0.6f, distance * 0.6f));
-            cam.setLocation(newPos);
+            cam.setLocation(app.cameraTarget.add(new Vector3f(0, distance * 0.6f, distance * 0.6f)));
             cam.lookAt(app.cameraTarget, Vector3f.UNIT_Y);
         });
     }
 
     void resetCamera() {
         app.enqueueTask(() -> {
-            app.followedAntId = null;
-            app.initialCameraConfigured = false;
+            app.followedAntId = null; app.initialCameraConfigured = false;
             Camera cam = app.getCamera();
             if (app.simulation != null && app.simulation.getTerrarium() != null) {
-                int w = app.simulation.getTerrarium().getWidth();
-                int d = app.simulation.getTerrarium().getDepth();
-                int h = app.simulation.getTerrarium().getHeight();
+                int w = app.simulation.getTerrarium().getWidth(), d = app.simulation.getTerrarium().getDepth(), h = app.simulation.getTerrarium().getHeight();
                 app.cameraTarget.set(w / 2f, d / 2f, h / 2f);
                 cam.setLocation(new Vector3f(w / 2f, d + 25, h + 25));
-                cam.lookAt(app.cameraTarget, Vector3f.UNIT_Y);
             } else {
                 app.cameraTarget.set(32, 10, 32);
                 cam.setLocation(new Vector3f(32, 45, 65));
-                cam.lookAt(app.cameraTarget, Vector3f.UNIT_Y);
             }
+            cam.lookAt(app.cameraTarget, Vector3f.UNIT_Y);
         });
     }
 
@@ -554,9 +549,7 @@ class JmeViewportInteractionController {
         app.enqueueTask(() -> {
             int w = 64, d = 32, h = 64;
             if (app.simulation != null && app.simulation.getTerrarium() != null) {
-                w = app.simulation.getTerrarium().getWidth();
-                d = app.simulation.getTerrarium().getDepth();
-                h = app.simulation.getTerrarium().getHeight();
+                w = app.simulation.getTerrarium().getWidth(); d = app.simulation.getTerrarium().getDepth(); h = app.simulation.getTerrarium().getHeight();
             }
             Camera cam = app.getCamera();
             cam.setLocation(new Vector3f(w / 2f, d + 45, h / 2f));
@@ -566,9 +559,7 @@ class JmeViewportInteractionController {
 
     Node createSelectionReticle() {
         Node selectionReticleNode = new Node("SelectionReticle");
-
-        Torus outerTorus = new Torus(16, 24, 0.025f, 0.45f);
-        Geometry outerGeom = new Geometry("OuterRing", outerTorus);
+        Geometry outerGeom = new Geometry("OuterRing", new Torus(16, 24, 0.025f, 0.45f));
         Material matOuter = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         matOuter.setColor("Color", new ColorRGBA(0.22f, 0.74f, 0.97f, 0.85f));
         matOuter.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
@@ -577,8 +568,7 @@ class JmeViewportInteractionController {
         outerGeom.rotate((float) Math.PI / 2f, 0, 0);
         selectionReticleNode.attachChild(outerGeom);
 
-        Torus innerTorus = new Torus(16, 24, 0.018f, 0.28f);
-        Geometry innerGeom = new Geometry("InnerRing", innerTorus);
+        Geometry innerGeom = new Geometry("InnerRing", new Torus(16, 24, 0.018f, 0.28f));
         Material matInner = new Material(app.getAssetManager(), "Common/MatDefs/Misc/Unshaded.j3md");
         matInner.setColor("Color", new ColorRGBA(0.96f, 0.62f, 0.04f, 0.90f));
         matInner.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
@@ -588,16 +578,13 @@ class JmeViewportInteractionController {
         selectionReticleNode.attachChild(innerGeom);
 
         for (int i = 0; i < 4; i++) {
-            Box tickBox = new Box(0.015f, 0.015f, 0.07f);
-            Geometry tickGeom = new Geometry("Tick_" + i, tickBox);
+            Geometry tickGeom = new Geometry("Tick_" + i, new Box(0.015f, 0.015f, 0.07f));
             tickGeom.setMaterial(matOuter);
             float angle = i * ((float) Math.PI / 2.0f);
-            float dist = 0.45f;
-            tickGeom.setLocalTranslation((float) Math.cos(angle) * dist, 0, (float) Math.sin(angle) * dist);
+            tickGeom.setLocalTranslation((float) Math.cos(angle) * 0.45f, 0, (float) Math.sin(angle) * 0.45f);
             tickGeom.rotate(0, angle, 0);
             selectionReticleNode.attachChild(tickGeom);
         }
-
         selectionReticleNode.setQueueBucket(RenderQueue.Bucket.Transparent);
         selectionReticleNode.setCullHint(Spatial.CullHint.Always);
         app.getRootNode().attachChild(selectionReticleNode);

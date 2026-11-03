@@ -400,64 +400,28 @@ public class WorldEditorPane extends BaseWorldEditorPane {
         }
     }
 
-    public void updateWeatherOverlay() {
-        WorldEditorRightSidebarAndLegendBuilder.updateWeatherOverlay(this);
-    }
-
+    public void updateWeatherOverlay() { WorldEditorRightSidebarAndLegendBuilder.updateWeatherOverlay(this); }
     public void repaintAllViews() {
         if (!isActive) return;
         WorldEditor3DTechnicalRenderer.draw3DTechnical(this);
         minimapRenderer.drawSide(this);
         minimapRenderer.drawTop(this);
     }
-
     public void resetAllCameras() {
         azimuth = 45; elevation = 35; zoom = 7.5; pan3DX = 0; pan3DY = 0;
-        sideZoom = 1.0; sidePanX = 0; sidePanY = 0;
-        topZoom = 1.0; topPanX = 0; topPanY = 0;
+        sideZoom = 1.0; sidePanX = 0; sidePanY = 0; topZoom = 1.0; topPanX = 0; topPanY = 0;
         repaintAllViews();
     }
-
-    public boolean isSync() {
-        return syncViewsCheckBox != null && syncViewsCheckBox.isSelected();
-    }
-
-    public double[] project3DPoint(double x, double y, double z, double cx, double cy, double scale, double radAz, double radEl) {
-        return WorldEditor3DTechnicalRenderer.project3DPoint(x, y, z, cx, cy, scale, radAz, radEl);
-    }
-
-    public boolean isPointOccluded(double gx, double gy, double gz, double radAz, double radEl) {
-        return WorldEditor3DTechnicalRenderer.isPointOccluded(this, gx, gy, gz, radAz, radEl);
-    }
-
-    public void drawGamifiedVoxelCube3D(double wx, double wy, double wz, double sizeX, double sizeY, double sizeZ, Color topCol, Color sideCol, double cx, double cy, double scale, double radAz, double radEl) {
-        WorldEditor3DTechnicalRenderer.drawGamifiedVoxelCube3D(this, wx, wy, wz, sizeX, sizeY, sizeZ, topCol, sideCol, cx, cy, scale, radAz, radEl);
-    }
-
-    public void draw3DHoverOverlay(double w, double h, double cx, double cy, double scale, double radAz, double radEl) {
-        WorldEditor3DTechnicalRenderer.draw3DHoverOverlay(this, w, h, cx, cy, scale, radAz, radEl);
-    }
-
-    public void drawMetricScaleBar3D(double w, double h, double cx, double cy, double scale, double radAz, double radEl) {
-        WorldEditor3DTechnicalRenderer.drawMetricScaleBar3D(this, w, h, cx, cy, scale, radAz, radEl);
-    }
-
-    public int pickBotanicalTreeSpecies(Random rand) {
-        return WorldEditorGeneratorHelper.pickBotanicalTreeSpecies(this, rand);
-    }
-
-    public void syncTreeSpeciesTo3DView() {
-        WorldEditorGeneratorHelper.syncTreeSpeciesTo3DView(this);
-    }
-
-    public List<BotanicalTreeData> getBotanicalTreeInstances() {
-        return WorldEditorGeneratorHelper.getBotanicalTreeInstances(this);
-    }
-
-    public boolean isForestArea(int gx, int gy) {
-        return (gx * 17 + gy * 31) % 11 == 0;
-    }
-
+    public boolean isSync() { return syncViewsCheckBox != null && syncViewsCheckBox.isSelected(); }
+    public double[] project3DPoint(double x, double y, double z, double cx, double cy, double scale, double radAz, double radEl) { return WorldEditor3DTechnicalRenderer.project3DPoint(x, y, z, cx, cy, scale, radAz, radEl); }
+    public boolean isPointOccluded(double gx, double gy, double gz, double radAz, double radEl) { return WorldEditor3DTechnicalRenderer.isPointOccluded(this, gx, gy, gz, radAz, radEl); }
+    public void drawGamifiedVoxelCube3D(double wx, double wy, double wz, double sizeX, double sizeY, double sizeZ, Color topCol, Color sideCol, double cx, double cy, double scale, double radAz, double radEl) { WorldEditor3DTechnicalRenderer.drawGamifiedVoxelCube3D(this, wx, wy, wz, sizeX, sizeY, sizeZ, topCol, sideCol, cx, cy, scale, radAz, radEl); }
+    public void draw3DHoverOverlay(double w, double h, double cx, double cy, double scale, double radAz, double radEl) { WorldEditor3DTechnicalRenderer.draw3DHoverOverlay(this, w, h, cx, cy, scale, radAz, radEl); }
+    public void drawMetricScaleBar3D(double w, double h, double cx, double cy, double scale, double radAz, double radEl) { WorldEditor3DTechnicalRenderer.drawMetricScaleBar3D(this, w, h, cx, cy, scale, radAz, radEl); }
+    public int pickBotanicalTreeSpecies(Random rand) { return WorldEditorGeneratorHelper.pickBotanicalTreeSpecies(this, rand); }
+    public void syncTreeSpeciesTo3DView() { WorldEditorGeneratorHelper.syncTreeSpeciesTo3DView(this); }
+    public List<BotanicalTreeData> getBotanicalTreeInstances() { return WorldEditorGeneratorHelper.getBotanicalTreeInstances(this); }
+    public boolean isForestArea(int gx, int gy) { return (gx * 17 + gy * 31) % 11 == 0; }
     public boolean isMaterialVisible(byte mat) {
         if (mat == 0 && showEarthCheck != null && !showEarthCheck.isSelected()) return false;
         if (mat == 1 && showSandCheck != null && !showSandCheck.isSelected()) return false;
@@ -467,11 +431,7 @@ public class WorldEditorPane extends BaseWorldEditorPane {
         if (mat == 5 && showOrganicCheck != null && !showOrganicCheck.isSelected()) return false;
         return true;
     }
-
-    public double valueNoise3D(double x, double y, double z) {
-        return TerrainProceduralGenerator.valueNoise3D(x, y, z);
-    }
-
+    public double valueNoise3D(double x, double y, double z) { return TerrainProceduralGenerator.valueNoise3D(x, y, z); }
     public void regenerateAndRepaint() { WorldEditorGeneratorHelper.regenerateAndRepaint(this); }
     public void handleAdaptWorldToSpecies() { WorldEditorGeoAndBioclimateHelper.handleAdaptWorldToSpecies(this); }
     public void applyBioclimaticAdaptation(double lat, double lon, double alt) { WorldEditorGeoAndBioclimateHelper.applyBioclimaticAdaptation(this, lat, lon, alt); }
@@ -493,46 +453,17 @@ public class WorldEditorPane extends BaseWorldEditorPane {
         isDirty = true;
         if (presetsCombo != null) {
             isUpdatingFields = true;
-            try {
-                presetsCombo.getSelectionModel().clearSelection();
-                presetsCombo.setValue("");
-            } finally {
-                isUpdatingFields = false;
-            }
+            try { presetsCombo.getSelectionModel().clearSelection(); presetsCombo.setValue(""); } finally { isUpdatingFields = false; }
         }
     }
 
-    Slider mkSlider(double min, double max, double val) {
-        Slider s = new Slider(min, max, val);
-        s.setShowTickLabels(true); s.setShowTickMarks(true); s.setPrefWidth(180);
-        return s;
-    }
-
-    Spinner<Integer> mkSpinner(int min, int max, int val) {
-        Spinner<Integer> sp = new Spinner<>(min, max, val);
-        sp.setPrefWidth(75); sp.setEditable(true);
-        sp.valueProperty().addListener((o, a, b) -> repaintAllViews());
-        return sp;
-    }
-
-    void addLsn(Slider... sliders) {
-        for (Slider s : sliders) if (s != null) s.valueProperty().addListener((o, a, b) -> repaintAllViews());
-    }
-
-    void addFloraLsn(Slider... sliders) {
-        for (Slider s : sliders) if (s != null) s.valueProperty().addListener((o, a, b) -> { WorldEditorGeneratorHelper.generateSurfaceFlora(this); repaintAllViews(); });
-    }
-
-    void addFloraBoolLsn(CheckBox... boxes) {
-        for (CheckBox b : boxes) if (b != null) b.selectedProperty().addListener((o, a, n) -> { WorldEditorGeneratorHelper.generateSurfaceFlora(this); repaintAllViews(); });
-    }
-
-    void addBoolLsn(CheckBox... boxes) {
-        for (CheckBox b : boxes) if (b != null) b.selectedProperty().addListener((o, a, n) -> repaintAllViews());
-    }
-
+    Slider mkSlider(double min, double max, double val) { Slider s = new Slider(min, max, val); s.setShowTickLabels(true); s.setShowTickMarks(true); s.setPrefWidth(180); return s; }
+    Spinner<Integer> mkSpinner(int min, int max, int val) { Spinner<Integer> sp = new Spinner<>(min, max, val); sp.setPrefWidth(75); sp.setEditable(true); sp.valueProperty().addListener((o, a, b) -> repaintAllViews()); return sp; }
+    void addLsn(Slider... sliders) { for (Slider s : sliders) if (s != null) s.valueProperty().addListener((o, a, b) -> repaintAllViews()); }
+    void addFloraLsn(Slider... sliders) { for (Slider s : sliders) if (s != null) s.valueProperty().addListener((o, a, b) -> { WorldEditorGeneratorHelper.generateSurfaceFlora(this); repaintAllViews(); }); }
+    void addFloraBoolLsn(CheckBox... boxes) { for (CheckBox b : boxes) if (b != null) b.selectedProperty().addListener((o, a, n) -> { WorldEditorGeneratorHelper.generateSurfaceFlora(this); repaintAllViews(); }); }
+    void addBoolLsn(CheckBox... boxes) { for (CheckBox b : boxes) if (b != null) b.selectedProperty().addListener((o, a, n) -> repaintAllViews()); }
     HBox sv(Slider s) { return sv(s, ""); }
-
     HBox sv(Slider s, String unit) {
         HBox b = new HBox(8); b.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         Label v = new Label(fmt(s != null ? s.getValue() : 0.0) + (unit == null || unit.isEmpty() ? "" : " " + unit));
@@ -541,7 +472,6 @@ public class WorldEditorPane extends BaseWorldEditorPane {
         b.getChildren().addAll(s, v);
         return b;
     }
-
     HBox svPct(Slider s) {
         HBox b = new HBox(8); b.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
         Label v = new Label(String.format(Locale.US, "%.0f%%", (s != null ? s.getValue() : 0.0) * 100.0));
@@ -550,10 +480,8 @@ public class WorldEditorPane extends BaseWorldEditorPane {
         b.getChildren().addAll(s, v);
         return b;
     }
-
     private String fmt(double d) { return d == (long) d ? String.format("%d", (long) d) : String.format("%.1f", d); }
 
-    // Getters and helper bindings
     public ResizableCanvas getCanvas3D() { return canvas3D; }
     public Canvas getCanvasSide() { return canvasSide; }
     public GraphicsContext getGcSide() { return gcSide; }
@@ -562,17 +490,11 @@ public class WorldEditorPane extends BaseWorldEditorPane {
     public GameViewPane getGameView() { return gameView; }
     public RenderMode getRenderMode() { return currentRenderMode; }
     public PheromoneRenderMode getPheromoneRenderMode() { return pheromoneRenderMode; }
-    public void setPheromoneRenderMode(PheromoneRenderMode mode) {
-        this.pheromoneRenderMode = mode != null ? mode : PheromoneRenderMode.HEATMAP_GRADIENT;
-        repaintAllViews();
-    }
+    public void setPheromoneRenderMode(PheromoneRenderMode mode) { this.pheromoneRenderMode = mode != null ? mode : PheromoneRenderMode.HEATMAP_GRADIENT; repaintAllViews(); }
     public double getZoom() { return zoom; }
     public void setZoom(double z) {
         this.zoom = Math.max(2.5, Math.min(22.0, z));
-        if (isSync()) {
-            this.sideZoom = Math.max(0.3, Math.min(6.0, zoom / 7.5));
-            this.topZoom = sideZoom;
-        }
+        if (isSync()) { this.sideZoom = Math.max(0.3, Math.min(6.0, zoom / 7.5)); this.topZoom = sideZoom; }
         repaintAllViews();
     }
     public boolean isDirty() { return isDirty; }
@@ -604,38 +526,17 @@ public class WorldEditorPane extends BaseWorldEditorPane {
         if (showAntTrackingCheck != null && showAntTrackingCheck.isSelected() != enabled) showAntTrackingCheck.setSelected(enabled);
         if (!enabled) {
             setFollowedIndividual(null);
-            if (trackedAntPane != null) {
-                trackedAntPane.clearSearchStatus();
-                trackedAntPane.setVisible(false);
-            }
+            if (trackedAntPane != null) { trackedAntPane.clearSearchStatus(); trackedAntPane.setVisible(false); }
         }
         repaintAllViews();
     }
     public double getAntVisualScaleMultiplier() { return antVisualScaleMultiplier; }
-    public void setAntVisualScaleMultiplier(double multiplier) {
-        this.antVisualScaleMultiplier = multiplier;
-        repaintAllViews();
-    }
+    public void setAntVisualScaleMultiplier(double multiplier) { this.antVisualScaleMultiplier = multiplier; repaintAllViews(); }
     public boolean isShowDebugRuler() { return showDebugRuler; }
-    public void setShowDebugRuler(boolean show) {
-        this.showDebugRuler = show;
-        repaintAllViews();
-    }
-    public void setShowElevationIsolines(boolean show) {
-        if (showElevationIsolinesCheck != null) showElevationIsolinesCheck.setSelected(show);
-        if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setShowElevationIsolines(show);
-        repaintAllViews();
-    }
-    public void setShowClimateIsolines(boolean show) {
-        if (showClimateIsolinesCheck != null) showClimateIsolinesCheck.setSelected(show);
-        if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setShowClimateIsolines(show);
-        repaintAllViews();
-    }
-    public void setShowPheromoneIsolines(boolean show) {
-        if (showPheromoneIsolinesCheck != null) showPheromoneIsolinesCheck.setSelected(show);
-        if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setShowPheromoneIsolines(show);
-        repaintAllViews();
-    }
+    public void setShowDebugRuler(boolean show) { this.showDebugRuler = show; repaintAllViews(); }
+    public void setShowElevationIsolines(boolean show) { if (showElevationIsolinesCheck != null) showElevationIsolinesCheck.setSelected(show); if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setShowElevationIsolines(show); repaintAllViews(); }
+    public void setShowClimateIsolines(boolean show) { if (showClimateIsolinesCheck != null) showClimateIsolinesCheck.setSelected(show); if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setShowClimateIsolines(show); repaintAllViews(); }
+    public void setShowPheromoneIsolines(boolean show) { if (showPheromoneIsolinesCheck != null) showPheromoneIsolinesCheck.setSelected(show); if (gameView != null && gameView.getGameApp() != null) gameView.getGameApp().setShowPheromoneIsolines(show); repaintAllViews(); }
     public boolean isShowElevationIsolines() { return showElevationIsolinesCheck != null && showElevationIsolinesCheck.isSelected(); }
     public boolean isShowClimateIsolines() { return showClimateIsolinesCheck != null && showClimateIsolinesCheck.isSelected(); }
     public boolean isShowPheromoneIsolines() { return showPheromoneIsolinesCheck != null && showPheromoneIsolinesCheck.isSelected(); }
@@ -658,15 +559,9 @@ public class WorldEditorPane extends BaseWorldEditorPane {
     }
     public void setVolumetricScannerEnabled(boolean enabled) { repaintAllViews(); }
     public void setOnGenerate(Consumer<Map<String, Object>> cb) { this.onGenerateCallback = cb; }
-    public double getLatitude() {
-        try { return latField != null ? Double.parseDouble(latField.getText().trim()) : 48.4047; } catch (Exception e) { return 48.4047; }
-    }
-    public double getLongitude() {
-        try { return lonField != null ? Double.parseDouble(lonField.getText().trim()) : 2.7016; } catch (Exception e) { return 2.7016; }
-    }
-    public double getElevation() {
-        try { return altField != null ? Double.parseDouble(altField.getText().trim()) : 35.0; } catch (Exception e) { return 35.0; }
-    }
+    public double getLatitude() { try { return latField != null ? Double.parseDouble(latField.getText().trim()) : 48.4047; } catch (Exception e) { return 48.4047; } }
+    public double getLongitude() { try { return lonField != null ? Double.parseDouble(lonField.getText().trim()) : 2.7016; } catch (Exception e) { return 2.7016; } }
+    public double getElevation() { try { return altField != null ? Double.parseDouble(altField.getText().trim()) : 35.0; } catch (Exception e) { return 35.0; } }
     public TrackedIndividualPane getTrackedIndividualPane() { return trackedAntPane; }
     public void setPheromoneChannelFilter(int channel) { repaintAllViews(); }
     public void setWeatherOverlayVisible(boolean visible) { this.isWeatherOverlayVisible = visible; updateWeatherOverlay(); }

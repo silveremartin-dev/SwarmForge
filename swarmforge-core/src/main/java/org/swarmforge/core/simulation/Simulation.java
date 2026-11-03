@@ -57,6 +57,7 @@ public class Simulation {
     private float speedMultiplier = 1.0f;
     private final SimulationTimeMachine timeMachine;
     private final SimulationEnvironmentUpdater environmentUpdater = new SimulationEnvironmentUpdater(this);
+    private final SimulationEntityUpdater entityUpdater = new SimulationEntityUpdater(this);
 
     private volatile double measuredTps = 0.0;
     private long lastTpsSampleTime = System.nanoTime();
@@ -246,86 +247,22 @@ public class Simulation {
     }
 
     public Colony addColony(String speciesType, int queens, int workers, int soldiers, int brood, float x, float y) {
-        org.swarmforge.core.species.Species species = org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies(speciesType);
-
-        float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(x, y) : 0f;
-        Colony colony = new Colony(species, x, y, surfaceZ);
-        if (this.terrarium != null) {
-            colony.setTerrarium(this.terrarium);
-        }
-        if (this.random != null) {
-            colony.setRandom(new java.util.Random(this.random.nextLong()));
-        }
-        if (queens > 0) colony.createQueens(queens);
-        if (workers > 0) colony.createWorkers(workers);
-        if (soldiers > 0) colony.createSoldiers(soldiers);
-        if (brood > 0) colony.createBrood(brood);
-        colony.bootstrapDefaultResources();
-        if (colony.getTunnelNetwork() != null) {
-            colony.getTunnelNetwork().rebuildForArchitecture(x, y, surfaceZ, species != null ? species.getNestType() : "BURROW_UNDERGROUND", colony);
-        }
-        addColony(colony);
-        return colony;
+        return environmentUpdater.createColonyWithCastes(speciesType, queens, workers, soldiers, brood, x, y);
     }
 
     /**
      * Seeds initial surface vegetation and food clusters proportionally to map scale and population.
      */
     public void seedInitialEnvironmentResources() {
-        if (terrarium == null) return;
-        int width = (int) terrarium.getWidth();
-        int height = (int) terrarium.getHeight();
-        int totalPopulation = colonies.stream().mapToInt(Colony::getPopulation).sum();
-        int foodClusters = Math.max(8, totalPopulation / 20);
-
-        if (vegetationSystem != null && vegetationSystem.getPlantCount() == 0) {
-            vegetationSystem.populate(Math.max(30, width / 2), org.swarmforge.core.world.VegetationSystem.PlantType.GRASS);
-            vegetationSystem.populate(Math.max(15, width / 4), org.swarmforge.core.world.VegetationSystem.PlantType.SHRUB);
-            vegetationSystem.populate(Math.max(20, width / 3), org.swarmforge.core.world.VegetationSystem.PlantType.FLOWER);
-            vegetationSystem.populate(Math.max(8, width / 8), org.swarmforge.core.world.VegetationSystem.PlantType.TREE);
-        }
-
-        if (foodSources.isEmpty()) {
-            java.util.Random rng = (this.random != null) ? this.random : new java.util.Random(12345);
-            org.swarmforge.core.domain.ResourceType[] types = {
-                org.swarmforge.core.domain.ResourceType.SUGAR,
-                org.swarmforge.core.domain.ResourceType.SEED,
-                org.swarmforge.core.domain.ResourceType.NECTAR,
-                org.swarmforge.core.domain.ResourceType.INSECT
-            };
-
-            for (int i = 0; i < foodClusters; i++) {
-                float fx = 5.0f + rng.nextFloat() * Math.max(1.0f, width - 10.0f);
-                float fy = 5.0f + rng.nextFloat() * Math.max(1.0f, height - 10.0f);
-                org.swarmforge.core.domain.ResourceType rType = types[i % types.length];
-                float qty = 300.0f + rng.nextFloat() * 700.0f;
-                foodSources.add(new org.swarmforge.core.domain.FoodSource(fx, fy, 0.0f, qty, rType));
-            }
-        }
-
-        if (predatorManager != null && predatorManager.getPredatorCount() == 0) {
-            // Seed initial accessory prey / predator species in the environment
-            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.CATERPILLAR, width * 0.35f, height * 0.35f, 0.0f);
-            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.BEETLE, width * 0.65f, height * 0.40f, 0.0f);
-            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.SPIDER, width * 0.50f, height * 0.70f, 0.0f);
-            predatorManager.spawnPredator(org.swarmforge.core.domain.PredatorType.LADYBUG_LARVA, width * 0.25f, height * 0.60f, 0.0f);
-        }
+        environmentUpdater.seedInitialEnvironmentResources();
     }
 
-    // Inner class to avoid leaking Simulation reference if not careful, though here
-    // it's fine.
     public void start() {
         seedInitialEnvironmentResources();
         if (state.compareAndSet(State.STOPPED, State.RUNNING) ||
                 state.compareAndSet(State.PAUSED, State.RUNNING)) {
             org.swarmforge.core.event.EventBus.getInstance().publish(
-                SimulationEvent.obtain(
-                    SimulationEvent.EventType.SIMULATION_STARTED,
-                    SimulationEvent.Severity.INFO,
-                    getTickCount(),
-                    "▶️ Simulation started",
-                    null
-                )
+                SimulationEvent.obtain(SimulationEvent.EventType.SIMULATION_STARTED, SimulationEvent.Severity.INFO, getTickCount(), "▶️ Simulation started", null)
             );
             simulationThread = Thread.ofVirtual().name("simulation-loop").start(this::runLoop);
         }
@@ -334,44 +271,18 @@ public class Simulation {
     public void pause() {
         if (state.compareAndSet(State.RUNNING, State.PAUSED)) {
             org.swarmforge.core.event.EventBus.getInstance().publish(
-                SimulationEvent.obtain(
-                    SimulationEvent.EventType.SIMULATION_PAUSED,
-                    SimulationEvent.Severity.INFO,
-                    getTickCount(),
-                    "⏸️ Simulation paused",
-                    null
-                )
+                SimulationEvent.obtain(SimulationEvent.EventType.SIMULATION_PAUSED, SimulationEvent.Severity.INFO, getTickCount(), "⏸️ Simulation paused", null)
             );
         }
     }
 
-    public org.swarmforge.core.gpu.SparsePheromoneGrid getPheromoneGrid() {
-        return pheromoneGrid;
-    }
-
-    public org.swarmforge.core.world.WeatherSystem getWeather() {
-        return weather;
-    }
-
-    public org.swarmforge.core.world.SoilHydricCoupling getSoilHydricCoupling() {
-        return soilHydricCoupling;
-    }
-
-    public org.swarmforge.core.world.WaterTable getWaterTable() {
-        return waterTable;
-    }
-
-    public org.swarmforge.core.ecology.WaterGrid getWaterGrid() {
-        return waterGrid;
-    }
-
-    public SoilStructureSystem getSoilStructureSystem() {
-        return soilStructureSystem;
-    }
-
-    public PheromoneClimateSystem getPheromoneClimateSystem() {
-        return pheromoneClimateSystem;
-    }
+    public org.swarmforge.core.gpu.SparsePheromoneGrid getPheromoneGrid() { return pheromoneGrid; }
+    public org.swarmforge.core.world.WeatherSystem getWeather() { return weather; }
+    public org.swarmforge.core.world.SoilHydricCoupling getSoilHydricCoupling() { return soilHydricCoupling; }
+    public org.swarmforge.core.world.WaterTable getWaterTable() { return waterTable; }
+    public org.swarmforge.core.ecology.WaterGrid getWaterGrid() { return waterGrid; }
+    public SoilStructureSystem getSoilStructureSystem() { return soilStructureSystem; }
+    public PheromoneClimateSystem getPheromoneClimateSystem() { return pheromoneClimateSystem; }
 
     public void stop() {
         if (state.compareAndSet(State.RUNNING, State.STOPPED) || state.compareAndSet(State.PAUSED, State.STOPPED)) {
@@ -451,34 +362,8 @@ public class Simulation {
             }
         }
 
-        // Rebuild food index
-        foodIndex.clear();
-        foodSources.removeIf(food -> {
-            boolean depleted = food.isDepleted();
-            if (depleted) {
-                String resName = (food.getType() != null) ? food.getType().name() : "Nourriture";
-                int xPos = (int) food.getX();
-                int yPos = (int) food.getY();
-                int zPos = (int) food.getZ();
-
-                java.util.Map<String, Object> data = new java.util.HashMap<>();
-                data.put("resource", resName);
-                data.put("x", xPos);
-                data.put("y", yPos);
-                data.put("z", zPos);
-
-                String msg = String.format("🥀 Food Depleted: %s source fully consumed at (%d, %d, %d)", resName, xPos, yPos, zPos);
-                SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.FOOD_DEPLETED, SimulationEvent.Severity.INFO, currentTick, msg, data);
-                evt.setSimTimeSeconds(this.accumulatedSimulationSeconds);
-                eventQueue.offer(evt);
-                org.swarmforge.core.event.EventBus.getInstance().publish(evt);
-            }
-            return depleted;
-        });
-        for (FoodSource food : foodSources) {
-            food.tick();
-            foodIndex.insert(food, food.getX(), food.getY(), food.getZ());
-        }
+        // Rebuild food index and process depleted sources
+        entityUpdater.updateFoodSources(foodSources, foodIndex, currentTick, accumulatedSimulationSeconds, eventQueue);
 
         if (currentTick % 60 == 0) {
             for (Colony colony : colonies) {
@@ -497,186 +382,8 @@ public class Simulation {
         java.util.concurrent.ConcurrentLinkedQueue<Individual> livingIndividuals = new java.util.concurrent.ConcurrentLinkedQueue<>();
 
         for (Colony colony : colonies) {
-            colony.getIndividuals().forEach(individual -> {
-                if (!individual.isAlive()) return;
-
-                // Update thermodynamic ambient temperature and humidity from weather context (with subterranean microclimate buffering)
-                float ambTemp = context.getTemperature();
-                float ambHum = context.getRelativeHumidity(individual.getX(), individual.getY(), individual.getZ());
-                float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(individual.getX(), individual.getY()) : 16.0f;
-                if (individual.getZ() < surfaceZ) {
-                    float optT = individual.getSpecies() != null ? individual.getSpecies().getOptimalTempCelsius() : 20.0f;
-                    float optH = individual.getSpecies() != null ? individual.getSpecies().getOptimalHumidityPercent() : 85.0f;
-                    float depthFactor = Math.min(1.0f, (surfaceZ - individual.getZ()) / 4.0f);
-                    ambTemp = ambTemp * (1.0f - depthFactor) + optT * depthFactor;
-                    ambHum = ambHum * (1.0f - depthFactor) + optH * depthFactor;
-                }
-                individual.setAmbientTemperatureC(ambTemp);
-                individual.setAmbientHumidityPercent(ambHum);
-
-                // Non-adult individuals (eggs, larvae, pupae) only undergo biological maturation and subterranean care
-                if (individual.getLifeStage() != Individual.LifeStage.ADULT) {
-                    processGrowth(individual);
-                    individual.tick(simulationStepSeconds);
-
-                    // Ensure brood remains strictly subterranean inside the nest
-                    if (individual.getZ() >= surfaceZ) {
-                        float chamberDepth = Math.max(1.0f, colony.getDynamicQueenChamberDepth() * 0.5f);
-                        individual.setZ(Math.max(1.0f, surfaceZ - chamberDepth));
-                    }
-                    if (individual.isAlive()) {
-                        livingIndividuals.add(individual);
-                    }
-                    return;
-                }
-
-                if (individual.getBrain() == null) {
-                    individual.setBrain(new org.swarmforge.core.behavior.FSMArchitecture());
-                }
-                org.swarmforge.core.behavior.ReasoningArchitecture.Action action;
-                boolean mustDecide = (currentTick < individual.getLastDecisionTick()
-                        || currentTick - individual.getLastDecisionTick() >= individual.getDynamicDecisionInterval())
-                        || individual.getCachedAction() == null;
-
-                if (mustDecide && individual.getBrain() != null) {
-                    action = individual.getBrain().decide(individual, context);
-                    individual.setCachedAction(action);
-                    individual.setLastDecisionTick(currentTick);
-                } else {
-                    action = individual.getCachedAction();
-                    if (action == null) {
-                        action = org.swarmforge.core.behavior.ReasoningArchitecture.Action.rest();
-                    }
-                }
-
-                // 2. Action Execution
-                org.swarmforge.core.behavior.ReasoningArchitecture.ActionResult result = individual
-                        .executeAction(action, colony);
-
-                // 3. Learning/Update
-                if (mustDecide && individual.getBrain() != null) {
-                    individual.getBrain().update(individual, action, result);
-                }
-
-                // 4. Pheromone Deposit (Dual-Channel Algorithm)
-                if (action.type() == org.swarmforge.core.behavior.ReasoningArchitecture.Action.ActionType.MOVE ||
-                        action.type() == org.swarmforge.core.behavior.ReasoningArchitecture.Action.ActionType.RETURN_HOME
-                        ||
-                        action.type() == org.swarmforge.core.behavior.ReasoningArchitecture.Action.ActionType.FOLLOW_TRAIL) {
-
-                    org.swarmforge.core.domain.PheromoneType typeToDeposit;
-                    if (individual.isCarryingFood()) {
-                        typeToDeposit = org.swarmforge.core.domain.PheromoneType.FOOD_TRAIL;
-                    } else {
-                        typeToDeposit = org.swarmforge.core.domain.PheromoneType.HOME_TRAIL;
-                    }
-
-                    int maxDepth = terrarium != null ? terrarium.getDepth() - 1 : 63;
-                    int depZ = Math.max(0, Math.min(maxDepth, (int) individual.getZ()));
-                    pheromoneGrid.deposit(
-                            (int) individual.getX(),
-                            (int) individual.getY(),
-                            depZ,
-                            typeToDeposit.getIndex(),
-                            1.0f
-                    );
-                } else if (action
-                        .type() == org.swarmforge.core.behavior.ReasoningArchitecture.Action.ActionType.ATTACK) {
-                    Object target = action.target();
-                    if (target instanceof Individual) {
-                        Individual targetInd = (Individual) target;
-                        targetInd.takeDamage(individual.getAttackDamage(), individual);
-                    } else if (target instanceof org.swarmforge.core.domain.Predator) {
-                        org.swarmforge.core.domain.Predator targetPred = (org.swarmforge.core.domain.Predator) target;
-                        targetPred.takeDamage(individual.getAttackDamage());
-                        if (!targetPred.isAlive()) {
-                            predatorManager.removePredator(targetPred);
-                        }
-                    }
-                }
-
-                // Coordinate boundary clamping to prevent out-of-bounds positioning
-                if (terrarium != null) {
-                    float maxX = Math.max(1.0f, terrarium.getWidth() - 1.0f);
-                    float maxY = Math.max(1.0f, terrarium.getHeight() - 1.0f);
-                    float maxDepth = Math.max(1.0f, (float) terrarium.getDepth() - 1.0f);
-                    float minZ = 0.0f;
-                    float maxZ = maxDepth;
-                    float cx = Math.max(0.0f, Math.min(maxX, individual.getX()));
-                    float cy = Math.max(0.0f, Math.min(maxY, individual.getY()));
-                    float cz = Math.max(minZ, Math.min(maxZ, individual.getZ()));
-                    if (cx != individual.getX() || cy != individual.getY() || cz != individual.getZ()) {
-                        individual.setPosition(cx, cy, cz);
-                        individual.setHeading(individual.getHeading() + (float) Math.PI);
-                    }
-                }
-
-                // Inject master simulation deterministic PRNG
-                individual.setRandom(this.random);
-
-                // Update individual with construction context if applicable (calls tick())
-                org.swarmforge.core.structure.ConstructionManager cm = constructionManagers.get(colony);
-                if (cm != null) {
-                    individual.update(cm, simulationStepSeconds);
-                } else {
-                    individual.tick(simulationStepSeconds);
-                }
-
-                // Collect living individuals for spatial index update and enforce spatial containment
-                if (individual.isAlive()) {
-                    if (terrarium != null) {
-                        float maxX = Math.max(1.0f, terrarium.getWidth() - 1.0f);
-                        float maxY = Math.max(1.0f, terrarium.getHeight() - 1.0f);
-                        float maxDepth = Math.max(1.0f, (float) terrarium.getDepth() - 1.0f);
-                        float minZ = 0.0f;
-                        float maxZ = maxDepth;
-                        float cx = Math.max(0.0f, Math.min(maxX, individual.getX()));
-                        float cy = Math.max(0.0f, Math.min(maxY, individual.getY()));
-                        float cz = Math.max(minZ, Math.min(maxZ, individual.getZ()));
-                        if (cx != individual.getX() || cy != individual.getY() || cz != individual.getZ()) {
-                            individual.setPosition(cx, cy, cz);
-                        }
-                    }
-
-                    // Ground-snapping for non-flying terrestrial ants (eliminate floating at Z=10)
-                    if (!individual.canFly() && !individual.isClimbingTree() && terrarium != null) {
-                        if (individual.getZ() >= surfaceZ - 0.2f) {
-                            individual.setZ(surfaceZ);
-                        }
-                    }
-
-                    livingIndividuals.add(individual);
-
-                    // Check environmental hazards (Floods & River water cells, lethal danger with drowning damage)
-                    float waterLevel = context.getWaterLevel(individual.getX(), individual.getY(), individual.getZ());
-                    boolean isWaterVoxel = false;
-                    if (terrarium != null) {
-                        int ix = Math.max(0, Math.min(terrarium.getWidth() - 1, Math.round(individual.getX())));
-                        int iy = Math.max(0, Math.min(terrarium.getHeight() - 1, Math.round(individual.getY())));
-                        int iz = Math.max(0, Math.min(terrarium.getDepth() - 1, Math.round(individual.getZ())));
-                        TerrariumCell cell = terrarium.getCell(ix, iy, iz);
-                        if (cell != null && cell.material() == TerrariumCell.Material.WATER) {
-                            isWaterVoxel = true;
-                        }
-                    }
-
-                    if ((waterLevel > 0.3f || isWaterVoxel) && !individual.canFly()) {
-                        // Water avoidance steering
-                        individual.setHeading(individual.getHeading() + (float) Math.PI * 0.75f);
-
-                        // Drowning mortality
-                        float drownDamage = 50.0f * simulationStepSeconds;
-                        if (individual.getHealth() <= drownDamage) {
-                            individual.die("Noyade / Cours d'eau (Drowning)");
-                        }
-                        individual.setHealth(Math.max(0.0f, individual.getHealth() - drownDamage));
-                        if (!individual.isAlive()) {
-                            eventQueue.offer(new SimulationEvent(SimulationEvent.EventType.DEATH,
-                                    tickCount.get(), "Noyade dans le cours d'eau"));
-                        }
-                    }
-                }
-            });
+            colony.getIndividuals().forEach(individual ->
+                    entityUpdater.updateIndividual(individual, colony, context, simulationStepSeconds, currentTick, eventQueue, livingIndividuals));
             colony.removeDeadIndividuals();
             colony.tick(); // Update internal state (Fungus Gardens, Consumption)
             colony.tickPhysicalEngines(
@@ -715,62 +422,8 @@ public class Simulation {
         timeMachine.getHistory().recordIfNeeded(this);
     }
 
-    private void processGrowth(Individual ind) {
-        if (!ind.isAlive() || ind.getLifeStage() == Individual.LifeStage.ADULT)
-            return;
-
-        if (ind.getAgeInSeconds() >= ind.getMaturationThreshold()) {
-            var sp = ind.getSpecies();
-            switch (ind.getLifeStage()) {
-                case EGG -> {
-                    ind.setLifeStage(Individual.LifeStage.LARVA);
-                    float larvaDur = sp != null ? sp.getLarvaStageDuration() : 600f;
-                    if (larvaDur <= 30f) larvaDur *= 60.0f;
-                    ind.setMaturationThreshold(ind.getAgeInSeconds() + larvaDur);
-                    SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.WORKER_BORN, SimulationEvent.Severity.INFO, tickCount.get(), "Hatching: Egg hatched into Larva", null);
-                    evt.setSimTimeSeconds(this.accumulatedSimulationSeconds);
-                    eventQueue.offer(evt);
-                    org.swarmforge.core.event.EventBus.getInstance().publish(evt);
-                }
-                case LARVA -> {
-                    if (ind.getEnergy() > 50) {
-                        ind.setLifeStage(Individual.LifeStage.PUPA);
-                        float pupaDur = sp != null ? sp.getPupaStageDuration() : 500f;
-                        if (pupaDur <= 30f) pupaDur *= 60.0f;
-                        ind.setMaturationThreshold(ind.getAgeInSeconds() + pupaDur);
-                        SimulationEvent evt = SimulationEvent.obtain(SimulationEvent.EventType.WORKER_BORN, SimulationEvent.Severity.INFO, tickCount.get(), "Pupation: Larva pupated into Pupa", null);
-                        evt.setSimTimeSeconds(this.accumulatedSimulationSeconds);
-                        eventQueue.offer(evt);
-                        org.swarmforge.core.event.EventBus.getInstance().publish(evt);
-                    }
-                }
-                case PUPA -> {
-                    ind.setLifeStage(Individual.LifeStage.ADULT);
-                    if (ind.getCaste() == Individual.Caste.WORKER) {
-                        float r = ind.getRandom().nextFloat();
-                        if (r < 0.2f) {
-                            ind.setJob(Individual.Job.NURSE);
-                        } else if (r < 0.5f) {
-                            ind.setJob(Individual.Job.GUARD);
-                        } else {
-                            ind.setJob(Individual.Job.FORAGER);
-                        }
-                    } else if (ind.getCaste() == Individual.Caste.SOLDIER) {
-                        ind.setJob(Individual.Job.GUARD);
-                    }
-                    SimulationEvent evt = SimulationEvent.obtain(
-                        ind.getCaste() == Individual.Caste.QUEEN ? SimulationEvent.EventType.QUEEN_BORN :
-                        (ind.getCaste() == Individual.Caste.SOLDIER ? SimulationEvent.EventType.SOLDIER_BORN : SimulationEvent.EventType.WORKER_BORN),
-                        SimulationEvent.Severity.INFO, tickCount.get(), "Emergence: New Adult (" + ind.getCaste() + ") emerged", null);
-                    evt.setSimTimeSeconds(this.accumulatedSimulationSeconds);
-                    eventQueue.offer(evt);
-                    org.swarmforge.core.event.EventBus.getInstance().publish(evt);
-                }
-                case ADULT -> {
-                    // unexpected
-                }
-            }
-        }
+    public void processGrowth(Individual ind) {
+        entityUpdater.processGrowth(ind, tickCount.get(), accumulatedSimulationSeconds, eventQueue);
     }
 
     private void updateEnvironment(long currentTick) {

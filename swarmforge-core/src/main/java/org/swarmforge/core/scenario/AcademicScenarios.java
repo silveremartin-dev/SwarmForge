@@ -23,6 +23,7 @@ import java.util.*;
  */
 public class AcademicScenarios {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(AcademicScenarios.class);
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
@@ -79,7 +80,9 @@ public class AcademicScenarios {
                 try {
                     scenario = MAPPER.readValue(path, Scenario.class);
                     break;
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    LOG.debug("Could not parse scenario from candidate file {}: {}", path.getPath(), e.getMessage());
+                }
             }
         }
 
@@ -89,7 +92,9 @@ public class AcademicScenarios {
                 if (in != null) {
                     scenario = MAPPER.readValue(in, Scenario.class);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                LOG.debug("Could not parse scenario from classpath /presets/scenarios/{}: {}", filename, e.getMessage());
+            }
         }
 
         if (scenario != null) {

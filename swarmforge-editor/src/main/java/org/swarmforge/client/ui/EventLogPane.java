@@ -45,10 +45,10 @@ public class EventLogPane extends BorderPane {
     private final SortedList<SimulationEvent> sortedEvents;
     private final TableView<SimulationEvent> eventTable;
 
-    private ComboBox<String> typeFilter;
-    private ComboBox<String> severityFilter;
-    private TextField searchField;
-    private CheckBox autoScrollCheck;
+    ComboBox<String> typeFilter;
+    ComboBox<String> severityFilter;
+    TextField searchField;
+    CheckBox autoScrollCheck;
     private Label eventCountLabel;
     private Label logPathLabel;
 
@@ -386,7 +386,7 @@ public class EventLogPane extends BorderPane {
         TableColumn<SimulationEvent, String> colType = createSortableColumn(i18n.get("log.col.type"));
         colType.setMinWidth(160);
         colType.setMaxWidth(200);
-        colType.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(formatTypeString(cellData.getValue().getType())));
+        colType.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(EventLogDetailDialog.formatTypeString(cellData.getValue().getType())));
         colType.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(String typeStr, boolean empty) {
@@ -425,7 +425,7 @@ public class EventLogPane extends BorderPane {
                         for (java.util.Map.Entry<String, Object> entry : ev.getData().entrySet()) {
                             if (entry == null || entry.getKey() == null) continue;
                             if (!first) msgBuilder.append(", ");
-                            msgBuilder.append(formatKey(entry.getKey())).append(": ").append(formatValue(entry.getValue()));
+                            msgBuilder.append(EventLogDetailDialog.formatKey(entry.getKey())).append(": ").append(EventLogDetailDialog.formatValue(entry.getValue()));
                             first = false;
                         }
                         msgBuilder.append("]");
@@ -446,14 +446,13 @@ public class EventLogPane extends BorderPane {
                 @Override
                 protected void updateItem(SimulationEvent ev, boolean empty) {
                     super.updateItem(ev, empty);
-                    if (empty || ev == null) {
-                        setStyle("-fx-background-color: transparent;");
-                    } else if (ev.getSeverity() == SimulationEvent.Severity.CRITICAL) {
-                        setStyle("-fx-background-color: rgba(239, 68, 68, 0.15);");
-                    } else if (ev.getSeverity() == SimulationEvent.Severity.WARNING) {
-                        setStyle("-fx-background-color: rgba(245, 158, 11, 0.12);");
-                    } else {
-                        setStyle("-fx-background-color: transparent;");
+                    getStyleClass().removeAll("log-row-critical", "log-row-warning");
+                    if (!empty && ev != null) {
+                        if (ev.getSeverity() == SimulationEvent.Severity.CRITICAL) {
+                            getStyleClass().add("log-row-critical");
+                        } else if (ev.getSeverity() == SimulationEvent.Severity.WARNING) {
+                            getStyleClass().add("log-row-warning");
+                        }
                     }
                 }
             };
@@ -461,7 +460,7 @@ public class EventLogPane extends BorderPane {
                 if (event.getClickCount() == 2 && !row.isEmpty()) {
                     SimulationEvent selected = row.getItem();
                     if (selected != null) {
-                        showEventDetails(selected);
+                        EventLogDetailDialog.show(selected);
                     }
                 }
             });
@@ -472,113 +471,14 @@ public class EventLogPane extends BorderPane {
     }
 
     private VBox createToolbar() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        VBox toolbar = new VBox(10);
-        toolbar.setPadding(new Insets(0, 0, 10, 0));
-
-        Label title = new Label();
-        title.textProperty().bind(i18n.createStringBinding("log.title"));
-        title.getStyleClass().add("card-title");
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-
-        HBox filters = new HBox(10);
-        filters.setAlignment(Pos.CENTER_LEFT);
-
-        // Search Field
-        searchField = new TextField();
-        searchField.promptTextProperty().bind(i18n.createStringBinding("log.search.prompt"));
-        searchField.setPrefWidth(220);
-        searchField.setTooltip(new Tooltip("Filter events by keyword (message, ID, data)..."));
-        searchField.textProperty().addListener((obs, oldV, newV) -> updateFilter());
-
-        // Type filter
-        Label typeLabel = new Label();
-        typeLabel.textProperty().bind(i18n.createStringBinding("log.filter.type"));
-        typeFilter = new ComboBox<>();
-        typeFilter.setTooltip(new Tooltip("Filter list by specific event type (Founding, Birth, Combat, etc.)."));
-        typeFilter.getItems().add(i18n.get("log.type.all"));
-        for (SimulationEvent.EventType type : SimulationEvent.EventType.values()) {
-            if (type == SimulationEvent.EventType.INFO ||
-                type == SimulationEvent.EventType.BIRTH ||
-                type == SimulationEvent.EventType.DEATH ||
-                type == SimulationEvent.EventType.SYSTEM ||
-                type == SimulationEvent.EventType.DEBUG ||
-                type == SimulationEvent.EventType.ERROR ||
-                type == SimulationEvent.EventType.WARNING) {
-                continue;
-            }
-            typeFilter.getItems().add(formatTypeString(type));
-        }
-        typeFilter.getSelectionModel().selectFirst();
-        typeFilter.setOnAction(e -> updateFilter());
-
-        // Severity filter
-        Label sevLabel = new Label();
-        sevLabel.textProperty().bind(i18n.createStringBinding("log.filter.severity"));
-        severityFilter = new ComboBox<>();
-        severityFilter.setTooltip(new Tooltip("Filter list by severity level (Info, Warning, Critical)."));
-        severityFilter.getItems().addAll(
-            i18n.get("log.severity.all"),
-            i18n.get("log.severity.critical"),
-            i18n.get("log.severity.info"),
-            i18n.get("log.severity.warning")
-        );
-        severityFilter.getSelectionModel().selectFirst();
-        severityFilter.setOnAction(e -> updateFilter());
-
-        // Auto-scroll
-        autoScrollCheck = new CheckBox();
-        autoScrollCheck.textProperty().bind(i18n.createStringBinding("log.filter.auto_scroll"));
-        autoScrollCheck.setSelected(true);
-        autoScrollCheck.setTooltip(new Tooltip("Automatically scroll table when receiving new events."));
-
-        // Clear button
-        Button btnClear = new Button();
-        btnClear.textProperty().bind(i18n.createStringBinding("log.btn.clear"));
-        btnClear.setTooltip(new Tooltip("Clear all recorded events from log."));
-        btnClear.setOnAction(e -> clearLog());
-
-        // Export button
-        Button btnExport = new Button();
-        btnExport.textProperty().bind(i18n.createStringBinding("log.btn.export"));
-        btnExport.setTooltip(new Tooltip("Export displayed events to CSV or JSON format."));
-        btnExport.setOnAction(e -> exportEvents());
-
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-
-        filters.getChildren().addAll(searchField, typeLabel, typeFilter, sevLabel, severityFilter, autoScrollCheck,
-                spacer, btnClear, btnExport);
-
-        toolbar.getChildren().addAll(title, filters);
-        return toolbar;
+        return EventLogExportHelper.createToolbar(this, this::updateFilter, this::clearLog, this::exportEvents);
     }
 
     private void updateFilter() {
         String typeValue = typeFilter.getValue();
         String sevValue = severityFilter.getValue();
         String query = searchField.getText() != null ? searchField.getText().trim().toLowerCase() : "";
-
-        Predicate<SimulationEvent> typePred = e -> {
-            if ("Tous".equals(typeValue) || "All".equals(typeValue) || typeValue == null) return true;
-            return formatTypeString(e.getType()).equals(typeValue) || e.getType().name().equals(typeValue);
-        };
-        Predicate<SimulationEvent> sevPred = e -> {
-            if ("Toutes sévérités".equals(sevValue) || "All Severities".equals(sevValue) || "Tous".equals(sevValue) || sevValue == null) return true;
-            if ("Critique uniquement".equals(sevValue) || "Critical Only".equals(sevValue) || "CRITICAL".equals(sevValue)) return e.getSeverity() == SimulationEvent.Severity.CRITICAL;
-            if ("Info uniquement".equals(sevValue) || "Info Only".equals(sevValue) || "INFO".equals(sevValue)) return e.getSeverity() == SimulationEvent.Severity.INFO;
-            if ("Attention uniquement".equals(sevValue) || "Warning Only".equals(sevValue) || "WARNING".equals(sevValue)) return e.getSeverity() == SimulationEvent.Severity.WARNING;
-            return true;
-        };
-        Predicate<SimulationEvent> searchPred = e -> {
-            if (query.isEmpty()) return true;
-            if (e.getMessage() != null && e.getMessage().toLowerCase().contains(query)) return true;
-            if (e.getType() != null && e.getType().name().toLowerCase().contains(query)) return true;
-            if (e.getData() != null && e.getData().toString().toLowerCase().contains(query)) return true;
-            return false;
-        };
-
-        filteredEvents.setPredicate(typePred.and(sevPred).and(searchPred));
+        filteredEvents.setPredicate(EventLogExportHelper.buildFilterPredicate(typeValue, sevValue, query));
         updateStats();
     }
 
@@ -589,29 +489,15 @@ public class EventLogPane extends BorderPane {
         bar.getStyleClass().add("legend-bar");
 
         eventCountLabel = new Label("Total: 0 recorded events | Displayed: 0");
-        eventCountLabel.setStyle("-fx-font-size: 11.5px; -fx-font-weight: bold;");
+        eventCountLabel.getStyleClass().add("bold-label");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         // Copyable Full Simulation Log Path Pill
         logPathLabel = new Label();
-        logPathLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8; -fx-background-color: #1e293b; -fx-padding: 3 8; -fx-background-radius: 4; -fx-border-color: #334155; -fx-border-radius: 4; -fx-cursor: hand;");
-        logPathLabel.setOnMouseClicked(e -> {
-            String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
-                    ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
-                    : "swarmforge";
-            java.io.File logDir = new java.io.File(System.getProperty("user.dir"), "logs");
-            java.io.File logFile = new java.io.File(logDir, sanitizedScenario + "_simulation.log");
-            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
-            content.putString(logFile.getAbsolutePath());
-            javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
-            org.swarmforge.client.util.NotificationOverlay.show(
-                this,
-                "📋 Log path copied to clipboard:\n" + logFile.getAbsolutePath(),
-                org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS
-            );
-        });
+        logPathLabel.getStyleClass().addAll("accent-text", "ctrl-btn");
+        logPathLabel.setOnMouseClicked(e -> EventLogExportHelper.copyLogPathToClipboard(this, scenarioName));
         updateLogPathDisplay();
 
         bar.getChildren().addAll(eventCountLabel, spacer, logPathLabel);
@@ -634,183 +520,7 @@ public class EventLogPane extends BorderPane {
     }
 
     private void exportEvents() {
-        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
-        fileChooser.setTitle("Export Event Log");
-        String sanitizedScenario = (scenarioName != null && !scenarioName.isBlank())
-                ? scenarioName.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "_").replaceAll("_+", "_")
-                : "swarmforge";
-        String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").format(LocalDateTime.now());
-        fileChooser.setInitialFileName(sanitizedScenario + "_event_log_" + timestamp + ".csv");
-        fileChooser.getExtensionFilters().addAll(
-                new javafx.stage.FileChooser.ExtensionFilter("Fichiers CSV (*.csv)", "*.csv"),
-                new javafx.stage.FileChooser.ExtensionFilter("Fichiers JSON (*.json)", "*.json"));
-        java.io.File file = fileChooser.showSaveDialog(getScene().getWindow());
-
-        if (file != null) {
-            try (java.io.PrintWriter writer = new java.io.PrintWriter(file, java.nio.charset.StandardCharsets.UTF_8)) {
-                if (file.getName().endsWith(".json")) {
-                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                    mapper.writerWithDefaultPrettyPrinter().writeValue(writer, sortedEvents);
-                } else {
-                    // CSV Export
-                    writer.println("SequenceID,Timestamp,Tick,Type,Severity,Message,Data");
-                    for (SimulationEvent ev : sortedEvents) {
-                        String dataStr = ev.getData() != null ? ev.getData().toString().replace("\"", "'") : "";
-                        writer.printf("%d,%s,%d,%s,%s,\"%s\",\"%s\"%n",
-                                ev.getSequenceId(), ev.getTimestamp(), ev.getTick(), ev.getType(), ev.getSeverity(),
-                                ev.getMessage() != null ? ev.getMessage().replace("\"", "'") : "", dataStr);
-                    }
-                }
-                // Toast notification — no blocking modal
-                org.swarmforge.client.util.NotificationOverlay.show(
-                    this,
-                    "✅ Log exported: " + file.getName() + "  (" + sortedEvents.size() + " événements)",
-                    org.swarmforge.client.util.NotificationOverlay.NotificationType.SUCCESS
-                );
-            } catch (Exception ex) {
-                org.swarmforge.client.util.NotificationOverlay.show(
-                    this,
-                    "❌ Export failed: " + ex.getMessage(),
-                    org.swarmforge.client.util.NotificationOverlay.NotificationType.ERROR
-                );
-            }
-        }
-    }
-
-    private void showEventDetails(SimulationEvent event) {
-        Dialog<Void> dialog = new Dialog<>();
-        dialog.setTitle("Event Details EVT-" + String.format("%06d", event.getSequenceId()));
-        dialog.setHeaderText("EVT-" + String.format("%06d", event.getSequenceId()) + " | Tick #" + event.getTick() + " | Severity: " + event.getSeverity());
-
-        DialogPane pane = dialog.getDialogPane();
-        pane.getButtonTypes().add(ButtonType.CLOSE);
-        pane.setStyle("-fx-background-color: #1e1e24;");
-
-        VBox content = new VBox(12);
-        content.setPadding(new Insets(15));
-        content.setPrefWidth(520);
-
-        Label msgLabel = new Label("Message: " + event.getMessage());
-        msgLabel.setWrapText(true);
-        msgLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: white;");
-
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(8);
-        grid.setPadding(new Insets(10, 0, 0, 0));
-
-        int row = 0;
-        grid.add(new Label("Sequence No:"), 0, row);
-        grid.add(new Label(String.format("EVT-%06d", event.getSequenceId())), 1, row++);
-
-        grid.add(new Label("Timestamp:"), 0, row);
-        grid.add(new Label(event.getTimestamp() != null ? event.getTimestamp().toString() : "N/A"), 1, row++);
-
-        grid.add(new Label("Event Type:"), 0, row);
-        grid.add(new Label(event.getType() != null ? event.getType().name() : "N/A"), 1, row++);
-
-        grid.add(new Label("Severity:"), 0, row);
-        grid.add(new Label(event.getSeverity() != null ? event.getSeverity().name() : "INFO"), 1, row++);
-
-        if (event.getData() != null && !event.getData().isEmpty()) {
-            grid.add(new Label("Associated Data:"), 0, row++);
-            for (java.util.Map.Entry<String, Object> entry : event.getData().entrySet()) {
-                Label k = new Label("  • " + formatKey(entry.getKey()) + " (" + entry.getKey() + ") :");
-                k.setStyle("-fx-text-fill: #a1a1aa;");
-                Label v = new Label(entry.getValue() != null ? entry.getValue().toString() : "null");
-                v.setStyle("-fx-text-fill: #38bdf8; -fx-font-family: monospace;");
-                grid.add(k, 0, row);
-                grid.add(v, 1, row++);
-            }
-        }
-
-        grid.getChildren().forEach(n -> {
-            if (n instanceof Label l && !l.getStyle().contains("-fx-text-fill")) {
-                l.setStyle("-fx-text-fill: #e4e4e7;");
-            }
-        });
-
-        content.getChildren().addAll(msgLabel, new Separator(), grid);
-        pane.setContent(content);
-        dialog.showAndWait();
-    }
-
-    private static String formatTypeString(SimulationEvent.EventType type) {
-        if (type == null) return "Event";
-        return switch (type) {
-            case COLONY_FOUNDED -> "Colony Founded";
-            case COLONY_DESTROYED -> "Colony Destroyed";
-            case QUEEN_BORN -> "Queen Born";
-            case QUEEN_DIED -> "Queen Died";
-            case WORKER_BORN -> "Worker Born";
-            case WORKER_DIED -> "Worker Died";
-            case SOLDIER_BORN -> "Soldier Born";
-            case SOLDIER_DIED -> "Soldier Died";
-            case FOOD_DISCOVERED -> "Food Discovered";
-            case FOOD_DEPLETED -> "Food Depleted";
-            case NEST_EXPANDED -> "Nest Expanded";
-            case NEST_DAMAGED -> "Nest Damaged";
-            case RAID_STARTED -> "Raid Started";
-            case RAID_ENDED -> "Raid Ended";
-            case TERRITORY_CLAIMED -> "Territory Claimed";
-            case COMBAT_OCCURRED -> "Interspecific Combat";
-            case WEATHER_CHANGED -> "Weather Changed";
-            case DISASTER_OCCURRED -> "Ecological Disaster";
-            case SEASON_CHANGED -> "Season Changed";
-            case SIMULATION_STARTED -> "Simulation Started";
-            case SIMULATION_PAUSED -> "Simulation Paused";
-            case SIMULATION_STOPPED -> "Simulation Stopped";
-            case TICK_COMPLETED -> "Simulation Step";
-            case MILESTONE_REACHED -> "Milestone Reached";
-            case GOD_MODE_INTERVENTION -> "God Mode Intervention";
-            default -> type.name().replace("_", " ");
-        };
-    }
-
-    private static String formatKey(String key) {
-        if (key == null) return "";
-        return switch (key) {
-            case "colonyId", "colony" -> "Colony";
-            case "species" -> "Species";
-            case "individualId" -> "Individual ID";
-            case "caste" -> "Caste";
-            case "stage" -> "Stage";
-            case "job" -> "Job";
-            case "cause" -> "Cause of Death";
-            case "ageDays", "age", "ageTicks" -> "Âge (jours)";
-            case "attackerId" -> "Attacker ID";
-            case "attackerCaste" -> "Attacker Caste";
-            case "defenderId" -> "Defender ID";
-            case "defenderCaste" -> "Defender Caste";
-            case "damage" -> "Damage Dealt";
-            case "healthRemaining" -> "Remaining HP";
-            case "weatherState" -> "Weather Conditions";
-            case "temperature" -> "Temperature (°C)";
-            case "humidity" -> "Humidity (%)";
-            case "windSpeed" -> "Wind Speed (km/h)";
-            case "windDirection" -> "Wind Direction";
-            case "rainfall" -> "Rainfall (mm/h)";
-            case "snowfall" -> "Snowfall (mm/h)";
-            case "pressure" -> "Barometric Pressure (hPa)";
-            case "flightSuitability" -> "Flight Suitability";
-            case "resource" -> "Resource";
-            case "disasterType" -> "Disaster Type";
-            case "affectedArea" -> "Affected Area";
-            case "amount" -> "Amount";
-            case "x" -> "Position X";
-            case "y" -> "Position Y";
-            case "z" -> "Position Z (Depth)";
-            default -> Character.toUpperCase(key.charAt(0)) + key.substring(1);
-        };
-    }
-
-    private static String formatValue(Object value) {
-        if (value == null) return "";
-        String str = value.toString();
-        if (str.length() == 36 && str.contains("-")) {
-            return "#" + str.substring(0, 8).toUpperCase();
-        }
-        return str;
+        EventLogExportHelper.exportEvents(getScene() != null ? getScene().getWindow() : null, this, scenarioName, sortedEvents);
     }
 
     /**

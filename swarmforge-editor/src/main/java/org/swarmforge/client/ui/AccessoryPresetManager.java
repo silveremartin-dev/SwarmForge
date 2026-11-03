@@ -8,12 +8,12 @@ package org.swarmforge.client.ui;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.swarmforge.core.domain.AccessoryPreset;
 
 import java.io.File;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 
 /**
@@ -27,6 +27,7 @@ import java.util.*;
  */
 public class AccessoryPresetManager {
 
+    private static final Logger LOG = LoggerFactory.getLogger(AccessoryPresetManager.class);
     public static final File PRESETS_FILE = new File("accessory_presets.json");
 
     private static final String[] BUILTIN_ACCESSORY_FILES = {
@@ -91,7 +92,9 @@ public class AccessoryPresetManager {
                             AccessoryPreset p = mapper.readValue(f, AccessoryPreset.class);
                             String key = p.getName() != null ? p.getName() : p.getId();
                             presets.put(key, p);
-                        } catch (Exception ignored) {}
+                        } catch (Exception e) {
+                            LOG.debug("Could not read custom accessory preset {}: {}", f.getPath(), e.getMessage());
+                        }
                     }
                 }
             }
@@ -106,7 +109,7 @@ public class AccessoryPresetManager {
                     presets.put(key, p);
                 }
             } catch (Exception ex) {
-                System.err.println("[AccessoryPresets] Could not read " + PRESETS_FILE + ": " + ex.getMessage());
+                LOG.warn("Could not read accessory presets file {}: {}", PRESETS_FILE, ex.getMessage());
             }
         }
     }
@@ -117,13 +120,17 @@ public class AccessoryPresetManager {
             if (in != null) {
                 return mapper.readValue(in, AccessoryPreset.class);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            LOG.debug("Could not load accessory preset from classpath /presets/accessories/{}: {}", filename, e.getMessage());
+        }
 
         try (InputStream in = getClass().getClassLoader().getResourceAsStream("presets/accessories/" + filename)) {
             if (in != null) {
                 return mapper.readValue(in, AccessoryPreset.class);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            LOG.debug("Could not load accessory preset from classloader presets/accessories/{}: {}", filename, e.getMessage());
+        }
 
         // Relative filesystem fallback
         File[] candidates = {
@@ -137,7 +144,9 @@ public class AccessoryPresetManager {
             if (f.exists()) {
                 try {
                     return mapper.readValue(f, AccessoryPreset.class);
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    LOG.debug("Could not load accessory preset from candidate file {}: {}", f.getPath(), e.getMessage());
+                }
             }
         }
         return null;
@@ -182,7 +191,7 @@ public class AccessoryPresetManager {
                     .toList();
             mapper.writeValue(PRESETS_FILE, userList);
         } catch (Exception ex) {
-            System.err.println("[AccessoryPresets] Could not save presets: " + ex.getMessage());
+            LOG.warn("Could not save accessory presets to {}: {}", PRESETS_FILE, ex.getMessage());
         }
     }
 }

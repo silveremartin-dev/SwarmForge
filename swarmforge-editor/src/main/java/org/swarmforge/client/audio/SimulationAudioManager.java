@@ -6,9 +6,10 @@
  */
 package org.swarmforge.client.audio;
 
-import javafx.application.Platform;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.sound.sampled.*;
 import java.io.File;
@@ -28,6 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class SimulationAudioManager {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SimulationAudioManager.class);
     private static final SimulationAudioManager INSTANCE = new SimulationAudioManager();
 
     public static SimulationAudioManager getInstance() {
@@ -71,21 +73,25 @@ public class SimulationAudioManager {
     private final Map<String, File> soundBankIndex = new ConcurrentHashMap<>();
 
     // Multi-Channel Audio Players with Fading Engine
-    private final Map<String, ChannelPlayer> channels = new ConcurrentHashMap<>();
+    private final Map<String, AudioChannelPlayer> channels = new ConcurrentHashMap<>();
+
+    // Audio Recorder & PCM Synthesizer
+    private final SimulationAudioRecorder audioRecorder;
 
     private SimulationAudioManager() {
         scanSoundBank();
         initChannels();
+        this.audioRecorder = new SimulationAudioRecorder(this::findSoundFile);
         startAudioEngine();
     }
 
     private void initChannels() {
-        channels.put("BIOME", new ChannelPlayer("BIOME"));
-        channels.put("RIVER", new ChannelPlayer("RIVER"));
-        channels.put("WEATHER_RAIN", new ChannelPlayer("WEATHER_RAIN"));
-        channels.put("WEATHER_WIND", new ChannelPlayer("WEATHER_WIND"));
-        channels.put("WEATHER_FIRE", new ChannelPlayer("WEATHER_FIRE"));
-        channels.put("INSECT", new ChannelPlayer("INSECT"));
+        channels.put("BIOME", new AudioChannelPlayer("BIOME"));
+        channels.put("RIVER", new AudioChannelPlayer("RIVER"));
+        channels.put("WEATHER_RAIN", new AudioChannelPlayer("WEATHER_RAIN"));
+        channels.put("WEATHER_WIND", new AudioChannelPlayer("WEATHER_WIND"));
+        channels.put("WEATHER_FIRE", new AudioChannelPlayer("WEATHER_FIRE"));
+        channels.put("INSECT", new AudioChannelPlayer("INSECT"));
     }
 
     /**
@@ -111,7 +117,6 @@ public class SimulationAudioManager {
                             String name = f.getName();
                             String lowerName = name.toLowerCase();
                             soundBankIndex.putIfAbsent(lowerName, f);
-                            // Also store without extension for convenient key lookup
                             int dot = lowerName.lastIndexOf('.');
                             if (dot > 0) {
                                 soundBankIndex.putIfAbsent(lowerName.substring(0, dot), f);
@@ -141,14 +146,13 @@ public class SimulationAudioManager {
                 byte[] buffer = new byte[1024];
 
                 while (running.get()) {
-                    // Update state-based sound bank selections and channel fading steps
                     updateSoundBankClips();
 
                     if (line != null && line.isOpen()) {
                         Arrays.fill(buffer, (byte) 0);
                         line.write(buffer, 0, buffer.length);
                     }
-                    try { Thread.sleep(40); } catch (InterruptedException ignored) {}
+                    try { Thread.sleep(40); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
                 }
 
                 if (line != null) {
@@ -156,7 +160,7 @@ public class SimulationAudioManager {
                     line.close();
                 }
             } catch (Exception e) {
-                System.err.println("[Audio] Audio engine loop note: " + e.getMessage());
+                LOG.debug("[Audio] Audio engine loop note: {}", e.getMessage());
             }
         });
     }
@@ -181,7 +185,9 @@ public class SimulationAudioManager {
                 };
                 String selectedStrike = thunderFiles[new Random().nextInt(thunderFiles.length)];
                 playOneShotSound(selectedStrike, masterVolume * distAttenuation * 0.90);
-            } catch (InterruptedException ignored) {}
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         });
     }
 
@@ -190,7 +196,7 @@ public class SimulationAudioManager {
         if (soundFile == null) return;
         try {
             final String uriStr = soundFile.toURI().toString();
-            runOnFx(() -> {
+            AudioChannelPlayer.runOnFx(() -> {
                 try {
                     Media media = new Media(uriStr);
                     MediaPlayer player = new MediaPlayer(media);
@@ -202,7 +208,7 @@ public class SimulationAudioManager {
                             AudioInputStream ais = AudioSystem.getAudioInputStream(soundFile);
                             Clip clip = AudioSystem.getClip();
                             clip.open(ais);
-                            setClipGain(clip, vol);
+                            AudioChannelPlayer.setClipGain(clip, vol);
                             clip.start();
                         } catch (Exception ignored) {}
                     }
@@ -217,7 +223,7 @@ public class SimulationAudioManager {
         double deltaSec = 0.04; // ~40ms per tick
 
         if (!simRunning || masterVolume <= 0.001) {
-            for (ChannelPlayer channel : channels.values()) {
+            for (AudioChannelPlayer channel : channels.values()) {
                 channel.stopWithFade();
                 channel.updateFadeTick(deltaSec, masterVolume);
             }
@@ -244,7 +250,7 @@ public class SimulationAudioManager {
         boolean isAstronomicalDay = (timeOfDayHours >= sunrise && timeOfDayHours <= sunset);
         boolean isDay = (ambientLightLevel > 0.15) || (isAstronomicalDay && isSunAboveHorizon);
 
-        // 1. River Water Sound (Attenuated with camera zoom distance)
+        // 1. River Water Sound
         if (riverEnabled) {
             File riverFile = findSoundFile("WATRFlow_Small stream 4 (ID 1354)_BigSoundBank.com.mp3");
             if (riverFile == null) riverFile = findSoundFile("AMB_Nature Pack Vol 1_Water Enviroments_Mountain Stream.mp3");
@@ -252,7 +258,6 @@ public class SimulationAudioManager {
             if (riverFile == null) riverFile = findSoundFile("mixkit-river-water-flow-and-surroundings-2452.wav");
             if (riverFile == null) riverFile = findSoundFile("mixkit-water-flowing-ambience-loop-3126.wav");
             
-            // Attenuate river volume based on camera zoom: close = 0.35, far = 0.08
             double riverZoomAtten = Math.max(0.08, Math.min(1.0, 1.0 - (cameraZoom - 2.0) / 12.0));
             channels.get("RIVER").playTrack(riverFile, 0.35 * riverZoomAtten, masterVolume);
         } else {
@@ -276,7 +281,7 @@ public class SimulationAudioManager {
             channels.get("WEATHER_RAIN").stopWithFade();
         }
 
-        // 3. Weather Wind Sound (Significantly reduced volume so wind isn't overwhelming)
+        // 3. Weather Wind Sound
         boolean isTornado = wUpper.contains("TEMPEST") || wUpper.contains("TORNADO") || wUpper.contains("TORNADE");
         boolean isWindy = isStormType(wUpper) || windSpeedMps > 8.0 || isTornado;
 
@@ -302,7 +307,7 @@ public class SimulationAudioManager {
             channels.get("WEATHER_FIRE").stopWithFade();
         }
 
-        // 5. Biome Ambient Sound Loop (Fauna, Birds & Vegetation)
+        // 5. Biome Ambient Sound Loop
         if (ambientEnabled && !heavyRain) {
             File biomeFile = null;
             if (bUpper.contains("DESERT") || bUpper.contains("DÉSERT") || bUpper.contains("ARID")) {
@@ -318,7 +323,7 @@ public class SimulationAudioManager {
                 biomeFile = findSoundFile("AMB_Nature Pack Vol 1_Forest Enviroments_Forest Day.mp3");
                 if (biomeFile == null) biomeFile = findSoundFile("AMBForst_Forest (ID 0100)_BigSoundBank.com.mp3");
                 if (biomeFile == null) biomeFile = findSoundFile("mixkit-morning-birds-2472.wav");
-            } else { // Night
+            } else {
                 biomeFile = findSoundFile("ElevenLabs_Ambiance_nocturne_animée,_grillons_qui_chantent_et_lucioles_qui_brillent_dans_le_noir.mp3");
                 if (biomeFile == null) biomeFile = findSoundFile("AMB_Nature Pack Vol 1_Forest Enviroments_Forest Night.mp3");
                 if (biomeFile == null) biomeFile = findSoundFile("AMBRurl_Nocturnal insects 4 (ID 1470)_BigSoundBank.com.mp3");
@@ -328,17 +333,14 @@ public class SimulationAudioManager {
             channels.get("BIOME").stopWithFade();
         }
 
-        // 6. Insect Colony Activity & Digging Sound (Strict real-life attenuation: completely silent when zoomed far out, only audible in close-up or subterranean view)
+        // 6. Insect Colony Activity & Digging Sound
         double insectDistanceAtten = 0.0;
         if (cameraDepth > 0.4) {
-            // Subterranean nest view / inside galleries
             insectDistanceAtten = 1.0;
         } else if (cameraZoom > 4.5) {
-            // Close-up surface view: progressive fade in from zoom 4.5 up to zoom 12.0+
             double zoomProximity = Math.max(0.0, Math.min(1.0, (cameraZoom - 4.5) / 7.5));
             insectDistanceAtten = Math.pow(zoomProximity, 1.8);
         } else {
-            // Far overview / zoomed out: completely silent
             insectDistanceAtten = 0.0;
         }
 
@@ -346,13 +348,11 @@ public class SimulationAudioManager {
             double popVolScale = Math.min(1.0, Math.log10(populationCount) / 3.5);
             File insectFile = null;
             if (cameraDepth > 0.4 || cameraZoom > 10.0) {
-                // Subterranean nest view or extreme close-up digging
                 insectFile = findSoundFile("nest_sounds.mp3");
                 if (insectFile == null) insectFile = findSoundFile("anthill_nest_sounds.mp3");
                 if (insectFile == null) insectFile = findSoundFile("sand_soil_digging.mp3");
                 if (insectFile == null) insectFile = findSoundFile("termites-and-ants-sound.mp3");
             } else {
-                // Surface activity
                 insectFile = findSoundFile("colony_activity.mp3");
                 if (insectFile == null) insectFile = findSoundFile("ant_colony_activity.mp3");
                 if (insectFile == null) insectFile = findSoundFile("freesound_community-ants-23656.mp3");
@@ -363,14 +363,13 @@ public class SimulationAudioManager {
             channels.get("INSECT").stopWithFade();
         }
 
-        // Update fade tick for all channels
-        for (ChannelPlayer channel : channels.values()) {
+        for (AudioChannelPlayer channel : channels.values()) {
             channel.updateFadeTick(deltaSec, masterVolume);
         }
     }
 
     private void stopAllClips() {
-        for (ChannelPlayer channel : channels.values()) {
+        for (AudioChannelPlayer channel : channels.values()) {
             channel.stopImmediately();
         }
     }
@@ -379,18 +378,15 @@ public class SimulationAudioManager {
         if (filename == null) return null;
         String lower = filename.toLowerCase();
 
-        // 1. Direct index match
         File cached = soundBankIndex.get(lower);
         if (cached != null && cached.exists() && cached.isFile()) return cached;
 
-        // 2. Base name match
         int dot = lower.lastIndexOf('.');
         if (dot > 0) {
             cached = soundBankIndex.get(lower.substring(0, dot));
             if (cached != null && cached.exists() && cached.isFile()) return cached;
         }
 
-        // 3. Fallback path search
         String[] paths = new String[]{
             "swarmforge-web/public/sounds/" + filename,
             "../swarmforge-web/public/sounds/" + filename,
@@ -407,201 +403,6 @@ public class SimulationAudioManager {
             }
         }
         return null;
-    }
-
-    private static void setClipGain(Clip clip, double vol) {
-        try {
-            if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-                FloatControl gainControl = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-                float dB = (float) (Math.log(Math.max(0.0001, vol)) / Math.log(10.0) * 20.0);
-                gainControl.setValue(Math.max(gainControl.getMinimum(), Math.min(gainControl.getMaximum(), dB)));
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private static void runOnFx(Runnable r) {
-        try {
-            if (Platform.isFxApplicationThread()) {
-                r.run();
-            } else {
-                Platform.runLater(r);
-            }
-        } catch (Exception ignored) {
-            // JavaFX toolkit not initialized (e.g. headless unit tests)
-        }
-    }
-
-    // ── Channel Player Inner Class (Fade In / Sustain / Fade Out Engine) ──────────
-
-    public enum FadeState {
-        STOPPED,
-        FADING_IN,
-        SUSTAINING,
-        FADING_OUT
-    }
-
-    private static class ChannelPlayer {
-        private final String channelName;
-        private File currentFile = null;
-        private double currentVolume = 0.0;
-        private double targetVolume = 0.0;
-        private double startFadeVolume = 0.0;
-        private FadeState fadeState = FadeState.STOPPED;
-
-        private MediaPlayer fxPlayer = null;
-        private Clip javaClip = null;
-        private static final double FADE_DURATION_SEC = 1.5;
-
-        public ChannelPlayer(String channelName) {
-            this.channelName = channelName;
-        }
-
-        public synchronized void playTrack(File soundFile, double targetVol, double masterVolume) {
-            if (soundFile == null) {
-                stopWithFade();
-                return;
-            }
-
-            this.targetVolume = Math.max(0.0, Math.min(1.0, targetVol));
-
-            if (currentFile != null && currentFile.equals(soundFile) && fadeState != FadeState.STOPPED) {
-                if (fadeState == FadeState.FADING_OUT) {
-                    fadeState = FadeState.FADING_IN;
-                }
-                return;
-            }
-
-            stopImmediately();
-
-            this.currentFile = soundFile;
-            this.currentVolume = 0.0;
-            this.startFadeVolume = 0.0;
-            this.fadeState = FadeState.FADING_IN;
-
-            createAndStartPlayer(soundFile, 0.0, masterVolume);
-        }
-
-        public synchronized void updateFadeTick(double deltaSec, double masterVolume) {
-            if (fadeState == FadeState.STOPPED) return;
-
-            double effectiveMasterVol = Math.max(0.0001, masterVolume);
-
-            if (fadeState == FadeState.FADING_IN) {
-                double step = (targetVolume / FADE_DURATION_SEC) * deltaSec;
-                currentVolume += step;
-                if (currentVolume >= targetVolume) {
-                    currentVolume = targetVolume;
-                    fadeState = FadeState.SUSTAINING;
-                }
-                applyVolume(currentVolume * effectiveMasterVol);
-            } else if (fadeState == FadeState.SUSTAINING) {
-                currentVolume = targetVolume;
-                applyVolume(currentVolume * effectiveMasterVol);
-            } else if (fadeState == FadeState.FADING_OUT) {
-                double step = (Math.max(0.01, startFadeVolume) / FADE_DURATION_SEC) * deltaSec;
-                currentVolume -= step;
-                if (currentVolume <= 0.001) {
-                    currentVolume = 0.0;
-                    fadeState = FadeState.STOPPED;
-                    stopImmediately();
-                } else {
-                    applyVolume(currentVolume * effectiveMasterVol);
-                }
-            }
-        }
-
-        public synchronized void stopWithFade() {
-            if (fadeState != FadeState.STOPPED && fadeState != FadeState.FADING_OUT) {
-                this.startFadeVolume = currentVolume;
-                this.fadeState = FadeState.FADING_OUT;
-            }
-        }
-
-        private void createAndStartPlayer(File file, double initialVol, double masterVolume) {
-            try {
-                final String uriStr = file.toURI().toString();
-                runOnFx(() -> {
-                    try {
-                        Media media = new Media(uriStr);
-                        media.setOnError(() -> {
-                            createJavaClipFallback(file, initialVol * masterVolume);
-                        });
-                        MediaPlayer player = new MediaPlayer(media);
-                        player.setOnError(() -> {
-                            createJavaClipFallback(file, initialVol * masterVolume);
-                        });
-                        player.setCycleCount(MediaPlayer.INDEFINITE);
-                        player.setVolume(initialVol * masterVolume);
-                        player.play();
-                        fxPlayer = player;
-                    } catch (Exception e) {
-                        if (file.getName().toLowerCase().endsWith(".wav")) {
-                            createJavaClipFallback(file, initialVol * masterVolume);
-                        }
-                    }
-                });
-            } catch (Exception e) {
-                if (file.getName().toLowerCase().endsWith(".wav")) {
-                    createJavaClipFallback(file, initialVol * masterVolume);
-                }
-            }
-        }
-
-        private void createJavaClipFallback(File file, double initialVol) {
-            try {
-                AudioInputStream ais = AudioSystem.getAudioInputStream(file);
-                Clip clip = AudioSystem.getClip();
-                clip.open(ais);
-                setClipGain(clip, initialVol);
-                clip.loop(Clip.LOOP_CONTINUOUSLY);
-                clip.start();
-                javaClip = clip;
-            } catch (Exception ignored) {}
-        }
-
-        private double lastAppliedVol = -1.0;
-
-        private void applyVolume(double vol) {
-            final double v = Math.max(0.0, Math.min(1.0, vol));
-            if (Math.abs(lastAppliedVol - v) < 0.005) {
-                return; // Throttle redundant volume calls
-            }
-            lastAppliedVol = v;
-            if (fxPlayer != null) {
-                runOnFx(() -> {
-                    if (fxPlayer != null) {
-                        fxPlayer.setVolume(v);
-                    }
-                });
-            }
-            if (javaClip != null && javaClip.isOpen()) {
-                setClipGain(javaClip, v);
-            }
-        }
-
-        public synchronized void stopImmediately() {
-            lastAppliedVol = -1.0;
-            if (fxPlayer != null) {
-                final MediaPlayer p = fxPlayer;
-                fxPlayer = null;
-                runOnFx(() -> {
-                    try {
-                        p.stop();
-                        p.dispose();
-                    } catch (Exception ignored) {}
-                });
-            }
-            if (javaClip != null) {
-                try {
-                    javaClip.stop();
-                    javaClip.close();
-                } catch (Exception ignored) {}
-                javaClip = null;
-            }
-            currentFile = null;
-            currentVolume = 0.0;
-            fadeState = FadeState.STOPPED;
-        }
     }
 
     // ── Getters & Setters ─────────────────────────────────────────────────────────
@@ -708,127 +509,39 @@ public class SimulationAudioManager {
 
     // ── Audio Recording for Video Export ─────────────────────────────────────────
 
-    private boolean recordingAudio = false;
-    private long audioRecordingStartMs = 0;
-
     public synchronized void startAudioRecording() {
-        this.recordingAudio = true;
-        this.audioRecordingStartMs = System.currentTimeMillis();
+        audioRecorder.startAudioRecording();
     }
 
     public synchronized byte[] stopAudioRecording() {
-        if (!recordingAudio) {
-            return new byte[0];
-        }
-        this.recordingAudio = false;
-        long elapsedMs = System.currentTimeMillis() - audioRecordingStartMs;
-        double durationSec = elapsedMs / 1000.0;
-        return generateAmbientPcmAudio(durationSec);
+        return audioRecorder.stopAudioRecording(
+                riverEnabled,
+                hasRiver,
+                weatherEnabled,
+                currentWeather,
+                rainRateMmHr,
+                windSpeedMps,
+                ambientEnabled,
+                insectEnabled,
+                populationCount,
+                masterVolume
+        );
     }
 
     public byte[] generateAmbientPcmAudio(double durationSec) {
-        if (durationSec <= 0.1) return new byte[0];
-        int sampleRate = 22050;
-        int totalSamples = (int) (sampleRate * durationSec);
-        byte[] pcm = new byte[totalSamples * 2]; // 16-bit mono PCM
-
-        boolean river = riverEnabled && hasRiver;
-        boolean rain = weatherEnabled && (isRainType(currentWeather) || rainRateMmHr > 0.1);
-        boolean wind = weatherEnabled && (isStormType(currentWeather) || windSpeedMps > 12.0);
-        boolean biome = ambientEnabled;
-        boolean insects = insectEnabled && populationCount > 10;
-        double vol = masterVolume;
-
-        if (vol <= 0.001) return pcm;
-
-        double[] mixedBuffer = new double[totalSamples];
-
-        if (river) {
-            mixSoundFile("mixkit-river-water-flow-and-surroundings-2452.wav", mixedBuffer, vol * 0.65);
-        }
-        if (rain) {
-            String rainFile = (rainRateMmHr > 10.0 || (currentWeather != null && currentWeather.toUpperCase().contains("HEAVY")))
-                ? "mixkit-heavy-rain-2403.wav"
-                : "mixkit-light-rain-loop-2393.wav";
-            mixSoundFile(rainFile, mixedBuffer, vol * 0.70);
-        }
-        if (wind) {
-            mixSoundFile("mixkit-wind-blowing-ambience-2658.wav", mixedBuffer, vol * 0.60);
-        }
-        if (biome && !rain && !wind) {
-            mixSoundFile("mixkit-birds-chirping-near-the-river-2473.wav", mixedBuffer, vol * 0.50);
-        }
-        if (insects) {
-            double popVolScale = Math.min(1.0, Math.log10(populationCount) / 3.5);
-            mixSoundFile("mixkit-night-forest-with-insects-2414.wav", mixedBuffer, vol * 0.45 * popVolScale);
-        }
-
-        boolean hasSampleData = false;
-        for (int i = 0; i < Math.min(100, totalSamples); i++) {
-            if (Math.abs(mixedBuffer[i]) > 0.0001) {
-                hasSampleData = true;
-                break;
-            }
-        }
-
-        if (!hasSampleData) {
-            Random rand = new Random(12345);
-            double pink0 = 0, pink1 = 0, pink2 = 0;
-            for (int i = 0; i < totalSamples; i++) {
-                double white = (rand.nextDouble() * 2.0 - 1.0);
-                pink0 = 0.99886 * pink0 + white * 0.0555179;
-                pink1 = 0.99332 * pink1 + white * 0.0750759;
-                pink2 = 0.96900 * pink2 + white * 0.1538520;
-                double breeze = (pink0 + pink1 + pink2) * 0.1 * vol;
-                double t = (double) i / sampleRate;
-                double chirp = Math.sin(2.0 * Math.PI * 3200.0 * t) * Math.sin(2.0 * Math.PI * 4.0 * t) * 0.02 * vol;
-                mixedBuffer[i] = breeze + chirp;
-            }
-        }
-
-        for (int i = 0; i < totalSamples; i++) {
-            double val = Math.max(-1.0, Math.min(1.0, mixedBuffer[i]));
-            short sample = (short) (val * 32767.0);
-            pcm[2 * i] = (byte) (sample & 0xFF);
-            pcm[2 * i + 1] = (byte) ((sample >> 8) & 0xFF);
-        }
-
-        return pcm;
-    }
-
-    private void mixSoundFile(String filename, double[] targetBuffer, double volume) {
-        File soundFile = findSoundFile(filename);
-        if (soundFile == null || !soundFile.exists()) return;
-        try {
-            AudioInputStream origAis = AudioSystem.getAudioInputStream(soundFile);
-            AudioFormat origFormat = origAis.getFormat();
-            AudioFormat pcmFormat = new AudioFormat(
-                AudioFormat.Encoding.PCM_SIGNED,
-                22050,
-                16,
-                1,
-                2,
-                22050,
-                false
-            );
-            AudioInputStream ais = AudioSystem.isConversionSupported(pcmFormat, origFormat)
-                ? AudioSystem.getAudioInputStream(pcmFormat, origAis)
-                : origAis;
-
-            byte[] rawBytes = ais.readAllBytes();
-            ais.close();
-            origAis.close();
-
-            int numSourceSamples = rawBytes.length / 2;
-            if (numSourceSamples == 0) return;
-
-            for (int i = 0; i < targetBuffer.length; i++) {
-                int srcIndex = i % numSourceSamples;
-                short s = (short) ((rawBytes[2 * srcIndex] & 0xFF) | (rawBytes[2 * srcIndex + 1] << 8));
-                double sampleNorm = (s / 32768.0) * volume;
-                targetBuffer[i] += sampleNorm;
-            }
-        } catch (Exception ignored) {}
+        return audioRecorder.generateAmbientPcmAudio(
+                durationSec,
+                riverEnabled,
+                hasRiver,
+                weatherEnabled,
+                currentWeather,
+                rainRateMmHr,
+                windSpeedMps,
+                ambientEnabled,
+                insectEnabled,
+                populationCount,
+                masterVolume
+        );
     }
 
     public void stop() {

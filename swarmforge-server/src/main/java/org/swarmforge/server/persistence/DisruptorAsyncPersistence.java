@@ -67,6 +67,9 @@ public final class DisruptorAsyncPersistence {
         }
     }
 
+    /**
+     * Event type categorization for asynchronous ring buffer persistence.
+     */
     public enum EventType {
         COLONY_METRICS,
         TICK_TELEMETRY,

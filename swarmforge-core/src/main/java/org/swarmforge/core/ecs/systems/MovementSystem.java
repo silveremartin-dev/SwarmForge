@@ -6,6 +6,9 @@ import com.artemis.systems.IteratingSystem;
 import org.swarmforge.core.ecs.components.PositionComponent;
 import org.swarmforge.core.ecs.components.VelocityComponent;
 
+/**
+ * Artemis-ODB ECS Iterating System updating spatial agent coordinates and orientation heading.
+ */
 public class MovementSystem extends IteratingSystem {
     ComponentMapper<PositionComponent> mPosition;
     ComponentMapper<VelocityComponent> mVelocity;

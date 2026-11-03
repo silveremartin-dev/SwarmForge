@@ -16,6 +16,7 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.client.event.UiEvent;
 import org.swarmforge.client.event.UiEventBus;
 import org.swarmforge.client.util.I18nManager;
+import org.swarmforge.client.util.SimulationTimeFormatter;
 import org.swarmforge.core.behavior.ReasoningArchitecture.ArchitectureType;
 import org.swarmforge.core.engine.ComputeAccelerationMode;
 import org.swarmforge.core.engine.EnginePreferences;
@@ -122,70 +123,30 @@ public class SimulationControlPanel extends VBox {
     final SimulationPlaybackSubPanel playbackSubPanel = new SimulationPlaybackSubPanel(this);
     private final SimulationConfigGridBuilder gridBuilder = new SimulationConfigGridBuilder(this);
 
-    public boolean isCreatingScenario() {
-        return isCreatingScenario;
-    }
-
-    public ScenarioSetupSnapshot captureSetupSnapshotOnFXThread() {
-        List<SpeciesConfigSnapshot> snapshots = new ArrayList<>();
-        for (SpeciesConfigCard card : speciesCardList) {
-            snapshots.add(card.getSnapshot());
-        }
-        String dtIso = startDateTime != null ? startDateTime.toString() : LocalDateTime.now().toString();
-        double maxVal = maxDurationSpinner != null && maxDurationSpinner.getValue() != null ? maxDurationSpinner.getValue() : 100.0;
-        String maxUnit = durationUnitCombo != null && durationUnitCombo.getValue() != null ? durationUnitCombo.getValue() : "Days (d)";
-        int minPop = minPopStopSpinner != null && minPopStopSpinner.getValue() != null ? minPopStopSpinner.getValue() : 0;
-        String desc = areaDescription != null ? areaDescription.getText() : "";
-        boolean mpOnly = chkMultiplayerOnly != null && chkMultiplayerOnly.isSelected();
-        int reqPlayers = spinRequiredPlayers != null && spinRequiredPlayers.getValue() != null ? spinRequiredPlayers.getValue() : 1;
-        int tilesX = spinGridTilesX != null && spinGridTilesX.getValue() != null ? spinGridTilesX.getValue() : 1;
-        int tilesY = spinGridTilesY != null && spinGridTilesY.getValue() != null ? spinGridTilesY.getValue() : 1;
-        String engineBackend = engineBackendCombo != null && engineBackendCombo.getValue() != null ? engineBackendCombo.getValue() : "AUTO";
-        String computeAccel = computeAccelerationCombo != null && computeAccelerationCombo.getValue() != null ? computeAccelerationCombo.getValue() : "AUTO";
-
-        return new ScenarioSetupSnapshot(
-            getMasterSeed(), dtIso, getSimulationStepSeconds(), maxVal, maxUnit, minPop, desc,
-            getSelectedWorld(), getSelectedWeather(), getSelectedSpecies(), getSelectedNestType(),
-            getQueenCount(), getWorkerCount(), getSoldierCount(), getBroodCount(),
-            snapshots, mpOnly, reqPlayers, tilesX, tilesY, engineBackend, computeAccel
-        );
-    }
-
-    public ScenarioSetupSnapshot getLastSetupSnapshot() {
-        return lastSetupSnapshot;
-    }
+    public boolean isCreatingScenario() { return isCreatingScenario; }
+    public ScenarioSetupSnapshot captureSetupSnapshotOnFXThread() { return ScenarioSetupSnapshot.capture(this); }
+    public ScenarioSetupSnapshot getLastSetupSnapshot() { return lastSetupSnapshot; }
 
     private VBox validationPanel;
-
-    boolean isPlaying = false;
-    boolean isPaused = false;
-    boolean isStopped = true;
-    float currentSpeed = 1.0f;
-    long currentTick = 0;
-    long maxTick = 0;
-    long highestRecordedTick = 0;
-    float simulationStepSeconds = 0.0166f;
+    boolean isPlaying = false, isPaused = false, isStopped = true;
+    float currentSpeed = 1.0f, simulationStepSeconds = 0.0166f;
+    long currentTick = 0, maxTick = 0, highestRecordedTick = 0;
     LocalDateTime startDateTime = LocalDateTime.of(2026, 3, 20, 8, 0, 0);
     private LocalDateTime currentDateTime = startDateTime;
 
     // Callbacks
-    Consumer<Void> onPlay;
-    Consumer<Void> onPause;
-    Consumer<Void> onStop;
-    Consumer<Float> onSpeedChange;
-    Consumer<Long> onSeek;
-    Consumer<Integer> onRewind;
-    Consumer<Integer> onStepForward;
-    Consumer<Float> onStepChange;
+    Consumer<Void> onPlay, onPause, onStop;
+    Consumer<Float> onSpeedChange, onStepChange;
+    Consumer<Long> onSeek, onApplyPresets;
+    Consumer<Integer> onRewind, onStepForward;
     Consumer<String> onCreateCheckpoint;
     Consumer<SimulationCheckpoint> onRestoreCheckpoint;
-    Consumer<Long> onApplyPresets;
     Consumer<LocalDateTime> onStartDateTimeChange;
 
     private final ComboBox<SimulationCheckpoint> comboCheckpoints = new ComboBox<>();
     final VBox playbackAndSpeedPanel = new VBox(8);
 
-    private Button btnApplyPresets;
+    Button btnApplyPresets;
     boolean isCreatingScenario = false;
     Timeline activeCreationTimeline = null;
     java.util.concurrent.CompletableFuture<?> activeCreationFuture = null;
@@ -256,10 +217,10 @@ public class SimulationControlPanel extends VBox {
         comboExecutionMode.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
         multiplayerCard.getComboServerRole().valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
 
-        Button bSaveScenario = createScenarioActionButton("common.btn.save", Feather.SAVE, "btn-secondary", "sim.btn.save.tt", this::handleSaveScenario);
-        Button bDeleteScenario = createScenarioActionButton("common.btn.delete", Feather.TRASH_2, "btn-danger", "sim.btn.delete.tt", this::handleDeleteScenario);
-        Button bExportScenario = createScenarioActionButton("common.btn.export", Feather.DOWNLOAD, "btn-secondary", "sim.btn.export.tt", this::handleExportScenario);
-        Button bImportScenario = createScenarioActionButton("common.btn.import", Feather.UPLOAD, "btn-secondary", "sim.btn.import.tt", this::handleImportScenario);
+        Button bSaveScenario = gridBuilder.createScenarioActionButton("common.btn.save", Feather.SAVE, "btn-secondary", "sim.btn.save.tt", ioHelper::handleSaveScenario);
+        Button bDeleteScenario = gridBuilder.createScenarioActionButton("common.btn.delete", Feather.TRASH_2, "btn-danger", "sim.btn.delete.tt", ioHelper::handleDeleteScenario);
+        Button bExportScenario = gridBuilder.createScenarioActionButton("common.btn.export", Feather.DOWNLOAD, "btn-secondary", "sim.btn.export.tt", ioHelper::handleExportScenario);
+        Button bImportScenario = gridBuilder.createScenarioActionButton("common.btn.import", Feather.UPLOAD, "btn-secondary", "sim.btn.import.tt", ioHelper::handleImportScenario);
 
         HBox metaRow = new HBox(8);
         metaRow.setAlignment(Pos.CENTER_LEFT);
@@ -324,19 +285,19 @@ public class SimulationControlPanel extends VBox {
         if (!comboWeather.getItems().isEmpty()) comboWeather.getSelectionModel().selectFirst();
 
         // Section 1: Biotope & Weather Presets
-        GridPane gridWorldWeather = buildWorldWeatherGrid();
+        GridPane gridWorldWeather = gridBuilder.buildWorldWeatherGrid();
 
         // Section 2: Start Date, Time & Master Seed
-        GridPane gridDateTimeSeed = buildDateTimeSeedGrid();
+        GridPane gridDateTimeSeed = gridBuilder.buildDateTimeSeedGrid();
 
         // Section 3: Physics Step (dt) & Compute Acceleration
-        GridPane gridPhysics = buildPhysicsGrid();
+        GridPane gridPhysics = gridBuilder.buildPhysicsGrid();
 
         // Section 4: Termination Limits & Duration Controls
-        GridPane gridLimits = buildLimitsGrid();
+        GridPane gridLimits = gridBuilder.buildLimitsGrid();
 
         // Section 5: Multi-Species Scenario Section Header & Controls
-        VBox section3Container = buildSpeciesSection();
+        VBox section3Container = gridBuilder.buildSpeciesSection();
 
         comboMeta.setOnAction(e -> {
             applyMetaPreset(comboMeta.getValue());
@@ -377,7 +338,7 @@ public class SimulationControlPanel extends VBox {
 
         btnApplyPresets.setOnAction(e -> handleApplyScenario());
 
-        VBox megaterrariumCard = createMultiplayerAndMegaterrariumCard();
+        VBox megaterrariumCard = multiplayerCard.createMegaterrariumCard();
 
         scenarioBodyBox.getChildren().addAll(
             metaRow, presetActionsRow, descBox, new Separator(),
@@ -409,118 +370,25 @@ public class SimulationControlPanel extends VBox {
         updateButtonStates();
     }
 
-    private Button createScenarioActionButton(String textKey, Feather icon, String styleClass, String tooltipKey, Runnable action) {
-        return gridBuilder.createScenarioActionButton(textKey, icon, styleClass, tooltipKey, action);
-    }
-
-    private GridPane buildWorldWeatherGrid() {
-        return gridBuilder.buildWorldWeatherGrid();
-    }
-
-    private GridPane buildDateTimeSeedGrid() {
-        return gridBuilder.buildDateTimeSeedGrid();
-    }
-
-    private GridPane buildPhysicsGrid() {
-        return gridBuilder.buildPhysicsGrid();
-    }
-
-    private GridPane buildLimitsGrid() {
-        return gridBuilder.buildLimitsGrid();
-    }
-
-    private VBox buildSpeciesSection() {
-        return gridBuilder.buildSpeciesSection();
-    }
-
-    void addSpeciesCard(String speciesName) {
-        SpeciesConfigCard card = new SpeciesConfigCard(speciesName, () -> {
-            speciesCardList.removeIf(c -> c.getSpeciesName().equals(speciesName));
-            refreshSpeciesListContainer();
-            updateValidationPanel();
-        });
-        card.setOnChange(this::updateValidationPanel);
-        speciesCardList.add(card);
-        refreshSpeciesListContainer();
-        updateValidationPanel();
-    }
-
-    void refreshSpeciesListContainer() {
-        speciesListContainer.getChildren().clear();
-        for (SpeciesConfigCard card : speciesCardList) {
-            speciesListContainer.getChildren().add(card.getCardPane());
-        }
-    }
-
-    private VBox createMultiplayerAndMegaterrariumCard() {
-        return multiplayerCard.createMegaterrariumCard();
-    }
-
-    void updateApplyPresetsButtonState(boolean isCreating) {
-        if (btnApplyPresets == null) return;
-        btnApplyPresets.textProperty().unbind();
-        if (btnApplyPresets.getTooltip() != null) {
-            btnApplyPresets.getTooltip().textProperty().unbind();
-        } else {
-            btnApplyPresets.setTooltip(new Tooltip());
-        }
-
-        btnApplyPresets.getStyleClass().removeAll("danger-button", "action-primary-button", "btn-danger", "btn-primary");
-        if (isCreating) {
-            btnApplyPresets.textProperty().bind(i18n.createStringBinding("sim.btn.cancel_creation"));
-            btnApplyPresets.getStyleClass().addAll("btn-danger", "danger-button");
-            btnApplyPresets.getTooltip().textProperty().bind(i18n.createStringBinding("sim.btn.cancel_creation.tt"));
-        } else if (isServerExecutionMode()) {
-            btnApplyPresets.setText(isServerJoinMode() ?
-                i18n.get("sim.server.btn.join", "🌐 Rejoindre la Partie Serveur") :
-                i18n.get("sim.server.btn.deploy", "🚀 Déployer Scénario sur Serveur"));
-            btnApplyPresets.getStyleClass().addAll("btn-primary", "action-primary-button");
-            btnApplyPresets.getTooltip().setText(isServerJoinMode() ?
-                i18n.get("sim.server.role.join", "Rejoint la simulation partagée sur le serveur SwarmForge.") :
-                i18n.get("sim.server.role.host", "Déploie le scénario et initialise le monde sur le serveur SwarmForge."));
-        } else {
-            btnApplyPresets.textProperty().bind(i18n.createStringBinding("sim.btn.apply_create"));
-            btnApplyPresets.getStyleClass().addAll("btn-primary", "action-primary-button");
-            btnApplyPresets.getTooltip().textProperty().bind(i18n.createStringBinding("sim.btn.apply_presets.tt"));
-        }
-    }
-
-    private void handleApplyScenario() {
-        ioHelper.handleApplyScenario();
-    }
-
-    void alignWeatherWithWorld() {
-        alignWeatherWithWorld(false);
-    }
-
-    void alignWeatherWithWorld(boolean showNotification) {
-        ioHelper.alignWeatherWithWorld(showNotification);
-    }
+    void addSpeciesCard(String speciesName) { gridBuilder.addSpeciesCard(speciesName); }
+    void refreshSpeciesListContainer() { gridBuilder.refreshSpeciesListContainer(); }
+    void updateApplyPresetsButtonState(boolean isCreating) { gridBuilder.updateApplyPresetsButtonState(isCreating); }
+    private void handleApplyScenario() { ioHelper.handleApplyScenario(); }
+    void alignWeatherWithWorld() { alignWeatherWithWorld(false); }
+    void alignWeatherWithWorld(boolean showNotification) { ioHelper.alignWeatherWithWorld(showNotification); }
+    void applyMetaPreset(String rawMetaName) { ioHelper.applyMetaPreset(rawMetaName); }
 
     public void updateScenarioCreationProgress(double progressFraction, String statusMessage) {
         javafx.application.Platform.runLater(() -> {
-            if (inlineProgressBar != null) {
-                inlineProgressBar.setProgress(Math.min(1.0, Math.max(0.0, progressFraction)));
-            }
-            if (inlineProgressLabel != null) {
-                inlineProgressLabel.setText(statusMessage);
-            }
+            if (inlineProgressBar != null) inlineProgressBar.setProgress(Math.min(1.0, Math.max(0.0, progressFraction)));
+            if (inlineProgressLabel != null) inlineProgressLabel.setText(statusMessage);
         });
     }
 
-    void applyMetaPreset(String rawMetaName) {
-        ioHelper.applyMetaPreset(rawMetaName);
-    }
-
     public void resetTimelineTicks() {
-        this.currentTick = 0;
-        this.highestRecordedTick = 0;
-        this.maxTick = 0;
-        this.isPlaying = false;
-        this.isPaused = false;
-        this.isStopped = true;
-        updateTick(0, 0);
-        updateButtonStates();
+        this.currentTick = 0; this.highestRecordedTick = 0; this.maxTick = 0;
+        this.isPlaying = false; this.isPaused = false; this.isStopped = true;
+        updateTick(0, 0); updateButtonStates();
     }
 
     void updateButtonStates() {
@@ -528,15 +396,11 @@ public class SimulationControlPanel extends VBox {
         UiEventBus.getInstance().publishFx(new UiEvent.SimulationStateChangedUiEvent(isPlaying, isPaused, isStopped, currentTick, currentSpeed));
     }
 
-    public void updateTick(long tick, long maxTick) {
-        updateTick(tick, maxTick, tick * (double) simulationStepSeconds);
-    }
+    public void updateTick(long tick, long maxTick) { updateTick(tick, maxTick, tick * (double) simulationStepSeconds); }
 
     public void updateTick(long tick, long maxTick, double elapsedSimulationSeconds) {
         this.currentTick = tick;
-        if (tick > this.highestRecordedTick) {
-            this.highestRecordedTick = tick;
-        }
+        if (tick > this.highestRecordedTick) this.highestRecordedTick = tick;
         this.maxTick = Math.max(this.highestRecordedTick, Math.max(tick, maxTick));
         updateButtonStates();
         double totalSecs = (elapsedSimulationSeconds >= 0.0) ? elapsedSimulationSeconds : (tick * (double) simulationStepSeconds);
@@ -545,55 +409,23 @@ public class SimulationControlPanel extends VBox {
 
         String timeStr = formatSimulationTimeSeconds(totalSecs);
         lblDateTime.setText("📅 " + currentDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + String.format(" (Jour %d)", 1 + (totalSecondsElapsed / 86400)) + "  |  ⏱️ " + timeStr + String.format(" (Pas #%d)", tick));
-        if (lblTick != null) {
-            lblTick.setText(timeStr + String.format(" (Pas #%d)", tick));
-        }
+        if (lblTick != null) lblTick.setText(timeStr + String.format(" (Pas #%d)", tick));
         if (lblTime != null) lblTime.setText(timeStr);
-
         if (timelineSlider != null && !timelineSlider.isValueChanging()) {
             timelineSlider.setMax(Math.max(this.maxTick, tick + 100));
             timelineSlider.setValue(tick);
         }
     }
 
-    public static String formatSimulationTimeSeconds(double totalSeconds) {
-        long wholeSec = (long) totalSeconds;
-        long days = wholeSec / 86400;
-        long hours = (wholeSec % 86400) / 3600;
-        long minutes = (wholeSec % 3600) / 60;
-        long seconds = wholeSec % 60;
-        long cs = (long) Math.round((totalSeconds - Math.floor(totalSeconds)) * 100);
-        if (cs >= 100) cs = 99;
-        if (days > 0) {
-            return String.format("%dj %02dh %02dm %02ds", days, hours, minutes, seconds);
-        }
-        return String.format("%02dh %02dm %02ds %02dcs", hours, minutes, seconds, cs);
-    }
-
-    public static String formatSimulationTime(long tick, double stepSeconds) {
-        return formatSimulationTimeSeconds(tick * stepSeconds);
-    }
-
-    public void setSpeed(float speed) {
-        this.currentSpeed = speed;
-        if (speedSlider != null) speedSlider.setValue(speed);
-    }
-
-    public float getSpeedMultiplier() {
-        return currentSpeed;
-    }
+    public static String formatSimulationTimeSeconds(double totalSeconds) { return SimulationTimeFormatter.formatSimulationTimeSeconds(totalSeconds); }
+    public static String formatSimulationTime(long tick, double stepSeconds) { return SimulationTimeFormatter.formatSimulationTime(tick, stepSeconds); }
+    public void setSpeed(float speed) { this.currentSpeed = speed; if (speedSlider != null) speedSlider.setValue(speed); }
+    public float getSpeedMultiplier() { return currentSpeed; }
 
     public LocalDateTime getStartDateTime() {
         if (startDatePicker != null && startDatePicker.getValue() != null &&
             startTimeHourSpinner != null && startTimeMinuteSpinner != null && startTimeSecondSpinner != null) {
-            return LocalDateTime.of(
-                startDatePicker.getValue(),
-                LocalTime.of(
-                    startTimeHourSpinner.getValue(),
-                    startTimeMinuteSpinner.getValue(),
-                    startTimeSecondSpinner.getValue()
-                )
-            );
+            return LocalDateTime.of(startDatePicker.getValue(), LocalTime.of(startTimeHourSpinner.getValue(), startTimeMinuteSpinner.getValue(), startTimeSecondSpinner.getValue()));
         }
         return startDateTime != null ? startDateTime : LocalDateTime.of(2026, 3, 20, 8, 0, 0);
     }
@@ -617,11 +449,8 @@ public class SimulationControlPanel extends VBox {
     }
 
     public void setExecutionMode(boolean serverMode) {
-        if (serverMode && comboExecutionMode.getItems().size() > 1) {
-            comboExecutionMode.getSelectionModel().select(1);
-        } else {
-            comboExecutionMode.getSelectionModel().selectFirst();
-        }
+        if (serverMode && comboExecutionMode.getItems().size() > 1) comboExecutionMode.getSelectionModel().select(1);
+        else comboExecutionMode.getSelectionModel().selectFirst();
     }
 
     public String getServerHost() { return multiplayerCard.getServerHost(); }
@@ -647,263 +476,62 @@ public class SimulationControlPanel extends VBox {
         comboCheckpoints.getItems().clear();
         if (checkpoints != null) {
             comboCheckpoints.getItems().addAll(checkpoints);
-            if (!comboCheckpoints.getItems().isEmpty()) {
-                comboCheckpoints.getSelectionModel().selectLast();
-            }
+            if (!comboCheckpoints.getItems().isEmpty()) comboCheckpoints.getSelectionModel().selectLast();
         }
     }
 
-    public int getCheckpointsCount() {
-        return comboCheckpoints.getItems().size();
-    }
-
+    public int getCheckpointsCount() { return comboCheckpoints.getItems().size(); }
     public long getCurrentTick() { return currentTick; }
     public long getMaxTick() { return maxTick; }
     public float getSimulationStepSeconds() { return simulationStepSeconds; }
     public void setSimulationStepSeconds(float dt) { this.simulationStepSeconds = dt; updateStepDtLabel(); }
-
     public boolean isPlaying() { return isPlaying; }
     public boolean isPaused() { return isPaused; }
-
-    public void setPlaying(boolean playing) {
-        this.isPlaying = playing;
-        this.isPaused = !playing;
-        this.isStopped = false;
-        updateButtonStates();
-    }
-
-    public void setPaused(boolean paused) {
-        this.isPaused = paused;
-        this.isPlaying = !paused;
-        this.isStopped = false;
-        updateButtonStates();
-    }
-
-    public String getSelectedScenarioName() {
-        if (comboMeta != null && comboMeta.getValue() != null && !comboMeta.getValue().trim().isEmpty()) {
-            return comboMeta.getValue().trim();
-        }
-        return "Scenario";
-    }
-
-    public String getSelectedWorld() {
-        return comboWorld.getValue() != null ? comboWorld.getValue() : "Tempéré Standard (Temperate Forest)";
-    }
-
-    public String getSelectedWeather() {
-        return comboWeather.getValue() != null ? comboWeather.getValue() : "Temperate";
-    }
-
+    public void setPlaying(boolean playing) { this.isPlaying = playing; this.isPaused = !playing; this.isStopped = false; updateButtonStates(); }
+    public void setPaused(boolean paused) { this.isPaused = paused; this.isPlaying = !paused; this.isStopped = false; updateButtonStates(); }
+    public String getSelectedScenarioName() { return (comboMeta != null && comboMeta.getValue() != null && !comboMeta.getValue().trim().isEmpty()) ? comboMeta.getValue().trim() : "Scenario"; }
+    public String getSelectedWorld() { return comboWorld.getValue() != null ? comboWorld.getValue() : "Tempéré Standard (Temperate Forest)"; }
+    public String getSelectedWeather() { return comboWeather.getValue() != null ? comboWeather.getValue() : "Temperate"; }
     Supplier<Map<String, Object>> worldConfigSupplier;
-
-    public void setWorldConfigSupplier(Supplier<Map<String, Object>> supplier) {
-        this.worldConfigSupplier = supplier;
-    }
-
-    public boolean isRealWeatherMode() {
-        return isRealWeatherMode;
-    }
-
-    public Map<String, Object> getRealWeatherData() {
-        return cachedRealWeatherData;
-    }
-
-    public void fetchRealWeatherFromWorld(TextField targetField) {
-        ioHelper.fetchRealWeatherFromWorld(targetField);
-    }
-
-    public void fetchRealWeather(String cityQuery) {
-        ioHelper.fetchRealWeather(cityQuery);
-    }
-
-    public void fetchRealWeatherByCoordinates(double lat, double lon, double alt, String name) {
-        ioHelper.fetchRealWeatherByCoordinates(lat, lon, alt, name);
-    }
+    public void setWorldConfigSupplier(Supplier<Map<String, Object>> supplier) { this.worldConfigSupplier = supplier; }
+    public boolean isRealWeatherMode() { return isRealWeatherMode; }
+    public Map<String, Object> getRealWeatherData() { return cachedRealWeatherData; }
+    public void fetchRealWeatherFromWorld(TextField targetField) { ioHelper.fetchRealWeatherFromWorld(targetField); }
+    public void fetchRealWeather(String cityQuery) { ioHelper.fetchRealWeather(cityQuery); }
+    public void fetchRealWeatherByCoordinates(double lat, double lon, double alt, String name) { ioHelper.fetchRealWeatherByCoordinates(lat, lon, alt, name); }
 
     public List<String> getSelectedSpeciesList() {
         List<String> list = new ArrayList<>();
-        for (SpeciesConfigCard card : speciesCardList) {
-            list.add(card.getSpeciesName());
-        }
+        for (SpeciesConfigCard card : speciesCardList) list.add(card.getSpeciesName());
         if (list.isEmpty()) list.add("Fourmi Noire des Jardins (Lasius niger)");
         return list;
     }
 
-    public String getSelectedSpecies() {
-        return getSelectedSpeciesList().get(0);
-    }
-
-    public int getQueenCount() {
-        return speciesCardList.isEmpty() ? 1 : speciesCardList.get(0).getQueenCount();
-    }
-
-    public int getWorkerCount() {
-        return speciesCardList.isEmpty() ? 500 : speciesCardList.get(0).getWorkerCount();
-    }
-
-    public List<SpeciesConfigCard> getSpeciesCards() {
-        return Collections.unmodifiableList(speciesCardList);
-    }
-
-    public int getSoldierCount() {
-        return speciesCardList.isEmpty() ? 50 : speciesCardList.get(0).getSoldierCount();
-    }
-
-    public ArchitectureType getWorkerEngine() {
-        return speciesCardList.isEmpty() ? ArchitectureType.BEHAVIOR_TREE : speciesCardList.get(0).getWorkerEngine();
-    }
-
-    public ArchitectureType getSoldierEngine() {
-        return speciesCardList.isEmpty() ? ArchitectureType.FUZZY_LOGIC : speciesCardList.get(0).getSoldierEngine();
-    }
-
-    public ArchitectureType getQueenEngine() {
-        return speciesCardList.isEmpty() ? ArchitectureType.BDI : speciesCardList.get(0).getQueenEngine();
-    }
-
-    public long getMasterSeed() {
-        try {
-            return Long.parseLong(txtSeed.getText().trim());
-        } catch (Exception e) {
-            return 12345L;
-        }
-    }
+    public String getSelectedSpecies() { return getSelectedSpeciesList().get(0); }
+    public int getQueenCount() { return speciesCardList.isEmpty() ? 1 : speciesCardList.get(0).getQueenCount(); }
+    public int getWorkerCount() { return speciesCardList.isEmpty() ? 500 : speciesCardList.get(0).getWorkerCount(); }
+    public int getSoldierCount() { return speciesCardList.isEmpty() ? 50 : speciesCardList.get(0).getSoldierCount(); }
+    public List<SpeciesConfigCard> getSpeciesCards() { return Collections.unmodifiableList(speciesCardList); }
+    public ArchitectureType getWorkerEngine() { return speciesCardList.isEmpty() ? ArchitectureType.BEHAVIOR_TREE : speciesCardList.get(0).getWorkerEngine(); }
+    public ArchitectureType getSoldierEngine() { return speciesCardList.isEmpty() ? ArchitectureType.FUZZY_LOGIC : speciesCardList.get(0).getSoldierEngine(); }
+    public ArchitectureType getQueenEngine() { return speciesCardList.isEmpty() ? ArchitectureType.BDI : speciesCardList.get(0).getQueenEngine(); }
+    public long getMasterSeed() { try { return Long.parseLong(txtSeed.getText().trim()); } catch (Exception e) { return 12345L; } }
 
     public long getMaxSimulationTicks() {
-        if (durationUnitCombo != null && ("∞ Unlimited".equals(durationUnitCombo.getValue()) || "∞ Illimité".equals(durationUnitCombo.getValue()))) {
-            return Long.MAX_VALUE;
-        }
         double val = maxDurationSpinner != null && maxDurationSpinner.getValue() != null ? maxDurationSpinner.getValue() : 100_000.0;
         String unit = durationUnitCombo != null ? durationUnitCombo.getValue() : "Ticks";
-        double dt = getSimulationStepSeconds();
-        if (dt <= 0) dt = 0.016666666666666666;
-
-        double ticks;
-        if (unit != null && (unit.startsWith("Seconds") || unit.startsWith("Secondes"))) {
-            ticks = val / dt;
-        } else if (unit != null && unit.startsWith("Minutes")) {
-            ticks = (val * 60.0) / dt;
-        } else if (unit != null && (unit.startsWith("Hours") || unit.startsWith("Heures"))) {
-            ticks = (val * 3600.0) / dt;
-        } else if (unit != null && (unit.startsWith("Days") || unit.startsWith("Jours"))) {
-            ticks = (val * 86400.0) / dt;
-        } else if (unit != null && (unit.startsWith("Months") || unit.startsWith("Mois"))) {
-            ticks = (val * 30.0 * 86400.0) / dt;
-        } else if (unit != null && (unit.startsWith("Years") || unit.startsWith("Années"))) {
-            ticks = (val * 365.25 * 86400.0) / dt;
-        } else {
-            ticks = val;
-        }
-        return (long) Math.min(Long.MAX_VALUE, Math.max(1.0, ticks));
+        return SimulationTimeFormatter.calculateMaxSimulationTicks(val, unit, getSimulationStepSeconds());
     }
 
-    public int getMinPopulationStopThreshold() {
-        return minPopStopSpinner != null && minPopStopSpinner.getValue() != null ? minPopStopSpinner.getValue() : 0;
-    }
-
-    public VBox getPlaybackAndSpeedPanel() {
-        return playbackAndSpeedPanel;
-    }
-
-    private void handleSaveScenario() { ioHelper.handleSaveScenario(); }
-    private void handleDeleteScenario() { ioHelper.handleDeleteScenario(); }
-    private void handleExportScenario() { ioHelper.handleExportScenario(); }
-    private void handleImportScenario() { ioHelper.handleImportScenario(); }
-
-    private void updateEngineAndAccelComboTexts() {
-        int engineIdx = Math.max(0, engineBackendCombo.getSelectionModel().getSelectedIndex());
-        engineBackendCombo.getItems().setAll(
-            i18n.get("sim.engine.backend.auto"),
-            i18n.get("sim.engine.backend.java"),
-            i18n.get("sim.engine.backend.rust")
-        );
-        engineBackendCombo.getSelectionModel().select(engineIdx);
-
-        int accelIdx = Math.max(0, computeAccelerationCombo.getSelectionModel().getSelectedIndex());
-        computeAccelerationCombo.getItems().setAll(
-            i18n.get("sim.compute.acceleration.auto"),
-            i18n.get("sim.compute.acceleration.gpu"),
-            i18n.get("sim.compute.acceleration.cpu")
-        );
-        computeAccelerationCombo.getSelectionModel().select(accelIdx);
-    }
-
-    public record ScenarioWarning(
-        String category,
-        String severity,
-        String message,
-        String fixButtonText,
-        Runnable fixAction
-    ) {
-        public ScenarioWarning(ScenarioValidationPane.ScenarioWarning w) {
-            this(w.category(), w.severity(), w.message(), w.fixButtonText(), w.fixAction());
-        }
-    }
-
+    public int getMinPopulationStopThreshold() { return minPopStopSpinner != null && minPopStopSpinner.getValue() != null ? minPopStopSpinner.getValue() : 0; }
+    public VBox getPlaybackAndSpeedPanel() { return playbackAndSpeedPanel; }
     private ScenarioValidationPane validationPane;
-
-    private VBox buildValidationPanel() {
-        if (validationPane == null) {
-            validationPane = new ScenarioValidationPane(this);
-        }
-        return validationPane.getContainer();
-    }
-
-    public void updateValidationPanel() {
-        if (validationPane != null) {
-            validationPane.updateValidationPanel();
-        }
-    }
-
-    public List<ScenarioWarning> evaluateScenarioWarnings() {
-        if (validationPane == null) {
-            validationPane = new ScenarioValidationPane(this);
-        }
-        List<ScenarioWarning> result = new ArrayList<>();
-        for (ScenarioValidationPane.ScenarioWarning w : validationPane.evaluateScenarioWarnings()) {
-            result.add(new ScenarioWarning(w));
-        }
-        return result;
-    }
-
-    public void pauseSimulation() {
-        if (isPlaying) {
-            isPlaying = false;
-            isPaused = true;
-            isStopped = false;
-            updateButtonStates();
-            if (onPause != null) onPause.accept(null);
-        }
-    }
-
-    public int getBroodCount() {
-        if (speciesCardList != null && !speciesCardList.isEmpty()) {
-            return speciesCardList.get(0).getBroodCount();
-        }
-        return 20000;
-    }
-
-    public String getSelectedNestType() {
-        if (speciesCardList != null && !speciesCardList.isEmpty() && speciesCardList.get(0).getNestType() != null) {
-            return speciesCardList.get(0).getNestType();
-        }
-        return "Subterranean Burrows & Galleries";
-    }
-
-    void updateStepDtLabel() {
-        if (lblStepDt != null) {
-            lblStepDt.setText(String.format("Δt = %.3f s", simulationStepSeconds));
-        }
-        updateDurationCalculatedLabel();
-    }
-
-    public static int estimateNestCapacity(String nestType) {
-        return SpeciesConfigCard.estimateNestCapacity(nestType);
-    }
-
-    public static List<String> getCompatibleNestTypes(String speciesName) {
-        return SpeciesConfigCard.getCompatibleNestTypes(speciesName);
-    }
+    private VBox buildValidationPanel() { if (validationPane == null) validationPane = new ScenarioValidationPane(this); return validationPane.getContainer(); }
+    public void updateValidationPanel() { if (validationPane != null) validationPane.updateValidationPanel(); }
+    public void pauseSimulation() { if (isPlaying) { isPlaying = false; isPaused = true; isStopped = false; updateButtonStates(); if (onPause != null) onPause.accept(null); } }
+    public int getBroodCount() { return (speciesCardList != null && !speciesCardList.isEmpty()) ? speciesCardList.get(0).getBroodCount() : 20000; }
+    public String getSelectedNestType() { return (speciesCardList != null && !speciesCardList.isEmpty() && speciesCardList.get(0).getNestType() != null) ? speciesCardList.get(0).getNestType() : "Subterranean Burrows & Galleries"; }
+    void updateStepDtLabel() { if (lblStepDt != null) lblStepDt.setText(String.format("Δt = %.3f s", simulationStepSeconds)); updateDurationCalculatedLabel(); }
 
     public void updateDurationCalculatedLabel() {
         if (lblDurationCalculatedInfo == null) return;
@@ -912,10 +540,7 @@ public class SimulationControlPanel extends VBox {
             return;
         }
         long totalTicks = getMaxSimulationTicks();
-        double dt = getSimulationStepSeconds();
-        if (dt <= 0) dt = 0.016666666666666666;
-
-        String formatted = formatSimulationTime(totalTicks, dt);
-        lblDurationCalculatedInfo.setText(String.format("⏱️ Equivalent Duration: %s (%,d steps at Δt = %.3fs)", formatted, totalTicks, dt));
+        double dt = getSimulationStepSeconds() > 0 ? getSimulationStepSeconds() : 0.016666666666666666;
+        lblDurationCalculatedInfo.setText(String.format("⏱️ Equivalent Duration: %s (%,d steps at Δt = %.3fs)", formatSimulationTime(totalTicks, dt), totalTicks, dt));
     }
 }

@@ -6,8 +6,9 @@
  */
 package org.swarmforge.client.ui;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.InputStream;
@@ -23,6 +24,7 @@ import java.util.*;
  */
 public class WeatherPresetManager {
 
+    private static final Logger LOG = LoggerFactory.getLogger(WeatherPresetManager.class);
     public static final File PRESETS_FILE = new File("weather_presets.json");
 
     private static final String[] BUILTIN_WEATHER_FILES = {
@@ -76,7 +78,7 @@ public class WeatherPresetManager {
                     }
                 }
             } catch (Exception ex) {
-                System.err.println("[WeatherPresets] Could not read " + PRESETS_FILE + ": " + ex.getMessage());
+                LOG.warn("Could not read weather presets from {}: {}", PRESETS_FILE, ex.getMessage());
             }
         }
     }
@@ -98,7 +100,9 @@ public class WeatherPresetManager {
                 try {
                     cfg = mapper.readValue(path, Map.class);
                     break;
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    LOG.debug("Could not parse weather preset from candidate file {}: {}", path.getPath(), e.getMessage());
+                }
             }
         }
 
@@ -107,7 +111,9 @@ public class WeatherPresetManager {
                 if (in != null) {
                     cfg = mapper.readValue(in, Map.class);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                LOG.debug("Could not parse weather preset from classpath /presets/weather/{}: {}", filename, e.getMessage());
+            }
         }
         return cfg;
     }
@@ -154,7 +160,9 @@ public class WeatherPresetManager {
             StringBuilder hex = new StringBuilder();
             for (byte b : hash) hex.append(String.format("%02x", b));
             copy.put("checksum", hex.toString().substring(0, 12));
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            LOG.debug("Could not compute SHA-256 checksum for weather preset {}: {}", name, e.getMessage());
+        }
 
         if (presets.containsKey(name)) {
             Map<String, Object> existing = presets.get(name);
@@ -190,7 +198,7 @@ public class WeatherPresetManager {
             }
             mapper.writerWithDefaultPrettyPrinter().writeValue(PRESETS_FILE, customOnly);
         } catch (Exception ex) {
-            System.err.println("[WeatherPresets] Could not write " + PRESETS_FILE + ": " + ex.getMessage());
+            LOG.warn("Could not write weather presets to {}: {}", PRESETS_FILE, ex.getMessage());
         }
     }
 }

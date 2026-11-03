@@ -206,7 +206,7 @@ class ClientScenarioExecutionHelper {
                     if (!isOpen) {
                         String hLower = host != null ? host.toLowerCase().trim() : "";
                         if (hLower.equals("localhost") || hLower.equals("127.0.0.1") || hLower.equals("0.0.0.0") || hLower.isEmpty()) {
-                            System.out.println("[INFO] Serveur local inactif, affichage du dialogue de configuration...");
+                            LOG.info("Serveur local inactif, affichage du dialogue de configuration...");
                             client.promptAndStartLocalServer(host, port, null);
                         } else {
                             System.out.println("[WARN] Serveur distant non disponible à " + host + ":" + port + ", exécution en mode local fallback.");
@@ -276,7 +276,7 @@ class ClientScenarioExecutionHelper {
             List<SpeciesConfigSnapshot> speciesSnapshots = (setupSnap != null) ? setupSnap.speciesSnapshots() : List.of();
             int totalCols = speciesSnapshots.isEmpty() ? 1 : speciesSnapshots.size();
 
-            System.out.println("[INFO] [SwarmForge Engine] Instanciation de " + totalCols + " colonie(s)...");
+            LOG.info("Instanciation de " + totalCols + " colonie(s)...");
 
             for (int colIdx = 0; colIdx < totalCols; colIdx++) {
                 SpeciesConfigSnapshot card = (!speciesSnapshots.isEmpty()) ? speciesSnapshots.get(colIdx) : null;
@@ -308,7 +308,7 @@ class ClientScenarioExecutionHelper {
                     );
                 }
 
-                System.out.println("[INFO] [SwarmForge Engine]   -> Colonie #" + (colIdx + 1) + ": " + speciesKey +
+                LOG.info("  -> Colonie #" + (colIdx + 1) + ": " + speciesKey +
                         " [X=" + String.format("%.1f", pos.x()) + ", Y=" + String.format("%.1f", pos.y()) + "] | Reines: " + queens +
                         ", Ouvrières: " + workers + ", Soldats: " + soldiers + ", Couvain: " + brood + ", Réserve Nourriture: " + initialFood);
 
@@ -329,7 +329,7 @@ class ClientScenarioExecutionHelper {
                         int batchSize = 50000;
                         while (createdWorkers < workers) {
                             if (client.simControlPanel != null && !client.simControlPanel.isCreatingScenario()) {
-                                System.out.println("[INFO] [SwarmForge Engine] Instanciation interrompue par l'utilisateur.");
+                                LOG.info("Instanciation interrompue par l'utilisateur.");
                                 break;
                             }
                             int chunk = Math.min(batchSize, workers - createdWorkers);
@@ -401,13 +401,11 @@ class ClientScenarioExecutionHelper {
                         client.mainTabs.getSelectionModel().select(client.simTab);
                     }
                 } catch (Exception ex) {
-                    LOG.severe("Error activating simulation sub-tabs: " + ex.getMessage());
-                    ex.printStackTrace();
+                    LOG.log(java.util.logging.Level.SEVERE, "Error activating simulation sub-tabs: " + ex.getMessage(), ex);
                 }
             });
         } catch (Exception e) {
-            LOG.severe("Error creating simulation: " + e.getMessage());
-            e.printStackTrace();
+            LOG.log(java.util.logging.Level.SEVERE, "Error creating simulation: " + e.getMessage(), e);
         }
     }
 
@@ -423,107 +421,15 @@ class ClientScenarioExecutionHelper {
     }
 
     private float resolveScaleFactor(String rawNestType) {
-        float scaleFactor = 1.2f;
-        if (rawNestType != null) {
-            String ntl = rawNestType.toLowerCase();
-            if (ntl.contains("mound") || ntl.contains("dôme") || ntl.contains("solar") || ntl.contains("bivouac") || ntl.contains("army")) {
-                scaleFactor = 1.6f;
-            } else if (ntl.contains("tree") || ntl.contains("arbre") || ntl.contains("trunk") || ntl.contains("hollow") || ntl.contains("paper") || ntl.contains("guêpe") || ntl.contains("suspended") || ntl.contains("carton")) {
-                scaleFactor = 1.4f;
-            } else if (ntl.contains("fungi") || ntl.contains("champignon") || ntl.contains("fungal") || ntl.contains("vault")) {
-                scaleFactor = 1.8f;
-            } else if (ntl.contains("cathedral") || ntl.contains("cathédrale") || ntl.contains("termite")) {
-                scaleFactor = 2.0f;
-            } else if (ntl.contains("wax comb") || ntl.contains("beehive") || ntl.contains("hexagonal")) {
-                scaleFactor = 1.5f;
-            } else if (ntl.contains("pots") || ntl.contains("bourdon") || ntl.contains("propolis") || ntl.contains("silk") || ntl.contains("soie") || ntl.contains("leaf")) {
-                scaleFactor = 1.3f;
-            } else if (ntl.contains("jeune") || ntl.contains("young")) {
-                scaleFactor = 0.8f;
-            } else if (ntl.contains("supercolony") || ntl.contains("supercolonie")) {
-                scaleFactor = 3.5f;
-            } else if (ntl.contains("old") || ntl.contains("âgé")) {
-                scaleFactor = 2.2f;
-            }
-            if (ntl.contains("jeune") || ntl.contains("young")) {
-                scaleFactor *= 0.7f;
-            } else if (ntl.contains("supercolony") || ntl.contains("supercolonie")) {
-                scaleFactor *= 2.0f;
-            }
-        }
-        return scaleFactor;
+        return ClientNestGenerationHelper.resolveScaleFactor(rawNestType);
     }
 
     private Map<String, Object> resolveNestConfig(String rawNestType, float scaleFactor) {
-        Map<String, Object> nestConfig = null;
-        if (rawNestType != null) {
-            String typeKey = rawNestType.trim();
-            NestPresetManager presetMgr = new NestPresetManager();
-            if (presetMgr.contains(typeKey)) {
-                nestConfig = presetMgr.get(typeKey);
-            } else {
-                for (String pName : presetMgr.names()) {
-                    if (pName.equalsIgnoreCase(typeKey) || pName.toLowerCase().contains(typeKey.toLowerCase())) {
-                        nestConfig = presetMgr.get(pName);
-                        break;
-                    }
-                }
-            }
-        }
-        if (nestConfig == null) {
-            nestConfig = new LinkedHashMap<>();
-            nestConfig.put("architecture", rawNestType != null ? rawNestType : "BURROW_UNDERGROUND");
-            nestConfig.put("depth", 25.0);
-            nestConfig.put("workerSizeMm", 5.0 * scaleFactor);
-        }
-        return nestConfig;
+        return ClientNestGenerationHelper.resolveNestConfig(rawNestType, scaleFactor);
     }
 
     void generateNest(Map<String, Object> config) {
-        if (client.lastGeneratedTerrarium == null) return;
-        try {
-            NestGenerator generator = new NestGenerator(client.lastGeneratedTerrarium, System.currentTimeMillis());
-
-            if (config.containsKey("depth"))
-                generator.maxDepth((int) config.get("depth"));
-            if (config.containsKey("tunnelWidth"))
-                generator.tunnelRadius(((Number) config.get("tunnelWidth")).floatValue());
-            if (config.containsKey("branching"))
-                generator.branchingFactor(((Number) config.get("branching")).intValue());
-            if (config.containsKey("chamberDistribution")) {
-                @SuppressWarnings("unchecked")
-                Map<String, Integer> dist = (Map<String, Integer>) config.get("chamberDistribution");
-                generator.setChamberCounts(dist);
-            }
-
-            long nestSeed = config.containsKey("seed") && config.get("seed") instanceof Number n ? n.longValue() : 123456L;
-            NestGeneratorPane.GeneratedNest genNest = NestAlgorithm.generate(config, nestSeed);
-            int chambers = genNest.nodes.size();
-
-            if (client.localSimulation != null && !client.localSimulation.getColonies().isEmpty()) {
-                for (Colony colony : client.localSimulation.getColonies()) {
-                    if (colony.getTunnelNetwork() != null) {
-                        NestAlgorithm.applyToTunnelNetwork(
-                                genNest, colony.getNestX(), colony.getNestY(), colony.getNestZ(),
-                                colony.getTunnelNetwork(), colony
-                        );
-                    }
-                }
-            }
-
-            if (client.gameView != null) {
-                client.gameView.getGameApp().renderTerrarium(client.lastGeneratedTerrarium);
-            }
-            if (client.worldEditorPane != null && client.localSimulation != null) {
-                client.worldEditorPane.setSimulation(client.localSimulation);
-                client.worldEditorPane.repaintAllViews();
-            }
-
-            ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Nest generated! (" + chambers + " chambers created)").show();
-        } catch (Exception e) {
-            ThemeManager.createAlert(Alert.AlertType.ERROR, "Generation failed: " + e.getMessage()).show();
-            e.printStackTrace();
-        }
+        ClientNestGenerationHelper.generateNest(client, config);
     }
 
     void startLocalSimulationLoop() {

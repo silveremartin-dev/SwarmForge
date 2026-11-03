@@ -11,6 +11,8 @@ import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.domain.TerrariumCell;
 import org.swarmforge.core.simulation.Simulation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 
@@ -19,6 +21,8 @@ import java.util.Random;
  * Cave-in probability and crushing damage scale with magnitude and quake duration.
  */
 public class EarthquakeDisaster implements DisasterEvent {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EarthquakeDisaster.class);
 
     private final float magnitude; // Richter-like scale 0.1 - 1.0
     private final int durationTicks;
@@ -72,7 +76,7 @@ public class EarthquakeDisaster implements DisasterEvent {
 
     @Override
     public void trigger(Simulation simulation, Terrarium terrarium) {
-        System.out.println("🌍 DISASTER TRIGGER: " + getName() + " (Magnitude " + String.format("%.1f", magnitude * 10) + " | Durée: " + durationTicks + " pas)!");
+        LOG.warn("DISASTER TRIGGER: {} (Severity: {} | Duration: {} ticks)", getName(), getSeverity(), durationTicks);
         this.remainingTicks = durationTicks;
         tick(simulation, terrarium);
     }

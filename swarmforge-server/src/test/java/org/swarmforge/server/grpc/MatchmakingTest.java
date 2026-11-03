@@ -67,7 +67,7 @@ public class MatchmakingTest {
 
             @Override
             public void onError(Throwable t) {
-                t.printStackTrace();
+                org.slf4j.LoggerFactory.getLogger(MatchmakingTest.class).error("Stream error in matchmaking test", t);
             }
 
             @Override
@@ -86,7 +86,7 @@ public class MatchmakingTest {
 
             @Override
             public void onError(Throwable t) {
-                t.printStackTrace();
+                org.slf4j.LoggerFactory.getLogger(MatchmakingTest.class).error("Stream error in matchmaking test", t);
             }
 
             @Override

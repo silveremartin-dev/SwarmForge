@@ -80,7 +80,7 @@ class RLTest {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                org.junit.jupiter.api.Assertions.fail("Exception during RL training loop", e);
             }
             
             brain.decide(ant, null);

@@ -159,7 +159,9 @@ public class SimulationSnapshot implements Serializable {
                     java.lang.reflect.Field idField = Colony.class.getDeclaredField("id");
                     idField.setAccessible(true);
                     idField.set(colony, java.util.UUID.fromString(cs.id()));
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    LOG.warn("Failed to restore custom colony UUID '{}': {}", cs.id(), e.getMessage());
+                }
             }
 
             colony.setFoodStored(cs.foodStored());
@@ -176,7 +178,9 @@ public class SimulationSnapshot implements Serializable {
                 if (is.id() != null && !is.id().isEmpty()) {
                     try {
                         indId = java.util.UUID.fromString(is.id());
-                    } catch (Exception ignored) {}
+                    } catch (Exception e) {
+                        LOG.warn("Failed to parse individual UUID '{}': {}", is.id(), e.getMessage());
+                    }
                 }
                 long iNum = is.individualNumber() > 0 ? is.individualNumber() : 0;
                 if (iNum > maxIndividualNum) maxIndividualNum = iNum;
@@ -234,7 +238,9 @@ public class SimulationSnapshot implements Serializable {
                     org.swarmforge.core.world.WeatherMarkovChain.WeatherState state =
                             org.swarmforge.core.world.WeatherMarkovChain.WeatherState.valueOf(weatherStateName);
                     weather.triggerClimateEvent(state);
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    LOG.warn("Failed to restore weather state '{}': {}", weatherStateName, e.getMessage());
+                }
             }
             weather.setTimeOfDay(timeOfDay);
             weather.setTemperature(temperature);

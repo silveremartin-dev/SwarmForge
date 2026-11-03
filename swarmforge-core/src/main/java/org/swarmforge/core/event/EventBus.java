@@ -83,7 +83,9 @@ public class EventBus {
             try {
                 diskWriter.flush();
                 diskWriter.close();
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                LOG.debug("Error closing disk event log writer: {}", e.getMessage());
+            }
             diskWriter = null;
         }
     }

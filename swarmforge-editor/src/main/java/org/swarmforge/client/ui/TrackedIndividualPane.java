@@ -27,27 +27,27 @@ import java.util.function.Consumer;
  */
 public class TrackedIndividualPane extends VBox {
 
-    private final Label titleLabel;
+    final Label titleLabel;
     private final Button btnPrevAnt;
     private final Button btnNextAnt;
     private final Button btnClose;
 
     // Telemetry Labels
-    private final Label lblSpeciesColony;
-    private final Label lblHealthText;
-    private final ProgressBar healthBar;
-    private final Label lblEnergyHungerThirst;
-    private final Label lblAgeStageJob;
-    private final Label lblAiState;
-    private final Label lblPos3D;
-    private final Label lblHeadingCargo;
-    private final Label lblChcGestalt;
+    final Label lblSpeciesColony;
+    final Label lblHealthText;
+    final ProgressBar healthBar;
+    final Label lblEnergyHungerThirst;
+    final Label lblAgeStageJob;
+    final Label lblAiState;
+    final Label lblPos3D;
+    final Label lblHeadingCargo;
+    final Label lblChcGestalt;
     private final Label lblSearchStatus;
 
     // Interactive Action Controls
-    private final Button btnFollowTps;
-    private final Button btnFollowFps;
-    private final Button btnCenter;
+    final Button btnFollowTps;
+    final Button btnFollowFps;
+    final Button btnCenter;
     private final TextField txtAntId;
     private final Button btnDirectFollow;
     private final VBox telemetryBox;
@@ -431,18 +431,7 @@ public class TrackedIndividualPane extends VBox {
         lblAiState.setText(stateStr);
 
         // Rich Mouse-over Tooltip with complete behavioral and ethological state
-        String fullAiDetails = String.format(
-            "ðŸ§  IA - Ã‰tat Cognitif : %s\n" +
-            "ðŸ’¼ TÃ¢che / RÃ´le AssignÃ© : %s\n" +
-            "âš¡ Action en cours : %s\n" +
-            "ðŸ“‹ CapacitÃ©s & Comportements IA Actifs :\n  â€¢ %s\n" +
-            "ðŸ§¬ Profil Ã‰thologique : %s",
-            ant.getState() != null ? ant.getState() : "PATROUILLE",
-            formatJob(ant.getJob()),
-            ant.getCachedAction() != null && ant.getCachedAction().type() != null ? formatActionType(ant.getCachedAction().type()) : "Recherche autonome",
-            (rawBehaviors != null && !rawBehaviors.isBlank()) ? rawBehaviors.replace(";", "\n  â€¢ ") : "Patrouille & navigation standard",
-            ant.getSpecies() != null ? (ant.getSpecies().getCommonName() != null ? ant.getSpecies().getCommonName() : ant.getSpecies().getScientificName()) : "Standard"
-        );
+        String fullAiDetails = TrackedIndividualFormatter.buildAntAiTooltip(ant);
         Tooltip aiTooltip = new Tooltip(fullAiDetails);
         aiTooltip.setShowDelay(javafx.util.Duration.millis(80));
         aiTooltip.setStyle("-fx-font-size: 11px;");
@@ -480,254 +469,38 @@ public class TrackedIndividualPane extends VBox {
         this.currentPredator = predator;
         this.currentAnt = null;
         this.isFollowing = following;
-
-        if (predator == null) {
-            setNoAntSelectedState();
-            return;
-        }
-
-        String idStr = predator.getId() != null ? predator.getId().toString() : "N/A";
-        String shortId = idStr.length() > 8 ? idStr.substring(0, 8) : idStr;
-
-        titleLabel.textProperty().unbind();
-        String statusText = following ? I18nManager.getInstance().get("tracked_ant.status_tracked") : I18nManager.getInstance().get("tracked_ant.status_selected");
-        titleLabel.setText(String.format("ðŸŽ¯ %s: %s #%s", predator.getType().getDisplayName(), statusText, shortId));
-
-        // Species & Type
-        lblSpeciesColony.setText(String.format("ðŸ¦… %s | Tactique: %s", predator.getType().getDisplayName(), predator.getType().getHuntingStyle()));
-
-        // Health
-        double health = predator.getHealth();
-        double maxHealth = predator.getMaxHealth();
-        boolean alive = predator.isAlive() && health > 0;
-        lblHealthText.textProperty().unbind();
-        if (!alive) {
-            lblHealthText.setText(String.format(Locale.US, "SantÃ©: 0.0 / %.0f ðŸ’€ [MORT]", maxHealth));
-            healthBar.setProgress(0);
-            healthBar.setStyle("-fx-accent: #64748b;");
-        } else {
-            lblHealthText.setText(String.format(Locale.US, "SantÃ©: %.1f / %.0f", health, maxHealth));
-            healthBar.setProgress(Math.max(0, Math.min(1.0, health / maxHealth)));
-            healthBar.setStyle((health / maxHealth) > 0.5 ? "-fx-accent: #22c55e;" : "-fx-accent: #ef4444;");
-        }
-
-        // Energy & Hunger
-        lblEnergyHungerThirst.textProperty().unbind();
-        lblEnergyHungerThirst.setText(String.format(Locale.US, "âš¡ Ã‰nergie: %.0f%% | ðŸ– Faim: %.0f%%", predator.getEnergy(), predator.getHunger()));
-
-        // Age & Kills
-        lblAgeStageJob.textProperty().unbind();
-        double predAgeDays = predator.getAgeInSeconds() / 86400.0;
-        lblAgeStageJob.setText(String.format(Locale.US, "â³ Ã‚ge: %.1f jours | âš”ï¸ Butins: %d", predAgeDays, predator.getKillCount()));
-
-        // AI State (Focus strictly on AI intelligence, decisions, and sensory perception)
-        String targetName = predator.getCurrentTarget() != null ? ("Fourmi " + predator.getCurrentTarget().getCaste()) : "Aucune (Recherche)";
-        String stateStr = String.format("ðŸ§  IA : %s | Cible: %s", predator.getState(), targetName);
-        lblAiState.textProperty().unbind();
-        lblAiState.setText(stateStr);
-
-        String fullPredatorDetails = String.format(
-            "ðŸ§  IA - Ã‰tat DÃ©cisionnel : %s\n" +
-            "ðŸŽ¯ Cible VerrouillÃ©e : %s\n" +
-            "ðŸ¹ Tactique de Chasse IA : %s\n" +
-            "ðŸ‘ï¸ Rayon de Perception Sensorielle : %.1f m\n" +
-            "ðŸ•¸ï¸ PiÃ¨ge / Embuscade IA : %s\n" +
-            "âš¡ Vitesse de Traque IA : %.1f m/s",
-            predator.getState(),
-            targetName,
-            predator.getType().getHuntingStyle(),
-            predator.getType().getVisionRange(),
-            predator.isTrapBuilt() ? "PosÃ© & Actif" : "En prospection",
-            predator.getType().getBaseSpeed()
-        );
-        Tooltip aiTooltip = new Tooltip(fullPredatorDetails);
-        aiTooltip.setShowDelay(javafx.util.Duration.millis(80));
-        aiTooltip.setStyle("-fx-font-size: 11px;");
-        lblAiState.setTooltip(aiTooltip);
-        lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #f59e0b; -fx-cursor: hand; -fx-underline: true;");
-
-        // 3D Position
-        lblPos3D.textProperty().unbind();
-        lblPos3D.setText(String.format(Locale.US, "ðŸ“ Pos: (%.1f, %.1f, %.1f)", predator.getX(), predator.getY(), predator.getZ()));
-
-        // Heading & Trap
-        lblHeadingCargo.textProperty().unbind();
-        lblHeadingCargo.setText(String.format(Locale.US, "ðŸ§­ Cap: %.0fÂ° | PiÃ¨ge: %s", Math.toDegrees(predator.getHeading()), predator.isTrapBuilt() ? "Construit" : "Aucun"));
-
-        // Status
-        lblChcGestalt.textProperty().unbind();
-        lblChcGestalt.setText(predator.isAlive() ? "ðŸŸ¢ Menace Active" : "âš« Inactif");
-        lblChcGestalt.setStyle(predator.isAlive() ? "-fx-font-size: 11px; -fx-text-fill: #ef4444;" : "-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
-
-        btnFollowTps.setDisable(true);
-        btnFollowFps.setDisable(true);
-        btnCenter.setVisible(true);
-        btnCenter.setManaged(true);
-        btnCenter.setDisable(false);
-        clearSearchStatus();
+        TrackedEntityUpdater.updatePredator(this, predator, following);
     }
 
     public void updateChamber(org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node, org.swarmforge.core.domain.Colony colony) {
         this.currentAnt = null;
         this.currentPredator = null;
         this.isFollowing = false;
-
-        if (node == null) {
-            setNoAntSelectedState();
-            return;
-        }
-
-        titleLabel.textProperty().unbind();
-        titleLabel.setText("ðŸ›ï¸ Chambre : " + node.type().name());
-
-        String speciesName = (colony != null && colony.getSpecies() != null) ? colony.getSpecies().getScientificName() : "Formica sp.";
-        String colonyIdStr = (colony != null && colony.getId() != null) ? colony.getId().toString().substring(0, Math.min(8, colony.getId().toString().length())) : "N/A";
-        lblSpeciesColony.setText(String.format("ðŸ§¬ %s | ðŸ›ï¸ Colonie #%s", speciesName, colonyIdStr));
-
-        // Capacity and occupant count
-        int occupants = 0;
-        int queens = 0, workers = 0, soldiers = 0, males = 0;
-        if (colony != null) {
-            for (Individual ind : colony.getLivingIndividuals()) {
-                double dist = Math.hypot(ind.getX() - node.x(), Math.hypot(ind.getY() - node.y(), ind.getZ() - node.z()));
-                if (dist <= Math.max(node.radiusX(), node.radiusZ()) * 1.5) {
-                    occupants++;
-                    if (ind.getCaste() == Individual.Caste.QUEEN) queens++;
-                    else if (ind.getCaste() == Individual.Caste.SOLDIER) soldiers++;
-                    else if (ind.getCaste() == Individual.Caste.MALE) males++;
-                    else workers++;
-                }
-            }
-        }
-
-        lblHealthText.textProperty().unbind();
-        lblHealthText.setText(String.format(Locale.US, "ðŸ‘¥ Occupants rÃ©els : %d (ðŸ‘‘ %d | âš’ï¸ %d | âš”ï¸ %d | â™‚ %d)", occupants, queens, workers, soldiers, males));
-        healthBar.setProgress(Math.min(1.0, occupants / 50.0));
-        healthBar.setStyle("-fx-accent: #38bdf8;");
-
-        lblEnergyHungerThirst.textProperty().unbind();
-        float foodStored = (colony != null) ? colony.getFoodStored() : 0.0f;
-        lblEnergyHungerThirst.setText(String.format(Locale.US, "ðŸ“¦ RÃ©serve Nourriture: %.1f | Rayon: %.1f m", foodStored, node.radiusX()));
-
-        lblAgeStageJob.textProperty().unbind();
-        lblAgeStageJob.setText(String.format(Locale.US, "ðŸ“ Position: X=%.1f m, Y=%.1f m, Profondeur=%.1f m", node.x(), node.y(), -node.z()));
-
-        lblAiState.textProperty().unbind();
-        lblAiState.setText("Type : " + formatNodeType(node.type()));
-        lblAiState.setTooltip(new Tooltip("Chambre biogÃ¨ne souterraine\nVolume lenticulaire adaptÃ© Ã  la rÃ©gulation microclimatique"));
-        lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
-
-        lblPos3D.textProperty().unbind();
-        lblPos3D.setText(String.format(Locale.US, "Dimensions cavitÃ©: Rx=%.1fm, Ry=%.1fm, Rz=%.1fm", node.radiusX(), node.radiusY(), node.radiusZ()));
-
-        lblHeadingCargo.textProperty().unbind();
-        lblHeadingCargo.setText("Identifiant Nodule: #" + (node.id() != null ? node.id().toString().substring(0, Math.min(8, node.id().toString().length())) : "0"));
-
-        lblChcGestalt.textProperty().unbind();
-        lblChcGestalt.setText("ðŸŸ¢ Structure Stable & Intacte");
-        lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #22c55e;");
-
-        btnFollowTps.setDisable(true);
-        btnFollowFps.setDisable(true);
-        btnCenter.setVisible(true);
-        btnCenter.setManaged(true);
-        btnCenter.setDisable(false);
-        clearSearchStatus();
+        TrackedEntityUpdater.updateChamber(this, node, colony);
     }
 
     public static String formatCaste(Individual.Caste caste) {
-        if (caste == null) return "N/A";
-        I18nManager i18n = I18nManager.getInstance();
-        return switch (caste) {
-            case QUEEN -> i18n.get("legend.caste.queen", "ðŸ‘‘ Reine (Gyne)");
-            case WORKER -> i18n.get("legend.caste.worker", "ðŸœ OuvriÃ¨re");
-            case SOLDIER -> i18n.get("legend.caste.soldier", "ðŸ›¡ï¸ Soldat / Major");
-            case NURSE -> i18n.get("god.caste.nurse", "ðŸ¼ Nourrice");
-            case FORAGER -> i18n.get("god.caste.forager", "ðŸŒ¿ Fourrageuse");
-            case MALE -> i18n.get("legend.caste.drone", "ðŸª½ MÃ¢le / Drone");
-            default -> caste.name();
-        };
+        return TrackedIndividualFormatter.formatCaste(caste);
     }
 
     public static String formatLifeStage(Individual.LifeStage stage) {
-        if (stage == null) return "Adulte";
-        I18nManager i18n = I18nManager.getInstance();
-        return switch (stage) {
-            case EGG -> i18n.get("god.caste.egg", "ðŸ¥š Å’uf");
-            case LARVA -> i18n.get("god.caste.larva", "ðŸ› Larve");
-            case PUPA -> i18n.get("god.caste.pupa", "ðŸ¥¥ Nymphe / Cocon");
-            case ADULT -> i18n.get("species.tab.adult", "ðŸœ Adulte Imago");
-            default -> stage.name();
-        };
+        return TrackedIndividualFormatter.formatLifeStage(stage);
     }
 
     public static String formatJob(Individual.Job job) {
-        if (job == null || job == Individual.Job.NONE) return "GÃ©nÃ©raliste";
-        I18nManager i18n = I18nManager.getInstance();
-        return switch (job) {
-            case NURSE -> i18n.get("job.nurse", "ðŸ¼ Soins au couvain (Nourrice)");
-            case BUILDER -> i18n.get("job.builder", "ðŸ§± Construction & Galerie");
-            case FORAGER -> i18n.get("job.forager", "ðŸŒ¿ RÃ©colte & Fourrageage");
-            case GUARD -> i18n.get("job.guard", "ðŸ›¡ï¸ Garde & SÃ©curitÃ©");
-            case UNDERTAKER -> i18n.get("job.undertaker", "ðŸ§¹ Ã‰boueuse & HygiÃ¨ne");
-            case DANCING -> i18n.get("job.dancing", "ðŸ’ƒ Danse frÃ©tillante");
-            case IDLE -> i18n.get("job.idle", "ðŸ’¤ Repos / Inactive");
-            default -> job.name();
-        };
+        return TrackedIndividualFormatter.formatJob(job);
     }
 
     public static String formatCarriedItem(Individual.CarriedItem item) {
-        if (item == null || item == Individual.CarriedItem.NONE) {
-            return I18nManager.getInstance().get("tracked_ant.cargo_none", "Rien (Vide)");
-        }
-        I18nManager i18n = I18nManager.getInstance();
-        return switch (item) {
-            case FOOD -> i18n.get("resource.food", "ðŸ¥© Nourriture / ProtÃ©ines");
-            case WATER -> i18n.get("resource.water", "ðŸ’§ Gouttelette d'Eau");
-            case EARTH -> i18n.get("resource.earth", "ðŸª¨ Granule de Terre");
-            case BROOD -> i18n.get("resource.brood", "ðŸ¥š Couvain / Larve");
-            case DEAD_ANT -> i18n.get("resource.dead_ant", "ðŸ’€ Cadavre / DÃ©chet");
-            default -> item.name();
-        };
+        return TrackedIndividualFormatter.formatCarriedItem(item);
     }
 
     public static String formatActionType(Object actionType) {
-        if (actionType == null) return "Recherche autonome";
-        String s = actionType.toString().toUpperCase();
-        return switch (s) {
-            case "MOVE" -> "DÃ©placement & Orientation";
-            case "FORAGE" -> "RÃ©colte & Recherche";
-            case "RETURN_HOME" -> "Retour Ã  la colonie (Homing)";
-            case "DEPOSIT_FOOD" -> "DÃ©pÃ´t de nourriture au grenier";
-            case "DEPOSIT_PHEROMONE" -> "Marquage phÃ©romonal";
-            case "ATTACK" -> "Combat & Attaque dÃ©fensive";
-            case "FLEE" -> "Fuite & Ã‰vitement du danger";
-            case "GROOM" -> "Toilettage social (Allogrooming)";
-            case "NURSE", "TEND_BROOD" -> "Soins et alimentation du couvain";
-            case "REST" -> "Repos & Ã‰conomie mÃ©tabolique";
-            case "EXPLORE" -> "Exploration libre";
-            case "FOLLOW_TRAIL" -> "Suivi de piste phÃ©romonale";
-            case "COMMUNICATE" -> "Antennation & Trophallaxie";
-            case "LAY_EGG" -> "Ponte d'ovocytes (Reine)";
-            case "DEFEND_PATROL" -> "Patrouille sentinelle";
-            case "DIG" -> "Excavation de galeries";
-            default -> actionType.toString();
-        };
+        return TrackedIndividualFormatter.formatActionType(actionType);
     }
 
     public static String formatNodeType(Object type) {
-        if (type == null) return "Chambre Standard";
-        String s = type.toString().toUpperCase();
-        I18nManager i18n = I18nManager.getInstance();
-        if (s.contains("ENTRANCE") || s.contains("ENTREE")) return i18n.get("chamber.entrance", "ðŸšª EntrÃ©e Principale / DÃ´me");
-        if (s.contains("QUEEN") || s.contains("ROYAL")) return i18n.get("chamber.royal", "ðŸ‘‘ Chambre Royale & Ponte");
-        if (s.contains("NURSERY") || s.contains("BROOD") || s.contains("COUVAIN")) return i18n.get("chamber.nursery", "ðŸ¥š Couvain & PouponniÃ¨re");
-        if (s.contains("FOOD") || s.contains("STORAGE") || s.contains("GRENIER")) return i18n.get("chamber.food", "ðŸŒ¾ Grenier Ã  Graines & RÃ©serves");
-        if (s.contains("FUNGUS") || s.contains("CHAMPIGNON")) return i18n.get("chamber.fungus", "ðŸ„ Chambre Ã  Meules Fongiques");
-        if (s.contains("WASTE") || s.contains("DUMP") || s.contains("DEPOTOIR")) return i18n.get("chamber.waste", "ðŸ—‘ï¸ DÃ©potoir & DÃ©charge");
-        if (s.contains("VENTILATION") || s.contains("CHIMNEY")) return i18n.get("chamber.vent", "ðŸŒªï¸ Puits d'AÃ©ration & CheminÃ©e");
-        if (s.contains("JUNCTION") || s.contains("TUNNEL") || s.contains("GALERIE")) return i18n.get("chamber.junction", "ðŸ”€ Jonction & Galerie de Transit");
-        return type.toString();
+        return TrackedIndividualFormatter.formatNodeType(type);
     }
 
     public void setOnFollowAnt(Consumer<Individual> handler) {

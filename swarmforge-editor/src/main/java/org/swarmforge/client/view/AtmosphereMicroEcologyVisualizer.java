@@ -145,7 +145,7 @@ public class AtmosphereMicroEcologyVisualizer {
     }
 
     public void addPuddle(Vector3f center, float maxRadius) {
-        DynamicPuddleAgent puddle = createDynamicPuddle(center, maxRadius);
+        DynamicPuddleAgent puddle = entityFactory.createDynamicPuddle(center, maxRadius);
         activePuddles.add(puddle);
         ambientAtmosphereNode.attachChild(puddle.geom);
     }
@@ -160,7 +160,7 @@ public class AtmosphereMicroEcologyVisualizer {
             int butterflyCount = Math.min(16, Math.max(2, activeFlowerLocations.size() * 2));
             for (int i = 0; i < butterflyCount; i++) {
                 Vector3f flowerPos = activeFlowerLocations.get(i % activeFlowerLocations.size());
-                ButterflyAgent b = createButterfly(flowerPos, rand, i);
+                ButterflyAgent b = entityFactory.createButterfly(flowerPos, rand, i);
                 activeButterflies.add(b);
                 ambientAtmosphereNode.attachChild(b.node);
             }
@@ -173,7 +173,7 @@ public class AtmosphereMicroEcologyVisualizer {
                 float fx = 2.0f + rand.nextFloat() * (gridWidth - 4.0f);
                 float fz = 2.0f + rand.nextFloat() * (gridHeight - 4.0f);
                 float felev = terrarium.getSurfaceElevation(fx, fz);
-                FireflyParticle fp = createFirefly(new Vector3f(fx, felev + 0.35f + rand.nextFloat() * 1.2f, fz), rand);
+                FireflyParticle fp = entityFactory.createFirefly(new Vector3f(fx, felev + 0.35f + rand.nextFloat() * 1.2f, fz), rand);
                 activeFireflies.add(fp);
                 ambientAtmosphereNode.attachChild(fp.geom);
             }
@@ -186,7 +186,7 @@ public class AtmosphereMicroEcologyVisualizer {
                 float lx = 2.0f + rand.nextFloat() * (gridWidth - 4.0f);
                 float lz = 2.0f + rand.nextFloat() * (gridHeight - 4.0f);
                 float lelev = terrarium.getSurfaceElevation(lx, lz);
-                FallingLeafParticle leaf = createFallingLeaf(new Vector3f(lx, lelev + 4.0f + rand.nextFloat() * 9.0f, lz), lelev, rand);
+                FallingLeafParticle leaf = entityFactory.createFallingLeaf(new Vector3f(lx, lelev + 4.0f + rand.nextFloat() * 9.0f, lz), lelev, rand);
                 activeFallingLeaves.add(leaf);
                 ambientAtmosphereNode.attachChild(leaf.geom);
             }
@@ -197,7 +197,7 @@ public class AtmosphereMicroEcologyVisualizer {
             int birdCount = 3 + rand.nextInt(2);
             Vector3f center = new Vector3f(gridWidth * 0.5f, 0, gridHeight * 0.5f);
             for (int i = 0; i < birdCount; i++) {
-                BirdAgent bird = createBird(center, gridWidth, gridHeight, rand, i);
+                BirdAgent bird = entityFactory.createBird(center, gridWidth, gridHeight, rand, i);
                 activeBirds.add(bird);
                 ambientAtmosphereNode.attachChild(bird.geom);
             }
@@ -210,7 +210,7 @@ public class AtmosphereMicroEcologyVisualizer {
                 float px = 2.0f + rand.nextFloat() * (gridWidth - 4.0f);
                 float pz = 2.0f + rand.nextFloat() * (gridHeight - 4.0f);
                 float pelev = terrarium.getSurfaceElevation(px, pz);
-                PollenParticle p = createPollen(new Vector3f(px, pelev + 0.8f + rand.nextFloat() * 6.0f, pz), pelev, rand);
+                PollenParticle p = entityFactory.createPollen(new Vector3f(px, pelev + 0.8f + rand.nextFloat() * 6.0f, pz), pelev, rand);
                 activePollen.add(p);
                 ambientAtmosphereNode.attachChild(p.geom);
             }
@@ -223,7 +223,7 @@ public class AtmosphereMicroEcologyVisualizer {
                 float dx = 2.0f + rand.nextFloat() * (gridWidth - 4.0f);
                 float dz = 2.0f + rand.nextFloat() * (gridHeight - 4.0f);
                 float delev = terrarium.getSurfaceElevation(dx, dz);
-                DesertDustParticle d = createDesertDust(new Vector3f(dx, delev + 0.2f + rand.nextFloat() * 2.5f, dz), delev, rand);
+                DesertDustParticle d = entityFactory.createDesertDust(new Vector3f(dx, delev + 0.2f + rand.nextFloat() * 2.5f, dz), delev, rand);
                 activeDesertDust.add(d);
                 ambientAtmosphereNode.attachChild(d.geom);
             }
@@ -248,7 +248,7 @@ public class AtmosphereMicroEcologyVisualizer {
             int striderCount = Math.min(6, Math.max(2, waterSpots.size()));
             for (int i = 0; i < striderCount; i++) {
                 Vector3f spawnPos = waterSpots.get(rand.nextInt(waterSpots.size()));
-                WaterStriderAgent ws = createWaterStrider(spawnPos, gridWidth, gridHeight, rand, i);
+                WaterStriderAgent ws = entityFactory.createWaterStrider(spawnPos, gridWidth, gridHeight, rand, i);
                 activeWaterStriders.add(ws);
                 ambientAtmosphereNode.attachChild(ws.node);
             }
@@ -261,7 +261,7 @@ public class AtmosphereMicroEcologyVisualizer {
                 float wx = 2.0f + rand.nextFloat() * (gridWidth - 4.0f);
                 float wz = 2.0f + rand.nextFloat() * (gridHeight - 4.0f);
                 float welev = terrarium.getSurfaceElevation(wx, wz);
-                OrbWebAgent web = createOrbWeb(new Vector3f(wx, welev + 0.6f + rand.nextFloat() * 1.8f, wz), gridWidth, gridHeight, terrarium, rand, i);
+                OrbWebAgent web = entityFactory.createOrbWeb(new Vector3f(wx, welev + 0.6f + rand.nextFloat() * 1.8f, wz), gridWidth, gridHeight, terrarium, rand, i);
                 activeOrbWebs.add(web);
                 ambientAtmosphereNode.attachChild(web.geom);
             }
@@ -273,7 +273,7 @@ public class AtmosphereMicroEcologyVisualizer {
             float sx = 2.0f + rand.nextFloat() * (gridWidth - 4.0f);
             float sz = 2.0f + rand.nextFloat() * (gridHeight - 4.0f);
             float selev = terrarium.getSurfaceElevation(sx, sz);
-            SoilSteamParticle sp = createSoilSteam(new Vector3f(sx, selev + 0.05f, sz), rand);
+            SoilSteamParticle sp = entityFactory.createSoilSteam(new Vector3f(sx, selev + 0.05f, sz), rand);
             activeSoilSteam.add(sp);
             ambientAtmosphereNode.attachChild(sp.geom);
         }
@@ -285,7 +285,7 @@ public class AtmosphereMicroEcologyVisualizer {
                 float px = 2.0f + rand.nextFloat() * (gridWidth - 4.0f);
                 float pz = 2.0f + rand.nextFloat() * (gridHeight - 4.0f);
                 float pelev = terrarium.getSurfaceElevation(px, pz);
-                DandelionPappusParticle dp = createDandelionPappus(new Vector3f(px, pelev + 0.3f + rand.nextFloat() * 2.5f, pz), pelev, rand);
+                DandelionPappusParticle dp = entityFactory.createDandelionPappus(new Vector3f(px, pelev + 0.3f + rand.nextFloat() * 2.5f, pz), pelev, rand);
                 activePappus.add(dp);
                 ambientAtmosphereNode.attachChild(dp.geom);
             }
@@ -297,7 +297,7 @@ public class AtmosphereMicroEcologyVisualizer {
             for (int i = 0; i < dripCount; i++) {
                 Vector3f canopyPos = activeCanopyLocations.get(i % activeCanopyLocations.size());
                 float groundY = terrarium.getSurfaceElevation(canopyPos.x, canopyPos.z);
-                CanopyDripParticle drip = createCanopyDrip(canopyPos, groundY, rand.nextFloat() * 2.0f);
+                CanopyDripParticle drip = entityFactory.createCanopyDrip(canopyPos, groundY, rand.nextFloat() * 2.0f);
                 activeCanopyDrips.add(drip);
                 ambientAtmosphereNode.attachChild(drip.geom);
             }
@@ -309,7 +309,7 @@ public class AtmosphereMicroEcologyVisualizer {
             float gx = 4.0f + rand.nextFloat() * (gridWidth - 8.0f);
             float gz = 4.0f + rand.nextFloat() * (gridHeight - 8.0f);
             float gelev = terrarium.getSurfaceElevation(gx, gz);
-            GnatSwarmAgent gnatSwarm = createGnatSwarm(new Vector3f(gx, gelev + 1.2f + rand.nextFloat() * 0.8f, gz), 0.65f, rand, i);
+            GnatSwarmAgent gnatSwarm = entityFactory.createGnatSwarm(new Vector3f(gx, gelev + 1.2f + rand.nextFloat() * 0.8f, gz), 0.65f, rand, i);
             activeGnatSwarms.add(gnatSwarm);
             ambientAtmosphereNode.attachChild(gnatSwarm.swarmNode);
         }
@@ -320,7 +320,7 @@ public class AtmosphereMicroEcologyVisualizer {
             float ax = 3.0f + rand.nextFloat() * (gridWidth - 6.0f);
             float az = 3.0f + rand.nextFloat() * (gridHeight - 6.0f);
             float aelev = terrarium.getSurfaceElevation(ax, az);
-            AphidClusterAgent aphidCluster = createAphidCluster(new Vector3f(ax, aelev + 0.45f + rand.nextFloat() * 0.5f, az), rand, i);
+            AphidClusterAgent aphidCluster = entityFactory.createAphidCluster(new Vector3f(ax, aelev + 0.45f + rand.nextFloat() * 0.5f, az), rand, i);
             activeAphidClusters.add(aphidCluster);
             ambientAtmosphereNode.attachChild(aphidCluster.node);
         }
@@ -331,7 +331,7 @@ public class AtmosphereMicroEcologyVisualizer {
             float nx = 3.0f + rand.nextFloat() * (gridWidth - 6.0f);
             float nz = 3.0f + rand.nextFloat() * (gridHeight - 6.0f);
             float nelev = terrarium.getSurfaceElevation(nx, nz);
-            ExtrafloralNectaryAgent nectary = createExtrafloralNectary(new Vector3f(nx, nelev + 0.35f + rand.nextFloat() * 0.4f, nz), rand);
+            ExtrafloralNectaryAgent nectary = entityFactory.createExtrafloralNectary(new Vector3f(nx, nelev + 0.35f + rand.nextFloat() * 0.4f, nz), rand);
             activeNectaries.add(nectary);
             ambientAtmosphereNode.attachChild(nectary.geom);
         }
@@ -342,7 +342,7 @@ public class AtmosphereMicroEcologyVisualizer {
             float cx = 4.0f + rand.nextFloat() * (gridWidth - 8.0f);
             float cz = 4.0f + rand.nextFloat() * (gridHeight - 8.0f);
             float celev = terrarium.getSurfaceElevation(cx, cz);
-            CordycepsCadaverAgent cordyceps = createCordycepsCadaver(new Vector3f(cx, celev + 1.2f + rand.nextFloat() * 0.8f, cz), rand, i);
+            CordycepsCadaverAgent cordyceps = entityFactory.createCordycepsCadaver(new Vector3f(cx, celev + 1.2f + rand.nextFloat() * 0.8f, cz), rand, i);
             activeCordycepsCadavers.add(cordyceps);
             ambientAtmosphereNode.attachChild(cordyceps.node);
         }
@@ -353,7 +353,7 @@ public class AtmosphereMicroEcologyVisualizer {
             float mx = 3.0f + rand.nextFloat() * (gridWidth - 6.0f);
             float mz = 3.0f + rand.nextFloat() * (gridHeight - 6.0f);
             float melev = terrarium.getSurfaceElevation(mx, mz);
-            Geometry crack = createMudcrackPatch(new Vector3f(mx, melev + 0.02f, mz), 0.75f + rand.nextFloat() * 0.5f, rand, i);
+            Geometry crack = entityFactory.createMudcrackPatch(new Vector3f(mx, melev + 0.02f, mz), 0.75f + rand.nextFloat() * 0.5f, rand, i);
             activeMudcracks.add(crack);
             ambientAtmosphereNode.attachChild(crack);
         }
@@ -512,191 +512,46 @@ public class AtmosphereMicroEcologyVisualizer {
             rainWetness = Math.max(0.0f, rainWetness - dryingRate * tpf);
         }
 
-        // 7. Water Striders
+        // 7-18. Micro-Ecology Agents
         boolean stridersActive = (effectiveSeason != Season.WINTER && rain < 0.40f && currentRenderMode == RenderMode.REALISTIC);
         for (WaterStriderAgent ws : activeWaterStriders) {
-            if (!stridersActive) {
-                ws.node.setCullHint(Spatial.CullHint.Always);
-            } else {
-                ws.node.setCullHint(Spatial.CullHint.Dynamic);
-                ws.update(tpf, swayTime);
-            }
+            if (!stridersActive) ws.node.setCullHint(Spatial.CullHint.Always);
+            else { ws.node.setCullHint(Spatial.CullHint.Dynamic); ws.update(tpf, swayTime); }
         }
-
-        // 8. Dew-covered Orb Webs
         boolean websActive = currentRenderMode == RenderMode.REALISTIC;
         for (OrbWebAgent web : activeOrbWebs) {
-            if (!websActive) {
-                web.geom.setCullHint(Spatial.CullHint.Always);
-            } else {
-                web.update(tpf, swayTime, rainWetness, isDay, windSpeedMs);
-            }
+            if (!websActive) web.geom.setCullHint(Spatial.CullHint.Always);
+            else web.update(tpf, swayTime, rainWetness, isDay, windSpeedMs);
         }
-
-        // 9. Post-Rain Soil Steaming
         boolean steamActive = (rainWetness > 0.15f && isDay && rain < 0.10f && temp > 10.0f && currentRenderMode == RenderMode.REALISTIC);
         for (SoilSteamParticle sp : activeSoilSteam) {
-            if (!steamActive) {
-                sp.geom.setCullHint(Spatial.CullHint.Always);
-            } else {
-                sp.geom.setCullHint(Spatial.CullHint.Dynamic);
-                sp.update(tpf, windDx, windDz);
-            }
+            if (!steamActive) sp.geom.setCullHint(Spatial.CullHint.Always);
+            else { sp.geom.setCullHint(Spatial.CullHint.Dynamic); sp.update(tpf, windDx, windDz); }
         }
-
-        // 10. Bioacoustic Stridulation Auras
         boolean stridActive = (temp > 22.0f && isDay && rain < 0.20f && (effectiveSeason == Season.SPRING || effectiveSeason == Season.SUMMER) && currentRenderMode == RenderMode.REALISTIC);
         for (StridulationAura sa : activeStridulations) {
-            if (!stridActive) {
-                sa.geom.setCullHint(Spatial.CullHint.Always);
-            } else {
-                sa.geom.setCullHint(Spatial.CullHint.Dynamic);
-                sa.update(tpf);
-            }
+            if (!stridActive) sa.geom.setCullHint(Spatial.CullHint.Always);
+            else { sa.geom.setCullHint(Spatial.CullHint.Dynamic); sa.update(tpf); }
         }
-
-        // 11. Dynamic Mushroom Flush and Desiccation Lifecycle
-        if (currentRenderMode == RenderMode.REALISTIC) {
-            for (MushroomClusterAgent mc : activeMushroomClusters) {
-                mc.update(tpf, rainWetness, effectiveSeason, temp);
-            }
-        }
-
-        // 12. Dandelion Pappus Drift
         boolean pappusActive = (effectiveSeason == Season.SPRING || effectiveSeason == Season.SUMMER) && isDay && rain < 0.10f && currentRenderMode == RenderMode.REALISTIC;
         for (DandelionPappusParticle dp : activePappus) {
-            if (!pappusActive) {
-                dp.geom.setCullHint(Spatial.CullHint.Always);
-            } else {
-                dp.geom.setCullHint(Spatial.CullHint.Dynamic);
-                dp.update(tpf, windDx, windDz, swayTime);
-            }
+            if (!pappusActive) dp.geom.setCullHint(Spatial.CullHint.Always);
+            else { dp.geom.setCullHint(Spatial.CullHint.Dynamic); dp.update(tpf, windDx, windDz, swayTime); }
         }
-
-        // 13. Dynamic Ephemeral Puddles
-        if (currentRenderMode == RenderMode.REALISTIC) {
-            for (DynamicPuddleAgent puddle : activePuddles) {
-                puddle.update(tpf, rain, temp, swayTime);
-            }
-        }
-
-        // 14. Canopy Drip Particles
-        if (currentRenderMode == RenderMode.REALISTIC) {
-            for (CanopyDripParticle drip : activeCanopyDrips) {
-                drip.update(tpf, rainWetness);
-            }
-        }
-
-        // 15. Crepuscular Gnat Swarms
         float hour = (weather != null) ? weather.getTimeOfDay() : 19.0f;
         boolean isTwilight = (hour >= 5.5f && hour <= 7.5f) || (hour >= 18.5f && hour <= 21.0f);
         if (currentRenderMode == RenderMode.REALISTIC) {
-            for (GnatSwarmAgent swarm : activeGnatSwarms) {
-                swarm.update(tpf, swayTime, isTwilight, rain, temp);
-            }
+            for (MushroomClusterAgent mc : activeMushroomClusters) mc.update(tpf, rainWetness, effectiveSeason, temp);
+            for (DynamicPuddleAgent puddle : activePuddles) puddle.update(tpf, rain, temp, swayTime);
+            for (CanopyDripParticle drip : activeCanopyDrips) drip.update(tpf, rainWetness);
+            for (GnatSwarmAgent swarm : activeGnatSwarms) swarm.update(tpf, swayTime, isTwilight, rain, temp);
+            for (AphidClusterAgent aphid : activeAphidClusters) aphid.update(tpf, swayTime);
+            for (ExtrafloralNectaryAgent nectary : activeNectaries) nectary.update(tpf, swayTime);
+            for (CordycepsCadaverAgent cordyceps : activeCordycepsCadavers) cordyceps.update(tpf, swayTime);
         }
-
-        // 16. Aphid Clusters & Honeydew Shimmer
-        if (currentRenderMode == RenderMode.REALISTIC) {
-            for (AphidClusterAgent aphid : activeAphidClusters) {
-                aphid.update(tpf, swayTime);
-            }
-        }
-
-        // 17. Extrafloral Nectary Secretions
-        if (currentRenderMode == RenderMode.REALISTIC) {
-            for (ExtrafloralNectaryAgent nectary : activeNectaries) {
-                nectary.update(tpf, swayTime);
-            }
-        }
-
-        // 18. Parasitic Ophiocordyceps Zombie Fungi
-        if (currentRenderMode == RenderMode.REALISTIC) {
-            for (CordycepsCadaverAgent cordyceps : activeCordycepsCadavers) {
-                cordyceps.update(tpf, swayTime);
-            }
-        }
-
-        // 19. Desiccation Mudcracks in Severe Drought
         boolean drought = (temp > 28.0f && rain < 0.05f && rainWetness < 0.05f && currentRenderMode == RenderMode.REALISTIC);
-        for (Geometry mc : activeMudcracks) {
-            mc.setCullHint(drought ? Spatial.CullHint.Dynamic : Spatial.CullHint.Always);
-        }
+        for (Geometry mc : activeMudcracks) mc.setCullHint(drought ? Spatial.CullHint.Dynamic : Spatial.CullHint.Always);
     }
 
-    // =========================================================================
-    // Factory Methods for Particles & Biological Agents (Delegated)
-    // =========================================================================
-
-    public FallingLeafParticle createFallingLeaf(Vector3f spawnPos, float groundY, Random rand) {
-        return entityFactory.createFallingLeaf(spawnPos, groundY, rand);
-    }
-
-    public ButterflyAgent createButterfly(Vector3f flowerPos, Random rand, int index) {
-        return entityFactory.createButterfly(flowerPos, rand, index);
-    }
-
-    public FireflyParticle createFirefly(Vector3f basePos, Random rand) {
-        return entityFactory.createFirefly(basePos, rand);
-    }
-
-    public BirdAgent createBird(Vector3f center, int gridWidth, int gridHeight, Random rand, int index) {
-        return entityFactory.createBird(center, gridWidth, gridHeight, rand, index);
-    }
-
-    public PollenParticle createPollen(Vector3f spawnPos, float groundY, Random rand) {
-        return entityFactory.createPollen(spawnPos, groundY, rand);
-    }
-
-    public DesertDustParticle createDesertDust(Vector3f spawnPos, float groundY, Random rand) {
-        return entityFactory.createDesertDust(spawnPos, groundY, rand);
-    }
-
-    public WaterStriderAgent createWaterStrider(Vector3f spawnPos, int gridWidth, int gridHeight, Random rand, int index) {
-        return entityFactory.createWaterStrider(spawnPos, gridWidth, gridHeight, rand, index);
-    }
-
-    public OrbWebAgent createOrbWeb(Vector3f pos, int gridWidth, int gridHeight, Terrarium terrarium, Random rand, int index) {
-        return entityFactory.createOrbWeb(pos, gridWidth, gridHeight, terrarium, rand, index);
-    }
-
-    public SoilSteamParticle createSoilSteam(Vector3f spawnPos, Random rand) {
-        return entityFactory.createSoilSteam(spawnPos, rand);
-    }
-
-    public StridulationAura createStridulationAura(Vector3f centerPos, Random rand) {
-        return entityFactory.createStridulationAura(centerPos, rand);
-    }
-
-    public DandelionPappusParticle createDandelionPappus(Vector3f spawnPos, float groundY, Random rand) {
-        return entityFactory.createDandelionPappus(spawnPos, groundY, rand);
-    }
-
-    public DynamicPuddleAgent createDynamicPuddle(Vector3f center, float maxRadius) {
-        return entityFactory.createDynamicPuddle(center, maxRadius);
-    }
-
-    public CanopyDripParticle createCanopyDrip(Vector3f canopyPos, float groundY, float initialDelay) {
-        return entityFactory.createCanopyDrip(canopyPos, groundY, initialDelay);
-    }
-
-    public GnatSwarmAgent createGnatSwarm(Vector3f center, float radius, Random rand, int index) {
-        return entityFactory.createGnatSwarm(center, radius, rand, index);
-    }
-
-    public AphidClusterAgent createAphidCluster(Vector3f stemPos, Random rand, int index) {
-        return entityFactory.createAphidCluster(stemPos, rand, index);
-    }
-
-    public ExtrafloralNectaryAgent createExtrafloralNectary(Vector3f axilPos, Random rand) {
-        return entityFactory.createExtrafloralNectary(axilPos, rand);
-    }
-
-    public CordycepsCadaverAgent createCordycepsCadaver(Vector3f anchorPos, Random rand, int index) {
-        return entityFactory.createCordycepsCadaver(anchorPos, rand, index);
-    }
-
-    public Geometry createMudcrackPatch(Vector3f pos, float size, Random rand, int index) {
-        return entityFactory.createMudcrackPatch(pos, size, rand, index);
-    }
+    public AtmosphereEntityFactory getEntityFactory() { return entityFactory; }
 }

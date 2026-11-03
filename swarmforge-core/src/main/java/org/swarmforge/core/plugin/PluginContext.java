@@ -7,6 +7,8 @@
 package org.swarmforge.core.plugin;
 
 import org.swarmforge.core.simulation.Simulation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Context provided to plugins for accessing simulation.
@@ -14,6 +16,8 @@ import org.swarmforge.core.simulation.Simulation;
  * @author Gemini AI Assistant
  */
 public class PluginContext {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PluginContext.class);
 
     private final Simulation simulation;
     private final PluginManager manager;
@@ -39,7 +43,7 @@ public class PluginContext {
      * Log a message from the plugin.
      */
     public void log(String pluginId, String message) {
-        System.out.println("[Plugin:" + pluginId + "] " + message);
+        LOG.info("[Plugin:{}] {}", pluginId, message);
     }
 
     /**

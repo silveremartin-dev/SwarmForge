@@ -6,31 +6,32 @@
  */
 package org.swarmforge.client;
 
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Logger;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import org.kordamp.ikonli.feather.Feather;
 import org.kordamp.ikonli.javafx.FontIcon;
 import org.swarmforge.client.audio.SimulationAudioManager;
-import org.swarmforge.client.network.LocalServerManager;
+import org.swarmforge.client.network.ClientServerConnectionHandler;
 import org.swarmforge.client.network.SimulationClient;
 import org.swarmforge.client.ui.AccessorySpeciesEditorPane;
 import org.swarmforge.client.ui.EventLogPane;
@@ -41,7 +42,6 @@ import org.swarmforge.client.ui.MinimapOverlay;
 import org.swarmforge.client.ui.MultiplayerScoreboardOverlay;
 import org.swarmforge.client.ui.NestGeneratorPane;
 import org.swarmforge.client.ui.PheromoneOverlay;
-import org.swarmforge.client.ui.ServerLauncherDialog;
 import org.swarmforge.client.ui.SettingsPane;
 import org.swarmforge.client.ui.SimulationControlPanel;
 import org.swarmforge.client.ui.SpeciesEditorPane;
@@ -51,7 +51,6 @@ import org.swarmforge.client.ui.WeatherEditorPane;
 import org.swarmforge.client.ui.WorldEditorPane;
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.IconUtils;
-import org.swarmforge.client.util.NotificationOverlay;
 import org.swarmforge.client.util.SoundEffectManager;
 import org.swarmforge.client.util.ThemeManager;
 import org.swarmforge.client.view.GameViewPane;
@@ -60,17 +59,6 @@ import org.swarmforge.core.engine.EnginePreferences;
 import org.swarmforge.core.simulation.Simulation;
 import org.swarmforge.core.species.DefaultSpecies;
 import org.swarmforge.core.world.TerrainGenerator;
-import org.swarmforge.server.ServerConfig;
-
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Logger;
 
 /**
  * SwarmForge "Simulation Studio" Client.
@@ -117,7 +105,7 @@ public class SwarmForgeClient extends Application {
     CheckBox chkAntTracking;
     CheckBox chkShowScoreboard;
     Runnable cancelAndResetVideoRecording;
-    private final I18nManager i18n = I18nManager.getInstance();
+    final I18nManager i18n = I18nManager.getInstance();
 
     final ExecutorService simLoopExecutor = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "local-simulation-tick-loop");
@@ -127,14 +115,15 @@ public class SwarmForgeClient extends Application {
     volatile boolean simLoopActive = false;
     private final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
 
-    private final ClientScenarioExecutionHelper scenarioHelper = new ClientScenarioExecutionHelper(this);
-    private final ClientTelemetryHudUpdater hudUpdater = new ClientTelemetryHudUpdater(this);
-    private final ClientViewportSidebarBuilder viewportBuilder = new ClientViewportSidebarBuilder(this);
+    final ClientScenarioExecutionHelper scenarioHelper = new ClientScenarioExecutionHelper(this);
+    final ClientTelemetryHudUpdater hudUpdater = new ClientTelemetryHudUpdater(this);
+    final ClientViewportSidebarBuilder viewportBuilder = new ClientViewportSidebarBuilder(this);
 
-    public static boolean isClientOnlyMode = false;
+    private static boolean clientOnlyMode = false;
+    public static boolean isClientOnlyMode() { return clientOnlyMode; }
 
     public static void setClientOnlyMode(boolean clientOnly) {
-        isClientOnlyMode = clientOnly;
+        clientOnlyMode = clientOnly;
     }
 
     public static void silenceJme3Loggers() {
@@ -147,7 +136,7 @@ public class SwarmForgeClient extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        LOG.info(isClientOnlyMode ? "Starting SwarmForge Dedicated Client..." : "Starting SwarmForge Editor...");
+        LOG.info(clientOnlyMode ? "Starting SwarmForge Dedicated Client..." : "Starting SwarmForge Editor...");
 
         IconUtils.applyWindowIcons(primaryStage);
 
@@ -156,7 +145,7 @@ public class SwarmForgeClient extends Application {
 
         SplashScreen splashScreen = null;
         if (!isTestMode) {
-            if (isClientOnlyMode) {
+            if (clientOnlyMode) {
                 splashScreen = new SplashScreen(
                         null,
                         i18n.get("splash.title.client", "SwarmForge Client"),
@@ -174,7 +163,7 @@ public class SwarmForgeClient extends Application {
             splashScreen.show();
         }
 
-        if (isClientOnlyMode) {
+        if (clientOnlyMode) {
             primaryStage.titleProperty().bind(i18n.createStringBinding("client.title"));
         } else {
             primaryStage.titleProperty().bind(i18n.createStringBinding("app.title"));
@@ -201,7 +190,7 @@ public class SwarmForgeClient extends Application {
         this.glossaryTab.setGraphic(new FontIcon(Feather.BOOK_OPEN));
         this.glossaryTab.setContent(this.glossaryPaneView);
 
-        if (isClientOnlyMode) {
+        if (clientOnlyMode) {
             root.setCenter(createSimulationManager());
             primaryStage.setMaximized(true);
         } else {
@@ -324,40 +313,8 @@ public class SwarmForgeClient extends Application {
         }
 
         if (!isTestMode) {
-            if (isClientOnlyMode) {
-                Thread.ofVirtual().start(() -> {
-                    boolean reachable = false;
-                    try (Socket s = new Socket()) {
-                        s.connect(new InetSocketAddress("localhost", 50051), 350);
-                        reachable = true;
-                    } catch (Throwable ignored) {
-                    }
-                    if (reachable) {
-                        try {
-                            networkClient.connect("localhost", 50051);
-                            networkClient.startStreaming();
-                            LOG.info("Auto-connected to SwarmForge server at localhost:50051");
-                            Platform.runLater(() -> {
-                                if (simControlPanel != null) {
-                                    simControlPanel.setServerConnectionStatus(true, "localhost:50051");
-                                }
-                            });
-                        } catch (Throwable ex) {
-                            Platform.runLater(() -> {
-                                if (simControlPanel != null) {
-                                    simControlPanel.setServerConnectionStatus(false, "Hors-ligne");
-                                }
-                            });
-                        }
-                    } else {
-                        LOG.info("Standalone mode active (no SwarmForge server detected on localhost:50051)");
-                        Platform.runLater(() -> {
-                            if (simControlPanel != null) {
-                                simControlPanel.setServerConnectionStatus(false, "Hors-ligne");
-                            }
-                        });
-                    }
-                });
+            if (clientOnlyMode) {
+                ClientServerConnectionHandler.autoConnectStandalone(networkClient, simControlPanel);
             } else {
                 Platform.runLater(() -> {
                     if (simControlPanel != null) {
@@ -369,201 +326,13 @@ public class SwarmForgeClient extends Application {
     }
 
     void promptAndStartLocalServer(String targetHost, int targetPort, Runnable onServerReady) {
-        if (!Platform.isFxApplicationThread()) {
-            Platform.runLater(() -> promptAndStartLocalServer(targetHost, targetPort, onServerReady));
-            return;
-        }
-        ServerLauncherDialog dialog = new ServerLauncherDialog(
-                targetHost != null ? targetHost : "localhost",
-                targetPort > 0 ? targetPort : 50051
+        ClientServerConnectionHandler.promptAndStartLocalServer(
+                targetHost, targetPort, networkClient, simControlPanel, gameView, onServerReady
         );
-        Optional<ServerConfig> optConfig = dialog.showAndWait();
-        optConfig.ifPresent(config -> {
-            if (simControlPanel != null) {
-                simControlPanel.setServerConnectionStatus(false, "Démarrage du serveur local...");
-            }
-            LocalServerManager.getInstance().startServer(
-                    config,
-                    () -> {
-                        if (simControlPanel != null) {
-                            simControlPanel.setServerHost("localhost");
-                            simControlPanel.setServerPort(config.grpcPort());
-                        }
-                        try {
-                            networkClient.connect("localhost", config.grpcPort());
-                            networkClient.startStreaming();
-                            if (simControlPanel != null) {
-                                simControlPanel.setServerConnectionStatus(true, "localhost:" + config.grpcPort() + " (Serveur Local)");
-                            }
-                            if (gameView != null) {
-                                gameView.getGameApp().setNetworkClient(networkClient);
-                            }
-                            if (onServerReady != null) {
-                                onServerReady.run();
-                            }
-                        } catch (Exception ex) {
-                            if (simControlPanel != null) {
-                                simControlPanel.setServerConnectionStatus(false, "Erreur connexion: " + ex.getMessage());
-                            }
-                        }
-                    },
-                    err -> {
-                        if (simControlPanel != null) {
-                            simControlPanel.setServerConnectionStatus(false, "Erreur démarrage: " + err.getMessage());
-                        }
-                        ThemeManager.createAlert(
-                                Alert.AlertType.ERROR,
-                                "Échec du démarrage du serveur SwarmForge : " + err.getMessage()
-                        ).showAndWait();
-                    }
-            );
-        });
     }
 
     private Node createSimulationManager() {
-        BorderPane pane = new BorderPane();
-        pane.setPadding(new Insets(10));
-
-        HBox connectBox = new HBox(12);
-        this.connectBox = connectBox;
-        connectBox.setAlignment(Pos.CENTER_LEFT);
-        connectBox.getStyleClass().add("header-banner");
-
-        this.statsLabel = new Label();
-        this.statsLabel.getStyleClass().add("stats-status-label");
-        this.statsLabel.tooltipProperty().bind(i18n.createTooltipBinding("label.stats.tt"));
-
-        this.syncLabel = new Label();
-        this.syncLabel.getStyleClass().add("sync-status-label");
-        this.syncLabel.tooltipProperty().bind(i18n.createTooltipBinding("label.sync.tt"));
-
-        Region bannerSpacer = new Region();
-        HBox.setHgrow(bannerSpacer, Priority.ALWAYS);
-
-        connectBox.getChildren().addAll(this.statsLabel, bannerSpacer, this.syncLabel);
-        pane.setTop(connectBox);
-        BorderPane.setMargin(connectBox, new Insets(0, 0, 10, 0));
-
-        this.simSubTabs = new TabPane();
-        this.simSubTabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> update3DRenderingState());
-        TabPane subTabs = this.simSubTabs;
-
-        Tab controlsTab = new Tab();
-        controlsTab.textProperty().bind(i18n.createStringBinding("sim.title"));
-        controlsTab.setGraphic(new FontIcon(Feather.SLIDERS));
-        VBox controlsInner = new VBox(12);
-        controlsInner.setPadding(new Insets(10));
-
-        this.simControlPanel = new SimulationControlPanel();
-        this.simControlPanel.setWorldConfigSupplier(() -> (this.worldEditorPane != null) ? this.worldEditorPane.getConfiguration() : null);
-        controlsInner.getChildren().add(this.simControlPanel);
-        controlsTab.setContent(new ScrollPane(controlsInner));
-
-        this.visualTab = new Tab();
-        visualTab.textProperty().bind(i18n.createStringBinding("tab.visual_view"));
-        visualTab.setGraphic(new FontIcon(Feather.EYE));
-        visualTab.setContent(viewportBuilder.createVisualSimulationViewport());
-        visualTab.setDisable(true);
-
-        this.godTab = new Tab();
-        godTab.textProperty().bind(i18n.createStringBinding("tab.god_mode"));
-        godTab.setGraphic(new FontIcon(Feather.ZAP));
-        this.interventionPanel = new InterventionPanel();
-        this.interventionPanel.setCallback(new ClientInterventionBridge(this));
-        godTab.setContent(this.interventionPanel);
-        godTab.setDisable(true);
-
-        this.statsTab = new Tab();
-        statsTab.textProperty().bind(i18n.createStringBinding("tab.stats"));
-        statsTab.setGraphic(new FontIcon(Feather.BAR_CHART_2));
-        this.statisticsDashboard = new StatisticsDashboard();
-        this.statisticsDashboard.setOnSelectIndividual(antId -> {
-            if (this.simWorldViewer != null) {
-                this.simWorldViewer.setFollowedIndividualById(antId);
-            }
-        });
-        this.statisticsDashboard.setOnTrackIndividual(antId -> {
-            if (this.simWorldViewer != null) {
-                this.simWorldViewer.setFollowedIndividualById(antId);
-                this.simWorldViewer.setFollowAntCameraEnabled(true);
-                this.simWorldViewer.setAntTrackingEnabled(true);
-                if (this.chkAntTracking != null) {
-                    this.chkAntTracking.setSelected(true);
-                }
-                if (this.simWorldViewer.getTrackedIndividualPane() != null) {
-                    this.simWorldViewer.getTrackedIndividualPane().setVisible(true);
-                }
-                if (this.simSubTabs != null && this.visualTab != null) {
-                    this.simSubTabs.getSelectionModel().select(this.visualTab);
-                }
-            }
-        });
-        statsTab.setContent(this.statisticsDashboard);
-
-        this.eventLogTab = new Tab();
-        eventLogTab.textProperty().bind(i18n.createStringBinding("tab.log"));
-        eventLogTab.setGraphic(new FontIcon(Feather.LIST));
-        this.eventLogPane = new EventLogPane();
-        if (this.simControlPanel != null) {
-            this.eventLogPane.setStartDateTime(this.simControlPanel.getStartDateTime());
-            this.eventLogPane.setSimulationStepSeconds(this.simControlPanel.getSimulationStepSeconds());
-            this.simControlPanel.setOnStartDateTimeChange(newDt -> {
-                if (this.eventLogPane != null) {
-                    this.eventLogPane.setStartDateTime(newDt);
-                }
-            });
-            this.simControlPanel.setOnStepChange(newStep -> {
-                if (this.eventLogPane != null) {
-                    this.eventLogPane.setSimulationStepSeconds(newStep);
-                }
-                if (this.localSimulation != null) {
-                    this.localSimulation.setSimulationStepSeconds(newStep);
-                }
-            });
-        }
-        eventLogTab.setContent(this.eventLogPane);
-
-        setSimTabsEnabled(false);
-
-        scenarioHelper.wireSimulationControlCallbacks();
-
-        subTabs.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
-            update3DRenderingState();
-            if (newTab == godTab) {
-                if (simControlPanel != null && simControlPanel.isPlaying()) {
-                    simControlPanel.pauseSimulation();
-                    NotificationOverlay.show(
-                            subTabs,
-                            "⏸️ MODE DIVIN : SIMULATION MISE EN PAUSE AUTOMATIQUEMENT\nLa simulation a été mise en pause pour vous permettre d'agencer et programmer vos événements en toute sécurité.",
-                            NotificationOverlay.NotificationType.WARNING
-                    );
-                }
-                if (interventionPanel != null) {
-                    interventionPanel.setSimulationRunning(false);
-                    long currentTick = localSimulation != null ? localSimulation.getTickCount() : 0;
-                    double stepSec = simControlPanel != null ? simControlPanel.getSimulationStepSeconds() : 0.0166f;
-                    interventionPanel.syncCurrentSimulationTime(currentTick, stepSec);
-                }
-            }
-        });
-
-        Tab simSettingsTab = new Tab();
-        simSettingsTab.textProperty().bind(i18n.createStringBinding("tab.settings"));
-        simSettingsTab.setGraphic(new FontIcon(Feather.SETTINGS));
-        simSettingsTab.setContent(new SettingsPane());
-
-        this.glossaryPaneView = new GlossaryPaneView();
-        this.glossaryTab = new Tab();
-        this.glossaryTab.textProperty().bind(i18n.createStringBinding("tab.glossary"));
-        this.glossaryTab.setGraphic(new FontIcon(Feather.BOOK_OPEN));
-        this.glossaryTab.setContent(this.glossaryPaneView);
-
-        subTabs.getTabs().addAll(controlsTab, visualTab, godTab, statsTab, eventLogTab, simSettingsTab, this.glossaryTab);
-        pane.setCenter(subTabs);
-
-        scenarioHelper.startLocalSimulationLoop();
-        hudUpdater.startMainHudTimer();
-        return pane;
+        return ClientSimulationTabBuilder.buildSimulationManager(this);
     }
 
     void setSimTabsEnabled(boolean enabled) {
@@ -593,7 +362,7 @@ public class SwarmForgeClient extends Application {
     }
 
     boolean isSim3DFocused() {
-        if (isClientOnlyMode) {
+        if (clientOnlyMode) {
             return simSubTabs == null || simSubTabs.getSelectionModel().getSelectedItem() == visualTab;
         }
         boolean isSimTabSelected = (mainTabs == null || mainTabs.getSelectionModel().getSelectedItem() == simTab);
@@ -661,7 +430,7 @@ public class SwarmForgeClient extends Application {
                 ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Monde généré avec succès ! (Taille: " + sizeMeters + "m, Voxel: " + resMm + "mm)").show();
             } catch (Exception ex) {
                 ThemeManager.createAlert(Alert.AlertType.ERROR, "Échec de génération: " + ex.getMessage()).show();
-                ex.printStackTrace();
+                LOG.log(java.util.logging.Level.SEVERE, "Echec de generation: " + ex.getMessage(), ex);
             }
         });
 

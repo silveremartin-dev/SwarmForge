@@ -157,213 +157,23 @@ final class WorldEditorInteractionAndInspectorHelper {
     }
 
     static void selectChamberById(WorldEditorPane pane, String chamberId) {
-        if (chamberId == null || pane.activeSimulation == null) return;
-        for (org.swarmforge.core.domain.Colony colony : pane.activeSimulation.getColonies()) {
-            if (colony.getTunnelNetwork() != null && colony.getTunnelNetwork().getNodes() != null) {
-                for (org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node : colony.getTunnelNetwork().getNodes()) {
-                    if (chamberId.equals(String.valueOf(node.id())) || chamberId.equals(node.type().name())) {
-                        pane.selectedChamberNode = node;
-                        if (pane.chamberInfoPane != null) {
-                            pane.chamberInfoPane.updateChamber(node, colony);
-                            pane.chamberInfoPane.setVisible(true);
-                            if (pane.showChamberOverlayCheck != null) pane.showChamberOverlayCheck.setSelected(true);
-                        }
-                        return;
-                    }
-                }
-            }
-        }
+        WorldEditorEntityTrackingHelper.selectChamberById(pane, chamberId);
     }
 
     static void selectNextNearestIndividual(WorldEditorPane pane) {
-        if (pane.activeSimulation == null) return;
-
-        List<org.swarmforge.core.domain.Individual> candidates = new ArrayList<>();
-        for (org.swarmforge.core.domain.Colony colony : pane.activeSimulation.getColonies()) {
-            if (colony != null) {
-                for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
-                    if (ind != null && ind.isAlive() && ind.getHealth() > 0) {
-                        candidates.add(ind);
-                    }
-                }
-            }
-        }
-
-        if (candidates.isEmpty()) return;
-
-        double refX = 32.0, refY = 32.0, refZ = 0.0;
-        UUID currentId = (pane.followedAnt != null) ? pane.followedAnt.getId() : null;
-
-        if (pane.followedAnt != null) {
-            refX = pane.followedAnt.getX();
-            refY = pane.followedAnt.getY();
-            refZ = pane.followedAnt.getZ();
-            candidates.removeIf(ind -> ind.getId() != null && ind.getId().equals(currentId));
-        }
-
-        if (candidates.isEmpty()) return;
-
-        final double fRefX = refX, fRefY = refY, fRefZ = refZ;
-        candidates.sort(Comparator.comparingDouble(ind -> {
-            double dx = ind.getX() - fRefX;
-            double dy = ind.getY() - fRefY;
-            double dz = ind.getZ() - fRefZ;
-            return dx * dx + dy * dy + dz * dz;
-        }));
-
-        org.swarmforge.core.domain.Individual bestMatch = candidates.get(0);
-        if (candidates.size() > 1 && !pane.individualNavigationHistory.isEmpty() && bestMatch.getId() != null && bestMatch.getId().equals(pane.individualNavigationHistory.peek())) {
-            bestMatch = candidates.get(1);
-        }
-
-        if (currentId != null) {
-            pane.individualNavigationHistory.push(currentId);
-            if (pane.individualNavigationHistory.size() > 50) {
-                pane.individualNavigationHistory.removeLast();
-            }
-        }
-
-        pane.setFollowedIndividual(bestMatch);
-        pane.setFollowAntCameraEnabled(true);
-        if (pane.trackedAntPane != null) {
-            pane.trackedAntPane.setVisible(true);
-            pane.trackedAntPane.updateAnt(bestMatch, true);
-        }
+        WorldEditorEntityTrackingHelper.selectNextNearestIndividual(pane);
     }
 
     static void selectPreviousNearestIndividual(WorldEditorPane pane) {
-        if (pane.activeSimulation == null) return;
-
-        while (!pane.individualNavigationHistory.isEmpty()) {
-            UUID prevId = pane.individualNavigationHistory.pop();
-            for (org.swarmforge.core.domain.Colony colony : pane.activeSimulation.getColonies()) {
-                if (colony != null) {
-                    for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
-                        if (ind != null && ind.isAlive() && ind.getId() != null && ind.getId().equals(prevId)) {
-                            pane.setFollowedIndividual(ind);
-                            pane.setFollowAntCameraEnabled(true);
-                            if (pane.trackedAntPane != null) {
-                                pane.trackedAntPane.setVisible(true);
-                                pane.trackedAntPane.updateAnt(ind, true);
-                            }
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-
-        selectNextNearestIndividual(pane);
+        WorldEditorEntityTrackingHelper.selectPreviousNearestIndividual(pane);
     }
 
     static void setFollowedIndividualById(WorldEditorPane pane, String query) {
-        if (query == null || query.trim().isEmpty()) return;
-        String q = query.trim().toLowerCase();
-        org.swarmforge.core.domain.Individual match = null;
-
-        if (pane.activeSimulation != null) {
-            long targetIndividualNumber = -1;
-            if (q.startsWith("ant_") || q.startsWith("insect_") || q.startsWith("ind_")) {
-                try {
-                    int underIdx = q.indexOf('_');
-                    targetIndividualNumber = Long.parseLong(q.substring(underIdx + 1));
-                } catch (Exception ignored) {}
-            } else {
-                try { targetIndividualNumber = Long.parseLong(q); } catch (Exception ignored) {}
-            }
-
-            for (org.swarmforge.core.domain.Colony colony : pane.activeSimulation.getColonies()) {
-                for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
-                    if (targetIndividualNumber > 0 && ind.getIndividualNumber() == targetIndividualNumber) {
-                        match = ind;
-                        break;
-                    }
-                    String fullId = ind.getId() != null ? ind.getId().toString().toLowerCase() : "";
-                    if (fullId.equalsIgnoreCase(q) || fullId.startsWith(q)) {
-                        match = ind;
-                        break;
-                    }
-                }
-                if (match != null) break;
-            }
-
-            if (match == null) {
-                for (org.swarmforge.core.domain.Colony colony : pane.activeSimulation.getColonies()) {
-                    for (org.swarmforge.core.domain.Individual ind : colony.getLivingIndividuals()) {
-                        String fullId = ind.getId() != null ? ind.getId().toString().toLowerCase() : "";
-                        String caste = ind.getCaste() != null ? ind.getCaste().name().toLowerCase() : "";
-                        if (fullId.contains(q) || caste.equalsIgnoreCase(q) || caste.contains(q)) {
-                            match = ind;
-                            break;
-                        }
-                    }
-                    if (match != null) break;
-                }
-            }
-        }
-
-        if (match != null) {
-            pane.setFollowedIndividual(match);
-            pane.setFollowAntCameraEnabled(true);
-            if (pane.trackedAntPane != null) {
-                pane.trackedAntPane.updateAnt(match, true);
-            }
-        } else if (pane.trackedAntPane != null) {
-            pane.trackedAntPane.setSearchStatusError(I18nManager.getInstance().get("tracked_ant.not_found", query));
-        }
+        WorldEditorEntityTrackingHelper.setFollowedIndividualById(pane, query);
     }
 
     static void centerCameraOnSelection(WorldEditorPane pane) {
-        if (pane.activeSimulation == null || pane.activeSimulation.getTerrarium() == null) return;
-        double targetX = -1, targetY = -1, targetZ = 0;
-        int tWidth = Math.max(1, pane.activeSimulation.getTerrarium().getWidth());
-        int tHeight = Math.max(1, pane.activeSimulation.getTerrarium().getHeight());
-
-        org.swarmforge.core.domain.Individual ant = (pane.followedAnt != null) ? pane.followedAnt : (pane.trackedAntPane != null ? pane.trackedAntPane.getCurrentAnt() : null);
-        if (ant != null) {
-            targetX = (ant.getX() / (double) tWidth) * GRID_SIZE;
-            targetY = (ant.getY() / (double) tHeight) * GRID_SIZE;
-            int igx = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetX));
-            int igy = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetY));
-            targetZ = pane.heightGrid[igx][igy] * 40.0 + ant.getZ() * 2.0;
-        } else if (pane.trackedAntPane != null && pane.trackedAntPane.getCurrentPredator() != null) {
-            var pred = pane.trackedAntPane.getCurrentPredator();
-            targetX = (pred.getX() / (double) tWidth) * GRID_SIZE;
-            targetY = (pred.getY() / (double) tHeight) * GRID_SIZE;
-            int igx = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetX));
-            int igy = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetY));
-            targetZ = pane.heightGrid[igx][igy] * 40.0 + pred.getZ() * 2.0;
-        } else {
-            org.swarmforge.core.simulation.TunnelNetwork.TunnelNode node = (pane.chamberInfoPane != null && pane.chamberInfoPane.getCurrentNode() != null)
-                    ? pane.chamberInfoPane.getCurrentNode() : pane.selectedChamberNode;
-            if (node != null) {
-                targetX = (node.x() / (double) tWidth) * GRID_SIZE;
-                targetY = (node.y() / (double) tHeight) * GRID_SIZE;
-                int igx = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetX));
-                int igy = (int) Math.max(0, Math.min(GRID_SIZE - 1, targetY));
-                targetZ = pane.heightGrid[igx][igy] * 40.0 + node.z() * 2.0;
-            }
-        }
-
-        if (targetX >= 0 && targetY >= 0) {
-            double radAz = Math.toRadians(pane.azimuth);
-            double radEl = Math.toRadians(pane.elevation);
-            double w = (pane.canvas3D != null && pane.canvas3D.getWidth() > 0) ? pane.canvas3D.getWidth() : 800.0;
-            double h = (pane.canvas3D != null && pane.canvas3D.getHeight() > 0) ? pane.canvas3D.getHeight() : 600.0;
-            double scale = (Math.min(w, h) / 120.0) * (pane.zoom / 7.5);
-
-            double isoX = (targetX - GRID_SIZE / 2.0) * Math.cos(radAz) - (targetY - GRID_SIZE / 2.0) * Math.sin(radAz);
-            double isoY = (targetX - GRID_SIZE / 2.0) * Math.sin(radAz) * Math.sin(radEl) + (targetY - GRID_SIZE / 2.0) * Math.cos(radAz) * Math.sin(radEl) - targetZ * Math.cos(radEl);
-
-            pane.pan3DX = -isoX * (scale / 10.0);
-            pane.pan3DY = -isoY * (scale / 10.0);
-
-            pane.topPanX = (GRID_SIZE / 2.0 - targetX) * 2.0;
-            pane.topPanY = (GRID_SIZE / 2.0 - targetY) * 2.0;
-            pane.sidePanX = (GRID_SIZE / 2.0 - targetY) * 2.0;
-
-            pane.repaintAllViews();
-        }
+        WorldEditorEntityTrackingHelper.centerCameraOnSelection(pane);
     }
 
     static void setupMouseControls(WorldEditorPane pane) {
@@ -635,125 +445,7 @@ final class WorldEditorInteractionAndInspectorHelper {
     }
 
     static int[] pick3DGridCell(WorldEditorPane pane, double mx, double my, double cx, double cy, double scale, double radAz, double radEl) {
-        int bestX = -1, bestY = -1, bestD = 0;
-        double minDstSq = Double.MAX_VALUE;
-        int step = 2;
-
-        double cutRatio = pane.slicePlaneSlider != null ? (pane.slicePlaneSlider.getValue() / 100.0) : 1.0;
-        int cutXLimit = (int) (GRID_SIZE * cutRatio);
-        double targetDepthVal = pane.depthSlider != null ? pane.depthSlider.getValue() : 1.5;
-        double maxDepthPx = targetDepthVal * 22.0;
-        double layerDepthPx = maxDepthPx / SOIL_DEPTH;
-
-        boolean isCutPlaneFacingCamera = Math.sin(radAz) >= 0;
-        if (cutXLimit > 0 && cutXLimit < GRID_SIZE && (!pane.isTerrainVisible || isCutPlaneFacingCamera)) {
-            for (int y = 0; y < GRID_SIZE - step; y += step) {
-                double surfZ0 = pane.heightGrid[cutXLimit][y] * 40.0;
-                double surfZ1 = pane.heightGrid[cutXLimit][y + step] * 40.0;
-                if (pane.carvedVoxelGrid[cutXLimit][y]) surfZ0 -= 15.0;
-                if (pane.carvedVoxelGrid[cutXLimit][y + step]) surfZ1 -= 15.0;
-
-                double refZ0 = 32.0;
-                double refZ1 = 32.0;
-
-                for (int d = 0; d < SOIL_DEPTH; d++) {
-                    double topZ0 = Math.min(surfZ0, refZ0 - d * layerDepthPx);
-                    double topZ1 = Math.min(surfZ1, refZ1 - d * layerDepthPx);
-                    double botZ0 = Math.min(surfZ0, refZ0 - (d + 1) * layerDepthPx);
-                    double botZ1 = Math.min(surfZ1, refZ1 - (d + 1) * layerDepthPx);
-
-                    if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
-
-                    double[] pTop0 = pane.project3DPoint(cutXLimit, y, topZ0, cx, cy, scale, radAz, radEl);
-                    double[] pTop1 = pane.project3DPoint(cutXLimit, y + step, topZ1, cx, cy, scale, radAz, radEl);
-                    double[] pBot1 = pane.project3DPoint(cutXLimit, y + step, botZ1, cx, cy, scale, radAz, radEl);
-                    double[] pBot0 = pane.project3DPoint(cutXLimit, y, botZ0, cx, cy, scale, radAz, radEl);
-
-                    double midPx = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
-                    double midPy = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[1]) / 4.0;
-
-                    double dSq = (midPx - mx) * (midPx - mx) + (midPy - my) * (midPy - my);
-                    if (dSq < minDstSq) {
-                        minDstSq = dSq;
-                        bestX = cutXLimit;
-                        bestY = y;
-                        bestD = d;
-                    }
-                }
-            }
-        }
-
-        int[][] skirtEdges = new int[][]{
-            {0, 0, GRID_SIZE - 1, 0},
-            {GRID_SIZE - 1, 0, GRID_SIZE - 1, GRID_SIZE - 1},
-            {0, GRID_SIZE - 1, GRID_SIZE - 1, GRID_SIZE - 1},
-            {0, 0, 0, GRID_SIZE - 1}
-        };
-        for (int[] edge : skirtEdges) {
-            int ex0 = edge[0], ey0 = edge[1], ex1 = edge[2], ey1 = edge[3];
-            int edx = Integer.compare(ex1, ex0);
-            int edy = Integer.compare(ey1, ey0);
-            int elen = Math.max(Math.abs(ex1 - ex0), Math.abs(ey1 - ey0));
-            for (int i = 0; i < elen; i += step) {
-                int wx0 = ex0 + i * edx;
-                int wy0 = ey0 + i * edy;
-                int wx1 = ex0 + Math.min(elen, i + step) * edx;
-                int wy1 = ey0 + Math.min(elen, i + step) * edy;
-                double surfZ0 = pane.heightGrid[wx0][wy0] * 40.0;
-                double surfZ1 = pane.heightGrid[wx1][wy1] * 40.0;
-
-                for (int d = 0; d < SOIL_DEPTH; d++) {
-                    double topZ0 = Math.min(surfZ0, 32.0 - d * layerDepthPx);
-                    double topZ1 = Math.min(surfZ1, 32.0 - d * layerDepthPx);
-                    double botZ0 = Math.min(surfZ0, 32.0 - (d + 1) * layerDepthPx);
-                    double botZ1 = Math.min(surfZ1, 32.0 - (d + 1) * layerDepthPx);
-                    if (topZ0 <= botZ0 && topZ1 <= botZ1) continue;
-
-                    double[] pTop0 = pane.project3DPoint(wx0, wy0, topZ0, cx, cy, scale, radAz, radEl);
-                    double[] pTop1 = pane.project3DPoint(wx1, wy1, topZ1, cx, cy, scale, radAz, radEl);
-                    double[] pBot1 = pane.project3DPoint(wx1, wy1, botZ1, cx, cy, scale, radAz, radEl);
-                    double[] pBot0 = pane.project3DPoint(wx0, wy0, botZ0, cx, cy, scale, radAz, radEl);
-
-                    double midPx = (pTop0[0] + pTop1[0] + pBot1[0] + pBot0[0]) / 4.0;
-                    double midPy = (pTop0[1] + pTop1[1] + pBot1[1] + pBot0[1]) / 4.0;
-
-                    double dSq = (midPx - mx) * (midPx - mx) + (midPy - my) * (midPy - my);
-                    if (dSq < minDstSq) {
-                        minDstSq = dSq;
-                        bestX = wx0;
-                        bestY = wy0;
-                        bestD = d;
-                    }
-                }
-            }
-        }
-
-        int maxX = Math.min(GRID_SIZE - 1, cutXLimit - 1);
-        for (int x = 0; x <= maxX; x += step) {
-            for (int y = 0; y < GRID_SIZE; y += step) {
-                int x2 = Math.min(maxX, x + step);
-                int y2 = Math.min(GRID_SIZE - 1, y + step);
-                int[][] quadPts = {{x, y}, {x2, y}, {x, y2}, {x2, y2}, {x, GRID_SIZE - 1}, {x2, GRID_SIZE - 1}, {maxX, y}, {maxX, y2}};
-                for (int[] qp : quadPts) {
-                    int qx = qp[0];
-                    int qy = qp[1];
-                    double z = pane.heightGrid[qx][qy] * 40.0;
-                    double[] p = pane.project3DPoint(qx, qy, z, cx, cy, scale, radAz, radEl);
-                    double dSq = (p[0] - mx) * (p[0] - mx) + (p[1] - my) * (p[1] - my);
-                    if (dSq < minDstSq) {
-                        minDstSq = dSq;
-                        bestX = qx;
-                        bestY = qy;
-                        bestD = 0;
-                    }
-                }
-            }
-        }
-
-        if (minDstSq < 4900.0) {
-            return new int[]{bestX, bestY, bestD};
-        }
-        return null;
+        return WorldEditorSculptingHelper.pick3DGridCell(pane, mx, my, cx, cy, scale, radAz, radEl);
     }
 
     static VBox createFloatingMouseInspectorCard(WorldEditorPane pane) {
@@ -769,72 +461,10 @@ final class WorldEditorInteractionAndInspectorHelper {
     }
 
     static void handleSculptClick(WorldEditorPane pane, double mx, double my, String viewType) {
-        if (pane.enableSculptingCheck == null || !pane.enableSculptingCheck.isSelected()) return;
-        double cw = "3D".equals(viewType) ? pane.canvas3D.getWidth() : ("SIDE".equals(viewType) ? pane.canvasSide.getWidth() : pane.canvasTop.getWidth());
-        double ch = "3D".equals(viewType) ? pane.canvas3D.getHeight() : ("SIDE".equals(viewType) ? pane.canvasSide.getHeight() : pane.canvasTop.getHeight());
-        if (cw <= 0 || ch <= 0) return;
-
-        int gx, gy;
-        if ("3D".equals(viewType)) {
-            double radAz = Math.toRadians(pane.azimuth);
-            double radEl = Math.toRadians(pane.elevation);
-            double cx = cw / 2 + pane.pan3DX;
-            double cy = ch / 2 + pane.pan3DY + 40;
-            double scale = pane.zoom * 12.0;
-            int[] picked = pick3DGridCell(pane, mx, my, cx, cy, scale, radAz, radEl);
-            if (picked != null) {
-                gx = picked[0];
-                gy = picked[1];
-            } else {
-                gx = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((mx / cw) * GRID_SIZE)));
-                gy = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((my / ch) * GRID_SIZE)));
-            }
-        } else if ("SIDE".equals(viewType)) {
-            double blockW = (cw - 20.0) / GRID_SIZE;
-            double cutRatio = pane.slicePlaneSlider != null ? (pane.slicePlaneSlider.getValue() / 100.0) : 1.0;
-            gx = Math.max(0, Math.min(GRID_SIZE - 1, (int) (GRID_SIZE * cutRatio)));
-            int yScreen = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((mx - 10.0) / blockW)));
-            gy = GRID_SIZE - 1 - yScreen;
-        } else {
-            double gridPx = Math.min(cw - 12, ch - 12) * pane.topZoom;
-            double cellW = gridPx / GRID_SIZE;
-            double cellH = gridPx / GRID_SIZE;
-            double offsetX = (cw - gridPx) / 2.0 + pane.topPanX;
-            double offsetY = (ch - gridPx) / 2.0 + pane.topPanY;
-            gx = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((mx - offsetX) / cellW)));
-            gy = (int) Math.max(0, Math.min(GRID_SIZE - 1, Math.floor((my - offsetY) / cellH)));
-        }
-        int radius = (int) pane.brushRadiusSlider.getValue();
-        double strength = pane.brushStrengthSlider.getValue() / 100.0 * 0.08;
-        String mode = pane.brushModeSelect.getValue();
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dy = -radius; dy <= radius; dy++) {
-                if (dx * dx + dy * dy <= radius * radius) {
-                    int cx = Math.max(0, Math.min(GRID_SIZE - 1, gx + dx));
-                    int cy2 = Math.max(0, Math.min(GRID_SIZE - 1, gy + dy));
-                    double falloff = 1.0 - Math.sqrt(dx * dx + dy * dy) / (double) (radius + 1);
-                    if (mode != null && (mode.contains("RAISE") || mode.contains("Raise"))) {
-                        pane.heightGrid[cx][cy2] = Math.min(1.0, pane.heightGrid[cx][cy2] + strength * falloff);
-                    } else if (mode != null && (mode.contains("LOWER") || mode.contains("Lower"))) {
-                        pane.heightGrid[cx][cy2] = Math.max(0.01, pane.heightGrid[cx][cy2] - strength * falloff);
-                    } else if (mode != null && (mode.contains("SMOOTH") || mode.contains("Smooth"))) {
-                        pane.heightGrid[cx][cy2] = TerrainProceduralGenerator.lrp(pane.heightGrid[cx][cy2], 0.5, strength * 2 * falloff);
-                    }
-                }
-            }
-        }
-        smoothSlopeStabilization(pane);
-        pane.repaintAllViews();
+        WorldEditorSculptingHelper.handleSculptClick(pane, mx, my, viewType);
     }
 
     static void smoothSlopeStabilization(WorldEditorPane pane) {
-        double maxDelta = 0.18;
-        for (int x = 1; x < GRID_SIZE - 1; x++) {
-            for (int y = 1; y < GRID_SIZE - 1; y++) {
-                double minN = Math.min(Math.min(pane.heightGrid[x - 1][y], pane.heightGrid[x + 1][y]),
-                                       Math.min(pane.heightGrid[x][y - 1], pane.heightGrid[x][y + 1]));
-                if (pane.heightGrid[x][y] - minN > maxDelta) pane.heightGrid[x][y] = minN + maxDelta;
-            }
-        }
+        WorldEditorSculptingHelper.smoothSlopeStabilization(pane);
     }
 }

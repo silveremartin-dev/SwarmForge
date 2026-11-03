@@ -206,7 +206,9 @@ class ClientMediaCaptureController {
             recordedVideoFrames.clear();
             try {
                 SimulationAudioManager.getInstance().stopAudioRecording();
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                LOG.warning("Could not stop audio recording cleanly: " + e.getMessage());
+            }
             if (btnRecVideo != null) {
                 btnRecVideo.setText(i18n.get("sidebar.btn.video"));
                 setButtonState(btnRecVideo, "media-button-neutral");

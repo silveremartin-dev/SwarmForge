@@ -9,6 +9,10 @@ import org.swarmforge.server.SwarmForgeServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * gRPC service handling remote simulation control, entity inspection, telemetry streaming,
+ * compute node clustering, and dynamic parameter interventions.
+ */
 public class SimulationServiceImpl extends SimulationServiceGrpc.SimulationServiceImplBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(SimulationServiceImpl.class);

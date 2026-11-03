@@ -528,36 +528,26 @@ public class WeatherCurvesEditorPane extends VBox {
     }
 
     private void drawSingleCurve(double[] arr, Color col, double padL, double padT, double mStep, double chartH, ParameterType param) {
-        gc.setStroke(col);
-        gc.setLineWidth(2.0);
-        gc.beginPath();
+        gc.setStroke(col); gc.setLineWidth(2.0); gc.beginPath();
         for (int m = 0; m < 12; m++) {
-            double x = padL + m * mStep;
-            double y = valToY(arr[m], param, padT, chartH);
-            if (m == 0) gc.moveTo(x, y);
-            else gc.lineTo(x, y);
+            double x = padL + m * mStep, y = valToY(arr[m], param, padT, chartH);
+            if (m == 0) gc.moveTo(x, y); else gc.lineTo(x, y);
         }
         gc.stroke();
     }
 
     private void drawHandle(double x, double y, Color color, boolean isHovered) {
-        gc.setFill(isHovered ? Color.WHITE : color);
-        gc.fillOval(x - 4, y - 4, 8, 8);
-        gc.setStroke(Color.WHITE);
-        gc.setLineWidth(1.0);
-        gc.strokeOval(x - 4, y - 4, 8, 8);
+        gc.setFill(isHovered ? Color.WHITE : color); gc.fillOval(x - 4, y - 4, 8, 8);
+        gc.setStroke(Color.WHITE); gc.setLineWidth(1.0); gc.strokeOval(x - 4, y - 4, 8, 8);
     }
 
     private double valToY(double val, ParameterType param, double padT, double chartH) {
-        double range = param.maxVal - param.minVal;
-        double clamped = Math.max(param.minVal, Math.min(param.maxVal, val));
+        double range = param.maxVal - param.minVal, clamped = Math.max(param.minVal, Math.min(param.maxVal, val));
         return padT + chartH * (1.0 - (clamped - param.minVal) / range);
     }
 
     private double yToVal(double y, ParameterType param, double padT, double chartH) {
-        double range = param.maxVal - param.minVal;
-        double norm = 1.0 - (y - padT) / chartH;
-        norm = Math.max(0.0, Math.min(1.0, norm));
+        double range = param.maxVal - param.minVal, norm = Math.max(0.0, Math.min(1.0, 1.0 - (y - padT) / chartH));
         return param.minVal + norm * range;
     }
 
@@ -571,45 +561,22 @@ public class WeatherCurvesEditorPane extends VBox {
         };
     }
 
-    private void setParamVal(ParameterType param, int curve, int month, double val) {
-        double[] arr = getArr(param, curve);
-        arr[month] = val;
-    }
-
-    public ParameterType getActiveParam() {
-        return activeParam;
-    }
+    private void setParamVal(ParameterType param, int curve, int month, double val) { getArr(param, curve)[month] = val; }
+    public ParameterType getActiveParam() { return activeParam; }
 
     public void setActiveParam(ParameterType type) {
         this.activeParam = type;
         if (paramToggleGroup != null) {
             for (javafx.scene.control.Toggle t : paramToggleGroup.getToggles()) {
-                if (t.getUserData() == type) {
-                    paramToggleGroup.selectToggle(t);
-                    break;
-                }
+                if (t.getUserData() == type) { paramToggleGroup.selectToggle(t); break; }
             }
         }
     }
 
     private static class ResizableCanvas extends Canvas {
-        public ResizableCanvas(double width, double height) {
-            super(width, height);
-        }
-
-        @Override
-        public boolean isResizable() {
-            return true;
-        }
-
-        @Override
-        public double prefWidth(double height) {
-            return getWidth();
-        }
-
-        @Override
-        public double prefHeight(double width) {
-            return getHeight();
-        }
+        public ResizableCanvas(double width, double height) { super(width, height); }
+        @Override public boolean isResizable() { return true; }
+        @Override public double prefWidth(double height) { return getWidth(); }
+        @Override public double prefHeight(double width) { return getHeight(); }
     }
 }

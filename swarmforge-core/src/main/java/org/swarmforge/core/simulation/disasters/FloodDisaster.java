@@ -11,6 +11,8 @@ import org.swarmforge.core.domain.Individual;
 import org.swarmforge.core.domain.Terrarium;
 import org.swarmforge.core.domain.TerrariumCell;
 import org.swarmforge.core.simulation.Simulation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 
@@ -19,6 +21,8 @@ import java.util.Random;
  * Submersion drowning damage scales with duration and intensity.
  */
 public class FloodDisaster implements DisasterEvent {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FloodDisaster.class);
 
     private final float intensity;
     private final int waterLevel;
@@ -74,7 +78,7 @@ public class FloodDisaster implements DisasterEvent {
 
     @Override
     public void trigger(Simulation simulation, Terrarium terrarium) {
-        System.out.println("🌊 DISASTER TRIGGER: " + getName() + " (" + getSeverity() + " | Durée: " + durationTicks + " pas)!");
+        LOG.warn("DISASTER TRIGGER: {} (Severity: {} | Duration: {} ticks)", getName(), getSeverity(), durationTicks);
         this.remainingTicks = durationTicks;
         tick(simulation, terrarium);
     }

@@ -59,6 +59,7 @@ public final class EnginePreferences {
                 selectedEngineType = SimulationEngineType.valueOf(savedEngine.toUpperCase());
             }
         } catch (Exception e) {
+            log.warn("Invalid engine backend configuration '{}', defaulting to JAVA_ECS: {}", savedEngine, e.getMessage());
             selectedEngineType = SimulationEngineType.JAVA_ECS;
         }
 
@@ -70,6 +71,7 @@ public final class EnginePreferences {
         try {
             selectedAccelerationMode = ComputeAccelerationMode.valueOf(savedAccel.toUpperCase());
         } catch (Exception e) {
+            log.warn("Invalid compute acceleration configuration '{}', defaulting to AUTO: {}", savedAccel, e.getMessage());
             selectedAccelerationMode = ComputeAccelerationMode.AUTO;
         }
 
@@ -77,7 +79,9 @@ public final class EnginePreferences {
         if (sysThreads != null && !sysThreads.isBlank()) {
             try {
                 threadCount = Math.max(1, Integer.parseInt(sysThreads.trim()));
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException e) {
+                log.warn("Invalid thread count configuration '{}', using default available processors ({})", sysThreads, threadCount);
+            }
         }
 
         log.info("EnginePreferences initialized: Backend={}, ComputeAcceleration={}, Threads={}",
@@ -120,12 +124,17 @@ public final class EnginePreferences {
                 try {
                     int t = Integer.parseInt(arg.substring("--threads=".length()));
                     setThreadCount(t);
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid command-line thread argument '{}'", arg);
+                }
             } else if ("--threads".equalsIgnoreCase(arg) && i + 1 < args.length) {
+                String threadVal = args[++i];
                 try {
-                    int t = Integer.parseInt(args[++i]);
+                    int t = Integer.parseInt(threadVal);
                     setThreadCount(t);
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid command-line thread argument value '{}'", threadVal);
+                }
             } else if ("--single-core".equalsIgnoreCase(arg) || "--monocoeur".equalsIgnoreCase(arg) || "--monocoeur".equalsIgnoreCase(arg)) {
                 setThreadCount(1);
             } else if ("--multi-core".equalsIgnoreCase(arg) || "--multicoeur".equalsIgnoreCase(arg)) {

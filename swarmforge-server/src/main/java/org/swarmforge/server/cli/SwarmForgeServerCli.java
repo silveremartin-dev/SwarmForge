@@ -290,4 +290,59 @@ public final class SwarmForgeServerCli {
                 +------------------------------------------------------+
                 """);
     }
+
+    public static void listAcademicScenarios() {
+        System.out.println("\n=== ScÃ©narios AcadÃ©miques & Scientifiques Disponibles (SwarmForge) ===");
+        var list = org.swarmforge.core.scenario.AcademicScenarios.getAllAcademicScenarios(42L);
+        for (int i = 0; i < list.size(); i++) {
+            var s = list.get(i);
+            System.out.printf(" [%2d] %-34s | %s\n      CatÃ©gorie : %s (Colonies: %d, Biome: %s)\n",
+                    (i + 1), s.getId(), s.getTitle(), s.getAcademicCategory(), s.getColonies().size(), s.getBiomeName());
+        }
+        System.out.println("=======================================================================\n");
+    }
+
+    public static void printSimulationInfo(SwarmForgeServer server) {
+        System.out.println("\n=== Multi-Simulation Info ===");
+        server.getSimulationManager().getAllSimulations().forEach((id, sim) -> {
+            System.out.println("ID: " + id);
+            System.out.println("  Tick: " + sim.getTickCount());
+            System.out.println("  State: " + sim.getState());
+            System.out.println("  Colonies: " + sim.getColonies().size());
+            int totalPop = sim.getColonies().stream().mapToInt(org.swarmforge.core.domain.Colony::getPopulation).sum();
+            System.out.println("  Population: " + totalPop);
+        });
+        System.out.println("===========================\n");
+    }
+
+    public static void listSimulations(SwarmForgeServer server) {
+        System.out.println("\n=== Available Simulations ===");
+        var database = server.getDatabaseManager();
+        if (!database.isConnected()) {
+            try {
+                database.connect();
+            } catch (Exception e) {
+                System.err.println("Cannot list simulations: Database not connected");
+                System.err.println("Hint: Start Docker with 'scripts/start-docker'");
+                return;
+            }
+        }
+        try {
+            var worlds = database.worldRepository().findAll();
+            if (worlds.isEmpty()) {
+                System.out.println("No simulations found. Use --create-demo to create one.");
+            } else {
+                System.out.println("ID                                   | Name                | Size");
+                System.out.println("-".repeat(70));
+                for (var world : worlds) {
+                    System.out.printf("%-36s | %-19s | %dx%dx%d%n",
+                            world.id(), world.name(),
+                            world.width(), world.height(), world.depth());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error listing simulations: " + e.getMessage());
+        }
+        System.out.println();
+    }
 }

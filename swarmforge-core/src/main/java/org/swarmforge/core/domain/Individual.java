@@ -19,7 +19,7 @@ import org.swarmforge.core.genetics.Genome;
  * @author Silvère Martin-Michiellot
  * @author Gemini AI Assistant
  */
-public class Individual implements java.io.Serializable, AgentView, IndividualLotsBridge, IndividualWavesBridge {
+public class Individual implements java.io.Serializable, AgentView, IndividualLotsBridge, IndividualWavesBridge, IndividualCoreTraitsBridge {
     private static final long serialVersionUID = 1L;
 
     private static final java.util.concurrent.atomic.AtomicLong INDIVIDUAL_NUMBER_GENERATOR = new java.util.concurrent.atomic.AtomicLong(1);
@@ -124,128 +124,9 @@ public class Individual implements java.io.Serializable, AgentView, IndividualLo
     public org.swarmforge.core.domain.traits.ChemicalDefenseTrait getChemicalDefenseTrait() { return chemicalDefenseTrait; }
     public org.swarmforge.core.domain.traits.CircadianClockTrait getCircadianTrait() { return circadianTrait; }
 
-    // --- CHC Profile & Nestmate Recognition ---
-    public float[] getChcProfile() { return chcTrait.getProfile(); }
-    public void setChcProfile(float[] profile) { chcTrait.setProfile(profile); }
-    public float calculateChcDissimilarity(Individual other) { return (other != null) ? chcTrait.calculateDissimilarity(other.chcTrait) : 1.0f; }
-    public boolean isNestmateRecognized(Individual other) {
-        if (other == null) return false;
-        if (this.colonyId != null && this.colonyId.equals(other.colonyId)) return true;
-        return chcTrait.isNestmateRecognized(other.chcTrait);
-    }
-    public void homogenizeChcProfile(Individual partner, float factor) { if (partner != null) chcTrait.homogenize(partner.chcTrait, factor); }
-
-    // --- Social Crop (Ingluvies / Jabot Social) ---
-    public float getSocialCropAmount() { return socialCropTrait.getAmount(); }
-    public void setSocialCropAmount(float amount) { socialCropTrait.setAmount(amount); }
-    public float getSocialCropCapacity() { return socialCropTrait.getCapacity(); }
-    public void setSocialCropCapacity(float cap) { socialCropTrait.setCapacity(cap); }
-    public ResourceType getSocialCropResourceType() { return socialCropTrait.getResourceType(); }
-    public void setSocialCropResourceType(ResourceType type) { socialCropTrait.setResourceType(type); }
-    public float fillSocialCrop(float amount, ResourceType type) { return socialCropTrait.fill(amount, type); }
-    public float regurgitateSocialCrop(float amount) { return socialCropTrait.regurgitate(amount); }
-
-    // --- Tandem Running Dynamics ---
     public enum TandemRole { NONE, LEADER, FOLLOWER }
-    public TandemRole getTandemRole() { return tandemTrait.getRole(); }
-    public void setTandemRole(TandemRole role) { tandemTrait.setRole(role); }
-    public UUID getTandemPartnerId() { return tandemTrait.getPartnerId(); }
-    public void setTandemPartnerId(UUID id) { tandemTrait.setPartnerId(id); }
-    public long getLastTandemContactTick() { return tandemTrait.getLastContactTick(); }
-    public void setLastTandemContactTick(long tick) { tandemTrait.setLastContactTick(tick); }
-    public void pairTandem(Individual partner, boolean asLeader) {
-        if (partner == null) return;
-        this.tandemTrait.pair(this.id, partner, asLeader);
-        partner.tandemTrait.pair(partner.id, this, !asLeader);
-    }
-    public void breakTandem() { tandemTrait.reset(); }
-    public boolean isTandemLeader() { return tandemTrait.isLeader(); }
-    public boolean isTandemFollower() { return tandemTrait.isFollower(); }
 
-    // --- Celestial Polarized Light & Path Integration ---
-    public float getPathIntegrationX() { return pathIntegrationTrait.getX(); }
-    public float getPathIntegrationY() { return pathIntegrationTrait.getY(); }
-    public void resetPathIntegration() { pathIntegrationTrait.reset(); }
-    public void integrateDisplacement(float dx, float dy) { pathIntegrationTrait.integrate(dx, dy); }
-    public float getPathIntegrationDistance() { return pathIntegrationTrait.getDistance(); }
-    public float getPathIntegrationReturnHeading() { return pathIntegrationTrait.getReturnHeading(); }
-
-    public boolean isNearHomeSurface(Colony colony) {
-        float hx = (colony != null) ? colony.getNestX() : getHomeX();
-        float hy = (colony != null) ? colony.getNestY() : getHomeY();
-        float dx = this.x - hx;
-        float dy = this.y - hy;
-        float distSq = dx * dx + dy * dy;
-        float surfaceZ = (colony != null && colony.getTerrarium() != null)
-                ? colony.getTerrarium().getSurfaceElevation(this.x, this.y) : getSurfaceElevation();
-        return distSq <= 9.0f && (this.z >= surfaceZ - 1.5f || Math.abs(this.z - surfaceZ) <= 1.5f);
-    }
-
-    public void depositEarthMound(Colony colony) {
-        this.carriedItem = CarriedItem.NONE;
-        if (colony != null && colony.getTerrarium() != null) {
-            Terrarium terrarium = colony.getTerrarium();
-            int ix = Math.max(0, Math.min(terrarium.getWidth() - 1, Math.round(this.x)));
-            int iy = Math.max(0, Math.min(terrarium.getHeight() - 1, Math.round(this.y)));
-            float surfZ = terrarium.getSurfaceElevation(this.x, this.y);
-            int targetZ = Math.min(terrarium.getDepth() - 1, (int) Math.floor(surfZ));
-            if (targetZ >= 0 && targetZ < terrarium.getDepth()) {
-                terrarium.setCell(TerrariumCell.earth(ix, iy, targetZ));
-            }
-        }
-    }
-
-    // --- Formic Acid Artillery Spray & Chemical Defense ---
-    public float getFormicAcidGland() { return chemicalDefenseTrait.getFormicAcidGland(); }
-    public void refillFormicAcid(float amount) { chemicalDefenseTrait.refillFormicAcid(amount); }
-    public int getChemotacticBlindnessTicks() { return chemicalDefenseTrait.getChemotacticBlindnessTicks(); }
-    public void setChemotacticBlindnessTicks(int ticks) { chemicalDefenseTrait.setChemotacticBlindnessTicks(ticks); }
-    public boolean isChemotacticallyBlind() { return chemicalDefenseTrait.isChemotacticallyBlind(); }
-    public boolean sprayFormicAcid(Individual target, float distance) { return chemicalDefenseTrait.spray(target, distance); }
-
-    // --- Endogenous Circadian Clock & Polyphasic Sleep Rhythm ---
-    public float getCircadianPhase() { return circadianTrait.getPhase(); }
-    public void setCircadianPhase(float phase) { circadianTrait.setPhase(phase); }
-    public boolean isPolyphasicSleeping() { return circadianTrait.isPolyphasicSleeping(); }
-    public void setPolyphasicSleeping(boolean sleeping) { circadianTrait.setPolyphasicSleeping(sleeping); }
-
-    // --- Ethology Delegates & Custom Behaviors ---
-    public void consumeEnergy(float amount) { this.energy = Math.max(0.0f, this.energy - amount); }
     public void setClimbingTree(boolean climbing) { this.climbingTree = climbing; }
-    public boolean consumeDefectiveEgg() { this.energy = Math.min(maxEnergy, this.energy + 8.0f); return true; }
-    public float getEffectiveLocomotionSpeed() { return getWalkingSpeed() * (lotsTrait.stiltWalking ? 1.50f : 1.0f); }
-    public boolean performFormicAcidBathGrooming() {
-        if (chemicalDefenseTrait.getFormicAcidGland() < 10.0f) return false;
-        chemicalDefenseTrait.setFormicAcidGland(chemicalDefenseTrait.getFormicAcidGland() - 10.0f);
-        return true;
-    }
-    public boolean shouldRetreatFromTerritory(UUID markerColonyId) { return (this.colonyId != null && !this.colonyId.equals(markerColonyId)); }
-    public float getCombatPainResistanceMultiplier() { return hasCombatAnestheticBuff() ? 2.2f : 1.0f; }
-    public boolean canDifferentiateNewSoldier(float currentSoldierRatio) { return currentSoldierRatio < 0.15f; }
-    public float getGeomagneticOrientationHeading(float ambientDeclinationRad) { return (float) ((ambientDeclinationRad + 2.0 * Math.PI) % (2.0 * Math.PI)); }
-    public int getSeedsDeGermedCount() { return getDeGerminatedSeedsCount(); }
-    public boolean groomLeafPulpParasites(Individual forager) { return wave1Trait.ridingOnLeafForager && forager != null; }
-    public float adjustDepletingTrailConcentration(float remainingFoodRatio) { return Math.max(0.05f, Math.min(1.0f, remainingFoodRatio)); }
-    public void whisperGuardShiftSignal() { lotsTrait.guardShiftWhispering = true; }
-    public float getTwilightUvPolarizationHeading(float sunElevationDeg) { return (float) Math.toRadians((sunElevationDeg + 90.0f) % 360.0f); }
-    public float engageDesertAntThermalTripodGait() { lotsTrait.stiltWalking = true; return getEffectiveLocomotionSpeed(); }
-    public int serializeGlobalEthologicalStateBitSet() { return 220; }
-    public float calculateLarvalFoodRequirementAge() { return (lifeStage == LifeStage.LARVA) ? (1.0f + ageInSeconds / 86400.0f) : 1.0f; }
-    public float getAntennalHydrocarbonResolution() { return 0.995f; }
-    public boolean inspectQueenChcPurity(Individual queen) { return queen != null && queen.getCaste() == Caste.QUEEN; }
-    public void regulateLarvalMetamorphosisJH(float jh) { this.juvenileHormone = Math.max(0.0f, Math.min(1.0f, jh)); }
-    public float getForagingTrailEvaporationCoefficient() { return 0.0025f; }
-    public float calculateColonyNutritionalFatReserve() { return (this.energy / this.maxEnergy) * 100.0f; }
-    public float calculateMajorBiteCrushingForce() { return (caste == Caste.SOLDIER) ? 45.0f : 8.5f; }
-    public float evaluateSubterraneanTunnelSafety() { return 1.85f; }
-    public boolean neutralizeIngestedPreyToxins(float toxinMg) { this.energy = Math.max(0.0f, this.energy - toxinMg * 0.1f); return true; }
-    public float readNestHumidityGradient() { return this.ambientHumidityPercent; }
-    public float calculateSolarAzimuthEphemeris(float hourOfDay) { return (float) Math.toRadians((hourOfDay / 24.0f) * 360.0f); }
-    public float selectBroodThermalOptimumDepth(float targetTempC) { return Math.max(0.0f, (targetTempC - 20.0f) * 0.1f); }
-    public void adjustTandemLeaderPace(boolean followerFeedback) { if (followerFeedback) tandemTrait.setLastContactTick(0); }
-    public float updateDivisionOfLaborThreshold(int taskType, float stimulus) { return Math.max(0.0f, stimulus * 0.85f); }
-    public float evaluateAphidHoneydewQuality() { return 0.95f; }
-    public boolean validateGlobalEthologyEngineConvergence() { return true; }
 
     public boolean isClimbingTree() { return climbingTree; }
     public float getTreeClimbHeight() { return treeClimbHeight; }

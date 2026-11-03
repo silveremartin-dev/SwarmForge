@@ -15,7 +15,12 @@ import java.io.File;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Headless utility for generating visual studio screenshots for documentation.
+ */
 public class GenerateRealShots {
+
+    private static final java.util.logging.Logger LOG = java.util.logging.Logger.getLogger(GenerateRealShots.class.getName());
 
     public static void main(String[] args) {
         System.out.println("=== Starting GenerateRealShots via Platform.startup ===");
@@ -79,7 +84,7 @@ public class GenerateRealShots {
                                             ImageIO.write(bImg, "png", file);
                                             System.out.println("Captured: " + file.getAbsolutePath());
                                         } catch (Exception ex) {
-                                            ex.printStackTrace();
+                                            LOG.log(java.util.logging.Level.SEVERE, "Error capturing shot: " + ex.getMessage(), ex);
                                         } finally {
                                             tabLatch.countDown();
                                         }
@@ -91,7 +96,7 @@ public class GenerateRealShots {
                             }
                             System.out.println("=== COMPLETED ALL SCREENSHOT CAPTURES ===");
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            LOG.log(java.util.logging.Level.SEVERE, "Error in screenshot process: " + e.getMessage(), e);
                         } finally {
                             Platform.exit();
                             mainLatch.countDown();
@@ -99,20 +104,20 @@ public class GenerateRealShots {
                     }).start();
 
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.log(java.util.logging.Level.SEVERE, "Error in screenshot process: " + e.getMessage(), e);
                     Platform.exit();
                     mainLatch.countDown();
                 }
             });
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.log(java.util.logging.Level.SEVERE, "Error in screenshot process: " + e.getMessage(), e);
             mainLatch.countDown();
         }
 
         try {
             mainLatch.await(60, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
         }
         System.out.println("Exiting GenerateRealShots.");
         System.exit(0);

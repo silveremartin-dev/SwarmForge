@@ -37,6 +37,8 @@ import java.util.logging.Logger;
  */
 class JmeSceneBuilderHelper {
 
+    private static final Logger LOG = Logger.getLogger(JmeSceneBuilderHelper.class.getName());
+
     private final JmeGameApp app;
 
     JmeSceneBuilderHelper(JmeGameApp app) {
@@ -411,7 +413,7 @@ class JmeSceneBuilderHelper {
                 File file = new File(recordingDir, String.format("frame_%05d.png", frameNumber));
                 ImageIO.write(image, "png", file);
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.log(Level.WARNING, "Failed to save video frame " + frameNumber + ": " + e.getMessage(), e);
             }
         }, "SwarmForge-FrameSaver-" + frameNumber);
         saveThread.setDaemon(true);

@@ -526,110 +526,52 @@ public class WorldEntityMorphologyRenderer {
             gc.fillOval(headX - pxH * (headR * 0.6) - 1.2, headY - pyH * (headR * 0.6) - 1.2, 2.4, 2.4);
 
         } else if (type == PredatorType.CATERPILLAR || type == PredatorType.LADYBUG_LARVA) {
-            // ── METAMERIC SEGMENTED LARVA (6-8 overlapping circular segments) ──
             int numSegs = 7;
             for (int s = numSegs - 1; s >= 0; s--) {
-                double segOffset = (s - numSegs / 2.0) * (r * 0.4);
-                double sX = px - cosH * segOffset;
-                double sY = py - sinH * segOffset;
+                double segOffset = (s - numSegs / 2.0) * (r * 0.4), sX = px - cosH * segOffset, sY = py - sinH * segOffset;
                 double sR = (s == 0 || s == numSegs - 1) ? r * 0.45 : r * 0.6;
-
-                gc.setFill(s % 2 == 0 ? bodyColor : bodyColor.brighter());
-                gc.fillOval(sX - sR, sY - sR, sR * 2, sR * 2);
-                gc.setStroke(Color.web("#1e293b"));
-                gc.setLineWidth(1.0);
-                gc.strokeOval(sX - sR, sY - sR, sR * 2, sR * 2);
-
-                // Bristles/Dots on segments
+                gc.setFill(s % 2 == 0 ? bodyColor : bodyColor.brighter()); gc.fillOval(sX - sR, sY - sR, sR * 2, sR * 2);
+                gc.setStroke(Color.web("#1e293b")); gc.setLineWidth(1.0); gc.strokeOval(sX - sR, sY - sR, sR * 2, sR * 2);
                 gc.setFill(Color.web("#0f172a"));
                 gc.fillOval(sX + pxH * (sR * 0.6) - 1.0, sY + pyH * (sR * 0.6) - 1.0, 2.0, 2.0);
                 gc.fillOval(sX - pxH * (sR * 0.6) - 1.0, sY - pyH * (sR * 0.6) - 1.0, 2.0, 2.0);
             }
-            // Head capsule
-            double headX = px + cosH * (r * 1.3);
-            double headY = py + sinH * (r * 1.3);
-            gc.setFill(Color.web("#18181b"));
-            gc.fillOval(headX - r * 0.4, headY - r * 0.4, r * 0.8, r * 0.8);
-
+            double headX = px + cosH * (r * 1.3), headY = py + sinH * (r * 1.3);
+            gc.setFill(Color.web("#18181b")); gc.fillOval(headX - r * 0.4, headY - r * 0.4, r * 0.8, r * 0.8);
         } else if (type == PredatorType.ANTLION) {
-            // ── ANTLION (Flattened Sand-Pit Ambush Body with Massive Falcate Jaws) ──
-            gc.setFill(bodyColor);
-            gc.fillOval(px - r * 1.1, py - r * 0.9, r * 2.2, r * 1.8);
-            gc.setStroke(Color.web("#451a03"));
-            gc.setLineWidth(1.2);
-            gc.strokeOval(px - r * 1.1, py - r * 0.9, r * 2.2, r * 1.8);
-
-            // 2. Broad Flat Head
-            double headX = px + cosH * (r * 0.85);
-            double headY = py + sinH * (r * 0.85);
-            double headR = r * 0.6;
-            gc.setFill(bodyColor.darker());
-            gc.fillOval(headX - headR, headY - headR * 0.8, headR * 2, headR * 1.6);
-
-            // 3. Huge Curved Falciform Mandibles
-            gc.setStroke(Color.web("#78350f"));
-            gc.setLineWidth(Math.max(1.8, r * 0.3));
+            gc.setFill(bodyColor); gc.fillOval(px - r * 1.1, py - r * 0.9, r * 2.2, r * 1.8);
+            gc.setStroke(Color.web("#451a03")); gc.setLineWidth(1.2); gc.strokeOval(px - r * 1.1, py - r * 0.9, r * 2.2, r * 1.8);
+            double headX = px + cosH * (r * 0.85), headY = py + sinH * (r * 0.85), headR = r * 0.6;
+            gc.setFill(bodyColor.darker()); gc.fillOval(headX - headR, headY - headR * 0.8, headR * 2, headR * 1.6);
+            gc.setStroke(Color.web("#78350f")); gc.setLineWidth(Math.max(1.8, r * 0.3));
             for (int side : new int[]{1, -1}) {
-                double mRootX = headX + cosH * (headR * 0.8) + pxH * (headR * 0.5 * side);
-                double mRootY = headY + sinH * (headR * 0.8) + pyH * (headR * 0.5 * side);
-                double mMidX = mRootX + cosH * (r * 0.9) + pxH * (r * 0.6 * side);
-                double mMidY = mRootY + sinH * (r * 0.9) + pyH * (r * 0.6 * side);
-                double mTipX = mMidX + cosH * (r * 0.5) - pxH * (r * 0.4 * side);
-                double mTipY = mMidY + sinH * (r * 0.5) - pyH * (r * 0.4 * side);
-                gc.strokeLine(mRootX, mRootY, mMidX, mMidY);
-                gc.strokeLine(mMidX, mMidY, mTipX, mTipY);
+                double mRootX = headX + cosH * (headR * 0.8) + pxH * (headR * 0.5 * side), mRootY = headY + sinH * (headR * 0.8) + pyH * (headR * 0.5 * side);
+                double mMidX = mRootX + cosH * (r * 0.9) + pxH * (r * 0.6 * side), mMidY = mRootY + sinH * (r * 0.9) + pyH * (r * 0.6 * side);
+                double mTipX = mMidX + cosH * (r * 0.5) - pxH * (r * 0.4 * side), mTipY = mMidY + sinH * (r * 0.5) - pyH * (r * 0.4 * side);
+                gc.strokeLine(mRootX, mRootY, mMidX, mMidY); gc.strokeLine(mMidX, mMidY, mTipX, mTipY);
             }
-
         } else {
-            // ── SCLEROTIZED BEETLE / DEFAULT HARD SHELL ──
-            gc.setStroke(Color.web("#0f172a"));
-            gc.setLineWidth(Math.max(1.0, r * 0.2));
+            gc.setStroke(Color.web("#0f172a")); gc.setLineWidth(Math.max(1.0, r * 0.2));
             for (int i = 0; i < 3; i++) {
-                double off = (i - 1) * (r * 0.6);
-                double lRootX = px + cosH * off;
-                double lRootY = py + sinH * off;
+                double off = (i - 1) * (r * 0.6), lRootX = px + cosH * off, lRootY = py + sinH * off;
                 for (int side : new int[]{1, -1}) {
-                    double kneeX = lRootX + pxH * (r * 1.2 * side);
-                    double kneeY = lRootY + pyH * (r * 1.2 * side);
+                    double kneeX = lRootX + pxH * (r * 1.2 * side), kneeY = lRootY + pyH * (r * 1.2 * side);
                     double tipX = kneeX + pxH * (r * 0.6 * side) + cosH * (i == 0 ? r * 0.4 : -r * 0.4);
                     double tipY = kneeY + pyH * (r * 0.6 * side) + sinH * (i == 0 ? r * 0.4 : -r * 0.4);
-                    gc.strokeLine(lRootX, lRootY, kneeX, kneeY);
-                    gc.strokeLine(kneeX, kneeY, tipX, tipY);
+                    gc.strokeLine(lRootX, lRootY, kneeX, kneeY); gc.strokeLine(kneeX, kneeY, tipX, tipY);
                 }
             }
-
-            // 2. Elytra (Wing Cases)
-            gc.setFill(bodyColor);
-            gc.fillOval(px - r * 0.9, py - r * 0.75, r * 1.8, r * 1.5);
-            gc.setStroke(Color.web("#022c22"));
-            gc.setLineWidth(1.2);
-            gc.strokeOval(px - r * 0.9, py - r * 0.75, r * 1.8, r * 1.5);
-
-            // Elytra median suture
-            gc.setStroke(Color.web("#022c22"));
-            gc.setLineWidth(1.0);
-            gc.strokeLine(px - cosH * (r * 0.9), py - sinH * (r * 0.9), px + cosH * (r * 0.4), py + sinH * (r * 0.4));
-
-            // Pronotum & Head
-            double headX = px + cosH * (r * 0.85);
-            double headY = py + sinH * (r * 0.85);
-            double headR = r * 0.45;
-            gc.setFill(bodyColor.darker());
-            gc.fillOval(headX - headR, headY - headR, headR * 2, headR * 2);
-
-            // Eyes
+            gc.setFill(bodyColor); gc.fillOval(px - r * 0.9, py - r * 0.75, r * 1.8, r * 1.5);
+            gc.setStroke(Color.web("#022c22")); gc.setLineWidth(1.2); gc.strokeOval(px - r * 0.9, py - r * 0.75, r * 1.8, r * 1.5);
+            gc.setLineWidth(1.0); gc.strokeLine(px - cosH * (r * 0.9), py - sinH * (r * 0.9), px + cosH * (r * 0.4), py + sinH * (r * 0.4));
+            double headX = px + cosH * (r * 0.85), headY = py + sinH * (r * 0.85), headR = r * 0.45;
+            gc.setFill(bodyColor.darker()); gc.fillOval(headX - headR, headY - headR, headR * 2, headR * 2);
             gc.setFill(Color.web("#09090b"));
             gc.fillOval(headX + pxH * (headR * 0.5) - 1.2, headY + pyH * (headR * 0.5) - 1.2, 2.4, 2.4);
             gc.fillOval(headX - pxH * (headR * 0.5) - 1.2, headY - pyH * (headR * 0.5) - 1.2, 2.4, 2.4);
         }
-
-        // ── Health Bar Indicator above entity ──
-        double barW = Math.max(16.0, r * 2.2);
-        double barH = 3.5;
-        double barX = px - barW / 2.0;
-        double barY = py - r - 7.0;
-        gc.setFill(Color.web("rgba(15, 23, 42, 0.85)"));
-        gc.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+        double barW = Math.max(16.0, r * 2.2), barH = 3.5, barX = px - barW / 2.0, barY = py - r - 7.0;
+        gc.setFill(Color.web("rgba(15, 23, 42, 0.85)")); gc.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
         gc.setFill(healthPct > 0.5 ? Color.web("#22c55e") : (healthPct > 0.25 ? Color.web("#f59e0b") : Color.web("#ef4444")));
         gc.fillRect(barX, barY, barW * Math.max(0.0, Math.min(1.0, healthPct)), barH);
     }
