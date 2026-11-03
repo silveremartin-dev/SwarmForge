@@ -139,7 +139,7 @@ SwarmForge achieves industry-leading simulation throughput via its zero-allocati
 
 For end-users, researchers, and quick exploration, download the fully bundled standalone application:
 
-1. Download **[SwarmForge-v1.0.0-beta.1-Windows-x64-Standalone.zip](https://github.com/swarmforge/swarmforge/releases)** from the latest release.
+1. Download **[SwarmForge-v1.0.0-beta.1-Windows-x64-Standalone.zip](https://github.com/silveremartin-dev/SwarmForge/releases/download/1.0.0-beta.1/SwarmForge-v1.0.0-beta.1-Windows-x64-Standalone.zip)** from the latest release.
 2. Extract the archive to any folder.
 3. Launch `SwarmForge.exe` (or run `Install-Shortcuts.bat` to create Desktop and Start Menu shortcuts).
 
@@ -149,7 +149,7 @@ For end-users, researchers, and quick exploration, download the fully bundled st
 
 For server deployments, cloud VMs (GCP, AWS, Azure), Docker, or Kubernetes clusters:
 
-1. Download **[SwarmForge-v1.0.0-beta.1-Server-CrossPlatform.zip](https://github.com/swarmforge/swarmforge/releases)** from the latest release.
+1. Download **[SwarmForge-v1.0.0-beta.1-Server-CrossPlatform.zip](https://github.com/silveremartin-dev/SwarmForge/releases/download/1.0.0-beta.1/SwarmForge-v1.0.0-beta.1-Server-CrossPlatform.zip)** from the latest release.
 2. Extract and run:
    - **Linux / macOS**: `chmod +x run-server.sh && ./run-server.sh`
    - **Windows**: `run-server.bat`
