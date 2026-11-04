@@ -286,6 +286,7 @@ public final class WorldEditorPresetIoHelper {
                     double alt = cfg.containsKey("elevation") ? Double.parseDouble(String.valueOf(cfg.get("elevation"))) : 0.0;
                     pane.applyBioclimaticAdaptation(lat, lon, alt);
                     if (pane.geoStatusLabel != null) {
+                        pane.geoStatusLabel.textProperty().unbind();
                         String cName = pane.cityNameField != null ? pane.cityNameField.getText() : "Serengeti, TZ";
                         pane.geoStatusLabel.setText("🟢 " + cName + " (Lat: " + String.format(Locale.US, "%.4f", lat)
                                 + "°, Lon: " + String.format(Locale.US, "%.4f", lon)

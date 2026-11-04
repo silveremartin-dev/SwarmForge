@@ -42,6 +42,7 @@ public class Simulation {
     private final org.swarmforge.core.gpu.SparsePheromoneGrid pheromoneGrid;
     private final org.swarmforge.core.ecology.WaterGrid waterGrid;
     private final CopyOnWriteArrayList<Colony> colonies;
+    private final List<Colony> unmodifiableColonies;
     private final AtomicLong tickCount;
     private final AtomicReference<State> state;
 
@@ -92,6 +93,7 @@ public class Simulation {
 
     private final org.swarmforge.core.spatial.SpatialPartition<Individual> spatialIndex;
     private final CopyOnWriteArrayList<FoodSource> foodSources;
+    private final List<FoodSource> unmodifiableFoodSources;
     private final org.swarmforge.core.spatial.SpatialPartition<FoodSource> foodIndex;
     private final org.swarmforge.core.world.WeatherSystem weather;
     private final org.swarmforge.core.world.SoilHydricCoupling soilHydricCoupling;
@@ -169,7 +171,9 @@ public class Simulation {
         this.foodIndex = new org.swarmforge.core.spatial.SpatialHashMap<>(cellSize);
 
         this.foodSources = new CopyOnWriteArrayList<>();
+        this.unmodifiableFoodSources = java.util.Collections.unmodifiableList(this.foodSources);
         this.colonies = new CopyOnWriteArrayList<>();
+        this.unmodifiableColonies = java.util.Collections.unmodifiableList(this.colonies);
         this.tickCount = new AtomicLong(0);
         this.tickDurationNanos = 1_000_000_000L / ticksPerSecond;
 
@@ -392,7 +396,8 @@ public class Simulation {
     public SymbiosisSystem getSymbiosisSystem() { return symbiosisSystem; }
     public Terrarium getTerrarium() { return terrarium; }
     public org.swarmforge.core.spatial.SpatialPartition<Individual> getSpatialIndex() { return spatialIndex; }
-    public List<Colony> getColonies() { return List.copyOf(colonies); }
+    public List<Colony> getColonies() { return unmodifiableColonies; }
+    List<Colony> getMutableColonies() { return colonies; }
 
     public Colony getColony(java.util.UUID id) {
         for (Colony c : colonies) {
@@ -406,7 +411,8 @@ public class Simulation {
     public void spawnFood(float x, float y, float z, float quantity, org.swarmforge.core.domain.ResourceType type) { foodSources.add(new FoodSource(x, y, z, quantity, type)); }
     public void addFoodSource(FoodSource foodSource) { foodSources.add(foodSource); }
     public org.swarmforge.core.spatial.SpatialPartition<FoodSource> getFoodIndex() { return foodIndex; }
-    public List<FoodSource> getFoodSources() { return List.copyOf(foodSources); }
+    public List<FoodSource> getFoodSources() { return unmodifiableFoodSources; }
+    List<FoodSource> getMutableFoodSources() { return foodSources; }
     public org.swarmforge.core.spatial.AStarPathfinder getPathfinder() { return pathfinder; }
 
     public float[] getFlowVector(float x, float y, float z, int targetX, int targetY, int targetZ) {

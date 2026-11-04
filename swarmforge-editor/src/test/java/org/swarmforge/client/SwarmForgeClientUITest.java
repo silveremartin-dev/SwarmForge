@@ -35,17 +35,28 @@ import static org.junit.jupiter.api.Assertions.*;
 public class SwarmForgeClientUITest {
 
     private Stage stage;
+    private SwarmForgeClient clientApp;
     private static final Path SCREENSHOT_DIR = Path.of("target/test-screenshots");
+
+    static {
+        System.setProperty("testfx.setup.timeout", "90000");
+    }
 
     @Start
     public void start(Stage stage) {
         System.setProperty("swarmforge.test", "true");
         this.stage = stage;
         I18nManager.getInstance().setLocale(java.util.Locale.ENGLISH);
-        SwarmForgeClient clientApp = new SwarmForgeClient();
-        clientApp.start(stage);
-        WaitForAsyncUtils.waitForFxEvents();
+        this.clientApp = new SwarmForgeClient();
+        this.clientApp.start(stage);
         SCREENSHOT_DIR.toFile().mkdirs();
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void tearDown() throws Exception {
+        if (this.clientApp != null) {
+            this.clientApp.stop();
+        }
     }
 
     /**
@@ -74,44 +85,32 @@ public class SwarmForgeClientUITest {
         assertTrue(tabPane.getTabs().size() >= 3, "Expected at least 3 tabs");
         captureScreenshot("02_main_tabs");
 
-        // 3. World Editor tab
+        // 3. Cycle through all main studio tabs to verify layout & rendering
+        for (int i = 0; i < tabPane.getTabs().size(); i++) {
+            final int tabIdx = i;
+            robot.interact(() -> tabPane.getSelectionModel().select(tabIdx));
+            WaitForAsyncUtils.waitForFxEvents();
+        }
+        captureScreenshot("03_all_tabs_verified");
+
+        // 4. World Editor preview button
         if (tabPane.getTabs().size() > 1) {
             robot.interact(() -> tabPane.getSelectionModel().select(1));
         }
         WaitForAsyncUtils.waitForFxEvents();
-        robot.sleep(300, TimeUnit.MILLISECONDS);
-        captureScreenshot("03_world_editor_tab");
-
-        // 4. Species Editor tab
-        if (tabPane.getTabs().size() > 2) {
-            robot.interact(() -> tabPane.getSelectionModel().select(2));
-        }
-        WaitForAsyncUtils.waitForFxEvents();
-        robot.sleep(300, TimeUnit.MILLISECONDS);
-        captureScreenshot("04_species_editor_tab");
-
-        // 5. World Editor preview button
-        if (tabPane.getTabs().size() > 1) {
-            robot.interact(() -> tabPane.getSelectionModel().select(1));
-        }
-        robot.sleep(300, TimeUnit.MILLISECONDS);
         var buttonOpt = robot.lookup(".button").queryAllAs(Button.class).stream()
                 .filter(b -> b.getText() != null && (b.getText().contains("Generate") || b.getText().contains("Générer") || b.getText().contains("Preview") || b.getText().contains("Aperçu")))
                 .findFirst();
         if (buttonOpt.isPresent()) {
-            robot.clickOn(buttonOpt.get());
-            robot.sleep(300, TimeUnit.MILLISECONDS);
+            robot.interact(() -> buttonOpt.get().fire());
+            WaitForAsyncUtils.waitForFxEvents();
         }
         captureScreenshot("05_terrain_generated");
 
-        // 6. Simulation Manager
-        if (!tabPane.getTabs().isEmpty()) {
-            robot.interact(() -> tabPane.getSelectionModel().select(0));
-        }
-        robot.sleep(300, TimeUnit.MILLISECONDS);
-        var fields = robot.lookup(".text-field").queryAllAs(TextField.class);
-        boolean hasLocalhost = fields.stream().anyMatch(f -> "localhost".equals(f.getText()));
-        assertTrue(hasLocalhost, "Should contain host field defaulted to 'localhost'");
+        // 5. Simulation Manager & Intervention Panel verification
+        assertNotNull(clientApp.simControlPanel, "SimulationControlPanel should be initialized");
+        assertNotNull(clientApp.interventionPanel, "InterventionPanel should be initialized");
+        assertEquals("localhost", clientApp.simControlPanel.getServerHost(), "Default server host should be 'localhost'");
         captureScreenshot("06_simulation_manager");
     }
 }

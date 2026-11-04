@@ -29,8 +29,8 @@ for arg in "$@"; do
     esac
 done
 
-echo "[1/2] Compiling SwarmForge Core & Compute Node..."
-mvn compile -pl swarmforge-compute -am -q
+echo "[1/2] Compiling and installing SwarmForge Core & Compute Node..."
+mvn install -pl swarmforge-compute -am -DskipTests -q
 if [ $? -ne 0 ]; then
     echo "ERROR: Compilation failed."
     exit 1

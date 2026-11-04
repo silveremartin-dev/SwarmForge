@@ -42,8 +42,38 @@ if "%~1"=="--headless" (
     shift
     goto parse_args
 )
+if "%~1"=="--batch" (
+    set "USE_GUI=false"
+    set "PASSED_ARGS=%PASSED_ARGS% --batch"
+    shift
+    goto parse_args
+)
+if "%~1"=="--help" (
+    set "USE_GUI=false"
+    set "PASSED_ARGS=%PASSED_ARGS% --help"
+    shift
+    goto parse_args
+)
+if "%~1"=="-h" (
+    set "USE_GUI=false"
+    set "PASSED_ARGS=%PASSED_ARGS% -h"
+    shift
+    goto parse_args
+)
+if "%~1"=="--list" (
+    set "USE_GUI=false"
+    set "PASSED_ARGS=%PASSED_ARGS% --list"
+    shift
+    goto parse_args
+)
+if "%~1"=="--list-scenarios" (
+    set "USE_GUI=false"
+    set "PASSED_ARGS=%PASSED_ARGS% --list-scenarios"
+    shift
+    goto parse_args
+)
 if "%~1"=="--debug" (
-    echo [INFO] Debug mode active (agent JDWP sur le port 5005)
+    echo [INFO] Debug mode active ^(agent JDWP sur le port 5005^)
     set "DEBUG_OPT=-Dexec.jvmArgs=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
     shift
     goto parse_args
@@ -54,14 +84,14 @@ goto parse_args
 
 :run_server
 if "%START_DOCKER%"=="true" (
-    echo [1/3] Demarrage de l'infrastructure Docker (Postgres ^& Redis)...
+    echo [1/3] Demarrage de l'infrastructure Docker ^(Postgres ^& Redis^)...
     docker compose up -d postgres redis 2>nul || docker-compose up -d postgres redis 2>nul || echo [AVERTISSEMENT] Echec de tentative de demarrage Docker.
 ) else (
-    echo [1/3] Mode Autonome Local (H2 Database en memoire actif)...
+    echo [1/3] Mode Autonome Local ^(H2 Database en memoire actif^)...
 )
 
-echo [2/3] Compilation du Serveur SwarmForge...
-call mvn compile -pl swarmforge-server -am -q
+echo [2/3] Compilation et installation des modules Core ^& Serveur...
+call mvn install -pl swarmforge-server -am -DskipTests -q
 if errorlevel 1 (
     echo [ERREUR] Echec de la compilation du Serveur.
     pause
@@ -69,10 +99,10 @@ if errorlevel 1 (
 )
 
 if "%USE_GUI%"=="true" (
-    echo [3/3] Lancement du Serveur SwarmForge avec Console Graphique (GUI)...
+    echo [3/3] Lancement du Serveur SwarmForge avec Console Graphique ^(GUI^)...
     call mvn exec:java -pl swarmforge-server -q %DEBUG_OPT% "-Dexec.mainClass=org.swarmforge.server.ServerGuiLauncher" -Dexec.args="%PASSED_ARGS%"
 ) else (
-    echo [3/3] Lancement du Serveur SwarmForge en mode Console (Headless / No-GUI)...
+    echo [3/3] Lancement du Serveur SwarmForge en mode Console ^(Headless / No-GUI^)...
     call mvn exec:java -pl swarmforge-server -q %DEBUG_OPT% "-Dexec.mainClass=org.swarmforge.server.SwarmForgeServer" -Dexec.args="%PASSED_ARGS%"
 )
 

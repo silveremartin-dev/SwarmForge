@@ -5,12 +5,16 @@ REM ============================================================================
 
 cd /d "%~dp0..\.."
 
-echo [INFO] Arret de la stack Docker Compose (PostgreSQL ^& Redis)...
-docker compose down
-
+where docker >nul 2>&1
 if errorlevel 1 (
-    echo [ERREUR] Impossible d'arreter les conteneurs Docker.
-    exit /b 1
+    where docker-compose >nul 2>&1
+    if errorlevel 1 (
+        echo [INFO] Docker non installe. Aucun conteneur actif a arreter.
+        exit /b 0
+    )
 )
 
-echo [OK] Conteneurs Docker arretes avec succes.
+echo [INFO] Arret de la stack Docker Compose (PostgreSQL ^& Redis)...
+docker compose down 2>nul || docker-compose down 2>nul
+
+echo [OK] Arret Docker termine.

@@ -182,8 +182,8 @@ public class SplashScreen {
         progressBar.setPrefHeight(8);
         progressBar.setStyle("-fx-accent: #0ea5e9; -fx-control-inner-background: rgba(15, 23, 42, 0.85);");
 
-        // 5. Footer Metadata (v1.0.0-beta.2)
-        String footerText = i18n.get("splash.footer", "v1.0.0-beta.2 • Silvère Martin-Michiellot & Gemini AI (Google DeepMind)");
+        // 5. Footer Metadata (v1.0.0-beta.3)
+        String footerText = i18n.get("splash.footer", "v1.0.0-beta.3 • Silvère Martin-Michiellot & Gemini AI (Google DeepMind)");
         Label footerLabel = new Label(footerText);
         footerLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
 

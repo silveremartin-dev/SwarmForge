@@ -34,6 +34,7 @@ public class IconUtils {
     public static final String APP_USER_MODEL_ID = "SwarmForge.SimulationStudio.App";
 
     private static final List<Image> CACHED_ICONS = new ArrayList<>();
+    private static final List<Logger> PINNED_JME_LOGGERS = new ArrayList<>();
     private static boolean taskbarIconSet = false;
     private static boolean appUserModelIdSet = false;
     private static File cachedIcoFile = null;
@@ -48,17 +49,25 @@ public class IconUtils {
             System.setProperty("com.jme3.BufferAllocatorImplementation", "org.swarmforge.client.util.SafeBufferAllocator");
             System.setProperty("com.jme3.lwjgl3.ConcurrentBufferAllocator", "false");
 
-            java.util.logging.Logger.getLogger("com.jme3.scene.plugins.OBJLoader").setLevel(java.util.logging.Level.SEVERE);
-            java.util.logging.Logger.getLogger("com.jme3.scene.plugins.MTLLoader").setLevel(java.util.logging.Level.SEVERE);
-            java.util.logging.Logger.getLogger("com.jme3.material.Material").setLevel(java.util.logging.Level.SEVERE);
-            java.util.logging.Logger.getLogger("com.jme3.scene.plugins").setLevel(java.util.logging.Level.SEVERE);
-            java.util.logging.Logger tbLogger = java.util.logging.Logger.getLogger("com.jme3.util.TangentBinormalGenerator");
-            tbLogger.setLevel(java.util.logging.Level.OFF);
-            tbLogger.setUseParentHandlers(false);
-            java.util.logging.Logger.getLogger("com.jme3.util.BufferAllocatorFactory").setLevel(java.util.logging.Level.SEVERE);
-            java.util.logging.Logger.getLogger("com.jme3.system.lwjgl.LwjglContext").setLevel(java.util.logging.Level.WARNING);
+            if (PINNED_JME_LOGGERS.isEmpty()) {
+                pinLoggerLevel("com.jme3.scene.plugins.OBJLoader", java.util.logging.Level.SEVERE);
+                pinLoggerLevel("com.jme3.scene.plugins.MTLLoader", java.util.logging.Level.SEVERE);
+                pinLoggerLevel("com.jme3.material.Material", java.util.logging.Level.SEVERE);
+                pinLoggerLevel("com.jme3.scene.plugins", java.util.logging.Level.SEVERE);
+                Logger tbLogger = pinLoggerLevel("com.jme3.util.TangentBinormalGenerator", java.util.logging.Level.OFF);
+                tbLogger.setUseParentHandlers(false);
+                pinLoggerLevel("com.jme3.util.BufferAllocatorFactory", java.util.logging.Level.SEVERE);
+                pinLoggerLevel("com.jme3.system.lwjgl.LwjglContext", java.util.logging.Level.WARNING);
+            }
         } catch (Throwable ignored) {
         }
+    }
+
+    private static Logger pinLoggerLevel(String name, java.util.logging.Level level) {
+        Logger logger = java.util.logging.Logger.getLogger(name);
+        logger.setLevel(level);
+        PINNED_JME_LOGGERS.add(logger);
+        return logger;
     }
 
     /**

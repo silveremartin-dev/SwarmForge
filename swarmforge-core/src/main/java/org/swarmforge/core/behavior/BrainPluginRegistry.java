@@ -71,7 +71,7 @@ public final class BrainPluginRegistry {
                 BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
-                "1.0.0-beta.2",
+                "1.0.0-beta.3",
                 Map.of("category", "Classical AI", "deterministic", "true"),
                 BehaviorTreeArchitecture::new
         ));
@@ -83,7 +83,7 @@ public final class BrainPluginRegistry {
                 BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
-                "1.0.0-beta.2",
+                "1.0.0-beta.3",
                 Map.of("category", "Classical AI", "deterministic", "true"),
                 FSMArchitecture::new
         ));
@@ -95,7 +95,7 @@ public final class BrainPluginRegistry {
                 BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
-                "1.0.0-beta.2",
+                "1.0.0-beta.3",
                 Map.of("category", "Cognitive Agent", "deterministic", "true"),
                 BDIArchitecture::new
         ));
@@ -107,7 +107,7 @@ public final class BrainPluginRegistry {
                 BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
-                "1.0.0-beta.2",
+                "1.0.0-beta.3",
                 Map.of("category", "Soft Computing", "deterministic", "true"),
                 FuzzyLogicArchitecture::new
         ));
@@ -119,7 +119,7 @@ public final class BrainPluginRegistry {
                 BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
-                "1.0.0-beta.2",
+                "1.0.0-beta.3",
                 Map.of("category", "Distributed AI", "deterministic", "true"),
                 FSMArchitecture::new
         ));
@@ -131,7 +131,7 @@ public final class BrainPluginRegistry {
                 BrainDescriptor.BrainSourceType.BUILTIN,
                 "",
                 "SwarmForge Core Team",
-                "1.0.0-beta.2",
+                "1.0.0-beta.3",
                 Map.of("category", "Hybrid AI", "deterministic", "false"),
                 org.swarmforge.core.behavior.rl.RLArchitecture::new
         ));

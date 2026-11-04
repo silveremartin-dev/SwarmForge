@@ -16,15 +16,15 @@ echo.
 echo Test de connectivite des ports :
 powershell -Command "Test-NetConnection -ComputerName localhost -Port 5432 -InformationLevel Quiet" >nul 2>nul
 if errorlevel 1 (
-    echo  • PostgreSQL (port 5432) : [INACTIF]
+    echo  - PostgreSQL ^(port 5432^) : [INACTIF]
 ) else (
-    echo  • PostgreSQL (port 5432) : [ACTIF / JOIGNABLE]
+    echo  - PostgreSQL ^(port 5432^) : [ACTIF / JOIGNABLE]
 )
 
 powershell -Command "Test-NetConnection -ComputerName localhost -Port 6379 -InformationLevel Quiet" >nul 2>nul
 if errorlevel 1 (
-    echo  • Redis      (port 6379) : [INACTIF]
+    echo  - Redis      ^(port 6379^) : [INACTIF]
 ) else (
-    echo  • Redis      (port 6379) : [ACTIF / JOIGNABLE]
+    echo  - Redis      ^(port 6379^) : [ACTIF / JOIGNABLE]
 )
 echo.

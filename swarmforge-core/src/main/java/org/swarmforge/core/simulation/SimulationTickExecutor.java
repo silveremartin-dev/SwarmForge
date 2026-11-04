@@ -47,7 +47,7 @@ final class SimulationTickExecutor {
 
         // Rebuild food index and process depleted sources
         entityUpdater.updateFoodSources(
-                sim.getFoodSources(),
+                sim.getMutableFoodSources(),
                 sim.getFoodIndex(),
                 currentTick,
                 accumulatedSimulationSeconds,

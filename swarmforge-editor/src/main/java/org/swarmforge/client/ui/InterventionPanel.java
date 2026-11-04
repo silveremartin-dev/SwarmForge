@@ -103,7 +103,7 @@ public class InterventionPanel extends BorderPane {
     }
 
     private final javafx.collections.ObservableList<ScheduledEvent> scheduledEventsList = javafx.collections.FXCollections.observableArrayList();
-    private ListView<ScheduledEvent> scheduledEventsListView;
+    private final ListView<ScheduledEvent> scheduledEventsListView = new ListView<>(scheduledEventsList);
 
     public InterventionPanel() {
         setPadding(new Insets(15));

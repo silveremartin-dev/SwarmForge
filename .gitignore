@@ -13,6 +13,7 @@
 **/dist/
 **/dist-app/
 **/build/
+!scripts/build/
 **/bin/
 **/dependency-reduced-pom.xml
 dependency-reduced-pom.xml

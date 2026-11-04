@@ -10,7 +10,13 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.StatusRuntimeException;
+import io.grpc.netty.shaded.io.grpc.netty.GrpcSslContexts;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
+import io.grpc.netty.shaded.io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.grpc.stub.StreamObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.swarmforge.protocol.grpc.ComputeServiceGrpc;
 import org.swarmforge.protocol.grpc.SimulationServiceGrpc;
 import org.swarmforge.protocol.grpc.*;
@@ -21,8 +27,7 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * SwarmForge Compute Node - Distributed Worker
@@ -31,7 +36,7 @@ import java.util.logging.Logger;
  */
 public class ComputeNodeApp {
 
-    private static final Logger LOG = Logger.getLogger(ComputeNodeApp.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(ComputeNodeApp.class);
 
     private final String nodeId;
     private final String serverHost;
@@ -45,7 +50,8 @@ public class ComputeNodeApp {
     private SimulationServiceGrpc.SimulationServiceBlockingStub stub;
 
     private ScheduledExecutorService heartbeatExecutor;
-    private boolean registered = false;
+    private volatile boolean registered = false;
+    private final AtomicInteger consecutiveConnectFailures = new AtomicInteger(0);
 
     public ComputeNodeApp(String serverHost, int serverPort, int myPort, int workerThreads, boolean gpuEnabled) {
         this.nodeId = "node-" + UUID.randomUUID().toString().substring(0, 8);
@@ -85,16 +91,44 @@ public class ComputeNodeApp {
         server.awaitTermination();
     }
 
-    void connectToServer() {
-        channel = ManagedChannelBuilder.forAddress(serverHost, serverPort)
-                .usePlaintext()
-                .maxInboundMessageSize(16 * 1024 * 1024)
-                .build();
+    synchronized void connectToServer() {
+        if (channel != null && !channel.isShutdown()) {
+            channel.shutdownNow();
+        }
+        if ("true".equalsIgnoreCase(System.getenv("ENABLE_TLS"))) {
+            try {
+                channel = NettyChannelBuilder.forAddress(serverHost, serverPort)
+                        .sslContext(GrpcSslContexts.forClient()
+                                .trustManager(InsecureTrustManagerFactory.INSTANCE)
+                                .build())
+                        .maxInboundMessageSize(16 * 1024 * 1024)
+                        .build();
+            } catch (Exception e) {
+                LOG.warn("Failed to configure TLS client channel, falling back to plaintext: {}", e.getMessage());
+                channel = ManagedChannelBuilder.forAddress(serverHost, serverPort)
+                        .usePlaintext()
+                        .maxInboundMessageSize(16 * 1024 * 1024)
+                        .build();
+            }
+        } else {
+            channel = ManagedChannelBuilder.forAddress(serverHost, serverPort)
+                    .usePlaintext()
+                    .maxInboundMessageSize(16 * 1024 * 1024)
+                    .build();
+        }
         stub = SimulationServiceGrpc.newBlockingStub(channel).withCompression("gzip");
     }
 
     void registerWithServer() {
-        LOG.info("Registering with server...");
+        if (channel == null || channel.isShutdown() || channel.isTerminated()) {
+            connectToServer();
+        } else {
+            channel.resetConnectBackoff();
+        }
+        int failures = consecutiveConnectFailures.get();
+        if (failures == 0) {
+            LOG.info("Registering with server at {}:{}...", serverHost, serverPort);
+        }
         try {
             String hostIp = "127.0.0.1";
             try {
@@ -102,7 +136,7 @@ public class ComputeNodeApp {
             } catch (Exception ignored) {}
             String myHost = System.getenv().getOrDefault("COMPUTE_HOST", System.getenv().getOrDefault("MY_HOST", hostIp));
             String myAddress = myHost + ":" + myPort;
-            RegisterNodeResponse response = stub.registerNode(
+            RegisterNodeResponse response = stub.withDeadlineAfter(3, TimeUnit.SECONDS).registerNode(
                     RegisterNodeRequest.newBuilder()
                             .setNodeId(nodeId)
                             .setAddress(myAddress)
@@ -112,13 +146,22 @@ public class ComputeNodeApp {
 
             if (response.getSuccess()) {
                 registered = true;
-                LOG.info("✓ Registered successfully with server as " + nodeId + " (" + myAddress + ")");
+                consecutiveConnectFailures.set(0);
+                LOG.info("Registered successfully with server as {} ({})", nodeId, myAddress);
                 startHeartbeat();
             } else {
-                LOG.warning("Registration rejected by server, will retry...");
+                LOG.warn("Registration rejected by server, will retry...");
+            }
+        } catch (StatusRuntimeException e) {
+            int attempt = consecutiveConnectFailures.incrementAndGet();
+            if (attempt == 1 || attempt % 6 == 0) {
+                LOG.warn("Waiting for server at {}:{} ({})", serverHost, serverPort, e.getStatus().getCode());
             }
         } catch (Exception e) {
-            LOG.warning("Waiting for server at " + serverHost + ":" + serverPort + " (" + e.getMessage() + ")");
+            int attempt = consecutiveConnectFailures.incrementAndGet();
+            if (attempt == 1 || attempt % 6 == 0) {
+                LOG.warn("Waiting for server at {}:{} ({})", serverHost, serverPort, e.getMessage());
+            }
         }
     }
 
@@ -170,15 +213,16 @@ public class ComputeNodeApp {
                     ? ((com.sun.management.OperatingSystemMXBean) java.lang.management.ManagementFactory.getOperatingSystemMXBean()).getCpuLoad()
                     : 0.2;
             float cpuLoad = (float) Math.max(0.0, systemCpuLoad);
-            stub.sendHeartbeat(HeartbeatRequest.newBuilder()
+            stub.withDeadlineAfter(3, TimeUnit.SECONDS).sendHeartbeat(HeartbeatRequest.newBuilder()
                     .setNodeId(nodeId)
                     .setCpuLoad(cpuLoad)
                     .setGpuLoad(gpuEnabled ? 0.1f : 0.0f)
                     .setTasksCompleted(1)
                     .build());
         } catch (Exception e) {
-            LOG.warning("Heartbeat failed: " + e.getMessage() + ", re-registering...");
+            LOG.warn("Server connection lost ({}), waiting to re-register...", e.getMessage());
             registered = false;
+            consecutiveConnectFailures.set(1);
         }
     }
 
@@ -237,7 +281,7 @@ public class ComputeNodeApp {
                 responseObserver.onNext(builder.build());
                 responseObserver.onCompleted();
             } catch (Throwable t) {
-                LOG.log(Level.SEVERE, "Error in processPheromones: " + t.getMessage(), t);
+                LOG.error("Error in processPheromones: {}", t.getMessage(), t);
                 responseObserver.onError(io.grpc.Status.INTERNAL.withDescription(t.toString()).withCause(t).asRuntimeException());
             }
         }
@@ -318,7 +362,7 @@ public class ComputeNodeApp {
             ComputeNodeApp node = new ComputeNodeApp(host, serverPort, myPort, threads, gpu);
             node.start();
         } catch (Exception e) {
-            LOG.log(Level.SEVERE, "ComputeNodeApp fatal startup failure: " + e.getMessage(), e);
+            LOG.error("ComputeNodeApp fatal startup failure: {}", e.getMessage(), e);
         }
     }
 

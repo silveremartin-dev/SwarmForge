@@ -67,6 +67,18 @@ public class SimulationTest {
         var food = simulation.getFoodSources().get(0);
         assertEquals(10f, food.getX());
         assertEquals(100f, food.getQuantity());
+        assertThrows(UnsupportedOperationException.class, () -> simulation.getFoodSources().clear());
+    }
+
+    @Test
+    void testDepletedFoodSourcesPrunedDuringTick() {
+        simulation.spawnFood(10f, 10f, 5f, 10f, org.swarmforge.core.domain.ResourceType.SUGAR);
+        var food = simulation.getFoodSources().get(0);
+        food.take(10f);
+        assertTrue(food.isDepleted());
+
+        assertDoesNotThrow(() -> simulation.tick());
+        assertFalse(simulation.getFoodSources().contains(food));
     }
 
     @Test

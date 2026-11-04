@@ -426,6 +426,7 @@ final class WorldEditorGeoAndBioclimateHelper {
         }
         pane.regenerateAndRepaint();
         if (pane.lblAdaptStatus != null) {
+            pane.lblAdaptStatus.textProperty().unbind();
             pane.lblAdaptStatus.setText("🟢 Ecosystem successfully adapted to: " + pane.speciesAdaptCombo.getValue());
         }
     }

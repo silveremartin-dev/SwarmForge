@@ -27,9 +27,9 @@ for arg in "$@"; do
             START_DOCKER=true
             PASSED_ARGS="$PASSED_ARGS --postgres"
             ;;
-        --nogui|--headless)
+        --nogui|--headless|--batch|--help|-h|--list|--list-scenarios)
             USE_GUI=false
-            PASSED_ARGS="$PASSED_ARGS --nogui"
+            PASSED_ARGS="$PASSED_ARGS $arg"
             ;;
         --debug)
             echo "[INFO] Debug mode active (JDWP agent on port 5005)"
@@ -49,8 +49,8 @@ else
 fi
 
 echo ""
-echo "[2/3] Compiling SwarmForge Core & Server..."
-mvn compile -pl swarmforge-server -am -q
+echo "[2/3] Compiling and installing SwarmForge Core & Server..."
+mvn install -pl swarmforge-server -am -DskipTests -q
 
 echo ""
 if [ "$USE_GUI" = true ]; then

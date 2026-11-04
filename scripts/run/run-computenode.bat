@@ -16,7 +16,7 @@ if "%MAVEN_OPTS%"=="" set "MAVEN_OPTS=-Xmx4g -XX:+UseG1GC"
 :parse_args
 if "%~1"=="" goto run_compute
 if "%~1"=="--debug" (
-    echo [INFO] Debug mode active (JDWP agent on port 5008)
+    echo [INFO] Debug mode active ^(JDWP agent on port 5008^)
     set "DEBUG_OPT=-Dexec.jvmArgs=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5008"
     shift
     goto parse_args
@@ -33,8 +33,8 @@ shift
 goto parse_args
 
 :run_compute
-echo [1/2] Compiling SwarmForge Core ^& Compute Node...
-call mvn compile -pl swarmforge-compute -am -q
+echo [1/2] Compiling and installing SwarmForge Core ^& Compute Node...
+call mvn install -pl swarmforge-compute -am -DskipTests -q
 if errorlevel 1 (
     echo ERROR: Compilation failed.
     pause

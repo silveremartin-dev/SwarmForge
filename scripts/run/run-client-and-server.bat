@@ -19,13 +19,13 @@ if "%MAVEN_OPTS%"=="" set "MAVEN_OPTS=-Xmx4g -XX:+UseG1GC"
 :parse_args
 if "%~1"=="" goto run_stack
 if "%~1"=="--debug" (
-    echo [INFO] Mode Debug actif (agent JDWP sur port 5007)
+    echo [INFO] Mode Debug actif ^(agent JDWP sur port 5007^)
     set "DEBUG_OPT=-Dexec.jvmArgs=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007"
     shift
     goto parse_args
 )
 if "%~1"=="--nogui" (
-    echo [INFO] Execution en mode sans interface (Headless)
+    echo [INFO] Execution en mode sans interface ^(Headless^)
     set "HEADLESS_OPT=-Djava.awt.headless=true"
     set "PASSED_ARGS=%PASSED_ARGS% --nogui"
     shift
