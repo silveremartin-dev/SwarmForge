@@ -45,12 +45,6 @@ public class JmeGameApp extends SimpleApplication {
     private final java.util.concurrent.atomic.AtomicBoolean isTransferring = new java.util.concurrent.atomic.AtomicBoolean(false);
     private final java.util.concurrent.atomic.AtomicBoolean isStopped = new java.util.concurrent.atomic.AtomicBoolean(false);
 
-    // Recording
-    private boolean recording = false;
-    private int recordingFrameCount = 0;
-    private long lastRecordTime = 0;
-    private final java.io.File recordingDir = new java.io.File("exports/timelapse");
-
     org.swarmforge.core.simulation.Simulation simulation;
     private org.swarmforge.client.network.SimulationClient networkClient;
     final java.util.Map<String, com.jme3.scene.Spatial> antVisuals = new java.util.HashMap<>();
@@ -67,12 +61,13 @@ public class JmeGameApp extends SimpleApplication {
     org.swarmforge.client.ui.WorldEditorPane.RenderMode currentRenderMode = org.swarmforge.client.ui.WorldEditorPane.RenderMode.REALISTIC;
     boolean isGamifiedVoxelMode = false;
     Node selectionReticleNode;
-    private float reticleAnimationTimer = 0.0f;
 
     private final JmeViewportInteractionController interactionController = new JmeViewportInteractionController(this);
     private final JmeSceneBuilderHelper sceneBuilder = new JmeSceneBuilderHelper(this);
     private final JmeAntVisualsUpdater antVisualsUpdater = new JmeAntVisualsUpdater(this);
     private final JmeLayerAndRenderModeController layerController = new JmeLayerAndRenderModeController(this);
+    private final JmeFollowModeHelper followModeHelper = new JmeFollowModeHelper(this);
+    private final JmeTimelapseRecorder timelapseRecorder = new JmeTimelapseRecorder(this);
 
     public org.swarmforge.client.network.SimulationClient getNetworkClient() {
         return networkClient;
@@ -248,26 +243,12 @@ public class JmeGameApp extends SimpleApplication {
 
                 inputManager.addMapping("Toggle_Record",
                         new com.jme3.input.controls.KeyTrigger(com.jme3.input.KeyInput.KEY_F9));
-                inputManager.addListener(recordListener, "Toggle_Record");
+                inputManager.addListener(timelapseRecorder.recordListener, "Toggle_Record");
             }
         } catch (Throwable t) {
             LOG.error("Error during simpleInitApp: {}", t.getMessage(), t);
         }
     }
-
-    private final com.jme3.input.controls.ActionListener recordListener = (name, isPressed, tpf) -> {
-        if (name.equals("Toggle_Record") && !isPressed) {
-            recording = !recording;
-            if (recording) {
-                LOG.info("Recording Started...");
-                if (!recordingDir.exists())
-                    recordingDir.mkdirs();
-                recordingFrameCount = 0;
-            } else {
-                LOG.info("Recording Stopped.");
-            }
-        }
-    };
 
     public String getFollowedIndividualId() {
         return followedAntId;
@@ -396,56 +377,7 @@ public class JmeGameApp extends SimpleApplication {
                 }
             }
 
-            if (!pausedOrStopped) {
-                reticleAnimationTimer += tpf;
-            }
-            if (selectionReticleNode != null) {
-                if (followedAntId != null && antVisuals.containsKey(followedAntId)) {
-                    com.jme3.scene.Spatial antSpatial = antVisuals.get(followedAntId);
-                    if (antSpatial != null) {
-                        selectionReticleNode.setCullHint(com.jme3.scene.Spatial.CullHint.Never);
-                        Vector3f antPos = antSpatial.getWorldTranslation();
-                        selectionReticleNode.setLocalTranslation(antPos.x, antPos.y + 0.08f, antPos.z);
-                        if (!pausedOrStopped) {
-                            selectionReticleNode.rotate(0, tpf * 2.2f, 0);
-                        }
-                        float pulse = 1.0f + 0.12f * (float) Math.sin(reticleAnimationTimer * 5.0f);
-                        selectionReticleNode.setLocalScale(pulse);
-                    } else {
-                        selectionReticleNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
-                    }
-                } else {
-                    selectionReticleNode.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
-                }
-            }
-
-            if (followedAntId != null) {
-                com.jme3.scene.Spatial ant = antVisuals.get(followedAntId);
-                if (ant != null) {
-                    Vector3f target = ant.getLocalTranslation();
-                    com.jme3.math.Quaternion rot = ant.getLocalRotation();
-                    Vector3f fwd = rot.mult(Vector3f.UNIT_Z);
-
-                    if (cameraFollowMode == CameraFollowMode.FPS) {
-                        Vector3f eyePos = target.add(fwd.mult(0.12f)).add(new Vector3f(0, 0.06f, 0));
-                        cam.setLocation(eyePos);
-                        cam.lookAt(eyePos.add(fwd.mult(15.0f)), Vector3f.UNIT_Y);
-                    } else if (cameraFollowMode == CameraFollowMode.TPS) {
-                        Vector3f chasePos = target.subtract(fwd.mult(5.0f)).add(new Vector3f(0, 2.8f, 0));
-                        Vector3f camPos = cam.getLocation();
-                        cam.setLocation(camPos.interpolateLocal(chasePos, tpf * 7.0f));
-                        cam.lookAt(target.add(new Vector3f(0, 0.4f, 0)), Vector3f.UNIT_Y);
-                    } else {
-                        Vector3f offset = new Vector3f(0, 18, 18);
-                        Vector3f camPos = cam.getLocation();
-                        Vector3f desiredPos = target.add(offset);
-                        cam.setLocation(camPos.interpolateLocal(desiredPos, tpf * 5.0f));
-                        cam.lookAt(target, Vector3f.UNIT_Y);
-                    }
-                } else {
-                    followedAntId = null;
-                }
-            }
+            followModeHelper.updateReticleAndFollowCamera(tpf, pausedOrStopped);
         }
     }
 
@@ -482,13 +414,7 @@ public class JmeGameApp extends SimpleApplication {
                     });
                 } catch (Throwable t) { isTransferring.set(false); }
             }
-            if (recording) {
-                long now = System.currentTimeMillis();
-                if (now - lastRecordTime > 100) {
-                    lastRecordTime = now;
-                    sceneBuilder.saveFrame(pixelData, width, height, recordingDir, recordingFrameCount++);
-                }
-            }
+            timelapseRecorder.onRenderFrame(pixelData, width, height);
         }
     }
 

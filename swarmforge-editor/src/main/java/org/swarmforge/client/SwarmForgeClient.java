@@ -356,7 +356,7 @@ public class SwarmForgeClient extends Application {
 
     private Tooltip createWarningTooltip(String text) {
         Tooltip tt = new Tooltip(text);
-        tt.setStyle("-fx-font-size: 11px; -fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-background-color: #1e293b; -fx-border-color: #f59e0b; -fx-border-radius: 4px;");
+        tt.getStyleClass().add("warning-tooltip");
         tt.setShowDelay(Duration.millis(100));
         return tt;
     }
@@ -398,43 +398,7 @@ public class SwarmForgeClient extends Application {
     }
 
     private Node createWorldEditor() {
-        this.worldEditorPane = new WorldEditorPane();
-        worldEditorPane.setSimulationMode(false);
-        worldEditorPane.setOnGenerate(config -> {
-            try {
-                double sizeMeters = (double) config.getOrDefault("surfaceSizeMeters", 2.0);
-                double resMm = (double) config.getOrDefault("resolutionMm", 0.5);
-                double roughness = (double) config.getOrDefault("roughness", 0.45);
-
-                int gridW = (int) (sizeMeters * 32);
-                int gridH = (int) (sizeMeters * 32);
-                int gridDepth = 32;
-
-                Terrarium terrarium = new Terrarium(gridW, gridH, gridDepth);
-                TerrainGenerator gen = new TerrainGenerator(System.currentTimeMillis());
-
-                gen.generate(terrarium, gridDepth / 2, 10, (float) roughness * 0.1f);
-                if (Boolean.TRUE.equals(config.get("hasRiver"))) {
-                    gen.addWater(terrarium, gridDepth / 2 - 2, 0.4f);
-                }
-
-                this.lastGeneratedTerrarium = terrarium;
-                if (gameView != null && gameView.getGameApp() != null) {
-                    gameView.getGameApp().renderTerrarium(terrarium);
-                }
-
-                localSimulation = new Simulation(terrarium);
-                localSimulation.setTicksPerSecond(20);
-                hudUpdater.startLocalSimulationUpdates();
-
-                ThemeManager.createAlert(Alert.AlertType.INFORMATION, "Monde généré avec succès ! (Taille: " + sizeMeters + "m, Voxel: " + resMm + "mm)").show();
-            } catch (Exception ex) {
-                ThemeManager.createAlert(Alert.AlertType.ERROR, "Échec de génération: " + ex.getMessage()).show();
-                LOG.log(java.util.logging.Level.SEVERE, "Echec de generation: " + ex.getMessage(), ex);
-            }
-        });
-
-        return worldEditorPane;
+        return ClientWorldEditorTabBuilder.createWorldEditor(this);
     }
 
     private void generateNest(Map<String, Object> config) {

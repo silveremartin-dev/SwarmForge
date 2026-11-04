@@ -355,6 +355,30 @@ class IndividualActionAndPhysiologyHelper {
         IndividualActionExecutor.takeDamageFromAttacker(self, amount, attacker);
     }
 
+    static boolean takeDamage(Individual self, float amount, String cause) {
+        if (!self.isAlive()) return false;
+        float effectiveDamage = self.lotsTrait.phragmoticShieldActive ? amount * 0.20f : amount;
+        self.setHealthDirect(self.getHealth() - effectiveDamage);
+        if (self.getHealth() <= 0) {
+            self.setHealthDirect(0);
+            self.die(cause != null ? cause : "Physical Trauma / Damage");
+            return true;
+        }
+        return false;
+    }
+
+    static void inheritGenetics(Individual self, Individual parent1, Individual parent2, Random rng) {
+        if (parent1 != null && parent2 != null && parent1.getGenome() != null && parent2.getGenome() != null) {
+            org.swarmforge.core.genetics.Genome g = org.swarmforge.core.genetics.Genome.crossover(parent1.getGenome(), parent2.getGenome());
+            g.mutate(0.05f);
+            self.setGenome(g);
+        } else {
+            org.swarmforge.core.genetics.Genome g = new org.swarmforge.core.genetics.Genome();
+            g.mutate(0.1f);
+            self.setGenome(g);
+        }
+    }
+
     static Individual.SensorySample sampleSensoryEnvironment(Individual self, Terrarium terrarium, WeatherSystem weather) {
         int ix = (int) Math.floor(self.getX());
         int iy = (int) Math.floor(self.getY());
@@ -381,5 +405,73 @@ class IndividualActionAndPhysiologyHelper {
 
     static String getActiveBehaviorsSummary(Species species) {
         return SpeciesBehaviorSummarizer.getActiveBehaviorsSummary(species);
+    }
+
+    static void move(Individual self, float speedMult) {
+        float effectiveSpeed = self.getCurrentMovementSpeed() * 0.1f * Math.max(0.1f, speedMult);
+        self.setX(self.getX() + (float) Math.cos(self.getHeading()) * effectiveSpeed);
+        self.setY(self.getY() + (float) Math.sin(self.getHeading()) * effectiveSpeed);
+        if (self.canFly() && self.getZ() > self.getSurfaceElevation()) {
+            self.setZ(self.getZ() + (float) (Math.sin(self.getAge() * 0.2f) * 0.05f));
+        }
+    }
+
+    static void turnTowards(Individual self, float targetHeading, float turnRate) {
+        float diff = targetHeading - self.getHeading();
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+        self.setHeading(self.getHeading() + Math.signum(diff) * Math.min(Math.abs(diff), turnRate));
+    }
+
+    static float getAttackDamage(Individual self) {
+        Species species = self.getSpecies();
+        CasteTemplate casteTemplate = self.getCasteTemplate();
+        float mandibularForce = species != null ? species.getMandibularBitingForceMPa() : 15.0f;
+        if (casteTemplate != null && casteTemplate.getMandibularBitingForceMPa() > 0) {
+            mandibularForce = casteTemplate.getMandibularBitingForceMPa();
+        }
+        float strength = species != null ? species.getStrength() : 5.0f;
+        float casteMult = (self.getCaste() == Individual.Caste.SOLDIER) ? 2.5f : ((self.getCaste() == Individual.Caste.QUEEN) ? 1.5f : 1.0f);
+        float octopamineArousal = 0.75f + 0.5f * self.getOctopamine();
+        return casteMult * (mandibularForce / 15.0f) * (strength / 5.0f) * self.getBaseAttackDamage() * octopamineArousal;
+    }
+
+    static float getPayloadCapacity(Individual self) {
+        Species species = self.getSpecies();
+        CasteTemplate casteTemplate = self.getCasteTemplate();
+        float basePayload = species != null ? species.getMaxCarryingPayloadRatio() : 5.0f;
+        if (casteTemplate != null && casteTemplate.getMaxCarryingPayloadRatio() > 0) {
+            basePayload = casteTemplate.getMaxCarryingPayloadRatio();
+        }
+        float strength = species != null ? species.getStrength() : 5.0f;
+        return basePayload * (strength / 5.0f);
+    }
+
+    static float getVisionDistance(Individual self) {
+        Species species = self.getSpecies();
+        float baseView = species != null ? species.getViewDistance() : 6.0f;
+        float acuity = species != null ? species.getVisualAcuity() : 1.0f;
+        return baseView * Math.max(0.5f, acuity);
+    }
+
+    static float getMaxLifespan(Individual self) {
+        CasteTemplate casteTemplate = self.getCasteTemplate();
+        if (casteTemplate != null && casteTemplate.getLifespan() > 0) return casteTemplate.getLifespan();
+        Species species = self.getSpecies();
+        Individual.Caste caste = self.getCaste();
+        if (species != null) {
+            return switch (caste) {
+                case QUEEN -> species.getQueenLifespan();
+                case SOLDIER -> (float) Math.round(species.getWorkerLifespan() * 1.4f);
+                case MALE -> (float) Math.round(species.getWorkerLifespan() * 0.35f);
+                case WORKER, FORAGER, NURSE -> species.getWorkerLifespan();
+            };
+        }
+        return switch (caste) {
+            case QUEEN -> 5475f;
+            case SOLDIER -> 1000f;
+            case MALE -> 30f;
+            case WORKER, FORAGER, NURSE -> 730f;
+        };
     }
 }

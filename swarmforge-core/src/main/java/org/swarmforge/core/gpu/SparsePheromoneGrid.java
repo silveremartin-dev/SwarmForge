@@ -95,7 +95,7 @@ public class SparsePheromoneGrid {
     private int maxHeightAboveGround = 10;
     private BiPredicate<Integer, TerrariumCell> passabilityChecker;
 
-    private static class PheromoneEntry {
+    static class PheromoneEntry {
         final float[] concentrations = new float[PHEROMONE_TYPES];
         final long[] lastUpdatedTick = new long[PHEROMONE_TYPES];
 
@@ -140,7 +140,7 @@ public class SparsePheromoneGrid {
         this.passabilityChecker = checker;
     }
 
-    private boolean isPassable(int x, int y, int z, int pheromoneType) {
+    boolean isPassable(int x, int y, int z, int pheromoneType) {
         if (terrarium == null)
             return true;
         if (!inBounds(x, y, z))
@@ -340,114 +340,22 @@ public class SparsePheromoneGrid {
         });
     }
 
+    ConcurrentHashMap<Long, PheromoneEntry> getGrid() { return grid; }
+    float[] getDiffusionRates() { return diffusionRate; }
+    float getWindVx() { return windVx; }
+    float getWindVy() { return windVy; }
+
+    float computeDecayInternal(float original, long depositTick, int type, int x, int y, int z) {
+        return computeDecay(original, depositTick, type, x, y, z);
+    }
+
     /**
      * Terrain-aware and Climate-Coupled Diffusion:
      * - In surface air (z >= surfaceZ), diffusion incorporates anisotropic advection along the wind vector.
      * - In subterranean galleries (z < surfaceZ), isotropic molecular diffusion occurs through passable cavities.
      */
     public void diffuse() {
-        // Pass 1: Calculate spread updates in parallel and accumulate them
-        ConcurrentHashMap<Long, float[]> deltas = new ConcurrentHashMap<>();
-        final float curWindVx = this.windVx;
-        final float curWindVy = this.windVy;
-        final float windSpeed = (float) Math.sqrt(curWindVx * curWindVx + curWindVy * curWindVy);
-
-        grid.entrySet().parallelStream().forEach(e -> {
-            Long key = e.getKey();
-            PheromoneEntry entry = e.getValue();
-            int[] coords = Morton3D.decode(key);
-            int x = coords[0], y = coords[1], z = coords[2];
-
-            float surfaceZ = terrarium != null ? terrarium.getSurfaceElevation(x, y) : 16.0f;
-
-            for (int t = 0; t < PHEROMONE_TYPES; t++) {
-                float conc = computeDecay(entry.concentrations[t], entry.lastUpdatedTick[t], t, x, y, z);
-                if (conc < PRUNE_THRESHOLD)
-                    continue;
-
-                int passable = countPassableNeighbors(x, y, z, t);
-                if (passable == 0)
-                    continue;
-
-                float spreadAmount = conc * diffusionRate[t];
-
-                if (z >= surfaceZ && windSpeed > 0.01f) {
-                    // Anisotropic surface advection diffusion along wind vector
-                    float advectionStrength = Math.min(0.6f, windSpeed * 0.08f);
-                    float wLeft  = isPassable(x - 1, y, z, t) ? Math.max(0.05f, 1.0f - curWindVx * advectionStrength) : 0f;
-                    float wRight = isPassable(x + 1, y, z, t) ? Math.max(0.05f, 1.0f + curWindVx * advectionStrength) : 0f;
-                    float wDown  = isPassable(x, y - 1, z, t) ? Math.max(0.05f, 1.0f - curWindVy * advectionStrength) : 0f;
-                    float wUp    = isPassable(x, y + 1, z, t) ? Math.max(0.05f, 1.0f + curWindVy * advectionStrength) : 0f;
-                    float wBelow = isPassable(x, y, z - 1, t) ? 1.0f : 0f;
-                    float wAbove = isPassable(x, y, z + 1, t) ? 1.0f : 0f;
-
-                    float sumW = wLeft + wRight + wDown + wUp + wBelow + wAbove;
-                    if (sumW > 0.0001f) {
-                        if (wLeft > 0f)  accumulateSpread(deltas, x - 1, y, z, t, spreadAmount * (wLeft / sumW));
-                        if (wRight > 0f) accumulateSpread(deltas, x + 1, y, z, t, spreadAmount * (wRight / sumW));
-                        if (wDown > 0f)  accumulateSpread(deltas, x, y - 1, z, t, spreadAmount * (wDown / sumW));
-                        if (wUp > 0f)    accumulateSpread(deltas, x, y + 1, z, t, spreadAmount * (wUp / sumW));
-                        if (wBelow > 0f) accumulateSpread(deltas, x, y, z - 1, t, spreadAmount * (wBelow / sumW));
-                        if (wAbove > 0f) accumulateSpread(deltas, x, y, z + 1, t, spreadAmount * (wAbove / sumW));
-                        entry.update(t, Math.max(0.0f, conc - spreadAmount), currentTick);
-                    }
-                } else {
-                    // Isotropic molecular diffusion
-                    float amountPerNeighbor = spreadAmount / passable;
-                    if (amountPerNeighbor >= PRUNE_THRESHOLD) {
-                        accumulateSpread(deltas, x - 1, y, z, t, amountPerNeighbor);
-                        accumulateSpread(deltas, x + 1, y, z, t, amountPerNeighbor);
-                        accumulateSpread(deltas, x, y - 1, z, t, amountPerNeighbor);
-                        accumulateSpread(deltas, x, y + 1, z, t, amountPerNeighbor);
-                        accumulateSpread(deltas, x, y, z - 1, t, amountPerNeighbor);
-                        accumulateSpread(deltas, x, y, z + 1, t, amountPerNeighbor);
-                        entry.update(t, Math.max(0.0f, conc - spreadAmount), currentTick);
-                    }
-                }
-            }
-        });
-
-        // Pass 2: Apply updates
-        deltas.entrySet().parallelStream().forEach(e -> {
-            long key = e.getKey();
-            float[] amounts = e.getValue();
-            int[] pos = Morton3D.decode(key);
-            for (int t = 0; t < PHEROMONE_TYPES; t++) {
-                if (amounts[t] > 0) {
-                    deposit(pos[0], pos[1], pos[2], t, amounts[t]);
-                }
-            }
-        });
-    }
-
-    private void accumulateSpread(ConcurrentHashMap<Long, float[]> deltas, int x, int y, int z, int type,
-            float amount) {
-        if (isPassable(x, y, z, type)) {
-            long key = Morton3D.encode(x, y, z);
-            deltas.compute(key, (k, v) -> {
-                if (v == null)
-                    v = new float[PHEROMONE_TYPES];
-                v[type] += amount;
-                return v;
-            });
-        }
-    }
-
-    private int countPassableNeighbors(int x, int y, int z, int type) {
-        int count = 0;
-        if (isPassable(x - 1, y, z, type))
-            count++;
-        if (isPassable(x + 1, y, z, type))
-            count++;
-        if (isPassable(x, y - 1, z, type))
-            count++;
-        if (isPassable(x, y + 1, z, type))
-            count++;
-        if (isPassable(x, y, z - 1, type))
-            count++;
-        if (isPassable(x, y, z + 1, type))
-            count++;
-        return count;
+        SparsePheromoneDiffusionEngine.diffuse(this);
     }
 
     private boolean inBounds(int x, int y, int z) {

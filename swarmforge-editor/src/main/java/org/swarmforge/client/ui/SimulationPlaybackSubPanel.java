@@ -44,9 +44,11 @@ class SimulationPlaybackSubPanel {
 
     private final SimulationControlPanel panel;
     private final I18nManager i18n = I18nManager.getInstance();
+    private final SimulationCheckpointsSubPanel checkpointsSubPanel;
 
     SimulationPlaybackSubPanel(SimulationControlPanel panel) {
         this.panel = panel;
+        this.checkpointsSubPanel = new SimulationCheckpointsSubPanel(panel);
     }
 
     HBox buildStartDateTimeBox() {
@@ -120,21 +122,21 @@ class SimulationPlaybackSubPanel {
         HBox playbackRow1 = new HBox(4);
         playbackRow1.setAlignment(Pos.CENTER);
 
-        panel.btnGoToBeginning = createIconButton(Feather.SKIP_BACK, "sim.btn.beginning.tt");
-        panel.btnRewind = createIconButton(Feather.REWIND, "sim.btn.rewind.tt");
-        panel.btnStepBack = createIconButton(Feather.CHEVRON_LEFT, "sim.btn.stepback.tt");
-        panel.btnPlay = createIconButton(Feather.PLAY, "sim.btn.play.tt");
-        panel.btnStepForward = createIconButton(Feather.CHEVRON_RIGHT, "sim.btn.stepforward.tt");
-        panel.btnFastForward = createIconButton(Feather.FAST_FORWARD, "sim.btn.fastforward.tt");
-        panel.btnGoToEnd = createIconButton(Feather.SKIP_FORWARD, "sim.btn.gotoend.tt");
+        panel.btnGoToBeginning = SimulationButtonHelper.createIconButton(Feather.SKIP_BACK, "sim.btn.beginning.tt");
+        panel.btnRewind = SimulationButtonHelper.createIconButton(Feather.REWIND, "sim.btn.rewind.tt");
+        panel.btnStepBack = SimulationButtonHelper.createIconButton(Feather.CHEVRON_LEFT, "sim.btn.stepback.tt");
+        panel.btnPlay = SimulationButtonHelper.createIconButton(Feather.PLAY, "sim.btn.play.tt");
+        panel.btnStepForward = SimulationButtonHelper.createIconButton(Feather.CHEVRON_RIGHT, "sim.btn.stepforward.tt");
+        panel.btnFastForward = SimulationButtonHelper.createIconButton(Feather.FAST_FORWARD, "sim.btn.fastforward.tt");
+        panel.btnGoToEnd = SimulationButtonHelper.createIconButton(Feather.SKIP_FORWARD, "sim.btn.gotoend.tt");
 
-        setupAutoRepeat(panel.btnGoToBeginning, this::doGoToBeginning);
-        setupAutoRepeat(panel.btnRewind, this::doRewind);
-        setupAutoRepeat(panel.btnStepBack, this::doStepBack);
-        setupAutoRepeat(panel.btnPlay, this::doTogglePlayPause);
-        setupAutoRepeat(panel.btnStepForward, this::doStepForward);
-        setupAutoRepeat(panel.btnFastForward, this::doFastForward);
-        setupAutoRepeat(panel.btnGoToEnd, this::doGoToEnd);
+        SimulationButtonHelper.setupAutoRepeat(panel.btnGoToBeginning, this::doGoToBeginning);
+        SimulationButtonHelper.setupAutoRepeat(panel.btnRewind, this::doRewind);
+        SimulationButtonHelper.setupAutoRepeat(panel.btnStepBack, this::doStepBack);
+        SimulationButtonHelper.setupAutoRepeat(panel.btnPlay, this::doTogglePlayPause);
+        SimulationButtonHelper.setupAutoRepeat(panel.btnStepForward, this::doStepForward);
+        SimulationButtonHelper.setupAutoRepeat(panel.btnFastForward, this::doFastForward);
+        SimulationButtonHelper.setupAutoRepeat(panel.btnGoToEnd, this::doGoToEnd);
 
         playbackRow1.getChildren().addAll(
             panel.btnGoToBeginning, panel.btnRewind, panel.btnStepBack,
@@ -213,71 +215,7 @@ class SimulationPlaybackSubPanel {
     }
 
     VBox buildCheckpointsPane(ComboBox<SimulationCheckpoint> comboCheckpoints) {
-        VBox box = new VBox(6);
-        box.getStyleClass().add("card-pane");
-        box.setStyle("-fx-border-color: #d97706; -fx-border-width: 1;");
-
-        Label lblTitle = new Label();
-        lblTitle.textProperty().bind(i18n.createStringBinding("sim.checkpoints.title"));
-        lblTitle.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 11px;");
-
-        comboCheckpoints.setPrefWidth(220);
-        comboCheckpoints.promptTextProperty().bind(i18n.createStringBinding("sim.checkpoints.none"));
-        comboCheckpoints.setCellFactory(lv -> new ListCell<>() {
-            @Override
-            protected void updateItem(SimulationCheckpoint item, boolean empty) {
-                super.updateItem(item, empty);
-                setText((empty || item == null) ? null : formatCheckpointLabel(item));
-            }
-        });
-        comboCheckpoints.setButtonCell(new ListCell<>() {
-            @Override
-            protected void updateItem(SimulationCheckpoint item, boolean empty) {
-                super.updateItem(item, empty);
-                setText((empty || item == null) ? null : formatCheckpointLabel(item));
-            }
-        });
-
-        Button bRestore = new Button();
-        bRestore.textProperty().bind(i18n.createStringBinding("sim.checkpoints.btn.restore"));
-        bRestore.setStyle("-fx-background-color: #d97706; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 10px; -fx-cursor: hand;");
-        bRestore.tooltipProperty().bind(i18n.createTooltipBinding("sim.checkpoints.btn.restore.tt"));
-        bRestore.setOnAction(e -> {
-            SimulationCheckpoint sel = comboCheckpoints.getValue();
-            if (sel != null && panel.onRestoreCheckpoint != null) {
-                panel.onRestoreCheckpoint.accept(sel);
-            }
-        });
-
-        Label lblCp = new Label();
-        lblCp.textProperty().bind(i18n.createStringBinding("sim.checkpoints.label"));
-        lblCp.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 10px;");
-
-        HBox row = new HBox(8, lblCp, comboCheckpoints, bRestore);
-        row.setAlignment(Pos.CENTER_LEFT);
-
-        Label lblInfo = new Label();
-        lblInfo.textProperty().bind(i18n.createStringBinding("sim.checkpoints.info"));
-        lblInfo.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
-
-        box.getChildren().addAll(lblTitle, row, lblInfo);
-        return box;
-    }
-
-    private String formatCheckpointLabel(SimulationCheckpoint cp) {
-        if (cp == null) return "";
-        String rawName = cp.getName();
-        String displayName = rawName;
-        if (rawName != null && (rawName.startsWith("Départ") || rawName.contains("Initial Setup") || cp.getTick() == 0)) {
-            displayName = i18n.get("checkpoint.initial_setup", "Initial Setup") + " (#0)";
-        } else if (rawName != null && rawName.startsWith("Auto-Snapshot")) {
-            displayName = i18n.get("checkpoint.auto_snapshot", "Auto-Snapshot") + " (Tick #" + cp.getTick() + ")";
-        }
-        return String.format("%s (Tick #%d, %d %s)",
-                displayName,
-                cp.getTick(),
-                cp.getInterventionsRecorded().size(),
-                i18n.get("checkpoint.interventions", "interventions"));
+        return checkpointsSubPanel.buildCheckpointsPane(comboCheckpoints);
     }
 
     void updateButtonStates() {
@@ -443,78 +381,5 @@ class SimulationPlaybackSubPanel {
         updateButtonStates();
         if (panel.onPause != null) panel.onPause.accept(null);
         if (panel.onSeek != null) panel.onSeek.accept(panel.highestRecordedTick);
-    }
-
-    private void setupAutoRepeat(Button button, Runnable action) {
-        final boolean[] isExecuting = { false };
-        Timeline repeatTimeline = new Timeline();
-        repeatTimeline.setCycleCount(Timeline.INDEFINITE);
-        KeyFrame keyFrame = new KeyFrame(Duration.millis(120), e -> {
-            if (!button.isDisabled() && !isExecuting[0]) {
-                isExecuting[0] = true;
-                try {
-                    action.run();
-                } finally {
-                    isExecuting[0] = false;
-                }
-            }
-        });
-        repeatTimeline.getKeyFrames().add(keyFrame);
-
-        PauseTransition initialDelay = new PauseTransition(Duration.millis(350));
-        initialDelay.setOnFinished(e -> {
-            if (!button.isDisabled()) {
-                repeatTimeline.playFromStart();
-            }
-        });
-
-        button.addEventHandler(MouseEvent.MOUSE_PRESSED, e -> {
-            if (e.getButton() == MouseButton.PRIMARY && !button.isDisabled() && !isExecuting[0]) {
-                isExecuting[0] = true;
-                try {
-                    action.run();
-                } finally {
-                    isExecuting[0] = false;
-                }
-                initialDelay.playFromStart();
-            }
-        });
-
-        EventHandler<MouseEvent> stopRepeat = e -> {
-            initialDelay.stop();
-            repeatTimeline.stop();
-            isExecuting[0] = false;
-        };
-
-        button.addEventHandler(MouseEvent.MOUSE_RELEASED, stopRepeat);
-        button.addEventHandler(MouseEvent.MOUSE_EXITED, stopRepeat);
-        button.disabledProperty().addListener((obs, oldV, newV) -> {
-            if (newV) {
-                initialDelay.stop();
-                repeatTimeline.stop();
-                isExecuting[0] = false;
-            }
-        });
-        button.setOnAction(null);
-    }
-
-    private Button createIconButton(Feather icon, String tooltipKey) {
-        FontIcon fontIcon = new FontIcon(icon);
-        fontIcon.setIconSize(13);
-
-        Button btn = new Button();
-        btn.setGraphic(fontIcon);
-        btn.getStyleClass().add("ctrl-btn");
-        if (tooltipKey != null && !tooltipKey.isEmpty()) {
-            Tooltip tt = new Tooltip();
-            if (tooltipKey.contains(".")) {
-                tt.textProperty().bind(I18nManager.getInstance().createStringBinding(tooltipKey));
-            } else {
-                tt.setText(tooltipKey);
-            }
-            btn.setTooltip(tt);
-        }
-        btn.disabledProperty().addListener((obs, oldV, newV) -> btn.setOpacity(newV ? 0.35 : 1.0));
-        return btn;
     }
 }

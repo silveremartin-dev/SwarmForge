@@ -298,50 +298,19 @@ public class StatisticsDashboard extends VBox {
     }
 
     private void populateTimeWindowItems() {
-        int selected = comboTimeWindow.getSelectionModel().getSelectedIndex();
-        comboTimeWindow.getItems().setAll(
-                i18n.get("stats.window.1m"),
-                i18n.get("stats.window.3m"),
-                i18n.get("stats.window.5m"),
-                i18n.get("stats.window.10m"),
-                i18n.get("stats.window.all")
-        );
-        if (selected >= 0 && selected < comboTimeWindow.getItems().size()) {
-            comboTimeWindow.getSelectionModel().select(selected);
-        } else {
-            comboTimeWindow.getSelectionModel().select(1);
-        }
+        StatisticsChartSetupHelper.populateTimeWindowItems(comboTimeWindow, i18n);
     }
 
     private void updateSeriesNames() {
-        totalPopSeries.setName(i18n.get("stats.series.total_pop", "Global Total Population"));
-        queensSeries.setName(i18n.get("stats.queens", "Queens"));
-        workersSeries.setName(i18n.get("stats.workers", "Workers"));
-        soldiersSeries.setName(i18n.get("stats.soldiers", "Soldiers"));
-        malesSeries.setName(i18n.get("stats.series.males", "Males"));
-
-        behaviorForagingSeries.setName(i18n.get("stats.behavior.series.foraging", "🌾 Foraging (Harvest)"));
-        behaviorDiggingSeries.setName(i18n.get("stats.behavior.series.digging", "⛏️ Excavation (Galleries)"));
-        behaviorNursingSeries.setName(i18n.get("stats.behavior.series.nursing", "🍼 Brood Care (Larvae)"));
-        behaviorGuardingSeries.setName(i18n.get("stats.behavior.series.guarding", "🛡️ Guard & Defense"));
-        behaviorRoyalCareSeries.setName(i18n.get("stats.behavior.series.royal_care", "👑 Royal Care"));
-        behaviorRestingSeries.setName(i18n.get("stats.behavior.series.resting", "💤 Resting / Inactivity"));
-
-        foodSeries.setName(i18n.get("stats.food", "Stored Food"));
-        waterSeries.setName(i18n.get("stats.water", "Water / Humidity"));
-        proteinSeries.setName(i18n.get("stats.series.protein", "Proteins"));
-        birthsSeries.setName(i18n.get("stats.births", "Cumulative Births"));
-        deathsSeries.setName(i18n.get("stats.deaths", "Cumulative Deaths"));
-
-        tempSeries.setName(i18n.get("stats.series.temp", "Air Temp (°C)"));
-        rainSeries.setName(i18n.get("stats.series.rain", "Rainfall (mm/h)"));
-        pheroSeries.setName(i18n.get("stats.series.phero", "Pheromone Intensity"));
-
-        tpsSeries.setName(i18n.get("stats.tps", "Engine Speed (TPS)"));
-
-        antHealthSeries.setName(i18n.get("stats.series.ant_health", "Individual Health (%)"));
-        antEnergySeries.setName(i18n.get("stats.series.ant_energy", "Energy / Lipids (%)"));
-        antDistanceSeries.setName(i18n.get("stats.series.ant_distance", "Traveled Distance (m)"));
+        StatisticsChartSetupHelper.updateSeriesNames(
+                i18n,
+                totalPopSeries, queensSeries, workersSeries, soldiersSeries, malesSeries,
+                behaviorForagingSeries, behaviorDiggingSeries, behaviorNursingSeries,
+                behaviorGuardingSeries, behaviorRoyalCareSeries, behaviorRestingSeries,
+                foodSeries, waterSeries, proteinSeries, birthsSeries, deathsSeries,
+                tempSeries, rainSeries, pheroSeries, tpsSeries,
+                antHealthSeries, antEnergySeries, antDistanceSeries
+        );
     }
 
     private void updateVisibleCharts() {
@@ -490,17 +459,11 @@ public class StatisticsDashboard extends VBox {
     }
 
     private void updateChartXAxes(double currentTimeSec) {
-        double window = currentSelectedWindowSec;
-        for (LineChart<Number, Number> c : List.of(chartMultiColony, chartCastes, chartBehaviors, chartResources, chartWeather, chartPerformance)) {
-            NumberAxis xAxis = (NumberAxis) c.getXAxis();
-            if (window <= 0) xAxis.setAutoRanging(true);
-            else {
-                xAxis.setAutoRanging(false);
-                xAxis.setLowerBound(Math.max(0, currentTimeSec - window));
-                xAxis.setUpperBound(Math.max(window, currentTimeSec));
-                xAxis.setTickUnit(window / 6.0);
-            }
-        }
+        StatisticsChartSetupHelper.updateChartXAxes(
+                List.of(chartMultiColony, chartCastes, chartBehaviors, chartResources, chartWeather, chartPerformance),
+                currentTimeSec,
+                currentSelectedWindowSec
+        );
     }
 
     private void trimSeries(XYChart.Series<Number, Number> series) {

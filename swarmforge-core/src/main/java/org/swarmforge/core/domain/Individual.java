@@ -247,18 +247,11 @@ public class Individual implements java.io.Serializable, AgentView, IndividualLo
     }
 
     public float getPayloadCapacity() {
-        float basePayload = species != null ? species.getMaxCarryingPayloadRatio() : 5.0f;
-        if (casteTemplate != null && casteTemplate.getMaxCarryingPayloadRatio() > 0) {
-            basePayload = casteTemplate.getMaxCarryingPayloadRatio();
-        }
-        float strength = species != null ? species.getStrength() : 5.0f;
-        return basePayload * (strength / 5.0f);
+        return IndividualActionAndPhysiologyHelper.getPayloadCapacity(this);
     }
 
     public float getVisionDistance() {
-        float baseView = species != null ? species.getViewDistance() : 6.0f;
-        float acuity = species != null ? species.getVisualAcuity() : 1.0f;
-        return baseView * Math.max(0.5f, acuity);
+        return IndividualActionAndPhysiologyHelper.getVisionDistance(this);
     }
 
     public void fly3D(float targetX, float targetY, float targetZ, float speedParam) {
@@ -279,30 +272,15 @@ public class Individual implements java.io.Serializable, AgentView, IndividualLo
     }
 
     public float getAttackDamage() {
-        float mandibularForce = species != null ? species.getMandibularBitingForceMPa() : 15.0f;
-        if (casteTemplate != null && casteTemplate.getMandibularBitingForceMPa() > 0) {
-            mandibularForce = casteTemplate.getMandibularBitingForceMPa();
-        }
-        float strength = species != null ? species.getStrength() : 5.0f;
-        float casteMult = (caste == Caste.SOLDIER) ? 2.5f : ((caste == Caste.QUEEN) ? 1.5f : 1.0f);
-        float octopamineArousal = 0.75f + 0.5f * octopamine;
-        return casteMult * (mandibularForce / 15.0f) * (strength / 5.0f) * attackDamage * octopamineArousal;
+        return IndividualActionAndPhysiologyHelper.getAttackDamage(this);
     }
 
     public void move(float speedMult) {
-        float effectiveSpeed = getCurrentMovementSpeed() * 0.1f * Math.max(0.1f, speedMult);
-        x += (float) Math.cos(heading) * effectiveSpeed;
-        y += (float) Math.sin(heading) * effectiveSpeed;
-        if (canFly() && z > getSurfaceElevation()) {
-            z += (float) (Math.sin(age * 0.2f) * 0.05f);
-        }
+        IndividualActionAndPhysiologyHelper.move(this, speedMult);
     }
 
     public void turnTowards(float targetHeading, float turnRate) {
-        float diff = targetHeading - heading;
-        while (diff > Math.PI) diff -= 2 * Math.PI;
-        while (diff < -Math.PI) diff += 2 * Math.PI;
-        heading += Math.signum(diff) * Math.min(Math.abs(diff), turnRate);
+        IndividualActionAndPhysiologyHelper.turnTowards(this, targetHeading, turnRate);
     }
 
     public void incrementAge() {
@@ -349,21 +327,7 @@ public class Individual implements java.io.Serializable, AgentView, IndividualLo
     public void setAgeInSeconds(float ageInSeconds) { this.ageInSeconds = Math.max(0f, ageInSeconds); this.age = this.ageInSeconds; }
 
     public float getMaxLifespan() {
-        if (casteTemplate != null && casteTemplate.getLifespan() > 0) return casteTemplate.getLifespan();
-        if (species != null) {
-            return switch (caste) {
-                case QUEEN -> species.getQueenLifespan();
-                case SOLDIER -> (float) Math.round(species.getWorkerLifespan() * 1.4f);
-                case MALE -> (float) Math.round(species.getWorkerLifespan() * 0.35f);
-                case WORKER, FORAGER, NURSE -> species.getWorkerLifespan();
-            };
-        }
-        return switch (caste) {
-            case QUEEN -> 5475f;
-            case SOLDIER -> 1000f;
-            case MALE -> 30f;
-            case WORKER, FORAGER, NURSE -> 730f;
-        };
+        return IndividualActionAndPhysiologyHelper.getMaxLifespan(this);
     }
 
     public boolean isAlive() { return alive; }
@@ -455,26 +419,9 @@ public class Individual implements java.io.Serializable, AgentView, IndividualLo
     float getBaseAttackDamage() { return this.attackDamage; }
     float getDefense() { return this.defense; }
 
-    public boolean takeDamage(float amount) {
-        return takeDamage(amount, "Physical Trauma / Damage");
-    }
-
-    public boolean takeDamage(float amount, String cause) {
-        if (!alive) return false;
-        float effectiveDamage = lotsTrait.phragmoticShieldActive ? amount * 0.20f : amount;
-        health -= effectiveDamage;
-        if (health <= 0) {
-            health = 0;
-            die(cause != null ? cause : "Physical Trauma / Damage");
-            return true;
-        }
-        return false;
-    }
-
-    public void heal(float amount) {
-        if (!alive) return;
-        health = Math.min(100f, health + amount);
-    }
+    public boolean takeDamage(float amount) { return takeDamage(amount, "Physical Trauma / Damage"); }
+    public boolean takeDamage(float amount, String cause) { return IndividualActionAndPhysiologyHelper.takeDamage(this, amount, cause); }
+    public void heal(float amount) { if (alive) health = Math.min(100f, health + amount); }
 
     public ActionResult executeAction(Action action, Colony colony) {
         return IndividualActionAndPhysiologyHelper.executeAction(this, action, colony);
@@ -487,19 +434,8 @@ public class Individual implements java.io.Serializable, AgentView, IndividualLo
     public org.swarmforge.core.genetics.HaplodiploidGenome getHaplodiploidGenome() { return haplodiploidGenome; }
     public void setHaplodiploidGenome(org.swarmforge.core.genetics.HaplodiploidGenome g) { this.haplodiploidGenome = g; }
 
-    public void initializeGenetics(java.util.Random rng) {
-        this.genome = new Genome();
-        genome.mutate(0.1f);
-    }
-
-    public void inheritGenetics(Individual parent1, Individual parent2, java.util.Random rng) {
-        if (parent1.genome != null && parent2.genome != null) {
-            this.genome = Genome.crossover(parent1.genome, parent2.genome);
-            this.genome.mutate(0.05f);
-        } else {
-            initializeGenetics(rng);
-        }
-    }
+    public void initializeGenetics(java.util.Random rng) { IndividualActionAndPhysiologyHelper.inheritGenetics(this, null, null, rng); }
+    public void inheritGenetics(Individual parent1, Individual parent2, java.util.Random rng) { IndividualActionAndPhysiologyHelper.inheritGenetics(this, parent1, parent2, rng); }
 
     public void update(org.swarmforge.core.structure.ConstructionManager constructionManager, float deltaSeconds) {
         if (!alive || lifeStage != LifeStage.ADULT) return;
@@ -507,9 +443,7 @@ public class Individual implements java.io.Serializable, AgentView, IndividualLo
         tick(deltaSeconds);
     }
 
-    public void update(org.swarmforge.core.structure.ConstructionManager constructionManager) {
-        update(constructionManager, 0.016666667f);
-    }
+    public void update(org.swarmforge.core.structure.ConstructionManager constructionManager) { update(constructionManager, 0.016666667f); }
 
     public static String formatCasteFr(Caste c) {
         if (c == null) return "Individu";
@@ -521,13 +455,9 @@ public class Individual implements java.io.Serializable, AgentView, IndividualLo
         };
     }
 
-    public void takeDamage(float amount, Individual attacker) {
-        IndividualActionAndPhysiologyHelper.takeDamageFromAttacker(this, amount, attacker);
-    }
+    public void takeDamage(float amount, Individual attacker) { IndividualActionAndPhysiologyHelper.takeDamageFromAttacker(this, amount, attacker); }
 
-    public void die() {
-        die(this.causeOfDeath != null && !"Inconnue".equals(this.causeOfDeath) ? this.causeOfDeath : "Old Age / Natural Exhaustion");
-    }
+    public void die() { die(this.causeOfDeath != null && !"Inconnue".equals(this.causeOfDeath) ? this.causeOfDeath : "Old Age / Natural Exhaustion"); }
 
     public void die(String cause) {
         this.alive = false;
@@ -551,14 +481,8 @@ public class Individual implements java.io.Serializable, AgentView, IndividualLo
     }
 
     public record SensorySample(
-        float temperatureCelsius,
-        float humidityRelative,
-        float co2Ppm,
-        float lightLux,
-        float geomagIntensityMicrotesla,
-        float vibrationDb,
-        float electricFieldVoltsPerMeter,
-        float solarAzimuthRad
+        float temperatureCelsius, float humidityRelative, float co2Ppm, float lightLux,
+        float geomagIntensityMicrotesla, float vibrationDb, float electricFieldVoltsPerMeter, float solarAzimuthRad
     ) {}
 
     public String getActiveBehaviorsSummary() {

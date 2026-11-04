@@ -407,93 +407,23 @@ public class EthologyEcsSystem extends IteratingSystem {
     // ── Physical & Ecological Interaction Helpers ─────────────────────────────
 
     private void performAllogroomingSanitation(int groomerId, PositionComponent pos) {
-        List<Integer> nearby = queryNearby(pos);
-        for (int neighborId : nearby) {
-            if (neighborId == groomerId) continue;
-            if (mPathogen != null && mPathogen.has(neighborId)) {
-                CompactPathogenBitmaskComponent neighborPathogen = mPathogen.get(neighborId);
-                if (neighborPathogen.activePathogensBitmask != CompactPathogenBitmaskComponent.PATHOGEN_NONE) {
-                    // Allogrooming removes fungal spores (Metarhizium) and reduces viral load
-                    neighborPathogen.activePathogensBitmask &= ~CompactPathogenBitmaskComponent.PATHOGEN_METARHIZIUM;
-                    neighborPathogen.viralLoadPacked = (short) Math.max(0, (neighborPathogen.viralLoadPacked & 0xFFFF) - 500);
-                }
-            }
-        }
+        EthologyInteractionDispatcher.performAllogroomingSanitation(groomerId, pos, spatialSystem, mPathogen);
     }
 
     private void depositAlarmChemicalPulse(PositionComponent pos, float intensity) {
-        if (pheromoneGrid != null) {
-            int px = Math.max(0, (int) pos.x);
-            int py = Math.max(0, (int) pos.y);
-            int pz = Math.max(0, (int) pos.z);
-            if (pheromoneGrid.getTerrarium() != null) {
-                org.swarmforge.core.domain.Terrarium terr = pheromoneGrid.getTerrarium();
-                px = Math.min(terr.getWidth() - 1, px);
-                py = Math.min(terr.getHeight() - 1, py);
-                pz = Math.min(terr.getDepth() - 1, pz);
-            }
-            pheromoneGrid.deposit(px, py, pz, PheromoneType.ALARM.getIndex(), intensity);
-        }
+        EthologyInteractionDispatcher.depositAlarmChemicalPulse(pheromoneGrid, pos, intensity);
     }
 
     private void triggerAutothysisShockwave(PositionComponent pos) {
-        List<Integer> nearby = queryNearby(pos);
-        for (int targetId : nearby) {
-            if (mMetabolism != null && mMetabolism.has(targetId)) {
-                MetabolismComponent targetMeta = mMetabolism.get(targetId);
-                // Sticky necrotizing fluid immobilizes and damages enemies in radius
-                targetMeta.energy = Math.max(0f, targetMeta.energy - 15.0f);
-            }
-        }
+        EthologyInteractionDispatcher.triggerAutothysisShockwave(pos, spatialSystem, mMetabolism);
     }
 
     private void propagateStridulationRescue(int entityId, PositionComponent pos, EthologyComponent eth) {
-        List<Integer> nearby = queryNearby(pos);
-        float baseFrequency = eth.stridulationFrequencyHz > 0 ? eth.stridulationFrequencyHz : 850.0f; // Hz
-        float attenuationCoeff = 0.04f; // Rayleigh seismic attenuation in granular porous soil
-
-        for (int neighborId : nearby) {
-            if (neighborId == entityId) continue;
-            if (mPosition != null && mPosition.has(neighborId)) {
-                PositionComponent neighborPos = mPosition.get(neighborId);
-                float dx = pos.x - neighborPos.x;
-                float dy = pos.y - neighborPos.y;
-                float dz = pos.z - neighborPos.z;
-                float dist = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-                // Seismic wave amplitude decay: A(r) = A0 * exp(-alpha * r) / max(0.2, r)
-                float amplitude = (float) (Math.exp(-attenuationCoeff * dist) / Math.max(0.2f, dist));
-                if (amplitude > 0.15f) { // Sensory auditory / subgenual organ reception threshold
-                    EthologyComponent neighborEth = mEthology != null ? mEthology.get(neighborId) : null;
-                    if (neighborEth != null) {
-                        neighborEth.carryingBuildingMaterial = true; // Trigger emergency rescue excavation
-                    }
-                    if (mVelocity != null && mVelocity.has(neighborId) && dist > 0.1f) {
-                        VelocityComponent vel = mVelocity.get(neighborId);
-                        vel.dx = (dx / dist) * 0.8f; // Orient towards seismic epicenter
-                        vel.dy = (dy / dist) * 0.8f;
-                    }
-                }
-            }
-        }
+        EthologyInteractionDispatcher.propagateStridulationRescue(entityId, pos, eth, spatialSystem, mPosition, mEthology, mVelocity);
     }
 
     private void performStomatodealTrophallaxis(int donorId, PositionComponent pos, MetabolismComponent donorMeta) {
-        List<Integer> nearby = queryNearby(pos);
-        for (int recipientId : nearby) {
-            if (recipientId == donorId) continue;
-            if (mMetabolism != null && mMetabolism.has(recipientId)) {
-                MetabolismComponent recipientMeta = mMetabolism.get(recipientId);
-                if (recipientMeta.alive && recipientMeta.energy < 40f) {
-                    float transfer = Math.min(10.0f, (donorMeta.energy - 50.0f) * 0.5f);
-                    if (transfer > 0.5f) {
-                        donorMeta.energy -= transfer;
-                        recipientMeta.energy += transfer;
-                        break; // one transfer per spatial sample frame
-                    }
-                }
-            }
-        }
+        EthologyInteractionDispatcher.performStomatodealTrophallaxis(donorId, pos, donorMeta, spatialSystem, mMetabolism);
     }
 
     private boolean doSpatialSample() {

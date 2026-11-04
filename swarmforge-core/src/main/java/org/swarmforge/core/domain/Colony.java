@@ -114,37 +114,11 @@ public class Colony implements Serializable {
     }
 
     public org.swarmforge.core.structure.physics.NestType getResolvedNestType() {
-        String arch = species != null ? species.getNestType() : (speciesName != null ? speciesName : "SUBTERRANEAN_SIMPLE");
-        if (arch != null) {
-            String u = arch.toUpperCase();
-            if (u.contains("MOUND") || u.contains("FORMICA")) return org.swarmforge.core.structure.physics.NestType.SUBTERRANEAN_MOUND;
-            if (u.contains("CATHEDRAL") || u.contains("TERMITE") || u.contains("MACROTERMES")) return org.swarmforge.core.structure.physics.NestType.TERMITE_CATHEDRAL;
-            if (u.contains("TREE") || u.contains("WOOD") || u.contains("CAVITY") || u.contains("CAMPONOTUS")) return org.swarmforge.core.structure.physics.NestType.CAVITY_TREE;
-            if (u.contains("WEAVER") || u.contains("OECOPHYLLA")) return org.swarmforge.core.structure.physics.NestType.ARBOREAL_WEAVER;
-            if (u.contains("CARTON") || u.contains("CREMATOGASTER")) return org.swarmforge.core.structure.physics.NestType.ARBOREAL_CARTON;
-            if (u.contains("CRATER") || u.contains("POGONOMYRMEX")) return org.swarmforge.core.structure.physics.NestType.CRATER_NEST;
-            if (u.contains("TOWER") || u.contains("CHIMNEY") || u.contains("ODONTOMACHUS")) return org.swarmforge.core.structure.physics.NestType.TOWER_CHIMNEY;
-            if (u.contains("CATAGLYPHIS") || u.contains("DESERT")) return org.swarmforge.core.structure.physics.NestType.CATAGLYPHIS_DEEP;
-            if (u.contains("ROCK") || u.contains("LITHOPHILIC")) return org.swarmforge.core.structure.physics.NestType.LITHOPHILIC;
-            if (u.contains("BAMBOO")) return org.swarmforge.core.structure.physics.NestType.SUSPENDED_BAMBOO;
-            if (u.contains("POLYDOMOUS") || u.contains("LINEPITHEMA")) return org.swarmforge.core.structure.physics.NestType.POLYDOMOUS_NETWORK;
-            if (u.contains("POCKET") || u.contains("SOLENOPSIS")) return org.swarmforge.core.structure.physics.NestType.HYPOGAEIC_POCKET;
-        }
-        return org.swarmforge.core.structure.physics.NestType.SUBTERRANEAN_SIMPLE;
+        return ColonyNestArchitectureResolver.resolveNestType(species, speciesName);
     }
 
     public float getDynamicQueenChamberDepth() {
-        String arch = species != null ? species.getNestType() : (speciesName != null ? speciesName : "MATURE");
-        if (arch != null) {
-            String u = arch.toUpperCase();
-            if (u.contains("FUNGI") || u.contains("ATTA")) return nestZ - 14.0f;
-            if (u.contains("MOUND") || u.contains("FORMICA")) return nestZ - 10.0f;
-            if (u.contains("CATHEDRAL") || u.contains("TERMITE")) return nestZ - 8.0f;
-            if (u.contains("TREE") || u.contains("WOOD") || u.contains("ARBOREAL")) return nestZ + 6.0f;
-            if (u.contains("PAPER") || u.contains("VESPA")) return nestZ + 4.0f;
-            if (u.contains("WAX")) return nestZ + 2.0f;
-        }
-        return nestZ - 6.0f;
+        return ColonyNestArchitectureResolver.calculateDynamicQueenChamberDepth(species, speciesName, nestZ);
     }
 
     private int age = 0;
@@ -203,69 +177,22 @@ public class Colony implements Serializable {
         demographicsSpawner.applyGaussianHealth(ind, isFoundingQueen);
     }
 
-    public List<Individual> createQueens(int count) {
-        return demographicsSpawner.createQueens(count);
-    }
-
-    public List<Individual> createQueens(int count, boolean applyAgeDistribution) {
-        return demographicsSpawner.createQueens(count, applyAgeDistribution);
-    }
-
-    public double calculateSurfaceActivityRatio(int dayOfYear, float hourOfDay, float ambientTemp, double latitude) {
-        return demographicsSpawner.calculateSurfaceActivityRatio(dayOfYear, hourOfDay, ambientTemp, latitude);
-    }
-
-    public double calculateSurfaceActivityRatio(int dayOfYear, float hourOfDay, float ambientTemp) {
-        return demographicsSpawner.calculateSurfaceActivityRatio(dayOfYear, hourOfDay, ambientTemp);
-    }
-
-    public float[] getSpawningCoordinates(Individual.Caste caste, Individual.Job job, int index) {
-        return demographicsSpawner.getSpawningCoordinates(caste, job, index);
-    }
-
-    public float[] getSpawningCoordinates(Individual.Caste caste, Individual.Job job, int index, int dayOfYear, float hourOfDay, float ambientTemp) {
-        return demographicsSpawner.getSpawningCoordinates(caste, job, index, dayOfYear, hourOfDay, ambientTemp);
-    }
-
-    public int calculateSubterraneanCapacity() {
-        return demographicsSpawner.calculateSubterraneanCapacity();
-    }
-
-    public List<Individual> createWorkers(int count) {
-        return demographicsSpawner.createWorkers(count);
-    }
-
-    public List<Individual> createWorkers(int count, boolean applyAgeDistribution) {
-        return demographicsSpawner.createWorkers(count, applyAgeDistribution);
-    }
-
-    public List<Individual> createSoldiers(int count) {
-        return demographicsSpawner.createSoldiers(count);
-    }
-
-    public List<Individual> createSoldiers(int count, boolean applyAgeDistribution) {
-        return demographicsSpawner.createSoldiers(count, applyAgeDistribution);
-    }
-
-    public List<Individual> createMales(int count) {
-        return demographicsSpawner.createMales(count);
-    }
-
-    public List<Individual> createMales(int count, boolean applyAgeDistribution) {
-        return demographicsSpawner.createMales(count, applyAgeDistribution);
-    }
-
-    public List<Individual> createBrood(int count) {
-        return demographicsSpawner.createBrood(count);
-    }
-
-    public List<Individual> createBrood(int count, boolean applyAgeDistribution) {
-        return demographicsSpawner.createBrood(count, applyAgeDistribution);
-    }
-
-    public Individual spawnUnit(CasteTemplate template) {
-        return demographicsSpawner.spawnUnit(template);
-    }
+    public List<Individual> createQueens(int count) { return demographicsSpawner.createQueens(count); }
+    public List<Individual> createQueens(int count, boolean applyAgeDistribution) { return demographicsSpawner.createQueens(count, applyAgeDistribution); }
+    public double calculateSurfaceActivityRatio(int dayOfYear, float hourOfDay, float ambientTemp, double latitude) { return demographicsSpawner.calculateSurfaceActivityRatio(dayOfYear, hourOfDay, ambientTemp, latitude); }
+    public double calculateSurfaceActivityRatio(int dayOfYear, float hourOfDay, float ambientTemp) { return demographicsSpawner.calculateSurfaceActivityRatio(dayOfYear, hourOfDay, ambientTemp); }
+    public float[] getSpawningCoordinates(Individual.Caste caste, Individual.Job job, int index) { return demographicsSpawner.getSpawningCoordinates(caste, job, index); }
+    public float[] getSpawningCoordinates(Individual.Caste caste, Individual.Job job, int index, int dayOfYear, float hourOfDay, float ambientTemp) { return demographicsSpawner.getSpawningCoordinates(caste, job, index, dayOfYear, hourOfDay, ambientTemp); }
+    public int calculateSubterraneanCapacity() { return demographicsSpawner.calculateSubterraneanCapacity(); }
+    public List<Individual> createWorkers(int count) { return demographicsSpawner.createWorkers(count); }
+    public List<Individual> createWorkers(int count, boolean applyAgeDistribution) { return demographicsSpawner.createWorkers(count, applyAgeDistribution); }
+    public List<Individual> createSoldiers(int count) { return demographicsSpawner.createSoldiers(count); }
+    public List<Individual> createSoldiers(int count, boolean applyAgeDistribution) { return demographicsSpawner.createSoldiers(count, applyAgeDistribution); }
+    public List<Individual> createMales(int count) { return demographicsSpawner.createMales(count); }
+    public List<Individual> createMales(int count, boolean applyAgeDistribution) { return demographicsSpawner.createMales(count, applyAgeDistribution); }
+    public List<Individual> createBrood(int count) { return demographicsSpawner.createBrood(count); }
+    public List<Individual> createBrood(int count, boolean applyAgeDistribution) { return demographicsSpawner.createBrood(count, applyAgeDistribution); }
+    public Individual spawnUnit(CasteTemplate template) { return demographicsSpawner.spawnUnit(template); }
 
     public ColonyResourceManager getResourceManager() {
         return resourceManager;
@@ -316,12 +243,8 @@ public class Colony implements Serializable {
     }
 
     public Individual createSoldier() {
-        List<Individual> list = createSoldier(1);
+        List<Individual> list = createSoldiers(1);
         return list.isEmpty() ? null : list.get(0);
-    }
-
-    private List<Individual> createSoldier(int count) {
-        return createSoldiers(count);
     }
 
     public Individual createMale() {
@@ -329,62 +252,20 @@ public class Colony implements Serializable {
         return list.isEmpty() ? null : list.get(0);
     }
 
+    void incrementTotalBorn() { this.totalBorn++; }
+    void addTotalBorn(int count) { this.totalBorn += count; }
+    void addTotalDied(int count) { this.totalDied += count; }
+
     public void addIndividual(Individual individual) {
-        if (individual == null || individuals.contains(individual)) return;
-        if (individual.getSpecies() == null && this.species != null) {
-            individual.setSpecies(this.species);
-        }
-        individual.setRandom(new Random(getRandom().nextLong()));
-        individuals.add(individual);
-        totalBorn++;
-        for (ColonyListener l : getListeners()) {
-            l.onBirth(this, individual);
-        }
+        ColonyPopulationManager.addIndividual(this, individuals, individual, getListeners());
     }
 
-    /**
-     * Bulk add individuals without single-element array copying or O(N^2) list search.
-     */
     public void addIndividualsBulk(java.util.Collection<Individual> batch) {
-        if (batch == null || batch.isEmpty()) return;
-        List<Individual> toAdd;
-        if (individuals.isEmpty()) {
-            toAdd = batch.stream().filter(java.util.Objects::nonNull).toList();
-        } else {
-            java.util.Set<Individual> existing = new java.util.HashSet<>(individuals);
-            toAdd = batch.stream().filter(ind -> ind != null && !existing.contains(ind)).toList();
-        }
-        if (toAdd.isEmpty()) return;
-        toAdd.forEach(ind -> {
-            if (this.species != null && ind.getSpecies() == null) {
-                ind.setSpecies(this.species);
-            }
-            ind.setRandom(new Random(getRandom().nextLong()));
-        });
-        individuals.addAll(toAdd);
-        totalBorn += toAdd.size();
+        ColonyPopulationManager.addIndividualsBulk(this, individuals, batch);
     }
 
-    /**
-     * Remove dead individuals from the colony.
-     */
     public int removeDeadIndividuals() {
-        List<Individual> dead = new java.util.ArrayList<>();
-        for (Individual ind : individuals) {
-            if (!ind.isAlive()) {
-                dead.add(ind);
-            }
-        }
-        if (dead.isEmpty()) return 0;
-
-        individuals.removeAll(dead);
-        totalDied += dead.size();
-        for (Individual ind : dead) {
-            for (ColonyListener l : getListeners()) {
-                l.onDeath(this, ind);
-            }
-        }
-        return dead.size();
+        return ColonyPopulationManager.removeDeadIndividuals(this, individuals, getListeners());
     }
 
     /**
@@ -560,18 +441,21 @@ public class Colony implements Serializable {
 
     public void tickPhysicalEngines(float ambientTemp, float ambientCo2, float windSpeed,
                                    float waterSaturation, float deltaSeconds, Random rng) {
-        if (nestVoxelGrid == null) return;
-
-        if (ventilationEngine != null) {
-            ventilationEngine.simulateVentilationStep(nestVoxelGrid, ambientTemp, ambientCo2, windSpeed, getPopulation());
-        }
-
-        if (stabilityAnalyzer != null && age % 60 == 0) {
-            stabilityAnalyzer.evaluateAndTriggerCaveIns(nestVoxelGrid, waterSaturation, rng != null ? rng : new Random());
-        }
-
-        if (socialImmunityManager != null && age % 30 == 0) {
-            socialImmunityManager.simulateEpidemiologyStep(infectionRegistry, getLivingIndividuals(), nestVoxelGrid, rng != null ? rng : new Random(), deltaSeconds);
-        }
+        ColonyPhysicalEngineRunner.tickPhysicalEngines(
+                nestVoxelGrid,
+                ventilationEngine,
+                stabilityAnalyzer,
+                socialImmunityManager,
+                infectionRegistry,
+                getLivingIndividuals(),
+                getPopulation(),
+                age,
+                ambientTemp,
+                ambientCo2,
+                windSpeed,
+                waterSaturation,
+                deltaSeconds,
+                rng
+        );
     }
 }

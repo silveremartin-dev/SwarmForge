@@ -25,6 +25,7 @@ import org.swarmforge.client.ui.weather.WeatherCurvesEditorPane;
 import org.swarmforge.client.ui.weather.WeatherCurvesEditorPane.ParameterType;
 import org.swarmforge.client.ui.weather.WeatherDisastersEditorPane;
 import org.swarmforge.client.ui.weather.WeatherGeographicAtmospherePane;
+import org.swarmforge.client.ui.weather.WeatherPresetIoHandler;
 import org.swarmforge.client.util.I18nManager;
 import org.swarmforge.client.util.NotificationOverlay;
 import org.swarmforge.client.util.ThemeManager;
@@ -63,8 +64,9 @@ public class WeatherEditorPane extends BorderPane {
     private WeatherDisastersEditorPane disastersPane;
 
     // Presets Manager
-    private ComboBox<String> presetsCombo;
+    private final ComboBox<String> presetsCombo = new ComboBox<>();
     private final WeatherPresetManager presetMgr = new WeatherPresetManager();
+    private final WeatherPresetIoHandler presetIoHandler = new WeatherPresetIoHandler(this, presetMgr, presetsCombo, this::applyPresetConfig);
     private Consumer<Map<String, Object>> onApplyCallback;
 
     private boolean isDirty = false;
@@ -76,54 +78,15 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     public boolean promptUnsavedChanges() {
-        if ("true".equals(System.getProperty("swarmforge.test")) || Boolean.getBoolean("headless") || Boolean.getBoolean("testfx.headless")) return true;
         if (!isDirty) return true;
-        String currentName = lastSelectedPreset != null ? lastSelectedPreset : "";
-        boolean hasCurrentPreset = !currentName.isEmpty();
-
-        Alert alert = ThemeManager.createAlert(
-            Alert.AlertType.CONFIRMATION,
-            "You have unsaved changes in the Weather & Climate Editor.\n"
-            + (hasCurrentPreset ? "Current preset: \"" + currentName + "\"" : "No preset selected.")
-        );
-        alert.setTitle("Unsaved Changes");
-        alert.setHeaderText("Exit Weather Editor?");
-
-        ButtonType btnUpdate  = hasCurrentPreset
-            ? new ButtonType("💾 Update \"" + currentName + "\"", ButtonBar.ButtonData.OK_DONE)
-            : null;
-        ButtonType btnSaveAs  = new ButtonType("📝 Save As...", ButtonBar.ButtonData.OTHER);
-        ButtonType btnDiscard = new ButtonType("🗑 Discard", ButtonBar.ButtonData.OTHER);
-        ButtonType btnCancel  = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-
-        if (btnUpdate != null) {
-            alert.getButtonTypes().setAll(btnUpdate, btnSaveAs, btnDiscard, btnCancel);
-        } else {
-            alert.getButtonTypes().setAll(btnSaveAs, btnDiscard, btnCancel);
-        }
-        Optional<ButtonType> result = alert.showAndWait();
-
-        if (result.isEmpty() || result.get() == btnCancel) return false;
-        if (result.get() == btnDiscard) { isDirty = false; return true; }
-        if (btnUpdate != null && result.get() == btnUpdate) {
-            presetMgr.save(currentName, getConfiguration());
-            isUpdatingFields = true;
-            try {
-                refreshPresetsCombo();
-                presetsCombo.setValue(currentName);
-            } finally {
-                isUpdatingFields = false;
+        return presetIoHandler.promptUnsavedChanges(
+            lastSelectedPreset,
+            () -> isDirty = false,
+            updatedName -> {
+                lastSelectedPreset = updatedName;
+                isDirty = false;
             }
-            lastSelectedPreset = currentName;
-            isDirty = false;
-            NotificationOverlay.show(this, "Preset \"" + currentName + "\" updated.", NotificationOverlay.NotificationType.SUCCESS);
-            return true;
-        }
-        if (result.get() == btnSaveAs) {
-            doSavePreset();
-            return !isDirty;
-        }
-        return false;
+        );
     }
 
     public WeatherEditorPane() {
@@ -214,7 +177,6 @@ public class WeatherEditorPane extends BorderPane {
         lp.setStyle("-fx-font-weight: bold;");
         lp.setGraphic(new FontIcon(Feather.SLIDERS));
 
-        presetsCombo = new ComboBox<>();
         presetsCombo.setEditable(true);
         presetsCombo.setPrefWidth(210);
         presetsCombo.promptTextProperty().bind(i18n.createStringBinding("preset.prompt"));
@@ -286,35 +248,11 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     private void doDeletePreset() {
-        String sel = presetsCombo.getValue();
-        if (sel == null || sel.isEmpty()) return;
-
-        I18nManager i18n = I18nManager.getInstance();
-        Alert confirmAlert = ThemeManager.createAlert(Alert.AlertType.CONFIRMATION, String.format(i18n.get("preset.delete.confirm"), sel));
-        confirmAlert.setTitle(i18n.get("preset.delete.title"));
-        confirmAlert.setHeaderText("Delete Climate Profile");
-
-        confirmAlert.showAndWait().ifPresent(buttonType -> {
-            if (buttonType == ButtonType.OK) {
-                presetMgr.delete(sel);
-                refreshPresetsCombo();
-                if (!presetsCombo.getItems().isEmpty()) {
-                    presetsCombo.getSelectionModel().selectFirst();
-                } else {
-                    presetsCombo.getSelectionModel().clearSelection();
-                }
-                NotificationOverlay.show(this, "Climate profile deleted.", NotificationOverlay.NotificationType.INFO);
-            }
-        });
+        presetIoHandler.doDeletePreset();
     }
 
     private void refreshPresetsCombo() {
-        String cur = presetsCombo.getValue();
-        presetsCombo.getItems().setAll(presetMgr.names());
-        FXCollections.sort(presetsCombo.getItems());
-        if (cur != null && presetsCombo.getItems().contains(cur)) {
-            presetsCombo.setValue(cur);
-        }
+        presetIoHandler.refreshPresetsCombo();
     }
 
     private void redrawCurves() {
@@ -405,58 +343,18 @@ public class WeatherEditorPane extends BorderPane {
     }
 
     private void doSavePreset() {
-        TextInputDialog dialog = new TextInputDialog("My Climate Profile");
-        dialog.setTitle("Save Climate Profile");
-        dialog.setHeaderText("Create a new climate preset");
-        dialog.setContentText("Profile Name:");
-
-        dialog.showAndWait().ifPresent(name -> {
-            String trimmed = name.trim();
-            if (trimmed.isEmpty()) return;
-
-            presetMgr.save(trimmed, getConfiguration());
-            isUpdatingFields = true;
-            try {
-                refreshPresetsCombo();
-                presetsCombo.setValue(trimmed);
-            } finally {
-                isUpdatingFields = false;
-            }
-            lastSelectedPreset = trimmed;
+        presetIoHandler.doSavePreset(() -> {
+            lastSelectedPreset = presetsCombo.getValue();
             isDirty = false;
-            NotificationOverlay.show(this, "Preset \"" + trimmed + "\" successfully saved!", NotificationOverlay.NotificationType.SUCCESS);
         });
     }
 
     private void doExport() {
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Exporter Profil Climat");
-        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON", "*.json"));
-        File f = fc.showSaveDialog(getScene().getWindow());
-        if (f == null) return;
-        try {
-            new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
-                    .writeValue(f, getConfiguration());
-            NotificationOverlay.show(this, "Profile successfully exported!", NotificationOverlay.NotificationType.SUCCESS);
-        } catch (Exception ex) {
-            NotificationOverlay.show(this, "Export error: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
-        }
+        presetIoHandler.doExport();
     }
 
     private void doImport() {
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Importer Profil Climat");
-        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON", "*.json"));
-        File f = fc.showOpenDialog(getScene().getWindow());
-        if (f == null) return;
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> cfg = new com.fasterxml.jackson.databind.ObjectMapper().readValue(f, Map.class);
-            applyPresetConfig(cfg);
-            NotificationOverlay.show(this, "Profile successfully imported!", NotificationOverlay.NotificationType.SUCCESS);
-        } catch (Exception ex) {
-            NotificationOverlay.show(this, "Import error: " + ex.getMessage(), NotificationOverlay.NotificationType.ERROR);
-        }
+        presetIoHandler.doImport();
     }
 
     public void setOnApply(Consumer<Map<String, Object>> cb) {

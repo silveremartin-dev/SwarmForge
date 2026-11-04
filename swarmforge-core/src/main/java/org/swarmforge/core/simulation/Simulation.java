@@ -111,7 +111,7 @@ public class Simulation {
     private final org.swarmforge.core.world.VegetationSystem vegetationSystem;
     private final java.util.Map<org.swarmforge.core.domain.Colony, org.swarmforge.core.structure.ConstructionManager> constructionManagers = new java.util.concurrent.ConcurrentHashMap<>();
     private final java.util.List<org.swarmforge.core.simulation.disasters.DisasterEvent> activeDisasters = new java.util.concurrent.CopyOnWriteArrayList<>();
-    private final java.util.Map<Long, org.swarmforge.core.navigation.FlowFieldGrid> flowFieldCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final FlowFieldCacheManager flowFieldCache = new FlowFieldCacheManager();
     private final org.swarmforge.core.ecs.EcsWorldManager ecsWorldManager;
     private final org.swarmforge.core.event.EventBus eventBus = new org.swarmforge.core.event.EventBus("simulation");
 
@@ -350,76 +350,15 @@ public class Simulation {
         }
 
         updateEnvironment(currentTick);
-        ecsWorldManager.step(this.simulationStepSeconds);
-
-        // Pre-populate spatial index for individuals before brain decision processing
-        spatialIndex.clear();
-        for (Colony colony : colonies) {
-            for (Individual ind : colony.getIndividuals()) {
-                if (ind.isAlive()) {
-                    spatialIndex.insert(ind, ind.getX(), ind.getY(), ind.getZ());
-                }
-            }
-        }
-
-        // Rebuild food index and process depleted sources
-        entityUpdater.updateFoodSources(foodSources, foodIndex, currentTick, accumulatedSimulationSeconds, eventQueue);
-
-        if (currentTick % 60 == 0) {
-            for (Colony colony : colonies) {
-                colony.getStatistics().record(
-                        currentTick,
-                        colony.getPopulation(),
-                        colony.getFoodStored(),
-                        colony.getWaterStored(),
-                        colony.getTotalDied(),
-                        colony.getTotalBorn());
-            }
-        }
-
-        // Use parallel streams with virtual thread executor for better scalability
-        SimulationContext context = new SimulationContextImpl(this); // Create context once per tick
-        java.util.concurrent.ConcurrentLinkedQueue<Individual> livingIndividuals = new java.util.concurrent.ConcurrentLinkedQueue<>();
-
-        for (Colony colony : colonies) {
-            colony.getIndividuals().forEach(individual ->
-                    entityUpdater.updateIndividual(individual, colony, context, simulationStepSeconds, currentTick, eventQueue, livingIndividuals));
-            colony.removeDeadIndividuals();
-            colony.tick(); // Update internal state (Fungus Gardens, Consumption)
-            colony.tickPhysicalEngines(
-                    weather != null ? weather.getTemperature() : 20.0f,
-                    org.swarmforge.core.domain.TerrariumCell.DEFAULT_CO2,
-                    weather != null ? weather.getWindSpeedMs() : 1.0f,
-                    soilHydricCoupling != null ? (soilHydricCoupling.getMoistureAtDepth(0) / 100.0f) : 0.2f,
-                    simulationStepSeconds,
-                    this.random
-            );
-        }
-
-        // Re-insert moved living individuals into spatial index
-        spatialIndex.clear();
-        Map<UUID, Individual> indMap = new HashMap<>();
-        for (Individual ind : livingIndividuals) {
-            spatialIndex.insert(ind, ind.getX(), ind.getY(), ind.getZ());
-            indMap.put(ind.getId(), ind);
-        }
-
-        Map<UUID, Colony> colMap = new HashMap<>();
-        for (Colony col : colonies) {
-            colMap.put(col.getId(), col);
-        }
-        macroForagingSystem.update(simulationStepSeconds, indMap, colMap);
-        symbiosisSystem.tick();
-
-        processEvents();
-
-        // Auto periodic checkpoint creation every autoCheckpointInterval ticks (default 50,000) for live checkpoint manager
-        if (currentTick > 0 && currentTick % timeMachine.getAutoCheckpointInterval() == 0) {
-            timeMachine.createCheckpoint("Auto-Snapshot (Tick #" + currentTick + ")");
-        }
-
-        // Record history snapshot periodically
-        timeMachine.getHistory().recordIfNeeded(this);
+        SimulationTickExecutor.executeTick(
+                this,
+                currentTick,
+                this.simulationStepSeconds,
+                this.accumulatedSimulationSeconds,
+                this.eventQueue,
+                this.entityUpdater,
+                this.timeMachine
+        );
     }
 
     public void processGrowth(Individual ind) {
@@ -428,11 +367,6 @@ public class Simulation {
 
     private void updateEnvironment(long currentTick) {
         environmentUpdater.updateEnvironment(currentTick);
-    }
-    private void processEvents() {
-        while (eventQueue.size() > MAX_QUEUED_EVENTS) {
-            eventQueue.poll();
-        }
     }
 
     public List<SimulationEvent> pollEvents() {
@@ -455,6 +389,7 @@ public class Simulation {
     public State getState() { return state.get(); }
     public org.swarmforge.core.world.SeasonManager getSeasonManager() { return seasonManager; }
     public MacroForagingSystem getMacroForagingSystem() { return macroForagingSystem; }
+    public SymbiosisSystem getSymbiosisSystem() { return symbiosisSystem; }
     public Terrarium getTerrarium() { return terrarium; }
     public org.swarmforge.core.spatial.SpatialPartition<Individual> getSpatialIndex() { return spatialIndex; }
     public List<Colony> getColonies() { return List.copyOf(colonies); }
@@ -475,15 +410,7 @@ public class Simulation {
     public org.swarmforge.core.spatial.AStarPathfinder getPathfinder() { return pathfinder; }
 
     public float[] getFlowVector(float x, float y, float z, int targetX, int targetY, int targetZ) {
-        if (terrarium == null) return new float[]{0f, 0f, 0f};
-        long key = (((long) targetX & 0xFFFFF) << 40) | (((long) targetY & 0xFFFFF) << 20) | ((long) targetZ & 0xFFFFF);
-        org.swarmforge.core.navigation.FlowFieldGrid flowGrid = flowFieldCache.computeIfAbsent(key, k -> {
-            org.swarmforge.core.navigation.FlowFieldGrid fg = new org.swarmforge.core.navigation.FlowFieldGrid(
-                    terrarium.getWidth(), terrarium.getHeight(), terrarium.getDepth());
-            fg.recompute(targetX, targetY, targetZ);
-            return fg;
-        });
-        return flowGrid.getVector(x, y, z);
+        return flowFieldCache.getFlowVector(terrarium, x, y, z, targetX, targetY, targetZ);
     }
 
     public PredatorManager getPredatorManager() { return predatorManager; }

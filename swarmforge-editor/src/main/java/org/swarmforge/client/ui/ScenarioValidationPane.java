@@ -221,7 +221,7 @@ public class ScenarioValidationPane {
 
             // Geotechnical, Hydrological, and Multi-Nest Diagnostics
             String selWorld = panel.comboWorld != null ? panel.comboWorld.getValue() : null;
-            float wtDepth = estimateWaterTableDepth(selWorld);
+            float wtDepth = ScenarioEnvironmentDiagnosticsHelper.estimateWaterTableDepth(selWorld);
             float bedrockDepth = 25.0f;
             for (SpeciesConfigCard card : speciesCardList) {
                 float estDepth = 20.0f;
@@ -296,8 +296,8 @@ public class ScenarioValidationPane {
 
         // 2b. Species Thermal & Hygrometric Tolerance vs Biome Climate Cross-Reference
         if (world != null || weather != null) {
-            float estimatedTemp = estimateAmbientTemperature(world, weather);
-            float estimatedHum = estimateAmbientHumidity(world, weather);
+            float estimatedTemp = ScenarioEnvironmentDiagnosticsHelper.estimateAmbientTemperature(world, weather);
+            float estimatedHum = ScenarioEnvironmentDiagnosticsHelper.estimateAmbientHumidity(world, weather);
             for (SpeciesConfigCard card : speciesCardList) {
                 String speciesName = card.getSpeciesName();
                 org.swarmforge.core.species.Species sp = panel.speciesPresetManager.getPresetOrFallback(speciesName);
@@ -314,7 +314,7 @@ public class ScenarioValidationPane {
                             String.format("⚠️ Risque de Stress Thermique : Température estimée (%.1f°C) hors des tolérances de '%s' [%.1f°C - %.1f°C].",
                                 estimatedTemp, card.getSpeciesName(), minT, maxT),
                             "🌡️ Adjust Compatible Climate",
-                            () -> autoSelectCompatibleEnvironmentForSpecies(targetSp)
+                            () -> ScenarioEnvironmentDiagnosticsHelper.autoSelectCompatibleEnvironmentForSpecies(panel, targetSp)
                         ));
                     }
 
@@ -327,7 +327,7 @@ public class ScenarioValidationPane {
                             String.format("💧 Risque de Stress Hygrométrique : Humidité estimée (%.0f%%) hors des tolérances de '%s' [%.0f%% - %.0f%%].",
                                 estimatedHum, card.getSpeciesName(), minH, maxH),
                             "💧 Adjust Compatible Humidity",
-                            () -> autoSelectCompatibleEnvironmentForSpecies(targetSp)
+                            () -> ScenarioEnvironmentDiagnosticsHelper.autoSelectCompatibleEnvironmentForSpecies(panel, targetSp)
                         ));
                     }
                 }
@@ -417,89 +417,5 @@ public class ScenarioValidationPane {
         }
 
         return list;
-    }
-
-    private float estimateWaterTableDepth(String world) {
-        if (world == null) return 15.0f;
-        String s = world.toLowerCase();
-        if (s.contains("marécage") || s.contains("swamp") || s.contains("wetland") || s.contains("mangrove")) {
-            return 4.0f;
-        } else if (s.contains("tropical") || s.contains("jungle") || s.contains("rainforest") || s.contains("amazon")) {
-            return 8.0f;
-        } else if (s.contains("arid") || s.contains("desert") || s.contains("désert") || s.contains("savanna")) {
-            return 35.0f;
-        } else if (s.contains("alpin") || s.contains("toundra") || s.contains("taïga")) {
-            return 10.0f;
-        }
-        return 15.0f;
-    }
-
-    private float estimateAmbientTemperature(String world, String weather) {
-        String wStr = (world != null ? world : "") + " " + (weather != null ? weather : "");
-        String s = wStr.toLowerCase();
-
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(-?\\d+(?:\\.\\d+)?)\\s*°?C").matcher(wStr);
-        if (matcher.find()) {
-            try {
-                return Float.parseFloat(matcher.group(1));
-            } catch (NumberFormatException ignored) {}
-        }
-
-        if (s.contains("arctic") || s.contains("polar") || s.contains("toundra") || s.contains("alpin") || s.contains("taïga") || s.contains("taiga")) {
-            return 8.0f;
-        } else if (s.contains("arid") || s.contains("desert") || s.contains("désert") || s.contains("chebbi") || s.contains("savanna")) {
-            return 32.0f;
-        } else if (s.contains("tropical") || s.contains("manaus") || s.contains("rainforest") || s.contains("jungle") || s.contains("amazon")) {
-            return 28.0f;
-        } else if (s.contains("mediterran") || s.contains("garrigue")) {
-            return 25.0f;
-        } else {
-            return 20.0f;
-        }
-    }
-
-    private float estimateAmbientHumidity(String world, String weather) {
-        String wStr = (world != null ? world : "") + " " + (weather != null ? weather : "");
-        String s = wStr.toLowerCase();
-
-        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(\\d+)\\s*%").matcher(wStr);
-        if (matcher.find()) {
-            try {
-                return Float.parseFloat(matcher.group(1));
-            } catch (NumberFormatException ignored) {}
-        }
-
-        if (s.contains("arid") || s.contains("desert") || s.contains("désert") || s.contains("chebbi")) {
-            return 25.0f;
-        } else if (s.contains("tropical") || s.contains("manaus") || s.contains("rainforest") || s.contains("jungle") || s.contains("amazon") || s.contains("humid")) {
-            return 85.0f;
-        } else if (s.contains("savanna") || s.contains("mediterran") || s.contains("garrigue")) {
-            return 45.0f;
-        } else if (s.contains("arctic") || s.contains("polar") || s.contains("toundra") || s.contains("taïga") || s.contains("taiga")) {
-            return 50.0f;
-        } else {
-            return 65.0f;
-        }
-    }
-
-    private void autoSelectCompatibleEnvironmentForSpecies(org.swarmforge.core.species.Species sp) {
-        if (sp == null) return;
-        float minT = sp.getMinTempCelsius();
-        float maxT = sp.getMaxTempCelsius();
-        float minH = sp.getMinHumidityPercent();
-
-        if (minT >= 26.0f || minH <= 25.0f) {
-            SpeciesConfigCard.selectComboIfPresent(panel.comboWorld, "Acacia Savanna (Serengeti, TZ)");
-            SpeciesConfigCard.selectComboIfPresent(panel.comboWeather, "Savanna");
-        } else if (maxT <= 18.0f) {
-            SpeciesConfigCard.selectComboIfPresent(panel.comboWorld, "Boreal Taiga (Rovaniemi, FI)");
-            SpeciesConfigCard.selectComboIfPresent(panel.comboWeather, "Taiga");
-        } else if (minH >= 65.0f || minT >= 22.0f) {
-            SpeciesConfigCard.selectComboIfPresent(panel.comboWorld, "Tropical Rainforest (Manaus, BR)");
-            SpeciesConfigCard.selectComboIfPresent(panel.comboWeather, "Tropical");
-        } else {
-            SpeciesConfigCard.selectComboIfPresent(panel.comboWorld, "Temperate Deciduous (Fontainebleau, FR)");
-            SpeciesConfigCard.selectComboIfPresent(panel.comboWeather, "Temperate");
-        }
     }
 }

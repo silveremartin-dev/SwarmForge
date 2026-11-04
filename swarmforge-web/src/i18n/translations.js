@@ -24,3 +24,16 @@ export const translations = {
     es,
     zh
 }
+
+export function getTranslation(lang, key, fallbackOrParams = '', params = null) {
+    const activeLang = translations[lang] || translations[DEFAULT_LANGUAGE]
+    let text = activeLang?.[key] ?? translations[DEFAULT_LANGUAGE]?.[key] ?? (typeof fallbackOrParams === 'string' ? fallbackOrParams : key)
+
+    const actualParams = (typeof fallbackOrParams === 'object' && fallbackOrParams !== null) ? fallbackOrParams : params
+    if (actualParams && typeof actualParams === 'object') {
+        Object.entries(actualParams).forEach(([k, v]) => {
+            text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), v)
+        })
+    }
+    return text
+}

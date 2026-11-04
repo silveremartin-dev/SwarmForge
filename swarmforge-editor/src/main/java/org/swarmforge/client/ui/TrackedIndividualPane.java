@@ -334,43 +334,7 @@ public class TrackedIndividualPane extends VBox {
         this.currentAnt = null;
         this.currentPredator = null;
         this.isFollowing = false;
-
-        titleLabel.textProperty().unbind();
-        titleLabel.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.no_ant_title"));
-
-        lblHealthText.textProperty().unbind();
-        lblHealthText.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.health_none"));
-        healthBar.setProgress(0);
-
-        lblSpeciesColony.setText("ðŸ§¬ EspÃ¨ce: - | ðŸ›ï¸ Colonie: -");
-
-        lblEnergyHungerThirst.textProperty().unbind();
-        lblEnergyHungerThirst.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.metrics_none"));
-
-        lblAgeStageJob.textProperty().unbind();
-        lblAgeStageJob.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.age_job_none"));
-
-        lblAiState.textProperty().unbind();
-        lblAiState.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.ai_state_none"));
-        lblAiState.setTooltip(null);
-        lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #a78bfa;");
-
-        lblPos3D.textProperty().unbind();
-        lblPos3D.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.pos3d_none"));
-
-        lblHeadingCargo.textProperty().unbind();
-        lblHeadingCargo.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.heading_cargo_none"));
-
-        lblChcGestalt.textProperty().unbind();
-        lblChcGestalt.textProperty().bind(I18nManager.getInstance().createStringBinding("tracked_ant.chc_gestalt_none"));
-        lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
-
-        btnFollowTps.setDisable(true);
-        btnFollowFps.setDisable(true);
-        btnCenter.setVisible(false);
-        btnCenter.setManaged(false);
-        btnCenter.setDisable(true);
-        clearSearchStatus();
+        TrackedEntityUpdater.setNoAntSelectedState(this);
     }
 
     public void updateAnt(Individual ant, boolean following) {
@@ -381,84 +345,7 @@ public class TrackedIndividualPane extends VBox {
         this.currentAnt = ant;
         this.currentPredator = null;
         this.isFollowing = following;
-
-        if (ant == null) {
-            setNoAntSelectedState();
-            return;
-        }
-
-        String idStr = ant.getId() != null ? ant.getId().toString() : "N/A";
-        String shortId = idStr.length() > 8 ? idStr.substring(0, 8) : idStr;
-        String formattedId = ant.getFormattedId();
-
-        titleLabel.textProperty().unbind();
-        String statusText = following ? I18nManager.getInstance().get("tracked_ant.status_tracked") : I18nManager.getInstance().get("tracked_ant.status_selected");
-        titleLabel.setText(String.format("ðŸŽ¯ %s %s: %s [%s] (#%s)", I18nManager.getInstance().get("tracked_ant.title"), statusText, formatCaste(ant.getCaste()), formattedId, shortId));
-
-        // Species & Colony
-        String speciesName = ant.getSpecies() != null ? ant.getSpecies().getScientificName() : "Formica fusca";
-        String colonyIdStr = ant.getColonyId() != null ? ant.getColonyId().toString().substring(0, Math.min(8, ant.getColonyId().toString().length())) : "N/A";
-        lblSpeciesColony.setText(String.format("ðŸ§¬ %s | ðŸ›ï¸ Colonie #%s", speciesName, colonyIdStr));
-
-        // Health
-        double health = ant.getHealth();
-        boolean alive = ant.isAlive() && health > 0;
-        lblHealthText.textProperty().unbind();
-        if (!alive) {
-            String cod = ant.getCauseOfDeath() != null ? " (" + ant.getCauseOfDeath() + ")" : "";
-            lblHealthText.setText(I18nManager.getInstance().get("tracked_ant.health", 0.0) + " ðŸ’€ [MORT / DÃ‰CÃ‰DÃ‰" + cod + "]");
-            healthBar.setProgress(0);
-            healthBar.setStyle("-fx-accent: #64748b;");
-        } else {
-            lblHealthText.setText(I18nManager.getInstance().get("tracked_ant.health", health));
-            healthBar.setProgress(Math.max(0, Math.min(1.0, health / 100.0)));
-            healthBar.setStyle(health > 50 ? "-fx-accent: #22c55e;" : "-fx-accent: #ef4444;");
-        }
-
-        // Energy / Hunger / Thirst
-        lblEnergyHungerThirst.textProperty().unbind();
-        lblEnergyHungerThirst.setText(I18nManager.getInstance().get("tracked_ant.metrics", ant.getEnergy(), ant.getHunger(), ant.getThirst()));
-
-        // Age in Days (1 day = 86400 seconds)
-        double ageDays = ant.getAge() / 86400.0;
-        lblAgeStageJob.textProperty().unbind();
-        lblAgeStageJob.setText(I18nManager.getInstance().get("tracked_ant.age_job", ageDays, formatLifeStage(ant.getLifeStage()), formatJob(ant.getJob())));
-
-        // AI State & Behaviors
-        String rawBehaviors = ant.getActiveBehaviorsSummary();
-        lblAiState.textProperty().unbind();
-        String stateStr = String.format("ðŸ§  IA : %s | %s", ant.getState() != null ? ant.getState() : "PATROUILLE", formatJob(ant.getJob()));
-        lblAiState.setText(stateStr);
-
-        // Rich Mouse-over Tooltip with complete behavioral and ethological state
-        String fullAiDetails = TrackedIndividualFormatter.buildAntAiTooltip(ant);
-        Tooltip aiTooltip = new Tooltip(fullAiDetails);
-        aiTooltip.setShowDelay(javafx.util.Duration.millis(80));
-        aiTooltip.setStyle("-fx-font-size: 11px;");
-        lblAiState.setTooltip(aiTooltip);
-        lblAiState.setStyle("-fx-font-size: 11px; -fx-text-fill: #a78bfa; -fx-cursor: hand; -fx-underline: true;");
-
-        // 3D Position
-        lblPos3D.textProperty().unbind();
-        lblPos3D.setText(I18nManager.getInstance().get("tracked_ant.pos3d", ant.getX(), ant.getY(), ant.getZ()));
-
-        // Heading & Cargo
-        String cargo = formatCarriedItem(ant.getCarriedItem());
-        lblHeadingCargo.textProperty().unbind();
-        lblHeadingCargo.setText(I18nManager.getInstance().get("tracked_ant.heading_cargo", Math.toDegrees(ant.getHeading()), cargo));
-
-        // CHC Gestalt
-        lblChcGestalt.textProperty().unbind();
-        lblChcGestalt.setText(I18nManager.getInstance().get("tracked_ant.chc_gestalt"));
-        lblChcGestalt.setStyle("-fx-font-size: 11px; -fx-text-fill: #4ade80;");
-
-        btnFollowTps.setDisable(false);
-        btnFollowFps.setDisable(false);
-
-        btnCenter.setVisible(true);
-        btnCenter.setManaged(true);
-        btnCenter.setDisable(false);
-        clearSearchStatus();
+        TrackedEntityUpdater.updateAnt(this, ant, following);
     }
 
     public void updatePredator(Predator predator, boolean following) {

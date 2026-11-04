@@ -45,11 +45,7 @@ public class WeatherVisualizer {
     private RenderMode currentRenderMode = RenderMode.REALISTIC;
 
     // Visual nodes
-    private Geometry sunMesh;
-    private Geometry coronaHaloGeom;
-    private Material coronaHaloMat;
-    private Geometry moonMesh;
-    private Node starsNode;
+    private final WeatherCelestialRenderer celestialRenderer;
     private Node cloudsNode;
     private Node lightningNode;
     private final WeatherPrecipitationRenderer precipitationRenderer;
@@ -79,12 +75,11 @@ public class WeatherVisualizer {
         this.sunLight = sunLight;
         this.rootNode = new Node("WeatherVisualizer");
 
+        this.celestialRenderer = new WeatherCelestialRenderer(rootNode, assetManager);
         this.precipitationRenderer = new WeatherPrecipitationRenderer(assetManager, worldWidth, worldHeight, currentRenderMode);
         rootNode.attachChild(precipitationRenderer.getPrecipitationNode());
         this.groundCoverRenderer = new WeatherGroundCoverRenderer(rootNode, assetManager, worldWidth, worldHeight);
 
-        initSunAndMoon();
-        initStars();
         rebuildClouds();
         initMistAndFire();
         initGodRays();
@@ -124,52 +119,6 @@ public class WeatherVisualizer {
                 godRaysNode.setCullHint(mode == RenderMode.REALISTIC ? com.jme3.scene.Spatial.CullHint.Never : com.jme3.scene.Spatial.CullHint.Always);
             }
         }
-    }
-
-    private void initSunAndMoon() {
-        // Sun Mesh (Glowing Solar Sphere with Corona Flare)
-        Sphere sunSphere = new Sphere(20, 20, 7.0f);
-        sunMesh = new Geometry("SunVisual", sunSphere);
-        Material sunMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        sunMat.setColor("Color", new ColorRGBA(1.0f, 0.95f, 0.4f, 1.0f));
-        sunMesh.setMaterial(sunMat);
-        rootNode.attachChild(sunMesh);
-
-        // Soft Solar Corona Halo Disc
-        Sphere haloSphere = new Sphere(16, 16, 12.0f);
-        coronaHaloGeom = new Geometry("SunCoronaHalo", haloSphere);
-        coronaHaloMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        coronaHaloMat.setColor("Color", new ColorRGBA(1.0f, 0.92f, 0.50f, 0.14f));
-        coronaHaloMat.getAdditionalRenderState().setBlendMode(com.jme3.material.RenderState.BlendMode.Alpha);
-        coronaHaloGeom.setMaterial(coronaHaloMat);
-        coronaHaloGeom.setQueueBucket(com.jme3.renderer.queue.RenderQueue.Bucket.Transparent);
-        rootNode.attachChild(coronaHaloGeom);
-
-        // Moon Mesh (Silver Blue Lunar Sphere)
-        Sphere moonSphere = new Sphere(16, 16, 4.5f);
-        moonMesh = new Geometry("MoonVisual", moonSphere);
-        Material moonMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        moonMat.setColor("Color", new ColorRGBA(0.88f, 0.94f, 1.0f, 0.95f));
-        moonMesh.setMaterial(moonMat);
-        rootNode.attachChild(moonMesh);
-    }
-
-    private void initStars() {
-        starsNode = new Node("StarsField");
-        Material starMat = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
-        starMat.setColor("Color", new ColorRGBA(1.0f, 1.0f, 0.9f, 0.85f));
-
-        Sphere starDot = new Sphere(6, 6, 0.45f);
-        for (int i = 0; i < 50; i++) {
-            Geometry star = new Geometry("Star_" + i, starDot);
-            star.setMaterial(starMat);
-            float sx = (float) ((Math.random() - 0.5) * 220.0);
-            float sy = 95.0f + (float) (Math.random() * 30.0);
-            float sz = (float) ((Math.random() - 0.5) * 220.0);
-            star.setLocalTranslation(sx, sy, sz);
-            starsNode.attachChild(star);
-        }
-        rootNode.attachChild(starsNode);
     }
 
     private void rebuildClouds() {
@@ -343,55 +292,9 @@ public class WeatherVisualizer {
         if (weather == null) return;
 
         // 1. Solar & Lunar Orbital Trajectory + Day/Night Sunlight Brightness Boost
-        float sunAngle = weather.getSunAngle();
         boolean isDay = weather.isDaytime();
-
-        float worldCenterX = 32f;
-        float worldCenterZ = 32f;
-
-        if (sunMesh != null) {
-            boolean sunVis = showSun && isDay;
-            sunMesh.setCullHint(!sunVis ? com.jme3.scene.Spatial.CullHint.Always : com.jme3.scene.Spatial.CullHint.Never);
-            if (coronaHaloGeom != null) {
-                coronaHaloGeom.setCullHint(!sunVis ? com.jme3.scene.Spatial.CullHint.Always : com.jme3.scene.Spatial.CullHint.Never);
-            }
-            if (isDay) {
-                float sx = worldCenterX + (float) Math.cos((sunAngle - 0.25f) * Math.PI * 2) * 160f;
-                float sy = 85f + (float) Math.sin((sunAngle - 0.25f) * Math.PI * 2) * 110f;
-                float sz = worldCenterZ + 40f;
-                sunMesh.setLocalTranslation(sx, sy, sz);
-                if (coronaHaloGeom != null) {
-                    coronaHaloGeom.setLocalTranslation(sx, sy, sz);
-                }
-
-                if (sunLight != null) {
-                    sunLight.setDirection(new Vector3f(worldCenterX - sx, 10f - sy, worldCenterZ - sz).normalizeLocal());
-                    float intensity = Math.max(0.75f, weather.getLightLevel() * 2.5f);
-                    sunLight.setColor(new ColorRGBA(1.35f, 1.30f, 1.20f, 1.0f).mult(intensity));
-                }
-            }
-        }
-
-        if (moonMesh != null) {
-            moonMesh.setCullHint((!showSun || isDay) ? com.jme3.scene.Spatial.CullHint.Always : com.jme3.scene.Spatial.CullHint.Never);
-            if (!isDay) {
-                float mx = worldCenterX + (float) Math.cos((sunAngle + 0.25f) * Math.PI * 2) * 160f;
-                float my = 85f + (float) Math.sin((sunAngle + 0.25f) * Math.PI * 2) * 110f;
-                float mz = worldCenterZ + 40f;
-                moonMesh.setLocalTranslation(mx, my, mz);
-
-                if (sunLight != null) {
-                    sunLight.setDirection(new Vector3f(worldCenterX - mx, 10f - my, worldCenterZ - mz).normalizeLocal());
-                    // Soft moonlight illumination
-                    sunLight.setColor(new ColorRGBA(0.60f, 0.65f, 0.75f, 1.0f).mult(Math.max(0.40f, weather.getLightLevel() * 1.5f)));
-                }
-            }
-        }
-
-        // Night Stars visibility
-        if (starsNode != null) {
-            starsNode.setCullHint((!showSun || isDay) ? com.jme3.scene.Spatial.CullHint.Always : com.jme3.scene.Spatial.CullHint.Never);
-        }
+        float sunAngle = weather.getSunAngle();
+        celestialRenderer.update(weather, showSun, sunLight);
 
         // 2. Physical Wind Vector Coupling (Speed m/s & Angle Deg)
         float windSpeedMs = weather.getWindSpeedMs(); // m/s
@@ -484,12 +387,12 @@ public class WeatherVisualizer {
 
         rootNode.addLight(flash);
 
-        new Thread(() -> {
+        Thread.ofVirtual().start(() -> {
             try {
                 Thread.sleep(160);
                 rootNode.removeLight(flash);
             } catch (InterruptedException ignored) {}
-        }).start();
+        });
     }
 
     public void setShowSun(boolean showSun) { this.showSun = showSun; }

@@ -84,6 +84,7 @@ public class InterventionPanel extends BorderPane {
 
     InterventionCallback callback;
     final InterventionCategoryBuilder categoryBuilder = new InterventionCategoryBuilder(this);
+    final InterventionTimeConfigHelper timeConfigHelper = new InterventionTimeConfigHelper(this);
     final InterventionEventScheduler scheduler = new InterventionEventScheduler(this, categoryBuilder);
 
     public interface InterventionCallback {
@@ -217,78 +218,7 @@ public class InterventionPanel extends BorderPane {
      * Sub-block 1: Calendar Time Input & Colony Target
      */
     private Node createTimeAndColonyConfigNode() {
-        org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
-        VBox box = new VBox(8);
-
-        HBox timeRow = new HBox(8);
-        timeRow.setAlignment(Pos.CENTER_LEFT);
-
-        Label lblTimeHeader = new Label();
-        lblTimeHeader.textProperty().bind(i18n.createStringBinding("god.time.header"));
-        lblTimeHeader.setStyle("-fx-font-weight: bold;");
-
-        spDay = new Spinner<>(1, 365, 1); spDay.setEditable(true); spDay.setPrefWidth(65);
-        spDay.tooltipProperty().bind(i18n.createTooltipBinding("god.time.spinners.tt"));
-        spHour = new Spinner<>(0, 23, 8); spHour.setEditable(true); spHour.setPrefWidth(60);
-        spHour.tooltipProperty().bind(i18n.createTooltipBinding("god.time.spinners.tt"));
-        spMin = new Spinner<>(0, 59, 0); spMin.setEditable(true); spMin.setPrefWidth(60);
-        spMin.tooltipProperty().bind(i18n.createTooltipBinding("god.time.spinners.tt"));
-        spSec = new Spinner<>(0, 59, 0); spSec.setEditable(true); spSec.setPrefWidth(60);
-        spSec.tooltipProperty().bind(i18n.createTooltipBinding("god.time.spinners.tt"));
-
-        Label lblColonyTarget = new Label();
-        lblColonyTarget.textProperty().bind(i18n.createStringBinding("god.time.colony"));
-        lblColonyTarget.setStyle("-fx-font-weight: bold;");
-
-        Label lblDay = new Label(); lblDay.textProperty().bind(i18n.createStringBinding("god.time.day"));
-        Label lblHour = new Label(); lblHour.textProperty().bind(i18n.createStringBinding("god.time.hour"));
-        Label lblMin = new Label(); lblMin.textProperty().bind(i18n.createStringBinding("god.time.min"));
-        Label lblSec = new Label(); lblSec.textProperty().bind(i18n.createStringBinding("god.time.sec"));
-
-        eventColonySelect = new ComboBox<>();
-        eventColonySelect.getItems().addAll(
-                i18n.get("god.colony.all"),
-                i18n.get("god.colony.default1"),
-                i18n.get("god.colony.default2")
-        );
-        eventColonySelect.getSelectionModel().selectFirst();
-        eventColonySelect.setPrefWidth(210);
-        eventColonySelect.tooltipProperty().bind(i18n.createTooltipBinding("god.time.colony.tt"));
-
-        Button btnSyncTime = new Button();
-        btnSyncTime.textProperty().bind(i18n.createStringBinding("god.btn.sync_time"));
-        btnSyncTime.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-cursor: hand;");
-        btnSyncTime.setGraphic(new FontIcon(Feather.CLOCK));
-        btnSyncTime.tooltipProperty().bind(i18n.createTooltipBinding("god.btn.sync_time.tt"));
-        btnSyncTime.setOnAction(e -> syncTimePickersWithCurrentTick(10));
-
-        timeRow.getChildren().addAll(
-                lblTimeHeader,
-                lblDay, spDay,
-                lblHour, spHour,
-                lblMin, spMin,
-                lblSec, spSec,
-                lblColonyTarget, eventColonySelect,
-                btnSyncTime
-        );
-
-        lblTargetTickSummary = new Label();
-        lblTargetTickSummary.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 11px;");
-
-        Runnable updateSummary = () -> {
-            lblTargetTickSummary.setText(I18nManager.getInstance().get("god.spatial.target_summary",
-                    spDay.getValue(), spHour.getValue(), spMin.getValue(), spSec.getValue(), eventColonySelect.getValue()));
-        };
-        updateSummary.run();
-
-        spDay.valueProperty().addListener((o, a, b) -> updateSummary.run());
-        spHour.valueProperty().addListener((o, a, b) -> updateSummary.run());
-        spMin.valueProperty().addListener((o, a, b) -> updateSummary.run());
-        spSec.valueProperty().addListener((o, a, b) -> updateSummary.run());
-        eventColonySelect.valueProperty().addListener((o, a, b) -> updateSummary.run());
-
-        box.getChildren().addAll(timeRow, lblTargetTickSummary);
-        return box;
+        return timeConfigHelper.createTimeAndColonyConfigNode();
     }
 
     // Dynamic Terrain Dimensions & Terrarium Reference for Spatial Sliders
@@ -373,11 +303,7 @@ public class InterventionPanel extends BorderPane {
     }
 
     private long calculateTargetSeconds() {
-        int d = spDay.getValue() != null ? spDay.getValue() : 1;
-        int h = spHour.getValue() != null ? spHour.getValue() : 8;
-        int m = spMin.getValue() != null ? spMin.getValue() : 0;
-        int s = spSec.getValue() != null ? spSec.getValue() : 0;
-        return (long) (d - 1) * 86400L + h * 3600L + m * 60L + s;
+        return timeConfigHelper.calculateTargetSeconds();
     }
 
     public static String formatTickToCalendarTime(long tick, double stepSec) {
@@ -391,21 +317,8 @@ public class InterventionPanel extends BorderPane {
         return String.format("Day %d %02d:%02d:%02d", d, h, m, s);
     }
 
-    // â”€â”€ ATOMIC SCHEDULING & EXECUTION DELEGATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
     private void syncTimePickersWithCurrentTick(int offsetSeconds) {
-        long targetSec = (long) (currentSimulationTick * simulationStepSec) + offsetSeconds;
-        int d = (int) (targetSec / 86400L) + 1;
-        long rem = targetSec % 86400L;
-        int h = (int) (rem / 3600L);
-        rem %= 3600L;
-        int m = (int) (rem / 60L);
-        int s = (int) (rem % 60L);
-
-        spDay.getValueFactory().setValue(Math.max(1, d));
-        spHour.getValueFactory().setValue(h);
-        spMin.getValueFactory().setValue(m);
-        spSec.getValueFactory().setValue(s);
+        timeConfigHelper.syncTimePickersWithCurrentTick(offsetSeconds);
     }
 
     public void syncCurrentSimulationTime(long currentTick, double stepSec) {
@@ -484,12 +397,13 @@ public class InterventionPanel extends BorderPane {
             if (simStateWarningLabel != null) {
                 org.swarmforge.client.util.I18nManager i18n = org.swarmforge.client.util.I18nManager.getInstance();
                 simStateWarningLabel.textProperty().unbind();
+                simStateWarningLabel.getStyleClass().removeAll("notice-warn", "notice-success");
                 if (!running) {
                     simStateWarningLabel.setText(i18n.get("god.warn.paused"));
-                    simStateWarningLabel.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: rgba(245,158,11,0.15); -fx-padding: 6 10; -fx-background-radius: 4;");
+                    simStateWarningLabel.getStyleClass().add("notice-warn");
                 } else {
                     simStateWarningLabel.setText(i18n.get("god.warn.running"));
-                    simStateWarningLabel.setStyle("-fx-text-fill: #4ade80; -fx-font-weight: bold; -fx-font-size: 11px; -fx-background-color: rgba(74,222,128,0.15); -fx-padding: 6 10; -fx-background-radius: 4;");
+                    simStateWarningLabel.getStyleClass().add("notice-success");
                 }
             }
         };

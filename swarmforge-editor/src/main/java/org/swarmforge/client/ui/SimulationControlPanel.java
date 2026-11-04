@@ -217,60 +217,10 @@ public class SimulationControlPanel extends VBox {
         comboExecutionMode.valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
         multiplayerCard.getComboServerRole().valueProperty().addListener((obs, oldV, newV) -> updateAuthorityLock.run());
 
-        Button bSaveScenario = gridBuilder.createScenarioActionButton("common.btn.save", Feather.SAVE, "btn-secondary", "sim.btn.save.tt", ioHelper::handleSaveScenario);
-        Button bDeleteScenario = gridBuilder.createScenarioActionButton("common.btn.delete", Feather.TRASH_2, "btn-danger", "sim.btn.delete.tt", ioHelper::handleDeleteScenario);
-        Button bExportScenario = gridBuilder.createScenarioActionButton("common.btn.export", Feather.DOWNLOAD, "btn-secondary", "sim.btn.export.tt", ioHelper::handleExportScenario);
-        Button bImportScenario = gridBuilder.createScenarioActionButton("common.btn.import", Feather.UPLOAD, "btn-secondary", "sim.btn.import.tt", ioHelper::handleImportScenario);
-
-        HBox metaRow = new HBox(8);
-        metaRow.setAlignment(Pos.CENTER_LEFT);
-        Label lblMeta = new Label();
-        lblMeta.textProperty().bind(i18n.createStringBinding("sim.preset.meta"));
-        lblMeta.getStyleClass().add("purple-accent-title");
-        lblMeta.setMinWidth(Region.USE_PREF_SIZE);
-
-        List<String> scenarioList = new ArrayList<>();
-        scenarioList.add(i18n.get("sim.preset.custom_new", "[➕ Scénario Personnalisé (Création libre)]"));
-
-        for (Scenario sc : AcademicScenarios.getAllAcademicScenarios(12345L)) {
-            scenarioList.add("🔬 " + sc.getTitle());
-        }
-        for (Scenario sc : AcademicScenarios.getAllMultiplayerScenarios(12345L)) {
-            scenarioList.add("⚔️ " + sc.getTitle());
-        }
-        for (String name : scenarioPresetManager.getPresetNames()) {
-            if (!name.startsWith("ACAD_") && !name.startsWith("MP_") && !scenarioList.contains(name)
-                    && !scenarioList.contains("🔬 " + name) && !scenarioList.contains("⚔️ " + name) && !scenarioList.contains("📌 " + name)) {
-                scenarioList.add("📌 " + name);
-            }
-        }
-
-        comboMeta.getItems().setAll(scenarioList);
-        comboMeta.setEditable(false);
-        comboMeta.setMaxWidth(Double.MAX_VALUE);
-        comboMeta.setTooltip(new Tooltip(i18n.get("sim.preset.meta.tt", "Sélectionnez un scénario académique ou multijoueur, ou composez un scénario personnalisé.")));
-        HBox.setHgrow(comboMeta, Priority.ALWAYS);
-        comboMeta.setOnAction(e -> applyMetaPreset(comboMeta.getValue()));
-
-        metaRow.getChildren().addAll(lblMeta, comboMeta);
-
-        HBox presetActionsRow = new HBox(8, bSaveScenario, bDeleteScenario, bExportScenario, bImportScenario);
-        presetActionsRow.setAlignment(Pos.CENTER_LEFT);
-
-        if (!comboMeta.getItems().isEmpty()) {
-            comboMeta.getSelectionModel().select(comboMeta.getItems().size() > 1 ? 1 : 0);
-            applyMetaPreset(comboMeta.getValue());
-        }
-
-        VBox descBox = new VBox(4);
-        Label lblDesc = new Label();
-        lblDesc.textProperty().bind(i18n.createStringBinding("sim.desc.title"));
-        lblDesc.getStyleClass().addAll("sub-title-gray", "card-caption-title");
-        areaDescription.setPrefRowCount(2);
-        areaDescription.setPromptText("Scenario description and experimental objectives...");
-        areaDescription.setWrapText(true);
-        areaDescription.getStyleClass().add("compact-text-area");
-        descBox.getChildren().addAll(lblDesc, areaDescription);
+        List<HBox> metaRows = SimulationScenarioMetaBarBuilder.buildScenarioMetaRows(this, ioHelper, gridBuilder, i18n, comboMeta, scenarioPresetManager, areaDescription);
+        HBox metaRow = metaRows.get(0);
+        HBox presetActionsRow = metaRows.get(1);
+        VBox descBox = SimulationScenarioMetaBarBuilder.buildDescriptionBox(i18n, areaDescription);
 
         // Populate World and Weather combos
         List<String> sortedWorldNames = new ArrayList<>(worldPresetManager.names());

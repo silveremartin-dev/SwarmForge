@@ -154,7 +154,7 @@ public class SwarmForgeServer {
             }
 
             // TLS Setup
-            SslContext sslContext = createSslContextIfEnabled();
+            SslContext sslContext = ServerLifecycleHelper.createSslContextIfEnabled();
 
             NettyServerBuilder serverBuilder = NettyServerBuilder.forPort(grpcPort)
                     .maxInboundMessageSize(16 * 1024 * 1024)
@@ -182,120 +182,16 @@ public class SwarmForgeServer {
             }
 
             // Start WebSocket Server
-            startWebSocketServer();
+            this.webSocketServer = ServerLifecycleHelper.startWebSocketServer(simulationManager);
 
             // Start Redis updater & DB checkpointer
-            startBackgroundWorkers();
+            ServerLifecycleHelper.startBackgroundWorkers(cache, database, simulationManager, worldManager);
 
             printStatusBanner();
         } catch (Throwable t) {
             LOG.error("SERVER STARTUP FAILED CRITICALLY: ", t);
             throw t;
         }
-    }
-
-    private SslContext createSslContextIfEnabled() {
-        if (!"true".equalsIgnoreCase(System.getenv("ENABLE_TLS"))) {
-            LOG.info("gRPC Server running in plaintext mode (set ENABLE_TLS=true to activate TLS)");
-            return null;
-        }
-        try {
-            SelfSignedCertificate ssc = new SelfSignedCertificate();
-            SslContext ctx = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey())
-                    .sslProvider(io.netty.handler.ssl.SslProvider.OPENSSL)
-                    .build();
-            LOG.info("TLS Enabled using self-signed certificate (OpenSSL)");
-            return ctx;
-        } catch (Throwable e) {
-            LOG.warn("Failed to initialize OpenSSL TLS, trying JDK SSL: {}", e.getMessage());
-            try {
-                SelfSignedCertificate ssc = new SelfSignedCertificate();
-                SslContext ctx = GrpcSslContexts.forServer(ssc.certificate(), ssc.privateKey()).build();
-                LOG.info("TLS Enabled using JDK SSL");
-                return ctx;
-            } catch (Throwable e2) {
-                LOG.warn("Could not initialize TLS, running plaintext: {}", e2.getMessage());
-                return null;
-            }
-        }
-    }
-
-    private void startWebSocketServer() {
-        try {
-            int wsPort = 8081;
-            boolean bound = false;
-            for (int p = wsPort; p < wsPort + 10; p++) {
-                if (!isPortOpen("localhost", p)) {
-                    try {
-                        this.webSocketServer = new SwarmForgeWebSocketServer(p, simulationManager);
-                        this.webSocketServer.start();
-                        bound = true;
-                        LOG.info("WebSocket Server started on port {}", p);
-                        break;
-                    } catch (Exception ex) {
-                        LOG.warn("Could not bind WebSocket on port {}, trying next: {}", p, ex.getMessage());
-                    }
-                }
-            }
-            if (!bound) {
-                LOG.warn("Could not find an available port for WebSocket Server (8081-8090 are busy).");
-            }
-        } catch (Exception e) {
-            LOG.warn("Failed to start WebSocket Server: {}", e.getMessage());
-        }
-    }
-
-    private void startBackgroundWorkers() {
-        // Redis live position streamer
-        Thread.ofVirtual().name("redis-updater").start(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
-                if (cache.isConnected()) {
-                    for (var entry : simulationManager.getAllSimulations().entrySet()) {
-                        String simId = entry.getKey();
-                        Simulation sim = entry.getValue();
-                        if (sim.getState() == Simulation.State.RUNNING) {
-                            try {
-                                cache.setTick(simId, sim.getTickCount());
-                                for (Colony colony : sim.getColonies()) {
-                                    for (Individual ind : colony.getLivingIndividuals()) {
-                                        cache.setIndividualPosition(simId, ind.getId().toString(),
-                                                ind.getX(), ind.getY(), ind.getZ());
-                                    }
-                                }
-                            } catch (Exception e) {
-                                LOG.warn("Error updating Redis for {}: {}", simId, e.getMessage());
-                            }
-                        }
-                    }
-                }
-                try {
-                    Thread.sleep(50);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                }
-            }
-        });
-
-        // Periodic Database Checkpointer
-        Thread.ofVirtual().name("db-checkpointer").start(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
-                try {
-                    Thread.sleep(10000);
-                    if (database.isConnected()) {
-                        Simulation sim = getSimulation();
-                        if (sim != null && sim.getState() == Simulation.State.RUNNING) {
-                            saveWorld("Autosave (Tick " + sim.getTickCount() + ")");
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                } catch (Exception ex) {
-                    LOG.warn("Auto-checkpoint failed: {}", ex.getMessage());
-                }
-            }
-        });
     }
 
     // === Simulation Control ===
@@ -488,16 +384,5 @@ public class SwarmForgeServer {
 
     public ExecutorService getDbAsyncExecutor() {
         return dbAsyncExecutor;
-    }
-
-    private static boolean isPortOpen(String host, int port) {
-        if (host == null || host.trim().isEmpty() || port <= 0) return false;
-        String targetHost = ("0.0.0.0".equals(host.trim()) || host.trim().isEmpty()) ? "localhost" : host.trim();
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(targetHost, port), 600);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
     }
 }

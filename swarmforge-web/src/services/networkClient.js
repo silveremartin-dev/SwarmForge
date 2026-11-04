@@ -1,3 +1,5 @@
+import { handleIncomingMessage, createScenarioDeployPayload } from './networkMessageHandler.js'
+
 /**
  * SwarmForge Network Client Service
  * Manages WebSocket / gRPC communication between SwarmForge Web Thin Client and SwarmForge Server.
@@ -261,69 +263,7 @@ class SwarmForgeNetworkClient {
      * Parse incoming messages from SwarmForge Server
      */
     handleIncomingMessage(data) {
-        if (!data) return
-        try {
-            const msg = JSON.parse(data)
-
-            // 1. Welcome / Handshake
-            if (msg.type === 'WELCOME') {
-                this.notifyEventLog({
-                    severity: 'INFO',
-                    type: 'SYSTEM',
-                    source: 'SwarmForge Server',
-                    sourceKey: 'sourceEngine',
-                    message: msg.message || 'Bienvenue sur SwarmForge Server'
-                })
-                return
-            }
-
-            // 2. Heartbeat Ping / Pong
-            if (msg.type === 'PONG') {
-                if (this.lastPingTimestamp > 0) {
-                    this.pingMs = Math.max(1, Math.round(performance.now() - this.lastPingTimestamp))
-                    this.notifyStateChange({ pingMs: this.pingMs })
-                }
-                return
-            }
-
-            // 3. Scenario state deployed from server (Join Mode)
-            if (msg.type === 'SCENARIO_STATE' || (msg.type !== 'SCENARIO_DATA' && msg.scenario && !msg.type)) {
-                this.notifyScenarioReceived(msg.scenario || msg)
-                return
-            }
-
-            // 3b. Scenario Data received for export / download
-            if (msg.type === 'SCENARIO_DATA') {
-                this.notifyScenarioData(msg.scenario || msg)
-                return
-            }
-
-            // 4. Server Scenarios Catalog (LOBBY_WAITING, ACTIVE, INACTIVE)
-            if (msg.type === 'SERVER_SCENARIOS_LIST' || msg.scenarios) {
-                this.notifyServerScenarios(msg.scenarios || [])
-                return
-            }
-
-            // 5. Lobby & Matchmaking state updates
-            if (msg.type === 'LOBBY_STATE') {
-                this.notifyLobbyState(msg)
-                return
-            }
-
-            // 6. Server Event Log item
-            if (msg.type === 'EVENT_LOG' || msg.eventLog) {
-                this.notifyEventLog(msg.eventLog || msg)
-                return
-            }
-
-            // 7. Protobuf JSON SimulationUpdate frame (broadcasted at 20-60 Hz)
-            if (msg.tick !== undefined || msg.individuals || msg.cells || msg.environment || msg.nests) {
-                this.notifySimulationUpdate(msg)
-            }
-        } catch (e) {
-            // Not JSON or partial binary packet
-            console.warn('Network message parsing exception:', e)
-        }
+        handleIncomingMessage(this, data)
     }
 
     /**
@@ -347,24 +287,7 @@ class SwarmForgeNetworkClient {
      * Packages the complete ecosystem parameters and transmits them to SwarmForge Server.
      */
     deployScenario(scenarioData) {
-        const payload = {
-            type: 'DEPLOY_SCENARIO',
-            simulationId: this.simulationId,
-            participantTag: this.participantTag,
-            timestamp: Date.now(),
-            scenario: {
-                worldPresetId: scenarioData.selectedWorldPresetId,
-                weatherPresetId: scenarioData.selectedWeatherPresetId,
-                startDateTime: scenarioData.startDateTime,
-                masterSeed: scenarioData.masterSeed,
-                stepSeconds: scenarioData.stepSeconds,
-                maxDurationSeconds: scenarioData.maxDurationSeconds,
-                minPopulationStop: scenarioData.minPopulationStop,
-                speciesCards: scenarioData.speciesCards,
-                colonies: scenarioData.colonies,
-                nests: scenarioData.nests
-            }
-        }
+        const payload = createScenarioDeployPayload(this.simulationId, this.participantTag, scenarioData)
 
         const sent = this.sendRaw(payload)
         if (sent) {

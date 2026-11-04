@@ -457,74 +457,10 @@ public class HeadlessTrainingScenario {
     /**
      * Minimal synthetic SimulationContext for headless training.
      */
-    public static class HeadlessSimulationContext implements SimulationContext {
-        public float foodGradX = 0.2f;
-        public float foodGradY = 0.1f;
-        public float alarmIntensity = 0.0f;
-        public boolean enemyNearby = false;
-        public boolean foodNearby = false;
-
-        @Override public float getFoodPheromone(float x, float y, float z) { return 0.5f; }
-        @Override public float getHomePheromone(float x, float y, float z) { return 0.5f; }
-        @Override public float getAlarmPheromone(float x, float y, float z) { return alarmIntensity; }
-        @Override public float getFoodPheromoneGradientX(float x, float y, float z) { return foodGradX; }
-        @Override public float getFoodPheromoneGradientY(float x, float y, float z) { return foodGradY; }
-        @Override public boolean hasEnemyNearby(AgentView agent) {
-            if (agent instanceof HeadlessAgentView mv) return mv.hasEnemyNearby || enemyNearby;
-            return enemyNearby;
-        }
-        @Override public Individual getNearestEnemy(AgentView agent) { return null; }
-        @Override public boolean hasFoodNearby(AgentView agent) {
-            if (agent instanceof HeadlessAgentView mv) return mv.hasFoodNearby || foodNearby;
-            return foodNearby || Math.hypot(agent.getX() - 10.0, agent.getY() - 10.0) < 3.0;
-        }
-        @Override public float[] getNearestFoodPosition(AgentView agent) { return new float[]{10f, 10f, 0f}; }
-        @Override public boolean hasFoodNearby(AgentView agent, Set<ResourceType> types) { return hasFoodNearby(agent); }
-        @Override public float[] getNearestFoodPosition(AgentView agent, Set<ResourceType> types) { return getNearestFoodPosition(agent); }
-        @Override public FoodSource getNearestFood(AgentView agent, Set<ResourceType> types) { return null; }
-        @Override public long getCurrentTick() { return 100L; }
-        @Override public float getTemperature() { return 24.0f; }
-        @Override public boolean isRaining() { return false; }
-        @Override public float getLightLevel() { return 1.0f; }
-        @Override public float getWaterLevel(float x, float y, float z) { return 0.0f; }
-        @Override public float getRelativeHumidity(float x, float y, float z) { return 50.0f; }
-        @Override public float[] getFlowVector(float x, float y, float z, int targetX, int targetY, int targetZ) { return new float[]{1f, 0f, 0f}; }
-    }
+    public static class HeadlessSimulationContext extends org.swarmforge.core.behavior.rl.HeadlessSimulationContext {}
 
     /**
      * Synthetic AgentView adapter for rapid multi-caste training data generation.
      */
-    public static class HeadlessAgentView implements AgentView {
-        public float x = 0f, y = 0f, z = 0f;
-        public float heading = 0f;
-        public float energy = 1.0f;
-        public boolean carryingFood = false;
-        public boolean atNest = false;
-        public Individual.Caste caste = Individual.Caste.WORKER;
-        public String insectType = "ANT";
-        public boolean hasFoodNearby = false;
-        public boolean hasEnemyNearby = false;
-        public float alarmPheromone = 0.0f;
-        public float foodPheromoneGradientX = 0.0f;
-        public float foodPheromoneGradientY = 0.0f;
-
-        @Override public float getX() { return x; }
-        @Override public float getY() { return y; }
-        @Override public float getZ() { return z; }
-        @Override public float getHeading() { return heading; }
-        @Override public float getHomeX() { return 0f; }
-        @Override public float getHomeY() { return 0f; }
-        @Override public boolean isCarryingFood() { return carryingFood; }
-        @Override public boolean isAtNest() { return atNest; }
-        @Override public float getEnergyLevel() { return energy; }
-        @Override public float getHunger() { return 1.0f - energy; }
-        @Override public UUID getColonyId() { return UUID.randomUUID(); }
-        @Override public boolean isSoldier() { return caste == Individual.Caste.SOLDIER; }
-        @Override public boolean isQueen() { return caste == Individual.Caste.QUEEN; }
-        @Override public boolean isNurse() { return caste == Individual.Caste.NURSE; }
-        @Override public boolean isDrone() { return caste == Individual.Caste.MALE; }
-        @Override public Species getSpecies() {
-            return org.swarmforge.core.species.SpeciesRegistry.getInstance().getSpecies("lasius-niger");
-        }
-    }
+    public static class HeadlessAgentView extends org.swarmforge.core.behavior.rl.HeadlessAgentView {}
 }

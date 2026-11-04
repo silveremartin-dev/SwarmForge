@@ -470,31 +470,11 @@ public class SimulationServiceImpl extends SimulationServiceGrpc.SimulationServi
 
     @Override
     public void registerNode(RegisterNodeRequest request, StreamObserver<RegisterNodeResponse> responseObserver) {
-        if (server != null && server.getClusterManager() != null) {
-            server.getClusterManager().registerNode(
-                    request.getNodeId(),
-                    request.getAddress(),
-                    request.getPort(),
-                    request.getHasGpu());
-            responseObserver.onNext(RegisterNodeResponse.newBuilder().setSuccess(true).build());
-        } else {
-            responseObserver.onNext(RegisterNodeResponse.newBuilder().setSuccess(false).build());
-        }
-        responseObserver.onCompleted();
+        SimulationServiceClusterHandler.handleRegisterNode(server, request, responseObserver);
     }
 
     @Override
     public void sendHeartbeat(HeartbeatRequest request, StreamObserver<HeartbeatResponse> responseObserver) {
-        if (server != null && server.getClusterManager() != null) {
-            server.getClusterManager().handleHeartbeat(
-                    request.getNodeId(),
-                    request.getCpuLoad(),
-                    request.getGpuLoad(),
-                    request.getTasksCompleted());
-            responseObserver.onNext(HeartbeatResponse.newBuilder().setAcknowledged(true).build());
-        } else {
-            responseObserver.onNext(HeartbeatResponse.newBuilder().setAcknowledged(false).build());
-        }
-        responseObserver.onCompleted();
+        SimulationServiceClusterHandler.handleHeartbeat(server, request, responseObserver);
     }
 }

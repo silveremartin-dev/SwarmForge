@@ -299,7 +299,7 @@ public class SpeciesConfigCard {
             demoBox.getChildren().addAll(lblDemoTitle, lblSpatialInfo, demoGrid);
 
             Label lblAccessoryTitle = new Label();
-            lblAccessoryTitle.textProperty().bind(javafx.beans.binding.Bindings.concat("ðŸŒ¿ ", I18nManager.getInstance().createStringBinding("sim.accessory.title"), " (", getShortSpeciesName(speciesName), ") :"));
+            lblAccessoryTitle.textProperty().bind(javafx.beans.binding.Bindings.concat("ðŸŒ¿ ", I18nManager.getInstance().createStringBinding("sim.accessory.title"), " (", SpeciesConfigCardAccessoryHelper.getShortSpeciesName(speciesName), ") :"));
             lblAccessoryTitle.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 10px;");
             lblAccessoryTitle.getStyleClass().add("accent-title");
 
@@ -342,100 +342,11 @@ public class SpeciesConfigCard {
             nestRelationCombo.getSelectionModel().select(relIdx);
         }
 
-        private final List<AccessoryRowControls> accessoryControlsList = new ArrayList<>();
-
-        private static class AccessoryRowControls {
-            CheckBox chk;
-            String name;
-            String role;
-            Spinner<Integer> countSpinner;
-            ComboBox<String> strategyCombo;
-
-            AccessoryRowControls(CheckBox chk, String name, String role, Spinner<Integer> countSpinner, ComboBox<String> strategyCombo) {
-                this.chk = chk;
-                this.name = name;
-                this.role = role;
-                this.countSpinner = countSpinner;
-                this.strategyCombo = strategyCombo;
-            }
-        }
+        private final List<SpeciesConfigCardAccessoryHelper.AccessoryRowControls> accessoryControlsList = new ArrayList<>();
 
         private void setupAccessoryRows(String speciesName) {
-            accessoryBoxPane.getChildren().clear();
-            accessoryControlsList.clear();
-            List<AccessorySpeciesInfo> compatList = getCompatibleAccessorySpecies(speciesName);
-
-            VBox listVBox = new VBox(4);
-            for (AccessorySpeciesInfo info : compatList) {
-                HBox row = new HBox(8);
-                row.setAlignment(Pos.CENTER_LEFT);
-
-                CheckBox chk = new CheckBox(info.name());
-                chk.setSelected(true);
-                chk.setStyle("-fx-font-size: 10px; -fx-font-weight: bold;");
-                chk.getStyleClass().add("bold-label");
-                chk.setTooltip(new Tooltip(info.description()));
-                chk.setPrefWidth(220);
-                chk.selectedProperty().addListener((o, oldV, newV) -> triggerChange());
-
-                Label lblRole = new Label("[" + info.role() + "]");
-                lblRole.setStyle(getRoleStyle(info.role()));
-                lblRole.getStyleClass().add("bold-label");
-                lblRole.setPrefWidth(95);
-
-                Label lblCount = new Label("Initial Count :");
-                lblCount.setStyle("-fx-font-size: 9.5px; -fx-font-weight: bold;");
-                lblCount.getStyleClass().add("bold-label");
-
-                Spinner<Integer> countSpinner = new Spinner<>(5, 1000, info.defaultCount(), 10);
-                countSpinner.setPrefWidth(70); countSpinner.setEditable(true);
-                countSpinner.valueProperty().addListener((o, oldV, newV) -> triggerChange());
-
-                Label lblStrategy = new Label("Replenishment Strategy :");
-                lblStrategy.setStyle("-fx-font-size: 9.5px; -fx-font-weight: bold;");
-                lblStrategy.getStyleClass().add("bold-label");
-
-                ComboBox<String> strategyCombo = new ComboBox<>();
-                strategyCombo.getItems().addAll(
-                    "ðŸ”„ Dynamic Equilibrium (Auto-maintained < 30% Pop)",
-                    "âš¡ Episodic Incursions (Pop-in Waves every 500 Ticks)",
-                    "â³ Finite Depletion (Limited Resource / Prey Reserves)",
-                    "ðŸŒ¿ Seasonal Logistic Regeneration (10-50%/day)"
-                );
-                strategyCombo.getSelectionModel().selectFirst();
-                strategyCombo.setStyle("-fx-font-size: 9px;");
-                strategyCombo.setTooltip(new Tooltip("Replenishment strategy to maintain pressure without destabilizing the simulation."));
-                strategyCombo.valueProperty().addListener((o, oldV, newV) -> triggerChange());
-
-                accessoryControlsList.add(new AccessoryRowControls(chk, info.name(), info.role(), countSpinner, strategyCombo));
-
-                row.getChildren().addAll(chk, lblRole, lblCount, countSpinner, lblStrategy, strategyCombo);
-                listVBox.getChildren().add(row);
-            }
-            accessoryBoxPane.getChildren().add(listVBox);
+            SpeciesConfigCardAccessoryHelper.setupAccessoryRows(speciesName, accessoryBoxPane, accessoryControlsList, this::triggerChange);
         }
-
-        private String getRoleStyle(String role) {
-            if (role == null) return "-fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 9.5px;";
-            String r = role.toUpperCase().trim();
-            if (r.contains("PROIE") || r.contains("PREY")) {
-                return "-fx-text-fill: #22c55e; -fx-font-weight: bold; -fx-font-size: 9.5px;";
-            } else if (r.contains("PRED") || r.contains("PRÃ‰D")) {
-                return "-fx-text-fill: #ef4444; -fx-font-weight: bold; -fx-font-size: 9.5px;";
-            } else if (r.contains("COMMENSAL") || r.contains("SYMBIOT") || r.contains("FLORA")) {
-                return "-fx-text-fill: #38bdf8; -fx-font-weight: bold; -fx-font-size: 9.5px;";
-            } else if (r.contains("PATHOG") || r.contains("PARASIT")) {
-                return "-fx-text-fill: #eab308; -fx-font-weight: bold; -fx-font-size: 9.5px;";
-            }
-            return "-fx-text-fill: #a78bfa; -fx-font-weight: bold; -fx-font-size: 9.5px;";
-        }
-
-        private String getShortSpeciesName(String full) {
-            if (full == null) return "";
-            int idx = full.indexOf("(");
-            return idx > 0 ? full.substring(0, idx).trim() : full;
-        }
-
         private void applyDemographicsFromStage(int stageIndex) {
             if (queenSpinner == null || workerSpinner == null || soldierSpinner == null || broodSpinner == null) return;
             switch (stageIndex) {
@@ -476,14 +387,14 @@ public class SpeciesConfigCard {
 
         public List<AccessoryConfigSnapshot> getAccessorySnapshots() {
             List<AccessoryConfigSnapshot> list = new ArrayList<>();
-            for (AccessoryRowControls ctrl : accessoryControlsList) list.add(new AccessoryConfigSnapshot(ctrl.name, ctrl.role, ctrl.chk.isSelected(), ctrl.countSpinner.getValue(), ctrl.strategyCombo.getValue()));
+            for (SpeciesConfigCardAccessoryHelper.AccessoryRowControls ctrl : accessoryControlsList) list.add(new AccessoryConfigSnapshot(ctrl.name, ctrl.role, ctrl.chk.isSelected(), ctrl.countSpinner.getValue(), ctrl.strategyCombo.getValue()));
             return list;
         }
 
         public void setAccessorySnapshots(List<AccessoryConfigSnapshot> snapshots) {
             if (snapshots == null) return;
             for (AccessoryConfigSnapshot sSnap : snapshots) {
-                for (AccessoryRowControls ctrl : accessoryControlsList) {
+                for (SpeciesConfigCardAccessoryHelper.AccessoryRowControls ctrl : accessoryControlsList) {
                     if (ctrl.name.equalsIgnoreCase(sSnap.name())) {
                         ctrl.chk.setSelected(sSnap.enabled());
                         ctrl.countSpinner.getValueFactory().setValue(sSnap.initialCount());
@@ -495,17 +406,17 @@ public class SpeciesConfigCard {
         }
 
         public boolean hasActivePreyAccessory() {
-            for (AccessoryRowControls ctrl : accessoryControlsList) if ("PROIE".equals(ctrl.role) && ctrl.chk.isSelected()) return true;
+            for (SpeciesConfigCardAccessoryHelper.AccessoryRowControls ctrl : accessoryControlsList) if ("PROIE".equals(ctrl.role) && ctrl.chk.isSelected()) return true;
             return false;
         }
 
         public boolean hasActivePredatorAccessory() {
-            for (AccessoryRowControls ctrl : accessoryControlsList) if (ctrl.role != null && ctrl.role.contains("PR") && ctrl.chk.isSelected()) return true;
+            for (SpeciesConfigCardAccessoryHelper.AccessoryRowControls ctrl : accessoryControlsList) if (ctrl.role != null && ctrl.role.contains("PR") && ctrl.chk.isSelected()) return true;
             return false;
         }
 
         public void enableAccessorySpeciesRole(String role) {
-            for (AccessoryRowControls ctrl : accessoryControlsList) if (role.equals(ctrl.role)) ctrl.chk.setSelected(true);
+            for (SpeciesConfigCardAccessoryHelper.AccessoryRowControls ctrl : accessoryControlsList) if (role.equals(ctrl.role)) ctrl.chk.setSelected(true);
             triggerChange();
         }
 
